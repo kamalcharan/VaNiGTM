@@ -1,5 +1,5 @@
 // src/App.tsx
-import React from 'react';
+
 import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/vikuna/Navbar';
 import HeroSection from './components/vikuna/HeroSection';

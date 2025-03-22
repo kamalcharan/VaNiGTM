@@ -1,7 +1,7 @@
 // src/context/ThemeContext.tsx
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { Theme } from '../config/theme/types';
-import vikunaTheme from '../config/theme/themes/vikunaTheme';
+import vikunaTheme from '../config/theme/themes/VikunaTheme';
 
 interface ThemeContextType {
   currentTheme: Theme;
