@@ -11,7 +11,7 @@ import TrainingSection from './components/vikuna/TrainingSection';
 import Industries from './components/vikuna/Industries';
 import ProfessionalNetwork from './components/vikuna/ProfessionalNetwork';
 import CaseStudies from './components/vikuna/CaseStudies';
-import ClientTypesWithCTA from './components/vikuna/ClientTypesWithCTA';
+import ClientTypesWithCTA from './components/vikuna/ClientTypeswithCTA';
 import Footer from './components/vikuna/Footer';
 import vikunaTheme from './config/theme/themes/vikunaTheme';
 
