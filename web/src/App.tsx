@@ -13,7 +13,7 @@ import ProfessionalNetwork from './components/vikuna/ProfessionalNetwork';
 import CaseStudies from './components/vikuna/CaseStudies';
 import ClientTypesWithCTA from './components/vikuna/ClientTypeswithCTA';
 import Footer from './components/vikuna/Footer';
-import vikunaTheme from './config/theme/themes/vikunaTheme';
+import vikunaTheme from './config/theme/themes/VikunaTheme';
 
 function App() {
   return (
