@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF7ED" />
+      <stop offset="100%" stop-color="#FFEDD5" />
+    </linearGradient>
+    <linearGradient id="headerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#EA580C" />
+      <stop offset="100%" stop-color="#F97316" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="800" height="600" fill="url(#bgGradient)" />
+  
+  <!-- Device Frame -->
+  <rect x="150" y="50" width="500" height="500" rx="20" ry="20" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="2" />
+  
+  <!-- Header -->
+  <rect x="150" y="50" width="500" height="80" rx="20" ry="20" fill="url(#headerGradient)" />
+  <text x="400" y="95" font-family="Arial" font-size="24" font-weight="bold" fill="#FFFFFF" text-anchor="middle">BharathaVarsha</text>
+  <circle cx="200" cy="90" r="15" fill="#FFFFFF" />
+  <circle cx="600" cy="90" r="15" fill="#FFFFFF" />
+  
+  <!-- Navigation -->
+  <rect x="180" y="150" width="440" height="50" rx="8" ry="8" fill="#F8FAFC" />
+  <text x="230" y="180" font-family="Arial" font-size="14" fill="#64748B">Home</text>
+  <text x="300" y="180" font-family="Arial" font-size="14" fill="#64748B">Heritage</text>
+  <text x="380" y="180" font-family="Arial" font-size="14" fill="#F97316">Culture</text>
+  <text x="450" y="180" font-family="Arial" font-size="14" fill="#64748B">Art</text>
+  <text x="510" y="180" font-family="Arial" font-size="14" fill="#64748B">Events</text>
+  
+  <!-- Hero Section -->
+  <rect x="180" y="220" width="440" height="120" rx="8" ry="8" fill="#FEFCE8" />
+  <rect x="200" y="240" width="180" height="20" rx="4" ry="4" fill="#FDBA74" />
+  <rect x="200" y="270" width="300" height="12" rx="2" ry="2" fill="#FDBA74" opacity="0.6" />
+  <rect x="200" y="290" width="280" height="12" rx="2" ry="2" fill="#FDBA74" opacity="0.6" />
+  <rect x="200" y="310" width="120" height="16" rx="8" ry="8" fill="#F97316" />
+  
+  <!-- Featured Content -->
+  <text x="180" y="380" font-family="Arial" font-size="18" font-weight="bold" fill="#1F2937">Featured Journeys</text>
+  
+  <!-- Cards -->
+  <rect x="180" y="400" width="130" height="130" rx="8" ry="8" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1" />
+  <rect x="180" y="400" width="130" height="80" rx="8" ry="8" fill="#FED7AA" />
+  <rect x="190" y="490" width="80" height="10" rx="2" ry="2" fill="#9CA3AF" />
+  <rect x="190" y="510" width="110" height="10" rx="2" ry="2" fill="#9CA3AF" />
+  
+  <rect x="335" y="400" width="130" height="130" rx="8" ry="8" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1" />
+  <rect x="335" y="400" width="130" height="80" rx="8" ry="8" fill="#FBCFE8" />
+  <rect x="345" y="490" width="80" height="10" rx="2" ry="2" fill="#9CA3AF" />
+  <rect x="345" y="510" width="110" height="10" rx="2" ry="2" fill="#9CA3AF" />
+  
+  <rect x="490" y="400" width="130" height="130" rx="8" ry="8" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1" />
+  <rect x="490" y="400" width="130" height="80" rx="8" ry="8" fill="#BFDBFE" />
+  <rect x="500" y="490" width="80" height="10" rx="2" ry="2" fill="#9CA3AF" />
+  <rect x="500" y="510" width="110" height="10" rx="2" ry="2" fill="#9CA3AF" />
+  
+  <!-- Traditional Patterns -->
+  <circle cx="170" cy="50" r="20" fill="#F97316" opacity="0.3" />
+  <circle cx="630" cy="50" r="20" fill="#F97316" opacity="0.3" />
+  <circle cx="170" cy="550" r="20" fill="#F97316" opacity="0.3" />
+  <circle cx="630" cy="550" r="20" fill="#F97316" opacity="0.3" />
+  
+  <!-- Decorative Elements -->
+  <path d="M120,170 Q100,300 120,430" stroke="#F97316" stroke-width="2" fill="none" opacity="0.5" />
+  <path d="M680,170 Q700,300 680,430" stroke="#F97316" stroke-width="2" fill="none" opacity="0.5" />
+  
+  <!-- Mandala-inspired elements -->
+  <circle cx="400" cy="550" r="15" fill="none" stroke="#F97316" stroke-width="1" />
+  <circle cx="400" cy="550" r="10" fill="none" stroke="#F97316" stroke-width="1" />
+  <circle cx="400" cy="550" r="5" fill="#F97316" />
+</svg>
