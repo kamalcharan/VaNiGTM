@@ -7,7 +7,7 @@ import KeyAreas from './components/vikuna/KeyAreas';
 import ChallengesSection from './components/vikuna/ChallengesSection';
 import LeadershipServices from './components/vikuna/LeadershipServices';
 import TrainingSection from './components/vikuna/TrainingSection';
-// import ProductsSection from './components/vikuna/ProductsSection'; // Commented out as requested
+import ProductsSection from './components/vikuna/ProductsSection'; // Commented out as requested
 import Industries from './components/vikuna/Industries';
 import ProfessionalNetwork from './components/vikuna/ProfessionalNetwork';
 import CaseStudies from './components/vikuna/CaseStudies';
@@ -21,11 +21,12 @@ function App() {
       <div className="app">
         <Navbar transparent={true} />
         <HeroSection />
+                <TrainingSection />
+
         <KeyAreas />
         <ChallengesSection />
         <LeadershipServices />
-        <TrainingSection />
-        {/* <ProductsSection /> */}
+        { <ProductsSection /> }
         <Industries />
         <ProfessionalNetwork />
         <CaseStudies />

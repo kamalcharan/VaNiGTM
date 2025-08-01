@@ -3,29 +3,13 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import useTheme from '../../hooks/useTheme';
-import { FileText, Shield, ArrowRight, Check } from 'lucide-react';
+import { FileText, Globe, ArrowRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-// Helper function to safely access theme properties
-const safeColor = (theme: any, path: string, fallback: string = '#000000'): string => {
-  const parts = path.split('.');
-  let current = theme;
-  
-  for (const part of parts) {
-    if (current === undefined || current === null) return fallback;
-    current = current[part];
-  }
-  
-  return current || fallback;
-};
 
 // Styled components
 const SectionContainer = styled.section`
   padding: 5rem 0;
-  background: linear-gradient(to bottom, 
-    ${props => safeColor(props.theme, 'colors.background.default', '#F9FAFB')}, 
-    ${props => safeColor(props.theme, 'colors.primary.light', '#EFF6FF')}
-  );
+  background: linear-gradient(to bottom, ${props => props.theme.colors.background.default}, ${props => props.theme.colors.primary.light});
 `;
 
 const Container = styled.div`
@@ -41,8 +25,8 @@ const SectionHeader = styled.div`
 `;
 
 const SubHeading = styled.span`
-  color: ${props => safeColor(props.theme, 'colors.primary.main', '#2563EB')};
-  font-weight: ${props => props.theme?.typography?.fontWeightMedium || 500};
+  color: ${props => props.theme.colors.primary.main};
+  font-weight: ${props => props.theme.typography.fontWeightMedium};
   font-size: 0.875rem;
 `;
 
@@ -51,14 +35,14 @@ const SectionTitle = styled.h2`
   @media (min-width: 768px) {
     font-size: 2.5rem;
   }
-  font-weight: ${props => props.theme?.typography?.fontWeightBold || 700};
+  font-weight: ${props => props.theme.typography.fontWeightBold};
   margin: 0.5rem 0 1rem;
-  color: ${props => safeColor(props.theme, 'colors.text.primary', '#1F2937')};
+  color: ${props => props.theme.colors.text.primary};
 `;
 
 const SectionDescription = styled.p`
   font-size: 1.125rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6B7280')};
+  color: ${props => props.theme.colors.text.secondary};
   line-height: 1.6;
 `;
 
@@ -73,9 +57,9 @@ const ProductsGrid = styled.div`
 `;
 
 const ProductCard = styled.div`
-  background-color: ${props => safeColor(props.theme, 'colors.background.paper', '#FFFFFF')};
-  border-radius: ${props => props.theme?.borderRadius?.large || '12px'};
-  box-shadow: ${props => props.theme?.shadows?.medium || '0 4px 6px rgba(0,0,0,0.1)'};
+  background-color: ${props => props.theme.colors.background.paper};
+  border-radius: ${props => props.theme.borderRadius.large};
+  box-shadow: ${props => props.theme.shadows.medium};
   overflow: hidden;
   height: 100%;
   display: flex;
@@ -84,23 +68,23 @@ const ProductCard = styled.div`
   
   &:hover {
     transform: translateY(-5px);
-    box-shadow: ${props => props.theme?.shadows?.large || '0 10px 15px rgba(0,0,0,0.15)'};
+    box-shadow: ${props => props.theme.shadows.large};
   }
 `;
 
 const ProductImage = styled.div`
-  background-color: ${props => safeColor(props.theme, 'colors.primary.light', '#EFF6FF')};
-  padding: 2rem;
+  background-color: ${props => props.theme.colors.primary.light};
+  padding: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   height: 250px;
-  position: relative;
-  overflow: hidden;
   
-  svg {
+  img {
     max-width: 100%;
     max-height: 100%;
+    border-radius: ${props => props.theme.borderRadius.medium};
+    object-fit: contain;
   }
 `;
 
@@ -113,9 +97,9 @@ const ProductContent = styled.div`
 
 const ProductTitle = styled.h3`
   font-size: 1.5rem;
-  font-weight: ${props => props.theme?.typography?.fontWeightBold || 700};
+  font-weight: ${props => props.theme.typography.fontWeightBold};
   margin-bottom: 0.75rem;
-  color: ${props => safeColor(props.theme, 'colors.text.primary', '#1F2937')};
+  color: ${props => props.theme.colors.text.primary};
   display: flex;
   align-items: center;
   
@@ -127,7 +111,7 @@ const ProductTitle = styled.h3`
 
 const ProductDescription = styled.p`
   font-size: 1rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6B7280')};
+  color: ${props => props.theme.colors.text.secondary};
   margin-bottom: 1.5rem;
   line-height: 1.6;
   flex-grow: 1;
@@ -144,10 +128,9 @@ const FeatureItem = styled.li`
   align-items: flex-start;
   margin-bottom: 0.5rem;
   font-size: 0.875rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6B7280')};
   
   svg {
-    color: ${props => safeColor(props.theme, 'colors.primary.main', '#2563EB')};
+    color: ${props => props.theme.colors.primary.main};
     margin-right: 0.5rem;
     flex-shrink: 0;
     margin-top: 0.25rem;
@@ -165,76 +148,18 @@ const ComingSoon = styled.div`
 
 const ComingSoonText = styled.p`
   font-size: 1.125rem;
-  font-weight: ${props => props.theme?.typography?.fontWeightMedium || 500};
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6B7280')};
+  font-weight: ${props => props.theme.typography.fontWeightMedium};
+  color: ${props => props.theme.colors.text.secondary};
   
   span {
-    color: ${props => safeColor(props.theme, 'colors.primary.main', '#2563EB')};
-    border-bottom: 1px dashed ${props => safeColor(props.theme, 'colors.primary.main', '#2563EB')};
+    color: ${props => props.theme.colors.primary.main};
+    border-bottom: 1px dashed ${props => props.theme.colors.primary.main};
     padding-bottom: 0.125rem;
   }
 `;
 
 const ProductsSection: React.FC = () => {
   const { currentTheme } = useTheme();
-  
-  // SVG Illustrations for products
-  const ContractNestIllustration = () => (
-    <svg width="200" height="160" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Document Stack */}
-      <rect x="40" y="30" width="120" height="100" rx="8" fill="#E0E7FF" stroke="#6366F1" strokeWidth="2"/>
-      <rect x="50" y="20" width="120" height="100" rx="8" fill="#EDE9FE" stroke="#8B5CF6" strokeWidth="2"/>
-      <rect x="60" y="10" width="120" height="100" rx="8" fill="white" stroke="#2563EB" strokeWidth="2"/>
-      
-      {/* Document Lines */}
-      <rect x="75" y="30" width="80" height="4" rx="2" fill="#CBD5E1"/>
-      <rect x="75" y="40" width="60" height="4" rx="2" fill="#CBD5E1"/>
-      <rect x="75" y="50" width="70" height="4" rx="2" fill="#CBD5E1"/>
-      
-      {/* Signature Line */}
-      <rect x="75" y="70" width="90" height="1" fill="#94A3B8"/>
-      <path d="M80 85 Q90 75, 100 85 T120 85" stroke="#2563EB" strokeWidth="2" fill="none"/>
-      
-      {/* Check Mark */}
-      <circle cx="160" cy="100" r="20" fill="#10B981"/>
-      <path d="M150 100 L155 105 L170 90" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-
-  const FamilyKnowsIllustration = () => (
-    <svg width="200" height="160" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Central Shield */}
-      <path d="M100 20 L60 40 L60 80 C60 110 80 130 100 140 C120 130 140 110 140 80 L140 40 L100 20Z" 
-            fill="#EDE9FE" stroke="#2563EB" strokeWidth="2"/>
-      
-      {/* House Icon in Shield */}
-      <path d="M100 50 L85 65 L85 85 L95 85 L95 70 L105 70 L105 85 L115 85 L115 65 L100 50Z" 
-            fill="#2563EB"/>
-      <path d="M100 45 L120 65 L118 67 L100 49 L82 67 L80 65 L100 45Z" 
-            fill="#2563EB"/>
-      
-      {/* Family Members */}
-      <circle cx="40" cy="40" r="15" fill="#FEF3C7" stroke="#F59E0B" strokeWidth="2"/>
-      <circle cx="40" cy="40" r="5" fill="#F59E0B"/>
-      
-      <circle cx="160" cy="40" r="15" fill="#DBEAFE" stroke="#3B82F6" strokeWidth="2"/>
-      <circle cx="160" cy="40" r="5" fill="#3B82F6"/>
-      
-      <circle cx="40" cy="120" r="15" fill="#D1FAE5" stroke="#10B981" strokeWidth="2"/>
-      <circle cx="40" cy="120" r="5" fill="#10B981"/>
-      
-      <circle cx="160" cy="120" r="15" fill="#FCE7F3" stroke="#EC4899" strokeWidth="2"/>
-      <circle cx="160" cy="120" r="5" fill="#EC4899"/>
-      
-      {/* Connection Lines */}
-      <path d="M55 45 Q100 60, 145 45" stroke="#E5E7EB" strokeWidth="2" fill="none" strokeDasharray="4 4"/>
-      <path d="M55 115 Q100 100, 145 115" stroke="#E5E7EB" strokeWidth="2" fill="none" strokeDasharray="4 4"/>
-      
-      {/* AI Sparkles */}
-      <path d="M70 20 L72 15 L74 20 L79 22 L74 24 L72 29 L70 24 L65 22 L70 20Z" fill="#F59E0B"/>
-      <path d="M130 25 L131 22 L132 25 L135 26 L132 27 L131 30 L130 27 L127 26 L130 25Z" fill="#F59E0B"/>
-    </svg>
-  );
   
   const products = [
     {
@@ -246,22 +171,22 @@ const ProductsSection: React.FC = () => {
         "Automated approval workflows",
         "Analytics and reporting dashboard"
       ],
-      illustration: <ContractNestIllustration />,
+      imageUrl: "/contractnest-mockup.svg", // SVG mockup
       icon: <FileText size={24} />,
       url: "https://www.contractnest.com"
     },
     {
-      name: "FamilyKnows",
-      description: "Your AI-powered family intelligence platform that empowers families to intelligently manage, protect, and optimize their assets through AI-driven insights and trusted provider connections.",
+      name: "BharathVarsha",
+      description: "A cultural digital platform celebrating India's rich heritage, traditions, and contemporary expressions through curated content and community engagement.",
       features: [
-        "Smart asset tracking & management",
-        "AI-powered warranty reminders",
-        "Trusted service provider network",
-        "Multilingual family collaboration"
+        "Curated cultural experiences",
+        "Interactive historical timelines",
+        "Regional art and craft showcases",
+        "Community forums and discussions"
       ],
-      illustration: <FamilyKnowsIllustration />,
-      icon: <Shield size={24} />,
-      url: "https://familyknows.app"
+      imageUrl: "/bharathavarsha-mockup.svg", // SVG mockup
+      icon: <Globe size={24} />,
+      url: "https://bharathavarsha.com"
     }
   ];
 
@@ -310,7 +235,14 @@ const ProductsSection: React.FC = () => {
             >
               <ProductCard theme={currentTheme}>
                 <ProductImage theme={currentTheme}>
-                  {product.illustration}
+                  <img 
+                    src={product.imageUrl} 
+                    alt={product.name} 
+                    onError={(e) => {
+                      // Fallback to a placeholder if image fails to load
+                      e.currentTarget.src = `/api/placeholder/480/320`;
+                    }}
+                  />
                 </ProductImage>
                 <ProductContent>
                   <ProductTitle theme={currentTheme}>
