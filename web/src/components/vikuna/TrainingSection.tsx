@@ -1,6 +1,6 @@
 // src/components/vikuna/TrainingSection.tsx
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import useTheme from '../../hooks/useTheme';
 import { ArrowRight, Clock } from 'lucide-react';
