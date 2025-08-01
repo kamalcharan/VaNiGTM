@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import styled from 'styled-components';
 import useTheme from '../../hooks/useTheme';
-import { GraduationCap, ArrowRight, ChevronLeft, ChevronRight, Clock, Users, TrendingUp, Award } from 'lucide-react';
-import Card, { CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { ArrowRight, Clock } from 'lucide-react';
+import Card, { CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 // Helper function to safely access theme properties
