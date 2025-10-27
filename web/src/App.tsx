@@ -13,11 +13,13 @@ import ProfessionalNetwork from './components/vikuna/ProfessionalNetwork';
 import CaseStudies from './components/vikuna/CaseStudies';
 import ClientTypesWithCTA from './components/vikuna/ClientTypeswithCTA';
 import Footer from './components/vikuna/Footer';
-import vikunaTheme from './config/theme/themes/VikunaTheme';
+import WhatsAppButton from './components/vikuna/WhatsAppButton';
+import ChatWidget from './components/vikuna/ChatWidget';
+import techAITheme from './config/theme/themes/TechAITheme';
 
 function App() {
   return (
-    <ThemeProvider initialTheme={vikunaTheme}>
+    <ThemeProvider initialTheme={techAITheme}>
       <div className="app">
         <Navbar transparent={true} />
         <HeroSection />
@@ -32,6 +34,10 @@ function App() {
         <CaseStudies />
         <ClientTypesWithCTA />
         <Footer />
+
+        {/* Fixed Elements */}
+        <WhatsAppButton />
+        <ChatWidget />
       </div>
     </ThemeProvider>
   );
