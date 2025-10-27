@@ -2,7 +2,7 @@
 
 import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/vikuna/Navbar';
-import HeroSection from './components/vikuna/HeroSection';
+import HeroSectionNew from './components/vikuna/HeroSectionNew';
 import KeyAreas from './components/vikuna/KeyAreas';
 import ChallengesSection from './components/vikuna/ChallengesSection';
 import LeadershipServices from './components/vikuna/LeadershipServices';
@@ -17,15 +17,17 @@ import WhatsAppButton from './components/vikuna/WhatsAppButton';
 import ChatWidget from './components/vikuna/ChatWidget';
 import StickyCTABar from './components/vikuna/StickyCTABar';
 import ExitIntentPopup from './components/vikuna/ExitIntentPopup';
+import SEOHead from './components/vikuna/SEOHead';
 import modernBusinessTheme from './config/theme/themes/ModernBusinessTheme';
 
 function App() {
   return (
     <ThemeProvider initialTheme={modernBusinessTheme}>
+      <SEOHead />
       <div className="app">
         <Navbar transparent={true} />
-        <HeroSection />
-                <TrainingSection />
+        <HeroSectionNew />
+        <TrainingSection />
 
         <KeyAreas />
         <ChallengesSection />
