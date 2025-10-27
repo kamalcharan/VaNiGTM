@@ -15,11 +15,13 @@ import ClientTypesWithCTA from './components/vikuna/ClientTypeswithCTA';
 import Footer from './components/vikuna/Footer';
 import WhatsAppButton from './components/vikuna/WhatsAppButton';
 import ChatWidget from './components/vikuna/ChatWidget';
-import techAITheme from './config/theme/themes/TechAITheme';
+import StickyCTABar from './components/vikuna/StickyCTABar';
+import ExitIntentPopup from './components/vikuna/ExitIntentPopup';
+import modernBusinessTheme from './config/theme/themes/ModernBusinessTheme';
 
 function App() {
   return (
-    <ThemeProvider initialTheme={techAITheme}>
+    <ThemeProvider initialTheme={modernBusinessTheme}>
       <div className="app">
         <Navbar transparent={true} />
         <HeroSection />
@@ -36,8 +38,10 @@ function App() {
         <Footer />
 
         {/* Fixed Elements */}
+        <StickyCTABar />
         <WhatsAppButton />
         <ChatWidget />
+        <ExitIntentPopup />
       </div>
     </ThemeProvider>
   );
