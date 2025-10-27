@@ -7,7 +7,8 @@ import KeyAreas from './components/vikuna/KeyAreas';
 import ChallengesSection from './components/vikuna/ChallengesSection';
 import LeadershipServices from './components/vikuna/LeadershipServices';
 import TrainingSection from './components/vikuna/TrainingSection';
-import ProductsSection from './components/vikuna/ProductsSection'; // Commented out as requested
+import ProductsShowcase from './components/vikuna/ProductsShowcase';
+import InlineLeadCapture from './components/vikuna/InlineLeadCapture';
 import Industries from './components/vikuna/Industries';
 import ProfessionalNetwork from './components/vikuna/ProfessionalNetwork';
 import CaseStudies from './components/vikuna/CaseStudies';
@@ -27,15 +28,34 @@ function App() {
       <div className="app">
         <Navbar transparent={true} />
         <HeroSectionNew />
-        <TrainingSection />
 
+        {/* Lead Capture After Hero */}
+        <InlineLeadCapture />
+
+        {/* Consulting Services */}
         <KeyAreas />
-        <ChallengesSection />
         <LeadershipServices />
-        { <ProductsSection /> }
-        <Industries />
-        <ProfessionalNetwork />
+
+        {/* Products as Proof */}
+        <ProductsShowcase />
+
+        {/* Social Proof & Case Studies */}
         <CaseStudies />
+        <Industries />
+
+        {/* Mid-Page Lead Capture */}
+        <InlineLeadCapture
+          headline="Want to See Results Like These in Your Organization?"
+          subheadline="Download our free 90-Day AI Transformation Playbook."
+          buttonText="Get Free Playbook"
+        />
+
+        {/* Additional Sections */}
+        <ChallengesSection />
+        <TrainingSection />
+        <ProfessionalNetwork />
+
+        {/* Final CTA */}
         <ClientTypesWithCTA />
         <Footer />
 
