@@ -26,7 +26,7 @@ function App() {
         <KeyAreas />
         <ChallengesSection />
         <LeadershipServices />
-        { <ProductsSection /> }
+       
         <Industries />
         <ProfessionalNetwork />
         <CaseStudies />

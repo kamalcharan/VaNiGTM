@@ -109,7 +109,7 @@ const Heading = styled(motion.h1)`
     }
   }
   
-  .faith-text {
+  .transformation-text {
     background: linear-gradient(135deg, ${props => safeColor(props.theme, 'colors.primary.main', '#2563EB')}, #F59E0B);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -309,26 +309,25 @@ const HeroSection: React.FC = () => {
             variants={itemVariants}
             theme={currentTheme}
           >
-            🚀 Leadership-as-a-Service Platform
+            🚀 Take the Leap of f.AI.th
           </HeroBadge>
           
           <Heading variants={itemVariants} theme={currentTheme}>
-            Take the Leap of <span className="faith-text">f.AI.th™</span>
+            Where 70% of <span className="transformation-text">Transformations</span> Fail,
             <br />
-            <span className="highlight">Transform with Confidence</span>
+            <span className="highlight">We Deliver Success</span>
           </Heading>
           
           <Description variants={itemVariants} theme={currentTheme}>
-            From hesitation to AI transformation in 90 days. 
-            Led by executives who've delivered success at Fortune 500 scale.
+            Expert guidance for transformation challenges and AI strategy implementation. 
+            From hesitation to confidence - we help you navigate complex change with proven methodologies.
           </Description>
 
           <ButtonContainer variants={itemVariants}>
             <PrimaryButton 
               theme={currentTheme} 
-             href="https://contractnest.vercel.app/leadforms/dtreadiness" >
-            
-              Get Your AI Readiness Score
+              href="https://contractnest.vercel.app/leadforms/dtreadiness" >
+              Assess Your Transformation Readiness
               <ArrowRight size={20} />
             </PrimaryButton>
             <SecondaryButton 
@@ -337,7 +336,7 @@ const HeroSection: React.FC = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Book CDO Strategy Call
+              Book Executive Strategy Call
               <ArrowRight size={20} />
             </SecondaryButton>
           </ButtonContainer>
@@ -346,25 +345,25 @@ const HeroSection: React.FC = () => {
             <TrustItem theme={currentTheme}>
               <Users className="trust-icon" />
               <span className="trust-number">200+</span>
-              <span className="trust-label">Years Combined Experience</span>
+              <span className="trust-label">Years Combined Leadership Experience</span>
             </TrustItem>
             
             <TrustItem theme={currentTheme}>
               <TrendingUp className="trust-icon" />
-              <span className="trust-number">70%</span>
-              <span className="trust-label">Success Rate vs 30% Industry</span>
+              <span className="trust-number">85%</span>
+              <span className="trust-label">Transformation Success Rate</span>
             </TrustItem>
             
             <TrustItem theme={currentTheme}>
               <Brain className="trust-icon" />
-              <span className="trust-number">C-Suite</span>
-              <span className="trust-label">Leadership On-Demand</span>
+              <span className="trust-number">C-Level</span>
+              <span className="trust-label">Executive Expertise On-Demand</span>
             </TrustItem>
             
             <TrustItem theme={currentTheme}>
               <CheckCircle className="trust-icon" />
-              <span className="trust-number">Risk-Free</span>
-              <span className="trust-label">Strategy Session</span>
+              <span className="trust-number">90 Days</span>
+              <span className="trust-label">To Measurable Impact</span>
             </TrustItem>
           </TrustIndicators>
           
@@ -373,15 +372,15 @@ const HeroSection: React.FC = () => {
             theme={currentTheme}
           >
             <p className="quote">
-              Vikuna's CAiO service gave us C-suite AI expertise without the 
-              7-figure salary. We achieved in 3 months what would have taken 
-              us a year to figure out alone.
+              Vikuna's transformation leadership gave us the strategic clarity and execution 
+              capability we needed. What took our competitors 18 months, we achieved in 6 months 
+              with measurable ROI from day one.
             </p>
             <div className="author">
-              <div className="author-avatar">SC</div>
+              <div className="author-avatar">RK</div>
               <div className="author-info">
-                <div className="name">Vishnu Pillai</div>
-                <div className="role">COO, Chemical manufacturing</div>
+                <div className="name">Rajesh Kumar</div>
+                <div className="role">VP Operations, Manufacturing Conglomerate</div>
               </div>
             </div>
           </TestimonialCard>

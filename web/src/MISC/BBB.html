@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBB Directory - Admin Interface v2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            background: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .tab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        label .optional {
+            color: #999;
+            font-weight: 400;
+            font-size: 12px;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #764ba2;
+        }
+        
+        .btn-secondary:hover {
+            background: #643d8a;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+        
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .char-counter {
+            text-align: right;
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .profile-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .profile-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .profile-meta {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        .filter-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-bar select {
+            width: auto;
+            min-width: 200px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+        }
+        
+        .stat-card h3 {
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .action-buttons button {
+            padding: 6px 16px;
+            font-size: 13px;
+        }
+        
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .ai-section {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border: 2px dashed #667eea;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .ai-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .ai-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .cluster-preview {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .cluster-preview.active {
+            display: block;
+        }
+        
+        .cluster-tag {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin: 5px 5px 5px 0;
+        }
+        
+        .cluster-category {
+            margin-bottom: 15px;
+        }
+        
+        .cluster-category h4 {
+            color: #667eea;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .note-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+        
+        .note-box strong {
+            color: #856404;
+        }
+        
+        .enhanced-description {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        
+        .enhanced-description h4 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .description-preview {
+            background: white;
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏢 BBB Directory - Admin Interface v2.0</h1>
+            <p class="subtitle">AI-Enhanced Profile Management with Semantic Clustering</p>
+        </header>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('add-profile')">➕ Add Profile</div>
+            <div class="tab" onclick="switchTab('view-profiles')">👥 View Profiles</div>
+            <div class="tab" onclick="switchTab('search-test')">🔍 Test Search</div>
+        </div>
+        
+        <!-- Add Profile Tab -->
+        <div id="add-profile" class="tab-content active">
+            <h2 id="form-title" style="margin-bottom: 20px;">Add New Business Profile</h2>
+            
+            <div id="add-message" class="message"></div>
+            
+            <form id="profile-form">
+                <input type="hidden" id="edit-profile-id" value="">
+                <input type="hidden" id="edit-mode" value="false">
+                <!-- Basic Information -->
+                <h3 style="color: #667eea; margin-bottom: 15px;">📋 Basic Information</h3>
+                
+                <div class="two-column">
+                    <div class="form-group">
+                        <label>Contact Person *</label>
+                        <input type="text" id="contact-person" required placeholder="e.g., Rahul Mehta">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Company Name *</label>
+                        <input type="text" id="company-name" required placeholder="e.g., DigiGrow Marketing">
+                    </div>
+                </div>
+                
+                <div class="two-column">
+                    <div class="form-group">
+                        <label>Mobile Number *</label>
+                        <input type="tel" id="mobile" required placeholder="9887162776" pattern="[0-9]{10}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Alternate Mobile <span class="optional">(optional)</span></label>
+                        <input type="tel" id="alternate-mobile" placeholder="9123456789" pattern="[0-9]{10}">
+                    </div>
+                </div>
+                
+                <div class="two-column">
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" id="email" required placeholder="contact@digigrow.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Website <span class="optional">(optional)</span></label>
+                        <input type="text" id="website" placeholder="www.digigrow.com or https://www.digigrow.com">
+                    </div>
+                </div>
+                
+                <div class="two-column">
+                    <div class="form-group">
+                        <label>Chapter *</label>
+                        <select id="chapter" required>
+                            <option value="Bhagyanagar">Bhagyanagar</option>
+                            <option value="Mumbai">Mumbai</option>
+                            <option value="Delhi">Delhi</option>
+                            <option value="Bangalore">Bangalore</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Business Category *</label>
+                        <select id="business-category" required>
+                            <option value="">Select Category</option>
+                            <option value="Real Estate">Real Estate</option>
+                            <option value="Healthcare">Healthcare</option>
+                            <option value="Wellness">Wellness</option>
+                            <option value="Technology">Technology</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Short Description -->
+                <h3 style="color: #667eea; margin: 30px 0 15px 0;">📝 Business Description</h3>
+                
+                <div class="form-group">
+                    <label>Short Description (2-3 lines) *</label>
+                    <textarea id="short-description" required placeholder="Example: DigiGrow Marketing specializes in digital marketing services, social media management, SEO optimization, content creation, Google Ads campaigns, and online advertising. We help businesses grow their online presence in Hyderabad with data-driven marketing strategies." maxlength="500"></textarea>
+                    <div class="char-counter">
+                        <span id="short-char-count">0</span>/500 characters
+                    </div>
+                </div>
+                
+                <!-- AI Enhancement Section -->
+                <div class="ai-section">
+                    <h3>✨ AI Enhancement Tools</h3>
+                    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
+                        Use AI to create a detailed, keyword-rich description for better search results
+                    </p>
+                    
+                    <div class="ai-buttons">
+                        <button type="button" class="btn btn-secondary btn-small" onclick="enhanceDescription()">
+                            <span id="enhance-text">✨ Enhance with AI</span>
+                            <span id="enhance-loading" style="display: none;" class="loading-spinner"></span>
+                        </button>
+                        <button type="button" class="btn btn-small" onclick="previewClusters()" style="background: #28a745;">
+                            <span id="cluster-text">🔍 Preview Clusters</span>
+                            <span id="cluster-loading" style="display: none;" class="loading-spinner"></span>
+                        </button>
+                    </div>
+                    
+                    <!-- Cluster Preview Area -->
+                    <div id="cluster-preview" class="cluster-preview">
+                        <h4 style="color: #333; margin-bottom: 10px;">📊 Detected Semantic Clusters:</h4>
+                        <div id="cluster-content"></div>
+                    </div>
+                </div>
+                
+                <!-- Enhanced Description (Editable) -->
+                <div class="form-group">
+                    <label>Enhanced Description (AI-Generated, Editable) *</label>
+                    <textarea id="enhanced-description" required placeholder="Click 'Enhance with AI' to generate a detailed description, or write your own..." rows="8"></textarea>
+                    <div class="char-counter">
+                        <span id="enhanced-char-count">0</span> characters
+                    </div>
+                </div>
+                
+                <div class="note-box">
+                    <strong>💡 Pro Tip:</strong> The enhanced description is used for better semantic search. More keywords = better search results. You can edit the AI-generated text before submitting.
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn">
+                        <span id="submit-text">➕ Add Profile</span>
+                        <span id="submit-loading" style="display: none;" class="loading-spinner"></span>
+                    </button>
+                    <button type="button" id="cancel-edit-btn" class="btn" style="background: #dc3545; display: none;" onclick="cancelEdit()">
+                        ❌ Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- View Profiles Tab -->
+        <div id="view-profiles" class="tab-content">
+            <h2 style="margin-bottom: 20px;">View All Profiles</h2>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <h3 id="total-profiles">0</h3>
+                    <p>Total Profiles</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="active-profiles">0</h3>
+                    <p>Active Profiles</p>
+                </div>
+            </div>
+            
+            <div class="filter-bar">
+                <select id="filter-chapter" onchange="loadProfiles()">
+                    <option value="">All Chapters</option>
+                    <option value="Bhagyanagar">Bhagyanagar</option>
+                    <option value="Mumbai">Mumbai</option>
+                    <option value="Delhi">Delhi</option>
+                    <option value="Bangalore">Bangalore</option>
+                </select>
+                
+                <select id="filter-status" onchange="loadProfiles()">
+                    <option value="">All Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+                
+                <button class="btn btn-small" onclick="loadProfiles()">🔄 Refresh</button>
+            </div>
+            
+            <div id="profiles-container"></div>
+        </div>
+        
+        <!-- Test Search Tab -->
+        <div id="search-test" class="tab-content">
+            <h2 style="margin-bottom: 20px;">Test Search System</h2>
+            
+            <div id="search-message" class="message"></div>
+            
+            <div class="form-group">
+                <label>Search Query</label>
+                <input type="text" id="search-query" placeholder="e.g., digital marketing, ayurveda, legal services">
+            </div>
+            
+            <button class="btn" onclick="testSearch()">
+                <span id="search-text">🔍 Search</span>
+                <span id="search-loading" style="display: none;" class="loading-spinner"></span>
+            </button>
+            
+            <div id="search-results" style="margin-top: 30px;"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration
+        const API_BASE = 'https://n8n.srv1017206.hstgr.cloud/webhook';
+        const SUPABASE_URL = 'https://zyojayipbjhxxxxbohlo.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp5b2pheWlwYmpoeHh4eGJvaGxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0Nzk4MjMsImV4cCI6MjA3NDA1NTgyM30.wCJo98cd7n6Zu4YCTtUcoMFKB0_1x9U--fYctxpPVII';            
+        
+        // Character counters
+        document.getElementById('short-description').addEventListener('input', function() {
+            document.getElementById('short-char-count').textContent = this.value.length;
+        });
+        
+        document.getElementById('enhanced-description').addEventListener('input', function() {
+            document.getElementById('enhanced-char-count').textContent = this.value.length;
+        });
+        
+        // Tab switching
+        function switchTab(tabName) {
+            // Cancel edit mode if switching away from add-profile
+            if (tabName !== 'add-profile' && document.getElementById('edit-mode').value === 'true') {
+                cancelEdit();
+            }
+            
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            if (tabName === 'view-profiles') {
+                loadProfiles();
+            }
+        }
+        
+        // Show message helper
+        function showMessage(elementId, type, message) {
+            const msgEl = document.getElementById(elementId);
+            msgEl.className = `message ${type}`;
+            msgEl.textContent = message;
+            msgEl.style.display = 'block';
+            setTimeout(() => {
+                msgEl.style.display = 'none';
+            }, 5000);
+        }
+        
+        // AI Enhancement Function
+        async function enhanceDescription() {
+            const shortDesc = document.getElementById('short-description').value.trim();
+            
+            if (!shortDesc) {
+                alert('Please enter a short description first');
+                return;
+            }
+            
+            const enhanceBtn = document.querySelector('button[onclick="enhanceDescription()"]');
+            const enhanceText = document.getElementById('enhance-text');
+            const enhanceLoading = document.getElementById('enhance-loading');
+            
+            enhanceBtn.disabled = true;
+            enhanceText.style.display = 'none';
+            enhanceLoading.style.display = 'inline-block';
+            
+            try {
+                // Prepare data for AI enhancement
+                const enhancementData = {
+                    contact_person: document.getElementById('contact-person').value,
+                    company_name: document.getElementById('company-name').value,
+                    mobile_number: document.getElementById('mobile').value,
+                    email: document.getElementById('email').value,
+                    website: document.getElementById('website').value,
+                    chapter: document.getElementById('chapter').value,
+                    short_description: shortDesc
+                };
+                
+                // TODO: Create this endpoint in n8n
+                const response = await fetch(`${API_BASE}/enhance-description`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(enhancementData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Enhancement failed');
+                }
+                
+                const result = await response.json();
+                
+                // Set the enhanced description
+                document.getElementById('enhanced-description').value = result.enhanced_description;
+                document.getElementById('enhanced-char-count').textContent = result.enhanced_description.length;
+                
+                showMessage('add-message', 'success', '✅ Description enhanced successfully! You can edit it before submitting.');
+                
+            } catch (error) {
+                // Fallback: If endpoint doesn't exist, use short description
+                document.getElementById('enhanced-description').value = shortDesc;
+                document.getElementById('enhanced-char-count').textContent = shortDesc.length;
+                showMessage('add-message', 'error', '⚠️ AI enhancement endpoint not ready. Using short description. Create /enhance-description endpoint in n8n.');
+            } finally {
+                enhanceBtn.disabled = false;
+                enhanceText.style.display = 'inline';
+                enhanceLoading.style.display = 'none';
+            }
+        }
+        
+        // Preview Clusters Function
+        async function previewClusters() {
+            const description = document.getElementById('enhanced-description').value.trim() || 
+                              document.getElementById('short-description').value.trim();
+            
+            if (!description) {
+                alert('Please enter a description first');
+                return;
+            }
+            
+            const clusterBtn = document.querySelector('button[onclick="previewClusters()"]');
+            const clusterText = document.getElementById('cluster-text');
+            const clusterLoading = document.getElementById('cluster-loading');
+            const clusterPreview = document.getElementById('cluster-preview');
+            const clusterContent = document.getElementById('cluster-content');
+            
+            clusterBtn.disabled = true;
+            clusterText.style.display = 'none';
+            clusterLoading.style.display = 'inline-block';
+            
+            try {
+                // TODO: Create this endpoint in n8n or query existing clusters
+                const response = await fetch(`${API_BASE}/preview-clusters`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description: description })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Cluster preview failed');
+                }
+                
+                const result = await response.json();
+                
+                // Display clusters
+                if (result.clusters && result.clusters.length > 0) {
+                    clusterContent.innerHTML = result.clusters.map(cluster => `
+                        <div class="cluster-category">
+                            <h4>💼 ${cluster.category}</h4>
+                            ${cluster.terms.map(term => `<span class="cluster-tag">${term}</span>`).join('')}
+                        </div>
+                    `).join('');
+                    clusterPreview.classList.add('active');
+                } else {
+                    clusterContent.innerHTML = '<p style="color: #999;">No clusters detected</p>';
+                    clusterPreview.classList.add('active');
+                }
+                
+            } catch (error) {
+                // Fallback: Show mock clusters
+                clusterContent.innerHTML = `
+                    <div class="cluster-category">
+                        <h4>💼 Services Detected</h4>
+                        <span class="cluster-tag">Professional Services</span>
+                        <span class="cluster-tag">Business Solutions</span>
+                    </div>
+                    <p style="margin-top: 10px; font-size: 12px; color: #999;">
+                        ⚠️ Cluster preview endpoint not ready. Create /preview-clusters endpoint in n8n.
+                    </p>
+                `;
+                clusterPreview.classList.add('active');
+            } finally {
+                clusterBtn.disabled = false;
+                clusterText.style.display = 'inline';
+                clusterLoading.style.display = 'none';
+            }
+        }
+        
+        // Profile Form Submit
+        document.getElementById('profile-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.querySelector('#profile-form button[type="submit"]');
+            const submitText = document.getElementById('submit-text');
+            const submitLoading = document.getElementById('submit-loading');
+            
+            submitBtn.disabled = true;
+            submitText.style.display = 'none';
+            submitLoading.style.display = 'inline';
+            
+            const isEditMode = document.getElementById('edit-mode').value === 'true';
+            const profileId = document.getElementById('edit-profile-id').value;
+            
+            // Get form values
+            const contactPerson = document.getElementById('contact-person').value;
+            const companyName = document.getElementById('company-name').value;
+            const mobile = document.getElementById('mobile').value;
+            const alternateMobile = document.getElementById('alternate-mobile').value;
+            const email = document.getElementById('email').value;
+            const website = document.getElementById('website').value;
+            const chapter = document.getElementById('chapter').value;
+            const businessCategory = document.getElementById('business-category').value;
+            const description = document.getElementById('enhanced-description').value || document.getElementById('short-description').value;
+            
+            // Prepare profile text - combine all info
+            const profileText = `${contactPerson} runs ${companyName} ${description} Contact ${mobile}${alternateMobile ? ' or ' + alternateMobile : ''}${email ? ' or email ' + email : ''}${website ? '. Website: ' + website : ''}`;
+            
+            // Prepare profile data for Supabase (both add and edit mode)
+            const profileDataForDB = {
+                chapter: chapter,
+                business_category: businessCategory,
+                company_name: companyName,
+                contact_person: contactPerson,
+                mobile_number: mobile,
+                alternate_mobile: alternateMobile,
+                email_id: email,
+                website: website,
+                raw_data: profileText
+            };
+            
+            try {
+                if (isEditMode) {
+                    // UPDATE existing profile via Supabase
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${profileId}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify(profileDataForDB)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to update profile');
+                    }
+                    
+                    showMessage('add-message', 'success', '✅ Profile updated successfully!');
+                    cancelEdit(); // Exit edit mode
+                    
+                } else {
+                    // ADD new profile directly to Supabase (fast loading)
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+                        method: 'POST',
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify(profileDataForDB)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to add profile');
+                    }
+                    
+                    showMessage('add-message', 'success', '✅ Profile added successfully!');
+                    
+                    // Reset form
+                    document.getElementById('profile-form').reset();
+                    document.getElementById('short-char-count').textContent = '0';
+                    document.getElementById('enhanced-char-count').textContent = '0';
+                    document.getElementById('cluster-preview').classList.remove('active');
+                }
+                
+            } catch (error) {
+                const action = isEditMode ? 'update' : 'add';
+                showMessage('add-message', 'error', `❌ Failed to ${action} profile. Check connection.`);
+            } finally {
+                submitBtn.disabled = false;
+                submitText.style.display = 'inline';
+                submitLoading.style.display = 'none';
+            }
+        });
+        
+        // Load Profiles
+        async function loadProfiles() {
+            const container = document.getElementById('profiles-container');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading profiles...</p></div>';
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=*&order=created_at.desc`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load profiles');
+                
+                const profiles = await response.json();
+                
+                // Filter profiles
+                const chapterFilter = document.getElementById('filter-chapter').value;
+                const statusFilter = document.getElementById('filter-status').value;
+                
+                let filteredProfiles = profiles;
+                if (chapterFilter) {
+                    filteredProfiles = filteredProfiles.filter(p => p.chapter === chapterFilter);
+                }
+                if (statusFilter !== '') {
+                    filteredProfiles = filteredProfiles.filter(p => p.is_active.toString() === statusFilter);
+                }
+                
+                // Update stats
+                document.getElementById('total-profiles').textContent = profiles.length;
+                document.getElementById('active-profiles').textContent = profiles.filter(p => p.is_active).length;
+                
+                // Display profiles
+                if (filteredProfiles.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">No profiles found.</p>';
+                    return;
+                }
+                
+                container.innerHTML = filteredProfiles.map(profile => `
+                    <div class="profile-card">
+                        <h3>${profile.company_name || 'Unknown Company'} ${profile.embedding ? '✅' : '⚠️'}</h3>
+                        <p><strong>Contact:</strong> ${profile.contact_person || 'N/A'}</p>
+                        <p><strong>Category:</strong> ${profile.business_category || 'N/A'}</p>
+                        <p style="margin-top: 10px;">${profile.raw_data}</p>
+                        <div class="profile-meta">
+                            <span>📍 ${profile.chapter}</span>
+                            <span>📞 ${profile.mobile_number}</span>
+                            ${profile.alternate_mobile ? `<span>📱 ${profile.alternate_mobile}</span>` : ''}
+                            <span>📧 ${profile.email_id || 'N/A'}</span>
+                            ${profile.website ? `<span>🌐 <a href="${profile.website}" target="_blank">Website</a></span>` : ''}
+                            <span class="status-badge status-${profile.is_active ? 'active' : 'inactive'}">
+                                ${profile.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                            ${!profile.embedding ? '<span style="background: #ff6b6b; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px;">No Embedding</span>' : ''}
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn" style="background: #28a745;" onclick='editProfile(${JSON.stringify(profile)})'>Edit</button>
+                            ${!profile.embedding ? `<button class="btn" style="background: #ff6b6b;" onclick="generateEmbedding(${profile.id}, '${(profile.raw_data || '').replace(/'/g, "\\'")}', '${profile.company_name}', '${profile.chapter}')">⚡ Embedding</button>` : ''}
+                            <button class="btn" style="background: #17a2b8;" onclick="generateClusters(${profile.id}, '${(profile.raw_data || '').replace(/'/g, "\\'")}')">🔍 Clusters</button>
+                            <button class="btn" style="background: #ffc107; color: #000;" onclick="aiImprove(${profile.id})">✨ AI Improve</button>
+                            <button class="btn btn-success" onclick="toggleStatus(${profile.id}, ${!profile.is_active})">
+                                ${profile.is_active ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button class="btn btn-danger" onclick="deleteProfile(${profile.id})">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="message error" style="display: block;">
+                        ❌ Could not load profiles. Make sure to add your Supabase credentials in the code.
+                    </div>
+                `;
+            }
+        }
+        
+        // Toggle Profile Status
+        async function toggleStatus(profileId, newStatus) {
+            if (!confirm(`Are you sure you want to ${newStatus ? 'activate' : 'deactivate'} this profile?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${profileId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify({ is_active: newStatus })
+                });
+                
+                if (response.ok) {
+                    loadProfiles();
+                } else {
+                    alert('Failed to update profile status');
+                }
+            } catch (error) {
+                alert('Network error. Please try again.');
+            }
+        }
+        
+        // Delete Profile
+        async function deleteProfile(profileId) {
+            if (!confirm('Are you sure you want to DELETE this profile? This cannot be undone!')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${profileId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                
+                if (response.ok) {
+                    loadProfiles();
+                } else {
+                    alert('Failed to delete profile');
+                }
+            } catch (error) {
+                alert('Network error. Please try again.');
+            }
+        }
+        
+        // Edit Profile - Load data into form
+        function editProfile(profile) {
+            // Switch to Add Profile tab
+            switchTab('add-profile');
+            
+            // Set edit mode
+            document.getElementById('edit-mode').value = 'true';
+            document.getElementById('edit-profile-id').value = profile.id;
+            
+            // Update UI for edit mode
+            document.getElementById('form-title').textContent = '✏️ Edit Business Profile';
+            document.getElementById('submit-text').textContent = '💾 Update Profile';
+            document.getElementById('cancel-edit-btn').style.display = 'inline-block';
+            
+            // Pre-fill form with existing data
+            document.getElementById('contact-person').value = profile.contact_person || '';
+            document.getElementById('company-name').value = profile.company_name || '';
+            document.getElementById('mobile').value = profile.mobile_number || '';
+            document.getElementById('alternate-mobile').value = profile.alternate_mobile || '';
+            document.getElementById('email').value = profile.email_id || '';
+            document.getElementById('website').value = profile.website || '';
+            document.getElementById('chapter').value = profile.chapter || 'Bhagyanagar';
+            document.getElementById('business-category').value = profile.business_category || '';
+            
+            // Set descriptions
+            document.getElementById('short-description').value = '';
+            document.getElementById('enhanced-description').value = profile.raw_data || '';
+            
+            // Update character counts
+            document.getElementById('short-char-count').textContent = '0';
+            document.getElementById('enhanced-char-count').textContent = profile.raw_data ? profile.raw_data.length : '0';
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        // Cancel Edit - Reset form to add mode
+        function cancelEdit() {
+            // Reset edit mode
+            document.getElementById('edit-mode').value = 'false';
+            document.getElementById('edit-profile-id').value = '';
+            
+            // Update UI for add mode
+            document.getElementById('form-title').textContent = 'Add New Business Profile';
+            document.getElementById('submit-text').textContent = '➕ Add Profile';
+            document.getElementById('cancel-edit-btn').style.display = 'none';
+            
+            // Clear form
+            document.getElementById('profile-form').reset();
+            document.getElementById('short-char-count').textContent = '0';
+            document.getElementById('enhanced-char-count').textContent = '0';
+            document.getElementById('cluster-preview').classList.remove('active');
+        }
+        
+        // Generate Embedding for Single Profile
+        async function generateEmbedding(profileId, rawData, companyName, chapter) {
+            if (!confirm('Generate embedding for this profile? (Uses OpenAI API)')) {
+                return;
+            }
+            
+            try {
+                // Call n8n to generate embedding
+                const response = await fetch(`${API_BASE}/profile-ingest`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chapter: chapter,
+                        company_name: companyName,
+                        profile_text: rawData
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Failed to generate embedding');
+                
+                alert('✅ Embedding generated! Profile is now searchable.');
+                loadProfiles(); // Refresh to show updated status
+                
+            } catch (error) {
+                alert('❌ Failed to generate embedding: ' + error.message);
+            }
+        }
+        
+        // Generate Semantic Clusters for Profile
+        async function generateClusters(profileId, rawData) {
+            if (!confirm('Generate semantic clusters for this profile?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/generate-clusters`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        profile_text: rawData,
+                        keywords: []
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Failed to generate clusters');
+                
+                const result = await response.json();
+                alert('✅ Semantic clusters generated!\n\nCheck semantic_clusters table in Supabase.');
+                
+            } catch (error) {
+                alert('❌ Failed to generate clusters: ' + error.message);
+            }
+        }
+        
+        // AI Improve Profile
+        async function aiImprove(profileId) {
+            if (!confirm('AI will enhance this profile description. Continue?')) {
+                return;
+            }
+            
+            try {
+                // Get current profile
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${profileId}&select=*`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Failed to fetch profile');
+                
+                const profiles = await response.json();
+                if (profiles.length === 0) throw new Error('Profile not found');
+                
+                const profile = profiles[0];
+                
+                // Call AI enhancement (you'll need to create this endpoint)
+                const enhanceResponse = await fetch(`${API_BASE}/enhance-description`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contact_person: profile.contact_person,
+                        company_name: profile.company_name,
+                        mobile_number: profile.mobile_number,
+                        email: profile.email_id,
+                        website: profile.website,
+                        chapter: profile.chapter,
+                        short_description: profile.raw_data
+                    })
+                });
+                
+                if (!enhanceResponse.ok) {
+                    alert('⚠️ AI enhancement endpoint not ready yet. Create /enhance-description in n8n first.');
+                    return;
+                }
+                
+                const enhanced = await enhanceResponse.json();
+                
+                // Update profile with enhanced description
+                const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${profileId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify({
+                        raw_data: enhanced.enhanced_description
+                    })
+                });
+                
+                if (updateResponse.ok) {
+                    alert('✅ Profile improved by AI!');
+                    loadProfiles();
+                } else {
+                    throw new Error('Failed to update profile');
+                }
+                
+            } catch (error) {
+                alert('❌ Failed to improve profile: ' + error.message);
+            }
+        }
+        
+        // Test Search
+        async function testSearch() {
+            const query = document.getElementById('search-query').value.trim();
+            if (!query) {
+                showMessage('search-message', 'error', 'Please enter a search query');
+                return;
+            }
+            
+            const searchBtn = document.querySelector('#search-test .btn');
+            const searchText = document.getElementById('search-text');
+            const searchLoading = document.getElementById('search-loading');
+            const resultsDiv = document.getElementById('search-results');
+            
+            searchBtn.disabled = true;
+            searchText.style.display = 'none';
+            searchLoading.style.display = 'inline';
+            resultsDiv.innerHTML = '';
+            
+            try {
+                const response = await fetch(`${API_BASE}/search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Search failed');
+                }
+                
+                const result = await response.json();
+                
+                if (result.results_found === 0) {
+                    resultsDiv.innerHTML = '<p style="color: #999;">No results found</p>';
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                            <strong>Found ${result.results_found} result(s)</strong>
+                            ${result.from_cache ? ' <span style="color: #28a745;">(from cache)</span>' : ''}
+                        </div>
+                        ${result.profiles.map(profile => `
+                            <div class="profile-card">
+                                <h3>Rank #${profile.rank} - ${profile.chapter}</h3>
+                                <p>${profile.profile}</p>
+                                <p style="margin-top: 10px;"><strong>Similarity:</strong> ${profile.similarity_score}</p>
+                            </div>
+                        `).join('')}
+                    `;
+                }
+                
+                showMessage('search-message', 'success', `✅ Search completed`);
+                
+            } catch (error) {
+                showMessage('search-message', 'error', '❌ Search failed. Check n8n workflow.');
+            } finally {
+                searchBtn.disabled = false;
+                searchText.style.display = 'inline';
+                searchLoading.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
