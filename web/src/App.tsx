@@ -2,36 +2,51 @@
 
 import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/vikuna/Navbar';
-import HeroSection from './components/vikuna/HeroSection';
-import KeyAreas from './components/vikuna/KeyAreas';
-import ChallengesSection from './components/vikuna/ChallengesSection';
-import LeadershipServices from './components/vikuna/LeadershipServices';
-import TrainingSection from './components/vikuna/TrainingSection';
-import ProductsSection from './components/vikuna/ProductsSection'; // Commented out as requested
-import Industries from './components/vikuna/Industries';
-import ProfessionalNetwork from './components/vikuna/ProfessionalNetwork';
+import HeroSectionNew from './components/vikuna/HeroSectionNew';
+import IndustriesBanner from './components/vikuna/IndustriesBanner';
+import ConsultingServices from './components/vikuna/ConsultingServices';
+import ProductDevelopmentServices from './components/vikuna/ProductDevelopmentServices';
 import CaseStudies from './components/vikuna/CaseStudies';
-import ClientTypesWithCTA from './components/vikuna/ClientTypeswithCTA';
+import InlineLeadCapture from './components/vikuna/InlineLeadCapture';
 import Footer from './components/vikuna/Footer';
-import vikunaTheme from './config/theme/themes/VikunaTheme';
+import StickyCTABar from './components/vikuna/StickyCTABar';
+import ExitIntentPopup from './components/vikuna/ExitIntentPopup';
+import SEOHead from './components/vikuna/SEOHead';
+import trustworthyTheme from './config/theme/themes/TrustworthyTheme';
 
 function App() {
   return (
-    <ThemeProvider initialTheme={vikunaTheme}>
+    <ThemeProvider initialTheme={trustworthyTheme}>
+      <SEOHead />
       <div className="app">
         <Navbar transparent={true} />
-        <HeroSection />
-                <TrainingSection />
+        <HeroSectionNew />
 
-        <KeyAreas />
-        <ChallengesSection />
-        <LeadershipServices />
-       
-        <Industries />
-        <ProfessionalNetwork />
+        {/* Industries Banner - Quick Credibility */}
+        <IndustriesBanner />
+
+        {/* Service #1: Consulting Services (CDO/CAiO + Training) */}
+        <ConsultingServices />
+
+        {/* Service #2: Product Development (MVP + Products We've Developed) */}
+        <ProductDevelopmentServices />
+
+        {/* Transformation Success Stories - Proves Both Services */}
         <CaseStudies />
-        <ClientTypesWithCTA />
+
+        {/* Lead Capture - After Value is Clear */}
+        <InlineLeadCapture
+          headline="Ready to Start Your Transformation Journey?"
+          subheadline="Get a free 30-minute consultation to discuss your specific needs."
+          buttonText="Schedule Consultation"
+        />
+
+        {/* Footer */}
         <Footer />
+
+        {/* Fixed Elements */}
+        <StickyCTABar />
+        <ExitIntentPopup />
       </div>
     </ThemeProvider>
   );

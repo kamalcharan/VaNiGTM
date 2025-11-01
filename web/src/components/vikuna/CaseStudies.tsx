@@ -233,9 +233,9 @@ const CaseStudies: React.FC = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <SectionTitle theme={currentTheme}>Success Stories</SectionTitle>
+            <SectionTitle theme={currentTheme}>Transformation Success Stories</SectionTitle>
           </motion.div>
-          
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -243,7 +243,7 @@ const CaseStudies: React.FC = () => {
             transition={{ delay: 0.1 }}
           >
             <SectionDescription theme={currentTheme}>
-              Real-world results from our digital transformation partnerships
+              Real-world results from our holistic transformation approach
             </SectionDescription>
           </motion.div>
         </SectionHeader>

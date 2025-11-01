@@ -116,17 +116,17 @@ const DropdownItem = styled.a`
 `;
 
 const ConsultButton = styled.a`
-  background-color: ${props => props.theme.colors.primary.main};
-  color: ${props => props.theme.colors.primary.contrastText};
+  background-color: ${props => props.theme.colors.secondary.main};
+  color: ${props => props.theme.colors.secondary.contrastText};
   padding: 0.5rem 1rem;
   border-radius: ${props => props.theme.borderRadius.medium};
   font-size: 0.875rem;
   text-decoration: none;
   transition: background-color 0.2s ease;
   font-weight: ${props => props.theme.typography.fontWeightMedium};
-  
+
   &:hover {
-    background-color: ${props => props.theme.colors.primary.dark};
+    background-color: ${props => props.theme.colors.secondary.dark};
   }
 `;
 
@@ -176,14 +176,18 @@ const MobileNavLink = styled.a`
 
 const MobileConsultButton = styled.a`
   display: block;
-  background-color: ${props => props.theme.colors.primary.main};
-  color: ${props => props.theme.colors.primary.contrastText};
+  background-color: ${props => props.theme.colors.secondary.main};
+  color: ${props => props.theme.colors.secondary.contrastText};
   text-align: center;
   padding: 0.75rem 1rem;
   border-radius: ${props => props.theme.borderRadius.medium};
   margin-top: 0.75rem;
   font-size: 0.875rem;
   text-decoration: none;
+
+  &:hover {
+    background-color: ${props => props.theme.colors.secondary.dark};
+  }
 `;
 
 interface NavbarProps {
@@ -232,46 +236,34 @@ const Navbar: React.FC<NavbarProps> = ({ transparent = true }) => {
         
         <NavLinks>
           <DropdownContainer>
-            <DropdownButton 
-              theme={currentTheme} 
+            <DropdownButton
+              theme={currentTheme}
               onClick={toggleServices}
               onBlur={() => setTimeout(() => setIsServicesOpen(false), 200)}
             >
-              Executive Services
+              Services
               <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
                 <path d="M6 8L2 4h8l-4 4z"/>
               </svg>
             </DropdownButton>
             <DropdownMenu $isOpen={isServicesOpen} theme={currentTheme}>
-              <DropdownItem href="#transformation-services" theme={currentTheme}>
-                Transformation Strategy & Execution
+              <DropdownItem href="#consulting-services" theme={currentTheme}>
+                Consulting Services
               </DropdownItem>
-              <DropdownItem href="#ai-services" theme={currentTheme}>
-                AI Strategy & Implementation
-              </DropdownItem>
-              <DropdownItem href="#executive-leadership" theme={currentTheme}>
-                Executive Leadership (CDO/CAiO)
-              </DropdownItem>
-              <DropdownItem href="#transformation-capabilities" theme={currentTheme}>
-                Process Intelligence & Mining
-              </DropdownItem>
-              <DropdownItem href="#transformation-capabilities" theme={currentTheme}>
-                Data Strategy & Storytelling
+              <DropdownItem href="#product-development" theme={currentTheme}>
+                Product Development
               </DropdownItem>
             </DropdownMenu>
           </DropdownContainer>
-          
-          <NavLink href="#industries" theme={currentTheme}>Industry Expertise</NavLink>
+
           <NavLink href="#case-studies" theme={currentTheme}>Success Stories</NavLink>
-          <NavLink href="#digital-training" theme={currentTheme}>Academy</NavLink>
-          <NavLink href="#expert-network" theme={currentTheme}>Leadership Network</NavLink>
           <NavLink href="#contact" theme={currentTheme}>Contact</NavLink>
-          
-          <ConsultButton 
-            href="https://calendly.com/connect-vikuna/30min" 
+
+          <ConsultButton
+            href="https://calendly.com/connect-vikuna/30min"
             theme={currentTheme}
           >
-            Book Strategy Call
+            Book Consultation
           </ConsultButton>
         </NavLinks>
         
@@ -285,17 +277,15 @@ const Navbar: React.FC<NavbarProps> = ({ transparent = true }) => {
       </NavbarContent>
       
       <MobileMenu $isOpen={isMenuOpen} theme={currentTheme}>
-        <MobileNavLink href="#executive-leadership" theme={currentTheme}>Executive Services</MobileNavLink>
-        <MobileNavLink href="#industries" theme={currentTheme}>Industry Expertise</MobileNavLink>
+        <MobileNavLink href="#consulting-services" theme={currentTheme}>Consulting Services</MobileNavLink>
+        <MobileNavLink href="#product-development" theme={currentTheme}>Product Development</MobileNavLink>
         <MobileNavLink href="#case-studies" theme={currentTheme}>Success Stories</MobileNavLink>
-        <MobileNavLink href="#digital-training" theme={currentTheme}>Academy</MobileNavLink>
-        <MobileNavLink href="#expert-network" theme={currentTheme}>Leadership Network</MobileNavLink>
         <MobileNavLink href="#contact" theme={currentTheme}>Contact</MobileNavLink>
-        <MobileConsultButton 
-          href="https://calendly.com/connect-vikuna/30min" 
+        <MobileConsultButton
+          href="https://calendly.com/connect-vikuna/30min"
           theme={currentTheme}
         >
-          Book Strategy Call
+          Book Consultation
         </MobileConsultButton>
       </MobileMenu>
     </NavbarContainer>
