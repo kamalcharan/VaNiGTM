@@ -108,7 +108,7 @@ const Input = styled.input`
 const SubmitButton = styled.button`
   padding: 16px 32px;
   background: rgba(255, 255, 255, 0.9);
-  color: ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')};
+  color: ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')};
   border: none;
   border-radius: 8px;
   font-size: 1rem;

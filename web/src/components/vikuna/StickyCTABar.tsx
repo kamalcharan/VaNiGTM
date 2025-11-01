@@ -59,8 +59,8 @@ const PrimaryButton = styled.a<{ $isMobile: boolean }>`
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: ${props => props.theme?.colors?.primary?.main || '#39d2c0'};
-  color: ${props => props.theme?.colors?.primary?.contrastText || '#FFFFFF'};
+  background: ${props => props.theme?.colors?.secondary?.main || '#FF6F61'};
+  color: ${props => props.theme?.colors?.secondary?.contrastText || '#FFFFFF'};
   padding: ${props => props.$isMobile ? '12px 16px' : '12px 24px'};
   border-radius: 8px;
   font-weight: 600;
@@ -71,9 +71,9 @@ const PrimaryButton = styled.a<{ $isMobile: boolean }>`
   flex: ${props => props.$isMobile ? '1' : 'initial'};
 
   &:hover {
-    background: ${props => props.theme?.colors?.primary?.dark || '#1aaa99'};
+    background: ${props => props.theme?.colors?.secondary?.dark || '#e55a4a'};
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px ${props => props.theme?.colors?.primary?.main || '#39d2c0'}40;
+    box-shadow: 0 4px 12px ${props => props.theme?.colors?.secondary?.main || '#FF6F61'}40;
   }
 
   svg {

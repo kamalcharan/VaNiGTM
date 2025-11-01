@@ -19,11 +19,11 @@ import ChatWidget from './components/vikuna/ChatWidget';
 import StickyCTABar from './components/vikuna/StickyCTABar';
 import ExitIntentPopup from './components/vikuna/ExitIntentPopup';
 import SEOHead from './components/vikuna/SEOHead';
-import modernBusinessTheme from './config/theme/themes/ModernBusinessTheme';
+import trustworthyTheme from './config/theme/themes/TrustworthyTheme';
 
 function App() {
   return (
-    <ThemeProvider initialTheme={modernBusinessTheme}>
+    <ThemeProvider initialTheme={trustworthyTheme}>
       <SEOHead />
       <div className="app">
         <Navbar transparent={true} />

@@ -159,7 +159,7 @@ const PrimaryButton = styled.a`
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  background: ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')};
+  background: ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')};
   color: white;
   font-weight: 600;
   font-size: 1.125rem;
@@ -167,12 +167,12 @@ const PrimaryButton = styled.a`
   border-radius: 12px;
   text-decoration: none;
   transition: all 0.3s ease;
-  box-shadow: 0 6px 20px ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')}40;
+  box-shadow: 0 6px 20px ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')}40;
 
   &:hover {
-    background: ${props => safeColor(props.theme, 'colors.primary.dark', '#1aaa99')};
+    background: ${props => safeColor(props.theme, 'colors.secondary.dark', '#e55a4a')};
     transform: translateY(-3px);
-    box-shadow: 0 8px 30px ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')}50;
+    box-shadow: 0 8px 30px ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')}50;
   }
 
   svg {

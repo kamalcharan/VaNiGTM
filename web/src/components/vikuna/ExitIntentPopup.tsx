@@ -194,7 +194,7 @@ const Input = styled.input`
 `;
 
 const SubmitButton = styled.button`
-  background: ${props => props.theme?.colors?.primary?.main || '#39d2c0'};
+  background: ${props => props.theme?.colors?.secondary?.main || '#FF6F61'};
   color: white;
   padding: 14px 24px;
   border: none;
@@ -206,9 +206,9 @@ const SubmitButton = styled.button`
   margin-top: 8px;
 
   &:hover {
-    background: ${props => props.theme?.colors?.primary?.dark || '#1aaa99'};
+    background: ${props => props.theme?.colors?.secondary?.dark || '#e55a4a'};
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px ${props => props.theme?.colors?.primary?.main || '#39d2c0'}40;
+    box-shadow: 0 6px 20px ${props => props.theme?.colors?.secondary?.main || '#FF6F61'}40;
   }
 
   &:disabled {
