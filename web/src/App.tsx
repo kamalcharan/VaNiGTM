@@ -6,6 +6,7 @@ import HeroSectionNew from './components/vikuna/HeroSectionNew';
 import KeyAreas from './components/vikuna/KeyAreas';
 import ChallengesSection from './components/vikuna/ChallengesSection';
 import LeadershipServices from './components/vikuna/LeadershipServices';
+import MVPBuildingSection from './components/vikuna/MVPBuildingSection';
 import TrainingSection from './components/vikuna/TrainingSection';
 import ProductsShowcase from './components/vikuna/ProductsShowcase';
 import InlineLeadCapture from './components/vikuna/InlineLeadCapture';
@@ -35,6 +36,7 @@ function App() {
         {/* Consulting Services */}
         <KeyAreas />
         <LeadershipServices />
+        <MVPBuildingSection />
 
         {/* Products as Proof */}
         <ProductsShowcase />
