@@ -3,7 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import useTheme from '../../hooks/useTheme';
-import { ArrowRight, CheckCircle, Award, TrendingUp, Users, Shield } from 'lucide-react';
+import { ArrowRight, Award, TrendingUp, CheckCircle, Shield, Cpu, Settings, Users, Brain, Target, Building2 } from 'lucide-react';
 
 // Helper function to safely access theme properties
 const safeColor = (theme: any, path: string, fallback: string = '#000000'): string => {
@@ -21,7 +21,7 @@ const safeColor = (theme: any, path: string, fallback: string = '#000000'): stri
 const HeroContainer = styled.section`
   background: linear-gradient(135deg,
     ${props => safeColor(props.theme, 'colors.background.paper', '#FFFFFF')} 0%,
-    ${props => safeColor(props.theme, 'colors.primary.light', '#dfe3e7')} 100%
+    ${props => safeColor(props.theme, 'colors.primary.light', '#a0c1d6')} 100%
   );
   min-height: 100vh;
   display: flex;
@@ -48,7 +48,7 @@ const FloatingElements = styled.div`
     position: absolute;
     width: 600px;
     height: 600px;
-    background: radial-gradient(circle, ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')} 0%, transparent 70%);
+    background: radial-gradient(circle, ${props => safeColor(props.theme, 'colors.primary.main', '#003366')} 0%, transparent 70%);
     top: -300px;
     right: -300px;
     animation: float 20s ease-in-out infinite;
@@ -61,15 +61,27 @@ const FloatingElements = styled.div`
 `;
 
 const Container = styled.div`
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 24px;
   position: relative;
   z-index: 1;
 `;
 
+const HeroGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+
+  @media (max-width: 968px) {
+    grid-template-columns: 1fr;
+    gap: 60px;
+  }
+`;
+
 const HeroContent = styled.div`
-  max-width: 800px;
+  max-width: 650px;
 `;
 
 const TrustBadge = styled(motion.div)`
@@ -77,14 +89,14 @@ const TrustBadge = styled(motion.div)`
   align-items: center;
   gap: 8px;
   background: ${props => safeColor(props.theme, 'colors.background.paper', '#FFFFFF')};
-  color: ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')};
+  color: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
   padding: 8px 20px;
   border-radius: 50px;
   font-size: 0.875rem;
   font-weight: 600;
   margin-bottom: 24px;
-  border: 2px solid ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')};
-  box-shadow: 0 4px 12px ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')}20;
+  border: 2px solid ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
+  box-shadow: 0 4px 12px ${props => safeColor(props.theme, 'colors.primary.main', '#003366')}20;
 
   svg {
     width: 16px;
@@ -93,14 +105,14 @@ const TrustBadge = styled(motion.div)`
 `;
 
 const Headline = styled(motion.h1)`
-  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-size: clamp(2.5rem, 5vw, 3.75rem);
   font-weight: 800;
   line-height: 1.1;
   margin-bottom: 24px;
-  color: ${props => safeColor(props.theme, 'colors.text.primary', '#1a1f24')};
+  color: ${props => safeColor(props.theme, 'colors.text.primary', '#4d4d4d')};
 
   .highlight {
-    color: ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')};
+    color: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
     position: relative;
   }
 
@@ -111,10 +123,9 @@ const Headline = styled(motion.h1)`
 
 const Subheadline = styled(motion.p)`
   font-size: 1.25rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#656a85')};
+  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6b7280')};
   margin-bottom: 32px;
   line-height: 1.6;
-  max-width: 700px;
 
   @media (max-width: 768px) {
     font-size: 1.125rem;
@@ -139,19 +150,19 @@ const TrustItem = styled.div`
   gap: 8px;
   font-size: 0.95rem;
   font-weight: 600;
-  color: ${props => safeColor(props.theme, 'colors.text.primary', '#1a1f24')};
+  color: ${props => safeColor(props.theme, 'colors.text.primary', '#4d4d4d')};
 
   svg {
     width: 20px;
     height: 20px;
-    color: ${props => safeColor(props.theme, 'colors.success.main', '#165070')};
+    color: ${props => safeColor(props.theme, 'colors.success.main', '#006688')};
   }
 `;
 
 const CTAContainer = styled(motion.div)`
   display: flex;
   gap: 16px;
-  margin-bottom: 48px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
 `;
 
@@ -191,17 +202,17 @@ const SecondaryButton = styled.a`
   align-items: center;
   gap: 12px;
   background: white;
-  color: ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')};
+  color: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
   font-weight: 600;
   font-size: 1.125rem;
   padding: 18px 32px;
   border-radius: 12px;
-  border: 2px solid ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')};
+  border: 2px solid ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
   text-decoration: none;
   transition: all 0.3s ease;
 
   &:hover {
-    background: ${props => safeColor(props.theme, 'colors.primary.light', '#dfe3e7')};
+    background: ${props => safeColor(props.theme, 'colors.primary.light', '#a0c1d6')};
     transform: translateY(-3px);
   }
 
@@ -216,56 +227,9 @@ const SecondaryButton = styled.a`
   }
 `;
 
-const StatsBar = styled(motion.div)`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 32px;
-  background: white;
-  padding: 32px;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border: 1px solid ${props => safeColor(props.theme, 'colors.background.default', '#f1f4f8')};
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    padding: 24px;
-  }
-`;
-
-const StatItem = styled.div`
-  text-align: center;
-
-  .stat-icon {
-    width: 40px;
-    height: 40px;
-    margin: 0 auto 12px;
-    padding: 8px;
-    background: ${props => safeColor(props.theme, 'colors.primary.light', '#dfe3e7')};
-    border-radius: 12px;
-    color: ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')};
-  }
-
-  .stat-number {
-    font-size: 2rem;
-    font-weight: 800;
-    color: ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')};
-    display: block;
-    margin-bottom: 4px;
-  }
-
-  .stat-label {
-    font-size: 0.875rem;
-    color: ${props => safeColor(props.theme, 'colors.text.secondary', '#656a85')};
-    font-weight: 500;
-  }
-`;
-
 const SubCTA = styled(motion.p)`
   font-size: 0.875rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#656a85')};
-  margin-top: -24px;
-  margin-bottom: 48px;
+  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6b7280')};
 
   svg {
     display: inline;
@@ -273,6 +237,181 @@ const SubCTA = styled(motion.p)`
     height: 14px;
     margin-right: 4px;
     vertical-align: middle;
+  }
+`;
+
+// Iceberg Visual Components
+const IcebergContainer = styled(motion.div)`
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+
+  @media (max-width: 968px) {
+    max-width: 400px;
+  }
+`;
+
+const IcebergVisual = styled.div`
+  position: relative;
+  height: 600px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  @media (max-width: 968px) {
+    height: 500px;
+  }
+`;
+
+const WaterLine = styled.div`
+  position: absolute;
+  top: 20%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: ${props => safeColor(props.theme, 'colors.info.main', '#36f2fa')};
+  z-index: 2;
+
+  &::before {
+    content: 'Surface Level';
+    position: absolute;
+    right: 0;
+    top: -25px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: ${props => safeColor(props.theme, 'colors.info.main', '#36f2fa')};
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+`;
+
+const AboveWater = styled.div`
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 20%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+`;
+
+const AboveWaterLabel = styled.div`
+  text-align: center;
+  margin-bottom: 8px;
+  font-size: 0.875rem;
+  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6b7280')};
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const AboveWaterContent = styled.div`
+  background: ${props => safeColor(props.theme, 'colors.background.paper', '#FFFFFF')};
+  border: 2px solid ${props => safeColor(props.theme, 'colors.primary.light', '#a0c1d6')};
+  border-radius: 12px;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+  svg {
+    width: 24px;
+    height: 24px;
+    color: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
+  }
+
+  .label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: ${props => safeColor(props.theme, 'colors.text.primary', '#4d4d4d')};
+  }
+`;
+
+const BelowWater = styled.div`
+  position: absolute;
+  top: 22%;
+  width: 100%;
+  height: 78%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 0;
+  background: linear-gradient(180deg,
+    rgba(54, 242, 250, 0.05) 0%,
+    rgba(0, 102, 136, 0.1) 100%
+  );
+  border-radius: 0 0 200px 200px;
+`;
+
+const BelowWaterLabel = styled.div`
+  text-align: center;
+  margin-bottom: 8px;
+  font-size: 0.875rem;
+  color: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const TransformationItem = styled(motion.div)`
+  background: ${props => safeColor(props.theme, 'colors.background.paper', '#FFFFFF')};
+  border: 2px solid ${props => safeColor(props.theme, 'colors.success.main', '#006688')};
+  border-radius: 10px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 20px;
+  box-shadow: 0 2px 8px rgba(0, 102, 136, 0.15);
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateX(8px);
+    box-shadow: 0 4px 16px rgba(0, 102, 136, 0.25);
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+    color: ${props => safeColor(props.theme, 'colors.success.main', '#006688')};
+    flex-shrink: 0;
+  }
+
+  .label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: ${props => safeColor(props.theme, 'colors.text.primary', '#4d4d4d')};
+  }
+`;
+
+const IcebergMessage = styled(motion.div)`
+  margin-top: 24px;
+  text-align: center;
+  padding: 20px;
+  background: ${props => safeColor(props.theme, 'colors.background.paper', '#FFFFFF')};
+  border-radius: 12px;
+  border: 2px solid ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')};
+  box-shadow: 0 4px 12px ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')}20;
+
+  .top-text {
+    font-size: 0.875rem;
+    color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6b7280')};
+    margin-bottom: 8px;
+  }
+
+  .main-text {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
+    line-height: 1.4;
+
+    .highlight {
+      color: ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')};
+    }
   }
 `;
 
@@ -302,101 +441,188 @@ const HeroSectionNew: React.FC = () => {
     }
   };
 
+  const icebergItemVariants = {
+    hidden: { opacity: 0, x: -20 },
+    visible: (custom: number) => ({
+      opacity: 1,
+      x: 0,
+      transition: {
+        duration: 0.5,
+        delay: custom * 0.1,
+        ease: "easeOut"
+      }
+    })
+  };
+
   return (
     <HeroContainer theme={currentTheme}>
       <FloatingElements theme={currentTheme} />
 
       <Container>
-        <HeroContent>
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
+        <HeroGrid>
+          {/* Left Column - Content */}
+          <HeroContent>
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              <TrustBadge variants={itemVariants} theme={currentTheme}>
+                <Award />
+                200+ Years Combined Experience
+              </TrustBadge>
+
+              <Headline variants={itemVariants} theme={currentTheme}>
+                Get <span className="highlight">C-Suite AI Leadership</span>
+                <br />
+                Without the $500K+ Salary
+              </Headline>
+
+              <Subheadline variants={itemVariants} theme={currentTheme}>
+                True AI transformation isn't just technology—it's operations, skills, mindset, and leadership working together. Start your journey with a risk-free strategy session.
+              </Subheadline>
+
+              <TrustIndicators variants={itemVariants}>
+                <TrustItem theme={currentTheme}>
+                  <CheckCircle />
+                  Holistic Approach
+                </TrustItem>
+                <TrustItem theme={currentTheme}>
+                  <CheckCircle />
+                  Custom Strategy
+                </TrustItem>
+                <TrustItem theme={currentTheme}>
+                  <CheckCircle />
+                  No Obligation
+                </TrustItem>
+              </TrustIndicators>
+
+              <CTAContainer variants={itemVariants}>
+                <PrimaryButton
+                  href="https://calendly.com/connect-vikuna/30min"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  theme={currentTheme}
+                >
+                  Book Free Strategy Call
+                  <ArrowRight />
+                </PrimaryButton>
+
+                <SecondaryButton
+                  href="https://contractnest.vercel.app/leadforms/dtreadiness"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  theme={currentTheme}
+                >
+                  Get AI Readiness Score
+                  <TrendingUp />
+                </SecondaryButton>
+              </CTAContainer>
+
+              <SubCTA variants={itemVariants} theme={currentTheme}>
+                <Shield /> 100% Confidential • No Sales Pitch • Expert Guidance Only
+              </SubCTA>
+            </motion.div>
+          </HeroContent>
+
+          {/* Right Column - Iceberg Visual */}
+          <IcebergContainer
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
           >
-            <TrustBadge variants={itemVariants} theme={currentTheme}>
-              <Award />
-              Trusted by Fortune 500 Leaders
-            </TrustBadge>
+            <IcebergVisual>
+              {/* Water Line */}
+              <WaterLine theme={currentTheme} />
 
-            <Headline variants={itemVariants} theme={currentTheme}>
-              Get <span className="highlight">C-Suite AI Leadership</span>
-              <br />
-              Without the $500K+ Salary
-            </Headline>
+              {/* Above Water - What Most Focus On */}
+              <AboveWater>
+                <AboveWaterLabel theme={currentTheme}>
+                  What Most Consultants Focus On ↓
+                </AboveWaterLabel>
+                <AboveWaterContent theme={currentTheme}>
+                  <Cpu />
+                  <span className="label">Technology & Tools</span>
+                </AboveWaterContent>
+              </AboveWater>
 
-            <Subheadline variants={itemVariants} theme={currentTheme}>
-              200+ years combined experience delivering AI transformations.
-              Start your journey with a risk-free strategy session.
-            </Subheadline>
+              {/* Below Water - Real Transformation */}
+              <BelowWater theme={currentTheme}>
+                <BelowWaterLabel theme={currentTheme}>
+                  Where Real Transformation Happens ↓
+                </BelowWaterLabel>
 
-            <TrustIndicators variants={itemVariants}>
-              <TrustItem theme={currentTheme}>
-                <CheckCircle />
-                70% Success Rate
-              </TrustItem>
-              <TrustItem theme={currentTheme}>
-                <CheckCircle />
-                90-Day Results
-              </TrustItem>
-              <TrustItem theme={currentTheme}>
-                <CheckCircle />
-                No Obligation
-              </TrustItem>
-            </TrustIndicators>
+                <TransformationItem
+                  custom={0}
+                  variants={icebergItemVariants}
+                  initial="hidden"
+                  animate="visible"
+                  theme={currentTheme}
+                >
+                  <Settings />
+                  <span className="label">Operations Transformation</span>
+                </TransformationItem>
 
-            <CTAContainer variants={itemVariants}>
-              <PrimaryButton
-                href="https://calendly.com/connect-vikuna/30min"
-                target="_blank"
-                rel="noopener noreferrer"
-                theme={currentTheme}
-              >
-                Book Free Strategy Call
-                <ArrowRight />
-              </PrimaryButton>
+                <TransformationItem
+                  custom={1}
+                  variants={icebergItemVariants}
+                  initial="hidden"
+                  animate="visible"
+                  theme={currentTheme}
+                >
+                  <Target />
+                  <span className="label">Skills Development</span>
+                </TransformationItem>
 
-              <SecondaryButton
-                href="https://contractnest.vercel.app/leadforms/dtreadiness"
-                target="_blank"
-                rel="noopener noreferrer"
-                theme={currentTheme}
-              >
-                Get AI Readiness Score
-                <TrendingUp />
-              </SecondaryButton>
-            </CTAContainer>
+                <TransformationItem
+                  custom={2}
+                  variants={icebergItemVariants}
+                  initial="hidden"
+                  animate="visible"
+                  theme={currentTheme}
+                >
+                  <Brain />
+                  <span className="label">Mindset Shifts</span>
+                </TransformationItem>
 
-            <SubCTA variants={itemVariants} theme={currentTheme}>
-              <Shield /> 100% Confidential • No Sales Pitch • Expert Guidance Only
-            </SubCTA>
+                <TransformationItem
+                  custom={3}
+                  variants={icebergItemVariants}
+                  initial="hidden"
+                  animate="visible"
+                  theme={currentTheme}
+                >
+                  <Users />
+                  <span className="label">Leadership Evolution</span>
+                </TransformationItem>
 
-            <StatsBar variants={itemVariants} theme={currentTheme}>
-              <StatItem theme={currentTheme}>
-                <Users className="stat-icon" />
-                <span className="stat-number">200+</span>
-                <span className="stat-label">Years Combined Experience</span>
-              </StatItem>
+                <TransformationItem
+                  custom={4}
+                  variants={icebergItemVariants}
+                  initial="hidden"
+                  animate="visible"
+                  theme={currentTheme}
+                >
+                  <Building2 />
+                  <span className="label">Cultural Adaptation</span>
+                </TransformationItem>
+              </BelowWater>
+            </IcebergVisual>
 
-              <StatItem theme={currentTheme}>
-                <TrendingUp className="stat-icon" />
-                <span className="stat-number">70%</span>
-                <span className="stat-label">Success Rate vs 30% Industry</span>
-              </StatItem>
-
-              <StatItem theme={currentTheme}>
-                <Award className="stat-icon" />
-                <span className="stat-number">50+</span>
-                <span className="stat-label">Transformations Delivered</span>
-              </StatItem>
-
-              <StatItem theme={currentTheme}>
-                <CheckCircle className="stat-icon" />
-                <span className="stat-number">90 Days</span>
-                <span className="stat-label">To Measurable Results</span>
-              </StatItem>
-            </StatsBar>
-          </motion.div>
-        </HeroContent>
+            {/* Message Below Iceberg */}
+            <IcebergMessage
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 1.2 }}
+              theme={currentTheme}
+            >
+              <div className="top-text">Every organization is unique.</div>
+              <div className="main-text">
+                We design <span className="highlight">YOUR</span> transformation strategy.
+              </div>
+            </IcebergMessage>
+          </IcebergContainer>
+        </HeroGrid>
       </Container>
     </HeroContainer>
   );
