@@ -3,12 +3,11 @@
 import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/vikuna/Navbar';
 import HeroSectionNew from './components/vikuna/HeroSectionNew';
+import IndustriesBanner from './components/vikuna/IndustriesBanner';
 import ConsultingServices from './components/vikuna/ConsultingServices';
 import ProductDevelopmentServices from './components/vikuna/ProductDevelopmentServices';
-import InlineLeadCapture from './components/vikuna/InlineLeadCapture';
-import Industries from './components/vikuna/Industries';
-import ProfessionalNetwork from './components/vikuna/ProfessionalNetwork';
 import CaseStudies from './components/vikuna/CaseStudies';
+import InlineLeadCapture from './components/vikuna/InlineLeadCapture';
 import ClientTypesWithCTA from './components/vikuna/ClientTypeswithCTA';
 import Footer from './components/vikuna/Footer';
 import WhatsAppButton from './components/vikuna/WhatsAppButton';
@@ -26,8 +25,8 @@ function App() {
         <Navbar transparent={true} />
         <HeroSectionNew />
 
-        {/* Lead Capture After Hero */}
-        <InlineLeadCapture />
+        {/* Industries Banner - Quick Credibility */}
+        <IndustriesBanner />
 
         {/* Service #1: Consulting Services (CDO/CAiO + Training) */}
         <ConsultingServices />
@@ -35,19 +34,15 @@ function App() {
         {/* Service #2: Product Development (MVP + Products We've Developed) */}
         <ProductDevelopmentServices />
 
-        {/* Social Proof & Case Studies */}
+        {/* Transformation Success Stories - Proves Both Services */}
         <CaseStudies />
-        <Industries />
 
-        {/* Mid-Page Lead Capture */}
+        {/* Lead Capture - After Value is Clear */}
         <InlineLeadCapture
-          headline="Want to See Results Like These in Your Organization?"
-          subheadline="Download our free 90-Day AI Transformation Playbook."
-          buttonText="Get Free Playbook"
+          headline="Ready to Start Your Transformation Journey?"
+          subheadline="Get a free 30-minute consultation to discuss your specific needs."
+          buttonText="Schedule Consultation"
         />
-
-        {/* Professional Network */}
-        <ProfessionalNetwork />
 
         {/* Final CTA */}
         <ClientTypesWithCTA />
