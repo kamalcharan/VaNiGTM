@@ -3,12 +3,8 @@
 import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/vikuna/Navbar';
 import HeroSectionNew from './components/vikuna/HeroSectionNew';
-import KeyAreas from './components/vikuna/KeyAreas';
-import ChallengesSection from './components/vikuna/ChallengesSection';
-import LeadershipServices from './components/vikuna/LeadershipServices';
-import MVPBuildingSection from './components/vikuna/MVPBuildingSection';
-import TrainingSection from './components/vikuna/TrainingSection';
-import ProductsShowcase from './components/vikuna/ProductsShowcase';
+import ConsultingServices from './components/vikuna/ConsultingServices';
+import ProductDevelopmentServices from './components/vikuna/ProductDevelopmentServices';
 import InlineLeadCapture from './components/vikuna/InlineLeadCapture';
 import Industries from './components/vikuna/Industries';
 import ProfessionalNetwork from './components/vikuna/ProfessionalNetwork';
@@ -33,13 +29,11 @@ function App() {
         {/* Lead Capture After Hero */}
         <InlineLeadCapture />
 
-        {/* Consulting Services */}
-        <KeyAreas />
-        <LeadershipServices />
-        <MVPBuildingSection />
+        {/* Service #1: Consulting Services (CDO/CAiO + Training) */}
+        <ConsultingServices />
 
-        {/* Products as Proof */}
-        <ProductsShowcase />
+        {/* Service #2: Product Development (MVP + Products We've Developed) */}
+        <ProductDevelopmentServices />
 
         {/* Social Proof & Case Studies */}
         <CaseStudies />
@@ -52,9 +46,7 @@ function App() {
           buttonText="Get Free Playbook"
         />
 
-        {/* Additional Sections */}
-        <ChallengesSection />
-        <TrainingSection />
+        {/* Professional Network */}
         <ProfessionalNetwork />
 
         {/* Final CTA */}
