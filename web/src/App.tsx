@@ -8,10 +8,7 @@ import ConsultingServices from './components/vikuna/ConsultingServices';
 import ProductDevelopmentServices from './components/vikuna/ProductDevelopmentServices';
 import CaseStudies from './components/vikuna/CaseStudies';
 import InlineLeadCapture from './components/vikuna/InlineLeadCapture';
-import ClientTypesWithCTA from './components/vikuna/ClientTypeswithCTA';
 import Footer from './components/vikuna/Footer';
-import WhatsAppButton from './components/vikuna/WhatsAppButton';
-import ChatWidget from './components/vikuna/ChatWidget';
 import StickyCTABar from './components/vikuna/StickyCTABar';
 import ExitIntentPopup from './components/vikuna/ExitIntentPopup';
 import SEOHead from './components/vikuna/SEOHead';
@@ -44,14 +41,11 @@ function App() {
           buttonText="Schedule Consultation"
         />
 
-        {/* Final CTA */}
-        <ClientTypesWithCTA />
+        {/* Footer */}
         <Footer />
 
         {/* Fixed Elements */}
         <StickyCTABar />
-        <WhatsAppButton />
-        <ChatWidget />
         <ExitIntentPopup />
       </div>
     </ThemeProvider>

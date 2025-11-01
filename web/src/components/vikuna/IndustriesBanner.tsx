@@ -106,12 +106,12 @@ const IconContainer = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')}10;
-  color: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
+  background: ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')}15;
+  color: ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')};
   transition: all 0.3s ease;
 
   ${IndustryItem}:hover & {
-    background: ${props => safeColor(props.theme, 'colors.success.main', '#006688')};
+    background: ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')};
     color: white;
   }
 
