@@ -269,20 +269,35 @@ const WaterLine = styled.div`
   top: 20%;
   left: 0;
   right: 0;
-  height: 2px;
-  background: ${props => safeColor(props.theme, 'colors.info.main', '#36f2fa')};
+  height: 3px;
+  background: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
   z-index: 2;
+  box-shadow: 0 2px 8px rgba(0, 51, 102, 0.3);
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: ${props => safeColor(props.theme, 'colors.info.main', '#36f2fa')};
+  }
 
   &::before {
-    content: 'Surface Level';
+    content: 'SURFACE LEVEL';
     position: absolute;
-    right: 0;
-    top: -25px;
+    right: 10px;
+    top: -30px;
     font-size: 0.75rem;
-    font-weight: 600;
-    color: ${props => safeColor(props.theme, 'colors.info.main', '#36f2fa')};
+    font-weight: 700;
+    color: ${props => safeColor(props.theme, 'colors.background.paper', '#FFFFFF')};
+    background: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
+    padding: 4px 12px;
+    border-radius: 4px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0, 51, 102, 0.3);
   }
 `;
 
