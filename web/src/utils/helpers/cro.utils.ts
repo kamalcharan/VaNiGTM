@@ -56,13 +56,13 @@ export class CROUtils {
   /**
    * Get device information
    */
-  static getDeviceInfo(): { type: string; os: string; browser: string } {
+  static getDeviceInfo(): { type: 'desktop' | 'mobile' | 'tablet'; os: string; browser: string } {
     const userAgent = navigator.userAgent.toLowerCase();
 
     // Detect device type
     const isMobile = /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(userAgent);
     const isTablet = /ipad|android(?!.*mobile)|tablet/.test(userAgent);
-    const type = isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop';
+    const type: 'desktop' | 'mobile' | 'tablet' = isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop';
 
     // Detect OS
     let os = 'unknown';

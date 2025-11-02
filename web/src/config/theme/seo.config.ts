@@ -1,5 +1,26 @@
-import { SEOData } from '../types/seo.types';
-import { SEO_CONSTANTS } from '../utils/constants/seo.constants';
+// Note: This file is not currently in use - SEO config is handled in useSEO hook
+// import { SEOData } from '../types/seo.types';
+// import { SEO_CONSTANTS } from '../utils/constants/seo.constants';
+
+// Temporary type definition
+interface SEOData {
+  title: string;
+  description: string;
+  keywords?: string;
+  canonical?: string;
+  ogImage?: string;
+  ogType?: string;
+  twitterCard?: string;
+  [key: string]: any;
+}
+
+const SEO_CONSTANTS = {
+  SITE_DESCRIPTION: 'Digital Transformation and AI Strategy Consulting',
+  SITE_URL: 'https://vikuna.tech',
+  SITE_NAME: 'Vikuna Technologies',
+  TWITTER_HANDLE: '@vikunatech',
+  PRIMARY_KEYWORDS: ['digital transformation', 'AI strategy', 'consulting']
+};
 
 export const SEO_CONFIG = {
   // Global SEO settings
