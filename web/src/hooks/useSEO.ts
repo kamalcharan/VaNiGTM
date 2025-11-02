@@ -141,7 +141,7 @@ export const useSEO = (
 
   // Update Open Graph tags
   const updateOpenGraphTags = useCallback((seoData: SEOData) => {
-    const ogTags = {
+    const ogTags: Record<string, string> = {
       'og:title': seoData.title,
       'og:description': seoData.description,
       'og:type': seoData.ogType || 'website',
@@ -164,12 +164,17 @@ export const useSEO = (
 
   // Update Twitter Card tags
   const updateTwitterCardTags = useCallback((seoData: SEOData) => {
-    const twitterTags = SEOUtils.generateTwitterCard({
-      title: seoData.title,
-      description: seoData.description,
-      image: seoData.ogImage,
-      type: seoData.twitterCard || 'summary_large_image'
-    });
+    // Note: generateTwitterCard method not implemented in SEOUtils
+    // Using direct Twitter card tag creation instead
+    const twitterTags: Record<string, string> = {
+      'twitter:card': seoData.twitterCard || 'summary_large_image',
+      'twitter:title': seoData.title,
+      'twitter:description': seoData.description
+    };
+
+    if (seoData.ogImage) {
+      twitterTags['twitter:image'] = seoData.ogImage;
+    }
 
     Object.entries(twitterTags).forEach(([name, content]) => {
       updateOrCreateMetaTag('name', name, content);
@@ -198,7 +203,9 @@ export const useSEO = (
     try {
       // Google Analytics 4
       if (typeof gtag !== 'undefined') {
-        gtag('config', process.env.REACT_APP_GA_TRACKING_ID || '', {
+        // Note: Using import.meta.env for Vite compatibility
+        const gaTrackingId = (import.meta as any).env?.VITE_GA_TRACKING_ID || '';
+        gtag('config', gaTrackingId, {
           page_title: seoData.title,
           page_location: window.location.href,
           page_path: location.pathname
@@ -263,40 +270,44 @@ export const useSEO = (
     if (!options.enablePerformanceTracking) return;
 
     try {
+      // Note: Web vitals tracking commented out - requires web-vitals library installation
+      // To enable, install: npm install web-vitals
+      // and import { getCLS, getFID, getLCP } from 'web-vitals'
+
       // Track Core Web Vitals
-      if ('web-vital' in window) {
-        const { getCLS, getFID, getFCP, getLCP, getTTFB } = window['web-vital'];
-        
-        getCLS((metric) => {
-          if (typeof gtag !== 'undefined') {
-            gtag('event', 'web_vitals', {
-              event_category: 'Web Vitals',
-              event_label: 'CLS',
-              value: Math.round(metric.value * 1000)
-            });
-          }
-        });
-
-        getFID((metric) => {
-          if (typeof gtag !== 'undefined') {
-            gtag('event', 'web_vitals', {
-              event_category: 'Web Vitals',
-              event_label: 'FID',
-              value: Math.round(metric.value)
-            });
-          }
-        });
-
-        getLCP((metric) => {
-          if (typeof gtag !== 'undefined') {
-            gtag('event', 'web_vitals', {
-              event_category: 'Web Vitals',
-              event_label: 'LCP',
-              value: Math.round(metric.value)
-            });
-          }
-        });
-      }
+      // if ('web-vital' in window) {
+      //   const { getCLS, getFID, getFCP, getLCP, getTTFB } = window['web-vital'];
+      //
+      //   getCLS((metric: any) => {
+      //     if (typeof gtag !== 'undefined') {
+      //       gtag('event', 'web_vitals', {
+      //         event_category: 'Web Vitals',
+      //         event_label: 'CLS',
+      //         value: Math.round(metric.value * 1000)
+      //       });
+      //     }
+      //   });
+      //
+      //   getFID((metric: any) => {
+      //     if (typeof gtag !== 'undefined') {
+      //       gtag('event', 'web_vitals', {
+      //         event_category: 'Web Vitals',
+      //         event_label: 'FID',
+      //         value: Math.round(metric.value)
+      //       });
+      //     }
+      //   });
+      //
+      //   getLCP((metric: any) => {
+      //     if (typeof gtag !== 'undefined') {
+      //       gtag('event', 'web_vitals', {
+      //         event_category: 'Web Vitals',
+      //         event_label: 'LCP',
+      //         value: Math.round(metric.value)
+      //       });
+      //     }
+      //   });
+      // }
     } catch (error) {
       console.warn('Performance tracking failed:', error);
     }
