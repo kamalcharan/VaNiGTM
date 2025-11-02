@@ -330,9 +330,7 @@ export const useCRO = (options: CROOptions = {}) => {
   };
 };
 
-// src/hooks/useAnalytics.ts
-import { useState, useEffect, useCallback } from 'react';
-
+// useAnalytics hook (in same file as useCRO)
 interface AnalyticsEvent {
   name: string;
   parameters?: Record<string, any>;

@@ -1,11 +1,180 @@
-import { ConversionEvent, ConversionFormData } from '../../types/cro.types';
+import { ConversionEvent, ConversionFormData, UserSession, ExperimentVariant } from '../../types/cro.types';
 
 export class CROUtils {
+  private static readonly SESSION_STORAGE_KEY = 'cro_session';
+  private static readonly VISITOR_STORAGE_KEY = 'cro_visitor';
+
   /**
    * Generate unique session identifier
    */
   static generateSessionId(): string {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Store session data in localStorage
+   */
+  static storeSessionData(session: UserSession): void {
+    try {
+      localStorage.setItem(this.SESSION_STORAGE_KEY, JSON.stringify(session));
+    } catch (error) {
+      console.warn('Failed to store session data:', error);
+    }
+  }
+
+  /**
+   * Get session data from localStorage
+   */
+  static getSessionData(): UserSession | null {
+    try {
+      const data = localStorage.getItem(this.SESSION_STORAGE_KEY);
+      if (!data) return null;
+
+      const session = JSON.parse(data);
+      // Convert date strings back to Date objects
+      if (session.startTime) session.startTime = new Date(session.startTime);
+      if (session.lastActivity) session.lastActivity = new Date(session.lastActivity);
+
+      return session;
+    } catch (error) {
+      console.warn('Failed to get session data:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Check if visitor is returning
+   */
+  static isReturningVisitor(): boolean {
+    try {
+      return localStorage.getItem(this.VISITOR_STORAGE_KEY) !== null;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Get device information
+   */
+  static getDeviceInfo(): { type: string; os: string; browser: string } {
+    const userAgent = navigator.userAgent.toLowerCase();
+
+    // Detect device type
+    const isMobile = /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(userAgent);
+    const isTablet = /ipad|android(?!.*mobile)|tablet/.test(userAgent);
+    const type = isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop';
+
+    // Detect OS
+    let os = 'unknown';
+    if (userAgent.includes('windows')) os = 'windows';
+    else if (userAgent.includes('mac')) os = 'macos';
+    else if (userAgent.includes('linux')) os = 'linux';
+    else if (userAgent.includes('android')) os = 'android';
+    else if (userAgent.includes('ios') || userAgent.includes('iphone') || userAgent.includes('ipad')) os = 'ios';
+
+    // Detect browser
+    let browser = 'unknown';
+    if (userAgent.includes('chrome')) browser = 'chrome';
+    else if (userAgent.includes('safari')) browser = 'safari';
+    else if (userAgent.includes('firefox')) browser = 'firefox';
+    else if (userAgent.includes('edge')) browser = 'edge';
+
+    return { type, os, browser };
+  }
+
+  /**
+   * Get user timezone
+   */
+  static getTimezone(): string {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch (error) {
+      return 'UTC';
+    }
+  }
+
+  /**
+   * Track conversion event
+   */
+  static trackConversion(event: ConversionEvent): void {
+    try {
+      if (typeof gtag !== 'undefined') {
+        gtag('event', event.eventName, {
+          event_category: event.eventCategory,
+          event_label: event.eventLabel,
+          value: event.value,
+          currency: event.currency || 'INR',
+          ...event.customParameters
+        });
+      }
+
+      if (typeof dataLayer !== 'undefined') {
+        dataLayer.push({
+          event: 'conversion',
+          conversionData: event
+        });
+      }
+    } catch (error) {
+      console.warn('Conversion tracking failed:', error);
+    }
+  }
+
+  /**
+   * Select variant for A/B test based on weighted distribution
+   */
+  static selectVariant(variants: ExperimentVariant[], sessionId?: string): ExperimentVariant {
+    if (variants.length === 0) {
+      throw new Error('No variants provided');
+    }
+
+    if (variants.length === 1) {
+      return variants[0];
+    }
+
+    // Use session ID for consistent variant selection
+    const seed = sessionId ? this.hashCode(sessionId) : Math.random();
+    const random = Math.abs(seed % 1);
+
+    // Calculate cumulative weights
+    const totalWeight = variants.reduce((sum, v) => sum + v.weight, 0);
+    let cumulative = 0;
+
+    for (const variant of variants) {
+      cumulative += variant.weight / totalWeight;
+      if (random < cumulative) {
+        return variant;
+      }
+    }
+
+    return variants[variants.length - 1];
+  }
+
+  /**
+   * Calculate lead score (wrapper for consulting lead score)
+   */
+  static calculateLeadScore(formData: ConversionFormData): number {
+    return this.calculateConsultingLeadScore(formData);
+  }
+
+  /**
+   * Calculate conversion rate
+   */
+  static calculateConversionRate(conversions: number, views: number): number {
+    if (views === 0) return 0;
+    return (conversions / views) * 100;
+  }
+
+  /**
+   * Hash function for consistent randomization
+   */
+  private static hashCode(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash / 2147483647; // Normalize to 0-1
   }
 
   /**
