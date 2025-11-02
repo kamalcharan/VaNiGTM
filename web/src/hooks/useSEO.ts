@@ -1,5 +1,5 @@
 // src/hooks/useSEO.ts
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { SEOData } from '../types/seo.types';
 import { SEOUtils } from '../utils/helpers/seo.utils';
@@ -38,17 +38,16 @@ export const useSEO = (
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
-      // Validate SEO data
-      const validation = SEOUtils.validateSEOContent({
-        title: newSEOData.title,
-        description: newSEOData.description,
-        keywords: newSEOData.keywords || ''
-      });
-
-      if (!validation.isValid && process.env.NODE_ENV === 'development') {
-        console.warn('SEO Validation Warnings:', validation.warnings);
-        console.info('SEO Suggestions:', validation.suggestions);
-      }
+      // Note: SEO validation commented out - method not implemented in SEOUtils
+      // const validation = SEOUtils.validateSEOContent({
+      //   title: newSEOData.title,
+      //   description: newSEOData.description,
+      //   keywords: newSEOData.keywords || ''
+      // });
+      // if (!validation.isValid && process.env.NODE_ENV === 'development') {
+      //   console.warn('SEO Validation Warnings:', validation.warnings);
+      //   console.info('SEO Suggestions:', validation.suggestions);
+      // }
 
       // Update document title
       document.title = newSEOData.title;
@@ -356,13 +355,14 @@ export const useSEO = (
     generateCanonicalUrl: (path: string) => SEOUtils.generateCanonicalUrl(path),
     generateTitle: (title: string) => SEOUtils.generateTitle(title),
     generateDescription: (content: string) => SEOUtils.generateDescription(content),
-    generateKeywords: (primary: string[], secondary?: string[]) => 
-      SEOUtils.generateKeywords(primary, secondary),
-    validateSEO: () => SEOUtils.validateSEOContent({
-      title: seoData.title,
-      description: seoData.description,
-      keywords: seoData.keywords || ''
-    })
+    generateKeywords: (primary: string[], secondary?: string[]) =>
+      SEOUtils.generateKeywords(primary, secondary)
+    // validateSEO commented out - method not implemented in SEOUtils
+    // validateSEO: () => SEOUtils.validateSEOContent({
+    //   title: seoData.title,
+    //   description: seoData.description,
+    //   keywords: seoData.keywords || ''
+    // })
   };
 };
 
