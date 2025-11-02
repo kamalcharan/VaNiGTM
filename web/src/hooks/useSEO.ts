@@ -3,8 +3,9 @@ import { useEffect, useCallback, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { SEOData } from '../types/seo.types';
 import { SEOUtils } from '../utils/helpers/seo.utils';
-import { SEO_CONFIG } from '../config/seo.config';
-import { STRUCTURED_DATA_CONSTANTS } from '../utils/data/structured-data.constants';
+// Note: These config files don't exist yet - using inline defaults
+// import { SEO_CONFIG } from '../config/seo.config';
+// import { STRUCTURED_DATA_CONSTANTS } from '../utils/data/structured-data.constants';
 
 interface UseSEOOptions {
   enableAnalytics?: boolean;
@@ -382,17 +383,25 @@ export const usePageSEO = (pageName: string, customData?: Partial<SEOData>) => {
   const location = useLocation();
   
   const seoData = useMemo(() => {
-    // Get base SEO data from config
-    const baseSEO = SEO_CONFIG.getPageSEOConfig?.(pageName, customData) || {
+    // Get base SEO data (config file not implemented yet, using defaults)
+    const baseSEO = {
       title: customData?.title || 'ContractNest - Service Contract Exchange',
       description: customData?.description || 'Transform your service commitments into living assets',
       canonical: SEOUtils.generateCanonicalUrl(location.pathname),
       ...customData
     };
 
-    // Add default structured data
+    // Add default structured data (constants file not implemented yet)
+    const defaultOrgData = {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: 'ContractNest',
+      description: 'Transform your service commitments into living assets',
+      url: window.location.origin
+    };
+
     const structuredData = [
-      STRUCTURED_DATA_CONSTANTS.ORGANIZATION,
+      defaultOrgData,
       ...(customData?.structuredData || [])
     ];
 
