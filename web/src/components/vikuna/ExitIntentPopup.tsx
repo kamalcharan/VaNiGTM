@@ -1,7 +1,7 @@
 // src/components/vikuna/ExitIntentPopup.tsx
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { X, Download, CheckCircle } from 'lucide-react';
+import { X, TrendingUp, CheckCircle } from 'lucide-react';
 import useTheme from '../../hooks/useTheme';
 
 const Overlay = styled.div<{ $isVisible: boolean }>`
@@ -157,43 +157,11 @@ const BenefitItem = styled.li`
   }
 `;
 
-const Form = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
-const InputGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
-
-const Label = styled.label`
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: ${props => props.theme?.colors?.text?.primary || '#1a1f24'};
-`;
-
-const Input = styled.input`
-  padding: 12px 16px;
-  border: 2px solid ${props => props.theme?.colors?.background?.default || '#f1f4f8'};
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: all 0.2s;
-  outline: none;
-
-  &:focus {
-    border-color: ${props => props.theme?.colors?.primary?.main || '#39d2c0'};
-    box-shadow: 0 0 0 3px ${props => props.theme?.colors?.primary?.main || '#39d2c0'}20;
-  }
-
-  &::placeholder {
-    color: ${props => props.theme?.colors?.text?.disabled || '#95a1ac'};
-  }
-`;
-
-const SubmitButton = styled.button`
+const CTAButton = styled.a`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   background: ${props => props.theme?.colors?.secondary?.main || '#FF6F61'};
   color: white;
   padding: 14px 24px;
@@ -204,6 +172,8 @@ const SubmitButton = styled.button`
   cursor: pointer;
   transition: all 0.3s;
   margin-top: 8px;
+  text-decoration: none;
+  width: 100%;
 
   &:hover {
     background: ${props => props.theme?.colors?.secondary?.dark || '#e55a4a'};
@@ -211,10 +181,9 @@ const SubmitButton = styled.button`
     box-shadow: 0 6px 20px ${props => props.theme?.colors?.secondary?.main || '#FF6F61'}40;
   }
 
-  &:disabled {
-    background: ${props => props.theme?.colors?.text?.disabled || '#95a1ac'};
-    cursor: not-allowed;
-    transform: none;
+  svg {
+    width: 20px;
+    height: 20px;
   }
 `;
 
@@ -227,46 +196,23 @@ const TrustBadge = styled.div`
   color: ${props => props.theme?.colors?.text?.secondary || '#656a85'};
 `;
 
-const SuccessMessage = styled.div`
-  text-align: center;
-  padding: 32px;
-
-  svg {
-    width: 64px;
-    height: 64px;
-    color: ${props => props.theme?.colors?.success?.main || '#165070'};
-    margin-bottom: 16px;
-  }
-
-  h3 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: ${props => props.theme?.colors?.text?.primary || '#1a1f24'};
-    margin: 0 0 8px;
-  }
-
-  p {
-    font-size: 1rem;
-    color: ${props => props.theme?.colors?.text?.secondary || '#656a85'};
-    margin: 0;
-  }
-`;
-
 interface ExitIntentPopupProps {
   delayMs?: number; // Delay before allowing popup to show (ms)
+  disableExitIntent?: boolean; // Disable exit intent trigger
 }
 
-const ExitIntentPopup: React.FC<ExitIntentPopupProps> = ({ delayMs = 5000 }) => {
+const ExitIntentPopup: React.FC<ExitIntentPopupProps> = ({
+  delayMs = 10000, // Increased to 10 seconds
+  disableExitIntent = false
+}) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [canShow, setCanShow] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '' });
   const { currentTheme } = useTheme();
 
   useEffect(() => {
-    // Check if user has already seen/submitted popup
-    const hasSeenPopup = localStorage.getItem('exitIntentShown');
-    if (hasSeenPopup) return;
+    // Check if user has already interacted with popup
+    const hasInteracted = localStorage.getItem('aiScorePopupInteracted');
+    if (hasInteracted) return;
 
     // Delay before allowing popup
     const timer = setTimeout(() => {
@@ -277,46 +223,37 @@ const ExitIntentPopup: React.FC<ExitIntentPopupProps> = ({ delayMs = 5000 }) => 
   }, [delayMs]);
 
   useEffect(() => {
-    if (!canShow) return;
+    if (!canShow || disableExitIntent) return;
+
+    let hasShownPopup = false;
 
     const handleMouseLeave = (e: MouseEvent) => {
-      // Check if mouse is leaving from top of page
-      if (e.clientY <= 0 && !isVisible) {
+      // Only trigger if mouse leaves at the top of the viewport
+      // and popup hasn't been shown yet in this session
+      if (e.clientY <= 0 && !hasShownPopup && !isVisible) {
+        hasShownPopup = true;
         setIsVisible(true);
-        localStorage.setItem('exitIntentShown', 'true');
       }
     };
 
-    document.addEventListener('mouseout', handleMouseLeave);
+    // Use mouseleave on document instead of mouseout
+    document.addEventListener('mouseleave', handleMouseLeave);
 
     return () => {
-      document.removeEventListener('mouseout', handleMouseLeave);
+      document.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, [canShow, isVisible]);
+  }, [canShow, isVisible, disableExitIntent]);
 
   const handleClose = () => {
     setIsVisible(false);
+    // Mark as interacted so it doesn't show again
+    localStorage.setItem('aiScorePopupInteracted', 'true');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // TODO: Send data to your email service/CRM
-    console.log('Lead captured:', formData);
-
-    setIsSubmitted(true);
-
-    // Close popup after 3 seconds
-    setTimeout(() => {
-      setIsVisible(false);
-    }, 3000);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+  const handleCTAClick = () => {
+    // Mark as interacted when user clicks the CTA
+    localStorage.setItem('aiScorePopupInteracted', 'true');
+    setIsVisible(false);
   };
 
   if (!isVisible) return null;
@@ -324,82 +261,51 @@ const ExitIntentPopup: React.FC<ExitIntentPopupProps> = ({ delayMs = 5000 }) => 
   return (
     <Overlay $isVisible={isVisible} onClick={handleClose}>
       <PopupContainer onClick={(e) => e.stopPropagation()}>
-        {!isSubmitted ? (
-          <>
-            <CloseButton onClick={handleClose} theme={currentTheme}>
-              <X />
-            </CloseButton>
+        <CloseButton onClick={handleClose} theme={currentTheme}>
+          <X />
+        </CloseButton>
 
-            <PopupHeader theme={currentTheme}>
-              <IconWrapper theme={currentTheme}>
-                <Download />
-              </IconWrapper>
-              <Headline theme={currentTheme}>Before You Go...</Headline>
-              <Subheadline theme={currentTheme}>
-                Get Your Free AI Readiness Scorecard
-              </Subheadline>
-            </PopupHeader>
+        <PopupHeader theme={currentTheme}>
+          <IconWrapper theme={currentTheme}>
+            <TrendingUp />
+          </IconWrapper>
+          <Headline theme={currentTheme}>Before You Go...</Headline>
+          <Subheadline theme={currentTheme}>
+            Discover Your AI Readiness Score in 2 Minutes
+          </Subheadline>
+        </PopupHeader>
 
-            <PopupBody>
-              <BenefitsList>
-                <BenefitItem theme={currentTheme}>
-                  <CheckCircle />
-                  <span>Assess your organization's AI readiness in 2 minutes</span>
-                </BenefitItem>
-                <BenefitItem theme={currentTheme}>
-                  <CheckCircle />
-                  <span>Get personalized recommendations from AI experts</span>
-                </BenefitItem>
-                <BenefitItem theme={currentTheme}>
-                  <CheckCircle />
-                  <span>Join 1,000+ leaders transforming with AI</span>
-                </BenefitItem>
-              </BenefitsList>
+        <PopupBody>
+          <BenefitsList>
+            <BenefitItem theme={currentTheme}>
+              <CheckCircle />
+              <span>Quick 2-minute assessment of your AI maturity</span>
+            </BenefitItem>
+            <BenefitItem theme={currentTheme}>
+              <CheckCircle />
+              <span>Identify gaps and opportunities in your AI journey</span>
+            </BenefitItem>
+            <BenefitItem theme={currentTheme}>
+              <CheckCircle />
+              <span>Get personalized recommendations from AI experts</span>
+            </BenefitItem>
+          </BenefitsList>
 
-              <Form onSubmit={handleSubmit}>
-                <InputGroup>
-                  <Label theme={currentTheme}>Your Name</Label>
-                  <Input
-                    type="text"
-                    name="name"
-                    placeholder="John Doe"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    required
-                    theme={currentTheme}
-                  />
-                </InputGroup>
+          <CTAButton
+            href="https://contractnest.vercel.app/leadforms/dtreadiness"
+            target="_blank"
+            rel="noopener noreferrer"
+            theme={currentTheme}
+            onClick={handleCTAClick}
+          >
+            Take AI Readiness Assessment
+            <TrendingUp />
+          </CTAButton>
 
-                <InputGroup>
-                  <Label theme={currentTheme}>Work Email</Label>
-                  <Input
-                    type="email"
-                    name="email"
-                    placeholder="john@company.com"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                    theme={currentTheme}
-                  />
-                </InputGroup>
-
-                <SubmitButton type="submit" theme={currentTheme}>
-                  Send My Free Scorecard
-                </SubmitButton>
-              </Form>
-
-              <TrustBadge theme={currentTheme}>
-                🔒 Your information is 100% secure. We never spam.
-              </TrustBadge>
-            </PopupBody>
-          </>
-        ) : (
-          <SuccessMessage theme={currentTheme}>
-            <CheckCircle />
-            <h3>Thank You!</h3>
-            <p>Check your email for your AI Readiness Scorecard.<br />We'll be in touch soon!</p>
-          </SuccessMessage>
-        )}
+          <TrustBadge theme={currentTheme}>
+            🔒 100% Free • No Credit Card Required • Instant Results
+          </TrustBadge>
+        </PopupBody>
       </PopupContainer>
     </Overlay>
   );
