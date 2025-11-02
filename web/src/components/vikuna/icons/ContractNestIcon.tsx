@@ -2,15 +2,17 @@ import React from 'react';
 
 interface ContractNestIconProps {
   className?: string;
+  style?: React.CSSProperties;
 }
 
-const ContractNestIcon: React.FC<ContractNestIconProps> = ({ className }) => {
+const ContractNestIcon: React.FC<ContractNestIconProps> = ({ className, style }) => {
   return (
     <svg
       viewBox="0 0 200 200"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
+      style={style}
     >
       {/* Document Stack Background */}
       <g opacity="0.3">

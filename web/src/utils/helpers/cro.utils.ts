@@ -103,18 +103,6 @@ export class CROUtils {
     companySize?: string;
   }): void {
     try {
-      // Enhanced event data for consulting business
-      const consultingEvent = {
-        ...event,
-        customParameters: {
-          ...event.customParameters,
-          business_model: 'consulting',
-          lead_qualification: event.leadScore ? event.leadScore > 70 ? 'high' : event.leadScore > 40 ? 'medium' : 'low' : 'unknown',
-          consultation_type: event.consultationType || 'general',
-          company_segment: event.companySize || 'unknown'
-        }
-      };
-
       // Google Analytics 4 for consulting
       if (typeof gtag !== 'undefined') {
         gtag('event', event.eventName, {
