@@ -3,7 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import useTheme from '../../hooks/useTheme';
-import { Brain, BarChart3, Users, Target, GraduationCap, Lightbulb, ArrowRight } from 'lucide-react';
+import { Brain, BarChart3, Users, Target, ArrowRight } from 'lucide-react';
 
 // Helper function to safely access theme properties
 const safeColor = (theme: any, path: string, fallback: string = '#000000'): string => {

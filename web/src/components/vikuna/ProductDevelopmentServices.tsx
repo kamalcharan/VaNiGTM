@@ -3,7 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import useTheme from '../../hooks/useTheme';
-import { Zap, Target, Rocket, Code, TrendingUp, Clock, Calendar, ExternalLink, ArrowRight } from 'lucide-react';
+import { Zap, Target, Rocket, Code, TrendingUp, Calendar, ExternalLink, ArrowRight } from 'lucide-react';
 import ContractNestIcon from './icons/ContractNestIcon';
 import FamilyKnowsIcon from './icons/FamilyKnowsIcon';
 

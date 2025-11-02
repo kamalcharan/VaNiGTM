@@ -1,13 +1,12 @@
 // src/hooks/useCRO.ts
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { 
-  ConversionEvent, 
-  ABTestConfig, 
-  ExperimentVariant, 
-  UserSession, 
+import {
+  ConversionEvent,
+  ExperimentVariant,
+  UserSession,
   ConversionFormData,
-  ConversionMetrics 
+  ConversionMetrics
 } from '../types/cro.types';
 import { CROUtils } from '../utils/helpers/cro.utils';
 

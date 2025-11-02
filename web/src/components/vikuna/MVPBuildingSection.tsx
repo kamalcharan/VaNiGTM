@@ -3,7 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import useTheme from '../../hooks/useTheme';
-import { Zap, Target, Rocket, CheckCircle, ArrowRight, Clock, Code, TrendingUp } from 'lucide-react';
+import { Zap, Target, Rocket, Clock, Code, TrendingUp } from 'lucide-react';
 
 // Helper function to safely access theme properties
 const safeColor = (theme: any, path: string, fallback: string = '#000000'): string => {

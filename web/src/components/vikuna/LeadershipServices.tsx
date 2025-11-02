@@ -3,7 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import useTheme from '../../hooks/useTheme';
-import { Brain, BarChart3, ArrowRight, Users, Target, Zap } from 'lucide-react';
+import { Brain, BarChart3, ArrowRight, Users, Target } from 'lucide-react';
 import Card, { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 

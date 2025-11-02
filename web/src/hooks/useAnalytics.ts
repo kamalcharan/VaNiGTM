@@ -1,4 +1,4 @@
-/ src/hooks/useAnalytics.ts
+// src/hooks/useAnalytics.ts
 import { useState, useEffect, useCallback } from 'react';
 
 interface AnalyticsEvent {
@@ -148,4 +148,4 @@ export const useAnalytics = (config: AnalyticsConfig = {}) => {
   };
 };
 
-export default useCRO;
+export default useAnalytics;

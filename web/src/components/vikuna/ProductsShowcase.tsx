@@ -3,7 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import useTheme from '../../hooks/useTheme';
-import { ExternalLink, ArrowRight, CheckCircle, Users, Calendar } from 'lucide-react';
+import { ExternalLink, ArrowRight, CheckCircle, Calendar } from 'lucide-react';
 import ContractNestIcon from './icons/ContractNestIcon';
 import FamilyKnowsIcon from './icons/FamilyKnowsIcon';
 
