@@ -9,6 +9,11 @@
       "source": "/bcl-familyknows",
       "destination": "https://drive.google.com/uc?export=download&id=1BpZ42lfo7yRlVwM-WtdJExx_pMSwH_KF",
       "permanent": false
+    },
+    {
+      "source": "/bcl-meeting",
+      "destination": "https://calendly.com/connect-vikuna",
+      "permanent": false
     }
   ]
 }
