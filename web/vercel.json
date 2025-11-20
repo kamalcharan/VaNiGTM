@@ -14,6 +14,11 @@
       "source": "/bcl-meeting",
       "destination": "https://calendly.com/connect-vikuna",
       "permanent": false
+    },
+    {
+      "source": "/bcl-offers",
+      "destination": "/bcl-offers.html",
+      "permanent": false
     }
   ]
 }
