@@ -815,7 +815,7 @@
             <section class="form-section">
                 <div class="form-header">
                     <h2>Get Both Exclusive Offers</h2>
-                    <p>Fill the form below and receive both offer PDFs on WhatsApp</p>
+                    <p>Fill the form below and receive both offer PDFs instantly on WhatsApp</p>
                 </div>
 
                 <form id="leadForm">
@@ -890,7 +890,7 @@
                     </div>
                     <div class="trust-item">
                         <span class="icon">⚡</span>
-                        <span>Batch Delivery</span>
+                        <span>Instant Delivery</span>
                     </div>
                     <div class="trust-item">
                         <span class="icon">🎁</span>
@@ -904,7 +904,7 @@
         <footer class="footer">
             <p>Proudly Powering 100+ Businesses | Made in India 🇮🇳</p>
             <p>☕ Day 1 Breakfast Sponsor at BCL 2025</p>
-            <p>contact@vikuna.io | <a href="https://vikuna.io">vikuna.io</a></p>
+            <p><a href="/cdn-cgi/l/email-protection#a3c0cbc2d1c2cde3d5cac8d6cdc28dcacc"><span class="__cf_email__" data-cfemail="a2c1cac3d0c3cce2d4cbc9d7ccc38ccbcd">[email&#160;protected]</span></a> | <a href="https://vikuna.io">vikuna.io</a></p>
         </footer>
     </div>
 
@@ -912,8 +912,8 @@
     <div class="modal success" id="successModal">
         <div class="modal-content">
             <div class="modal-icon">✅</div>
-            <h2>Registration Successful!</h2>
-            <p>Thank you for your interest! We'll send both exclusive BCL 2025 offer PDFs to your WhatsApp by this evening.</p>
+            <h2>Success! Check Your WhatsApp</h2>
+            <p>Both exclusive BCL 2025 offer PDFs have been sent to your WhatsApp!</p>
             <button class="modal-btn" onclick="closeModal()">Got it!</button>
         </div>
     </div>
@@ -923,12 +923,12 @@
         <div class="modal-content">
             <div class="modal-icon">❌</div>
             <h2>Oops! Something Went Wrong</h2>
-            <p id="errorMessage">Please try again or contact us at contact@vikuna.io</p>
+            <p id="errorMessage">Please try again or contact us at <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f192999083909fb187989a849f90df989e">[email&#160;protected]</a></p>
             <button class="modal-btn" onclick="closeModal()">Try Again</button>
         </div>
     </div>
 
-    <script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
         // Configuration - UPDATE THIS WITH YOUR N8N WEBHOOK URL
         //const WEBHOOK_URL = 'https://n8n.srv1096269.hstgr.cloud/webhook/bcl2025-lead';
         const WEBHOOK_URL = 'https://n8n.srv1096269.hstgr.cloud/webhook-test/bcl2025-lead';
@@ -1043,7 +1043,7 @@
                 const result = await response.json();
 
                 if (response.ok && result.success) {
-                    // Success - Show modal and reset form
+                    // Success
                     showSuccessModal();
                     form.reset();
                 } else {
