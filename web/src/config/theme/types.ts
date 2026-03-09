@@ -7,57 +7,30 @@ export interface PaletteColor {
   contrastText: string;
 }
 
+export interface TypographyStyle {
+  fontSize: string;
+  fontWeight: number;
+  lineHeight: number;
+  letterSpacing?: string;
+}
+
 export interface Typography {
   fontFamily: string;
+  headingFontFamily?: string;  // Optional serif/display font for headings
   fontSize: number;
   fontWeightLight: number;
   fontWeightRegular: number;
   fontWeightMedium: number;
   fontWeightBold: number;
-  h1: {
-    fontSize: string;
-    fontWeight: number;
-    lineHeight: number;
-  };
-  h2: {
-    fontSize: string;
-    fontWeight: number;
-    lineHeight: number;
-  };
-  h3: {
-    fontSize: string;
-    fontWeight: number;
-    lineHeight: number;
-  };
-  h4: {
-    fontSize: string;
-    fontWeight: number;
-    lineHeight: number;
-  };
-  h5: {
-    fontSize: string;
-    fontWeight: number;
-    lineHeight: number;
-  };
-  h6: {
-    fontSize: string;
-    fontWeight: number;
-    lineHeight: number;
-  };
-  body1: {
-    fontSize: string;
-    fontWeight: number;
-    lineHeight: number;
-  };
-  body2: {
-    fontSize: string;
-    fontWeight: number;
-    lineHeight: number;
-  };
-  button: {
-    fontSize: string;
-    fontWeight: number;
-    lineHeight: number;
+  h1: TypographyStyle;
+  h2: TypographyStyle;
+  h3: TypographyStyle;
+  h4: TypographyStyle;
+  h5: TypographyStyle;
+  h6: TypographyStyle;
+  body1: TypographyStyle;
+  body2: TypographyStyle;
+  button: TypographyStyle & {
     textTransform: string;
   };
 }

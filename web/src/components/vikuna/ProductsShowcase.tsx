@@ -3,7 +3,9 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import useTheme from '../../hooks/useTheme';
-import { ExternalLink, ArrowRight, CheckCircle, Users } from 'lucide-react';
+import { ExternalLink, ArrowRight, CheckCircle, Calendar } from 'lucide-react';
+import ContractNestIcon from './icons/ContractNestIcon';
+import FamilyKnowsIcon from './icons/FamilyKnowsIcon';
 
 const safeColor = (theme: any, path: string, fallback: string = '#000000'): string => {
   const parts = path.split('.');
@@ -17,7 +19,7 @@ const safeColor = (theme: any, path: string, fallback: string = '#000000'): stri
 
 const SectionContainer = styled.section`
   padding: 100px 0;
-  background: ${props => safeColor(props.theme, 'colors.background.default', '#f1f4f8')};
+  background: ${props => safeColor(props.theme, 'colors.background.default', '#F2F4F7')};
   position: relative;
 `;
 
@@ -35,8 +37,8 @@ const SectionHeader = styled.div`
 
 const Badge = styled(motion.div)`
   display: inline-block;
-  background: ${props => safeColor(props.theme, 'colors.primary.light', '#dfe3e7')};
-  color: ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')};
+  background: ${props => safeColor(props.theme, 'colors.primary.light', '#a0c1d6')};
+  color: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
   padding: 8px 20px;
   border-radius: 50px;
   font-size: 0.875rem;
@@ -47,14 +49,14 @@ const Badge = styled(motion.div)`
 const Headline = styled(motion.h2)`
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 800;
-  color: ${props => safeColor(props.theme, 'colors.text.primary', '#1a1f24')};
+  color: ${props => safeColor(props.theme, 'colors.text.primary', '#4d4d4d')};
   margin-bottom: 16px;
   line-height: 1.2;
 `;
 
 const Subheadline = styled(motion.p)`
   font-size: 1.25rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#656a85')};
+  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6b7280')};
   line-height: 1.6;
 `;
 
@@ -73,20 +75,22 @@ const ProductCard = styled(motion.div)`
   background: white;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 51, 102, 0.1);
   transition: all 0.3s ease;
+  border: 2px solid ${props => safeColor(props.theme, 'colors.primary.light', '#a0c1d6')};
 
   &:hover {
     transform: translateY(-8px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 12px 40px rgba(0, 51, 102, 0.15);
+    border-color: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
   }
 `;
 
 const ProductImage = styled.div`
   height: 280px;
   background: linear-gradient(135deg,
-    ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')} 0%,
-    ${props => safeColor(props.theme, 'colors.primary.dark', '#1aaa99')} 100%
+    ${props => safeColor(props.theme, 'colors.primary.main', '#003366')} 0%,
+    ${props => safeColor(props.theme, 'colors.success.main', '#006688')} 100%
   );
   display: flex;
   align-items: center;
@@ -107,6 +111,31 @@ const ProductImage = styled.div`
   }
 `;
 
+const LaunchBadge = styled.div<{ status: 'launching' | 'coming-soon' }>`
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: ${props => props.status === 'launching'
+    ? safeColor(props.theme, 'colors.secondary.main', '#FF6F61')
+    : safeColor(props.theme, 'colors.info.main', '#36f2fa')};
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+`;
+
 const ProductContent = styled.div`
   padding: 32px;
 `;
@@ -118,14 +147,49 @@ const ProductHeader = styled.div`
 const ProductTitle = styled.h3`
   font-size: 1.75rem;
   font-weight: 700;
-  color: ${props => safeColor(props.theme, 'colors.text.primary', '#1a1f24')};
+  color: ${props => safeColor(props.theme, 'colors.text.primary', '#4d4d4d')};
   margin-bottom: 8px;
 `;
 
 const ProductTagline = styled.p`
-  font-size: 1rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#656a85')};
+  font-size: 1.05rem;
+  color: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
+  font-weight: 600;
+  margin-bottom: 16px;
+`;
+
+const ProductDescription = styled.p`
+  font-size: 0.95rem;
+  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6b7280')};
+  line-height: 1.6;
   margin-bottom: 20px;
+`;
+
+const ProblemStats = styled.div`
+  background: ${props => safeColor(props.theme, 'colors.background.default', '#F2F4F7')};
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+`;
+
+const StatItem = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0;
+
+  .stat-number {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')};
+    min-width: 70px;
+  }
+
+  .stat-label {
+    font-size: 0.875rem;
+    color: ${props => safeColor(props.theme, 'colors.text.primary', '#4d4d4d')};
+    font-weight: 500;
+  }
 `;
 
 const FeaturesList = styled.ul`
@@ -140,43 +204,21 @@ const FeatureItem = styled.li`
   gap: 12px;
   padding: 8px 0;
   font-size: 0.95rem;
-  color: ${props => safeColor(props.theme, 'colors.text.primary', '#1a1f24')};
+  color: ${props => safeColor(props.theme, 'colors.text.primary', '#4d4d4d')};
 
   svg {
     width: 20px;
     height: 20px;
-    color: ${props => safeColor(props.theme, 'colors.success.main', '#165070')};
+    color: ${props => safeColor(props.theme, 'colors.success.main', '#006688')};
     flex-shrink: 0;
     margin-top: 2px;
-  }
-`;
-
-const UsedBy = styled.div`
-  padding: 16px 0;
-  border-top: 1px solid ${props => safeColor(props.theme, 'colors.background.default', '#f1f4f8')};
-  margin-bottom: 24px;
-
-  .label {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: ${props => safeColor(props.theme, 'colors.text.secondary', '#656a85')};
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .stats {
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')};
   }
 `;
 
 const ProductActions = styled.div`
   display: flex;
   gap: 12px;
+  margin-top: 24px;
 `;
 
 const PrimaryButton = styled.a`
@@ -185,7 +227,7 @@ const PrimaryButton = styled.a`
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')};
+  background: ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')};
   color: white;
   padding: 12px 24px;
   border-radius: 8px;
@@ -195,7 +237,7 @@ const PrimaryButton = styled.a`
   transition: all 0.3s ease;
 
   &:hover {
-    background: ${props => safeColor(props.theme, 'colors.primary.dark', '#1aaa99')};
+    background: ${props => safeColor(props.theme, 'colors.secondary.dark', '#e55a4a')};
     transform: translateX(4px);
   }
 
@@ -212,17 +254,17 @@ const SecondaryButton = styled.a`
   justify-content: center;
   gap: 8px;
   background: transparent;
-  color: ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')};
+  color: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
   padding: 12px 24px;
   border-radius: 8px;
-  border: 2px solid ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')};
+  border: 2px solid ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
   font-weight: 600;
   font-size: 0.95rem;
   text-decoration: none;
   transition: all 0.3s ease;
 
   &:hover {
-    background: ${props => safeColor(props.theme, 'colors.primary.light', '#dfe3e7')};
+    background: ${props => safeColor(props.theme, 'colors.primary.light', '#a0c1d6')};
   }
 
   svg {
@@ -234,20 +276,23 @@ const SecondaryButton = styled.a`
 const BottomCTA = styled(motion.div)`
   text-align: center;
   padding: 60px 32px;
-  background: white;
+  background: linear-gradient(135deg,
+    ${props => safeColor(props.theme, 'colors.primary.main', '#003366')} 0%,
+    ${props => safeColor(props.theme, 'colors.success.main', '#006688')} 100%
+  );
   border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 51, 102, 0.2);
 
   h3 {
     font-size: 2rem;
     font-weight: 700;
-    color: ${props => safeColor(props.theme, 'colors.text.primary', '#1a1f24')};
+    color: white;
     margin-bottom: 16px;
   }
 
   p {
     font-size: 1.125rem;
-    color: ${props => safeColor(props.theme, 'colors.text.secondary', '#656a85')};
+    color: rgba(255, 255, 255, 0.9);
     margin-bottom: 32px;
     max-width: 600px;
     margin-left: auto;
@@ -259,7 +304,7 @@ const CTAButton = styled.a`
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  background: ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')};
+  background: ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')};
   color: white;
   padding: 18px 36px;
   border-radius: 12px;
@@ -267,12 +312,12 @@ const CTAButton = styled.a`
   font-size: 1.125rem;
   text-decoration: none;
   transition: all 0.3s ease;
-  box-shadow: 0 6px 20px ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')}40;
+  box-shadow: 0 6px 20px rgba(255, 111, 97, 0.4);
 
   &:hover {
-    background: ${props => safeColor(props.theme, 'colors.primary.dark', '#1aaa99')};
+    background: ${props => safeColor(props.theme, 'colors.secondary.dark', '#e55a4a')};
     transform: translateY(-3px);
-    box-shadow: 0 8px 30px ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')}50;
+    box-shadow: 0 8px 30px rgba(255, 111, 97, 0.5);
   }
 
   svg {
@@ -342,111 +387,120 @@ const ProductsShowcase: React.FC = () => {
           viewport={{ once: true }}
         >
           <ProductsGrid>
+            {/* ContractNest */}
             <ProductCard variants={itemVariants}>
               <ProductImage theme={currentTheme}>
-                🤖
+                <LaunchBadge status="launching" theme={currentTheme}>
+                  <Calendar />
+                  Nov 22 Launch
+                </LaunchBadge>
+                <ContractNestIcon style={{ width: '120px', height: '120px' }} />
               </ProductImage>
               <ProductContent>
                 <ProductHeader>
-                  <ProductTitle theme={currentTheme}>ContractNest AI</ProductTitle>
+                  <ProductTitle theme={currentTheme}>ContractNest</ProductTitle>
                   <ProductTagline theme={currentTheme}>
-                    AI-Powered Contract Intelligence Platform
+                    Turn Service Commitments Into Profitable Relationships
                   </ProductTagline>
+                  <ProductDescription theme={currentTheme}>
+                    Transform scattered service agreements into an automated, collaborative exchange. From healthcare equipment maintenance to manufacturing service contracts—digitize, automate, and scale your service relationships.
+                  </ProductDescription>
                 </ProductHeader>
+
+                <ProblemStats theme={currentTheme}>
+                  <StatItem theme={currentTheme}>
+                    <span className="stat-number">65%</span>
+                    <span className="stat-label">Service contracts not digitized</span>
+                  </StatItem>
+                  <StatItem theme={currentTheme}>
+                    <span className="stat-number">50%</span>
+                    <span className="stat-label">SLA breaches due to poor tracking</span>
+                  </StatItem>
+                  <StatItem theme={currentTheme}>
+                    <span className="stat-number">2.5h</span>
+                    <span className="stat-label">Daily on manual contract admin</span>
+                  </StatItem>
+                </ProblemStats>
 
                 <FeaturesList>
                   <FeatureItem theme={currentTheme}>
                     <CheckCircle />
-                    <span>Automated contract review and analysis</span>
+                    <span>Automated SLA tracking & alerts</span>
                   </FeatureItem>
                   <FeatureItem theme={currentTheme}>
                     <CheckCircle />
-                    <span>Risk detection and compliance checking</span>
+                    <span>Healthcare & manufacturing workflows</span>
                   </FeatureItem>
                   <FeatureItem theme={currentTheme}>
                     <CheckCircle />
-                    <span>90% faster contract processing</span>
+                    <span>Collaborative vendor portal</span>
                   </FeatureItem>
                 </FeaturesList>
 
-                <UsedBy theme={currentTheme}>
-                  <div className="label">
-                    <Users size={14} />
-                    USED BY
-                  </div>
-                  <div className="stats">50+ Legal Teams</div>
-                </UsedBy>
-
                 <ProductActions>
                   <PrimaryButton
-                    href="https://contractnest.vercel.app"
+                    href="https://www.contractnest.com"
                     target="_blank"
                     rel="noopener noreferrer"
                     theme={currentTheme}
                   >
-                    Try Live Demo
+                    Visit ContractNest
                     <ExternalLink />
                   </PrimaryButton>
-                  <SecondaryButton
-                    href="https://contractnest.vercel.app"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    theme={currentTheme}
-                  >
-                    Learn More
-                  </SecondaryButton>
                 </ProductActions>
               </ProductContent>
             </ProductCard>
 
+            {/* Family Knows */}
             <ProductCard variants={itemVariants}>
               <ProductImage theme={currentTheme}>
-                📊
+                <LaunchBadge status="coming-soon" theme={currentTheme}>
+                  <Calendar />
+                  2026 Launch
+                </LaunchBadge>
+                <FamilyKnowsIcon style={{ width: '120px', height: '120px' }} />
               </ProductImage>
               <ProductContent>
                 <ProductHeader>
-                  <ProductTitle theme={currentTheme}>AI Analytics Suite</ProductTitle>
+                  <ProductTitle theme={currentTheme}>Family Knows</ProductTitle>
                   <ProductTagline theme={currentTheme}>
-                    Transform Data into Strategic Insights
+                    Your Family's Digital Vault & Asset Manager
                   </ProductTagline>
+                  <ProductDescription theme={currentTheme}>
+                    Empowers families to organize, access, and manage critical asset information, documentation, and service history—anytime, anywhere. Smart AI minimizes manual entry while family collaboration keeps everyone connected to what matters most.
+                  </ProductDescription>
                 </ProductHeader>
 
                 <FeaturesList>
                   <FeatureItem theme={currentTheme}>
                     <CheckCircle />
-                    <span>Real-time business intelligence dashboards</span>
+                    <span>Secure digital vault for family documents</span>
                   </FeatureItem>
                   <FeatureItem theme={currentTheme}>
                     <CheckCircle />
-                    <span>Predictive analytics and forecasting</span>
+                    <span>AI-powered asset organization</span>
                   </FeatureItem>
                   <FeatureItem theme={currentTheme}>
                     <CheckCircle />
-                    <span>Custom AI model deployment</span>
+                    <span>Family collaboration & access control</span>
+                  </FeatureItem>
+                  <FeatureItem theme={currentTheme}>
+                    <CheckCircle />
+                    <span>Service history tracking</span>
+                  </FeatureItem>
+                  <FeatureItem theme={currentTheme}>
+                    <CheckCircle />
+                    <span>Mobile-first design</span>
                   </FeatureItem>
                 </FeaturesList>
 
-                <UsedBy theme={currentTheme}>
-                  <div className="label">
-                    <Users size={14} />
-                    TRUSTED BY
-                  </div>
-                  <div className="stats">Enterprise Clients</div>
-                </UsedBy>
-
                 <ProductActions>
-                  <PrimaryButton
-                    href="#contact"
-                    theme={currentTheme}
-                  >
-                    Request Demo
-                    <ArrowRight />
-                  </PrimaryButton>
                   <SecondaryButton
                     href="#contact"
                     theme={currentTheme}
                   >
-                    Get Pricing
+                    Join Waitlist
+                    <ArrowRight />
                   </SecondaryButton>
                 </ProductActions>
               </ProductContent>
