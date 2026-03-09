@@ -1,6 +1,7 @@
 // src/App.tsx
 
 import { ThemeProvider } from './context/ThemeContext';
+import { getActiveTheme } from './config/theme/themeRegistry';
 import Navbar from './components/vikuna/Navbar';
 import HeroSectionNew from './components/vikuna/HeroSectionNew';
 import IndustriesBanner from './components/vikuna/IndustriesBanner';
@@ -12,11 +13,10 @@ import Footer from './components/vikuna/Footer';
 import StickyCTABar from './components/vikuna/StickyCTABar';
 import ExitIntentPopup from './components/vikuna/ExitIntentPopup';
 import SEOHead from './components/vikuna/SEOHead';
-import trustworthyTheme from './config/theme/themes/TrustworthyTheme';
 
 function App() {
   return (
-    <ThemeProvider initialTheme={trustworthyTheme}>
+    <ThemeProvider initialTheme={getActiveTheme()}>
       <SEOHead />
       <div className="app">
         <Navbar transparent={true} />
