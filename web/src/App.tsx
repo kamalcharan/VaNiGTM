@@ -11,6 +11,7 @@ import WhatChangesSection from './components/vikuna/WhatChangesSection';
 import IndustriesBanner from './components/vikuna/IndustriesBanner';
 import ConsultingServices from './components/vikuna/ConsultingServices';
 import TrainingSkillBuilding from './components/vikuna/TrainingSkillBuilding';
+import HowWeWorkSection from './components/vikuna/HowWeWorkSection';
 import ProductDevelopmentServices from './components/vikuna/ProductDevelopmentServices';
 import CaseStudies from './components/vikuna/CaseStudies';
 import InlineLeadCapture from './components/vikuna/InlineLeadCapture';
@@ -47,6 +48,9 @@ function App() {
 
         {/* Service 02: Training & Skill Building */}
         <TrainingSkillBuilding />
+
+        {/* How We Work - Journey steps */}
+        <HowWeWorkSection />
 
         {/* Service #3: Product Development (MVP + Products We've Developed) */}
         <ProductDevelopmentServices />
