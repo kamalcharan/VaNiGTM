@@ -6,6 +6,7 @@ import Navbar from './components/vikuna/Navbar';
 import HeroSectionNew from './components/vikuna/HeroSectionNew';
 import ProblemSection from './components/vikuna/ProblemSection';
 import DifferentiatorSection from './components/vikuna/DifferentiatorSection';
+import WhyWeExistSection from './components/vikuna/WhyWeExistSection';
 import IndustriesBanner from './components/vikuna/IndustriesBanner';
 import ConsultingServices from './components/vikuna/ConsultingServices';
 import ProductDevelopmentServices from './components/vikuna/ProductDevelopmentServices';
@@ -29,6 +30,9 @@ function App() {
 
         {/* Our Approach - Iceberg differentiator */}
         <DifferentiatorSection />
+
+        {/* Founder Story - Why We Exist */}
+        <WhyWeExistSection />
 
         {/* Industries Banner - Quick Credibility */}
         <IndustriesBanner />
