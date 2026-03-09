@@ -21,11 +21,11 @@ const TEAL = '#12A090';
 // ─── Styled Components ─────────────────────────────────────────
 
 const Section = styled.section`
-  padding: 100px 60px;
+  padding: 80px 60px;
   background: ${INK};
 
   @media (max-width: 768px) {
-    padding: 60px 24px;
+    padding: 48px 24px;
   }
 `;
 
@@ -36,7 +36,7 @@ const SectionLabel = styled.div<{ theme: any }>`
   letter-spacing: 3px;
   text-transform: uppercase;
   color: ${GOLD};
-  margin-bottom: 20px;
+  margin-bottom: 32px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -53,16 +53,22 @@ const SectionLabel = styled.div<{ theme: any }>`
 const DiffGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 80px;
-  align-items: center;
+  gap: 48px;
+  align-items: start;
 
   @media (max-width: 968px) {
     grid-template-columns: 1fr;
-    gap: 48px;
+    gap: 32px;
   }
 `;
 
-const DiffContent = styled(motion.div)``;
+const DiffContent = styled(motion.div)`
+  padding-top: 80px;
+
+  @media (max-width: 968px) {
+    padding-top: 0;
+  }
+`;
 
 const DiffHeadline = styled.h2<{ theme: any }>`
   font-family: ${props => safeFont(props.theme, 'headingFontFamily')};
