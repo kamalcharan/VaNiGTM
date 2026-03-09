@@ -108,9 +108,12 @@ const DiffNote = styled.div`
 const IcebergWrap = styled(motion.div)`
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 5;
-  max-height: 520px;
+  min-height: 480px;
   overflow: visible;
+
+  @media (max-width: 968px) {
+    min-height: 400px;
+  }
 `;
 
 const IcebergLabels = styled.div`
@@ -263,8 +266,9 @@ const PctLabel = styled.div<{ $color: string }>`
 
 const IcebergSVG: React.FC = () => (
   <svg
-    style={{ width: '100%', height: '100%' }}
+    style={{ width: '100%', height: '100%', display: 'block' }}
     viewBox="0 0 440 520"
+    preserveAspectRatio="xMidYMid meet"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
