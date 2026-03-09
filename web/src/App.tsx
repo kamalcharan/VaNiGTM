@@ -4,6 +4,8 @@ import { ThemeProvider } from './context/ThemeContext';
 import { getActiveTheme } from './config/theme/themeRegistry';
 import Navbar from './components/vikuna/Navbar';
 import HeroSectionNew from './components/vikuna/HeroSectionNew';
+import ProblemSection from './components/vikuna/ProblemSection';
+import DifferentiatorSection from './components/vikuna/DifferentiatorSection';
 import IndustriesBanner from './components/vikuna/IndustriesBanner';
 import ConsultingServices from './components/vikuna/ConsultingServices';
 import ProductDevelopmentServices from './components/vikuna/ProductDevelopmentServices';
@@ -21,6 +23,12 @@ function App() {
       <div className="app">
         <Navbar transparent={true} />
         <HeroSectionNew />
+
+        {/* The Problem - Why existing options fail */}
+        <ProblemSection />
+
+        {/* Our Approach - Iceberg differentiator */}
+        <DifferentiatorSection />
 
         {/* Industries Banner - Quick Credibility */}
         <IndustriesBanner />
