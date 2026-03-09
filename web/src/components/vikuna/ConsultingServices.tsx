@@ -3,562 +3,383 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import useTheme from '../../hooks/useTheme';
-import { Brain, BarChart3, Users, Target, ArrowRight } from 'lucide-react';
 
-// Helper function to safely access theme properties
-const safeColor = (theme: any, path: string, fallback: string = '#000000'): string => {
-  const parts = path.split('.');
-  let current = theme;
-
-  for (const part of parts) {
-    if (current === undefined || current === null) return fallback;
-    current = current[part];
+const safeFont = (theme: any, key: 'fontFamily' | 'headingFontFamily'): string => {
+  const val = theme?.typography?.[key];
+  if (key === 'headingFontFamily') {
+    return val || theme?.typography?.fontFamily || "'DM Sans', sans-serif";
   }
-
-  return current || fallback;
+  return val || "'DM Sans', sans-serif";
 };
 
-// Styled components
-const SectionContainer = styled.section`
-  padding: 5rem 0;
-  background-color: ${props => safeColor(props.theme, 'colors.background.default', '#F2F4F7')};
+// ─── Color tokens ────────────────────────────────────────────
+const INK = '#0A0F1E';
+const CREAM = '#FAF8F5';
+const TEXT_DARK = '#1A1A2E';
+const TEXT_MUTED = '#5A5A6E';
+const TEAL = '#12A090';
+const CORAL = '#E8420A';
+
+// ─── Styled Components ──────────────────────────────────────
+
+const Section = styled.section`
+  background: ${CREAM};
+  padding: 80px 60px 0;
+
+  @media (max-width: 768px) {
+    padding: 48px 24px 0;
+  }
 `;
 
-const Container = styled.div`
+const Inner = styled.div`
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 1rem;
 `;
 
-const SectionHeader = styled.div`
-  text-align: center;
-  max-width: 48rem;
-  margin: 0 auto 4rem auto;
-`;
-
-const Badge = styled.span`
-  display: inline-block;
-  padding: 0.5rem 1rem;
-  background: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')}15;
-  color: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
-  border-radius: 100px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  margin-bottom: 1rem;
-  border: 1px solid ${props => safeColor(props.theme, 'colors.primary.main', '#003366')}30;
-`;
-
-const SectionTitle = styled.h2`
-  font-size: 2.5rem;
-  @media (min-width: 768px) {
-    font-size: 3rem;
-  }
-  font-weight: ${props => props.theme?.typography?.fontWeightBold || 700};
-  margin-bottom: 1rem;
-  color: ${props => safeColor(props.theme, 'colors.text.primary', '#4d4d4d')};
-
-  span {
-    color: ${props => safeColor(props.theme, 'colors.success.main', '#006688')};
-  }
-`;
-
-const SectionDescription = styled.p`
-  font-size: 1.25rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6b7280')};
-  line-height: 1.7;
-`;
-
-const ServicesGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2rem;
-  margin-bottom: 4rem;
-
-  @media (min-width: 768px) {
-    grid-template-columns: 1fr 1fr;
-  }
-`;
-
-const ServiceCard = styled.div`
-  background: ${props => safeColor(props.theme, 'colors.background.paper', '#FFFFFF')};
-  border-radius: 16px;
-  padding: 2.5rem;
-  box-shadow: 0 4px 12px rgba(0, 51, 102, 0.08);
-  border-left: 4px solid ${props => safeColor(props.theme, 'colors.success.main', '#006688')};
-  transition: all 0.3s ease;
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 51, 102, 0.12);
-  }
-`;
-
-const IconContainer = styled.div`
-  width: 3.5rem;
-  height: 3.5rem;
-  border-radius: 12px;
+const SectionLabel = styled.div`
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: ${TEAL};
+  margin-bottom: 20px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-  background: ${props => safeColor(props.theme, 'colors.success.main', '#006688')}15;
-  color: ${props => safeColor(props.theme, 'colors.success.main', '#006688')};
+  gap: 12px;
+
+  &::after {
+    content: '';
+    display: block;
+    width: 32px;
+    height: 1px;
+    background: ${TEAL};
+  }
 `;
 
-const ServiceTitle = styled.h3`
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: ${props => safeColor(props.theme, 'colors.text.primary', '#4d4d4d')};
-  margin-bottom: 0.5rem;
+const Heading = styled.h2`
+  font-family: ${props => safeFont(props.theme, 'headingFontFamily')};
+  font-size: clamp(32px, 3.5vw, 48px);
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1.15;
+  color: ${TEXT_DARK};
+  margin-bottom: 24px;
 `;
 
-const ServiceSubtitle = styled.div`
-  font-size: 0.875rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6b7280')};
-  margin-bottom: 1rem;
-  font-weight: 500;
+const Subtitle = styled.p`
+  font-size: 15px;
+  line-height: 1.8;
+  color: ${TEXT_MUTED};
+  max-width: 420px;
+  margin-bottom: 48px;
+  font-family: ${props => safeFont(props.theme, 'fontFamily')};
 `;
 
-const ServiceDescription = styled.p`
-  font-size: 1rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6b7280')};
-  line-height: 1.6;
-  margin-bottom: 1.5rem;
+const BoldSpan = styled.span`
+  font-weight: 700;
+  color: ${TEXT_DARK};
+`;
+
+// ─── Service Cards ───────────────────────────────────────────
+
+const CardsRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 48px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ServiceCard = styled(motion.div)<{ $accentColor: string }>`
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-top: 3px solid ${props => props.$accentColor};
+  border-radius: 8px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+`;
+
+const CardLabel = styled.div<{ $color: string }>`
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: ${props => props.$color};
+  margin-bottom: 12px;
+`;
+
+const CardTitle = styled.h3`
+  font-family: ${props => safeFont(props.theme, 'headingFontFamily')};
+  font-size: 22px;
+  font-weight: 800;
+  color: ${TEXT_DARK};
+  margin-bottom: 6px;
+`;
+
+const CardSubtitle = styled.p`
+  font-size: 13px;
+  color: ${TEXT_MUTED};
+  margin-bottom: 20px;
+  font-family: ${props => safeFont(props.theme, 'fontFamily')};
 `;
 
 const FeatureList = styled.ul`
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 0 0 24px 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 10px;
+  flex: 1;
 `;
 
-const FeatureItem = styled.li`
+const FeatureItem = styled.li<{ $color: string }>`
   display: flex;
-  align-items: flex-start;
-  font-size: 0.9rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6b7280')};
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: ${TEAL};
+  font-family: ${props => safeFont(props.theme, 'fontFamily')};
 
   &::before {
-    content: "→";
-    margin-right: 0.75rem;
-    margin-top: 0.125rem;
-    color: ${props => safeColor(props.theme, 'colors.success.main', '#006688')};
-    font-weight: bold;
+    content: '→';
+    color: ${props => props.$color};
+    font-weight: 700;
+    flex-shrink: 0;
   }
 `;
 
-const CapabilitiesSection = styled.div`
-  background: linear-gradient(135deg,
-    ${props => safeColor(props.theme, 'colors.primary.light', '#a0c1d6')}30,
-    ${props => safeColor(props.theme, 'colors.background.paper', '#FFFFFF')}
-  );
-  border-radius: 16px;
-  padding: 3rem 2.5rem;
-  margin-top: 3rem;
-`;
-
-const CapabilitiesHeader = styled.div`
-  text-align: center;
-  margin-bottom: 2.5rem;
-`;
-
-const CapabilitiesTitle = styled.h3`
-  font-size: 2rem;
-  font-weight: 700;
-  color: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
-  margin-bottom: 0.75rem;
-`;
-
-const CapabilitiesSubtitle = styled.p`
-  font-size: 1.125rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6b7280')};
-`;
-
-const CapabilitiesGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
-
-  @media (min-width: 768px) {
-    grid-template-columns: repeat(3, 1fr);
-  }
-`;
-
-const CapabilityCard = styled.div`
-  background: ${props => safeColor(props.theme, 'colors.background.paper', '#FFFFFF')};
-  border-radius: 12px;
-  padding: 1.5rem;
-  border: 1px solid ${props => safeColor(props.theme, 'colors.primary.light', '#a0c1d6')}40;
-  transition: all 0.3s ease;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 51, 102, 0.1);
-  }
-`;
-
-const CapabilityIcon = styled.div`
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1rem;
-  background: ${props => safeColor(props.theme, 'colors.info.main', '#36f2fa')}15;
-  color: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
-`;
-
-const CapabilityTitle = styled.h4`
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: ${props => safeColor(props.theme, 'colors.text.primary', '#4d4d4d')};
-  margin-bottom: 0.5rem;
-`;
-
-const CapabilityDescription = styled.p`
-  font-size: 0.875rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6b7280')};
-  line-height: 1.5;
-`;
-
-const TrainingSection = styled.div`
-  margin-top: 4rem;
-  background: ${props => safeColor(props.theme, 'colors.background.paper', '#FFFFFF')};
-  border-radius: 16px;
-  padding: 3rem 2.5rem;
-  border: 2px solid ${props => safeColor(props.theme, 'colors.info.main', '#36f2fa')}30;
-`;
-
-const TrainingHeader = styled.div`
-  text-align: center;
-  margin-bottom: 2.5rem;
-`;
-
-const TrainingTitle = styled.h3`
-  font-size: 2rem;
-  font-weight: 700;
-  color: ${props => safeColor(props.theme, 'colors.primary.main', '#003366')};
-  margin-bottom: 0.75rem;
-
-  span {
-    color: ${props => safeColor(props.theme, 'colors.info.main', '#36f2fa')};
-  }
-`;
-
-const TrainingDescription = styled.p`
-  font-size: 1.125rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6b7280')};
-`;
-
-const TrainingGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
-
-  @media (min-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-`;
-
-const TrainingCard = styled.div`
-  padding: 1.5rem;
-  border-radius: 12px;
-  background: ${props => safeColor(props.theme, 'colors.background.default', '#F2F4F7')};
-  border-left: 3px solid ${props => safeColor(props.theme, 'colors.info.main', '#36f2fa')};
-`;
-
-const TrainingCardTitle = styled.h4`
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: ${props => safeColor(props.theme, 'colors.text.primary', '#4d4d4d')};
-  margin-bottom: 0.5rem;
-`;
-
-const TrainingCardDescription = styled.p`
-  font-size: 0.9rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6b7280')};
+const IdealWhen = styled.div`
+  font-size: 12px;
+  color: ${TEXT_MUTED};
   line-height: 1.6;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  font-style: italic;
+  font-family: ${props => safeFont(props.theme, 'fontFamily')};
 `;
 
-const CTAContainer = styled.div`
-  text-align: center;
-  margin-top: 4rem;
-`;
-
-const PrimaryButton = styled.a`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 2.5rem;
-  background: ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')};
-  color: ${props => safeColor(props.theme, 'colors.secondary.contrastText', '#FFFFFF')};
+const IdealLabel = styled.span`
+  font-style: italic;
   font-weight: 600;
-  font-size: 1.125rem;
-  border-radius: 8px;
-  text-decoration: none;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 16px ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')}40;
+  color: ${TEXT_DARK};
+`;
 
-  &:hover {
-    background: ${props => safeColor(props.theme, 'colors.secondary.dark', '#e55a4a')};
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')}60;
+// ─── Engagement Timeline ─────────────────────────────────────
+
+const TimelineBox = styled(motion.div)`
+  background: ${INK};
+  border-radius: 12px;
+  padding: 40px 48px;
+
+  @media (max-width: 768px) {
+    padding: 32px 24px;
   }
 `;
+
+const TimelineHeading = styled.h3`
+  font-family: ${props => safeFont(props.theme, 'headingFontFamily')};
+  font-size: 20px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 32px;
+  font-style: italic;
+`;
+
+const TimelineRow = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 14px 0;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+`;
+
+const TimeLabel = styled.span<{ $color: string }>`
+  font-size: 13px;
+  font-weight: 700;
+  color: ${props => props.$color};
+  min-width: 80px;
+  flex-shrink: 0;
+  font-family: ${props => safeFont(props.theme, 'fontFamily')};
+`;
+
+const TimeDash = styled.span`
+  color: rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+`;
+
+const TimeDesc = styled.span`
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.6;
+  font-family: ${props => safeFont(props.theme, 'fontFamily')};
+`;
+
+const TimeBold = styled.strong`
+  color: #FFFFFF;
+  font-weight: 700;
+`;
+
+// ─── Data ────────────────────────────────────────────────────
+
+const services = [
+  {
+    label: 'CDO as a Service',
+    accentColor: TEAL,
+    labelColor: TEAL,
+    title: 'Chief Digital Officer',
+    subtitle: 'Strategic digital leadership & transformation guidance',
+    features: [
+      'Digital Strategy & Vision Development',
+      'Digital Transformation Roadmap & Architecture',
+      'Digital Culture & Change Management',
+      'Stakeholder Alignment & Communication',
+      'Performance Metrics & ROI Tracking',
+    ],
+    ideal:
+      'Your business needs unified digital direction — whether your team builds it or your vendors do, we ensure the strategy holds.',
+  },
+  {
+    label: 'CAiO as a Service',
+    accentColor: CORAL,
+    labelColor: CORAL,
+    title: 'Chief AI Officer',
+    subtitle: 'Executive AI leadership with measurable outcomes',
+    features: [
+      'AI Strategy & Implementation Roadmap',
+      'Process Automation & Optimization',
+      'Data-Driven Decision Frameworks',
+      'AI Governance & Ethics Framework',
+      'Machine Learning Operations Setup',
+    ],
+    ideal:
+      "You're being asked about AI but have no framework. We define governance, select the right tools, and ensure outcomes — not just demos.",
+  },
+];
+
+const timeline = [
+  {
+    label: 'Week 1–2',
+    color: TEAL,
+    text: 'Deep-dive discovery. We learn your business, your team, your existing vendor landscape.',
+    bold: 'No assumptions.',
+  },
+  {
+    label: 'Month 1',
+    color: CORAL,
+    text: 'Roadmap built. Quick wins identified.',
+    bold: 'Right vendors and partners aligned to the right problems.',
+  },
+  {
+    label: 'Month 2–3',
+    color: TEAL,
+    text: 'Execution in motion. We govern, guide, and unblock —',
+    bold: 'whoever is doing the building.',
+  },
+  {
+    label: 'Month 3+',
+    color: TEAL,
+    text: 'Measure outcomes. Iterate.',
+    bold: 'Transfer knowledge to your internal team progressively.',
+  },
+  {
+    label: 'Exit',
+    color: CORAL,
+    text: 'Your team can run it.',
+    bold: "That's always the goal. We leave you stronger, not dependent.",
+  },
+];
+
+// ─── Component ───────────────────────────────────────────────
 
 const ConsultingServices: React.FC = () => {
-  const { currentTheme } = useTheme();
-
-  const executiveServices = [
-    {
-      title: "CDO as a Service",
-      fullTitle: "Chief Digital Officer",
-      description: "Strategic digital leadership and transformation guidance for organizations requiring C-suite digital expertise without full-time executive overhead.",
-      icon: <BarChart3 size={32} />,
-      features: [
-        "Digital Strategy & Vision Development",
-        "Technology Roadmap & Architecture",
-        "Digital Culture & Change Management",
-        "Stakeholder Alignment & Communication",
-        "Performance Metrics & ROI Tracking"
-      ]
-    },
-    {
-      title: "CAiO as a Service",
-      fullTitle: "Chief AI Officer",
-      description: "Executive AI leadership to drive innovation and transformation with measurable business outcomes through strategic AI implementation and governance.",
-      icon: <Brain size={32} />,
-      features: [
-        "AI Strategy & Implementation Roadmap",
-        "Process Automation & Optimization",
-        "Data-Driven Decision Frameworks",
-        "AI Governance & Ethics Framework",
-        "Machine Learning Operations Setup"
-      ]
-    }
-  ];
-
-  const transformationCapabilities = [
-    {
-      title: "Process Intelligence",
-      description: "Advanced process mining and optimization using data-driven methodologies",
-      icon: <Target size={20} />
-    },
-    {
-      title: "Data Storytelling",
-      description: "Transform complex data into compelling business narratives and actionable insights",
-      icon: <BarChart3 size={20} />
-    },
-    {
-      title: "Change Leadership",
-      description: "Guide organizational transformation with proven change management frameworks",
-      icon: <Users size={20} />
-    }
-  ];
-
-  const trainingPrograms = [
-    {
-      title: "Executive AI Leadership",
-      description: "Strategic AI understanding for C-suite and senior leaders to drive organizational AI adoption"
-    },
-    {
-      title: "Data Literacy for Teams",
-      description: "Build data-driven culture with practical analytics and decision-making skills across your organization"
-    },
-    {
-      title: "Digital Transformation Bootcamp",
-      description: "Hands-on training for transformation leaders covering strategy, technology, and change management"
-    },
-    {
-      title: "AI/ML Implementation Workshop",
-      description: "Technical deep-dive for product and engineering teams implementing AI solutions"
-    }
-  ];
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
-  };
+  const { theme } = useTheme();
 
   return (
-    <SectionContainer id="consulting-services" theme={currentTheme}>
-      <Container>
-        <SectionHeader>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <Badge theme={currentTheme}>SERVICE #1</Badge>
-          </motion.div>
+    <Section id="consulting-services">
+      <Inner>
+        <SectionLabel>Service 01 — Fractional Leadership</SectionLabel>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-          >
-            <SectionTitle theme={currentTheme}>
-              <span>Consulting</span> Services
-            </SectionTitle>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-          >
-            <SectionDescription theme={currentTheme}>
-              Access C-level digital and AI leadership expertise without the overhead of full-time executives.
-              Our fractional leadership model provides strategic direction, hands-on implementation, and skill building
-              to accelerate your transformation journey.
-            </SectionDescription>
-          </motion.div>
-        </SectionHeader>
-
-        {/* Executive Leadership Services */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true }}
-        >
-          <ServicesGrid>
-            {executiveServices.map((service, index) => (
-              <motion.div key={index} variants={itemVariants}>
-                <ServiceCard theme={currentTheme}>
-                  <IconContainer theme={currentTheme}>
-                    {service.icon}
-                  </IconContainer>
-                  <ServiceTitle theme={currentTheme}>{service.title}</ServiceTitle>
-                  <ServiceSubtitle theme={currentTheme}>{service.fullTitle}</ServiceSubtitle>
-                  <ServiceDescription theme={currentTheme}>
-                    {service.description}
-                  </ServiceDescription>
-                  <FeatureList>
-                    {service.features.map((feature, idx) => (
-                      <FeatureItem key={idx} theme={currentTheme}>
-                        {feature}
-                      </FeatureItem>
-                    ))}
-                  </FeatureList>
-                </ServiceCard>
-              </motion.div>
-            ))}
-          </ServicesGrid>
-        </motion.div>
-
-        {/* Transformation Capabilities */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.3 }}
         >
-          <CapabilitiesSection theme={currentTheme}>
-            <CapabilitiesHeader>
-              <CapabilitiesTitle theme={currentTheme}>
-                How We Deliver Transformation Success
-              </CapabilitiesTitle>
-              <CapabilitiesSubtitle theme={currentTheme}>
-                Our executive leaders leverage specialized methodologies to drive measurable results
-              </CapabilitiesSubtitle>
-            </CapabilitiesHeader>
-
-            <CapabilitiesGrid>
-              {transformationCapabilities.map((capability, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <CapabilityCard theme={currentTheme}>
-                    <CapabilityIcon theme={currentTheme}>
-                      {capability.icon}
-                    </CapabilityIcon>
-                    <CapabilityTitle theme={currentTheme}>{capability.title}</CapabilityTitle>
-                    <CapabilityDescription theme={currentTheme}>
-                      {capability.description}
-                    </CapabilityDescription>
-                  </CapabilityCard>
-                </motion.div>
-              ))}
-            </CapabilitiesGrid>
-          </CapabilitiesSection>
+          <Heading theme={theme}>
+            The expertise your business needs.
+            <br />
+            Calibrated to what you can use.
+          </Heading>
         </motion.div>
 
-        {/* Training & Skill Building */}
-        <motion.div
+        <Subtitle theme={theme}>
+          Fractional doesn't mean part-time commitment. It means you get a senior leader —
+          fully engaged, fully accountable — who works with your team, your vendors, and your
+          partners to drive transformation. We don't replace your people.{' '}
+          <BoldSpan>We make them more effective.</BoldSpan>
+        </Subtitle>
+
+        {/* CDO + CAiO Cards */}
+        <CardsRow>
+          {services.map((svc, i) => (
+            <ServiceCard
+              key={i}
+              $accentColor={svc.accentColor}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.12, duration: 0.5 }}
+            >
+              <CardLabel $color={svc.labelColor}>{svc.label}</CardLabel>
+              <CardTitle theme={theme}>{svc.title}</CardTitle>
+              <CardSubtitle theme={theme}>{svc.subtitle}</CardSubtitle>
+
+              <FeatureList>
+                {svc.features.map((f, idx) => (
+                  <FeatureItem key={idx} $color={svc.accentColor} theme={theme}>
+                    {f}
+                  </FeatureItem>
+                ))}
+              </FeatureList>
+
+              <IdealWhen theme={theme}>
+                <IdealLabel>Ideal when: </IdealLabel>
+                {svc.ideal}
+              </IdealWhen>
+            </ServiceCard>
+          ))}
+        </CardsRow>
+
+        {/* Engagement Timeline */}
+        <TimelineBox
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.4 }}
+          transition={{ duration: 0.5 }}
         >
-          <TrainingSection theme={currentTheme}>
-            <TrainingHeader>
-              <TrainingTitle theme={currentTheme}>
-                Training & <span>Skill Building</span>
-              </TrainingTitle>
-              <TrainingDescription theme={currentTheme}>
-                Build lasting capability in your organization through practical, results-oriented training programs
-              </TrainingDescription>
-            </TrainingHeader>
+          <TimelineHeading theme={theme}>How an Engagement Typically Works</TimelineHeading>
 
-            <TrainingGrid>
-              {trainingPrograms.map((program, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <TrainingCard theme={currentTheme}>
-                    <TrainingCardTitle theme={currentTheme}>{program.title}</TrainingCardTitle>
-                    <TrainingCardDescription theme={currentTheme}>
-                      {program.description}
-                    </TrainingCardDescription>
-                  </TrainingCard>
-                </motion.div>
-              ))}
-            </TrainingGrid>
-          </TrainingSection>
-        </motion.div>
-
-        {/* CTA */}
-        <CTAContainer>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.5 }}
-          >
-            <PrimaryButton href="#contact" theme={currentTheme}>
-              Discuss Your Transformation Needs
-              <ArrowRight size={20} />
-            </PrimaryButton>
-          </motion.div>
-        </CTAContainer>
-      </Container>
-    </SectionContainer>
+          {timeline.map((row, i) => (
+            <TimelineRow key={i}>
+              <TimeLabel $color={row.color} theme={theme}>
+                {row.label}
+              </TimeLabel>
+              <TimeDash>—</TimeDash>
+              <TimeDesc theme={theme}>
+                {row.text} <TimeBold>{row.bold}</TimeBold>
+              </TimeDesc>
+            </TimelineRow>
+          ))}
+        </TimelineBox>
+      </Inner>
+    </Section>
   );
 };
 
