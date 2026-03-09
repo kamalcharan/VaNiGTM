@@ -309,15 +309,15 @@ const CTAButton = styled(motion.a)`
 const signs = [
   {
     num: '01',
-    text: <><strong>Employees have ChatGPT Plus</strong> but use it for spell check.</>,
+    text: <>Consultants <strong>design the strategy and disappear.</strong> Execution is left to a team that wasn't part of designing it.</>,
   },
   {
     num: '02',
-    text: <>The <strong>"AI initiative" lives in one department</strong> and nowhere else.</>,
+    text: <>Vendors <strong>deliver the system and close the ticket.</strong> Adoption, change, and capability are someone else's problem.</>,
   },
   {
     num: '03',
-    text: <>Leadership talks transformation but <strong>can't name one workflow that changed.</strong></>,
+    text: <>Leadership <strong>approves the initiative but never owns the outcome.</strong> So when it stalls, nobody is accountable.</>,
   },
 ];
 
@@ -342,30 +342,34 @@ const WhyWeExistSection: React.FC = () => {
               </div>
             </Byline>
             <Heading theme={theme}>
-              I built AI systems that clients never fully used.
+              Good strategies kept dying after I left the room.
               <br />
-              <em>That failure changed everything.</em>
+              <em>That became Vikuna.</em>
             </Heading>
             <LeftNote theme={theme}>
-              The most important lesson in 24 years wasn't from a success. It was from
-              sitting quietly and watching a client's team work — and realising the gap
-              between what we built and how people actually operated.
+              24 years. Dozens of engagements across healthcare, pharma, and manufacturing.
+              The technology worked. The roadmaps were sound. But six months later — too
+              often — nothing had actually changed.
             </LeftNote>
           </LeftColumn>
 
           {/* Right – narrative + signs + realization + CTA */}
           <RightColumn>
             <Para theme={theme}>
-              The tech was solid. The results were measurable. But adoption? Minimal.{' '}
-              <strong>It bothered me for months.</strong>
+              A hospital in Hyderabad digitised their patient workflows. Nurses kept using
+              the paper register. A pharma company built a data platform their leadership
+              had asked for. The reports still came from someone's Excel. A manufacturer
+              installed IoT sensors across three plants. The maintenance team still called
+              each other on WhatsApp.
             </Para>
             <Para theme={theme}>
-              Until I sat with one client and just watched how his team actually worked
-              day to day. I didn't consult. I didn't present. I just watched.
+              <strong><u>Not one of these was a technology failure.</u></strong>{' '}
+              The systems worked. The problem was that nobody stayed long enough to make
+              them work for the people who had to use them every day.
             </Para>
 
             <SignsBlock>
-              <SignsLabel>3 signs a company's AI adoption is silently failing</SignsLabel>
+              <SignsLabel>The pattern I kept seeing — across every industry</SignsLabel>
               <SignsGrid>
                 {signs.map((s, i) => (
                   <Sign
@@ -384,23 +388,23 @@ const WhyWeExistSection: React.FC = () => {
 
             <RealizationBlock>
               <RealizationBig theme={theme}>
-                None of it was a tools problem.
+                Transformation doesn't fail in the boardroom.
                 <br />
-                <span>It was a training problem.</span>
+                <span>It fails in the six months after.</span>
               </RealizationBig>
               <RealizationText theme={theme}>
-                They were being taught <strong>what AI is</strong> — not{' '}
-                <strong>how to use it in their actual job tomorrow morning.</strong> That
-                one realisation completely changed how we build and deliver everything at
-                Vikuna. We don't start with technology. We start with how your people
-                actually work. Then we build AI into that — not on top of it.
+                Vikuna exists to close that gap. We don't hand over a roadmap and disappear.
+                We don't deliver a system and raise an invoice.{' '}
+                <strong>We stay — through design, through delivery, through adoption — until
+                the organisation can run it without us.</strong>{' '}
+                That's not a methodology. That's a commitment.
               </RealizationText>
             </RealizationBlock>
 
             <CTABlock>
               <CTAQuestion theme={theme}>
-                Is your company solving the <em>tools problem</em> or the{' '}
-                <em>training problem</em> right now?
+                Who in your organisation is accountable for transformation
+                six months from now?
               </CTAQuestion>
               <CTAButton
                 href="#contact"
@@ -408,7 +412,7 @@ const WhyWeExistSection: React.FC = () => {
                 whileHover={{ y: -2 }}
                 transition={{ duration: 0.15 }}
               >
-                Let's find out — Free Assessment →
+                Let's have that conversation →
               </CTAButton>
             </CTABlock>
           </RightColumn>
