@@ -22,11 +22,16 @@ const safeFont = (theme: any, key: 'fontFamily' | 'headingFontFamily'): string =
   return val || "'DM Sans', sans-serif";
 };
 
+// Light-background ink colors (from mockup CSS variables)
+const INK = '#0A0F1E';
+const INK_SOFT = '#2D3450';
+const PAPER_WARM = '#EEEAE0';
+
 // ─── Styled Components ─────────────────────────────────────────
 
-const Section = styled.section<{ theme: any }>`
+const Section = styled.section`
   padding: 100px 60px;
-  background: ${props => safeColor(props.theme, 'colors.background.warm', '#EEEAE0')};
+  background: ${PAPER_WARM};
 
   @media (max-width: 768px) {
     padding: 60px 24px;
@@ -62,15 +67,15 @@ const Headline = styled(motion.h2)<{ theme: any }>`
   line-height: 1.1;
   max-width: 600px;
   margin-bottom: 60px;
-  color: ${props => safeColor(props.theme, 'colors.text.primary', '#0A0F1E')};
+  color: ${INK};
 `;
 
-const ProblemGrid = styled(motion.div)<{ theme: any }>`
+const ProblemGrid = styled(motion.div)`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 2px;
   margin-bottom: 52px;
-  border: 2px solid ${props => safeColor(props.theme, 'colors.text.primary', '#0A0F1E')};
+  border: 2px solid ${INK};
   border-radius: 8px;
   overflow: hidden;
 
@@ -79,16 +84,13 @@ const ProblemGrid = styled(motion.div)<{ theme: any }>`
   }
 `;
 
-const ProblemCol = styled.div<{ theme: any; isFirst?: boolean }>`
-  background: ${props =>
-    props.isFirst
-      ? safeColor(props.theme, 'colors.primary.main', '#0A0F1E')
-      : safeColor(props.theme, 'colors.common.white', '#FFFFFF')};
+const ProblemCol = styled.div<{ theme: any; $isFirst?: boolean }>`
+  background: ${props => (props.$isFirst ? INK : '#FFFFFF')};
   padding: 36px 32px;
   position: relative;
 `;
 
-const ColLabel = styled.div<{ theme: any; isFirst?: boolean }>`
+const ColLabel = styled.div<{ theme: any; $isFirst?: boolean }>`
   font-family: ${props => safeFont(props.theme, 'headingFontFamily')};
   font-size: 11px;
   font-weight: 700;
@@ -96,34 +98,29 @@ const ColLabel = styled.div<{ theme: any; isFirst?: boolean }>`
   text-transform: uppercase;
   margin-bottom: 16px;
   color: ${props =>
-    props.isFirst
+    props.$isFirst
       ? safeColor(props.theme, 'colors.secondary.light', '#FF5A22')
-      : safeColor(props.theme, 'colors.text.secondary', '#2D3450')};
+      : INK_SOFT};
 `;
 
-const ColHeading = styled.h3<{ theme: any; isFirst?: boolean }>`
+const ColHeading = styled.h3<{ theme: any; $isFirst?: boolean }>`
   font-family: ${props => safeFont(props.theme, 'headingFontFamily')};
   font-size: 18px;
   font-weight: 700;
   margin-bottom: 16px;
   line-height: 1.3;
-  color: ${props =>
-    props.isFirst
-      ? safeColor(props.theme, 'colors.common.white', '#FFFFFF')
-      : safeColor(props.theme, 'colors.text.primary', '#0A0F1E')};
+  color: ${props => (props.$isFirst ? '#FFFFFF' : INK)};
 `;
 
-const ColText = styled.p<{ theme: any; isFirst?: boolean }>`
+const ColText = styled.p<{ $isFirst?: boolean }>`
+  font-family: ${props => "'DM Sans', sans-serif"};
   font-size: 14px;
   line-height: 1.7;
-  color: ${props =>
-    props.isFirst
-      ? 'rgba(255,255,255,0.55)'
-      : safeColor(props.theme, 'colors.text.secondary', '#2D3450')};
+  color: ${props => (props.$isFirst ? 'rgba(255,255,255,0.55)' : INK_SOFT)};
 `;
 
 const OutcomeBar = styled(motion.div)<{ theme: any }>`
-  background: ${props => safeColor(props.theme, 'colors.primary.main', '#0A0F1E')};
+  background: ${props => safeColor(props.theme, 'colors.primary.main', INK)};
   border-radius: 8px;
   padding: 36px 40px;
   display: flex;
@@ -143,6 +140,7 @@ const OutcomeIcon = styled.span`
 `;
 
 const OutcomeText = styled.p`
+  font-family: 'DM Sans', sans-serif;
   font-size: 17px;
   font-weight: 400;
   line-height: 1.6;
@@ -200,7 +198,7 @@ const ProblemSection: React.FC = () => {
   const { currentTheme } = useTheme();
 
   return (
-    <Section theme={currentTheme} id="why">
+    <Section id="why">
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -215,12 +213,12 @@ const ProblemSection: React.FC = () => {
           is just expensive fiction.
         </Headline>
 
-        <ProblemGrid variants={itemVariants} theme={currentTheme}>
+        <ProblemGrid variants={itemVariants}>
           {problems.map((p) => (
-            <ProblemCol key={p.label} theme={currentTheme} isFirst={p.isFirst}>
-              <ColLabel theme={currentTheme} isFirst={p.isFirst}>{p.label}</ColLabel>
-              <ColHeading theme={currentTheme} isFirst={p.isFirst}>{p.heading}</ColHeading>
-              <ColText theme={currentTheme} isFirst={p.isFirst}>{p.text}</ColText>
+            <ProblemCol key={p.label} theme={currentTheme} $isFirst={p.isFirst}>
+              <ColLabel theme={currentTheme} $isFirst={p.isFirst}>{p.label}</ColLabel>
+              <ColHeading theme={currentTheme} $isFirst={p.isFirst}>{p.heading}</ColHeading>
+              <ColText $isFirst={p.isFirst}>{p.text}</ColText>
             </ProblemCol>
           ))}
         </ProblemGrid>
