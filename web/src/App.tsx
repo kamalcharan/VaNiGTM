@@ -7,6 +7,7 @@ import HeroSectionNew from './components/vikuna/HeroSectionNew';
 import ProblemSection from './components/vikuna/ProblemSection';
 import DifferentiatorSection from './components/vikuna/DifferentiatorSection';
 import WhyWeExistSection from './components/vikuna/WhyWeExistSection';
+import WhatChangesSection from './components/vikuna/WhatChangesSection';
 import IndustriesBanner from './components/vikuna/IndustriesBanner';
 import ConsultingServices from './components/vikuna/ConsultingServices';
 import ProductDevelopmentServices from './components/vikuna/ProductDevelopmentServices';
@@ -33,6 +34,9 @@ function App() {
 
         {/* Founder Story - Why We Exist */}
         <WhyWeExistSection />
+
+        {/* What Changes - Transformation case studies */}
+        <WhatChangesSection />
 
         {/* Industries Banner - Quick Credibility */}
         <IndustriesBanner />
