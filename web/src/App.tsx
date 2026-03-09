@@ -10,6 +10,7 @@ import WhyWeExistSection from './components/vikuna/WhyWeExistSection';
 import WhatChangesSection from './components/vikuna/WhatChangesSection';
 import IndustriesBanner from './components/vikuna/IndustriesBanner';
 import ConsultingServices from './components/vikuna/ConsultingServices';
+import TrainingSkillBuilding from './components/vikuna/TrainingSkillBuilding';
 import ProductDevelopmentServices from './components/vikuna/ProductDevelopmentServices';
 import CaseStudies from './components/vikuna/CaseStudies';
 import InlineLeadCapture from './components/vikuna/InlineLeadCapture';
@@ -41,10 +42,13 @@ function App() {
         {/* Industries Banner - Quick Credibility */}
         <IndustriesBanner />
 
-        {/* Service #1: Consulting Services (CDO/CAiO + Training) */}
+        {/* Service 01: Fractional Leadership */}
         <ConsultingServices />
 
-        {/* Service #2: Product Development (MVP + Products We've Developed) */}
+        {/* Service 02: Training & Skill Building */}
+        <TrainingSkillBuilding />
+
+        {/* Service #3: Product Development (MVP + Products We've Developed) */}
         <ProductDevelopmentServices />
 
         {/* Transformation Success Stories - Proves Both Services */}
