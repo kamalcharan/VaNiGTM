@@ -1,7 +1,6 @@
 // src/components/vikuna/AssessmentPage.tsx
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
 import styled, { keyframes, css } from 'styled-components';
 
 // ── DATA ──────────────────────────────────────────────────────────────
@@ -337,29 +336,6 @@ const PageWrapper = styled.div`
   color: #fff;
   min-height: 100vh;
   overflow-x: hidden;
-`;
-
-const Nav = styled.nav`
-  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 48px;
-  background: rgba(8,12,26,0.85); backdrop-filter: blur(16px);
-  border-bottom: 1px solid ${borderDim};
-  @media (max-width: 900px) { padding: 16px 24px; }
-`;
-
-const NavLogo = styled(Link)`
-  font-family: 'Fraunces', serif; font-weight: 800;
-  font-size: 18px; letter-spacing: -0.5px;
-  color: #fff; text-decoration: none;
-  span { color: #E8420A; }
-`;
-
-const NavBack = styled(Link)`
-  font-size: 13px; color: rgba(255,255,255,0.4);
-  text-decoration: none; display: flex; align-items: center; gap: 6px;
-  transition: color 0.2s;
-  &:hover { color: rgba(255,255,255,0.8); }
 `;
 
 // ── LANDING ──
@@ -876,12 +852,6 @@ export default function AssessmentPage() {
 
   return (
     <PageWrapper>
-      {/* NAV */}
-      <Nav>
-        <NavLogo to="/">VIKU<span>NA</span></NavLogo>
-        <NavBack to="/">&larr; Back to Vikuna</NavBack>
-      </Nav>
-
       {/* LANDING */}
       {phase === 'landing' && (
         <LandingSection>

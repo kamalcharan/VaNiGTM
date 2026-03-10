@@ -24,7 +24,6 @@ import AssessmentPage from './components/vikuna/AssessmentPage';
 function HomePage() {
   return (
     <>
-      <Navbar transparent={true} />
       <HeroSectionNew />
       <ProblemSection />
       <DifferentiatorSection />
@@ -49,6 +48,7 @@ function App() {
     <ThemeProvider initialTheme={getActiveTheme()}>
       <SEOHead />
       <div className="app">
+        <Navbar transparent={true} />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/assessment" element={<AssessmentPage />} />
