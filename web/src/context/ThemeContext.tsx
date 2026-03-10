@@ -1,10 +1,11 @@
 // src/context/ThemeContext.tsx
 import React, { createContext, useState, ReactNode } from 'react';
 import { Theme } from '../config/theme/types';
-import { getActiveTheme, getThemeByName } from '../config/theme/themeRegistry';
+import { getActiveTheme } from '../config/theme/themeRegistry';
 
 interface ThemeContextType {
   currentTheme: Theme;
+  theme: Theme;
   setTheme: (theme: Theme) => void;
 }
 
@@ -12,6 +13,7 @@ const activeTheme = getActiveTheme();
 
 export const ThemeContext = createContext<ThemeContextType>({
   currentTheme: activeTheme,
+  theme: activeTheme,
   setTheme: () => {},
 });
 
@@ -31,7 +33,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   };
 
   return (
-    <ThemeContext.Provider value={{ currentTheme, setTheme }}>
+    <ThemeContext.Provider value={{ currentTheme, theme: currentTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );
