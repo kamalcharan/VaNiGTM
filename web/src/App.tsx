@@ -58,12 +58,8 @@ function App() {
         {/* Success Stories */}
         <CaseStudies />
 
-        {/* Lead Capture - After Value is Clear */}
-        <InlineLeadCapture
-          headline="Ready to Start Your Transformation Journey?"
-          subheadline="Get a free 30-minute consultation to discuss your specific needs."
-          buttonText="Schedule Consultation"
-        />
+        {/* Final CTA */}
+        <InlineLeadCapture />
 
         {/* Footer */}
         <Footer />

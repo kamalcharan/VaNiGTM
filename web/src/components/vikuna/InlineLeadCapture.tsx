@@ -1,249 +1,155 @@
 // src/components/vikuna/InlineLeadCapture.tsx
-import React, { useState } from 'react';
+import React from 'react';
+import { motion } from 'framer-motion';
 import styled from 'styled-components';
-import { ArrowRight, Download, CheckCircle } from 'lucide-react';
 import useTheme from '../../hooks/useTheme';
 
-const safeColor = (theme: any, path: string, fallback: string = '#000000'): string => {
-  const parts = path.split('.');
-  let current = theme;
-  for (const part of parts) {
-    if (current === undefined || current === null) return fallback;
-    current = current[part];
+const safeFont = (theme: any, key: 'fontFamily' | 'headingFontFamily'): string => {
+  const val = theme?.typography?.[key];
+  if (key === 'headingFontFamily') {
+    return val || theme?.typography?.fontFamily || "'DM Sans', sans-serif";
   }
-  return current || fallback;
+  return val || "'DM Sans', sans-serif";
 };
 
-const Container = styled.div`
-  background: linear-gradient(135deg,
-    ${props => safeColor(props.theme, 'colors.primary.main', '#39d2c0')} 0%,
-    ${props => safeColor(props.theme, 'colors.primary.dark', '#1aaa99')} 100%
-  );
-  padding: 60px 24px;
-  margin: 80px 0;
-  position: relative;
-  overflow: hidden;
+// ─── Color tokens ────────────────────────────────────────────
+const INK = '#0A0F1E';
+const WHITE = '#FFFFFF';
+const ACCENT_SOFT = '#FF6B35';
+const TEAL_LIGHT = '#12A090';
 
-  &::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -10%;
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-  }
-`;
+// ─── Styled Components ──────────────────────────────────────
 
-const Content = styled.div`
-  max-width: 800px;
-  margin: 0 auto;
+const Section = styled.section`
+  background: ${INK};
   text-align: center;
-  position: relative;
-  z-index: 1;
-`;
-
-const Icon = styled.div`
-  width: 64px;
-  height: 64px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 24px;
-
-  svg {
-    width: 32px;
-    height: 32px;
-    color: white;
-  }
-`;
-
-const Headline = styled.h3`
-  font-size: clamp(1.75rem, 3vw, 2.25rem);
-  font-weight: 700;
-  color: white;
-  margin-bottom: 12px;
-  line-height: 1.2;
-`;
-
-const Subheadline = styled.p`
-  font-size: 1.125rem;
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 32px;
-  line-height: 1.6;
-`;
-
-const Form = styled.form<{ $isSubmitted: boolean }>`
-  display: ${props => props.$isSubmitted ? 'none' : 'flex'};
-  gap: 12px;
-  max-width: 600px;
-  margin: 0 auto 16px;
+  padding: 120px 60px;
 
   @media (max-width: 768px) {
-    flex-direction: column;
+    padding: 80px 24px;
   }
 `;
 
-const Input = styled.input`
-  flex: 1;
-  padding: 16px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  background: white;
-  color: ${props => safeColor(props.theme, 'colors.text.primary', '#1a1f24')};
-
-  &::placeholder {
-    color: ${props => safeColor(props.theme, 'colors.text.disabled', '#95a1ac')};
-  }
-
-  &:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
-  }
+const Heading = styled.h2`
+  font-family: ${props => safeFont(props.theme, 'headingFontFamily')};
+  font-size: clamp(32px, 4vw, 56px);
+  font-weight: 800;
+  letter-spacing: -2px;
+  color: ${WHITE};
+  margin-bottom: 16px;
+  line-height: 1.05;
 `;
 
-const SubmitButton = styled.button`
-  padding: 16px 32px;
-  background: rgba(255, 255, 255, 0.9);
-  color: ${props => safeColor(props.theme, 'colors.secondary.main', '#FF6F61')};
+const AccentText = styled.em`
+  font-style: normal;
+  color: ${ACCENT_SOFT};
+`;
+
+const Subtitle = styled.p`
+  font-size: 17px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 44px;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.7;
+  font-family: ${props => safeFont(props.theme, 'fontFamily')};
+`;
+
+const CTAButton = styled.a`
+  display: inline-block;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 16px 36px;
+  background: ${ACCENT_SOFT};
+  color: ${WHITE};
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
+  border-radius: 6px;
+  text-decoration: none;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-  transition: all 0.3s ease;
+  transition: all 0.2s;
+  font-family: ${props => safeFont(props.theme, 'fontFamily')};
 
   &:hover {
-    background: white;
+    background: #e55a20;
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-  }
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  @media (max-width: 768px) {
-    width: 100%;
-    justify-content: center;
+    box-shadow: 0 8px 24px rgba(255, 107, 53, 0.3);
   }
 `;
 
-const TrustBadge = styled.div`
-  font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.8);
+const TrustBadges = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+`;
+
+const TrustItem = styled.span`
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.5px;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
+  font-family: ${props => safeFont(props.theme, 'fontFamily')};
 
-  svg {
-    width: 14px;
-    height: 14px;
+  &::before {
+    content: '·';
+    color: ${TEAL_LIGHT};
   }
 `;
 
-const SuccessMessage = styled.div`
-  text-align: center;
-  color: white;
+// ─── Component ───────────────────────────────────────────────
 
-  svg {
-    width: 48px;
-    height: 48px;
-    margin-bottom: 16px;
-  }
-
-  h4 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-  }
-
-  p {
-    font-size: 1rem;
-    opacity: 0.9;
-  }
-`;
-
-interface InlineLeadCaptureProps {
-  headline?: string;
-  subheadline?: string;
-  buttonText?: string;
-  placeholder?: string;
-  icon?: React.ReactNode;
-}
-
-const InlineLeadCapture: React.FC<InlineLeadCaptureProps> = ({
-  headline = "Ready to Transform Your Business with AI?",
-  subheadline = "Get your free AI Readiness Scorecard and personalized recommendations.",
-  buttonText = "Get My Scorecard",
-  placeholder = "Enter your work email",
-  icon = <Download />
-}) => {
-  const [email, setEmail] = useState('');
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const { currentTheme } = useTheme();
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // TODO: Send to your email service/CRM
-    console.log('Lead captured:', email);
-
-    setIsSubmitted(true);
-
-    // Reset after 5 seconds
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setEmail('');
-    }, 5000);
-  };
+const InlineLeadCapture: React.FC = () => {
+  const { theme } = useTheme();
 
   return (
-    <Container theme={currentTheme}>
-      <Content>
-        {!isSubmitted ? (
-          <>
-            <Icon>{icon}</Icon>
-            <Headline>{headline}</Headline>
-            <Subheadline>{subheadline}</Subheadline>
+    <Section id="contact">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+      >
+        <Heading theme={theme}>
+          Ready to stop planning
+          <br />
+          and start <AccentText>transforming?</AccentText>
+        </Heading>
+      </motion.div>
 
-            <Form onSubmit={handleSubmit} $isSubmitted={isSubmitted}>
-              <Input
-                type="email"
-                placeholder={placeholder}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                theme={currentTheme}
-              />
-              <SubmitButton type="submit" theme={currentTheme}>
-                {buttonText}
-                <ArrowRight />
-              </SubmitButton>
-            </Form>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.15, duration: 0.4 }}
+      >
+        <Subtitle theme={theme}>
+          One conversation. No obligation. We'll tell you honestly if we're the right fit —
+          and if we're not, we'll point you in the right direction.
+        </Subtitle>
+      </motion.div>
 
-            <TrustBadge>
-              🔒 100% Secure • No Spam • Unsubscribe Anytime
-            </TrustBadge>
-          </>
-        ) : (
-          <SuccessMessage>
-            <CheckCircle />
-            <h4>Thank You!</h4>
-            <p>Check your email for your AI Readiness Scorecard.</p>
-          </SuccessMessage>
-        )}
-      </Content>
-    </Container>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.25, duration: 0.4 }}
+      >
+        <CTAButton href="#" theme={theme}>
+          Book Your Free Strategy Call
+        </CTAButton>
+
+        <TrustBadges>
+          <TrustItem theme={theme}>100% Confidential</TrustItem>
+          <TrustItem theme={theme}>No Sales Pitch</TrustItem>
+          <TrustItem theme={theme}>Senior Transformation Expert on Every Call</TrustItem>
+          <TrustItem theme={theme}>No Obligation</TrustItem>
+        </TrustBadges>
+      </motion.div>
+    </Section>
   );
 };
 
