@@ -113,7 +113,7 @@ const ColHeading = styled.h3<{ theme: any; $isFirst?: boolean }>`
 `;
 
 const ColText = styled.p<{ $isFirst?: boolean }>`
-  font-family: ${props => "'DM Sans', sans-serif"};
+  font-family: 'DM Sans', sans-serif;
   font-size: 14px;
   line-height: 1.7;
   color: ${props => (props.$isFirst ? 'rgba(255,255,255,0.55)' : INK_SOFT)};

@@ -14,11 +14,9 @@ const safeFont = (theme: any, key: 'fontFamily' | 'headingFontFamily'): string =
 
 // ─── Color tokens ────────────────────────────────────────────
 const INK = '#0A0F1E';
-const INK_SOFT = '#2D3450';
 const WHITE = '#FFFFFF';
 const TEAL = '#12A090';
 const GOLD = '#C9973A';
-const ACCENT = '#E8420A';
 
 // ─── Styled Components ──────────────────────────────────────
 
