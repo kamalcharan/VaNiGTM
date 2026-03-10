@@ -3,310 +3,271 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import useTheme from '../../hooks/useTheme';
-import { ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 
-// Helper function to safely access theme properties
-const safeColor = (theme: any, path: string, fallback: string = '#000000'): string => {
-  const parts = path.split('.');
-  let current = theme;
-  
-  for (const part of parts) {
-    if (current === undefined || current === null) return fallback;
-    current = current[part];
+const safeFont = (theme: any, key: 'fontFamily' | 'headingFontFamily'): string => {
+  const val = theme?.typography?.[key];
+  if (key === 'headingFontFamily') {
+    return val || theme?.typography?.fontFamily || "'DM Sans', sans-serif";
   }
-  
-  return current || fallback;
+  return val || "'DM Sans', sans-serif";
 };
 
-// Styled components
-const SectionContainer = styled.section`
-  padding: 5rem 0;
-  background-color: ${props => safeColor(props.theme, 'colors.background.default', '#F9FAFB')};
+// ─── Color tokens ────────────────────────────────────────────
+const INK = '#0A0F1E';
+const INK_SOFT = '#2D3450';
+const PAPER = '#F7F6F2';
+const WHITE = '#FFFFFF';
+const TEAL = '#12A090';
+const ACCENT = '#E8420A';
+const GOLD = '#C9973A';
+const BORDER = 'rgba(10,15,30,0.1)';
+
+// ─── Styled Components ──────────────────────────────────────
+
+const Section = styled.section`
+  background: ${WHITE};
+  padding: 80px 60px;
+
+  @media (max-width: 768px) {
+    padding: 48px 24px;
+  }
 `;
 
-const Container = styled.div`
+const Inner = styled.div`
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 1rem;
 `;
 
-const SectionHeader = styled.div`
-  text-align: center;
-  max-width: 48rem;
-  margin: 0 auto 4rem auto;
-`;
+const SectionLabel = styled.div`
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: ${TEAL};
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 
-const SectionTitle = styled.h2`
-  font-size: 2.25rem;
-  @media (min-width: 768px) {
-    font-size: 2.5rem;
+  &::after {
+    content: '';
+    display: block;
+    width: 32px;
+    height: 1px;
+    background: ${TEAL};
   }
-  font-weight: ${props => props.theme?.typography?.fontWeightBold || 700};
-  margin-bottom: 1rem;
-  color: ${props => safeColor(props.theme, 'colors.text.primary', '#1F2937')};
 `;
 
-const SectionDescription = styled.p`
-  font-size: 1.125rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6B7280')};
-  line-height: 1.6;
+const Heading = styled.h2`
+  font-family: ${props => safeFont(props.theme, 'headingFontFamily')};
+  font-size: clamp(28px, 3vw, 44px);
+  font-weight: 800;
+  letter-spacing: -1.2px;
+  line-height: 1.15;
+  color: ${INK};
+  margin-bottom: 12px;
 `;
 
-const CaseStudiesGrid = styled.div`
+const Intro = styled.p`
+  font-size: 16px;
+  color: ${INK_SOFT};
+  margin-bottom: 48px;
+  font-family: ${props => safeFont(props.theme, 'fontFamily')};
+`;
+
+// ─── Case Cards ──────────────────────────────────────────────
+
+const CasesGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 2rem;
-  
-  @media (min-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  @media (min-width: 1024px) {
-    grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
   }
 `;
 
-interface CaseStudyCardProps {
-  $bgColor: string;
-}
-
-const CaseStudyCard = styled.div<CaseStudyCardProps>`
-  height: 100%;
-  border-radius: ${props => props.theme?.borderRadius?.large || '12px'};
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  background-color: ${props => {
-    switch(props.$bgColor) {
-      case 'bg-blue-50': return '#EFF6FF';
-      case 'bg-purple-50': return '#F5F3FF';
-      case 'bg-green-50': return '#ECFDF5';
-      default: return '#EFF6FF';
-    }
-  }};
-  transition: all 0.3s ease;
-  
-  &:hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    transform: translateY(-4px);
-  }
-`;
-
-const CardHeader = styled.div`
-  height: 3rem;
-  background-color: ${props => safeColor(props.theme, 'colors.background.paper', '#FFFFFF')};
+const CaseCard = styled(motion.div)`
+  border: 1px solid ${BORDER};
+  border-radius: 10px;
+  padding: 32px;
+  background: ${PAPER};
   position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.2s;
+
+  &:hover {
+    box-shadow: 0 8px 32px rgba(10, 15, 30, 0.08);
+    transform: translateY(-2px);
+  }
 `;
 
-const IndustryBadge = styled.div`
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
-  font-size: 0.75rem;
-  font-weight: ${props => props.theme?.typography?.fontWeightMedium || 600};
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  background-color: ${props => safeColor(props.theme, 'colors.primary.main', '#2563EB')};
-  color: ${props => safeColor(props.theme, 'colors.primary.contrastText', '#FFFFFF')};
+const IndustryBadge = styled.span<{ $bg: string; $color: string }>`
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 100px;
+  display: inline-block;
+  margin-bottom: 20px;
+  background: ${props => props.$bg};
+  color: ${props => props.$color};
 `;
 
-const CardContent = styled.div`
-  padding: 1.5rem;
+const CaseTitle = styled.h3`
+  font-family: ${props => safeFont(props.theme, 'headingFontFamily')};
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  line-height: 1.3;
+  color: ${INK};
+  margin-bottom: 10px;
 `;
 
-const CardTitle = styled.h3`
-  font-size: 1.25rem;
-  font-weight: ${props => props.theme?.typography?.fontWeightBold || 700};
-  color: ${props => safeColor(props.theme, 'colors.text.primary', '#1F2937')};
-  margin-bottom: 0.75rem;
+const CaseDesc = styled.p`
+  font-size: 14px;
+  color: ${INK_SOFT};
+  line-height: 1.7;
+  margin-bottom: 24px;
+  font-family: ${props => safeFont(props.theme, 'fontFamily')};
 `;
 
-const CardDescription = styled.p`
-  font-size: 1rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6B7280')};
-  margin-bottom: 1rem;
-  line-height: 1.6;
-`;
-
-const ClientInfo = styled.div`
-  font-size: 0.875rem;
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6B7280')};
-  margin-bottom: 1.5rem;
-`;
-
-const MetricsContainer = styled.div`
+const StatsRow = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: 20px;
+  margin-bottom: 24px;
 `;
 
-const MetricItem = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+const Stat = styled.div``;
+
+const StatNum = styled.div<{ $color: string }>`
+  font-family: ${props => safeFont(props.theme, 'headingFontFamily')};
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 4px;
+  color: ${props => props.$color};
 `;
 
-const MetricHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.875rem;
-  margin-bottom: 0.25rem;
+const StatLabel = styled.div`
+  font-size: 11px;
+  color: ${INK_SOFT};
+  font-family: ${props => safeFont(props.theme, 'fontFamily')};
 `;
 
-const MetricLabel = styled.span`
-  color: ${props => safeColor(props.theme, 'colors.text.secondary', '#6B7280')};
+const CaseLink = styled.a`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${INK_SOFT};
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s, gap 0.2s;
+
+  &:hover {
+    color: ${INK};
+    gap: 10px;
+  }
 `;
 
-const MetricValue = styled.span`
-  font-weight: ${props => props.theme?.typography?.fontWeightMedium || 600};
-  color: ${props => safeColor(props.theme, 'colors.text.primary', '#1F2937')};
-`;
+// ─── Data ────────────────────────────────────────────────────
 
-const CenterButtonContainer = styled.div`
-  text-align: center;
-  margin-top: 3rem;
-`;
+const cases = [
+  {
+    industry: 'Pharma',
+    badgeBg: 'rgba(11,123,107,0.1)',
+    badgeColor: TEAL,
+    title: 'MES Regulatory Compliance',
+    desc: 'Integrated Manufacturing Execution System bridging IT and pharma operations — FDA & CFR Part-11 compliant, unified quality assurance platform.',
+    stats: [
+      { num: '−65%', label: 'Development Time', color: ACCENT },
+      { num: '+42%', label: 'System Performance', color: TEAL },
+    ],
+  },
+  {
+    industry: 'Healthcare',
+    badgeBg: 'rgba(232,66,10,0.08)',
+    badgeColor: ACCENT,
+    title: 'AI-Powered Healthcare Platform',
+    desc: 'Redesigned data architecture for real-time analytics, AI/ML capabilities, and secure data sharing across a regional healthcare network.',
+    stats: [
+      { num: '−85%', label: 'Data Access Time', color: ACCENT },
+      { num: '+210%', label: 'Analytics Adoption', color: TEAL },
+    ],
+  },
+  {
+    industry: 'Manufacturing',
+    badgeBg: 'rgba(201,151,58,0.1)',
+    badgeColor: GOLD,
+    title: 'Industry 4.0 Digital Factory',
+    desc: 'End-to-end digitisation connecting IoT devices, mobile solutions, and cloud services across production, maintenance, and supply chain.',
+    stats: [
+      { num: '−73%', label: 'Downtime Reduction', color: ACCENT },
+      { num: '−45%', label: 'Maintenance Cost', color: ACCENT },
+    ],
+  },
+];
+
+// ─── Component ───────────────────────────────────────────────
 
 const CaseStudies: React.FC = () => {
-  const { currentTheme } = useTheme();
-  
-  const caseStudies = [
-    {
-      title: "MES Regulatory Compliance",
-      description: "Developed an integrated Manufacturing Execution System that streamlined production workflow while ensuring FDA & CFR part-11 regulatory compliance. The solution bridged IT and pharma operations, creating a unified platform for quality assurance and process management.",
-      client: "Leading Pharma CMO",
-      industry: "Pharma",
-      metrics: [
-        { label: "Development Time", value: "-65%", progress: 68, color: "bg-blue-600" },
-        { label: "System Performance", value: "+42%", progress: 75, color: "bg-green-600" }
-      ],
-      bgColor: "bg-blue-50"
-    },
-    {
-      title: "AI-Powered Healthcare Platform",
-      description: "Redesigned a healthcare provider's data architecture to support real-time analytics, AI/ML capabilities, and secure data sharing across the organization.",
-      client: "Regional Healthcare Network",
-      industry: "Healthcare",
-      metrics: [
-        { label: "Data Access Time", value: "-85%", progress: 85, color: "bg-blue-600" },
-        { label: "Analytics Adoption", value: "+210%", progress: 80, color: "bg-green-600" }
-      ],
-      bgColor: "bg-purple-50"
-    },
-    {
-      title: "Industry 4.0 Digital Factory",
-      description: "Transformed operations for a manufacturing OEM through an integrated digital platform connecting IoT devices, mobile solutions, and cloud services. Orchestrated end-to-end digitization across production, maintenance, and supply chain systems.",
-      client: "OEM for Water Generation Equipments",
-      industry: "Manufacturing",
-      metrics: [
-        { label: "Downtime Reduction", value: "-73%", progress: 73, color: "bg-blue-600" },
-        { label: "Maintenance Cost", value: "-45%", progress: 45, color: "bg-green-600" }
-      ],
-      bgColor: "bg-green-50"
-    }
-  ];
-
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.2
-      }
-    }
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
-  };
+  const { theme } = useTheme();
 
   return (
-    <SectionContainer id="case-studies" theme={currentTheme}>
-      <Container>
-        <SectionHeader>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <SectionTitle theme={currentTheme}>Transformation Success Stories</SectionTitle>
-          </motion.div>
+    <Section id="cases">
+      <Inner>
+        <SectionLabel>Success Stories</SectionLabel>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-          >
-            <SectionDescription theme={currentTheme}>
-              Real-world results from our holistic transformation approach
-            </SectionDescription>
-          </motion.div>
-        </SectionHeader>
-        
         <motion.div
-          variants={container}
-          initial="hidden"
-          whileInView="show"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
-          <CaseStudiesGrid>
-            {caseStudies.map((study, index) => (
-              <motion.div key={index} variants={item}>
-                <CaseStudyCard $bgColor={study.bgColor}>
-                  <CardHeader theme={currentTheme}>
-                    <IndustryBadge theme={currentTheme}>
-                      {study.industry}
-                    </IndustryBadge>
-                  </CardHeader>
-                  <CardContent>
-                    <CardTitle theme={currentTheme}>{study.title}</CardTitle>
-                    <CardDescription theme={currentTheme}>{study.description}</CardDescription>
-                    
-                    <ClientInfo theme={currentTheme}>{study.client}</ClientInfo>
-                    
-                    <MetricsContainer>
-                      {study.metrics.map((metric, idx) => (
-                        <MetricItem key={idx}>
-                          <MetricHeader>
-                            <MetricLabel theme={currentTheme}>{metric.label}</MetricLabel>
-                            <MetricValue theme={currentTheme}>{metric.value}</MetricValue>
-                          </MetricHeader>
-                          <Progress value={metric.progress} indicatorClassName={metric.color} />
-                        </MetricItem>
-                      ))}
-                    </MetricsContainer>
-                    
-                    <Button 
-                      variant="ghost"
-                      textColor={safeColor(currentTheme, 'colors.primary.main', '#2563EB')}
-                    >
-                      View Case Study <ArrowRight size={16} style={{ marginLeft: '0.5rem' }} />
-                    </Button>
-                  </CardContent>
-                </CaseStudyCard>
-              </motion.div>
-            ))}
-          </CaseStudiesGrid>
+          <Heading theme={theme}>
+            Real outcomes. Real clients.
+            <br />
+            Real numbers.
+          </Heading>
         </motion.div>
-        
-        <CenterButtonContainer>
-          <Button 
-            variant="outline"
-            style={{ 
-              borderColor: 'rgba(0, 0, 0, 0.2)',
-              color: safeColor(currentTheme, 'colors.text.primary', '#1F2937')
-            }}
-          >
-            View All Case Studies <ArrowRight size={16} style={{ marginLeft: '0.5rem' }} />
-          </Button>
-        </CenterButtonContainer>
-      </Container>
-    </SectionContainer>
+
+        <Intro theme={theme}>
+          Not projections. Not averages. Actual results from actual engagements.
+        </Intro>
+
+        <CasesGrid>
+          {cases.map((c, i) => (
+            <CaseCard
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1, duration: 0.4 }}
+            >
+              <IndustryBadge $bg={c.badgeBg} $color={c.badgeColor}>
+                {c.industry}
+              </IndustryBadge>
+              <CaseTitle theme={theme}>{c.title}</CaseTitle>
+              <CaseDesc theme={theme}>{c.desc}</CaseDesc>
+
+              <StatsRow>
+                {c.stats.map((s, idx) => (
+                  <Stat key={idx}>
+                    <StatNum $color={s.color} theme={theme}>
+                      {s.num}
+                    </StatNum>
+                    <StatLabel theme={theme}>{s.label}</StatLabel>
+                  </Stat>
+                ))}
+              </StatsRow>
+
+              <CaseLink href="#">View Case Study →</CaseLink>
+            </CaseCard>
+          ))}
+        </CasesGrid>
+      </Inner>
+    </Section>
   );
 };
 

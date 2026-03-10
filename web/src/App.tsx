@@ -52,10 +52,10 @@ function App() {
         {/* How We Work - Journey steps */}
         <HowWeWorkSection />
 
-        {/* Service #3: Product Development (MVP + Products We've Developed) */}
-        <ProductDevelopmentServices />
+        {/* Service #3: Product Development - hidden, not deleted */}
+        {/* <ProductDevelopmentServices /> */}
 
-        {/* Transformation Success Stories - Proves Both Services */}
+        {/* Success Stories */}
         <CaseStudies />
 
         {/* Lead Capture - After Value is Clear */}
