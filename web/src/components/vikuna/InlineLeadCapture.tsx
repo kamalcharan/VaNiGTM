@@ -15,7 +15,7 @@ const safeFont = (theme: any, key: 'fontFamily' | 'headingFontFamily'): string =
 // ─── Color tokens ────────────────────────────────────────────
 const INK = '#0A0F1E';
 const WHITE = '#FFFFFF';
-const ACCENT_SOFT = '#FF6B35';
+const ACCENT_SOFT = '#E8420A';
 const TEAL_LIGHT = '#12A090';
 
 // ─── Styled Components ──────────────────────────────────────
@@ -71,9 +71,9 @@ const CTAButton = styled.a`
   font-family: ${props => safeFont(props.theme, 'fontFamily')};
 
   &:hover {
-    background: #e55a20;
+    background: #FF5A22;
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(255, 107, 53, 0.3);
+    box-shadow: 0 8px 24px rgba(232, 66, 10, 0.3);
   }
 `;
 
@@ -138,7 +138,7 @@ const InlineLeadCapture: React.FC = () => {
         viewport={{ once: true }}
         transition={{ delay: 0.25, duration: 0.4 }}
       >
-        <CTAButton href="#" theme={theme}>
+        <CTAButton href="https://calendly.com/connect-vikuna/30min" target="_blank" rel="noopener noreferrer" theme={theme}>
           Book Your Free Strategy Call
         </CTAButton>
 
