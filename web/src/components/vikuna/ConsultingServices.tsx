@@ -357,8 +357,8 @@ const ConsultingServices: React.FC = () => {
           ))}
         </CardsRow>
 
-        {/* Engagement Timeline */}
-        <TimelineBox
+        {/* Engagement Timeline - hidden, not deleted */}
+        {/* <TimelineBox
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -377,7 +377,7 @@ const ConsultingServices: React.FC = () => {
               </TimeDesc>
             </TimelineRow>
           ))}
-        </TimelineBox>
+        </TimelineBox> */}
       </Inner>
     </Section>
   );
