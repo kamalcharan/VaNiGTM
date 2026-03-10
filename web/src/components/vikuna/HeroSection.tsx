@@ -324,9 +324,9 @@ const HeroSection: React.FC = () => {
           </Description>
 
           <ButtonContainer variants={itemVariants}>
-            <PrimaryButton 
-              theme={currentTheme} 
-              href="https://contractnest.vercel.app/leadforms/dtreadiness" >
+            <PrimaryButton
+              theme={currentTheme}
+              href="/assessment" >
               Assess Your Transformation Readiness
               <ArrowRight size={20} />
             </PrimaryButton>

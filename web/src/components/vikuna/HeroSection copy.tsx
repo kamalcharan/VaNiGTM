@@ -241,7 +241,7 @@ const HeroSection: React.FC = () => {
             </PrimaryButton>
             <SecondaryButton 
               theme={currentTheme} 
-              href="https://contractnest.vercel.app/leadforms/dtreadiness"
+              href="/assessment"
             >
               Digital Readiness Survey
             </SecondaryButton>

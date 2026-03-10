@@ -1,4 +1,7 @@
 {
+  "rewrites": [
+    { "source": "/((?!assets|favicon|.*\\..*).*)", "destination": "/index.html" }
+  ],
   "redirects": [
     {
       "source": "/bcl-contractnest",

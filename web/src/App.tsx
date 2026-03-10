@@ -1,52 +1,58 @@
 // src/App.tsx
 
+import { Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
+import { getActiveTheme } from './config/theme/themeRegistry';
 import Navbar from './components/vikuna/Navbar';
 import HeroSectionNew from './components/vikuna/HeroSectionNew';
+import ProblemSection from './components/vikuna/ProblemSection';
+import DifferentiatorSection from './components/vikuna/DifferentiatorSection';
+import WhyWeExistSection from './components/vikuna/WhyWeExistSection';
+import WhatChangesSection from './components/vikuna/WhatChangesSection';
 import IndustriesBanner from './components/vikuna/IndustriesBanner';
 import ConsultingServices from './components/vikuna/ConsultingServices';
-import ProductDevelopmentServices from './components/vikuna/ProductDevelopmentServices';
+import TrainingSkillBuilding from './components/vikuna/TrainingSkillBuilding';
+import HowWeWorkSection from './components/vikuna/HowWeWorkSection';
 import CaseStudies from './components/vikuna/CaseStudies';
 import InlineLeadCapture from './components/vikuna/InlineLeadCapture';
 import Footer from './components/vikuna/Footer';
 import StickyCTABar from './components/vikuna/StickyCTABar';
 import ExitIntentPopup from './components/vikuna/ExitIntentPopup';
 import SEOHead from './components/vikuna/SEOHead';
-import trustworthyTheme from './config/theme/themes/TrustworthyTheme';
+import AssessmentPage from './components/vikuna/AssessmentPage';
+
+function HomePage() {
+  return (
+    <>
+      <HeroSectionNew />
+      <ProblemSection />
+      <DifferentiatorSection />
+      <WhyWeExistSection />
+      <WhatChangesSection />
+      <IndustriesBanner />
+      <ConsultingServices />
+      <TrainingSkillBuilding />
+      <HowWeWorkSection />
+      {/* ProductDevelopmentServices hidden */}
+      <CaseStudies />
+      <InlineLeadCapture />
+      <Footer />
+      <StickyCTABar />
+      <ExitIntentPopup />
+    </>
+  );
+}
 
 function App() {
   return (
-    <ThemeProvider initialTheme={trustworthyTheme}>
+    <ThemeProvider initialTheme={getActiveTheme()}>
       <SEOHead />
       <div className="app">
         <Navbar transparent={true} />
-        <HeroSectionNew />
-
-        {/* Industries Banner - Quick Credibility */}
-        <IndustriesBanner />
-
-        {/* Service #1: Consulting Services (CDO/CAiO + Training) */}
-        <ConsultingServices />
-
-        {/* Service #2: Product Development (MVP + Products We've Developed) */}
-        <ProductDevelopmentServices />
-
-        {/* Transformation Success Stories - Proves Both Services */}
-        <CaseStudies />
-
-        {/* Lead Capture - After Value is Clear */}
-        <InlineLeadCapture
-          headline="Ready to Start Your Transformation Journey?"
-          subheadline="Get a free 30-minute consultation to discuss your specific needs."
-          buttonText="Schedule Consultation"
-        />
-
-        {/* Footer */}
-        <Footer />
-
-        {/* Fixed Elements */}
-        <StickyCTABar />
-        <ExitIntentPopup />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/assessment" element={<AssessmentPage />} />
+        </Routes>
       </div>
     </ThemeProvider>
   );

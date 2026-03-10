@@ -16,6 +16,7 @@ export interface TypographyStyle {
 
 export interface Typography {
   fontFamily: string;
+  headingFontFamily?: string;  // Optional serif/display font for headings
   fontSize: number;
   fontWeightLight: number;
   fontWeightRegular: number;

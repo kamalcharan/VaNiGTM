@@ -1,5 +1,6 @@
 // src/components/vikuna/Navbar.tsx
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import useTheme from '../../hooks/useTheme';
 
@@ -29,18 +30,19 @@ const NavbarContent = styled.div`
 const LogoContainer = styled.div`
   display: flex;
   align-items: center;
+  cursor: pointer;
 `;
 
 const LogoText = styled.h1`
   font-size: 1.75rem;
   font-weight: ${props => props.theme.typography.fontWeightBold};
-  color: ${props => props.theme.colors.primary.main};
+  color: #FFFFFF;
   margin: 0;
 `;
 
 const LogoSubText = styled.span`
   font-size: 0.875rem;
-  color: ${props => props.theme.colors.text.secondary};
+  color: rgba(255,255,255,0.6);
   margin-left: 0.5rem;
 `;
 
@@ -54,15 +56,15 @@ const NavLinks = styled.div`
   }
 `;
 
-const NavLink = styled.a`
+const NavLink = styled.a<{$isScrolled?: boolean}>`
   font-size: 0.875rem;
-  color: ${props => props.theme.colors.text.secondary};
+  color: ${props => props.$isScrolled ? props.theme.colors.text.secondary : 'rgba(255,255,255,0.7)'};
   text-decoration: none;
   transition: color 0.2s ease;
   position: relative;
-  
+
   &:hover {
-    color: ${props => props.theme.colors.primary.main};
+    color: ${props => props.$isScrolled ? props.theme.colors.primary.main : '#FFFFFF'};
   }
 `;
 
@@ -71,9 +73,9 @@ const DropdownContainer = styled.div`
   display: inline-block;
 `;
 
-const DropdownButton = styled.button`
+const DropdownButton = styled.button<{$isScrolled?: boolean}>`
   font-size: 0.875rem;
-  color: ${props => props.theme.colors.text.secondary};
+  color: ${props => props.$isScrolled ? props.theme.colors.text.secondary : 'rgba(255,255,255,0.7)'};
   background: none;
   border: none;
   cursor: pointer;
@@ -81,9 +83,9 @@ const DropdownButton = styled.button`
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  
+
   &:hover {
-    color: ${props => props.theme.colors.primary.main};
+    color: ${props => props.$isScrolled ? props.theme.colors.primary.main : '#FFFFFF'};
   }
 `;
 
@@ -199,6 +201,7 @@ const Navbar: React.FC<NavbarProps> = ({ transparent = true }) => {
   const [isServicesOpen, setIsServicesOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(!transparent);
   const { currentTheme } = useTheme();
+  const navigate = useNavigate();
 
   // Add scroll event listener
   useEffect(() => {
@@ -229,15 +232,16 @@ const Navbar: React.FC<NavbarProps> = ({ transparent = true }) => {
   return (
     <NavbarContainer theme={currentTheme} $isScrolled={isScrolled}>
       <NavbarContent>
-        <LogoContainer>
+        <LogoContainer onClick={() => navigate('/')}>
           <LogoText theme={currentTheme}>VIKUNA</LogoText>
-          <LogoSubText theme={currentTheme}>Technologies</LogoSubText>
+          <LogoSubText>Technologies</LogoSubText>
         </LogoContainer>
         
         <NavLinks>
           <DropdownContainer>
             <DropdownButton
               theme={currentTheme}
+              $isScrolled={isScrolled}
               onClick={toggleServices}
               onBlur={() => setTimeout(() => setIsServicesOpen(false), 200)}
             >
@@ -256,8 +260,8 @@ const Navbar: React.FC<NavbarProps> = ({ transparent = true }) => {
             </DropdownMenu>
           </DropdownContainer>
 
-          <NavLink href="#case-studies" theme={currentTheme}>Success Stories</NavLink>
-          <NavLink href="#contact" theme={currentTheme}>Contact</NavLink>
+          <NavLink href="#case-studies" theme={currentTheme} $isScrolled={isScrolled}>Success Stories</NavLink>
+          <NavLink href="#contact" theme={currentTheme} $isScrolled={isScrolled}>Contact</NavLink>
 
           <ConsultButton
             href="https://calendly.com/connect-vikuna/30min"
