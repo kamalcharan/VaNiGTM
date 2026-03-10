@@ -13,7 +13,6 @@ const safeFont = (theme: any, key: 'fontFamily' | 'headingFontFamily'): string =
 };
 
 // ─── Color tokens ────────────────────────────────────────────
-const INK = '#0A0F1E';
 const CREAM = '#FAF8F5';
 const TEXT_DARK = '#1A1A2E';
 const TEXT_MUTED = '#5A5A6E';
@@ -169,63 +168,7 @@ const IdealLabel = styled.span`
   color: ${TEXT_DARK};
 `;
 
-// ─── Engagement Timeline ─────────────────────────────────────
-
-const TimelineBox = styled(motion.div)`
-  background: ${INK};
-  border-radius: 12px;
-  padding: 40px 48px;
-
-  @media (max-width: 768px) {
-    padding: 32px 24px;
-  }
-`;
-
-const TimelineHeading = styled.h3`
-  font-family: ${props => safeFont(props.theme, 'headingFontFamily')};
-  font-size: 20px;
-  font-weight: 700;
-  color: #FFFFFF;
-  margin-bottom: 32px;
-  font-style: italic;
-`;
-
-const TimelineRow = styled.div`
-  display: flex;
-  align-items: baseline;
-  gap: 16px;
-  padding: 14px 0;
-
-  &:not(:last-child) {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  }
-`;
-
-const TimeLabel = styled.span<{ $color: string }>`
-  font-size: 13px;
-  font-weight: 700;
-  color: ${props => props.$color};
-  min-width: 80px;
-  flex-shrink: 0;
-  font-family: ${props => safeFont(props.theme, 'fontFamily')};
-`;
-
-const TimeDash = styled.span`
-  color: rgba(255, 255, 255, 0.2);
-  flex-shrink: 0;
-`;
-
-const TimeDesc = styled.span`
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.5);
-  line-height: 1.6;
-  font-family: ${props => safeFont(props.theme, 'fontFamily')};
-`;
-
-const TimeBold = styled.strong`
-  color: #FFFFFF;
-  font-weight: 700;
-`;
+// ─── Engagement Timeline (hidden, kept for future use) ───────
 
 // ─── Data ────────────────────────────────────────────────────
 
@@ -261,39 +204,6 @@ const services = [
     ],
     ideal:
       "You're being asked about AI but have no framework. We define governance, select the right tools, and ensure outcomes — not just demos.",
-  },
-];
-
-const timeline = [
-  {
-    label: 'Week 1–2',
-    color: TEAL,
-    text: 'Deep-dive discovery. We learn your business, your team, your existing vendor landscape.',
-    bold: 'No assumptions.',
-  },
-  {
-    label: 'Month 1',
-    color: CORAL,
-    text: 'Roadmap built. Quick wins identified.',
-    bold: 'Right vendors and partners aligned to the right problems.',
-  },
-  {
-    label: 'Month 2–3',
-    color: TEAL,
-    text: 'Execution in motion. We govern, guide, and unblock —',
-    bold: 'whoever is doing the building.',
-  },
-  {
-    label: 'Month 3+',
-    color: TEAL,
-    text: 'Measure outcomes. Iterate.',
-    bold: 'Transfer knowledge to your internal team progressively.',
-  },
-  {
-    label: 'Exit',
-    color: CORAL,
-    text: 'Your team can run it.',
-    bold: "That's always the goal. We leave you stronger, not dependent.",
   },
 ];
 
