@@ -319,10 +319,8 @@ const ChallengesSection: React.FC = () => {
                       <Legend />
                     </RadarChart>
                   </ResponsiveContainer>
-                  <AssessmentLink 
-                    href="https://contractnest.vercel.app/leadforms/dtreadiness" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
+                  <AssessmentLink
+                    href="/assessment"
                     theme={currentTheme}
                   >
                     Assess Your Digital Readiness →
