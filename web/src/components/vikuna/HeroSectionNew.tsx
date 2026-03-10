@@ -365,7 +365,7 @@ const HeroSectionNew: React.FC = () => {
             <Headline variants={itemVariants} theme={currentTheme}>
               Get C-Suite AI &amp; Digital Leadership
               <br />
-              Without the <em>$500K+ Salary</em>
+              Without the <em>₹1.5Cr+ Salary</em>
             </Headline>
 
             <SubText variants={itemVariants} theme={currentTheme}>

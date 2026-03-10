@@ -182,8 +182,8 @@ const problems = [
   },
   {
     label: 'Full-Time Exec Hire',
-    heading: <>$400K–$600K+<br />before results show.<br />High risk, slow start.</>,
-    text: "You spend six months recruiting, onboarding, and waiting. By the time they're up to speed, the window for quick wins has closed — and so has your budget.",
+    heading: <>₹1.2Cr–₹2Cr+ per year.<br />12 months before they're effective.<br />High risk, slow start.</>,
+    text: "Six months to hire. Six more to ramp. By the time your new CDO or CAiO is fully effective, the window for quick wins has closed — and the board is already asking questions.",
   },
   {
     label: 'Tech Vendors',
