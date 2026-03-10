@@ -338,7 +338,7 @@ const WhyWeExistSection: React.FC = () => {
               <Avatar theme={theme}>CK</Avatar>
               <div>
                 <FounderName>Charan Kamal</FounderName>
-                <FounderTitle>Founder & CEO, Vikuna Technologies</FounderTitle>
+                <FounderTitle>CAIo, Vikuna</FounderTitle>
               </div>
             </Byline>
             <Heading theme={theme}>
