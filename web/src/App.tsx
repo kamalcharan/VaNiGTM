@@ -1,5 +1,6 @@
 // src/App.tsx
 
+import { Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { getActiveTheme } from './config/theme/themeRegistry';
 import Navbar from './components/vikuna/Navbar';
@@ -12,61 +13,46 @@ import IndustriesBanner from './components/vikuna/IndustriesBanner';
 import ConsultingServices from './components/vikuna/ConsultingServices';
 import TrainingSkillBuilding from './components/vikuna/TrainingSkillBuilding';
 import HowWeWorkSection from './components/vikuna/HowWeWorkSection';
-import ProductDevelopmentServices from './components/vikuna/ProductDevelopmentServices';
 import CaseStudies from './components/vikuna/CaseStudies';
 import InlineLeadCapture from './components/vikuna/InlineLeadCapture';
 import Footer from './components/vikuna/Footer';
 import StickyCTABar from './components/vikuna/StickyCTABar';
 import ExitIntentPopup from './components/vikuna/ExitIntentPopup';
 import SEOHead from './components/vikuna/SEOHead';
+import AssessmentPage from './components/vikuna/AssessmentPage';
+
+function HomePage() {
+  return (
+    <>
+      <Navbar transparent={true} />
+      <HeroSectionNew />
+      <ProblemSection />
+      <DifferentiatorSection />
+      <WhyWeExistSection />
+      <WhatChangesSection />
+      <IndustriesBanner />
+      <ConsultingServices />
+      <TrainingSkillBuilding />
+      <HowWeWorkSection />
+      {/* ProductDevelopmentServices hidden */}
+      <CaseStudies />
+      <InlineLeadCapture />
+      <Footer />
+      <StickyCTABar />
+      <ExitIntentPopup />
+    </>
+  );
+}
 
 function App() {
   return (
     <ThemeProvider initialTheme={getActiveTheme()}>
       <SEOHead />
       <div className="app">
-        <Navbar transparent={true} />
-        <HeroSectionNew />
-
-        {/* The Problem - Why existing options fail */}
-        <ProblemSection />
-
-        {/* Our Approach - Iceberg differentiator */}
-        <DifferentiatorSection />
-
-        {/* Founder Story - Why We Exist */}
-        <WhyWeExistSection />
-
-        {/* What Changes - Transformation case studies */}
-        <WhatChangesSection />
-
-        {/* Industries Banner - Quick Credibility */}
-        <IndustriesBanner />
-
-        {/* Service 01: Fractional Leadership */}
-        <ConsultingServices />
-
-        {/* Service 02: Training & Skill Building */}
-        <TrainingSkillBuilding />
-
-        {/* How We Work - Journey steps */}
-        <HowWeWorkSection />
-
-        {/* Service #3: Product Development - hidden, not deleted */}
-        {/* <ProductDevelopmentServices /> */}
-
-        {/* Success Stories */}
-        <CaseStudies />
-
-        {/* Final CTA */}
-        <InlineLeadCapture />
-
-        {/* Footer */}
-        <Footer />
-
-        {/* Fixed Elements */}
-        <StickyCTABar />
-        <ExitIntentPopup />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/assessment" element={<AssessmentPage />} />
+        </Routes>
       </div>
     </ThemeProvider>
   );

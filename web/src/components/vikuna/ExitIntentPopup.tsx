@@ -292,9 +292,7 @@ const ExitIntentPopup: React.FC<ExitIntentPopupProps> = ({
           </BenefitsList>
 
           <CTAButton
-            href="https://contractnest.vercel.app/leadforms/dtreadiness"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/assessment"
             theme={currentTheme}
             onClick={handleCTAClick}
           >

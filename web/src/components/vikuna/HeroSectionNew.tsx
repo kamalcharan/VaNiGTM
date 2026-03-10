@@ -390,9 +390,7 @@ const HeroSectionNew: React.FC = () => {
                 Book Free Strategy Call
               </PrimaryButton>
               <SecondaryButton
-                href="https://contractnest.vercel.app/leadforms/dtreadiness"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/assessment"
               >
                 Get Your Transformation Readiness Score →
               </SecondaryButton>
