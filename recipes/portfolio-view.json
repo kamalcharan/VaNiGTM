@@ -1,0 +1,31 @@
+{
+  "name": "portfolio-view",
+  "title": "Portfolio Overview",
+  "layout": "dashboard-3row",
+  "slots": [
+    {
+      "row": 1,
+      "components": [
+        { "type": "kpi-card", "data": "summary.total_value", "variant": "currency" },
+        { "type": "kpi-card", "data": "summary.total_invested", "variant": "currency" },
+        { "type": "kpi-card", "data": "summary.overall_gain_pct", "variant": "percentage" },
+        { "type": "kpi-card", "data": "summary.xirr_pct", "variant": "percentage", "props": { "label": "XIRR" } }
+      ]
+    },
+    {
+      "row": 2,
+      "components": [
+        { "type": "doughnut", "data": "allocation", "span": 1, "props": { "centerLabel": "Total", "centerValue": "summary.total_value" } },
+        { "type": "data-table", "data": "holdings", "span": 2, "variant": "detailed", "props": { "sortable": true, "onRowClick": "portfolio-skill.get_holdings" } }
+      ]
+    },
+    {
+      "row": 3,
+      "components": [
+        { "type": "stat-row", "data": "top_performers", "props": { "variant": "comparison", "label": "Top Performers" } },
+        { "type": "stat-row", "data": "bottom_performers", "props": { "variant": "comparison", "label": "Needs Attention" } },
+        { "type": "suggestion", "data": "vani_insight" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "name": "goal-deep-dive",
+  "title": "Goal Analysis",
+  "layout": "detail-sidebar",
+  "slots": [
+    {
+      "row": 1,
+      "components": [
+        { "type": "stat-row", "data": "goal_header", "span": 3, "props": { "variant": "hero" } }
+      ]
+    },
+    {
+      "row": 2,
+      "components": [
+        { "type": "probability-gauge", "data": "probability_data" },
+        { "type": "kpi-card", "data": "gap_amount", "variant": "currency", "props": { "label": "Gap to Target" } },
+        { "type": "kpi-card", "data": "required_sip", "variant": "currency", "props": { "label": "Required SIP" } }
+      ]
+    },
+    {
+      "row": 3,
+      "components": [
+        { "type": "line-chart", "data": "projections", "span": 2, "props": { "yLabel": "Corpus (₹)" } },
+        { "type": "slider-panel", "data": "scenario_sip", "props": { "label": "Monthly SIP", "prefix": "₹", "step": 500 } }
+      ]
+    },
+    {
+      "row": 4,
+      "components": [
+        { "type": "data-table", "data": "linked_schemes", "span": 2, "variant": "compact" },
+        { "type": "suggestion", "data": "vani_suggestion" }
+      ]
+    }
+  ]
+}

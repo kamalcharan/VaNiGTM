@@ -1,0 +1,20 @@
+{
+  "name": "client-list",
+  "title": "Clients",
+  "layout": "list-detail",
+  "slots": [
+    {
+      "row": 1,
+      "components": [
+        { "type": "filter-row", "data": "client_filters", "span": 3, "props": { "onFilter": "client-skill.get_clients" } }
+      ]
+    },
+    {
+      "row": 2,
+      "components": [
+        { "type": "data-table", "data": "clients", "span": 2, "variant": "compact", "props": { "sortable": true, "paginated": true, "pageSize": 25, "onRowClick": "client-skill.get_client_profile" } },
+        { "type": "stat-row", "data": "client_preview", "props": { "variant": "vertical" } }
+      ]
+    }
+  ]
+}

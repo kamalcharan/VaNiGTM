@@ -1,0 +1,27 @@
+{
+  "name": "scheme-explorer",
+  "title": "Scheme Explorer",
+  "layout": "list-detail",
+  "slots": [
+    {
+      "row": 1,
+      "components": [
+        { "type": "filter-row", "data": "scheme_filters", "span": 3, "props": { "onFilter": "market-skill.search_schemes" } }
+      ]
+    },
+    {
+      "row": 2,
+      "components": [
+        { "type": "data-table", "data": "search_results", "span": 2, "variant": "compact", "props": { "sortable": true, "onRowClick": "market-skill.get_nav_history" } },
+        { "type": "line-chart", "data": "nav_history", "props": { "yLabel": "NAV (₹)" } }
+      ]
+    },
+    {
+      "row": 3,
+      "components": [
+        { "type": "stat-row", "data": "scheme_details", "span": 2 },
+        { "type": "action-bar", "data": "scheme_actions", "props": { "actions": ["Compare", "Add to Portfolio"] } }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "planning-playground",
+  "title": "Planning Playground",
+  "layout": "dashboard-3row",
+  "slots": [
+    {
+      "row": 1,
+      "components": [
+        { "type": "slider-panel", "data": "sip_slider", "props": { "label": "Monthly SIP", "prefix": "₹", "step": 500, "onChange": "planning-skill.project_goal" } },
+        { "type": "slider-panel", "data": "return_slider", "props": { "label": "Expected Return", "suffix": "%", "step": 0.5, "onChange": "planning-skill.project_goal" } },
+        { "type": "slider-panel", "data": "inflation_slider", "props": { "label": "Inflation Rate", "suffix": "%", "step": 0.5, "onChange": "planning-skill.project_goal" } }
+      ]
+    },
+    {
+      "row": 2,
+      "components": [
+        { "type": "line-chart", "data": "scenario_projections", "span": 2, "props": { "yLabel": "Corpus (₹)", "multi": true } },
+        { "type": "probability-gauge", "data": "scenario_probability" }
+      ]
+    },
+    {
+      "row": 3,
+      "components": [
+        { "type": "data-table", "data": "scenario_comparison", "span": 2, "variant": "compact" },
+        { "type": "suggestion", "data": "vani_recommendation" }
+      ]
+    }
+  ]
+}

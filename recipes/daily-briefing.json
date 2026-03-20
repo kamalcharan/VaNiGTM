@@ -1,0 +1,48 @@
+{
+  "name": "daily-briefing",
+  "title": "VaNi Command Center",
+  "layout": "briefing",
+  "slots": [
+    {
+      "row": 1,
+      "components": [
+        { "type": "stat-row", "data": "stats", "span": 3, "props": { "variant": "hero" } }
+      ]
+    },
+    {
+      "row": 2,
+      "components": [
+        { "type": "kpi-card", "data": "stats.total_aum", "variant": "currency" },
+        { "type": "kpi-card", "data": "stats.aum_change_pct", "variant": "percentage" },
+        { "type": "kpi-card", "data": "stats.active_clients", "variant": "default" },
+        { "type": "kpi-card", "data": "stats.alerts_count", "variant": "default" }
+      ]
+    },
+    {
+      "row": 3,
+      "components": [
+        { "type": "briefing-panel", "data": "insights", "span": 2 },
+        { "type": "action-bar", "data": "quick_actions" }
+      ]
+    },
+    {
+      "row": 4,
+      "components": [
+        { "type": "stat-row", "data": "market_pulse", "span": 2, "props": { "variant": "compact" } },
+        { "type": "chat-panel", "data": "chat", "props": { "placeholder": "Ask VaNi anything..." } }
+      ]
+    }
+  ],
+  "responsive": [
+    {
+      "breakpoint": "mobile",
+      "changes": [
+        { "slot": 1, "component": 0, "span": 1 },
+        { "slot": 2, "component": 2, "hide": true },
+        { "slot": 2, "component": 3, "hide": true },
+        { "slot": 3, "component": 0, "span": 1 },
+        { "slot": 3, "component": 1, "span": 1 }
+      ]
+    }
+  ]
+}

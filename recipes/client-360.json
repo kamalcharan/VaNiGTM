@@ -1,0 +1,52 @@
+{
+  "name": "client-360",
+  "title": "Client 360",
+  "layout": "detail-sidebar",
+  "slots": [
+    {
+      "row": 1,
+      "components": [
+        { "type": "stat-row", "data": "profile_header", "span": 3, "props": { "variant": "hero" } }
+      ]
+    },
+    {
+      "row": 2,
+      "components": [
+        { "type": "kpi-card", "data": "portfolio_summary.total_value", "variant": "currency" },
+        { "type": "kpi-card", "data": "portfolio_summary.return_pct", "variant": "percentage" },
+        { "type": "kpi-card", "data": "goals_summary.on_track", "variant": "goal-progress", "props": { "label": "Goals On Track" } },
+        { "type": "badge", "data": "risk_profile.overall", "variant": "risk" }
+      ]
+    },
+    {
+      "row": 3,
+      "components": [
+        { "type": "doughnut", "data": "allocation" },
+        { "type": "data-table", "data": "holdings", "span": 2, "variant": "compact" }
+      ]
+    },
+    {
+      "row": 4,
+      "components": [
+        { "type": "data-table", "data": "goals", "variant": "compact", "span": 2, "props": { "onRowClick": "planning-skill.calc_goal_gap" } },
+        { "type": "timeline", "data": "activity", "variant": "activity" }
+      ]
+    },
+    {
+      "row": 5,
+      "components": [
+        { "type": "action-bar", "data": "client_actions", "span": 3 }
+      ]
+    }
+  ],
+  "responsive": [
+    {
+      "breakpoint": "mobile",
+      "changes": [
+        { "slot": 2, "component": 2, "hide": true },
+        { "slot": 2, "component": 3, "hide": true },
+        { "slot": 3, "component": 0, "hide": true }
+      ]
+    }
+  ]
+}

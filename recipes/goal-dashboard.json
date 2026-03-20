@@ -1,0 +1,29 @@
+{
+  "name": "goal-dashboard",
+  "title": "Financial Goals",
+  "layout": "dashboard-3row",
+  "slots": [
+    {
+      "row": 1,
+      "components": [
+        { "type": "kpi-card", "data": "goals[0]", "variant": "goal-progress" },
+        { "type": "kpi-card", "data": "goals[1]", "variant": "goal-progress" },
+        { "type": "kpi-card", "data": "goals[2]", "variant": "goal-progress" }
+      ]
+    },
+    {
+      "row": 2,
+      "components": [
+        { "type": "probability-gauge", "data": "goals", "span": 2, "props": { "multi": true } },
+        { "type": "doughnut", "data": "allocation" }
+      ]
+    },
+    {
+      "row": 3,
+      "components": [
+        { "type": "slider-panel", "data": "sip_what_if", "span": 2, "props": { "prefix": "₹", "step": 500 } },
+        { "type": "suggestion", "data": "vani_insight" }
+      ]
+    }
+  ]
+}
