@@ -7,17 +7,17 @@ SELECT
     s.scheme_name,
     current_nav.nav   AS nav_current,
     period_nav.nav    AS nav_period_start
-FROM schemes s
+FROM ki_schemes s
 LEFT JOIN LATERAL (
     SELECT nav
-    FROM nav_history nh
+    FROM ki_nav_history nh
     WHERE nh.scheme_code = s.scheme_code
     ORDER BY nh.nav_date DESC
     LIMIT 1
 ) current_nav ON true
 LEFT JOIN LATERAL (
     SELECT nav
-    FROM nav_history nh
+    FROM ki_nav_history nh
     WHERE nh.scheme_code = s.scheme_code
       AND nh.nav_date <= $period_start_date
     ORDER BY nh.nav_date DESC

@@ -39,7 +39,7 @@ const QUERY = fs.readFileSync(
 
 const COUNT_QUERY = `
   SELECT COUNT(*) AS total
-  FROM schemes s
+  FROM ki_schemes s
   WHERE s.active = true
     AND (
       to_tsvector('english', s.scheme_name) @@ plainto_tsquery('english', $query)

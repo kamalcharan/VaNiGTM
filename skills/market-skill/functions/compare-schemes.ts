@@ -48,7 +48,7 @@ const QUERY = fs.readFileSync(
 
 const NAV_AT_DATE_QUERY = `
   SELECT nav
-  FROM nav_history
+  FROM ki_nav_history
   WHERE scheme_code = $scheme_code
     AND nav_date <= $target_date
   ORDER BY nav_date DESC

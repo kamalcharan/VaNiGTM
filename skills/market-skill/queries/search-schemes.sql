@@ -11,10 +11,10 @@ SELECT
     ln.nav,
     ln.nav_date,
     ts_rank(to_tsvector('english', s.scheme_name), plainto_tsquery('english', $query)) AS rank
-FROM schemes s
+FROM ki_schemes s
 LEFT JOIN LATERAL (
     SELECT nav, nav_date
-    FROM nav_history nh
+    FROM ki_nav_history nh
     WHERE nh.scheme_code = s.scheme_code
     ORDER BY nh.nav_date DESC
     LIMIT 1

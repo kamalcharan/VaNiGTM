@@ -11,10 +11,10 @@ SELECT
     s.risk_grade,
     s.aum_cr AS aum,
     ln.nav
-FROM schemes s
+FROM ki_schemes s
 LEFT JOIN LATERAL (
     SELECT nav
-    FROM nav_history nh
+    FROM ki_nav_history nh
     WHERE nh.scheme_code = s.scheme_code
     ORDER BY nh.nav_date DESC
     LIMIT 1

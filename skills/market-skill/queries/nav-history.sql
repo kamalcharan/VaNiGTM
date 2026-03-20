@@ -4,7 +4,7 @@
 SELECT
     nh.nav_date AS date,
     nh.nav
-FROM nav_history nh
+FROM ki_nav_history nh
 WHERE nh.scheme_code = $scheme_code
   AND nh.nav_date >= $from_date
   AND nh.nav_date <= $to_date

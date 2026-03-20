@@ -17,7 +17,7 @@ SELECT
     g.notes,
     g.created_at,
     g.updated_at
-FROM goals g
+FROM ki_goals g
 WHERE g.tenant_id = $tenant_id
   AND g.client_id = $client_id
   AND g.id = $goal_id;

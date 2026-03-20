@@ -30,7 +30,7 @@ const HISTORY_QUERY = fs.readFileSync(
 );
 
 const SCHEME_NAME_QUERY = `
-  SELECT scheme_name FROM schemes WHERE scheme_code = $scheme_code
+  SELECT scheme_name FROM ki_schemes WHERE scheme_code = $scheme_code
 `;
 
 export async function get_nav_history(
