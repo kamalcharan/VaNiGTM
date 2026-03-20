@@ -7,7 +7,7 @@
 -- 001: SCHEME MASTER DATA (shared, not tenant-scoped)
 -- ============================================================
 
-CREATE TABLE IF NOT EXISTS schemes (
+CREATE TABLE IF NOT EXISTS ki_schemes (
     scheme_code     TEXT PRIMARY KEY,
     scheme_name     TEXT NOT NULL,
     amc             TEXT NOT NULL,
@@ -26,27 +26,27 @@ CREATE TABLE IF NOT EXISTS schemes (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_schemes_category ON schemes(category);
-CREATE INDEX idx_schemes_amc ON schemes(amc);
-CREATE INDEX idx_schemes_name_search ON schemes USING gin(to_tsvector('english', scheme_name));
+CREATE INDEX idx_ki_schemes_category ON ki_schemes(category);
+CREATE INDEX idx_ki_schemes_amc ON ki_schemes(amc);
+CREATE INDEX idx_ki_schemes_name_search ON ki_schemes USING gin(to_tsvector('english', scheme_name));
 
 -- -----------------------------------------------------------
 -- NAV HISTORY (shared, not tenant-scoped)
 -- -----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS nav_history (
+CREATE TABLE IF NOT EXISTS ki_nav_history (
     id              BIGSERIAL PRIMARY KEY,
-    scheme_code     TEXT NOT NULL REFERENCES schemes(scheme_code),
+    scheme_code     TEXT NOT NULL REFERENCES ki_schemes(scheme_code),
     nav_date        DATE NOT NULL,
     nav             NUMERIC(12,4) NOT NULL,
     UNIQUE(scheme_code, nav_date)
 );
 
-CREATE INDEX idx_nav_scheme_date ON nav_history(scheme_code, nav_date DESC);
+CREATE INDEX idx_ki_nav_scheme_date ON ki_nav_history(scheme_code, nav_date DESC);
 
 -- -----------------------------------------------------------
 -- SCHEME CATEGORIES (reference table)
 -- -----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS scheme_categories (
+CREATE TABLE IF NOT EXISTS ki_scheme_categories (
     id              SERIAL PRIMARY KEY,
     name            TEXT NOT NULL UNIQUE,
     parent_category TEXT,                       -- e.g., 'Equity', 'Debt', 'Hybrid'
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS scheme_categories (
 -- -----------------------------------------------------------
 -- CLIENTS
 -- -----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS clients (
+CREATE TABLE IF NOT EXISTS ki_clients (
     id              SERIAL PRIMARY KEY,
     tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     name            TEXT NOT NULL,
@@ -89,36 +89,36 @@ CREATE TABLE IF NOT EXISTS clients (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_clients_tenant ON clients(tenant_id);
-CREATE INDEX idx_clients_tenant_name ON clients(tenant_id, name);
-CREATE INDEX idx_clients_family ON clients(tenant_id, family_group_id);
-CREATE INDEX idx_clients_name_search ON clients USING gin(to_tsvector('english', name));
+CREATE INDEX idx_ki_clients_tenant ON ki_clients(tenant_id);
+CREATE INDEX idx_ki_clients_tenant_name ON ki_clients(tenant_id, name);
+CREATE INDEX idx_ki_clients_family ON ki_clients(tenant_id, family_group_id);
+CREATE INDEX idx_ki_clients_name_search ON ki_clients USING gin(to_tsvector('english', name));
 
 -- -----------------------------------------------------------
 -- PORTFOLIOS (a client can have multiple — regular, direct, etc.)
 -- -----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS portfolios (
+CREATE TABLE IF NOT EXISTS ki_portfolios (
     id              SERIAL PRIMARY KEY,
     tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    client_id       INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    client_id       INTEGER NOT NULL REFERENCES ki_clients(id) ON DELETE CASCADE,
     name            TEXT NOT NULL DEFAULT 'Default',
     portfolio_type  TEXT NOT NULL DEFAULT 'regular' CHECK (portfolio_type IN ('regular', 'direct', 'nps', 'other')),
     active          BOOLEAN NOT NULL DEFAULT true,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_portfolios_tenant ON portfolios(tenant_id);
-CREATE INDEX idx_portfolios_client ON portfolios(tenant_id, client_id);
+CREATE INDEX idx_ki_portfolios_tenant ON ki_portfolios(tenant_id);
+CREATE INDEX idx_ki_portfolios_client ON ki_portfolios(tenant_id, client_id);
 
 -- -----------------------------------------------------------
 -- HOLDINGS (current state — units held per scheme)
 -- -----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS holdings (
+CREATE TABLE IF NOT EXISTS ki_holdings (
     id              SERIAL PRIMARY KEY,
     tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    client_id       INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
-    portfolio_id    INTEGER NOT NULL REFERENCES portfolios(id) ON DELETE CASCADE,
-    scheme_code     TEXT NOT NULL REFERENCES schemes(scheme_code),
+    client_id       INTEGER NOT NULL REFERENCES ki_clients(id) ON DELETE CASCADE,
+    portfolio_id    INTEGER NOT NULL REFERENCES ki_portfolios(id) ON DELETE CASCADE,
+    scheme_code     TEXT NOT NULL REFERENCES ki_schemes(scheme_code),
     units           NUMERIC(14,4) NOT NULL DEFAULT 0,
     avg_nav         NUMERIC(12,4),              -- Weighted average purchase NAV
     total_invested  NUMERIC(14,2) NOT NULL DEFAULT 0,
@@ -132,19 +132,19 @@ CREATE TABLE IF NOT EXISTS holdings (
     UNIQUE(tenant_id, client_id, portfolio_id, scheme_code)
 );
 
-CREATE INDEX idx_holdings_tenant ON holdings(tenant_id);
-CREATE INDEX idx_holdings_client ON holdings(tenant_id, client_id);
-CREATE INDEX idx_holdings_scheme ON holdings(scheme_code);
+CREATE INDEX idx_ki_holdings_tenant ON ki_holdings(tenant_id);
+CREATE INDEX idx_ki_holdings_client ON ki_holdings(tenant_id, client_id);
+CREATE INDEX idx_ki_holdings_scheme ON ki_holdings(scheme_code);
 
 -- -----------------------------------------------------------
 -- TRANSACTIONS (buy, sell, switch, dividend)
 -- -----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS transactions (
+CREATE TABLE IF NOT EXISTS ki_transactions (
     id              BIGSERIAL PRIMARY KEY,
     tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    client_id       INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
-    portfolio_id    INTEGER NOT NULL REFERENCES portfolios(id) ON DELETE CASCADE,
-    scheme_code     TEXT NOT NULL REFERENCES schemes(scheme_code),
+    client_id       INTEGER NOT NULL REFERENCES ki_clients(id) ON DELETE CASCADE,
+    portfolio_id    INTEGER NOT NULL REFERENCES ki_portfolios(id) ON DELETE CASCADE,
+    scheme_code     TEXT NOT NULL REFERENCES ki_schemes(scheme_code),
     txn_type        TEXT NOT NULL CHECK (txn_type IN ('purchase', 'redemption', 'switch_in', 'switch_out', 'dividend_payout', 'dividend_reinvest')),
     txn_date        DATE NOT NULL,
     amount          NUMERIC(14,2) NOT NULL,     -- Gross amount
@@ -157,22 +157,22 @@ CREATE TABLE IF NOT EXISTS transactions (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_txn_tenant ON transactions(tenant_id);
-CREATE INDEX idx_txn_client ON transactions(tenant_id, client_id);
-CREATE INDEX idx_txn_client_date ON transactions(tenant_id, client_id, txn_date DESC);
-CREATE INDEX idx_txn_scheme ON transactions(scheme_code, txn_date);
+CREATE INDEX idx_ki_txn_tenant ON ki_transactions(tenant_id);
+CREATE INDEX idx_ki_txn_client ON ki_transactions(tenant_id, client_id);
+CREATE INDEX idx_ki_txn_client_date ON ki_transactions(tenant_id, client_id, txn_date DESC);
+CREATE INDEX idx_ki_txn_scheme ON ki_transactions(scheme_code, txn_date);
 -- Dedup index for idempotent imports
-CREATE UNIQUE INDEX idx_txn_dedup ON transactions(tenant_id, client_id, scheme_code, txn_date, amount, units) WHERE source != 'manual';
+CREATE UNIQUE INDEX idx_ki_txn_dedup ON ki_transactions(tenant_id, client_id, scheme_code, txn_date, amount, units) WHERE source != 'manual';
 
 
 -- ============================================================
 -- 003: GOALS & PLANNING
 -- ============================================================
 
-CREATE TABLE IF NOT EXISTS goals (
+CREATE TABLE IF NOT EXISTS ki_goals (
     id              SERIAL PRIMARY KEY,
     tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    client_id       INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    client_id       INTEGER NOT NULL REFERENCES ki_clients(id) ON DELETE CASCADE,
     name            TEXT NOT NULL,
     goal_type       TEXT NOT NULL CHECK (goal_type IN ('retirement', 'education', 'house', 'wedding', 'emergency', 'vehicle', 'travel', 'custom')),
     target_amount   NUMERIC(14,2) NOT NULL,     -- Today's value
@@ -189,16 +189,16 @@ CREATE TABLE IF NOT EXISTS goals (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_goals_tenant ON goals(tenant_id);
-CREATE INDEX idx_goals_client ON goals(tenant_id, client_id);
+CREATE INDEX idx_ki_goals_tenant ON ki_goals(tenant_id);
+CREATE INDEX idx_ki_goals_client ON ki_goals(tenant_id, client_id);
 
 -- -----------------------------------------------------------
 -- GOAL PROJECTIONS CACHE (pre-computed monthly projections)
 -- -----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS goal_projections (
+CREATE TABLE IF NOT EXISTS ki_goal_projections (
     id              BIGSERIAL PRIMARY KEY,
     tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    goal_id         INTEGER NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+    goal_id         INTEGER NOT NULL REFERENCES ki_goals(id) ON DELETE CASCADE,
     month_index     INTEGER NOT NULL,           -- Months from now (0, 1, 2, ...)
     projected_date  DATE NOT NULL,
     corpus          NUMERIC(14,2) NOT NULL,
@@ -207,14 +207,14 @@ CREATE TABLE IF NOT EXISTS goal_projections (
     computed_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_projections_goal ON goal_projections(goal_id);
+CREATE INDEX idx_ki_projections_goal ON ki_goal_projections(goal_id);
 
 
 -- ============================================================
 -- 004: ALERTS
 -- ============================================================
 
-CREATE TABLE IF NOT EXISTS alerts (
+CREATE TABLE IF NOT EXISTS ki_alerts (
     id              SERIAL PRIMARY KEY,
     tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     client_id       INTEGER,                    -- NULL for tenant-level alerts
@@ -235,42 +235,42 @@ CREATE TABLE IF NOT EXISTS alerts (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_alerts_tenant ON alerts(tenant_id);
-CREATE INDEX idx_alerts_tenant_active ON alerts(tenant_id, dismissed, acted_on) WHERE dismissed = false AND acted_on = false;
-CREATE INDEX idx_alerts_client ON alerts(tenant_id, client_id);
+CREATE INDEX idx_ki_alerts_tenant ON ki_alerts(tenant_id);
+CREATE INDEX idx_ki_alerts_tenant_active ON ki_alerts(tenant_id, dismissed, acted_on) WHERE dismissed = false AND acted_on = false;
+CREATE INDEX idx_ki_alerts_client ON ki_alerts(tenant_id, client_id);
 
 
 -- ============================================================
 -- 005: RLS POLICIES FOR PRODUCT TABLES
 -- ============================================================
 
-ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
-ALTER TABLE portfolios ENABLE ROW LEVEL SECURITY;
-ALTER TABLE holdings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE goals ENABLE ROW LEVEL SECURITY;
-ALTER TABLE goal_projections ENABLE ROW LEVEL SECURITY;
-ALTER TABLE alerts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ki_clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ki_portfolios ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ki_holdings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ki_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ki_goals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ki_goal_projections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ki_alerts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY client_tenant_isolation ON clients
+CREATE POLICY client_tenant_isolation ON ki_clients
     FOR ALL USING (tenant_id::text = current_setting('app.tenant_id', true));
 
-CREATE POLICY portfolio_tenant_isolation ON portfolios
+CREATE POLICY portfolio_tenant_isolation ON ki_portfolios
     FOR ALL USING (tenant_id::text = current_setting('app.tenant_id', true));
 
-CREATE POLICY holding_tenant_isolation ON holdings
+CREATE POLICY holding_tenant_isolation ON ki_holdings
     FOR ALL USING (tenant_id::text = current_setting('app.tenant_id', true));
 
-CREATE POLICY txn_tenant_isolation ON transactions
+CREATE POLICY txn_tenant_isolation ON ki_transactions
     FOR ALL USING (tenant_id::text = current_setting('app.tenant_id', true));
 
-CREATE POLICY goal_tenant_isolation ON goals
+CREATE POLICY goal_tenant_isolation ON ki_goals
     FOR ALL USING (tenant_id::text = current_setting('app.tenant_id', true));
 
-CREATE POLICY projection_tenant_isolation ON goal_projections
+CREATE POLICY projection_tenant_isolation ON ki_goal_projections
     FOR ALL USING (tenant_id::text = current_setting('app.tenant_id', true));
 
-CREATE POLICY alert_tenant_isolation ON alerts
+CREATE POLICY alert_tenant_isolation ON ki_alerts
     FOR ALL USING (tenant_id::text = current_setting('app.tenant_id', true));
 
 
@@ -278,8 +278,8 @@ CREATE POLICY alert_tenant_isolation ON alerts
 -- 006: TRIGGERS
 -- ============================================================
 
-CREATE TRIGGER trg_clients_updated
-    BEFORE UPDATE ON clients FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER trg_ki_clients_updated
+    BEFORE UPDATE ON ki_clients FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
-CREATE TRIGGER trg_goals_updated
-    BEFORE UPDATE ON goals FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER trg_ki_goals_updated
+    BEFORE UPDATE ON ki_goals FOR EACH ROW EXECUTE FUNCTION update_updated_at();

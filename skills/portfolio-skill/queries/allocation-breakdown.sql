@@ -11,11 +11,11 @@ SELECT
         / NULLIF(SUM(SUM(h.units * latest_nav.nav)) OVER (), 0),
         2
     )                                                    AS percentage
-FROM holdings h
-JOIN schemes s ON s.scheme_code = h.scheme_code
+FROM ki_holdings h
+JOIN ki_schemes s ON s.scheme_code = h.scheme_code
 LEFT JOIN LATERAL (
     SELECT nav
-    FROM nav_history nh
+    FROM ki_nav_history nh
     WHERE nh.scheme_code = h.scheme_code
     ORDER BY nh.nav_date DESC
     LIMIT 1

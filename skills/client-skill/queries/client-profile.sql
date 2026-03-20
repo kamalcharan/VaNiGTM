@@ -37,15 +37,15 @@ SELECT
     COALESCE(gs.on_track, 0)                             AS goals_on_track,
     COALESCE(gs.at_risk, 0)                              AS goals_at_risk,
     COALESCE(gs.behind, 0)                               AS goals_behind
-FROM clients c
+FROM ki_clients c
 LEFT JOIN LATERAL (
     SELECT
         SUM(h.units * COALESCE(ln.nav, h.avg_nav))      AS total_value,
         SUM(h.total_invested)                            AS total_invested,
         COUNT(DISTINCT h.scheme_code)                    AS scheme_count
-    FROM holdings h
+    FROM ki_holdings h
     LEFT JOIN LATERAL (
-        SELECT nav FROM nav_history nh
+        SELECT nav FROM ki_nav_history nh
         WHERE nh.scheme_code = h.scheme_code
         ORDER BY nh.nav_date DESC LIMIT 1
     ) ln ON true
@@ -57,7 +57,7 @@ LEFT JOIN LATERAL (
         COUNT(*) FILTER (WHERE g.probability >= 0.7)     AS on_track,
         COUNT(*) FILTER (WHERE g.probability >= 0.4 AND g.probability < 0.7) AS at_risk,
         COUNT(*) FILTER (WHERE g.probability < 0.4 OR g.probability IS NULL) AS behind
-    FROM goals g
+    FROM ki_goals g
     WHERE g.tenant_id = $tenant_id AND g.client_id = c.id AND g.status = 'active'
 ) gs ON true
 WHERE c.tenant_id = $tenant_id
