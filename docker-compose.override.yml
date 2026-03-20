@@ -1,0 +1,55 @@
+# KI-Prime — Docker Compose Override
+# Extends vani-base/docker-compose.yml with product-specific mounts and config
+
+services:
+  api:
+    extends:
+      file: vani-base/docker-compose.yml
+      service: api
+    volumes:
+      # Mount product directories into the API container
+      - ./skills:/app/product/skills:ro
+      - ./recipes:/app/product/recipes:ro
+      - ./migrations:/app/product/migrations:ro
+      - ./vani.config.ts:/app/product/vani.config.ts:ro
+      - ./tiers.config.ts:/app/product/tiers.config.ts:ro
+      - ./shared:/app/product/shared:ro
+      - ./startup.ts:/app/product/startup.ts:ro
+    environment:
+      - PRODUCT_SLUG=ki-prime
+      - SKILLS_DIR=/app/product/skills
+      - RECIPES_DIR=/app/product/recipes
+      - MIGRATIONS_DIR=/app/product/migrations
+      - VANI_MOCK=${VANI_MOCK:-true}
+      - PORT=3001
+    env_file:
+      - .env
+    ports:
+      - "3001:3001"
+    command: ["tsx", "/app/product/startup.ts"]
+
+  shell:
+    extends:
+      file: vani-base/docker-compose.yml
+      service: shell
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+      - NEXT_PUBLIC_DEV_TENANT_ID=ki-prime-dev-tenant-001
+    ports:
+      - "3000:3000"
+
+  db:
+    extends:
+      file: vani-base/docker-compose.yml
+      service: db
+    environment:
+      - POSTGRES_DB=ki_prime
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "54322:5432"
+    volumes:
+      - ki_prime_pgdata:/var/lib/postgresql/data
+
+volumes:
+  ki_prime_pgdata:

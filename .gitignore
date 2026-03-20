@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+dist/
+
+# Environment (secrets)
+.env
+.env.local
+.env.*.local
+shell.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.js.map
+*.d.ts
+!jest.config.ts
+
+# Docker volumes
+ki_prime_pgdata/
+
+# Temp files
+*.tmp
+*.log
