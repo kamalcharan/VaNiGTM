@@ -46,6 +46,7 @@ async function main(): Promise<void> {
     const { createChatRouter } = await import('./vani-base/framework/routes/chat');
     const { createRecipesRouter } = await import('./vani-base/framework/routes/recipes');
     const { jobsRouter } = await import('./vani-base/framework/routes/jobs');
+    const { registerSkillsRoute } = await import('./vani-base/framework/routes/skills');
     const { authMiddleware } = await import('./vani-base/framework/gateway/auth');
     const { tenantContext } = await import('./vani-base/framework/gateway/tenant-context');
     const { rateLimitMiddleware } = await import('./vani-base/framework/middleware/rate-limiter');
@@ -127,7 +128,8 @@ async function main(): Promise<void> {
     protectedRouter.use(authMiddleware);
     protectedRouter.use(tenantContext);
     protectedRouter.use(rateLimitMiddleware);
-    protectedRouter.use(createChatRouter(orchestrator));
+    protectedRouter.use('/chat', createChatRouter(orchestrator));
+    registerSkillsRoute(protectedRouter, orchestrator);
     protectedRouter.use(jobsRouter);
     app.use('/api/v1', protectedRouter);
 
@@ -137,6 +139,7 @@ async function main(): Promise<void> {
       console.log(`[KI-Prime] Server running on port ${port}`);
       console.log(`[KI-Prime] Health:  http://localhost:${port}/health`);
       console.log(`[KI-Prime] Chat:    POST http://localhost:${port}/api/v1/chat`);
+      console.log(`[KI-Prime] Skills:  POST http://localhost:${port}/api/v1/skills/:skill/:function`);
     });
 
     // Graceful shutdown
