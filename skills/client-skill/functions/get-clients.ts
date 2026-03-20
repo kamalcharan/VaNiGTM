@@ -125,16 +125,16 @@ export async function get_clients(
       COUNT(*) FILTER (WHERE h.is_sip = true) AS sip_count,
       COALESCE(SUM(h.sip_amount) FILTER (WHERE h.sip_status = 'active'), 0) AS active_sips_total,
       COALESCE(goals_agg.goals_count, 0) AS goals_count
-    FROM clients c
+    FROM ki_clients c
     LEFT JOIN holdings h ON h.client_id = c.id AND h.tenant_id = $tenant_id AND h.units > 0
     LEFT JOIN LATERAL (
-      SELECT nav FROM nav_history nh
+      SELECT nav FROM ki_nav_history nh
       WHERE nh.scheme_code = h.scheme_code
       ORDER BY nh.nav_date DESC LIMIT 1
     ) ln ON true
     LEFT JOIN LATERAL (
       SELECT COUNT(*) AS goals_count
-      FROM goals g
+      FROM ki_goals g
       WHERE g.tenant_id = $tenant_id AND g.client_id = c.id AND g.status = 'active'
     ) goals_agg ON true
     WHERE ${conditions.join(' AND ')}
@@ -147,7 +147,7 @@ export async function get_clients(
   // Count query for total
   const countQuery = `
     SELECT COUNT(*) AS total
-    FROM clients c
+    FROM ki_clients c
     WHERE ${conditions.join(' AND ')}
   `;
 
