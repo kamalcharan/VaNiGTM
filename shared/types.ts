@@ -22,6 +22,54 @@ export interface SkillContext {
   db: SkillDb;
 }
 
+/* ── Skill layer types ────────────────────────────────── */
+
+export type SubscriptionTier = 'starter' | 'professional' | 'enterprise';
+
+/** Parsed parameter from SKILL.md function definition */
+export interface SkillParam {
+  name: string;
+  type: string;
+  required: boolean;
+  description: string;
+  default?: string;
+}
+
+/** Parsed function definition from SKILL.md */
+export interface SkillFunctionDef {
+  name: string;
+  description: string;
+  parameters: SkillParam[];
+  returns: string;
+  default_recipe?: string;
+}
+
+/** Parsed skill definition from SKILL.md frontmatter + body */
+export interface SkillDefinition {
+  name: string;
+  version: string;
+  description: string;
+  tier: SubscriptionTier;
+  default_recipe: string;
+  functions: SkillFunctionDef[];
+}
+
+/** A skill function handler: (params, ctx) => Promise<result> */
+export type SkillHandler = (
+  params: Record<string, unknown>,
+  ctx: SkillContext
+) => Promise<Record<string, unknown>>;
+
+/** Result of executing a skill function */
+export interface SkillResult {
+  success: boolean;
+  skill: string;
+  function: string;
+  recipe: string;
+  data: Record<string, unknown>;
+  error?: string;
+}
+
 /* ── VaNiBase product configuration types ──────────────── */
 
 export interface VaniProductConfig {
