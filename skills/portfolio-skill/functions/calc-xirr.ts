@@ -91,7 +91,7 @@ export function computeXirr(cashflows: CashFlow[], guess = 0.1): number {
 
 const TRANSACTIONS_QUERY = `
   SELECT txn_type, txn_date, amount, units
-  FROM transactions
+  FROM ki_transactions
   WHERE tenant_id = $tenant_id
     AND client_id = $client_id
     {{SCHEME_FILTER}}
@@ -101,9 +101,9 @@ const TRANSACTIONS_QUERY = `
 const HOLDINGS_QUERY = `
   SELECT h.scheme_code, h.units, h.total_invested,
          COALESCE(ln.nav, h.avg_nav) AS current_nav
-  FROM holdings h
+  FROM ki_holdings h
   LEFT JOIN LATERAL (
-    SELECT nav FROM nav_history nh
+    SELECT nav FROM ki_nav_history nh
     WHERE nh.scheme_code = h.scheme_code
     ORDER BY nh.nav_date DESC LIMIT 1
   ) ln ON true
