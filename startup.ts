@@ -19,9 +19,12 @@ import config from './vani.config';
 /* ── resolve product directories ────────────────────────── */
 
 const PRODUCT_ROOT = __dirname;
-const SKILLS_DIR = path.join(PRODUCT_ROOT, 'skills');
-const RECIPES_DIR = path.join(PRODUCT_ROOT, 'recipes');
-const MIGRATIONS_DIR = path.join(PRODUCT_ROOT, 'migrations');
+
+// SKILLS_DIR / RECIPES_DIR from env override product root defaults.
+// This ensures the framework loads skills from THIS repo, not vani-base/skills/.
+const SKILLS_DIR = path.resolve(PRODUCT_ROOT, process.env.SKILLS_DIR || 'skills');
+const RECIPES_DIR = path.resolve(PRODUCT_ROOT, process.env.RECIPES_DIR || 'recipes');
+const MIGRATIONS_DIR = path.resolve(PRODUCT_ROOT, process.env.MIGRATIONS_DIR || 'migrations');
 
 /* ── discover skills ────────────────────────────────────── */
 

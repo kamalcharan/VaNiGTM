@@ -16,6 +16,7 @@ services:
       - ./shared:/app/product/shared:ro
       - ./startup.ts:/app/product/startup.ts:ro
     environment:
+      - NODE_ENV=development
       - PRODUCT_SLUG=ki-prime
       - SKILLS_DIR=/app/product/skills
       - RECIPES_DIR=/app/product/recipes
@@ -34,7 +35,7 @@ services:
       service: shell
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:3001
-      - NEXT_PUBLIC_DEV_TENANT_ID=ki-prime-dev-tenant-001
+      - NEXT_PUBLIC_DEV_TENANT_ID=a0000000-0000-0000-0000-000000000001
     ports:
       - "3000:3000"
 
