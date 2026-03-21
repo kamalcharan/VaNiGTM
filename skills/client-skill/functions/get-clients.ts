@@ -126,7 +126,7 @@ export async function get_clients(
       COALESCE(SUM(h.sip_amount) FILTER (WHERE h.sip_status = 'active'), 0) AS active_sips_total,
       COALESCE(goals_agg.goals_count, 0) AS goals_count
     FROM ki_clients c
-    LEFT JOIN holdings h ON h.client_id = c.id AND h.tenant_id = $tenant_id AND h.units > 0
+    LEFT JOIN ki_holdings h ON h.client_id = c.id AND h.tenant_id = $tenant_id AND h.units > 0
     LEFT JOIN LATERAL (
       SELECT nav FROM ki_nav_history nh
       WHERE nh.scheme_code = h.scheme_code

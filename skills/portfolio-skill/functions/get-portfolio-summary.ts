@@ -51,7 +51,7 @@ const SUMMARY_QUERY = `
     h.sip_amount,
     h.sip_status
   FROM ki_holdings h
-  JOIN schemes s ON s.scheme_code = h.scheme_code
+  JOIN ki_schemes s ON s.scheme_code = h.scheme_code
   LEFT JOIN LATERAL (
     SELECT nav FROM ki_nav_history nh
     WHERE nh.scheme_code = h.scheme_code
