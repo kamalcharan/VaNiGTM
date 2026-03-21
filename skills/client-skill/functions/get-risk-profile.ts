@@ -58,14 +58,14 @@ const RISK_QUERY = `
     COALESCE(ps.current_value, 0) AS current_value,
     COALESCE(gs.goals_count, 0) AS goals_count,
     gs.avg_goal_years
-  FROM clients c
+  FROM ki_clients c
   LEFT JOIN LATERAL (
     SELECT
       SUM(h.total_invested) AS total_invested,
       SUM(h.units * COALESCE(ln.nav, h.avg_nav)) AS current_value
-    FROM holdings h
+    FROM ki_holdings h
     LEFT JOIN LATERAL (
-      SELECT nav FROM nav_history nh
+      SELECT nav FROM ki_nav_history nh
       WHERE nh.scheme_code = h.scheme_code
       ORDER BY nh.nav_date DESC LIMIT 1
     ) ln ON true
@@ -75,7 +75,7 @@ const RISK_QUERY = `
     SELECT
       COUNT(*) AS goals_count,
       AVG(EXTRACT(YEAR FROM g.target_date) - EXTRACT(YEAR FROM now())) AS avg_goal_years
-    FROM goals g
+    FROM ki_goals g
     WHERE g.tenant_id = $tenant_id AND g.client_id = c.id AND g.status = 'active'
   ) gs ON true
   WHERE c.tenant_id = $tenant_id
