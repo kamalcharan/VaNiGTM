@@ -22,6 +22,7 @@ Thumbs.db
 *.js.map
 *.d.ts
 !jest.config.ts
+.next/
 
 # Docker volumes
 ki_prime_pgdata/

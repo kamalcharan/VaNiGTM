@@ -1,0 +1,91 @@
+/**
+ * KI-Prime Shell Configuration
+ *
+ * Product-level config consumed by the VaNiBase shell's ShellConfigProvider.
+ * Must conform to ShellConfig from vani-base/shell/src/lib/shell-config.ts
+ */
+import type { ShellConfig } from './vani-base/shell/src/lib/shell-config';
+
+const shellConfig: ShellConfig = {
+  product: {
+    name: 'KI-Prime',
+    tagline: 'Financial Planning for MFDs',
+  },
+  apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
+  auth: {
+    devToken: 'dev-bypass',
+    headerName: 'Authorization',
+  },
+  recipes: [
+    // ── Wired (Priority 1–5) ──
+    {
+      recipe: 'client-list',
+      label: 'Clients',
+      route: '/client-list',
+      skills: [
+        { skill: 'client-skill', function: 'get_clients' },
+      ],
+    },
+    {
+      recipe: 'portfolio-view',
+      label: 'Portfolio Overview',
+      route: '/portfolio-view',
+      skills: [
+        { skill: 'portfolio-skill', function: 'get_holdings', params: { client_id: 1 } },
+        { skill: 'portfolio-skill', function: 'get_allocation', params: { client_id: 1 } },
+      ],
+    },
+    {
+      recipe: 'client-360',
+      label: 'Client 360',
+      route: '/client-360',
+      skills: [
+        { skill: 'client-skill', function: 'get_client_profile', params: { client_id: 1 } },
+        { skill: 'portfolio-skill', function: 'get_portfolio_summary', params: { client_id: 1 } },
+      ],
+    },
+    {
+      recipe: 'goal-dashboard',
+      label: 'Financial Goals',
+      route: '/goal-dashboard',
+      skills: [
+        { skill: 'planning-skill', function: 'get_goals', params: { client_id: 1 } },
+      ],
+    },
+    {
+      recipe: 'scheme-explorer',
+      label: 'Scheme Explorer',
+      route: '/scheme-explorer',
+      skills: [
+        { skill: 'market-skill', function: 'search_schemes' },
+      ],
+    },
+    // ── Deferred ──
+    {
+      recipe: 'daily-briefing',
+      label: 'VaNi Command Center',
+      route: '/daily-briefing',
+      skills: [],
+    },
+    {
+      recipe: 'goal-deep-dive',
+      label: 'Goal Analysis',
+      route: '/goal-deep-dive',
+      skills: [],
+    },
+    {
+      recipe: 'planning-playground',
+      label: 'Planning Playground',
+      route: '/planning-playground',
+      skills: [],
+    },
+    {
+      recipe: 'plan-vs-reality',
+      label: 'Plan vs Reality',
+      route: '/plan-vs-reality',
+      skills: [],
+    },
+  ],
+};
+
+export default shellConfig;
