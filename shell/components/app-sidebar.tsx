@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { recipeRoutes } from '../lib/recipe-routes';
+import { useShellConfig } from './shell-config-provider';
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const config = useShellConfig();
 
   return (
     <nav style={{
@@ -18,12 +19,20 @@ export function AppSidebar() {
       padding: '1rem 0',
     }}>
       <div style={{
-        padding: '0 1rem 1rem',
+        padding: '0 1rem 0.25rem',
         fontWeight: 700,
         fontSize: '1rem',
         color: 'var(--text-primary, #111827)',
       }}>
-        KI-Prime
+        {config.product.name}
+      </div>
+
+      <div style={{
+        padding: '0 1rem 1rem',
+        fontSize: '0.7rem',
+        color: 'var(--text-secondary, #9ca3af)',
+      }}>
+        {config.product.tagline}
       </div>
 
       <div style={{
@@ -38,7 +47,7 @@ export function AppSidebar() {
         Views
       </div>
 
-      {recipeRoutes
+      {[...config.recipes]
         .sort((a, b) => a.priority - b.priority)
         .map((route) => {
           const isActive = pathname === route.path;
