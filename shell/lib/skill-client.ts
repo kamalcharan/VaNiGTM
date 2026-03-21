@@ -10,8 +10,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 // Dev auth headers — replace with JWT when KI-40 is built
 const DEV_HEADERS: Record<string, string> = {
   'Content-Type': 'application/json',
-  'X-Dev-Tenant-Id': process.env.NEXT_PUBLIC_DEV_TENANT_ID || '1',
-  'X-Dev-User-Id': process.env.NEXT_PUBLIC_DEV_USER_ID || '1',
+  'X-Dev-Tenant-Id': process.env.NEXT_PUBLIC_DEV_TENANT_ID || 'a0000000-0000-0000-0000-000000000001',
+  'X-Dev-User-Id': process.env.NEXT_PUBLIC_DEV_USER_ID || 'a0000000-0000-0000-0000-000000000002',
 };
 
 export interface SkillResponse<T = any> {
