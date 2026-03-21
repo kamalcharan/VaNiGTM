@@ -1,0 +1,4 @@
+{
+  "/(recipes)/client-list/page": "app/(recipes)/client-list/page.js",
+  "/(recipes)/client-360/page": "app/(recipes)/client-360/page.js"
+}
