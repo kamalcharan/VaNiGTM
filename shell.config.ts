@@ -4,18 +4,19 @@
  * Product-level config consumed by the VaNiBase shell's ShellConfigProvider.
  * Must conform to ShellConfig from vani-base/shell/src/lib/shell-config.ts
  */
-import type { ShellConfig } from './vani-base/shell/src/lib/shell-config';
-
+import type { ShellConfig } from './vani-base/shell/src/lib/shell-config-types';
 const shellConfig: ShellConfig = {
   product: {
     name: 'KI-Prime',
     tagline: 'Financial Planning for MFDs',
   },
   apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
-  auth: {
-    devToken: 'dev-bypass',
-    headerName: 'Authorization',
-  },
+ auth: {
+    customHeaders: {
+      'X-Dev-Tenant-Id': 'a0000000-0000-0000-0000-000000000001',
+      'X-Dev-User-Id': 'a0000000-0000-0000-0000-000000000002',
+    },
+},
   recipes: [
     // ── Wired (Priority 1–5) ──
     {
