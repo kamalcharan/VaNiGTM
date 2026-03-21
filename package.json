@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "concurrently --names api,shell --prefix-colors blue,green \"npm run dev:api\" \"npm run dev:shell\"",
     "dev:api": "tsx watch startup.ts",
-    "dev:shell": "cd vani-base/shell && npm run dev",
-    "install:all": "npm install && cd vani-base && npm install && cd shell && npm install",
+    "dev:shell": "cd shell && npm run dev",
+    "install:all": "npm install && cd shell && npm install",
     "db:migrate": "tsx vani-base/framework/migrate.ts && tsx vani-base/framework/migrate.ts --dir ./migrations",
     "test": "jest --config jest.config.ts",
     "lint": "tsc --noEmit"
