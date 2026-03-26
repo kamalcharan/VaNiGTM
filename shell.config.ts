@@ -36,23 +36,26 @@ const shellConfig: ShellConfig = {
         { skill: 'portfolio-skill', function: 'get_allocation', params: { client_id: 1 } },
       ],
     },
-    {
-      recipe: 'client-360',
-      label: 'Client 360',
-      route: '/client-360',
-      skills: [
-        { skill: 'client-skill', function: 'get_client_profile', params: { client_id: 1 } },
-        { skill: 'portfolio-skill', function: 'get_portfolio_summary', params: { client_id: 1 } },
-      ],
+   {
+  recipe: 'client-360',
+  label: 'Client 360',
+  route: '/client-360',
+  skills: [
+    { skill: 'client-skill', function: 'get_client_profile', params: { client_id: 1 } },
+    { skill: 'portfolio-skill', function: 'get_portfolio_summary', params: { client_id: 1 } },
+    { skill: 'planning-skill', function: 'get_goals', params: { client_id: 1 } },
+  ],
+},
     },
-    {
-      recipe: 'goal-dashboard',
-      label: 'Financial Goals',
-      route: '/goal-dashboard',
-      skills: [
-        { skill: 'planning-skill', function: 'get_goals', params: { client_id: 1 } },
-      ],
-    },
+  {
+  recipe: 'goal-dashboard',
+  label: 'Financial Goals',
+  route: '/goal-dashboard',
+  skills: [
+    { skill: 'planning-skill', function: 'get_goals', params: { client_id: 1 } },
+    { skill: 'portfolio-skill', function: 'get_allocation', params: { client_id: 1 } },
+  ],
+},
     {
       recipe: 'scheme-explorer',
       label: 'Scheme Explorer',
