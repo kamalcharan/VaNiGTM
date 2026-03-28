@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>KI-Prime — Import Center</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   KI-PRIME DESIGN SYSTEM — "ATLAS"
+   Philosophy: Your money has a gravity. We visualize it.
+   ═══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  /* The Void — deep space black with warmth */
+  --void: #08080c;
+  --void-up: #0e0e14;
+  --void-up-2: #16161f;
+  --void-up-3: #1e1e2a;
+
+  /* Gold Thread — wealth, warmth, trust */
+  --gold: #c9a84c;
+  --gold-bright: #e4c76b;
+  --gold-dim: #8a7235;
+  --gold-glow: rgba(201, 168, 76, 0.15);
+  --gold-glow-strong: rgba(201, 168, 76, 0.3);
+
+  /* Signal Colors */
+  --up: #2dd4a0;
+  --up-glow: rgba(45, 212, 160, 0.15);
+  --down: #f05e5e;
+  --down-glow: rgba(240, 94, 94, 0.15);
+  --info: #5eaaf0;
+  --info-glow: rgba(94, 170, 240, 0.15);
+
+  /* Text Hierarchy */
+  --text-hero: #f0ece4;
+  --text-primary: #d4cfc5;
+  --text-secondary: #8a8578;
+  --text-ghost: #4a473f;
+
+  /* Glass */
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-hover: rgba(255, 255, 255, 0.06);
+
+  /* Typography */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Spacing Scale */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 200ms;
+  --duration-normal: 400ms;
+  --duration-slow: 800ms;
+  --duration-cinematic: 1200ms;
+}
+
+/* ── Reset & Base ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--void);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Atmospheric Background ─────────────────── */
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.atmosphere::before {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  top: -200px;
+  right: -100px;
+  background: radial-gradient(circle, var(--gold-glow) 0%, transparent 70%);
+  animation: atmosphereDrift 20s ease-in-out infinite alternate;
+}
+
+.atmosphere::after {
+  content: '';
+  position: absolute;
+  width: 800px;
+  height: 800px;
+  bottom: -300px;
+  left: -200px;
+  background: radial-gradient(circle, rgba(94, 170, 240, 0.05) 0%, transparent 70%);
+  animation: atmosphereDrift 25s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes atmosphereDrift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(60px, 40px) scale(1.1); }
+}
+
+/* ── Noise Texture Overlay ──────────────────── */
+.noise {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Glass Cards ────────────────────────────── */
+.glass-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.glass-card:hover {
+  background: var(--glass-hover);
+  border-color: rgba(201, 168, 76, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Gold Line Accent ───────────────────────── */
+.gold-line {
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  margin-bottom: var(--space-md);
+}
+
+.gold-line-long {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold-dim), transparent 60%);
+}
+
+/* ── Typography Classes ─────────────────────── */
+.display-xl {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 900;
+  line-height: 1.05;
+  color: var(--text-hero);
+  letter-spacing: -0.02em;
+}
+
+.display-lg {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-hero);
+}
+
+.display-md {
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-hero);
+}
+
+.label-upper {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-weight: 400;
+}
+
+.mono-sm {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 300;
+}
+
+/* ── Number Display (for money) ─────────────── */
+.amount {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.amount-hero {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  color: var(--text-hero);
+  font-variant-numeric: tabular-nums;
+}
+
+.currency {
+  font-size: 0.6em;
+  vertical-align: super;
+  color: var(--gold);
+  margin-right: 2px;
+}
+
+/* ── Signal Badges ──────────────────────────── */
+.badge-up {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: var(--up-glow);
+  color: var(--up);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-down {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: var(--down-glow);
+  color: var(--down);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ── Buttons ────────────────────────────────── */
+.btn-gold {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--gold);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-gold::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gold);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.btn-gold:hover {
+  color: var(--void);
+  box-shadow: 0 0 30px var(--gold-glow-strong);
+}
+
+.btn-gold:hover::before { opacity: 1; }
+.btn-gold span { position: relative; z-index: 1; }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.btn-ghost:hover {
+  border-color: var(--gold-dim);
+  color: var(--text-primary);
+}
+
+/* ── Entrance Animations ────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes goldPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.anim-fade-up {
+  animation: fadeInUp var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-fade {
+  animation: fadeIn var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-slide-left {
+  animation: slideInLeft var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-scale {
+  animation: scaleIn var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+/* Stagger delays */
+.delay-1 { animation-delay: 100ms; }
+.delay-2 { animation-delay: 200ms; }
+.delay-3 { animation-delay: 350ms; }
+.delay-4 { animation-delay: 500ms; }
+.delay-5 { animation-delay: 700ms; }
+.delay-6 { animation-delay: 900ms; }
+.delay-7 { animation-delay: 1100ms; }
+.delay-8 { animation-delay: 1300ms; }
+
+/* ── Scrollbar ──────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--void); }
+::-webkit-scrollbar-thumb { background: var(--void-up-3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }
+
+/* ── Selection ──────────────────────────────── */
+::selection {
+  background: var(--gold-glow-strong);
+  color: var(--text-hero);
+}
+
+/* ── Utility ────────────────────────────────── */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-xs { gap: var(--space-xs); }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.gap-lg { gap: var(--space-lg); }
+.gap-xl { gap: var(--space-xl); }
+.w-full { width: 100%; }
+.text-gold { color: var(--gold); }
+.text-up { color: var(--up); }
+.text-down { color: var(--down); }
+.text-ghost { color: var(--text-ghost); }
+.text-secondary { color: var(--text-secondary); }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.relative { position: relative; }
+.overflow-hidden { overflow: hidden; }
+
+
+/* ══ LAYOUT OVERRIDES FOR CONTAINER RENDERING ══ */
+html, body {
+  min-width: 1280px !important;
+  width: 100% !important;
+  overflow-x: auto !important;
+}
+.atmosphere, .noise {
+  position: absolute !important;
+}
+
+</style>
+<style>
+  .shell { display:flex; min-height:100vh; }
+  .nav-rail { background:var(--void-up); border-right:1px solid var(--glass-border); display:flex; flex-direction:column; align-items:center; padding:var(--space-md) 0; gap:var(--space-xs); position:sticky; top:0; width:72px; height:100vh; flex-shrink:0; z-index:100; }
+  .nav-logo { width:40px; height:40px; border:1px solid var(--gold-dim); border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; margin-bottom:var(--space-lg); cursor:pointer; }
+  .nav-logo svg { width:18px; height:18px; color:var(--gold); }
+  .nav-item { width:48px; height:48px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-ghost); transition: all 0.2s; }
+  .nav-item:hover { background:var(--glass); color:var(--text-secondary); }
+  .nav-item.active { color:var(--gold); background:var(--gold-glow); }
+  .nav-item svg { width:20px; height:20px; }
+  .nav-spacer { flex:1; }
+
+  .main { flex: 1; min-width: 0; padding: var(--space-lg) var(--space-xl); max-width: 1600px; }
+
+  /* ── Header ─────────────────────────────── */
+  .import-header {
+    margin-bottom: var(--space-xl);
+    animation: fadeIn 0.6s var(--ease-out) forwards;
+    opacity: 0;
+  }
+
+  .import-title {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: var(--text-hero);
+    margin-bottom: var(--space-xs);
+  }
+
+  .import-sub {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+
+  /* ── Import Wizard Steps ────────────────── */
+  .import-steps {
+    display: flex;
+    gap: 0;
+    margin-bottom: var(--space-xl);
+    animation: fadeInUp 0.6s var(--ease-out) 100ms forwards;
+    opacity: 0;
+  }
+
+  .import-step {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    border-bottom: 2px solid var(--glass-border);
+    font-size: 0.8rem;
+    color: var(--text-ghost);
+    transition: all 0.3s;
+  }
+
+  .import-step.done { border-bottom-color: var(--gold-dim); color: var(--gold-dim); }
+  .import-step.active { border-bottom-color: var(--gold); color: var(--gold); }
+
+  .import-step-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    border: 1.5px solid currentColor;
+    flex-shrink: 0;
+  }
+
+  .import-step.done .import-step-num { background: var(--gold-dim); color: var(--void); border-color: var(--gold-dim); }
+  .import-step.active .import-step-num { background: var(--gold); color: var(--void); border-color: var(--gold); box-shadow: 0 0 10px var(--gold-glow); }
+
+  /* ── Upload Zone ────────────────────────── */
+  .upload-zone {
+    border: 2px dashed var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-3xl) var(--space-xl);
+    text-align: center;
+    transition: all 0.4s var(--ease-out);
+    cursor: pointer;
+    margin-bottom: var(--space-xl);
+    position: relative;
+    overflow: hidden;
+    animation: fadeInUp 0.8s var(--ease-out) 200ms forwards;
+    opacity: 0;
+  }
+
+  .upload-zone:hover {
+    border-color: var(--gold-dim);
+    background: var(--gold-glow);
+  }
+
+  .upload-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, var(--gold-glow) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  .upload-zone:hover::before { opacity: 1; }
+
+  .upload-content { position: relative; z-index: 2; }
+
+  .upload-icon {
+    font-size: 3rem;
+    margin-bottom: var(--space-md);
+    display: block;
+    animation: goldPulse 3s ease-in-out infinite;
+  }
+
+  .upload-title {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-hero);
+    margin-bottom: var(--space-xs);
+  }
+
+  .upload-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-lg);
+  }
+
+  .upload-formats {
+    display: flex;
+    gap: var(--space-sm);
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .format-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    transition: all 0.3s;
+  }
+
+  .format-badge:hover {
+    border-color: var(--gold-dim);
+    color: var(--gold);
+  }
+
+  .format-icon { font-size: 0.9rem; }
+
+  /* ── OR Divider ─────────────────────────── */
+  .or-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-xl);
+    color: var(--text-ghost);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    animation: fadeIn 0.6s var(--ease-out) 300ms forwards;
+    opacity: 0;
+  }
+
+  .or-divider::before, .or-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--glass-border);
+  }
+
+  /* ── Source Cards ────────────────────────── */
+  .source-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+    animation: fadeInUp 0.8s var(--ease-out) 400ms forwards;
+    opacity: 0;
+  }
+
+  .source-card {
+    background: var(--void-up);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-lg);
+    cursor: pointer;
+    transition: all 0.3s var(--ease-out);
+    text-align: center;
+  }
+
+  .source-card:hover {
+    border-color: var(--gold-dim);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  }
+
+  .source-logo {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    margin: 0 auto var(--space-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+  }
+
+  .source-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-hero);
+    margin-bottom: 4px;
+  }
+
+  .source-desc {
+    font-size: 0.7rem;
+    color: var(--text-ghost);
+    line-height: 1.4;
+  }
+
+  .source-formats {
+    display: flex;
+    gap: var(--space-xs);
+    justify-content: center;
+    margin-top: var(--space-sm);
+  }
+
+  .source-format {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    padding: 2px 8px;
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    color: var(--text-ghost);
+  }
+
+  /* ── Parsing Preview (simulated) ────────── */
+  .parse-preview {
+    background: var(--void-up);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: var(--space-xl);
+    animation: fadeInUp 0.8s var(--ease-out) 500ms forwards;
+    opacity: 0;
+  }
+
+  .parse-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-md) var(--space-lg);
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .parse-file {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .parse-file-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--gold-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+  }
+
+  .parse-file-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-hero);
+  }
+
+  .parse-file-size {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-ghost);
+  }
+
+  .parse-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 0.75rem;
+    color: var(--up);
+  }
+
+  .parse-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--up);
+    animation: goldPulse 1.5s ease-in-out infinite;
+  }
+
+  /* Preview table */
+  .parse-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+  }
+
+  .parse-table th {
+    text-align: left;
+    padding: 10px 16px;
+    font-weight: 500;
+    color: var(--text-ghost);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-bottom: 1px solid var(--glass-border);
+    background: var(--void);
+  }
+
+  .parse-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.02);
+    font-family: var(--font-mono);
+    font-size: 0.73rem;
+    color: var(--text-primary);
+  }
+
+  .parse-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .match-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.6rem;
+    padding: 2px 8px;
+    border-radius: 100px;
+    font-family: var(--font-body);
+  }
+
+  .match-badge.auto { background: var(--up-glow); color: var(--up); }
+  .match-badge.manual { background: rgba(201,168,76,0.15); color: var(--gold); }
+  .match-badge.error { background: var(--down-glow); color: var(--down); }
+
+  /* Summary bar */
+  .parse-summary {
+    display: flex;
+    gap: var(--space-xl);
+    padding: var(--space-md) var(--space-lg);
+    border-top: 1px solid var(--glass-border);
+    background: var(--void);
+  }
+
+  .summary-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .summary-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+  }
+
+  .summary-text {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+  }
+
+  .summary-count {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  /* Action buttons */
+  .import-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: fadeIn 0.8s var(--ease-out) 600ms forwards;
+    opacity: 0;
+  }
+
+  .import-warning {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+
+  .import-warning-icon { color: var(--gold); }
+</style>
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div class="noise"></div>
+
+  <div class="shell">
+    <!-- Nav Rail -->
+    <nav class="nav-rail">
+      <div class="nav-logo" onclick="window.location.href='02-planner-awakening.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+      <div class="nav-item" onclick="window.location.href='02-planner-awakening.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 010 20M12 2a15 15 0 000 20M2 12h20"/></svg></div>
+      <div class="nav-item" onclick="window.location.href='03-client-universe.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+      <div class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+      <div class="nav-spacer"></div>
+    </nav>
+
+    <main class="main">
+      <div class="import-header">
+        <div class="import-title">Import Center</div>
+        <div class="import-sub">Bring in existing portfolios from CAS statements, broker exports, or manual entry. We'll reconcile everything.</div>
+      </div>
+
+      <!-- Wizard Steps -->
+      <div class="import-steps">
+        <div class="import-step done"><span class="import-step-num">✓</span> Upload</div>
+        <div class="import-step done"><span class="import-step-num">✓</span> Parse</div>
+        <div class="import-step active"><span class="import-step-num">3</span> Review & Map</div>
+        <div class="import-step"><span class="import-step-num">4</span> Reconcile</div>
+        <div class="import-step"><span class="import-step-num">5</span> Confirm</div>
+      </div>
+
+      <!-- Upload Zone -->
+      <div class="upload-zone" ondragover="this.classList.add('dragging');event.preventDefault()" ondragleave="this.classList.remove('dragging')" ondrop="this.classList.remove('dragging')">
+        <div class="upload-content">
+          <span class="upload-icon">📂</span>
+          <div class="upload-title">Drop your file here</div>
+          <div class="upload-desc">or click to browse. We auto-detect the source format.</div>
+          <div class="upload-formats">
+            <div class="format-badge"><span class="format-icon">📄</span> CAMS CAS (PDF)</div>
+            <div class="format-badge"><span class="format-icon">📄</span> KFintech CAS</div>
+            <div class="format-badge"><span class="format-icon">📊</span> InvestWell CSV</div>
+            <div class="format-badge"><span class="format-icon">📊</span> BSE StAR MF</div>
+            <div class="format-badge"><span class="format-icon">📊</span> Excel Workbook</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="or-divider">or select a source</div>
+
+      <!-- Source Cards -->
+      <div class="source-grid">
+        <div class="source-card">
+          <div class="source-logo" style="background:rgba(0,123,255,0.1);">🏦</div>
+          <div class="source-name">CAMS CAS</div>
+          <div class="source-desc">Consolidated Account Statement from CAMS RTAs</div>
+          <div class="source-formats">
+            <span class="source-format">PDF</span>
+            <span class="source-format">CSV</span>
+          </div>
+        </div>
+        <div class="source-card">
+          <div class="source-logo" style="background:rgba(0,200,83,0.1);">🏦</div>
+          <div class="source-name">KFintech CAS</div>
+          <div class="source-desc">Consolidated statement from KFintech RTA</div>
+          <div class="source-formats">
+            <span class="source-format">PDF</span>
+            <span class="source-format">CSV</span>
+          </div>
+        </div>
+        <div class="source-card">
+          <div class="source-logo" style="background:rgba(201,168,76,0.1);">📊</div>
+          <div class="source-name">InvestWell</div>
+          <div class="source-desc">Client & transaction export from InvestWell platform</div>
+          <div class="source-formats">
+            <span class="source-format">CSV</span>
+          </div>
+        </div>
+        <div class="source-card">
+          <div class="source-logo" style="background:rgba(240,94,94,0.1);">📋</div>
+          <div class="source-name">Excel / Manual</div>
+          <div class="source-desc">Your own spreadsheet or manual data entry</div>
+          <div class="source-formats">
+            <span class="source-format">XLSX</span>
+            <span class="source-format">CSV</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Parse Preview (simulated — showing a parsed CAS) -->
+      <div class="parse-preview">
+        <div class="parse-header">
+          <div class="parse-file">
+            <div class="parse-file-icon">📄</div>
+            <div>
+              <div class="parse-file-name">CAMS_CAS_PriyaSharma_Mar2026.pdf</div>
+              <div class="parse-file-size">2.4 MB · Uploaded just now</div>
+            </div>
+          </div>
+          <div class="parse-status">
+            <div class="parse-status-dot"></div>
+            Parsed successfully · 23 transactions found
+          </div>
+        </div>
+
+        <table class="parse-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Fund</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Units</th>
+              <th>NAV</th>
+              <th>Match</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>22-Mar-2026</td>
+              <td style="color:var(--text-hero)">PPFAS Flexi Cap Direct Growth</td>
+              <td>SIP</td>
+              <td>₹40,000</td>
+              <td>52.18</td>
+              <td>766.52</td>
+              <td><span class="match-badge auto">✓ Auto-matched</span></td>
+            </tr>
+            <tr>
+              <td>20-Mar-2026</td>
+              <td style="color:var(--text-hero)">HDFC Mid-Cap Opportunities Direct</td>
+              <td>SIP</td>
+              <td>₹25,000</td>
+              <td>15.82</td>
+              <td>1580.40</td>
+              <td><span class="match-badge auto">✓ Auto-matched</span></td>
+            </tr>
+            <tr>
+              <td>15-Mar-2026</td>
+              <td style="color:var(--text-hero)">ICICI Pru Short Term Fund Direct</td>
+              <td>SIP</td>
+              <td>₹20,000</td>
+              <td>382.41</td>
+              <td>52.30</td>
+              <td><span class="match-badge auto">✓ Auto-matched</span></td>
+            </tr>
+            <tr>
+              <td>10-Mar-2026</td>
+              <td style="color:var(--text-hero)">SBI Magnum Gilt Fund Direct</td>
+              <td>SIP</td>
+              <td>₹15,000</td>
+              <td>241.55</td>
+              <td>62.12</td>
+              <td><span class="match-badge auto">✓ Auto-matched</span></td>
+            </tr>
+            <tr>
+              <td>05-Mar-2026</td>
+              <td style="color:var(--gold)">Axis Small Cap Fund Direct Growth</td>
+              <td>Lump Sum</td>
+              <td>₹2,00,000</td>
+              <td>2340.12</td>
+              <td>85.47</td>
+              <td><span class="match-badge manual">⚠ Needs mapping</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="parse-summary">
+          <div class="summary-item">
+            <div class="summary-dot" style="background:var(--up)"></div>
+            <span class="summary-text">Auto-matched:</span>
+            <span class="summary-count text-up">21</span>
+          </div>
+          <div class="summary-item">
+            <div class="summary-dot" style="background:var(--gold)"></div>
+            <span class="summary-text">Needs mapping:</span>
+            <span class="summary-count text-gold">1</span>
+          </div>
+          <div class="summary-item">
+            <div class="summary-dot" style="background:var(--down)"></div>
+            <span class="summary-text">Errors:</span>
+            <span class="summary-count text-down">1</span>
+          </div>
+          <div class="summary-item">
+            <div class="summary-dot" style="background:var(--text-ghost)"></div>
+            <span class="summary-text">Duplicates (skipped):</span>
+            <span class="summary-count">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="import-actions">
+        <div class="import-warning">
+          <span class="import-warning-icon">💡</span>
+          1 transaction needs manual fund mapping before import
+        </div>
+        <div class="flex gap-sm">
+          <button class="btn-ghost">← Re-upload</button>
+          <button class="btn-gold"><span>Resolve & Import →</span></button>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

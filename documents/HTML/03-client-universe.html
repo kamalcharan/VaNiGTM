@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>KI-Prime — Priya Sharma</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   KI-PRIME DESIGN SYSTEM — "ATLAS"
+   Philosophy: Your money has a gravity. We visualize it.
+   ═══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  /* The Void — deep space black with warmth */
+  --void: #08080c;
+  --void-up: #0e0e14;
+  --void-up-2: #16161f;
+  --void-up-3: #1e1e2a;
+
+  /* Gold Thread — wealth, warmth, trust */
+  --gold: #c9a84c;
+  --gold-bright: #e4c76b;
+  --gold-dim: #8a7235;
+  --gold-glow: rgba(201, 168, 76, 0.15);
+  --gold-glow-strong: rgba(201, 168, 76, 0.3);
+
+  /* Signal Colors */
+  --up: #2dd4a0;
+  --up-glow: rgba(45, 212, 160, 0.15);
+  --down: #f05e5e;
+  --down-glow: rgba(240, 94, 94, 0.15);
+  --info: #5eaaf0;
+  --info-glow: rgba(94, 170, 240, 0.15);
+
+  /* Text Hierarchy */
+  --text-hero: #f0ece4;
+  --text-primary: #d4cfc5;
+  --text-secondary: #8a8578;
+  --text-ghost: #4a473f;
+
+  /* Glass */
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-hover: rgba(255, 255, 255, 0.06);
+
+  /* Typography */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Spacing Scale */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 200ms;
+  --duration-normal: 400ms;
+  --duration-slow: 800ms;
+  --duration-cinematic: 1200ms;
+}
+
+/* ── Reset & Base ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--void);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Atmospheric Background ─────────────────── */
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.atmosphere::before {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  top: -200px;
+  right: -100px;
+  background: radial-gradient(circle, var(--gold-glow) 0%, transparent 70%);
+  animation: atmosphereDrift 20s ease-in-out infinite alternate;
+}
+
+.atmosphere::after {
+  content: '';
+  position: absolute;
+  width: 800px;
+  height: 800px;
+  bottom: -300px;
+  left: -200px;
+  background: radial-gradient(circle, rgba(94, 170, 240, 0.05) 0%, transparent 70%);
+  animation: atmosphereDrift 25s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes atmosphereDrift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(60px, 40px) scale(1.1); }
+}
+
+/* ── Noise Texture Overlay ──────────────────── */
+.noise {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Glass Cards ────────────────────────────── */
+.glass-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.glass-card:hover {
+  background: var(--glass-hover);
+  border-color: rgba(201, 168, 76, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Gold Line Accent ───────────────────────── */
+.gold-line {
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  margin-bottom: var(--space-md);
+}
+
+.gold-line-long {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold-dim), transparent 60%);
+}
+
+/* ── Typography Classes ─────────────────────── */
+.display-xl {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 900;
+  line-height: 1.05;
+  color: var(--text-hero);
+  letter-spacing: -0.02em;
+}
+
+.display-lg {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-hero);
+}
+
+.display-md {
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-hero);
+}
+
+.label-upper {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-weight: 400;
+}
+
+.mono-sm {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 300;
+}
+
+/* ── Number Display (for money) ─────────────── */
+.amount {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.amount-hero {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  color: var(--text-hero);
+  font-variant-numeric: tabular-nums;
+}
+
+.currency {
+  font-size: 0.6em;
+  vertical-align: super;
+  color: var(--gold);
+  margin-right: 2px;
+}
+
+/* ── Signal Badges ──────────────────────────── */
+.badge-up {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: var(--up-glow);
+  color: var(--up);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-down {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: var(--down-glow);
+  color: var(--down);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ── Buttons ────────────────────────────────── */
+.btn-gold {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--gold);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-gold::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gold);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.btn-gold:hover {
+  color: var(--void);
+  box-shadow: 0 0 30px var(--gold-glow-strong);
+}
+
+.btn-gold:hover::before { opacity: 1; }
+.btn-gold span { position: relative; z-index: 1; }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.btn-ghost:hover {
+  border-color: var(--gold-dim);
+  color: var(--text-primary);
+}
+
+/* ── Entrance Animations ────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes goldPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.anim-fade-up {
+  animation: fadeInUp var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-fade {
+  animation: fadeIn var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-slide-left {
+  animation: slideInLeft var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-scale {
+  animation: scaleIn var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+/* Stagger delays */
+.delay-1 { animation-delay: 100ms; }
+.delay-2 { animation-delay: 200ms; }
+.delay-3 { animation-delay: 350ms; }
+.delay-4 { animation-delay: 500ms; }
+.delay-5 { animation-delay: 700ms; }
+.delay-6 { animation-delay: 900ms; }
+.delay-7 { animation-delay: 1100ms; }
+.delay-8 { animation-delay: 1300ms; }
+
+/* ── Scrollbar ──────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--void); }
+::-webkit-scrollbar-thumb { background: var(--void-up-3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }
+
+/* ── Selection ──────────────────────────────── */
+::selection {
+  background: var(--gold-glow-strong);
+  color: var(--text-hero);
+}
+
+/* ── Utility ────────────────────────────────── */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-xs { gap: var(--space-xs); }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.gap-lg { gap: var(--space-lg); }
+.gap-xl { gap: var(--space-xl); }
+.w-full { width: 100%; }
+.text-gold { color: var(--gold); }
+.text-up { color: var(--up); }
+.text-down { color: var(--down); }
+.text-ghost { color: var(--text-ghost); }
+.text-secondary { color: var(--text-secondary); }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.relative { position: relative; }
+.overflow-hidden { overflow: hidden; }
+
+
+/* ══ LAYOUT OVERRIDES FOR CONTAINER RENDERING ══ */
+html, body {
+  min-width: 1280px !important;
+  width: 100% !important;
+  overflow-x: auto !important;
+}
+.atmosphere, .noise {
+  position: absolute !important;
+}
+
+</style>
+<style>
+  .shell { display: flex; min-height: 100vh; }
+  .nav-rail { background:var(--void-up); border-right:1px solid var(--glass-border); display:flex; flex-direction:column; align-items:center; padding:var(--space-md) 0; gap:var(--space-xs); position:sticky; top:0; width:72px; height:100vh; flex-shrink:0; z-index:100; }
+  .nav-logo { width:40px; height:40px; border:1px solid var(--gold-dim); border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; margin-bottom:var(--space-lg); cursor:pointer; }
+  .nav-logo svg { width:18px; height:18px; color:var(--gold); }
+  .nav-item { width:48px; height:48px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-ghost); transition: all 0.2s; }
+  .nav-item:hover { background:var(--glass); color:var(--text-secondary); }
+  .nav-item.active { color:var(--gold); background:var(--gold-glow); }
+  .nav-item svg { width:20px; height:20px; }
+  .nav-spacer { flex:1; }
+
+  .main { flex: 1; min-width: 0; }
+
+  /* ── Client Hero Banner ─────────────────── */
+  .client-hero {
+    position: relative;
+    padding: var(--space-xl) var(--space-xl) var(--space-2xl);
+    overflow: hidden;
+  }
+
+  .client-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at 30% 40%, rgba(201, 168, 76, 0.1) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 60%, rgba(94, 170, 240, 0.05) 0%, transparent 40%),
+      linear-gradient(180deg, var(--void-up) 0%, var(--void) 100%);
+  }
+
+  .hero-content { position: relative; z-index: 2; }
+
+  .hero-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
+    font-size: 0.75rem;
+    animation: fadeIn 0.6s var(--ease-out) forwards;
+    opacity: 0;
+  }
+
+  .hero-breadcrumb a {
+    color: var(--text-ghost);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .hero-breadcrumb a:hover { color: var(--gold); }
+  .hero-breadcrumb .sep { color: var(--text-ghost); }
+  .hero-breadcrumb .current { color: var(--text-secondary); }
+
+  .hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: var(--space-xl);
+  }
+
+  .hero-identity {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+    animation: fadeInUp 0.8s var(--ease-out) 100ms forwards;
+    opacity: 0;
+  }
+
+  .hero-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--void);
+    position: relative;
+  }
+
+  .hero-avatar::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 1.5px solid var(--gold-dim);
+  }
+
+  .hero-name {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--text-hero);
+    line-height: 1.1;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: var(--space-md);
+    margin-top: var(--space-sm);
+  }
+
+  .meta-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .meta-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: var(--space-sm);
+    animation: fadeIn 0.8s var(--ease-out) 300ms forwards;
+    opacity: 0;
+  }
+
+  /* ── Quick Stats Row ────────────────────── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-md);
+    animation: fadeInUp 0.8s var(--ease-out) 200ms forwards;
+    opacity: 0;
+  }
+
+  .stat-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-lg);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+  }
+
+  .stat-card.gold-accent::before { background: linear-gradient(90deg, var(--gold), transparent); }
+  .stat-card.up-accent::before { background: linear-gradient(90deg, var(--up), transparent); }
+  .stat-card.info-accent::before { background: linear-gradient(90deg, var(--info), transparent); }
+  .stat-card.down-accent::before { background: linear-gradient(90deg, var(--down), transparent); }
+
+  .stat-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-ghost);
+    margin-bottom: var(--space-sm);
+  }
+
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text-hero);
+    line-height: 1;
+    margin-bottom: var(--space-xs);
+  }
+
+  .stat-sub {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  /* ── Tabs Navigation ────────────────────── */
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--glass-border);
+    padding: 0 var(--space-xl);
+    background: var(--void);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    animation: fadeIn 0.6s var(--ease-out) 400ms forwards;
+    opacity: 0;
+  }
+
+  .tab {
+    padding: var(--space-md) var(--space-lg);
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-ghost);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s var(--ease-out);
+    white-space: nowrap;
+  }
+
+  .tab:hover { color: var(--text-secondary); }
+
+  .tab.active {
+    color: var(--gold);
+    border-bottom-color: var(--gold);
+  }
+
+  /* ── Content Area ───────────────────────── */
+  .content { padding: var(--space-xl); }
+
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: var(--space-xl);
+  }
+
+  /* ── Goal Stories (Left Column) ─────────── */
+  .goals-section {
+    animation: fadeInUp 0.8s var(--ease-out) 500ms forwards;
+    opacity: 0;
+  }
+
+  .goals-title {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-hero);
+    margin-bottom: var(--space-lg);
+  }
+
+  .goal-story {
+    background: var(--void-up);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    margin-bottom: var(--space-lg);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s var(--ease-out);
+    cursor: pointer;
+  }
+
+  .goal-story:hover {
+    border-color: var(--gold-dim);
+    transform: translateY(-2px);
+  }
+
+  .goal-story-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-lg);
+  }
+
+  .goal-icon-wrap {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+  }
+
+  .goal-emoji {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+  }
+
+  .goal-info h3 {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-hero);
+  }
+
+  .goal-info p {
+    font-size: 0.75rem;
+    color: var(--text-ghost);
+    margin-top: 2px;
+  }
+
+  .goal-status {
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+
+  .goal-status.on-track { background: var(--up-glow); color: var(--up); }
+  .goal-status.attention { background: rgba(201, 168, 76, 0.15); color: var(--gold); }
+  .goal-status.behind { background: var(--down-glow); color: var(--down); }
+  .goal-status.achieved { background: var(--up-glow); color: var(--up); border: 1px solid var(--up); }
+
+  /* Goal progress visualization */
+  .goal-progress-wrap {
+    margin-bottom: var(--space-lg);
+  }
+
+  .goal-progress-bar {
+    height: 8px;
+    background: var(--void-up-3);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: var(--space-sm);
+    position: relative;
+  }
+
+  .goal-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1.5s var(--ease-out);
+    position: relative;
+  }
+
+  .goal-progress-fill::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: -2px;
+    bottom: -2px;
+    width: 4px;
+    border-radius: 2px;
+    background: inherit;
+    box-shadow: 0 0 10px currentColor;
+  }
+
+  .goal-numbers {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .goal-current {
+    font-family: var(--font-mono);
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--text-hero);
+  }
+
+  .goal-target {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-ghost);
+  }
+
+  /* Timeline dots */
+  .goal-timeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: var(--space-md) 0;
+    border-top: 1px solid var(--glass-border);
+  }
+
+  .timeline-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--void-up-3);
+    border: 2px solid var(--text-ghost);
+    position: relative;
+    z-index: 2;
+    flex-shrink: 0;
+  }
+
+  .timeline-dot.past { background: var(--gold); border-color: var(--gold); }
+  .timeline-dot.current { background: var(--gold-bright); border-color: var(--gold-bright); box-shadow: 0 0 10px var(--gold-glow-strong); }
+  .timeline-dot.future { background: var(--void-up-3); border-color: var(--text-ghost); }
+
+  .timeline-line {
+    flex: 1;
+    height: 2px;
+    background: var(--void-up-3);
+  }
+
+  .timeline-line.done { background: var(--gold-dim); }
+
+  .timeline-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: var(--space-xs);
+  }
+
+  .timeline-label {
+    font-size: 0.6rem;
+    color: var(--text-ghost);
+    font-family: var(--font-mono);
+  }
+
+  /* ── Right Sidebar ──────────────────────── */
+  .sidebar {
+    animation: fadeInUp 0.8s var(--ease-out) 600ms forwards;
+    opacity: 0;
+  }
+
+  /* Holdings snapshot */
+  .holdings-card {
+    background: var(--void-up);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-lg);
+  }
+
+  .holdings-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-ghost);
+    margin-bottom: var(--space-md);
+  }
+
+  /* Donut chart */
+  .donut-wrap {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-lg);
+  }
+
+  .donut {
+    width: 120px;
+    height: 120px;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .donut svg {
+    width: 120px;
+    height: 120px;
+    transform: rotate(-90deg);
+  }
+
+  .donut circle {
+    fill: none;
+    stroke-width: 12;
+    stroke-linecap: round;
+  }
+
+  .donut .track { stroke: var(--void-up-3); }
+
+  .donut-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .donut-center-value {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-hero);
+  }
+
+  .donut-center-label {
+    font-size: 0.55rem;
+    color: var(--text-ghost);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .donut-legend {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .donut-legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .donut-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .donut-legend-pct {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-ghost);
+    margin-left: auto;
+  }
+
+  /* Top holdings list */
+  .holding-row {
+    display: flex;
+    align-items: center;
+    padding: var(--space-sm) 0;
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .holding-row:last-child { border-bottom: none; }
+
+  .holding-name {
+    flex: 1;
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: var(--space-sm);
+  }
+
+  .holding-value {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  .holding-change {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    min-width: 50px;
+    text-align: right;
+  }
+
+  /* Activity Timeline */
+  .activity-card {
+    background: var(--void-up);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+  }
+
+  .activity-item {
+    display: flex;
+    gap: var(--space-md);
+    padding: var(--space-sm) 0;
+    position: relative;
+  }
+
+  .activity-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 28px;
+    bottom: -8px;
+    width: 1px;
+    background: var(--glass-border);
+  }
+
+  .activity-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-top: 4px;
+    flex-shrink: 0;
+  }
+
+  .activity-dot.gold { background: var(--gold); }
+  .activity-dot.green { background: var(--up); }
+  .activity-dot.blue { background: var(--info); }
+  .activity-dot.ghost { background: var(--text-ghost); }
+
+  .activity-text {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  .activity-time {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-ghost);
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div class="noise"></div>
+
+  <div class="shell">
+    <!-- Nav Rail (same as dashboard) -->
+    <nav class="nav-rail">
+      <div class="nav-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+      <div class="nav-item" title="Dashboard" onclick="window.location.href='02-planner-awakening.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 010 20M12 2a15 15 0 000 20M2 12h20"/></svg></div>
+      <div class="nav-item active" title="Clients"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+      <div class="nav-item" title="Plans" onclick="window.location.href='04-planning-engine.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>
+      <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12a9 9 0 11-6.2-8.6"/><path d="M21 3v6h-6"/></svg></div>
+      <div class="nav-spacer"></div>
+    </nav>
+
+    <main class="main">
+      <!-- Client Hero -->
+      <div class="client-hero">
+        <div class="hero-content">
+          <div class="hero-breadcrumb">
+            <a href="02-planner-awakening.html">Atlas</a>
+            <span class="sep">›</span>
+            <a href="#">Clients</a>
+            <span class="sep">›</span>
+            <span class="current">Priya Sharma</span>
+          </div>
+
+          <div class="hero-top">
+            <div class="hero-identity">
+              <div class="hero-avatar">PS</div>
+              <div>
+                <h1 class="hero-name">Priya Sharma</h1>
+                <div class="hero-meta">
+                  <span class="meta-tag"><span class="meta-dot" style="background:var(--gold)"></span> Aggressive</span>
+                  <span class="meta-tag">Age 38 · Family of 4</span>
+                  <span class="meta-tag mono-sm">PAN: BXXPS4XXXK</span>
+                  <span class="meta-tag">Client since 2019</span>
+                </div>
+              </div>
+            </div>
+            <div class="hero-actions">
+              <button class="btn-ghost">📞 Call</button>
+              <button class="btn-ghost">💬 Message</button>
+              <button class="btn-gold" onclick="window.location.href='04-planning-engine.html'"><span>📋 New Plan</span></button>
+            </div>
+          </div>
+
+          <div class="stats-row">
+            <div class="stat-card gold-accent">
+              <div class="stat-label">Total Portfolio</div>
+              <div class="stat-value"><span style="color:var(--gold);font-size:0.6em;">₹</span>1.84 Cr</div>
+              <div class="stat-sub"><span class="text-up">↑ 4.2%</span> this month</div>
+            </div>
+            <div class="stat-card up-accent">
+              <div class="stat-label">XIRR (3Y)</div>
+              <div class="stat-value text-up">22.1%</div>
+              <div class="stat-sub">vs 14.2% benchmark</div>
+            </div>
+            <div class="stat-card info-accent">
+              <div class="stat-label">Active SIPs</div>
+              <div class="stat-value">7</div>
+              <div class="stat-sub">₹1,25,000/month</div>
+            </div>
+            <div class="stat-card down-accent">
+              <div class="stat-label">Goals</div>
+              <div class="stat-value">3 <span style="font-size:0.5em;color:var(--text-ghost)">active</span></div>
+              <div class="stat-sub">2 on track · <span class="text-down">1 behind</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Bar -->
+      <div class="tab-bar">
+        <div class="tab active">Overview</div>
+        <div class="tab">Portfolio</div>
+        <div class="tab">Goals</div>
+        <div class="tab">Transactions</div>
+        <div class="tab">Plans</div>
+        <div class="tab">Documents</div>
+        <div class="tab">Communication</div>
+      </div>
+
+      <!-- Content -->
+      <div class="content">
+        <div class="content-grid">
+          <!-- Left: Goal Stories -->
+          <div class="goals-section">
+            <div class="goals-title">Financial Goals — The Story So Far</div>
+
+            <!-- Goal 1: House Purchase -->
+            <div class="goal-story">
+              <div class="goal-story-head">
+                <div class="goal-icon-wrap">
+                  <div class="goal-emoji" style="background:var(--gold-glow)">🏠</div>
+                  <div class="goal-info">
+                    <h3>Dream Home</h3>
+                    <p>Target by Dec 2027 · ₹50L down payment</p>
+                  </div>
+                </div>
+                <span class="goal-status on-track">On Track</span>
+              </div>
+              <div class="goal-progress-wrap">
+                <div class="goal-progress-bar">
+                  <div class="goal-progress-fill" style="width:75%; background:linear-gradient(90deg, var(--gold-dim), var(--gold));"></div>
+                </div>
+                <div class="goal-numbers">
+                  <span class="goal-current">₹37,50,000</span>
+                  <span class="goal-target">of ₹50,00,000</span>
+                </div>
+              </div>
+              <div class="goal-timeline">
+                <div class="timeline-dot past"></div>
+                <div class="timeline-line done"></div>
+                <div class="timeline-dot past"></div>
+                <div class="timeline-line done"></div>
+                <div class="timeline-dot current"></div>
+                <div class="timeline-line"></div>
+                <div class="timeline-dot future"></div>
+              </div>
+              <div class="timeline-labels">
+                <span class="timeline-label">Started Jan '23</span>
+                <span class="timeline-label">₹25L Mar '25</span>
+                <span class="timeline-label" style="color:var(--gold)">Now ₹37.5L</span>
+                <span class="timeline-label">₹50L Dec '27</span>
+              </div>
+            </div>
+
+            <!-- Goal 2: Child Education -->
+            <div class="goal-story">
+              <div class="goal-story-head">
+                <div class="goal-icon-wrap">
+                  <div class="goal-emoji" style="background:var(--up-glow)">🎓</div>
+                  <div class="goal-info">
+                    <h3>Arjun's Engineering</h3>
+                    <p>Target by Jun 2030 · ₹25L education fund</p>
+                  </div>
+                </div>
+                <span class="goal-status on-track">On Track</span>
+              </div>
+              <div class="goal-progress-wrap">
+                <div class="goal-progress-bar">
+                  <div class="goal-progress-fill" style="width:88%; background:linear-gradient(90deg, rgba(45,212,160,0.6), var(--up));"></div>
+                </div>
+                <div class="goal-numbers">
+                  <span class="goal-current">₹22,00,000</span>
+                  <span class="goal-target">of ₹25,00,000</span>
+                </div>
+              </div>
+              <div class="goal-timeline">
+                <div class="timeline-dot past"></div>
+                <div class="timeline-line done"></div>
+                <div class="timeline-dot past"></div>
+                <div class="timeline-line done"></div>
+                <div class="timeline-dot past"></div>
+                <div class="timeline-line done"></div>
+                <div class="timeline-dot current"></div>
+                <div class="timeline-line"></div>
+                <div class="timeline-dot future"></div>
+              </div>
+              <div class="timeline-labels">
+                <span class="timeline-label">Started '20</span>
+                <span class="timeline-label">'22</span>
+                <span class="timeline-label">'24</span>
+                <span class="timeline-label" style="color:var(--up)">Now</span>
+                <span class="timeline-label">'30</span>
+              </div>
+            </div>
+
+            <!-- Goal 3: Retirement — behind -->
+            <div class="goal-story" style="border-color: rgba(240, 94, 94, 0.2);">
+              <div class="goal-story-head">
+                <div class="goal-icon-wrap">
+                  <div class="goal-emoji" style="background:var(--down-glow)">🏖</div>
+                  <div class="goal-info">
+                    <h3>Retirement Corpus</h3>
+                    <p>Target by 2043 · ₹5 Cr inflation-adjusted</p>
+                  </div>
+                </div>
+                <span class="goal-status behind">Behind by 18%</span>
+              </div>
+              <div class="goal-progress-wrap">
+                <div class="goal-progress-bar">
+                  <div class="goal-progress-fill" style="width:38%; background:linear-gradient(90deg, rgba(240,94,94,0.6), var(--down));"></div>
+                </div>
+                <div class="goal-numbers">
+                  <span class="goal-current">₹72,00,000</span>
+                  <span class="goal-target">of ₹5,00,00,000</span>
+                </div>
+              </div>
+              <div style="background:var(--down-glow); border-radius:var(--radius-sm); padding:var(--space-md); margin-top:var(--space-md);">
+                <div style="font-size:0.8rem; color:var(--down); font-weight:500; margin-bottom:4px;">⚡ VaNi Insight</div>
+                <div style="font-size:0.8rem; color:var(--text-secondary); line-height:1.5;">Increasing monthly SIP by ₹15,000 (to ₹55,000) and shifting 20% from debt to mid-cap equity would close the gap by 2028. <a href="#" style="color:var(--gold); text-decoration:none;">Run simulation →</a></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Sidebar -->
+          <div class="sidebar">
+            <!-- Asset Allocation Donut -->
+            <div class="holdings-card">
+              <div class="holdings-title">Asset Allocation</div>
+              <div class="donut-wrap">
+                <div class="donut">
+                  <svg viewBox="0 0 120 120">
+                    <circle class="track" cx="60" cy="60" r="48"/>
+                    <!-- Equity: 62% -->
+                    <circle cx="60" cy="60" r="48" stroke="var(--gold)" stroke-dasharray="187 114" stroke-dashoffset="0"/>
+                    <!-- Debt: 22% -->
+                    <circle cx="60" cy="60" r="48" stroke="var(--info)" stroke-dasharray="66 235" stroke-dashoffset="-187"/>
+                    <!-- Hybrid: 12% -->
+                    <circle cx="60" cy="60" r="48" stroke="var(--up)" stroke-dasharray="36 265" stroke-dashoffset="-253"/>
+                    <!-- Gold: 4% -->
+                    <circle cx="60" cy="60" r="48" stroke="var(--gold-dim)" stroke-dasharray="12 289" stroke-dashoffset="-289"/>
+                  </svg>
+                  <div class="donut-center">
+                    <div class="donut-center-value">₹1.84Cr</div>
+                    <div class="donut-center-label">Total</div>
+                  </div>
+                </div>
+                <div class="donut-legend">
+                  <div class="donut-legend-item"><span class="donut-legend-dot" style="background:var(--gold)"></span>Equity<span class="donut-legend-pct">62%</span></div>
+                  <div class="donut-legend-item"><span class="donut-legend-dot" style="background:var(--info)"></span>Debt<span class="donut-legend-pct">22%</span></div>
+                  <div class="donut-legend-item"><span class="donut-legend-dot" style="background:var(--up)"></span>Hybrid<span class="donut-legend-pct">12%</span></div>
+                  <div class="donut-legend-item"><span class="donut-legend-dot" style="background:var(--gold-dim)"></span>Gold<span class="donut-legend-pct">4%</span></div>
+                </div>
+              </div>
+
+              <div class="holdings-title" style="margin-top:var(--space-md);">Top Holdings</div>
+              <div class="holding-row">
+                <span class="holding-name">Parag Parikh Flexicap</span>
+                <span class="holding-value">₹38.2L</span>
+                <span class="holding-change text-up">+24.1%</span>
+              </div>
+              <div class="holding-row">
+                <span class="holding-name">HDFC Mid-Cap Opp</span>
+                <span class="holding-value">₹28.5L</span>
+                <span class="holding-change text-up">+31.6%</span>
+              </div>
+              <div class="holding-row">
+                <span class="holding-name">ICICI Pru Short Term</span>
+                <span class="holding-value">₹22.0L</span>
+                <span class="holding-change text-up">+7.8%</span>
+              </div>
+              <div class="holding-row">
+                <span class="holding-name">SBI Magnum Gilt</span>
+                <span class="holding-value">₹18.4L</span>
+                <span class="holding-change text-up">+6.2%</span>
+              </div>
+              <div class="holding-row">
+                <span class="holding-name">Axis Bluechip Fund</span>
+                <span class="holding-value">₹15.7L</span>
+                <span class="holding-change text-down">-2.4%</span>
+              </div>
+            </div>
+
+            <!-- Activity Timeline -->
+            <div class="activity-card">
+              <div class="holdings-title">Recent Activity</div>
+              <div class="activity-item">
+                <div class="activity-dot gold"></div>
+                <div>
+                  <div class="activity-text">SIP of ₹40,000 executed in Parag Parikh Flexicap</div>
+                  <div class="activity-time">Today, 10:15 AM</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-dot blue"></div>
+                <div>
+                  <div class="activity-text">Quarterly review call completed. Notes saved.</div>
+                  <div class="activity-time">22 Mar 2026</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-dot green"></div>
+                <div>
+                  <div class="activity-text">Goal "Dream Home" crossed 75% milestone 🎉</div>
+                  <div class="activity-time">18 Mar 2026</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-dot ghost"></div>
+                <div>
+                  <div class="activity-text">CAS statement imported. 3 new transactions reconciled.</div>
+                  <div class="activity-time">15 Mar 2026</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

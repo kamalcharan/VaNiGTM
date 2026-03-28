@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>KI-Prime — You're Invited</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   KI-PRIME DESIGN SYSTEM — "ATLAS"
+   Invite Accept — Join a Tenant
+   Two views: New User (register) / Existing User (accept)
+   Theme: vikuna-black (CSS vars ready for any theme)
+   ═══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg-primary: #08080c;
+  --bg-secondary: #0e0e14;
+  --bg-tertiary: #16161f;
+  --bg-quaternary: #1e1e2a;
+
+  --brand-primary: #c9a84c;
+  --brand-primary-bright: #e4c76b;
+  --brand-primary-dim: #8a7235;
+  --brand-glow: rgba(201, 168, 76, 0.15);
+  --brand-glow-strong: rgba(201, 168, 76, 0.3);
+
+  --signal-success: #2dd4a0;
+  --signal-success-glow: rgba(45, 212, 160, 0.15);
+  --signal-danger: #f05e5e;
+  --signal-info: #5eaaf0;
+  --signal-info-glow: rgba(94, 170, 240, 0.15);
+  --signal-warning: #f0c75e;
+  --signal-warning-glow: rgba(240, 199, 94, 0.15);
+
+  --text-hero: #f0ece4;
+  --text-primary: #d4cfc5;
+  --text-secondary: #8a8578;
+  --text-ghost: #4a473f;
+
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.06);
+
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --space-xs: 4px; --space-sm: 8px; --space-md: 16px;
+  --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px;
+
+  --radius-sm: 6px; --radius-md: 12px; --radius-lg: 20px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 200ms; --duration-normal: 400ms; --duration-slow: 800ms;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ── Atmosphere ────────────────────────────── */
+.atmosphere { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.atmosphere::before {
+  content: ''; position: absolute;
+  width: 700px; height: 700px;
+  top: -250px; left: 50%; transform: translateX(-50%);
+  background: radial-gradient(circle, var(--brand-glow) 0%, transparent 65%);
+  animation: atmFloat 22s ease-in-out infinite alternate;
+}
+.atmosphere::after {
+  content: ''; position: absolute;
+  width: 500px; height: 500px;
+  bottom: -200px; left: -100px;
+  background: radial-gradient(circle, rgba(94, 170, 240, 0.04) 0%, transparent 70%);
+  animation: atmFloat 28s ease-in-out infinite alternate-reverse;
+}
+@keyframes atmFloat {
+  0% { transform: translateX(-50%) translate(0, 0) scale(1); }
+  100% { transform: translateX(-50%) translate(50px, 30px) scale(1.1); }
+}
+
+.noise {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.particles { position: fixed; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+.particle {
+  position: absolute; width: 2px; height: 2px;
+  background: var(--brand-primary); border-radius: 50%;
+  opacity: 0; animation: particleUp 10s ease-in-out infinite;
+}
+@keyframes particleUp {
+  0% { opacity: 0; transform: translateY(100vh) scale(0); }
+  8% { opacity: 0.4; } 92% { opacity: 0.4; }
+  100% { opacity: 0; transform: translateY(-50px) scale(1); }
+}
+
+/* ── Page ──────────────────────────────────── */
+.page {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  position: relative; z-index: 2;
+  padding: var(--space-xl);
+}
+
+/* ── Prototype View Switcher (demo only) ──── */
+.view-switcher {
+  position: fixed; top: var(--space-md); right: var(--space-md);
+  display: flex; gap: 2px; z-index: 100;
+  background: var(--bg-tertiary);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm); padding: 3px;
+}
+
+.view-btn {
+  padding: 6px 14px; border: none; border-radius: 4px;
+  background: transparent; color: var(--text-ghost);
+  font-family: var(--font-mono); font-size: 0.65rem;
+  cursor: pointer; transition: all 0.2s; letter-spacing: 0.05em;
+}
+
+.view-btn:hover { color: var(--text-secondary); }
+.view-btn.active { background: var(--brand-glow); color: var(--brand-primary); }
+
+/* ── Brand Mark ────────────────────────────── */
+.brand-mark {
+  display: flex; align-items: center; gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+  animation: fadeInUp 0.8s var(--ease-out) forwards; opacity: 0;
+}
+
+.brand-icon {
+  width: 44px; height: 44px;
+  border: 1.5px solid var(--brand-primary);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.brand-icon::after {
+  content: ''; position: absolute; inset: 4px;
+  border: 1px solid var(--brand-primary-dim); border-radius: 3px;
+}
+.brand-icon svg { width: 18px; height: 18px; color: var(--brand-primary); }
+
+.brand-name {
+  font-family: var(--font-display); font-size: 1.2rem;
+  font-weight: 700; color: var(--text-hero); letter-spacing: 0.05em;
+}
+.brand-sub {
+  font-size: 0.6rem; color: var(--text-ghost);
+  letter-spacing: 0.2em; text-transform: uppercase; margin-top: 1px;
+}
+
+/* ── Glass Card ────────────────────────────── */
+.glass-card {
+  width: 480px;
+  background: rgba(14, 14, 20, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  padding: var(--space-2xl);
+  position: relative; overflow: hidden;
+  animation: cardIn 0.8s var(--ease-out) 150ms forwards; opacity: 0;
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.glass-card::before {
+  content: ''; position: absolute;
+  top: 0; left: 10%; right: 10%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--brand-primary-dim), transparent);
+}
+
+/* ── Invitation Banner ─────────────────────── */
+.invite-banner {
+  background: var(--bg-tertiary);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-xl);
+  position: relative; overflow: hidden;
+  animation: fadeInUp 0.6s var(--ease-out) 300ms forwards; opacity: 0;
+}
+
+.invite-banner::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; bottom: 0; width: 3px;
+  background: var(--brand-primary);
+  border-radius: 3px 0 0 3px;
+}
+
+.invite-label {
+  font-size: 0.6rem; font-weight: 600;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--brand-primary);
+  margin-bottom: var(--space-sm);
+}
+
+.invite-firm {
+  display: flex; align-items: center; gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.firm-logo {
+  width: 44px; height: 44px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #1a3a5c, #2e6da4);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-size: 0.85rem; font-weight: 900; color: white;
+  flex-shrink: 0;
+}
+
+.firm-name {
+  font-family: var(--font-display);
+  font-size: 1.1rem; font-weight: 700;
+  color: var(--text-hero);
+}
+
+.firm-code {
+  font-family: var(--font-mono);
+  font-size: 0.65rem; color: var(--text-ghost);
+  margin-top: 1px;
+}
+
+.invite-details {
+  display: flex; gap: var(--space-xl);
+  padding-top: var(--space-md);
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+
+.invite-detail {
+  display: flex; flex-direction: column; gap: 2px;
+}
+
+.detail-label {
+  font-size: 0.6rem; color: var(--text-ghost);
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+
+.detail-value {
+  font-size: 0.8rem; color: var(--text-primary);
+}
+
+.detail-value.role {
+  color: var(--brand-primary);
+  font-weight: 600;
+}
+
+/* ── Card Title ────────────────────────────── */
+.card-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem; font-weight: 700;
+  color: var(--text-hero); text-align: center;
+  margin-bottom: var(--space-xs);
+  animation: fadeInUp 0.6s var(--ease-out) 400ms forwards; opacity: 0;
+}
+
+.card-desc {
+  font-size: 0.85rem; color: var(--text-secondary);
+  text-align: center; line-height: 1.6;
+  margin-bottom: var(--space-xl);
+  animation: fadeInUp 0.6s var(--ease-out) 450ms forwards; opacity: 0;
+}
+
+/* ── Form Fields ───────────────────────────── */
+.form-group {
+  margin-bottom: var(--space-lg);
+  animation: fadeInUp 0.6s var(--ease-out) forwards; opacity: 0;
+}
+
+.form-label {
+  display: block; font-size: 0.65rem; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-secondary); margin-bottom: 6px;
+}
+
+.form-input {
+  width: 100%; padding: 13px 16px;
+  background: var(--bg-tertiary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--text-hero);
+  font-family: var(--font-body); font-size: 0.9rem;
+  transition: all var(--duration-fast) var(--ease-out);
+  outline: none;
+}
+
+.form-input::placeholder { color: var(--text-ghost); }
+
+.form-input:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--bg-quaternary);
+}
+
+.form-input:focus {
+  border-color: var(--brand-primary);
+  background: var(--bg-quaternary);
+  box-shadow: 0 0 0 3px var(--brand-glow), 0 0 20px var(--brand-glow);
+}
+
+.form-input.readonly {
+  opacity: 0.6; cursor: not-allowed;
+}
+
+.field-hint {
+  font-size: 0.65rem; color: var(--text-ghost);
+  margin-top: 4px; font-family: var(--font-mono);
+}
+
+/* ── Password ──────────────────────────────── */
+.password-wrap { position: relative; }
+.password-wrap .form-input { padding-right: 48px; }
+
+.password-toggle {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text-ghost);
+  cursor: pointer; font-size: 0.85rem; padding: 4px;
+  transition: color var(--duration-fast);
+}
+.password-toggle:hover { color: var(--text-secondary); }
+
+/* Strength meter */
+.strength-meter { margin-top: var(--space-sm); }
+
+.strength-bar-track {
+  display: flex; gap: 3px; height: 3px; margin-bottom: 6px;
+}
+
+.strength-segment {
+  flex: 1; height: 100%; border-radius: 2px;
+  background: var(--bg-quaternary);
+  transition: background 0.4s var(--ease-out);
+}
+
+.strength-segment.active.weak { background: var(--signal-danger); }
+.strength-segment.active.fair { background: var(--signal-warning); }
+.strength-segment.active.good { background: var(--signal-info); }
+.strength-segment.active.strong { background: var(--signal-success); }
+
+.strength-label {
+  font-family: var(--font-mono); font-size: 0.6rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+
+.strength-label.weak { color: var(--signal-danger); }
+.strength-label.fair { color: var(--signal-warning); }
+.strength-label.good { color: var(--signal-info); }
+.strength-label.strong { color: var(--signal-success); }
+
+/* Match indicator */
+.match-indicator {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 6px; font-size: 0.65rem;
+  font-family: var(--font-mono);
+  opacity: 0; transition: opacity 0.3s;
+}
+.match-indicator.visible { opacity: 1; }
+.match-indicator.match { color: var(--signal-success); }
+.match-indicator.no-match { color: var(--signal-danger); }
+
+.match-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+}
+.match-indicator.match .match-dot { background: var(--signal-success); }
+.match-indicator.no-match .match-dot { background: var(--signal-danger); }
+
+/* ── Phone ─────────────────────────────────── */
+.phone-row { display: flex; gap: var(--space-sm); }
+
+.country-dropdown { position: relative; width: 120px; flex-shrink: 0; }
+
+.country-trigger {
+  width: 100%; padding: 13px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--text-hero);
+  font-family: var(--font-mono); font-size: 0.8rem;
+  cursor: pointer; display: flex;
+  align-items: center; gap: 8px;
+  transition: all var(--duration-fast) var(--ease-out);
+  outline: none;
+}
+
+.country-trigger:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--bg-quaternary);
+}
+
+.country-trigger.open {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px var(--brand-glow);
+}
+
+.country-trigger .flag-img {
+  width: 22px; height: 16px; border-radius: 2px;
+  object-fit: cover; flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
+}
+
+.country-trigger .chevron {
+  width: 10px; height: 10px; flex-shrink: 0;
+  transition: transform 0.3s var(--ease-out); margin-left: auto;
+}
+.country-trigger.open .chevron { transform: rotate(180deg); }
+
+.country-list {
+  position: absolute; top: calc(100% + 4px); left: 0;
+  width: 220px; max-height: 240px; overflow-y: auto;
+  background: var(--bg-tertiary);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  z-index: 100; display: none;
+  animation: dropIn 0.25s var(--ease-out);
+}
+.country-list.open { display: block; }
+
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.country-list-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; cursor: pointer; font-size: 0.8rem;
+  color: var(--text-primary); transition: all 0.15s;
+}
+.country-list-item:hover { background: var(--bg-quaternary); color: var(--text-hero); }
+.country-list-item.selected { background: var(--brand-glow); color: var(--brand-primary); }
+
+.country-list-item .flag-img {
+  width: 24px; height: 17px; border-radius: 2px;
+  object-fit: cover; flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+}
+.country-list-item .country-name { flex: 1; font-family: var(--font-body); }
+.country-list-item .country-code {
+  font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-ghost);
+}
+
+.country-list::-webkit-scrollbar { width: 4px; }
+.country-list::-webkit-scrollbar-track { background: transparent; }
+.country-list::-webkit-scrollbar-thumb { background: var(--bg-quaternary); border-radius: 2px; }
+
+/* ── Buttons ───────────────────────────────── */
+.submit-btn {
+  width: 100%; padding: 15px;
+  background: linear-gradient(135deg, var(--brand-primary-dim), var(--brand-primary));
+  border: none; border-radius: var(--radius-sm);
+  color: var(--bg-primary);
+  font-family: var(--font-body); font-size: 0.85rem;
+  font-weight: 700; letter-spacing: 0.08em;
+  cursor: pointer; position: relative; overflow: hidden;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.submit-btn::before {
+  content: ''; position: absolute;
+  top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.6s;
+}
+
+.submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 40px var(--brand-glow-strong);
+}
+.submit-btn:hover::before { left: 100%; }
+
+.decline-link {
+  display: block; text-align: center;
+  margin-top: var(--space-lg);
+  font-size: 0.75rem; color: var(--text-ghost);
+  text-decoration: none; transition: color var(--duration-fast);
+  cursor: pointer; background: none; border: none;
+  font-family: var(--font-body);
+}
+.decline-link:hover { color: var(--signal-danger); }
+
+/* ── Existing User Profile Card ────────────── */
+.user-profile-card {
+  display: flex; align-items: center; gap: var(--space-md);
+  padding: var(--space-lg);
+  background: var(--bg-tertiary);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-xl);
+  animation: fadeInUp 0.6s var(--ease-out) 500ms forwards; opacity: 0;
+}
+
+.user-avatar {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand-primary-dim), var(--brand-primary));
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1rem; font-weight: 700; color: var(--bg-primary);
+  flex-shrink: 0;
+}
+
+.user-info { flex: 1; }
+
+.user-name {
+  font-size: 0.95rem; font-weight: 600; color: var(--text-hero);
+}
+
+.user-email {
+  font-family: var(--font-mono); font-size: 0.75rem;
+  color: var(--text-ghost); margin-top: 1px;
+}
+
+.user-badge {
+  font-size: 0.6rem; padding: 3px 10px;
+  border-radius: 100px;
+  background: var(--signal-success-glow);
+  color: var(--signal-success); font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+/* ── What You'll Get Section ───────────────── */
+.perks {
+  display: flex; flex-direction: column; gap: var(--space-sm);
+  margin-bottom: var(--space-xl);
+  animation: fadeInUp 0.6s var(--ease-out) 550ms forwards; opacity: 0;
+}
+
+.perk-item {
+  display: flex; align-items: center; gap: var(--space-sm);
+  font-size: 0.8rem; color: var(--text-secondary);
+}
+
+.perk-check {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--brand-glow);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.55rem; color: var(--brand-primary);
+  flex-shrink: 0;
+}
+
+/* ── Expiry Notice ─────────────────────────── */
+.expiry-notice {
+  display: flex; align-items: center; gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--signal-warning-glow);
+  border: 1px solid rgba(240, 199, 94, 0.15);
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem; color: var(--signal-warning);
+  margin-bottom: var(--space-xl);
+  animation: fadeIn 0.6s var(--ease-out) 350ms forwards; opacity: 0;
+}
+
+/* ── View States ───────────────────────────── */
+.view { display: none; }
+.view.active { display: block; }
+
+/* ── Success State ─────────────────────────── */
+.success-state { display: none; text-align: center; }
+.success-state.visible { display: block; }
+.form-state.hidden { display: none; }
+
+.check-orb {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--signal-success-glow);
+  border: 1.5px solid rgba(45, 212, 160, 0.3);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto var(--space-lg);
+  animation: checkPop 0.6s var(--ease-spring) forwards; opacity: 0;
+}
+
+@keyframes checkPop {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.check-orb svg {
+  width: 28px; height: 28px; color: var(--signal-success);
+  stroke-dasharray: 50; stroke-dashoffset: 50;
+  animation: checkDraw 0.6s var(--ease-out) 0.3s forwards;
+}
+
+@keyframes checkDraw { to { stroke-dashoffset: 0; } }
+
+.success-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem; font-weight: 700;
+  color: var(--text-hero); margin-bottom: var(--space-sm);
+  animation: fadeInUp 0.5s var(--ease-out) 0.4s forwards; opacity: 0;
+}
+
+.success-desc {
+  font-size: 0.85rem; color: var(--text-secondary);
+  line-height: 1.6; margin-bottom: var(--space-xl);
+  animation: fadeInUp 0.5s var(--ease-out) 0.5s forwards; opacity: 0;
+}
+
+.continue-btn {
+  width: 100%; padding: 15px;
+  background: linear-gradient(135deg, var(--brand-primary-dim), var(--brand-primary));
+  border: none; border-radius: var(--radius-sm);
+  color: var(--bg-primary);
+  font-family: var(--font-body); font-size: 0.85rem;
+  font-weight: 700; letter-spacing: 0.08em;
+  cursor: pointer; transition: all var(--duration-normal) var(--ease-out);
+  animation: fadeInUp 0.5s var(--ease-out) 0.6s forwards; opacity: 0;
+}
+
+.continue-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 40px var(--brand-glow-strong);
+}
+
+/* ── Animations ────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; } to { opacity: 1; }
+}
+
+::selection { background: var(--brand-glow-strong); color: var(--text-hero); }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-quaternary); border-radius: 3px; }
+
+@media (max-width: 520px) {
+  .glass-card { width: 100%; padding: var(--space-xl); }
+}
+</style>
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div class="noise"></div>
+
+  <div class="particles">
+    <div class="particle" style="left:12%; animation-delay:0s; animation-duration:9s;"></div>
+    <div class="particle" style="left:40%; animation-delay:2.5s; animation-duration:11s;"></div>
+    <div class="particle" style="left:65%; animation-delay:4s; animation-duration:8.5s;"></div>
+    <div class="particle" style="left:85%; animation-delay:1.5s; animation-duration:10s;"></div>
+    <div class="particle" style="left:25%; animation-delay:5s; animation-duration:7.5s;"></div>
+  </div>
+
+  <!-- Prototype View Switcher (demo only — not in production) -->
+  <div class="view-switcher">
+    <button class="view-btn active" onclick="switchView('new')">New User</button>
+    <button class="view-btn" onclick="switchView('existing')">Existing User</button>
+  </div>
+
+  <div class="page">
+    <!-- Brand -->
+    <div class="brand-mark">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">KI-PRIME</div>
+        <div class="brand-sub">by Vikuna Technologies</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         VIEW A1: NEW USER — Register + Join Tenant
+         ═══════════════════════════════════════════ -->
+    <div class="glass-card view active" id="viewNew">
+      <div class="form-state" id="newFormState">
+        <!-- Invitation Banner -->
+        <div class="invite-banner">
+          <div class="invite-label">You've been invited</div>
+          <div class="invite-firm">
+            <div class="firm-logo">MW</div>
+            <div>
+              <div class="firm-name">Meridian Wealth Partners</div>
+              <div class="firm-code">MWP-2024</div>
+            </div>
+          </div>
+          <div class="invite-details">
+            <div class="invite-detail">
+              <span class="detail-label">Your Role</span>
+              <span class="detail-value role">Planner</span>
+            </div>
+            <div class="invite-detail">
+              <span class="detail-label">Invited By</span>
+              <span class="detail-value">Rajesh Kumar (Owner)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="expiry-notice">
+          <span>⏳</span> This invitation expires in 6 days
+        </div>
+
+        <h2 class="card-title">Create your account to join</h2>
+        <p class="card-desc">Set up your credentials to join Meridian Wealth Partners</p>
+
+        <!-- Full Name -->
+        <div class="form-group" style="animation-delay: 500ms;">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-input" placeholder="Your full name" id="newName">
+        </div>
+
+        <!-- Email (pre-filled from invite, readonly) -->
+        <div class="form-group" style="animation-delay: 550ms;">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-input readonly" value="meena@meridianwealth.com" readonly id="newEmail">
+          <div class="field-hint">Pre-filled from invitation — cannot be changed</div>
+        </div>
+
+        <!-- Password -->
+        <div class="form-group" style="animation-delay: 600ms;">
+          <label class="form-label">Password</label>
+          <div class="password-wrap">
+            <input type="password" class="form-input" placeholder="Min 8 chars, 1 uppercase, 1 number" id="newPassword">
+            <button class="password-toggle" onclick="togglePw('newPassword', this)" type="button">👁</button>
+          </div>
+          <div class="strength-meter">
+            <div class="strength-bar-track">
+              <div class="strength-segment" id="nSeg1"></div>
+              <div class="strength-segment" id="nSeg2"></div>
+              <div class="strength-segment" id="nSeg3"></div>
+              <div class="strength-segment" id="nSeg4"></div>
+            </div>
+            <span class="strength-label" id="nStrengthLabel">&nbsp;</span>
+          </div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="form-group" style="animation-delay: 650ms;">
+          <label class="form-label">Confirm Password</label>
+          <div class="password-wrap">
+            <input type="password" class="form-input" placeholder="Re-enter your password" id="newConfirm">
+            <button class="password-toggle" onclick="togglePw('newConfirm', this)" type="button">👁</button>
+          </div>
+          <div class="match-indicator" id="nMatchIndicator">
+            <span class="match-dot"></span>
+            <span id="nMatchText"></span>
+          </div>
+        </div>
+
+        <!-- Phone -->
+        <div class="form-group" style="animation-delay: 700ms;">
+          <label class="form-label">Phone Number</label>
+          <div class="phone-row">
+            <div class="country-dropdown" id="nCountryDropdown">
+              <button class="country-trigger" type="button" id="nCountryTrigger" onclick="toggleCL('n')">
+                <img class="flag-img" id="nSelectedFlag" src="https://flagcdn.com/w40/in.png" alt="IN">
+                <span id="nSelectedCode">+91</span>
+                <svg class="chevron" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 1l4 4 4-4"/></svg>
+              </button>
+              <div class="country-list" id="nCountryList">
+                <div class="country-list-item selected" data-code="+91" data-flag="in" onclick="selectC(this,'n')">
+                  <img class="flag-img" src="https://flagcdn.com/w40/in.png" alt="IN"><span class="country-name">India</span><span class="country-code">+91</span>
+                </div>
+                <div class="country-list-item" data-code="+1" data-flag="us" onclick="selectC(this,'n')">
+                  <img class="flag-img" src="https://flagcdn.com/w40/us.png" alt="US"><span class="country-name">United States</span><span class="country-code">+1</span>
+                </div>
+                <div class="country-list-item" data-code="+44" data-flag="gb" onclick="selectC(this,'n')">
+                  <img class="flag-img" src="https://flagcdn.com/w40/gb.png" alt="GB"><span class="country-name">United Kingdom</span><span class="country-code">+44</span>
+                </div>
+                <div class="country-list-item" data-code="+971" data-flag="ae" onclick="selectC(this,'n')">
+                  <img class="flag-img" src="https://flagcdn.com/w40/ae.png" alt="AE"><span class="country-name">UAE</span><span class="country-code">+971</span>
+                </div>
+                <div class="country-list-item" data-code="+65" data-flag="sg" onclick="selectC(this,'n')">
+                  <img class="flag-img" src="https://flagcdn.com/w40/sg.png" alt="SG"><span class="country-name">Singapore</span><span class="country-code">+65</span>
+                </div>
+              </div>
+            </div>
+            <input type="tel" class="form-input" placeholder="98765 43210" id="nPhone">
+          </div>
+        </div>
+
+        <button class="submit-btn" type="button" onclick="showNewSuccess()" style="animation: fadeInUp 0.6s var(--ease-out) 750ms forwards; opacity: 0;">
+          JOIN MERIDIAN WEALTH →
+        </button>
+
+        <button class="decline-link" type="button">Decline this invitation</button>
+      </div>
+
+      <!-- Success -->
+      <div class="success-state" id="newSuccessState">
+        <div class="check-orb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+        <h2 class="success-title">Welcome to the team!</h2>
+        <p class="success-desc">
+          You've joined <strong style="color:var(--text-hero)">Meridian Wealth Partners</strong> as a <strong style="color:var(--brand-primary)">Planner</strong>. Let's set up your workspace.
+        </p>
+        <button class="continue-btn" type="button">CONTINUE TO ONBOARDING →</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         VIEW A2: EXISTING USER — Accept + Join Tenant
+         ═══════════════════════════════════════════ -->
+    <div class="glass-card view" id="viewExisting">
+      <div class="form-state" id="existingFormState">
+        <!-- Invitation Banner -->
+        <div class="invite-banner">
+          <div class="invite-label">You've been invited</div>
+          <div class="invite-firm">
+            <div class="firm-logo">MW</div>
+            <div>
+              <div class="firm-name">Meridian Wealth Partners</div>
+              <div class="firm-code">MWP-2024</div>
+            </div>
+          </div>
+          <div class="invite-details">
+            <div class="invite-detail">
+              <span class="detail-label">Your Role</span>
+              <span class="detail-value role">Admin</span>
+            </div>
+            <div class="invite-detail">
+              <span class="detail-label">Invited By</span>
+              <span class="detail-value">Rajesh Kumar (Owner)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="expiry-notice">
+          <span>⏳</span> This invitation expires in 6 days
+        </div>
+
+        <h2 class="card-title">Join this workspace</h2>
+        <p class="card-desc">You already have a KI-Prime account. Accept to join this firm.</p>
+
+        <!-- Current user identity -->
+        <div class="user-profile-card">
+          <div class="user-avatar">MI</div>
+          <div class="user-info">
+            <div class="user-name">Meena Iyer</div>
+            <div class="user-email">meena@gmail.com</div>
+          </div>
+          <span class="user-badge">Verified</span>
+        </div>
+
+        <!-- What you'll get -->
+        <div class="perks">
+          <div class="perk-item"><span class="perk-check">✓</span> Access to Meridian Wealth's client book</div>
+          <div class="perk-item"><span class="perk-check">✓</span> Admin role with team management capabilities</div>
+          <div class="perk-item"><span class="perk-check">✓</span> Shared model portfolios and approved fund list</div>
+          <div class="perk-item"><span class="perk-check">✓</span> Firm-level analytics and reporting</div>
+        </div>
+
+        <button class="submit-btn" type="button" onclick="showExistingSuccess()" style="animation: fadeInUp 0.6s var(--ease-out) 600ms forwards; opacity: 0;">
+          ACCEPT & JOIN →
+        </button>
+
+        <button class="decline-link" type="button">Decline this invitation</button>
+      </div>
+
+      <!-- Success -->
+      <div class="success-state" id="existingSuccessState">
+        <div class="check-orb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+        <h2 class="success-title">You're in!</h2>
+        <p class="success-desc">
+          You've joined <strong style="color:var(--text-hero)">Meridian Wealth Partners</strong> as <strong style="color:var(--brand-primary)">Admin</strong>. Your dashboard is ready.
+        </p>
+        <button class="continue-btn" type="button">GO TO DASHBOARD →</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── View Switcher (prototype only) ──
+    function switchView(view) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+
+      if (view === 'new') {
+        document.getElementById('viewNew').classList.add('active');
+        document.querySelectorAll('.view-btn')[0].classList.add('active');
+      } else {
+        document.getElementById('viewExisting').classList.add('active');
+        document.querySelectorAll('.view-btn')[1].classList.add('active');
+      }
+
+      // Reset states
+      document.querySelectorAll('.form-state').forEach(s => s.classList.remove('hidden'));
+      document.querySelectorAll('.success-state').forEach(s => s.classList.remove('visible'));
+    }
+
+    // ── Password Toggle ──
+    function togglePw(id, btn) {
+      const inp = document.getElementById(id);
+      if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+      else { inp.type = 'password'; btn.textContent = '👁'; }
+    }
+
+    // ── Password Strength ──
+    const nPw = document.getElementById('newPassword');
+    const nSegs = [document.getElementById('nSeg1'), document.getElementById('nSeg2'), document.getElementById('nSeg3'), document.getElementById('nSeg4')];
+    const nLabel = document.getElementById('nStrengthLabel');
+
+    nPw.addEventListener('input', () => {
+      const v = nPw.value; let s = 0;
+      if (v.length >= 8) s++;
+      if (/[A-Z]/.test(v)) s++;
+      if (/[0-9]/.test(v)) s++;
+      if (/[^A-Za-z0-9]/.test(v)) s++;
+      const levels = ['', 'weak', 'fair', 'good', 'strong'];
+      const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+      const lvl = levels[s] || '';
+      nSegs.forEach((seg, i) => {
+        seg.className = 'strength-segment';
+        if (i < s) seg.classList.add('active', lvl);
+      });
+      nLabel.className = 'strength-label ' + lvl;
+      nLabel.textContent = v.length > 0 ? labels[s] : '\u00A0';
+      checkNMatch();
+    });
+
+    const nConfirm = document.getElementById('newConfirm');
+    nConfirm.addEventListener('input', checkNMatch);
+
+    function checkNMatch() {
+      const pw = nPw.value, cpw = nConfirm.value;
+      const ind = document.getElementById('nMatchIndicator');
+      const txt = document.getElementById('nMatchText');
+      if (cpw.length === 0) { ind.className = 'match-indicator'; return; }
+      if (pw === cpw) { ind.className = 'match-indicator visible match'; txt.textContent = 'Passwords match'; }
+      else { ind.className = 'match-indicator visible no-match'; txt.textContent = 'Passwords do not match'; }
+    }
+
+    // ── Country Dropdown ──
+    function toggleCL(prefix) {
+      const trigger = document.getElementById(prefix + 'CountryTrigger');
+      const list = document.getElementById(prefix + 'CountryList');
+      const isOpen = list.classList.contains('open');
+      list.classList.toggle('open', !isOpen);
+      trigger.classList.toggle('open', !isOpen);
+    }
+
+    function selectC(item, prefix) {
+      document.getElementById(prefix + 'SelectedFlag').src = 'https://flagcdn.com/w40/' + item.dataset.flag + '.png';
+      document.getElementById(prefix + 'SelectedCode').textContent = item.dataset.code;
+      item.closest('.country-list').querySelectorAll('.country-list-item').forEach(i => i.classList.remove('selected'));
+      item.classList.add('selected');
+      document.getElementById(prefix + 'CountryList').classList.remove('open');
+      document.getElementById(prefix + 'CountryTrigger').classList.remove('open');
+    }
+
+    document.addEventListener('click', (e) => {
+      ['n'].forEach(prefix => {
+        const dd = document.getElementById(prefix + 'CountryDropdown');
+        if (dd && !dd.contains(e.target)) {
+          document.getElementById(prefix + 'CountryList').classList.remove('open');
+          document.getElementById(prefix + 'CountryTrigger').classList.remove('open');
+        }
+      });
+    });
+
+    // ── Success States ──
+    function showNewSuccess() {
+      document.getElementById('newFormState').classList.add('hidden');
+      document.getElementById('newSuccessState').classList.add('visible');
+    }
+
+    function showExistingSuccess() {
+      document.getElementById('existingFormState').classList.add('hidden');
+      document.getElementById('existingSuccessState').classList.add('visible');
+    }
+  </script>
+</body>
+</html>

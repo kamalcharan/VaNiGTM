@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Meridian Wealth — My Portfolio</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   KI-PRIME DESIGN SYSTEM — "ATLAS"
+   Philosophy: Your money has a gravity. We visualize it.
+   ═══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  /* The Void — deep space black with warmth */
+  --void: #08080c;
+  --void-up: #0e0e14;
+  --void-up-2: #16161f;
+  --void-up-3: #1e1e2a;
+
+  /* Gold Thread — wealth, warmth, trust */
+  --gold: #c9a84c;
+  --gold-bright: #e4c76b;
+  --gold-dim: #8a7235;
+  --gold-glow: rgba(201, 168, 76, 0.15);
+  --gold-glow-strong: rgba(201, 168, 76, 0.3);
+
+  /* Signal Colors */
+  --up: #2dd4a0;
+  --up-glow: rgba(45, 212, 160, 0.15);
+  --down: #f05e5e;
+  --down-glow: rgba(240, 94, 94, 0.15);
+  --info: #5eaaf0;
+  --info-glow: rgba(94, 170, 240, 0.15);
+
+  /* Text Hierarchy */
+  --text-hero: #f0ece4;
+  --text-primary: #d4cfc5;
+  --text-secondary: #8a8578;
+  --text-ghost: #4a473f;
+
+  /* Glass */
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-hover: rgba(255, 255, 255, 0.06);
+
+  /* Typography */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Spacing Scale */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 200ms;
+  --duration-normal: 400ms;
+  --duration-slow: 800ms;
+  --duration-cinematic: 1200ms;
+}
+
+/* ── Reset & Base ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--void);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Atmospheric Background ─────────────────── */
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.atmosphere::before {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  top: -200px;
+  right: -100px;
+  background: radial-gradient(circle, var(--gold-glow) 0%, transparent 70%);
+  animation: atmosphereDrift 20s ease-in-out infinite alternate;
+}
+
+.atmosphere::after {
+  content: '';
+  position: absolute;
+  width: 800px;
+  height: 800px;
+  bottom: -300px;
+  left: -200px;
+  background: radial-gradient(circle, rgba(94, 170, 240, 0.05) 0%, transparent 70%);
+  animation: atmosphereDrift 25s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes atmosphereDrift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(60px, 40px) scale(1.1); }
+}
+
+/* ── Noise Texture Overlay ──────────────────── */
+.noise {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Glass Cards ────────────────────────────── */
+.glass-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.glass-card:hover {
+  background: var(--glass-hover);
+  border-color: rgba(201, 168, 76, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Gold Line Accent ───────────────────────── */
+.gold-line {
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  margin-bottom: var(--space-md);
+}
+
+.gold-line-long {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold-dim), transparent 60%);
+}
+
+/* ── Typography Classes ─────────────────────── */
+.display-xl {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 900;
+  line-height: 1.05;
+  color: var(--text-hero);
+  letter-spacing: -0.02em;
+}
+
+.display-lg {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-hero);
+}
+
+.display-md {
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-hero);
+}
+
+.label-upper {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-weight: 400;
+}
+
+.mono-sm {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 300;
+}
+
+/* ── Number Display (for money) ─────────────── */
+.amount {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.amount-hero {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  color: var(--text-hero);
+  font-variant-numeric: tabular-nums;
+}
+
+.currency {
+  font-size: 0.6em;
+  vertical-align: super;
+  color: var(--gold);
+  margin-right: 2px;
+}
+
+/* ── Signal Badges ──────────────────────────── */
+.badge-up {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: var(--up-glow);
+  color: var(--up);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-down {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: var(--down-glow);
+  color: var(--down);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ── Buttons ────────────────────────────────── */
+.btn-gold {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--gold);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-gold::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gold);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.btn-gold:hover {
+  color: var(--void);
+  box-shadow: 0 0 30px var(--gold-glow-strong);
+}
+
+.btn-gold:hover::before { opacity: 1; }
+.btn-gold span { position: relative; z-index: 1; }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.btn-ghost:hover {
+  border-color: var(--gold-dim);
+  color: var(--text-primary);
+}
+
+/* ── Entrance Animations ────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes goldPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.anim-fade-up {
+  animation: fadeInUp var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-fade {
+  animation: fadeIn var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-slide-left {
+  animation: slideInLeft var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-scale {
+  animation: scaleIn var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+/* Stagger delays */
+.delay-1 { animation-delay: 100ms; }
+.delay-2 { animation-delay: 200ms; }
+.delay-3 { animation-delay: 350ms; }
+.delay-4 { animation-delay: 500ms; }
+.delay-5 { animation-delay: 700ms; }
+.delay-6 { animation-delay: 900ms; }
+.delay-7 { animation-delay: 1100ms; }
+.delay-8 { animation-delay: 1300ms; }
+
+/* ── Scrollbar ──────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--void); }
+::-webkit-scrollbar-thumb { background: var(--void-up-3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }
+
+/* ── Selection ──────────────────────────────── */
+::selection {
+  background: var(--gold-glow-strong);
+  color: var(--text-hero);
+}
+
+/* ── Utility ────────────────────────────────── */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-xs { gap: var(--space-xs); }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.gap-lg { gap: var(--space-lg); }
+.gap-xl { gap: var(--space-xl); }
+.w-full { width: 100%; }
+.text-gold { color: var(--gold); }
+.text-up { color: var(--up); }
+.text-down { color: var(--down); }
+.text-ghost { color: var(--text-ghost); }
+.text-secondary { color: var(--text-secondary); }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.relative { position: relative; }
+.overflow-hidden { overflow: hidden; }
+
+
+/* ══ LAYOUT OVERRIDES FOR CONTAINER RENDERING ══ */
+html, body {
+  min-width: 1280px !important;
+  width: 100% !important;
+  overflow-x: auto !important;
+}
+.atmosphere, .noise {
+  position: absolute !important;
+}
+
+</style>
+<style>
+  /* ── Client Portal Override: warmer, calmer ── */
+  :root {
+    --portal-bg: #0a0b10;
+    --portal-card: #111219;
+    --portal-border: rgba(255,255,255,0.05);
+    --portal-accent: #6e9ecf;
+    --portal-accent-glow: rgba(110, 158, 207, 0.15);
+  }
+
+  body { background: var(--portal-bg); }
+
+  /* ── Header — Operator Branded ─────────── */
+  .portal-header {
+    padding: var(--space-md) var(--space-xl);
+    border-bottom: 1px solid var(--portal-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--portal-card);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    animation: fadeIn 0.6s var(--ease-out) forwards;
+    opacity: 0;
+  }
+
+  .portal-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .portal-logo {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, #1a3a5c, #4a8abf);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 900;
+    color: white;
+  }
+
+  .portal-firm-name {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-hero);
+  }
+
+  .portal-firm-sub {
+    font-size: 0.6rem;
+    color: var(--text-ghost);
+    letter-spacing: 0.1em;
+  }
+
+  .portal-nav {
+    display: flex;
+    gap: var(--space-xs);
+  }
+
+  .portal-nav-item {
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    color: var(--text-ghost);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+
+  .portal-nav-item:hover { color: var(--text-secondary); background: var(--glass); }
+  .portal-nav-item.active { color: var(--portal-accent); background: var(--portal-accent-glow); }
+
+  .portal-user {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .portal-user-name {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+  }
+
+  .portal-user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--portal-accent-glow);
+    border: 1.5px solid var(--portal-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--portal-accent);
+  }
+
+  /* ── Main Content ───────────────────────── */
+  .portal-main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--space-xl);
+  }
+
+  /* ── Welcome Hero ───────────────────────── */
+  .welcome-hero {
+    margin-bottom: var(--space-xl);
+    animation: fadeInUp 0.8s var(--ease-out) 100ms forwards;
+    opacity: 0;
+  }
+
+  .welcome-greeting {
+    font-size: 0.7rem;
+    color: var(--text-ghost);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: var(--space-xs);
+  }
+
+  .welcome-name {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: var(--text-hero);
+    margin-bottom: var(--space-xs);
+  }
+
+  .welcome-planner {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+
+  .welcome-planner a {
+    color: var(--portal-accent);
+    text-decoration: none;
+  }
+
+  /* ── Portfolio Value Hero Card ──────────── */
+  .value-hero {
+    background: var(--portal-card);
+    border: 1px solid var(--portal-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-2xl);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: var(--space-xl);
+    animation: fadeInUp 0.8s var(--ease-out) 200ms forwards;
+    opacity: 0;
+  }
+
+  .value-hero::before {
+    content: '';
+    position: absolute;
+    top: -100px;
+    right: -50px;
+    width: 350px;
+    height: 350px;
+    background: radial-gradient(circle, var(--portal-accent-glow) 0%, transparent 70%);
+    animation: atmosphereDrift 20s ease-in-out infinite alternate;
+  }
+
+  .value-content { position: relative; z-index: 2; }
+
+  .value-label {
+    font-size: 0.7rem;
+    color: var(--text-ghost);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: var(--space-md);
+  }
+
+  .value-amount {
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 5vw, 3.5rem);
+    font-weight: 900;
+    color: var(--text-hero);
+    line-height: 1;
+    margin-bottom: var(--space-md);
+  }
+
+  .value-amount .curr {
+    font-size: 0.45em;
+    color: var(--portal-accent);
+    vertical-align: super;
+    margin-right: 4px;
+  }
+
+  .value-meta {
+    display: flex;
+    gap: var(--space-xl);
+    flex-wrap: wrap;
+  }
+
+  .value-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .meta-label {
+    font-size: 0.65rem;
+    color: var(--text-ghost);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .meta-value {
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-hero);
+  }
+
+  .value-cta {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--portal-border);
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+  }
+
+  .cta-text {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .cta-text strong { color: var(--text-hero); }
+
+  /* ── Goal Progress Section ──────────────── */
+  .goals-section {
+    margin-bottom: var(--space-xl);
+    animation: fadeInUp 0.8s var(--ease-out) 350ms forwards;
+    opacity: 0;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-lg);
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-hero);
+  }
+
+  .goal-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--space-md);
+  }
+
+  .goal-card {
+    background: var(--portal-card);
+    border: 1px solid var(--portal-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    transition: all 0.3s var(--ease-out);
+  }
+
+  .goal-card:hover {
+    border-color: rgba(110,158,207,0.2);
+    transform: translateY(-2px);
+  }
+
+  .goal-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-lg);
+  }
+
+  .goal-card-icon {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .goal-card-emoji { font-size: 1.4rem; }
+
+  .goal-card-name {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-hero);
+  }
+
+  .goal-card-status {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 100px;
+  }
+
+  .goal-card-status.on-track { background: var(--up-glow); color: var(--up); }
+  .goal-card-status.behind { background: var(--down-glow); color: var(--down); }
+
+  .goal-card-progress {
+    margin-bottom: var(--space-md);
+  }
+
+  .progress-bar-bg {
+    height: 10px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: var(--space-sm);
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 5px;
+    background: linear-gradient(90deg, var(--portal-accent), #8bc4f0);
+    transition: width 1.5s var(--ease-out);
+  }
+
+  .progress-bar-fill.danger {
+    background: linear-gradient(90deg, var(--down), #f09090);
+  }
+
+  .progress-numbers {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .progress-current {
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-hero);
+  }
+
+  .progress-target {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-ghost);
+  }
+
+  .goal-card-timeline {
+    font-size: 0.75rem;
+    color: var(--text-ghost);
+    margin-top: var(--space-sm);
+  }
+
+  /* ── Recent Activity ────────────────────── */
+  .activity-section {
+    margin-bottom: var(--space-xl);
+    animation: fadeInUp 0.8s var(--ease-out) 500ms forwards;
+    opacity: 0;
+  }
+
+  .activity-list {
+    background: var(--portal-card);
+    border: 1px solid var(--portal-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .activity-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md) var(--space-lg);
+    border-bottom: 1px solid var(--portal-border);
+    transition: background 0.2s;
+  }
+
+  .activity-row:last-child { border-bottom: none; }
+  .activity-row:hover { background: rgba(255,255,255,0.02); }
+
+  .activity-type-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+  }
+
+  .activity-type-icon.sip { background: var(--up-glow); }
+  .activity-type-icon.nav { background: var(--portal-accent-glow); }
+  .activity-type-icon.doc { background: var(--gold-glow); }
+
+  .activity-info { flex: 1; }
+
+  .activity-title {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+  }
+
+  .activity-time {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-ghost);
+    margin-top: 2px;
+  }
+
+  .activity-amount {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-align: right;
+  }
+
+  /* ── Bottom: Planner Contact Card ──────── */
+  .planner-contact {
+    background: var(--portal-card);
+    border: 1px solid var(--portal-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+    animation: fadeInUp 0.8s var(--ease-out) 650ms forwards;
+    opacity: 0;
+  }
+
+  .planner-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--void);
+    flex-shrink: 0;
+  }
+
+  .planner-details { flex: 1; }
+
+  .planner-title {
+    font-size: 0.65rem;
+    color: var(--text-ghost);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 4px;
+  }
+
+  .planner-name-display {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-hero);
+  }
+
+  .planner-arn {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-ghost);
+  }
+
+  .planner-actions {
+    display: flex;
+    gap: var(--space-sm);
+  }
+
+  /* ── Footer ─────────────────────────────── */
+  .portal-footer {
+    margin-top: var(--space-2xl);
+    padding: var(--space-lg) 0;
+    border-top: 1px solid var(--portal-border);
+    text-align: center;
+    animation: fadeIn 0.8s var(--ease-out) 800ms forwards;
+    opacity: 0;
+  }
+
+  .portal-footer p {
+    font-size: 0.7rem;
+    color: var(--text-ghost);
+    line-height: 1.6;
+  }
+
+  .portal-footer a {
+    color: var(--portal-accent);
+    text-decoration: none;
+  }
+
+  .powered-by {
+    margin-top: var(--space-sm);
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.1);
+    letter-spacing: 0.1em;
+  }
+</style>
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div class="noise"></div>
+
+  <!-- Operator-Branded Header -->
+  <header class="portal-header">
+    <div class="portal-brand">
+      <div class="portal-logo">MW</div>
+      <div>
+        <div class="portal-firm-name">Meridian Wealth</div>
+        <div class="portal-firm-sub">Your Financial Partner</div>
+      </div>
+    </div>
+
+    <nav class="portal-nav">
+      <a class="portal-nav-item active" href="#">Dashboard</a>
+      <a class="portal-nav-item" href="#">Portfolio</a>
+      <a class="portal-nav-item" href="#">Goals</a>
+      <a class="portal-nav-item" href="#">Reports</a>
+      <a class="portal-nav-item" href="#">Messages</a>
+    </nav>
+
+    <div class="portal-user">
+      <span class="portal-user-name">Priya Sharma</span>
+      <div class="portal-user-avatar">PS</div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="portal-main">
+    <!-- Welcome -->
+    <div class="welcome-hero">
+      <div class="welcome-greeting">Good Morning</div>
+      <h1 class="welcome-name">Welcome, Priya</h1>
+      <p class="welcome-planner">Your advisor: <a href="#">Rajesh Kumar</a> · Last review: 22 Mar 2026</p>
+    </div>
+
+    <!-- Portfolio Value Hero -->
+    <div class="value-hero">
+      <div class="value-content">
+        <div class="value-label">Your Total Portfolio</div>
+        <div class="value-amount"><span class="curr">₹</span>1,84,50,000</div>
+        <div class="value-meta">
+          <div class="value-meta-item">
+            <span class="meta-label">Total Invested</span>
+            <span class="meta-value">₹1,42,00,000</span>
+          </div>
+          <div class="value-meta-item">
+            <span class="meta-label">Total Gain</span>
+            <span class="meta-value text-up">+₹42,50,000</span>
+          </div>
+          <div class="value-meta-item">
+            <span class="meta-label">XIRR (3Y)</span>
+            <span class="meta-value text-up">22.1%</span>
+          </div>
+          <div class="value-meta-item">
+            <span class="meta-label">Active SIPs</span>
+            <span class="meta-value">7 · ₹1.25L/mo</span>
+          </div>
+        </div>
+
+        <div class="value-cta">
+          <div class="cta-text">
+            Your portfolio is performing <strong>well above benchmark</strong>. 
+            Your next quarterly review is scheduled for <strong>April 15, 2026</strong>.
+          </div>
+          <button class="btn-ghost" style="white-space:nowrap;">📥 Download Statement</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Goal Progress -->
+    <div class="goals-section">
+      <div class="section-head">
+        <h2 class="section-title">Your Goals</h2>
+      </div>
+
+      <div class="goal-cards">
+        <div class="goal-card">
+          <div class="goal-card-head">
+            <div class="goal-card-icon">
+              <span class="goal-card-emoji">🏠</span>
+              <span class="goal-card-name">Dream Home</span>
+            </div>
+            <span class="goal-card-status on-track">On Track</span>
+          </div>
+          <div class="goal-card-progress">
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" style="width:75%"></div>
+            </div>
+            <div class="progress-numbers">
+              <span class="progress-current">₹37.5L</span>
+              <span class="progress-target">of ₹50L</span>
+            </div>
+          </div>
+          <div class="goal-card-timeline">Target: December 2027 · 21 months away</div>
+        </div>
+
+        <div class="goal-card">
+          <div class="goal-card-head">
+            <div class="goal-card-icon">
+              <span class="goal-card-emoji">🎓</span>
+              <span class="goal-card-name">Arjun's Education</span>
+            </div>
+            <span class="goal-card-status on-track">On Track</span>
+          </div>
+          <div class="goal-card-progress">
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" style="width:88%"></div>
+            </div>
+            <div class="progress-numbers">
+              <span class="progress-current">₹22L</span>
+              <span class="progress-target">of ₹25L</span>
+            </div>
+          </div>
+          <div class="goal-card-timeline">Target: June 2030 · 4 years away</div>
+        </div>
+
+        <div class="goal-card">
+          <div class="goal-card-head">
+            <div class="goal-card-icon">
+              <span class="goal-card-emoji">🏖️</span>
+              <span class="goal-card-name">Retirement</span>
+            </div>
+            <span class="goal-card-status behind">Needs Attention</span>
+          </div>
+          <div class="goal-card-progress">
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill danger" style="width:38%"></div>
+            </div>
+            <div class="progress-numbers">
+              <span class="progress-current">₹72L</span>
+              <span class="progress-target">of ₹5 Cr</span>
+            </div>
+          </div>
+          <div class="goal-card-timeline">
+            Target: 2043 · Your advisor has a plan to close the gap
+            <br><a href="#" style="color:var(--portal-accent);text-decoration:none;font-size:0.75rem;">Request review →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="activity-section">
+      <div class="section-head">
+        <h2 class="section-title">Recent Activity</h2>
+        <button class="btn-ghost">View all</button>
+      </div>
+
+      <div class="activity-list">
+        <div class="activity-row">
+          <div class="activity-type-icon sip">📈</div>
+          <div class="activity-info">
+            <div class="activity-title">SIP executed — PPFAS Flexi Cap Fund</div>
+            <div class="activity-time">Today, 10:15 AM</div>
+          </div>
+          <div class="activity-amount text-up">₹40,000</div>
+        </div>
+        <div class="activity-row">
+          <div class="activity-type-icon sip">📈</div>
+          <div class="activity-info">
+            <div class="activity-title">SIP executed — HDFC Mid-Cap Opportunities</div>
+            <div class="activity-time">20 Mar 2026</div>
+          </div>
+          <div class="activity-amount text-up">₹25,000</div>
+        </div>
+        <div class="activity-row">
+          <div class="activity-type-icon doc">📄</div>
+          <div class="activity-info">
+            <div class="activity-title">Quarterly review report published</div>
+            <div class="activity-time">22 Mar 2026</div>
+          </div>
+          <div class="activity-amount" style="color:var(--portal-accent);">View →</div>
+        </div>
+        <div class="activity-row">
+          <div class="activity-type-icon nav">💰</div>
+          <div class="activity-info">
+            <div class="activity-title">Goal milestone: Dream Home crossed 75%</div>
+            <div class="activity-time">18 Mar 2026</div>
+          </div>
+          <div class="activity-amount" style="color:var(--up);">🎉</div>
+        </div>
+        <div class="activity-row">
+          <div class="activity-type-icon sip">📈</div>
+          <div class="activity-info">
+            <div class="activity-title">SIP executed — ICICI Pru Short Term Fund</div>
+            <div class="activity-time">15 Mar 2026</div>
+          </div>
+          <div class="activity-amount text-up">₹20,000</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Planner Contact -->
+    <div class="planner-contact">
+      <div class="planner-avatar">RK</div>
+      <div class="planner-details">
+        <div class="planner-title">Your Financial Advisor</div>
+        <div class="planner-name-display">Rajesh Kumar</div>
+        <div class="planner-arn">ARN-12345 · Meridian Wealth Partners</div>
+      </div>
+      <div class="planner-actions">
+        <button class="btn-ghost">📞 Call</button>
+        <button class="btn-ghost">💬 Message</button>
+        <button class="btn-gold"><span>📅 Book Review</span></button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="portal-footer">
+      <p>Your data is secured with bank-grade encryption. Portfolio values updated daily at 11 PM IST.</p>
+      <p>For questions, contact your advisor or email <a href="#">support@meridianwealth.com</a></p>
+      <div class="powered-by">Powered by KI-Prime</div>
+    </div>
+  </main>
+</body>
+</html>

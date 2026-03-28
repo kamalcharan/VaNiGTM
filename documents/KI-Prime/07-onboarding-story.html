@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>KI-Prime — New Client Story</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   KI-PRIME DESIGN SYSTEM — "ATLAS"
+   Philosophy: Your money has a gravity. We visualize it.
+   ═══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  /* The Void — deep space black with warmth */
+  --void: #08080c;
+  --void-up: #0e0e14;
+  --void-up-2: #16161f;
+  --void-up-3: #1e1e2a;
+
+  /* Gold Thread — wealth, warmth, trust */
+  --gold: #c9a84c;
+  --gold-bright: #e4c76b;
+  --gold-dim: #8a7235;
+  --gold-glow: rgba(201, 168, 76, 0.15);
+  --gold-glow-strong: rgba(201, 168, 76, 0.3);
+
+  /* Signal Colors */
+  --up: #2dd4a0;
+  --up-glow: rgba(45, 212, 160, 0.15);
+  --down: #f05e5e;
+  --down-glow: rgba(240, 94, 94, 0.15);
+  --info: #5eaaf0;
+  --info-glow: rgba(94, 170, 240, 0.15);
+
+  /* Text Hierarchy */
+  --text-hero: #f0ece4;
+  --text-primary: #d4cfc5;
+  --text-secondary: #8a8578;
+  --text-ghost: #4a473f;
+
+  /* Glass */
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-hover: rgba(255, 255, 255, 0.06);
+
+  /* Typography */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Spacing Scale */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 200ms;
+  --duration-normal: 400ms;
+  --duration-slow: 800ms;
+  --duration-cinematic: 1200ms;
+}
+
+/* ── Reset & Base ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--void);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Atmospheric Background ─────────────────── */
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.atmosphere::before {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  top: -200px;
+  right: -100px;
+  background: radial-gradient(circle, var(--gold-glow) 0%, transparent 70%);
+  animation: atmosphereDrift 20s ease-in-out infinite alternate;
+}
+
+.atmosphere::after {
+  content: '';
+  position: absolute;
+  width: 800px;
+  height: 800px;
+  bottom: -300px;
+  left: -200px;
+  background: radial-gradient(circle, rgba(94, 170, 240, 0.05) 0%, transparent 70%);
+  animation: atmosphereDrift 25s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes atmosphereDrift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(60px, 40px) scale(1.1); }
+}
+
+/* ── Noise Texture Overlay ──────────────────── */
+.noise {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Glass Cards ────────────────────────────── */
+.glass-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.glass-card:hover {
+  background: var(--glass-hover);
+  border-color: rgba(201, 168, 76, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Gold Line Accent ───────────────────────── */
+.gold-line {
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  margin-bottom: var(--space-md);
+}
+
+.gold-line-long {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold-dim), transparent 60%);
+}
+
+/* ── Typography Classes ─────────────────────── */
+.display-xl {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 900;
+  line-height: 1.05;
+  color: var(--text-hero);
+  letter-spacing: -0.02em;
+}
+
+.display-lg {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-hero);
+}
+
+.display-md {
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-hero);
+}
+
+.label-upper {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-weight: 400;
+}
+
+.mono-sm {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 300;
+}
+
+/* ── Number Display (for money) ─────────────── */
+.amount {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.amount-hero {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  color: var(--text-hero);
+  font-variant-numeric: tabular-nums;
+}
+
+.currency {
+  font-size: 0.6em;
+  vertical-align: super;
+  color: var(--gold);
+  margin-right: 2px;
+}
+
+/* ── Signal Badges ──────────────────────────── */
+.badge-up {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: var(--up-glow);
+  color: var(--up);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-down {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: var(--down-glow);
+  color: var(--down);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ── Buttons ────────────────────────────────── */
+.btn-gold {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--gold);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-gold::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gold);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.btn-gold:hover {
+  color: var(--void);
+  box-shadow: 0 0 30px var(--gold-glow-strong);
+}
+
+.btn-gold:hover::before { opacity: 1; }
+.btn-gold span { position: relative; z-index: 1; }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.btn-ghost:hover {
+  border-color: var(--gold-dim);
+  color: var(--text-primary);
+}
+
+/* ── Entrance Animations ────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes goldPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.anim-fade-up {
+  animation: fadeInUp var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-fade {
+  animation: fadeIn var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-slide-left {
+  animation: slideInLeft var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-scale {
+  animation: scaleIn var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+/* Stagger delays */
+.delay-1 { animation-delay: 100ms; }
+.delay-2 { animation-delay: 200ms; }
+.delay-3 { animation-delay: 350ms; }
+.delay-4 { animation-delay: 500ms; }
+.delay-5 { animation-delay: 700ms; }
+.delay-6 { animation-delay: 900ms; }
+.delay-7 { animation-delay: 1100ms; }
+.delay-8 { animation-delay: 1300ms; }
+
+/* ── Scrollbar ──────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--void); }
+::-webkit-scrollbar-thumb { background: var(--void-up-3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }
+
+/* ── Selection ──────────────────────────────── */
+::selection {
+  background: var(--gold-glow-strong);
+  color: var(--text-hero);
+}
+
+/* ── Utility ────────────────────────────────── */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-xs { gap: var(--space-xs); }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.gap-lg { gap: var(--space-lg); }
+.gap-xl { gap: var(--space-xl); }
+.w-full { width: 100%; }
+.text-gold { color: var(--gold); }
+.text-up { color: var(--up); }
+.text-down { color: var(--down); }
+.text-ghost { color: var(--text-ghost); }
+.text-secondary { color: var(--text-secondary); }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.relative { position: relative; }
+.overflow-hidden { overflow: hidden; }
+
+
+/* ══ LAYOUT OVERRIDES FOR CONTAINER RENDERING ══ */
+html, body {
+  min-width: 1280px !important;
+  width: 100% !important;
+  overflow-x: auto !important;
+}
+.atmosphere, .noise {
+  position: absolute !important;
+}
+
+</style>
+<style>
+  .shell { display:flex; min-height:100vh; }
+  .nav-rail { background:var(--void-up); border-right:1px solid var(--glass-border); display:flex; flex-direction:column; align-items:center; padding:var(--space-md) 0; gap:var(--space-xs); position:sticky; top:0; width:72px; height:100vh; flex-shrink:0; z-index:100; }
+  .nav-logo { width:40px; height:40px; border:1px solid var(--gold-dim); border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; margin-bottom:var(--space-lg); cursor:pointer; }
+  .nav-logo svg { width:18px; height:18px; color:var(--gold); }
+  .nav-item { width:48px; height:48px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-ghost); transition: all 0.2s; }
+  .nav-item:hover { background:var(--glass); color:var(--text-secondary); }
+  .nav-item.active { color:var(--gold); background:var(--gold-glow); }
+  .nav-item svg { width:20px; height:20px; }
+  .nav-spacer { flex:1; }
+
+  .main { flex:1; min-width:0; display:flex; min-height:100vh; }
+
+  /* ── Left: The Story Panel (context, narrative) ── */
+  .story-panel {
+    width: 420px;
+    min-height: 100vh;
+    padding: var(--space-2xl);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .story-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at 30% 60%, rgba(201,168,76,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 70% 20%, rgba(45,212,160,0.04) 0%, transparent 40%);
+  }
+
+  .story-step-indicator {
+    position: relative;
+    z-index: 2;
+    margin-bottom: var(--space-2xl);
+    animation: fadeIn 0.8s var(--ease-out) forwards;
+    opacity: 0;
+  }
+
+  .step-progress {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: var(--space-lg);
+  }
+
+  .step-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid var(--text-ghost);
+    background: transparent;
+    transition: all 0.4s var(--ease-out);
+    flex-shrink: 0;
+  }
+
+  .step-dot.done { background: var(--gold); border-color: var(--gold); }
+  .step-dot.active { background: var(--gold-bright); border-color: var(--gold-bright); box-shadow: 0 0 15px var(--gold-glow-strong); transform: scale(1.3); }
+
+  .step-line {
+    flex: 1;
+    height: 2px;
+    background: var(--void-up-3);
+  }
+
+  .step-line.done { background: var(--gold-dim); }
+
+  .step-labels {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .step-label {
+    font-size: 0.55rem;
+    color: var(--text-ghost);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-align: center;
+    width: 60px;
+  }
+
+  .step-label.active { color: var(--gold); }
+  .step-label.done { color: var(--gold-dim); }
+
+  .story-narrative {
+    position: relative;
+    z-index: 2;
+    animation: fadeInUp 0.8s var(--ease-out) 200ms forwards;
+    opacity: 0;
+  }
+
+  .story-chapter {
+    font-size: 0.65rem;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-bottom: var(--space-sm);
+  }
+
+  .story-question {
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    font-weight: 900;
+    color: var(--text-hero);
+    line-height: 1.15;
+    margin-bottom: var(--space-lg);
+  }
+
+  .story-context {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    max-width: 360px;
+  }
+
+  .story-context strong { color: var(--gold); }
+
+  /* Preview card showing what we've captured so far */
+  .captured-preview {
+    position: relative;
+    z-index: 2;
+    margin-top: auto;
+    padding-top: var(--space-xl);
+    animation: fadeIn 0.8s var(--ease-out) 800ms forwards;
+    opacity: 0;
+  }
+
+  .captured-label {
+    font-size: 0.6rem;
+    color: var(--text-ghost);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: var(--space-sm);
+  }
+
+  .captured-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+  }
+
+  .captured-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 0.75rem;
+  }
+
+  .captured-key { color: var(--text-ghost); }
+  .captured-val { color: var(--text-primary); font-family: var(--font-mono); font-size: 0.7rem; }
+
+  /* ── Right: The Form Panel ─────────────── */
+  .form-panel {
+    flex: 1;
+    padding: var(--space-2xl) var(--space-xl);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-width: 700px;
+  }
+
+  .form-section {
+    animation: fadeInUp 0.8s var(--ease-out) 400ms forwards;
+    opacity: 0;
+  }
+
+  .form-section-title {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-hero);
+    margin-bottom: var(--space-xl);
+  }
+
+  /* Goal Discovery Cards — the heart of this screen */
+  .goal-discovery {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+  }
+
+  .goal-option {
+    background: var(--void-up);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    cursor: pointer;
+    transition: all 0.4s var(--ease-out);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .goal-option:hover {
+    border-color: var(--gold-dim);
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+  }
+
+  .goal-option.selected {
+    border-color: var(--gold);
+    background: var(--gold-glow);
+    box-shadow: 0 0 40px var(--gold-glow);
+  }
+
+  .goal-option.selected::before {
+    content: '✓';
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-sm);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: var(--void);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: 700;
+  }
+
+  .goal-emoji {
+    font-size: 2rem;
+    margin-bottom: var(--space-sm);
+    display: block;
+  }
+
+  .goal-name {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-hero);
+    margin-bottom: 4px;
+  }
+
+  .goal-desc {
+    font-size: 0.75rem;
+    color: var(--text-ghost);
+    line-height: 1.4;
+  }
+
+  /* Goal Detail Form (appears when goal is selected) */
+  .goal-detail {
+    background: var(--void-up);
+    border: 1px solid var(--gold-dim);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    margin-bottom: var(--space-lg);
+    animation: scaleIn 0.5s var(--ease-spring) forwards;
+    position: relative;
+  }
+
+  .goal-detail::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--gold), transparent);
+  }
+
+  .goal-detail-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+  }
+
+  .goal-detail-emoji { font-size: 1.4rem; }
+
+  .goal-detail-title {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-hero);
+  }
+
+  .goal-detail-close {
+    margin-left: auto;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--glass-border);
+    background: transparent;
+    color: var(--text-ghost);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    transition: all 0.2s;
+  }
+
+  .goal-detail-close:hover { border-color: var(--down); color: var(--down); }
+
+  .goal-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field.full { grid-column: 1 / -1; }
+
+  .field label {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .field input, .field select {
+    padding: 12px 14px;
+    background: var(--void);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-hero);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  .field input:focus, .field select:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px var(--gold-glow);
+  }
+
+  .field input::placeholder { color: var(--text-ghost); }
+
+  .field select {
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a8578' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
+
+  .field select option {
+    background: var(--void-up);
+    color: var(--text-primary);
+  }
+
+  /* Risk Profile Visual Selector */
+  .risk-selector {
+    display: flex;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+  }
+
+  .risk-option {
+    flex: 1;
+    background: var(--void-up);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s var(--ease-out);
+  }
+
+  .risk-option:hover { border-color: var(--gold-dim); }
+
+  .risk-option.selected {
+    border-color: var(--gold);
+    background: var(--gold-glow);
+  }
+
+  .risk-bar {
+    display: flex;
+    gap: 2px;
+    justify-content: center;
+    margin-bottom: var(--space-sm);
+    height: 28px;
+    align-items: flex-end;
+  }
+
+  .risk-bar-seg {
+    width: 6px;
+    border-radius: 2px;
+    background: var(--void-up-3);
+    transition: all 0.3s;
+  }
+
+  .risk-option.selected .risk-bar-seg.active { background: var(--gold); }
+  .risk-option:not(.selected) .risk-bar-seg.active { background: var(--text-ghost); }
+
+  .risk-name {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+  }
+
+  .risk-option.selected .risk-name { color: var(--gold); }
+
+  .risk-desc {
+    font-size: 0.6rem;
+    color: var(--text-ghost);
+  }
+
+  /* Navigation buttons */
+  .wizard-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--space-xl);
+    padding-top: var(--space-xl);
+    border-top: 1px solid var(--glass-border);
+    animation: fadeIn 0.8s var(--ease-out) 600ms forwards;
+    opacity: 0;
+  }
+
+  .wizard-skip {
+    font-size: 0.8rem;
+    color: var(--text-ghost);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+
+  .wizard-skip:hover { color: var(--text-secondary); }
+
+  .wizard-btns {
+    display: flex;
+    gap: var(--space-sm);
+  }
+
+  /* Import CAS drop zone */
+  .drop-zone {
+    border: 2px dashed var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-2xl);
+    text-align: center;
+    transition: all 0.3s var(--ease-out);
+    cursor: pointer;
+    margin-bottom: var(--space-lg);
+  }
+
+  .drop-zone:hover {
+    border-color: var(--gold-dim);
+    background: var(--gold-glow);
+  }
+
+  .drop-zone.dragging {
+    border-color: var(--gold);
+    background: var(--gold-glow-strong);
+    transform: scale(1.02);
+  }
+
+  .drop-icon {
+    font-size: 2.5rem;
+    margin-bottom: var(--space-md);
+    display: block;
+  }
+
+  .drop-title {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-hero);
+    margin-bottom: var(--space-xs);
+  }
+
+  .drop-desc {
+    font-size: 0.8rem;
+    color: var(--text-ghost);
+    line-height: 1.5;
+  }
+
+  .drop-formats {
+    display: flex;
+    gap: var(--space-sm);
+    justify-content: center;
+    margin-top: var(--space-md);
+  }
+
+  .format-chip {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    padding: 3px 10px;
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    color: var(--text-ghost);
+  }
+
+  .or-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+    color: var(--text-ghost);
+    font-size: 0.7rem;
+  }
+
+  .or-divider::before, .or-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--glass-border);
+  }
+
+  .manual-entry-btn {
+    width: 100%;
+    padding: var(--space-md);
+    background: var(--void-up);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    transition: all 0.3s;
+  }
+
+  .manual-entry-btn:hover {
+    border-color: var(--gold-dim);
+    color: var(--text-hero);
+  }
+
+  @media (max-width: 1100px) {
+    .main { flex-direction: column; }
+    .story-panel { width: 100%; min-height: auto; padding: var(--space-xl); }
+    .form-panel { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div class="noise"></div>
+
+  <div class="shell">
+    <!-- Nav Rail -->
+    <nav class="nav-rail">
+      <div class="nav-logo" onclick="window.location.href='02-planner-awakening.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+      <div class="nav-item" onclick="window.location.href='02-planner-awakening.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 010 20M12 2a15 15 0 000 20M2 12h20"/></svg></div>
+      <div class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div>
+      <div class="nav-item" onclick="window.location.href='04-planning-engine.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>
+      <div class="nav-spacer"></div>
+    </nav>
+
+    <div class="main">
+      <!-- Left: Story / Context Panel -->
+      <div class="story-panel">
+        <!-- Step Progress -->
+        <div class="story-step-indicator">
+          <div class="step-progress">
+            <div class="step-dot done"></div>
+            <div class="step-line done"></div>
+            <div class="step-dot done"></div>
+            <div class="step-line done"></div>
+            <div class="step-dot active"></div>
+            <div class="step-line"></div>
+            <div class="step-dot"></div>
+            <div class="step-line"></div>
+            <div class="step-dot"></div>
+            <div class="step-line"></div>
+            <div class="step-dot"></div>
+          </div>
+          <div class="step-labels">
+            <span class="step-label done">Identity</span>
+            <span class="step-label done">KYC</span>
+            <span class="step-label active">Dreams</span>
+            <span class="step-label">Risk</span>
+            <span class="step-label">Portfolio</span>
+            <span class="step-label">Review</span>
+          </div>
+        </div>
+
+        <!-- Narrative -->
+        <div class="story-narrative">
+          <div class="story-chapter">Chapter 3 of 6</div>
+          <h1 class="story-question">What does <span class="text-gold">Ananya</span> dream about?</h1>
+          <p class="story-context">
+            Every financial plan starts with a dream. 
+            Select the goals that matter to Ananya and her family. 
+            We'll build a <strong>personalized roadmap</strong> to turn each dream into a milestone with a date and a number.
+          </p>
+        </div>
+
+        <!-- What we've captured so far -->
+        <div class="captured-preview">
+          <div class="captured-label">Story so far</div>
+          <div class="captured-card">
+            <div class="captured-row">
+              <span class="captured-key">Name</span>
+              <span class="captured-val">Ananya Krishnamurthy</span>
+            </div>
+            <div class="captured-row">
+              <span class="captured-key">Age</span>
+              <span class="captured-val">34 · Born 12 Jun 1991</span>
+            </div>
+            <div class="captured-row">
+              <span class="captured-key">Family</span>
+              <span class="captured-val">Married · 1 child (age 4)</span>
+            </div>
+            <div class="captured-row">
+              <span class="captured-key">Income Range</span>
+              <span class="captured-val">₹25L – ₹50L per annum</span>
+            </div>
+            <div class="captured-row">
+              <span class="captured-key">KYC</span>
+              <span class="captured-val" style="color:var(--up);">✓ Verified via DigiLocker</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Form Panel -->
+      <div class="form-panel">
+        <div class="form-section">
+          <div class="form-section-title">Select Ananya's financial goals</div>
+
+          <!-- Goal Discovery Grid -->
+          <div class="goal-discovery">
+            <div class="goal-option selected" onclick="this.classList.toggle('selected')">
+              <span class="goal-emoji">🏠</span>
+              <div class="goal-name">Dream Home</div>
+              <div class="goal-desc">Down payment for a house or apartment</div>
+            </div>
+            <div class="goal-option selected" onclick="this.classList.toggle('selected')">
+              <span class="goal-emoji">🎓</span>
+              <div class="goal-name">Child's Education</div>
+              <div class="goal-desc">School, college, or higher studies fund</div>
+            </div>
+            <div class="goal-option" onclick="this.classList.toggle('selected')">
+              <span class="goal-emoji">🏖️</span>
+              <div class="goal-name">Retirement</div>
+              <div class="goal-desc">Financial freedom and post-work life</div>
+            </div>
+            <div class="goal-option" onclick="this.classList.toggle('selected')">
+              <span class="goal-emoji">🚗</span>
+              <div class="goal-name">Car / Vehicle</div>
+              <div class="goal-desc">Next car purchase or upgrade</div>
+            </div>
+            <div class="goal-option" onclick="this.classList.toggle('selected')">
+              <span class="goal-emoji">🌍</span>
+              <div class="goal-name">Travel / Vacation</div>
+              <div class="goal-desc">Annual or dream vacation fund</div>
+            </div>
+            <div class="goal-option" onclick="this.classList.toggle('selected')">
+              <span class="goal-emoji">🛡️</span>
+              <div class="goal-name">Emergency Fund</div>
+              <div class="goal-desc">6-12 months of expenses as safety net</div>
+            </div>
+            <div class="goal-option" onclick="this.classList.toggle('selected')">
+              <span class="goal-emoji">💍</span>
+              <div class="goal-name">Wedding</div>
+              <div class="goal-desc">Own or child's wedding fund</div>
+            </div>
+            <div class="goal-option" onclick="this.classList.toggle('selected')">
+              <span class="goal-emoji">💼</span>
+              <div class="goal-name">Wealth Growth</div>
+              <div class="goal-desc">General long-term wealth creation</div>
+            </div>
+          </div>
+
+          <!-- Expanded Goal Detail (shown for selected goal) -->
+          <div class="goal-detail">
+            <div class="goal-detail-head">
+              <span class="goal-detail-emoji">🏠</span>
+              <span class="goal-detail-title">Dream Home — Details</span>
+              <button class="goal-detail-close">✕</button>
+            </div>
+            <div class="goal-fields">
+              <div class="field">
+                <label>Target Amount</label>
+                <input type="text" placeholder="₹50,00,000" value="₹50,00,000">
+              </div>
+              <div class="field">
+                <label>Target Year</label>
+                <select>
+                  <option>2027</option>
+                  <option>2028</option>
+                  <option selected>2029</option>
+                  <option>2030</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Priority</label>
+                <select>
+                  <option selected>High — must achieve</option>
+                  <option>Medium — important</option>
+                  <option>Low — nice to have</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Inflation Assumption</label>
+                <select>
+                  <option>5%</option>
+                  <option selected>6%</option>
+                  <option>7%</option>
+                  <option>8%</option>
+                </select>
+              </div>
+              <div class="field full">
+                <label>Notes</label>
+                <input type="text" placeholder="Any specific details about this goal...">
+              </div>
+            </div>
+          </div>
+
+          <div class="goal-detail" style="border-color: rgba(45,212,160,0.3);">
+            <div class="goal-detail-head">
+              <span class="goal-detail-emoji">🎓</span>
+              <span class="goal-detail-title">Child's Education — Details</span>
+              <button class="goal-detail-close">✕</button>
+            </div>
+            <div class="goal-fields">
+              <div class="field">
+                <label>Target Amount</label>
+                <input type="text" placeholder="₹25,00,000" value="₹30,00,000">
+              </div>
+              <div class="field">
+                <label>Child's Current Age</label>
+                <input type="text" value="4 years">
+              </div>
+              <div class="field">
+                <label>Education Stage</label>
+                <select>
+                  <option>Primary School</option>
+                  <option>High School</option>
+                  <option selected>Undergraduate</option>
+                  <option>Postgraduate / MBA</option>
+                  <option>Study Abroad</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Target Year</label>
+                <select>
+                  <option>2038</option>
+                  <option selected>2039</option>
+                  <option>2040</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="wizard-nav">
+          <button class="wizard-skip">Skip this step</button>
+          <div class="wizard-btns">
+            <button class="btn-ghost">← Back to KYC</button>
+            <button class="btn-gold"><span>Next: Risk Profile →</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>KI-Prime — You've Been Recommended</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   KI-PRIME DESIGN SYSTEM — "ATLAS"
+   Referral Signup — Type B Invite
+   Split panel: Referral context left, Registration right
+   Theme: vikuna-black (CSS vars ready for any theme)
+   ═══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg-primary: #08080c;
+  --bg-secondary: #0e0e14;
+  --bg-tertiary: #16161f;
+  --bg-quaternary: #1e1e2a;
+
+  --brand-primary: #c9a84c;
+  --brand-primary-bright: #e4c76b;
+  --brand-primary-dim: #8a7235;
+  --brand-glow: rgba(201, 168, 76, 0.15);
+  --brand-glow-strong: rgba(201, 168, 76, 0.3);
+
+  --signal-success: #2dd4a0;
+  --signal-success-glow: rgba(45, 212, 160, 0.15);
+  --signal-danger: #f05e5e;
+  --signal-info: #5eaaf0;
+  --signal-info-glow: rgba(94, 170, 240, 0.15);
+  --signal-warning: #f0c75e;
+  --signal-warning-glow: rgba(240, 199, 94, 0.15);
+
+  --text-hero: #f0ece4;
+  --text-primary: #d4cfc5;
+  --text-secondary: #8a8578;
+  --text-ghost: #4a473f;
+
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.06);
+
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --space-xs: 4px; --space-sm: 8px; --space-md: 16px;
+  --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px;
+
+  --radius-sm: 6px; --radius-md: 12px; --radius-lg: 20px; --radius-xl: 32px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 200ms; --duration-normal: 400ms; --duration-slow: 800ms;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6; overflow-x: hidden;
+}
+
+/* ── Atmosphere ────────────────────────────── */
+.atmosphere { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.atmosphere::before {
+  content: ''; position: absolute;
+  width: 800px; height: 800px; top: -300px; left: -200px;
+  background: radial-gradient(circle, var(--brand-glow) 0%, transparent 70%);
+  animation: atmDrift 25s ease-in-out infinite alternate;
+}
+.atmosphere::after {
+  content: ''; position: absolute;
+  width: 600px; height: 600px; bottom: -200px; right: -100px;
+  background: radial-gradient(circle, rgba(94, 170, 240, 0.04) 0%, transparent 70%);
+  animation: atmDrift 20s ease-in-out infinite alternate-reverse;
+}
+@keyframes atmDrift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(80px, 60px) scale(1.15); }
+}
+
+.noise {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Layout ─────────────────────────────────── */
+.vault {
+  min-height: 100vh; display: flex;
+  position: relative; z-index: 2;
+}
+
+/* ── Left: Referral Story ───────────────────── */
+.vault-story {
+  flex: 1; display: flex; flex-direction: column;
+  justify-content: center;
+  padding: var(--space-3xl) var(--space-2xl);
+  position: relative; overflow: hidden;
+}
+
+.vault-story::before {
+  content: ''; position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 25% 40%, rgba(201, 168, 76, 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 80%, rgba(94, 170, 240, 0.03) 0%, transparent 45%);
+}
+
+.particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.particle {
+  position: absolute; width: 2px; height: 2px;
+  background: var(--brand-primary); border-radius: 50%;
+  opacity: 0; animation: particleFloat 8s ease-in-out infinite;
+}
+@keyframes particleFloat {
+  0% { opacity: 0; transform: translateY(100vh) scale(0); }
+  10% { opacity: 0.5; } 90% { opacity: 0.5; }
+  100% { opacity: 0; transform: translateY(-100px) scale(1); }
+}
+
+.story-content {
+  position: relative; z-index: 2; max-width: 460px;
+}
+
+/* Brand */
+.brand-mark {
+  display: flex; align-items: center; gap: var(--space-md);
+  margin-bottom: var(--space-2xl);
+  animation: fadeInUp 1s var(--ease-out) forwards; opacity: 0;
+}
+
+.brand-icon {
+  width: 48px; height: 48px;
+  border: 1.5px solid var(--brand-primary);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.brand-icon::after {
+  content: ''; position: absolute; inset: 4px;
+  border: 1px solid var(--brand-primary-dim); border-radius: 3px;
+}
+.brand-icon svg { width: 20px; height: 20px; color: var(--brand-primary); }
+
+.brand-name {
+  font-family: var(--font-display); font-size: 1.4rem;
+  font-weight: 700; color: var(--text-hero); letter-spacing: 0.05em;
+}
+.brand-sub {
+  font-size: 0.7rem; color: var(--text-ghost);
+  letter-spacing: 0.2em; text-transform: uppercase; margin-top: 2px;
+}
+
+/* Referral headline */
+.story-headline {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  font-weight: 900; line-height: 1.1;
+  color: var(--text-hero);
+  margin-bottom: var(--space-xl);
+  animation: fadeInUp 1s var(--ease-out) 200ms forwards; opacity: 0;
+}
+
+.glow-word {
+  color: var(--brand-primary); position: relative; display: inline-block;
+}
+.glow-word::after {
+  content: ''; position: absolute; bottom: 2px; left: 0; right: 0;
+  height: 2px; background: var(--brand-primary); opacity: 0.3;
+}
+
+/* Referrer Card */
+.referrer-card {
+  background: var(--glass);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  margin-bottom: var(--space-xl);
+  position: relative; overflow: hidden;
+  animation: fadeInUp 1s var(--ease-out) 400ms forwards; opacity: 0;
+}
+
+.referrer-card::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--brand-primary), transparent 60%);
+}
+
+.referrer-header {
+  font-size: 0.6rem; font-weight: 600;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--brand-primary-dim);
+  margin-bottom: var(--space-md);
+}
+
+.referrer-identity {
+  display: flex; align-items: center; gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.referrer-avatar {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand-primary-dim), var(--brand-primary));
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1.1rem; font-weight: 700; color: var(--bg-primary);
+  flex-shrink: 0; position: relative;
+}
+
+.referrer-avatar::after {
+  content: ''; position: absolute; inset: -4px;
+  border-radius: 50%; border: 1.5px solid var(--brand-primary-dim);
+}
+
+.referrer-name {
+  font-family: var(--font-display);
+  font-size: 1.1rem; font-weight: 700; color: var(--text-hero);
+}
+
+.referrer-firm {
+  font-size: 0.8rem; color: var(--text-secondary); margin-top: 1px;
+}
+
+.referrer-firm-code {
+  font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-ghost);
+}
+
+/* Personal message from referrer */
+.referrer-message {
+  position: relative;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  border-left: 2px solid var(--brand-primary-dim);
+}
+
+.referrer-message p {
+  font-size: 0.85rem; color: var(--text-secondary);
+  line-height: 1.65; font-style: italic;
+}
+
+.referrer-message .quote-mark {
+  font-family: var(--font-display);
+  font-size: 2rem; color: var(--brand-primary-dim);
+  line-height: 1; margin-bottom: var(--space-xs); display: block;
+}
+
+/* Stats */
+.referrer-stats {
+  display: flex; gap: var(--space-xl);
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid rgba(255,255,255,0.04);
+  animation: fadeIn 1s var(--ease-out) 600ms forwards; opacity: 0;
+}
+
+.ref-stat { display: flex; flex-direction: column; gap: 2px; }
+
+.ref-stat-value {
+  font-family: var(--font-mono); font-size: 1rem;
+  font-weight: 500; color: var(--text-hero);
+}
+
+.ref-stat-label {
+  font-size: 0.6rem; color: var(--text-ghost);
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+
+/* Trust footer */
+.trust-signals {
+  position: absolute; bottom: var(--space-xl); left: var(--space-2xl);
+  display: flex; gap: var(--space-xl);
+  animation: fadeIn 1s var(--ease-out) 1s forwards; opacity: 0;
+}
+
+.trust-item { display: flex; align-items: center; gap: var(--space-sm); }
+
+.trust-icon {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--glass); border: 1px solid var(--glass-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem;
+}
+
+.trust-text {
+  font-size: 0.65rem; color: var(--text-ghost);
+  letter-spacing: 0.05em; text-transform: uppercase; line-height: 1.3;
+}
+
+/* ── Right: Form Panel ──────────────────────── */
+.vault-form {
+  width: 520px; min-height: 100vh;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: var(--space-2xl) var(--space-xl);
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--glass-border);
+  position: relative;
+}
+
+.vault-form::before {
+  content: ''; position: absolute;
+  top: 0; left: -1px; width: 1px; height: 100%;
+  background: linear-gradient(180deg, transparent 15%, var(--brand-primary-dim) 50%, transparent 85%);
+}
+
+.form-header {
+  margin-bottom: var(--space-xl);
+  animation: fadeInUp 0.8s var(--ease-out) 600ms forwards; opacity: 0;
+}
+
+.gold-line {
+  width: 40px; height: 2px;
+  background: linear-gradient(90deg, var(--brand-primary), transparent);
+  margin-bottom: var(--space-md);
+}
+
+.form-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem; font-weight: 700;
+  color: var(--text-hero); margin-bottom: var(--space-xs);
+}
+
+.form-subtitle {
+  color: var(--text-secondary); font-size: 0.85rem;
+}
+
+/* Referral badge on form side */
+.referral-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  background: var(--brand-glow);
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  border-radius: 100px;
+  font-size: 0.7rem; color: var(--brand-primary);
+  font-weight: 500; margin-bottom: var(--space-lg);
+  animation: fadeInUp 0.8s var(--ease-out) 650ms forwards; opacity: 0;
+}
+
+.referral-badge .badge-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--brand-primary);
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { opacity: 0.5; } 50% { opacity: 1; }
+}
+
+/* ── Form Fields ────────────────────────────── */
+.form-group {
+  margin-bottom: var(--space-lg);
+  animation: fadeInUp 0.8s var(--ease-out) forwards; opacity: 0;
+}
+
+.form-label {
+  display: block; font-size: 0.65rem; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-secondary); margin-bottom: 6px;
+}
+
+.form-input {
+  width: 100%; padding: 13px 16px;
+  background: var(--bg-tertiary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--text-hero);
+  font-family: var(--font-body); font-size: 0.9rem;
+  transition: all var(--duration-fast) var(--ease-out);
+  outline: none;
+}
+.form-input::placeholder { color: var(--text-ghost); }
+.form-input:hover { border-color: rgba(255,255,255,0.18); background: var(--bg-quaternary); }
+.form-input:focus {
+  border-color: var(--brand-primary); background: var(--bg-quaternary);
+  box-shadow: 0 0 0 3px var(--brand-glow), 0 0 20px var(--brand-glow);
+}
+
+.field-hint {
+  font-size: 0.65rem; color: var(--text-ghost);
+  margin-top: 4px; font-family: var(--font-mono);
+}
+
+/* Password */
+.password-wrap { position: relative; }
+.password-wrap .form-input { padding-right: 48px; }
+.password-toggle {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text-ghost);
+  cursor: pointer; font-size: 0.85rem; padding: 4px;
+  transition: color var(--duration-fast);
+}
+.password-toggle:hover { color: var(--text-secondary); }
+
+.strength-meter { margin-top: var(--space-sm); }
+.strength-bar-track { display: flex; gap: 3px; height: 3px; margin-bottom: 6px; }
+.strength-segment {
+  flex: 1; height: 100%; border-radius: 2px;
+  background: var(--bg-quaternary); transition: background 0.4s var(--ease-out);
+}
+.strength-segment.active.weak { background: var(--signal-danger); }
+.strength-segment.active.fair { background: var(--signal-warning); }
+.strength-segment.active.good { background: var(--signal-info); }
+.strength-segment.active.strong { background: var(--signal-success); }
+.strength-label {
+  font-family: var(--font-mono); font-size: 0.6rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+.strength-label.weak { color: var(--signal-danger); }
+.strength-label.fair { color: var(--signal-warning); }
+.strength-label.good { color: var(--signal-info); }
+.strength-label.strong { color: var(--signal-success); }
+
+.match-indicator {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 6px; font-size: 0.65rem;
+  font-family: var(--font-mono); opacity: 0; transition: opacity 0.3s;
+}
+.match-indicator.visible { opacity: 1; }
+.match-indicator.match { color: var(--signal-success); }
+.match-indicator.no-match { color: var(--signal-danger); }
+.match-dot { width: 6px; height: 6px; border-radius: 50%; }
+.match-indicator.match .match-dot { background: var(--signal-success); }
+.match-indicator.no-match .match-dot { background: var(--signal-danger); }
+
+/* Phone */
+.phone-row { display: flex; gap: var(--space-sm); }
+.country-dropdown { position: relative; width: 120px; flex-shrink: 0; }
+.country-trigger {
+  width: 100%; padding: 13px 12px;
+  background: var(--bg-tertiary); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-sm); color: var(--text-hero);
+  font-family: var(--font-mono); font-size: 0.8rem;
+  cursor: pointer; display: flex; align-items: center; gap: 8px;
+  transition: all var(--duration-fast) var(--ease-out); outline: none;
+}
+.country-trigger:hover { border-color: rgba(255,255,255,0.18); background: var(--bg-quaternary); }
+.country-trigger.open { border-color: var(--brand-primary); box-shadow: 0 0 0 3px var(--brand-glow); }
+.country-trigger .flag-img {
+  width: 22px; height: 16px; border-radius: 2px; object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.1); flex-shrink: 0;
+}
+.country-trigger .chevron {
+  width: 10px; height: 10px; flex-shrink: 0;
+  transition: transform 0.3s var(--ease-out); margin-left: auto;
+}
+.country-trigger.open .chevron { transform: rotate(180deg); }
+.country-list {
+  position: absolute; top: calc(100% + 4px); left: 0;
+  width: 220px; max-height: 240px; overflow-y: auto;
+  background: var(--bg-tertiary); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-sm); box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  z-index: 100; display: none; animation: dropIn 0.25s var(--ease-out);
+}
+.country-list.open { display: block; }
+@keyframes dropIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+.country-list-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; cursor: pointer; font-size: 0.8rem;
+  color: var(--text-primary); transition: all 0.15s;
+}
+.country-list-item:hover { background: var(--bg-quaternary); }
+.country-list-item.selected { background: var(--brand-glow); color: var(--brand-primary); }
+.country-list-item .flag-img {
+  width: 24px; height: 17px; border-radius: 2px; object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08); flex-shrink: 0;
+}
+.country-list-item .country-name { flex: 1; }
+.country-list-item .country-code { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-ghost); }
+
+/* Terms */
+.terms-row {
+  display: flex; align-items: flex-start; gap: var(--space-sm);
+  margin-bottom: var(--space-xl);
+  animation: fadeInUp 0.8s var(--ease-out) 1.1s forwards; opacity: 0;
+}
+.terms-check {
+  width: 18px; height: 18px; border-radius: 4px;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  background: var(--bg-tertiary); cursor: pointer; flex-shrink: 0; margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-appearance: none; appearance: none; transition: all var(--duration-fast);
+}
+.terms-check:checked { background: var(--brand-primary); border-color: var(--brand-primary); }
+.terms-check:checked::after { content: '✓'; color: var(--bg-primary); font-size: 0.65rem; font-weight: 700; }
+.terms-text { font-size: 0.75rem; color: var(--text-ghost); line-height: 1.5; }
+.terms-text a { color: var(--brand-primary); text-decoration: none; }
+
+/* Submit */
+.submit-btn {
+  width: 100%; padding: 16px;
+  background: linear-gradient(135deg, var(--brand-primary-dim), var(--brand-primary));
+  border: none; border-radius: var(--radius-sm);
+  color: var(--bg-primary);
+  font-family: var(--font-body); font-size: 0.9rem;
+  font-weight: 700; letter-spacing: 0.08em;
+  cursor: pointer; position: relative; overflow: hidden;
+  transition: all var(--duration-normal) var(--ease-out);
+  animation: fadeInUp 0.8s var(--ease-out) 1.2s forwards; opacity: 0;
+}
+.submit-btn::before {
+  content: ''; position: absolute;
+  top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.6s;
+}
+.submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 40px var(--brand-glow-strong); }
+.submit-btn:hover::before { left: 100%; }
+
+/* Footer */
+.form-footer {
+  margin-top: var(--space-xl); text-align: center;
+  animation: fadeIn 0.8s var(--ease-out) 1.3s forwards; opacity: 0;
+}
+.form-footer a {
+  color: var(--text-secondary); font-size: 0.8rem;
+  text-decoration: none; transition: color var(--duration-fast);
+}
+.form-footer a:hover { color: var(--brand-primary); }
+
+/* ── Animations ────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+::selection { background: var(--brand-glow-strong); color: var(--text-hero); }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-quaternary); border-radius: 3px; }
+
+@media (max-width: 960px) {
+  .vault { flex-direction: column; }
+  .vault-story { padding: var(--space-xl); min-height: auto; }
+  .vault-form { width: 100%; min-height: auto; padding: var(--space-xl); }
+  .trust-signals { position: relative; bottom: auto; left: auto; margin-top: var(--space-xl); }
+}
+</style>
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div class="noise"></div>
+
+  <div class="vault">
+    <!-- LEFT: Referral Context -->
+    <div class="vault-story">
+      <div class="particles">
+        <div class="particle" style="left:10%; animation-delay:0s; animation-duration:7s;"></div>
+        <div class="particle" style="left:30%; animation-delay:2s; animation-duration:9s;"></div>
+        <div class="particle" style="left:50%; animation-delay:3.5s; animation-duration:6.5s;"></div>
+        <div class="particle" style="left:70%; animation-delay:1s; animation-duration:8s;"></div>
+        <div class="particle" style="left:88%; animation-delay:4s; animation-duration:10s;"></div>
+      </div>
+
+      <div class="story-content">
+        <div class="brand-mark">
+          <div class="brand-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5"/>
+              <path d="M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <div>
+            <div class="brand-name">KI-PRIME</div>
+            <div class="brand-sub">by Vikuna Technologies</div>
+          </div>
+        </div>
+
+        <h1 class="story-headline">
+          A trusted advisor<br>
+          thinks you'll <span class="glow-word">love</span> this.
+        </h1>
+
+        <!-- Referrer Card -->
+        <div class="referrer-card">
+          <div class="referrer-header">Recommended by</div>
+
+          <div class="referrer-identity">
+            <div class="referrer-avatar">RK</div>
+            <div>
+              <div class="referrer-name">Rajesh Kumar</div>
+              <div class="referrer-firm">Meridian Wealth Partners</div>
+              <div class="referrer-firm-code">ARN-12345 · Since 2019</div>
+            </div>
+          </div>
+
+          <div class="referrer-message">
+            <span class="quote-mark">"</span>
+            <p>I've been using KI-Prime for over a year now. It's completely transformed how I manage my 48 families. The goal planning engine alone saved me hours every week. You should try it.</p>
+          </div>
+
+          <div class="referrer-stats">
+            <div class="ref-stat">
+              <span class="ref-stat-value">₹47.2 Cr</span>
+              <span class="ref-stat-label">AUM Managed</span>
+            </div>
+            <div class="ref-stat">
+              <span class="ref-stat-value">48</span>
+              <span class="ref-stat-label">Families</span>
+            </div>
+            <div class="ref-stat">
+              <span class="ref-stat-value">1 year</span>
+              <span class="ref-stat-label">On KI-Prime</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="trust-signals">
+        <div class="trust-item">
+          <div class="trust-icon">🔒</div>
+          <div class="trust-text">Bank-grade<br>encryption</div>
+        </div>
+        <div class="trust-item">
+          <div class="trust-icon">⚡</div>
+          <div class="trust-text">Setup in<br>under 5 min</div>
+        </div>
+        <div class="trust-item">
+          <div class="trust-icon">💎</div>
+          <div class="trust-text">Free starter<br>tier included</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Registration Form -->
+    <div class="vault-form">
+      <div class="form-header">
+        <div class="gold-line"></div>
+        <h2 class="form-title">Create your account</h2>
+        <p class="form-subtitle">Start your free journey — no card required</p>
+      </div>
+
+      <div class="referral-badge">
+        <span class="badge-dot"></span>
+        Referred by Rajesh Kumar
+      </div>
+
+      <!-- Full Name -->
+      <div class="form-group" style="animation-delay: 700ms;">
+        <label class="form-label">Full Name</label>
+        <input type="text" class="form-input" placeholder="Your full name" id="fullName">
+      </div>
+
+      <!-- Email -->
+      <div class="form-group" style="animation-delay: 780ms;">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-input" placeholder="you@yourfirm.com" id="email">
+        <div class="field-hint">This will be your login ID</div>
+      </div>
+
+      <!-- Password -->
+      <div class="form-group" style="animation-delay: 860ms;">
+        <label class="form-label">Password</label>
+        <div class="password-wrap">
+          <input type="password" class="form-input" placeholder="Min 8 chars, 1 uppercase, 1 number" id="password">
+          <button class="password-toggle" onclick="togglePw('password',this)" type="button">👁</button>
+        </div>
+        <div class="strength-meter">
+          <div class="strength-bar-track">
+            <div class="strength-segment" id="seg1"></div>
+            <div class="strength-segment" id="seg2"></div>
+            <div class="strength-segment" id="seg3"></div>
+            <div class="strength-segment" id="seg4"></div>
+          </div>
+          <span class="strength-label" id="strengthLabel">&nbsp;</span>
+        </div>
+      </div>
+
+      <!-- Confirm Password -->
+      <div class="form-group" style="animation-delay: 940ms;">
+        <label class="form-label">Confirm Password</label>
+        <div class="password-wrap">
+          <input type="password" class="form-input" placeholder="Re-enter your password" id="confirmPassword">
+          <button class="password-toggle" onclick="togglePw('confirmPassword',this)" type="button">👁</button>
+        </div>
+        <div class="match-indicator" id="matchIndicator">
+          <span class="match-dot"></span>
+          <span id="matchText"></span>
+        </div>
+      </div>
+
+      <!-- Phone -->
+      <div class="form-group" style="animation-delay: 1020ms;">
+        <label class="form-label">Phone Number</label>
+        <div class="phone-row">
+          <div class="country-dropdown" id="countryDropdown">
+            <button class="country-trigger" type="button" id="countryTrigger" onclick="toggleCL()">
+              <img class="flag-img" id="selectedFlag" src="https://flagcdn.com/w40/in.png" alt="IN">
+              <span id="selectedCode">+91</span>
+              <svg class="chevron" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 1l4 4 4-4"/></svg>
+            </button>
+            <div class="country-list" id="countryList">
+              <div class="country-list-item selected" data-code="+91" data-flag="in" onclick="selectC(this)">
+                <img class="flag-img" src="https://flagcdn.com/w40/in.png" alt="IN"><span class="country-name">India</span><span class="country-code">+91</span>
+              </div>
+              <div class="country-list-item" data-code="+1" data-flag="us" onclick="selectC(this)">
+                <img class="flag-img" src="https://flagcdn.com/w40/us.png" alt="US"><span class="country-name">United States</span><span class="country-code">+1</span>
+              </div>
+              <div class="country-list-item" data-code="+44" data-flag="gb" onclick="selectC(this)">
+                <img class="flag-img" src="https://flagcdn.com/w40/gb.png" alt="GB"><span class="country-name">United Kingdom</span><span class="country-code">+44</span>
+              </div>
+              <div class="country-list-item" data-code="+971" data-flag="ae" onclick="selectC(this)">
+                <img class="flag-img" src="https://flagcdn.com/w40/ae.png" alt="AE"><span class="country-name">UAE</span><span class="country-code">+971</span>
+              </div>
+              <div class="country-list-item" data-code="+65" data-flag="sg" onclick="selectC(this)">
+                <img class="flag-img" src="https://flagcdn.com/w40/sg.png" alt="SG"><span class="country-name">Singapore</span><span class="country-code">+65</span>
+              </div>
+            </div>
+          </div>
+          <input type="tel" class="form-input" placeholder="98765 43210" id="phone">
+        </div>
+      </div>
+
+      <!-- Terms -->
+      <div class="terms-row">
+        <input type="checkbox" class="terms-check" id="terms">
+        <label class="terms-text" for="terms">
+          I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+        </label>
+      </div>
+
+      <!-- Submit -->
+      <button class="submit-btn" type="button">
+        CREATE ACCOUNT →
+      </button>
+
+      <!-- Footer -->
+      <div class="form-footer">
+        <a href="01-login-vault.html">Already have an account? Sign in →</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function togglePw(id, btn) {
+      const inp = document.getElementById(id);
+      if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+      else { inp.type = 'password'; btn.textContent = '👁'; }
+    }
+
+    // Strength meter
+    const pw = document.getElementById('password');
+    const segs = [document.getElementById('seg1'), document.getElementById('seg2'), document.getElementById('seg3'), document.getElementById('seg4')];
+    const sLabel = document.getElementById('strengthLabel');
+
+    pw.addEventListener('input', () => {
+      const v = pw.value; let s = 0;
+      if (v.length >= 8) s++;
+      if (/[A-Z]/.test(v)) s++;
+      if (/[0-9]/.test(v)) s++;
+      if (/[^A-Za-z0-9]/.test(v)) s++;
+      const levels = ['','weak','fair','good','strong'];
+      const labels = ['','Weak','Fair','Good','Strong'];
+      const lvl = levels[s] || '';
+      segs.forEach((seg,i) => { seg.className = 'strength-segment'; if (i < s) seg.classList.add('active', lvl); });
+      sLabel.className = 'strength-label ' + lvl;
+      sLabel.textContent = v.length > 0 ? labels[s] : '\u00A0';
+      checkMatch();
+    });
+
+    const cpw = document.getElementById('confirmPassword');
+    cpw.addEventListener('input', checkMatch);
+    function checkMatch() {
+      const p = pw.value, c = cpw.value;
+      const ind = document.getElementById('matchIndicator');
+      const txt = document.getElementById('matchText');
+      if (c.length === 0) { ind.className = 'match-indicator'; return; }
+      if (p === c) { ind.className = 'match-indicator visible match'; txt.textContent = 'Passwords match'; }
+      else { ind.className = 'match-indicator visible no-match'; txt.textContent = 'Passwords do not match'; }
+    }
+
+    // Country dropdown
+    function toggleCL() {
+      document.getElementById('countryList').classList.toggle('open');
+      document.getElementById('countryTrigger').classList.toggle('open');
+    }
+    function selectC(item) {
+      document.getElementById('selectedFlag').src = 'https://flagcdn.com/w40/' + item.dataset.flag + '.png';
+      document.getElementById('selectedCode').textContent = item.dataset.code;
+      document.querySelectorAll('#countryList .country-list-item').forEach(i => i.classList.remove('selected'));
+      item.classList.add('selected');
+      document.getElementById('countryList').classList.remove('open');
+      document.getElementById('countryTrigger').classList.remove('open');
+    }
+    document.addEventListener('click', (e) => {
+      if (!document.getElementById('countryDropdown').contains(e.target)) {
+        document.getElementById('countryList').classList.remove('open');
+        document.getElementById('countryTrigger').classList.remove('open');
+      }
+    });
+
+    // Phone format
+    document.getElementById('phone').addEventListener('input', function() {
+      let v = this.value.replace(/\D/g, '');
+      if (v.length > 5) v = v.slice(0,5) + ' ' + v.slice(5,10);
+      this.value = v;
+    });
+  </script>
+</body>
+</html>

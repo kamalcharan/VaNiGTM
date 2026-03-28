@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>KI-Prime — Begin</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   KI-PRIME DESIGN SYSTEM — "ATLAS"
+   Registration — "Begin Your Legacy"
+   Theme: vikuna-black (CSS vars ready for any theme)
+   ═══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  /* ── Theme Vars (mapped from VaNiBase css-var-mapper) ── */
+  --bg-primary: #08080c;
+  --bg-secondary: #0e0e14;
+  --bg-tertiary: #16161f;
+  --bg-quaternary: #1e1e2a;
+
+  --brand-primary: #c9a84c;
+  --brand-primary-bright: #e4c76b;
+  --brand-primary-dim: #8a7235;
+  --brand-glow: rgba(201, 168, 76, 0.15);
+  --brand-glow-strong: rgba(201, 168, 76, 0.3);
+
+  --signal-success: #2dd4a0;
+  --signal-success-glow: rgba(45, 212, 160, 0.15);
+  --signal-danger: #f05e5e;
+  --signal-danger-glow: rgba(240, 94, 94, 0.15);
+  --signal-info: #5eaaf0;
+  --signal-info-glow: rgba(94, 170, 240, 0.15);
+  --signal-warning: #f0c75e;
+  --signal-warning-glow: rgba(240, 199, 94, 0.15);
+
+  --text-hero: #f0ece4;
+  --text-primary: #d4cfc5;
+  --text-secondary: #8a8578;
+  --text-ghost: #4a473f;
+
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-hover: rgba(255, 255, 255, 0.06);
+
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --space-xs: 4px; --space-sm: 8px; --space-md: 16px;
+  --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px;
+
+  --radius-sm: 6px; --radius-md: 12px; --radius-lg: 20px; --radius-xl: 32px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 200ms; --duration-normal: 400ms;
+  --duration-slow: 800ms; --duration-cinematic: 1200ms;
+}
+
+/* ── Reset ─────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Atmosphere ────────────────────────────── */
+.atmosphere { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.atmosphere::before {
+  content: ''; position: absolute;
+  width: 800px; height: 800px; top: -300px; left: -200px;
+  background: radial-gradient(circle, var(--brand-glow) 0%, transparent 70%);
+  animation: atmDrift 25s ease-in-out infinite alternate;
+}
+.atmosphere::after {
+  content: ''; position: absolute;
+  width: 600px; height: 600px; bottom: -200px; right: -100px;
+  background: radial-gradient(circle, rgba(94, 170, 240, 0.04) 0%, transparent 70%);
+  animation: atmDrift 20s ease-in-out infinite alternate-reverse;
+}
+@keyframes atmDrift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(80px, 60px) scale(1.15); }
+}
+
+.noise {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Layout ─────────────────────────────────── */
+.vault {
+  min-height: 100vh;
+  display: flex;
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Left: Story Panel ──────────────────────── */
+.vault-story {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-3xl) var(--space-2xl);
+  position: relative;
+  overflow: hidden;
+}
+
+.vault-story::before {
+  content: ''; position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 25% 40%, rgba(201, 168, 76, 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 80%, rgba(94, 170, 240, 0.03) 0%, transparent 45%);
+}
+
+/* Floating particles */
+.particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.particle {
+  position: absolute; width: 2px; height: 2px;
+  background: var(--brand-primary); border-radius: 50%;
+  opacity: 0; animation: particleFloat 8s ease-in-out infinite;
+}
+@keyframes particleFloat {
+  0% { opacity: 0; transform: translateY(100vh) scale(0); }
+  10% { opacity: 0.5; }
+  90% { opacity: 0.5; }
+  100% { opacity: 0; transform: translateY(-100px) scale(1); }
+}
+
+/* Orbiting rings — the gravity metaphor */
+.orbit-rings {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 500px; height: 500px;
+  pointer-events: none;
+}
+
+.orbit-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(201, 168, 76, 0.04);
+  animation: orbitSpin linear infinite;
+}
+
+.orbit-ring:nth-child(1) {
+  inset: 60px; animation-duration: 40s;
+  border-color: rgba(201, 168, 76, 0.06);
+}
+.orbit-ring:nth-child(2) {
+  inset: 120px; animation-duration: 30s;
+  animation-direction: reverse;
+  border-color: rgba(201, 168, 76, 0.04);
+}
+.orbit-ring:nth-child(3) {
+  inset: 170px; animation-duration: 20s;
+  border-color: rgba(201, 168, 76, 0.08);
+}
+
+.orbit-ring::after {
+  content: ''; position: absolute;
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--brand-primary);
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 0 8px var(--brand-glow-strong);
+}
+
+@keyframes orbitSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+.story-content {
+  position: relative; z-index: 2;
+  max-width: 460px;
+}
+
+.brand-mark {
+  display: flex; align-items: center; gap: var(--space-md);
+  margin-bottom: var(--space-3xl);
+  animation: fadeInUp 1s var(--ease-out) forwards; opacity: 0;
+}
+
+.brand-icon {
+  width: 48px; height: 48px;
+  border: 1.5px solid var(--brand-primary);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.brand-icon::after {
+  content: ''; position: absolute; inset: 4px;
+  border: 1px solid var(--brand-primary-dim);
+  border-radius: 3px;
+}
+.brand-icon svg { width: 20px; height: 20px; color: var(--brand-primary); }
+
+.brand-name {
+  font-family: var(--font-display); font-size: 1.4rem;
+  font-weight: 700; color: var(--text-hero); letter-spacing: 0.05em;
+}
+.brand-sub {
+  font-size: 0.7rem; color: var(--text-ghost);
+  letter-spacing: 0.2em; text-transform: uppercase; margin-top: 2px;
+}
+
+.story-headline {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  font-weight: 900; line-height: 1.08;
+  color: var(--text-hero);
+  margin-bottom: var(--space-lg);
+  animation: fadeInUp 1s var(--ease-out) 200ms forwards; opacity: 0;
+}
+
+.story-headline .glow-word {
+  color: var(--brand-primary);
+  position: relative;
+  display: inline-block;
+}
+
+.story-headline .glow-word::after {
+  content: '';
+  position: absolute; bottom: 2px; left: 0; right: 0;
+  height: 2px; background: var(--brand-primary); opacity: 0.3;
+}
+
+.story-text {
+  font-size: 1rem; color: var(--text-secondary);
+  line-height: 1.75; max-width: 380px;
+  animation: fadeInUp 1s var(--ease-out) 400ms forwards; opacity: 0;
+}
+
+/* Trust signals at bottom */
+.trust-signals {
+  position: absolute; bottom: var(--space-xl); left: var(--space-2xl);
+  display: flex; gap: var(--space-xl);
+  animation: fadeIn 1s var(--ease-out) 1.4s forwards; opacity: 0;
+}
+
+.trust-item {
+  display: flex; align-items: center; gap: var(--space-sm);
+}
+
+.trust-icon {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--glass); border: 1px solid var(--glass-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem;
+}
+
+.trust-text {
+  font-size: 0.65rem; color: var(--text-ghost);
+  letter-spacing: 0.05em; text-transform: uppercase;
+  line-height: 1.3;
+}
+
+/* ── Right: Form Panel ──────────────────────── */
+.vault-form {
+  width: 520px;
+  min-height: 100vh;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: var(--space-2xl) var(--space-xl);
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--glass-border);
+  position: relative;
+}
+
+.vault-form::before {
+  content: ''; position: absolute;
+  top: 0; left: -1px; width: 1px; height: 100%;
+  background: linear-gradient(180deg, transparent 15%, var(--brand-primary-dim) 50%, transparent 85%);
+}
+
+.form-header {
+  margin-bottom: var(--space-xl);
+  animation: fadeInUp 0.8s var(--ease-out) 600ms forwards; opacity: 0;
+}
+
+.form-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem; font-weight: 700;
+  color: var(--text-hero); margin-bottom: var(--space-xs);
+}
+
+.form-subtitle {
+  color: var(--text-secondary); font-size: 0.85rem;
+}
+
+/* ── Form Fields ────────────────────────────── */
+.form-group {
+  margin-bottom: var(--space-lg);
+  animation: fadeInUp 0.8s var(--ease-out) forwards; opacity: 0;
+}
+
+.form-label {
+  display: block; font-size: 0.65rem; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-secondary); margin-bottom: 6px;
+}
+
+.form-input {
+  width: 100%; padding: 13px 16px;
+  background: var(--bg-tertiary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--text-hero);
+  font-family: var(--font-body); font-size: 0.9rem;
+  transition: all var(--duration-fast) var(--ease-out);
+  outline: none;
+}
+
+.form-input::placeholder { color: var(--text-ghost); }
+
+.form-input:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--bg-quaternary);
+}
+
+.form-input:focus {
+  border-color: var(--brand-primary);
+  background: var(--bg-quaternary);
+  box-shadow: 0 0 0 3px var(--brand-glow), 0 0 20px var(--brand-glow);
+}
+
+.form-input.error {
+  border-color: var(--signal-danger);
+  box-shadow: 0 0 0 3px var(--signal-danger-glow);
+}
+
+.form-input.valid {
+  border-color: var(--signal-success);
+}
+
+.field-hint {
+  font-size: 0.65rem; color: var(--text-ghost);
+  margin-top: 4px; font-family: var(--font-mono);
+}
+
+.field-error {
+  font-size: 0.65rem; color: var(--signal-danger);
+  margin-top: 4px; display: none;
+}
+
+/* ── Password Field with Toggle ─────────────── */
+.password-wrap {
+  position: relative;
+}
+
+.password-wrap .form-input { padding-right: 48px; }
+
+.password-toggle {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text-ghost);
+  cursor: pointer; font-size: 0.85rem; padding: 4px;
+  transition: color var(--duration-fast);
+}
+
+.password-toggle:hover { color: var(--text-secondary); }
+
+/* ── Password Strength Meter ────────────────── */
+.strength-meter {
+  margin-top: var(--space-sm);
+}
+
+.strength-bar-track {
+  display: flex; gap: 3px; height: 3px; margin-bottom: 6px;
+}
+
+.strength-segment {
+  flex: 1; height: 100%; border-radius: 2px;
+  background: var(--bg-quaternary);
+  transition: background 0.4s var(--ease-out);
+}
+
+.strength-segment.active.weak { background: var(--signal-danger); }
+.strength-segment.active.fair { background: var(--signal-warning); }
+.strength-segment.active.good { background: var(--signal-info); }
+.strength-segment.active.strong { background: var(--signal-success); }
+
+.strength-label {
+  font-family: var(--font-mono); font-size: 0.6rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  transition: color 0.3s;
+}
+
+.strength-label.weak { color: var(--signal-danger); }
+.strength-label.fair { color: var(--signal-warning); }
+.strength-label.good { color: var(--signal-info); }
+.strength-label.strong { color: var(--signal-success); }
+
+/* ── Phone Input ────────────────────────────── */
+.phone-row {
+  display: flex; gap: var(--space-sm);
+}
+
+.country-select {
+  width: 130px; padding: 13px 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--text-hero);
+  font-family: var(--font-mono); font-size: 0.8rem;
+  outline: none; cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a8578' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 26px;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.country-select:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--bg-quaternary);
+}
+
+.country-select:focus {
+  border-color: var(--brand-primary);
+  background: var(--bg-quaternary);
+  box-shadow: 0 0 0 3px var(--brand-glow);
+}
+
+.country-select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.phone-row .form-input { flex: 1; }
+
+/* ── Password Match Indicator ───────────────── */
+.match-indicator {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 6px; font-size: 0.65rem;
+  font-family: var(--font-mono);
+  opacity: 0; transition: opacity 0.3s;
+}
+
+.match-indicator.visible { opacity: 1; }
+
+.match-indicator.match { color: var(--signal-success); }
+.match-indicator.no-match { color: var(--signal-danger); }
+
+.match-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  transition: background 0.3s;
+}
+
+.match-indicator.match .match-dot { background: var(--signal-success); }
+.match-indicator.no-match .match-dot { background: var(--signal-danger); }
+
+/* ── Terms ──────────────────────────────────── */
+.terms-row {
+  display: flex; align-items: flex-start; gap: var(--space-sm);
+  margin-bottom: var(--space-xl);
+  animation: fadeInUp 0.8s var(--ease-out) 1.15s forwards; opacity: 0;
+}
+
+.terms-check {
+  width: 18px; height: 18px; border-radius: 4px;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  background: var(--bg-tertiary);
+  cursor: pointer; flex-shrink: 0; margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--duration-fast);
+  -webkit-appearance: none; appearance: none;
+}
+
+.terms-check:checked {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
+.terms-check:checked::after {
+  content: '✓'; color: var(--bg-primary);
+  font-size: 0.65rem; font-weight: 700;
+}
+
+.terms-text {
+  font-size: 0.75rem; color: var(--text-ghost); line-height: 1.5;
+}
+
+.terms-text a {
+  color: var(--brand-primary); text-decoration: none;
+  transition: color var(--duration-fast);
+}
+
+.terms-text a:hover { color: var(--brand-primary-bright); }
+
+/* ── Submit Button ──────────────────────────── */
+.submit-btn {
+  width: 100%; padding: 16px;
+  background: linear-gradient(135deg, var(--brand-primary-dim), var(--brand-primary));
+  border: none; border-radius: var(--radius-sm);
+  color: var(--bg-primary);
+  font-family: var(--font-body); font-size: 0.9rem;
+  font-weight: 700; letter-spacing: 0.08em;
+  cursor: pointer; position: relative; overflow: hidden;
+  transition: all var(--duration-normal) var(--ease-out);
+  animation: fadeInUp 0.8s var(--ease-out) 1.25s forwards; opacity: 0;
+}
+
+.submit-btn::before {
+  content: ''; position: absolute;
+  top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.6s;
+}
+
+.submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 40px var(--brand-glow-strong);
+}
+
+.submit-btn:hover::before { left: 100%; }
+
+.submit-btn:active { transform: translateY(0); }
+
+/* ── Divider ────────────────────────────────── */
+.or-divider {
+  display: flex; align-items: center; gap: var(--space-md);
+  margin: var(--space-lg) 0;
+  animation: fadeIn 0.8s var(--ease-out) 1.35s forwards; opacity: 0;
+}
+
+.or-divider::before, .or-divider::after {
+  content: ''; flex: 1; height: 1px;
+  background: var(--glass-border);
+}
+
+.or-divider span {
+  font-size: 0.65rem; color: var(--text-ghost);
+  text-transform: uppercase; letter-spacing: 0.15em;
+}
+
+/* ── Social / SSO Buttons ───────────────────── */
+.sso-row {
+  display: flex; gap: var(--space-sm);
+  animation: fadeInUp 0.8s var(--ease-out) 1.4s forwards; opacity: 0;
+}
+
+.sso-btn {
+  flex: 1; padding: 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-body); font-size: 0.8rem;
+  cursor: pointer; display: flex;
+  align-items: center; justify-content: center; gap: var(--space-sm);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.sso-btn:hover {
+  border-color: var(--brand-primary-dim);
+  color: var(--text-primary);
+  background: var(--bg-quaternary);
+}
+
+/* ── Footer ─────────────────────────────────── */
+.form-footer {
+  margin-top: var(--space-xl); text-align: center;
+  animation: fadeIn 0.8s var(--ease-out) 1.5s forwards; opacity: 0;
+}
+
+.form-footer a {
+  color: var(--text-secondary); font-size: 0.8rem;
+  text-decoration: none; transition: color var(--duration-fast);
+}
+
+.form-footer a:hover { color: var(--brand-primary); }
+
+.form-footer a .arrow {
+  display: inline-block; transition: transform 0.3s;
+}
+
+.form-footer a:hover .arrow { transform: translateX(4px); }
+
+/* ── Animations ─────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes goldPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* ── Scrollbar ──────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-quaternary); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--brand-primary-dim); }
+
+::selection { background: var(--brand-glow-strong); color: var(--text-hero); }
+
+/* ── Responsive ─────────────────────────────── */
+@media (max-width: 960px) {
+  .vault { flex-direction: column; }
+  .vault-story { padding: var(--space-xl); min-height: 40vh; }
+  .vault-form { width: 100%; min-height: auto; padding: var(--space-xl); }
+  .trust-signals { position: relative; bottom: auto; left: auto; margin-top: var(--space-xl); }
+  .orbit-rings { display: none; }
+}
+</style>
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div class="noise"></div>
+
+  <div class="vault">
+    <!-- LEFT: The Story -->
+    <div class="vault-story">
+      <div class="particles">
+        <div class="particle" style="left:12%; animation-delay:0s; animation-duration:7s;"></div>
+        <div class="particle" style="left:28%; animation-delay:1.8s; animation-duration:9s;"></div>
+        <div class="particle" style="left:48%; animation-delay:3.2s; animation-duration:6.5s;"></div>
+        <div class="particle" style="left:67%; animation-delay:0.8s; animation-duration:8s;"></div>
+        <div class="particle" style="left:82%; animation-delay:2.4s; animation-duration:10s;"></div>
+        <div class="particle" style="left:18%; animation-delay:4.5s; animation-duration:7.5s;"></div>
+        <div class="particle" style="left:58%; animation-delay:5.2s; animation-duration:6.8s;"></div>
+        <div class="particle" style="left:92%; animation-delay:1.2s; animation-duration:9.2s;"></div>
+      </div>
+
+      <!-- Orbiting rings — gravitational metaphor -->
+      <div class="orbit-rings">
+        <div class="orbit-ring"></div>
+        <div class="orbit-ring"></div>
+        <div class="orbit-ring"></div>
+      </div>
+
+      <div class="story-content">
+        <div class="brand-mark">
+          <div class="brand-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5"/>
+              <path d="M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <div>
+            <div class="brand-name">KI-PRIME</div>
+            <div class="brand-sub">by Vikuna Technologies</div>
+          </div>
+        </div>
+
+        <h1 class="story-headline">
+          Begin your<br>
+          <span class="glow-word">legacy</span>.<br>
+          One client at a time.
+        </h1>
+
+        <p class="story-text">
+          You're not just signing up for software — you're unlocking 
+          the intelligence that turns good advisors into 
+          unforgettable ones. Your clients are waiting.
+        </p>
+      </div>
+
+      <div class="trust-signals">
+        <div class="trust-item">
+          <div class="trust-icon">🔒</div>
+          <div class="trust-text">Bank-grade<br>encryption</div>
+        </div>
+        <div class="trust-item">
+          <div class="trust-icon">⚡</div>
+          <div class="trust-text">Setup in<br>under 5 min</div>
+        </div>
+        <div class="trust-item">
+          <div class="trust-icon">💎</div>
+          <div class="trust-text">Free starter<br>tier included</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: The Form -->
+    <div class="vault-form">
+      <div class="form-header">
+        <div class="gold-line" style="width:40px;height:2px;background:linear-gradient(90deg,var(--brand-primary),transparent);margin-bottom:var(--space-md);"></div>
+        <h2 class="form-title">Create your account</h2>
+        <p class="form-subtitle">Start your free journey — no card required</p>
+      </div>
+
+      <!-- Full Name -->
+      <div class="form-group" style="animation-delay: 700ms;">
+        <label class="form-label">Full Name</label>
+        <input type="text" class="form-input" placeholder="Rajesh Kumar" id="fullName" autocomplete="name">
+      </div>
+
+      <!-- Email -->
+      <div class="form-group" style="animation-delay: 800ms;">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-input" placeholder="you@yourfirm.com" id="email" autocomplete="email">
+        <div class="field-hint">This will be your login ID</div>
+      </div>
+
+      <!-- Password -->
+      <div class="form-group" style="animation-delay: 900ms;">
+        <label class="form-label">Password</label>
+        <div class="password-wrap">
+          <input type="password" class="form-input" placeholder="Min 8 chars, 1 uppercase, 1 number" id="password" autocomplete="new-password">
+          <button class="password-toggle" onclick="togglePassword('password', this)" type="button" aria-label="Toggle password visibility">👁</button>
+        </div>
+        <div class="strength-meter">
+          <div class="strength-bar-track">
+            <div class="strength-segment" id="seg1"></div>
+            <div class="strength-segment" id="seg2"></div>
+            <div class="strength-segment" id="seg3"></div>
+            <div class="strength-segment" id="seg4"></div>
+          </div>
+          <span class="strength-label" id="strengthLabel">&nbsp;</span>
+        </div>
+      </div>
+
+      <!-- Confirm Password -->
+      <div class="form-group" style="animation-delay: 1000ms;">
+        <label class="form-label">Confirm Password</label>
+        <div class="password-wrap">
+          <input type="password" class="form-input" placeholder="Re-enter your password" id="confirmPassword" autocomplete="new-password">
+          <button class="password-toggle" onclick="togglePassword('confirmPassword', this)" type="button" aria-label="Toggle password visibility">👁</button>
+        </div>
+        <div class="match-indicator" id="matchIndicator">
+          <span class="match-dot"></span>
+          <span id="matchText"></span>
+        </div>
+      </div>
+
+      <!-- Phone -->
+      <div class="form-group" style="animation-delay: 1100ms;">
+        <label class="form-label">Phone Number</label>
+        <div class="phone-row">
+          <select class="country-select" id="countryCode">
+            <option value="+91">🇮🇳 IN +91</option>
+            <option value="+1">🇺🇸 US +1</option>
+            <option value="+44">🇬🇧 UK +44</option>
+            <option value="+971">🇦🇪 AE +971</option>
+            <option value="+65">🇸🇬 SG +65</option>
+            <option value="+61">🇦🇺 AU +61</option>
+            <option value="+81">🇯🇵 JP +81</option>
+            <option value="+49">🇩🇪 DE +49</option>
+            <option value="+33">🇫🇷 FR +33</option>
+            <option value="+86">🇨🇳 CN +86</option>
+            <option value="+55">🇧🇷 BR +55</option>
+            <option value="+7">🇷🇺 RU +7</option>
+            <option value="+82">🇰🇷 KR +82</option>
+            <option value="+39">🇮🇹 IT +39</option>
+            <option value="+34">🇪🇸 ES +34</option>
+            <option value="+60">🇲🇾 MY +60</option>
+            <option value="+234">🇳🇬 NG +234</option>
+            <option value="+27">🇿🇦 ZA +27</option>
+            <option value="+966">🇸🇦 SA +966</option>
+            <option value="+62">🇮🇩 ID +62</option>
+          </select>
+          <input type="tel" class="form-input" placeholder="98765 43210" id="phone" autocomplete="tel">
+        </div>
+      </div>
+
+      <!-- Terms -->
+      <div class="terms-row">
+        <input type="checkbox" class="terms-check" id="terms">
+        <label class="terms-text" for="terms">
+          I agree to the <a href="#">Terms of Service</a> and 
+          <a href="#">Privacy Policy</a>
+        </label>
+      </div>
+
+      <!-- Submit -->
+      <button class="submit-btn" type="button">
+        CREATE ACCOUNT →
+      </button>
+
+      <!-- Divider -->
+      <div class="or-divider"><span>or</span></div>
+
+      <!-- SSO -->
+      <div class="sso-row">
+        <button class="sso-btn" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Google
+        </button>
+        <button class="sso-btn" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
+        </button>
+      </div>
+
+      <!-- Footer -->
+      <div class="form-footer">
+        <a href="01-login-vault.html">Already have an account? <span class="arrow">Sign in →</span></a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Password visibility toggle ──
+    function togglePassword(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+      }
+    }
+
+    // ── Password strength meter ──
+    const passwordInput = document.getElementById('password');
+    const segments = [document.getElementById('seg1'), document.getElementById('seg2'), document.getElementById('seg3'), document.getElementById('seg4')];
+    const strengthLabel = document.getElementById('strengthLabel');
+
+    passwordInput.addEventListener('input', () => {
+      const val = passwordInput.value;
+      let score = 0;
+
+      if (val.length >= 8) score++;
+      if (/[A-Z]/.test(val)) score++;
+      if (/[0-9]/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val)) score++;
+
+      const levels = ['', 'weak', 'fair', 'good', 'strong'];
+      const labels = ['', 'Weak — add uppercase, numbers, symbols', 'Fair — getting better', 'Good — almost there', 'Strong — excellent'];
+      const level = levels[score] || '';
+
+      segments.forEach((seg, i) => {
+        seg.className = 'strength-segment';
+        if (i < score) {
+          seg.classList.add('active', level);
+        }
+      });
+
+      strengthLabel.className = 'strength-label ' + level;
+      strengthLabel.textContent = val.length > 0 ? labels[score] : '\u00A0';
+
+      checkMatch();
+    });
+
+    // ── Password match check ──
+    const confirmInput = document.getElementById('confirmPassword');
+    const matchIndicator = document.getElementById('matchIndicator');
+    const matchText = document.getElementById('matchText');
+
+    confirmInput.addEventListener('input', checkMatch);
+
+    function checkMatch() {
+      const pw = passwordInput.value;
+      const cpw = confirmInput.value;
+
+      if (cpw.length === 0) {
+        matchIndicator.className = 'match-indicator';
+        return;
+      }
+
+      if (pw === cpw) {
+        matchIndicator.className = 'match-indicator visible match';
+        matchText.textContent = 'Passwords match';
+      } else {
+        matchIndicator.className = 'match-indicator visible no-match';
+        matchText.textContent = 'Passwords do not match';
+      }
+    }
+
+    // ── Phone number formatting ──
+    const phoneInput = document.getElementById('phone');
+    phoneInput.addEventListener('input', () => {
+      let val = phoneInput.value.replace(/\D/g, '');
+      if (val.length > 5) {
+        val = val.slice(0, 5) + ' ' + val.slice(5, 10);
+      }
+      phoneInput.value = val;
+    });
+  </script>
+</body>
+</html>

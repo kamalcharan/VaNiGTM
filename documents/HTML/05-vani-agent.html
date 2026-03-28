@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>KI-Prime — VaNi Agent</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   KI-PRIME DESIGN SYSTEM — "ATLAS"
+   Philosophy: Your money has a gravity. We visualize it.
+   ═══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  /* The Void — deep space black with warmth */
+  --void: #08080c;
+  --void-up: #0e0e14;
+  --void-up-2: #16161f;
+  --void-up-3: #1e1e2a;
+
+  /* Gold Thread — wealth, warmth, trust */
+  --gold: #c9a84c;
+  --gold-bright: #e4c76b;
+  --gold-dim: #8a7235;
+  --gold-glow: rgba(201, 168, 76, 0.15);
+  --gold-glow-strong: rgba(201, 168, 76, 0.3);
+
+  /* Signal Colors */
+  --up: #2dd4a0;
+  --up-glow: rgba(45, 212, 160, 0.15);
+  --down: #f05e5e;
+  --down-glow: rgba(240, 94, 94, 0.15);
+  --info: #5eaaf0;
+  --info-glow: rgba(94, 170, 240, 0.15);
+
+  /* Text Hierarchy */
+  --text-hero: #f0ece4;
+  --text-primary: #d4cfc5;
+  --text-secondary: #8a8578;
+  --text-ghost: #4a473f;
+
+  /* Glass */
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-hover: rgba(255, 255, 255, 0.06);
+
+  /* Typography */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Spacing Scale */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 200ms;
+  --duration-normal: 400ms;
+  --duration-slow: 800ms;
+  --duration-cinematic: 1200ms;
+}
+
+/* ── Reset & Base ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--void);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Atmospheric Background ─────────────────── */
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.atmosphere::before {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  top: -200px;
+  right: -100px;
+  background: radial-gradient(circle, var(--gold-glow) 0%, transparent 70%);
+  animation: atmosphereDrift 20s ease-in-out infinite alternate;
+}
+
+.atmosphere::after {
+  content: '';
+  position: absolute;
+  width: 800px;
+  height: 800px;
+  bottom: -300px;
+  left: -200px;
+  background: radial-gradient(circle, rgba(94, 170, 240, 0.05) 0%, transparent 70%);
+  animation: atmosphereDrift 25s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes atmosphereDrift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(60px, 40px) scale(1.1); }
+}
+
+/* ── Noise Texture Overlay ──────────────────── */
+.noise {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Glass Cards ────────────────────────────── */
+.glass-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.glass-card:hover {
+  background: var(--glass-hover);
+  border-color: rgba(201, 168, 76, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Gold Line Accent ───────────────────────── */
+.gold-line {
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  margin-bottom: var(--space-md);
+}
+
+.gold-line-long {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold-dim), transparent 60%);
+}
+
+/* ── Typography Classes ─────────────────────── */
+.display-xl {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 900;
+  line-height: 1.05;
+  color: var(--text-hero);
+  letter-spacing: -0.02em;
+}
+
+.display-lg {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-hero);
+}
+
+.display-md {
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-hero);
+}
+
+.label-upper {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-weight: 400;
+}
+
+.mono-sm {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 300;
+}
+
+/* ── Number Display (for money) ─────────────── */
+.amount {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.amount-hero {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  color: var(--text-hero);
+  font-variant-numeric: tabular-nums;
+}
+
+.currency {
+  font-size: 0.6em;
+  vertical-align: super;
+  color: var(--gold);
+  margin-right: 2px;
+}
+
+/* ── Signal Badges ──────────────────────────── */
+.badge-up {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: var(--up-glow);
+  color: var(--up);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-down {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: var(--down-glow);
+  color: var(--down);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ── Buttons ────────────────────────────────── */
+.btn-gold {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--gold);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-gold::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gold);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.btn-gold:hover {
+  color: var(--void);
+  box-shadow: 0 0 30px var(--gold-glow-strong);
+}
+
+.btn-gold:hover::before { opacity: 1; }
+.btn-gold span { position: relative; z-index: 1; }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.btn-ghost:hover {
+  border-color: var(--gold-dim);
+  color: var(--text-primary);
+}
+
+/* ── Entrance Animations ────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes goldPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.anim-fade-up {
+  animation: fadeInUp var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-fade {
+  animation: fadeIn var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-slide-left {
+  animation: slideInLeft var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-scale {
+  animation: scaleIn var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+/* Stagger delays */
+.delay-1 { animation-delay: 100ms; }
+.delay-2 { animation-delay: 200ms; }
+.delay-3 { animation-delay: 350ms; }
+.delay-4 { animation-delay: 500ms; }
+.delay-5 { animation-delay: 700ms; }
+.delay-6 { animation-delay: 900ms; }
+.delay-7 { animation-delay: 1100ms; }
+.delay-8 { animation-delay: 1300ms; }
+
+/* ── Scrollbar ──────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--void); }
+::-webkit-scrollbar-thumb { background: var(--void-up-3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }
+
+/* ── Selection ──────────────────────────────── */
+::selection {
+  background: var(--gold-glow-strong);
+  color: var(--text-hero);
+}
+
+/* ── Utility ────────────────────────────────── */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-xs { gap: var(--space-xs); }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.gap-lg { gap: var(--space-lg); }
+.gap-xl { gap: var(--space-xl); }
+.w-full { width: 100%; }
+.text-gold { color: var(--gold); }
+.text-up { color: var(--up); }
+.text-down { color: var(--down); }
+.text-ghost { color: var(--text-ghost); }
+.text-secondary { color: var(--text-secondary); }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.relative { position: relative; }
+.overflow-hidden { overflow: hidden; }
+
+
+/* ══ LAYOUT OVERRIDES FOR CONTAINER RENDERING ══ */
+html, body {
+  min-width: 1280px !important;
+  width: 100% !important;
+  overflow-x: auto !important;
+}
+.atmosphere, .noise {
+  position: absolute !important;
+}
+
+</style>
+<style>
+  .shell { display:flex; min-height:100vh; }
+  .nav-rail { background:var(--void-up); border-right:1px solid var(--glass-border); display:flex; flex-direction:column; align-items:center; padding:var(--space-md) 0; gap:var(--space-xs); position:sticky; top:0; width:72px; height:100vh; flex-shrink:0; z-index:100; }
+  .nav-logo { width:40px; height:40px; border:1px solid var(--gold-dim); border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; margin-bottom:var(--space-lg); cursor:pointer; }
+  .nav-logo svg { width:18px; height:18px; color:var(--gold); }
+  .nav-item { width:48px; height:48px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-ghost); transition: all 0.2s; }
+  .nav-item:hover { background:var(--glass); color:var(--text-secondary); }
+  .nav-item.active { color:var(--gold); background:var(--gold-glow); }
+  .nav-item svg { width:20px; height:20px; }
+  .nav-spacer { flex:1; }
+
+  .main { flex:1; min-width:0;  padding:var(--space-lg) var(--space-xl); }
+
+  /* ── VaNi Chat Panel (Fixed Right) ─────── */
+  .vani-panel {
+    width: 440px;
+    min-height: 100vh;
+    flex-shrink: 0;
+    background: var(--void-up);
+    border-left: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+  }
+
+  /* Gold glow line on left edge */
+  .vani-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -1px;
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(180deg, transparent 10%, var(--gold-dim) 50%, transparent 90%);
+  }
+
+  .vani-header {
+    padding: var(--space-lg);
+    border-bottom: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .vani-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .vani-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .vani-icon::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1px solid var(--gold-dim);
+    animation: goldPulse 3s ease-in-out infinite;
+  }
+
+  .vani-icon svg { width: 16px; height: 16px; color: var(--void); }
+
+  .vani-name {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-hero);
+  }
+
+  .vani-status {
+    font-size: 0.65rem;
+    color: var(--up);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .vani-status::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--up);
+    border-radius: 50%;
+    animation: goldPulse 2s ease-in-out infinite;
+  }
+
+  .vani-mode {
+    font-size: 0.65rem;
+    padding: 3px 10px;
+    border-radius: 100px;
+    background: var(--gold-glow);
+    color: var(--gold);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+
+  /* Chat messages area */
+  .vani-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+
+  .msg {
+    display: flex;
+    gap: var(--space-sm);
+    max-width: 95%;
+  }
+
+  .msg.user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+  }
+
+  .msg-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .msg.agent .msg-avatar {
+    background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+    color: var(--void);
+  }
+
+  .msg.user .msg-avatar {
+    background: var(--void-up-3);
+    color: var(--text-secondary);
+    font-family: var(--font-display);
+  }
+
+  .msg-bubble {
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    font-size: 0.85rem;
+    line-height: 1.6;
+  }
+
+  .msg.agent .msg-bubble {
+    background: var(--void);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+  }
+
+  .msg.user .msg-bubble {
+    background: var(--gold-glow);
+    border: 1px solid var(--gold-dim);
+    color: var(--text-hero);
+  }
+
+  /* Skill indicator */
+  .skill-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.6rem;
+    font-family: var(--font-mono);
+    color: var(--text-ghost);
+    padding: 2px 8px;
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    margin-bottom: var(--space-sm);
+  }
+
+  .skill-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--gold);
+  }
+
+  /* VDF Component: Inline Data Table */
+  .vdf-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: var(--space-sm) 0;
+    font-size: 0.75rem;
+  }
+
+  .vdf-table th {
+    text-align: left;
+    padding: 6px 8px;
+    font-weight: 500;
+    color: var(--text-ghost);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .vdf-table td {
+    padding: 8px;
+    color: var(--text-primary);
+    border-bottom: 1px solid rgba(255,255,255,0.02);
+    font-family: var(--font-mono);
+    font-size: 0.73rem;
+  }
+
+  .vdf-table tr:hover td { background: var(--glass); }
+
+  /* VDF Component: Mini Chart */
+  .vdf-chart {
+    background: var(--void-up);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-md);
+    margin: var(--space-sm) 0;
+  }
+
+  .vdf-chart-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: var(--space-sm);
+  }
+
+  .vdf-chart-title {
+    font-size: 0.7rem;
+    color: var(--text-ghost);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .vdf-sparkline {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 50px;
+  }
+
+  .spark-bar {
+    flex: 1;
+    border-radius: 2px 2px 0 0;
+    transition: height 0.5s var(--ease-out);
+    min-width: 4px;
+  }
+
+  /* VDF Component: Action Card */
+  .vdf-action {
+    background: var(--gold-glow);
+    border: 1px solid var(--gold-dim);
+    border-radius: var(--radius-sm);
+    padding: var(--space-md);
+    margin: var(--space-sm) 0;
+    cursor: pointer;
+    transition: all 0.3s var(--ease-out);
+  }
+
+  .vdf-action:hover {
+    background: var(--gold-glow-strong);
+    transform: translateY(-1px);
+  }
+
+  .vdf-action-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+
+  .vdf-action-desc {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+  }
+
+  /* Typing indicator */
+  .typing {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px;
+  }
+
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gold-dim);
+    animation: typingBounce 1.4s ease-in-out infinite;
+  }
+
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes typingBounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-6px); opacity: 1; }
+  }
+
+  /* Chat input */
+  .vani-input-area {
+    padding: var(--space-md) var(--space-lg);
+    border-top: 1px solid var(--glass-border);
+  }
+
+  .vani-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    background: var(--void);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    padding: 4px 4px 4px 16px;
+    transition: all 0.3s var(--ease-out);
+  }
+
+  .vani-input-wrap:focus-within {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px var(--gold-glow);
+  }
+
+  .vani-input {
+    flex: 1;
+    border: none;
+    background: none;
+    color: var(--text-hero);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    outline: none;
+    padding: 8px 0;
+  }
+
+  .vani-input::placeholder { color: var(--text-ghost); }
+
+  .vani-send {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: var(--gold);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .vani-send:hover {
+    background: var(--gold-bright);
+    transform: scale(1.05);
+  }
+
+  .vani-send svg { width: 16px; height: 16px; color: var(--void); }
+
+  .vani-shortcuts {
+    display: flex;
+    gap: var(--space-xs);
+    margin-top: var(--space-sm);
+    flex-wrap: wrap;
+  }
+
+  .shortcut-chip {
+    font-size: 0.65rem;
+    padding: 4px 10px;
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    color: var(--text-ghost);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .shortcut-chip:hover {
+    border-color: var(--gold-dim);
+    color: var(--gold);
+  }
+
+  /* ── Context-aware Main Area ────────────── */
+  .context-banner {
+    background: var(--void-up);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    margin-bottom: var(--space-xl);
+    animation: fadeInUp 0.8s var(--ease-out) forwards;
+    opacity: 0;
+  }
+
+  .context-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-ghost);
+    margin-bottom: var(--space-sm);
+  }
+
+  .context-title {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-hero);
+    margin-bottom: var(--space-xs);
+  }
+
+  .context-sub {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+
+  /* Skills grid */
+  .skills-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-md);
+    animation: fadeInUp 0.8s var(--ease-out) 200ms forwards;
+    opacity: 0;
+  }
+
+  .skill-card {
+    background: var(--void-up);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-lg);
+    cursor: pointer;
+    transition: all 0.3s var(--ease-out);
+    text-align: center;
+  }
+
+  .skill-card:hover {
+    border-color: var(--gold-dim);
+    transform: translateY(-4px);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+  }
+
+  .skill-icon {
+    font-size: 1.8rem;
+    margin-bottom: var(--space-sm);
+    display: block;
+  }
+
+  .skill-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-hero);
+    margin-bottom: 4px;
+  }
+
+  .skill-desc {
+    font-size: 0.7rem;
+    color: var(--text-ghost);
+    line-height: 1.4;
+  }
+
+  .skill-badge {
+    display: inline-block;
+    margin-top: var(--space-sm);
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    padding: 2px 8px;
+    border-radius: 100px;
+    background: var(--gold-glow);
+    color: var(--gold);
+  }
+</style>
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div class="noise"></div>
+
+  <div class="shell">
+    <!-- Nav Rail -->
+    <nav class="nav-rail">
+      <div class="nav-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+      <div class="nav-item" onclick="window.location.href='02-planner-awakening.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 010 20M12 2a15 15 0 000 20M2 12h20"/></svg></div>
+      <div class="nav-item" onclick="window.location.href='03-client-universe.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+      <div class="nav-item" onclick="window.location.href='04-planning-engine.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>
+      <div class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a3 3 0 00-3 3v4a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1M12 18v4M8 22h8"/></svg></div>
+      <div class="nav-spacer"></div>
+    </nav>
+
+    <!-- Main Area: Skills Overview -->
+    <main class="main">
+      <div class="context-banner">
+        <div class="context-label">VaNi Agent · KI-Prime Skills</div>
+        <div class="context-title">What can VaNi do for you?</div>
+        <div class="context-sub">VaNi understands your client book, market data, and planning models. Ask anything — or pick a skill to get started.</div>
+      </div>
+
+      <div class="skills-grid">
+        <div class="skill-card">
+          <span class="skill-icon">📊</span>
+          <div class="skill-name">Portfolio</div>
+          <div class="skill-desc">Holdings, allocation, XIRR, rebalancing suggestions</div>
+          <span class="skill-badge">KI_PORTFOLIO</span>
+        </div>
+        <div class="skill-card">
+          <span class="skill-icon">🎯</span>
+          <div class="skill-name">Planning</div>
+          <div class="skill-desc">Goal modeling, gap analysis, what-if scenarios</div>
+          <span class="skill-badge">KI_PLANNING</span>
+        </div>
+        <div class="skill-card">
+          <span class="skill-icon">📈</span>
+          <div class="skill-name">Market</div>
+          <div class="skill-desc">NAV data, fund comparison, benchmark analysis</div>
+          <span class="skill-badge">KI_MARKET</span>
+        </div>
+        <div class="skill-card">
+          <span class="skill-icon">👥</span>
+          <div class="skill-name">Client</div>
+          <div class="skill-desc">Client search, profiles, risk assessment, family view</div>
+          <span class="skill-badge">KI_CLIENT</span>
+        </div>
+        <div class="skill-card">
+          <span class="skill-icon">🔔</span>
+          <div class="skill-name">Alert</div>
+          <div class="skill-desc">Custom alerts, SIP tracking, KYC expiry, goal milestones</div>
+          <span class="skill-badge">KI_ALERT</span>
+        </div>
+        <div class="skill-card">
+          <span class="skill-icon">📄</span>
+          <div class="skill-name">Report</div>
+          <div class="skill-desc">Capital gains, quarterly reviews, client statements</div>
+          <span class="skill-badge">KI_REPORT</span>
+        </div>
+        <div class="skill-card">
+          <span class="skill-icon">💬</span>
+          <div class="skill-name">Comms</div>
+          <div class="skill-desc">Draft emails, WhatsApp messages, bulk communications</div>
+          <span class="skill-badge">KI_COMMS</span>
+        </div>
+        <div class="skill-card">
+          <span class="skill-icon">📥</span>
+          <div class="skill-name">Import</div>
+          <div class="skill-desc">CAS parsing, transaction import, reconciliation</div>
+          <span class="skill-badge">KI_IMPORT</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- VaNi Chat Panel -->
+    <div class="vani-panel">
+      <div class="vani-header">
+        <div class="vani-brand">
+          <div class="vani-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 00-3 3v4a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1"/></svg>
+          </div>
+          <div>
+            <div class="vani-name">VaNi</div>
+            <div class="vani-status">Active · context: Priya Sharma</div>
+          </div>
+        </div>
+        <span class="vani-mode">FULL MODE</span>
+      </div>
+
+      <div class="vani-messages">
+        <!-- User message -->
+        <div class="msg user">
+          <div class="msg-avatar">RK</div>
+          <div class="msg-bubble">Show me clients whose SIPs bounced this month</div>
+        </div>
+
+        <!-- Agent response with skill tag + VDF table -->
+        <div class="msg agent">
+          <div class="msg-avatar">V</div>
+          <div class="msg-bubble">
+            <div class="skill-tag"><span class="skill-dot"></span> KI_CLIENT · KI_ALERT</div>
+            Found <strong>3 clients</strong> with SIP bounces in March 2026:
+
+            <table class="vdf-table">
+              <thead>
+                <tr><th>Client</th><th>Fund</th><th>Amount</th><th>Date</th></tr>
+              </thead>
+              <tbody>
+                <tr><td style="color:var(--text-hero)">Priya Sharma</td><td>PPFAS Flexi</td><td>₹40,000</td><td>22 Mar</td></tr>
+                <tr><td style="color:var(--text-hero)">Amit Joshi</td><td>HDFC Mid-Cap</td><td>₹25,000</td><td>20 Mar</td></tr>
+                <tr><td style="color:var(--text-hero)">Rekha Patel</td><td>SBI Magnum</td><td>₹15,000</td><td>18 Mar</td></tr>
+              </tbody>
+            </table>
+
+            <div class="vdf-action">
+              <div class="vdf-action-title">📨 Send Reminders to All Three</div>
+              <div class="vdf-action-desc">Draft personalized WhatsApp messages asking them to ensure bank balance for re-attempt</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- User follow-up -->
+        <div class="msg user">
+          <div class="msg-avatar">RK</div>
+          <div class="msg-bubble">Yes, draft those messages. Also show me Priya's SIP history for the last 6 months</div>
+        </div>
+
+        <!-- Agent response with chart -->
+        <div class="msg agent">
+          <div class="msg-avatar">V</div>
+          <div class="msg-bubble">
+            <div class="skill-tag"><span class="skill-dot"></span> KI_PORTFOLIO · KI_COMMS</div>
+            Done! Here are the WhatsApp drafts — review and send from the Comms tab.
+
+            <br><br>Priya's SIP execution history (last 6 months):
+
+            <div class="vdf-chart">
+              <div class="vdf-chart-header">
+                <span class="vdf-chart-title">Monthly SIP Execution</span>
+                <span class="mono-sm text-gold">₹1,25,000/mo</span>
+              </div>
+              <div class="vdf-sparkline">
+                <div class="spark-bar" style="height:100%; background:var(--up);" title="Oct ✓"></div>
+                <div class="spark-bar" style="height:100%; background:var(--up);" title="Nov ✓"></div>
+                <div class="spark-bar" style="height:100%; background:var(--up);" title="Dec ✓"></div>
+                <div class="spark-bar" style="height:100%; background:var(--up);" title="Jan ✓"></div>
+                <div class="spark-bar" style="height:100%; background:var(--up);" title="Feb ✓"></div>
+                <div class="spark-bar" style="height:60%; background:var(--down);" title="Mar ⚠ partial"></div>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-top:4px;">
+                <span class="mono-sm text-ghost">Oct</span>
+                <span class="mono-sm text-ghost">Nov</span>
+                <span class="mono-sm text-ghost">Dec</span>
+                <span class="mono-sm text-ghost">Jan</span>
+                <span class="mono-sm text-ghost">Feb</span>
+                <span class="mono-sm text-down">Mar ⚠</span>
+              </div>
+            </div>
+
+            5 out of 6 months executed perfectly. The March bounce is on the PPFAS Flexi Cap SIP (₹40K). Other 3 SIPs executed normally.
+
+            <div class="vdf-action">
+              <div class="vdf-action-title">📋 Open Priya's Client 360 →</div>
+              <div class="vdf-action-desc">View complete portfolio and take action on the bounce</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Typing indicator -->
+        <div class="msg agent" style="opacity: 0.6;">
+          <div class="msg-avatar">V</div>
+          <div class="msg-bubble">
+            <div class="typing">
+              <div class="typing-dot"></div>
+              <div class="typing-dot"></div>
+              <div class="typing-dot"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="vani-input-area">
+        <div class="vani-input-wrap">
+          <input type="text" class="vani-input" placeholder="Ask VaNi anything...">
+          <button class="vani-send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </button>
+        </div>
+        <div class="vani-shortcuts">
+          <span class="shortcut-chip">📊 Portfolio summary</span>
+          <span class="shortcut-chip">📋 Pending tasks</span>
+          <span class="shortcut-chip">📈 Market today</span>
+          <span class="shortcut-chip">📄 Generate reports</span>
+          <span class="shortcut-chip">🔔 Set alert</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

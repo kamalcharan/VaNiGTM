@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>KI-Prime — Settings</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   KI-PRIME DESIGN SYSTEM — "ATLAS"
+   Settings / Profile — Shell Layout
+   Theme: vikuna-black (CSS vars ready for any theme)
+   ═══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg-primary: #08080c;
+  --bg-secondary: #0e0e14;
+  --bg-tertiary: #16161f;
+  --bg-quaternary: #1e1e2a;
+
+  --brand-primary: #c9a84c;
+  --brand-primary-bright: #e4c76b;
+  --brand-primary-dim: #8a7235;
+  --brand-glow: rgba(201, 168, 76, 0.15);
+  --brand-glow-strong: rgba(201, 168, 76, 0.3);
+
+  --signal-success: #2dd4a0;
+  --signal-success-glow: rgba(45, 212, 160, 0.15);
+  --signal-danger: #f05e5e;
+  --signal-danger-glow: rgba(240, 94, 94, 0.15);
+  --signal-info: #5eaaf0;
+  --signal-info-glow: rgba(94, 170, 240, 0.15);
+  --signal-warning: #f0c75e;
+
+  --text-hero: #f0ece4;
+  --text-primary: #d4cfc5;
+  --text-secondary: #8a8578;
+  --text-ghost: #4a473f;
+
+  --glass-border: rgba(255, 255, 255, 0.06);
+
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --space-xs: 4px; --space-sm: 8px; --space-md: 16px;
+  --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px;
+  --radius-sm: 6px; --radius-md: 12px; --radius-lg: 20px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 200ms; --duration-normal: 400ms;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font-body); background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; }
+
+/* ── Shell Layout ──────────────────────────── */
+.shell { display: flex; min-height: 100vh; }
+
+/* ── Nav Rail ──────────────────────────────── */
+.nav-rail {
+  background: var(--bg-secondary); border-right: 1px solid var(--glass-border);
+  display: flex; flex-direction: column; align-items: center;
+  padding: var(--space-md) 0; gap: var(--space-xs);
+  position: sticky; top: 0; width: 72px; height: 100vh; flex-shrink: 0; z-index: 100;
+}
+.nav-logo {
+  width: 40px; height: 40px; border: 1px solid var(--brand-primary-dim);
+  border-radius: var(--radius-sm); display: flex; align-items: center;
+  justify-content: center; margin-bottom: var(--space-lg); cursor: pointer;
+  transition: all var(--duration-fast);
+}
+.nav-logo:hover { border-color: var(--brand-primary); box-shadow: 0 0 20px var(--brand-glow); }
+.nav-logo svg { width: 18px; height: 18px; color: var(--brand-primary); }
+
+.nav-item {
+  width: 48px; height: 48px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text-ghost); transition: all 0.2s;
+}
+.nav-item:hover { background: rgba(255,255,255,0.03); color: var(--text-secondary); }
+.nav-item.active { color: var(--brand-primary); background: var(--brand-glow); }
+.nav-item.active::before {
+  content: ''; position: absolute; left: 0; width: 3px; height: 24px;
+  background: var(--brand-primary); border-radius: 0 2px 2px 0;
+}
+.nav-item svg { width: 20px; height: 20px; }
+.nav-spacer { flex: 1; }
+
+/* ── Main Content ──────────────────────────── */
+.main {
+  flex: 1; min-width: 0;
+  padding: var(--space-lg) var(--space-xl);
+  max-width: 1100px;
+}
+
+/* ── Page Header ───────────────────────────── */
+.page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: var(--space-xl);
+}
+.page-title {
+  font-family: var(--font-display); font-size: 1.5rem;
+  font-weight: 700; color: var(--text-hero);
+}
+.page-sub { font-size: 0.8rem; color: var(--text-ghost); margin-top: 2px; }
+
+.avatar-header {
+  display: flex; align-items: center; gap: var(--space-sm);
+}
+.avatar-ring {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 2px solid var(--brand-primary-dim);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 0.9rem;
+  color: var(--brand-primary); cursor: pointer; transition: all var(--duration-fast);
+}
+.avatar-ring:hover { border-color: var(--brand-primary); box-shadow: 0 0 20px var(--brand-glow); }
+
+/* ── Settings Layout ───────────────────────── */
+.settings-layout { display: flex; gap: var(--space-xl); }
+
+/* Settings Sidebar Tabs */
+.settings-nav {
+  width: 200px; flex-shrink: 0;
+  position: sticky; top: var(--space-lg);
+  align-self: flex-start;
+}
+
+.settings-nav-item {
+  display: flex; align-items: center; gap: var(--space-sm);
+  padding: 10px var(--space-md); border-radius: var(--radius-sm);
+  font-size: 0.85rem; color: var(--text-secondary);
+  cursor: pointer; transition: all 0.2s; margin-bottom: 2px;
+}
+.settings-nav-item:hover { background: rgba(255,255,255,0.03); color: var(--text-primary); }
+.settings-nav-item.active { background: var(--brand-glow); color: var(--brand-primary); font-weight: 500; }
+.settings-nav-item .nav-icon { font-size: 0.9rem; width: 20px; text-align: center; }
+
+/* Settings Content */
+.settings-content { flex: 1; min-width: 0; }
+
+.settings-panel { display: none; }
+.settings-panel.active { display: block; }
+
+/* ── Section Card ──────────────────────────── */
+.section-card {
+  background: var(--bg-secondary); border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg); padding: var(--space-xl);
+  margin-bottom: var(--space-lg);
+}
+
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: var(--space-xl);
+}
+.section-title {
+  font-family: var(--font-display); font-size: 1.1rem;
+  font-weight: 700; color: var(--text-hero);
+}
+.section-desc {
+  font-size: 0.75rem; color: var(--text-ghost); margin-top: 2px;
+}
+
+/* ── Form Elements ─────────────────────────── */
+.form-row { display: flex; gap: var(--space-md); margin-bottom: var(--space-lg); }
+.form-row .form-group { flex: 1; margin-bottom: 0; }
+
+.form-group { margin-bottom: var(--space-lg); }
+.form-group:last-child { margin-bottom: 0; }
+
+.form-label {
+  display: block; font-size: 0.65rem; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-secondary); margin-bottom: 6px;
+}
+
+.form-input, .form-select, .form-textarea {
+  width: 100%; padding: 12px 16px;
+  background: var(--bg-tertiary); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-sm); color: var(--text-hero);
+  font-family: var(--font-body); font-size: 0.9rem;
+  transition: all var(--duration-fast) var(--ease-out); outline: none;
+}
+.form-input::placeholder, .form-textarea::placeholder { color: var(--text-ghost); }
+.form-input:hover, .form-select:hover, .form-textarea:hover { border-color: rgba(255,255,255,0.18); background: var(--bg-quaternary); }
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--brand-primary); background: var(--bg-quaternary);
+  box-shadow: 0 0 0 3px var(--brand-glow);
+}
+
+.form-select {
+  -webkit-appearance: none; appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a8578' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px;
+}
+.form-select option { background: var(--bg-secondary); color: var(--text-primary); }
+.form-textarea { resize: vertical; min-height: 80px; font-size: 0.85rem; }
+
+/* ── Photo Upload ──────────────────────────── */
+.photo-upload {
+  display: flex; align-items: center; gap: var(--space-lg); margin-bottom: var(--space-xl);
+}
+.photo-preview {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: var(--bg-tertiary); border: 2px dashed rgba(255,255,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; color: var(--text-ghost); cursor: pointer;
+  transition: all 0.3s var(--ease-out); flex-shrink: 0;
+}
+.photo-preview:hover { border-color: var(--brand-primary-dim); background: var(--brand-glow); }
+.photo-info { flex: 1; }
+.photo-info-title { font-size: 0.85rem; color: var(--text-primary); margin-bottom: 2px; }
+.photo-info-hint { font-size: 0.7rem; color: var(--text-ghost); }
+.photo-actions { display: flex; gap: var(--space-sm); }
+.photo-btn {
+  padding: 8px 16px; background: var(--bg-tertiary);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm);
+  color: var(--text-secondary); font-size: 0.8rem; cursor: pointer;
+  transition: all var(--duration-fast); font-family: var(--font-body);
+}
+.photo-btn:hover { border-color: var(--brand-primary-dim); color: var(--text-hero); }
+.photo-btn.danger { color: var(--signal-danger); }
+.photo-btn.danger:hover { border-color: var(--signal-danger); background: var(--signal-danger-glow); }
+
+/* ── Password ──────────────────────────────── */
+.password-wrap { position: relative; }
+.password-wrap .form-input { padding-right: 48px; }
+.password-toggle {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text-ghost);
+  cursor: pointer; font-size: 0.85rem; padding: 4px;
+}
+.password-toggle:hover { color: var(--text-secondary); }
+
+.strength-meter { margin-top: var(--space-sm); }
+.strength-bar-track { display: flex; gap: 3px; height: 3px; margin-bottom: 6px; }
+.strength-segment {
+  flex: 1; height: 100%; border-radius: 2px;
+  background: var(--bg-quaternary); transition: background 0.4s;
+}
+.strength-segment.active.weak { background: var(--signal-danger); }
+.strength-segment.active.fair { background: var(--signal-warning); }
+.strength-segment.active.good { background: var(--signal-info); }
+.strength-segment.active.strong { background: var(--signal-success); }
+.strength-label {
+  font-family: var(--font-mono); font-size: 0.6rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+.strength-label.weak { color: var(--signal-danger); }
+.strength-label.fair { color: var(--signal-warning); }
+.strength-label.good { color: var(--signal-info); }
+.strength-label.strong { color: var(--signal-success); }
+
+/* ── Action Buttons ────────────────────────── */
+.actions-row {
+  display: flex; justify-content: flex-end; gap: var(--space-sm);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--glass-border); margin-top: var(--space-lg);
+}
+
+.btn-save {
+  padding: 10px 24px;
+  background: linear-gradient(135deg, var(--brand-primary-dim), var(--brand-primary));
+  border: none; border-radius: var(--radius-sm); color: var(--bg-primary);
+  font-family: var(--font-body); font-size: 0.85rem; font-weight: 600;
+  letter-spacing: 0.04em; cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+.btn-save:hover { transform: translateY(-1px); box-shadow: 0 6px 24px var(--brand-glow-strong); }
+
+.btn-cancel {
+  padding: 10px 20px; background: none;
+  border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
+  color: var(--text-secondary); font-family: var(--font-body); font-size: 0.85rem;
+  cursor: pointer; transition: all var(--duration-fast);
+}
+.btn-cancel:hover { border-color: rgba(255,255,255,0.15); color: var(--text-primary); }
+
+/* ── Theme Cards (smaller for settings) ────── */
+.theme-grid-sm {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-sm);
+}
+
+.theme-card-sm {
+  border: 2px solid var(--glass-border); border-radius: var(--radius-md);
+  overflow: hidden; cursor: pointer; transition: all 0.3s var(--ease-out);
+}
+.theme-card-sm:hover { border-color: var(--brand-primary-dim); transform: translateY(-2px); }
+.theme-card-sm.selected { border-color: var(--brand-primary); box-shadow: 0 0 20px var(--brand-glow); }
+.theme-card-sm.selected::after {
+  content: '✓'; position: absolute; top: 4px; right: 4px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--brand-primary); color: var(--bg-primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.5rem; font-weight: 700;
+}
+.theme-card-sm { position: relative; }
+
+.theme-preview-sm { height: 60px; }
+.theme-mock-sm { padding: 6px; height: 60px; display: flex; gap: 3px; }
+.theme-mock-sm .sidebar { width: 12px; border-radius: 2px; }
+.theme-mock-sm .content { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.theme-mock-sm .topbar { height: 8px; border-radius: 2px; }
+.theme-mock-sm .card { flex: 1; border-radius: 2px; }
+
+.theme-name-sm {
+  padding: 6px 8px; font-size: 0.65rem; font-weight: 600;
+  color: var(--text-primary); text-align: center;
+}
+.theme-card-sm.selected .theme-name-sm { color: var(--brand-primary); }
+
+/* ── Session Cards ─────────────────────────── */
+.session-list { display: flex; flex-direction: column; gap: var(--space-sm); }
+
+.session-card {
+  display: flex; align-items: center; gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--bg-tertiary); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-md); transition: all 0.2s;
+}
+.session-card:hover { border-color: rgba(255,255,255,0.1); }
+.session-card.current { border-color: var(--signal-success); border-left: 3px solid var(--signal-success); }
+
+.session-icon {
+  width: 40px; height: 40px; border-radius: var(--radius-sm);
+  background: var(--bg-quaternary); display: flex; align-items: center;
+  justify-content: center; font-size: 1.1rem; flex-shrink: 0;
+}
+
+.session-info { flex: 1; }
+.session-device { font-size: 0.85rem; font-weight: 500; color: var(--text-hero); }
+.session-meta {
+  font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-ghost);
+  margin-top: 2px; display: flex; gap: var(--space-md);
+}
+
+.session-badge {
+  font-size: 0.6rem; font-weight: 600; padding: 3px 10px;
+  border-radius: 100px; letter-spacing: 0.05em;
+}
+.session-badge.current { background: var(--signal-success-glow); color: var(--signal-success); }
+
+.session-revoke {
+  padding: 6px 14px; background: none;
+  border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm);
+  color: var(--text-ghost); font-size: 0.75rem; cursor: pointer;
+  transition: all var(--duration-fast); font-family: var(--font-body);
+}
+.session-revoke:hover { border-color: var(--signal-danger); color: var(--signal-danger); background: var(--signal-danger-glow); }
+
+/* ── Danger Zone ───────────────────────────── */
+.danger-zone {
+  background: rgba(240,94,94,0.03);
+  border: 1px solid rgba(240,94,94,0.1);
+  border-radius: var(--radius-lg); padding: var(--space-xl);
+}
+.danger-zone .section-title { color: var(--signal-danger); }
+
+.danger-action {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-md) 0;
+  border-bottom: 1px solid rgba(240,94,94,0.06);
+}
+.danger-action:last-child { border-bottom: none; }
+.danger-action-text { font-size: 0.85rem; color: var(--text-secondary); }
+.danger-action-hint { font-size: 0.7rem; color: var(--text-ghost); margin-top: 2px; }
+
+.btn-danger {
+  padding: 8px 16px; background: none;
+  border: 1px solid rgba(240,94,94,0.3); border-radius: var(--radius-sm);
+  color: var(--signal-danger); font-size: 0.8rem; cursor: pointer;
+  transition: all var(--duration-fast); font-family: var(--font-body);
+}
+.btn-danger:hover { background: var(--signal-danger-glow); border-color: var(--signal-danger); }
+
+/* ── Scrollbar ─────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-quaternary); border-radius: 3px; }
+::selection { background: var(--brand-glow-strong); color: var(--text-hero); }
+</style>
+</head>
+<body>
+  <div class="shell">
+    <!-- Nav Rail -->
+    <nav class="nav-rail">
+      <div class="nav-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 010 20M12 2a15 15 0 000 20M2 12h20"/></svg></div>
+      <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+      <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>
+      <div class="nav-spacer"></div>
+      <div class="nav-item active" style="position:relative;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.2.55.68.94 1.27 1H21a2 2 0 010 4h-.09c-.59.06-1.07.45-1.27 1z"/></svg>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Settings</h1>
+          <div class="page-sub">Manage your profile, security, and preferences</div>
+        </div>
+        <div class="avatar-header">
+          <div class="avatar-ring">RK</div>
+        </div>
+      </div>
+
+      <div class="settings-layout">
+        <!-- Settings Nav -->
+        <div class="settings-nav">
+          <div class="settings-nav-item active" onclick="switchTab('profile')">
+            <span class="nav-icon">👤</span> Profile
+          </div>
+          <div class="settings-nav-item" onclick="switchTab('security')">
+            <span class="nav-icon">🔒</span> Security
+          </div>
+          <div class="settings-nav-item" onclick="switchTab('appearance')">
+            <span class="nav-icon">🎨</span> Appearance
+          </div>
+          <div class="settings-nav-item" onclick="switchTab('sessions')">
+            <span class="nav-icon">📱</span> Sessions
+          </div>
+        </div>
+
+        <!-- ═══ PROFILE TAB ═══ -->
+        <div class="settings-content">
+          <div class="settings-panel active" id="panel-profile">
+            <div class="section-card">
+              <div class="section-header">
+                <div>
+                  <div class="section-title">Profile Information</div>
+                  <div class="section-desc">This is how you appear across the platform</div>
+                </div>
+              </div>
+
+              <div class="photo-upload">
+                <div class="photo-preview">RK</div>
+                <div class="photo-info">
+                  <div class="photo-info-title">Profile photo</div>
+                  <div class="photo-info-hint">JPG or PNG, max 2MB</div>
+                </div>
+                <div class="photo-actions">
+                  <button class="photo-btn">Change</button>
+                  <button class="photo-btn danger">Remove</button>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">First Name</label>
+                  <input type="text" class="form-input" value="Rajesh">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Last Name</label>
+                  <input type="text" class="form-input" value="Kumar">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Email Address</label>
+                <input type="email" class="form-input" value="rajesh@meridianwealth.com" style="opacity:0.6;" readonly>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Designation</label>
+                <select class="form-select">
+                  <option selected>Mutual Fund Distributor (MFD)</option>
+                  <option>Registered Investment Advisor (RIA)</option>
+                  <option>Insurance Financial Advisor (IFA)</option>
+                  <option>Certified Financial Planner (CFP)</option>
+                  <option>Wealth Manager</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input type="text" class="form-input" value="+91 98765 43210">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Bio</label>
+                <textarea class="form-textarea">15+ years helping families build lasting wealth through goal-based financial planning.</textarea>
+              </div>
+
+              <div class="actions-row">
+                <button class="btn-cancel">Cancel</button>
+                <button class="btn-save">Save Changes</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ═══ SECURITY TAB ═══ -->
+          <div class="settings-panel" id="panel-security">
+            <div class="section-card">
+              <div class="section-header">
+                <div>
+                  <div class="section-title">Change Password</div>
+                  <div class="section-desc">Update your password regularly for security</div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Current Password</label>
+                <div class="password-wrap">
+                  <input type="password" class="form-input" placeholder="Enter current password" id="currentPw">
+                  <button class="password-toggle" onclick="togglePw('currentPw',this)">👁</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">New Password</label>
+                <div class="password-wrap">
+                  <input type="password" class="form-input" placeholder="Min 8 chars, 1 uppercase, 1 number" id="newPw">
+                  <button class="password-toggle" onclick="togglePw('newPw',this)">👁</button>
+                </div>
+                <div class="strength-meter">
+                  <div class="strength-bar-track">
+                    <div class="strength-segment" id="seg1"></div>
+                    <div class="strength-segment" id="seg2"></div>
+                    <div class="strength-segment" id="seg3"></div>
+                    <div class="strength-segment" id="seg4"></div>
+                  </div>
+                  <span class="strength-label" id="strengthLabel">&nbsp;</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Confirm New Password</label>
+                <div class="password-wrap">
+                  <input type="password" class="form-input" placeholder="Re-enter new password" id="confirmPw">
+                  <button class="password-toggle" onclick="togglePw('confirmPw',this)">👁</button>
+                </div>
+              </div>
+
+              <div class="actions-row">
+                <button class="btn-cancel">Cancel</button>
+                <button class="btn-save">Update Password</button>
+              </div>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="danger-zone">
+              <div class="section-title" style="margin-bottom:var(--space-lg);">Danger Zone</div>
+              <div class="danger-action">
+                <div>
+                  <div class="danger-action-text">Sign out of all devices</div>
+                  <div class="danger-action-hint">Revokes all active sessions except this one</div>
+                </div>
+                <button class="btn-danger">Sign Out All</button>
+              </div>
+              <div class="danger-action">
+                <div>
+                  <div class="danger-action-text">Delete account</div>
+                  <div class="danger-action-hint">Permanently remove your account and all data</div>
+                </div>
+                <button class="btn-danger">Delete Account</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ═══ APPEARANCE TAB ═══ -->
+          <div class="settings-panel" id="panel-appearance">
+            <div class="section-card">
+              <div class="section-header">
+                <div>
+                  <div class="section-title">Theme</div>
+                  <div class="section-desc">Your personal theme overrides the tenant default</div>
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-lg);padding:var(--space-sm) var(--space-md);background:var(--signal-info-glow);border:1px solid rgba(94,170,240,0.12);border-radius:var(--radius-sm);">
+                <span style="font-size:0.75rem;">ℹ</span>
+                <span style="font-size:0.75rem;color:var(--signal-info);">Theme priority: Your preference → Tenant config → Product default (Vikuna Black)</span>
+              </div>
+
+              <div class="theme-grid-sm">
+                <div class="theme-card-sm selected" onclick="selectThemeSm(this)">
+                  <div class="theme-preview-sm">
+                    <div class="theme-mock-sm" style="background:#08080c;">
+                      <div class="sidebar" style="background:#0e0e14;"></div>
+                      <div class="content"><div class="topbar" style="background:#0e0e14;"></div><div class="card" style="background:#16161f;"></div></div>
+                    </div>
+                  </div>
+                  <div class="theme-name-sm">Vikuna Black</div>
+                </div>
+                <div class="theme-card-sm" onclick="selectThemeSm(this)">
+                  <div class="theme-preview-sm">
+                    <div class="theme-mock-sm" style="background:#1a1a2e;">
+                      <div class="sidebar" style="background:#22223a;"></div>
+                      <div class="content"><div class="topbar" style="background:#22223a;"></div><div class="card" style="background:#2a2a44;"></div></div>
+                    </div>
+                  </div>
+                  <div class="theme-name-sm">Classic Elegant</div>
+                </div>
+                <div class="theme-card-sm" onclick="selectThemeSm(this)">
+                  <div class="theme-preview-sm">
+                    <div class="theme-mock-sm" style="background:#0a1628;">
+                      <div class="sidebar" style="background:#0f1f38;"></div>
+                      <div class="content"><div class="topbar" style="background:#0f1f38;"></div><div class="card" style="background:#152844;"></div></div>
+                    </div>
+                  </div>
+                  <div class="theme-name-sm">Ocean Depth</div>
+                </div>
+                <div class="theme-card-sm" onclick="selectThemeSm(this)">
+                  <div class="theme-preview-sm">
+                    <div class="theme-mock-sm" style="background:#0c1a0e;">
+                      <div class="sidebar" style="background:#122416;"></div>
+                      <div class="content"><div class="topbar" style="background:#122416;"></div><div class="card" style="background:#1a3320;"></div></div>
+                    </div>
+                  </div>
+                  <div class="theme-name-sm">Forest Sage</div>
+                </div>
+                <div class="theme-card-sm" onclick="selectThemeSm(this)">
+                  <div class="theme-preview-sm">
+                    <div class="theme-mock-sm" style="background:#1a0a1a;">
+                      <div class="sidebar" style="background:#241228;"></div>
+                      <div class="content"><div class="topbar" style="background:#241228;"></div><div class="card" style="background:#2e1a34;"></div></div>
+                    </div>
+                  </div>
+                  <div class="theme-name-sm">Midnight Rose</div>
+                </div>
+                <div class="theme-card-sm" onclick="selectThemeSm(this)">
+                  <div class="theme-preview-sm">
+                    <div class="theme-mock-sm" style="background:#1e293b;">
+                      <div class="sidebar" style="background:#273548;"></div>
+                      <div class="content"><div class="topbar" style="background:#273548;"></div><div class="card" style="background:#334155;"></div></div>
+                    </div>
+                  </div>
+                  <div class="theme-name-sm">Slate Pro</div>
+                </div>
+                <div class="theme-card-sm" onclick="selectThemeSm(this)">
+                  <div class="theme-preview-sm">
+                    <div class="theme-mock-sm" style="background:#1c1410;">
+                      <div class="sidebar" style="background:#261c14;"></div>
+                      <div class="content"><div class="topbar" style="background:#261c14;"></div><div class="card" style="background:#30241a;"></div></div>
+                    </div>
+                  </div>
+                  <div class="theme-name-sm">Warm Earth</div>
+                </div>
+                <div class="theme-card-sm" onclick="selectThemeSm(this)">
+                  <div class="theme-preview-sm">
+                    <div class="theme-mock-sm" style="background:#f1f5f9;">
+                      <div class="sidebar" style="background:#e2e8f0;"></div>
+                      <div class="content"><div class="topbar" style="background:#e2e8f0;"></div><div class="card" style="background:#fff;border:1px solid #e2e8f0;"></div></div>
+                    </div>
+                  </div>
+                  <div class="theme-name-sm">Arctic Light</div>
+                </div>
+              </div>
+
+              <div class="actions-row">
+                <button class="btn-cancel">Reset to Tenant Default</button>
+                <button class="btn-save">Apply Theme</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ═══ SESSIONS TAB ═══ -->
+          <div class="settings-panel" id="panel-sessions">
+            <div class="section-card">
+              <div class="section-header">
+                <div>
+                  <div class="section-title">Active Sessions</div>
+                  <div class="section-desc">Devices currently signed in to your account</div>
+                </div>
+              </div>
+
+              <div class="session-list">
+                <!-- Current session -->
+                <div class="session-card current">
+                  <div class="session-icon">💻</div>
+                  <div class="session-info">
+                    <div class="session-device">Chrome on Windows 11</div>
+                    <div class="session-meta">
+                      <span>Hyderabad, IN</span>
+                      <span>IP: 49.207.xx.xx</span>
+                      <span>Active now</span>
+                    </div>
+                  </div>
+                  <span class="session-badge current">This device</span>
+                </div>
+
+                <!-- Other sessions -->
+                <div class="session-card">
+                  <div class="session-icon">📱</div>
+                  <div class="session-info">
+                    <div class="session-device">Safari on iPhone 15</div>
+                    <div class="session-meta">
+                      <span>Hyderabad, IN</span>
+                      <span>IP: 49.207.xx.xx</span>
+                      <span>2 hours ago</span>
+                    </div>
+                  </div>
+                  <button class="session-revoke" onclick="revokeSession(this)">Revoke</button>
+                </div>
+
+                <div class="session-card">
+                  <div class="session-icon">💻</div>
+                  <div class="session-info">
+                    <div class="session-device">Chrome on MacBook Pro</div>
+                    <div class="session-meta">
+                      <span>Mumbai, IN</span>
+                      <span>IP: 103.45.xx.xx</span>
+                      <span>3 days ago</span>
+                    </div>
+                  </div>
+                  <button class="session-revoke" onclick="revokeSession(this)">Revoke</button>
+                </div>
+
+                <div class="session-card">
+                  <div class="session-icon">📱</div>
+                  <div class="session-info">
+                    <div class="session-device">KI-Prime App on Android</div>
+                    <div class="session-meta">
+                      <span>Hyderabad, IN</span>
+                      <span>IP: 49.207.xx.xx</span>
+                      <span>5 days ago</span>
+                    </div>
+                  </div>
+                  <button class="session-revoke" onclick="revokeSession(this)">Revoke</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Tab switching
+    function switchTab(tab) {
+      document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.settings-nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('panel-' + tab).classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+
+    // Password toggle
+    function togglePw(id, btn) {
+      const inp = document.getElementById(id);
+      if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+      else { inp.type = 'password'; btn.textContent = '👁'; }
+    }
+
+    // Strength meter
+    const newPw = document.getElementById('newPw');
+    const segs = [document.getElementById('seg1'), document.getElementById('seg2'), document.getElementById('seg3'), document.getElementById('seg4')];
+    const sLabel = document.getElementById('strengthLabel');
+
+    newPw.addEventListener('input', () => {
+      const v = newPw.value; let s = 0;
+      if (v.length >= 8) s++;
+      if (/[A-Z]/.test(v)) s++;
+      if (/[0-9]/.test(v)) s++;
+      if (/[^A-Za-z0-9]/.test(v)) s++;
+      const levels = ['','weak','fair','good','strong'];
+      const labels = ['','Weak','Fair','Good','Strong'];
+      const lvl = levels[s] || '';
+      segs.forEach((seg,i) => { seg.className = 'strength-segment'; if (i < s) seg.classList.add('active', lvl); });
+      sLabel.className = 'strength-label ' + lvl;
+      sLabel.textContent = v.length > 0 ? labels[s] : '\u00A0';
+    });
+
+    // Theme selection
+    function selectThemeSm(card) {
+      document.querySelectorAll('.theme-card-sm').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+    }
+
+    // Session revoke
+    function revokeSession(btn) {
+      const card = btn.closest('.session-card');
+      btn.textContent = 'Revoking...';
+      btn.disabled = true;
+      setTimeout(() => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(20px)';
+        card.style.transition = 'all 0.4s';
+        setTimeout(() => card.remove(), 400);
+      }, 800);
+    }
+  </script>
+</body>
+</html>

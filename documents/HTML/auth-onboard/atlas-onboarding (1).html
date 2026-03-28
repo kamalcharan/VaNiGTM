@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>KI-Prime — Onboarding</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   KI-PRIME DESIGN SYSTEM — "ATLAS"
+   Onboarding Wizard — 5 Steps + Pending Block Screen
+   Theme: vikuna-black (CSS vars ready for any theme)
+   ═══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg-primary: #08080c;
+  --bg-secondary: #0e0e14;
+  --bg-tertiary: #16161f;
+  --bg-quaternary: #1e1e2a;
+
+  --brand-primary: #c9a84c;
+  --brand-primary-bright: #e4c76b;
+  --brand-primary-dim: #8a7235;
+  --brand-glow: rgba(201, 168, 76, 0.15);
+  --brand-glow-strong: rgba(201, 168, 76, 0.3);
+
+  --signal-success: #2dd4a0;
+  --signal-success-glow: rgba(45, 212, 160, 0.15);
+  --signal-danger: #f05e5e;
+  --signal-danger-glow: rgba(240, 94, 94, 0.15);
+  --signal-info: #5eaaf0;
+  --signal-info-glow: rgba(94, 170, 240, 0.15);
+  --signal-warning: #f0c75e;
+
+  --text-hero: #f0ece4;
+  --text-primary: #d4cfc5;
+  --text-secondary: #8a8578;
+  --text-ghost: #4a473f;
+
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.06);
+
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --space-xs: 4px; --space-sm: 8px; --space-md: 16px;
+  --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px;
+  --radius-sm: 6px; --radius-md: 12px; --radius-lg: 20px; --radius-xl: 32px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 200ms; --duration-normal: 400ms; --duration-slow: 800ms;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font-body); background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; overflow-x: hidden; }
+
+/* ── Atmosphere ────────────────────────────── */
+.atmosphere { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.atmosphere::before {
+  content: ''; position: absolute; width: 700px; height: 700px;
+  top: -200px; left: -150px;
+  background: radial-gradient(circle, var(--brand-glow) 0%, transparent 65%);
+  animation: atmDrift 22s ease-in-out infinite alternate;
+}
+.atmosphere::after {
+  content: ''; position: absolute; width: 500px; height: 500px;
+  bottom: -200px; right: -100px;
+  background: radial-gradient(circle, rgba(94,170,240,0.04) 0%, transparent 70%);
+  animation: atmDrift 28s ease-in-out infinite alternate-reverse;
+}
+@keyframes atmDrift { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(60px,40px) scale(1.1); } }
+
+.noise {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Prototype View Switcher ───────────────── */
+.proto-switch {
+  position: fixed; top: var(--space-md); right: var(--space-md);
+  display: flex; gap: 2px; z-index: 200;
+  background: var(--bg-tertiary); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm); padding: 3px;
+}
+.proto-btn {
+  padding: 6px 12px; border: none; border-radius: 4px;
+  background: transparent; color: var(--text-ghost);
+  font-family: var(--font-mono); font-size: 0.6rem;
+  cursor: pointer; transition: all 0.2s;
+}
+.proto-btn:hover { color: var(--text-secondary); }
+.proto-btn.active { background: var(--brand-glow); color: var(--brand-primary); }
+
+/* ═══════════════════════════════════════════════
+   WIZARD LAYOUT
+   ═══════════════════════════════════════════════ */
+.wizard-page {
+  min-height: 100vh; position: relative; z-index: 2;
+  display: flex; flex-direction: column;
+}
+
+/* ── Top Bar ───────────────────────────────── */
+.wizard-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-md) var(--space-xl);
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(14,14,20,0.9);
+  backdrop-filter: blur(20px);
+  position: sticky; top: 0; z-index: 50;
+}
+
+.topbar-brand {
+  display: flex; align-items: center; gap: var(--space-sm);
+}
+.topbar-logo {
+  width: 32px; height: 32px; border: 1px solid var(--brand-primary-dim);
+  border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center;
+}
+.topbar-logo svg { width: 14px; height: 14px; color: var(--brand-primary); }
+.topbar-name { font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: var(--text-hero); }
+
+/* Step indicator in topbar */
+.step-indicator {
+  display: flex; align-items: center; gap: 0;
+}
+
+.step-dot-wrap {
+  display: flex; align-items: center; gap: 0;
+}
+
+.step-dot {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
+  border: 2px solid var(--bg-quaternary);
+  color: var(--text-ghost); background: transparent;
+  transition: all 0.4s var(--ease-out); cursor: pointer;
+  position: relative;
+}
+
+.step-dot.done {
+  background: var(--brand-primary-dim); border-color: var(--brand-primary-dim);
+  color: var(--bg-primary);
+}
+.step-dot.active {
+  background: var(--brand-primary); border-color: var(--brand-primary);
+  color: var(--bg-primary);
+  box-shadow: 0 0 15px var(--brand-glow-strong);
+}
+.step-dot.skippable::after {
+  content: ''; position: absolute; bottom: -2px; right: -2px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--bg-primary); border: 1.5px solid var(--text-ghost);
+}
+.step-dot.done.skippable::after { display: none; }
+.step-dot.active.skippable::after { display: none; }
+
+.step-line {
+  width: 40px; height: 2px; background: var(--bg-quaternary);
+  transition: background 0.4s;
+}
+.step-line.done { background: var(--brand-primary-dim); }
+
+.step-label {
+  position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%);
+  font-size: 0.5rem; color: var(--text-ghost); white-space: nowrap;
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.step-dot.active .step-label { color: var(--brand-primary); }
+.step-dot.done .step-label { color: var(--brand-primary-dim); }
+
+.topbar-progress {
+  font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-ghost);
+}
+.topbar-progress strong { color: var(--text-secondary); }
+
+/* ── Wizard Body ───────────────────────────── */
+.wizard-body { flex: 1; display: flex; }
+
+/* Split layout (steps 1, 2, 4) */
+.split-layout { display: flex; flex: 1; min-height: calc(100vh - 60px); }
+
+.split-narrative {
+  width: 380px; flex-shrink: 0;
+  padding: var(--space-2xl);
+  display: flex; flex-direction: column; justify-content: center;
+  position: relative; overflow: hidden;
+}
+.split-narrative::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 30% 50%, rgba(201,168,76,0.05) 0%, transparent 60%);
+}
+
+.split-form {
+  flex: 1; padding: var(--space-2xl) var(--space-xl);
+  display: flex; flex-direction: column; justify-content: center;
+  max-width: 640px;
+  border-left: 1px solid var(--glass-border);
+  position: relative;
+}
+.split-form::before {
+  content: ''; position: absolute; top: 0; left: -1px; width: 1px; height: 100%;
+  background: linear-gradient(180deg, transparent 20%, var(--brand-primary-dim) 50%, transparent 80%);
+}
+
+/* Full-width layout (steps 3, 5) */
+.full-layout {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: var(--space-2xl);
+  min-height: calc(100vh - 60px);
+}
+
+.full-content { width: 100%; max-width: 900px; }
+
+/* ── Narrative Content ─────────────────────── */
+.narr-content { position: relative; z-index: 2; }
+
+.narr-chapter {
+  font-size: 0.6rem; color: var(--brand-primary);
+  text-transform: uppercase; letter-spacing: 0.2em;
+  margin-bottom: var(--space-sm);
+}
+
+.narr-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  font-weight: 900; line-height: 1.1;
+  color: var(--text-hero); margin-bottom: var(--space-lg);
+}
+
+.narr-title .glow { color: var(--brand-primary); }
+
+.narr-text {
+  font-size: 0.9rem; color: var(--text-secondary);
+  line-height: 1.7; max-width: 320px;
+}
+
+.mandatory-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 100px;
+  background: var(--signal-danger-glow);
+  border: 1px solid rgba(240,94,94,0.15);
+  font-size: 0.6rem; color: var(--signal-danger);
+  font-weight: 600; letter-spacing: 0.05em;
+  margin-top: var(--space-lg);
+}
+
+.optional-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 100px;
+  background: var(--signal-info-glow);
+  border: 1px solid rgba(94,170,240,0.15);
+  font-size: 0.6rem; color: var(--signal-info);
+  font-weight: 600; letter-spacing: 0.05em;
+  margin-top: var(--space-lg);
+}
+
+/* ── Form Elements ─────────────────────────── */
+.section-title {
+  font-family: var(--font-display); font-size: 1.2rem;
+  font-weight: 700; color: var(--text-hero); margin-bottom: var(--space-xl);
+}
+
+.form-row { display: flex; gap: var(--space-md); margin-bottom: var(--space-lg); }
+.form-row .form-group { flex: 1; margin-bottom: 0; }
+
+.form-group { margin-bottom: var(--space-lg); }
+
+.form-label {
+  display: block; font-size: 0.65rem; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-secondary); margin-bottom: 6px;
+}
+
+.form-input, .form-select, .form-textarea {
+  width: 100%; padding: 13px 16px;
+  background: var(--bg-tertiary); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-sm); color: var(--text-hero);
+  font-family: var(--font-body); font-size: 0.9rem;
+  transition: all var(--duration-fast) var(--ease-out); outline: none;
+}
+.form-input::placeholder, .form-textarea::placeholder { color: var(--text-ghost); }
+.form-input:hover, .form-select:hover, .form-textarea:hover { border-color: rgba(255,255,255,0.18); background: var(--bg-quaternary); }
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--brand-primary); background: var(--bg-quaternary);
+  box-shadow: 0 0 0 3px var(--brand-glow);
+}
+
+.form-select {
+  -webkit-appearance: none; appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a8578' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px;
+}
+.form-select option { background: var(--bg-secondary); color: var(--text-primary); }
+
+.form-textarea { resize: vertical; min-height: 80px; font-size: 0.85rem; }
+
+/* Photo Upload */
+.photo-upload {
+  display: flex; align-items: center; gap: var(--space-lg); margin-bottom: var(--space-xl);
+}
+
+.photo-preview {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: var(--bg-tertiary); border: 2px dashed rgba(255,255,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; color: var(--text-ghost);
+  cursor: pointer; transition: all 0.3s var(--ease-out);
+  flex-shrink: 0; position: relative; overflow: hidden;
+}
+.photo-preview:hover { border-color: var(--brand-primary-dim); background: var(--brand-glow); }
+.photo-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+.photo-info { flex: 1; }
+.photo-info-title { font-size: 0.85rem; color: var(--text-primary); margin-bottom: 2px; }
+.photo-info-hint { font-size: 0.7rem; color: var(--text-ghost); line-height: 1.4; }
+
+.photo-btn {
+  padding: 8px 16px; background: var(--bg-tertiary);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm);
+  color: var(--text-secondary); font-size: 0.8rem; cursor: pointer;
+  transition: all var(--duration-fast);
+}
+.photo-btn:hover { border-color: var(--brand-primary-dim); color: var(--text-hero); }
+
+/* ── Theme Grid ────────────────────────────── */
+.theme-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md); margin-bottom: var(--space-xl);
+}
+
+.theme-card {
+  border: 2px solid var(--glass-border); border-radius: var(--radius-md);
+  overflow: hidden; cursor: pointer; transition: all 0.3s var(--ease-out);
+  position: relative;
+}
+.theme-card:hover { border-color: var(--brand-primary-dim); transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
+.theme-card.selected { border-color: var(--brand-primary); box-shadow: 0 0 30px var(--brand-glow); }
+.theme-card.selected::after {
+  content: '✓'; position: absolute; top: 8px; right: 8px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--brand-primary); color: var(--bg-primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.65rem; font-weight: 700; z-index: 5;
+}
+.theme-card.default-tag::before {
+  content: 'DEFAULT'; position: absolute; top: 8px; left: 8px;
+  padding: 2px 8px; border-radius: 100px;
+  background: var(--brand-glow); color: var(--brand-primary);
+  font-size: 0.5rem; font-weight: 700; letter-spacing: 0.1em; z-index: 5;
+}
+
+.theme-preview {
+  height: 100px; position: relative; overflow: hidden;
+}
+
+.theme-swatch-row {
+  display: flex; height: 6px;
+}
+.theme-swatch-row div { flex: 1; }
+
+.theme-mock {
+  padding: 8px; height: 94px; display: flex; gap: 4px;
+}
+.theme-mock-sidebar { width: 20px; border-radius: 3px; }
+.theme-mock-main { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.theme-mock-topbar { height: 10px; border-radius: 2px; }
+.theme-mock-card { flex: 1; border-radius: 3px; }
+
+.theme-info { padding: var(--space-sm) var(--space-md); }
+.theme-name { font-size: 0.75rem; font-weight: 600; color: var(--text-hero); }
+.theme-desc { font-size: 0.6rem; color: var(--text-ghost); }
+
+/* ── Chip Selector (for preferences) ───────── */
+.chip-grid { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-bottom: var(--space-lg); }
+
+.chip {
+  padding: 8px 16px; border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 100px; font-size: 0.8rem; color: var(--text-secondary);
+  cursor: pointer; transition: all 0.2s var(--ease-out); background: var(--bg-tertiary);
+}
+.chip:hover { border-color: var(--brand-primary-dim); color: var(--text-primary); }
+.chip.selected { border-color: var(--brand-primary); background: var(--brand-glow); color: var(--brand-primary); font-weight: 500; }
+
+/* ── Drop Zone (Import) ───────────────────── */
+.drop-zone {
+  border: 2px dashed rgba(255,255,255,0.08); border-radius: var(--radius-xl);
+  padding: var(--space-2xl); text-align: center;
+  transition: all 0.3s var(--ease-out); cursor: pointer; margin-bottom: var(--space-lg);
+}
+.drop-zone:hover { border-color: var(--brand-primary-dim); background: var(--brand-glow); }
+.drop-icon { font-size: 2.5rem; margin-bottom: var(--space-md); display: block; }
+.drop-title { font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: var(--text-hero); margin-bottom: var(--space-xs); }
+.drop-desc { font-size: 0.85rem; color: var(--text-ghost); }
+.drop-formats { display: flex; gap: var(--space-sm); justify-content: center; margin-top: var(--space-md); }
+.format-chip {
+  font-family: var(--font-mono); font-size: 0.6rem; padding: 4px 12px;
+  border: 1px solid var(--glass-border); border-radius: 100px; color: var(--text-ghost);
+}
+
+/* ── Invite Team Members ───────────────────── */
+.invite-rows { margin-bottom: var(--space-lg); }
+
+.invite-row {
+  display: flex; gap: var(--space-sm); align-items: flex-start;
+  margin-bottom: var(--space-md);
+  animation: fadeInUp 0.3s var(--ease-out) forwards;
+}
+
+.invite-row .form-input { flex: 1; }
+
+.invite-role-select {
+  width: 140px; padding: 13px 12px;
+  background: var(--bg-tertiary); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-sm); color: var(--text-hero);
+  font-family: var(--font-body); font-size: 0.85rem;
+  -webkit-appearance: none; appearance: none; cursor: pointer; outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a8578' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+  transition: all var(--duration-fast);
+}
+.invite-role-select:hover { border-color: rgba(255,255,255,0.18); background: var(--bg-quaternary); }
+.invite-role-select:focus { border-color: var(--brand-primary); box-shadow: 0 0 0 3px var(--brand-glow); }
+.invite-role-select option { background: var(--bg-secondary); color: var(--text-primary); }
+
+.invite-remove {
+  width: 44px; height: 44px; border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.06); background: transparent;
+  color: var(--text-ghost); font-size: 1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--duration-fast); flex-shrink: 0;
+}
+.invite-remove:hover { border-color: var(--signal-danger); color: var(--signal-danger); background: var(--signal-danger-glow); }
+
+.add-invite-btn {
+  display: flex; align-items: center; gap: var(--space-sm);
+  padding: 10px 20px; background: none;
+  border: 1px dashed rgba(255,255,255,0.1);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary); font-size: 0.8rem; cursor: pointer;
+  transition: all var(--duration-fast); font-family: var(--font-body);
+}
+.add-invite-btn:hover { border-color: var(--brand-primary-dim); color: var(--brand-primary); }
+
+.invite-note {
+  display: flex; align-items: center; gap: var(--space-sm);
+  padding: var(--space-md); background: var(--signal-info-glow);
+  border: 1px solid rgba(94,170,240,0.12);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem; color: var(--signal-info);
+  margin-top: var(--space-lg);
+}
+
+/* ── Wizard Navigation ─────────────────────── */
+.wizard-nav {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: var(--space-xl); border-top: 1px solid var(--glass-border);
+  margin-top: var(--space-xl);
+}
+
+.nav-back {
+  padding: 12px 24px; background: none; border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm); color: var(--text-secondary);
+  font-family: var(--font-body); font-size: 0.85rem; cursor: pointer;
+  transition: all var(--duration-fast);
+}
+.nav-back:hover { border-color: var(--brand-primary-dim); color: var(--text-primary); }
+
+.nav-skip {
+  background: none; border: none; color: var(--text-ghost);
+  font-family: var(--font-body); font-size: 0.8rem; cursor: pointer;
+  transition: color var(--duration-fast);
+}
+.nav-skip:hover { color: var(--text-secondary); }
+
+.nav-next {
+  padding: 12px 28px;
+  background: linear-gradient(135deg, var(--brand-primary-dim), var(--brand-primary));
+  border: none; border-radius: var(--radius-sm); color: var(--bg-primary);
+  font-family: var(--font-body); font-size: 0.85rem; font-weight: 700;
+  letter-spacing: 0.06em; cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-out);
+  position: relative; overflow: hidden;
+}
+.nav-next::before {
+  content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.6s;
+}
+.nav-next:hover { transform: translateY(-2px); box-shadow: 0 8px 30px var(--brand-glow-strong); }
+.nav-next:hover::before { left: 100%; }
+
+.nav-right { display: flex; align-items: center; gap: var(--space-md); }
+
+/* ── Step visibility ───────────────────────── */
+.step-content { display: none; }
+.step-content.active { display: flex; flex: 1; }
+
+/* ═══════════════════════════════════════════════
+   ONBOARDING PENDING — Block Screen
+   ═══════════════════════════════════════════════ */
+.pending-page {
+  min-height: 100vh; display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  position: relative; z-index: 2; padding: var(--space-xl);
+}
+.pending-page.active { display: flex; }
+.wizard-page.hidden { display: none; }
+
+.pending-card {
+  width: 480px;
+  background: rgba(14,14,20,0.8);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(40px);
+  padding: var(--space-2xl); text-align: center;
+}
+
+.pending-icon {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: rgba(240,199,94,0.1); border: 1.5px solid rgba(240,199,94,0.2);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto var(--space-lg); font-size: 1.8rem;
+  animation: pendingPulse 3s ease-in-out infinite;
+}
+@keyframes pendingPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+.pending-title {
+  font-family: var(--font-display); font-size: 1.4rem;
+  font-weight: 700; color: var(--text-hero); margin-bottom: var(--space-sm);
+}
+.pending-desc {
+  font-size: 0.85rem; color: var(--text-secondary);
+  line-height: 1.6; margin-bottom: var(--space-xl);
+}
+
+.pending-steps {
+  text-align: left; margin-bottom: var(--space-xl);
+}
+
+.pending-step {
+  display: flex; align-items: center; gap: var(--space-md);
+  padding: var(--space-sm) 0;
+}
+.pending-step-dot {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.6rem; font-weight: 700; flex-shrink: 0;
+}
+.pending-step-dot.done { background: var(--signal-success-glow); color: var(--signal-success); }
+.pending-step-dot.pending { background: rgba(240,199,94,0.1); color: var(--signal-warning); animation: pendingPulse 2s ease-in-out infinite; }
+
+.pending-step-text { font-size: 0.8rem; color: var(--text-secondary); }
+.pending-step-text.done { color: var(--text-ghost); text-decoration: line-through; }
+
+.pending-owner {
+  display: flex; align-items: center; gap: var(--space-sm);
+  justify-content: center;
+  padding: var(--space-md); background: var(--bg-tertiary);
+  border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-secondary);
+}
+.pending-owner-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--brand-glow); display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 0.6rem; font-weight: 700; color: var(--brand-primary);
+}
+
+/* ── Animations ────────────────────────────── */
+@keyframes fadeInUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+::selection { background: var(--brand-glow-strong); color: var(--text-hero); }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-quaternary); border-radius: 3px; }
+</style>
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div class="noise"></div>
+
+  <!-- Prototype Switcher -->
+  <div class="proto-switch">
+    <button class="proto-btn active" onclick="showWizard()">Wizard</button>
+    <button class="proto-btn" onclick="showPending()">Pending Block</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       WIZARD PAGE
+       ═══════════════════════════════════════════ -->
+  <div class="wizard-page" id="wizardPage">
+    <!-- Top Bar with Step Indicator -->
+    <div class="wizard-topbar">
+      <div class="topbar-brand">
+        <div class="topbar-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <span class="topbar-name">KI-PRIME</span>
+      </div>
+
+      <div class="step-indicator" id="stepIndicator">
+        <div class="step-dot active" data-step="1" onclick="goToStep(1)">1<span class="step-label">Profile</span></div>
+        <div class="step-line"></div>
+        <div class="step-dot" data-step="2" onclick="goToStep(2)">2<span class="step-label">Business</span></div>
+        <div class="step-line"></div>
+        <div class="step-dot skippable" data-step="3" onclick="goToStep(3)">3<span class="step-label">Theme</span></div>
+        <div class="step-line"></div>
+        <div class="step-dot skippable" data-step="4" onclick="goToStep(4)">4<span class="step-label">Team</span></div>
+        <div class="step-line"></div>
+        <div class="step-dot skippable" data-step="5" onclick="goToStep(5)">5<span class="step-label">Preferences</span></div>
+        <div class="step-line"></div>
+        <div class="step-dot skippable" data-step="6" onclick="goToStep(6)">6<span class="step-label">Import</span></div>
+      </div>
+
+      <div class="topbar-progress">Step <strong id="currentStepNum">1</strong> of <strong>6</strong></div>
+    </div>
+
+    <!-- ═══ STEP 1: User Profile ═══ -->
+    <div class="step-content active" id="step1">
+      <div class="split-layout">
+        <div class="split-narrative">
+          <div class="narr-content">
+            <div class="narr-chapter">Step 1 of 5</div>
+            <h2 class="narr-title">Let's put a face<br>to the <span class="glow">name</span>.</h2>
+            <p class="narr-text">Your profile helps clients and team members recognize you. This is how you'll appear across the platform.</p>
+            <div class="mandatory-badge">● Required to continue</div>
+          </div>
+        </div>
+        <div class="split-form">
+          <div class="section-title">Your Profile</div>
+
+          <div class="photo-upload">
+            <div class="photo-preview" id="photoPreview">📷</div>
+            <div class="photo-info">
+              <div class="photo-info-title">Profile photo</div>
+              <div class="photo-info-hint">JPG or PNG, max 2MB. This appears on client reports and the team directory.</div>
+            </div>
+            <button class="photo-btn" type="button">Upload</button>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">First Name</label>
+              <input type="text" class="form-input" value="Rajesh">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Last Name</label>
+              <input type="text" class="form-input" value="Kumar">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Designation / Title</label>
+            <select class="form-select">
+              <option value="">Select your role...</option>
+              <option selected>Mutual Fund Distributor (MFD)</option>
+              <option>Registered Investment Advisor (RIA)</option>
+              <option>Insurance Financial Advisor (IFA)</option>
+              <option>Certified Financial Planner (CFP)</option>
+              <option>Wealth Manager</option>
+              <option>Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Phone (verified)</label>
+            <input type="text" class="form-input" value="+91 98765 43210" style="opacity:0.6;" readonly>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Brief Bio (optional)</label>
+            <textarea class="form-textarea" placeholder="A short description that appears on client-facing reports..."></textarea>
+          </div>
+
+          <div class="wizard-nav">
+            <div></div>
+            <div class="nav-right">
+              <button class="nav-next" onclick="goToStep(2)">SAVE & CONTINUE →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ STEP 2: Business Profile ═══ -->
+    <div class="step-content" id="step2">
+      <div class="split-layout">
+        <div class="split-narrative">
+          <div class="narr-content">
+            <div class="narr-chapter">Step 2 of 5</div>
+            <h2 class="narr-title">Your <span class="glow">firm</span> is<br>your identity.</h2>
+            <p class="narr-text">This information appears on client communications, reports, and the investor portal. Make it count.</p>
+            <div class="mandatory-badge">● Required to continue</div>
+          </div>
+        </div>
+        <div class="split-form">
+          <div class="section-title">Business Details</div>
+
+          <div class="photo-upload">
+            <div class="photo-preview" style="border-radius:var(--radius-md);">🏢</div>
+            <div class="photo-info">
+              <div class="photo-info-title">Firm logo</div>
+              <div class="photo-info-hint">Square image, min 200×200px. Appears on client portal and reports.</div>
+            </div>
+            <button class="photo-btn" type="button">Upload</button>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Firm / Business Name</label>
+            <input type="text" class="form-input" placeholder="e.g. Meridian Wealth Partners" value="Meridian Wealth Partners">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Business Type</label>
+              <select class="form-select">
+                <option>Individual MFD</option>
+                <option selected>Partnership Firm</option>
+                <option>Private Limited</option>
+                <option>LLP</option>
+                <option>Proprietorship</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">ARN Number</label>
+              <input type="text" class="form-input" placeholder="ARN-XXXXX" value="ARN-12345">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">PAN</label>
+              <input type="text" class="form-input" placeholder="ABCDE1234F" value="AABPM4567Q" style="text-transform:uppercase;">
+            </div>
+            <div class="form-group">
+              <label class="form-label">GSTIN (optional)</label>
+              <input type="text" class="form-input" placeholder="22AAAAA0000A1Z5">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Business Address</label>
+            <textarea class="form-textarea" placeholder="Full address with city, state, PIN...">204, Meridian Tower, Banjara Hills Road No. 12, Hyderabad, Telangana 500034</textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">City</label>
+              <input type="text" class="form-input" value="Hyderabad">
+            </div>
+            <div class="form-group">
+              <label class="form-label">State</label>
+              <select class="form-select">
+                <option>Select state...</option>
+                <option selected>Telangana</option>
+                <option>Andhra Pradesh</option>
+                <option>Karnataka</option>
+                <option>Maharashtra</option>
+                <option>Tamil Nadu</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">PIN Code</label>
+              <input type="text" class="form-input" value="500034">
+            </div>
+          </div>
+
+          <div class="wizard-nav">
+            <button class="nav-back" onclick="goToStep(1)">← Back</button>
+            <div class="nav-right">
+              <button class="nav-next" onclick="goToStep(3)">SAVE & CONTINUE →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ STEP 3: Theme Selection ═══ -->
+    <div class="step-content" id="step3">
+      <div class="full-layout">
+        <div class="full-content">
+          <div style="text-align:center;margin-bottom:var(--space-xl);">
+            <div class="narr-chapter" style="text-align:center;">Step 3 of 5</div>
+            <h2 class="narr-title" style="text-align:center;font-size:1.6rem;">Choose your <span class="glow">visual identity</span>.</h2>
+            <p style="color:var(--text-secondary);max-width:500px;margin:0 auto;">This theme applies to your entire workspace — dashboard, client portal, and reports. You can change it anytime in settings.</p>
+            <div class="optional-badge" style="margin-top:var(--space-md);">○ Optional — defaults to Vikuna Black</div>
+          </div>
+
+          <div class="theme-grid">
+            <!-- Vikuna Black (default) -->
+            <div class="theme-card selected default-tag" onclick="selectTheme(this)">
+              <div class="theme-preview">
+                <div class="theme-swatch-row">
+                  <div style="background:#08080c"></div><div style="background:#c9a84c"></div><div style="background:#2dd4a0"></div><div style="background:#5eaaf0"></div>
+                </div>
+                <div class="theme-mock" style="background:#08080c;">
+                  <div class="theme-mock-sidebar" style="background:#0e0e14;"></div>
+                  <div class="theme-mock-main">
+                    <div class="theme-mock-topbar" style="background:#0e0e14;"></div>
+                    <div class="theme-mock-card" style="background:#16161f;"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="theme-info">
+                <div class="theme-name">Vikuna Black</div>
+                <div class="theme-desc">The Atlas signature</div>
+              </div>
+            </div>
+
+            <!-- Classic Elegant -->
+            <div class="theme-card" onclick="selectTheme(this)">
+              <div class="theme-preview">
+                <div class="theme-swatch-row">
+                  <div style="background:#1a1a2e"></div><div style="background:#e2c275"></div><div style="background:#4ade80"></div><div style="background:#60a5fa"></div>
+                </div>
+                <div class="theme-mock" style="background:#1a1a2e;">
+                  <div class="theme-mock-sidebar" style="background:#22223a;"></div>
+                  <div class="theme-mock-main">
+                    <div class="theme-mock-topbar" style="background:#22223a;"></div>
+                    <div class="theme-mock-card" style="background:#2a2a44;"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="theme-info">
+                <div class="theme-name">Classic Elegant</div>
+                <div class="theme-desc">Deep navy warmth</div>
+              </div>
+            </div>
+
+            <!-- Ocean Depth -->
+            <div class="theme-card" onclick="selectTheme(this)">
+              <div class="theme-preview">
+                <div class="theme-swatch-row">
+                  <div style="background:#0a1628"></div><div style="background:#38bdf8"></div><div style="background:#34d399"></div><div style="background:#f472b6"></div>
+                </div>
+                <div class="theme-mock" style="background:#0a1628;">
+                  <div class="theme-mock-sidebar" style="background:#0f1f38;"></div>
+                  <div class="theme-mock-main">
+                    <div class="theme-mock-topbar" style="background:#0f1f38;"></div>
+                    <div class="theme-mock-card" style="background:#152844;"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="theme-info">
+                <div class="theme-name">Ocean Depth</div>
+                <div class="theme-desc">Marine confidence</div>
+              </div>
+            </div>
+
+            <!-- Forest Sage -->
+            <div class="theme-card" onclick="selectTheme(this)">
+              <div class="theme-preview">
+                <div class="theme-swatch-row">
+                  <div style="background:#0c1a0e"></div><div style="background:#6ee7b7"></div><div style="background:#fbbf24"></div><div style="background:#a78bfa"></div>
+                </div>
+                <div class="theme-mock" style="background:#0c1a0e;">
+                  <div class="theme-mock-sidebar" style="background:#122416;"></div>
+                  <div class="theme-mock-main">
+                    <div class="theme-mock-topbar" style="background:#122416;"></div>
+                    <div class="theme-mock-card" style="background:#1a3320;"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="theme-info">
+                <div class="theme-name">Forest Sage</div>
+                <div class="theme-desc">Nature grounded</div>
+              </div>
+            </div>
+
+            <!-- Midnight Rose -->
+            <div class="theme-card" onclick="selectTheme(this)">
+              <div class="theme-preview">
+                <div class="theme-swatch-row">
+                  <div style="background:#1a0a1a"></div><div style="background:#f472b6"></div><div style="background:#c084fc"></div><div style="background:#67e8f9"></div>
+                </div>
+                <div class="theme-mock" style="background:#1a0a1a;">
+                  <div class="theme-mock-sidebar" style="background:#241228;"></div>
+                  <div class="theme-mock-main">
+                    <div class="theme-mock-topbar" style="background:#241228;"></div>
+                    <div class="theme-mock-card" style="background:#2e1a34;"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="theme-info">
+                <div class="theme-name">Midnight Rose</div>
+                <div class="theme-desc">Bold & vibrant</div>
+              </div>
+            </div>
+
+            <!-- Slate Professional -->
+            <div class="theme-card" onclick="selectTheme(this)">
+              <div class="theme-preview">
+                <div class="theme-swatch-row">
+                  <div style="background:#1e293b"></div><div style="background:#94a3b8"></div><div style="background:#22d3ee"></div><div style="background:#f59e0b"></div>
+                </div>
+                <div class="theme-mock" style="background:#1e293b;">
+                  <div class="theme-mock-sidebar" style="background:#273548;"></div>
+                  <div class="theme-mock-main">
+                    <div class="theme-mock-topbar" style="background:#273548;"></div>
+                    <div class="theme-mock-card" style="background:#334155;"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="theme-info">
+                <div class="theme-name">Slate Pro</div>
+                <div class="theme-desc">Clean corporate</div>
+              </div>
+            </div>
+
+            <!-- Warm Earth -->
+            <div class="theme-card" onclick="selectTheme(this)">
+              <div class="theme-preview">
+                <div class="theme-swatch-row">
+                  <div style="background:#1c1410"></div><div style="background:#d97706"></div><div style="background:#65a30d"></div><div style="background:#ea580c"></div>
+                </div>
+                <div class="theme-mock" style="background:#1c1410;">
+                  <div class="theme-mock-sidebar" style="background:#261c14;"></div>
+                  <div class="theme-mock-main">
+                    <div class="theme-mock-topbar" style="background:#261c14;"></div>
+                    <div class="theme-mock-card" style="background:#30241a;"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="theme-info">
+                <div class="theme-name">Warm Earth</div>
+                <div class="theme-desc">Terracotta comfort</div>
+              </div>
+            </div>
+
+            <!-- Arctic Light -->
+            <div class="theme-card" onclick="selectTheme(this)">
+              <div class="theme-preview">
+                <div class="theme-swatch-row">
+                  <div style="background:#f8fafc"></div><div style="background:#1e40af"></div><div style="background:#059669"></div><div style="background:#dc2626"></div>
+                </div>
+                <div class="theme-mock" style="background:#f1f5f9;">
+                  <div class="theme-mock-sidebar" style="background:#e2e8f0;"></div>
+                  <div class="theme-mock-main">
+                    <div class="theme-mock-topbar" style="background:#e2e8f0;"></div>
+                    <div class="theme-mock-card" style="background:#ffffff; border:1px solid #e2e8f0;"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="theme-info">
+                <div class="theme-name" style="color:var(--text-primary);">Arctic Light</div>
+                <div class="theme-desc">Light mode clarity</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="wizard-nav">
+            <button class="nav-back" onclick="goToStep(2)">← Back</button>
+            <div class="nav-right">
+              <button class="nav-skip" onclick="goToStep(4)">Skip — use default</button>
+              <button class="nav-next" onclick="goToStep(4)">APPLY & CONTINUE →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ STEP 4: Invite Team ═══ -->
+    <div class="step-content" id="step4">
+      <div class="split-layout">
+        <div class="split-narrative">
+          <div class="narr-content">
+            <div class="narr-chapter">Step 4 of 6</div>
+            <h2 class="narr-title">Great things are<br>built by <span class="glow">teams</span>.</h2>
+            <p class="narr-text">Invite your planners, admins, and support staff. They'll receive an email with a link to join your workspace instantly.</p>
+            <div class="optional-badge">○ Can invite later from Settings</div>
+          </div>
+        </div>
+        <div class="split-form">
+          <div class="section-title">Invite Your Team</div>
+
+          <div class="invite-rows" id="inviteRows">
+            <div class="invite-row">
+              <input type="email" class="form-input" placeholder="colleague@email.com" value="meena@meridianwealth.com">
+              <select class="invite-role-select">
+                <option>Admin</option>
+                <option selected>Planner</option>
+              </select>
+              <button class="invite-remove" onclick="removeInvite(this)" title="Remove">×</button>
+            </div>
+            <div class="invite-row">
+              <input type="email" class="form-input" placeholder="colleague@email.com" value="vikram@meridianwealth.com">
+              <select class="invite-role-select">
+                <option selected>Admin</option>
+                <option>Planner</option>
+              </select>
+              <button class="invite-remove" onclick="removeInvite(this)" title="Remove">×</button>
+            </div>
+            <div class="invite-row">
+              <input type="email" class="form-input" placeholder="colleague@email.com">
+              <select class="invite-role-select">
+                <option>Admin</option>
+                <option selected>Planner</option>
+              </select>
+              <button class="invite-remove" onclick="removeInvite(this)" title="Remove">×</button>
+            </div>
+          </div>
+
+          <button class="add-invite-btn" type="button" onclick="addInviteRow()">
+            <span style="font-size:1.1rem;">+</span> Add another team member
+          </button>
+
+          <div class="invite-note">
+            <span>ℹ</span> Invitees will be blocked from the workspace until you complete all mandatory onboarding steps.
+          </div>
+
+          <div class="wizard-nav">
+            <button class="nav-back" onclick="goToStep(3)">← Back</button>
+            <div class="nav-right">
+              <button class="nav-skip" onclick="goToStep(5)">Skip — invite later</button>
+              <button class="nav-next" onclick="goToStep(5)">SEND INVITES & CONTINUE →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ STEP 5: Risk / Scheme Preferences ═══ -->
+    <div class="step-content" id="step5">
+      <div class="split-layout">
+        <div class="split-narrative">
+          <div class="narr-content">
+            <div class="narr-chapter">Step 5 of 6</div>
+            <h2 class="narr-title">What's your<br><span class="glow">investment</span><br>philosophy?</h2>
+            <p class="narr-text">These preferences help VaNi give you better recommendations and personalize the planning engine for your practice.</p>
+            <div class="optional-badge">○ Can be configured later</div>
+          </div>
+        </div>
+        <div class="split-form">
+          <div class="section-title">Investment Preferences</div>
+
+          <div class="form-group">
+            <label class="form-label">Default Risk Profile for New Clients</label>
+            <select class="form-select">
+              <option>Conservative</option>
+              <option selected>Moderate</option>
+              <option>Aggressive</option>
+              <option>Very Aggressive</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Preferred AMCs (select multiple)</label>
+            <div class="chip-grid">
+              <span class="chip selected" onclick="this.classList.toggle('selected')">HDFC AMC</span>
+              <span class="chip selected" onclick="this.classList.toggle('selected')">ICICI Prudential</span>
+              <span class="chip selected" onclick="this.classList.toggle('selected')">SBI Funds</span>
+              <span class="chip" onclick="this.classList.toggle('selected')">Axis AMC</span>
+              <span class="chip selected" onclick="this.classList.toggle('selected')">Parag Parikh</span>
+              <span class="chip" onclick="this.classList.toggle('selected')">Kotak AMC</span>
+              <span class="chip" onclick="this.classList.toggle('selected')">Nippon India</span>
+              <span class="chip" onclick="this.classList.toggle('selected')">Mirae Asset</span>
+              <span class="chip" onclick="this.classList.toggle('selected')">DSP</span>
+              <span class="chip" onclick="this.classList.toggle('selected')">Motilal Oswal</span>
+              <span class="chip" onclick="this.classList.toggle('selected')">UTI AMC</span>
+              <span class="chip" onclick="this.classList.toggle('selected')">Tata AMC</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Preferred Scheme Categories</label>
+            <div class="chip-grid">
+              <span class="chip selected" onclick="this.classList.toggle('selected')">Large Cap</span>
+              <span class="chip selected" onclick="this.classList.toggle('selected')">Flexi Cap</span>
+              <span class="chip selected" onclick="this.classList.toggle('selected')">Mid Cap</span>
+              <span class="chip" onclick="this.classList.toggle('selected')">Small Cap</span>
+              <span class="chip selected" onclick="this.classList.toggle('selected')">ELSS</span>
+              <span class="chip" onclick="this.classList.toggle('selected')">Short Duration Debt</span>
+              <span class="chip" onclick="this.classList.toggle('selected')">Liquid</span>
+              <span class="chip" onclick="this.classList.toggle('selected')">Hybrid Aggressive</span>
+              <span class="chip" onclick="this.classList.toggle('selected')">Index Funds</span>
+              <span class="chip" onclick="this.classList.toggle('selected')">International</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Investment Approach</label>
+            <select class="form-select">
+              <option>Primarily Direct Plans</option>
+              <option selected>Mix of Direct & Regular</option>
+              <option>Primarily Regular Plans</option>
+            </select>
+          </div>
+
+          <div class="wizard-nav">
+            <button class="nav-back" onclick="goToStep(4)">← Back</button>
+            <div class="nav-right">
+              <button class="nav-skip" onclick="goToStep(6)">Skip for now</button>
+              <button class="nav-next" onclick="goToStep(6)">SAVE & CONTINUE →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ STEP 6: Import Data ═══ -->
+    <div class="step-content" id="step6">
+      <div class="full-layout">
+        <div class="full-content">
+          <div style="text-align:center;margin-bottom:var(--space-xl);">
+            <div class="narr-chapter" style="text-align:center;">Step 6 of 6</div>
+            <h2 class="narr-title" style="text-align:center;font-size:1.6rem;">Bring your <span class="glow">existing clients</span> home.</h2>
+            <p style="color:var(--text-secondary);max-width:520px;margin:0 auto;">Import your client data from CAS statements, InvestWell exports, or spreadsheets. You can also skip this and add clients manually later.</p>
+            <div class="optional-badge" style="margin-top:var(--space-md);">○ Can be done later from Import Center</div>
+          </div>
+
+          <div class="drop-zone">
+            <span class="drop-icon">📂</span>
+            <div class="drop-title">Drop your file here</div>
+            <div class="drop-desc">or click to browse — we auto-detect the format</div>
+            <div class="drop-formats">
+              <span class="format-chip">CAMS CAS (PDF)</span>
+              <span class="format-chip">KFintech CAS</span>
+              <span class="format-chip">InvestWell CSV</span>
+              <span class="format-chip">Excel</span>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:var(--space-md);justify-content:center;margin-bottom:var(--space-xl);">
+            <div style="flex:1;max-width:280px;padding:var(--space-lg);background:var(--bg-secondary);border:1px solid var(--glass-border);border-radius:var(--radius-md);text-align:center;cursor:pointer;transition:all 0.3s;" onmouseover="this.style.borderColor='rgba(201,168,76,0.3)'" onmouseout="this.style.borderColor=''">
+              <div style="font-size:1.5rem;margin-bottom:var(--space-sm);">📊</div>
+              <div style="font-size:0.85rem;font-weight:600;color:var(--text-hero);margin-bottom:4px;">Start from Scratch</div>
+              <div style="font-size:0.7rem;color:var(--text-ghost);">Add clients manually using the client management tool</div>
+            </div>
+            <div style="flex:1;max-width:280px;padding:var(--space-lg);background:var(--bg-secondary);border:1px solid var(--glass-border);border-radius:var(--radius-md);text-align:center;cursor:pointer;transition:all 0.3s;" onmouseover="this.style.borderColor='rgba(201,168,76,0.3)'" onmouseout="this.style.borderColor=''">
+              <div style="font-size:1.5rem;margin-bottom:var(--space-sm);">🔗</div>
+              <div style="font-size:0.85rem;font-weight:600;color:var(--text-hero);margin-bottom:4px;">Connect Platform</div>
+              <div style="font-size:0.7rem;color:var(--text-ghost);">Sync with BSE StAR MF, NSE NMF, or MFUtility</div>
+            </div>
+          </div>
+
+          <div class="wizard-nav">
+            <button class="nav-back" onclick="goToStep(5)">← Back</button>
+            <div class="nav-right">
+              <button class="nav-skip" onclick="finishOnboarding()">Skip — I'll import later</button>
+              <button class="nav-next" onclick="finishOnboarding()">FINISH SETUP →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       PENDING BLOCK SCREEN (for invited users)
+       ═══════════════════════════════════════════ -->
+  <div class="pending-page" id="pendingPage">
+    <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-2xl);">
+      <div class="topbar-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <span class="topbar-name">KI-PRIME</span>
+    </div>
+
+    <div class="pending-card">
+      <div class="pending-icon">⏳</div>
+      <h2 class="pending-title">Workspace setup in progress</h2>
+      <p class="pending-desc">
+        The account owner is still setting up this workspace. You'll get access as soon as the required steps are completed.
+      </p>
+
+      <div class="pending-steps">
+        <div class="pending-step">
+          <div class="pending-step-dot done">✓</div>
+          <span class="pending-step-text done">User profile completed</span>
+        </div>
+        <div class="pending-step">
+          <div class="pending-step-dot pending">2</div>
+          <span class="pending-step-text">Business profile — in progress</span>
+        </div>
+        <div class="pending-step">
+          <div class="pending-step-dot" style="background:var(--bg-quaternary);color:var(--text-ghost);">3</div>
+          <span class="pending-step-text" style="color:var(--text-ghost);">Theme selection</span>
+        </div>
+      </div>
+
+      <div class="pending-owner">
+        <div class="pending-owner-avatar">RK</div>
+        <span>Rajesh Kumar is completing the setup</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentStep = 1;
+    const totalSteps = 6;
+
+    function goToStep(step) {
+      if (step < 1 || step > totalSteps) return;
+
+      for (let i = 1; i <= totalSteps; i++) {
+        document.getElementById('step' + i).classList.remove('active');
+      }
+      document.getElementById('step' + step).classList.add('active');
+
+      const dots = document.querySelectorAll('.step-dot');
+      const lines = document.querySelectorAll('.step-line');
+
+      dots.forEach((dot, i) => {
+        const s = i + 1;
+        dot.classList.remove('active', 'done');
+        if (s < step) dot.classList.add('done');
+        else if (s === step) dot.classList.add('active');
+      });
+
+      lines.forEach((line, i) => {
+        line.classList.remove('done');
+        if (i < step - 1) line.classList.add('done');
+      });
+
+      document.getElementById('currentStepNum').textContent = step;
+      currentStep = step;
+      window.scrollTo(0, 0);
+    }
+
+    function selectTheme(card) {
+      document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+    }
+
+    // Invite Team functions
+    function addInviteRow() {
+      const rows = document.getElementById('inviteRows');
+      const row = document.createElement('div');
+      row.className = 'invite-row';
+      row.innerHTML = `
+        <input type="email" class="form-input" placeholder="colleague@email.com">
+        <select class="invite-role-select">
+          <option>Admin</option>
+          <option selected>Planner</option>
+        </select>
+        <button class="invite-remove" onclick="removeInvite(this)" title="Remove">×</button>
+      `;
+      rows.appendChild(row);
+    }
+
+    function removeInvite(btn) {
+      const row = btn.closest('.invite-row');
+      const rows = document.getElementById('inviteRows');
+      if (rows.children.length > 1) {
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(20px)';
+        row.style.transition = 'all 0.3s';
+        setTimeout(() => row.remove(), 300);
+      }
+    }
+
+    function finishOnboarding() {
+      alert('🎉 Onboarding complete! Redirecting to dashboard...');
+    }
+
+    // Prototype switcher
+    function showWizard() {
+      document.getElementById('wizardPage').classList.remove('hidden');
+      document.getElementById('pendingPage').classList.remove('active');
+      document.querySelectorAll('.proto-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.proto-btn')[0].classList.add('active');
+    }
+
+    function showPending() {
+      document.getElementById('wizardPage').classList.add('hidden');
+      document.getElementById('pendingPage').classList.add('active');
+      document.querySelectorAll('.proto-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.proto-btn')[1].classList.add('active');
+    }
+  </script>
+</body>
+</html>

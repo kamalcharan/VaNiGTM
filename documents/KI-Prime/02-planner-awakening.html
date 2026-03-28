@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>KI-Prime — Atlas</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   KI-PRIME DESIGN SYSTEM — "ATLAS"
+   Philosophy: Your money has a gravity. We visualize it.
+   ═══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  /* The Void — deep space black with warmth */
+  --void: #08080c;
+  --void-up: #0e0e14;
+  --void-up-2: #16161f;
+  --void-up-3: #1e1e2a;
+
+  /* Gold Thread — wealth, warmth, trust */
+  --gold: #c9a84c;
+  --gold-bright: #e4c76b;
+  --gold-dim: #8a7235;
+  --gold-glow: rgba(201, 168, 76, 0.15);
+  --gold-glow-strong: rgba(201, 168, 76, 0.3);
+
+  /* Signal Colors */
+  --up: #2dd4a0;
+  --up-glow: rgba(45, 212, 160, 0.15);
+  --down: #f05e5e;
+  --down-glow: rgba(240, 94, 94, 0.15);
+  --info: #5eaaf0;
+  --info-glow: rgba(94, 170, 240, 0.15);
+
+  /* Text Hierarchy */
+  --text-hero: #f0ece4;
+  --text-primary: #d4cfc5;
+  --text-secondary: #8a8578;
+  --text-ghost: #4a473f;
+
+  /* Glass */
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-hover: rgba(255, 255, 255, 0.06);
+
+  /* Typography */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Spacing Scale */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 200ms;
+  --duration-normal: 400ms;
+  --duration-slow: 800ms;
+  --duration-cinematic: 1200ms;
+}
+
+/* ── Reset & Base ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--void);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Atmospheric Background ─────────────────── */
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.atmosphere::before {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  top: -200px;
+  right: -100px;
+  background: radial-gradient(circle, var(--gold-glow) 0%, transparent 70%);
+  animation: atmosphereDrift 20s ease-in-out infinite alternate;
+}
+
+.atmosphere::after {
+  content: '';
+  position: absolute;
+  width: 800px;
+  height: 800px;
+  bottom: -300px;
+  left: -200px;
+  background: radial-gradient(circle, rgba(94, 170, 240, 0.05) 0%, transparent 70%);
+  animation: atmosphereDrift 25s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes atmosphereDrift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(60px, 40px) scale(1.1); }
+}
+
+/* ── Noise Texture Overlay ──────────────────── */
+.noise {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Glass Cards ────────────────────────────── */
+.glass-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.glass-card:hover {
+  background: var(--glass-hover);
+  border-color: rgba(201, 168, 76, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Gold Line Accent ───────────────────────── */
+.gold-line {
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  margin-bottom: var(--space-md);
+}
+
+.gold-line-long {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold-dim), transparent 60%);
+}
+
+/* ── Typography Classes ─────────────────────── */
+.display-xl {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 900;
+  line-height: 1.05;
+  color: var(--text-hero);
+  letter-spacing: -0.02em;
+}
+
+.display-lg {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-hero);
+}
+
+.display-md {
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-hero);
+}
+
+.label-upper {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-weight: 400;
+}
+
+.mono-sm {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 300;
+}
+
+/* ── Number Display (for money) ─────────────── */
+.amount {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.amount-hero {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  color: var(--text-hero);
+  font-variant-numeric: tabular-nums;
+}
+
+.currency {
+  font-size: 0.6em;
+  vertical-align: super;
+  color: var(--gold);
+  margin-right: 2px;
+}
+
+/* ── Signal Badges ──────────────────────────── */
+.badge-up {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: var(--up-glow);
+  color: var(--up);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-down {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: var(--down-glow);
+  color: var(--down);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ── Buttons ────────────────────────────────── */
+.btn-gold {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--gold);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-gold::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gold);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.btn-gold:hover {
+  color: var(--void);
+  box-shadow: 0 0 30px var(--gold-glow-strong);
+}
+
+.btn-gold:hover::before { opacity: 1; }
+.btn-gold span { position: relative; z-index: 1; }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.btn-ghost:hover {
+  border-color: var(--gold-dim);
+  color: var(--text-primary);
+}
+
+/* ── Entrance Animations ────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes goldPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.anim-fade-up {
+  animation: fadeInUp var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-fade {
+  animation: fadeIn var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-slide-left {
+  animation: slideInLeft var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.anim-scale {
+  animation: scaleIn var(--duration-slow) var(--ease-out) forwards;
+  opacity: 0;
+}
+
+/* Stagger delays */
+.delay-1 { animation-delay: 100ms; }
+.delay-2 { animation-delay: 200ms; }
+.delay-3 { animation-delay: 350ms; }
+.delay-4 { animation-delay: 500ms; }
+.delay-5 { animation-delay: 700ms; }
+.delay-6 { animation-delay: 900ms; }
+.delay-7 { animation-delay: 1100ms; }
+.delay-8 { animation-delay: 1300ms; }
+
+/* ── Scrollbar ──────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--void); }
+::-webkit-scrollbar-thumb { background: var(--void-up-3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }
+
+/* ── Selection ──────────────────────────────── */
+::selection {
+  background: var(--gold-glow-strong);
+  color: var(--text-hero);
+}
+
+/* ── Utility ────────────────────────────────── */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-xs { gap: var(--space-xs); }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.gap-lg { gap: var(--space-lg); }
+.gap-xl { gap: var(--space-xl); }
+.w-full { width: 100%; }
+.text-gold { color: var(--gold); }
+.text-up { color: var(--up); }
+.text-down { color: var(--down); }
+.text-ghost { color: var(--text-ghost); }
+.text-secondary { color: var(--text-secondary); }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.relative { position: relative; }
+.overflow-hidden { overflow: hidden; }
+
+
+/* ══ LAYOUT OVERRIDES FOR CONTAINER RENDERING ══ */
+html, body {
+  min-width: 1280px !important;
+  width: 100% !important;
+  overflow-x: auto !important;
+}
+.atmosphere, .noise {
+  position: absolute !important;
+}
+
+</style>
+<style>
+  /* ── The Shell ──────────────────────────── */
+  .shell {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── Navigation Rail ────────────────────── */
+  .nav-rail {
+    background: var(--void-up);
+    border-right: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--space-md) 0;
+    gap: var(--space-xs);
+    position: sticky;
+    top: 0;
+    width: 72px;
+    height: 100vh;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+
+  .nav-logo {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--gold-dim);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--space-lg);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+  }
+
+  .nav-logo:hover { border-color: var(--gold); box-shadow: 0 0 20px var(--gold-glow); }
+
+  .nav-logo svg { width: 18px; height: 18px; color: var(--gold); }
+
+  .nav-item {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+    position: relative;
+    color: var(--text-ghost);
+  }
+
+  .nav-item:hover { background: var(--glass); color: var(--text-secondary); }
+  .nav-item.active { color: var(--gold); background: var(--gold-glow); }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: -12px;
+    width: 3px;
+    height: 24px;
+    background: var(--gold);
+    border-radius: 0 2px 2px 0;
+  }
+
+  .nav-item svg { width: 20px; height: 20px; }
+
+  .nav-item .badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 8px;
+    height: 8px;
+    background: var(--down);
+    border-radius: 50%;
+    border: 2px solid var(--void-up);
+  }
+
+  .nav-spacer { flex: 1; }
+
+  /* ── Main Content ───────────────────────── */
+  .main {
+    flex: 1;
+    min-width: 0;
+    padding: var(--space-lg) var(--space-xl);
+    max-width: 1400px;
+  }
+
+  /* ── Top Bar ────────────────────────────── */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-xl);
+    animation: fadeIn 0.6s var(--ease-out) forwards;
+    opacity: 0;
+  }
+
+  .greeting {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .greeting-time {
+    font-size: 0.7rem;
+    color: var(--text-ghost);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+  }
+
+  .greeting-name {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-hero);
+  }
+
+  .top-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+  }
+
+  .search-box {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: 8px 16px;
+    background: var(--void-up);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+  }
+
+  .search-box:hover { border-color: var(--gold-dim); }
+
+  .search-box span {
+    font-size: 0.8rem;
+    color: var(--text-ghost);
+  }
+
+  .search-box kbd {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border: 1px solid var(--glass-border);
+    border-radius: 3px;
+    color: var(--text-ghost);
+  }
+
+  .avatar-ring {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--gold-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--gold);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+  }
+
+  .avatar-ring:hover { border-color: var(--gold); box-shadow: 0 0 20px var(--gold-glow); }
+
+  /* ── The Gravity Hero — AUM Orb ─────────── */
+  .gravity-hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-xl);
+  }
+
+  .aum-orb {
+    background: var(--void-up);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    position: relative;
+    overflow: hidden;
+    animation: fadeInUp 0.8s var(--ease-out) 100ms forwards;
+    opacity: 0;
+  }
+
+  .aum-orb::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, var(--gold-glow) 0%, transparent 70%);
+    animation: atmosphereDrift 15s ease-in-out infinite alternate;
+  }
+
+  .aum-orb-content { position: relative; z-index: 2; }
+
+  .aum-label {
+    font-size: 0.7rem;
+    color: var(--text-ghost);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: var(--space-sm);
+  }
+
+  .aum-value {
+    font-family: var(--font-display);
+    font-size: 3.2rem;
+    font-weight: 900;
+    color: var(--text-hero);
+    line-height: 1;
+    margin-bottom: var(--space-sm);
+  }
+
+  .aum-value .rupee {
+    font-size: 0.5em;
+    color: var(--gold);
+    vertical-align: super;
+    margin-right: 2px;
+  }
+
+  .aum-value .unit {
+    font-size: 0.4em;
+    color: var(--text-secondary);
+    font-weight: 400;
+    margin-left: 4px;
+  }
+
+  .aum-change {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .aum-bar-row {
+    display: flex;
+    gap: 3px;
+    margin-top: var(--space-lg);
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .aum-bar-segment {
+    height: 100%;
+    border-radius: 3px;
+    transition: all var(--duration-slow) var(--ease-out);
+  }
+
+  .aum-bar-equity { background: var(--gold); flex: 55; }
+  .aum-bar-debt { background: var(--info); flex: 25; }
+  .aum-bar-hybrid { background: var(--up); flex: 15; }
+  .aum-bar-alt { background: var(--text-ghost); flex: 5; }
+
+  .aum-legend {
+    display: flex;
+    gap: var(--space-md);
+    margin-top: var(--space-sm);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+  }
+
+  .legend-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  /* Pulse cards — the heartbeat of the day */
+  .pulse-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    animation: fadeInUp 0.8s var(--ease-out) 250ms forwards;
+    opacity: 0;
+  }
+
+  .pulse-card {
+    background: var(--void-up);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-md) var(--space-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    cursor: pointer;
+    transition: all var(--duration-normal) var(--ease-out);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pulse-card:hover {
+    border-color: var(--gold-dim);
+    transform: translateX(4px);
+  }
+
+  .pulse-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+  }
+
+  .pulse-card.urgent::before { background: var(--down); }
+  .pulse-card.action::before { background: var(--gold); }
+  .pulse-card.info::before { background: var(--info); }
+  .pulse-card.success::before { background: var(--up); }
+
+  .pulse-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  .pulse-card.urgent .pulse-icon { background: var(--down-glow); }
+  .pulse-card.action .pulse-icon { background: var(--gold-glow); }
+  .pulse-card.info .pulse-icon { background: var(--info-glow); }
+  .pulse-card.success .pulse-icon { background: var(--up-glow); }
+
+  .pulse-body { flex: 1; min-width: 0; }
+
+  .pulse-title {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+  }
+
+  .pulse-meta {
+    font-size: 0.7rem;
+    color: var(--text-ghost);
+    font-family: var(--font-mono);
+  }
+
+  .pulse-action-btn {
+    font-size: 0.7rem;
+    padding: 4px 12px;
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all var(--duration-fast);
+  }
+
+  .pulse-action-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  /* ── Client Constellation ───────────────── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-lg);
+  }
+
+  .section-title-group {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-md);
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-hero);
+  }
+
+  .section-count {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-ghost);
+  }
+
+  .client-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+  }
+
+  .client-card {
+    background: var(--void-up);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-lg);
+    cursor: pointer;
+    transition: all var(--duration-normal) var(--ease-out);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .client-card:hover {
+    border-color: var(--gold-dim);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  }
+
+  .client-card-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+  }
+
+  .client-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem;
+    position: relative;
+  }
+
+  .client-avatar.risk-agg { background: rgba(201, 168, 76, 0.15); color: var(--gold); border: 1.5px solid var(--gold-dim); }
+  .client-avatar.risk-mod { background: var(--info-glow); color: var(--info); border: 1.5px solid rgba(94, 170, 240, 0.3); }
+  .client-avatar.risk-con { background: var(--up-glow); color: var(--up); border: 1.5px solid rgba(45, 212, 160, 0.3); }
+
+  .client-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-hero);
+  }
+
+  .client-label {
+    font-size: 0.65rem;
+    color: var(--text-ghost);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .client-aum {
+    font-family: var(--font-mono);
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: var(--text-hero);
+    margin-bottom: var(--space-xs);
+  }
+
+  .client-xirr {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+  }
+
+  /* Goal rings — tiny visual stories */
+  .goal-rings {
+    display: flex;
+    gap: var(--space-sm);
+  }
+
+  .goal-ring {
+    position: relative;
+    width: 36px;
+    height: 36px;
+  }
+
+  .goal-ring svg {
+    width: 36px;
+    height: 36px;
+    transform: rotate(-90deg);
+  }
+
+  .goal-ring circle {
+    fill: none;
+    stroke-width: 3;
+    stroke-linecap: round;
+  }
+
+  .goal-ring .track { stroke: var(--void-up-3); }
+  .goal-ring .progress { transition: stroke-dashoffset 1.5s var(--ease-out); }
+
+  .goal-ring .goal-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.5rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .client-card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--glass-border);
+    margin-top: var(--space-md);
+  }
+
+  .last-contact {
+    font-size: 0.7rem;
+    color: var(--text-ghost);
+    font-family: var(--font-mono);
+  }
+
+  .client-actions {
+    display: flex;
+    gap: var(--space-xs);
+  }
+
+  .client-action {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--glass-border);
+    background: transparent;
+    color: var(--text-ghost);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.7rem;
+    transition: all var(--duration-fast);
+  }
+
+  .client-action:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: var(--gold-glow);
+  }
+
+  /* ── VaNi Agent Dock ────────────────────── */
+  .vani-dock {
+    position: absolute;
+    bottom: var(--space-lg);
+    right: var(--space-lg);
+    z-index: 1000;
+    animation: fadeInUp 0.8s var(--ease-out) 1.5s forwards;
+    opacity: 0;
+  }
+
+  .vani-trigger {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 40px rgba(201, 168, 76, 0.3);
+    transition: all var(--duration-normal) var(--ease-out);
+    position: relative;
+  }
+
+  .vani-trigger::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 1px solid var(--gold-dim);
+    animation: goldPulse 3s ease-in-out infinite;
+  }
+
+  .vani-trigger:hover {
+    transform: scale(1.1);
+    box-shadow: 0 12px 50px rgba(201, 168, 76, 0.5);
+  }
+
+  .vani-trigger svg {
+    width: 24px;
+    height: 24px;
+    color: var(--void);
+  }
+
+  .vani-hint {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    right: 0;
+    white-space: nowrap;
+    padding: 8px 16px;
+    background: var(--void-up-2);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    pointer-events: none;
+    animation: fadeInUp 0.5s var(--ease-out) 2.5s forwards;
+    opacity: 0;
+  }
+
+  .vani-hint::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    right: 24px;
+    border: 6px solid transparent;
+    border-top-color: var(--void-up-2);
+  }
+
+  /* ── Market Ribbon ──────────────────────── */
+  .market-ribbon {
+    display: flex;
+    gap: var(--space-lg);
+    padding: var(--space-md) 0;
+    border-top: 1px solid var(--glass-border);
+    margin-top: var(--space-xl);
+    overflow-x: auto;
+    animation: fadeIn 0.8s var(--ease-out) 1s forwards;
+    opacity: 0;
+  }
+
+  .market-chip {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    white-space: nowrap;
+  }
+
+  .market-chip-name {
+    font-size: 0.7rem;
+    color: var(--text-ghost);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .market-chip-value {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-primary);
+  }
+
+  .market-chip-change {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+</style>
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div class="noise"></div>
+
+  <div class="shell">
+    <!-- Navigation Rail -->
+    <nav class="nav-rail">
+      <div class="nav-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+
+      <div class="nav-item active" title="Atlas (Dashboard)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 010 20M12 2a15 15 0 000 20M2 12h20"/></svg>
+      </div>
+      <div class="nav-item" title="Clients">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        <span class="badge"></span>
+      </div>
+      <div class="nav-item" title="Plans" onclick="window.location.href='04-planning-engine.html'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+      </div>
+      <div class="nav-item" title="Portfolios" onclick="window.location.href='03-client-universe.html'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12a9 9 0 11-6.2-8.6"/><path d="M21 3v6h-6"/></svg>
+      </div>
+      <div class="nav-item" title="Transactions">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      </div>
+
+      <div class="nav-spacer"></div>
+
+      <div class="nav-item" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.2.55.68.94 1.27 1H21a2 2 0 010 4h-.09c-.59.06-1.07.45-1.27 1z"/></svg>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main">
+      <!-- Top Bar -->
+      <div class="top-bar">
+        <div class="greeting">
+          <span class="greeting-time">wed, 25 mar 2026 · 09:47 IST</span>
+          <span class="greeting-name">Good morning, Rajesh</span>
+        </div>
+        <div class="top-actions">
+          <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <span>Search clients, funds...</span>
+            <kbd>⌘K</kbd>
+          </div>
+          <div class="avatar-ring">RK</div>
+        </div>
+      </div>
+
+      <!-- Gravity Hero: AUM + Today's Pulse -->
+      <div class="gravity-hero">
+        <!-- AUM Orb -->
+        <div class="aum-orb">
+          <div class="aum-orb-content">
+            <div class="aum-label">Your Atlas · Total AUM</div>
+            <div class="aum-value anim-fade-up">
+              <span class="rupee">₹</span>47.2<span class="unit">Crore</span>
+            </div>
+            <div class="aum-change anim-fade-up delay-2">
+              <span class="badge-up">↑ 3.2% this month</span>
+              <span class="mono-sm text-ghost">+₹1.46 Cr from Feb</span>
+            </div>
+            <div class="aum-bar-row anim-fade delay-4">
+              <div class="aum-bar-segment aum-bar-equity"></div>
+              <div class="aum-bar-segment aum-bar-debt"></div>
+              <div class="aum-bar-segment aum-bar-hybrid"></div>
+              <div class="aum-bar-segment aum-bar-alt"></div>
+            </div>
+            <div class="aum-legend anim-fade delay-5">
+              <div class="legend-item"><span class="legend-dot" style="background:var(--gold)"></span> Equity 55%</div>
+              <div class="legend-item"><span class="legend-dot" style="background:var(--info)"></span> Debt 25%</div>
+              <div class="legend-item"><span class="legend-dot" style="background:var(--up)"></span> Hybrid 15%</div>
+              <div class="legend-item"><span class="legend-dot" style="background:var(--text-ghost)"></span> Alt 5%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Today's Pulse -->
+        <div class="pulse-stack">
+          <div class="pulse-card urgent anim-slide-left delay-2">
+            <div class="pulse-icon">⚠</div>
+            <div class="pulse-body">
+              <div class="pulse-title">3 SIPs bounced yesterday</div>
+              <div class="pulse-meta">Priya Sharma · Amit Joshi · Rekha Patel</div>
+            </div>
+            <button class="pulse-action-btn">Resolve</button>
+          </div>
+          <div class="pulse-card action anim-slide-left delay-3">
+            <div class="pulse-icon">📋</div>
+            <div class="pulse-body">
+              <div class="pulse-title">5 KYC renewals due this week</div>
+              <div class="pulse-meta">Expires: 28 Mar – 01 Apr</div>
+            </div>
+            <button class="pulse-action-btn">View all</button>
+          </div>
+          <div class="pulse-card info anim-slide-left delay-4">
+            <div class="pulse-icon">📊</div>
+            <div class="pulse-body">
+              <div class="pulse-title">Quarterly reviews pending for 12 clients</div>
+              <div class="pulse-meta">Last batch sent: 15 Dec 2025</div>
+            </div>
+            <button class="pulse-action-btn">Schedule</button>
+          </div>
+          <div class="pulse-card success anim-slide-left delay-5">
+            <div class="pulse-icon">🎯</div>
+            <div class="pulse-body">
+              <div class="pulse-title">Suresh Reddy's retirement goal hit 100%</div>
+              <div class="pulse-meta">Target: ₹3 Cr · Current: ₹3.12 Cr</div>
+            </div>
+            <button class="pulse-action-btn">Celebrate</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Client Constellation -->
+      <div class="anim-fade-up delay-5">
+        <div class="section-header">
+          <div class="section-title-group">
+            <h2 class="section-title">Your Clients</h2>
+            <span class="section-count">48 families · sorted by attention needed</span>
+          </div>
+          <div class="flex gap-sm">
+            <button class="btn-ghost">⊞ Grid</button>
+            <button class="btn-ghost">☰ List</button>
+            <button class="btn-gold" onclick="window.location.href='03-client-universe.html'"><span>+ Add Client</span></button>
+          </div>
+        </div>
+
+        <div class="client-grid">
+          <!-- Client 1: Needs Attention -->
+          <div class="client-card" onclick="window.location.href='03-client-universe.html'">
+            <div class="client-card-head">
+              <div class="client-avatar risk-agg">PS</div>
+              <div>
+                <div class="client-name">Priya Sharma</div>
+                <div class="client-label">Aggressive · Family of 4</div>
+              </div>
+            </div>
+            <div class="client-aum">₹<span class="mono">1,84,50,000</span></div>
+            <div class="client-xirr">
+              <span class="badge-up">↑ XIRR 22.1%</span>
+              <span class="mono-sm text-ghost">3Y return</span>
+            </div>
+            <div class="goal-rings">
+              <div class="goal-ring">
+                <svg viewBox="0 0 36 36">
+                  <circle class="track" cx="18" cy="18" r="15.5"/>
+                  <circle class="progress" cx="18" cy="18" r="15.5" stroke="var(--gold)" stroke-dasharray="97.4" stroke-dashoffset="24"/>
+                </svg>
+                <span class="goal-label">🏠</span>
+              </div>
+              <div class="goal-ring">
+                <svg viewBox="0 0 36 36">
+                  <circle class="track" cx="18" cy="18" r="15.5"/>
+                  <circle class="progress" cx="18" cy="18" r="15.5" stroke="var(--up)" stroke-dasharray="97.4" stroke-dashoffset="10"/>
+                </svg>
+                <span class="goal-label">🎓</span>
+              </div>
+              <div class="goal-ring">
+                <svg viewBox="0 0 36 36">
+                  <circle class="track" cx="18" cy="18" r="15.5"/>
+                  <circle class="progress" cx="18" cy="18" r="15.5" stroke="var(--down)" stroke-dasharray="97.4" stroke-dashoffset="60"/>
+                </svg>
+                <span class="goal-label">🏖</span>
+              </div>
+            </div>
+            <div class="client-card-foot">
+              <span class="last-contact">Last contact: 3 days ago</span>
+              <div class="client-actions">
+                <button class="client-action" title="Call">📞</button>
+                <button class="client-action" title="Message">💬</button>
+                <button class="client-action" title="Plan">📋</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Client 2 -->
+          <div class="client-card" onclick="window.location.href='03-client-universe.html'">
+            <div class="client-card-head">
+              <div class="client-avatar risk-mod">SR</div>
+              <div>
+                <div class="client-name">Suresh Reddy</div>
+                <div class="client-label">Moderate · Retired</div>
+              </div>
+            </div>
+            <div class="client-aum">₹<span class="mono">3,12,00,000</span></div>
+            <div class="client-xirr">
+              <span class="badge-up">↑ XIRR 15.8%</span>
+              <span class="mono-sm text-ghost">5Y return</span>
+            </div>
+            <div class="goal-rings">
+              <div class="goal-ring">
+                <svg viewBox="0 0 36 36">
+                  <circle class="track" cx="18" cy="18" r="15.5"/>
+                  <circle class="progress" cx="18" cy="18" r="15.5" stroke="var(--up)" stroke-dasharray="97.4" stroke-dashoffset="0"/>
+                </svg>
+                <span class="goal-label">🏖</span>
+              </div>
+              <div class="goal-ring">
+                <svg viewBox="0 0 36 36">
+                  <circle class="track" cx="18" cy="18" r="15.5"/>
+                  <circle class="progress" cx="18" cy="18" r="15.5" stroke="var(--info)" stroke-dasharray="97.4" stroke-dashoffset="30"/>
+                </svg>
+                <span class="goal-label">🏥</span>
+              </div>
+            </div>
+            <div class="client-card-foot">
+              <span class="last-contact">Last contact: today</span>
+              <div class="client-actions">
+                <button class="client-action">📞</button>
+                <button class="client-action">💬</button>
+                <button class="client-action">📋</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Client 3 -->
+          <div class="client-card">
+            <div class="client-card-head">
+              <div class="client-avatar risk-con">AJ</div>
+              <div>
+                <div class="client-name">Amit Joshi</div>
+                <div class="client-label">Conservative · Salaried</div>
+              </div>
+            </div>
+            <div class="client-aum">₹<span class="mono">52,30,000</span></div>
+            <div class="client-xirr">
+              <span class="badge-down">↓ XIRR 8.2%</span>
+              <span class="mono-sm text-ghost">1Y return</span>
+            </div>
+            <div class="goal-rings">
+              <div class="goal-ring">
+                <svg viewBox="0 0 36 36">
+                  <circle class="track" cx="18" cy="18" r="15.5"/>
+                  <circle class="progress" cx="18" cy="18" r="15.5" stroke="var(--gold)" stroke-dasharray="97.4" stroke-dashoffset="50"/>
+                </svg>
+                <span class="goal-label">🎓</span>
+              </div>
+              <div class="goal-ring">
+                <svg viewBox="0 0 36 36">
+                  <circle class="track" cx="18" cy="18" r="15.5"/>
+                  <circle class="progress" cx="18" cy="18" r="15.5" stroke="var(--down)" stroke-dasharray="97.4" stroke-dashoffset="70"/>
+                </svg>
+                <span class="goal-label">🚗</span>
+              </div>
+              <div class="goal-ring">
+                <svg viewBox="0 0 36 36">
+                  <circle class="track" cx="18" cy="18" r="15.5"/>
+                  <circle class="progress" cx="18" cy="18" r="15.5" stroke="var(--info)" stroke-dasharray="97.4" stroke-dashoffset="45"/>
+                </svg>
+                <span class="goal-label">🏠</span>
+              </div>
+            </div>
+            <div class="client-card-foot">
+              <span class="last-contact" style="color:var(--down)">Last contact: 32 days ago ⚠</span>
+              <div class="client-actions">
+                <button class="client-action">📞</button>
+                <button class="client-action">💬</button>
+                <button class="client-action">📋</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Market Ribbon -->
+      <div class="market-ribbon">
+        <div class="market-chip">
+          <span class="market-chip-name">NIFTY 50</span>
+          <span class="market-chip-value">24,680</span>
+          <span class="market-chip-change text-up">+1.24%</span>
+        </div>
+        <div class="market-chip">
+          <span class="market-chip-name">SENSEX</span>
+          <span class="market-chip-value">81,240</span>
+          <span class="market-chip-change text-up">+0.98%</span>
+        </div>
+        <div class="market-chip">
+          <span class="market-chip-name">BANK NIFTY</span>
+          <span class="market-chip-value">52,150</span>
+          <span class="market-chip-change text-down">-0.42%</span>
+        </div>
+        <div class="market-chip">
+          <span class="market-chip-name">GOLD</span>
+          <span class="market-chip-value">₹87,420</span>
+          <span class="market-chip-change text-up">+0.31%</span>
+        </div>
+        <div class="market-chip">
+          <span class="market-chip-name">USD/INR</span>
+          <span class="market-chip-value">84.72</span>
+          <span class="market-chip-change text-down">-0.08%</span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- VaNi Agent Dock -->
+  <div class="vani-dock">
+    <div class="vani-hint">Ask VaNi anything · <kbd style="font-family:var(--font-mono);font-size:0.6rem;">⌘J</kbd></div>
+    <button class="vani-trigger" onclick="window.location.href='05-vani-agent.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2a3 3 0 00-3 3v4a3 3 0 006 0V5a3 3 0 00-3-3z"/>
+        <path d="M19 10v1a7 7 0 01-14 0v-1M12 18v4M8 22h8"/>
+      </svg>
+    </button>
+  </div>
+
+</body>
+</html>
