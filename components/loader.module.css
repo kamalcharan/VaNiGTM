@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════
    KI-PRIME LOADER — Product-level loading indicators
-   Theme-aware via CSS variables from VaNi Design Framework
+   Theme-compliant: ALL colors via --color-* CSS variables
    ═══════════════════════════════════════════════════════ */
 
 /* ── Spinner ─────────────────────────────────────────── */
@@ -12,8 +12,8 @@
 
 .ring {
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-top-color: var(--color-text-info, #5eaaf0);
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-info);
   animation: spin 0.8s linear infinite;
 }
 
@@ -47,7 +47,7 @@
 }
 
 .overlay {
-  background: rgba(0, 0, 0, 0.5);
+  background: color-mix(in srgb, var(--color-bg) 70%, transparent);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
@@ -60,9 +60,8 @@
 }
 
 .message {
-  font-family: var(--font-body, 'DM Sans', -apple-system, sans-serif);
   font-size: 0.875rem;
-  color: var(--color-text-secondary, #8a8578);
+  color: var(--color-muted);
   margin: 0;
   letter-spacing: 0.02em;
 }
@@ -75,9 +74,8 @@
 }
 
 .inlineMessage {
-  font-family: var(--font-body, 'DM Sans', -apple-system, sans-serif);
   font-size: 0.8rem;
-  color: var(--color-text-secondary, #8a8578);
+  color: var(--color-muted);
 }
 
 /* ── Animation ───────────────────────────────────────── */

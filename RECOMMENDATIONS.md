@@ -50,11 +50,26 @@ The toast and loader components use these CSS variables with fallback values:
 
 If the VDF theme system uses different variable names, update the CSS modules accordingly. The fallback values match the Atlas design system colors used in login-vault and landing-page.
 
+## Theme Compliance (Updated)
+
+All product components now use ONLY the VDF theme system CSS variables:
+- `--color-bg`, `--color-fg`, `--color-surface`, `--color-surface-hover`, `--color-border`, `--color-muted`
+- `--color-primary`, `--color-primary-fg`, `--color-primary-hover`
+- `--color-success`, `--color-warning`, `--color-danger`, `--color-info`
+
+Semi-transparent overlays use `color-mix(in srgb, var(--color-*) %, transparent)` instead of hardcoded rgba values. This ensures all components adapt correctly when switching themes.
+
+**Note:** `color-mix()` requires modern browsers (Chrome 111+, Firefox 113+, Safari 16.2+). For older browser support, consider a PostCSS plugin.
+
+## Registration Page — VaNiBase Changes Needed
+
+1. **ShellConfig `pages.register` type:** Currently `ShellConfig.pages` only defines `login?: ComponentType`. Add `register?: ComponentType` so products can override the registration page. The register page is wired via `pages.register` with a type assertion (`as ShellConfig['pages']`) as a stopgap.
+
+2. **VaNiBase register route:** The shell needs an `app/(auth)/register/page.tsx` that checks for `pages?.register` override (same pattern as the login page). Without this, the register page won't be reachable via Next.js routing.
+
+3. **Login-vault.tsx hardcoded colors:** The existing login-vault.tsx and login-vault.module.css use hardcoded Atlas palette colors (--void, --gold, etc.) rather than theme variables. This is intentional for the standalone Atlas design but means it won't adapt to theme switching. Consider migrating to `--color-*` variables if theme compliance is required for auth pages.
+
 ## Form Components — Notes
-
-### CSS Variable Alignment
-
-The form components (FormInput, CountryDropdown, PasswordStrength) use the Atlas design system variables from the HTML prototypes (`--bg-primary`, `--brand-primary`, `--signal-danger`, etc.). If the VDF theme system provides these under different names, the CSS module fallbacks will keep them functional but the variable references should be updated to match the active theme.
 
 ### CountryDropdown — Country List
 

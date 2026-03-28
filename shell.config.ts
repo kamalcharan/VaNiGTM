@@ -7,6 +7,7 @@
 import type { ShellConfig } from './vani-base/shell/src/lib/shell-config-types';
 import LoginVault from './components/login-vault';
 import LandingPage from './components/landing-page';
+import RegisterPage from './components/register-page';
 import { ToastProvider } from './components/toast';
 
 const shellConfig: ShellConfig = {
@@ -97,7 +98,8 @@ const shellConfig: ShellConfig = {
   pages: {
     login: LoginVault,
     landing: LandingPage,
-  },
+    register: RegisterPage,
+  } as ShellConfig['pages'],
 };
 
 export default shellConfig;
