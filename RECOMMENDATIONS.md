@@ -61,13 +61,26 @@ Semi-transparent overlays use `color-mix(in srgb, var(--color-*) %, transparent)
 
 **Note:** `color-mix()` requires modern browsers (Chrome 111+, Firefox 113+, Safari 16.2+). For older browser support, consider a PostCSS plugin.
 
-## Registration Page — VaNiBase Changes Needed
+## Auth Pages — VaNiBase Changes Needed
 
-1. **ShellConfig `pages.register` type:** Currently `ShellConfig.pages` only defines `login?: ComponentType`. Add `register?: ComponentType` so products can override the registration page. The register page is wired via `pages.register` with a type assertion (`as ShellConfig['pages']`) as a stopgap.
+1. **ShellConfig `pages` type expansion:** Currently `ShellConfig.pages` only defines `login?: ComponentType`. The following page overrides need to be added to the type:
+   - `register?: ComponentType`
+   - `forgotPassword?: ComponentType`
+   - `resetPassword?: ComponentType`
+   - `landing?: ComponentType` (already used but not typed)
 
-2. **VaNiBase register route:** The shell needs an `app/(auth)/register/page.tsx` that checks for `pages?.register` override (same pattern as the login page). Without this, the register page won't be reachable via Next.js routing.
+   All are wired in shell.config.ts via a type assertion (`as ShellConfig['pages']`) as a stopgap.
+
+2. **VaNiBase auth routes:** The shell needs corresponding `app/(auth)/` pages for each override:
+   - `app/(auth)/register/page.tsx` — checks `pages?.register`
+   - `app/(auth)/forgot-password/page.tsx` — checks `pages?.forgotPassword`
+   - `app/(auth)/reset-password/page.tsx` — checks `pages?.resetPassword`
+
+   Each should follow the same pattern as `app/(auth)/login/page.tsx` (render override if present, else default).
 
 3. **Login-vault.tsx hardcoded colors:** The existing login-vault.tsx and login-vault.module.css use hardcoded Atlas palette colors (--void, --gold, etc.) rather than theme variables. This is intentional for the standalone Atlas design but means it won't adapt to theme switching. Consider migrating to `--color-*` variables if theme compliance is required for auth pages.
+
+4. **Shared auth page patterns:** The forgot-password and reset-password pages share a centered card layout (brand mark + glass card). If more auth pages follow this pattern, consider extracting a shared `AuthCardLayout` component to reduce duplication. Currently each page defines its own layout for simplicity.
 
 ## Form Components — Notes
 
