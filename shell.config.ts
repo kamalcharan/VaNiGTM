@@ -46,7 +46,6 @@ const shellConfig: ShellConfig = {
     { skill: 'planning-skill', function: 'get_goals', params: { client_id: 1 } },
   ],
 },
-    },
   {
   recipe: 'goal-dashboard',
   label: 'Financial Goals',
