@@ -2,9 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-// TODO: Import path will change when VaNiBase login override mechanism is implemented
-// This component will be rendered inside vani-base/shell via ShellConfig.pages.login
-import { useAuth, type SessionLimitResponse, type ActiveSession } from '../vani-base/shell/src/context/auth-provider';
+import { useAuth, type SessionLimitResponse, type ActiveSession } from '@/context/auth-provider';
 import s from './login-vault.module.css';
 
 /**
