@@ -7,6 +7,7 @@
 import type { ShellConfig } from './vani-base/shell/src/lib/shell-config-types';
 import LoginVault from './components/login-vault';
 import LandingPage from './components/landing-page';
+import { ToastProvider } from './components/toast';
 
 const shellConfig: ShellConfig = {
   product: {
@@ -92,6 +93,7 @@ const shellConfig: ShellConfig = {
       skills: [],
     },
   ],
+  providers: [ToastProvider],
   pages: {
     login: LoginVault,
     landing: LandingPage,
