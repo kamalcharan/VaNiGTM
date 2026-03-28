@@ -25,6 +25,7 @@ export default function LoginVault() {
   const [sessionLimit, setSessionLimit] = useState<SessionLimitResponse | null>(null);
   const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set());
   const [revokingLoading, setRevokingLoading] = useState(false);
+  const [role, setRole] = useState<'planner' | 'admin' | 'investor'>('planner');
 
   // Redirect if already authenticated
   if (isAuthenticated) {
@@ -163,7 +164,38 @@ export default function LoginVault() {
           <div className={s.formHeader}>
             <div className={s.goldLine} />
             <h2 className={s.formTitle}>Welcome back</h2>
-            <p className={s.formSubtitle}>Sign in to your planning console</p>
+            <p className={s.formSubtitle}>Select your role to continue</p>
+          </div>
+
+          {/* Role selector */}
+          <div className={s.roleSelector}>
+            <button
+              type="button"
+              className={`${s.roleOption} ${role === 'planner' ? s.roleOptionActive : ''}`}
+              onClick={() => setRole('planner')}
+            >
+              <span className={s.roleIcon}>&#x2B21;</span>
+              <span className={s.roleName}>Planner</span>
+              <span className={s.roleDesc}>MFD / RIA / IFA</span>
+            </button>
+            <button
+              type="button"
+              className={`${s.roleOption} ${role === 'admin' ? s.roleOptionActive : ''}`}
+              onClick={() => setRole('admin')}
+            >
+              <span className={s.roleIcon}>&#x25C8;</span>
+              <span className={s.roleName}>Firm Admin</span>
+              <span className={s.roleDesc}>Distributor / RIA Firm</span>
+            </button>
+            <button
+              type="button"
+              className={`${s.roleOption} ${role === 'investor' ? s.roleOptionActive : ''}`}
+              onClick={() => setRole('investor')}
+            >
+              <span className={s.roleIcon}>&#x25CB;</span>
+              <span className={s.roleName}>Investor</span>
+              <span className={s.roleDesc}>Client Portal</span>
+            </button>
           </div>
 
           {/* Error alert */}

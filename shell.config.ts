@@ -6,6 +6,7 @@
  */
 import type { ShellConfig } from './vani-base/shell/src/lib/shell-config-types';
 import LoginVault from './components/login-vault';
+import LandingPage from './components/landing-page';
 
 const shellConfig: ShellConfig = {
   product: {
@@ -93,6 +94,7 @@ const shellConfig: ShellConfig = {
   ],
   pages: {
     login: LoginVault,
+    landing: LandingPage,
   },
 };
 
