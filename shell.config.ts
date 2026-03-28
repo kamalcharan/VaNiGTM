@@ -5,6 +5,8 @@
  * Must conform to ShellConfig from vani-base/shell/src/lib/shell-config.ts
  */
 import type { ShellConfig } from './vani-base/shell/src/lib/shell-config-types';
+import LoginVault from './components/login-vault';
+
 const shellConfig: ShellConfig = {
   product: {
     name: 'KI-Prime',
@@ -89,6 +91,9 @@ const shellConfig: ShellConfig = {
       skills: [],
     },
   ],
+  pages: {
+    login: LoginVault,
+  },
 };
 
 export default shellConfig;
