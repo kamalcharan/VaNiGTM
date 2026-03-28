@@ -49,3 +49,43 @@ The toast and loader components use these CSS variables with fallback values:
 | `--font-body` | `'DM Sans', sans-serif` | Both |
 
 If the VDF theme system uses different variable names, update the CSS modules accordingly. The fallback values match the Atlas design system colors used in login-vault and landing-page.
+
+## Form Components — Notes
+
+### CSS Variable Alignment
+
+The form components (FormInput, CountryDropdown, PasswordStrength) use the Atlas design system variables from the HTML prototypes (`--bg-primary`, `--brand-primary`, `--signal-danger`, etc.). If the VDF theme system provides these under different names, the CSS module fallbacks will keep them functional but the variable references should be updated to match the active theme.
+
+### CountryDropdown — Country List
+
+The dropdown ships with 25 countries. To add more:
+1. Add entries to the `COUNTRIES` array in `country-dropdown.tsx`
+2. Use ISO 3166-1 alpha-2 codes (lowercase) — flagcdn.com hosts flags for all codes
+3. The component handles broken flag images gracefully (shows country code text fallback)
+
+### CountryDropdown — Standalone Usage
+
+The CountryDropdown is designed to sit beside a phone input in a flex row, matching the `atlas-register.html` `.phone-row` pattern:
+```tsx
+<div style={{ display: 'flex', gap: '8px' }}>
+  <CountryDropdown value={country} onChange={setCountry} />
+  <FormInput label="Phone" type="tel" placeholder="+91 98765 43210" ... />
+</div>
+```
+
+### FormInput — Password Toggle Pattern
+
+For password fields with show/hide toggle, use the `rightElement` prop:
+```tsx
+const [show, setShow] = useState(false);
+<FormInput
+  label="Password"
+  type={show ? 'text' : 'password'}
+  rightElement={
+    <button type="button" onClick={() => setShow(!show)} style={{ background: 'none', border: 'none', color: 'var(--text-ghost)', cursor: 'pointer' }}>
+      {show ? '🙈' : '👁'}
+    </button>
+  }
+  ...
+/>
+```

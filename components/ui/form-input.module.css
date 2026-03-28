@@ -1,0 +1,106 @@
+/* ═══════════════════════════════════════════════════════
+   KI-PRIME FORM INPUT — Reusable text input wrapper
+   Matches atlas-register.html / atlas-settings.html
+   ═══════════════════════════════════════════════════════ */
+
+.group {
+  margin-bottom: var(--space-lg, 24px);
+}
+
+/* ── Label ───────────────────────────────────────────── */
+.label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary, #8a8578);
+  margin-bottom: 6px;
+  font-family: var(--font-body, 'DM Sans', -apple-system, sans-serif);
+}
+
+/* ── Input Wrapper ───────────────────────────────────── */
+.inputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Input ───────────────────────────────────────────── */
+.input {
+  width: 100%;
+  padding: 13px 16px;
+  background: var(--bg-primary, #08080c);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.06));
+  border-radius: var(--radius-sm, 6px);
+  color: var(--text-hero, #f0ece4);
+  font-family: var(--font-body, 'DM Sans', -apple-system, sans-serif);
+  font-size: 0.9rem;
+  transition: all var(--duration-fast, 200ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--text-ghost, #4a473f);
+}
+
+.input:focus {
+  border-color: var(--brand-primary, #c9a84c);
+  box-shadow: 0 0 0 3px var(--brand-glow, rgba(201, 168, 76, 0.15)),
+              0 0 20px var(--brand-glow, rgba(201, 168, 76, 0.15));
+}
+
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── With icon / right element ───────────────────────── */
+.withIcon {
+  padding-left: 42px;
+}
+
+.withRight {
+  padding-right: 48px;
+}
+
+/* ── Icon (left) ─────────────────────────────────────── */
+.icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-ghost, #4a473f);
+  font-size: 0.9rem;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Right Element ───────────────────────────────────── */
+.right {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+}
+
+/* ── Error State ─────────────────────────────────────── */
+.hasError .input {
+  border-color: var(--signal-danger, #f05e5e);
+  box-shadow: 0 0 0 3px rgba(240, 94, 94, 0.1);
+}
+
+.hasError .input:focus {
+  border-color: var(--signal-danger, #f05e5e);
+  box-shadow: 0 0 0 3px rgba(240, 94, 94, 0.15);
+}
+
+.error {
+  font-size: 0.65rem;
+  color: var(--signal-danger, #f05e5e);
+  margin-top: 4px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
