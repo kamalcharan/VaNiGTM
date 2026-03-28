@@ -10,6 +10,7 @@ import LandingPage from './components/landing-page';
 import RegisterPage from './components/register-page';
 import ForgotPasswordPage from './components/forgot-password-page';
 import ResetPasswordPage from './components/reset-password-page';
+import InviteAcceptPage from './components/invite-accept-page';
 import { ToastProvider } from './components/toast';
 
 const shellConfig: ShellConfig = {
@@ -103,6 +104,7 @@ const shellConfig: ShellConfig = {
     register: RegisterPage,
     forgotPassword: ForgotPasswordPage,
     resetPassword: ResetPasswordPage,
+    inviteAccept: InviteAcceptPage,
   } as ShellConfig['pages'],
 };
 

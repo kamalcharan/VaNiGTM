@@ -67,6 +67,7 @@ Semi-transparent overlays use `color-mix(in srgb, var(--color-*) %, transparent)
    - `register?: ComponentType`
    - `forgotPassword?: ComponentType`
    - `resetPassword?: ComponentType`
+   - `inviteAccept?: ComponentType`
    - `landing?: ComponentType` (already used but not typed)
 
    All are wired in shell.config.ts via a type assertion (`as ShellConfig['pages']`) as a stopgap.
@@ -75,12 +76,17 @@ Semi-transparent overlays use `color-mix(in srgb, var(--color-*) %, transparent)
    - `app/(auth)/register/page.tsx` — checks `pages?.register`
    - `app/(auth)/forgot-password/page.tsx` — checks `pages?.forgotPassword`
    - `app/(auth)/reset-password/page.tsx` — checks `pages?.resetPassword`
+   - `app/(auth)/invite/page.tsx` — checks `pages?.inviteAccept`
 
    Each should follow the same pattern as `app/(auth)/login/page.tsx` (render override if present, else default).
 
 3. **Login-vault.tsx hardcoded colors:** The existing login-vault.tsx and login-vault.module.css use hardcoded Atlas palette colors (--void, --gold, etc.) rather than theme variables. This is intentional for the standalone Atlas design but means it won't adapt to theme switching. Consider migrating to `--color-*` variables if theme compliance is required for auth pages.
 
-4. **Shared auth page patterns:** The forgot-password and reset-password pages share a centered card layout (brand mark + glass card). If more auth pages follow this pattern, consider extracting a shared `AuthCardLayout` component to reduce duplication. Currently each page defines its own layout for simplicity.
+4. **Shared auth page patterns:** The forgot-password, reset-password, and invite-accept pages share a centered card layout (brand mark + glass card). Consider extracting a shared `AuthCardLayout` component to reduce CSS duplication. Currently each page defines its own layout for simplicity.
+
+5. **Invite token validation endpoint:** The invite-accept page attempts `GET /api/v1/auth/invite/validate?token=xxx` on mount to pre-fill the email and display invitation context (tenant name, role, inviter). If this endpoint doesn't exist yet, the page gracefully falls back to showing the form without context. The actual validation happens server-side on `POST /api/v1/auth/invite/accept`.
+
+6. **Flow B removed:** The invite-accept page only supports new user registration (Flow A). Every invite acceptance creates a new user account. If Flow B (existing user joining a workspace) is needed in the future, it would require a separate component or a view toggle within this page.
 
 ## Form Components — Notes
 
