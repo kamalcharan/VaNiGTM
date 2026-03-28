@@ -48,15 +48,17 @@
 
 /* ── Layout ───────────────────────────────────── */
 .vault {
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
   display: flex;
-  position: relative;
   font-family: var(--font-body);
   background: var(--void);
   color: var(--text-primary);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-y: auto;
 }
 
 /* ── Atmospheric Background ───────────────────── */
