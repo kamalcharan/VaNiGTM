@@ -335,6 +335,63 @@
   font-size: 0.9rem;
 }
 
+/* ── Role Selector ────────────────────────────── */
+.roleSelector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 32px;
+  animation: fadeInUp 0.8s var(--ease-out) 700ms forwards;
+  opacity: 0;
+}
+
+.roleOption {
+  flex: 1;
+  padding: 16px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-out);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.roleOption:hover {
+  border-color: var(--gold-dim);
+  background: var(--glass);
+}
+
+.roleOptionActive {
+  border-color: var(--gold);
+  background: var(--gold-glow);
+  box-shadow: 0 0 30px var(--gold-glow);
+}
+
+.roleIcon {
+  font-size: 1.4rem;
+  display: block;
+}
+
+.roleName {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  display: block;
+}
+
+.roleOptionActive .roleName {
+  color: var(--gold);
+}
+
+.roleDesc {
+  font-size: 0.65rem;
+  color: var(--text-ghost);
+  display: block;
+}
+
 /* ── Form Fields ──────────────────────────────── */
 .formGroup {
   margin-bottom: 24px;
