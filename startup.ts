@@ -41,7 +41,7 @@ async function main(): Promise<void> {
     const { registerHandler } = await import('./vani-base/framework/skill-executor/index');
     const { boot } = await import('./vani-base/framework/boot');
     const { loadConfig } = await import('./vani-base/framework/config');
-    const { initPool } = await import('./vani-base/framework/db/index');
+    const { initPools } = await import('./vani-base/framework/db/index');
     const { healthRouter } = await import('./vani-base/framework/routes/health');
     const { createChatRouter } = await import('./vani-base/framework/routes/chat');
     const { createRecipesRouter } = await import('./vani-base/framework/routes/recipes');
@@ -63,10 +63,7 @@ async function main(): Promise<void> {
     const port = Number(process.env.PORT) || fwConfig.port || 3001;
 
     // --- Infrastructure ---
-    const hasDb = !!(fwConfig.dbParams || fwConfig.databaseUrl);
-    if (hasDb) {
-      initPool(fwConfig.databaseUrl, fwConfig.dbParams);
-    }
+    await initPools();
 
     if (fwConfig.redisUrl && fwConfig.redisUrl.startsWith('redis://')) {
       try {
