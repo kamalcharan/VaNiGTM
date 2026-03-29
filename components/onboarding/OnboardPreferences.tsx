@@ -26,7 +26,7 @@ export default function OnboardPreferences({ onComplete, onSkip }: Props) {
   async function handleSubmit() {
     setLoading(true);
     try {
-      const res = await fetch(`${apiUrl}/api/v1/tenant/preferences`, {
+      const res = await fetch(`${apiUrl}/api/v1/auth/preferences`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
