@@ -6,7 +6,6 @@ import { useAuth } from '@/context/auth-provider';
 import { useTheme } from '@/components/theme-provider';
 import { useToast } from '../toast';
 import { getTheme } from '@/themes/registry';
-import l from './step-layout.module.css';
 import s from './OnboardTheme.module.css';
 
 interface Props {
@@ -21,7 +20,7 @@ export default function OnboardTheme({ onComplete, onSkip }: Props) {
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
 
-  async function selectTheme(id: string) {
+  async function handleSelectTheme(id: string) {
     setTheme(id);
 
     try {
@@ -39,20 +38,22 @@ export default function OnboardTheme({ onComplete, onSkip }: Props) {
   }
 
   return (
-    <div className={l.full}>
-      <div className={l.fullContent}>
+    <div className={s.fullLayout}>
+      <div className={s.fullContent}>
+        {/* Header */}
         <div className={s.header}>
-          <div className={l.chapter}>Step 3 of 6</div>
-          <h2 className={`${l.narrTitle} ${s.centerTitle}`}>
-            Choose your <span className={l.glow}>visual identity</span>.
+          <div className={s.chapter}>Step 3 of 6</div>
+          <h2 className={s.title}>
+            Choose your <span className={s.glow}>visual identity</span>.
           </h2>
-          <p className={s.headerDesc}>
+          <p className={s.desc}>
             This theme applies to your entire workspace — dashboard, client portal,
             and reports. You can change it anytime in settings.
           </p>
-          <div className={l.optionalBadge}>&#x25CB; Optional — defaults to Vikuna Black</div>
+          <div className={s.optionalBadge}>&#x25CB; Optional — defaults to Vikuna Black</div>
         </div>
 
+        {/* Theme Grid */}
         <div className={s.grid}>
           {themes.map(({ id, name }) => {
             const cfg = getTheme(id);
@@ -64,8 +65,8 @@ export default function OnboardTheme({ onComplete, onSkip }: Props) {
             return (
               <div
                 key={id}
-                className={`${s.card} ${isSelected ? s.cardSelected : ''}`}
-                onClick={() => selectTheme(id)}
+                className={`${s.card} ${isSelected ? s.cardSelected : ''} ${isDefault ? s.cardDefault : ''}`}
+                onClick={() => handleSelectTheme(id)}
               >
                 {isDefault && <span className={s.defaultTag}>DEFAULT</span>}
                 {isSelected && <span className={s.checkMark}>&#x2713;</span>}
@@ -94,13 +95,14 @@ export default function OnboardTheme({ onComplete, onSkip }: Props) {
           })}
         </div>
 
-        <div className={l.nav}>
+        {/* Navigation */}
+        <div className={s.wizardNav}>
           <div />
-          <div className={l.navRight}>
-            <button className={l.navSkip} onClick={onSkip} disabled={saving}>
+          <div className={s.navRight}>
+            <button className={s.navSkip} onClick={onSkip} disabled={saving}>
               Skip — use default
             </button>
-            <button className={l.navNext} onClick={onComplete} disabled={saving}>
+            <button className={s.navNext} onClick={onComplete} disabled={saving}>
               APPLY &amp; CONTINUE &rarr;
             </button>
           </div>
