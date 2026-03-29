@@ -100,7 +100,9 @@ export default function RegisterPage() {
         return;
       }
 
-      // Store tokens if returned
+      // Store tokens from register response — registration already created
+      // a session, so we don't call login() again (would hit session limit).
+      // Use full-page navigation so AuthProvider rehydrates from sessionStorage.
       if (data.tokens) {
         sessionStorage.setItem('vani-access-token', data.tokens.access_token);
         sessionStorage.setItem('vani-refresh-token', data.tokens.refresh_token);
@@ -111,7 +113,7 @@ export default function RegisterPage() {
       }
 
       showToast({ message: 'Account created successfully!', type: 'success' });
-      router.replace('/onboarding');
+      window.location.href = '/onboarding';
     } catch {
       showToast({ message: 'Network error — please try again', type: 'error' });
       setLoading(false);
