@@ -33,12 +33,46 @@ const shellConfig: ShellConfig = {
       'X-Dev-User-Id': 'a0000000-0000-0000-0000-000000000002',
     },
 },
+  sidebar: {
+    groups: [
+      {
+        label: 'Views',
+        items: [
+          { id: 'clients', label: 'Clients', route: '/clients', icon: 'Users' },
+          { id: 'portfolio', label: 'Portfolio Overview', route: '/portfolio', icon: 'BarChart3' },
+          { id: 'client360', label: 'Client 360', route: '/client-360', icon: 'Globe' },
+          { id: 'goals', label: 'Financial Goals', route: '/goals', icon: 'Target' },
+          { id: 'schemes', label: 'Scheme Explorer', route: '/schemes', icon: 'Search' },
+        ],
+      },
+      {
+        label: 'Tools',
+        items: [
+          { id: 'vani', label: 'VaNi Command Center', route: '/vani', icon: 'Terminal' },
+          { id: 'analysis', label: 'Goal Analysis', route: '/analysis', icon: 'PieChart' },
+          { id: 'playground', label: 'Planning Playground', route: '/playground', icon: 'Lightbulb' },
+          { id: 'planvreality', label: 'Plan vs Reality', route: '/plan-vs-reality', icon: 'GitCompare' },
+        ],
+      },
+      {
+        label: 'System',
+        items: [
+          { id: 'settings', label: 'Settings', route: '/settings', icon: 'Settings' },
+        ],
+      },
+    ],
+    defaultCollapsed: false,
+  },
+  navbar: {
+    showEnvironmentToggle: true,
+    showNotifications: true,
+  },
   recipes: [
     // ── Wired (Priority 1–5) ──
     {
       recipe: 'client-list',
       label: 'Clients',
-      route: '/client-list',
+      route: '/clients',
       skills: [
         { skill: 'client-skill', function: 'get_clients' },
       ],
@@ -46,7 +80,7 @@ const shellConfig: ShellConfig = {
     {
       recipe: 'portfolio-view',
       label: 'Portfolio Overview',
-      route: '/portfolio-view',
+      route: '/portfolio',
       skills: [
         { skill: 'portfolio-skill', function: 'get_holdings', params: { client_id: 1 } },
         { skill: 'portfolio-skill', function: 'get_allocation', params: { client_id: 1 } },
@@ -65,7 +99,7 @@ const shellConfig: ShellConfig = {
   {
   recipe: 'goal-dashboard',
   label: 'Financial Goals',
-  route: '/goal-dashboard',
+  route: '/goals',
   skills: [
     { skill: 'planning-skill', function: 'get_goals', params: { client_id: 1 } },
     { skill: 'portfolio-skill', function: 'get_allocation', params: { client_id: 1 } },
@@ -74,7 +108,7 @@ const shellConfig: ShellConfig = {
     {
       recipe: 'scheme-explorer',
       label: 'Scheme Explorer',
-      route: '/scheme-explorer',
+      route: '/schemes',
       skills: [
         { skill: 'market-skill', function: 'search_schemes' },
       ],
@@ -83,19 +117,19 @@ const shellConfig: ShellConfig = {
     {
       recipe: 'daily-briefing',
       label: 'VaNi Command Center',
-      route: '/daily-briefing',
+      route: '/vani',
       skills: [],
     },
     {
       recipe: 'goal-deep-dive',
       label: 'Goal Analysis',
-      route: '/goal-deep-dive',
+      route: '/analysis',
       skills: [],
     },
     {
       recipe: 'planning-playground',
       label: 'Planning Playground',
-      route: '/planning-playground',
+      route: '/playground',
       skills: [],
     },
     {
