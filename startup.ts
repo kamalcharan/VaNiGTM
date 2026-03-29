@@ -111,7 +111,7 @@ async function main(): Promise<void> {
 
     app.use(cors({
       origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-      methods: ['GET', 'POST', 'PUT', 'DELETE'],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Dev-Tenant-Id', 'X-Dev-User-Id'],
     }));
     app.use(express.json());
