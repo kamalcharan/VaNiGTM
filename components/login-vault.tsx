@@ -277,33 +277,35 @@ export default function LoginVault() {
               Select sessions to end, then try again.
             </p>
 
-            {sessionLimit.active_sessions.map((session: ActiveSession) => (
-              <div
-                key={session.session_id}
-                className={`${s.sessionCard} ${
-                  selectedSessions.has(session.session_id) ? s.sessionCardSelected : ''
-                }`}
-                onClick={() => toggleSession(session.session_id)}
-              >
-                <input
-                  type="checkbox"
-                  className={s.sessionCheckbox}
-                  checked={selectedSessions.has(session.session_id)}
-                  onChange={() => toggleSession(session.session_id)}
-                />
-                <div className={s.sessionInfo}>
-                  <div className={s.sessionDevice}>
-                    {session.browser || 'Unknown'} on {session.os || 'Unknown'}
-                  </div>
-                  <div className={s.sessionMeta}>
-                    {session.device_type || 'unknown'} &middot; {session.ip_address || 'unknown IP'}
-                  </div>
-                  <div className={s.sessionMeta}>
-                    Last active: {new Date(session.last_activity_at).toLocaleString()}
+            <div className={s.sessionList}>
+              {sessionLimit.active_sessions.map((session: ActiveSession) => (
+                <div
+                  key={session.session_id}
+                  className={`${s.sessionCard} ${
+                    selectedSessions.has(session.session_id) ? s.sessionCardSelected : ''
+                  }`}
+                  onClick={() => toggleSession(session.session_id)}
+                >
+                  <input
+                    type="checkbox"
+                    className={s.sessionCheckbox}
+                    checked={selectedSessions.has(session.session_id)}
+                    onChange={() => toggleSession(session.session_id)}
+                  />
+                  <div className={s.sessionInfo}>
+                    <div className={s.sessionDevice}>
+                      {session.browser || 'Unknown'} on {session.os || 'Unknown'}
+                    </div>
+                    <div className={s.sessionMeta}>
+                      {session.device_type || 'unknown'} &middot; {session.ip_address || 'unknown IP'}
+                    </div>
+                    <div className={s.sessionMeta}>
+                      Last active: {new Date(session.last_activity_at).toLocaleString()}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
 
             {error && (
               <div className={s.errorAlert}>

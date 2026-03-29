@@ -576,13 +576,14 @@
 
 .modalCard {
   background: var(--void-up);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--gold-dim);
   border-radius: var(--radius-md);
   padding: 32px;
   max-width: 520px;
   width: 90%;
   max-height: 80vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   animation: fadeInUp 0.4s var(--ease-out) forwards;
 }
 
@@ -605,7 +606,7 @@
   align-items: flex-start;
   gap: 12px;
   padding: 12px;
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-sm);
   margin-bottom: 8px;
   cursor: pointer;
@@ -624,6 +625,12 @@
 .sessionCheckbox {
   margin-top: 2px;
   accent-color: var(--gold);
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .sessionInfo {
@@ -639,8 +646,14 @@
 
 .sessionMeta {
   font-size: 0.75rem;
-  color: var(--text-ghost);
+  color: var(--text-secondary);
   margin-top: 2px;
+}
+
+.sessionList {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .modalActions {
@@ -652,10 +665,10 @@
 
 .btnCancel {
   padding: 10px 20px;
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-family: var(--font-body);
   font-size: 0.85rem;
   cursor: pointer;
@@ -669,20 +682,20 @@
 
 .btnRevoke {
   padding: 10px 20px;
-  border: 1px solid rgba(240, 94, 94, 0.4);
+  border: 1px solid var(--gold-dim);
   border-radius: var(--radius-sm);
-  background: var(--down-glow);
-  color: var(--down);
+  background: var(--gold-glow);
+  color: var(--gold);
   font-family: var(--font-body);
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
 }
 
 .btnRevoke:hover:not(:disabled) {
-  background: rgba(240, 94, 94, 0.2);
-  box-shadow: 0 0 20px rgba(240, 94, 94, 0.15);
+  background: var(--gold-glow-strong);
+  box-shadow: 0 0 20px var(--gold-glow);
 }
 
 .btnRevoke:disabled {
