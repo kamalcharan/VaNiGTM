@@ -11,6 +11,7 @@ import RegisterPage from './components/register-page';
 import ForgotPasswordPage from './components/forgot-password-page';
 import ResetPasswordPage from './components/reset-password-page';
 import InviteAcceptPage from './components/invite-accept-page';
+import SettingsPage from './components/settings-page';
 import { ToastProvider } from './components/toast';
 import OnboardUserProfile from './components/onboarding/OnboardUserProfile';
 import OnboardBusiness from './components/onboarding/OnboardBusiness';
@@ -121,6 +122,7 @@ const shellConfig: ShellConfig = {
     forgotPassword: ForgotPasswordPage,
     resetPassword: ResetPasswordPage,
     inviteAccept: InviteAcceptPage,
+    settings: SettingsPage,
   } as ShellConfig['pages'],
 };
 

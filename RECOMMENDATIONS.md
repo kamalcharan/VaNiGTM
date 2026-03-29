@@ -68,6 +68,7 @@ Semi-transparent overlays use `color-mix(in srgb, var(--color-*) %, transparent)
    - `forgotPassword?: ComponentType`
    - `resetPassword?: ComponentType`
    - `inviteAccept?: ComponentType`
+   - `settings?: ComponentType`
    - `landing?: ComponentType` (already used but not typed)
 
    All are wired in shell.config.ts via a type assertion (`as ShellConfig['pages']`) as a stopgap.
@@ -77,6 +78,7 @@ Semi-transparent overlays use `color-mix(in srgb, var(--color-*) %, transparent)
    - `app/(auth)/forgot-password/page.tsx` — checks `pages?.forgotPassword`
    - `app/(auth)/reset-password/page.tsx` — checks `pages?.resetPassword`
    - `app/(auth)/invite/page.tsx` — checks `pages?.inviteAccept`
+   - `app/(dashboard)/settings/page.tsx` — checks `pages?.settings` (protected route)
 
    Each should follow the same pattern as `app/(auth)/login/page.tsx` (render override if present, else default).
 
@@ -182,3 +184,19 @@ If these imports are not available or change, the theme step will need updating.
 1. **Avatar/logo upload:** Disabled with "Coming soon" tooltip. Requires Firebase storage setup (STORAGE_ENABLED=true in .env).
 2. **CAMS/Karvy import:** Disabled card. Import from InvestWell also disabled. Only "Start Fresh" is functional.
 3. **Invite team:** Sends invites via API but no real-time status polling. List shows send status only.
+
+## Settings Page — Notes
+
+### Sessions Tab — API Dependency
+
+The Sessions tab fetches from `GET /api/v1/auth/sessions`. If this endpoint does not exist in VaNiBase, the tab shows a "Session management coming soon" placeholder. The `revokeSessions` function in auth-provider requires email+password, but the settings page uses Bearer token auth via `POST /api/v1/auth/sessions/revoke` with `{ session_ids }` and auth headers — this works when the backend accepts Bearer token authentication for session revocation.
+
+### Appearance Tab — User vs Tenant Preference
+
+The Appearance tab saves the theme as a **user preference** via `PATCH /api/v1/auth/preferences { theme_override }`. This follows the theme resolution chain: User pref > Tenant config > Product default. The "Reset to Tenant Default" button clears the user override by setting `theme_override: null`.
+
+### Danger Zone Actions
+
+The "Sign Out All" and "Delete Account" buttons in the Security tab are wired as UI placeholders. They need:
+1. **Sign Out All:** Requires fetching all session IDs then calling revoke. Consider a dedicated `POST /api/v1/auth/sessions/revoke-all` endpoint.
+2. **Delete Account:** Requires a new `DELETE /api/v1/auth/account` endpoint with confirmation flow (password re-entry).
