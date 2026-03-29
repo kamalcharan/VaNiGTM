@@ -5,8 +5,7 @@ import { useShellConfig } from '@/lib/shell-config';
 import { useAuth } from '@/context/auth-provider';
 import { useToast } from '../toast';
 import { InlineLoader } from '../loader';
-import FormInput from '../ui/form-input';
-import l from './step-layout.module.css';
+import s from './OnboardBusiness.module.css';
 
 interface Props {
   onComplete: () => void;
@@ -19,10 +18,14 @@ export default function OnboardBusiness({ onComplete }: Props) {
   const { showToast } = useToast();
 
   const [firmName, setFirmName] = useState('');
-  const [businessType, setBusinessType] = useState('individual');
+  const [businessType, setBusinessType] = useState('partnership');
   const [arn, setArn] = useState('');
   const [pan, setPan] = useState('');
-  const [euin, setEuin] = useState('');
+  const [gstin, setGstin] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -48,7 +51,11 @@ export default function OnboardBusiness({ onComplete }: Props) {
           business_type: businessType,
           arn_number: arn || undefined,
           pan_number: pan.toUpperCase() || undefined,
-          euin: euin || undefined,
+          gstin: gstin || undefined,
+          address: address || undefined,
+          city: city || undefined,
+          state: state || undefined,
+          pin_code: pin || undefined,
         }),
       });
 
@@ -67,53 +74,61 @@ export default function OnboardBusiness({ onComplete }: Props) {
   }
 
   return (
-    <div className={l.split}>
-      <div className={l.narrative}>
-        <div>
-          <div className={l.chapter}>Step 2 of 6</div>
-          <h2 className={l.narrTitle}>
-            Your <span className={l.glow}>firm</span> is<br />your identity.
+    <div className={s.split}>
+      {/* ── Left: Narrative ── */}
+      <div className={s.narrative}>
+        <div className={s.narrativeGlow} />
+        <div className={s.narrContent}>
+          <div className={s.chapter}>Step 2 of 6</div>
+          <h2 className={s.narrTitle}>
+            Your <span className={s.glow}>firm</span> is<br />your identity.
           </h2>
-          <p className={l.narrText}>
+          <p className={s.narrText}>
             This information appears on client communications, reports, and
             the investor portal. Make it count.
           </p>
-          <div className={l.mandatoryBadge}>&#x25CF; Required to continue</div>
+          <div className={s.mandatoryBadge}>&#x25CF; Required to continue</div>
         </div>
       </div>
 
-      <div className={l.form}>
-        <div className={l.sectionTitle}>Business Details</div>
+      {/* ── Right: Form ── */}
+      <div className={s.formPanel}>
+        <div className={s.formBorderAccent} />
+        <div className={s.sectionTitle}>Business Details</div>
 
-        {/* Firm logo placeholder */}
-        <div className={l.photoUpload}>
-          <div className={l.photoPreview} style={{ borderRadius: 12 }}>&#x1F3E2;</div>
-          <div className={l.photoInfo}>
-            <div className={l.photoInfoTitle}>Firm logo</div>
-            <div className={l.photoInfoHint}>
+        {/* Firm Logo */}
+        <div className={s.photoUpload}>
+          <div className={s.logoPreview}>&#x1F3E2;</div>
+          <div className={s.photoInfo}>
+            <div className={s.photoInfoTitle}>Firm logo</div>
+            <div className={s.photoInfoHint}>
               Square image, min 200&times;200px. Appears on client portal and reports.
             </div>
           </div>
-          <button className={l.photoBtn} disabled title="Coming soon — requires storage setup">
+          <button className={s.photoBtn} disabled title="Coming soon — requires storage setup" type="button">
             Upload
           </button>
         </div>
 
-        <FormInput
-          label="Firm / Business Name"
-          placeholder="e.g. Meridian Wealth Partners"
-          value={firmName}
-          onChange={(e) => setFirmName(e.target.value)}
-          error={error}
-          required
-          disabled={loading}
-        />
+        {/* Firm Name (full width) */}
+        <div className={s.formGroup}>
+          <label className={s.formLabel}>Firm / Business Name</label>
+          <input
+            type="text"
+            className={s.formInput}
+            placeholder="e.g. Meridian Wealth Partners"
+            value={firmName}
+            onChange={(e) => setFirmName(e.target.value)}
+            disabled={loading}
+          />
+        </div>
 
-        <div className={l.formRow}>
-          <div className={l.selectGroup}>
-            <label className={l.selectLabel}>Business Type</label>
+        {/* Business Type + ARN */}
+        <div className={s.formRow}>
+          <div className={s.formGroup}>
+            <label className={s.formLabel}>Business Type</label>
             <select
-              className={l.select}
+              className={s.formSelect}
               value={businessType}
               onChange={(e) => setBusinessType(e.target.value)}
               disabled={loading}
@@ -125,9 +140,11 @@ export default function OnboardBusiness({ onComplete }: Props) {
               <option value="proprietorship">Proprietorship</option>
             </select>
           </div>
-          <div>
-            <FormInput
-              label="ARN Number"
+          <div className={s.formGroup}>
+            <label className={s.formLabel}>ARN Number</label>
+            <input
+              type="text"
+              className={s.formInput}
               placeholder="ARN-XXXXX"
               value={arn}
               onChange={(e) => setArn(e.target.value)}
@@ -136,31 +153,97 @@ export default function OnboardBusiness({ onComplete }: Props) {
           </div>
         </div>
 
-        <div className={l.formRow}>
-          <div>
-            <FormInput
-              label="PAN"
+        {/* PAN + GSTIN */}
+        <div className={s.formRow}>
+          <div className={s.formGroup}>
+            <label className={s.formLabel}>PAN</label>
+            <input
+              type="text"
+              className={`${s.formInput} ${s.uppercase}`}
               placeholder="ABCDE1234F"
               value={pan}
               onChange={(e) => setPan(e.target.value)}
               disabled={loading}
             />
           </div>
-          <div>
-            <FormInput
-              label="EUIN (optional)"
-              placeholder="E123456"
-              value={euin}
-              onChange={(e) => setEuin(e.target.value)}
+          <div className={s.formGroup}>
+            <label className={s.formLabel}>GSTIN (optional)</label>
+            <input
+              type="text"
+              className={s.formInput}
+              placeholder="22AAAAA0000A1Z5"
+              value={gstin}
+              onChange={(e) => setGstin(e.target.value)}
               disabled={loading}
             />
           </div>
         </div>
 
-        <div className={l.nav}>
+        {/* Business Address */}
+        <div className={s.formGroup}>
+          <label className={s.formLabel}>Business Address</label>
+          <textarea
+            className={s.formTextarea}
+            placeholder="Full address with city, state, PIN..."
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            disabled={loading}
+          />
+        </div>
+
+        {/* City + State + PIN (3-col) */}
+        <div className={s.formRow3}>
+          <div className={s.formGroup}>
+            <label className={s.formLabel}>City</label>
+            <input
+              type="text"
+              className={s.formInput}
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+          <div className={s.formGroup}>
+            <label className={s.formLabel}>State</label>
+            <select
+              className={s.formSelect}
+              value={state}
+              onChange={(e) => setState(e.target.value)}
+              disabled={loading}
+            >
+              <option value="">Select state...</option>
+              <option value="telangana">Telangana</option>
+              <option value="andhra_pradesh">Andhra Pradesh</option>
+              <option value="karnataka">Karnataka</option>
+              <option value="maharashtra">Maharashtra</option>
+              <option value="tamil_nadu">Tamil Nadu</option>
+              <option value="delhi">Delhi</option>
+              <option value="gujarat">Gujarat</option>
+              <option value="rajasthan">Rajasthan</option>
+              <option value="west_bengal">West Bengal</option>
+              <option value="kerala">Kerala</option>
+            </select>
+          </div>
+          <div className={s.formGroup}>
+            <label className={s.formLabel}>PIN Code</label>
+            <input
+              type="text"
+              className={s.formInput}
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+        </div>
+
+        {/* Error */}
+        {error && <div className={s.errorMsg}>{error}</div>}
+
+        {/* Navigation */}
+        <div className={s.wizardNav}>
           <div />
-          <div className={l.navRight}>
-            <button className={l.navNext} onClick={handleSubmit} disabled={loading}>
+          <div className={s.navRight}>
+            <button className={s.navNext} onClick={handleSubmit} disabled={loading}>
               {loading ? <InlineLoader size="sm" message="SAVING..." /> : 'SAVE & CONTINUE \u2192'}
             </button>
           </div>
