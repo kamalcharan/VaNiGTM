@@ -235,6 +235,10 @@ export default function LoginVault() {
               />
             </div>
 
+            <div className={s.forgotLink}>
+              <a href="/forgot-password">Forgot your password?</a>
+            </div>
+
             <button
               type="submit"
               className={`${s.submitBtn} ${loading ? s.submitBtnLoading : ''}`}
@@ -245,7 +249,9 @@ export default function LoginVault() {
           </form>
 
           <div className={s.formFooter}>
-            <span className={s.formFooterText}>First time? Contact your distributor</span>
+            <a href="/register" className={s.formFooterLink}>
+              Don&apos;t have an account? <span className={s.formFooterAccent}>Register &rarr;</span>
+            </a>
           </div>
         </div>
       </div>
