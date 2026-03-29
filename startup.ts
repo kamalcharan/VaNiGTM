@@ -112,7 +112,7 @@ async function main(): Promise<void> {
     app.use(cors({
       origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Dev-Tenant-Id', 'X-Dev-User-Id'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Dev-Tenant-Id', 'X-Dev-User-Id', 'x-environment'],
     }));
     app.use(express.json());
     app.use(metricsMiddleware);
