@@ -526,9 +526,38 @@
   opacity: 0;
 }
 
-.formFooterText {
+.formFooterLink {
   color: var(--text-secondary);
   font-size: 0.8rem;
+  text-decoration: none;
+}
+
+.formFooterAccent {
+  color: var(--gold);
+  font-weight: 500;
+}
+
+.formFooterLink:hover .formFooterAccent {
+  text-decoration: underline;
+}
+
+/* ── Forgot Password Link ────────────────────────── */
+.forgotLink {
+  text-align: right;
+  margin-bottom: 8px;
+  animation: fadeInUp 0.8s var(--ease-out) 950ms forwards;
+  opacity: 0;
+}
+
+.forgotLink a {
+  color: var(--text-ghost);
+  font-size: 0.75rem;
+  text-decoration: none;
+  transition: color var(--duration-fast);
+}
+
+.forgotLink a:hover {
+  color: var(--gold);
 }
 
 /* ── Session Limit Modal ──────────────────────── */

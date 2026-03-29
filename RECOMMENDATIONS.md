@@ -1,0 +1,202 @@
+# RECOMMENDATIONS.md
+
+## Toast & Loader Components — Wiring Notes
+
+### Wiring ToastProvider into the App
+
+The `ToastProvider` needs to wrap the app at the root layout level. Since the root layout lives in `vani-base/shell/`, there are two approaches:
+
+**Option A: ShellConfig `providers` array (preferred)**
+If `ShellConfig` supports a `providers` or `wrappers` field, add `ToastProvider` there:
+
+```ts
+// shell.config.ts
+import { ToastProvider } from './components/toast';
+
+const shellConfig: ShellConfig = {
+  // ...existing config
+  providers: [ToastProvider],
+};
+```
+
+**Option B: Add to VaNiBase root layout directly**
+If ShellConfig doesn't support provider injection, the VaNiBase root layout (`vani-base/shell/src/app/layout.tsx` or equivalent) needs to be updated to accept product-level providers. This would require a VaNiBase change:
+
+```tsx
+// In the shell's root layout, wrap children:
+<ToastProvider>
+  {children}
+</ToastProvider>
+```
+
+**Recommendation:** Add a `providers` config option to `ShellConfig` in VaNiBase so products can inject providers without modifying the framework. This keeps the submodule boundary clean.
+
+### CSS Variable Mapping
+
+The toast and loader components use these CSS variables with fallback values:
+
+| Variable | Fallback | Used by |
+|----------|----------|---------|
+| `--color-background-success` | `rgba(45, 212, 160, 0.15)` | Toast success |
+| `--color-text-success` | `#2dd4a0` | Toast success |
+| `--color-background-danger` | `rgba(240, 94, 94, 0.15)` | Toast error |
+| `--color-text-danger` | `#f05e5e` | Toast error |
+| `--color-background-warning` | `rgba(245, 189, 65, 0.15)` | Toast warning |
+| `--color-text-warning` | `#f5bd41` | Toast warning |
+| `--color-background-info` | `rgba(94, 170, 240, 0.15)` | Toast info, Loader |
+| `--color-text-info` | `#5eaaf0` | Toast info, Loader spinner |
+| `--color-text-secondary` | `#8a8578` | Loader message text |
+| `--font-body` | `'DM Sans', sans-serif` | Both |
+
+If the VDF theme system uses different variable names, update the CSS modules accordingly. The fallback values match the Atlas design system colors used in login-vault and landing-page.
+
+## Theme Compliance (Updated)
+
+All product components now use ONLY the VDF theme system CSS variables:
+- `--color-bg`, `--color-fg`, `--color-surface`, `--color-surface-hover`, `--color-border`, `--color-muted`
+- `--color-primary`, `--color-primary-fg`, `--color-primary-hover`
+- `--color-success`, `--color-warning`, `--color-danger`, `--color-info`
+
+Semi-transparent overlays use `color-mix(in srgb, var(--color-*) %, transparent)` instead of hardcoded rgba values. This ensures all components adapt correctly when switching themes.
+
+**Note:** `color-mix()` requires modern browsers (Chrome 111+, Firefox 113+, Safari 16.2+). For older browser support, consider a PostCSS plugin.
+
+## Auth Pages — VaNiBase Changes Needed
+
+1. **ShellConfig `pages` type expansion:** Currently `ShellConfig.pages` only defines `login?: ComponentType`. The following page overrides need to be added to the type:
+   - `register?: ComponentType`
+   - `forgotPassword?: ComponentType`
+   - `resetPassword?: ComponentType`
+   - `inviteAccept?: ComponentType`
+   - `settings?: ComponentType`
+   - `landing?: ComponentType` (already used but not typed)
+
+   All are wired in shell.config.ts via a type assertion (`as ShellConfig['pages']`) as a stopgap.
+
+2. **VaNiBase auth routes:** The shell needs corresponding `app/(auth)/` pages for each override:
+   - `app/(auth)/register/page.tsx` — checks `pages?.register`
+   - `app/(auth)/forgot-password/page.tsx` — checks `pages?.forgotPassword`
+   - `app/(auth)/reset-password/page.tsx` — checks `pages?.resetPassword`
+   - `app/(auth)/invite/page.tsx` — checks `pages?.inviteAccept`
+   - `app/(dashboard)/settings/page.tsx` — checks `pages?.settings` (protected route)
+
+   Each should follow the same pattern as `app/(auth)/login/page.tsx` (render override if present, else default).
+
+3. **Login-vault.tsx hardcoded colors:** The existing login-vault.tsx and login-vault.module.css use hardcoded Atlas palette colors (--void, --gold, etc.) rather than theme variables. This is intentional for the standalone Atlas design but means it won't adapt to theme switching. Consider migrating to `--color-*` variables if theme compliance is required for auth pages.
+
+4. **Shared auth page patterns:** The forgot-password, reset-password, and invite-accept pages share a centered card layout (brand mark + glass card). Consider extracting a shared `AuthCardLayout` component to reduce CSS duplication. Currently each page defines its own layout for simplicity.
+
+5. **Invite token validation endpoint:** The invite-accept page attempts `GET /api/v1/auth/invite/validate?token=xxx` on mount to pre-fill the email and display invitation context (tenant name, role, inviter). If this endpoint doesn't exist yet, the page gracefully falls back to showing the form without context. The actual validation happens server-side on `POST /api/v1/auth/invite/accept`.
+
+6. **Flow B removed:** The invite-accept page only supports new user registration (Flow A). Every invite acceptance creates a new user account. If Flow B (existing user joining a workspace) is needed in the future, it would require a separate component or a view toggle within this page.
+
+## Form Components — Notes
+
+### CountryDropdown — Country List
+
+The dropdown ships with 25 countries. To add more:
+1. Add entries to the `COUNTRIES` array in `country-dropdown.tsx`
+2. Use ISO 3166-1 alpha-2 codes (lowercase) — flagcdn.com hosts flags for all codes
+3. The component handles broken flag images gracefully (shows country code text fallback)
+
+### CountryDropdown — Standalone Usage
+
+The CountryDropdown is designed to sit beside a phone input in a flex row, matching the `atlas-register.html` `.phone-row` pattern:
+```tsx
+<div style={{ display: 'flex', gap: '8px' }}>
+  <CountryDropdown value={country} onChange={setCountry} />
+  <FormInput label="Phone" type="tel" placeholder="+91 98765 43210" ... />
+</div>
+```
+
+### FormInput — Password Toggle Pattern
+
+For password fields with show/hide toggle, use the `rightElement` prop:
+```tsx
+const [show, setShow] = useState(false);
+<FormInput
+  label="Password"
+  type={show ? 'text' : 'password'}
+  rightElement={
+    <button type="button" onClick={() => setShow(!show)} style={{ background: 'none', border: 'none', color: 'var(--text-ghost)', cursor: 'pointer' }}>
+      {show ? '🙈' : '👁'}
+    </button>
+  }
+  ...
+/>
+```
+
+## Onboarding Step Components — Notes
+
+### Architecture
+
+Each step is a standalone component in `components/onboarding/` that receives `{ onComplete, onSkip? }` props from the wizard page.
+
+**Current state:** The VaNiBase wizard page (`vani-base/shell/src/app/(onboarding)/onboarding/page.tsx`) reads `onboarding.steps` from ShellConfig and renders a placeholder div showing the `component` string name. It does NOT resolve string names to actual React components.
+
+**Product-side wiring:** `components/onboarding-registry.ts` exports `ONBOARDING_COMPONENTS` — a map from string names to React component references. The wizard page needs to be updated to use this map.
+
+### VaNiBase Wizard Page Change Needed
+
+The wizard page needs two changes to render real step components instead of placeholders:
+
+1. **Import the component registry** from the product config:
+   ```typescript
+   import { ONBOARDING_COMPONENTS } from '@product-config/onboarding-registry';
+   ```
+
+2. **Replace the placeholder div** (lines 186-197) with component resolution:
+   ```tsx
+   const StepComponent = currentStep.component
+     ? ONBOARDING_COMPONENTS[currentStep.component]
+     : null;
+
+   {StepComponent ? (
+     <StepComponent onComplete={handleContinue} onSkip={handleSkip} />
+   ) : (
+     <div>Step placeholder: {currentStep.component || currentStep.id}</div>
+   )}
+   ```
+
+3. **Remove the wrapper card** (lines 169-198) when rendering real components, since each step component manages its own full layout (split or full-width). The wizard page should only render the top header, step indicator, and the step component — no containing card.
+
+4. **Alternative approach:** Add a `pages.onboarding?: ComponentType` override to ShellConfig (same pattern as `pages.login`). KI-Prime would then provide a fully custom wizard page that uses its own component registry. This is more flexible but requires more VaNiBase changes.
+
+**Recommended approach:** Option 1 (component registry) is simpler and keeps the wizard logic in VaNiBase. The product only provides the component map and step definitions.
+
+### Shared Layout
+
+`step-layout.module.css` provides shared layout patterns imported by all steps:
+- **Split layout** (steps 1, 2, 4, 5): left narrative panel (380px) + right form panel (max 640px)
+- **Full layout** (steps 3, 6): centered content area (max 900px)
+- Navigation bar, select elements, photo upload, chip selector
+
+### VaNiBase Dependencies
+
+The OnboardTheme step imports from VaNiBase:
+- `useTheme` from `@/components/theme-provider` — for live theme switching
+- `getTheme` from `@/themes/registry` — for theme color previews
+
+If these imports are not available or change, the theme step will need updating.
+
+### MVP Limitations
+
+1. **Avatar/logo upload:** Disabled with "Coming soon" tooltip. Requires Firebase storage setup (STORAGE_ENABLED=true in .env).
+2. **CAMS/Karvy import:** Disabled card. Import from InvestWell also disabled. Only "Start Fresh" is functional.
+3. **Invite team:** Sends invites via API but no real-time status polling. List shows send status only.
+
+## Settings Page — Notes
+
+### Sessions Tab — API Dependency
+
+The Sessions tab fetches from `GET /api/v1/auth/sessions`. If this endpoint does not exist in VaNiBase, the tab shows a "Session management coming soon" placeholder. The `revokeSessions` function in auth-provider requires email+password, but the settings page uses Bearer token auth via `POST /api/v1/auth/sessions/revoke` with `{ session_ids }` and auth headers — this works when the backend accepts Bearer token authentication for session revocation.
+
+### Appearance Tab — User vs Tenant Preference
+
+The Appearance tab saves the theme as a **user preference** via `PATCH /api/v1/auth/preferences { theme_override }`. This follows the theme resolution chain: User pref > Tenant config > Product default. The "Reset to Tenant Default" button clears the user override by setting `theme_override: null`.
+
+### Danger Zone Actions
+
+The "Sign Out All" and "Delete Account" buttons in the Security tab are wired as UI placeholders. They need:
+1. **Sign Out All:** Requires fetching all session IDs then calling revoke. Consider a dedicated `POST /api/v1/auth/sessions/revoke-all` endpoint.
+2. **Delete Account:** Requires a new `DELETE /api/v1/auth/account` endpoint with confirmation flow (password re-entry).
