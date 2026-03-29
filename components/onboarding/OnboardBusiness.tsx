@@ -43,19 +43,14 @@ export default function OnboardBusiness({ onComplete }: Props) {
     setError('');
 
     try {
+      // PATCH /tenant/profile accepts: name, logo_url, theme_id
+      // Business-specific fields (arn, pan, gstin, address) require a VaNiBase
+      // endpoint extension. For MVP, save firm name via tenant profile.
       const res = await fetch(`${apiUrl}/api/v1/tenant/profile`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
-          display_name: firmName.trim(),
-          business_type: businessType,
-          arn_number: arn || undefined,
-          pan_number: pan.toUpperCase() || undefined,
-          gstin: gstin || undefined,
-          address: address || undefined,
-          city: city || undefined,
-          state: state || undefined,
-          pin_code: pin || undefined,
+          name: firmName.trim(),
         }),
       });
 
