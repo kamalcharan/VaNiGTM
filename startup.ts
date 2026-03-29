@@ -47,6 +47,7 @@ async function main(): Promise<void> {
     const { createRecipesRouter } = await import('./vani-base/framework/routes/recipes');
     const { jobsRouter } = await import('./vani-base/framework/routes/jobs');
     const { registerSkillsRoute } = await import('./vani-base/framework/routes/skills');
+    const { createAuthRouter } = await import('./vani-base/framework/routes/auth');
     const { authMiddleware } = await import('./vani-base/framework/gateway/auth');
     const { tenantContext } = await import('./vani-base/framework/gateway/tenant-context');
     const { rateLimitMiddleware } = await import('./vani-base/framework/middleware/rate-limiter');
@@ -118,6 +119,7 @@ async function main(): Promise<void> {
     // Public routes
     app.use(healthRouter);
     app.use(metricsRouter);
+    app.use('/api/v1/auth', createAuthRouter());
     app.use('/api/v1', createRecipesRouter(orchestrator.recipeRegistry));
 
     // Protected routes

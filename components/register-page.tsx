@@ -69,14 +69,16 @@ export default function RegisterPage() {
         ? `${country.dial_code}${phone.replace(/\s/g, '')}`
         : undefined;
 
+      const trimmedName = fullName.trim();
       const res = await fetch(`${apiUrl}/api/v1/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          full_name: fullName.trim(),
+          name: trimmedName,
           email: email.trim().toLowerCase(),
           phone: phoneWithCode,
           password,
+          tenant_name: `${trimmedName}'s Workspace`,
         }),
       });
 
