@@ -5,8 +5,6 @@ import { useShellConfig } from '@/lib/shell-config';
 import { useAuth } from '@/context/auth-provider';
 import { useToast } from '../toast';
 import { InlineLoader } from '../loader';
-import FormInput from '../ui/form-input';
-import l from './step-layout.module.css';
 import s from './OnboardInvite.module.css';
 
 interface Props {
@@ -68,40 +66,46 @@ export default function OnboardInvite({ onComplete, onSkip }: Props) {
   }
 
   return (
-    <div className={l.split}>
-      <div className={l.narrative}>
-        <div>
-          <div className={l.chapter}>Step 4 of 6</div>
-          <h2 className={l.narrTitle}>
-            Build your<br /><span className={l.glow}>team</span>.
+    <div className={s.split}>
+      {/* ── Left: Narrative ── */}
+      <div className={s.narrative}>
+        <div className={s.narrativeGlow} />
+        <div className={s.narrContent}>
+          <div className={s.chapter}>Step 4 of 6</div>
+          <h2 className={s.narrTitle}>
+            Build your<br /><span className={s.glow}>team</span>.
           </h2>
-          <p className={l.narrText}>
+          <p className={s.narrText}>
             Invite planners, admins, or team members to your workspace.
             They&apos;ll receive an email with a link to join.
           </p>
-          <div className={l.optionalBadge}>&#x25CB; Can be done later</div>
+          <div className={s.optionalBadge}>&#x25CB; Can be done later</div>
         </div>
       </div>
 
-      <div className={l.form}>
-        <div className={l.sectionTitle}>Invite Team Members</div>
+      {/* ── Right: Form ── */}
+      <div className={s.formPanel}>
+        <div className={s.formBorderAccent} />
+        <div className={s.sectionTitle}>Invite Team Members</div>
 
-        <div className={l.formRow}>
-          <div style={{ flex: 2 }}>
-            <FormInput
-              label="Email Address"
+        {/* Email + Role row */}
+        <div className={s.inviteRow}>
+          <div className={s.emailField}>
+            <label className={s.formLabel}>Email Address</label>
+            <input
               type="email"
+              className={s.formInput}
               placeholder="colleague@firm.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              error={error}
+              onChange={(e) => { setEmail(e.target.value); setError(''); }}
               disabled={loading}
             />
+            {error && <div className={s.fieldError}>{error}</div>}
           </div>
-          <div className={l.selectGroup}>
-            <label className={l.selectLabel}>Role</label>
+          <div className={s.roleField}>
+            <label className={s.formLabel}>Role</label>
             <select
-              className={l.select}
+              className={s.formSelect}
               value={role}
               onChange={(e) => setRole(e.target.value)}
               disabled={loading}
@@ -110,37 +114,52 @@ export default function OnboardInvite({ onComplete, onSkip }: Props) {
               <option value="user">User</option>
             </select>
           </div>
+          <button
+            className={s.sendBtn}
+            onClick={handleSend}
+            disabled={loading || !email}
+            type="button"
+          >
+            {loading ? <InlineLoader size="sm" /> : 'Send'}
+          </button>
         </div>
 
-        <button
-          className={s.sendBtn}
-          onClick={handleSend}
-          disabled={loading || !email}
-        >
-          {loading ? <InlineLoader size="sm" message="Sending..." /> : 'Send Invite'}
-        </button>
-
-        {/* Sent list */}
+        {/* Sent invitations list */}
         {sent.length > 0 && (
           <div className={s.sentList}>
-            <div className={s.sentTitle}>Invitations</div>
+            <div className={s.sentTitle}>Sent Invitations</div>
             {sent.map((inv, i) => (
-              <div key={i} className={`${s.sentItem} ${inv.status === 'error' ? s.sentError : ''}`}>
-                <span className={s.sentEmail}>{inv.email}</span>
+              <div key={i} className={`${s.sentItem} ${inv.status === 'error' ? s.sentItemError : ''}`}>
+                <div className={s.sentAvatar}>
+                  {inv.email[0].toUpperCase()}
+                </div>
+                <div className={s.sentInfo}>
+                  <div className={s.sentEmail}>{inv.email}</div>
+                </div>
                 <span className={s.sentRole}>{inv.role}</span>
                 <span className={inv.status === 'sent' ? s.sentOk : s.sentFail}>
-                  {inv.status === 'sent' ? '&#x2713; Sent' : '&#x2715; Failed'}
+                  {inv.status === 'sent' ? '\u2713 Sent' : '\u2715 Failed'}
                 </span>
               </div>
             ))}
           </div>
         )}
 
-        <div className={l.nav}>
+        {/* Empty state */}
+        {sent.length === 0 && (
+          <div className={s.emptyState}>
+            <div className={s.emptyIcon}>&#x1F465;</div>
+            <div className={s.emptyText}>No invitations sent yet</div>
+            <div className={s.emptyHint}>Add team members above — you can always invite more later from Settings.</div>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <div className={s.wizardNav}>
           <div />
-          <div className={l.navRight}>
-            <button className={l.navSkip} onClick={onSkip}>Skip for now</button>
-            <button className={l.navNext} onClick={onComplete}>CONTINUE &rarr;</button>
+          <div className={s.navRight}>
+            <button className={s.navSkip} onClick={onSkip}>Skip for now</button>
+            <button className={s.navNext} onClick={onComplete}>CONTINUE &rarr;</button>
           </div>
         </div>
       </div>
