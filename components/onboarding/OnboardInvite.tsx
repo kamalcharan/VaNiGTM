@@ -106,8 +106,8 @@ export default function OnboardInvite({ onComplete, onSkip }: Props) {
               onChange={(e) => setRole(e.target.value)}
               disabled={loading}
             >
-              <option value="user">Planner</option>
               <option value="admin">Admin</option>
+              <option value="user">User</option>
             </select>
           </div>
         </div>
