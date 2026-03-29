@@ -85,10 +85,12 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
+        // VaNiBase error format: { error: string, code: string, status: number }
         const msg =
-          data?.error?.message || data?.message || 'Registration failed';
+          (typeof data?.error === 'string' ? data.error : data?.error?.message)
+          || data?.message
+          || `Registration failed (${res.status})`;
 
-        // Field-specific errors from server
         if (data?.error?.field) {
           setErrors({ [data.error.field]: msg });
         }
