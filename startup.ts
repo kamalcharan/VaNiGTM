@@ -48,6 +48,8 @@ async function main(): Promise<void> {
     const { jobsRouter } = await import('./vani-base/framework/routes/jobs');
     const { registerSkillsRoute } = await import('./vani-base/framework/routes/skills');
     const { createAuthRouter } = await import('./vani-base/framework/routes/auth');
+    const { createOnboardingRouter } = await import('./vani-base/framework/routes/onboarding');
+    const { createTenantRouter } = await import('./vani-base/framework/routes/tenant');
     const { authMiddleware } = await import('./vani-base/framework/gateway/auth');
     const { tenantContext } = await import('./vani-base/framework/gateway/tenant-context');
     const { rateLimitMiddleware } = await import('./vani-base/framework/middleware/rate-limiter');
@@ -128,6 +130,8 @@ async function main(): Promise<void> {
     protectedRouter.use(tenantContext);
     protectedRouter.use(rateLimitMiddleware);
     protectedRouter.use('/chat', createChatRouter(orchestrator));
+    protectedRouter.use('/onboarding', createOnboardingRouter());
+    protectedRouter.use('/tenant', createTenantRouter());
     registerSkillsRoute(protectedRouter, orchestrator);
     protectedRouter.use(jobsRouter);
     app.use('/api/v1', protectedRouter);
