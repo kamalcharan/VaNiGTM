@@ -14,11 +14,12 @@
 }
 
 .form {
-  flex: 1; padding: 64px 40px;
+  flex: 1; padding: 48px 40px;
   display: flex; flex-direction: column; justify-content: center;
-  max-width: 640px;
+  max-width: 720px;
   border-left: 1px solid var(--color-border);
   position: relative;
+  overflow-y: auto;
 }
 
 .form::before {
@@ -80,7 +81,7 @@
 /* ── Section Title ───────────────────────────────────── */
 .sectionTitle {
   font-size: 1.2rem;
-  font-weight: 700; color: var(--color-fg); margin-bottom: 40px;
+  font-weight: 700; color: var(--color-fg); margin-bottom: 32px;
 }
 
 /* ── Form Row ────────────────────────────────────────── */
@@ -119,8 +120,8 @@
 /* ── Navigation ──────────────────────────────────────── */
 .nav {
   display: flex; justify-content: space-between; align-items: center;
-  padding-top: 40px; border-top: 1px solid var(--color-border);
-  margin-top: 40px;
+  padding-top: 32px; border-top: 1px solid var(--color-border);
+  margin-top: auto; padding-bottom: 8px;
 }
 
 .navBack {

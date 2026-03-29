@@ -8,11 +8,11 @@
   position: fixed;
   top: 20px;
   right: 20px;
-  z-index: 9999;
+  z-index: 99999;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-width: 400px;
+  gap: 10px;
+  max-width: 420px;
   width: calc(100% - 40px);
   pointer-events: none;
 }
@@ -21,49 +21,65 @@
 .toast {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  font-size: 0.875rem;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  border-left: 4px solid transparent;
+  font-size: 0.85rem;
   line-height: 1.5;
   pointer-events: auto;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 4px 24px color-mix(in srgb, var(--color-bg) 40%, transparent);
+  background: var(--color-surface);
+  box-shadow:
+    0 8px 32px color-mix(in srgb, var(--color-bg) 50%, transparent),
+    0 2px 8px color-mix(in srgb, var(--color-bg) 30%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 /* ── Type Variants ───────────────────────────────────── */
 .success {
-  background: color-mix(in srgb, var(--color-success) 15%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
+  border-left-color: var(--color-success);
+  color: var(--color-fg);
+}
+
+.success .icon {
   color: var(--color-success);
 }
 
 .error {
-  background: color-mix(in srgb, var(--color-danger) 15%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-danger) 30%, transparent);
+  border-left-color: var(--color-danger);
+  color: var(--color-fg);
+}
+
+.error .icon {
   color: var(--color-danger);
 }
 
 .warning {
-  background: color-mix(in srgb, var(--color-warning) 15%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-warning) 30%, transparent);
+  border-left-color: var(--color-warning);
+  color: var(--color-fg);
+}
+
+.warning .icon {
   color: var(--color-warning);
 }
 
 .info {
-  background: color-mix(in srgb, var(--color-info) 15%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-info) 30%, transparent);
+  border-left-color: var(--color-info);
+  color: var(--color-fg);
+}
+
+.info .icon {
   color: var(--color-info);
 }
 
 /* ── Icon ─────────────────────────────────────────────── */
 .icon {
   flex-shrink: 0;
-  font-size: 1rem;
-  width: 20px;
+  font-size: 1.1rem;
+  width: 22px;
   text-align: center;
+  font-weight: 700;
 }
 
 /* ── Message ─────────────────────────────────────────── */
@@ -71,6 +87,7 @@
   flex: 1;
   min-width: 0;
   word-break: break-word;
+  color: var(--color-fg);
 }
 
 /* ── Dismiss Button ──────────────────────────────────── */
@@ -78,22 +95,23 @@
   flex-shrink: 0;
   background: none;
   border: none;
-  color: inherit;
+  color: var(--color-muted);
   cursor: pointer;
   font-size: 1.2rem;
   padding: 0 4px;
-  opacity: 0.6;
+  opacity: 0.5;
   transition: opacity 200ms;
   line-height: 1;
 }
 
 .dismiss:hover {
   opacity: 1;
+  color: var(--color-fg);
 }
 
 /* ── Animations ──────────────────────────────────────── */
 .enter {
-  animation: slideIn 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideIn 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .exit {
@@ -103,22 +121,22 @@
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateX(100%);
+    transform: translateX(40px) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
   }
 }
 
 @keyframes slideOut {
   from {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
   }
   to {
     opacity: 0;
-    transform: translateX(100%);
+    transform: translateX(40px) scale(0.95);
   }
 }
 
