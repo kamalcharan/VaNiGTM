@@ -13,6 +13,7 @@ import ResetPasswordPage from './components/reset-password-page';
 import InviteAcceptPage from './components/invite-accept-page';
 import SettingsPage from './components/settings-page';
 import { ToastProvider } from './components/toast';
+import { ONBOARDING_COMPONENTS } from './components/onboarding-registry';
 import OnboardUserProfile from './components/onboarding/OnboardUserProfile';
 import OnboardBusiness from './components/onboarding/OnboardBusiness';
 import OnboardTheme from './components/onboarding/OnboardTheme';
@@ -114,6 +115,7 @@ const shellConfig: ShellConfig = {
       { id: 'import_data', label: 'Import Data', mandatory: false, component: 'OnboardImport' },
     ],
   },
+  onboardingRegistry: ONBOARDING_COMPONENTS,
   providers: [ToastProvider],
   pages: {
     login: LoginVault,
