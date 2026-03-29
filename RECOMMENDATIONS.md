@@ -128,12 +128,39 @@ const [show, setShow] = useState(false);
 
 ### Architecture
 
-Each step is a standalone component in `components/onboarding/` that receives `{ onComplete, onSkip? }` props from the wizard page. The wizard page (not yet built) handles:
-- Step indicator / progress bar
-- Top bar with brand and progress
-- Rendering the active step component
-- Calling `PATCH /api/v1/onboarding/step` after `onComplete()` for mandatory steps (1, 2)
-- Navigation between steps
+Each step is a standalone component in `components/onboarding/` that receives `{ onComplete, onSkip? }` props from the wizard page.
+
+**Current state:** The VaNiBase wizard page (`vani-base/shell/src/app/(onboarding)/onboarding/page.tsx`) reads `onboarding.steps` from ShellConfig and renders a placeholder div showing the `component` string name. It does NOT resolve string names to actual React components.
+
+**Product-side wiring:** `components/onboarding-registry.ts` exports `ONBOARDING_COMPONENTS` — a map from string names to React component references. The wizard page needs to be updated to use this map.
+
+### VaNiBase Wizard Page Change Needed
+
+The wizard page needs two changes to render real step components instead of placeholders:
+
+1. **Import the component registry** from the product config:
+   ```typescript
+   import { ONBOARDING_COMPONENTS } from '@product-config/onboarding-registry';
+   ```
+
+2. **Replace the placeholder div** (lines 186-197) with component resolution:
+   ```tsx
+   const StepComponent = currentStep.component
+     ? ONBOARDING_COMPONENTS[currentStep.component]
+     : null;
+
+   {StepComponent ? (
+     <StepComponent onComplete={handleContinue} onSkip={handleSkip} />
+   ) : (
+     <div>Step placeholder: {currentStep.component || currentStep.id}</div>
+   )}
+   ```
+
+3. **Remove the wrapper card** (lines 169-198) when rendering real components, since each step component manages its own full layout (split or full-width). The wizard page should only render the top header, step indicator, and the step component — no containing card.
+
+4. **Alternative approach:** Add a `pages.onboarding?: ComponentType` override to ShellConfig (same pattern as `pages.login`). KI-Prime would then provide a fully custom wizard page that uses its own component registry. This is more flexible but requires more VaNiBase changes.
+
+**Recommended approach:** Option 1 (component registry) is simpler and keeps the wizard logic in VaNiBase. The product only provides the component map and step definitions.
 
 ### Shared Layout
 

@@ -12,6 +12,12 @@ import ForgotPasswordPage from './components/forgot-password-page';
 import ResetPasswordPage from './components/reset-password-page';
 import InviteAcceptPage from './components/invite-accept-page';
 import { ToastProvider } from './components/toast';
+import OnboardUserProfile from './components/onboarding/OnboardUserProfile';
+import OnboardBusiness from './components/onboarding/OnboardBusiness';
+import OnboardTheme from './components/onboarding/OnboardTheme';
+import OnboardInvite from './components/onboarding/OnboardInvite';
+import OnboardPreferences from './components/onboarding/OnboardPreferences';
+import OnboardImport from './components/onboarding/OnboardImport';
 
 const shellConfig: ShellConfig = {
   product: {
@@ -97,6 +103,16 @@ const shellConfig: ShellConfig = {
       skills: [],
     },
   ],
+  onboarding: {
+    steps: [
+      { id: 'user_profile', label: 'Your Profile', mandatory: true, component: 'OnboardUserProfile' },
+      { id: 'business_profile', label: 'Business Details', mandatory: true, component: 'OnboardBusiness' },
+      { id: 'theme_selection', label: 'Theme', mandatory: false, component: 'OnboardTheme' },
+      { id: 'invite_team', label: 'Invite Team', mandatory: false, component: 'OnboardInvite' },
+      { id: 'risk_preferences', label: 'Preferences', mandatory: false, component: 'OnboardPreferences' },
+      { id: 'import_data', label: 'Import Data', mandatory: false, component: 'OnboardImport' },
+    ],
+  },
   providers: [ToastProvider],
   pages: {
     login: LoginVault,
