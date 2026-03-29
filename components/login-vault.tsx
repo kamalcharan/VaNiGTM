@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, type SessionLimitResponse, type ActiveSession } from '@/context/auth-provider';
 import s from './login-vault.module.css';
@@ -13,13 +13,14 @@ import s from './login-vault.module.css';
  * Intended to be plugged into VaNiBase shell via ShellConfig.pages.login override.
  */
 export default function LoginVault() {
-  const { login, revokeSessions, isAuthenticated } = useAuth();
+  const { login, revokeSessions, isAuthenticated, tenant } = useAuth();
   const router = useRouter();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [loginComplete, setLoginComplete] = useState(false);
 
   // Session limit state
   const [sessionLimit, setSessionLimit] = useState<SessionLimitResponse | null>(null);
@@ -27,11 +28,17 @@ export default function LoginVault() {
   const [revokingLoading, setRevokingLoading] = useState(false);
   const [role, setRole] = useState<'planner' | 'admin' | 'investor'>('planner');
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    router.replace('/');
-    return null;
-  }
+  // Redirect after auth state is fully resolved (including /auth/me)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (!loginComplete && !tenant) return; // wait for /auth/me to populate tenant
+
+    if (tenant?.onboarding_complete === true) {
+      router.replace('/');
+    } else {
+      router.replace('/onboarding');
+    }
+  }, [isAuthenticated, loginComplete, tenant, router]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -47,8 +54,9 @@ export default function LoginVault() {
         return;
       }
 
-      // Success — redirect to dashboard
-      router.replace('/');
+      // Signal that login succeeded — useEffect handles redirect
+      // after AuthProvider populates tenant with onboarding_complete
+      setLoginComplete(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
       setLoading(false);
@@ -83,14 +91,17 @@ export default function LoginVault() {
         return;
       }
 
-      // Success
+      // Success — useEffect handles redirect based on onboarding status
       setSessionLimit(null);
-      router.replace('/');
+      setLoginComplete(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to revoke sessions');
       setRevokingLoading(false);
     }
   }
+
+  // Already authenticated — useEffect will redirect, show nothing
+  if (isAuthenticated) return null;
 
   return (
     <>
