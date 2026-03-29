@@ -200,3 +200,14 @@ The Appearance tab saves the theme as a **user preference** via `PATCH /api/v1/a
 The "Sign Out All" and "Delete Account" buttons in the Security tab are wired as UI placeholders. They need:
 1. **Sign Out All:** Requires fetching all session IDs then calling revoke. Consider a dedicated `POST /api/v1/auth/sessions/revoke-all` endpoint.
 2. **Delete Account:** Requires a new `DELETE /api/v1/auth/account` endpoint with confirmation flow (password re-entry).
+
+## Session Limit — VaNiBase Change Needed
+
+VaNiBase hardcodes `max_sessions=1` in the free plan subscription created during registration (`INSERT INTO VN_subscriptions ... max_sessions = 1`). The login function reads `max_sessions` from the DB, so the value can be overridden at the DB level.
+
+**Current workaround:** Migration `002_ki_session_limit.sql` updates existing subscriptions to `max_sessions=5` and installs a trigger to auto-set `max_sessions >= 5` on future inserts. Run this migration after the VaNiBase base migrations.
+
+**Recommended VaNiBase change:** Make the free plan's `max_sessions` configurable via:
+- An env var (`MAX_SESSIONS_FREE=5`)
+- Or a ShellConfig property (`subscription.defaults.maxSessions`)
+- Or read from a `VN_plan_configs` table instead of hardcoding in the register function
