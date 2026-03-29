@@ -1,0 +1,42 @@
+/* OnboardInvite — invite team step */
+
+.sendBtn {
+  padding: 10px 24px;
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: 6px; color: var(--color-fg);
+  font-size: 0.85rem; cursor: pointer; transition: all 200ms;
+  margin-bottom: 32px;
+}
+
+.sendBtn:hover:not(:disabled) {
+  border-color: var(--color-primary); color: var(--color-primary);
+}
+
+.sendBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.sentList { margin-bottom: 24px; }
+
+.sentTitle {
+  font-size: 0.65rem; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--color-muted); margin-bottom: 12px;
+}
+
+.sentItem {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 6px;
+  background: var(--color-bg); border: 1px solid var(--color-border);
+  margin-bottom: 8px; font-size: 0.8rem;
+}
+
+.sentError { border-color: color-mix(in srgb, var(--color-danger) 30%, transparent); }
+
+.sentEmail { flex: 1; color: var(--color-fg); }
+
+.sentRole {
+  color: var(--color-muted); font-size: 0.7rem;
+  text-transform: capitalize;
+}
+
+.sentOk { color: var(--color-success); font-size: 0.75rem; }
+.sentFail { color: var(--color-danger); font-size: 0.75rem; }

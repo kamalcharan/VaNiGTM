@@ -123,3 +123,35 @@ const [show, setShow] = useState(false);
   ...
 />
 ```
+
+## Onboarding Step Components — Notes
+
+### Architecture
+
+Each step is a standalone component in `components/onboarding/` that receives `{ onComplete, onSkip? }` props from the wizard page. The wizard page (not yet built) handles:
+- Step indicator / progress bar
+- Top bar with brand and progress
+- Rendering the active step component
+- Calling `PATCH /api/v1/onboarding/step` after `onComplete()` for mandatory steps (1, 2)
+- Navigation between steps
+
+### Shared Layout
+
+`step-layout.module.css` provides shared layout patterns imported by all steps:
+- **Split layout** (steps 1, 2, 4, 5): left narrative panel (380px) + right form panel (max 640px)
+- **Full layout** (steps 3, 6): centered content area (max 900px)
+- Navigation bar, select elements, photo upload, chip selector
+
+### VaNiBase Dependencies
+
+The OnboardTheme step imports from VaNiBase:
+- `useTheme` from `@/components/theme-provider` — for live theme switching
+- `getTheme` from `@/themes/registry` — for theme color previews
+
+If these imports are not available or change, the theme step will need updating.
+
+### MVP Limitations
+
+1. **Avatar/logo upload:** Disabled with "Coming soon" tooltip. Requires Firebase storage setup (STORAGE_ENABLED=true in .env).
+2. **CAMS/Karvy import:** Disabled card. Import from InvestWell also disabled. Only "Start Fresh" is functional.
+3. **Invite team:** Sends invites via API but no real-time status polling. List shows send status only.
