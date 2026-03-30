@@ -1,6 +1,3 @@
-[submodule "vani-base"]
-	path = vani-base
-	url = https://github.com/kamalcharan/VaNiBase.git
 [submodule "kewalinvest"]
 	path = kewalinvest
 	url = https://github.com/kamalcharan/kewalinvest.git
