@@ -1,13 +1,12 @@
 /**
  * KI-Prime — Skill Registry & Executor
- * Task: KI-25 | Product-level skill registry that bridges KI-Prime skills
- * to the VaNiBase framework's Orchestrator.
+ * Task: KI-25 | Product-level skill registry that manages KI-Prime skills.
  *
  * Responsibilities:
  *   1. Discover and parse all SKILL.md files
  *   2. Dynamically import function handlers from skills/<name>/functions/
- *   3. Register skills + handlers with the framework's Orchestrator
- *   4. Provide standalone execution for testing without the framework
+ *   3. Register skills + handlers with the Express route layer
+ *   4. Provide standalone execution for testing
  */
 
 import * as fs from 'fs';
@@ -173,8 +172,8 @@ export async function buildRegistry(skillsRoot: string): Promise<SkillRegistry> 
 }
 
 /**
- * Register all KI-Prime skills with a VaNiBase Orchestrator instance.
- * This is the bridge function called by startup.ts.
+ * Register all KI-Prime skills with an external orchestrator instance.
+ * Bridge function for framework integration.
  */
 export async function registerWithOrchestrator(
   registry: SkillRegistry,

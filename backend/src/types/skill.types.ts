@@ -8,7 +8,7 @@ export interface QueryResult<T = Record<string, unknown>> {
   rows: T[];
 }
 
-/** Database interface provided by VaNiBase framework */
+/** Database interface injected into skill context */
 export interface SkillDb {
   query: <T = Record<string, unknown>>(
     sql: string,
@@ -70,7 +70,7 @@ export interface SkillResult {
   error?: string;
 }
 
-/* ── VaNiBase product configuration types ──────────────── */
+/* ── Product configuration types ──────────────────────── */
 
 export interface VaniProductConfig {
   product: {

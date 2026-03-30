@@ -10,7 +10,7 @@ import s from './login-vault.module.css';
  *
  * Glassmorphic split-layout login page matching the 01-login-vault.html prototype.
  * Uses custom Atlas palette (void black + gold), independent of vikuna-black theme vars.
- * Intended to be plugged into VaNiBase shell via ShellConfig.pages.login override.
+ * Standalone login page for the ProessionalKey product shell.
  */
 export default function LoginVault() {
   const { login, revokeSessions, isAuthenticated, tenant } = useAuth();

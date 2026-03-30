@@ -85,7 +85,7 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        // VaNiBase error format: { error: string, code: string, status: number }
+        // API error format: { error: string, code: string, status: number }
         const msg =
           (typeof data?.error === 'string' ? data.error : data?.error?.message)
           || data?.message

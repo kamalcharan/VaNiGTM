@@ -39,7 +39,7 @@ export default function OnboardUserProfile({ onComplete }: Props) {
 
     try {
       // Save profile fields as user preferences (JSONB merge)
-      // VaNiBase PATCH /auth/preferences merges into VN_users.preferences
+      // PATCH /auth/preferences merges into user preferences JSONB
       await fetch(`${apiUrl}/api/v1/auth/preferences`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
@@ -51,7 +51,7 @@ export default function OnboardUserProfile({ onComplete }: Props) {
         }),
       });
       // Note: route handler currently filters fields — profile data may not persist
-      // until VaNiBase adds a dedicated profile update endpoint.
+      // until a dedicated profile update endpoint is added.
       // Step completion is what matters for onboarding flow.
 
       showToast({ message: 'Profile saved', type: 'success' });
