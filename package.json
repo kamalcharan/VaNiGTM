@@ -1,34 +1,21 @@
 {
-  "name": "ki-prime",
-  "version": "1.0.0",
-  "description": "KI-Prime — Financial planning agent for mutual fund distributors",
+  "name": "proessionalkey",
+  "version": "2.0.0",
   "private": true,
+  "description": "ProessionalKey — Financial Advisory Platform for MFDs",
   "scripts": {
-    "dev": "concurrently --names api,shell --prefix-colors blue,green \"npm run dev:api\" \"npm run dev:shell\"",
-    "dev:api": "tsx watch startup.ts",
-   "dev:shell": "cd vani-base/shell && npm run dev",
-    "install:all": "npm install && cd vani-base/shell && npm install",
-    "db:migrate": "tsx vani-base/framework/migrate.ts && tsx vani-base/framework/migrate.ts --dir ./migrations",
-    "test": "jest --config jest.config.ts",
-    "lint": "tsc --noEmit"
-  },
-  "dependencies": {
-    "concurrently": "^9.1.0",
-    "cors": "^2.8.6",
-    "dotenv": "^16.4.7",
-    "express": "^5.2.1",
-    "pdf-parse": "^1.1.1",
-    "pg": "^8.13.1"
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "dev": "concurrently --names api,ui --prefix-colors blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm start",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "build": "npm run build:backend && npm run build:frontend",
+    "test:backend": "cd backend && npm test",
+    "test:frontend": "cd frontend && npm test",
+    "test": "npm run test:backend"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/jest": "^30.0.0",
-    "@types/node": "^22.10.0",
-    "@types/pg": "^8.11.10",
-    "jest": "^30.0.0",
-    "ts-jest": "^29.2.5",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "concurrently": "^9.1.0"
   }
 }
