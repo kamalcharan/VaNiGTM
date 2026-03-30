@@ -1,11 +1,32 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "Node16",
-    "moduleResolution": "Node16",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022",
+      "dom",
+      "dom.iterable"
+    ],
+    "jsx": "react-jsx",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ],
+      "@ki-prime/shared/*": [
+        "./shared/*"
+      ],
+      "@ki-prime/skills/*": [
+        "./skills/*"
+      ]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
     "outDir": "./dist",
-    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -14,20 +35,23 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "paths": {
-      "@ki-prime/shared/*": ["./shared/*"],
-      "@ki-prime/skills/*": ["./skills/*"]
-    }
+    "allowJs": true,
+    "incremental": true,
+    "isolatedModules": true,
+    "noEmit": true
   },
   "include": [
-    "startup.ts",
-    "vani.config.ts",
-    "tiers.config.ts",
-    "shared/**/*.ts",
-    "skills/**/*.ts"
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "kewalinvest",
+    "backend/dist"
   ]
 }

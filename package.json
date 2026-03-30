@@ -5,7 +5,8 @@
   "description": "ProessionalKey — Financial Advisory Platform for MFDs",
   "scripts": {
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "dev": "concurrently --names api,ui --prefix-colors blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "next dev --port 3000",
+    "dev:all": "concurrently --names api,ui --prefix-colors blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm start",
     "build:backend": "cd backend && npm run build",
@@ -16,6 +17,15 @@
     "test": "npm run test:backend"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "@types/node": "25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "concurrently": "^9.1.0",
+    "typescript": "6.0.2"
+  },
+  "dependencies": {
+    "next": "^16.2.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   }
 }
