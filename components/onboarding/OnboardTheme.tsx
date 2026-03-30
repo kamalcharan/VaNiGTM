@@ -9,7 +9,7 @@ import { getTheme } from '@/themes/registry';
 import s from './OnboardTheme.module.css';
 
 interface Props {
-  onComplete: () => void;
+  onComplete: (data?: Record<string, unknown>) => void;
   onSkip?: () => void;
 }
 
@@ -102,7 +102,7 @@ export default function OnboardTheme({ onComplete, onSkip }: Props) {
             <button className={s.navSkip} onClick={onSkip} disabled={saving}>
               Skip — use default
             </button>
-            <button className={s.navNext} onClick={onComplete} disabled={saving}>
+            <button className={s.navNext} onClick={() => onComplete({ theme_id: themeId })} disabled={saving}>
               APPLY &amp; CONTINUE &rarr;
             </button>
           </div>

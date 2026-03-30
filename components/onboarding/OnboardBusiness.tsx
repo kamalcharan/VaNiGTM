@@ -8,7 +8,7 @@ import { InlineLoader } from '../loader';
 import s from './OnboardBusiness.module.css';
 
 interface Props {
-  onComplete: () => void;
+  onComplete: (data?: Record<string, unknown>) => void;
   onSkip?: () => void;
 }
 
@@ -60,7 +60,17 @@ export default function OnboardBusiness({ onComplete }: Props) {
       }
 
       showToast({ message: 'Business details saved', type: 'success' });
-      onComplete();
+      onComplete({
+        firm_name: firmName.trim(),
+        business_type: businessType,
+        arn: arn || undefined,
+        pan: pan || undefined,
+        gstin: gstin || undefined,
+        address: address || undefined,
+        city: city || undefined,
+        state: state || undefined,
+        pin: pin || undefined,
+      });
     } catch (err) {
       showToast({ message: err instanceof Error ? err.message : 'Save failed', type: 'error' });
     } finally {
