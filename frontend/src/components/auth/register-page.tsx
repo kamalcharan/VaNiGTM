@@ -47,6 +47,10 @@ export default function RegisterPage() {
     }
     if (!password || password.length < 8) {
       e.password = 'Password must be at least 8 characters';
+    } else if (!/[A-Z]/.test(password)) {
+      e.password = 'Password must contain at least 1 uppercase letter';
+    } else if (!/[0-9]/.test(password)) {
+      e.password = 'Password must contain at least 1 number';
     }
     if (password !== confirmPassword) {
       e.confirmPassword = 'Passwords do not match';
@@ -60,6 +64,7 @@ export default function RegisterPage() {
 
   async function handleSubmit(ev: FormEvent) {
     ev.preventDefault();
+    if (registerMutation.isPending) return; // Race condition guard
     if (!validate()) return;
 
     const phoneWithCode = phone

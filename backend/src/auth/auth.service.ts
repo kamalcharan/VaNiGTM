@@ -134,10 +134,10 @@ export async function register(
   try {
     await client.query('BEGIN');
 
-    // 1. Create tenant
+    // 1. Create tenant (is_active is a generated column — do NOT insert)
     const tenantResult = await client.query<{ id: string }>(
-      `INSERT INTO vn_tenants (id, slug, status, is_active, activated_at, created_at, updated_at)
-       VALUES (gen_random_uuid(), $1, 'active', true, now(), now(), now())
+      `INSERT INTO vn_tenants (id, slug, status, activated_at, created_at, updated_at)
+       VALUES (gen_random_uuid(), $1, 'active', now(), now(), now())
        RETURNING id`,
       [slug],
     );
