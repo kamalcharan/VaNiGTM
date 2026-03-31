@@ -425,8 +425,8 @@
   gap: 6px;
   padding: 12px 32px;
   background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border: var(--input-border-width) solid var(--color-border);
+  border-radius: var(--btn-radius);
   color: var(--color-muted);
   font-size: 0.8rem;
   font-family: var(--font-body, 'DM Sans', sans-serif);
