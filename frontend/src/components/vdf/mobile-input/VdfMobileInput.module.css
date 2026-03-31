@@ -1,0 +1,186 @@
+/* ═══════════════════════════════════════════════════════
+   VDF MOBILE INPUT — Phone number with country selector
+   Uses design tokens from ThemeScript: --input-*, --label-*
+   ═══════════════════════════════════════════════════════ */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--label-margin-bottom);
+  margin-bottom: var(--form-group-gap);
+}
+
+.label {
+  font-size: var(--label-font-size);
+  font-weight: var(--label-font-weight);
+  letter-spacing: var(--label-letter-spacing);
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.row {
+  display: flex;
+  gap: 0;
+  position: relative;
+}
+
+/* ── Country Button ──────────────────────────────────── */
+.countryBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: var(--input-height);
+  background: var(--color-bg);
+  border: var(--input-border-width) solid var(--color-border);
+  border-right: none;
+  border-radius: var(--input-radius) 0 0 var(--input-radius);
+  color: var(--color-fg);
+  font-size: var(--input-font-size);
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  cursor: pointer;
+  transition: all 150ms ease-out;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.countryBtn:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+}
+
+.countryBtn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.countryBtnOpen {
+  border-color: var(--color-primary);
+}
+
+.countryBtnDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.flag { font-size: 1.2rem; line-height: 1; }
+.dialCode { font-size: 0.85rem; color: var(--color-muted); }
+.chevron {
+  font-size: 0.6rem;
+  color: var(--color-muted);
+  transition: transform 150ms ease-out;
+}
+.chevronOpen { transform: rotate(180deg); }
+
+/* ── Dropdown ────────────────────────────────────────── */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 200;
+  width: 280px;
+  max-height: 280px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: var(--input-border-width) solid var(--color-border);
+  border-radius: var(--input-radius);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  overflow: hidden;
+  animation: dropIn 150ms ease-out forwards;
+}
+
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.searchWrap {
+  padding: 8px;
+  border-bottom: var(--input-border-width) solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.searchInput {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  background: var(--color-bg);
+  border: var(--input-border-width) solid var(--color-border);
+  border-radius: calc(var(--input-radius) - 2px);
+  color: var(--color-fg);
+  font-size: 0.82rem;
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  outline: none;
+  transition: border-color 150ms ease-out;
+}
+
+.searchInput::placeholder { color: var(--color-muted); opacity: var(--input-placeholder-opacity); }
+.searchInput:focus::placeholder { opacity: 0; }
+.searchInput:focus { border-color: var(--color-primary); }
+
+.optionList { overflow-y: auto; flex: 1; padding: 4px 0; }
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 100ms ease-out;
+  font-size: 0.85rem;
+  color: var(--color-fg);
+}
+
+.option:hover, .optionHighlighted {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.optionActive {
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  font-weight: 600;
+}
+
+.optionFlag { font-size: 1.1rem; line-height: 1; flex-shrink: 0; }
+.optionName { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.optionDial { font-size: 0.8rem; color: var(--color-muted); flex-shrink: 0; }
+
+/* ── Mobile Input ────────────────────────────────────── */
+.mobileInput {
+  flex: 1;
+  height: var(--input-height);
+  padding: var(--input-padding);
+  background: var(--color-bg);
+  border: var(--input-border-width) solid var(--color-border);
+  border-radius: 0 var(--input-radius) var(--input-radius) 0;
+  color: var(--color-fg);
+  font-size: var(--input-font-size);
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  outline: none;
+  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.mobileInput::placeholder { color: var(--color-muted); opacity: var(--input-placeholder-opacity); }
+.mobileInput:focus::placeholder { opacity: 0; }
+
+.mobileInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 var(--input-focus-ring-size)
+    color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity), transparent);
+}
+
+.mobileInputDisabled { opacity: 0.5; cursor: not-allowed; }
+.mobileInputError { border-color: var(--color-danger); }
+
+/* ── Hint & Error ────────────────────────────────────── */
+.hint { font-size: 0.72rem; color: var(--color-muted); padding-left: 2px; opacity: 0.6; }
+.error { font-size: var(--label-font-size); color: var(--color-danger); padding-left: 2px; }
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 480px) {
+  .dropdown { width: calc(100vw - 32px); max-width: 320px; }
+}

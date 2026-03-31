@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useShellConfig } from '@/lib/shell-config';
 import { useAuth } from '@/context/auth-provider';
-import { useToast } from '../toast';
-import { InlineLoader } from '../loader';
-import FormInput from '../ui/form-input';
+import { useToast } from '@/components/toast';
+import { InlineLoader } from '@/components/loader';
+import FormInput from '@/components/ui/form-input';
 import s from './settings-tabs.module.css';
 
 export default function ProfileTab() {

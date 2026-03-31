@@ -7,3 +7,10 @@ export { VdfGoldThread, type VdfGoldThreadProps } from './gold-thread/VdfGoldThr
 export { VdfNoiseOverlay, type VdfNoiseOverlayProps } from './noise-overlay/VdfNoiseOverlay';
 export { VdfAtmosphere, type VdfAtmosphereProps } from './atmosphere/VdfAtmosphere';
 export { VdfParticles, type VdfParticlesProps } from './particles/VdfParticles';
+export { VdfModal, type VdfModalProps } from './modal/VdfModal';
+export { VdfCheckbox, type VdfCheckboxProps } from './checkbox/VdfCheckbox';
+export { VdfTabs, type VdfTabsProps } from './tabs/VdfTabs';
+export { VdfNavRail, type VdfNavRailProps } from './nav-rail/VdfNavRail';
+export { VdfWizard, type VdfWizardProps } from './wizard/VdfWizard';
+export { VdfMobileInput, type VdfMobileInputProps } from './mobile-input/VdfMobileInput';
+export { VdfRichText, type VdfRichTextProps } from './rich-text/VdfRichText';

@@ -1,0 +1,376 @@
+/* ═══════════════════════════════════════════════════════
+   ONBOARD THEME — Step 3 (full-width card layout)
+   Theme tokens: --input-*, --label-*, --btn-*, --color-*
+   ═══════════════════════════════════════════════════════ */
+
+.page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 48px 32px;
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
+  min-height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+
+/* ── Header ──────────────────────────────────────────── */
+.pageHeader {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.headerIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+}
+
+.pageTitle {
+  font-family: var(--font-display, 'Playfair Display', serif);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  margin: 0 0 4px;
+}
+
+.pageSubtitle {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+/* ── Card ────────────────────────────────────────────── */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 24px;
+  flex: 1;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  color: var(--color-primary);
+}
+
+.cardTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-fg);
+}
+
+/* ── Section Labels ──────────────────────────────────── */
+.sectionLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  margin-bottom: 12px;
+  margin-top: 20px;
+}
+
+.sectionLabel:first-of-type {
+  margin-top: 0;
+}
+
+/* ── Display Mode Toggle ─────────────────────────────── */
+.modeToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--input-radius);
+  background: var(--color-bg);
+  cursor: pointer;
+  transition: all 200ms;
+}
+
+.modeToggle:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+}
+
+.modeInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modeIcon {
+  color: var(--color-muted);
+  display: flex;
+}
+
+.modeLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.modeDesc {
+  font-size: 0.7rem;
+  color: var(--color-muted);
+}
+
+/* ── Toggle Switch ───────────────────────────────────── */
+.toggle {
+  width: 42px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--color-border);
+  position: relative;
+  transition: background 200ms;
+  flex-shrink: 0;
+}
+
+.toggleOn {
+  background: var(--color-primary);
+}
+
+.toggleDot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform 200ms;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.toggleOn .toggleDot {
+  transform: translateX(18px);
+}
+
+/* ── Theme Grid (3 columns) ──────────────────────────── */
+.themeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.themeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg);
+  cursor: pointer;
+  transition: all 200ms;
+  position: relative;
+}
+
+.themeCard:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  transform: translateY(-1px);
+}
+
+.themeCardSelected {
+  border-color: var(--color-primary);
+  border-width: 2px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
+.checkBadge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Color Swatches ──────────────────────────────────── */
+.swatches {
+  display: flex;
+  gap: 6px;
+}
+
+.swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+}
+
+.themeName {
+  font-size: 0.72rem;
+  color: var(--color-fg);
+  font-weight: 500;
+  text-align: center;
+}
+
+/* ── Live Preview ────────────────────────────────────── */
+.preview {
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  transition: all 300ms;
+}
+
+.previewHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.previewHeading {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.previewButton {
+  padding: 6px 16px;
+  border-radius: var(--btn-radius);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.previewText {
+  font-size: 0.75rem;
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+
+.previewBadges {
+  display: flex;
+  gap: 8px;
+}
+
+.previewBadge {
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 0.6rem;
+  font-weight: 600;
+}
+
+/* ── Note ────────────────────────────────────────────── */
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 18px;
+  margin-top: 16px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-success) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 15%, transparent);
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.note svg {
+  color: var(--color-success);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.backBtn {
+  padding: 10px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--btn-radius);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 200ms;
+}
+
+.backBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-fg);
+}
+
+/* ── Footer ──────────────────────────────────────────── */
+.footerNav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+  margin-top: 20px;
+  flex-shrink: 0;
+}
+
+.skipBtn {
+  padding: 10px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--btn-radius);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 200ms;
+}
+
+.skipBtn:hover { border-color: var(--color-primary); color: var(--color-fg); }
+.skipBtn:disabled { opacity: 0.5; }
+
+.saveBtn {
+  padding: var(--btn-padding);
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--btn-radius);
+  color: var(--color-primary-fg);
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-font-weight);
+  letter-spacing: var(--btn-letter-spacing);
+  cursor: pointer;
+  transition: all 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.saveBtn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  transition: left 0.6s;
+}
+
+.saveBtn:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 40px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.saveBtn:hover:not(:disabled)::before { left: 100%; }
+.saveBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Scrollbar ───────────────────────────────────────── */
+.page::-webkit-scrollbar { width: 5px; }
+.page::-webkit-scrollbar-track { background: transparent; }
+.page::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 768px) {
+  .page { padding: 16px 20px; }
+  .themeGrid { grid-template-columns: repeat(2, 1fr); }
+}

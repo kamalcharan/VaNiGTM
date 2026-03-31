@@ -1,0 +1,113 @@
+/* ═══════════════════════════════════════════════════════
+   KI-PRIME FORM INPUT — Reusable text input wrapper
+   Uses design tokens from ThemeScript: --input-*, --label-*
+   ═══════════════════════════════════════════════════════ */
+
+.group {
+  margin-bottom: var(--form-group-gap);
+}
+
+/* ── Label ───────────────────────────────────────────── */
+.label {
+  display: block;
+  font-size: var(--label-font-size);
+  font-weight: var(--label-font-weight);
+  letter-spacing: var(--label-letter-spacing);
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: var(--label-margin-bottom);
+}
+
+/* ── Input Wrapper ───────────────────────────────────── */
+.inputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Input ───────────────────────────────────────────── */
+.input {
+  width: 100%;
+  height: var(--input-height);
+  padding: var(--input-padding);
+  background: var(--color-bg);
+  border: var(--input-border-width) solid var(--color-border);
+  border-radius: var(--input-radius);
+  color: var(--color-fg);
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: var(--input-font-size);
+  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.input::placeholder {
+  color: var(--color-muted);
+  opacity: var(--input-placeholder-opacity);
+}
+
+.input:focus::placeholder {
+  opacity: 0;
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 var(--input-focus-ring-size)
+    color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity), transparent);
+}
+
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── With icon / right element ───────────────────────── */
+.withIcon {
+  padding-left: 42px;
+}
+
+.withRight {
+  padding-right: 48px;
+}
+
+/* ── Icon (left) ─────────────────────────────────────── */
+.icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-muted);
+  font-size: var(--input-font-size);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Right Element ───────────────────────────────────── */
+.right {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+}
+
+/* ── Error State ─────────────────────────────────────── */
+.hasError .input {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 var(--input-focus-ring-size)
+    color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+.hasError .input:focus {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 var(--input-focus-ring-size)
+    color-mix(in srgb, var(--color-danger) var(--input-focus-ring-opacity), transparent);
+}
+
+.error {
+  font-size: var(--label-font-size);
+  color: var(--color-danger);
+  margin-top: 4px;
+}

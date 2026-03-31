@@ -1,66 +1,112 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth, type SessionLimitResponse, type ActiveSession } from '@/context/auth-provider';
+import { useState, type FormEvent } from 'react';
+import { useLogin, type ActiveSession } from '@/hooks';
+import { storeTokens, getAccessToken, type ApiError } from '@/lib/api-client';
+import { useToast } from '@/components/toast';
 import s from './login-vault.module.css';
 
-/**
- * KI-Prime Login Vault — Atlas Design
- *
- * Glassmorphic split-layout login page matching the 01-login-vault.html prototype.
- * Uses custom Atlas palette (void black + gold), independent of vikuna-black theme vars.
- * Standalone login page for the ProessionalKey product shell.
- */
+const ROLES = [
+  {
+    id: 'planner' as const,
+    label: 'Planner',
+    desc: 'MFD / RIA / IFA',
+    subtitle: 'Sign in to your advisory dashboard',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 20h20" />
+        <path d="M5 20V10l4-5 4 3 4-6 3 4v14" />
+        <circle cx="9" cy="5" r="1" />
+      </svg>
+    ),
+  },
+  {
+    id: 'investor' as const,
+    label: 'Investor',
+    desc: 'Client Portal',
+    subtitle: 'View your portfolio and goals',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v6l4 2" />
+      </svg>
+    ),
+  },
+];
+
+interface SessionLimitData {
+  max_sessions: number;
+  active_sessions: ActiveSession[];
+}
+
 export default function LoginVault() {
-  const { login, revokeSessions, isAuthenticated, tenant } = useAuth();
-  const router = useRouter();
+  const loginMutation = useLogin();
+  const { showToast } = useToast();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
-  const [loginComplete, setLoginComplete] = useState(false);
 
-  // Session limit state
-  const [sessionLimit, setSessionLimit] = useState<SessionLimitResponse | null>(null);
+  const [sessionLimit, setSessionLimit] = useState<SessionLimitData | null>(null);
   const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set());
   const [revokingLoading, setRevokingLoading] = useState(false);
-  const [role, setRole] = useState<'planner' | 'admin' | 'investor'>('planner');
+  const [role, setRole] = useState<'planner' | 'investor'>('planner');
 
-  // Redirect after auth state is fully resolved (including /auth/me)
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    if (!loginComplete && !tenant) return; // wait for /auth/me to populate tenant
+  const activeRole = ROLES.find((r) => r.id === role)!;
+  const loading = loginMutation.isPending;
 
-    if (tenant?.onboarding_complete === true) {
-      router.replace('/');
-    } else {
-      router.replace('/onboarding');
-    }
-  }, [isAuthenticated, loginComplete, tenant, router]);
+  // If already have a token, redirect
+  if (typeof window !== 'undefined' && getAccessToken()) {
+    window.location.href = '/onboarding';
+    return null;
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (loginMutation.isPending) return;
     setError('');
-    setLoading(true);
 
-    try {
-      const result = await login(email, password);
+    loginMutation.mutate(
+      { email: email.trim().toLowerCase(), password },
+      {
+        onSuccess: (data) => {
+          // Store tokens explicitly before navigation
+          if (data.tokens) {
+            storeTokens(data.tokens);
+          }
 
-      if ('code' in result && result.code === 'SESSION_LIMIT') {
-        setSessionLimit(result);
-        setLoading(false);
-        return;
-      }
+          // Persist theme from server response
+          const user = data.user as Record<string, unknown>;
+          const tenant = data.tenant as Record<string, unknown>;
+          const prefs = user?.preferences as Record<string, unknown> | undefined;
+          try {
+            if (user?.preferred_theme) localStorage.setItem('pk-theme-id', String(user.preferred_theme));
+            if (prefs?.color_mode) localStorage.setItem('pk-color-mode', String(prefs.color_mode));
+          } catch {}
 
-      // Signal that login succeeded — useEffect handles redirect
-      // after AuthProvider populates tenant with onboarding_complete
-      setLoginComplete(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
-      setLoading(false);
-    }
+          showToast({ message: 'Welcome back!', type: 'success' });
+
+          // Navigate based on onboarding status
+          if (tenant?.onboarding_complete === true) {
+            window.location.href = '/dashboard';
+          } else {
+            window.location.href = '/onboarding';
+          }
+        },
+        onError: (err: ApiError) => {
+          // Session limit → show dialog
+          if (err.code === 'SESSION_LIMIT' && err.details) {
+            setSessionLimit({
+              max_sessions: (err.details as any).max_sessions || 5,
+              active_sessions: (err.details as any).active_sessions || [],
+            });
+            return;
+          }
+          setError(err.message);
+        },
+      },
+    );
   }
 
   function toggleSession(sessionId: string) {
@@ -77,31 +123,10 @@ export default function LoginVault() {
     setRevokingLoading(true);
     setError('');
 
-    try {
-      const result = await revokeSessions(
-        Array.from(selectedSessions),
-        email,
-        password,
-      );
-
-      if ('code' in result && result.code === 'SESSION_LIMIT') {
-        setSessionLimit(result);
-        setSelectedSessions(new Set());
-        setRevokingLoading(false);
-        return;
-      }
-
-      // Success — useEffect handles redirect based on onboarding status
-      setSessionLimit(null);
-      setLoginComplete(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to revoke sessions');
-      setRevokingLoading(false);
-    }
+    // TODO: Wire to real revoke endpoint when built
+    showToast({ message: 'Session revoke not yet implemented', type: 'warning' });
+    setRevokingLoading(false);
   }
-
-  // Already authenticated — useEffect will redirect, show nothing
-  if (isAuthenticated) return null;
 
   return (
     <>
@@ -112,6 +137,13 @@ export default function LoginVault() {
 
         {/* ── LEFT: The Story ── */}
         <div className={s.vaultStory}>
+          {/* Orbiting rings */}
+          <div className={s.orbits}>
+            <div className={`${s.orbit} ${s.orbit1}`} />
+            <div className={`${s.orbit} ${s.orbit2}`} />
+            <div className={`${s.orbit} ${s.orbit3}`} />
+          </div>
+
           <div className={s.particles}>
             {[10, 25, 45, 65, 80, 15, 55, 90].map((left, i) => (
               <div
@@ -127,42 +159,47 @@ export default function LoginVault() {
           </div>
 
           <div className={s.storyContent}>
-            <div className={s.brandMark}>
-              <div className={s.brandIcon}>
+            {/* Brand orb */}
+            <div className={s.brandOrb}>
+              <div className={s.brandOrbInner}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M12 2L2 7l10 5 10-5-10-5z" />
                   <path d="M2 17l10 5 10-5" />
                   <path d="M2 12l10 5 10-5" />
                 </svg>
               </div>
-              <div>
-                <div className={s.brandName}>KI-PRIME</div>
-                <div className={s.brandSub}>by Vikuna Technologies</div>
-              </div>
+              <div className={s.brandOrbRing} />
+            </div>
+
+            <div className={s.brandText}>
+              <div className={s.brandName}>KI-PRIME</div>
+              <div className={s.brandSub}>by Vikuna Technologies</div>
             </div>
 
             <h1 className={s.storyHeadline}>
               Every fortune<br />
-              has a <span className={s.goldWord}>story</span>.<br />
+              has a <span className={s.glowWord}>story</span>.<br />
               Help them write it.
             </h1>
 
             <p className={s.storyText}>
               You don&apos;t just manage portfolios — you architect futures.
-              KI-Prime gives you the intelligence to see what others miss,
-              and the tools to act before the moment passes.
+              The intelligence to see what others miss.
             </p>
           </div>
 
+          {/* Bottom ticker */}
           <div className={s.storyTicker}>
             <div className={s.tickerItem}>
               <span className={s.tickerValue}>&#8377;500Cr+</span>
               <span className={s.tickerLabel}>AUM Managed</span>
             </div>
+            <div className={s.tickerDot} />
             <div className={s.tickerItem}>
               <span className={s.tickerValue}>2,000+</span>
               <span className={s.tickerLabel}>Families Served</span>
             </div>
+            <div className={s.tickerDot} />
             <div className={s.tickerItem}>
               <span className={`${s.tickerValue} ${s.textUp}`}>18.4%</span>
               <span className={s.tickerLabel}>Avg XIRR</span>
@@ -172,41 +209,39 @@ export default function LoginVault() {
 
         {/* ── RIGHT: The Form ── */}
         <div className={s.vaultForm}>
+          {/* Top navigation */}
+          <div className={s.topNav}>
+            <a href="/landing" className={s.backLink}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+              <span>Back</span>
+            </a>
+            <a href="/register" className={s.registerLink}>
+              Create account &rarr;
+            </a>
+          </div>
+
           <div className={s.formHeader}>
             <div className={s.goldLine} />
             <h2 className={s.formTitle}>Welcome back</h2>
-            <p className={s.formSubtitle}>Select your role to continue</p>
+            <p className={s.formSubtitle}>{activeRole.subtitle}</p>
           </div>
 
-          {/* Role selector */}
+          {/* Role selector — 2 roles */}
           <div className={s.roleSelector}>
-            <button
-              type="button"
-              className={`${s.roleOption} ${role === 'planner' ? s.roleOptionActive : ''}`}
-              onClick={() => setRole('planner')}
-            >
-              <span className={s.roleIcon}>&#x2B21;</span>
-              <span className={s.roleName}>Planner</span>
-              <span className={s.roleDesc}>MFD / RIA / IFA</span>
-            </button>
-            <button
-              type="button"
-              className={`${s.roleOption} ${role === 'admin' ? s.roleOptionActive : ''}`}
-              onClick={() => setRole('admin')}
-            >
-              <span className={s.roleIcon}>&#x25C8;</span>
-              <span className={s.roleName}>Firm Admin</span>
-              <span className={s.roleDesc}>Distributor / RIA Firm</span>
-            </button>
-            <button
-              type="button"
-              className={`${s.roleOption} ${role === 'investor' ? s.roleOptionActive : ''}`}
-              onClick={() => setRole('investor')}
-            >
-              <span className={s.roleIcon}>&#x25CB;</span>
-              <span className={s.roleName}>Investor</span>
-              <span className={s.roleDesc}>Client Portal</span>
-            </button>
+            {ROLES.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                className={`${s.roleOption} ${role === r.id ? s.roleOptionActive : ''}`}
+                onClick={() => setRole(r.id)}
+              >
+                <div className={s.roleIconWrap}>{r.icon}</div>
+                <span className={s.roleName}>{r.label}</span>
+                <span className={s.roleDesc}>{r.desc}</span>
+              </button>
+            ))}
           </div>
 
           {/* Error alert */}
@@ -235,15 +270,26 @@ export default function LoginVault() {
 
             <div className={`${s.formGroup} ${s.delay2}`}>
               <label className={s.formLabel}>Password</label>
-              <input
-                type="password"
-                className={s.formInput}
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-              />
+              <div className={s.passwordWrap}>
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  className={s.formInput}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  className={s.eyeToggle}
+                  onClick={() => setShowPw(!showPw)}
+                  aria-label={showPw ? 'Hide password' : 'Show password'}
+                  tabIndex={-1}
+                >
+                  {showPw ? '\u{1F648}' : '\u{1F441}'}
+                </button>
+              </div>
             </div>
 
             <div className={s.forgotLink}>
@@ -255,9 +301,29 @@ export default function LoginVault() {
               className={`${s.submitBtn} ${loading ? s.submitBtnLoading : ''}`}
               disabled={!email || !password || loading}
             >
-              {loading ? 'SIGNING IN...' : 'ENTER THE ATLAS \u2192'}
+              <span className={s.submitText}>
+                {loading ? 'SIGNING IN...' : 'ENTER THE ATLAS \u2192'}
+              </span>
             </button>
           </form>
+
+          {/* Trust strip */}
+          <div className={s.trustStrip}>
+            <div className={s.trustItem}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
+                <rect x="3" y="11" width="18" height="11" rx="2" />
+                <path d="M7 11V7a5 5 0 0110 0v4" />
+              </svg>
+              <span>256-bit encrypted</span>
+            </div>
+            <div className={s.trustDot} />
+            <div className={s.trustItem}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              <span>SOC 2 compliant</span>
+            </div>
+          </div>
 
           <div className={s.formFooter}>
             <a href="/register" className={s.formFooterLink}>

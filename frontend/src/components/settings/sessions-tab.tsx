@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useShellConfig } from '@/lib/shell-config';
 import { useAuth } from '@/context/auth-provider';
-import { useToast } from '../toast';
-import { FullPageLoader } from '../loader';
+import { useToast } from '@/components/toast';
+import { FullPageLoader } from '@/components/loader';
 import s from './settings-tabs.module.css';
 
 interface Session {

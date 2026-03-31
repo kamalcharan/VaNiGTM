@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useShellConfig } from '@/lib/shell-config';
-import { useToast } from './toast';
-import { InlineLoader, FullPageLoader } from './loader';
-import FormInput from './ui/form-input';
-import CountryDropdown, { type Country } from './ui/country-dropdown';
-import PasswordStrength from './ui/password-strength';
+import { useToast } from '@/components/toast';
+import { InlineLoader, FullPageLoader } from '@/components/loader';
+import FormInput from '@/components/ui/form-input';
+import CountryDropdown, { type Country } from '@/components/ui/country-dropdown';
+import PasswordStrength from '@/components/ui/password-strength';
 import s from './invite-accept-page.module.css';
 
 /* ── Types ───────────────────────────────────────────── */
@@ -220,20 +220,129 @@ export default function InviteAcceptPage() {
   const showMatch = confirmPassword.length > 0;
   const matched = password === confirmPassword && password.length > 0;
 
-  /* ── Loading context ───────────────────────────────── */
+  /* ── Shared brand orb SVG ──────────────────────────── */
+
+  const brandSvg = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M12 2L2 7l10 5 10-5-10-5z" />
+      <path d="M2 17l10 5 10-5" />
+      <path d="M2 12l10 5 10-5" />
+    </svg>
+  );
+
+  /* ── Determine left-panel headline & narrative ─────── */
+
+  const getLeftPanelContent = () => {
+    if (!token || expired) {
+      return {
+        headline: (
+          <>
+            Something went<br />
+            <span className={s.glowWord}>wrong</span>.
+          </>
+        ),
+        text: expired
+          ? 'This invitation is no longer valid. Please contact your administrator for a new link.'
+          : 'The invitation link appears to be incomplete. Please check the link you received.',
+      };
+    }
+    if (success) {
+      return {
+        headline: (
+          <>
+            Welcome<br />
+            <span className={s.glowWord}>aboard</span>.
+          </>
+        ),
+        text: 'Your account is ready. You now have full access to your team workspace.',
+      };
+    }
+    return {
+      headline: (
+        <>
+          You&apos;ve been<br />
+          <span className={s.glowWord}>invited</span>.
+        </>
+      ),
+      text: 'A trusted advisor has invited you to join their workspace. Create your account to get started.',
+    };
+  };
+
+  const leftContent = getLeftPanelContent();
+
+  /* ── Loading context (full-page) ───────────────────── */
 
   if (contextLoading) {
     return <FullPageLoader message="Loading invitation..." />;
   }
 
-  /* ── No token ──────────────────────────────────────── */
+  /* ── Render ────────────────────────────────────────── */
 
-  if (!token) {
-    return (
-      <div className={s.page}>
-        <BrandMark name={product.name} />
-        <div className={s.card}>
-          <div className={s.errorState}>
+  return (
+    <div className={s.vault}>
+      {/* ═══ LEFT: Story Panel ═══ */}
+      <div className={s.storyPanel}>
+        {/* Orbiting rings */}
+        <div className={s.orbits}>
+          <div className={`${s.orbit} ${s.orbit1}`} />
+          <div className={`${s.orbit} ${s.orbit2}`} />
+          <div className={`${s.orbit} ${s.orbit3}`} />
+        </div>
+
+        <div className={s.storyContent}>
+          {/* Brand orb */}
+          <div className={s.brandOrb}>
+            <div className={s.brandOrbInner}>{brandSvg}</div>
+            <div className={s.brandOrbRing} />
+          </div>
+
+          <div className={s.brandText}>
+            <div className={s.brandName}>{product.name.toUpperCase()}</div>
+            <div className={s.brandSub}>by Vikuna Technologies</div>
+          </div>
+
+          <h1 className={s.headline}>{leftContent.headline}</h1>
+          <p className={s.storyText}>{leftContent.text}</p>
+
+          {/* Invite context on left panel (form state only) */}
+          {invite && !success && !expired && token && (
+            <div className={s.inviteContext}>
+              <div className={s.inviteContextRow}>
+                <div className={s.firmLogoCircle}>
+                  {(invite.tenant_name || '?')[0].toUpperCase()}
+                </div>
+                <div className={s.inviteContextInfo}>
+                  <div className={s.inviteContextFirm}>{invite.tenant_name}</div>
+                  <div className={s.inviteContextMeta}>
+                    <span className={s.roleBadge}>{invite.role}</span>
+                    {invite.invited_by && (
+                      <span className={s.invitedBy}>
+                        invited by {invite.invited_by}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ═══ RIGHT: Form Panel ═══ */}
+      <div className={s.formPanel}>
+        {/* Top nav */}
+        <div className={s.topNav}>
+          <a href="/login" className={s.backLink}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            <span>Back to sign in</span>
+          </a>
+        </div>
+
+        {/* ── No Token State ── */}
+        {!token && (
+          <div className={s.stateContainer}>
             <div className={s.errorOrb}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <circle cx="12" cy="12" r="10" />
@@ -241,25 +350,19 @@ export default function InviteAcceptPage() {
                 <line x1="9" y1="9" x2="15" y2="15" />
               </svg>
             </div>
-            <h2 className={s.errorTitle}>Invalid invitation link</h2>
-            <p className={s.errorDesc}>
-              This link is missing an invitation token. Please check the link you received.
+            <h2 className={s.stateTitle}>Invalid invitation link</h2>
+            <p className={s.stateDesc}>
+              This link is missing an invitation token. Please check the link you received or request a new one.
             </p>
-            <a href="/login" className={s.backBtn}>&larr; Back to sign in</a>
+            <a href="/login" className={s.stateBackBtn}>
+              &larr; Back to sign in
+            </a>
           </div>
-        </div>
-      </div>
-    );
-  }
+        )}
 
-  /* ── Expired / invalid token ───────────────────────── */
-
-  if (expired) {
-    return (
-      <div className={s.page}>
-        <BrandMark name={product.name} />
-        <div className={s.card}>
-          <div className={s.errorState}>
+        {/* ── Expired State ── */}
+        {token && expired && (
+          <div className={s.stateContainer}>
             <div className={s.errorOrb}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <circle cx="12" cy="12" r="10" />
@@ -267,29 +370,20 @@ export default function InviteAcceptPage() {
                 <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
             </div>
-            <h2 className={s.errorTitle}>Invitation expired</h2>
-            <p className={s.errorDesc}>{expiredMessage}</p>
-            <p className={s.errorHint}>
+            <h2 className={s.stateTitle}>Invitation expired</h2>
+            <p className={s.stateDesc}>{expiredMessage}</p>
+            <p className={s.stateHint}>
               Contact your administrator to request a new invitation.
             </p>
-            <a href="/login" className={s.backBtn}>&larr; Back to sign in</a>
+            <a href="/login" className={s.stateBackBtn}>
+              &larr; Back to sign in
+            </a>
           </div>
-        </div>
-      </div>
-    );
-  }
+        )}
 
-  /* ── Success state ─────────────────────────────────── */
-
-  if (success) {
-    const tenantName = invite?.tenant_name || 'the team';
-    const roleName = invite?.role || 'member';
-
-    return (
-      <div className={s.page}>
-        <BrandMark name={product.name} />
-        <div className={s.card}>
-          <div className={s.successState}>
+        {/* ── Success State ── */}
+        {token && !expired && success && (
+          <div className={s.stateContainer}>
             <div className={s.checkOrb}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" className={s.checkPath} />
@@ -297,9 +391,9 @@ export default function InviteAcceptPage() {
               <div className={s.checkRing} />
             </div>
             <h2 className={s.successTitle}>Welcome to the team!</h2>
-            <p className={s.successDesc}>
-              You&apos;ve joined <strong>{tenantName}</strong> as a{' '}
-              <strong>{roleName}</strong>. Let&apos;s set up your workspace.
+            <p className={s.stateDesc}>
+              You&apos;ve joined <strong>{invite?.tenant_name || 'the team'}</strong> as a{' '}
+              <strong>{invite?.role || 'member'}</strong>. Let&apos;s set up your workspace.
             </p>
             <button
               className={s.submitBtn}
@@ -308,204 +402,184 @@ export default function InviteAcceptPage() {
               CONTINUE &rarr;
             </button>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ── Registration form ─────────────────────────────── */
-
-  const emailReadonly = !!invite?.email;
-
-  return (
-    <div className={s.page}>
-      <BrandMark name={product.name} />
-
-      <div className={s.card}>
-        {/* ── Invitation Banner ── */}
-        {invite && (
-          <div className={s.banner}>
-            <div className={s.bannerBar} />
-            <div className={s.bannerContent}>
-              <div className={s.bannerFirm}>
-                <div className={s.firmLogo}>
-                  {(invite.tenant_name || '?')[0].toUpperCase()}
-                </div>
-                <div>
-                  <div className={s.firmName}>{invite.tenant_name}</div>
-                  {invite.tenant_slug && (
-                    <div className={s.firmCode}>{invite.tenant_slug}</div>
-                  )}
-                </div>
-              </div>
-              <div className={s.bannerDetails}>
-                <div className={s.bannerDetail}>
-                  <span className={s.detailLabel}>Your Role</span>
-                  <span className={s.detailValue}>{invite.role}</span>
-                </div>
-                {invite.invited_by && (
-                  <div className={s.bannerDetail}>
-                    <span className={s.detailLabel}>Invited By</span>
-                    <span className={s.detailMuted}>{invite.invited_by}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
         )}
 
-        {/* ── Expiry Notice ── */}
-        {daysRemaining !== null && (
-          <div className={s.expiryNotice}>
-            &#x23F3; This invitation expires in {daysRemaining} day
-            {daysRemaining !== 1 ? 's' : ''}
-          </div>
-        )}
-
-        {/* ── Form Header ── */}
-        <h2 className={s.cardTitle}>
-          {invite ? 'Create your account to join' : 'Accept invitation'}
-        </h2>
-        <p className={s.cardDesc}>
-          {invite
-            ? `Set up your credentials to join ${invite.tenant_name}`
-            : 'Set up your account to accept this invitation'}
-        </p>
-
-        {/* ── Form ── */}
-        <form onSubmit={handleSubmit} noValidate>
-          <FormInput
-            label="Full Name"
-            placeholder="Your full name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            error={errors.fullName}
-            required
-            disabled={loading}
-            autoFocus
-          />
-
-          <FormInput
-            label="Email Address"
-            type="email"
-            placeholder="you@company.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            error={errors.email}
-            required
-            disabled={loading || emailReadonly}
-            readOnly={emailReadonly}
-            className={emailReadonly ? s.readonlyInput : ''}
-          />
-          {emailReadonly && (
-            <div className={s.fieldHint}>
-              Pre-filled from invitation — cannot be changed
+        {/* ── Registration Form State ── */}
+        {token && !expired && !success && (
+          <>
+            {/* Form header */}
+            <div className={s.formHeader}>
+              <div className={s.accentLine} />
+              <h2 className={s.formTitle}>Create your account to join</h2>
+              <p className={s.formSubtitle}>
+                {invite
+                  ? `Set up your credentials to join ${invite.tenant_name}`
+                  : 'Set up your account to accept this invitation'}
+              </p>
             </div>
-          )}
 
-          <FormInput
-            label="Password"
-            type={showPw ? 'text' : 'password'}
-            placeholder="Min 8 chars, 1 uppercase, 1 number"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            error={errors.password}
-            required
-            disabled={loading}
-            rightElement={
-              <EyeToggle visible={showPw} onToggle={() => setShowPw(!showPw)} />
-            }
-          />
-          <div className={s.strengthWrap}>
-            <PasswordStrength password={password} />
-          </div>
-
-          <FormInput
-            label="Confirm Password"
-            type={showConfirm ? 'text' : 'password'}
-            placeholder="Re-enter your password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            error={errors.confirmPassword}
-            required
-            disabled={loading}
-            rightElement={
-              <EyeToggle
-                visible={showConfirm}
-                onToggle={() => setShowConfirm(!showConfirm)}
-              />
-            }
-          />
-          {showMatch && (
-            <div className={`${s.matchIndicator} ${matched ? s.matchOk : s.matchNo}`}>
-              <span className={s.matchDot} />
-              <span>{matched ? 'Passwords match' : 'Passwords do not match'}</span>
-            </div>
-          )}
-
-          {/* Phone */}
-          <div className={s.phoneGroup}>
-            <label className={s.phoneLabel}>Phone Number</label>
-            <div className={s.phoneRow}>
-              <CountryDropdown
-                value={country.code}
-                onChange={setCountry}
-                disabled={loading}
-              />
-              <div className={s.phoneInputWrap}>
-                <FormInput
-                  label=""
-                  type="tel"
-                  placeholder="98765 43210"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  error={errors.phone}
-                  disabled={loading}
-                />
+            {/* Expiry badge */}
+            {daysRemaining !== null && (
+              <div className={s.expiryBadge}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                <span>
+                  Expires in {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}
+                </span>
               </div>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            className={s.submitBtn}
-            disabled={loading || !fullName || !email || !password || !confirmPassword}
-          >
-            {loading ? (
-              <InlineLoader size="sm" message="JOINING..." />
-            ) : invite ? (
-              `JOIN ${invite.tenant_name.toUpperCase()} \u2192`
-            ) : (
-              'ACCEPT INVITATION \u2192'
             )}
-          </button>
-        </form>
 
-        <div className={s.footer}>
-          <a href="/login" className={s.footerLink}>
-            &larr; Back to sign in
-          </a>
-        </div>
-      </div>
-    </div>
-  );
-}
+            {/* Invitation banner (subtle) */}
+            {invite && (
+              <div className={s.banner}>
+                <div className={s.bannerBar} />
+                <div className={s.bannerContent}>
+                  <div className={s.bannerFirm}>
+                    <div className={s.firmLogo}>
+                      {(invite.tenant_name || '?')[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <div className={s.firmName}>{invite.tenant_name}</div>
+                      {invite.tenant_slug && (
+                        <div className={s.firmCode}>{invite.tenant_slug}</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className={s.bannerDetails}>
+                    <div className={s.bannerDetail}>
+                      <span className={s.detailLabel}>Your Role</span>
+                      <span className={s.detailValue}>{invite.role}</span>
+                    </div>
+                    {invite.invited_by && (
+                      <div className={s.bannerDetail}>
+                        <span className={s.detailLabel}>Invited By</span>
+                        <span className={s.detailMuted}>{invite.invited_by}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
-/* ── Brand Mark (shared helper) ──────────────────────── */
+            {/* Form */}
+            <form onSubmit={handleSubmit} noValidate>
+              <FormInput
+                label="Full Name"
+                placeholder="Your full name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                error={errors.fullName}
+                required
+                disabled={loading}
+                autoFocus
+              />
 
-function BrandMark({ name }: { name: string }) {
-  return (
-    <div className={s.brandMark}>
-      <div className={s.brandIcon}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M12 2L2 7l10 5 10-5-10-5z" />
-          <path d="M2 17l10 5 10-5" />
-          <path d="M2 12l10 5 10-5" />
-        </svg>
-      </div>
-      <div>
-        <div className={s.brandName}>{name}</div>
-        <div className={s.brandSub}>by Vikuna Technologies</div>
+              <FormInput
+                label="Email Address"
+                type="email"
+                placeholder="you@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                error={errors.email}
+                required
+                disabled={loading || !!invite?.email}
+                readOnly={!!invite?.email}
+                className={invite?.email ? s.readonlyInput : ''}
+              />
+              {invite?.email && (
+                <div className={s.fieldHint}>
+                  Pre-filled from invitation — cannot be changed
+                </div>
+              )}
+
+              <FormInput
+                label="Password"
+                type={showPw ? 'text' : 'password'}
+                placeholder="Min 8 chars, 1 uppercase, 1 number"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                error={errors.password}
+                required
+                disabled={loading}
+                rightElement={
+                  <EyeToggle visible={showPw} onToggle={() => setShowPw(!showPw)} />
+                }
+              />
+              <div className={s.strengthWrap}>
+                <PasswordStrength password={password} />
+              </div>
+
+              <FormInput
+                label="Confirm Password"
+                type={showConfirm ? 'text' : 'password'}
+                placeholder="Re-enter your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                error={errors.confirmPassword}
+                required
+                disabled={loading}
+                rightElement={
+                  <EyeToggle
+                    visible={showConfirm}
+                    onToggle={() => setShowConfirm(!showConfirm)}
+                  />
+                }
+              />
+              {showMatch && (
+                <div className={`${s.matchIndicator} ${matched ? s.matchOk : s.matchNo}`}>
+                  <span className={s.matchDot} />
+                  <span>{matched ? 'Passwords match' : 'Passwords do not match'}</span>
+                </div>
+              )}
+
+              {/* Phone */}
+              <div className={s.phoneGroup}>
+                <label className={s.phoneLabel}>Phone Number</label>
+                <div className={s.phoneRow}>
+                  <CountryDropdown
+                    value={country.code}
+                    onChange={setCountry}
+                    disabled={loading}
+                  />
+                  <div className={s.phoneInputWrap}>
+                    <FormInput
+                      label=""
+                      type="tel"
+                      placeholder="98765 43210"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      error={errors.phone}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className={s.submitBtn}
+                disabled={loading || !fullName || !email || !password || !confirmPassword}
+              >
+                {loading ? (
+                  <InlineLoader size="sm" message="JOINING..." />
+                ) : invite ? (
+                  `JOIN ${invite.tenant_name.toUpperCase()} \u2192`
+                ) : (
+                  'ACCEPT INVITATION \u2192'
+                )}
+              </button>
+            </form>
+
+            <div className={s.footer}>
+              <a href="/login" className={s.footerLink}>
+                Already have an account?{' '}
+                <span className={s.footerAccent}>Sign in &rarr;</span>
+              </a>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

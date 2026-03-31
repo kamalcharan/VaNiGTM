@@ -1,0 +1,128 @@
+/* ═══════════════════════════════════════════════════════
+   VDF RICH TEXT — Lightweight contentEditable editor
+   Uses design tokens from ThemeScript: --input-*, --label-*
+   ═══════════════════════════════════════════════════════ */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--label-margin-bottom);
+  margin-bottom: var(--form-group-gap);
+}
+
+.label {
+  display: block;
+  font-size: var(--label-font-size);
+  font-weight: var(--label-font-weight);
+  letter-spacing: var(--label-letter-spacing);
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* ── Editor Wrap ────────────────────────────────────── */
+.editorWrap {
+  border: var(--input-border-width) solid var(--color-border);
+  border-radius: var(--input-radius);
+  background: var(--color-bg);
+  overflow: hidden;
+  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.editorWrap:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 var(--input-focus-ring-size)
+    color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity), transparent);
+}
+
+.editorWrapError {
+  border-color: var(--color-danger);
+}
+
+.editorWrapError:focus-within {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 var(--input-focus-ring-size)
+    color-mix(in srgb, var(--color-danger) var(--input-focus-ring-opacity), transparent);
+}
+
+.editorWrapDisabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* ── Toolbar ────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  gap: 2px;
+  border-bottom: var(--input-border-width) solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 50%, transparent);
+}
+
+.toolBtn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 120ms ease-out;
+  line-height: 1;
+  padding: 0;
+  font-family: inherit;
+}
+
+.toolBtn:hover {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-fg);
+}
+
+.toolBtnActive {
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  color: var(--color-primary);
+}
+
+/* ── Editor ─────────────────────────────────────────── */
+.editor {
+  padding: 12px 16px;
+  color: var(--color-fg);
+  font-size: var(--input-font-size);
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  line-height: 1.6;
+  outline: none;
+  overflow-y: auto;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-muted);
+  opacity: var(--input-placeholder-opacity);
+  pointer-events: none;
+}
+
+.editor:focus:empty::before {
+  opacity: 0;
+}
+
+.editor ul, .editor ol { margin: 4px 0; padding-left: 24px; }
+.editor li { margin-bottom: 2px; }
+
+/* ── Footer ─────────────────────────────────────────── */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.error { font-size: var(--label-font-size); color: var(--color-danger); }
+.charCount { font-size: var(--label-font-size); color: var(--color-muted); margin-left: auto; }
+.charCountOver { color: var(--color-danger); }

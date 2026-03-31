@@ -39,10 +39,6 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "src/components/auth",
-    "src/components/settings",
-    "src/components/landing-page.tsx",
-    "src/components/settings-page.tsx"
+    "node_modules"
   ]
 }

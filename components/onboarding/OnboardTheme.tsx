@@ -3,9 +3,8 @@
 import { useState } from 'react';
 import { useShellConfig } from '@/lib/shell-config';
 import { useAuth } from '@/context/auth-provider';
-import { useTheme } from '@/components/theme-provider';
+import { useTheme, getTheme } from '@/config/theme';
 import { useToast } from '../toast';
-import { getTheme } from '@/themes/registry';
 import s from './OnboardTheme.module.css';
 
 interface Props {
