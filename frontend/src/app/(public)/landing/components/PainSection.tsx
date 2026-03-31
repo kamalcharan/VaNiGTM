@@ -32,7 +32,7 @@ function PainCard({ icon, title, desc }: { icon: string; title: string; desc: st
   return (
     <div ref={ref} className={s.animateOnScroll}>
       <VdfCard variant="glass" accentColor="var(--color-accent3)" hoverLift>
-        <VdfIcon size="sm" glowColor="rgba(232, 139, 139, 0.1)">
+        <VdfIcon size="sm" glowColor="var(--color-accent3)">
           <span>{icon}</span>
         </VdfIcon>
         <h3 className={s.painTitle}>{title}</h3>

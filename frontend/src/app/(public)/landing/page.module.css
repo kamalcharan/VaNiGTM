@@ -249,7 +249,7 @@
 .featureTag {
   display: inline-block;
   padding: 3px 10px;
-  background: var(--tag-glow, var(--gold-subtle));
+  background: var(--color-primary-subtle);
   border-radius: 100px;
   font-family: var(--font-mono, monospace);
   font-size: 0.68rem;
