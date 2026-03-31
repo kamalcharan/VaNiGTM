@@ -1,0 +1,81 @@
+.publicLayout {
+  /* Atlas overlay variables — layer on top of theme tokens */
+  --glass: rgba(255, 255, 255, 0.04);
+  --glass-strong: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --gold-dim: rgba(201, 168, 76, 0.4);
+  --gold-glow: rgba(201, 168, 76, 0.15);
+  --gold-subtle: rgba(201, 168, 76, 0.06);
+  --text-secondary: rgba(240, 236, 226, 0.6);
+  --text-muted: rgba(240, 236, 226, 0.35);
+
+  /* Spacing tokens */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+  --space-5xl: 128px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  /* Ease */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.content {
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Footer (shared across public pages) ── */
+.footer {
+  padding: var(--space-3xl) var(--space-2xl) var(--space-xl);
+  border-top: 1px solid var(--glass-border);
+}
+
+.footerContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: var(--space-3xl);
+  flex-wrap: wrap;
+}
+
+.footerBottom {
+  max-width: 1200px;
+  margin: var(--space-2xl) auto 0;
+  padding-top: var(--space-lg);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+@media (max-width: 768px) {
+  .footerContent {
+    flex-direction: column;
+    gap: var(--space-xl);
+  }
+}

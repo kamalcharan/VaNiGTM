@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "ignoreDeprecations": "6.0",
     "target": "ES2022",
     "lib": [
       "ES2022",
@@ -44,14 +45,11 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "kewalinvest",
-    "backend/dist"
+    "kewalinvest"
   ]
 }

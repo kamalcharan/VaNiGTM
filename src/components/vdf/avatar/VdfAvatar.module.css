@@ -1,0 +1,30 @@
+.avatar {
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold-glow, rgba(201, 168, 76, 0.15)), var(--glass-strong, rgba(255, 255, 255, 0.07)));
+  border: 1px solid var(--gold-dim, rgba(201, 168, 76, 0.4));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display, serif);
+  font-weight: 700;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.sm {
+  width: 32px;
+  height: 32px;
+  font-size: 0.75rem;
+}
+
+.md {
+  width: 44px;
+  height: 44px;
+  font-size: 1rem;
+}
+
+.lg {
+  width: 56px;
+  height: 56px;
+  font-size: 1.25rem;
+}
