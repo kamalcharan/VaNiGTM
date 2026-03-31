@@ -1,57 +1,24 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": [
-      "ES2022",
-      "dom",
-      "dom.iterable"
-    ],
-    "jsx": "react-jsx",
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "src/*"
-      ],
-      "@ki-prime/shared/*": [
-        "./shared/*"
-      ],
-      "@ki-prime/skills/*": [
-        "./skills/*"
-      ]
-    },
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "outDir": "./dist",
+    "lib": ["ES2022"],
+    "module": "Node16",
+    "moduleResolution": "Node16",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "allowJs": true,
-    "incremental": true,
-    "isolatedModules": true,
-    "noEmit": true
+    "outDir": "./dist"
   },
   "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    "backend/src/**/*.ts",
+    "shared/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "kewalinvest",
-    "backend/dist"
+    "frontend"
   ]
 }
