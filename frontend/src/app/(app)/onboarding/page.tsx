@@ -13,7 +13,7 @@ import OnboardPreferences from '@/components/onboarding/OnboardPreferences';
 import OnboardImport from '@/components/onboarding/OnboardImport';
 import s from './onboarding-page.module.css';
 
-const STEP_COMPONENTS: Record<string, React.ComponentType<{ onComplete: () => void; onSkip?: () => void }>> = {
+const STEP_COMPONENTS: Record<string, React.ComponentType<{ onComplete: () => void; onSkip?: () => void; onBack?: () => void }>> = {
   OnboardUserProfile,
   OnboardBusiness,
   OnboardTheme,
@@ -78,14 +78,6 @@ export default function OnboardingPage() {
     <div className={s.page}>
       <header className={s.topbar}>
         <div className={s.brand}>
-          {/* Back button */}
-          {currentIndex > 0 && (
-            <button className={s.backBtn} onClick={handleBack} title="Previous step">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-              </svg>
-            </button>
-          )}
           <div className={s.brandIcon}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M12 2L2 7l10 5 10-5-10-5z" />
@@ -115,6 +107,7 @@ export default function OnboardingPage() {
           <StepComponent
             onComplete={handleComplete}
             onSkip={!currentStep.mandatory ? handleSkip : undefined}
+            onBack={currentIndex > 0 ? handleBack : undefined}
           />
         ) : (
           <div className={s.missing}>

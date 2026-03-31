@@ -10,9 +10,10 @@ import s from './OnboardTheme.module.css';
 interface Props {
   onComplete: () => void;
   onSkip?: () => void;
+  onBack?: () => void;
 }
 
-export default function OnboardTheme({ onComplete, onSkip }: Props) {
+export default function OnboardTheme({ onComplete, onSkip, onBack }: Props) {
   const { themeId, setTheme, themes, colorMode, toggleColorMode } = useTheme();
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -166,6 +167,12 @@ export default function OnboardTheme({ onComplete, onSkip }: Props) {
 
       {/* Footer */}
       <div className={s.footerNav}>
+        {onBack && (
+          <button className={s.backBtn} onClick={onBack} type="button">
+            &larr; Back
+          </button>
+        )}
+        <div style={{ flex: 1 }} />
         <button className={s.skipBtn} onClick={onSkip} disabled={saving}>
           Skip — use default
         </button>

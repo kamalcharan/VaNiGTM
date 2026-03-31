@@ -287,11 +287,27 @@
   margin-top: 1px;
 }
 
+.backBtn {
+  padding: 10px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--btn-radius);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 200ms;
+}
+
+.backBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-fg);
+}
+
 /* ── Footer ──────────────────────────────────────────── */
 .footerNav {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 12px;
   padding-top: 20px;
   border-top: 1px solid var(--color-border);
   margin-top: 20px;

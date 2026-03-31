@@ -22,9 +22,10 @@ const DESIGNATIONS = [
 interface Props {
   onComplete: () => void;
   onSkip?: () => void;
+  onBack?: () => void;
 }
 
-export default function OnboardUserProfile({ onComplete }: Props) {
+export default function OnboardUserProfile({ onComplete, onBack }: Props) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const submittingRef = useRef(false); // Race condition guard
@@ -222,7 +223,11 @@ export default function OnboardUserProfile({ onComplete }: Props) {
 
         {/* Navigation */}
         <div className={s.wizardNav}>
-          <div />
+          {onBack ? (
+            <button className={s.backBtn} onClick={onBack} type="button">
+              &larr; Back
+            </button>
+          ) : <div />}
           <div className={s.navRight}>
             <button className={s.navNext} onClick={handleSubmit} disabled={loading}>
               {loading ? <InlineLoader size="sm" message="SAVING..." /> : 'SAVE & CONTINUE \u2192'}

@@ -6,9 +6,10 @@ import s from './OnboardImport.module.css';
 interface Props {
   onComplete: () => void;
   onSkip?: () => void;
+  onBack?: () => void;
 }
 
-export default function OnboardImport({ onComplete, onSkip }: Props) {
+export default function OnboardImport({ onComplete, onSkip, onBack }: Props) {
   return (
     <div className={l.full}>
       <div className={l.fullContent}>
@@ -58,7 +59,11 @@ export default function OnboardImport({ onComplete, onSkip }: Props) {
         </div>
 
         <div className={l.nav}>
-          <div />
+          {onBack ? (
+            <button className={l.backBtn} onClick={onBack} type="button">
+              &larr; Back
+            </button>
+          ) : <div />}
           <div className={l.navRight}>
             <button className={l.navSkip} onClick={onSkip}>
               Skip — I&apos;ll import later

@@ -10,6 +10,7 @@ import s from './OnboardInvite.module.css';
 interface Props {
   onComplete: () => void;
   onSkip?: () => void;
+  onBack?: () => void;
 }
 
 interface SentInvite {
@@ -24,7 +25,7 @@ const ROLES = [
   { value: 'planner', label: 'Planner', desc: 'Manage clients and portfolios' },
 ];
 
-export default function OnboardInvite({ onComplete, onSkip }: Props) {
+export default function OnboardInvite({ onComplete, onSkip, onBack }: Props) {
   const { showToast } = useToast();
 
   const [email, setEmail] = useState('');
@@ -180,6 +181,12 @@ export default function OnboardInvite({ onComplete, onSkip }: Props) {
 
       {/* Footer */}
       <div className={s.footerNav}>
+        {onBack && (
+          <button className={s.backBtn} onClick={onBack} type="button">
+            &larr; Back
+          </button>
+        )}
+        <div style={{ flex: 1 }} />
         <button className={s.skipBtn} onClick={onSkip}>Skip for now</button>
         <button className={s.saveBtn} onClick={onComplete}>
           {sent.length > 0 ? 'CONTINUE \u2192' : 'SKIP & CONTINUE \u2192'}

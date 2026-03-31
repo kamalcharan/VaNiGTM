@@ -24,9 +24,10 @@ const QUICK_COLORS = [
 interface Props {
   onComplete: () => void;
   onSkip?: () => void;
+  onBack?: () => void;
 }
 
-export default function OnboardBusiness({ onComplete }: Props) {
+export default function OnboardBusiness({ onComplete, onBack }: Props) {
   const { showToast } = useToast();
   const submittingRef = useRef(false);
 
@@ -306,7 +307,11 @@ export default function OnboardBusiness({ onComplete }: Props) {
 
       {/* ── Footer Nav ── */}
       <div className={s.footerNav}>
-        <div />
+        {onBack ? (
+          <button className={s.backBtn} onClick={onBack} type="button">
+            &larr; Back
+          </button>
+        ) : <div />}
         <button className={s.saveBtn} onClick={handleSubmit} disabled={loading}>
           {loading ? <InlineLoader size="sm" message="SAVING..." /> : 'SAVE & CONTINUE \u2192'}
         </button>

@@ -10,9 +10,10 @@ import l from './step-layout.module.css';
 interface Props {
   onComplete: () => void;
   onSkip?: () => void;
+  onBack?: () => void;
 }
 
-export default function OnboardPreferences({ onComplete, onSkip }: Props) {
+export default function OnboardPreferences({ onComplete, onSkip, onBack }: Props) {
   const { apiUrl } = useShellConfig();
   const { getAuthHeaders } = useAuth();
   const { showToast } = useToast();
@@ -130,7 +131,11 @@ export default function OnboardPreferences({ onComplete, onSkip }: Props) {
         </div>
 
         <div className={l.nav}>
-          <div />
+          {onBack ? (
+            <button className={l.backBtn} onClick={onBack} type="button">
+              &larr; Back
+            </button>
+          ) : <div />}
           <div className={l.navRight}>
             <button className={l.navSkip} onClick={onSkip} disabled={loading}>
               Skip for now
