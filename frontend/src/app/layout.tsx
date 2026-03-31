@@ -1,7 +1,10 @@
-import { ThemeProvider } from '@/config/theme';
+import { ThemeProvider, ThemeScript } from '@/config/theme';
 import { AuthProvider } from '@/context/auth-provider';
 import { ShellConfigProvider } from '@/lib/shell-config';
 import { ToastProvider } from '@/components/toast';
+
+const DEFAULT_THEME = process.env.NEXT_PUBLIC_DEFAULT_THEME || 'vikuna-black';
+const DEFAULT_MODE = (process.env.NEXT_PUBLIC_DEFAULT_COLOR_MODE || 'dark') as 'light' | 'dark';
 
 export const metadata = {
   title: 'ProessionalKey',
@@ -10,7 +13,7 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link
           rel="stylesheet"
@@ -23,9 +26,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             --font-mono: 'JetBrains Mono', monospace;
           }
         `}} />
+        {/* Blocking theme injection — applies CSS variables BEFORE first paint */}
+        <ThemeScript defaultThemeId={DEFAULT_THEME} defaultColorMode={DEFAULT_MODE} />
       </head>
       <body style={{ margin: 0, padding: 0, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-        <ThemeProvider defaultThemeId={process.env.NEXT_PUBLIC_DEFAULT_THEME || 'vikuna-black'}>
+        <ThemeProvider defaultThemeId={DEFAULT_THEME}>
           <ShellConfigProvider>
             <AuthProvider>
               <ToastProvider>

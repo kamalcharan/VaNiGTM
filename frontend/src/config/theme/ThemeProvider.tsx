@@ -68,13 +68,32 @@ function themeToCSS(theme: ThemeConfig, isDark: boolean): Record<string, string>
   };
 }
 
+function getInitialTheme(defaultId: string): string {
+  if (typeof window === 'undefined') return defaultId;
+  try {
+    const saved = localStorage.getItem('pk-theme-id');
+    if (saved && getTheme(saved).id === saved) return saved;
+  } catch {}
+  return defaultId;
+}
+
+function getInitialMode(): 'light' | 'dark' {
+  if (typeof window === 'undefined') return ENV_DEFAULT_MODE;
+  try {
+    const saved = localStorage.getItem('pk-color-mode');
+    if (saved === 'light' || saved === 'dark') return saved;
+  } catch {}
+  return ENV_DEFAULT_MODE;
+}
+
 export function ThemeProvider({ children, defaultThemeId = 'vikuna-black' }: { children: ReactNode; defaultThemeId?: string }) {
-  const [themeId, setThemeId] = useState(defaultThemeId);
-  const [colorMode, setColorMode] = useState<'light' | 'dark'>(ENV_DEFAULT_MODE);
+  const [themeId, setThemeId] = useState(() => getInitialTheme(defaultThemeId));
+  const [colorMode, setColorMode] = useState<'light' | 'dark'>(() => getInitialMode());
 
   const theme = getTheme(themeId);
 
-  // Apply CSS variables to :root
+  // Apply CSS variables to :root on theme/mode change
+  // ThemeScript handles the initial paint; this handles runtime changes
   useEffect(() => {
     const vars = themeToCSS(theme, colorMode === 'dark');
     const root = document.documentElement;
@@ -83,16 +102,6 @@ export function ThemeProvider({ children, defaultThemeId = 'vikuna-black' }: { c
     });
     root.style.setProperty('color-scheme', colorMode);
   }, [theme, colorMode]);
-
-  // Load saved preferences (localStorage overrides env default)
-  useEffect(() => {
-    try {
-      const savedTheme = localStorage.getItem('pk-theme-id');
-      const savedMode = localStorage.getItem('pk-color-mode');
-      if (savedTheme && getTheme(savedTheme).id === savedTheme) setThemeId(savedTheme);
-      if (savedMode === 'light' || savedMode === 'dark') setColorMode(savedMode);
-    } catch { /* SSR or localStorage unavailable */ }
-  }, []);
 
   const handleSetTheme = useCallback((id: string) => {
     setThemeId(id);
