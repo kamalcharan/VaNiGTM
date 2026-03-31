@@ -127,6 +127,81 @@ export function createAuthRouter(pool: Pool): Router {
     }
   });
 
+  /* ── POST /api/v1/auth/invite ───────────────────────── */
+
+  router.post('/invite', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+
+      const { invitations } = req.body;
+      if (!Array.isArray(invitations) || invitations.length === 0) {
+        res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'invitations array required' } });
+        return;
+      }
+
+      // For each invitation, insert into vn_invitations
+      const results = [];
+      const crypto = await import('crypto');
+
+      for (const inv of invitations) {
+        const email = String(inv.email || '').trim().toLowerCase();
+        const roleId = String(inv.role_id || 'planner');
+
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          results.push({ email, status: 'error', message: 'Invalid email' });
+          continue;
+        }
+
+        // Check if already invited
+        const existing = await pool.query(
+          `SELECT id FROM vn_invitations WHERE tenant_id = $1 AND email = $2 AND status = 'pending'`,
+          [jwt.tenant_id, email],
+        );
+
+        if (existing.rows.length > 0) {
+          results.push({ email, role: roleId, status: 'error', message: 'Already invited' });
+          continue;
+        }
+
+        // Generate token
+        const rawToken = crypto.randomBytes(32).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+        // Look up role UUID
+        const roleResult = await pool.query(
+          'SELECT id FROM vn_roles WHERE tenant_id = $1 AND code = $2 LIMIT 1',
+          [jwt.tenant_id, roleId],
+        );
+        const roleUuid = roleResult.rows[0] ? (roleResult.rows[0] as any).id : null;
+
+        if (!roleUuid) {
+          results.push({ email, role: roleId, status: 'error', message: `Role "${roleId}" not found` });
+          continue;
+        }
+
+        await pool.query(
+          `INSERT INTO vn_invitations (id, tenant_id, invited_by, email, role_id, token_hash, status, expires_at, created_at)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'pending', $6, now())`,
+          [jwt.tenant_id, jwt.user_id, email, roleUuid, tokenHash, expiresAt],
+        );
+
+        results.push({ email, role: roleId, status: 'sent', token: rawToken });
+      }
+
+      res.status(201).json({ invitations: results });
+    } catch (err: any) {
+      console.error('[Auth:invite]', err);
+      res.status(500).json({
+        error: { code: 'INVITE_FAILED', message: err.message || 'Failed to send invitations' },
+      });
+    }
+  });
+
   /* ── PATCH /api/v1/auth/preferences ───────────────── */
 
   router.patch('/preferences', async (req, res) => {
