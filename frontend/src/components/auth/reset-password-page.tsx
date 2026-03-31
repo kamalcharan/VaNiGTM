@@ -108,40 +108,91 @@ export default function ResetPasswordPage() {
   const matched = newPassword === confirmPassword && newPassword.length > 0;
 
   return (
-    <div className={s.page}>
-      {/* ── Brand Mark ── */}
-      <div className={s.brandMark}>
-        <div className={s.brandIcon}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-            <path d="M2 17l10 5 10-5" />
-            <path d="M2 12l10 5 10-5" />
-          </svg>
+    <div className={s.vault}>
+      {/* ── LEFT: Story/Branding Panel ── */}
+      <div className={s.storyPanel}>
+        {/* Orbiting rings */}
+        <div className={s.orbits}>
+          <div className={`${s.orbit} ${s.orbit1}`} />
+          <div className={`${s.orbit} ${s.orbit2}`} />
+          <div className={`${s.orbit} ${s.orbit3}`} />
         </div>
-        <div>
-          <div className={s.brandName}>{product.name}</div>
-          <div className={s.brandSub}>by Vikuna Technologies</div>
+
+        <div className={s.storyContent}>
+          {/* Brand orb */}
+          <div className={s.brandOrb}>
+            <div className={s.brandOrbInner}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                <path d="M2 17l10 5 10-5" />
+                <path d="M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            <div className={s.brandOrbRing} />
+          </div>
+
+          <div className={s.brandText}>
+            <div className={s.brandName}>KI-PRIME</div>
+            <div className={s.brandSub}>by Vikuna Technologies</div>
+          </div>
+
+          {!success ? (
+            <>
+              <h1 className={s.headline}>
+                Secure your<br />
+                <span className={s.glowWord}>vault</span>.
+              </h1>
+
+              <p className={s.storyText}>
+                Choose a strong, unique password to protect your financial
+                intelligence. Your data deserves the best defense.
+              </p>
+
+              {/* Key orb */}
+              <div className={s.keyOrb}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="8" cy="15" r="5" />
+                  <path d="M11.5 11.5L22 1" />
+                  <path d="M18 5l4-4" />
+                  <path d="M16 7l2-2" />
+                </svg>
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className={s.headline}>
+                You&apos;re back<br />
+                <span className={s.glowWord}>in</span>.
+              </h1>
+
+              <p className={s.storyText}>
+                Your vault is secured with a fresh password. Welcome back to
+                your financial command center.
+              </p>
+            </>
+          )}
         </div>
       </div>
 
-      {/* ── Glass Card ── */}
-      <div className={s.card}>
+      {/* ── RIGHT: Form Panel ── */}
+      <div className={s.formPanel}>
         {!success ? (
           /* ── Reset Form ── */
-          <div className={s.formState}>
-            <div className={s.keyOrb}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <circle cx="8" cy="15" r="5" />
-                <path d="M11.5 11.5L22 1" />
-                <path d="M18 5l4-4" />
-                <path d="M16 7l2-2" />
-              </svg>
+          <>
+            {/* Top nav */}
+            <div className={s.topNav}>
+              <a href="/login" className={s.backLink}>
+                &larr; Back to sign in
+              </a>
             </div>
 
-            <h2 className={s.cardTitle}>Reset your password</h2>
-            <p className={s.cardDesc}>
-              Enter your reset token and choose a new password.
-            </p>
+            <div className={s.formHeader}>
+              <div className={s.accentLine} />
+              <h2 className={s.formTitle}>Choose a new password</h2>
+              <p className={s.formSubtitle}>
+                Enter your reset token and set a strong new password
+              </p>
+            </div>
 
             <form onSubmit={handleSubmit} noValidate>
               {/* Token */}
@@ -216,26 +267,35 @@ export default function ResetPasswordPage() {
                 &larr; Back to sign in
               </a>
             </div>
-          </div>
+          </>
         ) : (
           /* ── Success State ── */
-          <div className={s.successState}>
-            <div className={s.checkOrb}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" className={s.checkPath} />
-              </svg>
-              <div className={s.checkRing} />
+          <>
+            {/* Top nav */}
+            <div className={s.topNav}>
+              <a href="/login" className={s.backLink}>
+                &larr; Back to sign in
+              </a>
             </div>
 
-            <h2 className={s.successTitle}>Password reset successful</h2>
-            <p className={s.successDesc}>
-              Your password has been updated. You can now sign in with your new password.
-            </p>
+            <div className={s.successContent}>
+              <div className={s.checkOrb}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" className={s.checkPath} />
+                </svg>
+                <div className={s.checkRing} />
+              </div>
 
-            <a href="/login" className={s.signInBtn}>
-              SIGN IN WITH NEW PASSWORD &rarr;
-            </a>
-          </div>
+              <h2 className={s.successTitle}>Password reset successful</h2>
+              <p className={s.successDesc}>
+                Your password has been updated. You can now sign in with your new password.
+              </p>
+
+              <a href="/login" className={s.signInBtn}>
+                SIGN IN WITH NEW PASSWORD &rarr;
+              </a>
+            </div>
+          </>
         )}
       </div>
     </div>
