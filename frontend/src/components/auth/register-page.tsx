@@ -84,6 +84,11 @@ export default function RegisterPage() {
           // Don't rely on hook-level onSuccess timing (React 19 batching)
           if (data.tokens) {
             storeTokens(data.tokens);
+            // Verify storage worked
+            const stored = sessionStorage.getItem('pk-access-token');
+            console.log('[Register] Token stored:', stored ? `${stored.slice(0, 20)}...` : 'FAILED');
+          } else {
+            console.error('[Register] No tokens in response:', JSON.stringify(data));
           }
           // Persist theme preference
           const user = data.user as Record<string, unknown>;

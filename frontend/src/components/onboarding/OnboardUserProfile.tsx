@@ -73,6 +73,17 @@ export default function OnboardUserProfile({ onComplete }: Props) {
     setError('');
 
     try {
+      // Debug: check if token exists
+      const token = typeof window !== 'undefined' ? sessionStorage.getItem('pk-access-token') : null;
+      if (!token) {
+        console.error('[OnboardUserProfile] No access token in sessionStorage! Keys:',
+          typeof window !== 'undefined' ? Object.keys(sessionStorage).join(', ') : 'SSR');
+        setError('Session not found. Please go back and sign in.');
+        setLoading(false);
+        submittingRef.current = false;
+        return;
+      }
+
       // Save profile via PATCH /auth/preferences
       await apiFetch(API.auth.preferences, {
         body: {
