@@ -1,6 +1,7 @@
 import { ThemeProvider, ThemeScript } from '@/config/theme';
 import { AuthProvider } from '@/context/auth-provider';
 import { ShellConfigProvider } from '@/lib/shell-config';
+import { QueryProvider } from '@/lib/query-provider';
 import { ToastProvider } from '@/components/toast';
 
 const DEFAULT_THEME = process.env.NEXT_PUBLIC_DEFAULT_THEME || 'vikuna-black';
@@ -30,15 +31,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeScript defaultThemeId={DEFAULT_THEME} defaultColorMode={DEFAULT_MODE} />
       </head>
       <body style={{ margin: 0, padding: 0, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-        <ThemeProvider defaultThemeId={DEFAULT_THEME}>
-          <ShellConfigProvider>
-            <AuthProvider>
-              <ToastProvider>
-                {children}
-              </ToastProvider>
-            </AuthProvider>
-          </ShellConfigProvider>
-        </ThemeProvider>
+        <QueryProvider>
+          <ThemeProvider defaultThemeId={DEFAULT_THEME}>
+            <ShellConfigProvider>
+              <AuthProvider>
+                <ToastProvider>
+                  {children}
+                </ToastProvider>
+              </AuthProvider>
+            </ShellConfigProvider>
+          </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   );
