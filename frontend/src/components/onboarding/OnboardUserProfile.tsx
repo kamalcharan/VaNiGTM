@@ -28,7 +28,7 @@ interface Props {
 export default function OnboardUserProfile({ onComplete, onBack }: Props) {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const submittingRef = useRef(false); // Race condition guard
+  const submittingRef = useRef(false);
 
   const nameParts = (user?.name || '').split(' ');
   const [firstName, setFirstName] = useState(nameParts[0] || '');
@@ -42,8 +42,6 @@ export default function OnboardUserProfile({ onComplete, onBack }: Props) {
 
   const initials = `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase() || '?';
 
-  // Auto-select designation if only one option makes sense
-  // (If user registered as MFD type, pre-select it)
   useEffect(() => {
     if (DESIGNATIONS.length === 1 && !designation) {
       setDesignation(DESIGNATIONS[0].value);
@@ -51,7 +49,6 @@ export default function OnboardUserProfile({ onComplete, onBack }: Props) {
   }, [designation]);
 
   async function handleSubmit() {
-    // Race condition guard
     if (submittingRef.current) return;
 
     const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
@@ -60,13 +57,9 @@ export default function OnboardUserProfile({ onComplete, onBack }: Props) {
       return;
     }
 
-    // Validate phone if provided
     if (mobile) {
       const phoneError = validateMobile(countryCode, mobile);
-      if (phoneError) {
-        setError(phoneError);
-        return;
-      }
+      if (phoneError) { setError(phoneError); return; }
     }
 
     submittingRef.current = true;
@@ -74,18 +67,16 @@ export default function OnboardUserProfile({ onComplete, onBack }: Props) {
     setError('');
 
     try {
-      // Debug: check if token exists
-      const token = typeof window !== 'undefined' ? sessionStorage.getItem('pk-access-token') : null;
+      const token = typeof window !== 'undefined'
+        ? (sessionStorage.getItem('pk-access-token') || localStorage.getItem('pk-access-token'))
+        : null;
       if (!token) {
-        console.error('[OnboardUserProfile] No access token in sessionStorage! Keys:',
-          typeof window !== 'undefined' ? Object.keys(sessionStorage).join(', ') : 'SSR');
         setError('Session not found. Please go back and sign in.');
         setLoading(false);
         submittingRef.current = false;
         return;
       }
 
-      // Save profile via PATCH /auth/preferences
       await apiFetch(API.auth.preferences, {
         body: {
           profile_name: fullName,
@@ -98,7 +89,6 @@ export default function OnboardUserProfile({ onComplete, onBack }: Props) {
         },
       });
 
-      // Mark onboarding step complete
       await apiFetch(API.onboarding.completeStep, {
         body: {
           step_id: 'user_profile',
@@ -119,85 +109,68 @@ export default function OnboardUserProfile({ onComplete, onBack }: Props) {
   }
 
   return (
-    <div className={s.split}>
-      {/* ── Left: Narrative ── */}
-      <div className={s.narrative}>
-        <div className={s.narrativeGlow} />
-        <div className={s.narrContent}>
-          <div className={s.chapter}>Step 1 of 6</div>
-          <h2 className={s.narrTitle}>
-            Let&apos;s put a face<br />to the <span className={s.glow}>name</span>.
-          </h2>
-          <p className={s.narrText}>
-            Your profile helps clients and team members recognize you.
-            This is how you&apos;ll appear across the platform.
-          </p>
-          <div className={s.mandatoryBadge}>&#x25CF; Required to continue</div>
+    <div className={s.page}>
+      {/* Header */}
+      <div className={s.pageHeader}>
+        <div className={s.headerIcon}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="28" height="28">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        </div>
+        <h1 className={s.pageTitle}>Your Profile</h1>
+        <p className={s.pageSubtitle}>How you appear across the platform to clients and team members</p>
+      </div>
+
+      {/* Identity Card */}
+      <div className={s.card}>
+        <div className={s.cardHeader}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="18" height="18">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <span className={s.cardTitle}>Personal Information</span>
+          <span className={s.requiredTag}>* Required</span>
+        </div>
+
+        {/* Photo + Name row */}
+        <div className={s.identityRow}>
+          <div className={s.avatarArea}>
+            <div className={s.avatar}>{initials}</div>
+            <button className={s.avatarBtn} disabled type="button">Upload Photo</button>
+            <div className={s.avatarHint}>JPG/PNG, max 2MB</div>
+          </div>
+          <div className={s.nameFields}>
+            <div className={s.row2}>
+              <div className={s.field}>
+                <label className={s.label}>First Name *</label>
+                <input className={s.input} placeholder="Rajesh" value={firstName} onChange={(e) => setFirstName(e.target.value)} disabled={loading} />
+              </div>
+              <div className={s.field}>
+                <label className={s.label}>Last Name *</label>
+                <input className={s.input} placeholder="Kumar" value={lastName} onChange={(e) => setLastName(e.target.value)} disabled={loading} />
+              </div>
+            </div>
+            <div className={s.field}>
+              <label className={s.label}>Designation / Title</label>
+              <select className={s.select} value={designation} onChange={(e) => setDesignation(e.target.value)} disabled={loading}>
+                {designation === '' && <option value="">Select your role...</option>}
+                {DESIGNATIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Right: Form ── */}
-      <div className={s.formPanel}>
-        <div className={s.formBorderAccent} />
-        <div className={s.sectionTitle}>Your Profile</div>
-
-        {/* Photo Upload */}
-        <div className={s.photoUpload}>
-          <div className={s.photoPreview}>{initials}</div>
-          <div className={s.photoInfo}>
-            <div className={s.photoInfoTitle}>Profile photo</div>
-            <div className={s.photoInfoHint}>
-              JPG or PNG, max 2MB
-            </div>
-          </div>
-          <button className={s.photoBtn} disabled title="Coming soon" type="button">
-            Upload
-          </button>
+      {/* Contact Card */}
+      <div className={s.card}>
+        <div className={s.cardHeader}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="18" height="18">
+            <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
+          </svg>
+          <span className={s.cardTitle}>Contact</span>
         </div>
 
-        {/* Name Row */}
-        <div className={s.formRow}>
-          <div className={s.formGroup}>
-            <label className={s.formLabel}>First Name *</label>
-            <input
-              type="text"
-              className={s.formInput}
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="Rajesh"
-              disabled={loading}
-            />
-          </div>
-          <div className={s.formGroup}>
-            <label className={s.formLabel}>Last Name *</label>
-            <input
-              type="text"
-              className={s.formInput}
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="Kumar"
-              disabled={loading}
-            />
-          </div>
-        </div>
-
-        {/* Designation — auto-select if only 1 value */}
-        <div className={s.formGroup}>
-          <label className={s.formLabel}>Designation / Title</label>
-          <select
-            className={s.formSelect}
-            value={designation}
-            onChange={(e) => setDesignation(e.target.value)}
-            disabled={loading}
-          >
-            {designation === '' && <option value="">Select your role...</option>}
-            {DESIGNATIONS.map((d) => (
-              <option key={d.value} value={d.value}>{d.label}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Phone — VdfMobileInput */}
         <VdfMobileInput
           countryCode={countryCode}
           mobile={mobile}
@@ -205,35 +178,40 @@ export default function OnboardUserProfile({ onComplete, onBack }: Props) {
           onMobileChange={setMobile}
           disabled={loading}
         />
+      </div>
 
-        {/* Bio — VdfRichText */}
+      {/* Bio Card */}
+      <div className={s.card}>
+        <div className={s.cardHeader}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="18" height="18">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+          </svg>
+          <span className={s.cardTitle}>About You</span>
+        </div>
+
         <VdfRichText
           value={bio}
           onChange={setBio}
-          label="Brief Bio (optional)"
-          placeholder="A short description for client-facing reports..."
+          placeholder="Brief description for client-facing reports and team directory..."
           maxLength={500}
-          minHeight={60}
+          minHeight={70}
           maxHeight={120}
           disabled={loading}
         />
+      </div>
 
-        {/* Error */}
-        {error && <div className={s.errorMsg}>{error}</div>}
+      {/* Error */}
+      {error && <div className={s.errorBar}>{error}</div>}
 
-        {/* Navigation */}
-        <div className={s.wizardNav}>
-          {onBack ? (
-            <button className={s.backBtn} onClick={onBack} type="button">
-              &larr; Back
-            </button>
-          ) : <div />}
-          <div className={s.navRight}>
-            <button className={s.navNext} onClick={handleSubmit} disabled={loading}>
-              {loading ? <InlineLoader size="sm" message="SAVING..." /> : 'SAVE & CONTINUE \u2192'}
-            </button>
-          </div>
-        </div>
+      {/* Footer */}
+      <div className={s.footerNav}>
+        {onBack ? (
+          <button className={s.backBtn} onClick={onBack} type="button">&larr; Back</button>
+        ) : <div />}
+        <button className={s.saveBtn} onClick={handleSubmit} disabled={loading}>
+          {loading ? <InlineLoader size="sm" message="SAVING..." /> : 'SAVE & CONTINUE \u2192'}
+        </button>
       </div>
     </div>
   );
