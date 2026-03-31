@@ -9,6 +9,7 @@ import CountryDropdown, { type Country } from '@/components/ui/country-dropdown'
 import PasswordStrength from '@/components/ui/password-strength';
 import { useRegister } from '@/hooks';
 import { storeTokens, type ApiError } from '@/lib/api-client';
+import f from '@/styles/forms.module.css';
 import s from './register-page.module.css';
 
 export default function RegisterPage() {
@@ -124,7 +125,7 @@ export default function RegisterPage() {
     return (
       <button
         type="button"
-        className={s.eyeToggle}
+        className={f.eyeToggle}
         onClick={onToggle}
         aria-label={visible ? 'Hide password' : 'Show password'}
         tabIndex={-1}
@@ -289,7 +290,7 @@ export default function RegisterPage() {
               <EyeToggle visible={showPw} onToggle={() => setShowPw(!showPw)} />
             }
           />
-          <div className={s.strengthWrap}>
+          <div className={f.strengthWrap}>
             <PasswordStrength password={password} />
           </div>
 
@@ -311,15 +312,15 @@ export default function RegisterPage() {
             }
           />
           {showMatch && (
-            <div className={`${s.matchIndicator} ${matched ? s.matchOk : s.matchNo}`}>
-              <span className={s.matchDot} />
+            <div className={`${f.matchIndicator} ${matched ? f.matchOk : f.matchNo}`}>
+              <span className={f.matchDot} />
               <span>{matched ? 'Passwords match' : 'Passwords do not match'}</span>
             </div>
           )}
 
           {/* Phone */}
           <div className={s.phoneGroup}>
-            <label className={s.phoneLabel}>Phone Number</label>
+            <label className={f.label}>Phone Number</label>
             <div className={s.phoneRow}>
               <CountryDropdown
                 value={country.code}
@@ -370,9 +371,9 @@ export default function RegisterPage() {
 
         {/* Footer */}
         <div className={s.footer}>
-          <a href="/login" className={s.footerLink}>
+          <a href="/login" className={f.footerLink}>
             Already have an account?{' '}
-            <span className={s.footerAccent}>Sign in &rarr;</span>
+            <span className={f.footerAccent}>Sign in &rarr;</span>
           </a>
         </div>
       </div>

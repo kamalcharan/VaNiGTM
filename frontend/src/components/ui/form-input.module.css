@@ -3,20 +3,10 @@
    Uses design tokens from ThemeScript: --input-*, --label-*
    ═══════════════════════════════════════════════════════ */
 
-.group {
-  margin-bottom: var(--form-group-gap);
-}
+.group { composes: group from '../../styles/forms.module.css'; }
 
 /* ── Label ───────────────────────────────────────────── */
-.label {
-  display: block;
-  font-size: var(--label-font-size);
-  font-weight: var(--label-font-weight);
-  letter-spacing: var(--label-letter-spacing);
-  text-transform: uppercase;
-  color: var(--color-muted);
-  margin-bottom: var(--label-margin-bottom);
-}
+.label { composes: label from '../../styles/forms.module.css'; }
 
 /* ── Input Wrapper ───────────────────────────────────── */
 .inputWrap {
@@ -26,40 +16,7 @@
 }
 
 /* ── Input ───────────────────────────────────────────── */
-.input {
-  width: 100%;
-  height: var(--input-height);
-  padding: var(--input-padding);
-  background: var(--color-bg);
-  border: var(--input-border-width) solid var(--color-border);
-  border-radius: var(--input-radius);
-  color: var(--color-fg);
-  font-family: var(--font-body, 'DM Sans', sans-serif);
-  font-size: var(--input-font-size);
-  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
-  outline: none;
-  box-sizing: border-box;
-}
-
-.input::placeholder {
-  color: var(--color-muted);
-  opacity: var(--input-placeholder-opacity);
-}
-
-.input:focus::placeholder {
-  opacity: 0;
-}
-
-.input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 var(--input-focus-ring-size)
-    color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity), transparent);
-}
-
-.input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.input { composes: input from '../../styles/forms.module.css'; }
 
 /* ── With icon / right element ───────────────────────── */
 .withIcon {
@@ -106,8 +63,4 @@
     color-mix(in srgb, var(--color-danger) var(--input-focus-ring-opacity), transparent);
 }
 
-.error {
-  font-size: var(--label-font-size);
-  color: var(--color-danger);
-  margin-top: 4px;
-}
+.error { composes: error from '../../styles/forms.module.css'; }
