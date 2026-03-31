@@ -9,6 +9,7 @@
     "jsx": "react-jsx",
     "module": "esnext",
     "moduleResolution": "bundler",
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@/*": [
@@ -52,6 +53,8 @@
   "exclude": [
     "node_modules",
     "kewalinvest",
-    "backend/dist"
+    "backend",
+    "documents",
+    "jest.config.ts"
   ]
 }

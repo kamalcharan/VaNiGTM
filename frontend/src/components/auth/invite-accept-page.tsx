@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useShellConfig } from '@/lib/shell-config';
-import { useToast } from './toast';
-import { InlineLoader, FullPageLoader } from './loader';
-import FormInput from './ui/form-input';
-import CountryDropdown, { type Country } from './ui/country-dropdown';
-import PasswordStrength from './ui/password-strength';
+import { useToast } from '@/../components/toast';
+import { InlineLoader, FullPageLoader } from '@/../components/loader';
+import FormInput from '@/../components/ui/form-input';
+import CountryDropdown, { type Country } from '@/../components/ui/country-dropdown';
+import PasswordStrength from '@/../components/ui/password-strength';
 import s from './invite-accept-page.module.css';
 
 /* ── Types ───────────────────────────────────────────── */

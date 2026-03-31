@@ -2,9 +2,9 @@
 
 import { useState, type FormEvent } from 'react';
 import { useShellConfig } from '@/lib/shell-config';
-import { useToast } from './toast';
-import { InlineLoader } from './loader';
-import FormInput from './ui/form-input';
+import { useToast } from '@/../components/toast';
+import { InlineLoader } from '@/../components/loader';
+import FormInput from '@/../components/ui/form-input';
 import s from './forgot-password-page.module.css';
 
 export default function ForgotPasswordPage() {

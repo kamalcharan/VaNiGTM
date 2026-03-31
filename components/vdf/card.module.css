@@ -1,0 +1,50 @@
+/* ═══════════════════════════════════════════════════════
+   VDF CARD — Multi-variant card container
+   Theme-compliant: ALL colors via --color-* CSS variables
+   ═══════════════════════════════════════════════════════ */
+
+.card {
+  border-radius: 12px;
+  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Variants ───────────────────────────────────────── */
+.default {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.glass {
+  background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+  border: 1px solid var(--color-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.outline {
+  background: transparent;
+  border: 1px solid var(--color-border);
+}
+
+/* ── Padding ────────────────────────────────────────── */
+.pad-none { padding: 0; }
+.pad-sm { padding: 12px; }
+.pad-md { padding: 20px; }
+.pad-lg { padding: 32px; }
+
+/* ── Interactive ────────────────────────────────────── */
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* ── Selected ───────────────────────────────────────── */
+.selected {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+}
