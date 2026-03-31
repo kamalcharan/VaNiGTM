@@ -26,7 +26,10 @@ function createMockContext(
 ): SkillContext {
   return {
     tenant_id,
-    db: { query: queryFn as SkillContext['db']['query'] },
+    db: {
+      query: queryFn as SkillContext['db']['query'],
+      transaction: async <T>(fn: (tx: any) => Promise<T>) => fn({ query: queryFn as SkillContext['db']['query'], transaction: async () => { throw new Error('nested'); } }),
+    },
   };
 }
 

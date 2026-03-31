@@ -10,10 +10,28 @@ export interface QueryResult<T = Record<string, unknown>> {
 
 /** Database interface injected into skill context */
 export interface SkillDb {
+  /** Execute a query with named params ($tenant_id, $client_id, etc.) */
   query: <T = Record<string, unknown>>(
     sql: string,
     params?: Record<string, unknown>
   ) => Promise<QueryResult<T>>;
+
+  /**
+   * Execute multiple queries in an atomic transaction.
+   * MANDATORY for all write operations per CLAUDE.md.
+   *
+   * Pattern:
+   *   await ctx.db.transaction(async (tx) => {
+   *     await tx.query(INSERT_CLIENT, { $tenant_id: ctx.tenant_id, ... });
+   *     await tx.query(INSERT_PORTFOLIO, { $tenant_id: ctx.tenant_id, ... });
+   *   });
+   *
+   * - Auto BEGIN before callback
+   * - Auto COMMIT on success
+   * - Auto ROLLBACK on error (then rethrows)
+   * - Tenant context set before BEGIN
+   */
+  transaction: <T>(fn: (tx: SkillDb) => Promise<T>) => Promise<T>;
 }
 
 /** Context injected into every skill function by the framework */

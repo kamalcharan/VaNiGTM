@@ -14,6 +14,7 @@ function mockCtx(): SkillContext {
     tenant_id: 'test-tenant-001',
     db: {
       query: async () => ({ rows: [] }),
+      transaction: async <T>(fn: (tx: any) => Promise<T>) => fn({ query: async () => ({ rows: [] }), transaction: async () => { throw new Error('nested'); } }),
     },
   };
 }
