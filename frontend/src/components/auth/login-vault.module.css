@@ -522,42 +522,46 @@
 
 /* ── Form Fields ─────────────────────────────── */
 .formGroup {
-  margin-bottom: 20px;
+  margin-bottom: var(--form-group-gap);
   animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   opacity: 0;
 }
 
 .formLabel {
   display: block;
-  font-size: 0.65rem;
-  font-weight: 500;
-  letter-spacing: 0.12em;
+  font-size: var(--label-font-size);
+  font-weight: var(--label-font-weight);
+  letter-spacing: var(--label-letter-spacing);
   text-transform: uppercase;
   color: var(--color-muted);
-  margin-bottom: 8px;
+  margin-bottom: var(--label-margin-bottom);
 }
 
 .formInput {
   width: 100%;
-  padding: 14px 16px;
+  padding: var(--input-padding);
   background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border: var(--input-border-width) solid var(--color-border);
+  border-radius: var(--input-radius);
   color: var(--color-fg);
   font-family: var(--font-body, 'DM Sans', sans-serif);
-  font-size: 0.9rem;
+  font-size: var(--input-font-size);
   transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
   outline: none;
 }
 
 .formInput::placeholder {
   color: var(--color-muted);
-  opacity: 0.4;
+  opacity: var(--input-placeholder-opacity);
 }
 
 .formInput:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+  box-shadow: 0 0 0 var(--input-focus-ring-size) color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity), transparent);
+}
+
+.formInput:focus::placeholder {
+  opacity: 0;
 }
 
 .formInput:disabled {
@@ -596,15 +600,15 @@
 /* ── Submit Button ───────────────────────────── */
 .submitBtn {
   width: 100%;
-  padding: 16px;
+  padding: var(--btn-padding);
   background: var(--color-primary);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--btn-radius);
   color: var(--color-primary-fg);
   font-family: var(--font-body, 'DM Sans', sans-serif);
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-font-weight);
+  letter-spacing: var(--btn-letter-spacing);
   cursor: pointer;
   transition: all 400ms cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
@@ -680,10 +684,10 @@
   padding: 12px 16px;
   background: color-mix(in srgb, var(--color-danger) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-danger) 20%, transparent);
-  border-radius: 8px;
+  border-radius: var(--input-radius);
   color: var(--color-danger);
   font-size: 0.8rem;
-  margin-bottom: 20px;
+  margin-bottom: var(--form-group-gap);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -840,12 +844,12 @@
 
 .btnCancel {
   padding: 10px 20px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border: var(--input-border-width) solid var(--color-border);
+  border-radius: var(--btn-radius);
   background: transparent;
   color: var(--color-fg);
   font-family: var(--font-body, 'DM Sans', sans-serif);
-  font-size: 0.85rem;
+  font-size: var(--btn-font-size);
   cursor: pointer;
   transition: all 200ms;
 }
@@ -855,11 +859,11 @@
 .btnRevoke {
   padding: 10px 20px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--btn-radius);
   background: var(--color-primary);
   color: var(--color-primary-fg);
   font-family: var(--font-body, 'DM Sans', sans-serif);
-  font-size: 0.85rem;
+  font-size: var(--btn-font-size);
   font-weight: 600;
   cursor: pointer;
   transition: all 200ms;

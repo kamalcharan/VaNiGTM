@@ -76,9 +76,36 @@ export function ThemeScript({
   // The blocking script that runs synchronously before paint
   const script = `(function(){try{var m=${themeMap};var t=localStorage.getItem('pk-theme-id')||'${defaultThemeId}';var c=localStorage.getItem('pk-color-mode')||'${defaultColorMode}';var d=m[t];if(!d)d=m['${defaultThemeId}'];var v=c==='dark'?d.dark:d.light;document.documentElement.style.cssText+=';'+v;}catch(e){}})();`;
 
+  // Form design tokens — structural, NOT theme-dependent
+  // Every form control in every page reads from these. Change here = change everywhere.
+  const formTokens = [
+    '--input-height:44px',
+    '--input-padding:13px 16px',
+    '--input-radius:8px',
+    '--input-font-size:0.9rem',
+    '--input-border-width:1px',
+    '--input-focus-ring-size:3px',
+    '--input-focus-ring-opacity:12%',
+    '--input-placeholder-opacity:0.35',
+    '--label-font-size:0.65rem',
+    '--label-font-weight:500',
+    '--label-letter-spacing:0.12em',
+    '--label-margin-bottom:6px',
+    '--btn-height:44px',
+    '--btn-padding:14px',
+    '--btn-radius:8px',
+    '--btn-font-size:0.85rem',
+    '--btn-font-weight:700',
+    '--btn-letter-spacing:0.08em',
+    '--form-group-gap:16px',
+    '--form-row-gap:12px',
+  ].join(';');
+
   return (
     <>
-      {/* SSR fallback: default theme applied as static CSS so no flash even without JS */}
+      {/* Form design tokens — structural constants, same across all themes */}
+      <style dangerouslySetInnerHTML={{ __html: `:root{${formTokens}}` }} />
+      {/* SSR fallback: default theme colors */}
       <style
         dangerouslySetInnerHTML={{
           __html: `:root{${fallbackCSS}}`,

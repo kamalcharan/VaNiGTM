@@ -1,19 +1,19 @@
 /* ═══════════════════════════════════════════════════════
    VDF MOBILE INPUT — Phone number with country selector
-   Theme-compliant: ALL colors via --color-* CSS variables
+   Uses design tokens from ThemeScript: --input-*, --label-*
    ═══════════════════════════════════════════════════════ */
 
 .wrap {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-family: var(--font-body, 'DM Sans', sans-serif);
+  gap: var(--label-margin-bottom);
+  margin-bottom: var(--form-group-gap);
 }
 
 .label {
-  font-size: 0.65rem;
-  font-weight: 500;
-  letter-spacing: 0.12em;
+  font-size: var(--label-font-size);
+  font-weight: var(--label-font-weight);
+  letter-spacing: var(--label-letter-spacing);
   text-transform: uppercase;
   color: var(--color-muted);
 }
@@ -24,20 +24,20 @@
   position: relative;
 }
 
-/* ── Country Button ────────────────────────────────────── */
-
+/* ── Country Button ──────────────────────────────────── */
 .countryBtn {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 0 12px;
-  height: 44px;
+  height: var(--input-height);
   background: var(--color-bg);
-  border: 1px solid var(--color-border);
+  border: var(--input-border-width) solid var(--color-border);
   border-right: none;
-  border-radius: 8px 0 0 8px;
+  border-radius: var(--input-radius) 0 0 var(--input-radius);
   color: var(--color-fg);
-  font-size: 0.9rem;
+  font-size: var(--input-font-size);
+  font-family: var(--font-body, 'DM Sans', sans-serif);
   cursor: pointer;
   transition: all 150ms ease-out;
   white-space: nowrap;
@@ -45,8 +45,7 @@
 }
 
 .countryBtn:hover {
-  background: color-mix(in srgb, var(--color-surface) 80%, var(--color-primary) 20%);
-  border-color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
 }
 
 .countryBtn:focus-visible {
@@ -56,7 +55,6 @@
 
 .countryBtnOpen {
   border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-surface) 80%, var(--color-primary) 20%);
 }
 
 .countryBtnDisabled {
@@ -65,28 +63,16 @@
   pointer-events: none;
 }
 
-.flag {
-  font-size: 1.2rem;
-  line-height: 1;
-}
-
-.dialCode {
-  font-size: 0.85rem;
-  color: var(--color-muted);
-}
-
+.flag { font-size: 1.2rem; line-height: 1; }
+.dialCode { font-size: 0.85rem; color: var(--color-muted); }
 .chevron {
   font-size: 0.6rem;
   color: var(--color-muted);
   transition: transform 150ms ease-out;
 }
+.chevronOpen { transform: rotate(180deg); }
 
-.chevronOpen {
-  transform: rotate(180deg);
-}
-
-/* ── Dropdown ──────────────────────────────────────────── */
-
+/* ── Dropdown ────────────────────────────────────────── */
 .dropdown {
   position: absolute;
   top: calc(100% + 4px);
@@ -97,8 +83,8 @@
   display: flex;
   flex-direction: column;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border: var(--input-border-width) solid var(--color-border);
+  border-radius: var(--input-radius);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -113,7 +99,7 @@
 
 .searchWrap {
   padding: 8px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: var(--input-border-width) solid var(--color-border);
   flex-shrink: 0;
 }
 
@@ -122,8 +108,8 @@
   height: 34px;
   padding: 0 10px;
   background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border: var(--input-border-width) solid var(--color-border);
+  border-radius: calc(var(--input-radius) - 2px);
   color: var(--color-fg);
   font-size: 0.82rem;
   font-family: var(--font-body, 'DM Sans', sans-serif);
@@ -131,19 +117,11 @@
   transition: border-color 150ms ease-out;
 }
 
-.searchInput::placeholder {
-  color: var(--color-muted);
-}
+.searchInput::placeholder { color: var(--color-muted); opacity: var(--input-placeholder-opacity); }
+.searchInput:focus::placeholder { opacity: 0; }
+.searchInput:focus { border-color: var(--color-primary); }
 
-.searchInput:focus {
-  border-color: var(--color-primary);
-}
-
-.optionList {
-  overflow-y: auto;
-  flex: 1;
-  padding: 4px 0;
-}
+.optionList { overflow-y: auto; flex: 1; padding: 4px 0; }
 
 .option {
   display: flex;
@@ -156,8 +134,7 @@
   color: var(--color-fg);
 }
 
-.option:hover,
-.optionHighlighted {
+.option:hover, .optionHighlighted {
   background: color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
@@ -166,84 +143,44 @@
   font-weight: 600;
 }
 
-.optionFlag {
-  font-size: 1.1rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
+.optionFlag { font-size: 1.1rem; line-height: 1; flex-shrink: 0; }
+.optionName { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.optionDial { font-size: 0.8rem; color: var(--color-muted); flex-shrink: 0; }
 
-.optionName {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.optionDial {
-  font-size: 0.8rem;
-  color: var(--color-muted);
-  flex-shrink: 0;
-}
-
-/* ── Mobile Input ──────────────────────────────────────── */
-
+/* ── Mobile Input ────────────────────────────────────── */
 .mobileInput {
   flex: 1;
-  height: 44px;
-  padding: 0 14px;
+  height: var(--input-height);
+  padding: var(--input-padding);
   background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 0 8px 8px 0;
+  border: var(--input-border-width) solid var(--color-border);
+  border-radius: 0 var(--input-radius) var(--input-radius) 0;
   color: var(--color-fg);
-  font-size: 0.95rem;
+  font-size: var(--input-font-size);
   font-family: var(--font-body, 'DM Sans', sans-serif);
   outline: none;
-  transition: border-color 150ms ease-out;
+  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
   min-width: 0;
+  box-sizing: border-box;
 }
 
-.mobileInput::placeholder {
-  color: var(--color-muted);
-  opacity: 0.35;
-}
-
-.mobileInput:focus::placeholder {
-  opacity: 0;
-}
+.mobileInput::placeholder { color: var(--color-muted); opacity: var(--input-placeholder-opacity); }
+.mobileInput:focus::placeholder { opacity: 0; }
 
 .mobileInput:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+  box-shadow: 0 0 0 var(--input-focus-ring-size)
+    color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity), transparent);
 }
 
-.mobileInputDisabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.mobileInputDisabled { opacity: 0.5; cursor: not-allowed; }
+.mobileInputError { border-color: var(--color-danger); }
 
-.mobileInputError {
-  border-color: var(--color-danger);
-}
+/* ── Hint & Error ────────────────────────────────────── */
+.hint { font-size: 0.72rem; color: var(--color-muted); padding-left: 2px; opacity: 0.6; }
+.error { font-size: var(--label-font-size); color: var(--color-danger); padding-left: 2px; }
 
-/* ── Hint & Error ──────────────────────────────────────── */
-
-.hint {
-  font-size: 0.72rem;
-  color: var(--color-muted);
-  padding-left: 2px;
-}
-
-.error {
-  font-size: 0.75rem;
-  color: var(--color-danger);
-  padding-left: 2px;
-}
-
-/* ── Responsive ────────────────────────────────────────── */
-
+/* ── Responsive ──────────────────────────────────────── */
 @media (max-width: 480px) {
-  .dropdown {
-    width: calc(100vw - 32px);
-    max-width: 320px;
-  }
+  .dropdown { width: calc(100vw - 32px); max-width: 320px; }
 }
