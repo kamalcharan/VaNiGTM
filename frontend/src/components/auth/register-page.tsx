@@ -12,7 +12,7 @@ import s from './register-page.module.css';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { apiUrl, product } = useShellConfig();
+  const { apiUrl } = useShellConfig();
   const { showToast } = useToast();
 
   const [fullName, setFullName] = useState('');
@@ -29,6 +29,7 @@ export default function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   /* ── Validation ────────────────────────────────────── */
 
@@ -85,7 +86,6 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        // API error format: { error: string, code: string, status: number }
         const msg =
           (typeof data?.error === 'string' ? data.error : data?.error?.message)
           || data?.message
@@ -100,9 +100,6 @@ export default function RegisterPage() {
         return;
       }
 
-      // Store tokens from register response — registration already created
-      // a session, so we don't call login() again (would hit session limit).
-      // Use full-page navigation so AuthProvider rehydrates from sessionStorage.
       if (data.tokens) {
         sessionStorage.setItem('vani-access-token', data.tokens.access_token);
         sessionStorage.setItem('vani-refresh-token', data.tokens.refresh_token);
@@ -147,28 +144,42 @@ export default function RegisterPage() {
   const showMatch = confirmPassword.length > 0;
   const matched = password === confirmPassword && password.length > 0;
 
+  /* ── Progress steps (visual only) ──────────────────── */
+
+  const filledFields = [fullName, email, password, confirmPassword].filter(Boolean).length;
+
   return (
     <div className={s.vault}>
       {/* ── LEFT: Branding Panel ── */}
       <div className={s.storyPanel}>
+        {/* Orbiting rings */}
+        <div className={s.orbits}>
+          <div className={`${s.orbit} ${s.orbit1}`} />
+          <div className={`${s.orbit} ${s.orbit2}`} />
+          <div className={`${s.orbit} ${s.orbit3}`} />
+        </div>
+
         <div className={s.storyContent}>
-          <div className={s.brandMark}>
-            <div className={s.brandIcon}>
+          {/* Brand orb */}
+          <div className={s.brandOrb}>
+            <div className={s.brandOrbInner}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M12 2L2 7l10 5 10-5-10-5z" />
                 <path d="M2 17l10 5 10-5" />
                 <path d="M2 12l10 5 10-5" />
               </svg>
             </div>
-            <div>
-              <div className={s.brandName}>{product.name}</div>
-              <div className={s.brandSub}>by Vikuna Technologies</div>
-            </div>
+            <div className={s.brandOrbRing} />
+          </div>
+
+          <div className={s.brandText}>
+            <div className={s.brandName}>KI-PRIME</div>
+            <div className={s.brandSub}>by Vikuna Technologies</div>
           </div>
 
           <h1 className={s.headline}>
             Begin your<br />
-            <span className={s.accentWord}>legacy</span>.<br />
+            <span className={s.glowWord}>legacy</span>.<br />
             One client at a time.
           </h1>
 
@@ -176,32 +187,69 @@ export default function RegisterPage() {
             You&apos;re not just signing up for software — you&apos;re unlocking
             the intelligence that turns good advisors into unforgettable ones.
           </p>
-        </div>
 
-        <div className={s.trustSignals}>
-          <div className={s.trustItem}>
-            <span className={s.trustIcon}>&#x1F512;</span>
-            <span className={s.trustText}>Bank-grade<br />encryption</span>
-          </div>
-          <div className={s.trustItem}>
-            <span className={s.trustIcon}>&#x26A1;</span>
-            <span className={s.trustText}>Setup in<br />under 5 min</span>
-          </div>
-          <div className={s.trustItem}>
-            <span className={s.trustIcon}>&#x1F48E;</span>
-            <span className={s.trustText}>Free starter<br />tier included</span>
+          {/* Trust signals */}
+          <div className={s.trustSignals}>
+            <div className={s.trustItem}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
+                <rect x="3" y="11" width="18" height="11" rx="2" />
+                <path d="M7 11V7a5 5 0 0110 0v4" />
+              </svg>
+              <span>Bank-grade<br />encryption</span>
+            </div>
+            <div className={s.trustItem}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <span>Setup in<br />under 5 min</span>
+            </div>
+            <div className={s.trustItem}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
+                <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z" />
+              </svg>
+              <span>Free starter<br />tier included</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* ── RIGHT: Registration Form ── */}
       <div className={s.formPanel}>
+        {/* Journey breadcrumb */}
+        <div className={s.breadcrumb}>
+          <div className={s.breadcrumbSteps}>
+            <div className={`${s.breadcrumbStep} ${s.breadcrumbActive}`}>
+              <span className={s.breadcrumbDot} />
+              <span>Create Account</span>
+            </div>
+            <div className={s.breadcrumbLine} />
+            <div className={s.breadcrumbStep}>
+              <span className={s.breadcrumbDot} />
+              <span>Setup Workspace</span>
+            </div>
+            <div className={s.breadcrumbLine} />
+            <div className={s.breadcrumbStep}>
+              <span className={s.breadcrumbDot} />
+              <span>Dashboard</span>
+            </div>
+          </div>
+        </div>
+
         <div className={s.formHeader}>
           <div className={s.accentLine} />
           <h2 className={s.formTitle}>Create your account</h2>
           <p className={s.formSubtitle}>
             Start your free journey — no card required
           </p>
+        </div>
+
+        {/* Progress indicator */}
+        <div className={s.progressTrack}>
+          <div
+            className={s.progressFill}
+            style={{ width: `${(filledFields / 4) * 100}%` }}
+          />
         </div>
 
         <form onSubmit={handleSubmit} noValidate>
@@ -294,11 +342,25 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          {/* Terms */}
+          <label className={s.termsRow}>
+            <input
+              type="checkbox"
+              className={s.termsCheckbox}
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              disabled={loading}
+            />
+            <span className={s.termsText}>
+              I agree to the <a href="#" className={s.termsLink}>Terms of Service</a> and <a href="#" className={s.termsLink}>Privacy Policy</a>
+            </span>
+          </label>
+
           {/* Submit */}
           <button
             type="submit"
             className={s.submitBtn}
-            disabled={loading || !fullName || !email || !password || !confirmPassword}
+            disabled={loading || !fullName || !email || !password || !confirmPassword || !termsAccepted}
           >
             {loading ? (
               <InlineLoader size="sm" message="CREATING ACCOUNT..." />
@@ -314,11 +376,6 @@ export default function RegisterPage() {
             Already have an account?{' '}
             <span className={s.footerAccent}>Sign in &rarr;</span>
           </a>
-          <div className={s.legalLinks}>
-            <a href="#" className={s.legalLink}>Terms of Service</a>
-            <span className={s.legalDot}>&middot;</span>
-            <a href="#" className={s.legalLink}>Privacy Policy</a>
-          </div>
         </div>
       </div>
     </div>
