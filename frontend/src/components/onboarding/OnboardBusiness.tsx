@@ -1,10 +1,20 @@
 'use client';
 
-import { useState } from 'react';
-import { useShellConfig } from '@/lib/shell-config';
+import { useRef, useState } from 'react';
 import { useAuth } from '@/context/auth-provider';
 import { useToast } from '../toast';
 import { InlineLoader } from '../loader';
+import { VdfRichText } from '@/components/vdf';
+import { apiFetch, type ApiError } from '@/lib/api-client';
+import { API } from '@/lib/serviceURLs';
+import {
+  BUSINESS_TYPES,
+  INDIAN_STATES,
+  validatePAN,
+  validateGSTIN,
+  validateARN,
+  validatePIN,
+} from '@/constants/business';
 import s from './OnboardBusiness.module.css';
 
 interface Props {
@@ -13,58 +23,88 @@ interface Props {
 }
 
 export default function OnboardBusiness({ onComplete }: Props) {
-  const { apiUrl } = useShellConfig();
-  const { getAuthHeaders } = useAuth();
+  const { user } = useAuth();
   const { showToast } = useToast();
+  const submittingRef = useRef(false);
 
   const [firmName, setFirmName] = useState('');
-  const [businessType, setBusinessType] = useState('partnership');
+  const [businessType, setBusinessType] = useState('');
   const [arn, setArn] = useState('');
   const [pan, setPan] = useState('');
   const [gstin, setGstin] = useState('');
-  const [address, setAddress] = useState('');
+  const [description, setDescription] = useState('');
+  const [brandColor, setBrandColor] = useState('#C9A84C');
+  const [address1, setAddress1] = useState('');
+  const [address2, setAddress2] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
-  const [pin, setPin] = useState('');
+  const [postalCode, setPostalCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   async function handleSubmit() {
+    if (submittingRef.current) return;
+
     if (!firmName || firmName.trim().length < 2) {
       setError('Firm name is required');
       return;
     }
-    if (pan && !/^[A-Z]{5}[0-9]{4}[A-Z]$/i.test(pan)) {
-      setError('Invalid PAN format (e.g. ABCDE1234F)');
-      return;
-    }
 
+    // Validate optional fields
+    const panErr = validatePAN(pan);
+    if (panErr) { setError(panErr); return; }
+
+    const gstinErr = validateGSTIN(gstin, pan);
+    if (gstinErr) { setError(gstinErr); return; }
+
+    const arnErr = validateARN(arn);
+    if (arnErr) { setError(arnErr); return; }
+
+    const pinErr = validatePIN(postalCode);
+    if (pinErr) { setError(pinErr); return; }
+
+    submittingRef.current = true;
     setLoading(true);
     setError('');
 
     try {
-      // PATCH /tenant/profile accepts: name, logo_url, theme_id
-      // Business-specific fields (arn, pan, gstin, address) require a dedicated
-      // API endpoint. For MVP, save firm name via tenant profile.
-      const res = await fetch(`${apiUrl}/api/v1/tenant/profile`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({
+      // Save to tenant profile
+      await apiFetch(API.tenant.profile, {
+        body: {
           name: firmName.trim(),
-        }),
+          display_name: firmName.trim(),
+          type: businessType || 'mfd',
+          description: description || undefined,
+          brand_color: brandColor,
+          arn: arn.trim().toUpperCase() || undefined,
+          pan: pan.trim().toUpperCase() || undefined,
+          gstin: gstin.trim().toUpperCase() || undefined,
+          address_line1: address1.trim() || undefined,
+          address_line2: address2.trim() || undefined,
+          city: city.trim() || undefined,
+          state: state || undefined,
+          country: 'India',
+          postal_code: postalCode.trim() || undefined,
+        },
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error?.message || 'Failed to save business details');
-      }
+      // Mark onboarding step complete
+      await apiFetch(API.onboarding.completeStep, {
+        body: {
+          step_id: 'business_profile',
+          status: 'completed',
+          metadata: { business_type: businessType, has_arn: !!arn, has_pan: !!pan },
+        },
+      });
 
       showToast({ message: 'Business details saved', type: 'success' });
       onComplete();
     } catch (err) {
-      showToast({ message: err instanceof Error ? err.message : 'Save failed', type: 'error' });
+      const apiErr = err as ApiError;
+      showToast({ message: apiErr.message || 'Save failed', type: 'error' });
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   }
 
@@ -97,15 +137,15 @@ export default function OnboardBusiness({ onComplete }: Props) {
           <div className={s.photoInfo}>
             <div className={s.photoInfoTitle}>Firm logo</div>
             <div className={s.photoInfoHint}>
-              Square image, min 200&times;200px. Appears on client portal and reports.
+              Square image, min 200&times;200px
             </div>
           </div>
-          <button className={s.photoBtn} disabled title="Coming soon — requires storage setup" type="button">
+          <button className={s.photoBtn} disabled title="Coming soon" type="button">
             Upload
           </button>
         </div>
 
-        {/* Firm Name (full width) */}
+        {/* Firm Name */}
         <div className={s.formGroup}>
           <label className={s.formLabel}>Firm / Business Name</label>
           <input
@@ -128,11 +168,10 @@ export default function OnboardBusiness({ onComplete }: Props) {
               onChange={(e) => setBusinessType(e.target.value)}
               disabled={loading}
             >
-              <option value="individual">Individual MFD</option>
-              <option value="partnership">Partnership Firm</option>
-              <option value="pvt_ltd">Private Limited</option>
-              <option value="llp">LLP</option>
-              <option value="proprietorship">Proprietorship</option>
+              <option value="">Select type...</option>
+              {BUSINESS_TYPES.map((bt) => (
+                <option key={bt.value} value={bt.value}>{bt.label}</option>
+              ))}
             </select>
           </div>
           <div className={s.formGroup}>
@@ -148,7 +187,7 @@ export default function OnboardBusiness({ onComplete }: Props) {
           </div>
         </div>
 
-        {/* PAN + GSTIN */}
+        {/* PAN + GSTIN — linked */}
         <div className={s.formRow}>
           <div className={s.formGroup}>
             <label className={s.formLabel}>PAN</label>
@@ -157,7 +196,8 @@ export default function OnboardBusiness({ onComplete }: Props) {
               className={`${s.formInput} ${s.uppercase}`}
               placeholder="ABCDE1234F"
               value={pan}
-              onChange={(e) => setPan(e.target.value)}
+              onChange={(e) => setPan(e.target.value.toUpperCase())}
+              maxLength={10}
               disabled={loading}
             />
           </div>
@@ -165,34 +205,94 @@ export default function OnboardBusiness({ onComplete }: Props) {
             <label className={s.formLabel}>GSTIN (optional)</label>
             <input
               type="text"
-              className={s.formInput}
+              className={`${s.formInput} ${s.uppercase}`}
               placeholder="22AAAAA0000A1Z5"
               value={gstin}
-              onChange={(e) => setGstin(e.target.value)}
+              onChange={(e) => setGstin(e.target.value.toUpperCase())}
+              maxLength={15}
               disabled={loading}
             />
+            {pan && gstin && gstin.length >= 12 && gstin.slice(2, 12) === pan && (
+              <div className={s.matchBadge}>PAN matches GSTIN</div>
+            )}
+            {pan && gstin && gstin.length >= 12 && gstin.slice(2, 12) !== pan && (
+              <div className={s.mismatchBadge}>PAN does not match GSTIN</div>
+            )}
           </div>
         </div>
 
-        {/* Business Address */}
+        {/* Brand Color */}
         <div className={s.formGroup}>
-          <label className={s.formLabel}>Business Address</label>
-          <textarea
-            className={s.formTextarea}
-            placeholder="Full address with city, state, PIN..."
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
+          <label className={s.formLabel}>Brand Color</label>
+          <div className={s.colorRow}>
+            <input
+              type="color"
+              className={s.colorPicker}
+              value={brandColor}
+              onChange={(e) => setBrandColor(e.target.value)}
+              disabled={loading}
+            />
+            <input
+              type="text"
+              className={`${s.formInput} ${s.colorHex}`}
+              value={brandColor}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) setBrandColor(v);
+              }}
+              maxLength={7}
+              placeholder="#C9A84C"
+              disabled={loading}
+            />
+            <div className={s.colorPreview} style={{ background: brandColor }} />
+          </div>
+        </div>
+
+        {/* Description — Rich Text */}
+        <VdfRichText
+          value={description}
+          onChange={setDescription}
+          label="Business Description (optional)"
+          placeholder="Brief description for client-facing reports..."
+          maxLength={1000}
+          minHeight={60}
+          maxHeight={100}
+          disabled={loading}
+        />
+
+        {/* Address */}
+        <div className={s.formGroup}>
+          <label className={s.formLabel}>Address Line 1</label>
+          <input
+            type="text"
+            className={s.formInput}
+            placeholder="Building, street"
+            value={address1}
+            onChange={(e) => setAddress1(e.target.value)}
             disabled={loading}
           />
         </div>
 
-        {/* City + State + PIN (3-col) */}
+        <div className={s.formGroup}>
+          <label className={s.formLabel}>Address Line 2 (optional)</label>
+          <input
+            type="text"
+            className={s.formInput}
+            placeholder="Area, landmark"
+            value={address2}
+            onChange={(e) => setAddress2(e.target.value)}
+            disabled={loading}
+          />
+        </div>
+
+        {/* City + State + PIN */}
         <div className={s.formRow3}>
           <div className={s.formGroup}>
             <label className={s.formLabel}>City</label>
             <input
               type="text"
               className={s.formInput}
+              placeholder="e.g. Hyderabad"
               value={city}
               onChange={(e) => setCity(e.target.value)}
               disabled={loading}
@@ -207,16 +307,9 @@ export default function OnboardBusiness({ onComplete }: Props) {
               disabled={loading}
             >
               <option value="">Select state...</option>
-              <option value="telangana">Telangana</option>
-              <option value="andhra_pradesh">Andhra Pradesh</option>
-              <option value="karnataka">Karnataka</option>
-              <option value="maharashtra">Maharashtra</option>
-              <option value="tamil_nadu">Tamil Nadu</option>
-              <option value="delhi">Delhi</option>
-              <option value="gujarat">Gujarat</option>
-              <option value="rajasthan">Rajasthan</option>
-              <option value="west_bengal">West Bengal</option>
-              <option value="kerala">Kerala</option>
+              {INDIAN_STATES.map((st) => (
+                <option key={st.code} value={st.name}>{st.name}</option>
+              ))}
             </select>
           </div>
           <div className={s.formGroup}>
@@ -224,8 +317,10 @@ export default function OnboardBusiness({ onComplete }: Props) {
             <input
               type="text"
               className={s.formInput}
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
+              placeholder="500001"
+              value={postalCode}
+              onChange={(e) => setPostalCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              maxLength={6}
               disabled={loading}
             />
           </div>

@@ -341,3 +341,99 @@ export function createOnboardingRouter(pool: Pool): Router {
 
   return router;
 }
+
+/* ── Tenant Profile Routes ─────────────────────────── */
+
+/** Allowed columns for vn_tenant_profiles update */
+const TENANT_PROFILE_FIELDS = [
+  'name', 'display_name', 'type', 'description', 'brand_color', 'theme_id',
+  'email', 'phone', 'website', 'address_line1', 'address_line2', 'city',
+  'state', 'country', 'postal_code', 'gstin', 'pan', 'industry', 'arn',
+] as const;
+
+export function createTenantRouter(pool: Pool): Router {
+  const router = Router();
+
+  /* ── PATCH /api/v1/tenant/profile ──────────────────── */
+
+  router.patch('/profile', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+
+      const { tenant_id } = jwt;
+      const body = req.body;
+
+      // Collect only allowed fields that are present in the request body
+      const updates: { col: string; value: unknown }[] = [];
+      for (const field of TENANT_PROFILE_FIELDS) {
+        if (body[field] !== undefined) {
+          updates.push({ col: field, value: body[field] });
+        }
+      }
+
+      if (updates.length === 0) {
+        res.status(400).json({ error: { code: 'NO_FIELDS', message: 'No valid fields to update' } });
+        return;
+      }
+
+      // Build dynamic UPDATE — only set provided fields + updated_at
+      const setClauses: string[] = [];
+      const values: unknown[] = [];
+      let idx = 1;
+
+      for (const { col, value } of updates) {
+        setClauses.push(`${col} = $${idx}`);
+        values.push(value);
+        idx++;
+      }
+
+      setClauses.push('updated_at = now()');
+      values.push(tenant_id);
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        await client.query(
+          `UPDATE vn_tenant_profiles SET ${setClauses.join(', ')} WHERE tenant_id = $${idx}`,
+          values,
+        );
+
+        await client.query('COMMIT');
+
+        // Return the updated profile
+        const result = await pool.query(
+          `SELECT tenant_id, name, short_name, display_name, type, description,
+                  logo_url, brand_color, theme_id, tagline, email, phone, website,
+                  address_line1, address_line2, city, state, country, postal_code,
+                  gstin, pan, industry, arn, updated_at
+           FROM vn_tenant_profiles WHERE tenant_id = $1`,
+          [tenant_id],
+        );
+
+        res.json({ profile: result.rows[0] || {} });
+      } catch (err) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw err;
+      } finally {
+        client.release();
+      }
+    } catch (err: any) {
+      console.error('[Tenant:profile]', err);
+      res.status(500).json({
+        error: {
+          code: 'UPDATE_FAILED',
+          message: process.env.NODE_ENV === 'production'
+            ? 'Failed to update tenant profile'
+            : err.message || 'Unknown error',
+        },
+      });
+    }
+  });
+
+  return router;
+}
