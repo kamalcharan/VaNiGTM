@@ -49,7 +49,9 @@ const TOKEN_KEYS = {
 
 export function getAccessToken(): string | null {
   try {
-    return sessionStorage.getItem(TOKEN_KEYS.access);
+    // Try sessionStorage first, fallback to localStorage
+    return sessionStorage.getItem(TOKEN_KEYS.access)
+      || localStorage.getItem(TOKEN_KEYS.access);
   } catch {
     return null;
   }
@@ -57,7 +59,8 @@ export function getAccessToken(): string | null {
 
 export function getRefreshToken(): string | null {
   try {
-    return sessionStorage.getItem(TOKEN_KEYS.refresh);
+    return sessionStorage.getItem(TOKEN_KEYS.refresh)
+      || localStorage.getItem(TOKEN_KEYS.refresh);
   } catch {
     return null;
   }
@@ -68,15 +71,19 @@ export function storeTokens(tokens: {
   refresh_token: string;
   expires_in: number;
 }): void {
+  const expiresAt = String(Date.now() + tokens.expires_in * 1000);
   try {
+    // Store in BOTH sessionStorage and localStorage for resilience
+    // sessionStorage: cleared on tab close (security)
+    // localStorage: survives full page reloads (reliability)
     sessionStorage.setItem(TOKEN_KEYS.access, tokens.access_token);
     sessionStorage.setItem(TOKEN_KEYS.refresh, tokens.refresh_token);
-    sessionStorage.setItem(
-      TOKEN_KEYS.expiresAt,
-      String(Date.now() + tokens.expires_in * 1000),
-    );
+    sessionStorage.setItem(TOKEN_KEYS.expiresAt, expiresAt);
+    localStorage.setItem(TOKEN_KEYS.access, tokens.access_token);
+    localStorage.setItem(TOKEN_KEYS.refresh, tokens.refresh_token);
+    localStorage.setItem(TOKEN_KEYS.expiresAt, expiresAt);
   } catch {
-    // sessionStorage unavailable (SSR)
+    // Storage unavailable
   }
 }
 
@@ -85,12 +92,16 @@ export function clearTokens(): void {
     sessionStorage.removeItem(TOKEN_KEYS.access);
     sessionStorage.removeItem(TOKEN_KEYS.refresh);
     sessionStorage.removeItem(TOKEN_KEYS.expiresAt);
+    localStorage.removeItem(TOKEN_KEYS.access);
+    localStorage.removeItem(TOKEN_KEYS.refresh);
+    localStorage.removeItem(TOKEN_KEYS.expiresAt);
   } catch {}
 }
 
 export function getTokenExpiresAt(): number {
   try {
-    return Number(sessionStorage.getItem(TOKEN_KEYS.expiresAt)) || 0;
+    return Number(sessionStorage.getItem(TOKEN_KEYS.expiresAt)
+      || localStorage.getItem(TOKEN_KEYS.expiresAt)) || 0;
   } catch {
     return 0;
   }
