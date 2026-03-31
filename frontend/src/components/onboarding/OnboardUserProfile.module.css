@@ -144,7 +144,11 @@
   margin-top: 20px; flex-shrink: 0;
 }
 
-.saveBtn { composes: submitBtn from '../../styles/forms.module.css'; }
+.saveBtn {
+  composes: submitBtn from '../../styles/forms.module.css';
+  width: auto;
+  height: auto;
+}
 
 /* ── Scrollbar ───────────────────────────────────────── */
 .page::-webkit-scrollbar { width: 5px; }

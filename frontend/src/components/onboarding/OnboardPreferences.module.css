@@ -69,7 +69,11 @@
 .skipBtn:hover { border-color: var(--color-primary); color: var(--color-fg); }
 .skipBtn:disabled { opacity: 0.5; }
 
-.saveBtn { composes: submitBtn from '../../styles/forms.module.css'; }
+.saveBtn {
+  composes: submitBtn from '../../styles/forms.module.css';
+  width: auto;
+  height: auto;
+}
 
 .page::-webkit-scrollbar { width: 5px; }
 .page::-webkit-scrollbar-track { background: transparent; }

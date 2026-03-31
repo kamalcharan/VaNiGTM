@@ -175,7 +175,11 @@
 
 .skipBtn:hover { border-color: var(--color-primary); color: var(--color-fg); }
 
-.saveBtn { composes: submitBtn from '../../styles/forms.module.css'; }
+.saveBtn {
+  composes: submitBtn from '../../styles/forms.module.css';
+  width: auto;
+  height: auto;
+}
 
 /* ── Scrollbar ───────────────────────────────────────── */
 .page::-webkit-scrollbar { width: 5px; }
