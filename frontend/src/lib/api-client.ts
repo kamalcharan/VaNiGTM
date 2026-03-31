@@ -230,11 +230,15 @@ export async function apiFetch<T = Record<string, unknown>>(
 
   // 401 → silent refresh → retry once
   if (res.status === 401 && endpoint.auth && !skipRetry) {
-    const refreshed = await silentRefresh();
-    if (refreshed) {
-      return apiFetch<T>(endpoint, { ...options, skipRetry: true });
+    // Only attempt refresh if we have a refresh token
+    const hasRefresh = !!getRefreshToken();
+    if (hasRefresh) {
+      const refreshed = await silentRefresh();
+      if (refreshed) {
+        return apiFetch<T>(endpoint, { ...options, skipRetry: true });
+      }
     }
-    // Refresh failed — clear tokens, throw auth error
+    // Refresh failed or no refresh token — clear and throw
     clearTokens();
     throw {
       code: 'AUTH_EXPIRED',

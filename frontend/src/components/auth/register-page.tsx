@@ -88,7 +88,9 @@ export default function RegisterPage() {
             if (prefs?.color_mode) localStorage.setItem('pk-color-mode', String(prefs.color_mode));
           } catch {}
           showToast({ message: 'Account created successfully!', type: 'success' });
-          router.push('/onboarding');
+          // Use window.location to ensure sessionStorage tokens persist across navigation
+          // (router.push can cause race conditions with token storage)
+          window.location.href = '/onboarding';
         },
         onError: (err: ApiError) => {
           if (err.code === 'EMAIL_EXISTS') {

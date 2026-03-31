@@ -81,6 +81,8 @@ export function createAuthRouter(pool: Pool): Router {
     try {
       const jwt = extractJwt(req);
       if (!jwt) {
+        const authHeader = req.headers.authorization;
+        console.warn('[Auth:preferences] 401 — Authorization header:', authHeader ? `Bearer ${authHeader.slice(7, 20)}...` : 'MISSING');
         res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
         return;
       }
