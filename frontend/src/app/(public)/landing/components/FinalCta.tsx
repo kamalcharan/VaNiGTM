@@ -24,11 +24,11 @@ export default function FinalCta() {
           Limited spots for founding members.
         </p>
         <div className={s.finalCtaActions}>
-          <VdfButton variant="primary" href="mailto:charan@vikuna.tech?subject=ProessionalKey Early Access" icon={<ArrowIcon />}>
-            Request Early Access
+          <VdfButton variant="primary" href="/register" icon={<ArrowIcon />}>
+            Get Started Free
           </VdfButton>
-          <VdfButton variant="ghost" href="#features">
-            Explore Features
+          <VdfButton variant="ghost" href="/login">
+            Sign In
           </VdfButton>
         </div>
         <div className={s.finalCtaNote}>No credit card required · Free tier available · Cancel anytime</div>

@@ -23,8 +23,8 @@ export default function HeroSection() {
         reporting — all in one platform built exclusively for Indian Mutual Fund Distributors.
       </p>
       <div className={s.heroActions}>
-        <VdfButton variant="primary" href="#start" icon={<ArrowIcon />}>
-          Request Early Access
+        <VdfButton variant="primary" href="/register" icon={<ArrowIcon />}>
+          Get Started Free
         </VdfButton>
         <VdfButton variant="ghost" href="#features">
           See What&apos;s Inside

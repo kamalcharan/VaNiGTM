@@ -11,7 +11,7 @@ const tiers = [
     price: '0',
     features: ['Up to 50 clients', 'Portfolio & NAV tracking', 'CAS import (CAMS/KFintech)', 'Basic goal planning', '1 user seat'],
     ctaLabel: 'Get Started Free',
-    ctaHref: '#start',
+    ctaHref: '/register',
   },
   {
     tier: 'Professional',
@@ -19,7 +19,7 @@ const tiers = [
     price: '1,999',
     features: ['Up to 500 clients', 'All 8 skill modules', 'Auto-generated reports', 'SIP bounce alerts', 'Tax harvest optimizer', '5 user seats', 'Priority support'],
     ctaLabel: 'Start 14-Day Trial',
-    ctaHref: '#start',
+    ctaHref: '/register',
     featured: true,
     badge: 'Most Popular',
   },
@@ -29,7 +29,7 @@ const tiers = [
     price: '4,999',
     features: ['Unlimited clients', 'White-label client portal', 'Custom branding & themes', 'API access', 'Unlimited seats', 'Dedicated account manager', 'SLA guarantee'],
     ctaLabel: 'Contact Sales',
-    ctaHref: '#start',
+    ctaHref: '/register',
   },
 ];
 
