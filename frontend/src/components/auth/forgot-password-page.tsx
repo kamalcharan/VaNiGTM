@@ -1,68 +1,53 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { useShellConfig } from '@/lib/shell-config';
 import { useToast } from '@/components/toast';
 import { InlineLoader } from '@/components/loader';
 import FormInput from '@/components/ui/form-input';
+import { useForgotPassword } from '@/hooks';
+import type { ApiError } from '@/lib/api-client';
 import s from './forgot-password-page.module.css';
 
 export default function ForgotPasswordPage() {
-  const { apiUrl, product } = useShellConfig();
   const { showToast } = useToast();
+  const forgotMutation = useForgotPassword();
 
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [resetToken, setResetToken] = useState('');
 
   async function handleSubmit(ev: FormEvent) {
     ev.preventDefault();
+    if (forgotMutation.isPending) return;
+
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError('Please enter a valid email address');
       return;
     }
 
-    setLoading(true);
     setError('');
 
-    try {
-      const res = await fetch(`${apiUrl}/api/v1/auth/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        showToast({
-          message: data?.error?.message || data?.message || 'Failed to send reset link',
-          type: 'error',
-        });
-        setLoading(false);
-        return;
-      }
-
-      // MVP: API returns the token directly
-      if (data.token) {
-        setResetToken(data.token);
-      }
-
-      setSuccess(true);
-    } catch {
-      showToast({ message: 'Network error — please try again', type: 'error' });
-    } finally {
-      setLoading(false);
-    }
+    forgotMutation.mutate(
+      { email: email.trim().toLowerCase() },
+      {
+        onSuccess: (data) => {
+          if (data.token) setResetToken(data.token);
+          setSuccess(true);
+        },
+        onError: (err: ApiError) => {
+          showToast({ message: err.message || 'Failed to send reset link', type: 'error' });
+        },
+      },
+    );
   }
+
+  const loading = forgotMutation.isPending;
 
   return (
     <div className={s.vault}>
       {/* ── LEFT: Story/Branding Panel ── */}
       <div className={s.storyPanel}>
-        {/* Orbiting rings */}
         <div className={s.orbits}>
           <div className={`${s.orbit} ${s.orbit1}`} />
           <div className={`${s.orbit} ${s.orbit2}`} />
@@ -70,7 +55,6 @@ export default function ForgotPasswordPage() {
         </div>
 
         <div className={s.storyContent}>
-          {/* Brand orb */}
           <div className={s.brandOrb}>
             <div className={s.brandOrbInner}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -94,13 +78,10 @@ export default function ForgotPasswordPage() {
                 we&apos;ve got you<br />
                 <span className={s.glowWord}>covered</span>.
               </h1>
-
               <p className={s.storyText}>
                 Forgotten passwords happen to the best of us. We&apos;ll have you
-                back in your vault in no time — securely and seamlessly.
+                back in your vault in no time.
               </p>
-
-              {/* Lock orb */}
               <div className={s.lockOrb}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -114,10 +95,9 @@ export default function ForgotPasswordPage() {
                 Check your<br />
                 <span className={s.glowWord}>inbox</span>.
               </h1>
-
               <p className={s.storyText}>
                 A password reset link is on its way. Follow the instructions
-                in the email to regain access to your vault.
+                in the email to regain access.
               </p>
             </>
           )}
@@ -127,24 +107,16 @@ export default function ForgotPasswordPage() {
       {/* ── RIGHT: Form Panel ── */}
       <div className={s.formPanel}>
         {!success ? (
-          /* ── Request State ── */
           <>
-            {/* Top nav */}
             <div className={s.topNav}>
-              <a href="/login" className={s.backLink}>
-                &larr; Back to sign in
-              </a>
-              <a href="/register" className={s.topNavRight}>
-                Create account &rarr;
-              </a>
+              <a href="/login" className={s.backLink}>&larr; Back to sign in</a>
+              <a href="/register" className={s.topNavRight}>Create account &rarr;</a>
             </div>
 
             <div className={s.formHeader}>
               <div className={s.accentLine} />
               <h2 className={s.formTitle}>Reset your password</h2>
-              <p className={s.formSubtitle}>
-                Enter your email and we&apos;ll send you a reset link
-              </p>
+              <p className={s.formSubtitle}>Enter your email and we&apos;ll send you a reset link</p>
             </div>
 
             <form onSubmit={handleSubmit} noValidate>
@@ -160,11 +132,7 @@ export default function ForgotPasswordPage() {
                 autoFocus
               />
 
-              <button
-                type="submit"
-                className={s.submitBtn}
-                disabled={loading || !email}
-              >
+              <button type="submit" className={s.submitBtn} disabled={loading || !email}>
                 {loading ? (
                   <InlineLoader size="sm" message="SENDING..." />
                 ) : (
@@ -174,19 +142,13 @@ export default function ForgotPasswordPage() {
             </form>
 
             <div className={s.footer}>
-              <a href="/login" className={s.footerLink}>
-                &larr; Back to sign in
-              </a>
+              <a href="/login" className={s.footerLink}>&larr; Back to sign in</a>
             </div>
           </>
         ) : (
-          /* ── Success State ── */
           <>
-            {/* Top nav */}
             <div className={s.topNav}>
-              <a href="/login" className={s.backLink}>
-                &larr; Back to sign in
-              </a>
+              <a href="/login" className={s.backLink}>&larr; Back to sign in</a>
             </div>
 
             <div className={s.successContent}>
@@ -198,12 +160,9 @@ export default function ForgotPasswordPage() {
               </div>
 
               <h2 className={s.successTitle}>Check your inbox</h2>
-              <p className={s.successDesc}>
-                We&apos;ve sent a password reset link to:
-              </p>
+              <p className={s.successDesc}>We&apos;ve sent a password reset link to:</p>
               <div className={s.successEmail}>{email}</div>
 
-              {/* MVP: Show token directly */}
               {resetToken && (
                 <div className={s.tokenBox}>
                   <span className={s.tokenLabel}>Reset Token (MVP)</span>
@@ -212,13 +171,11 @@ export default function ForgotPasswordPage() {
               )}
 
               <p className={s.successHint}>
-                The link expires in 30 minutes. Didn&apos;t receive it?
-                <br />
-                Check your spam folder.
+                The link expires in 1 hour. Didn&apos;t receive it?<br />Check your spam folder.
               </p>
 
-              <a href="/login" className={s.backBtn}>
-                &larr; Back to sign in
+              <a href={`/reset-password${resetToken ? `?token=${resetToken}` : ''}`} className={s.backBtn}>
+                RESET PASSWORD &rarr;
               </a>
             </div>
           </>

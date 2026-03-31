@@ -307,6 +307,177 @@ export function createAuthRouter(pool: Pool): Router {
     }
   });
 
+  /* ── POST /api/v1/auth/forgot-password ──────────────── */
+
+  router.post('/forgot-password', async (req, res) => {
+    try {
+      const email = String(req.body.email || '').trim().toLowerCase();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        // Return 200 even for invalid email (no user enumeration)
+        res.json({ message: 'If an account exists, a reset link has been sent.' });
+        return;
+      }
+
+      // Look up user
+      const userResult = await pool.query(
+        'SELECT id FROM vn_users WHERE LOWER(email) = $1',
+        [email],
+      );
+
+      if (userResult.rows.length === 0) {
+        // Don't reveal that the account doesn't exist
+        res.json({ message: 'If an account exists, a reset link has been sent.' });
+        return;
+      }
+
+      const userId = (userResult.rows[0] as any).id;
+      const crypto = await import('crypto');
+
+      // Generate token
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      // Delete any existing unused resets for this user
+      await pool.query(
+        'DELETE FROM vn_password_resets WHERE user_id = $1 AND used = false',
+        [userId],
+      );
+
+      // Insert new reset record
+      await pool.query(
+        `INSERT INTO vn_password_resets (id, user_id, token_hash, expires_at, used, created_at)
+         VALUES (gen_random_uuid(), $1, $2, $3, false, now())`,
+        [userId, tokenHash, expiresAt],
+      );
+
+      // MVP: return token in response (email dispatch later)
+      res.json({
+        message: 'If an account exists, a reset link has been sent.',
+        token: rawToken, // MVP only — remove when email is implemented
+      });
+    } catch (err: any) {
+      console.error('[Auth:forgot-password]', err);
+      res.status(500).json({
+        error: { code: 'RESET_FAILED', message: 'Failed to process reset request' },
+      });
+    }
+  });
+
+  /* ── POST /api/v1/auth/reset-password ─────────────── */
+
+  router.post('/reset-password', async (req, res) => {
+    try {
+      const { token, new_password } = req.body;
+
+      if (!token || typeof token !== 'string') {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: 'Reset token is required' },
+        });
+        return;
+      }
+
+      if (!new_password || new_password.length < 8) {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: 'Password must be at least 8 characters' },
+        });
+        return;
+      }
+
+      if (!/[A-Z]/.test(new_password)) {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: 'Password must contain at least 1 uppercase letter' },
+        });
+        return;
+      }
+
+      if (!/[0-9]/.test(new_password)) {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: 'Password must contain at least 1 number' },
+        });
+        return;
+      }
+
+      const crypto = await import('crypto');
+      const tokenHash = crypto.createHash('sha256').update(token.trim()).digest('hex');
+
+      // Look up reset record
+      const resetResult = await pool.query(
+        `SELECT id, user_id, expires_at, used FROM vn_password_resets
+         WHERE token_hash = $1`,
+        [tokenHash],
+      );
+
+      if (resetResult.rows.length === 0) {
+        res.status(400).json({
+          error: { code: 'INVALID_TOKEN', message: 'Invalid or expired reset token' },
+        });
+        return;
+      }
+
+      const resetRecord = resetResult.rows[0] as any;
+
+      if (resetRecord.used) {
+        res.status(400).json({
+          error: { code: 'TOKEN_USED', message: 'This reset token has already been used' },
+        });
+        return;
+      }
+
+      if (new Date(resetRecord.expires_at) < new Date()) {
+        res.status(400).json({
+          error: { code: 'TOKEN_EXPIRED', message: 'Reset token has expired. Please request a new one.' },
+        });
+        return;
+      }
+
+      // Hash new password
+      const bcrypt = await import('bcryptjs');
+      const passwordHash = await bcrypt.hash(new_password, 12);
+
+      // Update password + mark token used — in transaction
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        await client.query(
+          'UPDATE vn_users SET password_hash = $1, failed_login_count = 0, locked_until = NULL, updated_at = now() WHERE id = $2',
+          [passwordHash, resetRecord.user_id],
+        );
+
+        await client.query(
+          'UPDATE vn_password_resets SET used = true WHERE id = $1',
+          [resetRecord.id],
+        );
+
+        // Revoke all existing sessions (force re-login with new password)
+        await client.query(
+          'UPDATE vn_refresh_tokens SET is_active = false, revoked_at = now(), revoked_reason = $1 WHERE user_id = $2 AND is_active = true',
+          ['password_reset', resetRecord.user_id],
+        );
+
+        await client.query('COMMIT');
+      } catch (err) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw err;
+      } finally {
+        client.release();
+      }
+
+      res.json({ message: 'Password reset successful. You can now sign in with your new password.' });
+    } catch (err: any) {
+      console.error('[Auth:reset-password]', err);
+      res.status(500).json({
+        error: {
+          code: 'RESET_FAILED',
+          message: process.env.NODE_ENV === 'production'
+            ? 'Password reset failed'
+            : err.message || 'Unknown error',
+        },
+      });
+    }
+  });
+
   return router;
 }
 
