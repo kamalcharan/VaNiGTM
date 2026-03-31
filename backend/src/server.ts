@@ -19,14 +19,14 @@ app.get('/health', async (_req, res) => {
     const db = await healthCheck();
     res.json({
       status: 'ok',
-      service: 'proessionalkey-api',
+      service: 'prokey-api',
       version: '2.0.0',
       db: db,
     });
   } catch (err) {
     res.status(503).json({
       status: 'degraded',
-      service: 'proessionalkey-api',
+      service: 'prokey-api',
       version: '2.0.0',
       db: { ok: false, error: err instanceof Error ? err.message : 'Unknown' },
     });
@@ -42,23 +42,23 @@ async function main() {
   // Verify database connectivity at startup
   try {
     const check = await healthCheck();
-    console.log(`[ProessionalKey] Database connected (${check.latency_ms}ms)`);
+    console.log(`[ProKey] Database connected (${check.latency_ms}ms)`);
   } catch (err) {
-    console.error('[ProessionalKey] Database connection failed:', err instanceof Error ? err.message : err);
-    console.error('[ProessionalKey] Continuing without DB — skill calls will fail.');
+    console.error('[ProKey] Database connection failed:', err instanceof Error ? err.message : err);
+    console.error('[ProKey] Continuing without DB — skill calls will fail.');
   }
 
   // Mount auth + onboarding + tenant routes
   app.use('/api/v1/auth', createAuthRouter(pool));
   app.use('/api/v1/onboarding', createOnboardingRouter(pool));
   app.use('/api/v1/tenant', createTenantRouter(pool));
-  console.log('[ProessionalKey] Auth routes mounted at /api/v1/auth, /api/v1/onboarding, /api/v1/tenant');
+  console.log('[ProKey] Auth routes mounted at /api/v1/auth, /api/v1/onboarding, /api/v1/tenant');
 
   // Build skill registry
   const skillsDir = path.resolve(__dirname, 'skills');
   const registry = await buildRegistry(skillsDir);
   const summary = registry.summary();
-  console.log(`[ProessionalKey] Loaded ${summary.skills} skills, ${summary.handlers} handlers`);
+  console.log(`[ProKey] Loaded ${summary.skills} skills, ${summary.handlers} handlers`);
 
   /* ── Skill execution route ──────────────────────────── */
 
@@ -102,17 +102,17 @@ async function main() {
   /* ── Start server ───────────────────────────────────── */
 
   const server = app.listen(PORT, () => {
-    console.log(`[ProessionalKey] API running on port ${PORT}`);
+    console.log(`[ProKey] API running on port ${PORT}`);
   });
 
   /* ── Graceful shutdown ──────────────────────────────── */
 
   async function shutdown(signal: string) {
-    console.log(`\n[ProessionalKey] ${signal} received — shutting down gracefully...`);
+    console.log(`\n[ProKey] ${signal} received — shutting down gracefully...`);
 
     // Stop accepting new connections
     server.close(() => {
-      console.log('[ProessionalKey] HTTP server closed.');
+      console.log('[ProKey] HTTP server closed.');
     });
 
     // Drain DB pool
@@ -126,6 +126,6 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error('[ProessionalKey] Failed to start:', err);
+  console.error('[ProKey] Failed to start:', err);
   process.exit(1);
 });

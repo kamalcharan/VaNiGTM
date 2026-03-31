@@ -1,7 +1,7 @@
-# CLAUDE.md — ProessionalKey (KI-Prime)
+# CLAUDE.md — ProKey (KI-Prime)
 
 ## What is this repo?
-ProessionalKey — multi-tenant SaaS financial planning platform for Mutual Fund Distributors (MFDs) in India. Built on a lightweight Skills.md convention — no framework dependency.
+ProKey — multi-tenant SaaS financial planning platform for Mutual Fund Distributors (MFDs) in India. Built on a lightweight Skills.md convention — no framework dependency.
 
 ## Architecture
 - **kewalinvest/** is a git submodule (kamalcharan/kewalinvest). READ-ONLY reference for business logic patterns (XIRR, MFAPI, InvestWell parser). DO NOT modify.
@@ -261,9 +261,9 @@ VDF is the single source of truth for all visual elements. Located in `component
 12. **No VaNi. No VaNiBase. No framework imports.** This is plain Express + Next.js.
 13. **UX: glassmorphic default, innovative, premium.** No generic/safe design. Match the Atlas design language quality.
 
-## Reference: MVP → ProessionalKey Mapping
+## Reference: MVP → ProKey Mapping
 
-| MVP (kewalinvest)                    | ProessionalKey                              |
+| MVP (kewalinvest)                    | ProKey                              |
 |--------------------------------------|---------------------------------------------|
 | `backend/src/services/portfolio.*`   | `skills/portfolio-skill/functions/`         |
 | `backend/src/services/transaction.*` | `skills/import-skill/functions/`            |

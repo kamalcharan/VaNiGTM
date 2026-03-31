@@ -1,8 +1,8 @@
 {
-  "name": "proessionalkey",
+  "name": "prokey",
   "version": "2.0.0",
   "private": true,
-  "description": "ProessionalKey — Financial Advisory Platform for MFDs",
+  "description": "ProKey — Financial Advisory Platform for MFDs",
   "scripts": {
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
     "dev": "cd frontend && npx next dev --port 3000",

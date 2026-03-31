@@ -8,7 +8,7 @@ const DEFAULT_THEME = process.env.NEXT_PUBLIC_DEFAULT_THEME || 'vikuna-black';
 const DEFAULT_MODE = (process.env.NEXT_PUBLIC_DEFAULT_COLOR_MODE || 'dark') as 'light' | 'dark';
 
 export const metadata = {
-  title: 'ProessionalKey',
+  title: 'ProKey',
   description: 'Financial Advisory Platform for MFDs',
 };
 

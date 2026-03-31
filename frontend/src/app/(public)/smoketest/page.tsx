@@ -27,7 +27,7 @@ export default function SmokeTest() {
           fontFamily: 'var(--font-display, serif)',
           margin: 0,
         }}>
-          ProessionalKey
+          ProKey
         </h1>
         <p style={{ color: 'var(--color-muted)', margin: '8px 0 0' }}>
           Smoke Test — Theme System Working

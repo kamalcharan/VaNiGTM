@@ -34,7 +34,7 @@ export default function Footer() {
     <footer className={s.footer}>
       <div className={s.footerContent}>
         <div className={s.footerBrand}>
-          <div className={s.footerBrandName}>ProessionalKey</div>
+          <div className={s.footerBrandName}>ProKey</div>
           <div className={s.footerBrandTagline}>
             AI-powered portfolio intelligence for Indian Mutual Fund Distributors.
             Built by practitioners, for practitioners.
