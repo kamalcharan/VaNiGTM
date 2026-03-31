@@ -5,7 +5,7 @@
   "description": "ProessionalKey — Financial Advisory Platform for MFDs",
   "scripts": {
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "dev": "next dev --port 3000",
+    "dev": "cd frontend && npx next dev --port 3000",
     "dev:all": "concurrently --names api,ui --prefix-colors blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm start",

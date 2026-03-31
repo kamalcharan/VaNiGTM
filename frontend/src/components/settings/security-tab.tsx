@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { useShellConfig } from '@/lib/shell-config';
 import { useAuth } from '@/context/auth-provider';
-import { useToast } from '@/../components/toast';
-import { InlineLoader } from '@/../components/loader';
-import FormInput from '@/../components/ui/form-input';
-import PasswordStrength from '@/../components/ui/password-strength';
+import { useToast } from '@/components/toast';
+import { InlineLoader } from '@/components/loader';
+import FormInput from '@/components/ui/form-input';
+import PasswordStrength from '@/components/ui/password-strength';
 import s from './settings-tabs.module.css';
 
 export default function SecurityTab() {

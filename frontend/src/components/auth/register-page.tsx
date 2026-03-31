@@ -3,11 +3,11 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useShellConfig } from '@/lib/shell-config';
-import { useToast } from '@/../components/toast';
-import { InlineLoader } from '@/../components/loader';
-import FormInput from '@/../components/ui/form-input';
-import CountryDropdown, { type Country } from '@/../components/ui/country-dropdown';
-import PasswordStrength from '@/../components/ui/password-strength';
+import { useToast } from '@/components/toast';
+import { InlineLoader } from '@/components/loader';
+import FormInput from '@/components/ui/form-input';
+import CountryDropdown, { type Country } from '@/components/ui/country-dropdown';
+import PasswordStrength from '@/components/ui/password-strength';
 import s from './register-page.module.css';
 
 export default function RegisterPage() {

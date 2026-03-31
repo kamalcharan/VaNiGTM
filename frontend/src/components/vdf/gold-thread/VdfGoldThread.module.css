@@ -1,0 +1,5 @@
+.thread {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-primary-dim), transparent);
+  margin: 0 auto;
+}

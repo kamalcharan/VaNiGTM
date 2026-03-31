@@ -1,0 +1,78 @@
+/* ═══════════════════════════════════════════════════════
+   VDF TABS — Horizontal / vertical tab navigation
+   Theme-compliant: ALL colors via --color-* CSS variables
+   ═══════════════════════════════════════════════════════ */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+}
+
+/* ── Horizontal ─────────────────────────────────────── */
+.horizontal {
+  flex-direction: row;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0;
+}
+
+.horizontal .tab {
+  padding: 10px 16px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.horizontal .active {
+  border-bottom-color: var(--color-primary);
+}
+
+/* ── Vertical ───────────────────────────────────────── */
+.vertical {
+  flex-direction: column;
+}
+
+.vertical .tab {
+  padding: 10px 16px;
+  border-left: 3px solid transparent;
+  text-align: left;
+}
+
+.vertical .active {
+  border-left-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+/* ── Tab Button ─────────────────────────────────────── */
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  font-weight: 500;
+  transition: all 200ms ease-out;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--color-fg);
+  background: color-mix(in srgb, var(--color-muted) 6%, transparent);
+}
+
+.active {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.active:hover {
+  color: var(--color-primary);
+}
+
+.icon {
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+}

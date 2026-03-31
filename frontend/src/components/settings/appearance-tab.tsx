@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useShellConfig } from '@/lib/shell-config';
 import { useAuth } from '@/context/auth-provider';
 import { useTheme, getTheme } from '@/config/theme';
-import { useToast } from '@/../components/toast';
+import { useToast } from '@/components/toast';
 import s from './settings-tabs.module.css';
 
 export default function AppearanceTab() {

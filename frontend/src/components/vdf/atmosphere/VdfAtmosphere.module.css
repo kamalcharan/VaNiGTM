@@ -1,0 +1,10 @@
+.atmosphere {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, var(--color-primary-subtle) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, var(--color-primary-glow) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, var(--color-primary-subtle) 0%, transparent 40%);
+}

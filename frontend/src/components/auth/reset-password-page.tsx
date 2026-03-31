@@ -3,10 +3,10 @@
 import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useShellConfig } from '@/lib/shell-config';
-import { useToast } from '@/../components/toast';
-import { InlineLoader } from '@/../components/loader';
-import FormInput from '@/../components/ui/form-input';
-import PasswordStrength from '@/../components/ui/password-strength';
+import { useToast } from '@/components/toast';
+import { InlineLoader } from '@/components/loader';
+import FormInput from '@/components/ui/form-input';
+import PasswordStrength from '@/components/ui/password-strength';
 import s from './reset-password-page.module.css';
 
 export default function ResetPasswordPage() {

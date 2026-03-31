@@ -1,0 +1,36 @@
+.icon {
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.icon::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  background: var(--icon-glow, var(--color-primary-glow));
+  filter: blur(12px);
+  opacity: 0.5;
+}
+
+.sm {
+  width: 40px;
+  height: 40px;
+  font-size: 1.2rem;
+}
+
+.md {
+  width: 52px;
+  height: 52px;
+  font-size: 1.5rem;
+}
+
+.lg {
+  width: 64px;
+  height: 64px;
+  font-size: 1.8rem;
+}
