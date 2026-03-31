@@ -1,63 +1,76 @@
-// src/config/theme/themes/vikunaBlack.ts
 import { ThemeConfig } from '../types';
 
 export const VikunaBlackTheme: ThemeConfig = {
   id: 'vikuna-black',
   name: 'Vikuna Black',
   colors: {
-    // Light mode - a warm, professional light variant inspired by the dark palette
     brand: {
-      primary: '#D4911E',      // Warm amber (darkened for light bg readability)
-      secondary: '#1A1D26',    // Near-black for strong contrast
-      tertiary: '#5A6178',     // Muted slate
-      alternate: '#F4F3F0',    // Warm off-white surface
+      primary: '#B8942F',
+      secondary: '#1A1A1F',
+      tertiary: '#6B6555',
+      alternate: '#F5F2EB',
     },
     utility: {
-      primaryText: '#1A1D26',          // Near-black text
-      secondaryText: '#5A6178',        // Muted slate
-      primaryBackground: '#FAFAF8',    // Warm white
-      secondaryBackground: '#F0EFEB',  // Warm light gray
+      primaryText: '#1A1A1F',
+      secondaryText: 'rgba(26,26,31,0.6)',
+      primaryBackground: '#F5F2EB',
+      secondaryBackground: '#EDE9E0',
     },
     accent: {
-      accent1: '#D4911E',     // Amber accent
-      accent2: '#1A1D26',     // Dark accent
-      accent3: '#B0B5C5',     // Light slate
-      accent4: '#E8E7E3',     // Warm light border
+      accent1: '#4A8FD4',
+      accent2: '#3BAFA7',
+      accent3: '#D47070',
+      accent4: '#7A6FD4',
     },
     semantic: {
-      success: '#2ECC71',     // Green (matches HTML reference)
-      error: '#E74C3C',       // Red (matches HTML reference)
-      warning: '#F5A623',     // Amber warning
-      info: '#3498DB',        // Blue info
-    }
+      success: '#3BAFA7',
+      error: '#D47070',
+      warning: '#D4911E',
+      info: '#4A8FD4',
+    },
+    surface: {
+      glass: 'rgba(0,0,0,0.03)',
+      glassStrong: 'rgba(0,0,0,0.05)',
+      glassBorder: 'rgba(0,0,0,0.08)',
+      primaryDim: 'rgba(184,148,47,0.35)',
+      primaryGlow: 'rgba(184,148,47,0.1)',
+      primarySubtle: 'rgba(184,148,47,0.04)',
+    },
   },
   darkMode: {
     colors: {
-      // Dark mode - exact colors from the HTML reference design
       brand: {
-        primary: '#F5A623',      // --amber: golden amber accent
-        secondary: '#E8E6E0',    // --text: light cream for contrast elements
-        tertiary: '#3A3F52',     // --faint: subtle borders/dividers
-        alternate: '#1C2030',    // --surface2: elevated surface
+        primary: '#C9A84C',
+        secondary: '#F0ECE2',
+        tertiary: '#3A3F52',
+        alternate: '#111118',
       },
       utility: {
-        primaryText: '#E8E6E0',          // --text: cream white
-        secondaryText: '#7A8099',        // --muted: muted slate blue
-        primaryBackground: '#0D0F14',    // --bg: deep dark background
-        secondaryBackground: '#13161D',  // --surface: card/panel background
+        primaryText: '#F0ECE2',
+        secondaryText: 'rgba(240,236,226,0.6)',
+        primaryBackground: '#0A0A0F',
+        secondaryBackground: '#111118',
       },
       accent: {
-        accent1: '#F5A623',     // Amber glow
-        accent2: '#E8E6E0',     // Light text accent
-        accent3: '#3A3F52',     // Faint/border
-        accent4: '#1C2030',     // Elevated surface
+        accent1: '#5EAAF0',
+        accent2: '#4ECDC4',
+        accent3: '#E88B8B',
+        accent4: '#9B8FE8',
       },
       semantic: {
-        success: '#2ECC71',     // --green: vibrant green
-        error: '#E74C3C',       // --red: vibrant red
-        warning: '#F5A623',     // Amber warning
-        info: '#3498DB',        // Blue info
-      }
-    }
-  }
+        success: '#4ECDC4',
+        error: '#E88B8B',
+        warning: '#E8B44C',
+        info: '#5EAAF0',
+      },
+      surface: {
+        glass: 'rgba(255,255,255,0.04)',
+        glassStrong: 'rgba(255,255,255,0.07)',
+        glassBorder: 'rgba(255,255,255,0.08)',
+        primaryDim: 'rgba(201,168,76,0.4)',
+        primaryGlow: 'rgba(201,168,76,0.15)',
+        primarySubtle: 'rgba(201,168,76,0.06)',
+      },
+    },
+  },
 };

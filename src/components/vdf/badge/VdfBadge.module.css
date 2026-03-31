@@ -12,28 +12,28 @@
 }
 
 .default {
-  background: var(--glass, rgba(255, 255, 255, 0.04));
-  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
-  color: var(--text-secondary, rgba(240, 236, 226, 0.6));
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
 }
 
 .gold {
-  background: linear-gradient(135deg, var(--color-primary), #B8942F);
-  color: var(--color-primary-fg, #0A0A0F);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  color: var(--color-primary-fg);
   font-weight: 700;
   font-size: 0.68rem;
   padding: 3px 12px;
 }
 
 .success {
-  background: var(--glass, rgba(255, 255, 255, 0.04));
-  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
-  color: var(--text-secondary, rgba(240, 236, 226, 0.6));
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
 }
 
 .info {
-  background: rgba(94, 170, 240, 0.08);
-  border: 1px solid rgba(94, 170, 240, 0.15);
+  background: var(--color-primary-subtle);
+  border: 1px solid var(--color-primary-glow);
   color: var(--color-accent);
 }
 
@@ -43,10 +43,9 @@
   background: var(--color-success);
   border-radius: 50%;
   animation: pulseGlow 2s ease-in-out infinite;
-  box-shadow: 0 0 8px rgba(78, 205, 196, 0.4);
 }
 
 @keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 8px rgba(78, 205, 196, 0.4); }
-  50% { box-shadow: 0 0 20px rgba(78, 205, 196, 0.6); }
+  0%, 100% { box-shadow: 0 0 8px var(--color-primary-glow); }
+  50% { box-shadow: 0 0 20px var(--color-primary-dim); }
 }

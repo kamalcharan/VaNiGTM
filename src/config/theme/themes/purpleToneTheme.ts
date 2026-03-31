@@ -27,7 +27,15 @@ export const PurpleToneTheme: ThemeConfig = {
       error: '#ff5963',
       warning: '#fcdc0c',
       info: '#ffffff',
-    }
+    },
+    surface: {
+      glass: 'rgba(0,0,0,0.03)',
+      glassStrong: 'rgba(0,0,0,0.05)',
+      glassBorder: 'rgba(0,0,0,0.08)',
+      primaryDim: 'rgba(111,97,239,0.35)',
+      primaryGlow: 'rgba(111,97,239,0.1)',
+      primarySubtle: 'rgba(111,97,239,0.04)',
+    },
   },
   darkMode: {
     colors: {
@@ -54,7 +62,15 @@ export const PurpleToneTheme: ThemeConfig = {
         error: '#ff5963',
         warning: '#fcdc0c',
         info: '#ffffff',
-      }
-    }
-  }
+      },
+      surface: {
+        glass: 'rgba(255,255,255,0.04)',
+        glassStrong: 'rgba(255,255,255,0.07)',
+        glassBorder: 'rgba(255,255,255,0.08)',
+        primaryDim: 'rgba(111,97,239,0.4)',
+        primaryGlow: 'rgba(111,97,239,0.15)',
+        primarySubtle: 'rgba(111,97,239,0.06)',
+      },
+    },
+  },
 };

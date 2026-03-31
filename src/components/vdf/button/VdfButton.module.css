@@ -32,8 +32,8 @@
 
 /* ── Primary ── */
 .primary {
-  background: linear-gradient(135deg, var(--color-primary), #B8942F);
-  color: var(--color-primary-fg, #0A0A0F);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  color: var(--color-primary-fg);
 }
 
 .primary::before {
@@ -48,20 +48,20 @@
 .primary:hover::before { transform: translateX(100%); }
 .primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(201, 168, 76, 0.3);
+  box-shadow: 0 8px 32px var(--color-primary-glow);
 }
 
 /* ── Ghost ── */
 .ghost {
   background: transparent;
-  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
-  color: var(--text-secondary, rgba(240, 236, 226, 0.6));
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
 }
 
 .ghost:hover {
-  border-color: var(--gold-dim, rgba(201, 168, 76, 0.4));
+  border-color: var(--color-primary-dim);
   color: var(--color-primary);
-  background: var(--gold-subtle, rgba(201, 168, 76, 0.06));
+  background: var(--color-primary-subtle);
 }
 
 /* ── Outline ── */
@@ -77,5 +77,5 @@
 
 .outline:hover {
   background: var(--color-primary);
-  color: var(--color-primary-fg, #0A0A0F);
+  color: var(--color-primary-fg);
 }

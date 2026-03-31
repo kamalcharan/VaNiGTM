@@ -4,7 +4,7 @@
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(201, 168, 76, 0.04) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(94, 170, 240, 0.025) 0%, transparent 50%),
-    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(155, 143, 232, 0.015) 0%, transparent 40%);
+    radial-gradient(ellipse 80% 60% at 20% 10%, var(--color-primary-subtle) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, var(--color-primary-glow) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, var(--color-primary-subtle) 0%, transparent 40%);
 }

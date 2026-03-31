@@ -28,7 +28,15 @@ export const TechySimpleTheme: ThemeConfig = {
       error: '#ff5963',
       warning: '#ec9c4b',
       info: '#0299ff',
-    }
+    },
+    surface: {
+      glass: 'rgba(0,0,0,0.03)',
+      glassStrong: 'rgba(0,0,0,0.05)',
+      glassBorder: 'rgba(0,0,0,0.08)',
+      primaryDim: 'rgba(248,59,70,0.35)',
+      primaryGlow: 'rgba(248,59,70,0.1)',
+      primarySubtle: 'rgba(248,59,70,0.04)',
+    },
   },
   darkMode: {
     colors: {
@@ -55,7 +63,15 @@ export const TechySimpleTheme: ThemeConfig = {
         error: '#ff5963',
         warning: '#ec9c4b',
         info: '#0299ff',
-      }
-    }
-  }
+      },
+      surface: {
+        glass: 'rgba(255,255,255,0.04)',
+        glassStrong: 'rgba(255,255,255,0.07)',
+        glassBorder: 'rgba(255,255,255,0.08)',
+        primaryDim: 'rgba(248,59,70,0.4)',
+        primaryGlow: 'rgba(248,59,70,0.15)',
+        primarySubtle: 'rgba(248,59,70,0.06)',
+      },
+    },
+  },
 };

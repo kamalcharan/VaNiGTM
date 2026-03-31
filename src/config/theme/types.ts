@@ -1,4 +1,3 @@
-// src/config/theme/types.ts
 export interface ThemeColors {
   brand: {
     primary: string;
@@ -23,6 +22,14 @@ export interface ThemeColors {
     error: string;
     warning: string;
     info: string;
+  };
+  surface: {
+    glass: string;
+    glassStrong: string;
+    glassBorder: string;
+    primaryDim: string;
+    primaryGlow: string;
+    primarySubtle: string;
   };
 }
 

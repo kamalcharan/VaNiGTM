@@ -15,6 +15,12 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+const ENV_DEFAULT_MODE = (
+  typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DEFAULT_COLOR_MODE === 'light'
+    ? 'light'
+    : 'dark'
+) as 'light' | 'dark';
+
 function themeToCSS(theme: ThemeConfig, isDark: boolean): Record<string, string> {
   const colors = isDark ? theme.darkMode.colors : theme.colors;
   return {
@@ -38,21 +44,33 @@ function themeToCSS(theme: ThemeConfig, isDark: boolean): Record<string, string>
     '--color-danger': colors.semantic.error,
     '--color-warning': colors.semantic.warning,
     '--color-info': colors.semantic.info,
-    // Derived (commonly needed by components)
-    '--color-border': isDark
-      ? `${colors.utility.secondaryText}30`
-      : `${colors.utility.secondaryText}20`,
+    // Surface / Glass
+    '--glass': colors.surface.glass,
+    '--glass-strong': colors.surface.glassStrong,
+    '--glass-border': colors.surface.glassBorder,
+    '--color-primary-dim': colors.surface.primaryDim,
+    '--color-primary-glow': colors.surface.primaryGlow,
+    '--color-primary-subtle': colors.surface.primarySubtle,
+    // Derived
+    '--color-border': colors.surface.glassBorder,
     '--color-surface-hover': isDark
       ? `${colors.utility.secondaryBackground}cc`
-      : `${colors.utility.primaryBackground}`,
-    '--color-primary-fg': '#ffffff',
+      : colors.utility.primaryBackground,
+    '--color-primary-fg': isDark ? colors.utility.primaryBackground : '#ffffff',
     '--color-primary-hover': colors.brand.primary + 'dd',
+    // Text convenience aliases
+    '--text-secondary': colors.utility.secondaryText,
+    '--text-muted': isDark ? 'rgba(240,236,226,0.35)' : 'rgba(26,26,31,0.4)',
+    // Gold convenience aliases (backward compat with Atlas overlay)
+    '--gold-dim': colors.surface.primaryDim,
+    '--gold-glow': colors.surface.primaryGlow,
+    '--gold-subtle': colors.surface.primarySubtle,
   };
 }
 
 export function ThemeProvider({ children, defaultThemeId = 'vikuna-black' }: { children: ReactNode; defaultThemeId?: string }) {
   const [themeId, setThemeId] = useState(defaultThemeId);
-  const [colorMode, setColorMode] = useState<'light' | 'dark'>('dark');
+  const [colorMode, setColorMode] = useState<'light' | 'dark'>(ENV_DEFAULT_MODE);
 
   const theme = getTheme(themeId);
 
@@ -63,11 +81,10 @@ export function ThemeProvider({ children, defaultThemeId = 'vikuna-black' }: { c
     Object.entries(vars).forEach(([prop, value]) => {
       root.style.setProperty(prop, value);
     });
-    // Set color-scheme for native elements
     root.style.setProperty('color-scheme', colorMode);
   }, [theme, colorMode]);
 
-  // Load saved preferences
+  // Load saved preferences (localStorage overrides env default)
   useEffect(() => {
     try {
       const savedTheme = localStorage.getItem('pk-theme-id');

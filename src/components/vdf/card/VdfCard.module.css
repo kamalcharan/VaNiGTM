@@ -32,24 +32,24 @@
 
 /* ── Glass ── */
 .glass {
-  background: var(--glass, rgba(255, 255, 255, 0.04));
-  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
 }
 
 .glass:hover {
-  border-color: rgba(201, 168, 76, 0.15);
+  border-color: var(--color-primary-glow);
 }
 
 /* ── Glass Strong ── */
 .glassStrong {
-  background: var(--glass-strong, rgba(255, 255, 255, 0.07));
-  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
 }
 
 /* ── Featured ── */
 .featured {
-  background: var(--glass-strong, rgba(255, 255, 255, 0.07));
-  border: 1px solid var(--gold-dim, rgba(201, 168, 76, 0.4));
+  background: var(--glass-strong);
+  border: 1px solid var(--color-primary-dim);
 }
 
 .featured::before {
@@ -57,7 +57,7 @@
   position: absolute;
   inset: -1px;
   border-radius: 20px;
-  background: linear-gradient(180deg, var(--gold-dim, rgba(201, 168, 76, 0.4)), transparent 40%);
+  background: linear-gradient(180deg, var(--color-primary-dim), transparent 40%);
   z-index: -1;
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
