@@ -12,3 +12,5 @@ export { VdfCheckbox, type VdfCheckboxProps } from './checkbox/VdfCheckbox';
 export { VdfTabs, type VdfTabsProps } from './tabs/VdfTabs';
 export { VdfNavRail, type VdfNavRailProps } from './nav-rail/VdfNavRail';
 export { VdfWizard, type VdfWizardProps } from './wizard/VdfWizard';
+export { VdfMobileInput, type VdfMobileInputProps } from './mobile-input/VdfMobileInput';
+export { VdfRichText, type VdfRichTextProps } from './rich-text/VdfRichText';

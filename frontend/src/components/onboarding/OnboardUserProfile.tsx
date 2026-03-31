@@ -1,11 +1,23 @@
 'use client';
 
-import { useState } from 'react';
-import { useShellConfig } from '@/lib/shell-config';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/auth-provider';
 import { useToast } from '../toast';
 import { InlineLoader } from '../loader';
+import { VdfMobileInput, VdfRichText } from '@/components/vdf';
+import { apiFetch, type ApiError } from '@/lib/api-client';
+import { API } from '@/lib/serviceURLs';
+import { validateMobile, getCountryByCode } from '@/constants/countries';
 import s from './OnboardUserProfile.module.css';
+
+const DESIGNATIONS = [
+  { value: 'mfd', label: 'Mutual Fund Distributor (MFD)' },
+  { value: 'ria', label: 'Registered Investment Advisor (RIA)' },
+  { value: 'ifa', label: 'Insurance Financial Advisor (IFA)' },
+  { value: 'cfp', label: 'Certified Financial Planner (CFP)' },
+  { value: 'wm', label: 'Wealth Manager' },
+  { value: 'other', label: 'Other' },
+];
 
 interface Props {
   onComplete: () => void;
@@ -13,53 +25,84 @@ interface Props {
 }
 
 export default function OnboardUserProfile({ onComplete }: Props) {
-  const { apiUrl } = useShellConfig();
-  const { user, getAuthHeaders } = useAuth();
+  const { user } = useAuth();
   const { showToast } = useToast();
+  const submittingRef = useRef(false); // Race condition guard
 
   const nameParts = (user?.name || '').split(' ');
   const [firstName, setFirstName] = useState(nameParts[0] || '');
   const [lastName, setLastName] = useState(nameParts.slice(1).join(' ') || '');
   const [designation, setDesignation] = useState('');
-  const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('in');
+  const [mobile, setMobile] = useState('');
   const [bio, setBio] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const initials = `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase() || '?';
 
+  // Auto-select designation if only one option makes sense
+  // (If user registered as MFD type, pre-select it)
+  useEffect(() => {
+    if (DESIGNATIONS.length === 1 && !designation) {
+      setDesignation(DESIGNATIONS[0].value);
+    }
+  }, [designation]);
+
   async function handleSubmit() {
+    // Race condition guard
+    if (submittingRef.current) return;
+
     const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
     if (fullName.length < 2) {
       setError('Name must be at least 2 characters');
       return;
     }
+
+    // Validate phone if provided
+    if (mobile) {
+      const phoneError = validateMobile(countryCode, mobile);
+      if (phoneError) {
+        setError(phoneError);
+        return;
+      }
+    }
+
+    submittingRef.current = true;
     setLoading(true);
     setError('');
 
     try {
-      // Save profile fields as user preferences (JSONB merge)
-      // PATCH /auth/preferences merges into user preferences JSONB
-      await fetch(`${apiUrl}/api/v1/auth/preferences`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({
+      // Save profile via PATCH /auth/preferences
+      await apiFetch(API.auth.preferences, {
+        body: {
           profile_name: fullName,
-          profile_phone: phone || undefined,
-          profile_designation: designation || undefined,
-          profile_bio: bio || undefined,
-        }),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          designation: designation || undefined,
+          country_code: mobile ? getCountryByCode(countryCode)?.dial_code : undefined,
+          mobile: mobile || undefined,
+          bio: bio || undefined,
+        },
       });
-      // Note: route handler currently filters fields — profile data may not persist
-      // until a dedicated profile update endpoint is added.
-      // Step completion is what matters for onboarding flow.
+
+      // Mark onboarding step complete
+      await apiFetch(API.onboarding.completeStep, {
+        body: {
+          step_id: 'user_profile',
+          status: 'completed',
+          metadata: { designation, has_bio: !!bio },
+        },
+      });
 
       showToast({ message: 'Profile saved', type: 'success' });
       onComplete();
     } catch (err) {
-      showToast({ message: err instanceof Error ? err.message : 'Save failed', type: 'error' });
+      const apiErr = err as ApiError;
+      showToast({ message: apiErr.message || 'Save failed', type: 'error' });
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   }
 
@@ -92,10 +135,10 @@ export default function OnboardUserProfile({ onComplete }: Props) {
           <div className={s.photoInfo}>
             <div className={s.photoInfoTitle}>Profile photo</div>
             <div className={s.photoInfoHint}>
-              JPG or PNG, max 2MB. This appears on client reports and the team directory.
+              JPG or PNG, max 2MB
             </div>
           </div>
-          <button className={s.photoBtn} disabled title="Coming soon — requires storage setup" type="button">
+          <button className={s.photoBtn} disabled title="Coming soon" type="button">
             Upload
           </button>
         </div>
@@ -126,7 +169,7 @@ export default function OnboardUserProfile({ onComplete }: Props) {
           </div>
         </div>
 
-        {/* Designation */}
+        {/* Designation — auto-select if only 1 value */}
         <div className={s.formGroup}>
           <label className={s.formLabel}>Designation / Title</label>
           <select
@@ -135,40 +178,33 @@ export default function OnboardUserProfile({ onComplete }: Props) {
             onChange={(e) => setDesignation(e.target.value)}
             disabled={loading}
           >
-            <option value="">Select your role...</option>
-            <option value="mfd">Mutual Fund Distributor (MFD)</option>
-            <option value="ria">Registered Investment Advisor (RIA)</option>
-            <option value="ifa">Insurance Financial Advisor (IFA)</option>
-            <option value="cfp">Certified Financial Planner (CFP)</option>
-            <option value="wm">Wealth Manager</option>
-            <option value="other">Other</option>
+            {designation === '' && <option value="">Select your role...</option>}
+            {DESIGNATIONS.map((d) => (
+              <option key={d.value} value={d.value}>{d.label}</option>
+            ))}
           </select>
         </div>
 
-        {/* Phone (readonly style) */}
-        <div className={s.formGroup}>
-          <label className={s.formLabel}>Phone</label>
-          <input
-            type="tel"
-            className={s.formInput}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+91 98765 43210"
-            disabled={loading}
-          />
-        </div>
+        {/* Phone — VdfMobileInput */}
+        <VdfMobileInput
+          countryCode={countryCode}
+          mobile={mobile}
+          onCountryChange={(code) => { setCountryCode(code); setMobile(''); }}
+          onMobileChange={setMobile}
+          disabled={loading}
+        />
 
-        {/* Bio */}
-        <div className={s.formGroup}>
-          <label className={s.formLabel}>Brief Bio (optional)</label>
-          <textarea
-            className={s.formTextarea}
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            placeholder="A short description that appears on client-facing reports..."
-            disabled={loading}
-          />
-        </div>
+        {/* Bio — VdfRichText */}
+        <VdfRichText
+          value={bio}
+          onChange={setBio}
+          label="Brief Bio (optional)"
+          placeholder="A short description for client-facing reports..."
+          maxLength={500}
+          minHeight={60}
+          maxHeight={120}
+          disabled={loading}
+        />
 
         {/* Error */}
         {error && <div className={s.errorMsg}>{error}</div>}

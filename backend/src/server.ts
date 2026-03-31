@@ -4,7 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import { buildRegistry } from './services/skill-registry';
 import { getPool, createTenantDb, closePool, healthCheck } from './db';
-import { createAuthRouter } from './auth/auth.routes';
+import { createAuthRouter, createOnboardingRouter } from './auth/auth.routes';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -48,9 +48,10 @@ async function main() {
     console.error('[ProessionalKey] Continuing without DB — skill calls will fail.');
   }
 
-  // Mount auth routes
+  // Mount auth + onboarding routes
   app.use('/api/v1/auth', createAuthRouter(pool));
-  console.log('[ProessionalKey] Auth routes mounted at /api/v1/auth');
+  app.use('/api/v1/onboarding', createOnboardingRouter(pool));
+  console.log('[ProessionalKey] Auth routes mounted at /api/v1/auth, /api/v1/onboarding');
 
   // Build skill registry
   const skillsDir = path.resolve(__dirname, 'skills');
