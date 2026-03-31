@@ -2,18 +2,19 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { useShellConfig } from '@/lib/shell-config';
 import { useToast } from '@/components/toast';
 import { InlineLoader } from '@/components/loader';
 import FormInput from '@/components/ui/form-input';
 import CountryDropdown, { type Country } from '@/components/ui/country-dropdown';
 import PasswordStrength from '@/components/ui/password-strength';
+import { useRegister } from '@/hooks';
+import type { ApiError } from '@/lib/api-client';
 import s from './register-page.module.css';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { apiUrl } = useShellConfig();
   const { showToast } = useToast();
+  const registerMutation = useRegister();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -27,7 +28,6 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [termsAccepted, setTermsAccepted] = useState(false);
 
@@ -62,60 +62,36 @@ export default function RegisterPage() {
     ev.preventDefault();
     if (!validate()) return;
 
-    setLoading(true);
-    setErrors({});
+    const phoneWithCode = phone
+      ? `${country.dial_code}${phone.replace(/\s/g, '')}`
+      : undefined;
 
-    try {
-      const phoneWithCode = phone
-        ? `${country.dial_code}${phone.replace(/\s/g, '')}`
-        : undefined;
+    const trimmedName = fullName.trim();
 
-      const trimmedName = fullName.trim();
-      const res = await fetch(`${apiUrl}/api/v1/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: trimmedName,
-          email: email.trim().toLowerCase(),
-          phone: phoneWithCode,
-          password,
-          tenant_name: `${trimmedName}'s Workspace`,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        const msg =
-          (typeof data?.error === 'string' ? data.error : data?.error?.message)
-          || data?.message
-          || `Registration failed (${res.status})`;
-
-        if (data?.error?.field) {
-          setErrors({ [data.error.field]: msg });
-        }
-
-        showToast({ message: msg, type: 'error' });
-        setLoading(false);
-        return;
-      }
-
-      if (data.tokens) {
-        sessionStorage.setItem('vani-access-token', data.tokens.access_token);
-        sessionStorage.setItem('vani-refresh-token', data.tokens.refresh_token);
-        sessionStorage.setItem(
-          'vani-token-expires-at',
-          String(Date.now() + data.tokens.expires_in * 1000),
-        );
-      }
-
-      showToast({ message: 'Account created successfully!', type: 'success' });
-      window.location.href = '/onboarding';
-    } catch {
-      showToast({ message: 'Network error — please try again', type: 'error' });
-      setLoading(false);
-    }
+    registerMutation.mutate(
+      {
+        name: trimmedName,
+        email: email.trim().toLowerCase(),
+        phone: phoneWithCode,
+        password,
+        tenant_name: `${trimmedName}'s Workspace`,
+      },
+      {
+        onSuccess: () => {
+          showToast({ message: 'Account created successfully!', type: 'success' });
+          router.push('/onboarding');
+        },
+        onError: (err: ApiError) => {
+          if (err.code === 'EMAIL_EXISTS') {
+            setErrors({ email: err.message });
+          }
+          showToast({ message: err.message, type: 'error' });
+        },
+      },
+    );
   }
+
+  const loading = registerMutation.isPending;
 
   /* ── Eye toggle button ─────────────────────────────── */
 
