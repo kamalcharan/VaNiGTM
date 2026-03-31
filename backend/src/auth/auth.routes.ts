@@ -21,7 +21,8 @@ export function createAuthRouter(pool: Pool): Router {
         name: req.body.name,
         email: req.body.email,
         password: req.body.password,
-        phone: req.body.phone,
+        country_code: req.body.country_code,
+        mobile: req.body.mobile,
         tenant_name: req.body.tenant_name,
       };
 

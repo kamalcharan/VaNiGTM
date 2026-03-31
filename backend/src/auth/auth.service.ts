@@ -28,7 +28,8 @@ export interface RegisterInput {
   name: string;
   email: string;
   password: string;
-  phone?: string;
+  country_code?: string;
+  mobile?: string;
   tenant_name?: string;
 }
 
@@ -39,18 +40,22 @@ export interface RegisterResult {
     email: string;
     name: string;
     role: string;
+    preferred_theme: string;
+    preferences: { color_mode: string };
   };
   tenant: {
     id: string;
     name: string;
     slug: string;
+    theme_id: string;
+    onboarding_complete: boolean;
   };
 }
 
 /* ── Validation ─────────────────────────────────────── */
 
 export function validateRegisterInput(input: RegisterInput): string | null {
-  const { name, email, password, phone } = input;
+  const { name, email, password } = input;
 
   if (!name || name.trim().length < 2) {
     return 'Name must be at least 2 characters';
@@ -73,8 +78,8 @@ export function validateRegisterInput(input: RegisterInput): string | null {
   if (!/[0-9]/.test(password)) {
     return 'Password must contain at least 1 number';
   }
-  if (phone && !/^\+?\d[\d\s-]{5,19}$/.test(phone)) {
-    return 'Invalid phone number format';
+  if (input.mobile && !/^\d{6,15}$/.test(input.mobile.replace(/[\s-]/g, ''))) {
+    return 'Mobile number must be 6-15 digits';
   }
 
   return null;
@@ -109,7 +114,8 @@ export async function register(
   const email = input.email.trim().toLowerCase();
   const name = sanitize(input.name.trim());
   const tenantName = sanitize((input.tenant_name || `${name}'s Workspace`).trim());
-  const phone = input.phone?.trim() || null;
+  const countryCode = input.country_code?.trim() || null;
+  const mobile = input.mobile?.replace(/[\s-]/g, '') || null;
   const device = parseDeviceInfo(req);
 
   // Check email uniqueness
@@ -150,21 +156,11 @@ export async function register(
       [tenantId, tenantName],
     );
 
-    // 3. Parse phone
-    let countryCode: string | null = null;
-    let mobile: string | null = null;
-    if (phone) {
-      // Split "+91 98765..." into country_code and mobile
-      const match = phone.match(/^(\+\d{1,4})[\s-]?(.+)$/);
-      if (match) {
-        countryCode = match[1];
-        mobile = match[2].replace(/[\s-]/g, '');
-      } else {
-        mobile = phone.replace(/[\s-]/g, '');
-      }
-    }
-
-    // 4. Create user
+    // 3. Create user
+    // preferred_theme: read from env default (user can change later)
+    // preferences: store color_mode for theme persistence across sessions
+    const defaultTheme = process.env.NEXT_PUBLIC_DEFAULT_THEME || 'vikuna-black';
+    const defaultColorMode = process.env.NEXT_PUBLIC_DEFAULT_COLOR_MODE || 'dark';
     const nameParts = name.split(' ');
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
@@ -172,12 +168,13 @@ export async function register(
     const userResult = await client.query<{ id: string }>(
       `INSERT INTO vn_users
          (id, tenant_id, email, password_hash, name, first_name, last_name, country_code, mobile,
-          preferences, is_active, is_email_verified, failed_login_count, created_at, updated_at)
+          preferred_theme, preferences, is_active, is_email_verified, failed_login_count, created_at, updated_at)
        VALUES
          (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8,
-          '{}'::jsonb, true, false, 0, now(), now())
+          $9, $10::jsonb, true, false, 0, now(), now())
        RETURNING id`,
-      [tenantId, email, passwordHash, name, firstName, lastName, countryCode, mobile],
+      [tenantId, email, passwordHash, name, firstName, lastName, countryCode, mobile,
+       defaultTheme, JSON.stringify({ color_mode: defaultColorMode })],
     );
     const userId = userResult.rows[0].id;
 
@@ -229,8 +226,21 @@ export async function register(
 
     return {
       tokens,
-      user: { id: userId, email, name, role: 'owner' },
-      tenant: { id: tenantId, name: tenantName, slug },
+      user: {
+        id: userId,
+        email,
+        name,
+        role: 'owner',
+        preferred_theme: defaultTheme,
+        preferences: { color_mode: defaultColorMode },
+      },
+      tenant: {
+        id: tenantId,
+        name: tenantName,
+        slug,
+        theme_id: 'vikuna-black',
+        onboarding_complete: false,
+      },
     };
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});

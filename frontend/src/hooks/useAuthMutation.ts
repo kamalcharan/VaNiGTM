@@ -11,7 +11,8 @@ export interface RegisterPayload {
   name: string;
   email: string;
   password: string;
-  phone?: string;
+  country_code?: string;
+  mobile?: string;
   tenant_name?: string;
 }
 

@@ -67,22 +67,26 @@ export default function RegisterPage() {
     if (registerMutation.isPending) return; // Race condition guard
     if (!validate()) return;
 
-    const phoneWithCode = phone
-      ? `${country.dial_code}${phone.replace(/\s/g, '')}`
-      : undefined;
-
     const trimmedName = fullName.trim();
 
     registerMutation.mutate(
       {
         name: trimmedName,
         email: email.trim().toLowerCase(),
-        phone: phoneWithCode,
+        country_code: phone ? country.dial_code : undefined,
+        mobile: phone ? phone.replace(/\s/g, '') : undefined,
         password,
         tenant_name: `${trimmedName}'s Workspace`,
       },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
+          // Persist theme preference so post-login pages load correctly
+          const user = data.user as Record<string, unknown>;
+          const prefs = user?.preferences as Record<string, unknown> | undefined;
+          try {
+            if (user?.preferred_theme) localStorage.setItem('pk-theme-id', String(user.preferred_theme));
+            if (prefs?.color_mode) localStorage.setItem('pk-color-mode', String(prefs.color_mode));
+          } catch {}
           showToast({ message: 'Account created successfully!', type: 'success' });
           router.push('/onboarding');
         },
