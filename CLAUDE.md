@@ -297,3 +297,179 @@ Body: { "params": { ... } }
 ```bash
 npm test    # Runs jest across skills/*/tests/ and shared/tests/
 ```
+
+## Repo Structure (Actual — updated March 2026)
+```
+frontend/                    — Next.js 16 App Router (ALL UI code lives here)
+  src/
+    app/
+      (auth)/               — login, register, forgot-password, reset-password, invite
+      (app)/                — onboarding, dashboard, settings
+      (public)/             — landing, smoketest
+    components/
+      auth/                 — LoginVault, RegisterPage, ForgotPassword, ResetPassword, InviteAccept
+      onboarding/           — OnboardUserProfile, OnboardBusiness, OnboardTheme, OnboardInvite, OnboardPreferences, OnboardImport
+      settings/             — ProfileTab, SecurityTab, AppearanceTab, SessionsTab
+      vdf/                  — VDF component library (16+ components)
+      ui/                   — FormInput, CountryDropdown, PasswordStrength
+      toast.tsx, loader.tsx — shared notification + loading
+    config/theme/           — ThemeProvider, ThemeScript, 12 themes, registry
+    context/                — AuthProvider (mock — will be replaced with real auth)
+    hooks/                  — useMe, useAuthMutation, useOnboarding, useSkill (TanStack Query)
+    lib/                    — serviceURLs.ts, api-client.ts, shell-config.tsx, query-provider.tsx
+    constants/              — countries.ts, business.ts
+    styles/                 — forms.module.css (shared form classes — NOT YET CONSUMED BY PAGES)
+backend/
+  src/
+    auth/                   — auth.service, login.service, token.service, auth.routes
+    db/                     — pool.ts, query.ts (PG pool + tenant context + param translation)
+    services/               — skill-registry, skill-loader
+    skills/                 — 5 implemented skills with queries/
+    types/                  — skill.types.ts (SkillContext, SkillDb, SkillHandler)
+    server.ts               — Express entry point
+    migrate.ts              — Migration runner (vn_migrations tracking)
+  migrations/               — 001_ki_prime.sql, 002_ki_session_limit.sql, 003_ki_set_tenant_context.sql
+```
+
+## CSS Architecture — CRITICAL RULES
+
+### Design Tokens (injected by ThemeScript in `<head>`)
+ThemeScript injects two layers of CSS variables on `:root`:
+1. **Theme color tokens** (change per theme): `--color-primary`, `--color-bg`, `--color-fg`, `--color-surface`, `--color-border`, `--color-muted`, `--color-success`, `--color-danger`, `--color-warning`, `--color-info`, `--glass`, `--glass-border`, etc.
+2. **Form design tokens** (structural constants, same across all themes):
+   ```
+   --input-height: 44px          --label-font-size: 0.65rem
+   --input-padding: 13px 16px    --label-font-weight: 500
+   --input-radius: 8px           --label-letter-spacing: 0.12em
+   --input-font-size: 0.9rem     --label-margin-bottom: 6px
+   --input-border-width: 1px     --btn-height: 44px
+   --input-focus-ring-size: 3px  --btn-padding: 14px
+   --input-focus-ring-opacity: 12%  --btn-radius: 8px
+   --input-placeholder-opacity: 0.35  --btn-font-size: 0.85rem
+   --form-group-gap: 16px        --btn-font-weight: 700
+   --form-row-gap: 12px          --btn-letter-spacing: 0.08em
+   ```
+   Change ONE token in ThemeScript → every form control across every page updates.
+
+### Rule: NO hardcoded form values in CSS
+Every form control (input, select, button, label) MUST use design tokens:
+- `border-radius: var(--input-radius)` — NEVER `8px`
+- `font-size: var(--label-font-size)` — NEVER `0.65rem`
+- `padding: var(--btn-padding)` — NEVER `14px`
+- `opacity: var(--input-placeholder-opacity)` — NEVER `0.35`
+- `background: var(--color-bg)` — NEVER any hex value
+
+### Rule: Shared form classes (PENDING REFACTOR)
+`frontend/src/styles/forms.module.css` contains canonical form classes (.input, .select, .label, .submitBtn, .error, etc.). Pages SHOULD import these instead of defining their own form styles. Currently pages still have their own form CSS — this needs to be refactored so pages only have layout CSS.
+
+### What page CSS should contain:
+- Page layout (`.vault`, `.page`, `.storyPanel`, `.formPanel`)
+- Visual effects (`.orbits`, `.brandOrb`, `.glowWord`, `.atmosphere`)
+- Page-specific structure (`.identityRow`, `.colorSection`, `.optionGrid`, `.themeGrid`)
+
+### What page CSS should NOT contain:
+- `.input`, `.select`, `.textarea`, `.label` — use `forms.module.css`
+- `.submitBtn`, `.outlineBtn`, `.backBtn` — use `forms.module.css`
+- `.eyeToggle`, `.matchIndicator`, `.strengthWrap` — use `forms.module.css`
+- Any hardcoded px/rem/hex values for form controls — use tokens
+
+## API Architecture
+
+### Service URL Registry
+`frontend/src/lib/serviceURLs.ts` — single source of truth for ALL API endpoints.
+- Every hook reads from here. No component constructs URLs.
+- Each entry: `{ method, path, auth, description }`.
+- NLP-ready: descriptions for future VaNi intent mapping.
+
+### API Client (Interceptor)
+`frontend/src/lib/api-client.ts` — sole fetch wrapper.
+- JWT injection from sessionStorage + localStorage (dual storage for resilience)
+- 401 → silent token refresh → retry once
+- Path param substitution (`:skill` → `portfolio-skill`)
+- Consistent ApiError shape: `{ code, message, details?, status }`
+- No `.tsx` file ever calls `fetch()` directly or imports `api-client` — only hooks do.
+
+### Call Chain
+```
+Component (.tsx) → Hook (useLogin) → apiFetch() → serviceURLs.ts → fetch()
+```
+
+### Token Storage
+Tokens stored in BOTH sessionStorage and localStorage:
+- `pk-access-token`, `pk-refresh-token`, `pk-token-expires-at`
+- sessionStorage: cleared on tab close (security)
+- localStorage: survives full page reloads (reliability)
+- tenant_id is INSIDE the JWT — never stored separately
+
+## VDF Component Library
+Located in `frontend/src/components/vdf/`. Naming: `Vdf<Name>` (e.g., `VdfButton`, `VdfMobileInput`).
+
+Current components (18):
+- **Layout**: VdfCard, VdfModal, VdfNavRail, VdfTabs, VdfWizard
+- **Form**: VdfButton, VdfCheckbox, VdfMobileInput, VdfRichText
+- **Display**: VdfBadge, VdfAvatar, VdfIcon
+- **Decorative**: VdfAtmosphere, VdfParticles, VdfNoiseOverlay, VdfGoldThread
+
+### VdfMobileInput
+- Uses `constants/countries.ts` (22 countries with validation rules)
+- Outputs separate `country_code` (ISO) + `mobile` (digits only)
+- Country-specific validation (India: 10 digits starting 6-9, etc.)
+
+### VdfRichText
+- Lightweight contentEditable (NO TipTap dependency)
+- Toolbar: bold, italic, underline, bullet list, ordered list
+- Character count, placeholder
+
+## Constants
+- `frontend/src/constants/countries.ts` — 22 countries, dial codes, flags, mobile validation regex
+- `frontend/src/constants/business.ts` — business types, 35 Indian states with GST codes, PAN/GSTIN/ARN/PIN validators
+
+## Database Layer
+
+### Connection
+- `backend/src/db/pool.ts` — pg.Pool singleton (max: 25, idle: 30s, connect: 5s)
+- `set_tenant_context()` called on every connection checkout (RLS)
+- SSL conditional on `DB_PRIMARY_SSL` env var
+
+### Named Param Translation
+SQL files use `$tenant_id`, `$client_id`. The query layer translates to `$1`, `$2` automatically.
+```
+Input:  "WHERE tenant_id = $tenant_id AND client_id = $client_id"
+Output: "WHERE tenant_id = $1 AND client_id = $2"
+```
+
+### Tables
+- **VN_ tables (14)**: Framework tables on VPS (tenants, users, roles, subscriptions, invitations, refresh_tokens, password_resets, onboarding, audit_log, error_log, migrations)
+- **KI_ tables (11)**: Product tables (schemes, nav_history, clients, portfolios, holdings, transactions, goals, goal_projections, alerts, import_log, scheme_categories)
+- Both in same database (`ki_prime_db`). RLS enabled on KI_ tables.
+
+## Auth Endpoints (implemented)
+| Endpoint | Status |
+|----------|--------|
+| POST /api/v1/auth/register | ✅ Full (tenant + user + subscription + onboarding + session) |
+| POST /api/v1/auth/login | ✅ Full (lockout, session limit, device capture) |
+| POST /api/v1/auth/forgot-password | ✅ Full (SHA-256 token, 1hr expiry, no enumeration) |
+| POST /api/v1/auth/reset-password | ✅ Full (validates token, bcrypt 12, revokes all sessions) |
+| POST /api/v1/auth/invite | ✅ Full (token generation, role lookup, duplicate check) |
+| PATCH /api/v1/auth/preferences | ✅ Full (profile fields + JSONB merge) |
+| PATCH /api/v1/tenant/profile | ✅ Full (18 columns dynamic update) |
+| GET /api/v1/onboarding/status | ✅ Full |
+| PATCH /api/v1/onboarding/step | ✅ Full |
+| POST /api/v1/auth/refresh | ❌ Not built |
+| POST /api/v1/auth/logout | ❌ Not built |
+| GET /api/v1/auth/me | ❌ Not built |
+| GET /api/v1/auth/sessions | ❌ Not built |
+| POST /api/v1/auth/sessions/revoke | ❌ Not built |
+
+## Lessons Learned (March 2026 Session)
+
+1. **Never generate per-page form CSS.** Form controls drift immediately. Use shared tokens + shared CSS file.
+2. **Store tokens in BOTH sessionStorage + localStorage.** sessionStorage alone fails on full page reloads (window.location.href navigation).
+3. **Call storeTokens() explicitly in component onSuccess, not just hook onSuccess.** React 19 batching can defer hook callbacks after navigation.
+4. **vn_tenants.is_active is a generated column.** Cannot INSERT into it — PG computes it automatically.
+5. **Phone: send country_code and mobile as separate fields.** Never concatenate and try to parse — regex is fragile.
+6. **ThemeScript must use `<Script strategy="beforeInteractive">` not raw `<script>`.** React warns about script tags in components.
+7. **Placeholders should be very light (opacity 0.35) and disappear on focus (opacity 0).**
+8. **Onboarding steps should use full-width card layout, not split narrative panels.** The form needs space; narrative panels waste 40% of viewport.
+9. **Back button belongs in the step footer next to Save & Continue, not in the topbar.** Nobody sees it in the topbar.
+10. **No "Atlas Design Language" — the design system is: 12 themes + CSS variables + form tokens + VDF components.** Don't invent names.
