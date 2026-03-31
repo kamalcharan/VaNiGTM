@@ -1,3 +1,4 @@
+import Script from 'next/script';
 import { themes, defaultTheme } from './registry';
 import { ThemeConfig, ThemeColors } from './types';
 
@@ -112,7 +113,7 @@ export function ThemeScript({
         }}
       />
       {/* Blocking script: reads localStorage and applies saved theme before paint */}
-      <script dangerouslySetInnerHTML={{ __html: script }} />
+      <Script id="theme-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: script }} />
     </>
   );
 }
