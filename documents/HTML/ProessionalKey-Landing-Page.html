@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProessionalKey — AI-Powered Intelligence for Mutual Fund Distributors</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════
+   PROESSIONALKEY — LANDING PAGE
+   Atlas Design Language · Glassmorphic Dark
+   ═══════════════════════════════════════════════════ */
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  /* Brand */
+  --gold: #C9A84C;
+  --gold-dim: rgba(201, 168, 76, 0.4);
+  --gold-glow: rgba(201, 168, 76, 0.15);
+  --gold-subtle: rgba(201, 168, 76, 0.06);
+
+  /* Surface */
+  --bg-deep: #0A0A0F;
+  --bg-mid: #111118;
+  --surface: rgba(255, 255, 255, 0.03);
+  --surface-hover: rgba(255, 255, 255, 0.06);
+  --glass: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-strong: rgba(255, 255, 255, 0.07);
+
+  /* Text */
+  --text-primary: #F0ECE2;
+  --text-secondary: rgba(240, 236, 226, 0.6);
+  --text-muted: rgba(240, 236, 226, 0.35);
+
+  /* Accents */
+  --accent-blue: #5EAAF0;
+  --accent-green: #4ECDC4;
+  --accent-rose: #E88B8B;
+  --accent-violet: #9B8FE8;
+
+  /* Typography */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+  --space-5xl: 128px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  /* Ease */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Noise Texture Overlay ────────────────── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* ── Atmospheric Background ───────────────── */
+.atmosphere {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(201, 168, 76, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(94, 170, 240, 0.025) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(155, 143, 232, 0.015) 0%, transparent 40%);
+}
+
+/* ── Floating Particles ───────────────────── */
+.particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: var(--gold);
+  border-radius: 50%;
+  opacity: 0;
+  animation: particleDrift 12s ease-in-out infinite;
+}
+
+.particle:nth-child(1) { left: 15%; animation-delay: 0s; animation-duration: 14s; }
+.particle:nth-child(2) { left: 35%; animation-delay: 2s; animation-duration: 11s; }
+.particle:nth-child(3) { left: 55%; animation-delay: 4s; animation-duration: 13s; }
+.particle:nth-child(4) { left: 75%; animation-delay: 1s; animation-duration: 10s; }
+.particle:nth-child(5) { left: 90%; animation-delay: 3s; animation-duration: 15s; }
+.particle:nth-child(6) { left: 25%; animation-delay: 5s; animation-duration: 12s; }
+.particle:nth-child(7) { left: 65%; animation-delay: 7s; animation-duration: 9s; }
+.particle:nth-child(8) { left: 45%; animation-delay: 6s; animation-duration: 16s; }
+
+@keyframes particleDrift {
+  0% { opacity: 0; transform: translateY(100vh) scale(0); }
+  8% { opacity: 0.5; }
+  50% { opacity: 0.3; }
+  92% { opacity: 0.5; }
+  100% { opacity: 0; transform: translateY(-80px) scale(1.2); }
+}
+
+/* ── Content Wrapper ──────────────────────── */
+.content {
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Gold Thread Divider ──────────────────── */
+.gold-thread {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+  margin: 0 auto;
+  max-width: 600px;
+}
+
+/* ── Animations ───────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(201, 168, 76, 0.1); }
+  50% { box-shadow: 0 0 40px rgba(201, 168, 76, 0.2); }
+}
+
+@keyframes orbFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(3deg); }
+}
+
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+}
+
+.animate-on-scroll.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ═══════════════════════════════════════════
+   NAVIGATION
+   ═══════════════════════════════════════════ */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: var(--space-md) var(--space-2xl);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(10, 10, 15, 0.7);
+  border-bottom: 1px solid var(--glass-border);
+  transition: all 0.4s var(--ease-out);
+}
+
+.nav.scrolled {
+  background: rgba(10, 10, 15, 0.92);
+  padding: var(--space-sm) var(--space-2xl);
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  text-decoration: none;
+}
+
+.nav-icon {
+  width: 36px;
+  height: 36px;
+  border: 1.5px solid var(--gold);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.nav-icon::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid var(--gold-dim);
+  border-radius: 3px;
+}
+
+.nav-icon svg {
+  width: 16px;
+  height: 16px;
+  color: var(--gold);
+}
+
+.nav-name {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+  list-style: none;
+}
+
+.nav-links a {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  transition: color 0.3s;
+  position: relative;
+}
+
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--gold);
+  transition: width 0.3s var(--ease-out);
+}
+
+.nav-links a:hover { color: var(--gold); }
+.nav-links a:hover::after { width: 100%; }
+
+.nav-cta {
+  padding: 8px 24px;
+  background: transparent;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  color: var(--gold) !important;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s var(--ease-out);
+  text-decoration: none !important;
+}
+
+.nav-cta:hover {
+  background: var(--gold);
+  color: var(--bg-deep) !important;
+}
+
+.nav-cta::after { display: none !important; }
+
+/* Mobile Nav Toggle */
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 4px;
+}
+
+.nav-toggle span {
+  width: 24px;
+  height: 1.5px;
+  background: var(--text-primary);
+  transition: all 0.3s;
+}
+
+/* ═══════════════════════════════════════════
+   HERO SECTION
+   ═══════════════════════════════════════════ */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-5xl) var(--space-2xl) var(--space-4xl);
+  position: relative;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 6px 18px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 100px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-2xl);
+  animation: fadeInUp 0.8s var(--ease-out) forwards;
+  opacity: 0;
+}
+
+.hero-badge-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--accent-green);
+  border-radius: 50%;
+  animation: pulseGlow 2s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(78, 205, 196, 0.4);
+}
+
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.8rem, 6vw, 5.2rem);
+  font-weight: 700;
+  line-height: 1.1;
+  margin-bottom: var(--space-lg);
+  max-width: 900px;
+  animation: fadeInUp 0.8s var(--ease-out) 0.15s forwards;
+  opacity: 0;
+}
+
+.hero h1 .gold-text {
+  background: linear-gradient(135deg, var(--gold), #E8D48B, var(--gold));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear infinite;
+}
+
+.hero-sub {
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  font-weight: 300;
+  color: var(--text-secondary);
+  max-width: 620px;
+  line-height: 1.7;
+  margin-bottom: var(--space-3xl);
+  animation: fadeInUp 0.8s var(--ease-out) 0.3s forwards;
+  opacity: 0;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  animation: fadeInUp 0.8s var(--ease-out) 0.45s forwards;
+  opacity: 0;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 14px 36px;
+  background: linear-gradient(135deg, var(--gold), #B8942F);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--bg-deep);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.3s var(--ease-out);
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent, rgba(255,255,255,0.15), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.5s var(--ease-out);
+}
+
+.btn-primary:hover::before { transform: translateX(100%); }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(201, 168, 76, 0.3); }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 14px 28px;
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s var(--ease-out);
+  text-decoration: none;
+}
+
+.btn-ghost:hover {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+  background: var(--gold-subtle);
+}
+
+/* ── Hero Stats Ribbon ────────────────────── */
+.hero-stats {
+  display: flex;
+  gap: var(--space-3xl);
+  margin-top: var(--space-4xl);
+  animation: fadeInUp 0.8s var(--ease-out) 0.6s forwards;
+  opacity: 0;
+}
+
+.hero-stat {
+  text-align: center;
+}
+
+.hero-stat-value {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--gold);
+  letter-spacing: -0.02em;
+}
+
+.hero-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: var(--space-xs);
+}
+
+/* ═══════════════════════════════════════════
+   SOCIAL PROOF BAR
+   ═══════════════════════════════════════════ */
+.social-proof {
+  padding: var(--space-3xl) var(--space-2xl);
+  text-align: center;
+}
+
+.social-proof-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: var(--space-xl);
+}
+
+.proof-logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3xl);
+  flex-wrap: wrap;
+  opacity: 0.3;
+}
+
+.proof-logo {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+}
+
+/* ═══════════════════════════════════════════
+   PROBLEM / PAIN SECTION
+   ═══════════════════════════════════════════ */
+.pain-section {
+  padding: var(--space-5xl) var(--space-2xl);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.section-eyebrow {
+  font-size: 0.72rem;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-weight: 600;
+  margin-bottom: var(--space-md);
+}
+
+.pain-section h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: var(--space-3xl);
+  max-width: 700px;
+}
+
+.pain-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-lg);
+}
+
+.pain-card {
+  padding: var(--space-xl);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.4s var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+
+.pain-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-rose), transparent);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.pain-card:hover::before { opacity: 1; }
+.pain-card:hover { border-color: rgba(232, 139, 139, 0.2); transform: translateY(-4px); }
+
+.pain-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: rgba(232, 139, 139, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-md);
+  font-size: 1.2rem;
+}
+
+.pain-card h3 {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+}
+
+.pain-card p {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* ═══════════════════════════════════════════
+   FEATURES — 6 SKILLS
+   ═══════════════════════════════════════════ */
+.features {
+  padding: var(--space-5xl) var(--space-2xl);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.features-header {
+  text-align: center;
+  margin-bottom: var(--space-4xl);
+}
+
+.features-header h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: var(--space-md);
+}
+
+.features-header p {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  max-width: 550px;
+  margin: 0 auto;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+}
+
+.feature-card {
+  padding: var(--space-2xl);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: all 0.5s var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--card-accent, var(--gold)), transparent);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.feature-card:hover::after { opacity: 1; }
+.feature-card:hover { border-color: rgba(201, 168, 76, 0.15); transform: translateY(-6px); box-shadow: 0 24px 64px rgba(0,0,0,0.3); }
+
+.feature-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-lg);
+  font-size: 1.5rem;
+  position: relative;
+}
+
+.feature-icon::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  background: var(--card-accent-glow, var(--gold-glow));
+  filter: blur(12px);
+  opacity: 0.5;
+}
+
+.feature-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+}
+
+.feature-card p {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  margin-bottom: var(--space-lg);
+}
+
+.feature-tag {
+  display: inline-block;
+  padding: 3px 10px;
+  background: var(--card-accent-glow, var(--gold-subtle));
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--card-accent, var(--gold));
+  letter-spacing: 0.04em;
+}
+
+/* Feature Card accent variants */
+.feature-card[data-accent="gold"] { --card-accent: #C9A84C; --card-accent-glow: rgba(201, 168, 76, 0.1); }
+.feature-card[data-accent="blue"] { --card-accent: #5EAAF0; --card-accent-glow: rgba(94, 170, 240, 0.1); }
+.feature-card[data-accent="green"] { --card-accent: #4ECDC4; --card-accent-glow: rgba(78, 205, 196, 0.1); }
+.feature-card[data-accent="violet"] { --card-accent: #9B8FE8; --card-accent-glow: rgba(155, 143, 232, 0.1); }
+.feature-card[data-accent="rose"] { --card-accent: #E88B8B; --card-accent-glow: rgba(232, 139, 139, 0.1); }
+.feature-card[data-accent="amber"] { --card-accent: #E8B44C; --card-accent-glow: rgba(232, 180, 76, 0.1); }
+
+/* ═══════════════════════════════════════════
+   HOW IT WORKS
+   ═══════════════════════════════════════════ */
+.how-it-works {
+  padding: var(--space-5xl) var(--space-2xl);
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.how-it-works-header {
+  text-align: center;
+  margin-bottom: var(--space-4xl);
+}
+
+.how-it-works-header h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 600;
+  margin-bottom: var(--space-md);
+}
+
+.steps {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xl);
+}
+
+/* Vertical gold thread connecting steps */
+.steps::before {
+  content: '';
+  position: absolute;
+  top: 40px;
+  bottom: 40px;
+  left: 31px;
+  width: 1px;
+  background: linear-gradient(180deg, var(--gold-dim), var(--gold-glow), var(--gold-dim));
+}
+
+.step {
+  display: flex;
+  gap: var(--space-xl);
+  align-items: flex-start;
+}
+
+.step-number {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 1px solid var(--gold-dim);
+  background: var(--bg-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--gold);
+  position: relative;
+  z-index: 2;
+}
+
+.step-content h3 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+  padding-top: var(--space-sm);
+}
+
+.step-content p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  max-width: 500px;
+}
+
+.step-time {
+  display: inline-block;
+  margin-top: var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--accent-green);
+  letter-spacing: 0.04em;
+}
+
+/* ═══════════════════════════════════════════
+   PRICING
+   ═══════════════════════════════════════════ */
+.pricing {
+  padding: var(--space-5xl) var(--space-2xl);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.pricing-header {
+  text-align: center;
+  margin-bottom: var(--space-4xl);
+}
+
+.pricing-header h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 600;
+  margin-bottom: var(--space-md);
+}
+
+.pricing-header p {
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+.pricing-card {
+  padding: var(--space-2xl);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  position: relative;
+  transition: transform 0.4s var(--ease-out);
+}
+
+.pricing-card:hover { transform: translateY(-4px); }
+
+.pricing-card.featured {
+  border-color: var(--gold-dim);
+  background: var(--glass-strong);
+}
+
+.pricing-card.featured::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, var(--gold-dim), transparent 40%);
+  z-index: -1;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  padding: 1px;
+}
+
+.pricing-badge {
+  display: inline-block;
+  padding: 3px 12px;
+  background: linear-gradient(135deg, var(--gold), #B8942F);
+  border-radius: 100px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--bg-deep);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-md);
+}
+
+.pricing-tier {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: var(--space-xs);
+}
+
+.pricing-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: var(--space-xl);
+}
+
+.pricing-amount {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-xl);
+}
+
+.pricing-currency {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+.pricing-value {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-weight: 700;
+}
+
+.pricing-period {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.pricing-features {
+  list-style: none;
+  margin-bottom: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.pricing-features li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.pricing-features li::before {
+  content: '✓';
+  color: var(--accent-green);
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+.pricing-btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.3s var(--ease-out);
+  text-decoration: none;
+}
+
+.pricing-btn-outline {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+}
+
+.pricing-btn-outline:hover {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+}
+
+.pricing-btn-gold {
+  background: linear-gradient(135deg, var(--gold), #B8942F);
+  border: none;
+  color: var(--bg-deep);
+}
+
+.pricing-btn-gold:hover {
+  box-shadow: 0 8px 24px rgba(201, 168, 76, 0.3);
+  transform: translateY(-1px);
+}
+
+/* ═══════════════════════════════════════════
+   TESTIMONIALS
+   ═══════════════════════════════════════════ */
+.testimonials {
+  padding: var(--space-5xl) var(--space-2xl);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.testimonials-header {
+  text-align: center;
+  margin-bottom: var(--space-4xl);
+}
+
+.testimonials-header h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  font-weight: 600;
+}
+
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-lg);
+}
+
+.testimonial-card {
+  padding: var(--space-2xl);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.testimonial-quote {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  font-style: italic;
+  margin-bottom: var(--space-xl);
+  position: relative;
+  padding-left: var(--space-lg);
+}
+
+.testimonial-quote::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: linear-gradient(180deg, var(--gold), transparent);
+  border-radius: 1px;
+}
+
+.testimonial-author {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.testimonial-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold-glow), var(--glass-strong));
+  border: 1px solid var(--gold-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.testimonial-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.testimonial-role {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════
+   FINAL CTA
+   ═══════════════════════════════════════════ */
+.final-cta {
+  padding: var(--space-5xl) var(--space-2xl);
+  text-align: center;
+  position: relative;
+}
+
+.final-cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(201, 168, 76, 0.04) 0%, transparent 70%);
+}
+
+.final-cta-content {
+  position: relative;
+  z-index: 2;
+  max-width: 650px;
+  margin: 0 auto;
+}
+
+.final-cta h2 {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  line-height: 1.15;
+  margin-bottom: var(--space-md);
+}
+
+.final-cta p {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2xl);
+  line-height: 1.7;
+}
+
+.final-cta-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.final-cta-note {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════
+   FOOTER
+   ═══════════════════════════════════════════ */
+.footer {
+  padding: var(--space-3xl) var(--space-2xl) var(--space-xl);
+  border-top: 1px solid var(--glass-border);
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: var(--space-3xl);
+  flex-wrap: wrap;
+}
+
+.footer-brand {
+  max-width: 320px;
+}
+
+.footer-brand-name {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+}
+
+.footer-brand-tagline {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: var(--space-lg);
+}
+
+.footer-brand-company {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.footer-links-group h4 {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: var(--space-md);
+}
+
+.footer-links-group a {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  margin-bottom: var(--space-sm);
+  transition: color 0.3s;
+}
+
+.footer-links-group a:hover { color: var(--gold); }
+
+.footer-bottom {
+  max-width: 1200px;
+  margin: var(--space-2xl) auto 0;
+  padding-top: var(--space-lg);
+  border-top: 1px solid rgba(255,255,255,0.04);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.footer-copy {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.footer-legal {
+  display: flex;
+  gap: var(--space-lg);
+}
+
+.footer-legal a {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.footer-legal a:hover { color: var(--text-secondary); }
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .features-grid { grid-template-columns: repeat(2, 1fr); }
+  .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .nav-toggle { display: flex; }
+
+  .hero { padding: var(--space-4xl) var(--space-lg) var(--space-3xl); }
+  .hero-actions { flex-direction: column; }
+  .hero-stats { flex-direction: column; gap: var(--space-xl); }
+
+  .features-grid { grid-template-columns: 1fr; }
+  .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
+
+  .pain-grid { grid-template-columns: 1fr; }
+
+  .footer-content { flex-direction: column; gap: var(--space-xl); }
+
+  .final-cta-actions { flex-direction: column; }
+
+  .testimonials-grid { grid-template-columns: 1fr; }
+
+  .steps::before { left: 27px; }
+  .step-number { width: 56px; height: 56px; font-size: 1.1rem; }
+}
+
+@media (max-width: 480px) {
+  .nav { padding: var(--space-sm) var(--space-md); }
+  .hero h1 { font-size: 2.2rem; }
+  .section-eyebrow { font-size: 0.65rem; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="atmosphere"></div>
+
+<div class="particles">
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+</div>
+
+<div class="content">
+
+<!-- ════════ NAVIGATION ════════ -->
+<nav class="nav" id="nav">
+  <a href="#" class="nav-brand">
+    <div class="nav-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    </div>
+    <span class="nav-name">ProessionalKey</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how-it-works">How It Works</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="#start" class="nav-cta">Get Early Access</a></li>
+  </ul>
+  <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Toggle navigation">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- ════════ HERO ════════ -->
+<section class="hero">
+  <div class="hero-badge">
+    <span class="hero-badge-dot"></span>
+    Now in Early Access
+  </div>
+  <h1>Your MFD Practice,<br><span class="gold-text">Powered by Intelligence</span></h1>
+  <p class="hero-sub">Portfolio analytics, goal-based planning, market intelligence, and automated client reporting — all in one platform built exclusively for Indian Mutual Fund Distributors.</p>
+  <div class="hero-actions">
+    <a href="#start" class="btn-primary">
+      Request Early Access
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+    <a href="#features" class="btn-ghost">See What's Inside</a>
+  </div>
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <div class="hero-stat-value">21</div>
+      <div class="hero-stat-label">AI-Powered Functions</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-value">8</div>
+      <div class="hero-stat-label">Skill Modules</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-value">&lt;2s</div>
+      <div class="hero-stat-label">Avg. Response Time</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-value">12</div>
+      <div class="hero-stat-label">Premium Themes</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SOCIAL PROOF ════════ -->
+<section class="social-proof animate-on-scroll">
+  <div class="social-proof-label">Trusted by forward-thinking MFDs across India</div>
+  <div class="proof-logos">
+    <span class="proof-logo">Meridian Wealth</span>
+    <span class="proof-logo">PrimeVest Advisors</span>
+    <span class="proof-logo">FinBridge Partners</span>
+    <span class="proof-logo">TrustArc Capital</span>
+    <span class="proof-logo">NorthStar MFD</span>
+  </div>
+</section>
+
+<div class="gold-thread"></div>
+
+<!-- ════════ PAIN POINTS ════════ -->
+<section class="pain-section animate-on-scroll">
+  <div class="section-eyebrow">The problem</div>
+  <h2>You Became an MFD to Build Wealth.<br>Not to Drown in Spreadsheets.</h2>
+  <div class="pain-grid">
+    <div class="pain-card">
+      <div class="pain-icon">📊</div>
+      <h3>Scattered Data, Zero Visibility</h3>
+      <p>Client portfolios in CAMS, KFintech, InvestWell — none of them talk to each other. You spend hours just getting a consolidated view.</p>
+    </div>
+    <div class="pain-card">
+      <div class="pain-icon">⏰</div>
+      <h3>Manual Reporting Kills Weekends</h3>
+      <p>Every quarter, you're copy-pasting NAVs, computing XIRR in Excel, and formatting reports that clients barely read.</p>
+    </div>
+    <div class="pain-card">
+      <div class="pain-icon">🎯</div>
+      <h3>Goal Planning is Guesswork</h3>
+      <p>SIP calculators tell you nothing about goal gaps, tax harvesting opportunities, or when to rebalance. Clients deserve better.</p>
+    </div>
+    <div class="pain-card">
+      <div class="pain-icon">🔕</div>
+      <h3>SIP Bounces Go Unnoticed</h3>
+      <p>A bounced SIP means lost AUM and a disappointed client. Without alerts, you find out weeks later — if at all.</p>
+    </div>
+  </div>
+</section>
+
+<div class="gold-thread"></div>
+
+<!-- ════════ FEATURES ════════ -->
+<section class="features" id="features">
+  <div class="features-header animate-on-scroll">
+    <div class="section-eyebrow">What's inside</div>
+    <h2>Six Skills. One Platform.<br>Complete Control.</h2>
+    <p>Every skill is purpose-built for how Indian MFDs actually work — not retrofitted from generic CRM tools.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feature-card animate-on-scroll" data-accent="gold">
+      <div class="feature-icon">📈</div>
+      <h3>Portfolio Intelligence</h3>
+      <p>Consolidated holdings across AMCs with real-time NAV tracking, XIRR computation, and asset allocation breakdowns. See what matters — instantly.</p>
+      <span class="feature-tag">4 handlers</span>
+    </div>
+    <div class="feature-card animate-on-scroll" data-accent="blue">
+      <div class="feature-icon">👥</div>
+      <h3>Client 360°</h3>
+      <p>Complete client profiles with family mapping, goal tracking, KYC status, and communication history. Every relationship, fully visible.</p>
+      <span class="feature-tag">3 handlers</span>
+    </div>
+    <div class="feature-card animate-on-scroll" data-accent="green">
+      <div class="feature-icon">📡</div>
+      <h3>Market Pulse</h3>
+      <p>NAV feeds, category performance, fund comparisons, and trending schemes — updated daily from MFAPI. Know the market before your clients ask.</p>
+      <span class="feature-tag">5 handlers</span>
+    </div>
+    <div class="feature-card animate-on-scroll" data-accent="violet">
+      <div class="feature-icon">🎯</div>
+      <h3>Goal-Based Planning</h3>
+      <p>SIP calculators, retirement planning, tax-harvest optimizer, and portfolio rebalancing — all backed by real numbers, not assumptions.</p>
+      <span class="feature-tag">5 handlers</span>
+    </div>
+    <div class="feature-card animate-on-scroll" data-accent="amber">
+      <div class="feature-icon">📥</div>
+      <h3>Smart Import</h3>
+      <p>Upload CAS statements from CAMS/KFintech, InvestWell exports, or MFAPI feeds. Auto-parsed, auto-matched, auto-reconciled.</p>
+      <span class="feature-tag">4 handlers</span>
+    </div>
+    <div class="feature-card animate-on-scroll" data-accent="rose">
+      <div class="feature-icon">🔔</div>
+      <h3>Alerts & Reports</h3>
+      <p>SIP bounce detection, maturity reminders, portfolio review triggers, and auto-generated quarterly reports. Your practice runs on autopilot.</p>
+      <span class="feature-tag">coming soon</span>
+    </div>
+  </div>
+</section>
+
+<div class="gold-thread"></div>
+
+<!-- ════════ HOW IT WORKS ════════ -->
+<section class="how-it-works" id="how-it-works">
+  <div class="how-it-works-header animate-on-scroll">
+    <div class="section-eyebrow">Getting started</div>
+    <h2>From Signup to Intelligence<br>in Under 10 Minutes</h2>
+  </div>
+  <div class="steps">
+    <div class="step animate-on-scroll">
+      <div class="step-number">1</div>
+      <div class="step-content">
+        <h3>Create Your Firm Account</h3>
+        <p>Register your MFD practice. Set up your brand identity, team roles, and client segments. Multi-tenant from day one — your data is yours alone.</p>
+        <span class="step-time">~ 2 minutes</span>
+      </div>
+    </div>
+    <div class="step animate-on-scroll">
+      <div class="step-number">2</div>
+      <div class="step-content">
+        <h3>Import Your Client Data</h3>
+        <p>Upload CAS statements, InvestWell exports, or connect via MFAPI. Our parser auto-detects formats, matches schemes, and reconciles holdings.</p>
+        <span class="step-time">~ 5 minutes</span>
+      </div>
+    </div>
+    <div class="step animate-on-scroll">
+      <div class="step-number">3</div>
+      <div class="step-content">
+        <h3>See the Full Picture</h3>
+        <p>Your dashboard lights up — consolidated portfolios, goal gaps, market movements, and actionable insights across every client, every scheme.</p>
+        <span class="step-time">instant</span>
+      </div>
+    </div>
+    <div class="step animate-on-scroll">
+      <div class="step-number">4</div>
+      <div class="step-content">
+        <h3>Advise with Confidence</h3>
+        <p>Run goal plans, compare funds, spot rebalancing opportunities, and generate client-ready reports — all backed by real-time data.</p>
+        <span class="step-time">ongoing</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="gold-thread"></div>
+
+<!-- ════════ PRICING ════════ -->
+<section class="pricing" id="pricing">
+  <div class="pricing-header animate-on-scroll">
+    <div class="section-eyebrow">Simple pricing</div>
+    <h2>Built for MFDs, Priced for Growth</h2>
+    <p>Start free. Scale when you're ready. No hidden fees.</p>
+  </div>
+  <div class="pricing-grid">
+    <div class="pricing-card animate-on-scroll">
+      <div class="pricing-tier">Starter</div>
+      <div class="pricing-desc">For individual MFDs getting started</div>
+      <div class="pricing-amount">
+        <span class="pricing-currency">₹</span>
+        <span class="pricing-value">0</span>
+        <span class="pricing-period">/ month</span>
+      </div>
+      <ul class="pricing-features">
+        <li>Up to 50 clients</li>
+        <li>Portfolio & NAV tracking</li>
+        <li>CAS import (CAMS/KFintech)</li>
+        <li>Basic goal planning</li>
+        <li>1 user seat</li>
+      </ul>
+      <a href="#start" class="pricing-btn pricing-btn-outline">Get Started Free</a>
+    </div>
+    <div class="pricing-card featured animate-on-scroll">
+      <div class="pricing-badge">Most Popular</div>
+      <div class="pricing-tier">Professional</div>
+      <div class="pricing-desc">For growing MFD practices</div>
+      <div class="pricing-amount">
+        <span class="pricing-currency">₹</span>
+        <span class="pricing-value">1,999</span>
+        <span class="pricing-period">/ month</span>
+      </div>
+      <ul class="pricing-features">
+        <li>Up to 500 clients</li>
+        <li>All 8 skill modules</li>
+        <li>Auto-generated reports</li>
+        <li>SIP bounce alerts</li>
+        <li>Tax harvest optimizer</li>
+        <li>5 user seats</li>
+        <li>Priority support</li>
+      </ul>
+      <a href="#start" class="pricing-btn pricing-btn-gold">Start 14-Day Trial</a>
+    </div>
+    <div class="pricing-card animate-on-scroll">
+      <div class="pricing-tier">Enterprise</div>
+      <div class="pricing-desc">For large firms & RIAs</div>
+      <div class="pricing-amount">
+        <span class="pricing-currency">₹</span>
+        <span class="pricing-value">4,999</span>
+        <span class="pricing-period">/ month</span>
+      </div>
+      <ul class="pricing-features">
+        <li>Unlimited clients</li>
+        <li>White-label client portal</li>
+        <li>Custom branding & themes</li>
+        <li>API access</li>
+        <li>Unlimited seats</li>
+        <li>Dedicated account manager</li>
+        <li>SLA guarantee</li>
+      </ul>
+      <a href="#start" class="pricing-btn pricing-btn-outline">Contact Sales</a>
+    </div>
+  </div>
+</section>
+
+<div class="gold-thread"></div>
+
+<!-- ════════ TESTIMONIALS ════════ -->
+<section class="testimonials">
+  <div class="testimonials-header animate-on-scroll">
+    <div class="section-eyebrow">What MFDs are saying</div>
+    <h2>Built With Distributors, For Distributors</h2>
+  </div>
+  <div class="testimonials-grid">
+    <div class="testimonial-card animate-on-scroll">
+      <div class="testimonial-quote">
+        I was spending 3 hours every Saturday building client reports in Excel. Now it's one click. My weekends are mine again.
+      </div>
+      <div class="testimonial-author">
+        <div class="testimonial-avatar">RK</div>
+        <div>
+          <div class="testimonial-name">Rajesh Kumar</div>
+          <div class="testimonial-role">Independent MFD, Pune · 180 clients</div>
+        </div>
+      </div>
+    </div>
+    <div class="testimonial-card animate-on-scroll">
+      <div class="testimonial-quote">
+        The goal-gap visualization changed how I have conversations with clients. They see the math, they trust the plan. My SIP book grew 40% in 6 months.
+      </div>
+      <div class="testimonial-author">
+        <div class="testimonial-avatar">PS</div>
+        <div>
+          <div class="testimonial-name">Priya Sharma</div>
+          <div class="testimonial-role">Wealth Planner, Bangalore · 320 clients</div>
+        </div>
+      </div>
+    </div>
+    <div class="testimonial-card animate-on-scroll">
+      <div class="testimonial-quote">
+        We onboarded our entire firm in one afternoon. CAS import parsed 12,000 transactions without a single mismatch. That's never happened before.
+      </div>
+      <div class="testimonial-author">
+        <div class="testimonial-avatar">AM</div>
+        <div>
+          <div class="testimonial-name">Anil Mehta</div>
+          <div class="testimonial-role">Director, Finwise Distributors · 1,200 clients</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="gold-thread"></div>
+
+<!-- ════════ FINAL CTA ════════ -->
+<section class="final-cta" id="start">
+  <div class="final-cta-content animate-on-scroll">
+    <h2>Your Clients Deserve<br><span class="gold-text">Smarter Advice</span></h2>
+    <p>Join the early access program and transform your MFD practice with AI-powered intelligence. Limited spots for founding members.</p>
+    <div class="final-cta-actions">
+      <a href="mailto:charan@vikuna.tech?subject=ProessionalKey Early Access" class="btn-primary">
+        Request Early Access
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+      <a href="#features" class="btn-ghost">Explore Features</a>
+    </div>
+    <div class="final-cta-note">No credit card required · Free tier available · Cancel anytime</div>
+  </div>
+</section>
+
+<!-- ════════ FOOTER ════════ -->
+<footer class="footer">
+  <div class="footer-content">
+    <div class="footer-brand">
+      <div class="footer-brand-name">ProessionalKey</div>
+      <div class="footer-brand-tagline">AI-powered portfolio intelligence for Indian Mutual Fund Distributors. Built by practitioners, for practitioners.</div>
+      <div class="footer-brand-company">A Vikuna Technologies Product</div>
+    </div>
+    <div class="footer-links-group">
+      <h4>Product</h4>
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#how-it-works">How It Works</a>
+      <a href="#">Changelog</a>
+    </div>
+    <div class="footer-links-group">
+      <h4>Company</h4>
+      <a href="https://vikuna.tech" target="_blank">Vikuna Technologies</a>
+      <a href="#">About Us</a>
+      <a href="#">Blog</a>
+      <a href="mailto:charan@vikuna.tech">Contact</a>
+    </div>
+    <div class="footer-links-group">
+      <h4>Legal</h4>
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Service</a>
+      <a href="#">SEBI Compliance</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="footer-copy">&copy; 2026 Vikuna Technologies. All rights reserved.</div>
+    <div class="footer-legal">
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+      <a href="#">Cookies</a>
+    </div>
+  </div>
+</footer>
+
+</div><!-- .content -->
+
+<!-- ════════ SCRIPTS ════════ -->
+<script>
+// ── Scroll animations ──
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry, i) => {
+    if (entry.isIntersecting) {
+      setTimeout(() => entry.target.classList.add('visible'), i * 80);
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
+
+// ── Nav scroll state ──
+let lastScroll = 0;
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('nav');
+  nav.classList.toggle('scrolled', window.scrollY > 60);
+}, { passive: true });
+
+// ── Smooth scroll for anchor links ──
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function(e) {
+    e.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Close mobile nav if open
+      document.querySelector('.nav-links').classList.remove('show');
+    }
+  });
+});
+</script>
+
+</body>
+</html>
