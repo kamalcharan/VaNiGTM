@@ -216,8 +216,8 @@ export default function RegisterPage() {
 
       {/* ── RIGHT: Registration Form ── */}
       <div className={s.formPanel}>
-        {/* Journey breadcrumb */}
-        <div className={s.breadcrumb}>
+        {/* Top bar: breadcrumb + sign in link */}
+        <div className={s.topBar}>
           <div className={s.breadcrumbSteps}>
             <div className={`${s.breadcrumbStep} ${s.breadcrumbActive}`}>
               <span className={s.breadcrumbDot} />
@@ -234,6 +234,9 @@ export default function RegisterPage() {
               <span>Dashboard</span>
             </div>
           </div>
+          <a href="/login" className={s.topBarLink}>
+            Sign in &rarr;
+          </a>
         </div>
 
         <div className={s.formHeader}>

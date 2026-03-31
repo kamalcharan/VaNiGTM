@@ -197,13 +197,18 @@ export default function LoginVault() {
 
         {/* ── RIGHT: The Form ── */}
         <div className={s.vaultForm}>
-          {/* Back to landing */}
-          <a href="/landing" className={s.backLink}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-            <span>Back</span>
-          </a>
+          {/* Top navigation */}
+          <div className={s.topNav}>
+            <a href="/landing" className={s.backLink}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+              <span>Back</span>
+            </a>
+            <a href="/register" className={s.registerLink}>
+              Create account &rarr;
+            </a>
+          </div>
 
           <div className={s.formHeader}>
             <div className={s.goldLine} />

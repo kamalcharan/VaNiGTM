@@ -236,7 +236,7 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 24px 48px 36px;
+  padding: 16px 44px 20px;
   background: var(--color-surface);
   border-left: 1px solid var(--color-border);
   position: relative;
@@ -268,11 +268,29 @@
   50% { opacity: 0.7; }
 }
 
-/* ── Journey Breadcrumb ──────────────────────────────── */
-.breadcrumb {
-  margin-bottom: 24px;
+/* ── Top Bar (breadcrumb + sign-in link) ─────────────── */
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
   animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   opacity: 0;
+}
+
+.topBarLink {
+  font-size: 0.65rem;
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  transition: opacity 200ms;
+}
+
+.topBarLink:hover {
+  opacity: 0.8;
+  text-decoration: underline;
 }
 
 .breadcrumbSteps {
@@ -319,7 +337,7 @@
 
 /* ── Form Header ─────────────────────────────────────── */
 .formHeader {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   flex-shrink: 0;
   animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 150ms forwards;
   opacity: 0;
@@ -329,20 +347,20 @@
   width: 48px;
   height: 2px;
   background: linear-gradient(90deg, var(--color-primary), transparent);
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .formTitle {
   font-family: var(--font-display, 'Playfair Display', serif);
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: var(--color-fg);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .formSubtitle {
   color: var(--color-muted);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 
 /* ── Progress Track ──────────────────────────────────── */
@@ -350,7 +368,7 @@
   height: 2px;
   background: var(--color-border);
   border-radius: 2px;
-  margin-bottom: 24px;
+  margin-bottom: 14px;
   overflow: hidden;
   animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 250ms forwards;
   opacity: 0;
@@ -366,8 +384,8 @@
 
 /* ── Password Strength (tight spacing) ───────────────── */
 .strengthWrap {
-  margin-top: -18px;
-  margin-bottom: 4px;
+  margin-top: -12px;
+  margin-bottom: 0;
 }
 
 /* ── Match Indicator ─────────────────────────────────── */
@@ -378,8 +396,8 @@
   font-size: 0.6rem;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   letter-spacing: 0.05em;
-  margin-top: -18px;
-  margin-bottom: 8px;
+  margin-top: -12px;
+  margin-bottom: 4px;
 }
 
 .matchDot {
@@ -395,7 +413,7 @@
 .matchNo .matchDot { background: var(--color-danger); }
 
 /* ── Phone Group ─────────────────────────────────────── */
-.phoneGroup { margin-bottom: 20px; }
+.phoneGroup { margin-bottom: 12px; }
 
 .phoneLabel {
   display: block;
@@ -435,7 +453,7 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   cursor: pointer;
 }
 
@@ -463,12 +481,12 @@
 .termsLink:hover { text-decoration: underline; }
 
 /* ── Tighter form spacing ────────────────────────────── */
-.formPanel form > div { margin-bottom: 16px; }
+.formPanel form > div { margin-bottom: 12px; }
 
 /* ── Submit Button ───────────────────────────────────── */
 .submitBtn {
   width: 100%;
-  padding: 15px;
+  padding: 14px;
   background: var(--color-primary);
   border: none;
   border-radius: 8px;
@@ -507,7 +525,7 @@
 
 /* ── Footer ──────────────────────────────────────────── */
 .footer {
-  margin-top: 20px;
+  margin-top: 12px;
   text-align: center;
   flex-shrink: 0;
 }
@@ -580,5 +598,5 @@
 
   .formPanel::before { display: none; }
 
-  .breadcrumb { display: none; }
+  .breadcrumbSteps { display: none; }
 }
