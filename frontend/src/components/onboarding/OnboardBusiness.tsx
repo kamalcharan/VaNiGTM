@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { useAuth } from '@/context/auth-provider';
 import { useToast } from '../toast';
 import { InlineLoader } from '../loader';
 import { VdfRichText } from '@/components/vdf';
@@ -17,13 +16,17 @@ import {
 } from '@/constants/business';
 import s from './OnboardBusiness.module.css';
 
+const QUICK_COLORS = [
+  '#C9A84C', '#4A8FD4', '#3BAFA7', '#D47070', '#7A6FD4',
+  '#E8B44C', '#5EAAF0', '#4ECDC4', '#E88B8B', '#9B8FE8',
+];
+
 interface Props {
   onComplete: () => void;
   onSkip?: () => void;
 }
 
 export default function OnboardBusiness({ onComplete }: Props) {
-  const { user } = useAuth();
   const { showToast } = useToast();
   const submittingRef = useRef(false);
 
@@ -42,6 +45,10 @@ export default function OnboardBusiness({ onComplete }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const panGstMatch = pan && gstin && gstin.length >= 12
+    ? gstin.slice(2, 12) === pan
+    : null;
+
   async function handleSubmit() {
     if (submittingRef.current) return;
 
@@ -50,16 +57,12 @@ export default function OnboardBusiness({ onComplete }: Props) {
       return;
     }
 
-    // Validate optional fields
     const panErr = validatePAN(pan);
     if (panErr) { setError(panErr); return; }
-
     const gstinErr = validateGSTIN(gstin, pan);
     if (gstinErr) { setError(gstinErr); return; }
-
     const arnErr = validateARN(arn);
     if (arnErr) { setError(arnErr); return; }
-
     const pinErr = validatePIN(postalCode);
     if (pinErr) { setError(pinErr); return; }
 
@@ -68,7 +71,6 @@ export default function OnboardBusiness({ onComplete }: Props) {
     setError('');
 
     try {
-      // Save to tenant profile
       await apiFetch(API.tenant.profile, {
         body: {
           name: firmName.trim(),
@@ -88,7 +90,6 @@ export default function OnboardBusiness({ onComplete }: Props) {
         },
       });
 
-      // Mark onboarding step complete
       await apiFetch(API.onboarding.completeStep, {
         body: {
           step_id: 'business_profile',
@@ -108,236 +109,207 @@ export default function OnboardBusiness({ onComplete }: Props) {
     }
   }
 
+  /* ── SVG Icons ────────────────────────────────────── */
+
+  const IconBuilding = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="18" height="18">
+      <path d="M3 21h18M5 21V7l8-4v18M13 21V3l6 3v15" />
+      <path d="M9 9h1M9 13h1M9 17h1" />
+    </svg>
+  );
+
+  const IconPalette = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="18" height="18">
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="7" r="1.5" fill="currentColor" />
+      <circle cx="8" cy="10" r="1.5" fill="currentColor" />
+      <circle cx="16" cy="10" r="1.5" fill="currentColor" />
+      <circle cx="9" cy="15" r="1.5" fill="currentColor" />
+    </svg>
+  );
+
+  const IconDoc = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="18" height="18">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+      <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+    </svg>
+  );
+
+  const IconPin = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="18" height="18">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+
   return (
-    <div className={s.split}>
-      {/* ── Left: Narrative ── */}
-      <div className={s.narrative}>
-        <div className={s.narrativeGlow} />
-        <div className={s.narrContent}>
-          <div className={s.chapter}>Step 2 of 6</div>
-          <h2 className={s.narrTitle}>
-            Your <span className={s.glow}>firm</span> is<br />your identity.
-          </h2>
-          <p className={s.narrText}>
-            This information appears on client communications, reports, and
-            the investor portal. Make it count.
-          </p>
-          <div className={s.mandatoryBadge}>&#x25CF; Required to continue</div>
+    <div className={s.page}>
+      {/* ── Header ── */}
+      <div className={s.pageHeader}>
+        <div className={s.stepTag}>Step 2 of 6</div>
+        <h1 className={s.pageTitle}>Business Profile</h1>
+        <p className={s.pageSubtitle}>
+          This information appears on client communications, reports, and the investor portal.
+        </p>
+      </div>
+
+      <div className={s.sections}>
+        {/* ═══ Section: Identity ═══ */}
+        <div className={s.card}>
+          <div className={s.cardHeader}>
+            <span className={s.cardIcon}><IconBuilding /></span>
+            <span className={s.cardTitle}>Organization Identity</span>
+          </div>
+
+          {/* Logo + Firm Name row */}
+          <div className={s.identityRow}>
+            <div className={s.logoArea}>
+              <div className={s.logoPreview}>&#x1F3E2;</div>
+              <div>
+                <button className={s.logoBtn} disabled type="button">Upload Logo</button>
+                <div className={s.logoHint}>512&times;512px, PNG/JPG/SVG</div>
+              </div>
+            </div>
+            <div className={s.identityFields}>
+              <div className={s.field}>
+                <label className={s.label}>Firm / Business Name *</label>
+                <input className={s.input} placeholder="e.g. Meridian Wealth Partners" value={firmName} onChange={(e) => setFirmName(e.target.value)} disabled={loading} />
+              </div>
+            </div>
+          </div>
+
+          {/* Type + ARN */}
+          <div className={s.row2}>
+            <div className={s.field}>
+              <label className={s.label}>Business Type</label>
+              <select className={s.select} value={businessType} onChange={(e) => setBusinessType(e.target.value)} disabled={loading}>
+                <option value="">Select type...</option>
+                {BUSINESS_TYPES.map((bt) => <option key={bt.value} value={bt.value}>{bt.label}</option>)}
+              </select>
+            </div>
+            <div className={s.field}>
+              <label className={s.label}>ARN Number</label>
+              <input className={s.input} placeholder="ARN-XXXXX" value={arn} onChange={(e) => setArn(e.target.value)} disabled={loading} />
+            </div>
+          </div>
+
+          {/* PAN + GSTIN */}
+          <div className={s.row2}>
+            <div className={s.field}>
+              <label className={s.label}>PAN</label>
+              <input className={`${s.input} ${s.mono}`} placeholder="ABCDE1234F" value={pan} onChange={(e) => setPan(e.target.value.toUpperCase())} maxLength={10} disabled={loading} />
+            </div>
+            <div className={s.field}>
+              <label className={s.label}>GSTIN (optional)</label>
+              <input className={`${s.input} ${s.mono}`} placeholder="22AAAAA0000A1Z5" value={gstin} onChange={(e) => setGstin(e.target.value.toUpperCase())} maxLength={15} disabled={loading} />
+              {panGstMatch === true && <div className={s.matchOk}>PAN matches GSTIN</div>}
+              {panGstMatch === false && <div className={s.matchWarn}>PAN does not match GSTIN</div>}
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ Section: Brand Colors ═══ */}
+        <div className={s.card}>
+          <div className={s.cardHeader}>
+            <span className={s.cardIcon}><IconPalette /></span>
+            <span className={s.cardTitle}>Brand Color</span>
+          </div>
+          <p className={s.cardDesc}>Customize your application to match your firm&apos;s brand identity.</p>
+
+          <div className={s.colorSection}>
+            <div className={s.colorMain}>
+              <div className={s.colorSwatch} style={{ background: brandColor }} />
+              <input type="text" className={`${s.input} ${s.mono} ${s.colorHexInput}`} value={brandColor} onChange={(e) => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setBrandColor(e.target.value); }} maxLength={7} disabled={loading} />
+              <input type="color" className={s.colorNative} value={brandColor} onChange={(e) => setBrandColor(e.target.value)} disabled={loading} title="Pick color" />
+            </div>
+
+            <div className={s.quickColors}>
+              <span className={s.quickLabel}>Quick Colors</span>
+              <div className={s.quickRow}>
+                {QUICK_COLORS.map((c) => (
+                  <button key={c} type="button" className={`${s.quickDot} ${brandColor === c ? s.quickDotActive : ''}`} style={{ background: c }} onClick={() => setBrandColor(c)} title={c} />
+                ))}
+              </div>
+            </div>
+
+            <div className={s.colorPreviewBar}>
+              <span className={s.previewLabel}>Preview</span>
+              <div className={s.previewRow}>
+                <div className={s.previewBtn} style={{ background: brandColor }}>Primary Button</div>
+                <div className={s.previewGrad} style={{ background: `linear-gradient(135deg, ${brandColor}, ${brandColor}88)` }} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ Section: Description ═══ */}
+        <div className={s.card}>
+          <div className={s.cardHeader}>
+            <span className={s.cardIcon}><IconDoc /></span>
+            <span className={s.cardTitle}>Business Description</span>
+          </div>
+          <VdfRichText
+            value={description}
+            onChange={setDescription}
+            placeholder="Brief description for client-facing reports and investor portal..."
+            maxLength={1000}
+            minHeight={80}
+            maxHeight={150}
+            disabled={loading}
+          />
+        </div>
+
+        {/* ═══ Section: Address ═══ */}
+        <div className={s.card}>
+          <div className={s.cardHeader}>
+            <span className={s.cardIcon}><IconPin /></span>
+            <span className={s.cardTitle}>Business Address</span>
+          </div>
+
+          <div className={s.row2}>
+            <div className={s.field}>
+              <label className={s.label}>Address Line 1</label>
+              <input className={s.input} placeholder="Building, street" value={address1} onChange={(e) => setAddress1(e.target.value)} disabled={loading} />
+            </div>
+            <div className={s.field}>
+              <label className={s.label}>Address Line 2</label>
+              <input className={s.input} placeholder="Area, landmark" value={address2} onChange={(e) => setAddress2(e.target.value)} disabled={loading} />
+            </div>
+          </div>
+
+          <div className={s.row4}>
+            <div className={s.field}>
+              <label className={s.label}>Country</label>
+              <input className={s.input} value="India" readOnly disabled />
+            </div>
+            <div className={s.field}>
+              <label className={s.label}>State</label>
+              <select className={s.select} value={state} onChange={(e) => setState(e.target.value)} disabled={loading}>
+                <option value="">Select...</option>
+                {INDIAN_STATES.map((st) => <option key={st.code} value={st.name}>{st.name}</option>)}
+              </select>
+            </div>
+            <div className={s.field}>
+              <label className={s.label}>City</label>
+              <input className={s.input} placeholder="Hyderabad" value={city} onChange={(e) => setCity(e.target.value)} disabled={loading} />
+            </div>
+            <div className={s.field}>
+              <label className={s.label}>PIN Code</label>
+              <input className={s.input} placeholder="500001" value={postalCode} onChange={(e) => setPostalCode(e.target.value.replace(/\D/g, '').slice(0, 6))} maxLength={6} disabled={loading} />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Right: Form ── */}
-      <div className={s.formPanel}>
-        <div className={s.formBorderAccent} />
-        <div className={s.sectionTitle}>Business Details</div>
+      {/* ── Error ── */}
+      {error && <div className={s.errorBar}>{error}</div>}
 
-        {/* Firm Logo */}
-        <div className={s.photoUpload}>
-          <div className={s.logoPreview}>&#x1F3E2;</div>
-          <div className={s.photoInfo}>
-            <div className={s.photoInfoTitle}>Firm logo</div>
-            <div className={s.photoInfoHint}>
-              Square image, min 200&times;200px
-            </div>
-          </div>
-          <button className={s.photoBtn} disabled title="Coming soon" type="button">
-            Upload
-          </button>
-        </div>
-
-        {/* Firm Name */}
-        <div className={s.formGroup}>
-          <label className={s.formLabel}>Firm / Business Name</label>
-          <input
-            type="text"
-            className={s.formInput}
-            placeholder="e.g. Meridian Wealth Partners"
-            value={firmName}
-            onChange={(e) => setFirmName(e.target.value)}
-            disabled={loading}
-          />
-        </div>
-
-        {/* Business Type + ARN */}
-        <div className={s.formRow}>
-          <div className={s.formGroup}>
-            <label className={s.formLabel}>Business Type</label>
-            <select
-              className={s.formSelect}
-              value={businessType}
-              onChange={(e) => setBusinessType(e.target.value)}
-              disabled={loading}
-            >
-              <option value="">Select type...</option>
-              {BUSINESS_TYPES.map((bt) => (
-                <option key={bt.value} value={bt.value}>{bt.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className={s.formGroup}>
-            <label className={s.formLabel}>ARN Number</label>
-            <input
-              type="text"
-              className={s.formInput}
-              placeholder="ARN-XXXXX"
-              value={arn}
-              onChange={(e) => setArn(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-        </div>
-
-        {/* PAN + GSTIN — linked */}
-        <div className={s.formRow}>
-          <div className={s.formGroup}>
-            <label className={s.formLabel}>PAN</label>
-            <input
-              type="text"
-              className={`${s.formInput} ${s.uppercase}`}
-              placeholder="ABCDE1234F"
-              value={pan}
-              onChange={(e) => setPan(e.target.value.toUpperCase())}
-              maxLength={10}
-              disabled={loading}
-            />
-          </div>
-          <div className={s.formGroup}>
-            <label className={s.formLabel}>GSTIN (optional)</label>
-            <input
-              type="text"
-              className={`${s.formInput} ${s.uppercase}`}
-              placeholder="22AAAAA0000A1Z5"
-              value={gstin}
-              onChange={(e) => setGstin(e.target.value.toUpperCase())}
-              maxLength={15}
-              disabled={loading}
-            />
-            {pan && gstin && gstin.length >= 12 && gstin.slice(2, 12) === pan && (
-              <div className={s.matchBadge}>PAN matches GSTIN</div>
-            )}
-            {pan && gstin && gstin.length >= 12 && gstin.slice(2, 12) !== pan && (
-              <div className={s.mismatchBadge}>PAN does not match GSTIN</div>
-            )}
-          </div>
-        </div>
-
-        {/* Brand Color */}
-        <div className={s.formGroup}>
-          <label className={s.formLabel}>Brand Color</label>
-          <div className={s.colorRow}>
-            <input
-              type="color"
-              className={s.colorPicker}
-              value={brandColor}
-              onChange={(e) => setBrandColor(e.target.value)}
-              disabled={loading}
-            />
-            <input
-              type="text"
-              className={`${s.formInput} ${s.colorHex}`}
-              value={brandColor}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) setBrandColor(v);
-              }}
-              maxLength={7}
-              placeholder="#C9A84C"
-              disabled={loading}
-            />
-            <div className={s.colorPreview} style={{ background: brandColor }} />
-          </div>
-        </div>
-
-        {/* Description — Rich Text */}
-        <VdfRichText
-          value={description}
-          onChange={setDescription}
-          label="Business Description (optional)"
-          placeholder="Brief description for client-facing reports..."
-          maxLength={1000}
-          minHeight={60}
-          maxHeight={100}
-          disabled={loading}
-        />
-
-        {/* Address */}
-        <div className={s.formGroup}>
-          <label className={s.formLabel}>Address Line 1</label>
-          <input
-            type="text"
-            className={s.formInput}
-            placeholder="Building, street"
-            value={address1}
-            onChange={(e) => setAddress1(e.target.value)}
-            disabled={loading}
-          />
-        </div>
-
-        <div className={s.formGroup}>
-          <label className={s.formLabel}>Address Line 2 (optional)</label>
-          <input
-            type="text"
-            className={s.formInput}
-            placeholder="Area, landmark"
-            value={address2}
-            onChange={(e) => setAddress2(e.target.value)}
-            disabled={loading}
-          />
-        </div>
-
-        {/* City + State + PIN */}
-        <div className={s.formRow3}>
-          <div className={s.formGroup}>
-            <label className={s.formLabel}>City</label>
-            <input
-              type="text"
-              className={s.formInput}
-              placeholder="e.g. Hyderabad"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-          <div className={s.formGroup}>
-            <label className={s.formLabel}>State</label>
-            <select
-              className={s.formSelect}
-              value={state}
-              onChange={(e) => setState(e.target.value)}
-              disabled={loading}
-            >
-              <option value="">Select state...</option>
-              {INDIAN_STATES.map((st) => (
-                <option key={st.code} value={st.name}>{st.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className={s.formGroup}>
-            <label className={s.formLabel}>PIN Code</label>
-            <input
-              type="text"
-              className={s.formInput}
-              placeholder="500001"
-              value={postalCode}
-              onChange={(e) => setPostalCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              maxLength={6}
-              disabled={loading}
-            />
-          </div>
-        </div>
-
-        {/* Error */}
-        {error && <div className={s.errorMsg}>{error}</div>}
-
-        {/* Navigation */}
-        <div className={s.wizardNav}>
-          <div />
-          <div className={s.navRight}>
-            <button className={s.navNext} onClick={handleSubmit} disabled={loading}>
-              {loading ? <InlineLoader size="sm" message="SAVING..." /> : 'SAVE & CONTINUE \u2192'}
-            </button>
-          </div>
-        </div>
+      {/* ── Footer Nav ── */}
+      <div className={s.footerNav}>
+        <div />
+        <button className={s.saveBtn} onClick={handleSubmit} disabled={loading}>
+          {loading ? <InlineLoader size="sm" message="SAVING..." /> : 'SAVE & CONTINUE \u2192'}
+        </button>
       </div>
     </div>
   );
