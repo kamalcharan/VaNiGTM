@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth, type SessionLimitResponse, type ActiveSession } from '@/context/auth-provider';
+import { useState, type FormEvent } from 'react';
+import { useLogin, type ActiveSession } from '@/hooks';
+import { storeTokens, getAccessToken, type ApiError } from '@/lib/api-client';
+import { useToast } from '@/components/toast';
 import s from './login-vault.module.css';
 
 const ROLES = [
@@ -33,51 +34,79 @@ const ROLES = [
   },
 ];
 
+interface SessionLimitData {
+  max_sessions: number;
+  active_sessions: ActiveSession[];
+}
+
 export default function LoginVault() {
-  const { login, revokeSessions, isAuthenticated, tenant } = useAuth();
-  const router = useRouter();
+  const loginMutation = useLogin();
+  const { showToast } = useToast();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [loginComplete, setLoginComplete] = useState(false);
 
-  const [sessionLimit, setSessionLimit] = useState<SessionLimitResponse | null>(null);
+  const [sessionLimit, setSessionLimit] = useState<SessionLimitData | null>(null);
   const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set());
   const [revokingLoading, setRevokingLoading] = useState(false);
   const [role, setRole] = useState<'planner' | 'investor'>('planner');
 
   const activeRole = ROLES.find((r) => r.id === role)!;
+  const loading = loginMutation.isPending;
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    if (!loginComplete && !tenant) return;
-    if (tenant?.onboarding_complete === true) {
-      router.replace('/');
-    } else {
-      router.replace('/onboarding');
-    }
-  }, [isAuthenticated, loginComplete, tenant, router]);
+  // If already have a token, redirect
+  if (typeof window !== 'undefined' && getAccessToken()) {
+    window.location.href = '/onboarding';
+    return null;
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (loginMutation.isPending) return;
     setError('');
-    setLoading(true);
 
-    try {
-      const result = await login(email, password);
-      if ('code' in result && result.code === 'SESSION_LIMIT') {
-        setSessionLimit(result);
-        setLoading(false);
-        return;
-      }
-      setLoginComplete(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
-      setLoading(false);
-    }
+    loginMutation.mutate(
+      { email: email.trim().toLowerCase(), password },
+      {
+        onSuccess: (data) => {
+          // Store tokens explicitly before navigation
+          if (data.tokens) {
+            storeTokens(data.tokens);
+          }
+
+          // Persist theme from server response
+          const user = data.user as Record<string, unknown>;
+          const tenant = data.tenant as Record<string, unknown>;
+          const prefs = user?.preferences as Record<string, unknown> | undefined;
+          try {
+            if (user?.preferred_theme) localStorage.setItem('pk-theme-id', String(user.preferred_theme));
+            if (prefs?.color_mode) localStorage.setItem('pk-color-mode', String(prefs.color_mode));
+          } catch {}
+
+          showToast({ message: 'Welcome back!', type: 'success' });
+
+          // Navigate based on onboarding status
+          if (tenant?.onboarding_complete === true) {
+            window.location.href = '/dashboard';
+          } else {
+            window.location.href = '/onboarding';
+          }
+        },
+        onError: (err: ApiError) => {
+          // Session limit → show dialog
+          if (err.code === 'SESSION_LIMIT' && err.details) {
+            setSessionLimit({
+              max_sessions: (err.details as any).max_sessions || 5,
+              active_sessions: (err.details as any).active_sessions || [],
+            });
+            return;
+          }
+          setError(err.message);
+        },
+      },
+    );
   }
 
   function toggleSession(sessionId: string) {
@@ -94,27 +123,10 @@ export default function LoginVault() {
     setRevokingLoading(true);
     setError('');
 
-    try {
-      const result = await revokeSessions(
-        Array.from(selectedSessions),
-        email,
-        password,
-      );
-      if ('code' in result && result.code === 'SESSION_LIMIT') {
-        setSessionLimit(result);
-        setSelectedSessions(new Set());
-        setRevokingLoading(false);
-        return;
-      }
-      setSessionLimit(null);
-      setLoginComplete(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to revoke sessions');
-      setRevokingLoading(false);
-    }
+    // TODO: Wire to real revoke endpoint when built
+    showToast({ message: 'Session revoke not yet implemented', type: 'warning' });
+    setRevokingLoading(false);
   }
-
-  if (isAuthenticated) return null;
 
   return (
     <>

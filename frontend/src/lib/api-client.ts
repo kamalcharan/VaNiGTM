@@ -276,18 +276,17 @@ export async function apiFetch<T = Record<string, unknown>>(
 
   // Error response — normalize to ApiError shape
   const errorData = data?.error;
+  const errObj = typeof errorData === 'object' && errorData !== null
+    ? errorData as Record<string, unknown>
+    : null;
+
   throw {
-    code: (typeof errorData === 'object' && errorData !== null
-      ? (errorData as Record<string, unknown>).code
-      : data?.code) as string || `HTTP_${res.status}`,
-    message: (typeof errorData === 'object' && errorData !== null
-      ? (errorData as Record<string, unknown>).message
-      : typeof errorData === 'string'
-        ? errorData
-        : data?.message) as string || `Request failed (${res.status})`,
-    details: (typeof errorData === 'object' && errorData !== null
-      ? (errorData as Record<string, unknown>).details
-      : undefined) as Record<string, unknown> | undefined,
+    code: (errObj?.code ?? data?.code ?? `HTTP_${res.status}`) as string,
+    message: (errObj?.message ?? (typeof errorData === 'string' ? errorData : data?.message) ?? `Request failed (${res.status})`) as string,
+    // Include all extra fields from error object as details (session_limit, etc.)
+    details: errObj
+      ? Object.fromEntries(Object.entries(errObj).filter(([k]) => !['code', 'message'].includes(k)))
+      : undefined,
     status: res.status,
   } satisfies ApiError;
 }

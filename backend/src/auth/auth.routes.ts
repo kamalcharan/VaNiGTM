@@ -10,6 +10,7 @@
 import { Router } from 'express';
 import type { Pool } from 'pg';
 import { register, validateRegisterInput, type RegisterInput } from './auth.service';
+import { login as loginService, type LoginInput } from './login.service';
 import { verifyAccessToken, type JwtPayload } from './token.service';
 
 /* ── JWT extraction helper ──────────────────────────── */
@@ -69,6 +70,57 @@ export function createAuthRouter(pool: Pool): Router {
           code: 'REGISTRATION_FAILED',
           message: process.env.NODE_ENV === 'production'
             ? 'Registration failed. Please try again.'
+            : err.message || 'Unknown error',
+        },
+      });
+    }
+  });
+
+  /* ── POST /api/v1/auth/login ────────────────────────── */
+
+  router.post('/login', async (req, res) => {
+    try {
+      const input: LoginInput = {
+        email: req.body.email,
+        password: req.body.password,
+      };
+
+      const result = await loginService(pool, input, req);
+
+      // Session limit → 409
+      if ('code' in result && result.code === 'SESSION_LIMIT') {
+        res.status(409).json({
+          error: {
+            code: result.code,
+            message: 'Maximum active sessions reached',
+            max_sessions: result.max_sessions,
+            active_sessions: result.active_sessions,
+          },
+        });
+        return;
+      }
+
+      // TypeScript narrowing: after the SESSION_LIMIT check above, result is LoginResult
+      const loginResult = result as import('./login.service').LoginResult;
+      res.json({
+        tokens: loginResult.tokens,
+        user: loginResult.user,
+        tenant: loginResult.tenant,
+      });
+    } catch (err: any) {
+      if (err.status && err.code) {
+        res.status(err.status).json({
+          error: { code: err.code, message: err.message },
+        });
+        return;
+      }
+
+      console.error('[Auth:login]', err);
+      res.status(500).json({
+        error: {
+          code: 'LOGIN_FAILED',
+          message: process.env.NODE_ENV === 'production'
+            ? 'Login failed. Please try again.'
             : err.message || 'Unknown error',
         },
       });
