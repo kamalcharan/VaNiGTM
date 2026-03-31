@@ -10,13 +10,13 @@
   justify-content: space-between;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  background: rgba(10, 10, 15, 0.7);
+  background: var(--glass);
   border-bottom: 1px solid var(--glass-border);
   transition: all 0.4s var(--ease-out);
 }
 
 .scrolled {
-  background: rgba(10, 10, 15, 0.92);
+  background: var(--glass-strong);
   padding: var(--space-sm) var(--space-2xl);
 }
 
@@ -43,7 +43,7 @@
   content: '';
   position: absolute;
   inset: 3px;
-  border: 1px solid var(--gold-dim);
+  border: 1px solid var(--color-primary-dim);
   border-radius: 3px;
 }
 
@@ -91,7 +91,136 @@
 
 .cta { white-space: nowrap; }
 
-/* Mobile toggle */
+/* ── Nav actions (theme picker + hamburger) ── */
+.navActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+/* ── Theme Picker ── */
+.themePicker {
+  position: relative;
+}
+
+.themeToggleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.3s var(--ease-out);
+}
+
+.themeToggleBtn:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary-dim);
+  background: var(--color-primary-subtle);
+}
+
+.pickerDropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 280px;
+  padding: var(--space-md);
+  background: var(--glass-strong);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+  animation: dropIn 0.2s var(--ease-out);
+}
+
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pickerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
+.pickerLabel {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.modeToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 100px;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-family: var(--font-body, sans-serif);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.modeToggle:hover {
+  border-color: var(--color-primary-dim);
+  color: var(--color-primary);
+}
+
+.themeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.themeOption {
+  padding: 8px 6px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-body, sans-serif);
+  font-size: 0.62rem;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.themeOption:hover {
+  border-color: var(--color-primary-dim);
+  color: var(--color-fg);
+  background: var(--color-primary-subtle);
+}
+
+.themeActive {
+  background: var(--color-primary);
+  color: var(--color-primary-fg);
+  border-color: var(--color-primary);
+  font-weight: 700;
+}
+
+.themeActive:hover {
+  background: var(--color-primary);
+  color: var(--color-primary-fg);
+  border-color: var(--color-primary);
+}
+
+/* ── Mobile toggle ── */
 .toggle {
   display: none;
   flex-direction: column;
@@ -118,7 +247,7 @@
     top: 100%;
     left: 0;
     right: 0;
-    background: rgba(10, 10, 15, 0.95);
+    background: var(--glass-strong);
     padding: var(--space-lg);
     border-bottom: 1px solid var(--glass-border);
     backdrop-filter: blur(20px);
@@ -126,6 +255,14 @@
   }
   .toggle { display: flex; }
   .nav { padding: var(--space-sm) var(--space-md); }
+
+  .pickerDropdown {
+    width: 240px;
+  }
+
+  .themeGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 480px) {
