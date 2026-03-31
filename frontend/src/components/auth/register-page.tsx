@@ -8,7 +8,7 @@ import FormInput from '@/components/ui/form-input';
 import CountryDropdown, { type Country } from '@/components/ui/country-dropdown';
 import PasswordStrength from '@/components/ui/password-strength';
 import { useRegister } from '@/hooks';
-import type { ApiError } from '@/lib/api-client';
+import { storeTokens, type ApiError } from '@/lib/api-client';
 import s from './register-page.module.css';
 
 export default function RegisterPage() {
@@ -80,7 +80,12 @@ export default function RegisterPage() {
       },
       {
         onSuccess: (data) => {
-          // Persist theme preference so post-login pages load correctly
+          // CRITICAL: store tokens explicitly here before navigation
+          // Don't rely on hook-level onSuccess timing (React 19 batching)
+          if (data.tokens) {
+            storeTokens(data.tokens);
+          }
+          // Persist theme preference
           const user = data.user as Record<string, unknown>;
           const prefs = user?.preferences as Record<string, unknown> | undefined;
           try {
@@ -88,8 +93,6 @@ export default function RegisterPage() {
             if (prefs?.color_mode) localStorage.setItem('pk-color-mode', String(prefs.color_mode));
           } catch {}
           showToast({ message: 'Account created successfully!', type: 'success' });
-          // Use window.location to ensure sessionStorage tokens persist across navigation
-          // (router.push can cause race conditions with token storage)
           window.location.href = '/onboarding';
         },
         onError: (err: ApiError) => {
