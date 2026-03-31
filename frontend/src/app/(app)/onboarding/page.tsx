@@ -58,13 +58,19 @@ export default function OnboardingPage() {
     }
   }, [currentIndex, steps.length, router, showToast]);
 
+  const handleBack = useCallback(() => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    }
+  }, [currentIndex]);
+
   const handleStepClick = useCallback((index: number) => {
     setCurrentIndex(index);
   }, []);
 
   const wizardSteps = steps.map((step) => ({
     id: step.id,
-    label: step.title,
+    label: step.mandatory ? `${step.title} *` : step.title,
     mandatory: step.mandatory,
   }));
 
@@ -72,6 +78,14 @@ export default function OnboardingPage() {
     <div className={s.page}>
       <header className={s.topbar}>
         <div className={s.brand}>
+          {/* Back button */}
+          {currentIndex > 0 && (
+            <button className={s.backBtn} onClick={handleBack} title="Previous step">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
           <div className={s.brandIcon}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M12 2L2 7l10 5 10-5-10-5z" />

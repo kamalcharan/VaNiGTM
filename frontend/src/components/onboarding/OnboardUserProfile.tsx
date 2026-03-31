@@ -157,7 +157,7 @@ export default function OnboardUserProfile({ onComplete }: Props) {
         {/* Name Row */}
         <div className={s.formRow}>
           <div className={s.formGroup}>
-            <label className={s.formLabel}>First Name</label>
+            <label className={s.formLabel}>First Name *</label>
             <input
               type="text"
               className={s.formInput}
@@ -168,7 +168,7 @@ export default function OnboardUserProfile({ onComplete }: Props) {
             />
           </div>
           <div className={s.formGroup}>
-            <label className={s.formLabel}>Last Name</label>
+            <label className={s.formLabel}>Last Name *</label>
             <input
               type="text"
               className={s.formInput}
