@@ -11,9 +11,9 @@
 }
 
 .label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-muted);
 }
@@ -32,7 +32,7 @@
   gap: 6px;
   padding: 0 12px;
   height: 44px;
-  background: var(--color-surface);
+  background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-right: none;
   border-radius: 8px 0 0 8px;
@@ -204,10 +204,16 @@
 
 .mobileInput::placeholder {
   color: var(--color-muted);
+  opacity: 0.35;
+}
+
+.mobileInput:focus::placeholder {
+  opacity: 0;
 }
 
 .mobileInput:focus {
   border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .mobileInputDisabled {
