@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   KI-PRIME LOGIN VAULT — Atlas Design
+   KI-PRIME LOGIN VAULT — Atlas Design (10x)
    Theme-compliant: ALL colors via --color-* CSS variables
    ═══════════════════════════════════════════════════════ */
 
@@ -30,63 +30,115 @@
 .atmosphere::before {
   content: '';
   position: absolute;
-  width: 600px;
-  height: 600px;
-  top: -200px;
-  right: -100px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 15%, transparent) 0%, transparent 70%);
+  width: 700px;
+  height: 700px;
+  top: -250px;
+  right: -150px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 12%, transparent) 0%, transparent 65%);
   animation: atmosphereDrift 20s ease-in-out infinite alternate;
 }
 
 .atmosphere::after {
   content: '';
   position: absolute;
-  width: 800px;
-  height: 800px;
-  bottom: -300px;
-  left: -200px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--color-info) 5%, transparent) 0%, transparent 70%);
-  animation: atmosphereDrift 25s ease-in-out infinite alternate-reverse;
+  width: 900px;
+  height: 900px;
+  bottom: -350px;
+  left: -250px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-info) 4%, transparent) 0%, transparent 65%);
+  animation: atmosphereDrift 28s ease-in-out infinite alternate-reverse;
 }
 
 @keyframes atmosphereDrift {
   0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(60px, 40px) scale(1.1); }
+  100% { transform: translate(80px, 50px) scale(1.15); }
 }
 
-/* ── Noise Texture ────────────────────────────── */
+/* ── Noise ────────────────────────────────────── */
 .noise {
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  opacity: 0.025;
+  opacity: 0.02;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* ── Left Panel: The Story ────────────────────── */
+/* ── LEFT PANEL ──────────────────────────────── */
 .vaultStory {
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 96px 64px;
+  padding: 80px 64px;
   position: relative;
   overflow: hidden;
   z-index: 2;
 }
 
-.vaultStory::before {
-  content: '';
+/* ── Orbiting Rings (signature visual) ───────── */
+.orbits {
   position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 20% 50%, color-mix(in srgb, var(--color-primary) 8%, transparent) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, color-mix(in srgb, var(--color-info) 3%, transparent) 0%, transparent 40%);
+  top: 50%;
+  left: 45%;
+  transform: translate(-50%, -50%);
   pointer-events: none;
+  z-index: 0;
 }
 
-/* ── Floating Particles ───────────────────────── */
+.orbit {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 12%, transparent);
+  top: 50%;
+  left: 50%;
+}
+
+.orbit1 {
+  width: 300px;
+  height: 300px;
+  margin: -150px 0 0 -150px;
+  animation: orbitSpin 25s linear infinite;
+}
+
+.orbit2 {
+  width: 460px;
+  height: 460px;
+  margin: -230px 0 0 -230px;
+  border-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  animation: orbitSpin 35s linear infinite reverse;
+}
+
+.orbit3 {
+  width: 620px;
+  height: 620px;
+  margin: -310px 0 0 -310px;
+  border-color: color-mix(in srgb, var(--color-primary) 5%, transparent);
+  animation: orbitSpin 50s linear infinite;
+}
+
+/* Orbit dots */
+.orbit1::after, .orbit2::after, .orbit3::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  top: -2px;
+  left: 50%;
+  margin-left: -2px;
+}
+
+.orbit2::after { width: 3px; height: 3px; top: -1.5px; margin-left: -1.5px; opacity: 0.6; }
+.orbit3::after { width: 2px; height: 2px; top: -1px; margin-left: -1px; opacity: 0.3; }
+
+@keyframes orbitSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Particles ───────────────────────────────── */
 .particles {
   position: absolute;
   inset: 0;
@@ -106,113 +158,128 @@
 
 @keyframes particleFloat {
   0% { opacity: 0; transform: translateY(100vh) scale(0); }
-  10% { opacity: 0.6; }
-  90% { opacity: 0.6; }
+  10% { opacity: 0.5; }
+  90% { opacity: 0.5; }
   100% { opacity: 0; transform: translateY(-100px) scale(1); }
 }
 
-/* ── Story Content ────────────────────────────── */
+/* ── Story Content ───────────────────────────── */
 .storyContent {
   position: relative;
   z-index: 2;
-  max-width: 500px;
+  max-width: 480px;
 }
 
-.brandMark {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 96px;
-  animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* ── Brand Orb ───────────────────────────────── */
+.brandOrb {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 48px;
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   opacity: 0;
 }
 
-.brandIcon {
-  width: 48px;
-  height: 48px;
-  border: 1.5px solid var(--color-primary);
-  border-radius: 6px;
+.brandOrbInner {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  flex-shrink: 0;
+  z-index: 1;
 }
 
-.brandIcon::after {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  border: 1px solid var(--color-accent);
-  border-radius: 3px;
-}
-
-.brandIcon svg {
-  width: 20px;
-  height: 20px;
+.brandOrbInner svg {
+  width: 28px;
+  height: 28px;
   color: var(--color-primary);
+}
+
+.brandOrbRing {
+  position: absolute;
+  inset: -6px;
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 15%, transparent);
+  animation: orbPulse 3s ease-in-out infinite;
+}
+
+@keyframes orbPulse {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.06); opacity: 0.8; }
+}
+
+.brandText {
+  margin-bottom: 56px;
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 100ms forwards;
+  opacity: 0;
 }
 
 .brandName {
   font-family: var(--font-display, 'Playfair Display', serif);
-  font-size: 1.4rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: var(--color-fg);
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 .brandSub {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--color-muted);
-  letter-spacing: 0.2em;
+  letter-spacing: 0.25em;
   text-transform: uppercase;
-  margin-top: 2px;
-  opacity: 0.6;
+  margin-top: 4px;
+  opacity: 0.5;
 }
 
 .storyHeadline {
   font-family: var(--font-display, 'Playfair Display', serif);
-  font-size: clamp(2.2rem, 4vw, 3.2rem);
+  font-size: clamp(2rem, 3.5vw, 3rem);
   font-weight: 900;
-  line-height: 1.08;
+  line-height: 1.1;
   color: var(--color-fg);
   margin-bottom: 24px;
-  animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) 200ms forwards;
+  animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) 250ms forwards;
   opacity: 0;
 }
 
-.goldWord {
+.glowWord {
   color: var(--color-primary);
   position: relative;
+  text-shadow: 0 0 40px color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 
-.goldWord::after {
+.glowWord::after {
   content: '';
   position: absolute;
   bottom: 2px;
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--color-primary);
-  opacity: 0.3;
+  background: linear-gradient(90deg, var(--color-primary), transparent);
+  opacity: 0.4;
 }
 
 .storyText {
-  font-size: 1.05rem;
+  font-size: 1rem;
   color: var(--color-muted);
-  line-height: 1.7;
-  max-width: 400px;
+  line-height: 1.75;
+  max-width: 380px;
   animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) 400ms forwards;
   opacity: 0;
 }
 
-/* ── Ticker (bottom stats) ────────────────────── */
+/* ── Ticker ──────────────────────────────────── */
 .storyTicker {
   position: absolute;
   bottom: 40px;
   left: 64px;
   display: flex;
-  gap: 40px;
+  align-items: center;
+  gap: 24px;
   animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 1.2s forwards;
   opacity: 0;
   z-index: 2;
@@ -221,61 +288,101 @@
 .tickerItem {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .tickerValue {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   font-weight: 500;
   color: var(--color-fg);
 }
 
 .tickerLabel {
-  font-size: 0.65rem;
+  font-size: 0.55rem;
   color: var(--color-muted);
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
-.textUp {
-  color: var(--color-success);
+.tickerDot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--color-border);
+  margin-top: -12px;
 }
 
-/* ── Right Panel: The Form ────────────────────── */
+.textUp { color: var(--color-success); }
+
+/* ── RIGHT PANEL: Form ───────────────────────── */
 .vaultForm {
-  width: 480px;
+  width: 500px;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 64px;
+  padding: 48px 56px;
   background: var(--color-surface);
   border-left: 1px solid var(--color-border);
   position: relative;
   z-index: 2;
 }
 
+/* Animated gradient divider line */
 .vaultForm::before {
   content: '';
   position: absolute;
   top: 0;
   left: -1px;
-  width: 1px;
+  width: 2px;
   height: 100%;
-  background: linear-gradient(180deg, transparent 20%, var(--color-accent) 50%, transparent 80%);
+  background: linear-gradient(
+    180deg,
+    transparent 10%,
+    color-mix(in srgb, var(--color-primary) 60%, transparent) 30%,
+    var(--color-primary) 50%,
+    color-mix(in srgb, var(--color-primary) 60%, transparent) 70%,
+    transparent 90%
+  );
+  animation: dividerPulse 4s ease-in-out infinite;
 }
 
-/* ── Form Header ──────────────────────────────── */
+@keyframes dividerPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+/* ── Back link ───────────────────────────────── */
+.backLink {
+  position: absolute;
+  top: 24px;
+  left: 56px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  text-decoration: none;
+  transition: color 200ms;
+  opacity: 0.6;
+}
+
+.backLink:hover {
+  color: var(--color-primary);
+  opacity: 1;
+}
+
+/* ── Form Header ─────────────────────────────── */
 .formHeader {
-  margin-bottom: 40px;
-  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 600ms forwards;
+  margin-bottom: 32px;
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 500ms forwards;
   opacity: 0;
 }
 
 .goldLine {
-  width: 40px;
+  width: 48px;
   height: 2px;
   background: linear-gradient(90deg, var(--color-primary), transparent);
   margin-bottom: 16px;
@@ -291,54 +398,95 @@
 
 .formSubtitle {
   color: var(--color-muted);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  transition: all 300ms ease-out;
 }
 
-/* ── Role Selector ────────────────────────────── */
+/* ── Role Selector (2 cards) ─────────────────── */
 .roleSelector {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 32px;
-  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 700ms forwards;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 28px;
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 600ms forwards;
   opacity: 0;
 }
 
 .roleOption {
-  flex: 1;
-  padding: 16px 12px;
+  padding: 20px 16px;
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: 14px;
   background: transparent;
   cursor: pointer;
-  transition: all 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 300ms cubic-bezier(0.16, 1, 0.3, 1);
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.roleOption::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 6%, transparent), transparent);
+  opacity: 0;
+  transition: opacity 300ms;
 }
 
 .roleOption:hover {
-  border-color: var(--color-accent);
-  background: var(--glass);
+  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+  transform: translateY(-2px);
+}
+
+.roleOption:hover::before {
+  opacity: 1;
 }
 
 .roleOptionActive {
   border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
-  box-shadow: 0 0 30px color-mix(in srgb, var(--color-primary) 15%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-primary) 20%, transparent),
+    0 8px 32px color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
-.roleIcon {
-  font-size: 1.4rem;
-  display: block;
+.roleOptionActive::before {
+  opacity: 1;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent);
+}
+
+.roleIconWrap {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.roleIconWrap svg {
+  width: 28px;
+  height: 28px;
+  color: var(--color-muted);
+  transition: color 300ms;
+}
+
+.roleOptionActive .roleIconWrap svg {
+  color: var(--color-primary);
 }
 
 .roleName {
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: 0.85rem;
+  font-weight: 600;
   color: var(--color-fg);
-  display: block;
+  position: relative;
+  z-index: 1;
+  transition: color 300ms;
 }
 
 .roleOptionActive .roleName {
@@ -346,22 +494,24 @@
 }
 
 .roleDesc {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: var(--color-muted);
-  display: block;
   opacity: 0.6;
+  position: relative;
+  z-index: 1;
+  letter-spacing: 0.03em;
 }
 
-/* ── Form Fields ──────────────────────────────── */
+/* ── Form Fields ─────────────────────────────── */
 .formGroup {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   opacity: 0;
 }
 
 .formLabel {
   display: block;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 500;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -374,22 +524,22 @@
   padding: 14px 16px;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--color-fg);
   font-family: var(--font-body, 'DM Sans', sans-serif);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
   outline: none;
 }
 
 .formInput::placeholder {
   color: var(--color-muted);
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
 .formInput:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .formInput:disabled {
@@ -397,23 +547,51 @@
   cursor: not-allowed;
 }
 
-/* ── Submit Button ────────────────────────────── */
+/* ── Password wrap + eye toggle ──────────────── */
+.passwordWrap {
+  position: relative;
+}
+
+.passwordWrap .formInput {
+  padding-right: 48px;
+}
+
+.eyeToggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  padding: 4px;
+  transition: color 200ms;
+  line-height: 1;
+}
+
+.eyeToggle:hover {
+  color: var(--color-fg);
+}
+
+/* ── Submit Button ───────────────────────────── */
 .submitBtn {
   width: 100%;
   padding: 16px;
   background: var(--color-primary);
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--color-primary-fg);
   font-family: var(--font-body, 'DM Sans', sans-serif);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   cursor: pointer;
   transition: all 400ms cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
-  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1s forwards;
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 950ms forwards;
   opacity: 0;
   margin-top: 8px;
 }
@@ -435,32 +613,63 @@
   box-shadow: 0 8px 40px color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 
-.submitBtn:hover:not(:disabled)::before {
-  left: 100%;
+.submitBtn:hover:not(:disabled)::before { left: 100%; }
+
+.submitBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.submitBtnLoading { opacity: 0.7; }
+
+.submitText {
+  position: relative;
+  z-index: 1;
 }
 
-.submitBtn:disabled {
+/* ── Trust Strip ─────────────────────────────── */
+.trustStrip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+  animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.1s forwards;
+  opacity: 0;
+}
+
+.trustItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.6rem;
+  color: var(--color-muted);
+  letter-spacing: 0.04em;
   opacity: 0.5;
-  cursor: not-allowed;
 }
 
-.submitBtnLoading {
+.trustItem svg {
+  color: var(--color-success);
   opacity: 0.7;
 }
 
-/* ── Error Alert ──────────────────────────────── */
+.trustDot {
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--color-border);
+}
+
+/* ── Error Alert ─────────────────────────────── */
 .errorAlert {
   padding: 12px 16px;
-  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-danger) 25%, transparent);
-  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 20%, transparent);
+  border-radius: 8px;
   color: var(--color-danger);
-  font-size: 0.85rem;
-  margin-bottom: 24px;
+  font-size: 0.8rem;
+  margin-bottom: 20px;
   display: flex;
   align-items: center;
   gap: 8px;
-  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .errorDismiss {
@@ -475,15 +684,30 @@
   transition: opacity 200ms;
 }
 
-.errorDismiss:hover {
-  opacity: 1;
+.errorDismiss:hover { opacity: 1; }
+
+/* ── Forgot + Footer ─────────────────────────── */
+.forgotLink {
+  text-align: right;
+  margin-bottom: 8px;
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 900ms forwards;
+  opacity: 0;
 }
 
-/* ── Form Footer ──────────────────────────────── */
+.forgotLink a {
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  text-decoration: none;
+  transition: color 200ms;
+  opacity: 0.6;
+}
+
+.forgotLink a:hover { color: var(--color-primary); opacity: 1; }
+
 .formFooter {
-  margin-top: 40px;
+  margin-top: 28px;
   text-align: center;
-  animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.3s forwards;
+  animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.2s forwards;
   opacity: 0;
 }
 
@@ -498,32 +722,9 @@
   font-weight: 500;
 }
 
-.formFooterLink:hover .formFooterAccent {
-  text-decoration: underline;
-}
+.formFooterLink:hover .formFooterAccent { text-decoration: underline; }
 
-/* ── Forgot Password Link ────────────────────────── */
-.forgotLink {
-  text-align: right;
-  margin-bottom: 8px;
-  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 950ms forwards;
-  opacity: 0;
-}
-
-.forgotLink a {
-  color: var(--color-muted);
-  font-size: 0.75rem;
-  text-decoration: none;
-  transition: color 200ms;
-  opacity: 0.7;
-}
-
-.forgotLink a:hover {
-  color: var(--color-primary);
-  opacity: 1;
-}
-
-/* ── Session Limit Modal ──────────────────────── */
+/* ── Session Limit Modal ─────────────────────── */
 .modalOverlay {
   position: fixed;
   inset: 0;
@@ -539,8 +740,8 @@
 
 .modalCard {
   background: var(--color-surface);
-  border: 1px solid var(--color-accent);
-  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
   padding: 32px;
   max-width: 520px;
   width: 90%;
@@ -559,7 +760,7 @@
 }
 
 .modalSubtitle {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--color-muted);
   margin-bottom: 24px;
 }
@@ -568,21 +769,19 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 12px;
+  padding: 14px;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: 10px;
   margin-bottom: 8px;
   cursor: pointer;
   transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.sessionCard:hover {
-  background: var(--glass);
-}
+.sessionCard:hover { background: var(--glass); }
 
 .sessionCardSelected {
   border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
 .sessionCheckbox {
@@ -592,14 +791,9 @@
   height: 18px;
   cursor: pointer;
   flex-shrink: 0;
-  position: relative;
-  z-index: 2;
 }
 
-.sessionInfo {
-  flex: 1;
-  min-width: 0;
-}
+.sessionInfo { flex: 1; min-width: 0; }
 
 .sessionDevice {
   font-size: 0.85rem;
@@ -608,7 +802,7 @@
 }
 
 .sessionMeta {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--color-muted);
   margin-top: 2px;
 }
@@ -629,45 +823,39 @@
 .btnCancel {
   padding: 10px 20px;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   color: var(--color-fg);
   font-family: var(--font-body, 'DM Sans', sans-serif);
   font-size: 0.85rem;
   cursor: pointer;
-  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 200ms;
 }
 
-.btnCancel:hover {
-  border-color: var(--color-accent);
-}
+.btnCancel:hover { border-color: var(--color-primary); }
 
 .btnRevoke {
   padding: 10px 20px;
-  border: 1px solid var(--color-primary);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
-  color: var(--color-primary);
+  border: none;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: var(--color-primary-fg);
   font-family: var(--font-body, 'DM Sans', sans-serif);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 200ms;
 }
 
 .btnRevoke:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-primary) 20%, transparent);
-  box-shadow: 0 0 20px color-mix(in srgb, var(--color-primary) 15%, transparent);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 
-.btnRevoke:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+.btnRevoke:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* ── Animations ───────────────────────────────── */
+/* ── Animations ──────────────────────────────── */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(30px); }
+  from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -676,24 +864,22 @@
   to { opacity: 1; }
 }
 
-/* ── Stagger Delays ───────────────────────────── */
-.delay1 { animation-delay: 800ms; }
-.delay2 { animation-delay: 900ms; }
+/* ── Stagger Delays ──────────────────────────── */
+.delay1 { animation-delay: 700ms; }
+.delay2 { animation-delay: 800ms; }
 
-/* ── Responsive ───────────────────────────────── */
+/* ── Responsive ──────────────────────────────── */
 @media (max-width: 960px) {
-  .vault {
-    flex-direction: column;
-  }
+  .vault { flex-direction: column; }
 
   .vaultStory {
     padding: 40px 24px;
-    min-height: 50vh;
+    min-height: 45vh;
   }
 
-  .brandMark {
-    margin-bottom: 48px;
-  }
+  .orbits { display: none; }
+
+  .storyHeadline { font-size: 1.8rem; }
 
   .vaultForm {
     width: 100%;
@@ -703,26 +889,25 @@
     border-top: 1px solid var(--color-border);
   }
 
-  .vaultForm::before {
-    display: none;
-  }
+  .vaultForm::before { display: none; }
+
+  .backLink { left: 24px; top: 16px; }
 
   .storyTicker {
     position: relative;
     bottom: auto;
     left: auto;
-    margin-top: 40px;
+    margin-top: 32px;
     flex-wrap: wrap;
   }
 }
 
-/* ── Scrollbar ────────────────────────────────── */
-.modalCard::-webkit-scrollbar { width: 6px; }
+/* ── Scrollbar ───────────────────────────────── */
+.modalCard::-webkit-scrollbar { width: 5px; }
 .modalCard::-webkit-scrollbar-track { background: var(--color-bg); }
-.modalCard::-webkit-scrollbar-thumb { background: var(--color-surface); border-radius: 3px; }
-.modalCard::-webkit-scrollbar-thumb:hover { background: var(--color-accent); }
+.modalCard::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
 
-/* ── Selection ────────────────────────────────── */
+/* ── Selection ───────────────────────────────── */
 .vault ::selection {
   background: color-mix(in srgb, var(--color-primary) 25%, transparent);
   color: var(--color-fg);
