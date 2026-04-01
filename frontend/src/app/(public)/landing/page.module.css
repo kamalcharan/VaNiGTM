@@ -25,7 +25,7 @@
 
 /* ── Gold shimmer text ── */
 .goldText {
-  background: linear-gradient(135deg, var(--color-primary), #E8D48B, var(--color-primary));
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary), var(--color-primary));
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
