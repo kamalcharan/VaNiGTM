@@ -1,0 +1,39 @@
+/* [project]/src/components/vdf/icon/VdfIcon.module.css [app-client] (css) */
+.VdfIcon-module__-AmzqW__icon {
+  border-radius: 12px;
+  flex-shrink: 0;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  position: relative;
+}
+
+.VdfIcon-module__-AmzqW__icon:before {
+  content: "";
+  border-radius: inherit;
+  background: var(--icon-glow, var(--color-primary-glow));
+  filter: blur(12px);
+  opacity: .5;
+  position: absolute;
+  inset: -4px;
+}
+
+.VdfIcon-module__-AmzqW__sm {
+  width: 40px;
+  height: 40px;
+  font-size: 1.2rem;
+}
+
+.VdfIcon-module__-AmzqW__md {
+  width: 52px;
+  height: 52px;
+  font-size: 1.5rem;
+}
+
+.VdfIcon-module__-AmzqW__lg {
+  width: 64px;
+  height: 64px;
+  font-size: 1.8rem;
+}
+
+/*# sourceMappingURL=src_components_vdf_icon_VdfIcon_module_css_0w3-wzy._.single.css.map*/

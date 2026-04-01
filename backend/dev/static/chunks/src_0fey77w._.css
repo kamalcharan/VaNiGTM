@@ -1,0 +1,491 @@
+/* [project]/src/components/vdf/button/VdfButton.module.css [app-client] (css) */
+.VdfButton-module__-M0Teq__btn {
+  cursor: pointer;
+  font-family: var(--font-body, sans-serif);
+  letter-spacing: .04em;
+  border: none;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all .3s cubic-bezier(.16, 1, .3, 1);
+  display: inline-flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.VdfButton-module__-M0Teq__btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.VdfButton-module__-M0Teq__icon {
+  align-items: center;
+  display: inline-flex;
+}
+
+.VdfButton-module__-M0Teq__sm {
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-size: .82rem;
+}
+
+.VdfButton-module__-M0Teq__md {
+  border-radius: 6px;
+  padding: 14px 36px;
+  font-size: .9rem;
+}
+
+.VdfButton-module__-M0Teq__lg {
+  border-radius: 8px;
+  padding: 16px 44px;
+  font-size: 1rem;
+}
+
+.VdfButton-module__-M0Teq__fullWidth {
+  justify-content: center;
+  width: 100%;
+}
+
+.VdfButton-module__-M0Teq__primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  color: var(--color-primary-fg);
+}
+
+.VdfButton-module__-M0Teq__primary:before {
+  content: "";
+  background: linear-gradient(135deg, #0000, #ffffff26, #0000);
+  transition: transform .5s cubic-bezier(.16, 1, .3, 1);
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+}
+
+.VdfButton-module__-M0Teq__primary:hover:before {
+  transform: translateX(100%);
+}
+
+.VdfButton-module__-M0Teq__primary:hover {
+  box-shadow: 0 8px 32px var(--color-primary-glow);
+  transform: translateY(-2px);
+}
+
+.VdfButton-module__-M0Teq__ghost {
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  background: none;
+}
+
+.VdfButton-module__-M0Teq__ghost:hover {
+  border-color: var(--color-primary-dim);
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+
+.VdfButton-module__-M0Teq__outline {
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  background: none;
+  font-size: .82rem;
+  font-weight: 600;
+}
+
+.VdfButton-module__-M0Teq__outline:hover {
+  background: var(--color-primary);
+  color: var(--color-primary-fg);
+}
+
+/* [project]/src/components/vdf/badge/VdfBadge.module.css [app-client] (css) */
+.VdfBadge-module__ZzC9fG__badge {
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border-radius: 100px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 18px;
+  font-size: .78rem;
+  font-weight: 500;
+  line-height: 1;
+  display: inline-flex;
+}
+
+.VdfBadge-module__ZzC9fG__default {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+}
+
+.VdfBadge-module__ZzC9fG__gold {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  color: var(--color-primary-fg);
+  padding: 3px 12px;
+  font-size: .68rem;
+  font-weight: 700;
+}
+
+.VdfBadge-module__ZzC9fG__success {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+}
+
+.VdfBadge-module__ZzC9fG__info {
+  background: var(--color-primary-subtle);
+  border: 1px solid var(--color-primary-glow);
+  color: var(--color-accent);
+}
+
+.VdfBadge-module__ZzC9fG__dot {
+  background: var(--color-success);
+  border-radius: 50%;
+  width: 6px;
+  height: 6px;
+  animation: 2s ease-in-out infinite VdfBadge-module__ZzC9fG__pulseGlow;
+}
+
+@keyframes VdfBadge-module__ZzC9fG__pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px var(--color-primary-glow);
+  }
+
+  50% {
+    box-shadow: 0 0 20px var(--color-primary-dim);
+  }
+}
+
+/* [project]/src/components/vdf/card/VdfCard.module.css [app-client] (css) */
+.VdfCard-module__raMgwW__card {
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 20px;
+  padding: 32px;
+  transition: all .5s cubic-bezier(.16, 1, .3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.VdfCard-module__raMgwW__card:after {
+  content: "";
+  background: linear-gradient(90deg, var(--card-accent, var(--color-primary)), transparent);
+  opacity: 0;
+  height: 2px;
+  transition: opacity .4s;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.VdfCard-module__raMgwW__hoverLift:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 64px #0000004d;
+}
+
+.VdfCard-module__raMgwW__hoverLift:hover:after {
+  opacity: 1;
+}
+
+.VdfCard-module__raMgwW__glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+}
+
+.VdfCard-module__raMgwW__glass:hover {
+  border-color: var(--color-primary-glow);
+}
+
+.VdfCard-module__raMgwW__glassStrong {
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+}
+
+.VdfCard-module__raMgwW__featured {
+  background: var(--glass-strong);
+  border: 1px solid var(--color-primary-dim);
+}
+
+.VdfCard-module__raMgwW__featured:before {
+  content: "";
+  background: linear-gradient(180deg, var(--color-primary-dim), transparent 40%);
+  z-index: -1;
+  -webkit-mask-composite: xor;
+  border-radius: 20px;
+  padding: 1px;
+  position: absolute;
+  inset: -1px;
+  -webkit-mask-image: linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
+  mask-image: linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
+  -webkit-mask-position: 0 0, 0 0;
+  mask-position: 0 0, 0 0;
+  -webkit-mask-size: auto, auto;
+  mask-size: auto, auto;
+  -webkit-mask-repeat: repeat, repeat;
+  mask-repeat: repeat, repeat;
+  -webkit-mask-clip: content-box, border-box;
+  mask-clip: content-box, border-box;
+  -webkit-mask-origin: content-box, border-box;
+  mask-origin: content-box, border-box;
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  -webkit-mask-source-type: auto, auto;
+  mask-mode: match-source, match-source;
+}
+
+/* [project]/src/components/vdf/avatar/VdfAvatar.module.css [app-client] (css) */
+.VdfAvatar-module__fc_KZW__avatar {
+  background: linear-gradient(135deg, var(--color-primary-glow), var(--glass-strong));
+  border: 1px solid var(--color-primary-dim);
+  font-family: var(--font-display, serif);
+  color: var(--color-primary);
+  border-radius: 50%;
+  flex-shrink: 0;
+  justify-content: center;
+  align-items: center;
+  font-weight: 700;
+  display: flex;
+}
+
+.VdfAvatar-module__fc_KZW__sm {
+  width: 32px;
+  height: 32px;
+  font-size: .75rem;
+}
+
+.VdfAvatar-module__fc_KZW__md {
+  width: 44px;
+  height: 44px;
+  font-size: 1rem;
+}
+
+.VdfAvatar-module__fc_KZW__lg {
+  width: 56px;
+  height: 56px;
+  font-size: 1.25rem;
+}
+
+/* [project]/src/components/vdf/icon/VdfIcon.module.css [app-client] (css) */
+.VdfIcon-module__-AmzqW__icon {
+  border-radius: 12px;
+  flex-shrink: 0;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  position: relative;
+}
+
+.VdfIcon-module__-AmzqW__icon:before {
+  content: "";
+  border-radius: inherit;
+  background: var(--icon-glow, var(--color-primary-glow));
+  filter: blur(12px);
+  opacity: .5;
+  position: absolute;
+  inset: -4px;
+}
+
+.VdfIcon-module__-AmzqW__sm {
+  width: 40px;
+  height: 40px;
+  font-size: 1.2rem;
+}
+
+.VdfIcon-module__-AmzqW__md {
+  width: 52px;
+  height: 52px;
+  font-size: 1.5rem;
+}
+
+.VdfIcon-module__-AmzqW__lg {
+  width: 64px;
+  height: 64px;
+  font-size: 1.8rem;
+}
+
+/* [project]/src/components/vdf/gold-thread/VdfGoldThread.module.css [app-client] (css) */
+.VdfGoldThread-module__s7l4qq__thread {
+  background: linear-gradient(90deg, transparent, var(--color-primary-dim), transparent);
+  height: 1px;
+  margin: 0 auto;
+}
+
+/* [project]/src/components/vdf/noise-overlay/VdfNoiseOverlay.module.css [app-client] (css) */
+.VdfNoiseOverlay-module__9uuiEa__overlay {
+  pointer-events: none;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  position: fixed;
+  inset: 0;
+}
+
+/* [project]/src/components/vdf/atmosphere/VdfAtmosphere.module.css [app-client] (css) */
+.VdfAtmosphere-module__E-mmxW__atmosphere {
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(ellipse 80% 60% at 20% 10%, var(--color-primary-subtle) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, var(--color-primary-glow) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, var(--color-primary-subtle) 0%, transparent 40%);
+  position: fixed;
+  inset: 0;
+}
+
+/* [project]/src/components/vdf/particles/VdfParticles.module.css [app-client] (css) */
+.VdfParticles-module__t9zAHW__particles {
+  pointer-events: none;
+  z-index: 1;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+.VdfParticles-module__t9zAHW__particle {
+  background: var(--particle-color, var(--color-primary));
+  opacity: 0;
+  border-radius: 50%;
+  width: 2px;
+  height: 2px;
+  animation: 12s ease-in-out infinite VdfParticles-module__t9zAHW__particleDrift;
+  position: absolute;
+}
+
+.VdfParticles-module__t9zAHW__particle:first-child {
+  animation-duration: 14s;
+  animation-delay: 0s;
+  left: 15%;
+}
+
+.VdfParticles-module__t9zAHW__particle:nth-child(2) {
+  animation-duration: 11s;
+  animation-delay: 2s;
+  left: 35%;
+}
+
+.VdfParticles-module__t9zAHW__particle:nth-child(3) {
+  animation-duration: 13s;
+  animation-delay: 4s;
+  left: 55%;
+}
+
+.VdfParticles-module__t9zAHW__particle:nth-child(4) {
+  animation-duration: 10s;
+  animation-delay: 1s;
+  left: 75%;
+}
+
+.VdfParticles-module__t9zAHW__particle:nth-child(5) {
+  animation-duration: 15s;
+  animation-delay: 3s;
+  left: 90%;
+}
+
+.VdfParticles-module__t9zAHW__particle:nth-child(6) {
+  animation-duration: 12s;
+  animation-delay: 5s;
+  left: 25%;
+}
+
+.VdfParticles-module__t9zAHW__particle:nth-child(7) {
+  animation-duration: 9s;
+  animation-delay: 7s;
+  left: 65%;
+}
+
+.VdfParticles-module__t9zAHW__particle:nth-child(8) {
+  animation-duration: 16s;
+  animation-delay: 6s;
+  left: 45%;
+}
+
+@keyframes VdfParticles-module__t9zAHW__particleDrift {
+  0% {
+    opacity: 0;
+    transform: translateY(100vh)scale(0);
+  }
+
+  8% {
+    opacity: .5;
+  }
+
+  50% {
+    opacity: .3;
+  }
+
+  92% {
+    opacity: .5;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-80px)scale(1.2);
+  }
+}
+
+/* [project]/src/app/(public)/layout.module.css [app-client] (css) */
+.layout-module__jz1IVa__publicLayout {
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+  --space-5xl: 128px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --ease-in-out: cubic-bezier(.65, 0, .35, 1);
+  background: var(--color-bg);
+  min-height: 100vh;
+  color: var(--color-fg);
+  font-family: var(--font-body, "DM Sans", system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+.layout-module__jz1IVa__content {
+  z-index: 2;
+  position: relative;
+}
+
+.layout-module__jz1IVa__footer {
+  padding: var(--space-3xl) var(--space-2xl) var(--space-xl);
+  border-top: 1px solid var(--glass-border);
+}
+
+.layout-module__jz1IVa__footerContent {
+  justify-content: space-between;
+  align-items: start;
+  gap: var(--space-3xl);
+  flex-wrap: wrap;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+}
+
+.layout-module__jz1IVa__footerBottom {
+  max-width: 1200px;
+  margin: var(--space-2xl) auto 0;
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--glass-border);
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  display: flex;
+}
+
+@media (max-width: 768px) {
+  .layout-module__jz1IVa__footerContent {
+    gap: var(--space-xl);
+    flex-direction: column;
+  }
+}
+
+/*# sourceMappingURL=src_0fey77w._.css.map*/

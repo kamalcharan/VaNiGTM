@@ -1,0 +1,315 @@
+TC_ID,Section,Sub_Section,Test_Case_Title,Description,Pre_Conditions,Test_Steps,Expected_Result,Priority,Test_Type,Multi_Tenant
+CL_PAGE_001,Page Layout,Header,Display page title and icon,Verify page header displays correctly,User logged in,"1. Navigate to Customers page
+2. Check header section",Users icon in blue badge + 'Customers' title (28px) + subtitle with environment,P1,Functional,Yes
+CL_PAGE_002,Page Layout,Header,Environment indicator in subtitle,Verify environment shows in subtitle,User logged in,"1. Check subtitle text
+2. Verify environment",Shows 'Manage your customer database • Environment: live/test',P2,Functional,Yes
+CL_PAGE_003,Page Layout,Header,Add Customer button visible,Verify Add Customer button in header,User logged in,"1. Check right side of header
+2. Find Add Customer button",Button visible with + icon and 'Add Customer' text,P1,Functional,Yes
+CL_PAGE_004,Page Layout,Header,Refresh button visible,Verify Refresh button in header,User logged in,"1. Check right side of header
+2. Find Refresh button",Refresh icon button visible,P2,Functional,No
+CL_PAGE_005,Page Layout,Header,Add Customer navigation,Verify Add Customer navigates to form,On Customers page,"1. Click 'Add Customer' button
+2. Observe navigation",Navigates to /customers/new,P1,Functional,No
+CL_PAGE_006,Page Layout,Header,Refresh button reloads data,Verify refresh fetches new data,On Customers page,"1. Click Refresh button
+2. Observe list",Customer list reloads with fresh data,P1,Functional,Yes
+CL_PAGE_007,Page Layout,Container,Max width container,Verify container max width,On Customers page,"1. Check page container
+2. Observe width",Container max-width 1400px centered with 24px padding,P3,UI,No
+CL_PAGE_008,Page Layout,Responsive,Mobile layout,Verify layout on mobile viewport,Mobile viewport (<768px),"1. Resize to mobile
+2. Check layout",Elements stack appropriately cards full width,P2,UI,No
+CL_STAT_001,Statistics Cards,Layout,Display 4 statistics cards,Verify all 4 stat cards display,Customers exist,"1. Navigate to Customers page
+2. Check stats section above list",4 cards: Total Customers Family Accounts Bookmarked With Portfolio,P1,Functional,Yes
+CL_STAT_002,Statistics Cards,Total,Total Customers count,Verify total count is accurate,Customers exist,"1. Check Total Customers card
+2. Compare with API/database",Count matches total customers for tenant,P1,Functional,Yes
+CL_STAT_003,Statistics Cards,Total,Total displays large number format,Verify large number styling,Customers exist,"1. Check Total card number
+2. Verify styling",32px font fontWeight 700,P3,UI,No
+CL_STAT_004,Statistics Cards,Family,Family Accounts count,Verify family count,Family customers exist,"1. Check Family Accounts card
+2. Compare with database",Shows family_count with (X customers) in families,P1,Functional,Yes
+CL_STAT_005,Statistics Cards,Family,Family card clickable,Verify click filters to family,On Customers page,"1. Click Family Accounts card
+2. Check list filter",List filters to show only family accounts,P1,Functional,Yes
+CL_STAT_006,Statistics Cards,Family,Family card hover effect,Verify hover styling,On Customers page,"1. Hover over Family card
+2. Observe effect",Card lifts up (translateY -2px),P3,UI,No
+CL_STAT_007,Statistics Cards,Bookmarked,Bookmarked count,Verify bookmarked count,Bookmarked customers exist,"1. Check Bookmarked card
+2. Compare with database",Count matches bookmarked customers,P1,Functional,Yes
+CL_STAT_008,Statistics Cards,Bookmarked,Bookmarked card gold color,Verify gold styling,On Customers page,"1. Check Bookmarked card
+2. Verify color",Gold/Yellow (#FFD700) star icon and accent,P2,UI,No
+CL_STAT_009,Statistics Cards,Bookmarked,Bookmarked card clickable,Verify click filters to bookmarked,On Customers page,"1. Click Bookmarked card
+2. Check list filter",List filters to show only bookmarked customers,P1,Functional,Yes
+CL_STAT_010,Statistics Cards,Portfolio,With Portfolio count,Verify portfolio metrics count,Customers with portfolio exist,"1. Check With Portfolio card
+2. Compare with database",Count matches customers with portfolio data,P1,Functional,Yes
+CL_STAT_011,Statistics Cards,Loading,Loading state display,Verify loading indicator,Fresh page load,"1. Navigate to page
+2. Observe stats during load",Shows '...' while fetching stats,P2,UI,No
+CL_STAT_012,Statistics Cards,Refresh,Stats refresh on data change,Verify stats update,After customer action,"1. Add/delete customer
+2. Check stats",Stats automatically refresh,P2,Functional,Yes
+CL_SRCH_001,Search,Input,Search input visible,Verify search input displays,On Customers page,"1. Check filters section
+2. Find search input",Search input field visible at top of filters,P1,Functional,No
+CL_SRCH_002,Search,Minimum Chars,Less than 4 chars warning,Verify warning for short search,On Customers page,"1. Type 3 characters in search
+2. Observe indicator",Shows 'X more chars' warning in orange,P1,Functional,No
+CL_SRCH_003,Search,Minimum Chars,No API call under 4 chars,Verify API not called,On Customers page,"1. Type 3 characters
+2. Check network",No API call made,P1,Functional,No
+CL_SRCH_004,Search,Valid Search,4+ chars triggers search,Verify search executes,On Customers page,"1. Type 4+ characters
+2. Observe behavior",API call made after debounce shows 'searching...' indicator,P1,Functional,Yes
+CL_SRCH_005,Search,Debounce,500ms debounce delay,Verify debounce timing,On Customers page,"1. Type rapidly
+2. Observe API calls",Single API call after 500ms pause,P2,Functional,No
+CL_SRCH_006,Search,Results,Search filters results,Verify search results,Customers with matching name,"1. Search for existing customer name
+2. Check results",Only matching customers displayed,P1,Functional,Yes
+CL_SRCH_007,Search,Clear,Empty search clears filter,Verify clearing search,Active search filter,"1. Clear search input
+2. Observe list",Full customer list restored,P1,Functional,Yes
+CL_SRCH_008,Search,Page Reset,Search resets to page 1,Verify pagination reset,On page 2+,"1. Navigate to page 2
+2. Enter search term",Returns to page 1,P2,Functional,No
+CL_SRCH_009,Search,IWell Code,Search by IWell code,Verify IWell search works,Customer with IWell code,"1. Search by IWell code
+2. Check results",Customer with matching IWell code found,P1,Functional,Yes
+CL_SRCH_010,Search,Case Insensitive,Search case insensitive,Verify case handling,Customers exist,"1. Search 'JOHN'
+2. Search 'john'",Same results for both searches,P2,Functional,Yes
+CL_FILT_001,Filters,Toggle,Toggle filters button,Verify filter toggle works,On Customers page,"1. Find 'Show Filters' button
+2. Click toggle",Advanced filters section expands/collapses,P1,Functional,No
+CL_FILT_002,Filters,Toggle,Active filter count badge,Verify badge shows count,Active filters applied,"1. Apply some filters
+2. Collapse filters
+3. Check toggle button",Badge shows 'X filter(s) active',P2,UI,No
+CL_FILT_003,Filters,Sort,Sort By dropdown options,Verify sort options,On Customers page,"1. Click Sort By dropdown
+2. Check options",Options: Name Created Date Updated Date Birth Date Anniversary,P1,Functional,No
+CL_FILT_004,Filters,Sort,Sort By Name works,Verify name sorting,Customers exist,"1. Select 'Name' sort
+2. Check order",Customers sorted alphabetically by name,P1,Functional,Yes
+CL_FILT_005,Filters,Sort,Sort By Created Date works,Verify created date sorting,Customers with different dates,"1. Select 'Created Date'
+2. Check order",Customers sorted by creation date,P1,Functional,Yes
+CL_FILT_006,Filters,Sort,Sort order A-Z/Z-A toggle,Verify sort direction,On Customers page,"1. Toggle sort order
+2. Observe list",List reverses order,P1,Functional,Yes
+CL_FILT_007,Filters,Account Type,Account Type filter options,Verify account type options,On Customers page,"1. Check Account Type dropdown
+2. Verify options",Options: All Accounts Individual Family,P1,Functional,No
+CL_FILT_008,Filters,Account Type,Individual filter,Verify individual filter,Mixed account types,"1. Select 'Individual'
+2. Check results",Only customers without family_code shown,P1,Functional,Yes
+CL_FILT_009,Filters,Account Type,Family filter,Verify family filter,Family customers exist,"1. Select 'Family'
+2. Check results",Only customers with family_code shown,P1,Functional,Yes
+CL_FILT_010,Filters,Account Type,Immediate application,Verify instant filter,On Customers page,"1. Change account type
+2. Observe list",Filters immediately without Apply button,P1,Functional,Yes
+CL_FILT_011,Filters,Advanced,Active Status filter,Verify active status filter,Mixed active/inactive,"1. Expand advanced filters
+2. Select 'Active Only'
+3. Apply",Only active customers shown,P1,Functional,Yes
+CL_FILT_012,Filters,Advanced,Inactive Status filter,Verify inactive filter,Inactive customers exist,"1. Select 'Inactive Only'
+2. Apply",Only inactive customers shown,P1,Functional,Yes
+CL_FILT_013,Filters,Advanced,Survival Status Alive filter,Verify alive filter,Mixed survival status,"1. Select 'Alive'
+2. Apply",Only customers with survival_status=alive shown,P1,Functional,Yes
+CL_FILT_014,Filters,Advanced,Survival Status Deceased filter,Verify deceased filter,Deceased customers exist,"1. Select 'Deceased'
+2. Apply",Only customers with survival_status=deceased shown,P1,Functional,Yes
+CL_FILT_015,Filters,Advanced,Onboarding Status filter,Verify onboarding filter,Various onboarding statuses,"1. Select 'Completed'
+2. Apply",Only customers with onboarding_status=completed shown,P1,Functional,Yes
+CL_FILT_016,Filters,Advanced,With Address filter,Verify address filter,Customers with/without address,"1. Select 'With Address'
+2. Apply",Only customers with address shown,P1,Functional,Yes
+CL_FILT_017,Filters,Advanced,Without Address filter,Verify no address filter,Customers without address,"1. Select 'Without Address'
+2. Apply",Only customers without address shown,P1,Functional,Yes
+CL_FILT_018,Filters,Advanced,With PAN filter,Verify PAN filter,Customers with PAN,"1. Select 'With PAN'
+2. Apply",Only customers with PAN shown,P1,Functional,Yes
+CL_FILT_019,Filters,Advanced,Without PAN filter,Verify no PAN filter,Customers without PAN,"1. Select 'Without PAN'
+2. Apply",Only customers without PAN shown,P1,Functional,Yes
+CL_FILT_020,Filters,Advanced,Birthday Month filter,Verify birthday filter,Customers with birthdays,"1. Select 'January'
+2. Apply",Only customers with January birthdays shown,P1,Functional,Yes
+CL_FILT_021,Filters,Advanced,Anniversary Month filter,Verify anniversary filter,Customers with anniversaries,"1. Select 'December'
+2. Apply",Only customers with December anniversaries shown,P1,Functional,Yes
+CL_FILT_022,Filters,Bookmark,Bookmarked Only filter,Verify bookmarked filter,Bookmarked customers exist,"1. Select 'Bookmarked Only'
+2. Apply",Only bookmarked customers shown,P1,Functional,Yes
+CL_FILT_023,Filters,Bookmark,Not Bookmarked filter,Verify not bookmarked filter,Non-bookmarked customers exist,"1. Select 'Not Bookmarked'
+2. Apply",Only non-bookmarked customers shown,P1,Functional,Yes
+CL_FILT_024,Filters,Bookmark,Bookmark Reason filter,Verify reason filter,Customers with specific reason,"1. Select specific bookmark reason
+2. Apply",Only customers with that reason shown,P1,Functional,Yes
+CL_FILT_025,Filters,Apply,Apply Filters button,Verify apply button works,Filters changed but not applied,"1. Change advanced filters
+2. Click Apply Filters",Filters applied list updates,P1,Functional,Yes
+CL_FILT_026,Filters,Apply,Pending changes warning,Verify warning displays,Unapplied filter changes,"1. Change filters
+2. Don't click Apply
+3. Check warning",Shows 'You have unsaved filter changes',P2,UI,No
+CL_FILT_027,Filters,Apply,Apply button enabled only with changes,Verify button state,No pending changes,"1. Check Apply button with no changes
+2. Make changes
+3. Check again",Disabled when no changes enabled when pending,P2,Functional,No
+CL_FILT_028,Filters,Clear,Clear All button,Verify clear all works,Multiple filters active,"1. Apply multiple filters
+2. Click 'Clear All'",All filters cleared list shows all customers,P1,Functional,Yes
+CL_FILT_029,Filters,Clear,Clear All collapses filters,Verify collapse behavior,Filters expanded,"1. Expand filters apply some
+2. Click Clear All",Advanced filters panel collapses,P2,Functional,No
+CL_FILT_030,Filters,Combination,Multiple filters combined,Verify filter combination,Data matches multiple criteria,"1. Apply Active + With PAN + Bookmarked
+2. Check results",Only customers matching ALL criteria shown,P1,Functional,Yes
+CL_FILT_031,Filters,Summary,Filter summary when collapsed,Verify summary display,Filters active and collapsed,"1. Apply filters
+2. Collapse panel",Shows 'X filter(s) active' + View Filters button,P2,UI,No
+CL_CARD_001,Customer Card,Layout,Card displays all sections,Verify card structure,Customer exists,"1. Check customer card
+2. Verify sections",Left section (info) Right section (actions),P1,Functional,Yes
+CL_CARD_002,Customer Card,Name,Display name with prefix,Verify name format,Customer with prefix,"1. Check customer name
+2. Verify format",Shows 'Mr. John Doe' format (18px fontWeight 600),P1,Functional,Yes
+CL_CARD_003,Customer Card,Status,Active status badge green,Verify active badge,Active customer,"1. Find active customer
+2. Check badge",Green badge with 'Active' text,P1,UI,Yes
+CL_CARD_004,Customer Card,Status,Inactive status badge red,Verify inactive badge,Inactive customer,"1. Find inactive customer
+2. Check badge",Red badge with 'Inactive' text,P1,UI,Yes
+CL_CARD_005,Customer Card,Contact,Display primary contact,Verify contact info,Customer with contact,"1. Check contact row
+2. Verify display",Phone icon + primary contact (Mobile>WhatsApp>Email),P1,Functional,Yes
+CL_CARD_006,Customer Card,Contact,No contact info fallback,Verify fallback,Customer without channels,"1. Find customer without contacts
+2. Check display",Shows 'No contact info',P2,Functional,Yes
+CL_CARD_007,Customer Card,IWell,Display IWell code,Verify IWell display,Customer with IWell code,"1. Check customer card
+2. Find IWell code",Shows 'IW: ABC123' in monospace font,P2,Functional,Yes
+CL_CARD_008,Customer Card,IWell,Hide IWell when not exists,Verify IWell hidden,Customer without IWell,"1. Find customer without IWell
+2. Check card",IWell section not displayed,P2,Functional,Yes
+CL_CARD_009,Customer Card,Age,Display age from DOB,Verify age calculation,Customer with DOB,"1. Check customer card
+2. Find age",Shows 'X years' calculated from date_of_birth,P2,Functional,Yes
+CL_CARD_010,Customer Card,Family Badge,Display family badge,Verify family badge,Customer with family_code,"1. Find family customer
+2. Check badge",Shows 'Family Head: X' or 'Family: X' badge,P1,Functional,Yes
+CL_CARD_011,Customer Card,Family Badge,Family badge clickable,Verify family popover,Customer with family,"1. Click family badge
+2. Observe popover",FamilyMembersPopover opens showing members,P1,Functional,Yes
+CL_CARD_012,Customer Card,Family Badge,No family badge for individual,Verify badge hidden,Customer without family_code,"1. Find individual customer
+2. Check card",No family badge displayed,P2,Functional,Yes
+CL_CARD_013,Customer Card,Bookmark Badge,Bookmark indicator display,Verify bookmark badge,Bookmarked customer,"1. Find bookmarked customer
+2. Check badge",Gold background star icon + reason label,P1,Functional,Yes
+CL_CARD_014,Customer Card,Bookmark Badge,Bookmark reason tooltip,Verify tooltip,Bookmarked customer,"1. Hover bookmark badge
+2. Check tooltip",Tooltip shows 'Bookmarked: [full reason]',P2,UI,Yes
+CL_CARD_015,Customer Card,Bookmark Badge,No bookmark indicator for unbookmarked,Verify badge hidden,Non-bookmarked customer,"1. Find non-bookmarked customer
+2. Check card",No bookmark indicator displayed,P2,Functional,Yes
+CL_CARD_016,Customer Card,JTBD Badge,Display JTBD status badge,Verify JTBD badge,Customer with JTBDs,"1. Find customer with JTBDs
+2. Check badge",JTBDStatusBadge shows count next_alert critical_count,P2,Functional,Yes
+CL_CARD_017,Customer Card,Portfolio,Display portfolio value,Verify portfolio display,showFinancials=true customer has portfolio,"1. Check customer card
+2. Find portfolio section",Shows ₹X.XX portfolio value,P2,Functional,Yes
+CL_CARD_018,Customer Card,Portfolio,Display returns percentage,Verify returns display,Customer with returns data,"1. Check portfolio section
+2. Find returns",Shows +X.X% (green) or -X.X% (red),P2,Functional,Yes
+CL_CARD_019,Customer Card,Portfolio,Performance sparkline chart,Verify sparkline,Customer with performance data,"1. Check portfolio section
+2. Find chart",100x32px area chart displayed,P3,UI,Yes
+CL_CARD_020,Customer Card,Click,Card click navigates to view,Verify card navigation,Customer card visible,"1. Click on customer card (not buttons)
+2. Observe navigation",Navigates to /customers/{id},P1,Functional,No
+CL_ACT_001,Actions,View Button,View button visible,Verify view button,Customer card visible,"1. Check action buttons
+2. Find View",View button with eye icon visible,P1,Functional,No
+CL_ACT_002,Actions,View Button,View navigates to customer,Verify navigation,Customer card visible,"1. Click View button
+2. Observe navigation",Navigates to /customers/{id},P1,Functional,No
+CL_ACT_003,Actions,Edit Button,Edit button visible,Verify edit button,Customer card visible,"1. Check action buttons
+2. Find Edit",Edit button with pencil icon visible,P1,Functional,No
+CL_ACT_004,Actions,Edit Button,Edit navigates to form,Verify navigation,Customer card visible,"1. Click Edit button
+2. Observe navigation",Navigates to /customers/{id}/edit,P1,Functional,No
+CL_ACT_005,Actions,Delete Button,Delete button for active customer,Verify delete button,Active customer,"1. Find active customer
+2. Check action buttons",Delete button (red) visible,P1,Functional,No
+CL_ACT_006,Actions,Delete Button,Delete opens confirmation,Verify confirmation modal,Active customer,"1. Click Delete button
+2. Observe modal",Deactivation confirmation modal opens,P1,Functional,Yes
+CL_ACT_007,Actions,Delete Confirm,Confirm deactivation,Verify deactivation,Confirmation modal open,"1. Click Confirm in modal
+2. Observe result",Customer deactivated status changes toast shown,P1,Functional,Yes
+CL_ACT_008,Actions,Delete Cancel,Cancel deactivation,Verify cancel,Confirmation modal open,"1. Click Cancel
+2. Observe modal",Modal closes customer unchanged,P2,Functional,No
+CL_ACT_009,Actions,Activate Button,Activate button for inactive customer,Verify activate button,Inactive customer,"1. Find inactive customer
+2. Check action buttons",Activate button (green) visible instead of Delete,P1,Functional,No
+CL_ACT_010,Actions,Activate Button,Activate opens confirmation,Verify confirmation modal,Inactive customer,"1. Click Activate button
+2. Observe modal",Activation confirmation modal opens,P1,Functional,Yes
+CL_ACT_011,Actions,Activate Confirm,Confirm activation,Verify activation,Confirmation modal open,"1. Click Confirm
+2. Observe result",Customer activated status changes toast shown,P1,Functional,Yes
+CL_ACT_012,Actions,Button Propagation,Button clicks don't navigate,Verify click isolation,Customer card,"1. Click any action button
+2. Check navigation",Only button action executes card doesn't navigate,P2,Functional,No
+CL_BKM_001,Bookmark,Button,Bookmark button visible,Verify bookmark button,Customer card visible,"1. Check action buttons
+2. Find Bookmark",Bookmark button visible,P1,Functional,No
+CL_BKM_002,Bookmark,Button,Unfilled state for non-bookmarked,Verify unfilled state,Non-bookmarked customer,"1. Find non-bookmarked customer
+2. Check button",Shows 'Bookmark' text unfilled star,P1,UI,Yes
+CL_BKM_003,Bookmark,Button,Filled state for bookmarked,Verify filled state,Bookmarked customer,"1. Find bookmarked customer
+2. Check button",Shows 'Bookmarked' text gold filled star,P1,UI,Yes
+CL_BKM_004,Bookmark,Modal,Click opens bookmark modal,Verify modal opens,Non-bookmarked customer,"1. Click Bookmark button
+2. Observe modal",Bookmark reason modal opens,P1,Functional,Yes
+CL_BKM_005,Bookmark,Modal,Modal displays customer name,Verify personalization,Modal open,"1. Check modal content
+2. Find customer name",Shows 'Select a reason for bookmarking {name}',P2,UI,Yes
+CL_BKM_006,Bookmark,Modal,Reason options display,Verify reason grid,Modal open,"1. Check reason options
+2. Count options",2-column grid with all bookmark reasons from API,P1,Functional,Yes
+CL_BKM_007,Bookmark,Modal,Reason selection required,Verify required field,Modal open,"1. Try to submit without reason
+2. Check button",Bookmark button disabled until reason selected,P1,Functional,No
+CL_BKM_008,Bookmark,Modal,Reason selection highlights,Verify selection styling,Modal open,"1. Click a reason
+2. Observe styling",Selected reason has primary color border + background,P2,UI,No
+CL_BKM_009,Bookmark,Modal,Notes field optional,Verify notes field,Modal open,"1. Check notes field
+2. Verify optional",Notes textarea visible placeholder shown not required,P2,Functional,No
+CL_BKM_010,Bookmark,Modal,Submit with reason only,Verify submit works,Reason selected no notes,"1. Select reason
+2. Click Bookmark",Bookmark saved successfully,P1,Functional,Yes
+CL_BKM_011,Bookmark,Modal,Submit with reason and notes,Verify notes saved,Reason and notes entered,"1. Select reason
+2. Enter notes
+3. Click Bookmark",Bookmark saved with notes,P1,Functional,Yes
+CL_BKM_012,Bookmark,Modal,Loading state on submit,Verify loading,Form submitted,"1. Click Bookmark
+2. Observe button",Button shows 'Saving...' with loading,P2,UI,No
+CL_BKM_013,Bookmark,Modal,Success updates card,Verify card update,Bookmark saved,"1. Complete bookmark
+2. Check card",Card immediately shows bookmark indicator,P1,Functional,Yes
+CL_BKM_014,Bookmark,Modal,Cancel closes modal,Verify cancel,Modal open,"1. Click Cancel
+2. Observe modal",Modal closes no bookmark added,P2,Functional,No
+CL_BKM_015,Bookmark,Remove,Click removes bookmark,Verify removal,Bookmarked customer,"1. Click Bookmarked button on bookmarked customer
+2. Observe",Bookmark removed card updates,P1,Functional,Yes
+CL_BKM_016,Bookmark,Remove,Removal updates stats,Verify stats update,Bookmark removed,"1. Remove bookmark
+2. Check Bookmarked stat card",Count decrements,P2,Functional,Yes
+CL_BKM_017,Bookmark,Button State,Button disabled during mutation,Verify disabled state,During bookmark operation,"1. Click bookmark
+2. Observe button during save",Button opacity 0.5 not clickable,P2,UI,No
+CL_BULK_001,Bulk Actions,Select All,Select All checkbox visible,Verify checkbox,Customers exist enableBulkActions=true,"1. Check above customer list
+2. Find Select All",Checkbox with 'Select All (X)' label visible,P1,Functional,No
+CL_BULK_002,Bulk Actions,Select All,Select All checks all,Verify select all,Multiple customers,"1. Click Select All checkbox
+2. Observe cards",All customer checkboxes checked,P1,Functional,Yes
+CL_BULK_003,Bulk Actions,Select All,Deselect All unchecks all,Verify deselect,All selected,"1. Click Select All again
+2. Observe cards",All checkboxes unchecked,P1,Functional,Yes
+CL_BULK_004,Bulk Actions,Indeterminate,Partial selection shows indeterminate,Verify indeterminate,Some customers selected,"1. Select some customers
+2. Check Select All checkbox",Shows indeterminate state (square in center),P2,UI,No
+CL_BULK_005,Bulk Actions,Individual,Individual checkbox selection,Verify individual select,Customer card visible,"1. Click checkbox on single card
+2. Observe",Only that customer selected,P1,Functional,Yes
+CL_BULK_006,Bulk Actions,Counter,Selected count displays,Verify counter,Some customers selected,"1. Select multiple customers
+2. Check header area",Shows '{count} selected' badge,P1,Functional,No
+CL_BULK_007,Bulk Actions,Delete Button,Bulk delete button visible,Verify delete button,Customers selected,"1. Select customers
+2. Check header",Delete button with trash icon visible,P1,Functional,No
+CL_BULK_008,Bulk Actions,Delete Confirm,Bulk delete confirmation,Verify confirmation,Delete button clicked,"1. Click Delete (bulk)
+2. Observe dialog",Confirmation: 'Delete X selected customer(s)? Cannot be undone.',P1,Functional,Yes
+CL_BULK_009,Bulk Actions,Delete Execute,Bulk delete executes,Verify deletion,Confirmation accepted,"1. Confirm bulk delete
+2. Observe results",All selected customers deleted toast shows success,P1,Functional,Yes
+CL_BULK_010,Bulk Actions,Delete Partial,Partial failure handling,Verify partial failure,Some customers can't delete,"1. Select mix of deletable/non-deletable
+2. Execute delete",Toast: 'Some customers could not be deleted',P2,Functional,Yes
+CL_BULK_011,Bulk Actions,Clear on Filter,Selection clears on filter change,Verify clear,Customers selected,"1. Select customers
+2. Change filter",Selection cleared,P2,Functional,No
+CL_BULK_012,Bulk Actions,Clear on Page,Selection clears on pagination,Verify clear,Customers selected page 2+ exists,"1. Select customers
+2. Navigate to next page",Selection cleared,P2,Functional,No
+CL_PAGE_001,Pagination,Display,Pagination visible when needed,Verify pagination,More than 20 customers,"1. Check below customer list
+2. Verify pagination",Pagination controls visible,P1,Functional,Yes
+CL_PAGE_002,Pagination,Hidden,Pagination hidden for single page,Verify hidden,Less than 21 customers,"1. Check below list
+2. Look for pagination",No pagination controls shown,P2,Functional,Yes
+CL_PAGE_003,Pagination,Info,Showing X to Y of Z display,Verify info text,Multiple pages,"1. Check pagination info
+2. Verify format",'Showing 1 to 20 of 100 customers' format,P2,Functional,Yes
+CL_PAGE_004,Pagination,Next,Next button works,Verify next,On page 1 with more pages,"1. Click Next
+2. Observe list",Page 2 customers load,P1,Functional,Yes
+CL_PAGE_005,Pagination,Previous,Previous button works,Verify previous,On page 2+,"1. Click Previous
+2. Observe list",Previous page customers load,P1,Functional,Yes
+CL_PAGE_006,Pagination,Disabled,Next disabled on last page,Verify disabled,On last page,"1. Navigate to last page
+2. Check Next button",Next button disabled (grayed out),P2,Functional,Yes
+CL_PAGE_007,Pagination,Disabled,Previous disabled on first page,Verify disabled,On page 1,"1. Check Previous button
+2. Verify state",Previous button disabled,P2,Functional,Yes
+CL_PAGE_008,Pagination,Page Indicator,Page X of Y display,Verify indicator,Multiple pages,"1. Check page indicator
+2. Verify format",'Page 1 of 5' format displayed,P2,Functional,Yes
+CL_PAGE_009,Pagination,Page Size,20 customers per page,Verify page size,More than 20 customers,"1. Count customers on page
+2. Verify count",20 customers displayed per page,P2,Functional,Yes
+CL_LOAD_001,Loading,Skeleton,Skeleton loaders display,Verify skeletons,Fresh page load,"1. Navigate to page
+2. Observe during load",5 skeleton rows with pulse animation,P2,UI,No
+CL_LOAD_002,Loading,Skeleton,Skeleton row height,Verify skeleton size,During load,"1. Check skeleton rows
+2. Verify height",120px height secondary background,P3,UI,No
+CL_LOAD_003,Loading,Refresh Button,Refresh shows loading state,Verify button state,During refresh,"1. Click Refresh
+2. Observe button",Button opacity 0.6 during load,P2,UI,No
+CL_EMPTY_001,Empty State,No Customers,Empty state with no filters,Verify empty message,No customers no filters,"1. Access empty tenant
+2. Check display",Icon + 'No customers found' + 'Get started by creating first customer',P1,Functional,Yes
+CL_EMPTY_002,Empty State,Filtered Empty,Empty state with filters,Verify filter message,Filters active no matches,"1. Apply filters that match nothing
+2. Check display",Icon + 'No customers found' + 'Try adjusting your search filters',P1,Functional,Yes
+CL_EMPTY_003,Empty State,CTA Button,Add Customer CTA in empty state,Verify CTA,Empty state visible,"1. Check empty state
+2. Find button",'Add Your First Customer' button visible,P1,Functional,No
+CL_EMPTY_004,Empty State,CTA Navigation,CTA navigates to form,Verify navigation,Empty state CTA visible,"1. Click 'Add Your First Customer'
+2. Observe",Navigates to /customers/new,P1,Functional,No
+CL_ERR_001,Error State,API Error,Display error on API failure,Verify error display,API returns error,"1. Simulate API failure
+2. Check display",Red background error message displayed,P1,Functional,No
+CL_ERR_002,Error State,Retry,Retry button works,Verify retry,Error state visible,"1. Click Retry button
+2. Observe",API called again data loads if successful,P1,Functional,No
+CL_MODAL_001,Modals,Overlay,Modal overlay backdrop,Verify overlay,Any modal open,"1. Open any modal
+2. Check backdrop",Fixed overlay with backdrop blur,P2,UI,No
+CL_MODAL_002,Modals,Centering,Modal centered on screen,Verify centering,Any modal open,"1. Open modal
+2. Check position",Modal centered horizontally and vertically,P2,UI,No
+CL_MODAL_003,Modals,Close Outside,Click outside closes modal,Verify close,Any modal open,"1. Click outside modal
+2. Observe",Modal closes (if applicable),P2,Functional,No
+CL_MODAL_004,Modals,Escape Key,Escape key closes modal,Verify keyboard,Any modal open,"1. Press Escape key
+2. Observe modal",Modal closes,P2,Functional,No
+CL_MODAL_005,Modals,Z-Index,Modal above all content,Verify stacking,Any modal open,"1. Check modal z-index
+2. Verify layering",Modal at z-index 9999 above all content,P3,UI,No
+CL_THEME_001,Theme,Dark Mode,All elements adapt to dark mode,Verify dark mode,Dark mode enabled,"1. Toggle dark mode
+2. Check all elements",All colors backgrounds text adapt,P2,UI,No
+CL_THEME_002,Theme,Colors,Color coding consistent,Verify colors,Various elements,"1. Check all colored elements
+2. Verify consistency",Success=green Error=red Warning=orange Info=blue,P2,UI,No
+CL_INT_001,Integration,Create Customer,New customer appears in list,Verify integration,Customer created,"1. Create new customer
+2. Return to list",New customer visible in list stats updated,P1,Integration,Yes
+CL_INT_002,Integration,Edit Customer,Edited customer updates in list,Verify update,Customer edited,"1. Edit customer name
+2. Return to list",Updated name visible in list,P1,Integration,Yes
+CL_INT_003,Integration,Delete Customer,Deleted customer removed,Verify removal,Customer deleted,"1. Delete customer
+2. Check list",Customer no longer in list stats updated,P1,Integration,Yes
+CL_INT_004,Integration,Bookmark Stat,Bookmark updates stat card,Verify stat update,Bookmark added,"1. Bookmark customer
+2. Check Bookmarked card",Count increments,P2,Integration,Yes
+CL_INT_005,Integration,Family Stat,Family filter matches stat,Verify consistency,Family customers exist,"1. Check Family stat card count
+2. Apply Family filter
+3. Check pagination total",Counts match,P2,Integration,Yes
+CL_SEC_001,Security,Tenant Isolation,Only tenant customers visible,Verify isolation,Multiple tenants,"1. Login as tenant A
+2. Check customer list",Only tenant A customers visible,P1,Security,Yes
+CL_SEC_002,Security,Cross-tenant,Cannot access other tenant customer,Verify blocked,Customer in tenant B,"1. Try to navigate to tenant B customer ID
+2. Check result",Access denied or 404,P1,Security,Yes

@@ -1,0 +1,59 @@
+/* [project]/src/components/vdf/badge/VdfBadge.module.css [app-client] (css) */
+.VdfBadge-module__ZzC9fG__badge {
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border-radius: 100px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 18px;
+  font-size: .78rem;
+  font-weight: 500;
+  line-height: 1;
+  display: inline-flex;
+}
+
+.VdfBadge-module__ZzC9fG__default {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+}
+
+.VdfBadge-module__ZzC9fG__gold {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  color: var(--color-primary-fg);
+  padding: 3px 12px;
+  font-size: .68rem;
+  font-weight: 700;
+}
+
+.VdfBadge-module__ZzC9fG__success {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+}
+
+.VdfBadge-module__ZzC9fG__info {
+  background: var(--color-primary-subtle);
+  border: 1px solid var(--color-primary-glow);
+  color: var(--color-accent);
+}
+
+.VdfBadge-module__ZzC9fG__dot {
+  background: var(--color-success);
+  border-radius: 50%;
+  width: 6px;
+  height: 6px;
+  animation: 2s ease-in-out infinite VdfBadge-module__ZzC9fG__pulseGlow;
+}
+
+@keyframes VdfBadge-module__ZzC9fG__pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px var(--color-primary-glow);
+  }
+
+  50% {
+    box-shadow: 0 0 20px var(--color-primary-dim);
+  }
+}
+
+/*# sourceMappingURL=src_components_vdf_badge_VdfBadge_module_css_0w3-wzy._.single.css.map*/

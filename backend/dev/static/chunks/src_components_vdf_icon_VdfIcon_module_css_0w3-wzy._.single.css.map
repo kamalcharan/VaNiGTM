@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["turbopack:///[project]/src/components/vdf/icon/VdfIcon.module.css"],"sourcesContent":[".icon {\r\n  border-radius: 12px;\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  position: relative;\r\n  flex-shrink: 0;\r\n}\r\n\r\n.icon::before {\r\n  content: '';\r\n  position: absolute;\r\n  inset: -4px;\r\n  border-radius: inherit;\r\n  background: var(--icon-glow, var(--color-primary-glow));\r\n  filter: blur(12px);\r\n  opacity: 0.5;\r\n}\r\n\r\n.sm {\r\n  width: 40px;\r\n  height: 40px;\r\n  font-size: 1.2rem;\r\n}\r\n\r\n.md {\r\n  width: 52px;\r\n  height: 52px;\r\n  font-size: 1.5rem;\r\n}\r\n\r\n.lg {\r\n  width: 64px;\r\n  height: 64px;\r\n  font-size: 1.8rem;\r\n}\r\n"],"names":[],"mappings":"AAAA;;;;;;;;;AASA;;;;;;;;;;AAUA;;;;;;AAMA;;;;;;AAMA"}}]
+}
