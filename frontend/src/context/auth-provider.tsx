@@ -1,117 +1,39 @@
 'use client';
 
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
+import { useMe, type MeUser, type MeTenant } from '@/hooks';
+import { clearTokens, getAccessToken } from '@/lib/api-client';
 
 /* ── Types ───────────────────────────────────────────── */
 
-export interface ActiveSession {
-  session_id: string;
-  browser: string;
-  os: string;
-  device_type: string;
-  ip_address: string;
-  last_activity_at: string;
-}
-
-export interface SessionLimitResponse {
-  code: 'SESSION_LIMIT';
-  max_sessions: number;
-  active_sessions: ActiveSession[];
-}
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role_id: string;
-  avatar_url?: string;
-  preferences?: Record<string, unknown>;
-}
-
-interface Tenant {
-  id: string;
-  name: string;
-  theme_id: string;
-  logo_url?: string;
-  onboarding_complete: boolean;
-}
-
-type LoginResult = { success: true } | SessionLimitResponse;
-
 interface AuthContextValue {
-  user: User | null;
-  tenant: Tenant | null;
+  user: MeUser | null;
+  tenant: MeTenant | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<LoginResult>;
+  isLoading: boolean;
   logout: () => void;
-  revokeSessions: (ids: string[], email: string, password: string) => Promise<LoginResult>;
-  getAuthHeaders: () => Record<string, string>;
 }
 
 /* ── Context ─────────────────────────────────────────── */
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-/* ── Mock data for UI development ────────────────────── */
-
-const MOCK_USER: User = {
-  id: 'dev-user-001',
-  email: 'demo@kiprime.com',
-  name: 'Rajesh Kumar',
-  role_id: 'owner',
-};
-
-const MOCK_TENANT: Tenant = {
-  id: 'dev-tenant-001',
-  name: 'Kumar Wealth Advisors',
-  theme_id: 'vikuna-black',
-  onboarding_complete: false,
-};
-
-/* ── Provider ────────────────────────────────────────── */
+/* ── Provider (real auth via useMe + JWT) ────────────── */
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [tenant, setTenant] = useState<Tenant | null>(null);
+  const { data: me, isLoading } = useMe();
 
-  const isAuthenticated = !!user;
+  const user = me?.user || null;
+  const tenant = me?.tenant || null;
+  const isAuthenticated = !!getAccessToken() && !!user;
 
-  const login = useCallback(async (_email: string, _password: string): Promise<LoginResult> => {
-    // Mock: simulate login
-    setUser(MOCK_USER);
-    setTenant(MOCK_TENANT);
-    return { success: true };
-  }, []);
-
-  const logout = useCallback(() => {
-    setUser(null);
-    setTenant(null);
-  }, []);
-
-  const revokeSessions = useCallback(async (
-    _ids: string[],
-    _email: string,
-    _password: string,
-  ): Promise<LoginResult> => {
-    setUser(MOCK_USER);
-    setTenant(MOCK_TENANT);
-    return { success: true };
-  }, []);
-
-  const getAuthHeaders = useCallback((): Record<string, string> => {
-    return { 'X-Dev-Tenant-Id': MOCK_TENANT.id };
-  }, []);
+  function logout() {
+    clearTokens();
+    window.location.href = '/login';
+  }
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      tenant,
-      isAuthenticated,
-      login,
-      logout,
-      revokeSessions,
-      getAuthHeaders,
-    }}>
+    <AuthContext.Provider value={{ user, tenant, isAuthenticated, isLoading, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -6,6 +6,7 @@ import { buildRegistry } from './services/skill-registry';
 import { getPool, createTenantDb, closePool, healthCheck } from './db';
 import { createAuthRouter, createOnboardingRouter, createTenantRouter } from './auth/auth.routes';
 import { createEtlRouter } from './etl/etl.routes';
+import { verifyAccessToken } from './auth/token.service';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -68,15 +69,22 @@ async function main() {
     const { skillName, functionName } = req.params;
     const params = req.body.params || {};
 
-    // TODO: Replace with real JWT auth middleware
-    // For now: X-Dev-Tenant-Id header for development
-    const tenantId = req.headers['x-dev-tenant-id'] as string;
-    if (!tenantId) {
+    // JWT auth — extract tenant_id from token
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
       res.status(401).json({
-        error: {
-          code: 'MISSING_TENANT',
-          message: 'X-Dev-Tenant-Id header required (JWT auth not yet implemented)',
-        },
+        error: { code: 'UNAUTHORIZED', message: 'Valid token required' },
+      });
+      return;
+    }
+
+    let tenantId: string;
+    try {
+      const jwt = verifyAccessToken(authHeader.slice(7));
+      tenantId = jwt.tenant_id;
+    } catch {
+      res.status(401).json({
+        error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token' },
       });
       return;
     }

@@ -51,7 +51,7 @@ const upload = multer({
   },
 });
 
-/* ── Auth helper (JWT + dev fallback) ──────────────── */
+/* ── Auth helper (JWT) ─────────────────────────────── */
 
 interface AuthInfo {
   user_id: string;
@@ -59,22 +59,14 @@ interface AuthInfo {
 }
 
 function extractAuth(req: { headers: Record<string, any> }): AuthInfo | null {
-  // Try JWT first
-  const auth = req.headers.authorization;
-  if (auth?.startsWith('Bearer ')) {
-    try {
-      const jwt = verifyAccessToken(auth.slice(7));
-      return { user_id: auth.user_id, tenant_id: auth.tenant_id };
-    } catch { /* fall through to dev header */ }
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return null;
+  try {
+    const jwt = verifyAccessToken(header.slice(7));
+    return { user_id: jwt.user_id, tenant_id: jwt.tenant_id };
+  } catch {
+    return null;
   }
-
-  // Dev fallback: X-Dev-Tenant-Id header
-  const devTenant = req.headers['x-dev-tenant-id'] as string;
-  if (devTenant) {
-    return { user_id: 'dev-user', tenant_id: devTenant };
-  }
-
-  return null;
 }
 
 /* ── Router ────────────────────────────────────────── */
