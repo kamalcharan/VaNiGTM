@@ -43,7 +43,7 @@ export const TechAITheme: ThemeConfig = {
       brand: {
         primary: '#06d5cd',
         secondary: '#18aa99',
-        tertiary: '#9984bb6',
+        tertiary: '#984bb6',
         alternate: '#293d42',
       },
       utility: {
