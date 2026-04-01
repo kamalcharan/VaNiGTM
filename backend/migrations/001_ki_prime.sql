@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS ki_scheme_categories (
 -- -----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS ki_clients (
     id              SERIAL PRIMARY KEY,
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id       UUID NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
     name            TEXT NOT NULL,
     email           TEXT,
     phone           TEXT,
@@ -99,7 +99,7 @@ CREATE INDEX idx_ki_clients_name_search ON ki_clients USING gin(to_tsvector('eng
 -- -----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS ki_portfolios (
     id              SERIAL PRIMARY KEY,
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id       UUID NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
     client_id       INTEGER NOT NULL REFERENCES ki_clients(id) ON DELETE CASCADE,
     name            TEXT NOT NULL DEFAULT 'Default',
     portfolio_type  TEXT NOT NULL DEFAULT 'regular' CHECK (portfolio_type IN ('regular', 'direct', 'nps', 'other')),
@@ -115,7 +115,7 @@ CREATE INDEX idx_ki_portfolios_client ON ki_portfolios(tenant_id, client_id);
 -- -----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS ki_holdings (
     id              SERIAL PRIMARY KEY,
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id       UUID NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
     client_id       INTEGER NOT NULL REFERENCES ki_clients(id) ON DELETE CASCADE,
     portfolio_id    INTEGER NOT NULL REFERENCES ki_portfolios(id) ON DELETE CASCADE,
     scheme_code     TEXT NOT NULL REFERENCES ki_schemes(scheme_code),
@@ -141,7 +141,7 @@ CREATE INDEX idx_ki_holdings_scheme ON ki_holdings(scheme_code);
 -- -----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS ki_transactions (
     id              BIGSERIAL PRIMARY KEY,
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id       UUID NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
     client_id       INTEGER NOT NULL REFERENCES ki_clients(id) ON DELETE CASCADE,
     portfolio_id    INTEGER NOT NULL REFERENCES ki_portfolios(id) ON DELETE CASCADE,
     scheme_code     TEXT NOT NULL REFERENCES ki_schemes(scheme_code),
@@ -171,7 +171,7 @@ CREATE UNIQUE INDEX idx_ki_txn_dedup ON ki_transactions(tenant_id, client_id, sc
 
 CREATE TABLE IF NOT EXISTS ki_goals (
     id              SERIAL PRIMARY KEY,
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id       UUID NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
     client_id       INTEGER NOT NULL REFERENCES ki_clients(id) ON DELETE CASCADE,
     name            TEXT NOT NULL,
     goal_type       TEXT NOT NULL CHECK (goal_type IN ('retirement', 'education', 'house', 'wedding', 'emergency', 'vehicle', 'travel', 'custom')),
@@ -197,7 +197,7 @@ CREATE INDEX idx_ki_goals_client ON ki_goals(tenant_id, client_id);
 -- -----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS ki_goal_projections (
     id              BIGSERIAL PRIMARY KEY,
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id       UUID NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
     goal_id         INTEGER NOT NULL REFERENCES ki_goals(id) ON DELETE CASCADE,
     month_index     INTEGER NOT NULL,           -- Months from now (0, 1, 2, ...)
     projected_date  DATE NOT NULL,
@@ -216,7 +216,7 @@ CREATE INDEX idx_ki_projections_goal ON ki_goal_projections(goal_id);
 
 CREATE TABLE IF NOT EXISTS ki_alerts (
     id              SERIAL PRIMARY KEY,
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id       UUID NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
     client_id       INTEGER,                    -- NULL for tenant-level alerts
     alert_type      TEXT NOT NULL CHECK (alert_type IN (
         'rebalance_needed', 'sip_at_risk', 'goal_behind',
