@@ -56,11 +56,11 @@ function themeToCSS(theme: ThemeConfig, isDark: boolean): Record<string, string>
     '--color-surface-hover': isDark
       ? `${colors.utility.secondaryBackground}cc`
       : colors.utility.primaryBackground,
-    '--color-primary-fg': isDark ? colors.utility.primaryBackground : '#ffffff',
+    '--color-primary-fg': colors.utility.primaryBackground,
     '--color-primary-hover': colors.brand.primary + 'dd',
     // Text convenience aliases
     '--text-secondary': colors.utility.secondaryText,
-    '--text-muted': isDark ? 'rgba(240,236,226,0.35)' : 'rgba(26,26,31,0.4)',
+    '--text-muted': colors.utility.secondaryText,
     // Gold convenience aliases (backward compat with Atlas overlay)
     '--gold-dim': colors.surface.primaryDim,
     '--gold-glow': colors.surface.primaryGlow,
