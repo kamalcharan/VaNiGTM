@@ -66,11 +66,21 @@
   padding: 8px;
 }
 
-.settingsNav {
+.sectionNav {
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: 0 8px;
+}
+
+.sectionLabel {
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  padding: 4px 20px 2px;
+  opacity: 0.6;
 }
 
 .navItem {

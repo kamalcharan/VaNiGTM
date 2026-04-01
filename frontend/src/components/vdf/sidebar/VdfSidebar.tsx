@@ -24,7 +24,8 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
 
   const currentId = activeId || getActiveNavId(pathname);
   const mainItems = NAV_ITEMS.filter((item) => item.section === 'main');
-  const settingsItems = NAV_ITEMS.filter((item) => item.section === 'settings');
+  const dataItems = NAV_ITEMS.filter((item) => item.section === 'data');
+  const systemItems = NAV_ITEMS.filter((item) => item.section === 'system');
 
   const user = me?.user;
   const initials = user?.name
@@ -86,10 +87,33 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
         })}
       </nav>
 
-      {/* Separator + settings */}
+      {/* Data & Operations */}
       <div className={s.separator} />
-      <div className={s.settingsNav}>
-        {settingsItems.map((item) => {
+      {expanded && <div className={s.sectionLabel}>Data</div>}
+      <div className={s.sectionNav}>
+        {dataItems.map((item) => {
+          const active = currentId === item.id;
+          return (
+            <button
+              key={item.id}
+              className={`${s.navItem} ${active ? s.navItemActive : ''}`}
+              onClick={() => navigate(item)}
+              title={expanded ? undefined : item.label}
+              aria-label={item.label}
+            >
+              {active && <div className={s.activeBar} />}
+              <span className={s.navIcon}>{item.icon}</span>
+              {expanded && <span className={s.navLabel}>{item.label}</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* System */}
+      <div className={s.separator} />
+      {expanded && <div className={s.sectionLabel}>System</div>}
+      <div className={s.sectionNav}>
+        {systemItems.map((item) => {
           const active = currentId === item.id;
           return (
             <button

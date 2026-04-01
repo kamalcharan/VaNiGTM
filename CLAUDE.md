@@ -233,6 +233,8 @@ VDF is the single source of truth for all visual elements. Located in `component
 | market-skill | 5 | 5 | ✅ Done |
 | planning-skill | 5 | 5 | ✅ Done |
 | import-skill | 4 | 4 | ✅ Done |
+| etl-skill | 12 | 0 | ⬜ Spec only (import dashboard, cruise control, course correction) |
+| transaction-skill | 4 | 0 | ⬜ Spec only |
 | alert-skill | 5 | 0 | ⬜ Spec only |
 | report-skill | 4 | 0 | ⬜ Spec only |
 | comms-skill | 4 | 0 | ⬜ Spec only |
