@@ -3,10 +3,12 @@ import { ThemeConfig, ThemeColors } from './types';
 
 /**
  * ThemeScript — server component that injects:
- * 1. Inline <style> with default theme CSS variables (no-JS fallback, SSR paint)
- * 2. Blocking <script> that reads localStorage and swaps CSS variables before first paint
+ * 1. Inline <style> with default theme CSS variables (SSR fallback, immediate paint)
+ * 2. Inline <style> with form design tokens (structural, same across all themes)
  *
- * This eliminates FOUC (flash of unstyled content) on navigation and initial load.
+ * Theme switching from localStorage is handled by ThemeInitClient (client component)
+ * which runs in useEffect after hydration. The SSR fallback <style> ensures the
+ * default theme renders instantly with no layout shift.
  */
 
 function buildCSSVars(colors: ThemeColors, isDark: boolean, bg: string): string {
@@ -46,8 +48,7 @@ function buildCSSVars(colors: ThemeColors, isDark: boolean, bg: string): string 
   ].join(';');
 }
 
-function buildThemeMap(): string {
-  // Build a compact JSON map: { themeId: { light: "css-string", dark: "css-string" } }
+export function buildThemeMap(): Record<string, { light: string; dark: string }> {
   const map: Record<string, { light: string; dark: string }> = {};
   for (const t of themes) {
     map[t.id] = {
@@ -55,7 +56,7 @@ function buildThemeMap(): string {
       dark: buildCSSVars(t.darkMode.colors, true, t.darkMode.colors.utility.primaryBackground),
     };
   }
-  return JSON.stringify(map);
+  return map;
 }
 
 interface ThemeScriptProps {
@@ -71,13 +72,8 @@ export function ThemeScript({
   const isDark = defaultColorMode === 'dark';
   const fallbackColors = isDark ? fallbackTheme.darkMode.colors : fallbackTheme.colors;
   const fallbackCSS = buildCSSVars(fallbackColors, isDark, fallbackColors.utility.primaryBackground);
-  const themeMap = buildThemeMap();
-
-  // The blocking script that runs synchronously before paint
-  const script = `(function(){try{var m=${themeMap};var t=localStorage.getItem('pk-theme-id')||'${defaultThemeId}';var c=localStorage.getItem('pk-color-mode')||'${defaultColorMode}';var d=m[t];if(!d)d=m['${defaultThemeId}'];var v=c==='dark'?d.dark:d.light;document.documentElement.style.cssText+=';'+v;}catch(e){}})();`;
 
   // Form design tokens — structural, NOT theme-dependent
-  // Every form control in every page reads from these. Change here = change everywhere.
   const formTokens = [
     '--input-height:44px',
     '--input-padding:13px 16px',
@@ -105,16 +101,8 @@ export function ThemeScript({
     <>
       {/* Form design tokens — structural constants, same across all themes */}
       <style dangerouslySetInnerHTML={{ __html: `:root{${formTokens}}` }} />
-      {/* SSR fallback: default theme colors */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `:root{${fallbackCSS}}`,
-        }}
-      />
-      {/* Blocking theme init — React 19 only allows <script> with src attribute.
-          Using data: URI so React treats it as an external script (no warning)
-          while keeping the code inline without an extra network request. */}
-      <script src={`data:text/javascript,${encodeURIComponent(script)}`} />
+      {/* SSR fallback: default theme colors — renders immediately, no FOUC */}
+      <style dangerouslySetInnerHTML={{ __html: `:root{${fallbackCSS}}` }} />
     </>
   );
 }
