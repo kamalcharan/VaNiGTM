@@ -10,3 +10,27 @@
   flex: 1;
   overflow-y: auto;
 }
+
+.logoutBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: all 200ms;
+}
+
+.logoutBtn:hover {
+  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+.logoutBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

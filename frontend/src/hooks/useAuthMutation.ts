@@ -1,7 +1,7 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch, storeTokens, clearTokens, type ApiError } from '@/lib/api-client';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiFetch, storeTokens, clearTokens, getAccessToken, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { ME_QUERY_KEY } from './useMe';
 
@@ -49,6 +49,16 @@ interface SessionLimitResponse {
     max_sessions: number;
     active_sessions: ActiveSession[];
   };
+}
+
+export interface SessionInfo {
+  session_id: string;
+  device_type: string | null;
+  os: string | null;
+  browser: string | null;
+  ip_address: string | null;
+  last_activity_at: string;
+  created_at: string;
 }
 
 export interface RevokeSessionsPayload {
@@ -125,6 +135,35 @@ export function useRevokeSessions() {
     },
   });
 }
+
+/* ── Sessions List (query) ──────────────────────────── */
+
+export const SESSIONS_QUERY_KEY = ['auth', 'sessions'] as const;
+
+export function useSessions() {
+  return useQuery<{ sessions: SessionInfo[] }>({
+    queryKey: SESSIONS_QUERY_KEY,
+    queryFn: () => apiFetch<{ sessions: SessionInfo[] }>(API.auth.sessionsList),
+    enabled: !!getAccessToken(),
+    staleTime: 30_000,
+  });
+}
+
+/* ── Change Password ───────────────────────────────── */
+
+export interface ChangePasswordPayload {
+  current_password: string;
+  new_password: string;
+}
+
+export function useChangePassword() {
+  return useMutation<{ message: string }, ApiError, ChangePasswordPayload>({
+    mutationFn: (data) =>
+      apiFetch<{ message: string }>(API.auth.changePassword, { body: data }),
+  });
+}
+
+/* ── Sessions List ─────────────────────────────────── */
 
 /* ── Forgot Password ────────────────────────────────── */
 

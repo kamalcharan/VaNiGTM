@@ -1,23 +1,32 @@
 'use client';
 
-import { useState } from 'react';
-import { useShellConfig } from '@/lib/shell-config';
-import { useAuth } from '@/context/auth-provider';
+import { useState, useEffect } from 'react';
+import { useMe } from '@/hooks';
+import { apiFetch, type ApiError } from '@/lib/api-client';
+import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { InlineLoader } from '@/components/loader';
 import FormInput from '@/components/ui/form-input';
 import s from './settings-tabs.module.css';
 
 export default function ProfileTab() {
-  const { apiUrl } = useShellConfig();
-  const { user, getAuthHeaders } = useAuth();
+  const { data: me } = useMe();
   const { showToast } = useToast();
 
-  const [fullName, setFullName] = useState(user?.name || '');
+  const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [designation, setDesignation] = useState('');
   const [bio, setBio] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Populate from /me data
+  useEffect(() => {
+    if (me?.user) {
+      setFullName(me.user.name || '');
+      setDesignation(me.user.designation || '');
+      setPhone(me.user.mobile || '');
+    }
+  }, [me]);
 
   const initials = fullName
     .split(' ')
@@ -27,10 +36,12 @@ export default function ProfileTab() {
     .slice(0, 2);
 
   function handleCancel() {
-    setFullName(user?.name || '');
-    setPhone('');
-    setDesignation('');
-    setBio('');
+    if (me?.user) {
+      setFullName(me.user.name || '');
+      setDesignation(me.user.designation || '');
+      setPhone(me.user.mobile || '');
+      setBio('');
+    }
   }
 
   async function handleSave() {
@@ -40,23 +51,18 @@ export default function ProfileTab() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${apiUrl}/api/v1/auth/me`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({
-          name: fullName.trim(),
-          phone: phone || undefined,
+      await apiFetch(API.auth.preferences, {
+        body: {
+          profile_name: fullName.trim(),
+          mobile: phone || undefined,
           designation: designation || undefined,
           bio: bio || undefined,
-        }),
+        },
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error?.message || 'Failed to save');
-      }
       showToast({ message: 'Profile updated', type: 'success' });
     } catch (err) {
-      showToast({ message: err instanceof Error ? err.message : 'Save failed', type: 'error' });
+      const msg = (err as ApiError).message || 'Save failed';
+      showToast({ message: msg, type: 'error' });
     } finally {
       setLoading(false);
     }
