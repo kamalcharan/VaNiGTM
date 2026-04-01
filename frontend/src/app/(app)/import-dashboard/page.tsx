@@ -59,6 +59,7 @@ const IMPORT_TYPES: { id: ImportType; label: string; icon: string }[] = [
 ];
 
 const STATUS_MAP: Record<string, { color: string; label: string }> = {
+  // Session statuses
   completed: { color: 'success', label: 'Completed' },
   completed_with_errors: { color: 'warning', label: 'With Errors' },
   processing: { color: 'info', label: 'Processing' },
@@ -66,6 +67,10 @@ const STATUS_MAP: Record<string, { color: string; label: string }> = {
   pending: { color: 'muted', label: 'Pending' },
   failed: { color: 'danger', label: 'Failed' },
   cancelled: { color: 'muted', label: 'Cancelled' },
+  // Staging record statuses
+  success: { color: 'success', label: 'Success' },
+  duplicate: { color: 'info', label: 'Updated' },
+  skipped: { color: 'muted', label: 'Skipped' },
 };
 
 const RECORD_FILTERS = ['all', 'success', 'failed', 'duplicate', 'pending'] as const;
