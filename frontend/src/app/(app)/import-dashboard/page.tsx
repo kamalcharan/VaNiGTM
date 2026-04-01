@@ -217,6 +217,64 @@ export default function ImportDashboardPage() {
     return ['field1', 'field2', 'field3']; // Generic fallback
   }
 
+  /* ── VaNi Insights for selected session ───────────── */
+
+  function getSessionInsights(): { icon: string; text: string }[] {
+    if (!selectedSession) return [];
+    const ss = selectedSession;
+    const insights: { icon: string; text: string }[] = [];
+    const rate = successRate(ss);
+
+    // Overall health
+    if (rate === 100) {
+      insights.push({ icon: '\u{1F389}', text: 'Perfect import \u2014 every record processed successfully.' });
+    } else if (rate >= 95) {
+      insights.push({ icon: '\u2705', text: `${rate}% success rate \u2014 excellent data quality.` });
+    } else if (rate >= 80) {
+      insights.push({ icon: '\u{1F7E1}', text: `${rate}% success rate. ${ss.failed_records} records need attention.` });
+    } else if (rate > 0) {
+      insights.push({ icon: '\u26A0\uFE0F', text: `Only ${rate}% success rate. Review the failed records \u2014 there may be a systemic mapping issue.` });
+    }
+
+    // Duplicates insight
+    if (ss.duplicate_records > 0) {
+      const dupPct = Math.round((ss.duplicate_records / ss.total_records) * 100);
+      if (dupPct > 80) {
+        insights.push({ icon: '\u{1F504}', text: `${dupPct}% were updates to existing records. This looks like a refresh import rather than a first-time load.` });
+      } else if (dupPct > 0) {
+        insights.push({ icon: '\u{1F504}', text: `${ss.duplicate_records.toLocaleString()} existing records updated with latest data.` });
+      }
+    }
+
+    // New records
+    const newRecords = ss.successful_records - ss.duplicate_records;
+    if (newRecords > 0) {
+      insights.push({ icon: '\u2728', text: `${newRecords.toLocaleString()} new records added to the database.` });
+    }
+
+    // Failed records
+    if (ss.failed_records > 0) {
+      insights.push({ icon: '\u{1F527}', text: `${ss.failed_records} records failed. Click "Reprocess" after fixing source data, or filter by "Failed" to review individual errors.` });
+    }
+
+    // Timing
+    if (ss.processing_started_at && ss.processing_completed_at) {
+      const durationMs = new Date(ss.processing_completed_at).getTime() - new Date(ss.processing_started_at).getTime();
+      const seconds = (durationMs / 1000).toFixed(1);
+      const rowsPerSec = Math.round(ss.total_records / (durationMs / 1000));
+      insights.push({ icon: '\u26A1', text: `Processed ${ss.total_records.toLocaleString()} rows in ${seconds}s (${rowsPerSec.toLocaleString()} rows/sec) via PostgreSQL RPC.` });
+    }
+
+    // Staging age warning
+    const age = daysSince(ss.created_at);
+    const daysLeft = Math.max(0, 45 - age);
+    if (daysLeft <= 7 && daysLeft > 0) {
+      insights.push({ icon: '\u23F3', text: `Staging data expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}. Delete staging or reprocess failed records before it\u2019s auto-purged.` });
+    }
+
+    return insights;
+  }
+
   /* ── Render ──────────────────────────────────────── */
 
   return (
@@ -261,7 +319,14 @@ export default function ImportDashboardPage() {
             {loadingSessions ? (
               <div className={s.sessionsEmpty}>Loading...</div>
             ) : sessions.length === 0 ? (
-              <div className={s.sessionsEmpty}>No sessions found</div>
+              <div className={s.sessionsEmpty}>
+                <div>No sessions found</div>
+                <div className={s.sessionsHint}>
+                  {selectedType !== 'all'
+                    ? `No ${selectedType} imports yet. Click "+ New Import" to start.`
+                    : 'Import your first dataset to see it here.'}
+                </div>
+              </div>
             ) : (
               sessions.map((sess) => {
                 const rate = successRate(sess);
@@ -311,7 +376,13 @@ export default function ImportDashboardPage() {
             <div className={s.emptyDetail}>
               <div className={s.emptyIcon}>{'\u{1F4CA}'}</div>
               <h2 className={s.emptyTitle}>No Session Selected</h2>
-              <p className={s.emptyDesc}>Select an import type and choose a session from the sidebar to view details.</p>
+              <p className={s.emptyDesc}>Select an import type and choose a session from the sidebar to view detailed metrics, records, and VaNi insights.</p>
+              {sessions.length === 0 && (
+                <div className={s.vaniHint}>
+                  <span>{'\u2728'}</span>
+                  <span>No imports yet. Start with <strong>Scheme Master</strong> \u2014 it\u2019s the foundation for everything else (portfolios, NAV tracking, transactions).</span>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -363,6 +434,22 @@ export default function ImportDashboardPage() {
                   </span>
                 </div>
               </div>
+
+              {/* VaNi Insights */}
+              {getSessionInsights().length > 0 && (
+                <div className={s.insightsCard}>
+                  <div className={s.insightsHeader}>
+                    <span>{'\u2728'}</span>
+                    <span>VaNi Analysis</span>
+                  </div>
+                  {getSessionInsights().map((insight, i) => (
+                    <div key={i} className={s.insightRow}>
+                      <span className={s.insightIcon}>{insight.icon}</span>
+                      <span>{insight.text}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Filter bar */}
               <div className={s.filterBar}>
