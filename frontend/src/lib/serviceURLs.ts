@@ -199,6 +199,24 @@ export const API = {
       auth: true,
       description: 'Get import session status and progress',
     },
+    records: {
+      method: 'GET',
+      path: '/api/v1/etl/sessions/:id/records',
+      auth: true,
+      description: 'Get paginated staging records for a session',
+    },
+    reprocess: {
+      method: 'POST',
+      path: '/api/v1/etl/sessions/:id/reprocess',
+      auth: true,
+      description: 'Reprocess failed records in a session',
+    },
+    deleteStaging: {
+      method: 'DELETE',
+      path: '/api/v1/etl/sessions/:id/staging',
+      auth: true,
+      description: 'Delete staging data for a completed session',
+    },
   },
 
   /* ── Skills (generic) ─────────────────────────────── */

@@ -157,14 +157,26 @@ export function createEtlRouter(pool: Pool): Router {
       const auth = extractAuth(req);
       if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
+      const importType = req.query.type as string | undefined;
+      const params: any[] = [];
+      let where = '';
+
+      if (importType && importType !== 'all') {
+        params.push(importType);
+        where = `WHERE s.import_type = $1`;
+      }
+
       const result = await pool.query(
         `SELECT s.id, s.import_type, s.status, s.total_records, s.processed_records,
                 s.successful_records, s.failed_records, s.duplicate_records,
-                f.original_filename, s.created_at, s.processing_completed_at
+                f.original_filename, s.created_at, s.staging_completed_at,
+                s.processing_started_at, s.processing_completed_at
          FROM ki_import_sessions s
          LEFT JOIN ki_file_uploads f ON f.id = s.file_upload_id
+         ${where}
          ORDER BY s.created_at DESC
          LIMIT 50`,
+        params,
       );
 
       res.json({ sessions: result.rows });
@@ -356,6 +368,154 @@ export function createEtlRouter(pool: Pool): Router {
     } catch (err: any) {
       console.error('[ETL:status]', err);
       res.status(500).json({ error: { code: 'FETCH_FAILED', message: 'Failed to get status' } });
+    }
+  });
+
+  /* ── GET /sessions/:id/records — Paginated staging records ── */
+
+  router.get('/sessions/:id/records', async (req, res) => {
+    try {
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const sessionId = Number(req.params.id);
+      const status = req.query.status as string || 'all';
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
+      const offset = (page - 1) * limit;
+
+      // Build WHERE clause
+      const conditions = ['session_id = $1'];
+      const params: any[] = [sessionId];
+
+      if (status !== 'all') {
+        params.push(status);
+        conditions.push(`processing_status = $${params.length}`);
+      }
+
+      const where = conditions.join(' AND ');
+
+      // Count total
+      const countResult = await pool.query(
+        `SELECT COUNT(*) as total FROM ki_import_staging WHERE ${where}`,
+        params,
+      );
+      const total = Number((countResult.rows[0] as any).total);
+
+      // Fetch page
+      const result = await pool.query(
+        `SELECT id, row_number, processing_status, mapped_data, raw_data,
+                error_messages, warnings, created_record_id, processed_at
+         FROM ki_import_staging
+         WHERE ${where}
+         ORDER BY row_number
+         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limit, offset],
+      );
+
+      res.json({
+        records: result.rows,
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit),
+      });
+    } catch (err: any) {
+      console.error('[ETL:records]', err);
+      res.status(500).json({ error: { code: 'FETCH_FAILED', message: 'Failed to fetch records' } });
+    }
+  });
+
+  /* ── POST /sessions/:id/reprocess — Reprocess failed rows ── */
+
+  router.post('/sessions/:id/reprocess', async (req, res) => {
+    try {
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const sessionId = Number(req.params.id);
+
+      // Verify session
+      const sessResult = await pool.query('SELECT * FROM ki_import_sessions WHERE id = $1', [sessionId]);
+      if (sessResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }); return; }
+
+      // Reset failed rows to pending
+      const resetResult = await pool.query(
+        `UPDATE ki_import_staging
+         SET processing_status = 'pending', error_messages = NULL, processed_at = NULL
+         WHERE session_id = $1 AND processing_status = 'failed'
+         RETURNING id`,
+        [sessionId],
+      );
+      const resetCount = resetResult.rows.length;
+
+      if (resetCount === 0) {
+        res.json({ message: 'No failed records to reprocess', reprocessed: 0 });
+        return;
+      }
+
+      // Update session status back to staged for reprocessing
+      await pool.query(
+        `UPDATE ki_import_sessions SET status = 'staged', failed_records = 0 WHERE id = $1`,
+        [sessionId],
+      );
+
+      // Re-invoke RPC
+      const session = sessResult.rows[0] as any;
+      if (session.import_type === 'scheme') {
+        const rpcResult = await pool.query(
+          'SELECT * FROM process_scheme_import_with_timing($1, $2)',
+          [sessionId, 30000],
+        );
+        const result = rpcResult.rows[0] as any;
+        res.json({
+          message: `Reprocessed ${resetCount} records`,
+          reprocessed: resetCount,
+          successful: result.success_count,
+          failed: result.failed_count,
+          duplicate: result.duplicate_count,
+        });
+      } else {
+        res.status(400).json({ error: { code: 'UNSUPPORTED', message: `Reprocess not yet supported for ${session.import_type}` } });
+      }
+    } catch (err: any) {
+      console.error('[ETL:reprocess]', err);
+      res.status(500).json({ error: { code: 'REPROCESS_FAILED', message: err.message || 'Reprocess failed' } });
+    }
+  });
+
+  /* ── DELETE /sessions/:id/staging — Delete staging data ── */
+
+  router.delete('/sessions/:id/staging', async (req, res) => {
+    try {
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const sessionId = Number(req.params.id);
+
+      // Verify session exists and is not processing
+      const sessResult = await pool.query('SELECT status FROM ki_import_sessions WHERE id = $1', [sessionId]);
+      if (sessResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }); return; }
+
+      const status = (sessResult.rows[0] as any).status;
+      if (status === 'processing' || status === 'pending') {
+        res.status(400).json({ error: { code: 'INVALID_STATUS', message: 'Cannot delete staging for a session that is still processing' } });
+        return;
+      }
+
+      // Delete staging rows (keep session record for history)
+      const deleteResult = await pool.query(
+        'DELETE FROM ki_import_staging WHERE session_id = $1',
+        [sessionId],
+      );
+
+      res.json({
+        message: 'Staging data deleted',
+        deleted_records: deleteResult.rowCount,
+      });
+    } catch (err: any) {
+      console.error('[ETL:delete-staging]', err);
+      res.status(500).json({ error: { code: 'DELETE_FAILED', message: 'Failed to delete staging data' } });
     }
   });
 
