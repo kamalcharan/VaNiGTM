@@ -64,6 +64,9 @@
   flex-direction: column;
   gap: 2px;
   padding: 8px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .sectionNav {
@@ -136,6 +139,12 @@
   font-weight: 500;
 }
 
+/* ── Nav scrollbar ──────────────────────────────────── */
+.nav::-webkit-scrollbar { width: 3px; }
+.nav::-webkit-scrollbar-track { background: transparent; }
+.nav::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+.collapsed .nav::-webkit-scrollbar { width: 0; }
+
 /* ── Separator ──────────────────────────────────────── */
 .separator {
   height: 1px;
@@ -145,7 +154,7 @@
 }
 
 /* ── Spacer ─────────────────────────────────────────── */
-.spacer { flex: 1; }
+.spacer { flex: 0; }
 
 /* ── Environment Badge ──────────────────────────────── */
 .envBadge {
