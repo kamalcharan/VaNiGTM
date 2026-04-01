@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useShellConfig } from '@/lib/shell-config';
-import { useAuth } from '@/context/auth-provider';
+import { apiFetch, clearTokens, type ApiError } from '@/lib/api-client';
+import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { InlineLoader } from '@/components/loader';
 import FormInput from '@/components/ui/form-input';
@@ -10,8 +10,6 @@ import PasswordStrength from '@/components/ui/password-strength';
 import s from './settings-tabs.module.css';
 
 export default function SecurityTab() {
-  const { apiUrl } = useShellConfig();
-  const { getAuthHeaders } = useAuth();
   const { showToast } = useToast();
 
   const [currentPw, setCurrentPw] = useState('');
@@ -22,6 +20,7 @@ export default function SecurityTab() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [signingOutAll, setSigningOutAll] = useState(false);
 
   function EyeToggle({ visible, onToggle }: { visible: boolean; onToggle: () => void }) {
     return (
@@ -45,20 +44,14 @@ export default function SecurityTab() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${apiUrl}/api/v1/auth/change-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ current_password: currentPw, new_password: newPw }),
+      await apiFetch(API.auth.changePassword, {
+        body: { current_password: currentPw, new_password: newPw },
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error?.message || 'Failed to change password');
-      }
       showToast({ message: 'Password updated', type: 'success' });
       setCurrentPw(''); setNewPw(''); setConfirmPw('');
       setErrors({});
     } catch (err) {
-      showToast({ message: err instanceof Error ? err.message : 'Update failed', type: 'error' });
+      showToast({ message: (err as ApiError).message || 'Update failed', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -128,16 +121,40 @@ export default function SecurityTab() {
         <div className={s.dangerItem}>
           <div>
             <div className={s.dangerItemText}>Sign out of all devices</div>
-            <div className={s.dangerItemHint}>Revokes all active sessions except this one</div>
+            <div className={s.dangerItemHint}>Revokes all active sessions — you will need to sign in again</div>
           </div>
-          <button className={s.btnDanger}>Sign Out All</button>
+          <button
+            className={s.btnDanger}
+            disabled={signingOutAll}
+            onClick={async () => {
+              setSigningOutAll(true);
+              try {
+                // Fetch all sessions, then revoke them all
+                const sessRes = await apiFetch<{ sessions: { session_id: string }[] }>(API.auth.sessionsList);
+                const ids = (sessRes.sessions || []).map((sess) => sess.session_id);
+                if (ids.length > 0) {
+                  await apiFetch(API.auth.sessionsRevoke, { body: { session_ids: ids } });
+                }
+                clearTokens();
+                showToast({ message: 'All sessions revoked', type: 'success' });
+                window.location.href = '/login';
+              } catch {
+                showToast({ message: 'Failed to revoke sessions', type: 'error' });
+                setSigningOutAll(false);
+              }
+            }}
+          >
+            {signingOutAll ? 'Signing out...' : 'Sign Out All'}
+          </button>
         </div>
         <div className={s.dangerItem}>
           <div>
             <div className={s.dangerItemText}>Delete account</div>
             <div className={s.dangerItemHint}>Permanently remove your account and all data</div>
           </div>
-          <button className={s.btnDanger}>Delete Account</button>
+          <button className={s.btnDanger} disabled title="Contact support to delete your account">
+            Delete Account
+          </button>
         </div>
       </div>
     </>

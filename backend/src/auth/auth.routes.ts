@@ -932,6 +932,34 @@ const TENANT_PROFILE_FIELDS = [
 export function createTenantRouter(pool: Pool): Router {
   const router = Router();
 
+  /* ── GET /api/v1/tenant/profile ───────────────────── */
+
+  router.get('/profile', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+
+      const result = await pool.query(
+        `SELECT tenant_id, name, short_name, display_name, type, description,
+                logo_url, brand_color, theme_id, tagline, email, phone, website,
+                address_line1, address_line2, city, state, country, postal_code,
+                gstin, pan, industry, arn, updated_at
+         FROM vn_tenant_profiles WHERE tenant_id = $1`,
+        [jwt.tenant_id],
+      );
+
+      res.json({ profile: result.rows[0] || {} });
+    } catch (err: any) {
+      console.error('[Tenant:profile:get]', err);
+      res.status(500).json({
+        error: { code: 'FETCH_FAILED', message: 'Failed to fetch tenant profile' },
+      });
+    }
+  });
+
   /* ── PATCH /api/v1/tenant/profile ──────────────────── */
 
   router.patch('/profile', async (req, res) => {

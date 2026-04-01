@@ -1,22 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useShellConfig } from '@/lib/shell-config';
-import { useAuth } from '@/context/auth-provider';
+import { useSessions } from '@/hooks';
+import { apiFetch, type ApiError } from '@/lib/api-client';
+import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { FullPageLoader } from '@/components/loader';
+import { useState } from 'react';
 import s from './settings-tabs.module.css';
-
-interface Session {
-  session_id: string;
-  device_type: string | null;
-  os: string | null;
-  browser: string | null;
-  ip_address: string | null;
-  last_activity_at: string;
-  created_at: string;
-  is_current?: boolean;
-}
 
 function deviceIcon(type: string | null): string {
   if (type === 'mobile') return '\uD83D\uDCF1';
@@ -35,52 +25,22 @@ function timeAgo(iso: string): string {
 }
 
 export default function SessionsTab() {
-  const { apiUrl } = useShellConfig();
-  const { getAuthHeaders } = useAuth();
+  const { data, isLoading, refetch } = useSessions();
   const { showToast } = useToast();
-
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [loadingSessions, setLoadingSessions] = useState(true);
   const [revokingIds, setRevokingIds] = useState<Set<string>>(new Set());
 
-  const fetchSessions = useCallback(async () => {
-    try {
-      const res = await fetch(`${apiUrl}/api/v1/auth/sessions`, {
-        headers: { ...getAuthHeaders() },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSessions(data.sessions || data || []);
-      } else {
-        setSessions([]);
-      }
-    } catch {
-      setSessions([]);
-    } finally {
-      setLoadingSessions(false);
-    }
-  }, [apiUrl, getAuthHeaders]);
-
-  useEffect(() => {
-    fetchSessions();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const sessions = data?.sessions || [];
 
   async function revokeSession(sessionId: string) {
     setRevokingIds((prev) => new Set(prev).add(sessionId));
     try {
-      const res = await fetch(`${apiUrl}/api/v1/auth/sessions/revoke`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ session_ids: [sessionId] }),
+      await apiFetch(API.auth.sessionsRevoke, {
+        body: { session_ids: [sessionId] },
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error?.message || 'Failed to revoke session');
-      }
-      setSessions((prev) => prev.filter((sess) => sess.session_id !== sessionId));
       showToast({ message: 'Session revoked', type: 'success' });
+      refetch();
     } catch (err) {
-      showToast({ message: err instanceof Error ? err.message : 'Revoke failed', type: 'error' });
+      showToast({ message: (err as ApiError).message || 'Revoke failed', type: 'error' });
     } finally {
       setRevokingIds((prev) => {
         const next = new Set(prev);
@@ -90,7 +50,7 @@ export default function SessionsTab() {
     }
   }
 
-  if (loadingSessions) {
+  if (isLoading) {
     return <FullPageLoader overlay={false} message="Loading sessions..." />;
   }
 
@@ -99,9 +59,7 @@ export default function SessionsTab() {
       <div className={s.card}>
         <div className={s.cardTitle}>Active Sessions</div>
         <div className={s.cardDesc}>Devices currently signed in to your account</div>
-        <div className={s.placeholder}>
-          Session management coming soon. Check back later.
-        </div>
+        <div className={s.placeholder}>No active sessions found.</div>
       </div>
     );
   }
@@ -112,10 +70,7 @@ export default function SessionsTab() {
       <div className={s.cardDesc}>Devices currently signed in to your account</div>
 
       {sessions.map((sess) => (
-        <div
-          key={sess.session_id}
-          className={`${s.sessionCard} ${sess.is_current ? s.sessionCurrent : ''}`}
-        >
+        <div key={sess.session_id} className={s.sessionCard}>
           <div className={s.sessionIcon}>{deviceIcon(sess.device_type)}</div>
           <div className={s.sessionInfo}>
             <div className={s.sessionDevice}>
@@ -126,17 +81,13 @@ export default function SessionsTab() {
               <span>{timeAgo(sess.last_activity_at)}</span>
             </div>
           </div>
-          {sess.is_current ? (
-            <span className={s.sessionBadge}>This device</span>
-          ) : (
-            <button
-              className={s.sessionRevoke}
-              onClick={() => revokeSession(sess.session_id)}
-              disabled={revokingIds.has(sess.session_id)}
-            >
-              {revokingIds.has(sess.session_id) ? 'Revoking...' : 'Revoke'}
-            </button>
-          )}
+          <button
+            className={s.sessionRevoke}
+            onClick={() => revokeSession(sess.session_id)}
+            disabled={revokingIds.has(sess.session_id)}
+          >
+            {revokingIds.has(sess.session_id) ? 'Revoking...' : 'Revoke'}
+          </button>
         </div>
       ))}
     </div>

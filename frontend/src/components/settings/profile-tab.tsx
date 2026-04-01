@@ -6,56 +6,97 @@ import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { InlineLoader } from '@/components/loader';
+import { VdfMobileInput, VdfRichText } from '@/components/vdf';
 import FormInput from '@/components/ui/form-input';
+import { validateMobile, getCountryByCode } from '@/constants/countries';
 import s from './settings-tabs.module.css';
+
+const DESIGNATIONS = [
+  { value: 'mfd', label: 'Mutual Fund Distributor (MFD)' },
+  { value: 'ria', label: 'Registered Investment Advisor (RIA)' },
+  { value: 'ifa', label: 'Insurance Financial Advisor (IFA)' },
+  { value: 'cfp', label: 'Certified Financial Planner (CFP)' },
+  { value: 'wm', label: 'Wealth Manager' },
+  { value: 'other', label: 'Other' },
+];
 
 export default function ProfileTab() {
   const { data: me } = useMe();
   const { showToast } = useToast();
 
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [designation, setDesignation] = useState('');
+  const [countryCode, setCountryCode] = useState('in');
+  const [mobile, setMobile] = useState('');
   const [bio, setBio] = useState('');
   const [loading, setLoading] = useState(false);
 
   // Populate from /me data
   useEffect(() => {
     if (me?.user) {
-      setFullName(me.user.name || '');
-      setDesignation(me.user.designation || '');
-      setPhone(me.user.mobile || '');
+      const u = me.user;
+      if (u.first_name || u.last_name) {
+        setFirstName(u.first_name || '');
+        setLastName(u.last_name || '');
+      } else if (u.name) {
+        const parts = u.name.split(' ');
+        setFirstName(parts[0] || '');
+        setLastName(parts.slice(1).join(' ') || '');
+      }
+      setDesignation(u.designation || '');
+      setMobile(u.mobile || '');
+      if (u.preferences && typeof u.preferences === 'object') {
+        const cc = (u as any).country_code;
+        if (cc) setCountryCode(cc);
+      }
     }
   }, [me]);
 
-  const initials = fullName
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  const initials = `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase() || '?';
 
   function handleCancel() {
     if (me?.user) {
-      setFullName(me.user.name || '');
-      setDesignation(me.user.designation || '');
-      setPhone(me.user.mobile || '');
+      const u = me.user;
+      if (u.first_name || u.last_name) {
+        setFirstName(u.first_name || '');
+        setLastName(u.last_name || '');
+      } else if (u.name) {
+        const parts = u.name.split(' ');
+        setFirstName(parts[0] || '');
+        setLastName(parts.slice(1).join(' ') || '');
+      }
+      setDesignation(u.designation || '');
+      setMobile(u.mobile || '');
       setBio('');
     }
   }
 
   async function handleSave() {
-    if (!fullName || fullName.trim().length < 2) {
+    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+    if (fullName.length < 2) {
       showToast({ message: 'Name must be at least 2 characters', type: 'error' });
       return;
     }
+
+    if (mobile) {
+      const country = getCountryByCode(countryCode);
+      if (country && !validateMobile(mobile, countryCode)) {
+        showToast({ message: `Invalid mobile number for ${country.name}`, type: 'error' });
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       await apiFetch(API.auth.preferences, {
         body: {
-          profile_name: fullName.trim(),
-          mobile: phone || undefined,
+          profile_name: fullName,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
           designation: designation || undefined,
+          country_code: countryCode,
+          mobile: mobile || undefined,
           bio: bio || undefined,
         },
       });
@@ -74,24 +115,33 @@ export default function ProfileTab() {
       <div className={s.cardDesc}>This is how you appear across the platform</div>
 
       <div className={s.photoUpload}>
-        <div className={s.photoPreview}>{initials || '?'}</div>
+        <div className={s.photoPreview}>{initials}</div>
         <div className={s.photoInfo}>
           <div className={s.photoInfoTitle}>Profile photo</div>
           <div className={s.photoInfoHint}>JPG or PNG, max 2MB</div>
         </div>
-        <button className={s.photoBtn} disabled title="Coming soon — requires storage setup">
+        <button className={s.photoBtn} disabled title="Coming soon">
           Change
         </button>
       </div>
 
-      <FormInput
-        label="Full Name"
-        placeholder="Your full name"
-        value={fullName}
-        onChange={(e) => setFullName(e.target.value)}
-        required
-        disabled={loading}
-      />
+      <div className={s.formRow}>
+        <FormInput
+          label="First Name"
+          placeholder="Rajesh"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          required
+          disabled={loading}
+        />
+        <FormInput
+          label="Last Name"
+          placeholder="Kumar"
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+          disabled={loading}
+        />
+      </div>
 
       <FormInput
         label="Email Address"
@@ -111,30 +161,31 @@ export default function ProfileTab() {
           disabled={loading}
         >
           <option value="">Select your role...</option>
-          <option value="mfd">Mutual Fund Distributor (MFD)</option>
-          <option value="ria">Registered Investment Advisor (RIA)</option>
-          <option value="ifa">Insurance Financial Advisor (IFA)</option>
-          <option value="cfp">Certified Financial Planner (CFP)</option>
-          <option value="wm">Wealth Manager</option>
+          {DESIGNATIONS.map((d) => (
+            <option key={d.value} value={d.value}>{d.label}</option>
+          ))}
         </select>
       </div>
 
-      <FormInput
-        label="Phone"
-        type="tel"
-        placeholder="+91 98765 43210"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
+      <VdfMobileInput
+        label="Phone Number"
+        countryCode={countryCode}
+        mobile={mobile}
+        onCountryChange={setCountryCode}
+        onMobileChange={setMobile}
         disabled={loading}
       />
 
-      <FormInput
-        label="Bio"
-        placeholder="A short description for client-facing reports..."
-        value={bio}
-        onChange={(e) => setBio(e.target.value)}
-        disabled={loading}
-      />
+      <div style={{ marginBottom: 'var(--form-group-gap)' }}>
+        <VdfRichText
+          label="Bio"
+          placeholder="A short description for client-facing reports..."
+          value={bio}
+          onChange={setBio}
+          maxLength={500}
+          disabled={loading}
+        />
+      </div>
 
       <div className={s.actions}>
         <button className={s.btnCancel} onClick={handleCancel} disabled={loading}>

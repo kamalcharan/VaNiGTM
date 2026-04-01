@@ -146,6 +146,12 @@ export const API = {
   /* ── Tenant ───────────────────────────────────────── */
 
   tenant: {
+    profileGet: {
+      method: 'GET',
+      path: '/api/v1/tenant/profile',
+      auth: true,
+      description: 'Get tenant business profile',
+    },
     profile: {
       method: 'PATCH',
       path: '/api/v1/tenant/profile',
