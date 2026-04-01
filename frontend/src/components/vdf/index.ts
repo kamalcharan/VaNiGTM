@@ -15,3 +15,4 @@ export { VdfWizard, type VdfWizardProps } from './wizard/VdfWizard';
 export { VdfMobileInput, type VdfMobileInputProps } from './mobile-input/VdfMobileInput';
 export { VdfRichText, type VdfRichTextProps } from './rich-text/VdfRichText';
 export { ThemePicker } from './theme-picker/ThemePicker';
+export { VdfSidebar, type VdfSidebarProps } from './sidebar/VdfSidebar';
