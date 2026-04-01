@@ -160,6 +160,47 @@ export const API = {
     },
   },
 
+  /* ── ETL ──────────────────────────────────────────── */
+
+  etl: {
+    upload: {
+      method: 'POST',
+      path: '/api/v1/etl/upload',
+      auth: true,
+      description: 'Upload a file for import (multipart/form-data)',
+    },
+    headers: {
+      method: 'GET',
+      path: '/api/v1/etl/headers/:fileId',
+      auth: true,
+      description: 'Detect headers and sample rows from uploaded file',
+    },
+    sessions: {
+      method: 'GET',
+      path: '/api/v1/etl/sessions',
+      auth: true,
+      description: 'List all import sessions',
+    },
+    createSession: {
+      method: 'POST',
+      path: '/api/v1/etl/sessions',
+      auth: true,
+      description: 'Create import session with field mapping and stage data',
+    },
+    process: {
+      method: 'POST',
+      path: '/api/v1/etl/sessions/:id/process',
+      auth: true,
+      description: 'Process staged data into target table',
+    },
+    status: {
+      method: 'GET',
+      path: '/api/v1/etl/sessions/:id/status',
+      auth: true,
+      description: 'Get import session status and progress',
+    },
+  },
+
   /* ── Skills (generic) ─────────────────────────────── */
 
   skills: {
