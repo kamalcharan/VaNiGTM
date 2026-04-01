@@ -275,8 +275,16 @@ CREATE POLICY alert_tenant_isolation ON ki_alerts
 
 
 -- ============================================================
--- 006: TRIGGERS
+-- 006: TRIGGER FUNCTION + TRIGGERS
 -- ============================================================
+
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_ki_clients_updated
     BEFORE UPDATE ON ki_clients FOR EACH ROW EXECUTE FUNCTION update_updated_at();
