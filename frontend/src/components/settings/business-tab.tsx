@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { apiFetch, type ApiError } from '@/lib/api-client';
+import { apiFetch, getAccessToken, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { InlineLoader, FullPageLoader } from '@/components/loader';
@@ -77,14 +77,18 @@ export default function BusinessTab() {
       };
       setProfile(data);
       setDraft(data);
-    } catch {
-      // Failed to load
+    } catch (err) {
+      console.error('[BusinessTab] Failed to load profile:', err);
     } finally {
       setFetching(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  // Wait for auth token before loading
+  useEffect(() => {
+    if (getAccessToken()) load();
+    else setFetching(false);
+  }, [load]);
 
   function startEdit(section: EditSection) {
     setDraft({ ...profile });
