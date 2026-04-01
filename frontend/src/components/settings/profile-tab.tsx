@@ -96,7 +96,7 @@ export default function ProfileTab() {
       <FormInput
         label="Email Address"
         type="email"
-        value={user?.email || ''}
+        value={me?.user?.email || ''}
         onChange={() => {}}
         disabled
         readOnly
