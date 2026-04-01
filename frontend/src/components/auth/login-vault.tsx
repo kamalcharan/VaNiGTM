@@ -56,9 +56,9 @@ export default function LoginVault() {
   const activeRole = ROLES.find((r) => r.id === role)!;
   const loading = loginMutation.isPending;
 
-  // If already have a token, redirect
+  // If already have a token, redirect to dashboard (layout handles onboarding check)
   if (typeof window !== 'undefined' && getAccessToken()) {
-    window.location.href = '/onboarding';
+    window.location.href = '/dashboard';
     return null;
   }
 
