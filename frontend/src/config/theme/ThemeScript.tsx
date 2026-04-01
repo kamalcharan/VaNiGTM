@@ -111,10 +111,10 @@ export function ThemeScript({
           __html: `:root{${fallbackCSS}}`,
         }}
       />
-      {/* Blocking script: reads localStorage and applies saved theme before paint.
-          Uses raw <script> inside <head> (server component) — Next.js Script component
-          causes React 19 warnings about client-rendered script tags. */}
-      <script dangerouslySetInnerHTML={{ __html: script }} />
+      {/* Blocking theme init — React 19 only allows <script> with src attribute.
+          Using data: URI so React treats it as an external script (no warning)
+          while keeping the code inline without an extra network request. */}
+      <script src={`data:text/javascript,${encodeURIComponent(script)}`} />
     </>
   );
 }
