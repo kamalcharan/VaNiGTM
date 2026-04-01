@@ -75,6 +75,7 @@ export default function ImportPage() {
   /* ── Step 2: File Upload ─────────────────────────── */
 
   async function handleFileUpload(file: File) {
+    if (loading) return; // Prevent concurrent uploads
     setLoading(true);
     try {
       const formData = new FormData();
@@ -132,7 +133,7 @@ export default function ImportPage() {
   /* ── Step 3: Confirm Mapping ─────────────────────── */
 
   async function handleConfirmMapping() {
-    if (!fileInfo) return;
+    if (!fileInfo || loading) return; // Prevent double-submit
     setLoading(true);
     try {
       const session = await apiFetch<SessionInfo>(API.etl.createSession, {
