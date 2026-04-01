@@ -1,4 +1,3 @@
-import Script from 'next/script';
 import { themes, defaultTheme } from './registry';
 import { ThemeConfig, ThemeColors } from './types';
 
@@ -112,8 +111,10 @@ export function ThemeScript({
           __html: `:root{${fallbackCSS}}`,
         }}
       />
-      {/* Blocking script: reads localStorage and applies saved theme before paint */}
-      <Script id="theme-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: script }} />
+      {/* Blocking script: reads localStorage and applies saved theme before paint.
+          Uses raw <script> inside <head> (server component) — Next.js Script component
+          causes React 19 warnings about client-rendered script tags. */}
+      <script dangerouslySetInnerHTML={{ __html: script }} />
     </>
   );
 }
