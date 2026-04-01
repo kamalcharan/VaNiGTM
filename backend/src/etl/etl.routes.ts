@@ -1,21 +1,27 @@
 /**
  * KI-Prime — ETL Routes
  *
+ * Two-phase import matching kewalinvest production architecture:
+ *   Phase 1 (Node.js): Upload → Parse → Map → Stage into ki_import_staging
+ *   Phase 2 (PostgreSQL RPC): process_scheme_import_with_timing() handles
+ *           all validation, upsert, error capture inside the database.
+ *
  * POST   /api/v1/etl/upload              — Upload file (multipart/form-data)
  * GET    /api/v1/etl/headers/:fileId      — Detect headers + sample rows
- * POST   /api/v1/etl/sessions             — Create import session with field mapping
- * POST   /api/v1/etl/sessions/:id/process — Stage + process into target table
- * GET    /api/v1/etl/sessions/:id/status  — Poll progress
  * GET    /api/v1/etl/sessions             — List all import sessions
+ * POST   /api/v1/etl/sessions             — Create session, map fields, stage all rows
+ * POST   /api/v1/etl/sessions/:id/process — Invoke DB RPC to process staged rows
+ * GET    /api/v1/etl/sessions/:id/status  — Poll progress + errors
  */
 
 import { Router } from 'express';
 import type { Pool } from 'pg';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import crypto from 'crypto';
 import { parseExcelHeaders, parseExcelRows } from './excel-parser';
-import { processSchemeRow, SCHEME_FIELD_MAP } from './scheme-processor';
+import { mapSchemeRow, SCHEME_FIELD_MAP } from './scheme-processor';
 import { verifyAccessToken, type JwtPayload } from '../auth/token.service';
 
 const UPLOAD_DIR = path.resolve(__dirname, '../../uploads');
@@ -24,7 +30,10 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 /* ── Multer config ─────────────────────────────────── */
 
 const storage = multer.diskStorage({
-  destination: UPLOAD_DIR,
+  destination: (_req, _file, cb) => {
+    if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    cb(null, UPLOAD_DIR);
+  },
   filename: (_req, file, cb) => {
     const ts = Date.now();
     const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -55,7 +64,7 @@ function extractJwt(req: { headers: { authorization?: string } }): JwtPayload | 
 export function createEtlRouter(pool: Pool): Router {
   const router = Router();
 
-  /* ── POST /upload — Upload file ─────────────────── */
+  /* ── POST /upload ───────────────────────────────── */
 
   router.post('/upload', upload.single('file'), async (req, res) => {
     try {
@@ -66,7 +75,7 @@ export function createEtlRouter(pool: Pool): Router {
       if (!file) { res.status(400).json({ error: { code: 'NO_FILE', message: 'No file uploaded' } }); return; }
 
       const importType = req.body.import_type || 'scheme';
-      const fileHash = crypto.createHash('sha256').update(require('fs').readFileSync(file.path)).digest('hex');
+      const fileHash = crypto.createHash('sha256').update(fs.readFileSync(file.path)).digest('hex');
 
       // Check duplicate by hash
       const dup = await pool.query(
@@ -81,7 +90,7 @@ export function createEtlRouter(pool: Pool): Router {
         return;
       }
 
-      // Insert file record — tenant_id is NULL for scheme imports (global)
+      // Insert file record — tenant_id NULL for global (scheme) imports
       const tenantId = importType === 'scheme' ? null : jwt.tenant_id;
       const result = await pool.query(
         `INSERT INTO ki_file_uploads (tenant_id, file_type, original_filename, stored_filename, file_path, file_size, mime_type, file_hash, uploaded_by)
@@ -101,7 +110,7 @@ export function createEtlRouter(pool: Pool): Router {
     }
   });
 
-  /* ── GET /headers/:fileId — Detect headers ──────── */
+  /* ── GET /headers/:fileId ───────────────────────── */
 
   router.get('/headers/:fileId', async (req, res) => {
     try {
@@ -131,17 +140,12 @@ export function createEtlRouter(pool: Pool): Router {
     }
   });
 
-  /* ── GET /sessions — List sessions ──────────────── */
+  /* ── GET /sessions ──────────────────────────────── */
 
   router.get('/sessions', async (req, res) => {
     try {
       const jwt = extractJwt(req);
       if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
-
-      const importType = req.query.type || 'all';
-      const where = importType === 'all'
-        ? ''
-        : `WHERE s.import_type = '${importType}'`;
 
       const result = await pool.query(
         `SELECT s.id, s.import_type, s.status, s.total_records, s.processed_records,
@@ -149,7 +153,6 @@ export function createEtlRouter(pool: Pool): Router {
                 f.original_filename, s.created_at, s.processing_completed_at
          FROM ki_import_sessions s
          LEFT JOIN ki_file_uploads f ON f.id = s.file_upload_id
-         ${where}
          ORDER BY s.created_at DESC
          LIMIT 50`,
       );
@@ -161,7 +164,7 @@ export function createEtlRouter(pool: Pool): Router {
     }
   });
 
-  /* ── POST /sessions — Create session + start processing ─ */
+  /* ── POST /sessions — Phase 1: Stage ────────────── */
 
   router.post('/sessions', async (req, res) => {
     try {
@@ -191,7 +194,7 @@ export function createEtlRouter(pool: Pool): Router {
       );
       const sessionId = (sessionResult.rows[0] as any).id;
 
-      // Stage: parse all rows, apply mapping, insert into ki_import_staging
+      // Parse Excel and stage all rows
       const rows = parseExcelRows(file.file_path);
       const BATCH_SIZE = 500;
 
@@ -202,13 +205,11 @@ export function createEtlRouter(pool: Pool): Router {
 
         batch.forEach((raw, batchIdx) => {
           const rowNum = i + batchIdx + 1;
-          // Apply field mapping
-          const mapped: Record<string, any> = {};
-          for (const [excelCol, dbField] of Object.entries(mappings)) {
-            if (raw[excelCol] !== undefined && raw[excelCol] !== null) {
-              mapped[dbField as string] = raw[excelCol];
-            }
-          }
+
+          // Apply field mapping + pre-processing (ISIN splitting, date formatting)
+          const mapped = import_type === 'scheme'
+            ? mapSchemeRow(raw, mappings)
+            : applyGenericMapping(raw, mappings);
 
           const offset = batchIdx * 4;
           placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}::jsonb, $${offset + 4}::jsonb)`);
@@ -225,7 +226,7 @@ export function createEtlRouter(pool: Pool): Router {
       // Update session: staged
       await pool.query(
         `UPDATE ki_import_sessions
-         SET status = 'staged', total_records = $1, staging_completed_at = now(), updated_at = now()
+         SET status = 'staged', total_records = $1, staging_completed_at = now()
          WHERE id = $2`,
         [rows.length, sessionId],
       );
@@ -234,6 +235,7 @@ export function createEtlRouter(pool: Pool): Router {
         session_id: sessionId,
         status: 'staged',
         total_records: rows.length,
+        import_type,
       });
     } catch (err: any) {
       console.error('[ETL:create-session]', err);
@@ -241,7 +243,7 @@ export function createEtlRouter(pool: Pool): Router {
     }
   });
 
-  /* ── POST /sessions/:id/process — Process staged rows ── */
+  /* ── POST /sessions/:id/process — Phase 2: DB RPC ── */
 
   router.post('/sessions/:id/process', async (req, res) => {
     try {
@@ -256,101 +258,54 @@ export function createEtlRouter(pool: Pool): Router {
 
       const session = sessResult.rows[0] as any;
       if (session.status !== 'staged' && session.status !== 'completed_with_errors') {
-        res.status(400).json({ error: { code: 'INVALID_STATUS', message: `Session is ${session.status}, expected staged` } });
+        res.status(400).json({ error: { code: 'INVALID_STATUS', message: `Session is "${session.status}", expected "staged"` } });
         return;
       }
 
-      // Mark processing
-      await pool.query(
-        `UPDATE ki_import_sessions SET status = 'processing', processing_started_at = now(), updated_at = now() WHERE id = $1`,
-        [sessionId],
-      );
+      // Invoke the PostgreSQL RPC function — all processing happens in DB
+      const targetDurationMs = Number(req.body.target_duration_ms) || 30000;
+      let rpcResult: any;
 
-      // Process in batches
-      const BATCH_SIZE = 100;
-      let processed = 0, successful = 0, failed = 0, duplicated = 0;
-
-      while (true) {
-        const batch = await pool.query(
-          `SELECT id, row_number, mapped_data FROM ki_import_staging
-           WHERE session_id = $1 AND processing_status = 'pending'
-           ORDER BY row_number LIMIT $2`,
-          [sessionId, BATCH_SIZE],
+      if (session.import_type === 'scheme') {
+        rpcResult = await pool.query(
+          'SELECT * FROM process_scheme_import_with_timing($1, $2)',
+          [sessionId, targetDurationMs],
         );
-
-        if (batch.rows.length === 0) break;
-
-        for (const row of batch.rows) {
-          const r = row as any;
-          try {
-            const result = await processSchemeRow(pool, r.mapped_data);
-
-            await pool.query(
-              `UPDATE ki_import_staging
-               SET processing_status = $1, created_record_id = $2, processed_at = now(), updated_at = now()
-               WHERE id = $3`,
-              [result.status, result.scheme_code, r.id],
-            );
-
-            processed++;
-            if (result.status === 'success') successful++;
-            else if (result.status === 'duplicate') { duplicated++; successful++; } // duplicate = upserted = still success
-          } catch (err: any) {
-            await pool.query(
-              `UPDATE ki_import_staging
-               SET processing_status = 'failed', error_messages = ARRAY[$1], processed_at = now(), updated_at = now()
-               WHERE id = $2`,
-              [err.message || 'Unknown error', r.id],
-            );
-            processed++;
-            failed++;
-          }
-        }
-
-        // Update session progress
-        await pool.query(
-          `UPDATE ki_import_sessions
-           SET processed_records = $1, successful_records = $2, failed_records = $3, duplicate_records = $4,
-               last_processed_row = $5, updated_at = now()
-           WHERE id = $6`,
-          [processed, successful, failed, duplicated, processed, sessionId],
-        );
+      } else {
+        // Future: process_customer_import_with_timing, process_transaction_import_with_timing
+        res.status(400).json({ error: { code: 'UNSUPPORTED', message: `Import type "${session.import_type}" processing not yet implemented` } });
+        return;
       }
 
-      // Final status
-      const finalStatus = failed > 0 ? 'completed_with_errors' : 'completed';
-      await pool.query(
-        `UPDATE ki_import_sessions
-         SET status = $1, processing_completed_at = now(), updated_at = now()
-         WHERE id = $2`,
-        [finalStatus, sessionId],
-      );
+      const result = rpcResult.rows[0] as any;
 
       // Mark file as completed
       await pool.query(
-        `UPDATE ki_file_uploads SET processing_status = 'completed', updated_at = now()
-         WHERE id = $1`,
+        `UPDATE ki_file_uploads SET processing_status = 'completed' WHERE id = $1`,
         [session.file_upload_id],
       );
 
       res.json({
         session_id: sessionId,
-        status: finalStatus,
-        total: session.total_records,
-        processed, successful, failed, duplicate: duplicated,
+        status: result.failed_count > 0 ? 'completed_with_errors' : 'completed',
+        processed: result.processed_count,
+        successful: result.success_count,
+        failed: result.failed_count,
+        duplicate: result.duplicate_count,
+        duration_ms: result.actual_duration_ms,
       });
     } catch (err: any) {
       console.error('[ETL:process]', err);
       // Mark session failed
       await pool.query(
-        `UPDATE ki_import_sessions SET status = 'failed', error_summary = $1, updated_at = now() WHERE id = $2`,
+        `UPDATE ki_import_sessions SET status = 'failed', error_summary = $1 WHERE id = $2`,
         [err.message, req.params.id],
       ).catch(() => {});
       res.status(500).json({ error: { code: 'PROCESS_FAILED', message: err.message || 'Processing failed' } });
     }
   });
 
-  /* ── GET /sessions/:id/status — Poll progress ───── */
+  /* ── GET /sessions/:id/status ───────────────────── */
 
   router.get('/sessions/:id/status', async (req, res) => {
     try {
@@ -360,8 +315,8 @@ export function createEtlRouter(pool: Pool): Router {
       const result = await pool.query(
         `SELECT s.id, s.import_type, s.status, s.total_records, s.processed_records,
                 s.successful_records, s.failed_records, s.duplicate_records,
-                s.error_summary, s.created_at, s.processing_completed_at,
-                f.original_filename
+                s.error_summary, s.created_at, s.processing_started_at,
+                s.processing_completed_at, f.original_filename
          FROM ki_import_sessions s
          LEFT JOIN ki_file_uploads f ON f.id = s.file_upload_id
          WHERE s.id = $1`,
@@ -375,7 +330,7 @@ export function createEtlRouter(pool: Pool): Router {
 
       const session = result.rows[0] as any;
 
-      // If failed, include sample errors
+      // Include failed row details if any
       let errors: any[] = [];
       if (session.failed_records > 0) {
         const errResult = await pool.query(
@@ -395,4 +350,16 @@ export function createEtlRouter(pool: Pool): Router {
   });
 
   return router;
+}
+
+/* ── Generic field mapping (non-scheme types) ─────── */
+
+function applyGenericMapping(raw: Record<string, any>, mappings: Record<string, string>): Record<string, any> {
+  const mapped: Record<string, any> = {};
+  for (const [excelCol, dbField] of Object.entries(mappings)) {
+    if (raw[excelCol] !== undefined && raw[excelCol] !== null) {
+      mapped[dbField] = raw[excelCol];
+    }
+  }
+  return mapped;
 }
