@@ -219,6 +219,47 @@ export const API = {
     },
   },
 
+  /* ── NAV ──────────────────────────────────────────── */
+
+  nav: {
+    bookmarks: {
+      method: 'GET',
+      path: '/api/v1/nav/bookmarks',
+      auth: true,
+      description: 'List bookmarked schemes with NAV status',
+    },
+    addBookmark: {
+      method: 'POST',
+      path: '/api/v1/nav/bookmarks',
+      auth: true,
+      description: 'Bookmark a scheme for NAV tracking',
+    },
+    removeBookmark: {
+      method: 'DELETE',
+      path: '/api/v1/nav/bookmarks/:schemeCode',
+      auth: true,
+      description: 'Remove a scheme bookmark',
+    },
+    downloadDaily: {
+      method: 'POST',
+      path: '/api/v1/nav/download/daily',
+      auth: true,
+      description: 'Download daily NAV for all bookmarked schemes',
+    },
+    downloadScheme: {
+      method: 'POST',
+      path: '/api/v1/nav/download/scheme/:code',
+      auth: true,
+      description: 'Download historical NAV for a specific scheme',
+    },
+    status: {
+      method: 'GET',
+      path: '/api/v1/nav/status',
+      auth: true,
+      description: 'Cruise control NAV status for all bookmarks',
+    },
+  },
+
   /* ── Skills (generic) ─────────────────────────────── */
 
   skills: {

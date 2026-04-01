@@ -6,6 +6,7 @@ import { buildRegistry } from './services/skill-registry';
 import { getPool, createTenantDb, closePool, healthCheck } from './db';
 import { createAuthRouter, createOnboardingRouter, createTenantRouter } from './auth/auth.routes';
 import { createEtlRouter } from './etl/etl.routes';
+import { createNavRouter } from './nav/nav.routes';
 import { verifyAccessToken } from './auth/token.service';
 
 const app = express();
@@ -55,7 +56,8 @@ async function main() {
   app.use('/api/v1/onboarding', createOnboardingRouter(pool));
   app.use('/api/v1/tenant', createTenantRouter(pool));
   app.use('/api/v1/etl', createEtlRouter(pool));
-  console.log('[ProKey] Auth routes mounted at /api/v1/auth, /api/v1/onboarding, /api/v1/tenant, /api/v1/etl');
+  app.use('/api/v1/nav', createNavRouter(pool));
+  console.log('[ProKey] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /nav');
 
   // Build skill registry
   const skillsDir = path.resolve(__dirname, 'skills');
