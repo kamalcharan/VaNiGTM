@@ -51,12 +51,30 @@ const upload = multer({
   },
 });
 
-/* ── JWT helper ────────────────────────────────────── */
+/* ── Auth helper (JWT + dev fallback) ──────────────── */
 
-function extractJwt(req: { headers: { authorization?: string } }): JwtPayload | null {
+interface AuthInfo {
+  user_id: string;
+  tenant_id: string;
+}
+
+function extractAuth(req: { headers: Record<string, any> }): AuthInfo | null {
+  // Try JWT first
   const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return null;
-  try { return verifyAccessToken(auth.slice(7)); } catch { return null; }
+  if (auth?.startsWith('Bearer ')) {
+    try {
+      const jwt = verifyAccessToken(auth.slice(7));
+      return { user_id: auth.user_id, tenant_id: auth.tenant_id };
+    } catch { /* fall through to dev header */ }
+  }
+
+  // Dev fallback: X-Dev-Tenant-Id header
+  const devTenant = req.headers['x-dev-tenant-id'] as string;
+  if (devTenant) {
+    return { user_id: 'dev-user', tenant_id: devTenant };
+  }
+
+  return null;
 }
 
 /* ── Router ────────────────────────────────────────── */
@@ -68,8 +86,8 @@ export function createEtlRouter(pool: Pool): Router {
 
   router.post('/upload', upload.single('file'), async (req, res) => {
     try {
-      const jwt = extractJwt(req);
-      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
       const file = req.file;
       if (!file) { res.status(400).json({ error: { code: 'NO_FILE', message: 'No file uploaded' } }); return; }
@@ -91,11 +109,11 @@ export function createEtlRouter(pool: Pool): Router {
       }
 
       // Insert file record — tenant_id NULL for global (scheme) imports
-      const tenantId = importType === 'scheme' ? null : jwt.tenant_id;
+      const tenantId = importType === 'scheme' ? null : auth.tenant_id;
       const result = await pool.query(
         `INSERT INTO ki_file_uploads (tenant_id, file_type, original_filename, stored_filename, file_path, file_size, mime_type, file_hash, uploaded_by)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-        [tenantId, importType, file.originalname, file.filename, file.path, file.size, file.mimetype, fileHash, jwt.user_id],
+        [tenantId, importType, file.originalname, file.filename, file.path, file.size, file.mimetype, fileHash, auth.user_id],
       );
 
       res.status(201).json({
@@ -114,8 +132,8 @@ export function createEtlRouter(pool: Pool): Router {
 
   router.get('/headers/:fileId', async (req, res) => {
     try {
-      const jwt = extractJwt(req);
-      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
       const fileResult = await pool.query('SELECT * FROM ki_file_uploads WHERE id = $1', [req.params.fileId]);
       if (fileResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found' } }); return; }
@@ -144,8 +162,8 @@ export function createEtlRouter(pool: Pool): Router {
 
   router.get('/sessions', async (req, res) => {
     try {
-      const jwt = extractJwt(req);
-      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
       const result = await pool.query(
         `SELECT s.id, s.import_type, s.status, s.total_records, s.processed_records,
@@ -168,8 +186,8 @@ export function createEtlRouter(pool: Pool): Router {
 
   router.post('/sessions', async (req, res) => {
     try {
-      const jwt = extractJwt(req);
-      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
       const { file_id, import_type, field_mappings } = req.body;
 
@@ -183,14 +201,14 @@ export function createEtlRouter(pool: Pool): Router {
       if (fileResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found' } }); return; }
 
       const file = fileResult.rows[0] as any;
-      const tenantId = import_type === 'scheme' ? null : jwt.tenant_id;
+      const tenantId = import_type === 'scheme' ? null : auth.tenant_id;
       const mappings = field_mappings || (import_type === 'scheme' ? SCHEME_FIELD_MAP : {});
 
       // Create session
       const sessionResult = await pool.query(
         `INSERT INTO ki_import_sessions (tenant_id, file_upload_id, import_type, field_mappings, created_by)
          VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-        [tenantId, file_id, import_type, JSON.stringify(mappings), jwt.user_id],
+        [tenantId, file_id, import_type, JSON.stringify(mappings), auth.user_id],
       );
       const sessionId = (sessionResult.rows[0] as any).id;
 
@@ -247,8 +265,8 @@ export function createEtlRouter(pool: Pool): Router {
 
   router.post('/sessions/:id/process', async (req, res) => {
     try {
-      const jwt = extractJwt(req);
-      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
       const sessionId = Number(req.params.id);
 
@@ -309,8 +327,8 @@ export function createEtlRouter(pool: Pool): Router {
 
   router.get('/sessions/:id/status', async (req, res) => {
     try {
-      const jwt = extractJwt(req);
-      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
       const result = await pool.query(
         `SELECT s.id, s.import_type, s.status, s.total_records, s.processed_records,
