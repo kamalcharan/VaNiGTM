@@ -83,10 +83,13 @@ export default function ImportPage() {
 
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
       const token = getAccessToken();
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      else headers['X-Dev-Tenant-Id'] = 'dev-tenant';
 
       const res = await fetch(`${baseUrl}/api/v1/etl/upload`, {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers,
         body: formData,
       });
 
