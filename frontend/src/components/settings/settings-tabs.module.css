@@ -13,6 +13,62 @@
 
 .cardTitle { font-size: 1.1rem; font-weight: 700; color: var(--color-fg); margin-bottom: 4px; }
 .cardDesc { font-size: 0.8rem; color: var(--color-muted); margin-bottom: 32px; }
+.cardDescInline { font-size: 0.8rem; color: var(--color-muted); }
+
+/* ── Card Header (title + Change button) ────────────── */
+.cardHeader {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; margin-bottom: 24px;
+}
+
+.btnChange {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 18px; border: 1px solid var(--color-primary);
+  border-radius: 8px; background: transparent;
+  color: var(--color-primary); font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; transition: all 200ms; white-space: nowrap; flex-shrink: 0;
+}
+.btnChange:hover {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  transform: translateY(-1px);
+}
+
+/* ── Read Mode Grid ─────────────────────────────────── */
+.readGrid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.readItem {
+  padding: 16px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+.readItem:nth-last-child(-n+2) { border-bottom: none; }
+
+.readLabel {
+  font-size: 0.6rem; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--color-muted); margin-bottom: 4px;
+}
+
+.readValue {
+  font-size: 0.95rem; color: var(--color-fg); font-weight: 500;
+}
+
+.readMono {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  letter-spacing: 0.04em;
+}
+
+/* ── Empty Section State ────────────────────────────── */
+.emptySection {
+  padding: 32px; text-align: center;
+  border: 1px dashed var(--color-border);
+  border-radius: 10px;
+}
+
+.emptyText { font-size: 0.9rem; font-weight: 600; color: var(--color-fg); margin-bottom: 4px; }
+.emptyHint { font-size: 0.75rem; color: var(--color-muted); }
 
 /* ── Form Row ────────────────────────────────────────── */
 .formRow { display: flex; gap: 16px; }

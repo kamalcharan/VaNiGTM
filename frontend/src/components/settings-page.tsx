@@ -12,7 +12,7 @@ import SessionsTab from './settings/sessions-tab';
 
 const TABS = [
   { id: 'profile', label: 'Profile', icon: '\uD83D\uDC64' },
-  { id: 'business', label: 'Business', icon: '\uD83C\uDFE2' },
+  { id: 'business', label: 'Business Profile', icon: '\uD83C\uDFE2' },
   { id: 'security', label: 'Security', icon: '\uD83D\uDD12' },
   { id: 'appearance', label: 'Appearance', icon: '\uD83C\uDFA8' },
   { id: 'preferences', label: 'Preferences', icon: '\u2699\uFE0F' },
