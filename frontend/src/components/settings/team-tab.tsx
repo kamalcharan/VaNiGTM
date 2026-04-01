@@ -25,6 +25,7 @@ export default function TeamTab() {
   const [emailError, setEmailError] = useState('');
 
   async function handleSend() {
+    if (sending) return; // Prevent double-send
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setEmailError('Please enter a valid email address');

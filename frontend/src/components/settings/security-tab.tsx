@@ -127,6 +127,7 @@ export default function SecurityTab() {
             className={s.btnDanger}
             disabled={signingOutAll}
             onClick={async () => {
+              if (signingOutAll) return; // Prevent double-click
               setSigningOutAll(true);
               try {
                 // Fetch all sessions, then revoke them all
