@@ -252,6 +252,24 @@ export const API = {
       auth: true,
       description: 'Download historical NAV for a specific scheme',
     },
+    schemeDetail: {
+      method: 'GET',
+      path: '/api/v1/nav/scheme/:code',
+      auth: true,
+      description: 'Full scheme detail with metrics, gaps, bookmark status',
+    },
+    downloadGap: {
+      method: 'POST',
+      path: '/api/v1/nav/download/gap/:code',
+      auth: true,
+      description: 'Download only missing NAV gaps for a scheme',
+    },
+    downloadAll: {
+      method: 'POST',
+      path: '/api/v1/nav/download/all',
+      auth: true,
+      description: 'Download full history for all bookmarked schemes',
+    },
     status: {
       method: 'GET',
       path: '/api/v1/nav/status',

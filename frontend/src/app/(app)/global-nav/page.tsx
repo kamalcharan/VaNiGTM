@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSkillQuery } from '@/hooks';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
@@ -50,6 +51,7 @@ function schemeStatus(sc: SchemeResult): { label: string; color: string } {
 /* ── Main ──────────────────────────────────────────── */
 
 export default function GlobalNavPage() {
+  const router = useRouter();
   const { showToast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -293,7 +295,7 @@ export default function GlobalNavPage() {
                     <div key={sc.scheme_code} className={`${s.schemeCard} ${isSelected ? s.schemeCardActive : ''} ${!sc.active ? s.schemeEnded : ''}`}>
                       <div className={s.schemeRow}>
                         <input type="checkbox" className={s.schemeCheck} checked={isChecked} onChange={() => toggleSelect(sc.scheme_code)} onClick={e => e.stopPropagation()} />
-                        <div className={s.schemeInfo} onClick={() => setSelectedScheme(sc)}>
+                        <div className={s.schemeInfo} onClick={() => router.push(`/global-nav/${sc.scheme_code}`)}>
                           <div className={s.schemeTop}>
                             <span className={s.schemeName}>{sc.scheme_name}</span>
                             <span className={`${s.statusBadge} ${s[`sb_${st.color}`]}`}>{st.label}</span>

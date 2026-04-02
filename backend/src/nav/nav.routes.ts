@@ -335,6 +335,224 @@ export function createNavRouter(pool: Pool): Router {
     }
   });
 
+  /* ── GET /scheme/:code — Full scheme detail with metrics + gaps ── */
+
+  router.get('/scheme/:code', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const code = req.params.code;
+
+      // Scheme info
+      const schemeResult = await pool.query(
+        `SELECT scheme_code, scheme_name, amc, category, scheme_type, active,
+                launch_date::text, closure_date::text, isin_growth, isin_dividend,
+                isin_reinvestment, nav_name, min_amount, risk_grade
+         FROM ki_schemes WHERE scheme_code = $1`,
+        [code],
+      );
+      if (schemeResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Scheme not found' } }); return; }
+
+      const scheme = schemeResult.rows[0] as any;
+
+      // NAV summary + latest metrics
+      const navSummary = await pool.query(
+        `SELECT
+            COUNT(*)::integer AS total_records,
+            MIN(nav_date)::text AS earliest_date,
+            MAX(nav_date)::text AS latest_date,
+            (SELECT nav FROM ki_nav_history WHERE scheme_code = $1 ORDER BY nav_date DESC LIMIT 1) AS latest_nav,
+            (SELECT nav_date::text FROM ki_nav_history WHERE scheme_code = $1 ORDER BY nav_date DESC LIMIT 1) AS latest_nav_date
+         FROM ki_nav_history WHERE scheme_code = $1`,
+        [code],
+      );
+
+      // Latest metrics (from most recent NAV record that has metrics)
+      const metricsResult = await pool.query(
+        `SELECT daily_return, return_1w, return_1m, return_3m, return_6m, return_1y,
+                return_ytd, return_all, sd_7d, sd_14d, sd_21d, sd_42d, sd_3m, sd_6m,
+                sharpe_ratio, max_drawdown, cagr, metrics_calculated_at::text,
+                nav_date::text AS metrics_date
+         FROM ki_nav_history
+         WHERE scheme_code = $1 AND metrics_calculated_at IS NOT NULL
+         ORDER BY nav_date DESC LIMIT 1`,
+        [code],
+      );
+
+      // Detect gaps (missing trading days — simplistic: any gap > 3 calendar days between consecutive records)
+      const gapsResult = await pool.query(
+        `WITH nav_pairs AS (
+            SELECT nav_date,
+                   LEAD(nav_date) OVER (ORDER BY nav_date) AS next_date,
+                   (LEAD(nav_date) OVER (ORDER BY nav_date) - nav_date) AS gap_days
+            FROM ki_nav_history
+            WHERE scheme_code = $1
+         )
+         SELECT nav_date::text AS gap_after, next_date::text AS gap_before, gap_days::integer
+         FROM nav_pairs
+         WHERE gap_days > 3
+         ORDER BY nav_date DESC
+         LIMIT 20`,
+        [code],
+      );
+
+      // Bookmark status for this tenant
+      const bookmarkResult = await pool.query(
+        `SELECT id, daily_download_enabled, alias_name, historical_download_done
+         FROM ki_scheme_bookmarks
+         WHERE tenant_id = $1 AND scheme_code = $2`,
+        [jwt.tenant_id, code],
+      );
+
+      res.json({
+        scheme,
+        nav: navSummary.rows[0] || {},
+        metrics: metricsResult.rows[0] || null,
+        gaps: gapsResult.rows,
+        bookmark: bookmarkResult.rows[0] || null,
+      });
+    } catch (err: any) {
+      console.error('[NAV:scheme-detail]', err);
+      res.status(500).json({ error: { code: 'FETCH_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── POST /download/gap/:code — Download only missing gaps ── */
+
+  router.post('/download/gap/:code', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const code = req.params.code;
+
+      // Find gaps > 3 days
+      const gapsResult = await pool.query(
+        `WITH nav_pairs AS (
+            SELECT nav_date,
+                   LEAD(nav_date) OVER (ORDER BY nav_date) AS next_date,
+                   (LEAD(nav_date) OVER (ORDER BY nav_date) - nav_date) AS gap_days
+            FROM ki_nav_history WHERE scheme_code = $1
+         )
+         SELECT nav_date::text AS from_date, next_date::text AS to_date, gap_days::integer
+         FROM nav_pairs WHERE gap_days > 3 ORDER BY nav_date`,
+        [code],
+      );
+
+      if (gapsResult.rows.length === 0) {
+        res.json({ scheme_code: code, status: 'no_gaps', filled: 0 });
+        return;
+      }
+
+      let totalFilled = 0;
+
+      for (const gap of gapsResult.rows as any[]) {
+        const result = await withIdempotency(
+          pool,
+          `nav_gap_${code}_${gap.from_date}_${gap.to_date}`,
+          async () => false, // Always attempt gap fills
+          async () => {
+            const records = await fetchMfapiHistory(code, gap.from_date, gap.to_date);
+            if (records.length === 0) return 0;
+
+            const BATCH = 500;
+            for (let i = 0; i < records.length; i += BATCH) {
+              const batch = records.slice(i, i + BATCH);
+              const values: any[] = [];
+              const placeholders: string[] = [];
+              batch.forEach((rec, idx) => {
+                const off = idx * 3;
+                placeholders.push(`($${off + 1}, $${off + 2}, $${off + 3})`);
+                values.push(rec.scheme_code, rec.nav_date, rec.nav);
+              });
+              await pool.query(
+                `INSERT INTO ki_nav_history (scheme_code, nav_date, nav)
+                 VALUES ${placeholders.join(', ')}
+                 ON CONFLICT (scheme_code, nav_date) DO UPDATE SET nav = EXCLUDED.nav`,
+                values,
+              );
+            }
+            return records.length;
+          },
+        );
+        if (result.status === 'executed') totalFilled += (result.result || 0);
+      }
+
+      res.json({ scheme_code: code, status: 'filled', gaps_found: gapsResult.rows.length, records_filled: totalFilled });
+    } catch (err: any) {
+      console.error('[NAV:gap-fill]', err);
+      res.status(500).json({ error: { code: 'GAP_FILL_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── POST /download/all — Download ALL bookmarked schemes (full history) ── */
+
+  router.post('/download/all', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      // Get all unique bookmarked scheme codes across all tenants
+      const bookmarked = await pool.query(
+        `SELECT DISTINCT b.scheme_code
+         FROM ki_scheme_bookmarks b
+         JOIN ki_schemes s ON s.scheme_code = b.scheme_code
+         WHERE b.daily_download_enabled = true AND s.active = true`,
+      );
+
+      const codes = bookmarked.rows.map((r: any) => r.scheme_code);
+      let downloaded = 0, skipped = 0, failed = 0;
+
+      for (const code of codes) {
+        try {
+          const result = await withIdempotency(
+            pool,
+            `nav_full_${code}`,
+            async () => {
+              // Skip if already has >100 records (assume full download done)
+              const r = await pool.query(
+                'SELECT COUNT(*) as c FROM ki_nav_history WHERE scheme_code = $1',
+                [code],
+              );
+              return Number((r.rows[0] as any).c) > 100;
+            },
+            async () => {
+              const records = await fetchMfapiHistory(code);
+              if (records.length === 0) return 0;
+
+              const BATCH = 500;
+              for (let i = 0; i < records.length; i += BATCH) {
+                const batch = records.slice(i, i + BATCH);
+                const values: any[] = [];
+                const placeholders: string[] = [];
+                batch.forEach((rec, idx) => {
+                  const off = idx * 3;
+                  placeholders.push(`($${off + 1}, $${off + 2}, $${off + 3})`);
+                  values.push(rec.scheme_code, rec.nav_date, rec.nav);
+                });
+                await pool.query(
+                  `INSERT INTO ki_nav_history (scheme_code, nav_date, nav)
+                   VALUES ${placeholders.join(', ')}
+                   ON CONFLICT (scheme_code, nav_date) DO UPDATE SET nav = EXCLUDED.nav`,
+                  values,
+                );
+              }
+              return records.length;
+            },
+          );
+          if (result.status === 'executed') downloaded++;
+          else skipped++;
+        } catch { failed++; }
+      }
+
+      res.json({ total: codes.length, downloaded, skipped, failed });
+    } catch (err: any) {
+      console.error('[NAV:download-all]', err);
+      res.status(500).json({ error: { code: 'DOWNLOAD_FAILED', message: err.message } });
+    }
+  });
+
   /* ── POST /metrics/:code — Calculate metrics for one scheme ── */
 
   router.post('/metrics/:code', async (req, res) => {
