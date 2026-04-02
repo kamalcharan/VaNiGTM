@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
+import { VdfStatCard, VdfStatusBadge, VdfInsightsCard, VdfEmptyState, type BadgeVariant, type Insight } from '@/components/vdf';
+import d from '@/styles/data.module.css';
 import s from './cruise-control.module.css';
 
 /* ── Types ─────────────────────────────────────────── */
@@ -208,44 +210,16 @@ export default function CruiseControlPage() {
           {/* Stats row */}
           {navStatus && (
             <div className={s.statsRow}>
-              <div className={s.statCard}>
-                <span className={s.statNum}>{navStatus.stats.total}</span>
-                <span className={s.statLabel}>Bookmarked</span>
-              </div>
-              <div className={`${s.statCard} ${s.statSuccess}`}>
-                <span className={s.statNum}>{navStatus.stats.with_data}</span>
-                <span className={s.statLabel}>With NAV Data</span>
-              </div>
-              <div className={`${s.statCard} ${navStatus.stats.without_data > 0 ? s.statDanger : ''}`}>
-                <span className={s.statNum}>{navStatus.stats.without_data}</span>
-                <span className={s.statLabel}>Without Data</span>
-              </div>
-              <div className={s.statCard}>
-                <span className={s.statNum}>{navStatus.stats.metrics_calculated}</span>
-                <span className={s.statLabel}>Metrics Done</span>
-              </div>
-              <div className={s.statCard}>
-                <span className={s.statNum}>{navStatus.stats.ended_schemes}</span>
-                <span className={s.statLabel}>Ended</span>
-              </div>
+              <VdfStatCard value={navStatus.stats.total} label="Bookmarked" />
+              <VdfStatCard value={navStatus.stats.with_data} label="With NAV Data" accent="success" />
+              <VdfStatCard value={navStatus.stats.without_data} label="Without Data" accent={navStatus.stats.without_data > 0 ? 'danger' : 'default'} />
+              <VdfStatCard value={navStatus.stats.metrics_calculated} label="Metrics Done" />
+              <VdfStatCard value={navStatus.stats.ended_schemes} label="Ended" />
             </div>
           )}
 
           {/* VaNi Insights */}
-          {getInsights().length > 0 && (
-            <div className={s.insightsCard}>
-              <div className={s.insightsHeader}>
-                <span>{'\u2728'}</span>
-                <span>VaNi Analysis</span>
-              </div>
-              {getInsights().map((ins, i) => (
-                <div key={i} className={s.insightRow}>
-                  <span className={s.insightIcon}>{ins.icon}</span>
-                  <span>{ins.text}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          <VdfInsightsCard title="VaNi Analysis" insights={getInsights()} />
 
           {/* Controls */}
           <div className={s.controlBar}>
@@ -280,8 +254,8 @@ export default function CruiseControlPage() {
                 : 'No schemes match your search.'}
             </div>
           ) : (
-            <div className={s.tableWrap}>
-              <table className={s.table}>
+            <div className={d.tableWrap}>
+              <table className={d.table}>
                 <thead>
                   <tr>
                     <th>Scheme</th>
@@ -316,16 +290,13 @@ export default function CruiseControlPage() {
                         </td>
                         <td className={s.tdDate}>{sc.latest_nav_date || '\u2014'}</td>
                         <td>
-                          {sc.daily_download_enabled ? (
-                            <span className={s.badgeOn}>On</span>
-                          ) : (
-                            <span className={s.badgeOff}>{isEnded ? 'Ended' : 'Off'}</span>
-                          )}
+                          <VdfStatusBadge label={sc.daily_download_enabled ? 'On' : isEnded ? 'Ended' : 'Off'} variant={sc.daily_download_enabled ? 'success' : 'muted'} size="sm" />
                         </td>
                         <td>
-                          <span className={`${s.metricsBadge} ${s[`mb_${metricsStatus}`]}`}>
-                            {metricsStatus === 'done' ? '\u2713 Done' : metricsStatus === 'partial' ? 'Partial' : metricsStatus === 'pending' ? 'Pending' : '\u2014'}
-                          </span>
+                          <VdfStatusBadge
+                            label={metricsStatus === 'done' ? '\u2713 Done' : metricsStatus === 'partial' ? 'Partial' : metricsStatus === 'pending' ? 'Pending' : '\u2014'}
+                            variant={metricsStatus === 'done' ? 'success' : metricsStatus === 'partial' ? 'warning' : metricsStatus === 'pending' ? 'info' : 'muted'}
+                            size="sm" />
                         </td>
                         <td>
                           {!hasData && (
