@@ -16,3 +16,4 @@ export { VdfMobileInput, type VdfMobileInputProps } from './mobile-input/VdfMobi
 export { VdfRichText, type VdfRichTextProps } from './rich-text/VdfRichText';
 export { ThemePicker } from './theme-picker/ThemePicker';
 export { VdfSidebar, type VdfSidebarProps } from './sidebar/VdfSidebar';
+export { VdfLineChart, type VdfLineChartProps } from './line-chart/VdfLineChart';

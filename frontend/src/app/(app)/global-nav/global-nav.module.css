@@ -32,6 +32,15 @@
 .bulkBtn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
 .bulkBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* ── Filters ─────────────────────────────────────────── */
+.filterRow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; flex-shrink: 0; align-items: center; }
+.filterGroup { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.filterLabel { font-size: 0.58rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); margin-right: 2px; }
+.filterPill { padding: 3px 10px; border: 1px solid var(--color-border); border-radius: 100px; background: transparent; color: var(--color-muted); font-size: 0.6rem; font-weight: 500; cursor: pointer; transition: all 150ms; white-space: nowrap; }
+.filterPill:hover { border-color: var(--color-primary); color: var(--color-fg); }
+.filterPillActive { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 12%, transparent); color: var(--color-primary); font-weight: 600; }
+.filterMore { font-size: 0.58rem; color: var(--color-muted); }
+
 /* ── VaNi Insights ───────────────────────────────────── */
 .insightsCard { background: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-primary) 10%, transparent); border-radius: 8px; padding: 8px 14px; margin-bottom: 10px; flex-shrink: 0; }
 .insightsHeader { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; font-weight: 700; color: var(--color-fg); margin-bottom: 4px; }
@@ -134,11 +143,17 @@
 .actionBtnGreen:hover { background: color-mix(in srgb, var(--color-success) 8%, transparent); }
 .actionBtnGreen:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* ── Chart Section ───────────────────────────────────── */
+.chartSection { margin-bottom: 10px; flex-shrink: 0; }
+
 /* ── NAV Section ─────────────────────────────────────── */
 .navSection { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .navSectionHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-shrink: 0; }
 .navSectionTitle { font-size: 0.72rem; font-weight: 700; color: var(--color-fg); }
+.navSectionRight { display: flex; align-items: center; gap: 8px; }
 .navSectionCount { font-size: 0.65rem; color: var(--color-muted); }
+.exportBtn { padding: 3px 10px; border: 1px solid var(--color-border); border-radius: 6px; background: transparent; color: var(--color-muted); font-size: 0.6rem; font-weight: 600; cursor: pointer; transition: all 200ms; }
+.exportBtn:hover { border-color: var(--color-primary); color: var(--color-primary); }
 
 .navTableWrap { flex: 1; overflow: auto; border: 1px solid var(--color-border); border-radius: 8px; min-height: 0; }
 .navTable { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
