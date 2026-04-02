@@ -67,6 +67,10 @@ export default function CruiseControlPage() {
   const [navStatus, setNavStatus] = useState<NavStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [downloadingAll, setDownloadingAll] = useState(false);
+  const [fillingGaps, setFillingGaps] = useState(false);
+  const [calculatingAll, setCalculatingAll] = useState(false);
+  const [calculatingScheme, setCalculatingScheme] = useState<string | null>(null);
   const [downloadingScheme, setDownloadingScheme] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -121,6 +125,50 @@ export default function CruiseControlPage() {
     } finally {
       setDownloadingScheme(null);
     }
+  }
+
+  // Download ALL full history (sequential)
+  async function handleDownloadAllFull() {
+    if (downloadingAll) return; setDownloadingAll(true);
+    try {
+      const r = await apiFetch<any>(API.nav.downloadAll);
+      showToast({ message: `Full history: ${r.downloaded} downloaded, ${r.skipped} skipped, ${r.failed} failed`, type: r.failed > 0 ? 'warning' : 'success' });
+      fetchStatus();
+    } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
+    finally { setDownloadingAll(false); }
+  }
+
+  // Fill ALL gaps
+  async function handleFillAllGaps() {
+    if (fillingGaps) return; setFillingGaps(true);
+    try {
+      const r = await apiFetch<any>(API.nav.downloadGapAll);
+      showToast({ message: `Gaps filled: ${r.schemes_with_gaps} schemes, ${r.records_filled} records`, type: 'success' });
+      fetchStatus();
+    } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
+    finally { setFillingGaps(false); }
+  }
+
+  // Calculate ALL metrics
+  async function handleCalculateAll() {
+    if (calculatingAll) return; setCalculatingAll(true);
+    try {
+      const r = await apiFetch<any>(API.nav.calculateMetricsBulk);
+      showToast({ message: `Metrics: ${r.total_schemes} schemes, ${r.total_records_updated} records (${(r.execution_ms / 1000).toFixed(1)}s)`, type: 'success' });
+      fetchStatus();
+    } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
+    finally { setCalculatingAll(false); }
+  }
+
+  // Calculate metrics for single scheme
+  async function handleCalculateScheme(code: string) {
+    if (calculatingScheme) return; setCalculatingScheme(code);
+    try {
+      const r = await apiFetch<any>({ ...API.nav.calculateMetrics, path: API.nav.calculateMetrics.path.replace(':code', code) });
+      showToast({ message: r.status === 'already_fresh' ? `${code}: up to date` : `${code}: ${r.records_updated} records (${r.execution_ms}ms)`, type: 'success' });
+      fetchStatus();
+    } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
+    finally { setCalculatingScheme(null); }
   }
 
   // Filter schemes by search
@@ -231,15 +279,18 @@ export default function CruiseControlPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             <div className={s.controlActions}>
-              <button className={s.refreshBtn} onClick={fetchStatus} title="Refresh">
-                {'\u21BB'} Refresh
+              <button className={s.refreshBtn} onClick={fetchStatus} title="Refresh">{'\u21BB'}</button>
+              <button className={s.runBtn} onClick={handleDownloadAll} disabled={downloading || !navStatus || navStatus.stats.total === 0}>
+                {downloading ? 'Downloading...' : '\u25B6 Daily NAV'}
               </button>
-              <button
-                className={s.runBtn}
-                onClick={handleDownloadAll}
-                disabled={downloading || !navStatus || navStatus.stats.total === 0}
-              >
-                {downloading ? 'Downloading...' : '\u25B6 Run Now \u2014 Download All'}
+              <button className={s.refreshBtn} onClick={handleDownloadAllFull} disabled={downloadingAll || !navStatus || navStatus.stats.total === 0}>
+                {downloadingAll ? '...' : '\u2B07 Full History'}
+              </button>
+              <button className={s.refreshBtn} onClick={handleFillAllGaps} disabled={fillingGaps || !navStatus}>
+                {fillingGaps ? '...' : '\u{1F527} Fill Gaps'}
+              </button>
+              <button className={s.refreshBtn} onClick={handleCalculateAll} disabled={calculatingAll || !navStatus}>
+                {calculatingAll ? '...' : '\u{1F9EE} Metrics'}
               </button>
             </div>
           </div>
@@ -298,14 +349,15 @@ export default function CruiseControlPage() {
                             variant={metricsStatus === 'done' ? 'success' : metricsStatus === 'partial' ? 'warning' : metricsStatus === 'pending' ? 'info' : 'muted'}
                             size="sm" />
                         </td>
-                        <td>
+                        <td style={{ display: 'flex', gap: 4 }}>
                           {!hasData && (
-                            <button
-                              className={s.dlBtn}
-                              onClick={() => handleDownloadScheme(sc.scheme_code)}
-                              disabled={downloadingScheme === sc.scheme_code}
-                            >
-                              {downloadingScheme === sc.scheme_code ? '...' : '\u2B07 NAV'}
+                            <button className={s.dlBtn} onClick={() => handleDownloadScheme(sc.scheme_code)} disabled={downloadingScheme === sc.scheme_code}>
+                              {downloadingScheme === sc.scheme_code ? '...' : '\u2B07'}
+                            </button>
+                          )}
+                          {hasData && metricsStatus !== 'done' && (
+                            <button className={s.dlBtn} onClick={() => handleCalculateScheme(sc.scheme_code)} disabled={calculatingScheme === sc.scheme_code}>
+                              {calculatingScheme === sc.scheme_code ? '...' : '\u{1F9EE}'}
                             </button>
                           )}
                         </td>

@@ -270,6 +270,12 @@ export const API = {
       auth: true,
       description: 'Download full history for all bookmarked schemes',
     },
+    downloadGapAll: {
+      method: 'POST',
+      path: '/api/v1/nav/download/gap/all',
+      auth: true,
+      description: 'Fill NAV gaps for all bookmarked schemes',
+    },
     status: {
       method: 'GET',
       path: '/api/v1/nav/status',

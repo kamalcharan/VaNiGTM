@@ -607,6 +607,76 @@ export function createNavRouter(pool: Pool): Router {
     }
   });
 
+  /* ── POST /download/gap/all — Fill gaps for ALL bookmarked schemes ── */
+
+  router.post('/download/gap/all', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      // Get all bookmarked schemes that have NAV data (gaps only exist if data exists)
+      const bookmarked = await pool.query(
+        `SELECT DISTINCT b.scheme_code
+         FROM ki_scheme_bookmarks b
+         JOIN ki_nav_history n ON n.scheme_code = b.scheme_code
+         WHERE b.daily_download_enabled = true
+         GROUP BY b.scheme_code
+         HAVING COUNT(n.id) > 1`,
+      );
+
+      const codes = bookmarked.rows.map((r: any) => r.scheme_code);
+      let schemesWithGaps = 0, totalFilled = 0;
+
+      for (const code of codes) {
+        // Find gaps for this scheme
+        const gapsResult = await pool.query(
+          `WITH pairs AS (
+              SELECT nav_date, LEAD(nav_date) OVER (ORDER BY nav_date) AS next_date,
+                     (LEAD(nav_date) OVER (ORDER BY nav_date) - nav_date) AS gap_days
+              FROM ki_nav_history WHERE scheme_code = $1
+           )
+           SELECT nav_date::text AS from_date, next_date::text AS to_date
+           FROM pairs WHERE gap_days > 3`,
+          [code],
+        );
+
+        if (gapsResult.rows.length === 0) continue;
+        schemesWithGaps++;
+
+        for (const gap of gapsResult.rows as any[]) {
+          try {
+            const records = await fetchMfapiHistory(code, gap.from_date, gap.to_date);
+            if (records.length === 0) continue;
+
+            const BATCH = 500;
+            for (let i = 0; i < records.length; i += BATCH) {
+              const batch = records.slice(i, i + BATCH);
+              const values: any[] = [];
+              const placeholders: string[] = [];
+              batch.forEach((rec, idx) => {
+                const off = idx * 3;
+                placeholders.push(`($${off + 1}, $${off + 2}, $${off + 3})`);
+                values.push(rec.scheme_code, rec.nav_date, rec.nav);
+              });
+              await pool.query(
+                `INSERT INTO ki_nav_history (scheme_code, nav_date, nav)
+                 VALUES ${placeholders.join(', ')}
+                 ON CONFLICT (scheme_code, nav_date) DO UPDATE SET nav = EXCLUDED.nav`,
+                values,
+              );
+            }
+            totalFilled += records.length;
+          } catch { /* skip scheme on error, continue others */ }
+        }
+      }
+
+      res.json({ total_schemes: codes.length, schemes_with_gaps: schemesWithGaps, records_filled: totalFilled });
+    } catch (err: any) {
+      console.error('[NAV:gap-fill-all]', err);
+      res.status(500).json({ error: { code: 'GAP_FILL_FAILED', message: err.message } });
+    }
+  });
+
   /* ── POST /metrics/bulk — Calculate metrics for all schemes ── */
 
   router.post('/metrics/bulk', async (req, res) => {

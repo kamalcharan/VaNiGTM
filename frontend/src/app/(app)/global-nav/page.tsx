@@ -154,6 +154,30 @@ export default function GlobalNavPage() {
     setTimeout(() => { setBulkOp(null); refetchSearch(); refetchStats(); }, 3000);
   }
 
+  // Download ALL bookmarked full history
+  async function handleDownloadAllFull() {
+    setBulkOp({ active: true, title: 'Downloading Full History', progress: 50, progressText: 'Fetching all bookmarked schemes...', items: [{ label: 'MFAPI sequential download', status: 'running' }], vani: 'Downloading full NAV history for all bookmarked schemes. This may take a few minutes.' });
+    try {
+      const r = await apiFetch<any>(API.nav.downloadAll);
+      setBulkOp({ active: true, title: 'Download Complete', progress: 100, progressText: `${r.downloaded} schemes downloaded`, items: [{ label: `${r.downloaded} downloaded, ${r.skipped} skipped, ${r.failed} failed`, status: r.failed > 0 ? 'failed' : 'done' }], vani: `Done! ${r.downloaded} schemes with full history.` });
+    } catch (err) {
+      setBulkOp({ active: true, title: 'Download Failed', progress: 0, progressText: 'Error', items: [{ label: (err as ApiError).message || 'Failed', status: 'failed' }], vani: 'Download failed.' });
+    }
+    setTimeout(() => { setBulkOp(null); refetchSearch(); refetchStats(); }, 3000);
+  }
+
+  // Fill ALL gaps
+  async function handleFillAllGaps() {
+    setBulkOp({ active: true, title: 'Filling NAV Gaps', progress: 50, progressText: 'Scanning for missing dates...', items: [{ label: 'Gap detection + MFAPI fetch', status: 'running' }], vani: 'Finding and filling missing NAV dates across all bookmarked schemes.' });
+    try {
+      const r = await apiFetch<any>(API.nav.downloadGapAll);
+      setBulkOp({ active: true, title: 'Gaps Filled', progress: 100, progressText: `${r.schemes_with_gaps} schemes had gaps`, items: [{ label: `${r.records_filled} records filled`, status: 'done' }], vani: `Done! ${r.records_filled} missing records recovered.` });
+    } catch (err) {
+      setBulkOp({ active: true, title: 'Gap Fill Failed', progress: 0, progressText: 'Error', items: [{ label: (err as ApiError).message || 'Failed', status: 'failed' }], vani: 'Gap fill failed.' });
+    }
+    setTimeout(() => { setBulkOp(null); refetchSearch(); refetchStats(); }, 3000);
+  }
+
   // ── VaNi — journey-aware insights ──
   const insights: Insight[] = [];
   if (!activeQuery) {
@@ -275,6 +299,12 @@ export default function GlobalNavPage() {
                 </button>
                 <button className={d.pageBtn} onClick={handleBulkMetrics}>
                   {'\u{1F9EE} Bulk Metrics'}
+                </button>
+                <button className={d.pageBtn} onClick={handleDownloadAllFull}>
+                  {'\u{1F4E5} Full History'}
+                </button>
+                <button className={d.pageBtn} onClick={handleFillAllGaps}>
+                  {'\u{1F527} Fill All Gaps'}
                 </button>
               </div>
               <div className={s.toolbarInfo}>
