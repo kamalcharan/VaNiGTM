@@ -181,14 +181,14 @@ export default function GlobalNavPage() {
       </div>
 
       {/* Stats Row */}
-      {stats && (
+      {stats?.total_schemes != null && (
         <div className={s.statsRow}>
-          <div className={s.statCard}><span className={s.statNum}>{stats.total_schemes.toLocaleString()}</span><span className={s.statLabel}>Total Schemes</span></div>
-          <div className={`${s.statCard} ${s.stSuccess}`}><span className={s.statNum}>{stats.with_nav_data.toLocaleString()}</span><span className={s.statLabel}>With NAV</span></div>
-          <div className={`${s.statCard} ${stats.without_nav_data > 0 ? s.stDanger : ''}`}><span className={s.statNum}>{stats.without_nav_data.toLocaleString()}</span><span className={s.statLabel}>Without NAV</span></div>
-          <div className={`${s.statCard} ${stats.stale_nav_7d > 0 ? s.stWarning : ''}`}><span className={s.statNum}>{stats.stale_nav_7d.toLocaleString()}</span><span className={s.statLabel}>Stale ({'>'}7d)</span></div>
-          <div className={s.statCard}><span className={s.statNum}>{stats.metrics_calculated.toLocaleString()}</span><span className={s.statLabel}>Metrics Done</span></div>
-          <div className={s.statCard}><span className={s.statNum}>{stats.ended_schemes.toLocaleString()}</span><span className={s.statLabel}>Ended</span></div>
+          <div className={s.statCard}><span className={s.statNum}>{(stats.total_schemes ?? 0).toLocaleString()}</span><span className={s.statLabel}>Total Schemes</span></div>
+          <div className={`${s.statCard} ${s.stSuccess}`}><span className={s.statNum}>{(stats.with_nav_data ?? 0).toLocaleString()}</span><span className={s.statLabel}>With NAV</span></div>
+          <div className={`${s.statCard} ${(stats.without_nav_data ?? 0) > 0 ? s.stDanger : ''}`}><span className={s.statNum}>{(stats.without_nav_data ?? 0).toLocaleString()}</span><span className={s.statLabel}>Without NAV</span></div>
+          <div className={`${s.statCard} ${(stats.stale_nav_7d ?? 0) > 0 ? s.stWarning : ''}`}><span className={s.statNum}>{(stats.stale_nav_7d ?? 0).toLocaleString()}</span><span className={s.statLabel}>Stale ({'>'}7d)</span></div>
+          <div className={s.statCard}><span className={s.statNum}>{(stats.metrics_calculated ?? 0).toLocaleString()}</span><span className={s.statLabel}>Metrics Done</span></div>
+          <div className={s.statCard}><span className={s.statNum}>{(stats.ended_schemes ?? 0).toLocaleString()}</span><span className={s.statLabel}>Ended</span></div>
         </div>
       )}
 
