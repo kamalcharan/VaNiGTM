@@ -21,3 +21,5 @@ export { VdfStatusBadge, type VdfStatusBadgeProps, type BadgeVariant } from './s
 export { VdfStatCard, type VdfStatCardProps, type StatAccent } from './stat-card/VdfStatCard';
 export { VdfEmptyState, type VdfEmptyStateProps } from './empty-state/VdfEmptyState';
 export { VdfInsightsCard, type VdfInsightsCardProps, type Insight } from './insights-card/VdfInsightsCard';
+export { VdfLoader, type VdfLoaderProps } from './loader/VdfLoader';
+export { VdfProgressOverlay, type VdfProgressOverlayProps, type ProgressItem } from './progress-overlay/VdfProgressOverlay';

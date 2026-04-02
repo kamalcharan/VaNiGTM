@@ -1,0 +1,131 @@
+/* VdfLoader — Premium animated loading */
+
+/* ── Containers ──────────────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: var(--color-bg);
+  display: flex; align-items: center; justify-content: center;
+}
+
+.inline {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  min-height: 300px; position: relative;
+}
+
+.container {
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 1.5rem;
+  position: relative; z-index: 2;
+}
+
+/* ── Data Stream Particles ───────────────────────────── */
+.dataStream {
+  position: absolute;
+  width: 300px; height: 300px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.12; pointer-events: none;
+}
+
+.packet {
+  position: absolute;
+  width: 4px; height: 4px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  animation: fly 2.5s infinite linear;
+}
+
+.p1 { top: 10%; left: 10%; animation-delay: 0s; }
+.p2 { top: 50%; left: 30%; animation-delay: 0.5s; }
+.p3 { top: 80%; left: 60%; animation-delay: 1s; }
+.p4 { top: 30%; left: 90%; animation-delay: 1.5s; }
+
+@keyframes fly {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-100px) scale(0.1); opacity: 0; }
+}
+
+/* ── Logo Frame ──────────────────────────────────────── */
+.logoFrame {
+  display: flex; align-items: center; gap: 12px;
+}
+
+/* ── SVG Key Mark ────────────────────────────────────── */
+.mark { width: 44px; height: 44px; }
+
+.markPath {
+  stroke: var(--color-fg);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  fill: none;
+  stroke-dasharray: 150;
+  stroke-dashoffset: 150;
+  animation: drawMark 2s cubic-bezier(0.65, 0, 0.35, 1) forwards,
+             markShimmer 3s infinite 2.2s;
+}
+
+@keyframes drawMark {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes markShimmer {
+  0%, 100% { opacity: 1; stroke-width: 2.5; }
+  50% { opacity: 0.6; stroke-width: 3; filter: blur(1px); }
+}
+
+/* ── Text ────────────────────────────────────────────── */
+.text {
+  font-family: var(--font-display, serif);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--color-fg);
+  position: relative;
+  opacity: 0;
+  animation: fadeIn 1.5s ease forwards 0.8s;
+}
+
+.text::after {
+  content: 'ProKey';
+  position: absolute; left: 0; top: 0;
+  color: var(--color-primary);
+  width: 0%; overflow: hidden;
+  animation: textShimmer 3s infinite 2.5s;
+  white-space: nowrap;
+}
+
+@keyframes fadeIn { to { opacity: 1; } }
+
+@keyframes textShimmer {
+  0% { width: 0%; opacity: 0; }
+  10%, 90% { opacity: 1; }
+  40%, 60% { width: 100%; text-shadow: 0 0 10px var(--color-primary), 0 0 20px var(--color-primary); }
+  100% { width: 100%; opacity: 0; }
+}
+
+/* ── Status Text ─────────────────────────────────────── */
+.status {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  opacity: 0;
+  animation: fadeIn 1s ease forwards 1.8s;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+
+.dots::after {
+  content: '';
+  animation: loadingDots 1.5s infinite;
+}
+
+@keyframes loadingDots {
+  0% { content: ''; }
+  33% { content: '.'; }
+  66% { content: '..'; }
+  100% { content: '...'; }
+}
+
+.hint {
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  opacity: 0.5;
+}
