@@ -53,6 +53,9 @@ export default function SchemeDashboardPage() {
   const [calculating, setCalculating] = useState(false);
   const [period, setPeriod] = useState<Period>('1y');
   const [tablePage, setTablePage] = useState(1);
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [showCustomRange, setShowCustomRange] = useState(false);
   const PAGE_SIZE = 50;
 
   const fetchDetail = useCallback(async () => {
@@ -83,10 +86,21 @@ export default function SchemeDashboardPage() {
   useEffect(() => { setTablePage(1); }, [period]);
 
   // Actions
-  async function handleDownloadFull() {
-    if (downloading) return; setDownloading('full');
+  async function handleDownload(range: 'all' | '1y' | '6m' | '3m' | 'custom') {
+    if (downloading) return; setDownloading(range);
     try {
-      const r = await apiFetch<any>({ ...API.nav.downloadScheme, path: API.nav.downloadScheme.path.replace(':code', code) });
+      const body: any = {};
+      if (range !== 'all') {
+        const to = new Date().toISOString().split('T')[0];
+        const from = new Date();
+        if (range === '1y') from.setFullYear(from.getFullYear() - 1);
+        else if (range === '6m') from.setMonth(from.getMonth() - 6);
+        else if (range === '3m') from.setMonth(from.getMonth() - 3);
+        else if (range === 'custom' && customFrom) { body.date_from = customFrom; body.date_to = customTo || to; }
+        if (range !== 'custom') body.date_from = from.toISOString().split('T')[0];
+        if (range !== 'custom') body.date_to = to;
+      }
+      const r = await apiFetch<any>({ ...API.nav.downloadScheme, path: API.nav.downloadScheme.path.replace(':code', code) }, { body });
       showToast({ message: `${r.records} records downloaded`, type: 'success' }); fetchDetail();
     } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
     finally { setDownloading(null); }
@@ -198,9 +212,34 @@ export default function SchemeDashboardPage() {
             <div className={`${s.actionCard} ${s.actionCardGreen}`}>
               <div className={s.actionCardTitle}>Sync Operations</div>
               <div className={s.actionCardBtns}>
-                <button className={`${s.actionBtnFull} ${s.actionBtnPrimary}`} onClick={handleDownloadFull} disabled={!!downloading}>
-                  {downloading === 'full' ? 'Downloading...' : '\u{1F4E5} Download Full History'}
-                </button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className={`${s.actionBtnFull} ${s.actionBtnPrimary}`} onClick={() => handleDownload('all')} disabled={!!downloading} style={{ flex: 1 }}>
+                    {downloading === 'all' ? 'Downloading...' : '\u{1F4E5} All History'}
+                  </button>
+                  <button className={`${s.actionBtnFull} ${s.actionBtnOutline}`} onClick={() => handleDownload('1y')} disabled={!!downloading} style={{ flex: 0, padding: '10px 14px' }}>
+                    {downloading === '1y' ? '...' : '1Y'}
+                  </button>
+                  <button className={`${s.actionBtnFull} ${s.actionBtnOutline}`} onClick={() => handleDownload('6m')} disabled={!!downloading} style={{ flex: 0, padding: '10px 14px' }}>
+                    {downloading === '6m' ? '...' : '6M'}
+                  </button>
+                  <button className={`${s.actionBtnFull} ${s.actionBtnOutline}`} onClick={() => handleDownload('3m')} disabled={!!downloading} style={{ flex: 0, padding: '10px 14px' }}>
+                    {downloading === '3m' ? '...' : '3M'}
+                  </button>
+                </div>
+                {showCustomRange ? (
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input type="date" className={s.dateInput} value={customFrom} onChange={e => setCustomFrom(e.target.value)} />
+                    <span className={s.dateSep}>{'\u2192'}</span>
+                    <input type="date" className={s.dateInput} value={customTo} onChange={e => setCustomTo(e.target.value)} />
+                    <button className={`${s.actionBtnFull} ${s.actionBtnOutline}`} onClick={() => handleDownload('custom')} disabled={!!downloading || !customFrom} style={{ flex: 0, padding: '10px 14px' }}>
+                      {downloading === 'custom' ? '...' : 'Go'}
+                    </button>
+                  </div>
+                ) : (
+                  <button className={`${s.actionBtnFull} ${s.actionBtnOutline}`} onClick={() => setShowCustomRange(true)} style={{ fontSize: '0.72rem' }}>
+                    {'\u{1F4C5}'} Custom Date Range
+                  </button>
+                )}
                 <button className={`${s.actionBtnFull} ${s.actionBtnWarn}`} onClick={handleFillGaps} disabled={!!downloading || gaps.length === 0}>
                   {downloading === 'gap' ? 'Filling...' : `\u{1F527} Fill ${gaps.length} Missing Gap${gaps.length !== 1 ? 's' : ''}`}
                 </button>

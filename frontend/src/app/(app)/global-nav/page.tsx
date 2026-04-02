@@ -341,11 +341,34 @@ export default function GlobalNavPage() {
                         <td style={{ fontSize: '0.7rem', color: 'var(--color-muted)' }}>{sc.category}</td>
                         <td className={d.tdMono}>{sc.nav ? `\u20B9${Number(sc.nav).toFixed(2)}` : '\u2014'}</td>
                         <td><VdfStatusBadge label={st.label} variant={st.variant} size="sm" /></td>
-                        <td style={{ textAlign: 'right' }}>
+                        <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                          {st.variant === 'danger' && (
+                            <span style={{ color: 'var(--color-primary)', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}
+                              onClick={() => router.push(`/global-nav/${sc.scheme_code}`)}>
+                              Download
+                            </span>
+                          )}
                           {st.variant === 'warning' && (
-                            <span style={{ color: 'var(--color-info)', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}
-                              onClick={e => { e.stopPropagation(); router.push(`/global-nav/${sc.scheme_code}`); }}>
+                            <span style={{ color: 'var(--color-warning)', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}
+                              onClick={() => router.push(`/global-nav/${sc.scheme_code}`)}>
                               Fill Gaps
+                            </span>
+                          )}
+                          {st.variant === 'info' && (
+                            <span style={{ color: 'var(--color-info)', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}
+                              onClick={() => router.push(`/global-nav/${sc.scheme_code}`)}>
+                              Metrics
+                            </span>
+                          )}
+                          {st.variant === 'success' && (
+                            <span style={{ color: 'var(--color-muted)', fontSize: '0.7rem', cursor: 'pointer' }}
+                              onClick={() => router.push(`/global-nav/${sc.scheme_code}`)}>
+                              View
+                            </span>
+                          )}
+                          {st.variant === 'muted' && (
+                            <span style={{ color: 'var(--color-muted)', fontSize: '0.7rem', opacity: 0.5 }}>
+                              Ended
                             </span>
                           )}
                         </td>
