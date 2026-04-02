@@ -406,11 +406,20 @@ Tokens stored in BOTH sessionStorage and localStorage:
 ## VDF Component Library
 Located in `frontend/src/components/vdf/`. Naming: `Vdf<Name>` (e.g., `VdfButton`, `VdfMobileInput`).
 
-Current components (18):
-- **Layout**: VdfCard, VdfModal, VdfNavRail, VdfTabs, VdfWizard
+Current components (20):
+- **Layout**: VdfCard, VdfModal, VdfNavRail, VdfTabs, VdfWizard, VdfSidebar
 - **Form**: VdfButton, VdfCheckbox, VdfMobileInput, VdfRichText
-- **Display**: VdfBadge, VdfAvatar, VdfIcon
+- **Display**: VdfBadge, VdfAvatar, VdfIcon, ThemePicker
 - **Decorative**: VdfAtmosphere, VdfParticles, VdfNoiseOverlay, VdfGoldThread
+
+### PENDING REVIEW — Future VDF Data Components
+- **VdfDataTable**: Paginated table with sticky headers, status badges, row selection, actions. Currently inline in Import Dashboard, Global NAV, Cruise Control — extract into VDF once pattern stabilizes across 3+ pages.
+- **VdfStatusBadge**: Configurable status badge (success/warning/danger/info/muted). Currently hardcoded per page.
+- **VdfLineChart**: Lightweight SVG line chart for NAV history, portfolio performance. No chart library.
+- **VdfDateRangePicker**: From/to date inputs with presets (1M, 3M, 6M, 1Y, YTD).
+- **VdfSearchBar**: Debounced search input with filter pills + clear button.
+- **VdfEmptyState**: Icon + title + description + CTA. Currently duplicated everywhere.
+- **VdfConfirmDialog**: Warning modal with typed confirmation ("type DELETE").
 
 ### VdfMobileInput
 - Uses `constants/countries.ts` (22 countries with validation rules)

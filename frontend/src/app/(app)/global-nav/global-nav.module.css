@@ -41,20 +41,34 @@
 .schemeCard:hover { border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border)); }
 .schemeCardActive { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 12%, transparent); }
 
-.schemeTop { margin-bottom: 4px; }
-.schemeName { font-size: 0.78rem; font-weight: 600; color: var(--color-fg); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.schemeCode { font-family: var(--font-mono, monospace); font-size: 0.62rem; color: var(--color-primary); margin-top: 2px; }
+.schemeTop { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 4px; }
+.schemeName { font-size: 0.75rem; font-weight: 600; color: var(--color-fg); line-height: 1.3; flex: 1; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.schemeEnded { opacity: 0.5; }
 
-.schemeBottom { display: flex; gap: 8px; font-size: 0.62rem; color: var(--color-muted); margin-bottom: 6px; }
-.schemeAmc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.schemeCat { flex-shrink: 0; }
+.schemeMeta { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.schemeCode { font-family: var(--font-mono, monospace); font-size: 0.6rem; color: var(--color-primary); }
+.schemeAmc { font-size: 0.6rem; color: var(--color-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.schemeNav { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; }
-.navValue { font-family: var(--font-mono, monospace); font-size: 0.82rem; font-weight: 700; color: var(--color-fg); }
-.navDate { font-size: 0.6rem; color: var(--color-muted); }
-.noNav { font-size: 0.68rem; color: var(--color-muted); font-style: italic; }
+.schemeBottom { display: flex; gap: 8px; align-items: baseline; font-size: 0.62rem; }
+.navValue { font-family: var(--font-mono, monospace); font-size: 0.78rem; font-weight: 700; color: var(--color-fg); }
+.noNav { font-size: 0.62rem; color: var(--color-muted); font-style: italic; }
+.navCount { color: var(--color-info); font-weight: 500; }
+.schemeCat { color: var(--color-muted); }
 
-.schemeActions { display: flex; gap: 6px; }
+/* ── Status Badges ───────────────────────────────────── */
+.statusBadge { padding: 2px 8px; border-radius: 100px; font-size: 0.55rem; font-weight: 600; flex-shrink: 0; white-space: nowrap; }
+.sb_success { background: color-mix(in srgb, var(--color-success) 12%, transparent); color: var(--color-success); }
+.sb_info { background: color-mix(in srgb, var(--color-info) 12%, transparent); color: var(--color-info); }
+.sb_warning { background: color-mix(in srgb, var(--color-warning) 12%, transparent); color: var(--color-warning); }
+.sb_danger { background: color-mix(in srgb, var(--color-danger) 12%, transparent); color: var(--color-danger); }
+.sb_muted { background: color-mix(in srgb, var(--color-muted) 8%, transparent); color: var(--color-muted); }
+
+/* ── Pagination ──────────────────────────────────────── */
+.pagination { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 8px 0; flex-shrink: 0; }
+.pageBtn { padding: 4px 10px; border: 1px solid var(--color-border); border-radius: 6px; background: transparent; color: var(--color-muted); font-size: 0.68rem; cursor: pointer; transition: all 200ms; }
+.pageBtn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-fg); }
+.pageBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+.pageInfo { font-size: 0.65rem; color: var(--color-muted); padding: 0 6px; }
 .dlBtn { padding: 3px 10px; border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent); border-radius: 6px; background: transparent; color: var(--color-primary); font-size: 0.62rem; font-weight: 600; cursor: pointer; transition: all 200ms; }
 .dlBtn:hover { background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
 .dlBtn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -81,6 +95,24 @@
 .detailNav { text-align: right; flex-shrink: 0; }
 .detailNavValue { display: block; font-family: var(--font-mono, monospace); font-size: 1.3rem; font-weight: 700; color: var(--color-fg); }
 .detailNavDate { font-size: 0.62rem; color: var(--color-muted); }
+
+/* ── NAV Stats Row ───────────────────────────────────── */
+.navStats { display: flex; gap: 8px; margin-bottom: 12px; flex-shrink: 0; }
+.navStat { flex: 1; padding: 8px 12px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 8px; text-align: center; }
+.navStatNum { display: block; font-family: var(--font-mono, monospace); font-size: 0.82rem; font-weight: 700; color: var(--color-fg); }
+.navStatLabel { font-size: 0.5rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); }
+
+/* ── Download Section ────────────────────────────────── */
+.downloadSection { padding: 12px 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; margin-bottom: 12px; flex-shrink: 0; }
+.downloadHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.downloadTitle { font-size: 0.72rem; font-weight: 700; color: var(--color-fg); }
+.presets { display: flex; gap: 4px; }
+.presetBtn { padding: 3px 10px; border: 1px solid var(--color-border); border-radius: 100px; background: transparent; color: var(--color-muted); font-size: 0.6rem; font-weight: 500; cursor: pointer; transition: all 200ms; }
+.presetBtn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.downloadRow { display: flex; gap: 8px; align-items: center; }
+.dateInput { padding: 6px 10px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 6px; color: var(--color-fg); font-size: 0.75rem; outline: none; width: 130px; }
+.dateInput:focus { border-color: var(--color-primary); }
+.dateSep { color: var(--color-muted); font-size: 0.8rem; }
 
 /* ── NAV Section ─────────────────────────────────────── */
 .navSection { flex: 1; min-height: 0; display: flex; flex-direction: column; }
