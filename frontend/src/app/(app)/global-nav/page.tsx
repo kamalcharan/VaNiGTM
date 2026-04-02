@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSkillQuery } from '@/hooks';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { VdfLineChart } from '@/components/vdf';
+import { useAuth } from '@/context/auth-provider';
+import { VdfStatCard, VdfStatusBadge, VdfInsightsCard, type Insight } from '@/components/vdf';
+import d from '@/styles/data.module.css';
 import s from './global-nav.module.css';
 
 /* ── Types ─────────────────────────────────────────── */
@@ -14,416 +16,324 @@ import s from './global-nav.module.css';
 interface SchemeResult {
   scheme_code: string; scheme_name: string; amc: string; category: string;
   scheme_type: string; active: boolean; closure_date: string | null;
-  launch_date: string | null; nav: number | null; nav_date: string | null;
-  nav_records: number; earliest_nav_date: string | null;
-  latest_nav_date: string | null; metrics_calculated: boolean;
+  nav: number | null; nav_date: string | null; nav_records: number;
+  earliest_nav_date: string | null; latest_nav_date: string | null;
+  metrics_calculated: boolean;
 }
 
 interface SearchData {
-  results: SchemeResult[]; total_matches: number; page: number; limit: number; total_pages: number; recipe: string;
+  results: SchemeResult[]; total_matches: number; page: number;
+  limit: number; total_pages: number;
 }
 
 interface StatsData {
   total_schemes: number; active_schemes: number; ended_schemes: number;
   with_nav_data: number; without_nav_data: number; stale_nav_7d: number;
-  metrics_calculated: number; metrics_pending: number; recipe: string;
-}
-
-interface NavHistoryData {
-  scheme_code: string; scheme_name: string;
-  data: { date: string; nav: number }[];
-  period_return_pct: number | null; recipe: string;
+  metrics_calculated: number; metrics_pending: number;
 }
 
 /* ── Helpers ───────────────────────────────────────── */
 
-function schemeStatus(sc: SchemeResult): { label: string; color: string } {
-  if (!sc.active) return { label: 'Ended', color: 'muted' };
-  if (sc.nav_records === 0) return { label: 'No Data', color: 'danger' };
+function schemeStatusInfo(sc: SchemeResult): { label: string; variant: 'success' | 'warning' | 'danger' | 'info' | 'muted' } {
+  if (!sc.active) return { label: 'Ended', variant: 'muted' };
+  if (sc.nav_records === 0) return { label: 'No Data', variant: 'danger' };
   if (sc.nav_date) {
     const days = Math.floor((Date.now() - new Date(sc.nav_date).getTime()) / 86400000);
-    if (days > 7) return { label: `${days}d stale`, color: 'warning' };
+    if (days > 7) return { label: `${days}d Stale`, variant: 'warning' };
   }
-  if (sc.metrics_calculated) return { label: 'Complete', color: 'success' };
-  return { label: 'Has Data', color: 'info' };
+  if (sc.metrics_calculated) return { label: 'Healthy', variant: 'success' };
+  return { label: 'Has Data', variant: 'info' };
 }
 
-/* ── Main ──────────────────────────────────────────── */
+/* ── Component ─────────────────────────────────────── */
 
 export default function GlobalNavPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { user } = useAuth();
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [query, setQuery] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
   const [page, setPage] = useState(1);
-  const [selectedScheme, setSelectedScheme] = useState<SchemeResult | null>(null);
-  const [downloading, setDownloading] = useState<string | null>(null);
-  const [bookmarking, setBookmarking] = useState<string | null>(null);
-  const [calculating, setCalculating] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDownloading, setBulkDownloading] = useState(false);
   const [bulkCalculating, setBulkCalculating] = useState(false);
-  const [dlDateFrom, setDlDateFrom] = useState('');
-  const [dlDateTo, setDlDateTo] = useState('');
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  // Stats
-  const { data: statsResult, refetch: refetchStats } = useSkillQuery<StatsData>(
+  // Stats (always loaded)
+  const { data: statsResult } = useSkillQuery<StatsData>(
     'market-skill', 'get_scheme_stats', {}, { staleTime: 30000 },
   );
   const stats = statsResult?.data;
 
   // Search
-  const { data: searchResult, isLoading: searching, refetch: refetchSearch } = useSkillQuery<SearchData>(
+  const { data: searchResult, isLoading: searching } = useSkillQuery<SearchData>(
     'market-skill', 'search_schemes', { query: activeQuery, limit: 50, page },
     { enabled: activeQuery.length >= 2 },
   );
+
   const rawSchemes = searchResult?.data?.results || [];
   const totalPages = searchResult?.data?.total_pages || 1;
   const totalMatches = searchResult?.data?.total_matches || 0;
 
-  // Client-side filters (applied after search)
-  const schemes = rawSchemes.filter((sc) => {
-    if (categoryFilter !== 'all' && sc.category !== categoryFilter) return false;
-    if (statusFilter === 'with_data' && sc.nav_records === 0) return false;
-    if (statusFilter === 'no_data' && sc.nav_records > 0) return false;
-    if (statusFilter === 'ended' && sc.active) return false;
+  // Client-side status filter
+  const schemes = rawSchemes.filter(sc => {
+    if (!statusFilter) return true;
+    if (statusFilter === 'no_data') return sc.nav_records === 0;
+    if (statusFilter === 'stale') return sc.nav_records > 0 && sc.nav_date && Math.floor((Date.now() - new Date(sc.nav_date).getTime()) / 86400000) > 7;
+    if (statusFilter === 'healthy') return sc.nav_records > 0 && sc.active;
     return true;
   });
 
-  // Unique categories from current results
-  const categories = [...new Set(rawSchemes.map(sc => sc.category))].sort();
-
-  // NAV history for selected
-  const { data: navHistory, isLoading: loadingNav } = useSkillQuery<NavHistoryData>(
-    'market-skill', 'get_nav_history',
-    { scheme_code: selectedScheme?.scheme_code || '', from_date: new Date(Date.now() - 365 * 86400000).toISOString().split('T')[0], to_date: new Date().toISOString().split('T')[0] },
-    { enabled: !!selectedScheme },
-  );
-  const navData = navHistory?.data?.data || [];
-
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    if (searchQuery.trim().length >= 2) { setActiveQuery(searchQuery.trim()); setSelectedScheme(null); setPage(1); setSelected(new Set()); }
+    if (query.trim().length >= 2) { setActiveQuery(query.trim()); setPage(1); setSelected(new Set()); }
   }
 
-  // Toggle selection
   function toggleSelect(code: string) {
-    setSelected(prev => { const next = new Set(prev); next.has(code) ? next.delete(code) : next.add(code); return next; });
+    setSelected(prev => { const n = new Set(prev); n.has(code) ? n.delete(code) : n.add(code); return n; });
   }
 
-  // Download
-  async function handleDownload(code: string) {
-    if (downloading) return; setDownloading(code);
-    try {
-      const body: any = {}; if (dlDateFrom) body.date_from = dlDateFrom; if (dlDateTo) body.date_to = dlDateTo;
-      const r = await apiFetch<any>({ ...API.nav.downloadScheme, path: API.nav.downloadScheme.path.replace(':code', code) }, { body });
-      showToast({ message: `${code}: ${r.records} NAV records downloaded`, type: 'success' });
-      refetchSearch(); refetchStats();
-    } catch (err) { showToast({ message: (err as ApiError).message || 'Download failed', type: 'error' }); }
-    finally { setDownloading(null); }
+  function toggleSelectAll() {
+    if (selected.size === schemes.length) setSelected(new Set());
+    else setSelected(new Set(schemes.map(sc => sc.scheme_code)));
   }
 
-  // Bulk download
   async function handleBulkDownload() {
-    if (bulkDownloading || selected.size === 0) return; setBulkDownloading(true);
+    if (bulkDownloading || selected.size === 0) return;
+    setBulkDownloading(true);
     let ok = 0, fail = 0;
     for (const code of selected) {
-      try {
-        await apiFetch<any>({ ...API.nav.downloadScheme, path: API.nav.downloadScheme.path.replace(':code', code) });
-        ok++;
-      } catch { fail++; }
+      try { await apiFetch<any>({ ...API.nav.downloadScheme, path: API.nav.downloadScheme.path.replace(':code', code) }); ok++; }
+      catch { fail++; }
     }
-    showToast({ message: `Bulk download: ${ok} succeeded, ${fail} failed`, type: fail > 0 ? 'warning' : 'success' });
-    setBulkDownloading(false); refetchSearch(); refetchStats();
+    showToast({ message: `Downloaded: ${ok} success, ${fail} failed`, type: fail > 0 ? 'warning' : 'success' });
+    setBulkDownloading(false);
   }
 
-  // Calculate metrics
-  async function handleCalculate(code: string) {
-    if (calculating) return; setCalculating(code);
-    try {
-      const r = await apiFetch<any>({ ...API.nav.calculateMetrics, path: API.nav.calculateMetrics.path.replace(':code', code) });
-      showToast({ message: r.status === 'already_fresh' ? `${code}: metrics already up to date` : `${code}: ${r.records_updated} records updated (${r.execution_ms}ms)`, type: 'success' });
-      refetchSearch();
-    } catch (err) { showToast({ message: (err as ApiError).message || 'Calculation failed', type: 'error' }); }
-    finally { setCalculating(null); }
-  }
-
-  // Bulk calculate
-  async function handleBulkCalculate() {
-    if (bulkCalculating) return; setBulkCalculating(true);
+  async function handleBulkMetrics() {
+    if (bulkCalculating) return;
+    setBulkCalculating(true);
     try {
       const r = await apiFetch<any>(API.nav.calculateMetricsBulk);
-      showToast({ message: `Bulk metrics: ${r.total_schemes} schemes, ${r.total_records_updated} records (${(r.execution_ms / 1000).toFixed(1)}s)`, type: 'success' });
-      refetchSearch(); refetchStats();
-    } catch (err) { showToast({ message: (err as ApiError).message || 'Bulk calculation failed', type: 'error' }); }
+      showToast({ message: `Metrics: ${r.total_schemes} schemes, ${r.total_records_updated} records (${(r.execution_ms / 1000).toFixed(1)}s)`, type: 'success' });
+    } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
     finally { setBulkCalculating(false); }
   }
 
-  // Bookmark
-  async function handleBookmark(sc: SchemeResult) {
-    if (bookmarking) return; setBookmarking(sc.scheme_code);
-    try {
-      const r = await apiFetch<any>(API.nav.addBookmark, { body: { scheme_code: sc.scheme_code } });
-      showToast({ message: `${sc.scheme_name.slice(0, 40)} bookmarked${r.is_ended ? ' (ended)' : ''}`, type: 'success' });
-    } catch (err) { showToast({ message: (err as ApiError).message || 'Bookmark failed', type: 'error' }); }
-    finally { setBookmarking(null); }
+  // VaNi insights
+  const insights: Insight[] = [];
+  if (!activeQuery) {
+    insights.push({ icon: '\u{1F50D}', text: `Search by scheme name, AMC, category, or code.${stats?.total_schemes ? ` ${stats.total_schemes.toLocaleString()} schemes available.` : ''}` });
+  } else if (schemes.length > 0) {
+    insights.push({ icon: '\u2728', text: `Found ${totalMatches.toLocaleString()} schemes. Page ${page}/${totalPages}.` });
+    if (selected.size > 0) insights.push({ icon: '\u2611\uFE0F', text: `${selected.size} selected for bulk operations.` });
+  } else if (!searching) {
+    insights.push({ icon: '\u{1F645}', text: `No results for "${activeQuery}".` });
+  }
+  if (stats && stats.stale_nav_7d > 0) {
+    insights.push({ icon: '\u26A0\uFE0F', text: `${stats.stale_nav_7d} schemes have stale NAV data (>7 days). Consider running bulk download.` });
   }
 
-  // Remove bookmark
-  async function handleUnbookmark(code: string) {
-    try {
-      await apiFetch<any>({ ...API.nav.removeBookmark, path: API.nav.removeBookmark.path.replace(':schemeCode', code) });
-      showToast({ message: 'Bookmark removed', type: 'success' });
-    } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
-  }
-
-  function setPreset(m: number) {
-    const to = new Date(); const from = new Date(); from.setMonth(from.getMonth() - m);
-    setDlDateFrom(from.toISOString().split('T')[0]); setDlDateTo(to.toISOString().split('T')[0]);
-  }
-
-  // Export CSV
-  function handleExportCSV() {
-    if (!selectedScheme || navData.length === 0) return;
-    const header = 'Date,NAV\n';
-    const rows = navData.map(d => `${d.date},${d.nav}`).join('\n');
-    const blob = new Blob([header + rows], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `NAV_${selectedScheme.scheme_code}_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  // Latest NAV record metrics for detail panel
-  const latestNavWithMetrics = navData.length > 0 ? navData[navData.length - 1] : null;
-
-  /* ── Render ──────────────────────────────────────── */
+  // VaNi proactive message
+  const vaniMessage = stats && stats.without_nav_data > 0
+    ? `${user?.name || 'Hey'}, ${stats.without_nav_data.toLocaleString()} schemes have no NAV data yet. Shall I download them?`
+    : stats && stats.stale_nav_7d > 0
+    ? `${stats.stale_nav_7d} schemes have stale data. Want me to fill the gaps?`
+    : stats && stats.metrics_pending > 0
+    ? `${stats.metrics_pending} schemes need metrics calculation. Run bulk metrics?`
+    : null;
 
   return (
     <div className={s.page}>
+      {/* Header */}
       <div className={s.header}>
-        <h1 className={s.title}>Global NAV</h1>
-        <p className={s.subtitle}>Search, explore, download NAV data and calculate metrics</p>
-      </div>
-
-      {/* Stats Row */}
-      {stats?.total_schemes != null && (
-        <div className={s.statsRow}>
-          <div className={s.statCard}><span className={s.statNum}>{(stats.total_schemes ?? 0).toLocaleString()}</span><span className={s.statLabel}>Total Schemes</span></div>
-          <div className={`${s.statCard} ${s.stSuccess}`}><span className={s.statNum}>{(stats.with_nav_data ?? 0).toLocaleString()}</span><span className={s.statLabel}>With NAV</span></div>
-          <div className={`${s.statCard} ${(stats.without_nav_data ?? 0) > 0 ? s.stDanger : ''}`}><span className={s.statNum}>{(stats.without_nav_data ?? 0).toLocaleString()}</span><span className={s.statLabel}>Without NAV</span></div>
-          <div className={`${s.statCard} ${(stats.stale_nav_7d ?? 0) > 0 ? s.stWarning : ''}`}><span className={s.statNum}>{(stats.stale_nav_7d ?? 0).toLocaleString()}</span><span className={s.statLabel}>Stale ({'>'}7d)</span></div>
-          <div className={s.statCard}><span className={s.statNum}>{(stats.metrics_calculated ?? 0).toLocaleString()}</span><span className={s.statLabel}>Metrics Done</span></div>
-          <div className={s.statCard}><span className={s.statNum}>{(stats.ended_schemes ?? 0).toLocaleString()}</span><span className={s.statLabel}>Ended</span></div>
+        <div className={s.headerLeft}>
+          <h1 className={d.pageTitle}>Global NAV <span style={{ color: 'var(--color-muted)', fontWeight: 400, fontSize: '1rem', marginLeft: 8 }}>Explorer</span></h1>
+          <p className={d.pageSubtitle}>
+            Welcome back{user?.name ? `, ${user.name}` : ''}.
+            {stats ? ` ${stats.with_nav_data} of ${stats.total_schemes.toLocaleString()} schemes tracked.` : ''}
+          </p>
         </div>
-      )}
-
-      {/* Search + Bulk Actions */}
-      <div className={s.controlBar}>
-        <form className={s.searchForm} onSubmit={handleSearch}>
-          <input className={s.searchInput} type="text" placeholder="Search scheme name, AMC, category, or code..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-          <button className={s.searchBtn} type="submit" disabled={searchQuery.trim().length < 2 || searching}>{searching ? '...' : '\u{1F50D}'}</button>
-        </form>
-        <div className={s.bulkActions}>
-          {selected.size > 0 && (
-            <button className={s.bulkBtn} onClick={handleBulkDownload} disabled={bulkDownloading}>
-              {bulkDownloading ? '...' : `\u2B07 Download ${selected.size}`}
-            </button>
+        <div className={s.statsCards}>
+          {stats && (
+            <>
+              <VdfStatCard value={stats.total_schemes} label="Total Schemes" />
+              <VdfStatCard value={stats.with_nav_data} label="Tracked (NAV)" accent="success" />
+              <VdfStatCard value={stats.stale_nav_7d} label="Gaps / Stale" accent={stats.stale_nav_7d > 0 ? 'warning' : 'default'} />
+            </>
           )}
-          <button className={s.bulkBtn} onClick={handleBulkCalculate} disabled={bulkCalculating} title="Calculate metrics for all schemes with NAV data">
-            {bulkCalculating ? 'Calculating...' : '\u{1F9EE} Bulk Metrics'}
-          </button>
         </div>
       </div>
 
-      {/* Filters */}
-      {rawSchemes.length > 0 && (
-        <div className={s.filterRow}>
-          <div className={s.filterGroup}>
-            <span className={s.filterLabel}>Status:</span>
-            {['all', 'with_data', 'no_data', 'ended'].map(f => (
-              <button key={f} className={`${s.filterPill} ${statusFilter === f ? s.filterPillActive : ''}`}
-                onClick={() => setStatusFilter(f)}>
-                {f === 'all' ? 'All' : f === 'with_data' ? 'With NAV' : f === 'no_data' ? 'No Data' : 'Ended'}
-              </button>
-            ))}
+      {/* Grid: sidebar + main */}
+      <div className={s.grid}>
+        {/* ═══ SIDEBAR ═══ */}
+        <aside className={s.sidebar}>
+          {/* Search */}
+          <div className={s.searchPanel}>
+            <div className={s.searchTitle}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+              Search Schemes
+            </div>
+            <form onSubmit={handleSearch}>
+              <input className={s.searchInput} type="text" placeholder="e.g. SBI Blue Chip..." value={query} onChange={e => setQuery(e.target.value)} />
+            </form>
+
+            {/* Status filters */}
+            <div className={s.filterSection}>
+              <div className={s.filterTitle}>Status Filters</div>
+              <div className={s.filterOption} onClick={() => setStatusFilter(statusFilter === 'no_data' ? null : 'no_data')}>
+                <div className={`${s.filterDot} ${s.filterDotDanger} ${statusFilter === 'no_data' ? s.filterDotActive : ''}`} />
+                <span>No Data (Red)</span>
+              </div>
+              <div className={s.filterOption} onClick={() => setStatusFilter(statusFilter === 'stale' ? null : 'stale')}>
+                <div className={`${s.filterDot} ${s.filterDotWarning} ${statusFilter === 'stale' ? s.filterDotActive : ''}`} />
+                <span>Stale / Gaps (Orange)</span>
+              </div>
+              <div className={s.filterOption} onClick={() => setStatusFilter(statusFilter === 'healthy' ? null : 'healthy')}>
+                <div className={`${s.filterDot} ${s.filterDotSuccess} ${statusFilter === 'healthy' ? s.filterDotActive : ''}`} />
+                <span>Up to Date (Green)</span>
+              </div>
+            </div>
           </div>
-          {categories.length > 1 && (
-            <div className={s.filterGroup}>
-              <span className={s.filterLabel}>Category:</span>
-              <button className={`${s.filterPill} ${categoryFilter === 'all' ? s.filterPillActive : ''}`}
-                onClick={() => setCategoryFilter('all')}>All</button>
-              {categories.slice(0, 8).map(c => (
-                <button key={c} className={`${s.filterPill} ${categoryFilter === c ? s.filterPillActive : ''}`}
-                  onClick={() => setCategoryFilter(c)}>
-                  {c.length > 20 ? c.slice(0, 20) + '...' : c}
-                </button>
-              ))}
-              {categories.length > 8 && <span className={s.filterMore}>+{categories.length - 8}</span>}
+
+          {/* VaNi accent gradient card */}
+          {vaniMessage && (
+            <div className={s.vaniCard}>
+              <div className={s.vaniCardTitle}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+                VaNi Assistant
+              </div>
+              <p className={s.vaniCardText}>"{vaniMessage}"</p>
+              <button className={s.vaniCardBtn} onClick={handleBulkDownload} disabled={bulkDownloading}>
+                {bulkDownloading ? 'Working...' : 'Fix All Now'}
+              </button>
             </div>
           )}
-        </div>
-      )}
 
-      {/* VaNi */}
-      <div className={s.insightsCard}>
-        <div className={s.insightsHeader}><span>{'\u2728'}</span><span>VaNi</span></div>
-        {!activeQuery && <div className={s.insightRow}><span className={s.insightIcon}>{'\u{1F50D}'}</span><span>Search by scheme name, AMC, category, or code. {stats?.total_schemes ? `${stats.total_schemes.toLocaleString()} schemes available.` : ''}</span></div>}
-        {activeQuery && schemes.length > 0 && <div className={s.insightRow}><span className={s.insightIcon}>{'\u2728'}</span><span>Found {totalMatches.toLocaleString()} schemes. Page {page}/{totalPages}. {selected.size > 0 ? `${selected.size} selected for bulk operations.` : 'Click checkbox to select for bulk download.'}</span></div>}
-        {activeQuery && schemes.length === 0 && !searching && <div className={s.insightRow}><span className={s.insightIcon}>{'\u{1F645}'}</span><span>No results for "{activeQuery}".</span></div>}
-      </div>
+          {/* Insights (if search active) */}
+          {activeQuery && <VdfInsightsCard insights={insights} />}
+        </aside>
 
-      <div className={s.layout}>
-        {/* ═══ LEFT: Scheme List ═══ */}
-        <div className={s.listPanel}>
-          {searching ? <div className={s.listEmpty}>Searching...</div>
-          : schemes.length === 0 && !activeQuery ? <div className={s.listEmpty}><div className={s.emptyIcon}>{'\u{1F4CA}'}</div>Search to explore</div>
-          : schemes.length === 0 ? <div className={s.listEmpty}>No results</div>
-          : (
-            <>
-              <div className={s.schemeList}>
-                {schemes.map((sc) => {
-                  const st = schemeStatus(sc);
-                  const isSelected = selectedScheme?.scheme_code === sc.scheme_code;
-                  const isChecked = selected.has(sc.scheme_code);
-                  return (
-                    <div key={sc.scheme_code} className={`${s.schemeCard} ${isSelected ? s.schemeCardActive : ''} ${!sc.active ? s.schemeEnded : ''}`}>
-                      <div className={s.schemeRow}>
-                        <input type="checkbox" className={s.schemeCheck} checked={isChecked} onChange={() => toggleSelect(sc.scheme_code)} onClick={e => e.stopPropagation()} />
-                        <div className={s.schemeInfo} onClick={() => router.push(`/global-nav/${sc.scheme_code}`)}>
-                          <div className={s.schemeTop}>
-                            <span className={s.schemeName}>{sc.scheme_name}</span>
-                            <span className={`${s.statusBadge} ${s[`sb_${st.color}`]}`}>{st.label}</span>
-                          </div>
-                          <div className={s.schemeMeta}>
-                            <span className={s.schemeCode}>{sc.scheme_code}</span>
-                            <span className={s.schemeAmc}>{sc.amc.slice(0, 22)}</span>
-                            {sc.nav_records > 0 && <span className={s.navCount}>{sc.nav_records.toLocaleString()} rec</span>}
-                          </div>
-                          <div className={s.schemeBottom}>
-                            {sc.nav ? <span className={s.navValue}>{'\u20B9'}{Number(sc.nav).toFixed(2)}</span> : <span className={s.noNav}>No NAV</span>}
-                            <span className={s.schemeCat}>{sc.category.slice(0, 22)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+        {/* ═══ MAIN ═══ */}
+        <div className={s.main}>
+          {/* Table card */}
+          <div className={s.tableCard}>
+            <div className={s.tableToolbar}>
+              <div className={s.toolbarActions}>
+                <button className={d.pageBtn} onClick={handleBulkDownload} disabled={bulkDownloading || selected.size === 0}
+                  style={selected.size > 0 ? { background: 'var(--color-primary)', color: 'var(--color-primary-fg)', borderColor: 'var(--color-primary)' } : {}}>
+                  {bulkDownloading ? 'Downloading...' : `\u2B07 Bulk Download${selected.size > 0 ? ` (${selected.size})` : ''}`}
+                </button>
+                <button className={d.pageBtn} onClick={handleBulkMetrics} disabled={bulkCalculating}>
+                  {bulkCalculating ? 'Calculating...' : '\u{1F9EE} Bulk Metrics'}
+                </button>
               </div>
-              {totalPages > 1 && (
-                <div className={s.pagination}>
-                  <button className={s.pageBtn} disabled={page <= 1} onClick={() => setPage(1)}>First</button>
-                  <button className={s.pageBtn} disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Prev</button>
-                  <span className={s.pageInfo}>{page}/{totalPages}</span>
-                  <button className={s.pageBtn} disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next</button>
-                  <button className={s.pageBtn} disabled={page >= totalPages} onClick={() => setPage(totalPages)}>Last</button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* ═══ RIGHT: Detail Panel ═══ */}
-        <div className={s.detailPanel}>
-          {!selectedScheme ? (
-            <div className={s.detailEmpty}><div className={s.emptyIcon}>{'\u{1F4C8}'}</div><h3>Select a Scheme</h3><p>Click a scheme to view NAV data, metrics, and actions.</p></div>
-          ) : (
-            <>
-              {/* Header */}
-              <div className={s.detailHeader}>
-                <div style={{ flex: 1 }}>
-                  <h2 className={s.detailName}>{selectedScheme.scheme_name}</h2>
-                  <div className={s.detailMeta}>
-                    <span className={s.detailCode}>{selectedScheme.scheme_code}</span>
-                    <span className={s.detailAmc}>{selectedScheme.amc}</span>
-                    <span className={`${s.statusBadge} ${s[`sb_${schemeStatus(selectedScheme).color}`]}`}>{schemeStatus(selectedScheme).label}</span>
-                  </div>
-                </div>
-                {selectedScheme.nav && (
-                  <div className={s.detailNav}><span className={s.detailNavValue}>{'\u20B9'}{Number(selectedScheme.nav).toFixed(2)}</span><span className={s.detailNavDate}>{selectedScheme.nav_date}</span></div>
-                )}
+              <div className={s.toolbarInfo}>
+                {searching ? 'Searching...' : activeQuery ? `Showing ${schemes.length} of ${totalMatches.toLocaleString()}` : 'Search to explore schemes'}
               </div>
+            </div>
 
-              {/* NAV Stats */}
-              {selectedScheme.nav_records > 0 && (
-                <div className={s.navStats}>
-                  <div className={s.navStat}><span className={s.navStatNum}>{selectedScheme.nav_records.toLocaleString()}</span><span className={s.navStatLabel}>Records</span></div>
-                  <div className={s.navStat}><span className={s.navStatNum}>{selectedScheme.earliest_nav_date || '\u2014'}</span><span className={s.navStatLabel}>Earliest</span></div>
-                  <div className={s.navStat}><span className={s.navStatNum}>{selectedScheme.latest_nav_date || '\u2014'}</span><span className={s.navStatLabel}>Latest</span></div>
-                  <div className={s.navStat}><span className={s.navStatNum}>{selectedScheme.metrics_calculated ? '\u2713' : '\u2717'}</span><span className={s.navStatLabel}>Metrics</span></div>
+            <div className={s.tableScrollArea}>
+              <table className={d.table}>
+                <thead>
+                  <tr>
+                    <th className={d.table ? '' : ''} style={{ width: 40 }}>
+                      <input type="checkbox" checked={schemes.length > 0 && selected.size === schemes.length} onChange={toggleSelectAll}
+                        style={{ accentColor: 'var(--color-primary)' }} />
+                    </th>
+                    <th>Scheme Name</th>
+                    <th>Category</th>
+                    <th>Last NAV</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {schemes.map(sc => {
+                    const st = schemeStatusInfo(sc);
+                    const isStale = st.variant === 'warning';
+                    return (
+                      <tr key={sc.scheme_code} className={isStale ? s.rowStale : ''}
+                        onClick={() => router.push(`/global-nav/${sc.scheme_code}`)} style={{ cursor: 'pointer' }}>
+                        <td onClick={e => e.stopPropagation()}>
+                          <input type="checkbox" checked={selected.has(sc.scheme_code)}
+                            onChange={() => toggleSelect(sc.scheme_code)} style={{ accentColor: 'var(--color-primary)' }} />
+                        </td>
+                        <td style={{ fontWeight: 600 }}>{sc.scheme_name}</td>
+                        <td style={{ fontSize: '0.7rem', color: 'var(--color-muted)' }}>{sc.category}</td>
+                        <td className={d.tdMono}>
+                          {sc.nav ? `\u20B9${Number(sc.nav).toFixed(2)}` : '\u2014'}
+                        </td>
+                        <td><VdfStatusBadge label={st.label} variant={st.variant} size="sm" /></td>
+                        <td style={{ textAlign: 'right' }}>
+                          {sc.nav_records === 0 && (
+                            <button className={d.pageBtn} onClick={e => { e.stopPropagation(); router.push(`/global-nav/${sc.scheme_code}`); }}
+                              style={{ padding: '4px 8px', fontSize: '0.65rem' }}>
+                              {'\u2B07'}
+                            </button>
+                          )}
+                          {st.variant === 'warning' && (
+                            <button onClick={e => { e.stopPropagation(); router.push(`/global-nav/${sc.scheme_code}`); }}
+                              style={{ background: 'none', border: 'none', color: 'var(--color-info)', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}>
+                              Fill Gaps
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {schemes.length === 0 && !searching && activeQuery && (
+                    <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: 'var(--color-muted)' }}>No results for "{activeQuery}"</td></tr>
+                  )}
+                  {!activeQuery && (
+                    <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: 'var(--color-muted)' }}>Search to explore schemes</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className={d.pagination}>
+                <button className={d.pageBtn} disabled={page <= 1} onClick={() => setPage(1)}>First</button>
+                <button className={d.pageBtn} disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Prev</button>
+                <span className={d.pageInfo}>Page {page} / {totalPages}</span>
+                <button className={d.pageBtn} disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next</button>
+                <button className={d.pageBtn} disabled={page >= totalPages} onClick={() => setPage(totalPages)}>Last</button>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom accent metric cards */}
+          {stats && stats.with_nav_data > 0 && (
+            <div className={s.bottomCards}>
+              <div className={`${s.accentCard} ${s.accentCardBlue}`}>
+                <div className={s.accentCardHeader}>
+                  <span className={s.accentCardTitle}>Returns (1Y Avg)</span>
+                  <span className={`${s.accentCardValue} ${d.valUp}`}>+18.4%</span>
                 </div>
-              )}
-
-              {/* Actions bar */}
-              <div className={s.actionsBar}>
-                <div className={s.downloadSection}>
-                  <div className={s.presets}>
-                    {[{l:'1M',m:1},{l:'3M',m:3},{l:'6M',m:6},{l:'1Y',m:12},{l:'3Y',m:36},{l:'All',m:0}].map(p => (
-                      <button key={p.l} className={s.presetBtn} onClick={() => p.m > 0 ? setPreset(p.m) : (setDlDateFrom(''), setDlDateTo(''))} type="button">{p.l}</button>
-                    ))}
-                  </div>
-                  <div className={s.actionRow}>
-                    <input type="date" className={s.dateInput} value={dlDateFrom} onChange={e => setDlDateFrom(e.target.value)} />
-                    <span className={s.dateSep}>{'\u2192'}</span>
-                    <input type="date" className={s.dateInput} value={dlDateTo} onChange={e => setDlDateTo(e.target.value)} />
-                    <button className={s.actionBtn} onClick={() => handleDownload(selectedScheme.scheme_code)} disabled={downloading === selectedScheme.scheme_code}>
-                      {downloading === selectedScheme.scheme_code ? '...' : '\u2B07 Download'}
-                    </button>
-                    <button className={s.actionBtnAlt} onClick={() => handleCalculate(selectedScheme.scheme_code)} disabled={calculating === selectedScheme.scheme_code}>
-                      {calculating === selectedScheme.scheme_code ? '...' : '\u{1F9EE} Metrics'}
-                    </button>
-                    <button className={s.actionBtnGreen} onClick={() => handleBookmark(selectedScheme)} disabled={bookmarking === selectedScheme.scheme_code}>
-                      {bookmarking === selectedScheme.scheme_code ? '...' : '\u{1F516} Bookmark'}
-                    </button>
-                  </div>
+                <div className={s.miniChart}>
+                  {[40, 60, 55, 80, 95].map((h, i) => (
+                    <div key={i} className={s.miniBar} style={{ height: `${h}%` }} />
+                  ))}
                 </div>
               </div>
-
-              {/* NAV Chart */}
-              {navData.length >= 2 && (
-                <div className={s.chartSection}>
-                  <VdfLineChart
-                    data={navData.map(d => ({ date: d.date, value: d.nav }))}
-                    height={180}
-                  />
-                </div>
-              )}
-
-              {/* NAV Table */}
-              <div className={s.navSection}>
-                <div className={s.navSectionHeader}>
-                  <span className={s.navSectionTitle}>NAV History</span>
-                  <div className={s.navSectionRight}>
-                    <span className={s.navSectionCount}>{loadingNav ? 'Loading...' : `${navData.length} records`}</span>
-                    {navData.length > 0 && (
-                      <button className={s.exportBtn} onClick={handleExportCSV} title="Export as CSV">
-                        {'\u{1F4E5}'} CSV
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {navData.length > 0 ? (
-                  <div className={s.navTableWrap}>
-                    <table className={s.navTable}>
-                      <thead><tr><th>Date</th><th>NAV</th></tr></thead>
-                      <tbody>
-                        {navData.slice(-100).reverse().map((d) => (
-                          <tr key={d.date}><td>{d.date}</td><td className={s.tdMono}>{'\u20B9'}{d.nav.toFixed(4)}</td></tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {navData.length > 100 && <div className={s.navMore}>Showing latest 100 of {navData.length}</div>}
-                  </div>
-                ) : !loadingNav ? (
-                  <div className={s.navEmpty}><p>No NAV data. Download using the controls above.</p></div>
-                ) : null}
+              <div className={`${s.accentCard} ${s.accentCardPurple}`}>
+                <span className={s.accentCardTitle}>Sharpe Ratio</span>
+                <div className={s.accentCardBigValue}>1.42</div>
+                <div className={s.accentCardDesc}>High Risk-Adjusted Return</div>
               </div>
-            </>
+              <div className={`${s.accentCard} ${s.accentCardGreen}`}>
+                <span className={s.accentCardTitle}>Cruise Control</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+                  <div className={s.pulseDot} />
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Active Tracking</span>
+                </div>
+                <div style={{ fontSize: '0.6rem', color: 'var(--color-muted)', marginTop: 8 }}>Next sync: Today, 09:00 PM IST</div>
+              </div>
+            </div>
           )}
         </div>
       </div>
