@@ -219,11 +219,73 @@ VDF is the single source of truth for all visual elements. Located in `component
 
 - **Glassmorphic design is DEFAULT.** Backdrop blur, glass surfaces, subtle borders, depth through transparency.
 - **No safe/generic design.** Every screen should feel premium, innovative, best-in-class.
-- **The Atlas design language** (login-vault, landing-page) sets the bar — dashboard pages match this quality.
+- **No "Atlas Design Language"** — the design system is: 12 themes + CSS variables + form tokens + VDF components.
 - Animations: subtle, purposeful (fadeInUp, transitions on hover/focus). No gratuitous animation.
 - Typography: clean hierarchy. Playfair Display for display text, DM Sans for body, JetBrains Mono for data.
 - Data density: dashboard pages are data-rich but never cluttered. Whitespace is intentional.
 - Mobile responsive: every page works on tablet and mobile. Not just desktop.
+
+### UX Reference Designs (MANDATORY)
+The HTML mockups in `documents/HTML/` define the visual bar for each feature area:
+- `globalnav.html` — Global NAV explorer: glassmorphic stats, sidebar search, VaNi accent gradient card, color-coded table rows, mini bar charts in metric cards
+- `globalnavadmin.html` — Admin ops: pixel heat map for fleet health, background worker progress bars, storage/compute stats, critical exceptions table
+- `globalnavscheme.html` — Scheme dashboard: 2-column (chart+actions | risk sidebar), accent-bordered cards, Sharpe with category comparison, max drawdown progress bar, data audit timeline
+- `ProKey-Landing-Page.html` — Landing page: the original premium design benchmark
+
+**When building ANY data page:**
+1. Check `documents/HTML/` for a reference design FIRST
+2. Match or exceed that visual quality — never downgrade
+3. If no reference exists, match the quality of existing reference designs
+
+### Visual Patterns (from reference designs)
+- **Stat cards**: glassmorphic with accent left-border, mini visualization inside (bar chart / sparkline)
+- **VaNi card**: accent gradient background (not flat), proactive suggestion with action button
+- **Table rows**: color-coded by status (amber bg for stale/warning, not just a badge)
+- **Status indicators**: pulsing dots for live status, not just text
+- **Metrics display**: large numbers with category average comparison, progress bars for drawdown
+- **Data audit trail**: timeline dots showing import → fetch → gap events
+- **Pixel heat maps**: GitHub-contribution-style grid for fleet/batch health
+- **Background workers**: live progress bars with ETA text
+
+### CSS Architecture — CRITICAL RULES
+
+#### NO per-page CSS for shared patterns
+Pages MUST import shared CSS + VDF components. Page CSS should ONLY contain layout.
+
+**Shared CSS files:**
+- `styles/forms.module.css` — all form controls (input, select, label, button, error)
+- `styles/data.module.css` — all data display (table, pagination, value colors, section titles)
+
+**VDF components for data display:**
+- `VdfStatusBadge` — status pills (success/warning/danger/info/muted)
+- `VdfStatCard` — stat number + label + accent color
+- `VdfEmptyState` — icon + title + description + action
+- `VdfInsightsCard` — VaNi analysis panel
+- `VdfLineChart` — SVG line chart
+- `ThemePicker` — theme selection (shared between onboarding + settings)
+
+**What page CSS SHOULD contain:**
+- Page layout (`.page`, `.layout`, `.sidebar`, `.main`, `.hero`)
+- Grid structure (column spans, gaps)
+- Page-specific visual effects (gradients, atmosphere)
+- Component positioning within the page
+
+**What page CSS MUST NOT contain:**
+- Status badge styles (use VdfStatusBadge)
+- Stat card styles (use VdfStatCard)
+- Table th/td/hover styles (use data.module.css)
+- Pagination styles (use data.module.css)
+- Empty state styles (use VdfEmptyState)
+- VaNi/insights card styles (use VdfInsightsCard)
+- Button base styles (use forms.module.css or VdfButton)
+- Any hardcoded colors (use CSS variables)
+
+### First Time Right — Production Quality
+- **No rework.** Code written once, correctly. No "build now, refactor later."
+- **No safe designs.** Every page matches the HTML reference quality.
+- **No inline CSS for shared patterns.** If it appears on 2+ pages, it's a VDF component or shared CSS.
+- **No hardcoded values.** Every color, font, spacing uses CSS variables/tokens.
+- **No mock data in production code.** Real auth, real API calls, real error handling.
 
 ## Skills Status
 | Skill | Functions | Handlers | Status |
