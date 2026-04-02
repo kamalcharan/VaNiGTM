@@ -5,110 +5,57 @@ import { useRouter } from 'next/navigation';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { VdfLoader } from '@/components/vdf';
-import { VdfStatCard, VdfStatusBadge, VdfInsightsCard, VdfEmptyState, type BadgeVariant, type Insight } from '@/components/vdf';
+import { useAuth } from '@/context/auth-provider';
+import { VdfStatusBadge, VdfLoader, type BadgeVariant } from '@/components/vdf';
 import d from '@/styles/data.module.css';
 import s from './dashboard-page.module.css';
 
 /* ── Types ─────────────────────────────────────────── */
 
-type ImportType = 'scheme' | 'customer' | 'transaction' | 'bookmark' | 'all';
-
 interface Session {
-  id: number;
-  import_type: string;
-  status: string;
-  total_records: number;
-  processed_records: number;
-  successful_records: number;
-  failed_records: number;
-  duplicate_records: number;
-  original_filename: string | null;
-  created_at: string;
+  id: number; import_type: string; status: string;
+  total_records: number; processed_records: number;
+  successful_records: number; failed_records: number; duplicate_records: number;
+  original_filename: string | null; created_at: string;
   staging_completed_at: string | null;
   processing_started_at: string | null;
   processing_completed_at: string | null;
 }
 
 interface StagingRecord {
-  id: number;
-  row_number: number;
-  processing_status: string;
-  mapped_data: Record<string, any>;
-  raw_data: Record<string, any>;
-  error_messages: string[] | null;
-  warnings: string[] | null;
-  created_record_id: string | null;
-  processed_at: string | null;
+  id: number; row_number: number; processing_status: string;
+  mapped_data: Record<string, any>; raw_data: Record<string, any>;
+  error_messages: string[] | null; warnings: string[] | null;
+  created_record_id: string | null; processed_at: string | null;
 }
 
-interface RecordsResponse {
-  records: StagingRecord[];
-  page: number;
-  limit: number;
-  total: number;
-  total_pages: number;
-}
+interface RecordsResponse { records: StagingRecord[]; page: number; limit: number; total: number; total_pages: number; }
 
-/* ── Constants ─────────────────────────────────────── */
-
-const IMPORT_TYPES: { id: ImportType; label: string; icon: string }[] = [
-  { id: 'all', label: 'All Types', icon: '\u{1F4CB}' },
-  { id: 'scheme', label: 'Schemes', icon: '\u{1F4CA}' },
-  { id: 'customer', label: 'Customers', icon: '\u{1F465}' },
-  { id: 'transaction', label: 'Transactions', icon: '\u{1F4C4}' },
-  { id: 'bookmark', label: 'Bookmarks', icon: '\u{1F516}' },
-];
-
-const STATUS_MAP: Record<string, { color: string; label: string }> = {
-  // Session statuses
-  completed: { color: 'success', label: 'Completed' },
-  completed_with_errors: { color: 'warning', label: 'With Errors' },
-  processing: { color: 'info', label: 'Processing' },
-  staged: { color: 'info', label: 'Staged' },
-  pending: { color: 'muted', label: 'Pending' },
-  failed: { color: 'danger', label: 'Failed' },
-  cancelled: { color: 'muted', label: 'Cancelled' },
-  // Staging record statuses
-  success: { color: 'success', label: 'Success' },
-  duplicate: { color: 'info', label: 'Updated' },
-  skipped: { color: 'muted', label: 'Skipped' },
+const STATUS_MAP: Record<string, { label: string; color: BadgeVariant }> = {
+  completed: { label: 'Completed', color: 'success' },
+  completed_with_errors: { label: 'With Errors', color: 'warning' },
+  processing: { label: 'Processing', color: 'info' },
+  staged: { label: 'Staged', color: 'info' },
+  pending: { label: 'Pending', color: 'muted' },
+  failed: { label: 'Failed', color: 'danger' },
+  success: { label: 'Success', color: 'success' },
+  duplicate: { label: 'Updated', color: 'info' },
 };
 
-const RECORD_FILTERS = ['all', 'success', 'failed', 'duplicate', 'pending'] as const;
-
-const SCHEME_COLUMNS = ['scheme_code', 'scheme_name', 'amc', 'category', 'scheme_type'];
-
-/* ── Helpers ───────────────────────────────────────── */
-
 function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
+  const h = Math.floor((Date.now() - new Date(iso).getTime()) / 3600000);
+  if (h < 1) return 'Just now'; if (h < 24) return `${h}h ago`; return `${Math.floor(h / 24)}d ago`;
 }
 
-function daysSince(iso: string): number {
-  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-}
+const SCHEME_COLS = ['scheme_code', 'scheme_name', 'amc', 'category'];
 
-function successRate(sess: Session): number {
-  if (sess.total_records === 0) return 0;
-  return Math.round(((sess.successful_records + sess.duplicate_records) / sess.total_records) * 100);
-}
-
-/* ── Main Component ────────────────────────────────── */
+/* ── Component ─────────────────────────────────────── */
 
 export default function ImportDashboardPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { user } = useAuth();
 
-  // State
-  const [selectedType, setSelectedType] = useState<ImportType>('all');
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [records, setRecords] = useState<RecordsResponse | null>(null);
@@ -116,385 +63,240 @@ export default function ImportDashboardPage() {
   const [recordPage, setRecordPage] = useState(1);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [loadingRecords, setLoadingRecords] = useState(false);
+  const [drawerRecord, setDrawerRecord] = useState<StagingRecord | null>(null);
   const [reprocessing, setReprocessing] = useState(false);
   const [deletingStaging, setDeletingStaging] = useState(false);
-  const [viewRecord, setViewRecord] = useState<StagingRecord | null>(null);
 
   // Fetch sessions
   const fetchSessions = useCallback(async () => {
     setLoadingSessions(true);
     try {
-      const params = selectedType !== 'all' ? `?type=${selectedType}` : '';
-      const data = await apiFetch<{ sessions: Session[] }>({
-        ...API.etl.sessions,
-        path: API.etl.sessions.path + params,
-      });
+      const data = await apiFetch<{ sessions: Session[] }>(API.etl.sessions);
       setSessions(data.sessions || []);
+      if (data.sessions?.length > 0 && !selectedSession) setSelectedSession(data.sessions[0]);
+    } catch { setSessions([]); }
+    finally { setLoadingSessions(false); }
+  }, []); // eslint-disable-line
 
-      // Auto-select first session if none selected
-      if (data.sessions?.length > 0 && !selectedSession) {
-        setSelectedSession(data.sessions[0]);
-      }
-    } catch {
-      setSessions([]);
-    } finally {
-      setLoadingSessions(false);
-    }
-  }, [selectedType]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchSessions(); }, [fetchSessions]);
 
-  useEffect(() => {
-    fetchSessions();
-    setSelectedSession(null);
-  }, [selectedType]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Fetch records when session or filter changes
+  // Fetch records
   const fetchRecords = useCallback(async () => {
     if (!selectedSession) { setRecords(null); return; }
     setLoadingRecords(true);
     try {
       const qs = `?status=${recordFilter}&page=${recordPage}&limit=50`;
-      const data = await apiFetch<RecordsResponse>({
-        ...API.etl.records,
-        path: API.etl.records.path.replace(':id', String(selectedSession.id)) + qs,
-      });
+      const data = await apiFetch<RecordsResponse>({ ...API.etl.records, path: API.etl.records.path.replace(':id', String(selectedSession.id)) + qs });
       setRecords(data);
-    } catch {
-      setRecords(null);
-    } finally {
-      setLoadingRecords(false);
-    }
+    } catch { setRecords(null); }
+    finally { setLoadingRecords(false); }
   }, [selectedSession, recordFilter, recordPage]);
 
-  useEffect(() => {
-    fetchRecords();
-  }, [fetchRecords]);
+  useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
-  // Select session
-  function handleSelectSession(sess: Session) {
-    setSelectedSession(sess);
-    setRecordFilter('all');
-    setRecordPage(1);
-  }
+  function handleSelectSession(sess: Session) { setSelectedSession(sess); setRecordFilter('all'); setRecordPage(1); }
 
-  // Reprocess failed
   async function handleReprocess() {
-    if (!selectedSession || reprocessing) return;
-    setReprocessing(true);
+    if (!selectedSession || reprocessing) return; setReprocessing(true);
     try {
-      const data = await apiFetch<any>({
-        ...API.etl.reprocess,
-        path: API.etl.reprocess.path.replace(':id', String(selectedSession.id)),
-      });
-      showToast({
-        message: `Reprocessed: ${data.successful || 0} passed, ${data.failed || 0} failed`,
-        type: data.failed > 0 ? 'warning' : 'success',
-      });
-      fetchSessions();
-      fetchRecords();
-    } catch (err) {
-      showToast({ message: (err as ApiError).message || 'Reprocess failed', type: 'error' });
-    } finally {
-      setReprocessing(false);
-    }
+      const data = await apiFetch<any>({ ...API.etl.reprocess, path: API.etl.reprocess.path.replace(':id', String(selectedSession.id)) });
+      showToast({ message: `Reprocessed: ${data.successful || 0} passed, ${data.failed || 0} failed`, type: data.failed > 0 ? 'warning' : 'success' });
+      fetchSessions(); fetchRecords();
+    } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
+    finally { setReprocessing(false); }
   }
 
-  // Delete staging
   async function handleDeleteStaging() {
     if (!selectedSession || deletingStaging) return;
-    if (!confirm('This will permanently delete all staging data for this session. You will not be able to reprocess failed records. Continue?')) return;
+    if (!confirm('Permanently delete staging data? You won\'t be able to reprocess.')) return;
     setDeletingStaging(true);
     try {
-      await apiFetch<any>({
-        ...API.etl.deleteStaging,
-        path: API.etl.deleteStaging.path.replace(':id', String(selectedSession.id)),
-      });
-      showToast({ message: 'Staging data deleted', type: 'success' });
-      setRecords(null);
-      fetchSessions();
-    } catch (err) {
-      showToast({ message: (err as ApiError).message || 'Delete failed', type: 'error' });
-    } finally {
-      setDeletingStaging(false);
-    }
+      await apiFetch<any>({ ...API.etl.deleteStaging, path: API.etl.deleteStaging.path.replace(':id', String(selectedSession.id)) });
+      showToast({ message: 'Staging deleted', type: 'success' });
+      setRecords(null); fetchSessions();
+    } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
+    finally { setDeletingStaging(false); }
   }
 
-  // Get display columns based on import type
-  function getColumns(): string[] {
-    if (selectedSession?.import_type === 'scheme') return SCHEME_COLUMNS;
-    return ['field1', 'field2', 'field3']; // Generic fallback
-  }
+  // Compute speed
+  const speed = selectedSession?.processing_started_at && selectedSession?.processing_completed_at
+    ? Math.round(selectedSession.total_records / ((new Date(selectedSession.processing_completed_at).getTime() - new Date(selectedSession.processing_started_at).getTime()) / 1000))
+    : null;
 
-  /* ── VaNi Insights for selected session ───────────── */
+  // VaNi analysis
+  const vaniMsg = selectedSession
+    ? selectedSession.failed_records > 0
+      ? `Import completed with ${selectedSession.failed_records} failures. Review failed records and reprocess, or check field mappings.`
+      : selectedSession.successful_records === selectedSession.total_records
+      ? `Import perfect. All ${selectedSession.total_records.toLocaleString()} records processed. Cross-referencing with NAV database for operational health.`
+      : 'Import in progress...'
+    : null;
 
-  function getSessionInsights(): { icon: string; text: string }[] {
-    if (!selectedSession) return [];
-    const ss = selectedSession;
-    const insights: { icon: string; text: string }[] = [];
-    const rate = successRate(ss);
+  const initials = user?.name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
 
-    // Overall health
-    if (rate === 100) {
-      insights.push({ icon: '\u{1F389}', text: 'Perfect import \u2014 every record processed successfully.' });
-    } else if (rate >= 95) {
-      insights.push({ icon: '\u2705', text: `${rate}% success rate \u2014 excellent data quality.` });
-    } else if (rate >= 80) {
-      insights.push({ icon: '\u{1F7E1}', text: `${rate}% success rate. ${ss.failed_records} records need attention.` });
-    } else if (rate > 0) {
-      insights.push({ icon: '\u26A0\uFE0F', text: `Only ${rate}% success rate. Review the failed records \u2014 there may be a systemic mapping issue.` });
-    }
-
-    // Duplicates insight
-    if (ss.duplicate_records > 0) {
-      const dupPct = Math.round((ss.duplicate_records / ss.total_records) * 100);
-      if (dupPct > 80) {
-        insights.push({ icon: '\u{1F504}', text: `${dupPct}% were updates to existing records. This looks like a refresh import rather than a first-time load.` });
-      } else if (dupPct > 0) {
-        insights.push({ icon: '\u{1F504}', text: `${ss.duplicate_records.toLocaleString()} existing records updated with latest data.` });
-      }
-    }
-
-    // New records
-    const newRecords = ss.successful_records - ss.duplicate_records;
-    if (newRecords > 0) {
-      insights.push({ icon: '\u2728', text: `${newRecords.toLocaleString()} new records added to the database.` });
-    }
-
-    // Failed records
-    if (ss.failed_records > 0) {
-      insights.push({ icon: '\u{1F527}', text: `${ss.failed_records} records failed. Click "Reprocess" after fixing source data, or filter by "Failed" to review individual errors.` });
-    }
-
-    // Timing
-    if (ss.processing_started_at && ss.processing_completed_at) {
-      const durationMs = new Date(ss.processing_completed_at).getTime() - new Date(ss.processing_started_at).getTime();
-      const seconds = (durationMs / 1000).toFixed(1);
-      const rowsPerSec = Math.round(ss.total_records / (durationMs / 1000));
-      insights.push({ icon: '\u26A1', text: `Processed ${ss.total_records.toLocaleString()} rows in ${seconds}s (${rowsPerSec.toLocaleString()} rows/sec) via PostgreSQL RPC.` });
-    }
-
-    // Staging age warning
-    const age = daysSince(ss.created_at);
-    const daysLeft = Math.max(0, 45 - age);
-    if (daysLeft <= 7 && daysLeft > 0) {
-      insights.push({ icon: '\u23F3', text: `Staging data expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}. Delete staging or reprocess failed records before it\u2019s auto-purged.` });
-    }
-
-    return insights;
-  }
-
-  /* ── Render ──────────────────────────────────────── */
+  if (loadingSessions) return <VdfLoader message="Loading import history" hint="Fetching sessions" />;
 
   return (
     <div className={s.page}>
-      {/* Header */}
-      <div className={s.header}>
-        <div>
-          <h1 className={s.title}>Import Dashboard</h1>
-          <p className={s.subtitle}>Track and manage all your data imports</p>
+      {/* Breadcrumb */}
+      <div className={s.breadcrumb}>
+        <div className={s.breadcrumbLeft}>
+          <h1 className={d.pageTitle} style={{ fontSize: '1.1rem' }}>Import Dashboard</h1>
+          {selectedSession && (
+            <>
+              <span className={s.breadcrumbSep}>/</span>
+              <span className={s.breadcrumbSession}>Session #{selectedSession.id}: {selectedSession.original_filename || 'Unknown'}</span>
+            </>
+          )}
         </div>
-        <button className={s.newBtn} onClick={() => router.push('/import')}>
-          + New Import
-        </button>
+        <div className={s.breadcrumbRight}>
+          <div className={s.userBadge}>{initials}</div>
+          <button className={d.pageBtn} onClick={() => router.push('/import')}
+            style={{ background: 'var(--color-primary)', color: 'var(--color-primary-fg)', borderColor: 'var(--color-primary)', fontWeight: 700 }}>
+            + New Import
+          </button>
+        </div>
       </div>
 
-      <div className={s.layout}>
-        {/* ═══ LEFT PANEL ═══ */}
-        <div className={s.leftPanel}>
-          {/* Type selector */}
-          <div className={s.typeSelector}>
-            {IMPORT_TYPES.map((t) => (
-              <button
-                key={t.id}
-                className={`${s.typeBtn} ${selectedType === t.id ? s.typeBtnActive : ''}`}
-                onClick={() => setSelectedType(t.id)}
-              >
-                <span className={s.typeIcon}>{t.icon}</span>
-                <span>{t.label}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Sessions list */}
-          <div className={s.sessionsHeader}>
-            <span className={s.sessionsTitle}>Sessions</span>
-            <button className={s.refreshBtn} onClick={fetchSessions} title="Refresh">
-              {'\u21BB'}
-            </button>
-          </div>
-
-          <div className={s.sessionsList}>
-            {loadingSessions ? (
-              <div className={s.sessionsEmpty}>Loading...</div>
-            ) : sessions.length === 0 ? (
-              <div className={s.sessionsEmpty}>
-                <div>No sessions found</div>
-                <div className={s.sessionsHint}>
-                  {selectedType !== 'all'
-                    ? `No ${selectedType} imports yet. Click "+ New Import" to start.`
-                    : 'Import your first dataset to see it here.'}
-                </div>
+      <div className={s.grid}>
+        {/* ═══ SIDEBAR ═══ */}
+        <aside className={s.sidebar}>
+          {sessions.map(sess => (
+            <div key={sess.id} className={selectedSession?.id === sess.id ? s.sessionCardActive : s.sidebarLink}
+              onClick={() => handleSelectSession(sess)}>
+              <div>
+                <div className={s.sessionCardLabel}>Session #{sess.id}</div>
+                <div className={s.sessionCardFile}>{sess.original_filename || `${sess.import_type} import`}</div>
+                <div className={s.sessionCardMeta}>{timeAgo(sess.created_at)} {'\u00B7'} {sess.import_type}</div>
               </div>
-            ) : (
-              sessions.map((sess) => {
-                const rate = successRate(sess);
-                const statusInfo = STATUS_MAP[sess.status] || STATUS_MAP.pending;
-                const isSelected = selectedSession?.id === sess.id;
-
-                return (
-                  <div
-                    key={sess.id}
-                    className={`${s.sessionCard} ${isSelected ? s.sessionCardActive : ''}`}
-                    onClick={() => handleSelectSession(sess)}
-                  >
-                    <div className={s.sessionCardHeader}>
-                      <span className={s.sessionId}>#{sess.id}</span>
-                      <VdfStatusBadge label={statusInfo.label} variant={statusInfo.color as BadgeVariant} size="sm" />
-                    </div>
-                    {sess.original_filename && (
-                      <div className={s.sessionFile}>
-                        {'\u{1F4C4}'} {sess.original_filename}
-                      </div>
-                    )}
-                    <div className={s.progressBar}>
-                      <div
-                        className={`${s.progressFill} ${rate >= 80 ? s.progGood : rate >= 50 ? s.progWarn : s.progBad}`}
-                        style={{ width: `${rate}%` }}
-                      />
-                    </div>
-                    <div className={s.sessionStats}>
-                      <span>{sess.total_records.toLocaleString()} total</span>
-                      <span className={s.statOk}>{'\u2713'}{sess.successful_records.toLocaleString()}</span>
-                      <span className={s.statFail}>{'\u2717'}{sess.failed_records.toLocaleString()}</span>
-                      <span className={s.statDup}>{'\u26A0'}{sess.duplicate_records.toLocaleString()}</span>
-                    </div>
-                    <div className={s.sessionTime}>{timeAgo(sess.created_at)}</div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* ═══ RIGHT PANEL ═══ */}
-        <div className={s.rightPanel}>
-          {!selectedSession ? (
-            <div className={s.emptyDetail}>
-              <div className={s.emptyIcon}>{'\u{1F4CA}'}</div>
-              <h2 className={s.emptyTitle}>No Session Selected</h2>
-              <p className={s.emptyDesc}>Select an import type and choose a session from the sidebar to view detailed metrics, records, and VaNi insights.</p>
-              {sessions.length === 0 && (
-                <div className={s.vaniHint}>
-                  <span>{'\u2728'}</span>
-                  <span>No imports yet. Start with <strong>Scheme Master</strong> \u2014 it\u2019s the foundation for everything else (portfolios, NAV tracking, transactions).</span>
-                </div>
-              )}
             </div>
+          ))}
+          <div className={s.sidebarLink} onClick={() => router.push('/import')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16"><path d="M12 5v14M5 12h14" /></svg>
+            <span>New Import</span>
+          </div>
+        </aside>
+
+        {/* ═══ MAIN ═══ */}
+        <main className={s.main}>
+          {!selectedSession ? (
+            <VdfLoader message="No sessions" hint="Click New Import to start" />
           ) : (
             <>
-              {/* Info bar */}
-              <div className={s.infoBar}>
-                <div className={s.infoLeft}>
-                  <span className={s.infoSessionId}>Session #{selectedSession.id}</span>
-                  <VdfStatusBadge label={(STATUS_MAP[selectedSession.status] || STATUS_MAP.pending).label} variant={(STATUS_MAP[selectedSession.status] || STATUS_MAP.pending).color as BadgeVariant} />
-                  {selectedSession.original_filename && (
-                    <span className={s.infoFile}>{selectedSession.original_filename}</span>
-                  )}
+              {/* Stat cards (bottom-border accent) */}
+              <div className={s.statsGrid}>
+                <div className={s.statCardAccent}>
+                  <div className={s.statCardLabel}>Total Records</div>
+                  <div className={s.statCardValue}>{selectedSession.total_records.toLocaleString()}</div>
                 </div>
-                <div className={s.infoRight}>
-                  <span className={s.infoAge}>
-                    {daysSince(selectedSession.created_at)}d old
-                    {' \u00B7 '}
-                    deletes in {Math.max(0, 45 - daysSince(selectedSession.created_at))}d
-                  </span>
+                <div className={`${s.statCardAccent} ${s.stSuccess}`}>
+                  <div className={s.statCardLabel}>Successful</div>
+                  <div className={`${s.statCardValue} ${s.statCardValueSuccess}`}>
+                    {selectedSession.successful_records.toLocaleString()}
+                    {selectedSession.total_records > 0 && (
+                      <span className={s.statCardPct}>{Math.round((selectedSession.successful_records / selectedSession.total_records) * 100)}%</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-
-              {/* Metrics */}
-              <div className={s.metrics}>
-                <VdfStatCard value={selectedSession.total_records} label="Total Records" />
-                <VdfStatCard value={selectedSession.successful_records} label="Successful" accent="success"
-                  pct={selectedSession.total_records > 0 ? `${Math.round((selectedSession.successful_records / selectedSession.total_records) * 100)}%` : undefined} />
-                <VdfStatCard value={selectedSession.failed_records} label="Failed" accent="danger"
-                  pct={selectedSession.total_records > 0 ? `${Math.round((selectedSession.failed_records / selectedSession.total_records) * 100)}%` : undefined} />
-                <VdfStatCard value={selectedSession.duplicate_records} label="Updated" accent="info"
-                  pct={selectedSession.total_records > 0 ? `${Math.round((selectedSession.duplicate_records / selectedSession.total_records) * 100)}%` : undefined} />
-              </div>
-
-              {/* VaNi Insights */}
-              <VdfInsightsCard title="VaNi Analysis" insights={getSessionInsights()} />
-
-              {/* Filter bar */}
-              <div className={s.filterBar}>
-                <div className={s.filters}>
-                  {RECORD_FILTERS.map((f) => (
-                    <button
-                      key={f}
-                      className={`${s.filterBtn} ${recordFilter === f ? s.filterBtnActive : ''}`}
-                      onClick={() => { setRecordFilter(f); setRecordPage(1); }}
-                    >
-                      {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
-                    </button>
-                  ))}
+                <div className={`${s.statCardAccent} ${s.stDanger}`}>
+                  <div className={s.statCardLabel}>Failed</div>
+                  <div className={`${s.statCardValue} ${selectedSession.failed_records === 0 ? s.statCardValueMuted : ''}`}>
+                    {selectedSession.failed_records.toLocaleString()}
+                  </div>
                 </div>
-                <div className={s.filterActions}>
-                  {selectedSession.failed_records > 0 && (
-                    <button className={s.reprocessBtn} onClick={handleReprocess} disabled={reprocessing}>
-                      {reprocessing ? 'Reprocessing...' : `\u{1F504} Reprocess ${selectedSession.failed_records} Failed`}
-                    </button>
-                  )}
-                  {selectedSession.status !== 'processing' && selectedSession.status !== 'pending' && (
-                    <button className={s.deleteBtn} onClick={handleDeleteStaging} disabled={deletingStaging}>
-                      {deletingStaging ? 'Deleting...' : '\u{1F5D1} Delete Staging'}
-                    </button>
-                  )}
+                <div className={`${s.statCardAccent} ${s.stMuted}`}>
+                  <div className={s.statCardLabel}>Speed</div>
+                  <div className={s.statCardValue}>
+                    {speed ? speed.toLocaleString() : '\u2014'}
+                    {speed && <span className={s.statCardUnit}>row/s</span>}
+                  </div>
                 </div>
               </div>
 
-              {/* Records table */}
-              {loadingRecords ? (
-                <div className={s.tableLoading}>Loading records...</div>
-              ) : !records || records.records.length === 0 ? (
-                <div className={s.tableEmpty}>
-                  {records?.total === 0 ? 'No records match this filter' : 'Staging data may have been deleted'}
+              {/* VaNi Hero Card */}
+              {vaniMsg && (
+                <div className={s.vaniHero}>
+                  <div className={s.vaniHeroContent}>
+                    <div className={s.vaniHeroIcon}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+                    </div>
+                    <div>
+                      <div className={s.vaniHeroTitle}>VaNi Post-Import Analysis</div>
+                      <div className={s.vaniHeroText}>{vaniMsg}</div>
+                      {selectedSession.failed_records > 0 && (
+                        <div className={s.vaniHeroActions}>
+                          <button className={d.pageBtn} onClick={handleReprocess} disabled={reprocessing}
+                            style={{ background: 'var(--color-primary)', color: 'var(--color-primary-fg)', borderColor: 'var(--color-primary)', fontWeight: 700 }}>
+                            {reprocessing ? 'Reprocessing...' : `Reprocess ${selectedSession.failed_records} Failed`}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className={s.vaniHeroWatermark}>{'\u26A1'}</div>
                 </div>
-              ) : (
-                <>
-                  <div className={d.tableWrap}>
+              )}
+
+              {/* Table card */}
+              <div className={s.tableCard}>
+                <div className={s.tableToolbar}>
+                  <div className={s.filterTabs}>
+                    {[
+                      { key: 'all', label: 'All' },
+                      { key: 'success', label: `New (${selectedSession.successful_records - selectedSession.duplicate_records})` },
+                      { key: 'duplicate', label: `Updated (${selectedSession.duplicate_records})` },
+                      { key: 'failed', label: `Failed (${selectedSession.failed_records})` },
+                    ].map(f => (
+                      <button key={f.key} className={`${s.filterTab} ${recordFilter === f.key ? s.filterTabActive : ''}`}
+                        onClick={() => { setRecordFilter(f.key); setRecordPage(1); }}>
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button style={{ color: 'var(--color-danger)', fontSize: '0.72rem', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                    onClick={handleDeleteStaging} disabled={deletingStaging}>
+                    {'\u{1F5D1}'} {deletingStaging ? 'Deleting...' : 'Delete Staging'}
+                  </button>
+                </div>
+
+                <div className={s.tableScrollArea}>
+                  {loadingRecords ? (
+                    <div style={{ padding: 48, textAlign: 'center', color: 'var(--color-muted)' }}>Loading records...</div>
+                  ) : !records || records.records.length === 0 ? (
+                    <div style={{ padding: 48, textAlign: 'center', color: 'var(--color-muted)' }}>
+                      {records?.total === 0 ? 'No records match this filter' : 'Staging data may have been deleted'}
+                    </div>
+                  ) : (
                     <table className={d.table}>
                       <thead>
                         <tr>
-                          <th className={s.thSticky}>Row</th>
-                          {getColumns().map((col) => (
-                            <th key={col}>{col.replace(/_/g, ' ')}</th>
-                          ))}
+                          <th>Row</th>
+                          <th>Scheme Code</th>
+                          <th>Scheme Name</th>
+                          <th>AMC</th>
                           <th>Status</th>
-                          <th>Error / Warning</th>
-                          <th>Action</th>
+                          <th style={{ textAlign: 'right' }}>Operational Health</th>
+                          <th style={{ textAlign: 'center' }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {records.records.map((rec) => {
-                          const statusInfo = STATUS_MAP[rec.processing_status] || STATUS_MAP.pending;
+                        {records.records.map(rec => {
+                          const st = STATUS_MAP[rec.processing_status] || STATUS_MAP.pending;
+                          // Operational health: does this scheme have NAV data?
+                          const schemeCode = rec.mapped_data?.scheme_code;
                           return (
-                            <tr key={rec.id} className={s.tableRow} onClick={() => setViewRecord(rec)}>
-                              <td className={s.tdSticky}>{rec.row_number}</td>
-                              {getColumns().map((col) => (
-                                <td key={col} className={s.tdData}>
-                                  {rec.mapped_data?.[col] !== undefined ? String(rec.mapped_data[col]).slice(0, 40) : '\u2014'}
-                                </td>
-                              ))}
-                              <td>
-                                <VdfStatusBadge label={statusInfo.label} variant={statusInfo.color as BadgeVariant} size="sm" />
+                            <tr key={rec.id} style={{ cursor: 'pointer' }} onClick={() => setDrawerRecord(rec)}>
+                              <td style={{ color: 'var(--color-muted)', fontWeight: 500 }}>{rec.row_number}</td>
+                              <td className={d.tdMono} style={{ fontSize: '0.72rem' }}>{schemeCode || '\u2014'}</td>
+                              <td style={{ fontWeight: 600 }}>{rec.mapped_data?.scheme_name || '\u2014'}</td>
+                              <td style={{ fontSize: '0.72rem', color: 'var(--color-muted)' }}>{rec.mapped_data?.amc || '\u2014'}</td>
+                              <td><VdfStatusBadge label={st.label} variant={st.color} size="sm" /></td>
+                              <td style={{ textAlign: 'right' }}>
+                                <span className={`${s.healthBadge} ${s.healthNoNav}`}>No NAV Data</span>
                               </td>
-                              <td className={s.tdError}>
-                                {rec.error_messages?.[0] || rec.warnings?.[0] || ''}
-                              </td>
-                              <td>
-                                <button
-                                  className={s.viewBtn}
-                                  onClick={(e) => { e.stopPropagation(); setViewRecord(rec); }}
-                                >
-                                  {'\u{1F441}'}
+                              <td style={{ textAlign: 'center' }}>
+                                <button className={s.viewBtn} onClick={e => { e.stopPropagation(); setDrawerRecord(rec); }}>
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                                 </button>
                               </td>
                             </tr>
@@ -502,73 +304,90 @@ export default function ImportDashboardPage() {
                         })}
                       </tbody>
                     </table>
-                  </div>
-
-                  {/* Pagination */}
-                  {records.total_pages > 1 && (
-                    <div className={d.pagination}>
-                      <button className={d.pageBtn} disabled={recordPage <= 1} onClick={() => setRecordPage(1)}>First</button>
-                      <button className={d.pageBtn} disabled={recordPage <= 1} onClick={() => setRecordPage(p => p - 1)}>Prev</button>
-                      <span className={d.pageInfo}>
-                        Page {recordPage} of {records.total_pages} {'\u00B7'} {records.total.toLocaleString()} records
-                      </span>
-                      <button className={d.pageBtn} disabled={recordPage >= records.total_pages} onClick={() => setRecordPage(p => p + 1)}>Next</button>
-                      <button className={d.pageBtn} disabled={recordPage >= records.total_pages} onClick={() => setRecordPage(records.total_pages)}>Last</button>
-                    </div>
                   )}
-                </>
-              )}
+                </div>
+
+                {records && records.total_pages > 1 && (
+                  <div className={d.pagination}>
+                    <button className={d.pageBtn} disabled={recordPage <= 1} onClick={() => setRecordPage(1)}>First</button>
+                    <button className={d.pageBtn} disabled={recordPage <= 1} onClick={() => setRecordPage(p => p - 1)}>Prev</button>
+                    <span className={d.pageInfo}>Page {recordPage} / {records.total_pages} {'\u00B7'} {records.total.toLocaleString()} records</span>
+                    <button className={d.pageBtn} disabled={recordPage >= records.total_pages} onClick={() => setRecordPage(p => p + 1)}>Next</button>
+                    <button className={d.pageBtn} disabled={recordPage >= records.total_pages} onClick={() => setRecordPage(records.total_pages)}>Last</button>
+                  </div>
+                )}
+              </div>
             </>
           )}
-        </div>
+        </main>
       </div>
 
-      {/* ═══ RECORD DETAIL MODAL ═══ */}
-      {viewRecord && (
-        <div className={s.modalOverlay} onClick={() => setViewRecord(null)}>
-          <div className={s.modalCard} onClick={(e) => e.stopPropagation()}>
-            <div className={s.modalHeader}>
-              <h3 className={s.modalTitle}>Row #{viewRecord.row_number}</h3>
-              <button className={s.modalClose} onClick={() => setViewRecord(null)}>{'\u2715'}</button>
+      {/* ═══ RECORD DRAWER ═══ */}
+      {drawerRecord && (
+        <>
+          <div className={s.drawerOverlay} onClick={() => setDrawerRecord(null)} />
+          <div className={s.drawer}>
+            <div className={s.drawerHeader}>
+              <div className={s.drawerTitle}>Scheme Preview</div>
+              <button className={s.drawerClose} onClick={() => setDrawerRecord(null)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
             </div>
 
-            <div className={s.modalSection}>
-              <div className={s.modalSectionTitle}>Status</div>
-              <VdfStatusBadge label={(STATUS_MAP[viewRecord.processing_status] || STATUS_MAP.pending).label} variant={(STATUS_MAP[viewRecord.processing_status] || STATUS_MAP.pending).color as BadgeVariant} />
-              {viewRecord.processed_at && (
-                <span className={s.modalMeta}> Processed {timeAgo(viewRecord.processed_at)}</span>
+            {/* Staging data card */}
+            <div className={s.drawerCard}>
+              <div className={s.drawerCardLabel}>Staging Data</div>
+              <div className={s.drawerCardTitle}>{drawerRecord.mapped_data?.scheme_name || 'Unknown Scheme'}</div>
+              <div className={s.drawerCardMeta}>
+                Code: {drawerRecord.mapped_data?.scheme_code || '\u2014'}
+                {' \u00B7 '}Category: {drawerRecord.mapped_data?.category || '\u2014'}
+              </div>
+            </div>
+
+            {/* Status */}
+            <div className={s.drawerSection}>
+              <div className={s.drawerSectionTitle}>Import Status</div>
+              <VdfStatusBadge label={(STATUS_MAP[drawerRecord.processing_status] || STATUS_MAP.pending).label}
+                variant={(STATUS_MAP[drawerRecord.processing_status] || STATUS_MAP.pending).color} />
+            </div>
+
+            {/* Diagnostic */}
+            <div className={s.drawerSection}>
+              <div className={s.drawerSectionTitle}>Diagnostic</div>
+              {drawerRecord.error_messages && drawerRecord.error_messages.length > 0 ? (
+                <div className={`${s.drawerDiagnostic} ${s.diagWarning}`}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                  <span>{drawerRecord.error_messages[0]}</span>
+                </div>
+              ) : (
+                <div className={`${s.drawerDiagnostic} ${s.diagInfo}`}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><circle cx="12" cy="12" r="10" /><polyline points="16 12 12 8 8 12" /><line x1="12" y1="16" x2="12" y2="8" /></svg>
+                  <span>This scheme may be missing from the NAV database. Download NAV data to complete tracking.</span>
+                </div>
               )}
             </div>
 
-            {viewRecord.error_messages && viewRecord.error_messages.length > 0 && (
-              <div className={s.modalSection}>
-                <div className={`${s.modalSectionTitle} ${s.textDanger}`}>Errors</div>
-                <ul className={s.errorList}>
-                  {viewRecord.error_messages.map((err, i) => <li key={i}>{err}</li>)}
-                </ul>
-              </div>
+            {/* Action */}
+            {drawerRecord.mapped_data?.scheme_code && (
+              <button className={d.pageBtn} onClick={() => router.push(`/global-nav/${drawerRecord.mapped_data.scheme_code}`)}
+                style={{ width: '100%', padding: 12, background: 'var(--color-primary)', color: 'var(--color-primary-fg)', borderColor: 'var(--color-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                View Scheme Dashboard
+              </button>
             )}
 
-            {viewRecord.warnings && viewRecord.warnings.length > 0 && (
-              <div className={s.modalSection}>
-                <div className={`${s.modalSectionTitle} ${s.textWarning}`}>Warnings</div>
-                <ul className={s.warningList}>
-                  {viewRecord.warnings.map((w, i) => <li key={i}>{w}</li>)}
-                </ul>
-              </div>
-            )}
-
-            <div className={s.modalSection}>
-              <div className={s.modalSectionTitle}>Mapped Data</div>
-              <pre className={s.jsonBlock}>{JSON.stringify(viewRecord.mapped_data, null, 2)}</pre>
+            {/* Raw data */}
+            <div className={s.drawerSection} style={{ marginTop: 16 }}>
+              <div className={s.drawerSectionTitle}>Mapped Data</div>
+              <pre className={s.drawerJson}>{JSON.stringify(drawerRecord.mapped_data, null, 2)}</pre>
             </div>
 
-            <div className={s.modalSection}>
-              <div className={s.modalSectionTitle}>Raw Data</div>
-              <pre className={s.jsonBlock}>{JSON.stringify(viewRecord.raw_data, null, 2)}</pre>
+            <div className={s.drawerSection}>
+              <div className={s.drawerSectionTitle}>Raw Data</div>
+              <pre className={s.drawerJson}>{JSON.stringify(drawerRecord.raw_data, null, 2)}</pre>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
