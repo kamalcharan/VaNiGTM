@@ -5,6 +5,7 @@ import { useSkillQuery } from '@/hooks';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
+import { VdfLineChart } from '@/components/vdf';
 import s from './global-nav.module.css';
 
 /* ── Types ─────────────────────────────────────────── */
@@ -63,6 +64,8 @@ export default function GlobalNavPage() {
   const [dlDateFrom, setDlDateFrom] = useState('');
   const [dlDateTo, setDlDateTo] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   // Stats
   const { data: statsResult, refetch: refetchStats } = useSkillQuery<StatsData>(
@@ -75,9 +78,21 @@ export default function GlobalNavPage() {
     'market-skill', 'search_schemes', { query: activeQuery, limit: 50, page },
     { enabled: activeQuery.length >= 2 },
   );
-  const schemes = searchResult?.data?.results || [];
+  const rawSchemes = searchResult?.data?.results || [];
   const totalPages = searchResult?.data?.total_pages || 1;
   const totalMatches = searchResult?.data?.total_matches || 0;
+
+  // Client-side filters (applied after search)
+  const schemes = rawSchemes.filter((sc) => {
+    if (categoryFilter !== 'all' && sc.category !== categoryFilter) return false;
+    if (statusFilter === 'with_data' && sc.nav_records === 0) return false;
+    if (statusFilter === 'no_data' && sc.nav_records > 0) return false;
+    if (statusFilter === 'ended' && sc.active) return false;
+    return true;
+  });
+
+  // Unique categories from current results
+  const categories = [...new Set(rawSchemes.map(sc => sc.category))].sort();
 
   // NAV history for selected
   const { data: navHistory, isLoading: loadingNav } = useSkillQuery<NavHistoryData>(
@@ -168,6 +183,20 @@ export default function GlobalNavPage() {
     setDlDateFrom(from.toISOString().split('T')[0]); setDlDateTo(to.toISOString().split('T')[0]);
   }
 
+  // Export CSV
+  function handleExportCSV() {
+    if (!selectedScheme || navData.length === 0) return;
+    const header = 'Date,NAV\n';
+    const rows = navData.map(d => `${d.date},${d.nav}`).join('\n');
+    const blob = new Blob([header + rows], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `NAV_${selectedScheme.scheme_code}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   // Latest NAV record metrics for detail panel
   const latestNavWithMetrics = navData.length > 0 ? navData[navData.length - 1] : null;
 
@@ -209,6 +238,35 @@ export default function GlobalNavPage() {
           </button>
         </div>
       </div>
+
+      {/* Filters */}
+      {rawSchemes.length > 0 && (
+        <div className={s.filterRow}>
+          <div className={s.filterGroup}>
+            <span className={s.filterLabel}>Status:</span>
+            {['all', 'with_data', 'no_data', 'ended'].map(f => (
+              <button key={f} className={`${s.filterPill} ${statusFilter === f ? s.filterPillActive : ''}`}
+                onClick={() => setStatusFilter(f)}>
+                {f === 'all' ? 'All' : f === 'with_data' ? 'With NAV' : f === 'no_data' ? 'No Data' : 'Ended'}
+              </button>
+            ))}
+          </div>
+          {categories.length > 1 && (
+            <div className={s.filterGroup}>
+              <span className={s.filterLabel}>Category:</span>
+              <button className={`${s.filterPill} ${categoryFilter === 'all' ? s.filterPillActive : ''}`}
+                onClick={() => setCategoryFilter('all')}>All</button>
+              {categories.slice(0, 8).map(c => (
+                <button key={c} className={`${s.filterPill} ${categoryFilter === c ? s.filterPillActive : ''}`}
+                  onClick={() => setCategoryFilter(c)}>
+                  {c.length > 20 ? c.slice(0, 20) + '...' : c}
+                </button>
+              ))}
+              {categories.length > 8 && <span className={s.filterMore}>+{categories.length - 8}</span>}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* VaNi */}
       <div className={s.insightsCard}>
@@ -324,11 +382,28 @@ export default function GlobalNavPage() {
                 </div>
               </div>
 
+              {/* NAV Chart */}
+              {navData.length >= 2 && (
+                <div className={s.chartSection}>
+                  <VdfLineChart
+                    data={navData.map(d => ({ date: d.date, value: d.nav }))}
+                    height={180}
+                  />
+                </div>
+              )}
+
               {/* NAV Table */}
               <div className={s.navSection}>
                 <div className={s.navSectionHeader}>
                   <span className={s.navSectionTitle}>NAV History</span>
-                  <span className={s.navSectionCount}>{loadingNav ? 'Loading...' : `${navData.length} records`}</span>
+                  <div className={s.navSectionRight}>
+                    <span className={s.navSectionCount}>{loadingNav ? 'Loading...' : `${navData.length} records`}</span>
+                    {navData.length > 0 && (
+                      <button className={s.exportBtn} onClick={handleExportCSV} title="Export as CSV">
+                        {'\u{1F4E5}'} CSV
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {navData.length > 0 ? (
                   <div className={s.navTableWrap}>
