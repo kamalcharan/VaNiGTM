@@ -6,7 +6,7 @@ import { apiFetch, type ApiError } from '@/lib/api-client';
 import { useSkillQuery } from '@/hooks';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { VdfLineChart, VdfStatusBadge, VdfInsightsCard, type Insight } from '@/components/vdf';
+import { VdfLineChart, VdfStatusBadge, VdfInsightsCard, VdfLoader, type Insight } from '@/components/vdf';
 import { FullPageLoader } from '@/components/loader';
 import d from '@/styles/data.module.css';
 import s from './scheme-dashboard.module.css';
@@ -117,7 +117,7 @@ export default function SchemeDashboardPage() {
     a.download = `NAV_${code}_${new Date().toISOString().split('T')[0]}.csv`; a.click();
   }
 
-  if (loading) return <FullPageLoader overlay={false} message={`Loading ${code}...`} />;
+  if (loading) return <VdfLoader message={`Loading scheme ${code}`} hint="Fetching data from ProKey database" />;
   if (!detail) return <div className={s.error}>Scheme not found</div>;
 
   const { scheme, nav, metrics, gaps, bookmark } = detail;

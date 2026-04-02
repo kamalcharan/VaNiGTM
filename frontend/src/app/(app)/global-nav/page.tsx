@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSkillQuery } from '@/hooks';
-import { apiFetch, type ApiError } from '@/lib/api-client';
+import { apiFetch, getAccessToken, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
-import { VdfStatCard, VdfStatusBadge, VdfInsightsCard, type Insight } from '@/components/vdf';
+import { VdfStatCard, VdfStatusBadge, VdfInsightsCard, VdfProgressOverlay, type Insight, type BadgeVariant, type ProgressItem } from '@/components/vdf';
 import d from '@/styles/data.module.css';
 import s from './global-nav.module.css';
 
@@ -34,7 +34,7 @@ interface StatsData {
 
 /* ── Helpers ───────────────────────────────────────── */
 
-function schemeStatusInfo(sc: SchemeResult): { label: string; variant: 'success' | 'warning' | 'danger' | 'info' | 'muted' } {
+function statusOf(sc: SchemeResult): { label: string; variant: BadgeVariant } {
   if (!sc.active) return { label: 'Ended', variant: 'muted' };
   if (sc.nav_records === 0) return { label: 'No Data', variant: 'danger' };
   if (sc.nav_date) {
@@ -51,23 +51,27 @@ export default function GlobalNavPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { user } = useAuth();
+  const cancelRef = useRef(false);
 
   const [query, setQuery] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [bulkDownloading, setBulkDownloading] = useState(false);
-  const [bulkCalculating, setBulkCalculating] = useState(false);
 
-  // Stats (always loaded)
-  const { data: statsResult } = useSkillQuery<StatsData>(
-    'market-skill', 'get_scheme_stats', {}, { staleTime: 30000 },
+  // Bulk operation state
+  const [bulkOp, setBulkOp] = useState<{
+    active: boolean; title: string; progress: number; progressText: string;
+    items: ProgressItem[]; vani: string;
+  } | null>(null);
+
+  // Data queries
+  const { data: statsResult, refetch: refetchStats } = useSkillQuery<StatsData>(
+    'market-skill', 'get_scheme_stats', {}, { staleTime: 60000 },
   );
   const stats = statsResult?.data;
 
-  // Search
-  const { data: searchResult, isLoading: searching } = useSkillQuery<SearchData>(
+  const { data: searchResult, isLoading: searching, refetch: refetchSearch } = useSkillQuery<SearchData>(
     'market-skill', 'search_schemes', { query: activeQuery, limit: 50, page },
     { enabled: activeQuery.length >= 2 },
   );
@@ -76,7 +80,6 @@ export default function GlobalNavPage() {
   const totalPages = searchResult?.data?.total_pages || 1;
   const totalMatches = searchResult?.data?.total_matches || 0;
 
-  // Client-side status filter
   const schemes = rawSchemes.filter(sc => {
     if (!statusFilter) return true;
     if (statusFilter === 'no_data') return sc.nav_records === 0;
@@ -95,82 +98,129 @@ export default function GlobalNavPage() {
   }
 
   function toggleSelectAll() {
-    if (selected.size === schemes.length) setSelected(new Set());
-    else setSelected(new Set(schemes.map(sc => sc.scheme_code)));
+    setSelected(selected.size === schemes.length ? new Set() : new Set(schemes.map(sc => sc.scheme_code)));
   }
 
+  // ── Sequential bulk download with progress ──
   async function handleBulkDownload() {
-    if (bulkDownloading || selected.size === 0) return;
-    setBulkDownloading(true);
-    let ok = 0, fail = 0;
-    for (const code of selected) {
-      try { await apiFetch<any>({ ...API.nav.downloadScheme, path: API.nav.downloadScheme.path.replace(':code', code) }); ok++; }
-      catch { fail++; }
+    const codes = [...selected];
+    if (codes.length === 0) return;
+    cancelRef.current = false;
+
+    const items: ProgressItem[] = codes.map(c => {
+      const sc = rawSchemes.find(s2 => s2.scheme_code === c);
+      return { label: sc?.scheme_name || c, status: 'pending' as const };
+    });
+
+    setBulkOp({ active: true, title: 'Downloading NAV Data', progress: 0, progressText: `0 of ${codes.length} schemes`, items, vani: 'Starting sequential download from MFAPI...' });
+
+    let done = 0, totalRecords = 0;
+
+    for (let i = 0; i < codes.length; i++) {
+      if (cancelRef.current) break;
+
+      items[i] = { ...items[i], status: 'running' };
+      setBulkOp(prev => prev ? { ...prev, items: [...items], progressText: `${i + 1} of ${codes.length} schemes`, progress: (i / codes.length) * 100, vani: `Fetching ${items[i].label.slice(0, 40)}...` } : null);
+
+      try {
+        const r = await apiFetch<any>({ ...API.nav.downloadScheme, path: API.nav.downloadScheme.path.replace(':code', codes[i]) });
+        const records = r.records || 0;
+        totalRecords += records;
+        items[i] = { ...items[i], status: 'done', detail: `${records.toLocaleString()} records` };
+        done++;
+      } catch {
+        items[i] = { ...items[i], status: 'failed', detail: 'Error' };
+      }
+
+      setBulkOp(prev => prev ? { ...prev, items: [...items], progress: ((i + 1) / codes.length) * 100, vani: `${done} downloaded. ${totalRecords.toLocaleString()} total records so far.` } : null);
     }
-    showToast({ message: `Downloaded: ${ok} success, ${fail} failed`, type: fail > 0 ? 'warning' : 'success' });
-    setBulkDownloading(false);
+
+    setBulkOp(prev => prev ? { ...prev, progress: 100, progressText: `${done} of ${codes.length} complete`, vani: cancelRef.current ? 'Download cancelled.' : `Done! ${totalRecords.toLocaleString()} records downloaded across ${done} schemes.` } : null);
+
+    // Auto-close after 3 seconds
+    setTimeout(() => { setBulkOp(null); refetchSearch(); refetchStats(); }, 3000);
   }
 
   async function handleBulkMetrics() {
-    if (bulkCalculating) return;
-    setBulkCalculating(true);
+    setBulkOp({ active: true, title: 'Calculating Metrics', progress: 50, progressText: 'Running PostgreSQL RPC...', items: [{ label: 'process_scheme_metrics()', status: 'running' }], vani: 'Computing returns, volatility, Sharpe ratio, CAGR for all schemes with NAV data...' });
+
     try {
       const r = await apiFetch<any>(API.nav.calculateMetricsBulk);
-      showToast({ message: `Metrics: ${r.total_schemes} schemes, ${r.total_records_updated} records (${(r.execution_ms / 1000).toFixed(1)}s)`, type: 'success' });
-    } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
-    finally { setBulkCalculating(false); }
+      setBulkOp({ active: true, title: 'Metrics Complete', progress: 100, progressText: `${r.total_schemes} schemes processed`, items: [{ label: `${r.total_records_updated.toLocaleString()} records updated`, status: 'done', detail: `${(r.execution_ms / 1000).toFixed(1)}s` }], vani: `All metrics calculated. ${r.total_schemes} schemes, ${r.total_records_updated.toLocaleString()} records.` });
+    } catch (err) {
+      setBulkOp({ active: true, title: 'Metrics Failed', progress: 0, progressText: 'Error', items: [{ label: (err as ApiError).message || 'Unknown error', status: 'failed' }], vani: 'Metrics calculation failed. Check database connectivity.' });
+    }
+
+    setTimeout(() => { setBulkOp(null); refetchSearch(); refetchStats(); }, 3000);
   }
 
-  // VaNi insights
+  // ── VaNi — journey-aware insights ──
   const insights: Insight[] = [];
   if (!activeQuery) {
-    insights.push({ icon: '\u{1F50D}', text: `Search by scheme name, AMC, category, or code.${stats?.total_schemes ? ` ${stats.total_schemes.toLocaleString()} schemes available.` : ''}` });
+    if (!stats || stats.total_schemes === 0) {
+      insights.push({ icon: '\u{1F4CB}', text: 'Import the AMFI Scheme Master first. Go to Import Data to upload.' });
+    } else if (stats.with_nav_data === 0) {
+      insights.push({ icon: '\u{1F50D}', text: 'Search for your client schemes and download their NAV data to start tracking.' });
+    } else {
+      insights.push({ icon: '\u{1F50D}', text: `${stats.total_schemes.toLocaleString()} schemes available. ${stats.with_nav_data} tracked with NAV data.` });
+    }
   } else if (schemes.length > 0) {
-    insights.push({ icon: '\u2728', text: `Found ${totalMatches.toLocaleString()} schemes. Page ${page}/${totalPages}.` });
-    if (selected.size > 0) insights.push({ icon: '\u2611\uFE0F', text: `${selected.size} selected for bulk operations.` });
+    insights.push({ icon: '\u2728', text: `${totalMatches.toLocaleString()} schemes found. Click a scheme to view its dashboard.` });
+    if (selected.size > 0) insights.push({ icon: '\u2611\uFE0F', text: `${selected.size} selected. Use Bulk Download or Bulk Metrics.` });
   } else if (!searching) {
-    insights.push({ icon: '\u{1F645}', text: `No results for "${activeQuery}".` });
+    insights.push({ icon: '\u{1F645}', text: `No results for "${activeQuery}". Try a different search term.` });
   }
-  if (stats && stats.stale_nav_7d > 0) {
-    insights.push({ icon: '\u26A0\uFE0F', text: `${stats.stale_nav_7d} schemes have stale NAV data (>7 days). Consider running bulk download.` });
+  if (stats && stats.stale_nav_7d > 0 && !activeQuery) {
+    insights.push({ icon: '\u26A0\uFE0F', text: `${stats.stale_nav_7d} schemes have stale NAV (>7 days).` });
   }
 
-  // VaNi proactive message
-  const vaniMessage = stats && stats.without_nav_data > 0
-    ? `${user?.name || 'Hey'}, ${stats.without_nav_data.toLocaleString()} schemes have no NAV data yet. Shall I download them?`
+  // ── VaNi proactive card ──
+  const vaniAction = stats && stats.without_nav_data > stats.with_nav_data
+    ? { msg: `${stats.without_nav_data.toLocaleString()} schemes need NAV data. Search and download to start.`, btn: null }
     : stats && stats.stale_nav_7d > 0
-    ? `${stats.stale_nav_7d} schemes have stale data. Want me to fill the gaps?`
+    ? { msg: `${stats.stale_nav_7d} schemes have stale data. Shall I fill the gaps?`, btn: 'Fix All Now' }
     : stats && stats.metrics_pending > 0
-    ? `${stats.metrics_pending} schemes need metrics calculation. Run bulk metrics?`
+    ? { msg: `${stats.metrics_pending} schemes need metrics. Run bulk calculation?`, btn: 'Calculate All' }
     : null;
+
+  /* ── Render ──────────────────────────────────────── */
 
   return (
     <div className={s.page}>
+      {/* Bulk operation overlay */}
+      {bulkOp && (
+        <VdfProgressOverlay
+          title={bulkOp.title}
+          progress={bulkOp.progress}
+          progressText={bulkOp.progressText}
+          items={bulkOp.items}
+          vaniMessage={bulkOp.vani}
+          onCancel={bulkOp.progress < 100 ? () => { cancelRef.current = true; } : undefined}
+        />
+      )}
+
       {/* Header */}
       <div className={s.header}>
         <div className={s.headerLeft}>
           <h1 className={d.pageTitle}>Global NAV <span style={{ color: 'var(--color-muted)', fontWeight: 400, fontSize: '1rem', marginLeft: 8 }}>Explorer</span></h1>
           <p className={d.pageSubtitle}>
-            Welcome back{user?.name ? `, ${user.name}` : ''}.
-            {stats ? ` ${stats.with_nav_data} of ${stats.total_schemes.toLocaleString()} schemes tracked.` : ''}
+            {user?.name ? `Welcome back, ${user.name}. ` : ''}
+            {stats ? `${stats.with_nav_data} of ${stats.total_schemes.toLocaleString()} schemes tracked.` : ''}
           </p>
         </div>
-        <div className={s.statsCards}>
-          {stats && (
-            <>
-              <VdfStatCard value={stats.total_schemes} label="Total Schemes" />
-              <VdfStatCard value={stats.with_nav_data} label="Tracked (NAV)" accent="success" />
-              <VdfStatCard value={stats.stale_nav_7d} label="Gaps / Stale" accent={stats.stale_nav_7d > 0 ? 'warning' : 'default'} />
-            </>
-          )}
-        </div>
+        {stats && (
+          <div className={s.statsCards}>
+            <VdfStatCard value={stats.total_schemes} label="Total Schemes" />
+            <VdfStatCard value={stats.with_nav_data} label="Tracked" accent="success" />
+            {stats.stale_nav_7d > 0 && <VdfStatCard value={stats.stale_nav_7d} label="Stale" accent="warning" />}
+          </div>
+        )}
       </div>
 
-      {/* Grid: sidebar + main */}
+      {/* Grid */}
       <div className={s.grid}>
         {/* ═══ SIDEBAR ═══ */}
         <aside className={s.sidebar}>
-          {/* Search */}
           <div className={s.searchPanel}>
             <div className={s.searchTitle}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
@@ -180,58 +230,55 @@ export default function GlobalNavPage() {
               <input className={s.searchInput} type="text" placeholder="e.g. SBI Blue Chip..." value={query} onChange={e => setQuery(e.target.value)} />
             </form>
 
-            {/* Status filters */}
             <div className={s.filterSection}>
               <div className={s.filterTitle}>Status Filters</div>
-              <div className={s.filterOption} onClick={() => setStatusFilter(statusFilter === 'no_data' ? null : 'no_data')}>
-                <div className={`${s.filterDot} ${s.filterDotDanger} ${statusFilter === 'no_data' ? s.filterDotActive : ''}`} />
-                <span>No Data (Red)</span>
-              </div>
-              <div className={s.filterOption} onClick={() => setStatusFilter(statusFilter === 'stale' ? null : 'stale')}>
-                <div className={`${s.filterDot} ${s.filterDotWarning} ${statusFilter === 'stale' ? s.filterDotActive : ''}`} />
-                <span>Stale / Gaps (Orange)</span>
-              </div>
-              <div className={s.filterOption} onClick={() => setStatusFilter(statusFilter === 'healthy' ? null : 'healthy')}>
-                <div className={`${s.filterDot} ${s.filterDotSuccess} ${statusFilter === 'healthy' ? s.filterDotActive : ''}`} />
-                <span>Up to Date (Green)</span>
-              </div>
+              {[
+                { key: 'no_data', label: 'No Data', dot: s.filterDotDanger },
+                { key: 'stale', label: 'Stale / Gaps', dot: s.filterDotWarning },
+                { key: 'healthy', label: 'Up to Date', dot: s.filterDotSuccess },
+              ].map(f => (
+                <div key={f.key} className={s.filterOption} onClick={() => setStatusFilter(statusFilter === f.key ? null : f.key)}>
+                  <div className={`${s.filterDot} ${f.dot} ${statusFilter === f.key ? s.filterDotActive : ''}`} />
+                  <span>{f.label}</span>
+                </div>
+              ))}
             </div>
           </div>
 
           {/* VaNi accent gradient card */}
-          {vaniMessage && (
+          {vaniAction && (
             <div className={s.vaniCard}>
               <div className={s.vaniCardTitle}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
                 VaNi Assistant
               </div>
-              <p className={s.vaniCardText}>"{vaniMessage}"</p>
-              <button className={s.vaniCardBtn} onClick={handleBulkDownload} disabled={bulkDownloading}>
-                {bulkDownloading ? 'Working...' : 'Fix All Now'}
-              </button>
+              <p className={s.vaniCardText}>"{vaniAction.msg}"</p>
+              {vaniAction.btn && (
+                <button className={s.vaniCardBtn} onClick={vaniAction.btn === 'Fix All Now' ? handleBulkDownload : handleBulkMetrics}>
+                  {vaniAction.btn}
+                </button>
+              )}
             </div>
           )}
 
-          {/* Insights (if search active) */}
-          {activeQuery && <VdfInsightsCard insights={insights} />}
+          {insights.length > 0 && <VdfInsightsCard insights={insights} />}
         </aside>
 
         {/* ═══ MAIN ═══ */}
         <div className={s.main}>
-          {/* Table card */}
           <div className={s.tableCard}>
             <div className={s.tableToolbar}>
               <div className={s.toolbarActions}>
-                <button className={d.pageBtn} onClick={handleBulkDownload} disabled={bulkDownloading || selected.size === 0}
+                <button className={d.pageBtn} onClick={handleBulkDownload} disabled={selected.size === 0}
                   style={selected.size > 0 ? { background: 'var(--color-primary)', color: 'var(--color-primary-fg)', borderColor: 'var(--color-primary)' } : {}}>
-                  {bulkDownloading ? 'Downloading...' : `\u2B07 Bulk Download${selected.size > 0 ? ` (${selected.size})` : ''}`}
+                  {`\u2B07 Bulk Download${selected.size > 0 ? ` (${selected.size})` : ''}`}
                 </button>
-                <button className={d.pageBtn} onClick={handleBulkMetrics} disabled={bulkCalculating}>
-                  {bulkCalculating ? 'Calculating...' : '\u{1F9EE} Bulk Metrics'}
+                <button className={d.pageBtn} onClick={handleBulkMetrics}>
+                  {'\u{1F9EE} Bulk Metrics'}
                 </button>
               </div>
               <div className={s.toolbarInfo}>
-                {searching ? 'Searching...' : activeQuery ? `Showing ${schemes.length} of ${totalMatches.toLocaleString()}` : 'Search to explore schemes'}
+                {searching ? 'Searching...' : activeQuery ? `${schemes.length} of ${totalMatches.toLocaleString()}` : 'Search to explore'}
               </div>
             </div>
 
@@ -239,9 +286,9 @@ export default function GlobalNavPage() {
               <table className={d.table}>
                 <thead>
                   <tr>
-                    <th className={d.table ? '' : ''} style={{ width: 40 }}>
-                      <input type="checkbox" checked={schemes.length > 0 && selected.size === schemes.length} onChange={toggleSelectAll}
-                        style={{ accentColor: 'var(--color-primary)' }} />
+                    <th style={{ width: 40 }}>
+                      <input type="checkbox" checked={schemes.length > 0 && selected.size === schemes.length}
+                        onChange={toggleSelectAll} style={{ accentColor: 'var(--color-primary)' }} />
                     </th>
                     <th>Scheme Name</th>
                     <th>Category</th>
@@ -252,10 +299,9 @@ export default function GlobalNavPage() {
                 </thead>
                 <tbody>
                   {schemes.map(sc => {
-                    const st = schemeStatusInfo(sc);
-                    const isStale = st.variant === 'warning';
+                    const st = statusOf(sc);
                     return (
-                      <tr key={sc.scheme_code} className={isStale ? s.rowStale : ''}
+                      <tr key={sc.scheme_code} className={st.variant === 'warning' ? s.rowStale : ''}
                         onClick={() => router.push(`/global-nav/${sc.scheme_code}`)} style={{ cursor: 'pointer' }}>
                         <td onClick={e => e.stopPropagation()}>
                           <input type="checkbox" checked={selected.has(sc.scheme_code)}
@@ -263,38 +309,28 @@ export default function GlobalNavPage() {
                         </td>
                         <td style={{ fontWeight: 600 }}>{sc.scheme_name}</td>
                         <td style={{ fontSize: '0.7rem', color: 'var(--color-muted)' }}>{sc.category}</td>
-                        <td className={d.tdMono}>
-                          {sc.nav ? `\u20B9${Number(sc.nav).toFixed(2)}` : '\u2014'}
-                        </td>
+                        <td className={d.tdMono}>{sc.nav ? `\u20B9${Number(sc.nav).toFixed(2)}` : '\u2014'}</td>
                         <td><VdfStatusBadge label={st.label} variant={st.variant} size="sm" /></td>
                         <td style={{ textAlign: 'right' }}>
-                          {sc.nav_records === 0 && (
-                            <button className={d.pageBtn} onClick={e => { e.stopPropagation(); router.push(`/global-nav/${sc.scheme_code}`); }}
-                              style={{ padding: '4px 8px', fontSize: '0.65rem' }}>
-                              {'\u2B07'}
-                            </button>
-                          )}
                           {st.variant === 'warning' && (
-                            <button onClick={e => { e.stopPropagation(); router.push(`/global-nav/${sc.scheme_code}`); }}
-                              style={{ background: 'none', border: 'none', color: 'var(--color-info)', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}>
+                            <span style={{ color: 'var(--color-info)', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}
+                              onClick={e => { e.stopPropagation(); router.push(`/global-nav/${sc.scheme_code}`); }}>
                               Fill Gaps
-                            </button>
+                            </span>
                           )}
                         </td>
                       </tr>
                     );
                   })}
-                  {schemes.length === 0 && !searching && activeQuery && (
-                    <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: 'var(--color-muted)' }}>No results for "{activeQuery}"</td></tr>
-                  )}
-                  {!activeQuery && (
-                    <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: 'var(--color-muted)' }}>Search to explore schemes</td></tr>
+                  {schemes.length === 0 && !searching && (
+                    <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: 'var(--color-muted)' }}>
+                      {activeQuery ? `No results for "${activeQuery}"` : 'Search to explore schemes'}
+                    </td></tr>
                   )}
                 </tbody>
               </table>
             </div>
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className={d.pagination}>
                 <button className={d.pageBtn} disabled={page <= 1} onClick={() => setPage(1)}>First</button>
@@ -306,33 +342,39 @@ export default function GlobalNavPage() {
             )}
           </div>
 
-          {/* Bottom accent metric cards */}
+          {/* Bottom cards — ONLY real data, journey-aware */}
           {stats && stats.with_nav_data > 0 && (
             <div className={s.bottomCards}>
-              <div className={`${s.accentCard} ${s.accentCardBlue}`}>
-                <div className={s.accentCardHeader}>
-                  <span className={s.accentCardTitle}>Returns (1Y Avg)</span>
-                  <span className={`${s.accentCardValue} ${d.valUp}`}>+18.4%</span>
-                </div>
-                <div className={s.miniChart}>
-                  {[40, 60, 55, 80, 95].map((h, i) => (
-                    <div key={i} className={s.miniBar} style={{ height: `${h}%` }} />
-                  ))}
-                </div>
-              </div>
-              <div className={`${s.accentCard} ${s.accentCardPurple}`}>
-                <span className={s.accentCardTitle}>Sharpe Ratio</span>
-                <div className={s.accentCardBigValue}>1.42</div>
-                <div className={s.accentCardDesc}>High Risk-Adjusted Return</div>
-              </div>
               <div className={`${s.accentCard} ${s.accentCardGreen}`}>
                 <span className={s.accentCardTitle}>Cruise Control</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
                   <div className={s.pulseDot} />
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Active Tracking</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>
+                    {stats.with_nav_data} Scheme{stats.with_nav_data !== 1 ? 's' : ''} Tracked
+                  </span>
                 </div>
-                <div style={{ fontSize: '0.6rem', color: 'var(--color-muted)', marginTop: 8 }}>Next sync: Today, 09:00 PM IST</div>
+                <div style={{ fontSize: '0.6rem', color: 'var(--color-muted)', marginTop: 8 }}>
+                  {stats.metrics_calculated} with metrics {'\u00B7'} {stats.ended_schemes} ended
+                </div>
               </div>
+              {stats.stale_nav_7d > 0 && (
+                <div className={`${s.accentCard} ${s.accentCardBlue}`}>
+                  <span className={s.accentCardTitle}>Data Health</span>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--color-warning)', marginTop: 4 }}>
+                    {stats.stale_nav_7d}
+                  </div>
+                  <div className={s.accentCardDesc}>schemes with stale NAV ({'>'}7 days)</div>
+                </div>
+              )}
+              {stats.metrics_pending > 0 && (
+                <div className={`${s.accentCard} ${s.accentCardPurple}`}>
+                  <span className={s.accentCardTitle}>Metrics Pending</span>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--color-fg)', marginTop: 4 }}>
+                    {stats.metrics_pending}
+                  </div>
+                  <div className={s.accentCardDesc}>schemes need calculation</div>
+                </div>
+              )}
             </div>
           )}
         </div>
