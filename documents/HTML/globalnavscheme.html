@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #020617; color: #f8fafc; }
+        .glass-panel { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(51, 65, 85, 0.5); border-radius: 1.5rem; }
+        .metric-card { background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(51, 65, 85, 0.3); padding: 1.5rem; border-radius: 1rem; }
+        .btn-primary { background: #2563eb; transition: all 0.2s; }
+        .btn-primary:hover { background: #3b82f6; transform: translateY(-1px); }
+        .btn-outline { border: 1px solid #334155; transition: all 0.2s; }
+        .btn-outline:hover { background: #1e293b; border-color: #475569; }
+    </style>
+</head>
+<body class="p-8">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        
+        <div class="flex justify-between items-start">
+            <div class="flex gap-4">
+                <button class="btn-outline p-2 rounded-xl h-10 w-10 flex items-center justify-center"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                <div>
+                    <div class="flex items-center gap-3">
+                        <h1 class="text-2xl font-bold italic">SBI Blue Chip Fund</h1>
+                        <span class="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-[10px] font-bold rounded border border-blue-500/20 uppercase tracking-widest">Growth</span>
+                    </div>
+                    <p class="text-slate-400 text-sm">ISIN: INF209K01PA1 • Scheme Code: <span class="font-mono">103504</span></p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-xs text-slate-500 uppercase font-bold tracking-widest">Latest NAV (01 Apr 2024)</p>
+                <p class="text-4xl font-black text-white">₹74.3228 <span class="text-emerald-500 text-lg font-bold">+0.23%</span></p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-12 gap-6">
+            
+            <div class="col-span-8 space-y-6">
+                <div class="glass-panel p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
+                            <button class="px-3 py-1 text-xs font-bold rounded bg-slate-800 text-white shadow-sm">1Y</button>
+                            <button class="px-3 py-1 text-xs font-bold rounded text-slate-500 hover:text-white">3Y</button>
+                            <button class="px-3 py-1 text-xs font-bold rounded text-slate-500 hover:text-white">5Y</button>
+                            <button class="px-3 py-1 text-xs font-bold rounded text-slate-500 hover:text-white">Max</button>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="btn-outline px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2">
+                                <i data-lucide="calendar" class="w-3.5 h-3.5"></i> Granularity: Daily
+                            </button>
+                            <button class="btn-outline px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2">
+                                <i data-lucide="download" class="w-3.5 h-3.5"></i> Export CSV
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="h-64 w-full flex items-end gap-1 pb-4 border-b border-slate-800/50">
+                        <div class="flex-1 bg-blue-500/10 h-[40%] rounded-t-sm hover:bg-blue-500/30 transition-all cursor-pointer"></div>
+                        <div class="flex-1 bg-blue-500/20 h-[45%] rounded-t-sm hover:bg-blue-500/30 transition-all"></div>
+                        <div class="flex-1 bg-blue-500/30 h-[50%] rounded-t-sm hover:bg-blue-500/30 transition-all"></div>
+                        <div class="flex-1 bg-blue-500/40 h-[65%] rounded-t-sm hover:bg-blue-500/30 transition-all"></div>
+                        <div class="flex-1 bg-blue-500/50 h-[60%] rounded-t-sm hover:bg-blue-500/30 transition-all"></div>
+                        <div class="flex-1 bg-blue-500/60 h-[75%] rounded-t-sm hover:bg-blue-500/30 transition-all"></div>
+                        <div class="flex-1 bg-blue-600 h-[85%] rounded-t-sm hover:bg-blue-500/30 transition-all"></div>
+                    </div>
+                    <div class="flex justify-between mt-2 text-[10px] text-slate-500 font-mono">
+                        <span>APR 2023</span>
+                        <span>OCT 2023</span>
+                        <span>APR 2024</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="glass-panel p-5 bg-emerald-500/5 border-emerald-500/20">
+                        <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-3">Sync Operations</h4>
+                        <div class="space-y-3">
+                            <button class="w-full btn-primary py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                                <i data-lucide="history" class="w-4 h-4"></i> Download Full History
+                            </button>
+                            <button class="w-full btn-outline py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border-amber-500/30 text-amber-500 bg-amber-500/5">
+                                <i data-lucide="layers" class="w-4 h-4"></i> Fill 3 Missing Gaps
+                            </button>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-5 bg-blue-500/5 border-blue-500/20">
+                        <h4 class="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">Compute Metrics</h4>
+                        <div class="space-y-3">
+                            <button class="w-full bg-slate-800 hover:bg-slate-700 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border border-slate-700">
+                                <i data-lucide="calculator" class="w-4 h-4"></i> Run RPC One-Pass
+                            </button>
+                            <p class="text-[10px] text-center text-slate-500 italic">Last calculated: 14 mins ago</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-span-4 space-y-6">
+                <div class="glass-panel p-6">
+                    <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">Risk & Performance</h3>
+                    <div class="space-y-6">
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-xs text-slate-500">Sharpe Ratio</span>
+                                <span class="text-xs font-bold text-emerald-400 italic">High Efficiency</span>
+                            </div>
+                            <p class="text-2xl font-bold">1.42 <span class="text-xs font-normal text-slate-500">vs 1.10 Cat. Avg</span></p>
+                        </div>
+                        <div class="h-[1px] bg-slate-800"></div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-xs text-slate-500">Max Drawdown</span>
+                                <span class="text-xs font-bold text-rose-400">-8.2%</span>
+                            </div>
+                            <div class="w-full bg-slate-900 h-1.5 rounded-full">
+                                <div class="bg-rose-500 h-full w-[35%] rounded-full"></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <span class="text-[10px] text-slate-500 uppercase">Std Deviation</span>
+                                <p class="text-lg font-bold">0.89</p>
+                            </div>
+                            <div>
+                                <span class="text-[10px] text-slate-500 uppercase">CAGR (3Y)</span>
+                                <p class="text-lg font-bold">15.2%</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-6 border-dashed">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <i data-lucide="shield-check" class="w-4 h-4 text-blue-500"></i> Data Audit
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                            <p class="text-[11px] text-slate-400">Admin imported master from AMFI Excel</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                            <p class="text-[11px] text-slate-400">MFAPI historical fetch (5,000 records)</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+                            <p class="text-[11px] text-slate-400">Gap detected: 3 days missing in MAR-24</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

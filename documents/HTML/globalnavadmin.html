@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #020617; color: #f8fafc; }
+        .admin-card { background: #0f172a; border: 1px solid #1e293b; transition: all 0.2s ease; }
+        .admin-card:hover { border-color: #334155; }
+        .data-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(12px, 1fr)); gap: 2px; }
+        .pixel { width: 12px; height: 12px; border-radius: 2px; }
+        .pixel-green { background: #10b981; }
+        .pixel-orange { background: #f59e0b; animation: pulse 2s infinite; }
+        .pixel-red { background: #ef4444; }
+        .pixel-empty { background: #1e293b; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+    </style>
+</head>
+<body class="p-6">
+
+    <nav class="mb-10 flex justify-between items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+        <div class="flex items-center gap-6">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold text-white">G</div>
+                <span class="font-bold tracking-tight text-xl uppercase">Global NAV Admin</span>
+            </div>
+            <div class="h-6 w-[1px] bg-slate-800"></div>
+            <div class="flex gap-4 text-sm font-medium text-slate-400">
+                <a href="#" class="text-blue-400">Pipeline</a>
+                <a href="#" class="hover:text-white">AMC Health</a>
+                <a href="#" class="hover:text-white">Audit Logs</a>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="text-xs font-mono text-slate-500 uppercase">System Status: <span class="text-emerald-500">Optimal</span></span>
+            <div class="w-2 h-2 bg-emerald-500 rounded-full status-pulse"></div>
+            <button class="bg-slate-800 p-2 rounded-lg border border-slate-700 hover:bg-slate-700"><i data-lucide="settings" class="w-4 h-4"></i></button>
+        </div>
+    </nav>
+
+    <div class="grid grid-cols-12 gap-6">
+        
+        <div class="col-span-8 space-y-6">
+            
+            <div class="admin-card rounded-2xl p-6">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h2 class="text-lg font-bold">Fleet Health (16,041 Schemes)</h2>
+                        <p class="text-sm text-slate-400">Real-time data integrity map across all AMCs</p>
+                    </div>
+                    <button class="bg-blue-600/10 text-blue-400 px-3 py-1 rounded-md text-xs font-bold border border-blue-600/20 hover:bg-blue-600 hover:text-white transition">Run Global Sync</button>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex justify-between text-[10px] text-slate-500 uppercase tracking-widest font-bold">
+                        <span>AMC Batch 01-14 (SBI, HDFC, ICICI...)</span>
+                        <span>98.2% Updated</span>
+                    </div>
+                    <div class="data-grid">
+                        <div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-red"></div>
+                        <div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-orange"></div><div class="pixel pixel-green"></div>
+                        <div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div>
+                        <div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div>
+                        <div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div>
+                        <div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div>
+                        <div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div><div class="pixel pixel-green"></div>
+                        <div class="pixel pixel-empty"></div><div class="pixel pixel-empty"></div><div class="pixel pixel-empty"></div><div class="pixel pixel-empty"></div><div class="pixel pixel-empty"></div>
+                    </div>
+                    <p class="text-[11px] text-slate-500 italic">Each pixel represents a batch of 50 schemes. Red indicates API failure; Orange indicates stale data (>24h).</p>
+                </div>
+            </div>
+
+            <div class="admin-card rounded-2xl overflow-hidden">
+                <div class="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/30">
+                    <h3 class="font-bold flex items-center gap-2"><i data-lucide="alert-circle" class="w-4 h-4 text-amber-500"></i> Critical Exceptions</h3>
+                    <div class="flex gap-2">
+                        <button class="text-xs bg-slate-800 px-3 py-1 rounded hover:bg-slate-700 border border-slate-700">Export Error Log</button>
+                    </div>
+                </div>
+                <table class="w-full text-left">
+                    <tbody class="text-sm divide-y divide-slate-800">
+                        <tr class="hover:bg-slate-800/50 transition">
+                            <td class="p-4"><span class="mono text-xs text-slate-500">#44021</span></td>
+                            <td class="p-4 font-medium">Tata Digital India Fund</td>
+                            <td class="p-4"><span class="text-rose-400 font-mono text-xs">MFAPI_TIMEOUT</span></td>
+                            <td class="p-4 text-slate-400">Failed 3 times in 1 hour</td>
+                            <td class="p-4 text-right"><button class="text-blue-400 hover:underline font-bold text-xs">Force Retry</button></td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/50 transition">
+                            <td class="p-4"><span class="mono text-xs text-slate-500">#12998</span></td>
+                            <td class="p-4 font-medium">Axis Bluechip Fund</td>
+                            <td class="p-4"><span class="text-amber-400 font-mono text-xs">STALE_NAV_AMFI</span></td>
+                            <td class="p-4 text-slate-400">Reported gap on 2024-03-28</td>
+                            <td class="p-4 text-right"><button class="text-blue-400 hover:underline font-bold text-xs">Manual Entry</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="col-span-4 space-y-6">
+            <div class="admin-card rounded-2xl p-6 border-l-4 border-blue-600">
+                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Background Workers</h3>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium">Bulk Metrics Engine</span>
+                        <span class="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded animate-pulse">Running</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-blue-500 h-full w-[65%]"></div>
+                    </div>
+                    <p class="text-[10px] text-slate-500">Processing 4,200 of 16,041 schemes... (Est. 4m remaining)</p>
+                </div>
+            </div>
+
+            <div class="admin-card rounded-2xl p-6">
+                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Storage & Compute</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-sm text-slate-400">Total NAV Records</span>
+                        <span class="text-sm font-mono font-bold">14,209,442</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-slate-400">RPC Execution Time</span>
+                        <span class="text-sm font-mono font-bold">182ms (Avg)</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-slate-400">Advisory Locks</span>
+                        <span class="text-sm font-mono font-bold text-emerald-500">0 Active</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <button class="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-left hover:bg-slate-700 transition flex items-center gap-3">
+                    <i data-lucide="upload" class="w-4 h-4 text-slate-400"></i>
+                    <div>
+                        <p class="text-sm font-bold">Import New SchemeMaster</p>
+                        <p class="text-[10px] text-slate-500 italic">Last import: 2 days ago</p>
+                    </div>
+                </button>
+                <button class="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-left hover:bg-slate-700 transition flex items-center gap-3">
+                    <i data-lucide="refresh-cw" class="w-4 h-4 text-slate-400"></i>
+                    <div>
+                        <p class="text-sm font-bold">Rebuild All Metrics</p>
+                        <p class="text-[10px] text-slate-500 italic">Full re-calc of CAGR/Sharpe</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
