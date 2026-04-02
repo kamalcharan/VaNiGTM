@@ -64,6 +64,44 @@
 /* ── Chart Section ───────────────────────────────────── */
 .chartSection { margin-bottom: 24px; }
 
+.chartHeader { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.chartControls { display: flex; gap: 10px; align-items: center; }
+
+.toggleGroup { display: flex; border: 1px solid var(--color-border); border-radius: 8px; overflow: hidden; }
+.toggleBtn { padding: 5px 14px; border: none; background: transparent; color: var(--color-muted); font-size: 0.68rem; font-weight: 500; cursor: pointer; transition: all 150ms; }
+.toggleBtn:first-child { border-right: 1px solid var(--color-border); }
+.toggleActive { background: var(--color-primary); color: var(--color-primary-fg); font-weight: 600; }
+
+.periodGroup { display: flex; gap: 3px; }
+.periodBtn { padding: 4px 10px; border: 1px solid var(--color-border); border-radius: 6px; background: transparent; color: var(--color-muted); font-size: 0.62rem; font-weight: 500; cursor: pointer; transition: all 150ms; }
+.periodBtn:hover { border-color: var(--color-primary); color: var(--color-fg); }
+.periodActive { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 12%, transparent); color: var(--color-primary); font-weight: 600; }
+
+.customRange { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.dateInput { padding: 5px 10px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 6px; color: var(--color-fg); font-size: 0.75rem; outline: none; }
+.dateInput:focus { border-color: var(--color-primary); }
+.dateSep { color: var(--color-muted); }
+
+.chartEmpty { padding: 48px; text-align: center; color: var(--color-muted); font-size: 0.82rem; border: 1px dashed var(--color-border); border-radius: 8px; }
+
+/* ── NAV Data Table ──────────────────────────────────── */
+.tableSection { margin-bottom: 24px; }
+.tableHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.tableCount { font-size: 0.68rem; color: var(--color-muted); }
+
+.tableWrap { border: 1px solid var(--color-border); border-radius: 10px; overflow: auto; max-height: 500px; }
+.dataTable { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+.dataTable thead { position: sticky; top: 0; z-index: 3; }
+.dataTable th { padding: 8px 16px; background: var(--glass); border-bottom: 1px solid var(--color-border); font-size: 0.58rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); text-align: left; }
+.dataTable td { padding: 5px 16px; border-bottom: 1px solid color-mix(in srgb, var(--color-border) 20%, transparent); color: var(--color-fg); }
+.dataTable tbody tr:hover { background: color-mix(in srgb, var(--color-muted) 4%, transparent); }
+
+.tablePagination { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 0; }
+.pgBtn { padding: 4px 12px; border: 1px solid var(--color-border); border-radius: 6px; background: transparent; color: var(--color-muted); font-size: 0.7rem; cursor: pointer; transition: all 200ms; }
+.pgBtn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-fg); }
+.pgBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+.pgInfo { font-size: 0.68rem; color: var(--color-muted); padding: 0 8px; }
+
 /* ── Gaps Section ────────────────────────────────────── */
 .gapsSection { margin-bottom: 24px; }
 .gapsGrid { display: flex; flex-wrap: wrap; gap: 8px; }

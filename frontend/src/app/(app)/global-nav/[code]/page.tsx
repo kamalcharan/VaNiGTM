@@ -70,6 +70,16 @@ export default function SchemeDashboardPage() {
   const [calculating, setCalculating] = useState(false);
   const [bookmarking, setBookmarking] = useState(false);
 
+  // Chart/table controls
+  type Period = '1w' | '1m' | '6m' | '1y' | '2y' | 'all' | 'custom';
+  type Granularity = 'daily' | 'monthly';
+  const [period, setPeriod] = useState<Period>('1y');
+  const [granularity, setGranularity] = useState<Granularity>('daily');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [tablePage, setTablePage] = useState(1);
+  const TABLE_PAGE_SIZE = 50;
+
   // Fetch scheme detail
   const fetchDetail = useCallback(async () => {
     try {
@@ -84,13 +94,46 @@ export default function SchemeDashboardPage() {
 
   useEffect(() => { fetchDetail(); }, [fetchDetail]);
 
-  // NAV history for chart
+  // Compute date range from period
+  function getDateRange(): { from: string; to: string } {
+    const to = new Date();
+    const toStr = to.toISOString().split('T')[0];
+    if (period === 'custom') return { from: customFrom || '2000-01-01', to: customTo || toStr };
+    if (period === 'all') return { from: '2000-01-01', to: toStr };
+    const from = new Date();
+    const periodMap: Record<string, number> = { '1w': 7, '1m': 30, '6m': 180, '1y': 365, '2y': 730 };
+    from.setDate(from.getDate() - (periodMap[period] || 365));
+    return { from: from.toISOString().split('T')[0], to: toStr };
+  }
+
+  const dateRange = getDateRange();
+
+  // NAV history for chart + table
   const { data: navHistory } = useSkillQuery<NavHistoryData>(
     'market-skill', 'get_nav_history',
-    { scheme_code: code, from_date: '2000-01-01', to_date: new Date().toISOString().split('T')[0] },
+    { scheme_code: code, from_date: dateRange.from, to_date: dateRange.to },
     { enabled: !!code },
   );
-  const navData = navHistory?.data?.data || [];
+  const rawNavData = navHistory?.data?.data || [];
+
+  // Apply granularity (monthly = last NAV per month)
+  const navData = granularity === 'monthly' && rawNavData.length > 0
+    ? rawNavData.reduce<{ date: string; nav: number }[]>((acc, d) => {
+        const month = d.date.slice(0, 7); // YYYY-MM
+        const last = acc[acc.length - 1];
+        if (!last || last.date.slice(0, 7) !== month) acc.push(d);
+        else acc[acc.length - 1] = d; // keep last day of each month
+        return acc;
+      }, [])
+    : rawNavData;
+
+  // Paginated table data
+  const tableData = [...navData].reverse(); // newest first for table
+  const totalTablePages = Math.ceil(tableData.length / TABLE_PAGE_SIZE);
+  const pagedTableData = tableData.slice((tablePage - 1) * TABLE_PAGE_SIZE, tablePage * TABLE_PAGE_SIZE);
+
+  // Reset table page when period/granularity changes
+  useEffect(() => { setTablePage(1); }, [period, granularity]);
 
   // Actions
   async function handleDownloadFull() {
@@ -278,11 +321,89 @@ export default function SchemeDashboardPage() {
         </div>
       )}
 
-      {/* ═══ NAV CHART ═══ */}
-      {navData.length >= 2 && (
-        <div className={s.chartSection}>
+      {/* ═══ NAV CHART + CONTROLS ═══ */}
+      <div className={s.chartSection}>
+        <div className={s.chartHeader}>
           <h3 className={s.sectionTitle}>NAV History ({navData.length.toLocaleString()} records)</h3>
+          <div className={s.chartControls}>
+            {/* Granularity toggle */}
+            <div className={s.toggleGroup}>
+              <button className={`${s.toggleBtn} ${granularity === 'daily' ? s.toggleActive : ''}`} onClick={() => setGranularity('daily')}>Daily</button>
+              <button className={`${s.toggleBtn} ${granularity === 'monthly' ? s.toggleActive : ''}`} onClick={() => setGranularity('monthly')}>Monthly</button>
+            </div>
+            {/* Period filters */}
+            <div className={s.periodGroup}>
+              {(['1w', '1m', '6m', '1y', '2y', 'all'] as Period[]).map(p => (
+                <button key={p} className={`${s.periodBtn} ${period === p ? s.periodActive : ''}`} onClick={() => setPeriod(p)}>
+                  {p === 'all' ? 'All' : p.toUpperCase()}
+                </button>
+              ))}
+              <button className={`${s.periodBtn} ${period === 'custom' ? s.periodActive : ''}`} onClick={() => setPeriod('custom')}>Custom</button>
+            </div>
+          </div>
+        </div>
+
+        {/* Custom date range */}
+        {period === 'custom' && (
+          <div className={s.customRange}>
+            <input type="date" className={s.dateInput} value={customFrom} onChange={e => setCustomFrom(e.target.value)} />
+            <span className={s.dateSep}>{'\u2192'}</span>
+            <input type="date" className={s.dateInput} value={customTo} onChange={e => setCustomTo(e.target.value)} />
+          </div>
+        )}
+
+        {/* Chart */}
+        {navData.length >= 2 ? (
           <VdfLineChart data={navData.map(d => ({ date: d.date, value: d.nav }))} height={300} />
+        ) : (
+          <div className={s.chartEmpty}>No NAV data for selected period</div>
+        )}
+      </div>
+
+      {/* ═══ NAV DATA TABLE ═══ */}
+      {tableData.length > 0 && (
+        <div className={s.tableSection}>
+          <div className={s.tableHeader}>
+            <h3 className={s.sectionTitle}>NAV Data</h3>
+            <span className={s.tableCount}>
+              Showing {((tablePage - 1) * TABLE_PAGE_SIZE) + 1}\u2013{Math.min(tablePage * TABLE_PAGE_SIZE, tableData.length)} of {tableData.length.toLocaleString()} records
+            </span>
+          </div>
+          <div className={s.tableWrap}>
+            <table className={s.dataTable}>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>NAV</th>
+                  <th>Daily Return</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedTableData.map((d, i) => {
+                  const prevNav = i < pagedTableData.length - 1 ? pagedTableData[i + 1].nav : null;
+                  const dayReturn = prevNav && prevNav > 0 ? ((d.nav - prevNav) / prevNav) * 100 : null;
+                  return (
+                    <tr key={d.date}>
+                      <td>{d.date}</td>
+                      <td className={s.tdMono}>{'\u20B9'}{d.nav.toFixed(4)}</td>
+                      <td className={`${s.tdMono} ${dayReturn != null ? (dayReturn >= 0 ? s.valUp : s.valDown) : ''}`}>
+                        {dayReturn != null ? fmtPct(dayReturn) : '\u2014'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {totalTablePages > 1 && (
+            <div className={s.tablePagination}>
+              <button className={s.pgBtn} disabled={tablePage <= 1} onClick={() => setTablePage(1)}>First</button>
+              <button className={s.pgBtn} disabled={tablePage <= 1} onClick={() => setTablePage(p => p - 1)}>Prev</button>
+              <span className={s.pgInfo}>Page {tablePage} of {totalTablePages}</span>
+              <button className={s.pgBtn} disabled={tablePage >= totalTablePages} onClick={() => setTablePage(p => p + 1)}>Next</button>
+              <button className={s.pgBtn} disabled={tablePage >= totalTablePages} onClick={() => setTablePage(totalTablePages)}>Last</button>
+            </div>
+          )}
         </div>
       )}
 
