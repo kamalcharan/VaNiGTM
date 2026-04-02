@@ -74,7 +74,7 @@ export default function ImportDashboardPage() {
       const data = await apiFetch<{ sessions: Session[] }>(API.etl.sessions);
       setSessions(data.sessions || []);
       if (data.sessions?.length > 0 && !selectedSession) setSelectedSession(data.sessions[0]);
-    } catch { setSessions([]); }
+    } catch (err) { console.error('[ImportDashboard] Failed to load sessions:', err); setSessions([]); }
     finally { setLoadingSessions(false); }
   }, []); // eslint-disable-line
 
