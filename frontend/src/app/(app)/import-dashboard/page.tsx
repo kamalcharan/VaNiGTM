@@ -6,6 +6,8 @@ import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { FullPageLoader } from '@/components/loader';
+import { VdfStatCard, VdfStatusBadge, VdfInsightsCard, VdfEmptyState, type BadgeVariant, type Insight } from '@/components/vdf';
+import d from '@/styles/data.module.css';
 import s from './dashboard-page.module.css';
 
 /* ── Types ─────────────────────────────────────────── */
@@ -346,9 +348,7 @@ export default function ImportDashboardPage() {
                   >
                     <div className={s.sessionCardHeader}>
                       <span className={s.sessionId}>#{sess.id}</span>
-                      <span className={`${s.statusBadge} ${s[`st_${statusInfo.color}`]}`}>
-                        {statusInfo.label}
-                      </span>
+                      <VdfStatusBadge label={statusInfo.label} variant={statusInfo.color as BadgeVariant} size="sm" />
                     </div>
                     {sess.original_filename && (
                       <div className={s.sessionFile}>
@@ -395,9 +395,7 @@ export default function ImportDashboardPage() {
               <div className={s.infoBar}>
                 <div className={s.infoLeft}>
                   <span className={s.infoSessionId}>Session #{selectedSession.id}</span>
-                  <span className={`${s.statusBadge} ${s[`st_${(STATUS_MAP[selectedSession.status] || STATUS_MAP.pending).color}`]}`}>
-                    {(STATUS_MAP[selectedSession.status] || STATUS_MAP.pending).label}
-                  </span>
+                  <VdfStatusBadge label={(STATUS_MAP[selectedSession.status] || STATUS_MAP.pending).label} variant={(STATUS_MAP[selectedSession.status] || STATUS_MAP.pending).color as BadgeVariant} />
                   {selectedSession.original_filename && (
                     <span className={s.infoFile}>{selectedSession.original_filename}</span>
                   )}
@@ -413,48 +411,17 @@ export default function ImportDashboardPage() {
 
               {/* Metrics */}
               <div className={s.metrics}>
-                <div className={s.metricCard}>
-                  <span className={s.metricValue}>{selectedSession.total_records.toLocaleString()}</span>
-                  <span className={s.metricLabel}>Total Records</span>
-                </div>
-                <div className={`${s.metricCard} ${s.mcSuccess}`}>
-                  <span className={s.metricValue}>{selectedSession.successful_records.toLocaleString()}</span>
-                  <span className={s.metricLabel}>Successful</span>
-                  <span className={s.metricPct}>
-                    {selectedSession.total_records > 0 ? Math.round((selectedSession.successful_records / selectedSession.total_records) * 100) : 0}%
-                  </span>
-                </div>
-                <div className={`${s.metricCard} ${s.mcFailed}`}>
-                  <span className={s.metricValue}>{selectedSession.failed_records.toLocaleString()}</span>
-                  <span className={s.metricLabel}>Failed</span>
-                  <span className={s.metricPct}>
-                    {selectedSession.total_records > 0 ? Math.round((selectedSession.failed_records / selectedSession.total_records) * 100) : 0}%
-                  </span>
-                </div>
-                <div className={`${s.metricCard} ${s.mcDuplicate}`}>
-                  <span className={s.metricValue}>{selectedSession.duplicate_records.toLocaleString()}</span>
-                  <span className={s.metricLabel}>Updated</span>
-                  <span className={s.metricPct}>
-                    {selectedSession.total_records > 0 ? Math.round((selectedSession.duplicate_records / selectedSession.total_records) * 100) : 0}%
-                  </span>
-                </div>
+                <VdfStatCard value={selectedSession.total_records} label="Total Records" />
+                <VdfStatCard value={selectedSession.successful_records} label="Successful" accent="success"
+                  pct={selectedSession.total_records > 0 ? `${Math.round((selectedSession.successful_records / selectedSession.total_records) * 100)}%` : undefined} />
+                <VdfStatCard value={selectedSession.failed_records} label="Failed" accent="danger"
+                  pct={selectedSession.total_records > 0 ? `${Math.round((selectedSession.failed_records / selectedSession.total_records) * 100)}%` : undefined} />
+                <VdfStatCard value={selectedSession.duplicate_records} label="Updated" accent="info"
+                  pct={selectedSession.total_records > 0 ? `${Math.round((selectedSession.duplicate_records / selectedSession.total_records) * 100)}%` : undefined} />
               </div>
 
               {/* VaNi Insights */}
-              {getSessionInsights().length > 0 && (
-                <div className={s.insightsCard}>
-                  <div className={s.insightsHeader}>
-                    <span>{'\u2728'}</span>
-                    <span>VaNi Analysis</span>
-                  </div>
-                  {getSessionInsights().map((insight, i) => (
-                    <div key={i} className={s.insightRow}>
-                      <span className={s.insightIcon}>{insight.icon}</span>
-                      <span>{insight.text}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <VdfInsightsCard title="VaNi Analysis" insights={getSessionInsights()} />
 
               {/* Filter bar */}
               <div className={s.filterBar}>
@@ -492,8 +459,8 @@ export default function ImportDashboardPage() {
                 </div>
               ) : (
                 <>
-                  <div className={s.tableWrap}>
-                    <table className={s.table}>
+                  <div className={d.tableWrap}>
+                    <table className={d.table}>
                       <thead>
                         <tr>
                           <th className={s.thSticky}>Row</th>
@@ -517,9 +484,7 @@ export default function ImportDashboardPage() {
                                 </td>
                               ))}
                               <td>
-                                <span className={`${s.statusBadgeSm} ${s[`st_${statusInfo.color}`]}`}>
-                                  {statusInfo.label}
-                                </span>
+                                <VdfStatusBadge label={statusInfo.label} variant={statusInfo.color as BadgeVariant} size="sm" />
                               </td>
                               <td className={s.tdError}>
                                 {rec.error_messages?.[0] || rec.warnings?.[0] || ''}
@@ -541,14 +506,14 @@ export default function ImportDashboardPage() {
 
                   {/* Pagination */}
                   {records.total_pages > 1 && (
-                    <div className={s.pagination}>
-                      <button className={s.pageBtn} disabled={recordPage <= 1} onClick={() => setRecordPage(1)}>First</button>
-                      <button className={s.pageBtn} disabled={recordPage <= 1} onClick={() => setRecordPage(p => p - 1)}>Prev</button>
-                      <span className={s.pageInfo}>
+                    <div className={d.pagination}>
+                      <button className={d.pageBtn} disabled={recordPage <= 1} onClick={() => setRecordPage(1)}>First</button>
+                      <button className={d.pageBtn} disabled={recordPage <= 1} onClick={() => setRecordPage(p => p - 1)}>Prev</button>
+                      <span className={d.pageInfo}>
                         Page {recordPage} of {records.total_pages} {'\u00B7'} {records.total.toLocaleString()} records
                       </span>
-                      <button className={s.pageBtn} disabled={recordPage >= records.total_pages} onClick={() => setRecordPage(p => p + 1)}>Next</button>
-                      <button className={s.pageBtn} disabled={recordPage >= records.total_pages} onClick={() => setRecordPage(records.total_pages)}>Last</button>
+                      <button className={d.pageBtn} disabled={recordPage >= records.total_pages} onClick={() => setRecordPage(p => p + 1)}>Next</button>
+                      <button className={d.pageBtn} disabled={recordPage >= records.total_pages} onClick={() => setRecordPage(records.total_pages)}>Last</button>
                     </div>
                   )}
                 </>
@@ -569,9 +534,7 @@ export default function ImportDashboardPage() {
 
             <div className={s.modalSection}>
               <div className={s.modalSectionTitle}>Status</div>
-              <span className={`${s.statusBadge} ${s[`st_${(STATUS_MAP[viewRecord.processing_status] || STATUS_MAP.pending).color}`]}`}>
-                {(STATUS_MAP[viewRecord.processing_status] || STATUS_MAP.pending).label}
-              </span>
+              <VdfStatusBadge label={(STATUS_MAP[viewRecord.processing_status] || STATUS_MAP.pending).label} variant={(STATUS_MAP[viewRecord.processing_status] || STATUS_MAP.pending).color as BadgeVariant} />
               {viewRecord.processed_at && (
                 <span className={s.modalMeta}> Processed {timeAgo(viewRecord.processed_at)}</span>
               )}

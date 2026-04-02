@@ -1,15 +1,12 @@
 /* ═══════════════════════════════════════════════════════
-   IMPORT DASHBOARD v2 — Sidebar + Detail split layout
+   IMPORT DASHBOARD — Layout only
+   All badges, tables, stats, insights from VDF + data.module.css
    ═══════════════════════════════════════════════════════ */
 
 .page { padding: 20px 32px; height: calc(100vh - 40px); display: flex; flex-direction: column; }
 
 /* ── Header ──────────────────────────────────────────── */
 .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-shrink: 0; }
-.title { font-family: var(--font-display, serif); font-size: 1.3rem; font-weight: 800; color: var(--color-fg); margin: 0 0 2px; }
-.subtitle { font-size: 0.72rem; color: var(--color-muted); margin: 0; }
-.newBtn { padding: 10px 24px; background: var(--color-primary); border: none; border-radius: var(--btn-radius); color: var(--color-primary-fg); font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 300ms cubic-bezier(0.16, 1, 0.3, 1); }
-.newBtn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px color-mix(in srgb, var(--color-primary) 30%, transparent); }
 
 /* ── Layout ──────────────────────────────────────────── */
 .layout { display: flex; gap: 24px; flex: 1; min-height: 0; }
@@ -24,17 +21,17 @@
 .typeBtnActive { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 12%, transparent); color: var(--color-primary); font-weight: 600; }
 .typeIcon { font-size: 0.85rem; }
 
-/* ── Sessions Header ─────────────────────────────────── */
+/* ── Sessions Header + List ──────────────────────────── */
 .sessionsHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-shrink: 0; }
 .sessionsTitle { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); }
 .refreshBtn { background: none; border: none; color: var(--color-muted); font-size: 1rem; cursor: pointer; padding: 4px; transition: color 200ms; }
 .refreshBtn:hover { color: var(--color-primary); }
 
-/* ── Sessions List ───────────────────────────────────── */
 .sessionsList { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
 .sessionsList::-webkit-scrollbar { width: 4px; }
 .sessionsList::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
 .sessionsEmpty { padding: 32px; text-align: center; color: var(--color-muted); font-size: 0.8rem; }
+.sessionsHint { font-size: 0.7rem; color: var(--color-muted); margin-top: 6px; line-height: 1.5; }
 
 /* ── Session Card ────────────────────────────────────── */
 .sessionCard { padding: 14px 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; cursor: pointer; transition: all 200ms; }
@@ -57,25 +54,10 @@
 .statDup { color: var(--color-warning); }
 .sessionTime { font-size: 0.6rem; color: var(--color-muted); margin-top: 4px; opacity: 0.6; }
 
-/* ── Status Badges ───────────────────────────────────── */
-.statusBadge { padding: 3px 10px; border-radius: 100px; font-size: 0.6rem; font-weight: 600; text-transform: capitalize; display: inline-block; }
-.statusBadgeSm { padding: 2px 8px; border-radius: 100px; font-size: 0.58rem; font-weight: 600; }
-.st_success { background: color-mix(in srgb, var(--color-success) 12%, transparent); color: var(--color-success); }
-.st_warning { background: color-mix(in srgb, var(--color-warning) 12%, transparent); color: var(--color-warning); }
-.st_info { background: color-mix(in srgb, var(--color-info) 12%, transparent); color: var(--color-info); }
-.st_danger { background: color-mix(in srgb, var(--color-danger) 12%, transparent); color: var(--color-danger); }
-.st_muted { background: color-mix(in srgb, var(--color-muted) 8%, transparent); color: var(--color-muted); }
-
 /* ── RIGHT PANEL ─────────────────────────────────────── */
 .rightPanel { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
 .rightPanel::-webkit-scrollbar { width: 5px; }
 .rightPanel::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
-
-/* ── Empty Detail ────────────────────────────────────── */
-.emptyDetail { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.emptyIcon { font-size: 4rem; opacity: 0.15; margin-bottom: 16px; }
-.emptyTitle { font-family: var(--font-display, serif); font-size: 1.2rem; font-weight: 700; color: var(--color-fg); margin: 0 0 8px; }
-.emptyDesc { font-size: 0.82rem; color: var(--color-muted); margin: 0; max-width: 360px; }
 
 /* ── Info Bar ────────────────────────────────────────── */
 .infoBar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 8px; margin-bottom: 8px; backdrop-filter: blur(8px); flex-shrink: 0; }
@@ -85,57 +67,8 @@
 .infoRight { font-size: 0.7rem; color: var(--color-muted); }
 .infoAge { opacity: 0.7; }
 
-/* ── Metrics ─────────────────────────────────────────── */
-.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; flex-shrink: 0; }
-.metricCard { padding: 10px 14px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; text-align: center; position: relative; overflow: hidden; }
-.metricValue { display: block; font-family: var(--font-mono, monospace); font-size: 1.1rem; font-weight: 700; color: var(--color-fg); }
-.metricLabel { display: block; font-size: 0.55rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); margin-top: 2px; }
-.metricPct { position: absolute; top: 6px; right: 8px; font-size: 0.55rem; font-weight: 600; color: var(--color-muted); }
-.mcSuccess { border-color: color-mix(in srgb, var(--color-success) 20%, var(--color-border)); }
-.mcSuccess .metricValue { color: var(--color-success); }
-.mcFailed { border-color: color-mix(in srgb, var(--color-danger) 20%, var(--color-border)); }
-.mcFailed .metricValue { color: var(--color-danger); }
-.mcDuplicate { border-color: color-mix(in srgb, var(--color-info) 20%, var(--color-border)); }
-.mcDuplicate .metricValue { color: var(--color-info); }
-
-/* ── VaNi Insights ───────────────────────────────────── */
-.insightsCard {
-  background: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface));
-  border: 1px solid color-mix(in srgb, var(--color-primary) 10%, transparent);
-  border-radius: 8px;
-  padding: 10px 16px;
-  margin-bottom: 8px;
-  flex-shrink: 0;
-}
-
-.insightsHeader {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 0.72rem; font-weight: 700; color: var(--color-fg);
-  margin-bottom: 6px;
-}
-
-.insightRow {
-  display: flex; align-items: flex-start; gap: 8px;
-  font-size: 0.72rem; color: var(--color-muted); line-height: 1.5;
-  padding: 1px 0;
-}
-
-.insightIcon { flex-shrink: 0; font-size: 0.85rem; margin-top: 1px; }
-
-/* ── VaNi Hint (empty states) ────────────────────────── */
-.vaniHint {
-  display: flex; align-items: flex-start; gap: 10px;
-  margin-top: 20px; padding: 14px 18px;
-  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 12%, transparent);
-  border-radius: 10px;
-  font-size: 0.8rem; color: var(--color-fg); line-height: 1.6;
-  max-width: 420px;
-}
-
-.sessionsHint {
-  font-size: 0.7rem; color: var(--color-muted); margin-top: 6px; line-height: 1.5;
-}
+/* ── Metrics Row ─────────────────────────────────────── */
+.metrics { display: flex; gap: 8px; margin-bottom: 10px; flex-shrink: 0; }
 
 /* ── Filter Bar ──────────────────────────────────────── */
 .filterBar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; flex-shrink: 0; flex-wrap: wrap; gap: 6px; }
@@ -151,29 +84,10 @@
 .deleteBtn:hover { background: color-mix(in srgb, var(--color-danger) 8%, transparent); }
 .deleteBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* ── Records Table ───────────────────────────────────── */
-.tableWrap { flex: 1; overflow: auto; border: 1px solid var(--color-border); border-radius: 10px; min-height: 0; }
+/* ── Table wrapper ───────────────────────────────────── */
+.tableScrollArea { flex: 1; min-height: 0; }
 .tableLoading { padding: 48px; text-align: center; color: var(--color-muted); font-size: 0.85rem; }
 .tableEmpty { padding: 48px; text-align: center; color: var(--color-muted); font-size: 0.85rem; border: 1px dashed var(--color-border); border-radius: 10px; }
-
-.table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
-.table thead { position: sticky; top: 0; z-index: 5; }
-.table th { padding: 6px 10px; background: var(--glass); border-bottom: 1px solid var(--color-border); font-size: 0.55rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); text-align: left; white-space: nowrap; position: sticky; top: 0; z-index: 5; }
-.table td { padding: 4px 10px; border-bottom: 1px solid color-mix(in srgb, var(--color-border) 20%, transparent); color: var(--color-fg); font-size: 0.75rem; }
-.tableRow { cursor: pointer; transition: background 150ms; }
-.tableRow:hover { background: color-mix(in srgb, var(--color-muted) 5%, transparent); }
-.thSticky, .tdSticky { position: sticky; left: 0; z-index: 3; background: var(--color-surface); font-weight: 600; min-width: 50px; }
-.tdData { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tdError { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.72rem; color: var(--color-danger); }
-.viewBtn { background: none; border: 1px solid var(--color-border); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 0.8rem; transition: all 200ms; }
-.viewBtn:hover { border-color: var(--color-primary); }
-
-/* ── Pagination ──────────────────────────────────────── */
-.pagination { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 0; flex-shrink: 0; }
-.pageBtn { padding: 5px 12px; border: 1px solid var(--color-border); border-radius: 6px; background: transparent; color: var(--color-muted); font-size: 0.75rem; cursor: pointer; transition: all 200ms; }
-.pageBtn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-fg); }
-.pageBtn:disabled { opacity: 0.4; cursor: not-allowed; }
-.pageInfo { font-size: 0.72rem; color: var(--color-muted); }
 
 /* ── MODAL ───────────────────────────────────────────── */
 .modalOverlay { position: fixed; inset: 0; background: color-mix(in srgb, var(--color-bg) 80%, transparent); backdrop-filter: blur(6px); z-index: 300; display: flex; align-items: center; justify-content: center; animation: fadeIn 200ms forwards; }
@@ -200,5 +114,5 @@
 @media (max-width: 900px) {
   .layout { flex-direction: column; }
   .leftPanel { width: 100%; max-height: 300px; }
-  .metrics { grid-template-columns: repeat(2, 1fr); }
+  .metrics { flex-wrap: wrap; }
 }
