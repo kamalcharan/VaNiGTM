@@ -344,72 +344,83 @@ export function createNavRouter(pool: Pool): Router {
 
       const code = req.params.code;
 
-      // Scheme info
-      const schemeResult = await pool.query(
-        `SELECT scheme_code, scheme_name, amc, category, scheme_type, active,
-                launch_date::text, closure_date::text, isin_growth, isin_dividend,
-                isin_reinvestment, nav_name, min_amount, risk_grade
-         FROM ki_schemes WHERE scheme_code = $1`,
-        [code],
-      );
-      if (schemeResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Scheme not found' } }); return; }
+      // Single CTE query: scheme + NAV summary + latest metrics + gaps
+      // Replaces 4 sequential queries with 1 parallel query
+      const [mainResult, bookmarkResult] = await Promise.all([
+        pool.query(
+          `WITH scheme AS (
+              SELECT scheme_code, scheme_name, amc, category, scheme_type, active,
+                     launch_date::text, closure_date::text, isin_growth, isin_dividend,
+                     isin_reinvestment, nav_name, min_amount, risk_grade
+              FROM ki_schemes WHERE scheme_code = $1
+           ),
+           nav_summary AS (
+              SELECT COUNT(*)::integer AS total_records,
+                     MIN(nav_date)::text AS earliest_date,
+                     MAX(nav_date)::text AS latest_date
+              FROM ki_nav_history WHERE scheme_code = $1
+           ),
+           latest_nav AS (
+              SELECT nav AS latest_nav, nav_date::text AS latest_nav_date
+              FROM ki_nav_history WHERE scheme_code = $1
+              ORDER BY nav_date DESC LIMIT 1
+           ),
+           latest_metrics AS (
+              SELECT daily_return, return_1w, return_1m, return_3m, return_6m, return_1y,
+                     return_ytd, return_all, sd_7d, sd_14d, sd_21d, sd_42d, sd_3m, sd_6m,
+                     sharpe_ratio, max_drawdown, cagr, metrics_calculated_at::text,
+                     nav_date::text AS metrics_date
+              FROM ki_nav_history
+              WHERE scheme_code = $1 AND metrics_calculated_at IS NOT NULL
+              ORDER BY nav_date DESC LIMIT 1
+           ),
+           gaps AS (
+              SELECT nav_date::text AS gap_after, next_date::text AS gap_before, gap_days::integer
+              FROM (
+                SELECT nav_date, LEAD(nav_date) OVER (ORDER BY nav_date) AS next_date,
+                       (LEAD(nav_date) OVER (ORDER BY nav_date) - nav_date) AS gap_days
+                FROM ki_nav_history WHERE scheme_code = $1
+              ) pairs
+              WHERE gap_days > 3
+              ORDER BY nav_date DESC LIMIT 20
+           )
+           SELECT
+              row_to_json(s.*) AS scheme,
+              json_build_object(
+                'total_records', ns.total_records,
+                'earliest_date', ns.earliest_date,
+                'latest_date', ns.latest_date,
+                'latest_nav', ln.latest_nav,
+                'latest_nav_date', ln.latest_nav_date
+              ) AS nav,
+              CASE WHEN lm.metrics_date IS NOT NULL THEN row_to_json(lm.*) ELSE NULL END AS metrics,
+              COALESCE((SELECT json_agg(g) FROM gaps g), '[]'::json) AS gaps
+           FROM scheme s
+           LEFT JOIN nav_summary ns ON true
+           LEFT JOIN latest_nav ln ON true
+           LEFT JOIN latest_metrics lm ON true`,
+          [code],
+        ),
+        pool.query(
+          `SELECT id, daily_download_enabled, alias_name, historical_download_done
+           FROM ki_scheme_bookmarks
+           WHERE tenant_id = $1 AND scheme_code = $2`,
+          [jwt.tenant_id, code],
+        ),
+      ]);
 
-      const scheme = schemeResult.rows[0] as any;
+      if (mainResult.rows.length === 0) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Scheme not found' } });
+        return;
+      }
 
-      // NAV summary + latest metrics
-      const navSummary = await pool.query(
-        `SELECT
-            COUNT(*)::integer AS total_records,
-            MIN(nav_date)::text AS earliest_date,
-            MAX(nav_date)::text AS latest_date,
-            (SELECT nav FROM ki_nav_history WHERE scheme_code = $1 ORDER BY nav_date DESC LIMIT 1) AS latest_nav,
-            (SELECT nav_date::text FROM ki_nav_history WHERE scheme_code = $1 ORDER BY nav_date DESC LIMIT 1) AS latest_nav_date
-         FROM ki_nav_history WHERE scheme_code = $1`,
-        [code],
-      );
-
-      // Latest metrics (from most recent NAV record that has metrics)
-      const metricsResult = await pool.query(
-        `SELECT daily_return, return_1w, return_1m, return_3m, return_6m, return_1y,
-                return_ytd, return_all, sd_7d, sd_14d, sd_21d, sd_42d, sd_3m, sd_6m,
-                sharpe_ratio, max_drawdown, cagr, metrics_calculated_at::text,
-                nav_date::text AS metrics_date
-         FROM ki_nav_history
-         WHERE scheme_code = $1 AND metrics_calculated_at IS NOT NULL
-         ORDER BY nav_date DESC LIMIT 1`,
-        [code],
-      );
-
-      // Detect gaps (missing trading days — simplistic: any gap > 3 calendar days between consecutive records)
-      const gapsResult = await pool.query(
-        `WITH nav_pairs AS (
-            SELECT nav_date,
-                   LEAD(nav_date) OVER (ORDER BY nav_date) AS next_date,
-                   (LEAD(nav_date) OVER (ORDER BY nav_date) - nav_date) AS gap_days
-            FROM ki_nav_history
-            WHERE scheme_code = $1
-         )
-         SELECT nav_date::text AS gap_after, next_date::text AS gap_before, gap_days::integer
-         FROM nav_pairs
-         WHERE gap_days > 3
-         ORDER BY nav_date DESC
-         LIMIT 20`,
-        [code],
-      );
-
-      // Bookmark status for this tenant
-      const bookmarkResult = await pool.query(
-        `SELECT id, daily_download_enabled, alias_name, historical_download_done
-         FROM ki_scheme_bookmarks
-         WHERE tenant_id = $1 AND scheme_code = $2`,
-        [jwt.tenant_id, code],
-      );
+      const row = mainResult.rows[0] as any;
 
       res.json({
-        scheme,
-        nav: navSummary.rows[0] || {},
-        metrics: metricsResult.rows[0] || null,
-        gaps: gapsResult.rows,
+        scheme: row.scheme,
+        nav: row.nav || {},
+        metrics: row.metrics || null,
+        gaps: row.gaps || [],
         bookmark: bookmarkResult.rows[0] || null,
       });
     } catch (err: any) {
