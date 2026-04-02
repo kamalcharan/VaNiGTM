@@ -213,7 +213,7 @@ export default function GlobalNavPage() {
       {/* VaNi */}
       <div className={s.insightsCard}>
         <div className={s.insightsHeader}><span>{'\u2728'}</span><span>VaNi</span></div>
-        {!activeQuery && <div className={s.insightRow}><span className={s.insightIcon}>{'\u{1F50D}'}</span><span>Search by scheme name, AMC, category, or code. {stats ? `${stats.total_schemes.toLocaleString()} schemes available.` : ''}</span></div>}
+        {!activeQuery && <div className={s.insightRow}><span className={s.insightIcon}>{'\u{1F50D}'}</span><span>Search by scheme name, AMC, category, or code. {stats?.total_schemes ? `${stats.total_schemes.toLocaleString()} schemes available.` : ''}</span></div>}
         {activeQuery && schemes.length > 0 && <div className={s.insightRow}><span className={s.insightIcon}>{'\u2728'}</span><span>Found {totalMatches.toLocaleString()} schemes. Page {page}/{totalPages}. {selected.size > 0 ? `${selected.size} selected for bulk operations.` : 'Click checkbox to select for bulk download.'}</span></div>}
         {activeQuery && schemes.length === 0 && !searching && <div className={s.insightRow}><span className={s.insightIcon}>{'\u{1F645}'}</span><span>No results for "{activeQuery}".</span></div>}
       </div>
