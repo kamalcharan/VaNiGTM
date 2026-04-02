@@ -1,0 +1,19 @@
+.badge {
+  display: inline-block;
+  border-radius: 100px;
+  font-weight: 600;
+  text-transform: capitalize;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Sizes */
+.s_md { padding: 3px 10px; font-size: 0.6rem; }
+.s_sm { padding: 2px 8px; font-size: 0.55rem; }
+
+/* Variants */
+.v_success { background: color-mix(in srgb, var(--color-success) 12%, transparent); color: var(--color-success); }
+.v_warning { background: color-mix(in srgb, var(--color-warning) 12%, transparent); color: var(--color-warning); }
+.v_danger { background: color-mix(in srgb, var(--color-danger) 12%, transparent); color: var(--color-danger); }
+.v_info { background: color-mix(in srgb, var(--color-info) 12%, transparent); color: var(--color-info); }
+.v_muted { background: color-mix(in srgb, var(--color-muted) 8%, transparent); color: var(--color-muted); }
