@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useLogin, type ActiveSession } from '@/hooks';
 import { storeTokens, getAccessToken, type ApiError } from '@/lib/api-client';
+import { VdfLoader } from '@/components/vdf';
 import { useToast } from '@/components/toast';
 import s from './login-vault.module.css';
 
@@ -130,6 +131,9 @@ export default function LoginVault() {
 
   return (
     <>
+      {/* ProKey loader during login */}
+      {loading && <VdfLoader overlay message="Signing in" hint="Verifying credentials & creating session" />}
+
       <div className={s.vault}>
         {/* Atmospheric background */}
         <div className={s.atmosphere} />

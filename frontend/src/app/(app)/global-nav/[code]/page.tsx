@@ -7,7 +7,7 @@ import { useSkillQuery } from '@/hooks';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { VdfLineChart, VdfStatusBadge, VdfInsightsCard, VdfLoader, type Insight } from '@/components/vdf';
-import { FullPageLoader } from '@/components/loader';
+// FullPageLoader removed — using VdfLoader
 import d from '@/styles/data.module.css';
 import s from './scheme-dashboard.module.css';
 

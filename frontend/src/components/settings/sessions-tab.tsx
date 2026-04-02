@@ -4,7 +4,7 @@ import { useSessions } from '@/hooks';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { FullPageLoader } from '@/components/loader';
+import { VdfLoader } from '@/components/vdf';
 import { useState } from 'react';
 import s from './settings-tabs.module.css';
 
@@ -51,7 +51,7 @@ export default function SessionsTab() {
   }
 
   if (isLoading) {
-    return <FullPageLoader overlay={false} message="Loading sessions..." />;
+    return <VdfLoader message="Loading sessions" hint="Fetching active devices" />;
   }
 
   if (sessions.length === 0) {

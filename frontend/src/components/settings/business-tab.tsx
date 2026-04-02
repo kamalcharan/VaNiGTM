@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, getAccessToken, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { InlineLoader, FullPageLoader } from '@/components/loader';
+import { InlineLoader } from '@/components/loader';
+import { VdfLoader } from '@/components/vdf';
 import FormInput from '@/components/ui/form-input';
 import { INDIAN_STATES, validatePAN, validateGSTIN, validateARN, validatePIN } from '@/constants/business';
 import s from './settings-tabs.module.css';
@@ -151,7 +152,7 @@ export default function BusinessTab() {
     }
   }
 
-  if (fetching) return <FullPageLoader overlay={false} message="Loading business profile..." />;
+  if (fetching) return <VdfLoader message="Loading business profile" hint="Fetching tenant data" />;
 
   const em = '\u2014'; // em dash for empty values
 

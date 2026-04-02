@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { FullPageLoader } from '@/components/loader';
+import { VdfLoader } from '@/components/vdf';
 import { VdfStatCard, VdfStatusBadge, VdfInsightsCard, VdfEmptyState, type BadgeVariant, type Insight } from '@/components/vdf';
 import d from '@/styles/data.module.css';
 import s from './dashboard-page.module.css';

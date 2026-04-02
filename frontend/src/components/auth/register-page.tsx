@@ -9,6 +9,7 @@ import CountryDropdown, { type Country } from '@/components/ui/country-dropdown'
 import PasswordStrength from '@/components/ui/password-strength';
 import { useRegister } from '@/hooks';
 import { storeTokens, type ApiError } from '@/lib/api-client';
+import { VdfLoader } from '@/components/vdf';
 import f from '@/styles/forms.module.css';
 import s from './register-page.module.css';
 
@@ -145,6 +146,8 @@ export default function RegisterPage() {
   const filledFields = [fullName, email, password, confirmPassword].filter(Boolean).length;
 
   return (
+    <>
+    {loading && <VdfLoader overlay message="Creating your account" hint="Setting up workspace & encryption" />}
     <div className={s.vault}>
       {/* ── LEFT: Branding Panel ── */}
       <div className={s.storyPanel}>
@@ -378,5 +381,6 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

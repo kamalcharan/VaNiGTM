@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useShellConfig } from '@/lib/shell-config';
 import { useToast } from '@/components/toast';
-import { InlineLoader, FullPageLoader } from '@/components/loader';
+import { InlineLoader } from '@/components/loader';
+import { VdfLoader } from '@/components/vdf';
 import FormInput from '@/components/ui/form-input';
 import CountryDropdown, { type Country } from '@/components/ui/country-dropdown';
 import PasswordStrength from '@/components/ui/password-strength';
@@ -274,7 +275,7 @@ export default function InviteAcceptPage() {
   /* ── Loading context (full-page) ───────────────────── */
 
   if (contextLoading) {
-    return <FullPageLoader message="Loading invitation..." />;
+    return <VdfLoader message="Loading invitation" hint="Verifying invite token" />;
   }
 
   /* ── Render ────────────────────────────────────────── */

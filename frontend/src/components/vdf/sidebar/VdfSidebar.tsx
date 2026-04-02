@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { NAV_ITEMS, getActiveNavId, type NavItem } from '@/config/nav';
 import { useMe, useLogout } from '@/hooks';
 import { useToast } from '@/components/toast';
+import { VdfLoader } from '../loader/VdfLoader';
 import s from './VdfSidebar.module.css';
 
 export interface VdfSidebarProps {
@@ -47,6 +48,10 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
         window.location.href = '/login';
       },
     });
+  }
+
+  if (logoutMutation.isPending) {
+    return <VdfLoader overlay message="Signing out" hint="Ending session securely" />;
   }
 
   return (
