@@ -335,5 +335,70 @@ export function createNavRouter(pool: Pool): Router {
     }
   });
 
+  /* ── POST /metrics/:code — Calculate metrics for one scheme ── */
+
+  router.post('/metrics/:code', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const schemeCode = req.params.code;
+
+      const result = await withIdempotency(
+        pool,
+        `metrics_calc_${schemeCode}`,
+        async () => {
+          const r = await pool.query(
+            `SELECT 1 FROM ki_nav_history
+             WHERE scheme_code = $1 AND metrics_calculated_at > now() - interval '1 hour' LIMIT 1`,
+            [schemeCode],
+          );
+          return r.rows.length > 0;
+        },
+        async () => {
+          const r = await pool.query('SELECT * FROM calculate_scheme_metrics($1)', [schemeCode]);
+          return r.rows[0];
+        },
+      );
+
+      if (result.status === 'skipped') {
+        res.json({ scheme_code: schemeCode, status: 'already_fresh', reason: result.reason });
+      } else {
+        const data = result.result as any;
+        res.json({
+          scheme_code: schemeCode,
+          status: 'calculated',
+          records_updated: data?.records_updated || 0,
+          execution_ms: data?.execution_ms || 0,
+        });
+      }
+    } catch (err: any) {
+      console.error('[NAV:metrics]', err);
+      res.status(500).json({ error: { code: 'METRICS_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── POST /metrics/bulk — Calculate metrics for all schemes ── */
+
+  router.post('/metrics/bulk', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const result = await pool.query('SELECT * FROM calculate_all_scheme_metrics()');
+      const data = result.rows[0] as any;
+
+      res.json({
+        status: 'completed',
+        total_schemes: data?.total_schemes || 0,
+        total_records_updated: data?.total_records_updated || 0,
+        execution_ms: data?.execution_ms || 0,
+      });
+    } catch (err: any) {
+      console.error('[NAV:bulk-metrics]', err);
+      res.status(500).json({ error: { code: 'METRICS_FAILED', message: err.message } });
+    }
+  });
+
   return router;
 }

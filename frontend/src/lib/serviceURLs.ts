@@ -258,6 +258,18 @@ export const API = {
       auth: true,
       description: 'Cruise control NAV status for all bookmarks',
     },
+    calculateMetrics: {
+      method: 'POST',
+      path: '/api/v1/nav/metrics/:code',
+      auth: true,
+      description: 'Calculate metrics for a specific scheme',
+    },
+    calculateMetricsBulk: {
+      method: 'POST',
+      path: '/api/v1/nav/metrics/bulk',
+      auth: true,
+      description: 'Calculate metrics for all schemes with NAV data',
+    },
   },
 
   /* ── Skills (generic) ─────────────────────────────── */
