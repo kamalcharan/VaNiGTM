@@ -35,6 +35,11 @@
 /* ── Sidebar ─────────────────────────────────────────── */
 .sidebar { display: flex; flex-direction: column; gap: 8px; }
 
+.sidebarFilters { display: flex; gap: 4px; padding: 2px; background: var(--color-surface); border-radius: 8px; border: 1px solid var(--color-border); }
+.filterTab { flex: 1; padding: 5px 0; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); background: transparent; border: none; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+.filterTab:hover { color: var(--color-fg); background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
+.filterTabActive { flex: 1; padding: 5px 0; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 14%, transparent); border: none; border-radius: 6px; cursor: pointer; }
+
 .sessionCardActive {
   padding: 12px 14px;
   background: var(--color-surface);

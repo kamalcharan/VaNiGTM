@@ -66,14 +66,16 @@ export default function ImportDashboardPage() {
   const [drawerRecord, setDrawerRecord] = useState<StagingRecord | null>(null);
   const [reprocessing, setReprocessing] = useState(false);
   const [deletingStaging, setDeletingStaging] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'scheme' | 'bookmark'>('all');
 
   // Fetch sessions
-  const fetchSessions = useCallback(async () => {
+  const fetchSessions = useCallback(async (type: 'all' | 'scheme' | 'bookmark' = 'all') => {
     setLoadingSessions(true);
     try {
-      const data = await apiFetch<{ sessions: Session[] }>(API.etl.sessions);
+      const qs = type !== 'all' ? `?type=${type}` : '';
+      const data = await apiFetch<{ sessions: Session[] }>({ ...API.etl.sessions, path: API.etl.sessions.path + qs });
       setSessions(data.sessions || []);
-      if (data.sessions?.length > 0 && !selectedSession) setSelectedSession(data.sessions[0]);
+      setSelectedSession(data.sessions?.length > 0 ? data.sessions[0] : null);
     } catch (err) {
       console.error('[ImportDashboard] Failed to load sessions:', err);
       setSessions([]);
@@ -82,7 +84,13 @@ export default function ImportDashboardPage() {
     finally { setLoadingSessions(false); }
   }, []); // eslint-disable-line
 
-  useEffect(() => { fetchSessions(); }, [fetchSessions]);
+  useEffect(() => { fetchSessions(typeFilter); }, [fetchSessions, typeFilter]);
+
+  function handleTypeFilter(t: 'all' | 'scheme' | 'bookmark') {
+    setTypeFilter(t);
+    setSelectedSession(null);
+    setRecords(null);
+  }
 
   // Fetch records
   const fetchRecords = useCallback(async () => {
@@ -168,6 +176,15 @@ export default function ImportDashboardPage() {
       <div className={s.grid}>
         {/* ═══ SIDEBAR ═══ */}
         <aside className={s.sidebar}>
+          {/* Type filter tabs */}
+          <div className={s.sidebarFilters}>
+            {(['all', 'scheme', 'bookmark'] as const).map(t => (
+              <button key={t} className={typeFilter === t ? s.filterTabActive : s.filterTab}
+                onClick={() => handleTypeFilter(t)}>
+                {t === 'all' ? 'All' : t === 'scheme' ? 'Scheme' : 'Bookmark'}
+              </button>
+            ))}
+          </div>
           {sessions.map(sess => (
             <div key={sess.id} className={selectedSession?.id === sess.id ? s.sessionCardActive : s.sidebarLink}
               onClick={() => handleSelectSession(sess)}>
