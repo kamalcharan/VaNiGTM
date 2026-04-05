@@ -553,11 +553,12 @@ Output: "WHERE tenant_id = $1 AND client_id = $2"
 | PATCH /api/v1/tenant/profile | ✅ Full (18 columns dynamic update) |
 | GET /api/v1/onboarding/status | ✅ Full |
 | PATCH /api/v1/onboarding/step | ✅ Full |
-| POST /api/v1/auth/refresh | ❌ Not built |
-| POST /api/v1/auth/logout | ❌ Not built |
-| GET /api/v1/auth/me | ❌ Not built |
-| GET /api/v1/auth/sessions | ❌ Not built |
-| POST /api/v1/auth/sessions/revoke | ❌ Not built |
+| POST /api/v1/auth/refresh | ✅ Full (token rotation, 30-day refresh, replay protection) |
+| POST /api/v1/auth/logout | ✅ Full (revokes current session in DB) |
+| GET /api/v1/auth/me | ✅ Full (user + tenant, role lookup) |
+| GET /api/v1/auth/sessions | ✅ Full (lists active sessions with device info) |
+| POST /api/v1/auth/sessions/revoke | ✅ Full (pre-login email+password, revokes selected sessions) |
+| POST /api/v1/auth/change-password | ✅ Full (current password verify, bcrypt 12, revokes all sessions) |
 
 ## Lessons Learned (March 2026 Session)
 

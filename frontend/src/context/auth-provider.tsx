@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { useMe, type MeUser, type MeTenant } from '@/hooks';
-import { clearTokens, getAccessToken } from '@/lib/api-client';
+import { apiFetch, clearTokens, getAccessToken, getRefreshToken } from '@/lib/api-client';
+import { API } from '@/lib/serviceURLs';
 import { useTheme } from '@/config/theme';
 
 /* ── Types ───────────────────────────────────────────── */
@@ -54,6 +55,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function logout() {
+    // Fire-and-forget: revoke the specific session in DB by sending the refresh token
+    // Don't await — clear tokens and redirect immediately for instant UX
+    const refreshToken = getRefreshToken();
+    apiFetch(API.auth.logout, {
+      body: refreshToken ? { refresh_token: refreshToken } : {},
+    }).catch(() => {});
     clearTokens();
     window.location.href = '/login';
   }
