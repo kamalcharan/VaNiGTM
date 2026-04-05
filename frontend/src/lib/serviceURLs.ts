@@ -340,6 +340,24 @@ export const API = {
       auth: true,
       description: 'Soft-delete a global scheme alias',
     },
+    startBackfill: {
+      method: 'POST',
+      path: '/api/v1/nav/aliases/backfill',
+      auth: true,
+      description: 'Start async alias backfill — seeds missing aliases for all ki_schemes',
+    },
+    backfillProgress: {
+      method: 'GET',
+      path: '/api/v1/nav/aliases/backfill/progress',
+      auth: true,
+      description: 'Poll backfill progress: status, current, total, created, skipped, percent',
+    },
+    cancelBackfill: {
+      method: 'POST',
+      path: '/api/v1/nav/aliases/backfill/cancel',
+      auth: true,
+      description: 'Cancel a running alias backfill',
+    },
   },
 
   /* ── Skills (generic) ─────────────────────────────── */

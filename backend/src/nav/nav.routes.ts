@@ -1191,5 +1191,148 @@ export function createNavRouter(pool: Pool): Router {
     }
   });
 
+  /* ── Backfill: in-memory state per user ── */
+
+  interface BackfillState {
+    status: 'running' | 'completed' | 'cancelled' | 'error';
+    total: number;
+    current: number;
+    created: number;
+    skipped: number;
+    error?: string;
+    started_at: string;
+    completed_at?: string;
+  }
+  const backfillMap = new Map<string, BackfillState>();
+  const cancelSet  = new Set<string>();
+
+  /* ── POST /aliases/backfill — Start async alias backfill ── */
+
+  router.post('/aliases/backfill', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const key = jwt.user_id;
+      if (backfillMap.get(key)?.status === 'running') {
+        res.status(409).json({ error: { code: 'ALREADY_RUNNING', message: 'Backfill already in progress' } });
+        return;
+      }
+
+      const state: BackfillState = { status: 'running', total: 0, current: 0, created: 0, skipped: 0, started_at: new Date().toISOString() };
+      backfillMap.set(key, state);
+      cancelSet.delete(key);
+
+      // Return immediately — process in background
+      res.status(202).json({ message: 'Backfill started', started_at: state.started_at });
+
+      // Background processing
+      (async () => {
+        try {
+          const BATCH = 100;
+
+          // Count total active schemes with a name
+          const countResult = await pool.query(
+            `SELECT COUNT(*)::integer AS n FROM ki_schemes WHERE scheme_name IS NOT NULL AND TRIM(scheme_name) != ''`,
+          );
+          state.total = (countResult.rows[0] as any).n;
+
+          let offset = 0;
+          while (true) {
+            if (cancelSet.has(key)) { state.status = 'cancelled'; state.completed_at = new Date().toISOString(); return; }
+
+            const batch = await pool.query(
+              `SELECT scheme_code, scheme_name, nav_name
+               FROM ki_schemes
+               WHERE scheme_name IS NOT NULL AND TRIM(scheme_name) != ''
+               ORDER BY scheme_code
+               LIMIT $1 OFFSET $2`,
+              [BATCH, offset],
+            );
+            if (batch.rows.length === 0) break;
+
+            for (const row of batch.rows as any[]) {
+              if (cancelSet.has(key)) { state.status = 'cancelled'; state.completed_at = new Date().toISOString(); return; }
+
+              try {
+                // Seed scheme_name
+                const r1 = await pool.query(
+                  `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+                   VALUES ($1, $2, 'auto')
+                   ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING
+                   RETURNING id`,
+                  [row.scheme_code, row.scheme_name],
+                );
+                if (r1.rows.length > 0) state.created++; else state.skipped++;
+
+                // Seed nav_name if different
+                if (row.nav_name && row.nav_name.trim()) {
+                  await pool.query(
+                    `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+                     SELECT $1, $2, 'auto'
+                     WHERE normalize_scheme_name($2) IS DISTINCT FROM normalize_scheme_name($3)
+                     ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING`,
+                    [row.scheme_code, row.nav_name, row.scheme_name],
+                  );
+                }
+              } catch { state.skipped++; }
+
+              state.current++;
+            }
+
+            offset += BATCH;
+          }
+
+          state.status = 'completed';
+          state.completed_at = new Date().toISOString();
+        } catch (err: any) {
+          state.status = 'error';
+          state.error = err.message;
+          state.completed_at = new Date().toISOString();
+          console.error('[NAV:backfill]', err);
+        }
+      })();
+
+    } catch (err: any) {
+      console.error('[NAV:backfill-start]', err);
+      res.status(500).json({ error: { code: 'BACKFILL_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── GET /aliases/backfill/progress — Poll backfill status ── */
+
+  router.get('/aliases/backfill/progress', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const state = backfillMap.get(jwt.user_id);
+      if (!state) { res.json({ status: 'idle' }); return; }
+
+      const pct = state.total > 0 ? Math.round((state.current / state.total) * 100) : 0;
+      res.json({ ...state, percent: pct });
+    } catch (err: any) {
+      res.status(500).json({ error: { code: 'FETCH_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── POST /aliases/backfill/cancel — Cancel running backfill ── */
+
+  router.post('/aliases/backfill/cancel', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const state = backfillMap.get(jwt.user_id);
+      if (!state || state.status !== 'running') {
+        res.json({ message: 'No running backfill to cancel' }); return;
+      }
+      cancelSet.add(jwt.user_id);
+      res.json({ message: 'Cancel requested' });
+    } catch (err: any) {
+      res.status(500).json({ error: { code: 'CANCEL_FAILED', message: err.message } });
+    }
+  });
+
   return router;
 }
