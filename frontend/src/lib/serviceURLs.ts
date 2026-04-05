@@ -89,6 +89,12 @@ export const API = {
       auth: true,
       description: 'List all active sessions for current user',
     },
+    switchEnv: {
+      method: 'PATCH',
+      path: '/api/v1/auth/switch-env',
+      auth: true,
+      description: 'Toggle live/sandbox environment — persists preference, issues new access token with updated is_live',
+    },
   },
 
   /* ── Invitations ──────────────────────────────────── */

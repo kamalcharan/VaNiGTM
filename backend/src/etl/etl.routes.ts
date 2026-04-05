@@ -56,6 +56,7 @@ const upload = multer({
 interface AuthInfo {
   user_id: string;
   tenant_id: string;
+  is_live: boolean;
 }
 
 function extractAuth(req: { headers: Record<string, any> }): AuthInfo | null {
@@ -63,7 +64,7 @@ function extractAuth(req: { headers: Record<string, any> }): AuthInfo | null {
   if (!header?.startsWith('Bearer ')) return null;
   try {
     const jwt = verifyAccessToken(header.slice(7));
-    return { user_id: jwt.user_id, tenant_id: jwt.tenant_id };
+    return { user_id: jwt.user_id, tenant_id: jwt.tenant_id, is_live: jwt.is_live !== false };
   } catch {
     return null;
   }

@@ -196,8 +196,10 @@ export async function login(
   );
   const role = roleResult.rows.length > 0 ? (roleResult.rows[0] as any).code : 'planner';
 
-  // 9. Create session
-  const tokens = await createSession(pool, user.id, user.tenant_id, email, role, device);
+  // 9. Create session — restore the user's last environment preference (default: live)
+  const userPrefs = (user.preferences as Record<string, any>) || {};
+  const isLive: boolean = userPrefs.env_mode !== 'sandbox';
+  const tokens = await createSession(pool, user.id, user.tenant_id, email, role, device, isLive);
 
   // 10. Update last_login_at
   await pool.query('UPDATE vn_users SET last_login_at = now(), updated_at = now() WHERE id = $1', [user.id]);
