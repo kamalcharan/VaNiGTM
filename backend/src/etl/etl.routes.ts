@@ -462,8 +462,9 @@ export function createEtlRouter(pool: Pool): Router {
         [sessionId],
       );
 
-      // Re-invoke RPC
+      // Re-invoke processing based on import type
       const session = sessResult.rows[0] as any;
+
       if (session.import_type === 'scheme') {
         const rpcResult = await pool.query(
           'SELECT * FROM process_scheme_import_with_timing($1, $2)',
@@ -477,6 +478,115 @@ export function createEtlRouter(pool: Pool): Router {
           failed: result.failed_count,
           duplicate: result.duplicate_count,
         });
+
+      } else if (session.import_type === 'bookmark') {
+        // Re-process failed bookmark staging rows — same upsert + alias seed logic
+        const tenantId = session.tenant_id;
+        const userId = session.created_by;
+
+        const pendingRows = await pool.query(
+          `SELECT id, mapped_data FROM ki_import_staging
+           WHERE session_id = $1 AND processing_status = 'pending' ORDER BY row_number`,
+          [sessionId],
+        );
+
+        let added = 0, already_tracked = 0, failed = 0;
+
+        for (const stagedRow of pendingRows.rows as any[]) {
+          const mapped = stagedRow.mapped_data as Record<string, string>;
+          const rowId = stagedRow.id;
+
+          try {
+            let schemeCode = mapped.scheme_code;
+            if (!schemeCode && mapped.isin) {
+              const isinResult = await pool.query(
+                `SELECT scheme_code FROM ki_schemes WHERE isin_growth = $1 OR isin_dividend = $1 LIMIT 1`,
+                [mapped.isin],
+              );
+              if (isinResult.rows.length > 0) schemeCode = (isinResult.rows[0] as any).scheme_code;
+            }
+
+            if (!schemeCode) {
+              failed++;
+              await pool.query(
+                `UPDATE ki_import_staging SET processing_status = 'failed',
+                 error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
+                [JSON.stringify([`ISIN ${mapped.isin} not found`]), rowId],
+              );
+              continue;
+            }
+
+            const schemeResult = await pool.query(
+              'SELECT scheme_code, scheme_name, amc, active, closure_date FROM ki_schemes WHERE scheme_code = $1',
+              [schemeCode],
+            );
+            if (schemeResult.rows.length === 0) {
+              failed++;
+              await pool.query(
+                `UPDATE ki_import_staging SET processing_status = 'failed',
+                 error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
+                [JSON.stringify([`Scheme ${schemeCode} not found`]), rowId],
+              );
+              continue;
+            }
+
+            const scheme = schemeResult.rows[0] as any;
+            const isEnded = scheme.closure_date && new Date(scheme.closure_date) < new Date();
+            const upsertResult = await pool.query(
+              `INSERT INTO ki_scheme_bookmarks
+                 (tenant_id, user_id, scheme_code, scheme_name, amc, daily_download_enabled)
+               VALUES ($1, $2, $3, $4, $5, $6)
+               ON CONFLICT (tenant_id, scheme_code) DO UPDATE SET
+                 daily_download_enabled = EXCLUDED.daily_download_enabled, updated_at = now()
+               RETURNING (xmax = 0) AS is_new`,
+              [tenantId, userId, scheme.scheme_code, scheme.scheme_name, scheme.amc, scheme.active && !isEnded],
+            );
+
+            const isNew = (upsertResult.rows[0] as any).is_new;
+            if (isNew) added++; else already_tracked++;
+
+            await pool.query(
+              `UPDATE ki_import_staging SET processing_status = $1, created_record_id = $2, processed_at = now() WHERE id = $3`,
+              [isNew ? 'success' : 'duplicate', scheme.scheme_code, rowId],
+            );
+
+            try {
+              await pool.query(
+                `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+                 VALUES ($1, $2, 'auto') ON CONFLICT (alias_name_normalized) DO NOTHING`,
+                [scheme.scheme_code, scheme.scheme_name],
+              );
+            } catch { /* non-fatal */ }
+
+          } catch (err: any) {
+            failed++;
+            await pool.query(
+              `UPDATE ki_import_staging SET processing_status = 'failed',
+               error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
+              [JSON.stringify([err.message]), rowId],
+            );
+          }
+        }
+
+        // Update session counts
+        await pool.query(
+          `UPDATE ki_import_sessions SET
+             failed_records = failed_records - $1 + $2,
+             successful_records = successful_records + $3,
+             duplicate_records = duplicate_records + $4,
+             status = CASE WHEN (failed_records - $1 + $2) > 0 THEN 'completed_with_errors' ELSE 'completed' END
+           WHERE id = $5`,
+          [resetCount, failed, added, already_tracked, sessionId],
+        );
+
+        res.json({
+          message: `Reprocessed ${resetCount} records`,
+          reprocessed: resetCount,
+          successful: added,
+          failed,
+          duplicate: already_tracked,
+        });
+
       } else {
         res.status(400).json({ error: { code: 'UNSUPPORTED', message: `Reprocess not yet supported for ${session.import_type}` } });
       }

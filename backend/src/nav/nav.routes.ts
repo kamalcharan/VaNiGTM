@@ -116,10 +116,7 @@ export function createNavRouter(pool: Pool): Router {
       }
 
       // Get uploaded file record
-      const fileResult = await pool.query(
-        'SELECT * FROM ki_file_uploads WHERE id = $1',
-        [file_id],
-      );
+      const fileResult = await pool.query('SELECT * FROM ki_file_uploads WHERE id = $1', [file_id]);
       if (fileResult.rows.length === 0) {
         res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found' } });
         return;
@@ -127,66 +124,113 @@ export function createNavRouter(pool: Pool): Router {
       const file = fileResult.rows[0] as any;
       const mappings: Record<string, string> = field_mappings || BOOKMARK_FIELD_MAP;
 
-      // Parse all rows from the uploaded file
+      // ── Phase 1: Parse + Stage ───────────────────────────
+
       const rows = parseExcelRows(file.file_path);
 
-      let added = 0;
-      let already_tracked = 0;
-      let not_found = 0;
-      const errors: { row: number; code: string; reason: string }[] = [];
+      // Create import session (tenant-scoped, unlike scheme which is global)
+      const sessionResult = await pool.query(
+        `INSERT INTO ki_import_sessions (tenant_id, file_upload_id, import_type, field_mappings, created_by)
+         VALUES ($1, $2, 'bookmark', $3, $4) RETURNING id`,
+        [jwt.tenant_id, file_id, JSON.stringify(mappings), jwt.user_id],
+      );
+      const sessionId = (sessionResult.rows[0] as any).id;
+
+      // Stage all rows in batches of 500
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+        const batch = rows.slice(i, i + BATCH_SIZE);
+        const values: any[] = [];
+        const placeholders: string[] = [];
+        batch.forEach((raw, batchIdx) => {
+          const rowNum = i + batchIdx + 1;
+          const mapped: Record<string, any> = {};
+          for (const [col, field] of Object.entries(mappings)) {
+            const val = raw[col];
+            if (val !== undefined && val !== null && String(val).trim() !== '') {
+              mapped[field] = String(val).trim();
+            }
+          }
+          // Normalise scheme_code (Excel reads numeric cells as floats like 131578.0)
+          if (mapped.scheme_code) mapped.scheme_code = String(mapped.scheme_code).replace(/\.0+$/, '').trim();
+
+          const offset = batchIdx * 4;
+          placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}::jsonb, $${offset + 4}::jsonb)`);
+          values.push(sessionId, rowNum, JSON.stringify(raw), JSON.stringify(mapped));
+        });
+        await pool.query(
+          `INSERT INTO ki_import_staging (session_id, row_number, raw_data, mapped_data) VALUES ${placeholders.join(', ')}`,
+          values,
+        );
+      }
+
+      await pool.query(
+        `UPDATE ki_import_sessions SET status = 'staged', total_records = $1, staging_completed_at = now() WHERE id = $2`,
+        [rows.length, sessionId],
+      );
+
+      // ── Phase 2: Process staged rows ─────────────────────
+
+      await pool.query(
+        `UPDATE ki_import_sessions SET status = 'processing', processing_started_at = now() WHERE id = $1`,
+        [sessionId],
+      );
+
+      const staged = await pool.query(
+        'SELECT id, row_number, mapped_data FROM ki_import_staging WHERE session_id = $1 ORDER BY row_number',
+        [sessionId],
+      );
+
+      let added = 0, already_tracked = 0, total_failed = 0;
       const startMs = Date.now();
 
-      for (let i = 0; i < rows.length; i++) {
-        const raw = rows[i];
+      for (const stagedRow of staged.rows as any[]) {
+        const mapped = stagedRow.mapped_data as Record<string, string>;
+        const rowId = stagedRow.id;
 
-        // Apply field mapping — extract scheme_code, isin, scheme_name from row
-        const mapped: Record<string, string> = {};
-        for (const [col, field] of Object.entries(mappings)) {
-          const val = raw[col];
-          if (val !== undefined && val !== null && String(val).trim() !== '') {
-            mapped[field] = String(val).trim();
-          }
-        }
-
-        // Normalise scheme_code (Excel may read numeric cells as floats)
-        if (mapped.scheme_code) {
-          mapped.scheme_code = String(mapped.scheme_code).replace(/\.0+$/, '').trim();
-        }
-
-        // Need at least one identifier
         if (!mapped.scheme_code && !mapped.isin) {
-          errors.push({ row: i + 1, code: '—', reason: 'No scheme_code or ISIN found in row' });
+          total_failed++;
+          await pool.query(
+            `UPDATE ki_import_staging SET processing_status = 'failed',
+             error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
+            [JSON.stringify(['No scheme_code or ISIN found in row']), rowId],
+          );
           continue;
         }
 
         try {
-          // Resolve scheme_code from ISIN if not directly provided
+          // Resolve scheme_code from ISIN if only ISIN provided
           let schemeCode = mapped.scheme_code;
           if (!schemeCode && mapped.isin) {
             const isinResult = await pool.query(
-              `SELECT scheme_code FROM ki_schemes
-               WHERE isin_growth = $1 OR isin_dividend = $1 LIMIT 1`,
+              `SELECT scheme_code FROM ki_schemes WHERE isin_growth = $1 OR isin_dividend = $1 LIMIT 1`,
               [mapped.isin],
             );
-            if (isinResult.rows.length > 0) {
-              schemeCode = (isinResult.rows[0] as any).scheme_code;
-            }
+            if (isinResult.rows.length > 0) schemeCode = (isinResult.rows[0] as any).scheme_code;
           }
 
           if (!schemeCode) {
-            not_found++;
-            errors.push({ row: i + 1, code: mapped.isin || '—', reason: `ISIN ${mapped.isin} not found in ki_schemes` });
+            total_failed++;
+            await pool.query(
+              `UPDATE ki_import_staging SET processing_status = 'failed',
+               error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
+              [JSON.stringify([`ISIN ${mapped.isin} not found in ki_schemes`]), rowId],
+            );
             continue;
           }
 
-          // Look up full scheme details (same as single add)
+          // Verify scheme exists (same as single add)
           const schemeResult = await pool.query(
             'SELECT scheme_code, scheme_name, amc, active, closure_date FROM ki_schemes WHERE scheme_code = $1',
             [schemeCode],
           );
           if (schemeResult.rows.length === 0) {
-            not_found++;
-            errors.push({ row: i + 1, code: schemeCode, reason: `Scheme ${schemeCode} not found in ki_schemes` });
+            total_failed++;
+            await pool.query(
+              `UPDATE ki_import_staging SET processing_status = 'failed',
+               error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
+              [JSON.stringify([`Scheme ${schemeCode} not found in ki_schemes`]), rowId],
+            );
             continue;
           }
 
@@ -195,7 +239,6 @@ export function createNavRouter(pool: Pool): Router {
           const dailyEnabled = scheme.active && !isEnded;
 
           // Upsert bookmark — same SQL as single add
-          // (xmax = 0) is true for a fresh INSERT, false for DO UPDATE
           const upsertResult = await pool.query(
             `INSERT INTO ki_scheme_bookmarks
                (tenant_id, user_id, scheme_code, scheme_name, amc, daily_download_enabled)
@@ -207,42 +250,55 @@ export function createNavRouter(pool: Pool): Router {
             [jwt.tenant_id, jwt.user_id, scheme.scheme_code, scheme.scheme_name, scheme.amc, dailyEnabled],
           );
 
-          if ((upsertResult.rows[0] as any).is_new) added++;
-          else already_tracked++;
+          const isNew = (upsertResult.rows[0] as any).is_new;
+          if (isNew) added++; else already_tracked++;
+
+          // Update staging row
+          await pool.query(
+            `UPDATE ki_import_staging SET processing_status = $1, created_record_id = $2, processed_at = now() WHERE id = $3`,
+            [isNew ? 'success' : 'duplicate', scheme.scheme_code, rowId],
+          );
 
           // Auto-seed global alias — same as single add, non-fatal
           try {
             await pool.query(
               `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
-               VALUES ($1, $2, 'auto')
-               ON CONFLICT (alias_name_normalized) DO NOTHING`,
+               VALUES ($1, $2, 'auto') ON CONFLICT (alias_name_normalized) DO NOTHING`,
               [scheme.scheme_code, scheme.scheme_name],
             );
-          } catch { /* non-fatal: alias table may not exist yet */ }
+          } catch { /* non-fatal */ }
 
         } catch (err: any) {
-          errors.push({ row: i + 1, code: mapped.scheme_code || mapped.isin || '—', reason: err.message });
+          total_failed++;
+          await pool.query(
+            `UPDATE ki_import_staging SET processing_status = 'failed',
+             error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
+            [JSON.stringify([err.message]), rowId],
+          );
         }
       }
 
-      // Mark file as completed
+      // ── Finalise session ──────────────────────────────────
+
+      const finalStatus = total_failed > 0 ? 'completed_with_errors' : 'completed';
       await pool.query(
-        `UPDATE ki_file_uploads SET processing_status = 'completed' WHERE id = $1`,
-        [file_id],
+        `UPDATE ki_import_sessions SET
+           status = $1, processed_records = $2, successful_records = $3,
+           failed_records = $4, duplicate_records = $5, processing_completed_at = now()
+         WHERE id = $6`,
+        [finalStatus, rows.length, added, total_failed, already_tracked, sessionId],
       );
 
-      const duration_ms = Date.now() - startMs;
-      const failed = errors.length - not_found; // errors not caused by missing schemes
+      await pool.query(`UPDATE ki_file_uploads SET processing_status = 'completed' WHERE id = $1`, [file_id]);
 
       res.json({
-        session_id: null,
-        status: errors.length > 0 ? 'completed_with_errors' : 'completed',
+        session_id: sessionId,
+        status: finalStatus,
         processed: rows.length,
         successful: added,
-        failed: not_found + failed,
+        failed: total_failed,
         duplicate: already_tracked,
-        duration_ms,
-        detail: { added, already_tracked, not_found, row_errors: errors.slice(0, 20) },
+        duration_ms: Date.now() - startMs,
       });
     } catch (err: any) {
       console.error('[NAV:bookmarks/import]', err);
