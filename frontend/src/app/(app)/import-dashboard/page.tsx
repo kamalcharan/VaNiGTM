@@ -74,7 +74,11 @@ export default function ImportDashboardPage() {
       const data = await apiFetch<{ sessions: Session[] }>(API.etl.sessions);
       setSessions(data.sessions || []);
       if (data.sessions?.length > 0 && !selectedSession) setSelectedSession(data.sessions[0]);
-    } catch (err) { console.error('[ImportDashboard] Failed to load sessions:', err); setSessions([]); }
+    } catch (err) {
+      console.error('[ImportDashboard] Failed to load sessions:', err);
+      setSessions([]);
+      showToast({ message: (err as ApiError).message || 'Failed to load import sessions', type: 'error' });
+    }
     finally { setLoadingSessions(false); }
   }, []); // eslint-disable-line
 
@@ -88,7 +92,10 @@ export default function ImportDashboardPage() {
       const qs = `?status=${recordFilter}&page=${recordPage}&limit=50`;
       const data = await apiFetch<RecordsResponse>({ ...API.etl.records, path: API.etl.records.path.replace(':id', String(selectedSession.id)) + qs });
       setRecords(data);
-    } catch { setRecords(null); }
+    } catch (err) {
+      setRecords(null);
+      showToast({ message: (err as ApiError).message || 'Failed to load records', type: 'error' });
+    }
     finally { setLoadingRecords(false); }
   }, [selectedSession, recordFilter, recordPage]);
 
