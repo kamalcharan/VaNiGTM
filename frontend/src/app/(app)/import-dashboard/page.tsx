@@ -160,7 +160,11 @@ export default function ImportDashboardPage() {
           {selectedSession && (
             <>
               <span className={s.breadcrumbSep}>/</span>
-              <span className={s.breadcrumbSession}>Import #{(selectedSession as any).tenant_seq ?? selectedSession.id}: {selectedSession.original_filename || 'Unknown'}</span>
+              <span className={s.breadcrumbSession}>
+                Import #{(selectedSession as any).tenant_seq ?? selectedSession.id}
+                <span className={s.breadcrumbSessionId}>· Session {selectedSession.id}</span>
+                {selectedSession.original_filename ? ` · ${selectedSession.original_filename}` : ''}
+              </span>
             </>
           )}
         </div>
@@ -189,7 +193,10 @@ export default function ImportDashboardPage() {
             <div key={sess.id} className={selectedSession?.id === sess.id ? s.sessionCardActive : s.sidebarLink}
               onClick={() => handleSelectSession(sess)}>
               <div>
-                <div className={s.sessionCardLabel}>Import #{(sess as any).tenant_seq ?? sess.id}</div>
+                <div className={s.sessionCardLabel}>
+                  Import #{(sess as any).tenant_seq ?? sess.id}
+                  <span className={s.sessionIdBadge}>ID {sess.id}</span>
+                </div>
                 <div className={s.sessionCardFile}>{sess.original_filename || `${sess.import_type} import`}</div>
                 <div className={s.sessionCardMeta}>{timeAgo(sess.created_at)} {'\u00B7'} {sess.import_type}</div>
               </div>
