@@ -100,6 +100,19 @@ export const NAV_ITEMS: NavItem[] = [
     recipe: 'planning-playground',
   },
   {
+    id: 'my-nav',
+    label: 'My NAV',
+    icon: <Icon><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></Icon>,
+    href: '/my-nav',
+    section: 'main',
+    skill: 'market-skill',
+    fn: 'get_bookmarks',
+    recipe: 'my-nav',
+  },
+
+  /* ── DATA (import, ETL, operations) ────────────────── */
+
+  {
     id: 'global-nav',
     label: 'Global NAV',
     icon: <Icon><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></Icon>,
@@ -109,9 +122,6 @@ export const NAV_ITEMS: NavItem[] = [
     fn: 'search_schemes',
     recipe: 'scheme-explorer',
   },
-
-  /* ── DATA (import, ETL, operations) ────────────────── */
-
   {
     id: 'import-dashboard',
     label: 'Import Dashboard',
