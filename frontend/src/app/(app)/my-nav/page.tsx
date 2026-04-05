@@ -93,6 +93,10 @@ export default function MyNavPage() {
   const [opLoading, setOpLoading] = useState<Record<string, boolean>>({});
   const [vaniDismissed, setVaniDismissed] = useState(false);
 
+  /* ── Remove bookmark confirmation modal ── */
+  const [removeConfirm, setRemoveConfirm] = useState<string[] | null>(null);
+  const [removing, setRemoving] = useState(false);
+
   /* ── Alias modal state ── */
   const [aliasModal, setAliasModal] = useState<{
     scheme_code: string; scheme_name: string; display_alias: string | null;
@@ -240,6 +244,11 @@ export default function MyNavPage() {
         onClick: () => openAliasModal(b),
         variant: 'muted' as const,
       },
+      {
+        label: 'Remove',
+        onClick: () => setRemoveConfirm([b.scheme_code]),
+        variant: 'warning' as const,
+      },
     ];
   }
 
@@ -269,14 +278,22 @@ export default function MyNavPage() {
     }
   }
 
-  async function removeBookmark(code: string) {
+  async function confirmRemoveBookmarks() {
+    if (!removeConfirm || removing) return;
+    setRemoving(true);
     try {
-      await apiFetch<any>({ ...API.nav.removeBookmark, path: API.nav.removeBookmark.path.replace(':schemeCode', code) });
-      showToast({ message: 'Removed from My NAV', type: 'success' });
-      setBookmarks(prev => prev.filter(b => b.scheme_code !== code));
-      setSelected(prev => { const n = new Set(prev); n.delete(code); return n; });
+      await Promise.all(removeConfirm.map(code =>
+        apiFetch<any>({ ...API.nav.removeBookmark, path: API.nav.removeBookmark.path.replace(':schemeCode', code) }),
+      ));
+      const count = removeConfirm.length;
+      setBookmarks(prev => prev.filter(b => !removeConfirm.includes(b.scheme_code)));
+      setSelected(prev => { const n = new Set(prev); removeConfirm.forEach(c => n.delete(c)); return n; });
+      setRemoveConfirm(null);
+      showToast({ message: count === 1 ? 'Removed from My NAV' : `${count} schemes removed`, type: 'success' });
     } catch (err) {
       showToast({ message: (err as ApiError).message || 'Remove failed', type: 'error' });
+    } finally {
+      setRemoving(false);
     }
   }
 
@@ -573,6 +590,13 @@ export default function MyNavPage() {
                     <VdfButton variant="outline" size="sm" onClick={handleBulkMetrics}>
                       ⊕ Metrics
                     </VdfButton>
+                    <button
+                      className={f.outlineBtn}
+                      style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', fontSize: '0.75rem', padding: '6px 12px' }}
+                      onClick={() => setRemoveConfirm([...selected])}
+                    >
+                      ✕ Remove ({selected.size})
+                    </button>
                     <VdfButton variant="ghost" size="sm" onClick={() => setSelected(new Set())}>
                       Clear
                     </VdfButton>
@@ -642,7 +666,6 @@ export default function MyNavPage() {
                   status={computeStatus(b)}
                   selected={selected.has(b.scheme_code)}
                   onSelect={toggleSelect}
-                  onRemove={removeBookmark}
                   actions={cardActions(b)}
                   onClick={code => router.push(`/global-nav/${code}`)}
                 />
@@ -877,6 +900,46 @@ export default function MyNavPage() {
 
           </div>
         )}
+      </VdfModal>
+
+      {/* ── Remove Bookmark confirmation modal ── */}
+      <VdfModal
+        isOpen={!!removeConfirm}
+        onClose={() => { if (!removing) setRemoveConfirm(null); }}
+        title="Remove Bookmark"
+        subtitle={
+          removeConfirm && removeConfirm.length === 1
+            ? `Remove this scheme from My NAV? This will not delete any downloaded data.`
+            : `Remove ${removeConfirm?.length || 0} schemes from My NAV? This will not delete any downloaded data.`
+        }
+        width="sm"
+        footer={
+          <>
+            <VdfButton variant="ghost" size="sm" onClick={() => setRemoveConfirm(null)} disabled={removing}>
+              Cancel
+            </VdfButton>
+            <VdfButton variant="primary" size="sm" onClick={confirmRemoveBookmarks} disabled={removing}>
+              {removing ? 'Removing…' : 'Remove'}
+            </VdfButton>
+          </>
+        }
+      >
+        {removeConfirm && removeConfirm.length > 1 && (
+          <ul style={{ margin: 0, padding: '0 0 0 16px', fontSize: '0.82rem', color: 'var(--color-fg)', maxHeight: 180, overflowY: 'auto' }}>
+            {removeConfirm.map(code => {
+              const b = bookmarks.find(bk => bk.scheme_code === code);
+              return <li key={code} style={{ marginBottom: 4 }}>{b?.alias_name || b?.scheme_name || code}</li>;
+            })}
+          </ul>
+        )}
+        {removeConfirm && removeConfirm.length === 1 && (() => {
+          const b = bookmarks.find(bk => bk.scheme_code === removeConfirm[0]);
+          return b ? (
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-fg)' }}>
+              {b.alias_name || b.scheme_name}
+            </div>
+          ) : null;
+        })()}
       </VdfModal>
 
     </div>
