@@ -66,10 +66,10 @@ export default function ImportDashboardPage() {
   const [drawerRecord, setDrawerRecord] = useState<StagingRecord | null>(null);
   const [reprocessing, setReprocessing] = useState(false);
   const [deletingStaging, setDeletingStaging] = useState(false);
-  const [typeFilter, setTypeFilter] = useState<'all' | 'scheme' | 'bookmark'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'bookmark'>('all');
 
   // Fetch sessions
-  const fetchSessions = useCallback(async (type: 'all' | 'scheme' | 'bookmark' = 'all') => {
+  const fetchSessions = useCallback(async (type: 'all' | 'bookmark' = 'all') => {
     setLoadingSessions(true);
     try {
       const qs = type !== 'all' ? `?type=${type}` : '';
@@ -86,7 +86,7 @@ export default function ImportDashboardPage() {
 
   useEffect(() => { fetchSessions(typeFilter); }, [fetchSessions, typeFilter]);
 
-  function handleTypeFilter(t: 'all' | 'scheme' | 'bookmark') {
+  function handleTypeFilter(t: 'all' | 'bookmark') {
     setTypeFilter(t);
     setSelectedSession(null);
     setRecords(null);
@@ -178,10 +178,10 @@ export default function ImportDashboardPage() {
         <aside className={s.sidebar}>
           {/* Type filter tabs */}
           <div className={s.sidebarFilters}>
-            {(['all', 'scheme', 'bookmark'] as const).map(t => (
+            {(['all', 'bookmark'] as const).map(t => (
               <button key={t} className={typeFilter === t ? s.filterTabActive : s.filterTab}
                 onClick={() => handleTypeFilter(t)}>
-                {t === 'all' ? 'All' : t === 'scheme' ? 'Scheme' : 'Bookmark'}
+                {t === 'all' ? 'All' : 'Bookmark'}
               </button>
             ))}
           </div>

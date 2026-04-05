@@ -162,8 +162,8 @@ export function createEtlRouter(pool: Pool): Router {
 
       const importType = req.query.type as string | undefined;
 
-      // Tenant sees: their own sessions + global scheme master sessions (tenant_id IS NULL).
-      // Scheme master is admin-run but tenants can see when the DB was last refreshed.
+      // Only this tenant's own sessions. Global scheme master (tenant_id IS NULL) is
+      // admin-only and never shown to tenants — it is not linked to any tenant.
       const params: any[] = [auth.tenant_id];
       const typeClause = (importType && importType !== 'all')
         ? `AND s.import_type = $${params.push(importType) && params.length}`
@@ -174,11 +174,11 @@ export function createEtlRouter(pool: Pool): Router {
                 s.successful_records, s.failed_records, s.duplicate_records,
                 f.original_filename, s.created_at, s.staging_completed_at,
                 s.processing_started_at, s.processing_completed_at,
-                -- Per-tenant sequential number: #1 = oldest visible session for this tenant
+                -- Strictly per-tenant: all rows here belong to this tenant, so numbers are clean
                 ROW_NUMBER() OVER (ORDER BY s.created_at) AS tenant_seq
          FROM ki_import_sessions s
          LEFT JOIN ki_file_uploads f ON f.id = s.file_upload_id
-         WHERE (s.tenant_id = $1 OR (s.import_type = 'scheme' AND s.tenant_id IS NULL))
+         WHERE s.tenant_id = $1
          ${typeClause}
          ORDER BY s.created_at DESC
          LIMIT 50`,
