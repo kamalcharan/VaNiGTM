@@ -18,7 +18,7 @@ import { Router } from 'express';
 import type { Pool } from 'pg';
 import { register, validateRegisterInput, type RegisterInput } from './auth.service';
 import { login as loginService, type LoginInput } from './login.service';
-import { verifyAccessToken, type JwtPayload } from './token.service';
+import { verifyAccessToken, refreshSession, parseDeviceInfo, type JwtPayload } from './token.service';
 
 /* ── JWT extraction helper ──────────────────────────── */
 
@@ -130,6 +130,38 @@ export function createAuthRouter(pool: Pool): Router {
             ? 'Login failed. Please try again.'
             : err.message || 'Unknown error',
         },
+      });
+    }
+  });
+
+  /* ── POST /api/v1/auth/refresh ──────────────────────── */
+
+  router.post('/refresh', async (req, res) => {
+    try {
+      const { refresh_token } = req.body;
+
+      if (!refresh_token || typeof refresh_token !== 'string') {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: 'refresh_token is required' },
+        });
+        return;
+      }
+
+      const device = parseDeviceInfo(req as any);
+      const tokens = await refreshSession(pool, refresh_token, device);
+
+      if (!tokens) {
+        res.status(401).json({
+          error: { code: 'INVALID_REFRESH_TOKEN', message: 'Invalid, expired, or revoked refresh token' },
+        });
+        return;
+      }
+
+      res.json({ tokens });
+    } catch (err: any) {
+      console.error('[Auth:refresh]', err);
+      res.status(500).json({
+        error: { code: 'REFRESH_FAILED', message: 'Token refresh failed' },
       });
     }
   });
