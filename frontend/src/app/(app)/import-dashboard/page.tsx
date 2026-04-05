@@ -347,7 +347,7 @@ export default function ImportDashboardPage() {
                                       {aliasName && <span style={{ fontSize: '0.68rem', color: 'var(--color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>{aliasName}</span>}
                                     </div>
                                   ) : (
-                                    <span style={{ color: 'var(--color-muted)', fontSize: '0.72rem' }}>\u2014</span>
+                                    <span style={{ color: 'var(--color-muted)', fontSize: '0.72rem' }}>—</span>
                                   )}
                                 </td>
                               )}
