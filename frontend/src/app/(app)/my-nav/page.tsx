@@ -33,6 +33,7 @@ import {
   VdfStatusBadge,
   VdfEmptyState,
   VdfButton,
+  VdfModal,
 } from '@/components/vdf';
 import f from '@/styles/forms.module.css';
 import d from '@/styles/data.module.css';
@@ -91,6 +92,17 @@ export default function MyNavPage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [opLoading, setOpLoading] = useState<Record<string, boolean>>({});
   const [vaniDismissed, setVaniDismissed] = useState(false);
+
+  /* ── Alias modal state ── */
+  const [aliasModal, setAliasModal] = useState<{
+    scheme_code: string; scheme_name: string; display_alias: string | null;
+  } | null>(null);
+  const [aliases, setAliases] = useState<{ id: number; alias_name: string; source: string }[]>([]);
+  const [aliasesLoading, setAliasesLoading] = useState(false);
+  const [newAlias, setNewAlias] = useState('');
+  const [addingAlias, setAddingAlias] = useState(false);
+  const [displayAliasEdit, setDisplayAliasEdit] = useState('');
+  const [savingDisplayAlias, setSavingDisplayAlias] = useState(false);
 
   /* ── Discover tab state ── */
   const [discoverQuery, setDiscoverQuery] = useState('');
@@ -223,6 +235,11 @@ export default function MyNavPage() {
         variant: 'muted' as const,
         disabled: busy, loading: busy && !!opLoading[b.scheme_code + '_calc'],
       }] : []),
+      {
+        label: 'Aliases',
+        onClick: () => openAliasModal(b),
+        variant: 'muted' as const,
+      },
     ];
   }
 
@@ -260,6 +277,72 @@ export default function MyNavPage() {
       setSelected(prev => { const n = new Set(prev); n.delete(code); return n; });
     } catch (err) {
       showToast({ message: (err as ApiError).message || 'Remove failed', type: 'error' });
+    }
+  }
+
+  /* ── Alias modal ── */
+  async function openAliasModal(b: TrackingBookmark) {
+    setAliasModal({ scheme_code: b.scheme_code, scheme_name: b.scheme_name, display_alias: b.alias_name ?? null });
+    setDisplayAliasEdit(b.alias_name || '');
+    setNewAlias('');
+    setAliases([]);
+    setAliasesLoading(true);
+    try {
+      const data = await apiFetch<{ aliases: any[] }>({
+        ...API.nav.aliases,
+        path: `${API.nav.aliases.path}?scheme_code=${b.scheme_code}`,
+      });
+      setAliases(data.aliases || []);
+    } catch {
+      showToast({ message: 'Failed to load aliases', type: 'error' });
+    } finally {
+      setAliasesLoading(false);
+    }
+  }
+
+  async function handleAddAlias() {
+    if (!aliasModal || !newAlias.trim() || addingAlias) return;
+    setAddingAlias(true);
+    try {
+      const data = await apiFetch<{ alias: any }>(API.nav.createAlias, {
+        body: { scheme_code: aliasModal.scheme_code, alias_name: newAlias.trim(), source: 'manual' },
+      });
+      setAliases(prev => [...prev, data.alias]);
+      setNewAlias('');
+      showToast({ message: 'Alias added', type: 'success' });
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Failed to add alias', type: 'error' });
+    } finally {
+      setAddingAlias(false);
+    }
+  }
+
+  async function handleDeleteAlias(id: number) {
+    try {
+      await apiFetch<any>({ ...API.nav.deleteAlias, path: API.nav.deleteAlias.path.replace(':id', String(id)) });
+      setAliases(prev => prev.filter(a => a.id !== id));
+      showToast({ message: 'Alias removed', type: 'success' });
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Failed to remove alias', type: 'error' });
+    }
+  }
+
+  async function handleSaveDisplayAlias() {
+    if (!aliasModal || savingDisplayAlias) return;
+    setSavingDisplayAlias(true);
+    try {
+      await apiFetch<any>(
+        { ...API.nav.updateBookmarkAlias, path: API.nav.updateBookmarkAlias.path.replace(':schemeCode', aliasModal.scheme_code) },
+        { body: { alias_name: displayAliasEdit.trim() || null } },
+      );
+      const saved = displayAliasEdit.trim() || null;
+      setBookmarks(prev => prev.map(b => b.scheme_code === aliasModal.scheme_code ? { ...b, alias_name: saved } : b));
+      setAliasModal(prev => prev ? { ...prev, display_alias: saved } : null);
+      showToast({ message: 'Display alias updated', type: 'success' });
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Failed to update alias', type: 'error' });
+    } finally {
+      setSavingDisplayAlias(false);
     }
   }
 
@@ -693,6 +776,102 @@ export default function MyNavPage() {
           )}
         </div>
       )}
+
+      {/* ── Alias Management Modal ── */}
+      <VdfModal
+        isOpen={!!aliasModal}
+        onClose={() => setAliasModal(null)}
+        title="Scheme Aliases"
+        subtitle={aliasModal ? `${aliasModal.scheme_name} · used for CSV/CAS import matching` : ''}
+      >
+        {aliasModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+            {/* ── Display alias ── */}
+            <div>
+              <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-muted)', marginBottom: 6 }}>
+                Display Alias
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginBottom: 10 }}>
+                Shown on My NAV cards instead of the scheme name. Personal to your account.
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className={f.input}
+                  style={{ flex: 1 }}
+                  placeholder={aliasModal.scheme_name}
+                  value={displayAliasEdit}
+                  onChange={e => setDisplayAliasEdit(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSaveDisplayAlias(); }}
+                />
+                <VdfButton variant="primary" size="sm" onClick={handleSaveDisplayAlias} disabled={savingDisplayAlias}>
+                  {savingDisplayAlias ? '…' : 'Save'}
+                </VdfButton>
+                {displayAliasEdit && (
+                  <VdfButton variant="ghost" size="sm" onClick={() => setDisplayAliasEdit('')}>
+                    Clear
+                  </VdfButton>
+                )}
+              </div>
+            </div>
+
+            <div style={{ height: 1, background: 'var(--color-border)' }} />
+
+            {/* ── Import aliases ── */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-muted)' }}>
+                  Import Aliases
+                </div>
+                {aliases.length > 0 && <span style={{ fontSize: '0.65rem', color: 'var(--color-muted)' }}>{aliases.length} total</span>}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginBottom: 10 }}>
+                Global aliases used to match this scheme during CAS / CSV imports.
+              </div>
+
+              {aliasesLoading ? (
+                <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--color-muted)', fontSize: '0.8rem' }}>Loading…</div>
+              ) : aliases.length === 0 ? (
+                <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--color-muted)', fontSize: '0.8rem' }}>No aliases yet — add one below</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 210, overflowY: 'auto', marginBottom: 12 }}>
+                  {aliases.map(alias => (
+                    <div key={alias.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: 'var(--color-surface)', borderRadius: 6, border: '1px solid var(--color-border)' }}>
+                      <span style={{ flex: 1, fontSize: '0.8rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alias.alias_name}</span>
+                      <VdfStatusBadge
+                        label={alias.source}
+                        variant={['csv_upload', 'import'].includes(alias.source) ? 'success' : alias.source === 'manual' ? 'info' : 'muted'}
+                        size="sm"
+                      />
+                      <button
+                        onClick={() => handleDeleteAlias(alias.id)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', fontSize: '0.8rem', padding: '2px 6px', borderRadius: 4, lineHeight: 1, flexShrink: 0 }}
+                        title="Remove alias"
+                      >✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className={f.input}
+                  style={{ flex: 1 }}
+                  placeholder="New alias (e.g. HDFC Top 100 Growth)"
+                  value={newAlias}
+                  onChange={e => setNewAlias(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAddAlias(); }}
+                />
+                <VdfButton variant="success" size="sm" onClick={handleAddAlias} disabled={!newAlias.trim() || addingAlias}>
+                  {addingAlias ? '…' : '+ Add'}
+                </VdfButton>
+              </div>
+            </div>
+
+          </div>
+        )}
+      </VdfModal>
+
     </div>
   );
 }
