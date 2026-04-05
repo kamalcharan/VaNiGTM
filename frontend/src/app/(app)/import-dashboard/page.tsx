@@ -6,7 +6,7 @@ import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
-import { VdfStatusBadge, VdfLoader, VdfProactiveCard, type BadgeVariant } from '@/components/vdf';
+import { VdfStatusBadge, VdfLoader, VdfProactiveCard, VdfEmptyState, VdfButton, type BadgeVariant } from '@/components/vdf';
 import d from '@/styles/data.module.css';
 import s from './dashboard-page.module.css';
 
@@ -193,7 +193,12 @@ export default function ImportDashboardPage() {
               </button>
             ))}
           </div>
-          {sessions.map(sess => (
+          {sessions.length === 0 && sessionsFetched ? (
+            <div className={s.sidebarEmpty}>
+              <div className={s.sidebarEmptyIcon}>📭</div>
+              <div className={s.sidebarEmptyText}>No imports yet</div>
+            </div>
+          ) : sessions.map(sess => (
             <div key={sess.id} className={selectedSession?.id === sess.id ? s.sessionCardActive : s.sidebarLink}
               onClick={() => handleSelectSession(sess)}>
               <div>
@@ -215,7 +220,16 @@ export default function ImportDashboardPage() {
         {/* ═══ MAIN ═══ */}
         <main className={s.main}>
           {!selectedSession ? (
-            <VdfLoader message="No sessions" hint="Click New Import to start" />
+            <VdfEmptyState
+              icon="📂"
+              title={sessions.length === 0 ? 'No imports yet' : 'Select an import'}
+              description={sessions.length === 0
+                ? 'Your import history will appear here. Start by importing your bookmark list.'
+                : 'Choose an import session from the sidebar to review records.'}
+              action={sessions.length === 0
+                ? <VdfButton variant="primary" onClick={() => router.push('/import')}>Start First Import</VdfButton>
+                : undefined}
+            />
           ) : (
             <>
               {/* Stat cards (bottom-border accent) */}
