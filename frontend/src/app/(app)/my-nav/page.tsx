@@ -21,6 +21,8 @@ import { useSkillQuery } from '@/hooks';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
+
+const MIN_LOADER_MS = 600; // always show loader for at least this long (branding)
 import {
   VdfTabs,
   VdfStatCard,
@@ -82,6 +84,7 @@ export default function MyNavPage() {
   /* ── My Schemes tab state ── */
   const [bookmarks, setBookmarks] = useState<TrackingBookmark[]>([]);
   const [bookmarksLoading, setBookmarksLoading] = useState(true);
+  const [minLoadDone, setMinLoadDone] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [trackSearch, setTrackSearch] = useState('');
@@ -117,6 +120,12 @@ export default function MyNavPage() {
   }, [showToast]);
 
   useEffect(() => { loadBookmarks(); }, [loadBookmarks]);
+
+  // Minimum loader duration — always show loader for at least MIN_LOADER_MS (branding)
+  useEffect(() => {
+    const t = setTimeout(() => setMinLoadDone(true), MIN_LOADER_MS);
+    return () => clearTimeout(t);
+  }, []);
 
   /* ── Global stats (for Discover tab hint) ── */
   const { data: statsResult } = useSkillQuery<StatsData>(
@@ -156,14 +165,34 @@ export default function MyNavPage() {
     stale: bookmarks.filter(b => (b.nav_age_days ?? 0) > 7 && b.nav_records > 0).length,
   };
 
-  /* ── VaNi gap nudge ── */
+  /* ── VaNi — always visible, 3 states ── */
   const gapCount = counts.no_data + counts.stale;
-  const showVani = !vaniDismissed && gapCount > 0 && !bookmarksLoading && !loadError;
-  const vaniMessage = counts.no_data > 0 && counts.stale > 0
-    ? `${counts.no_data} scheme${counts.no_data !== 1 ? 's' : ''} have no NAV data and ${counts.stale} ${counts.stale !== 1 ? 'are' : 'is'} stale (>7 days). Download all to stay current.`
-    : counts.no_data > 0
-    ? `${counts.no_data} tracked scheme${counts.no_data !== 1 ? 's have' : ' has'} no NAV data yet. Download to start tracking.`
-    : `${counts.stale} tracked scheme${counts.stale !== 1 ? 's are' : ' is'} stale (last NAV >7 days ago). Refresh now.`;
+
+  // State 1: no bookmarks → onboarding nudge
+  // State 2: gaps exist (not dismissed) → fill nudge
+  // State 3: all healthy → affirmation
+  const vaniProps: {
+    message: string; ctaLabel?: string; onCta?: () => void; onDismiss?: () => void;
+  } = counts.total === 0
+    ? {
+        message: 'Add schemes to My NAV to track their NAV data and calculate performance metrics. Use Discover & Add to browse 16,000+ mutual funds.',
+        ctaLabel: 'Discover Schemes',
+        onCta: () => setTab('discover'),
+      }
+    : gapCount > 0 && !vaniDismissed
+    ? {
+        message: counts.no_data > 0 && counts.stale > 0
+          ? `${counts.no_data} scheme${counts.no_data !== 1 ? 's' : ''} have no NAV data and ${counts.stale} ${counts.stale !== 1 ? 'are' : 'is'} stale (>7 days). Download all to stay current.`
+          : counts.no_data > 0
+          ? `${counts.no_data} tracked scheme${counts.no_data !== 1 ? 's have' : ' has'} no NAV data yet. Download to start tracking.`
+          : `${counts.stale} tracked scheme${counts.stale !== 1 ? 's are' : ' is'} stale (last NAV >7 days ago). Refresh now.`,
+        ctaLabel: `Fill ${gapCount} Gap${gapCount !== 1 ? 's' : ''}`,
+        onCta: handleFillAllGaps,
+        onDismiss: () => setVaniDismissed(true),
+      }
+    : {
+        message: `All ${counts.total} tracked scheme${counts.total !== 1 ? 's are' : ' is'} up to date with fresh NAV data${counts.metrics_pending > 0 ? ` — ${counts.metrics_pending} still need metrics calculated` : ''}.`,
+      };
 
   /* ── Selection helpers ── */
   function toggleSelect(code: string) {
@@ -353,6 +382,12 @@ export default function MyNavPage() {
   }
 
   /* ── Render ────────────────────────────────────────── */
+
+  // Full-page loader: show until both data is ready AND min duration has elapsed
+  if (bookmarksLoading || !minLoadDone) {
+    return <VdfLoader message="Loading My NAV" hint="Fetching your tracked schemes" />;
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '24px', maxWidth: 1100, margin: '0 auto' }}>
 
@@ -406,16 +441,14 @@ export default function MyNavPage() {
       {tab === 'my-schemes' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-          {/* VaNi — gap nudge, always first when visible */}
-          {showVani && (
-            <VdfProactiveCard
-              label="VaNi"
-              message={vaniMessage}
-              ctaLabel={`Fill ${gapCount} Gap${gapCount !== 1 ? 's' : ''}`}
-              onCta={handleFillAllGaps}
-              onDismiss={() => setVaniDismissed(true)}
-            />
-          )}
+          {/* VaNi — always visible in My Schemes: onboarding / gap nudge / all-healthy */}
+          <VdfProactiveCard
+            label="VaNi"
+            message={vaniProps.message}
+            ctaLabel={vaniProps.ctaLabel}
+            onCta={vaniProps.onCta}
+            onDismiss={vaniProps.onDismiss}
+          />
 
           {/* Filter stat cards */}
           {counts.total > 0 && (
@@ -484,9 +517,7 @@ export default function MyNavPage() {
           )}
 
           {/* Card list */}
-          {bookmarksLoading ? (
-            <VdfLoader message="Loading My NAV" hint="Fetching your tracked schemes" />
-          ) : loadError ? (
+          {loadError ? (
             <VdfEmptyState
               icon="⚠️"
               title="Could not load schemes"
