@@ -89,19 +89,30 @@ export function createNavRouter(pool: Pool): Router {
       const result = await pool.query(
         `SELECT b.id, b.scheme_code, b.scheme_name, b.amc, b.alias_name,
                 b.daily_download_enabled, b.historical_download_done,
-                s.active, s.closure_date,
-                COUNT(n.id) as nav_records,
-                MAX(n.nav_date) as latest_nav_date,
-                MAX(n.nav) FILTER (WHERE n.nav_date = (SELECT MAX(nav_date) FROM ki_nav_history WHERE scheme_code = b.scheme_code)) as latest_nav,
-                MIN(n.nav_date) as earliest_nav_date,
-                MAX(n.metrics_calculated_at) as metrics_calculated_at
+                s.active, s.category, s.scheme_type, s.closure_date,
+                COALESCE(ns.nav_records, 0)::integer          AS nav_records,
+                ns.latest_nav_date,
+                ns.latest_nav,
+                ns.earliest_nav_date,
+                ns.metrics_calculated_at,
+                -- NAV ageing in days (null if no data)
+                CASE WHEN ns.latest_nav_date IS NOT NULL
+                     THEN (CURRENT_DATE - ns.latest_nav_date::date)
+                     ELSE NULL
+                END AS nav_age_days
          FROM ki_scheme_bookmarks b
          JOIN ki_schemes s ON s.scheme_code = b.scheme_code
-         LEFT JOIN ki_nav_history n ON n.scheme_code = b.scheme_code
+         LEFT JOIN LATERAL (
+           SELECT
+             COUNT(*)::integer                                         AS nav_records,
+             MAX(nav_date)::text                                       AS latest_nav_date,
+             MIN(nav_date)::text                                       AS earliest_nav_date,
+             MAX(nav) FILTER (WHERE nav_date = (SELECT MAX(nav_date) FROM ki_nav_history WHERE scheme_code = b.scheme_code)) AS latest_nav,
+             MAX(metrics_calculated_at)                                AS metrics_calculated_at
+           FROM ki_nav_history n
+           WHERE n.scheme_code = b.scheme_code
+         ) ns ON true
          WHERE b.tenant_id = $1
-         GROUP BY b.id, b.scheme_code, b.scheme_name, b.amc, b.alias_name,
-                  b.daily_download_enabled, b.historical_download_done,
-                  s.active, s.closure_date
          ORDER BY b.scheme_name`,
         [jwt.tenant_id],
       );
