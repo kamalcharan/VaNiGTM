@@ -27,8 +27,8 @@ CREATE TABLE VN_password_resets (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_password_resets_token ON VN_password_resets (token_hash);
-CREATE INDEX IF NOT EXISTS idx_password_resets_user ON VN_password_resets (user_id);
+CREATE INDEX idx_password_resets_token ON VN_password_resets (token_hash);
+CREATE INDEX idx_password_resets_user ON VN_password_resets (user_id);
 
 COMMENT ON TABLE VN_password_resets IS 'Password reset tokens. Each token is single-use and time-limited. Token is hashed for security.';
 

@@ -55,8 +55,8 @@ CREATE TABLE VN_tenants (
     CONSTRAINT vn_tenants_slug_unique UNIQUE (slug)
 );
 
-CREATE INDEX IF NOT EXISTS idx_vn_tenants_status ON VN_tenants (status);
-CREATE INDEX IF NOT EXISTS idx_vn_tenants_is_active ON VN_tenants (is_active);
+CREATE INDEX idx_vn_tenants_status ON VN_tenants (status);
+CREATE INDEX idx_vn_tenants_is_active ON VN_tenants (is_active);
 
 COMMENT ON TABLE VN_tenants IS 'Core tenant identity. Each organization/business is a tenant.';
 COMMENT ON COLUMN VN_tenants.slug IS 'URL-safe unique identifier. Used in login, subdomains (future), API routing.';
@@ -156,9 +156,9 @@ CREATE TABLE VN_users (
     CONSTRAINT vn_users_tenant_email_unique UNIQUE (tenant_id, email)
 );
 
-CREATE INDEX IF NOT EXISTS idx_vn_users_tenant_id ON VN_users (tenant_id);
-CREATE INDEX IF NOT EXISTS idx_vn_users_email ON VN_users (email);
-CREATE INDEX IF NOT EXISTS idx_vn_users_is_active ON VN_users (tenant_id, is_active);
+CREATE INDEX idx_vn_users_tenant_id ON VN_users (tenant_id);
+CREATE INDEX idx_vn_users_email ON VN_users (email);
+CREATE INDEX idx_vn_users_is_active ON VN_users (tenant_id, is_active);
 
 COMMENT ON TABLE VN_users IS 'All users across all tenants. One user belongs to one tenant.';
 COMMENT ON COLUMN VN_users.preferences IS 'User-level preferences including theme override, color mode, language. Stored as JSONB for flexibility.';
@@ -198,13 +198,13 @@ CREATE TABLE VN_roles (
 ALTER TABLE VN_roles DROP CONSTRAINT IF EXISTS vn_roles_global_code_unique;
 
 -- Global roles: code must be unique when tenant_id IS NULL
-CREATE UNIQUE INDEX IF NOT EXISTS idx_vn_roles_global_code ON VN_roles (code) WHERE tenant_id IS NULL;
+CREATE UNIQUE INDEX idx_vn_roles_global_code ON VN_roles (code) WHERE tenant_id IS NULL;
 
 -- Tenant-specific roles: code must be unique within a tenant
-CREATE UNIQUE INDEX IF NOT EXISTS idx_vn_roles_tenant_code ON VN_roles (tenant_id, code) WHERE tenant_id IS NOT NULL;
+CREATE UNIQUE INDEX idx_vn_roles_tenant_code ON VN_roles (tenant_id, code) WHERE tenant_id IS NOT NULL;
 
-CREATE INDEX IF NOT EXISTS idx_vn_roles_tenant_id ON VN_roles (tenant_id);
-CREATE INDEX IF NOT EXISTS idx_vn_roles_is_system ON VN_roles (is_system);
+CREATE INDEX idx_vn_roles_tenant_id ON VN_roles (tenant_id);
+CREATE INDEX idx_vn_roles_is_system ON VN_roles (is_system);
 
 COMMENT ON TABLE VN_roles IS 'Role definitions. System roles (tenant_id NULL, is_system true) are framework-level. Product roles (tenant_id NULL, is_system false) are seeded by products via convention. Tenant roles (tenant_id NOT NULL) are custom per organization.';
 COMMENT ON COLUMN VN_roles.permissions IS 'Future: Array of permission strings e.g. ["users:read", "users:write", "reports:export"]. Convention-based for now.';
@@ -225,9 +225,9 @@ CREATE TABLE VN_user_roles (
     CONSTRAINT vn_user_roles_unique UNIQUE (user_id, role_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_vn_user_roles_user_id ON VN_user_roles (user_id);
-CREATE INDEX IF NOT EXISTS idx_vn_user_roles_role_id ON VN_user_roles (role_id);
-CREATE INDEX IF NOT EXISTS idx_vn_user_roles_active ON VN_user_roles (user_id) WHERE revoked_at IS NULL;
+CREATE INDEX idx_vn_user_roles_user_id ON VN_user_roles (user_id);
+CREATE INDEX idx_vn_user_roles_role_id ON VN_user_roles (role_id);
+CREATE INDEX idx_vn_user_roles_active ON VN_user_roles (user_id) WHERE revoked_at IS NULL;
 
 COMMENT ON TABLE VN_user_roles IS 'Many-to-many assignment of roles to users. Supports revocation tracking.';
 COMMENT ON COLUMN VN_user_roles.revoked_at IS 'When set, this role assignment is no longer active. Kept for audit trail.';
@@ -267,10 +267,10 @@ CREATE TABLE VN_refresh_tokens (
     CONSTRAINT vn_refresh_tokens_token_hash_unique UNIQUE (token_hash)
 );
 
-CREATE INDEX IF NOT EXISTS idx_vn_refresh_tokens_user_id ON VN_refresh_tokens (user_id);
-CREATE INDEX IF NOT EXISTS idx_vn_refresh_tokens_tenant_id ON VN_refresh_tokens (tenant_id);
-CREATE INDEX IF NOT EXISTS idx_vn_refresh_tokens_active ON VN_refresh_tokens (user_id, is_active) WHERE is_active = true;
-CREATE INDEX IF NOT EXISTS idx_vn_refresh_tokens_expires ON VN_refresh_tokens (expires_at) WHERE is_active = true;
+CREATE INDEX idx_vn_refresh_tokens_user_id ON VN_refresh_tokens (user_id);
+CREATE INDEX idx_vn_refresh_tokens_tenant_id ON VN_refresh_tokens (tenant_id);
+CREATE INDEX idx_vn_refresh_tokens_active ON VN_refresh_tokens (user_id, is_active) WHERE is_active = true;
+CREATE INDEX idx_vn_refresh_tokens_expires ON VN_refresh_tokens (expires_at) WHERE is_active = true;
 
 COMMENT ON TABLE VN_refresh_tokens IS 'JWT refresh tokens with embedded session/device tracking. Each row = one active login session.';
 COMMENT ON COLUMN VN_refresh_tokens.revoked_reason IS 'Why this session ended: user_logout (voluntary), session_replaced (user chose to end this session when hitting limit), admin_revoke (admin forced logout), expired (TTL), max_sessions (auto-revoked by system).';
