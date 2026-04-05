@@ -80,37 +80,6 @@
 .statCardUnit { font-size: 0.75rem; font-weight: 500; color: var(--color-muted); margin-left: 4px; }
 .statCardPct { font-size: 0.78rem; font-weight: 500; color: var(--color-muted); opacity: 0.6; margin-left: 6px; }
 
-/* ── VaNi Hero Card ──────────────────────────────────── */
-.vaniHero {
-  background: linear-gradient(135deg,
-    color-mix(in srgb, var(--color-primary) 6%, var(--color-surface)),
-    color-mix(in srgb, var(--color-info) 6%, var(--color-surface)));
-  border: 1px solid color-mix(in srgb, var(--color-primary) 15%, transparent);
-  border-radius: 16px;
-  padding: 20px 24px;
-  position: relative; overflow: hidden;
-}
-
-.vaniHeroContent { display: flex; align-items: flex-start; gap: 14px; position: relative; z-index: 2; }
-
-.vaniHeroIcon {
-  width: 36px; height: 36px; border-radius: 10px;
-  background: var(--color-primary); color: var(--color-primary-fg);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-
-.vaniHeroTitle { font-size: 1rem; font-weight: 700; color: var(--color-fg); margin-bottom: 6px; }
-.vaniHeroText { font-size: 0.8rem; color: var(--color-muted); line-height: 1.6; max-width: 600px; }
-
-.vaniHeroActions { display: flex; gap: 8px; margin-top: 12px; }
-
-.vaniHeroWatermark {
-  position: absolute; right: -16px; bottom: -16px;
-  font-size: 8rem; opacity: 0.04; color: var(--color-primary);
-  transform: rotate(12deg); pointer-events: none;
-}
-
 /* ── Table Card ──────────────────────────────────────── */
 .tableCard {
   background: var(--color-surface);

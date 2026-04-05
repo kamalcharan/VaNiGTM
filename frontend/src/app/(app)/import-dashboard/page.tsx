@@ -6,7 +6,7 @@ import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
-import { VdfStatusBadge, VdfLoader, type BadgeVariant } from '@/components/vdf';
+import { VdfStatusBadge, VdfLoader, VdfProactiveCard, type BadgeVariant } from '@/components/vdf';
 import d from '@/styles/data.module.css';
 import s from './dashboard-page.module.css';
 
@@ -222,26 +222,13 @@ export default function ImportDashboardPage() {
 
               {/* VaNi Hero Card */}
               {vaniMsg && (
-                <div className={s.vaniHero}>
-                  <div className={s.vaniHeroContent}>
-                    <div className={s.vaniHeroIcon}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
-                    </div>
-                    <div>
-                      <div className={s.vaniHeroTitle}>VaNi Post-Import Analysis</div>
-                      <div className={s.vaniHeroText}>{vaniMsg}</div>
-                      {selectedSession.failed_records > 0 && (
-                        <div className={s.vaniHeroActions}>
-                          <button className={d.pageBtn} onClick={handleReprocess} disabled={reprocessing}
-                            style={{ background: 'var(--color-primary)', color: 'var(--color-primary-fg)', borderColor: 'var(--color-primary)', fontWeight: 700 }}>
-                            {reprocessing ? 'Reprocessing...' : `Reprocess ${selectedSession.failed_records} Failed`}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className={s.vaniHeroWatermark}>{'\u26A1'}</div>
-                </div>
+                <VdfProactiveCard
+                  label="VaNi Post-Import Analysis"
+                  message={vaniMsg}
+                  ctaLabel={selectedSession.failed_records > 0 ? `Reprocess ${selectedSession.failed_records} Failed` : undefined}
+                  onCta={selectedSession.failed_records > 0 ? handleReprocess : undefined}
+                  ctaLoading={reprocessing}
+                />
               )}
 
               {/* Table card */}

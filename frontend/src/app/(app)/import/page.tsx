@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
+import { VdfInsightsCard } from '@/components/vdf';
 import s from './import-page.module.css';
 
 /* ── Types ─────────────────────────────────────────── */
@@ -235,9 +236,8 @@ export default function ImportPage() {
       {/* ── STEP 1: Type Selection ──────────────────── */}
       {step === 'type' && (
         <div className={s.stepContent}>
-          <div className={s.vaniHint}>
-            <span className={s.vaniIcon}>{'\u2728'}</span>
-            <span>Choose the data type you want to import. Scheme Master is the foundation \u2014 import it first.</span>
+          <div style={{ marginBottom: 24 }}>
+            <VdfInsightsCard insights={[{ icon: '✨', text: 'Choose the data type you want to import. Scheme Master is the foundation — import it first.' }]} />
           </div>
           <div className={s.typeGrid}>
             {IMPORT_TYPES.map((t) => (
@@ -260,9 +260,8 @@ export default function ImportPage() {
       {/* ── STEP 2: Upload ──────────────────────────── */}
       {step === 'upload' && (
         <div className={s.stepContent}>
-          <div className={s.vaniHint}>
-            <span className={s.vaniIcon}>{'\u{1F4C1}'}</span>
-            <span>Upload your <strong>{IMPORT_TYPES.find((t) => t.id === importType)?.label}</strong> file. Supports .xlsx, .xls, and .csv (max 10MB).</span>
+          <div style={{ marginBottom: 24 }}>
+            <VdfInsightsCard insights={[{ icon: '📁', text: `Upload your ${IMPORT_TYPES.find((t) => t.id === importType)?.label || ''} file. Supports .xlsx, .xls, and .csv (max 10MB).` }]} />
           </div>
           <label
             className={`${s.dropZone} ${dragOver ? s.dropZoneActive : ''} ${loading ? s.dropZoneLoading : ''}`}
@@ -294,12 +293,8 @@ export default function ImportPage() {
       {/* ── STEP 3: Mapping Review ──────────────────── */}
       {step === 'mapping' && headerInfo && (
         <div className={s.stepContent}>
-          <div className={s.vaniHint}>
-            <span className={s.vaniIcon}>{'\u{1F9E0}'}</span>
-            <span>
-              Detected <strong>{headerInfo.total_rows.toLocaleString()}</strong> rows with <strong>{headerInfo.headers.length}</strong> columns.
-              {' '}Field mapping auto-applied \u2014 review and confirm.
-            </span>
+          <div style={{ marginBottom: 24 }}>
+            <VdfInsightsCard insights={[{ icon: '🧠', text: `Detected ${headerInfo.total_rows.toLocaleString()} rows with ${headerInfo.headers.length} columns. Field mapping auto-applied — review and confirm.` }]} />
           </div>
 
           {/* Mapping table */}
@@ -423,17 +418,11 @@ export default function ImportPage() {
           </div>
 
           {/* VaNi insights */}
-          <div className={s.insightsCard}>
-            <div className={s.insightsHeader}>
-              <span className={s.vaniIcon}>{'\u2728'}</span>
-              <span>VaNi Insights</span>
-            </div>
-            {getVaniInsights().map((insight, i) => (
-              <div key={i} className={s.insightRow}>
-                <span className={s.insightDot} />
-                <span>{insight}</span>
-              </div>
-            ))}
+          <div style={{ marginBottom: 24 }}>
+            <VdfInsightsCard
+              title="VaNi Insights"
+              insights={getVaniInsights().map(text => ({ icon: '•', text }))}
+            />
           </div>
 
           {/* Actions */}

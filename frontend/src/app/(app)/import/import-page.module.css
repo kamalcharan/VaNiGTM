@@ -127,23 +127,6 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── VaNi Hint ───────────────────────────────────────── */
-.vaniHint {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 20px;
-  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 12%, transparent);
-  border-radius: 10px;
-  font-size: 0.82rem;
-  color: var(--color-fg);
-  line-height: 1.6;
-  margin-bottom: 24px;
-}
-
-.vaniIcon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
-
 /* ── Type Selection Grid ─────────────────────────────── */
 .typeGrid {
   display: grid;
@@ -468,44 +451,6 @@
 .statSuccess .statValue { color: var(--color-success); }
 .statDuplicate .statValue { color: var(--color-info); }
 .statFailed .statValue { color: var(--color-danger); }
-
-/* ── Insights Card ───────────────────────────────────── */
-.insightsCard {
-  background: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface));
-  border: 1px solid color-mix(in srgb, var(--color-primary) 10%, transparent);
-  border-radius: 12px;
-  padding: 20px 24px;
-  margin-bottom: 24px;
-}
-
-.insightsHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--color-fg);
-  margin-bottom: 12px;
-}
-
-.insightRow {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  font-size: 0.8rem;
-  color: var(--color-muted);
-  line-height: 1.6;
-  padding: 4px 0;
-}
-
-.insightDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  flex-shrink: 0;
-  margin-top: 7px;
-}
 
 /* ── Actions ─────────────────────────────────────────── */
 .actions {
