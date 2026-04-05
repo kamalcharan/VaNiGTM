@@ -97,6 +97,9 @@ export default function MyNavPage() {
   const [removeConfirm, setRemoveConfirm] = useState<string[] | null>(null);
   const [removing, setRemoving] = useState(false);
 
+  /* ── Bulk metrics pre-check modal ── */
+  const [metricsPreCheck, setMetricsPreCheck] = useState(false);
+
   /* ── Alias modal state ── */
   const [aliasModal, setAliasModal] = useState<{
     scheme_code: string; scheme_name: string; display_alias: string | null;
@@ -437,8 +440,14 @@ export default function MyNavPage() {
     setTimeout(() => { setBulkOp(null); loadBookmarks(); }, 2500);
   }
 
-  /* ── Bulk: recalculate all metrics ── */
-  async function handleBulkMetrics() {
+  /* ── Bulk: open pre-check modal ── */
+  function handleBulkMetrics() {
+    setMetricsPreCheck(true);
+  }
+
+  /* ── Bulk: fire after pre-check confirmation ── */
+  async function confirmBulkMetrics() {
+    setMetricsPreCheck(false);
     setBulkOp({
       title: 'Calculating Metrics', progress: 50,
       progressText: 'Running PostgreSQL RPC...',
@@ -905,6 +914,87 @@ export default function MyNavPage() {
           </div>
         )}
       </VdfModal>
+
+      {/* ── Bulk Metrics Pre-Check Modal ── */}
+      {metricsPreCheck && (() => {
+        const ready   = bookmarks.filter(b => b.nav_records >= 100);
+        const partial = bookmarks.filter(b => b.nav_records > 0 && b.nav_records < 100);
+        const noData  = bookmarks.filter(b => b.nav_records === 0);
+        return (
+          <VdfModal
+            isOpen={metricsPreCheck}
+            onClose={() => setMetricsPreCheck(false)}
+            title="Calculate All Metrics"
+            subtitle="Runs calculate_all_scheme_metrics() — single PostgreSQL pass over all schemes with NAV data."
+            footer={
+              <>
+                <VdfButton variant="ghost" size="sm" onClick={() => setMetricsPreCheck(false)}>Cancel</VdfButton>
+                <VdfButton variant="primary" size="sm" onClick={confirmBulkMetrics} disabled={ready.length + partial.length === 0}>
+                  Calculate {ready.length + partial.length} Scheme{ready.length + partial.length !== 1 ? 's' : ''}
+                </VdfButton>
+              </>
+            }
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Summary counts */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {[
+                  { label: 'Ready', count: ready.length, color: 'var(--color-success)', desc: '≥ 100 records' },
+                  { label: 'Partial', count: partial.length, color: 'var(--color-warning)', desc: '1–99 records' },
+                  { label: 'No Data', count: noData.length, color: 'var(--color-danger)', desc: '0 records' },
+                ].map(cat => (
+                  <div key={cat.label} style={{ padding: '12px', background: 'var(--color-surface)', borderRadius: 8, border: `1px solid color-mix(in srgb, ${cat.color} 20%, transparent)`, textAlign: 'center' }}>
+                    <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '1.4rem', fontWeight: 800, color: cat.color }}>{cat.count}</div>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 700, color: cat.color, marginTop: 2 }}>{cat.label}</div>
+                    <div style={{ fontSize: '0.6rem', color: 'var(--color-muted)', marginTop: 2 }}>{cat.desc}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Ready schemes */}
+              {ready.length > 0 && (
+                <div>
+                  <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-success)', marginBottom: 6 }}>
+                    Ready ({ready.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 120, overflowY: 'auto' }}>
+                    {ready.map(b => (
+                      <div key={b.scheme_code} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', padding: '3px 0' }}>
+                        <span style={{ color: 'var(--color-fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{b.alias_name || b.scheme_name}</span>
+                        <span style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--color-muted)', flexShrink: 0, marginLeft: 8 }}>{b.nav_records.toLocaleString()} rec</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Partial schemes */}
+              {partial.length > 0 && (
+                <div>
+                  <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-warning)', marginBottom: 4 }}>
+                    Partial — limited data, some metrics may be inaccurate ({partial.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 80, overflowY: 'auto' }}>
+                    {partial.map(b => (
+                      <div key={b.scheme_code} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', padding: '3px 0' }}>
+                        <span style={{ color: 'var(--color-fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{b.alias_name || b.scheme_name}</span>
+                        <span style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--color-warning)', flexShrink: 0, marginLeft: 8 }}>{b.nav_records} rec</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* No data schemes */}
+              {noData.length > 0 && (
+                <div style={{ fontSize: '0.72rem', color: 'var(--color-muted)', padding: '8px 10px', background: 'color-mix(in srgb, var(--color-danger) 5%, transparent)', borderRadius: 6, border: '1px solid color-mix(in srgb, var(--color-danger) 15%, transparent)' }}>
+                  {noData.length} scheme{noData.length !== 1 ? 's have' : ' has'} no NAV data and will be skipped. Download NAV data first.
+                </div>
+              )}
+            </div>
+          </VdfModal>
+        );
+      })()}
 
       {/* ── Remove Bookmark confirmation modal ── */}
       <VdfModal
