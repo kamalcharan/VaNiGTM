@@ -867,7 +867,7 @@ export function createNavRouter(pool: Pool): Router {
           return r.rows.length > 0;
         },
         async () => {
-          const r = await pool.query('SELECT * FROM calculate_scheme_metrics($1)', [schemeCode]);
+          const r = await pool.query('SELECT * FROM calculate_scheme_metrics($1::text)', [schemeCode]);
           return r.rows[0];
         },
       );
@@ -1210,6 +1210,16 @@ export function createNavRouter(pool: Pool): Router {
   }
   const backfillMap = new Map<string, BackfillState>();
   const cancelSet  = new Set<string>();
+  // Purge completed/failed entries older than 1 hour to prevent unbounded growth
+  setInterval(() => {
+    const cutoff = Date.now() - 3600_000;
+    for (const [key, state] of backfillMap) {
+      if (state.status !== 'running' && state.completed_at && new Date(state.completed_at).getTime() < cutoff) {
+        backfillMap.delete(key);
+        cancelSet.delete(key);
+      }
+    }
+  }, 600_000); // check every 10 minutes
 
   /* ── POST /aliases/backfill — Start async alias backfill ── */
 
