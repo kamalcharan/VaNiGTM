@@ -9,14 +9,12 @@
  *   no_metrics → indigo  (has data but metrics_calculated_at null)
  *   no_data    → red     (nav_records === 0)
  *
- * Alias features:
- *   - Inline display alias edit (per-tenant bookmark name) — pencil icon
- *   - Global import-matching aliases section — expandable panel
- *
  * Safe remove: first click turns ✕ red + label "Sure?",
  *              second click (within 3s) fires onRemove.
+ *              Auto-resets if user moves away.
  *
- * Mobile compact: primary action inline, ⋯ reveals rest.
+ * Mobile compact: shows one primary action button inline.
+ *                 ⋯ button reveals the rest in a dropdown.
  * Desktop:        all action buttons visible in a row.
  */
 
@@ -56,12 +54,6 @@ export interface TrackingCardAction {
   primary?: boolean;
 }
 
-export interface AliasRecord {
-  id: number;
-  alias_name: string;
-  source: string; // 'auto' | 'manual'
-}
-
 interface VdfTrackingCardProps {
   bookmark: TrackingBookmark;
   status: TrackingStatus;
@@ -70,14 +62,6 @@ interface VdfTrackingCardProps {
   onRemove?: (code: string) => void;
   actions?: TrackingCardAction[];
   onClick?: (code: string) => void;
-  /** Update display alias (per-tenant name). Pass null to clear. */
-  onAliasEdit?: (code: string, newAlias: string | null) => Promise<void>;
-  /** Lazy-load global aliases for this scheme */
-  onAliasLoad?: (code: string) => Promise<AliasRecord[]>;
-  /** Add a global import-matching alias */
-  onAliasAdd?: (code: string, alias: string) => Promise<AliasRecord>;
-  /** Delete a global alias by id */
-  onAliasDelete?: (id: number, code: string) => Promise<void>;
 }
 
 /* ── Helpers ─────────────────────────────────────────── */
@@ -110,28 +94,10 @@ function metricsLabel(calculatedAt?: string | null): 'Metrics ✓' | 'Metrics �
 
 export function VdfTrackingCard({
   bookmark, status, selected, onSelect, onRemove, actions = [], onClick,
-  onAliasEdit, onAliasLoad, onAliasAdd, onAliasDelete,
 }: VdfTrackingCardProps) {
-  /* Remove confirmation */
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  /* Mobile more-dropdown */
   const [moreOpen, setMoreOpen] = useState(false);
-
-  /* Display alias edit */
-  const [editingAlias, setEditingAlias] = useState(false);
-  const [aliasInput, setAliasInput] = useState('');
-  const [aliasSaving, setAliasSaving] = useState(false);
-
-  /* Global aliases section */
-  const [aliasesOpen, setAliasesOpen] = useState(false);
-  const [aliases, setAliases] = useState<AliasRecord[]>([]);
-  const [aliasesLoaded, setAliasesLoaded] = useState(false);
-  const [aliasesLoading, setAliasesLoading] = useState(false);
-  const [newAliasInput, setNewAliasInput] = useState('');
-  const [addingAlias, setAddingAlias] = useState(false);
-
+  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasData = bookmark.nav_records > 0;
   const ageLabel = navAgeLabel(bookmark.nav_age_days, hasData);
   const ageStale = (bookmark.nav_age_days ?? 0) > 7;
@@ -150,61 +116,9 @@ export function VdfTrackingCard({
     }
   }, [confirmRemove, onRemove, bookmark.scheme_code]);
 
-  /* Display alias save */
-  async function saveAlias(value?: string | null) {
-    const newVal = value !== undefined ? value : aliasInput.trim() || null;
-    if (!onAliasEdit) return;
-    setAliasSaving(true);
-    try {
-      await onAliasEdit(bookmark.scheme_code, newVal);
-    } finally {
-      setAliasSaving(false);
-      setEditingAlias(false);
-    }
-  }
-
-  /* Toggle global aliases — lazy load on first open */
-  async function toggleAliases(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (!aliasesOpen && !aliasesLoaded && onAliasLoad) {
-      setAliasesLoading(true);
-      try {
-        const data = await onAliasLoad(bookmark.scheme_code);
-        setAliases(data);
-        setAliasesLoaded(true);
-      } finally {
-        setAliasesLoading(false);
-      }
-    }
-    setAliasesOpen(v => !v);
-  }
-
-  async function addAlias(e: React.MouseEvent) {
-    e.stopPropagation();
-    const val = newAliasInput.trim();
-    if (!val || !onAliasAdd) return;
-    setAddingAlias(true);
-    try {
-      const created = await onAliasAdd(bookmark.scheme_code, val);
-      setAliases(prev => [...prev, created]);
-      setNewAliasInput('');
-    } finally {
-      setAddingAlias(false);
-    }
-  }
-
-  async function deleteAlias(e: React.MouseEvent, id: number) {
-    e.stopPropagation();
-    if (!onAliasDelete) return;
-    await onAliasDelete(id, bookmark.scheme_code);
-    setAliases(prev => prev.filter(a => a.id !== id));
-  }
-
-  /* Mobile primary action */
+  /* Mobile primary action = first action marked primary, else first action */
   const primaryAction = actions.find(a => a.primary) ?? actions[0];
   const moreActions = actions.filter(a => a !== primaryAction);
-
-  const showAliasSection = !!(onAliasLoad || onAliasAdd || onAliasDelete);
 
   return (
     <div
@@ -224,7 +138,7 @@ export function VdfTrackingCard({
         </div>
       )}
 
-      {/* ── Remove button — top-right absolute ── */}
+      {/* ── Remove button — top-right, safe ── */}
       {onRemove && (
         <button
           className={`${s.removeBtn} ${confirmRemove ? s.removeBtnConfirm : ''}`}
@@ -237,64 +151,15 @@ export function VdfTrackingCard({
 
       {/* ── Info ── */}
       <div className={s.info}>
+        {/* Name + metrics badge */}
+        <div className={s.nameRow}>
+          <span className={s.name}>{bookmark.alias_name || bookmark.scheme_name}</span>
+          <span className={`${s.metricsBadge} ${s[`mb_${ml === 'Metrics ✓' ? 'fresh' : ml === 'Metrics ↻' ? 'outdated' : 'none'}`]}`}>
+            {ml}
+          </span>
+        </div>
 
-        {/* Row 1: name / alias edit */}
-        {editingAlias ? (
-          <div className={s.aliasEditRow} onClick={e => e.stopPropagation()}>
-            <input
-              className={s.aliasInput}
-              value={aliasInput}
-              onChange={e => setAliasInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') saveAlias();
-                if (e.key === 'Escape') setEditingAlias(false);
-              }}
-              placeholder={bookmark.scheme_name}
-              autoFocus
-            />
-            <button className={s.aliasSaveBtn} onClick={() => saveAlias()} disabled={aliasSaving}>
-              {aliasSaving ? <span className={s.spinner} /> : '✓'}
-            </button>
-            <button className={s.aliasCancelBtn} onClick={e => { e.stopPropagation(); setEditingAlias(false); }}>
-              ✕
-            </button>
-          </div>
-        ) : (
-          <div className={s.nameRow}>
-            <span className={s.name}>{bookmark.alias_name || bookmark.scheme_name}</span>
-            {onAliasEdit && (
-              <button
-                className={s.aliasEditBtn}
-                onClick={e => { e.stopPropagation(); setAliasInput(bookmark.alias_name || ''); setEditingAlias(true); }}
-                title="Set display name"
-              >
-                ✎
-              </button>
-            )}
-            <span className={`${s.metricsBadge} ${s[`mb_${ml === 'Metrics ✓' ? 'fresh' : ml === 'Metrics ↻' ? 'outdated' : 'none'}`]}`}>
-              {ml}
-            </span>
-          </div>
-        )}
-
-        {/* Show original scheme name when alias is set */}
-        {bookmark.alias_name && !editingAlias && (
-          <div className={s.aliasOriginalRow} onClick={e => e.stopPropagation()}>
-            <span className={s.aliasOriginalLabel}>aka</span>
-            <span className={s.aliasOriginalName}>{bookmark.scheme_name}</span>
-            {onAliasEdit && (
-              <button
-                className={s.aliasClearBtn}
-                onClick={e => { e.stopPropagation(); saveAlias(null); }}
-                title="Clear display name"
-              >
-                clear
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Row 2: code · AMC · Ended */}
+        {/* Code · AMC · Ended badge */}
         <div className={s.metaRow}>
           <span className={s.monoChip}>{bookmark.scheme_code}</span>
           <span className={s.sep}>·</span>
@@ -302,7 +167,7 @@ export function VdfTrackingCard({
           {bookmark.active === false && <span className={s.endedChip}>Ended</span>}
         </div>
 
-        {/* Row 3: NAV data range */}
+        {/* Data row */}
         <div className={s.dataRow}>
           {hasData ? (
             <>
@@ -327,68 +192,6 @@ export function VdfTrackingCard({
             <span className={s.noData}>No NAV data — download to start tracking</span>
           )}
         </div>
-
-        {/* Row 4: import-matching aliases (expandable) */}
-        {showAliasSection && (
-          <div className={s.aliasSection} onClick={e => e.stopPropagation()}>
-            <button className={s.aliasToggle} onClick={toggleAliases}>
-              <span className={s.aliasToggleChevron}>{aliasesOpen ? '▾' : '▸'}</span>
-              Import Aliases
-              {!aliasesOpen && aliasesLoaded && aliases.length > 0 && (
-                <span className={s.aliasCount}>{aliases.length}</span>
-              )}
-            </button>
-
-            {aliasesOpen && (
-              <div className={s.aliasPanel}>
-                {aliasesLoading ? (
-                  <span className={s.aliasMuted}>Loading…</span>
-                ) : (
-                  <>
-                    {aliases.length === 0 && !onAliasAdd ? (
-                      <span className={s.aliasMuted}>No aliases yet</span>
-                    ) : (
-                      <div className={s.aliasChips}>
-                        {aliases.map(a => (
-                          <div key={a.id} className={`${s.chip} ${a.source === 'auto' ? s.chipAuto : s.chipManual}`}>
-                            <span className={s.chipName}>{a.alias_name}</span>
-                            <span className={s.chipSource}>{a.source}</span>
-                            {onAliasDelete && (
-                              <button className={s.chipDel} onClick={e => deleteAlias(e, a.id)} title="Remove alias">×</button>
-                            )}
-                          </div>
-                        ))}
-                        {aliases.length === 0 && (
-                          <span className={s.aliasMuted}>No aliases yet — add one below</span>
-                        )}
-                      </div>
-                    )}
-
-                    {onAliasAdd && (
-                      <div className={s.aliasAddRow}>
-                        <input
-                          className={s.aliasAddInput}
-                          value={newAliasInput}
-                          onChange={e => setNewAliasInput(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') addAlias(e as any); }}
-                          placeholder="Add alias for import matching…"
-                          onClick={e => e.stopPropagation()}
-                        />
-                        <button
-                          className={s.aliasAddBtn}
-                          onClick={addAlias}
-                          disabled={!newAliasInput.trim() || addingAlias}
-                        >
-                          {addingAlias ? <span className={s.spinner} /> : '+ Add'}
-                        </button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* ── Actions ── */}
