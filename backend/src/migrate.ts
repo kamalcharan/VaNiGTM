@@ -166,6 +166,33 @@ async function showStatus(pool: Pool): Promise<void> {
   console.log(`\n  ${applied.length} applied, ${pending.length} pending\n`);
 }
 
+/* ── Exported: run migrations against an existing pool ─ */
+
+export async function runMigrations(pool: Pool): Promise<void> {
+  const files = discoverMigrations();
+  const applied = await getAppliedMigrations(pool);
+  const appliedSet = new Set(applied.map((a) => a.filename));
+  const pending = files.filter((f) => !appliedSet.has(f.filename));
+
+  if (pending.length === 0) {
+    console.log('[Migrate] All migrations up to date.');
+    return;
+  }
+
+  console.log(`[Migrate] ${pending.length} pending migration(s) — applying...`);
+  for (const migration of pending) {
+    process.stdout.write(`  ${migration.filename}...`);
+    try {
+      const ms = await applyMigration(pool, migration);
+      console.log(` done (${ms}ms)`);
+    } catch (err) {
+      console.error(` FAILED: ${err instanceof Error ? err.message : String(err)}`);
+      throw err; // Propagate — server should not start with a failed migration
+    }
+  }
+  console.log(`[Migrate] ${pending.length} migration(s) applied.`);
+}
+
 /* ── Main ───────────────────────────────────────────── */
 
 async function main(): Promise<void> {

@@ -8,6 +8,7 @@ import { createAuthRouter, createOnboardingRouter, createTenantRouter } from './
 import { createEtlRouter } from './etl/etl.routes';
 import { createNavRouter } from './nav/nav.routes';
 import { verifyAccessToken } from './auth/token.service';
+import { runMigrations } from './migrate';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -49,6 +50,15 @@ async function main() {
   } catch (err) {
     console.error('[ProKey] Database connection failed:', err instanceof Error ? err.message : err);
     console.error('[ProKey] Continuing without DB — skill calls will fail.');
+  }
+
+  // Run pending migrations automatically on every startup
+  // Safe: idempotent, skips already-applied migrations, rolls back on failure
+  try {
+    await runMigrations(pool);
+  } catch (err) {
+    console.error('[ProKey] Migration failed — server will not start:', err instanceof Error ? err.message : err);
+    process.exit(1);
   }
 
   // Mount auth + onboarding + tenant routes
