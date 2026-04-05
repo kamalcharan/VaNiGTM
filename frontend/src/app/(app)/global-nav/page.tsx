@@ -123,6 +123,7 @@ export default function GlobalNavPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalMatches, setTotalMatches] = useState(0);
   const [bookmarkLoading, setBookmarkLoading] = useState<string | null>(null);
+  const [calcLoading, setCalcLoading] = useState<string | null>(null);
   const [downloadModal, setDownloadModal] = useState<SchemeRow | null>(null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -210,15 +211,30 @@ export default function GlobalNavPage() {
     }).then(r => setStats(r.data)).catch(() => {});
   }
 
+  /* ── Calc metrics for a single scheme ── */
+  async function calcMetrics(code: string) {
+    if (calcLoading) return;
+    setCalcLoading(code);
+    try {
+      const r = await apiFetch<any>({ ...API.nav.calculateMetrics, path: API.nav.calculateMetrics.path.replace(':code', code) });
+      showToast({ message: r.status === 'already_fresh' ? 'Metrics up to date' : `${r.records_updated || 0} records updated`, type: 'success' });
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Metrics calculation failed', type: 'error' });
+    } finally {
+      setCalcLoading(null);
+    }
+  }
+
   /* ── Filter card click — resets page ── */
   function handleFilterClick(status: FilterStatus) {
     setFilterStatus(status);
     setPage(1);
   }
 
-  /* ── Card actions for each row ── */
+  /* ── Card actions — matches My NAV 4-button layout exactly ── */
   function cardActions(row: SchemeRow): TrackingCardAction[] {
-    const busy = bookmarkLoading === row.scheme_code;
+    const bookmarkBusy = bookmarkLoading === row.scheme_code;
+    const calcBusy = calcLoading === row.scheme_code;
     return [
       {
         label: 'Dashboard',
@@ -232,10 +248,17 @@ export default function GlobalNavPage() {
         variant: 'success',
       },
       {
-        label: row.is_bookmarked ? '★ My NAV' : '☆ Add to My NAV',
+        label: 'Calc Metrics',
+        onClick: () => calcMetrics(row.scheme_code),
+        variant: 'muted',
+        disabled: calcBusy || row.nav_records === 0,
+        loading: calcBusy,
+      },
+      {
+        label: row.is_bookmarked ? '★ My NAV' : '☆ My NAV',
         onClick: () => toggleBookmark(row),
         variant: 'muted',
-        disabled: busy,
+        disabled: bookmarkBusy,
       },
     ];
   }
