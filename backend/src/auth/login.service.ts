@@ -196,23 +196,24 @@ export async function login(
   );
   const role = roleResult.rows.length > 0 ? (roleResult.rows[0] as any).code : 'planner';
 
-  // 9. Create session — restore the user's last environment preference (default: live)
-  const userPrefs = (user.preferences as Record<string, any>) || {};
-  const isLive: boolean = userPrefs.env_mode !== 'sandbox';
-  const tokens = await createSession(pool, user.id, user.tenant_id, email, role, device, isLive);
-
-  // 10. Update last_login_at
-  await pool.query('UPDATE vn_users SET last_login_at = now(), updated_at = now() WHERE id = $1', [user.id]);
-
-  // 11. Get tenant info
+  // 9. Get tenant info (needed for is_admin before creating session)
   const tenantResult = await pool.query(
-    `SELECT t.id, t.slug, tp.name, tp.display_name, tp.theme_id
+    `SELECT t.id, t.slug, t.is_admin, tp.name, tp.display_name, tp.theme_id
      FROM vn_tenants t
      JOIN vn_tenant_profiles tp ON tp.tenant_id = t.id
      WHERE t.id = $1`,
     [user.tenant_id],
   );
   const tenant = tenantResult.rows[0] as any || {};
+
+  // 10. Create session — restore the user's last environment preference (default: live)
+  const userPrefs = (user.preferences as Record<string, any>) || {};
+  const isLive: boolean = userPrefs.env_mode !== 'sandbox';
+  const isAdmin: boolean = tenant.is_admin === true;
+  const tokens = await createSession(pool, user.id, user.tenant_id, email, role, device, isLive, isAdmin);
+
+  // 11. Update last_login_at
+  await pool.query('UPDATE vn_users SET last_login_at = now(), updated_at = now() WHERE id = $1', [user.id]);
 
   // 12. Check onboarding
   const onboardingResult = await pool.query(

@@ -432,7 +432,7 @@ export function createAuthRouter(pool: Pool): Router {
 
       // Tenant info
       const tenantResult = await pool.query(
-        `SELECT t.id, t.slug, tp.name, tp.display_name, tp.theme_id, tp.logo_url
+        `SELECT t.id, t.slug, t.is_admin, tp.name, tp.display_name, tp.theme_id, tp.logo_url
          FROM vn_tenants t
          JOIN vn_tenant_profiles tp ON tp.tenant_id = t.id
          WHERE t.id = $1`,
@@ -472,6 +472,7 @@ export function createAuthRouter(pool: Pool): Router {
           logo_url: tenant.logo_url,
           onboarding_complete: onboardingComplete,
           is_live: is_live !== false,  // default true if somehow missing from JWT
+          is_admin: tenant.is_admin === true,
         },
       });
     } catch (err: any) {

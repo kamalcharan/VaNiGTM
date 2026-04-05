@@ -29,7 +29,8 @@ export interface JwtPayload {
   tenant_id: string;
   email: string;
   role: string;
-  is_live: boolean;  // TRUE = live environment, FALSE = sandbox
+  is_live: boolean;   // TRUE = live environment, FALSE = sandbox
+  is_admin: boolean;  // TRUE = tenant has admin privileges
 }
 
 export interface TokenPair {
@@ -111,8 +112,9 @@ export async function createSession(
   role: string,
   device: DeviceInfo,
   isLive: boolean = true,
+  isAdmin: boolean = false,
 ): Promise<TokenPair> {
-  const accessToken = signAccessToken({ user_id: userId, tenant_id: tenantId, email, role, is_live: isLive });
+  const accessToken = signAccessToken({ user_id: userId, tenant_id: tenantId, email, role, is_live: isLive, is_admin: isAdmin });
   const rawRefreshToken = generateRefreshToken();
   const tokenHash = hashToken(rawRefreshToken);
 
@@ -150,9 +152,11 @@ export async function refreshSession(
   // Find the active session for this refresh token
   const result = await pool.query(
     `SELECT rt.id, rt.user_id, rt.tenant_id, rt.is_active, rt.expires_at,
-            u.email, u.is_active AS user_active
+            u.email, u.is_active AS user_active,
+            t.is_admin
      FROM vn_refresh_tokens rt
      JOIN vn_users u ON u.id = rt.user_id
+     JOIN vn_tenants t ON t.id = rt.tenant_id
      WHERE rt.token_hash = $1`,
     [tokenHash],
   );
@@ -199,6 +203,7 @@ export async function refreshSession(
     email: session.email,
     role,
     is_live: isLive,
+    is_admin: session.is_admin === true,
   });
   const newRawRefreshToken = generateRefreshToken();
   const newTokenHash = hashToken(newRawRefreshToken);

@@ -26,7 +26,8 @@ export interface MeTenant {
   theme_id?: string;
   logo_url?: string;
   onboarding_complete: boolean;
-  is_live: boolean;  // TRUE = live environment, FALSE = sandbox
+  is_live: boolean;   // TRUE = live environment, FALSE = sandbox
+  is_admin: boolean;  // TRUE = tenant has admin privileges
 }
 
 export interface MeResponse {

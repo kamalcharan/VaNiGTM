@@ -1177,6 +1177,11 @@ export function createNavRouter(pool: Pool): Router {
       const jwt = extractJwt(req);
       if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
+      if (!jwt.is_admin) {
+        res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Admin privileges required to delete aliases' } });
+        return;
+      }
+
       const id = parseInt(req.params.id, 10);
       if (isNaN(id)) { res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid alias id' } }); return; }
 

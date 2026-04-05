@@ -77,7 +77,7 @@ function computeStatus(b: TrackingBookmark): TrackingStatus {
 export default function MyNavPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const cancelRef = useRef(false);
 
   const [tab, setTab] = useState<Tab>('my-schemes');
@@ -846,6 +846,15 @@ export default function MyNavPage() {
                         variant={['csv_upload', 'import'].includes(alias.source) ? 'success' : alias.source === 'manual' ? 'info' : 'muted'}
                         size="sm"
                       />
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDeleteAlias(alias.id)}
+                          title="Delete alias"
+                          style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', fontSize: '0.85rem', padding: '2px 4px', borderRadius: 4, lineHeight: 1 }}
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
