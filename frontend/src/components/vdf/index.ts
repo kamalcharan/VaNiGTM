@@ -25,3 +25,4 @@ export { VdfLoader, type VdfLoaderProps } from './loader/VdfLoader';
 export { VdfProgressOverlay, type VdfProgressOverlayProps, type ProgressItem } from './progress-overlay/VdfProgressOverlay';
 export { VdfTrackingCard, type TrackingBookmark, type TrackingCardAction, type TrackingStatus } from './VdfTrackingCard';
 export { VdfProactiveCard, type VdfProactiveCardProps } from './proactive-card/VdfProactiveCard';
+export { VdfDownloadNavModal, type VdfDownloadNavModalProps } from './download-nav-modal/VdfDownloadNavModal';

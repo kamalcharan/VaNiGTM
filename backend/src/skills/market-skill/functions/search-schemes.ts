@@ -3,11 +3,10 @@
  * Uses PostgreSQL full-text search with ILIKE fallback.
  * Includes NAV data status (records count, date range, latest NAV).
  * Supports pagination (page + limit).
+ * Optional filters: active_only, has_nav_data.
  */
 
 import { SkillContext } from '../../../shared/types';
-import * as fs from 'fs';
-import * as path from 'path';
 
 interface SearchRow {
   scheme_code: string;
@@ -55,7 +54,7 @@ interface SearchSchemesResult {
   recipe: 'data-table';
 }
 
-const SEARCH_QUERY = `
+const BASE_SELECT = `
 SELECT
     s.scheme_code,
     s.scheme_name,
@@ -71,8 +70,7 @@ SELECT
     ns.earliest_nav_date::text,
     ns.latest_nav_date::text,
     COALESCE(ns.has_metrics, false) AS metrics_calculated,
-    (kb.scheme_code IS NOT NULL) AS is_bookmarked,
-    ts_rank(to_tsvector('english', s.scheme_name), plainto_tsquery('english', $query)) AS rank
+    (kb.scheme_code IS NOT NULL) AS is_bookmarked
 FROM ki_schemes s
 LEFT JOIN LATERAL (
     SELECT nav, nav_date
@@ -92,47 +90,97 @@ LEFT JOIN LATERAL (
 ) ns ON true
 LEFT JOIN ki_scheme_bookmarks kb
     ON kb.scheme_code = s.scheme_code AND kb.tenant_id = $tenant_id
-WHERE (
-    to_tsvector('english', s.scheme_name) @@ plainto_tsquery('english', $query)
-    OR s.scheme_name ILIKE $query_like
-    OR s.amc ILIKE $query_like
-    OR s.category ILIKE $query_like
-    OR s.scheme_code = $query
-)
-ORDER BY rank DESC, s.scheme_name ASC
-LIMIT $limit OFFSET $offset
-`;
-
-const COUNT_QUERY = `
-SELECT COUNT(*) AS total
-FROM ki_schemes s
-WHERE (
-    to_tsvector('english', s.scheme_name) @@ plainto_tsquery('english', $query)
-    OR s.scheme_name ILIKE $query_like
-    OR s.amc ILIKE $query_like
-    OR s.category ILIKE $query_like
-    OR s.scheme_code = $query
-)
 `;
 
 export async function search_schemes(
-  params: { query: string; limit?: number; page?: number },
+  params: {
+    query?: string;
+    limit?: number;
+    page?: number;
+    active_only?: boolean;
+    has_nav_data?: boolean;
+  },
   ctx: SkillContext
 ): Promise<SearchSchemesResult> {
-  const { query, limit = 50, page = 1 } = params;
+  const { query = '', limit = 50, page = 1, active_only, has_nav_data } = params;
   const offset = (page - 1) * limit;
+  const cleanQuery = query.trim();
 
-  const queryParams = {
-    $query: query,
-    $query_like: `%${query}%`,
-    $limit: limit,
-    $offset: offset,
-    $tenant_id: ctx.tenant_id,
-  };
+  // Build optional WHERE conditions
+  let extraWhere = '';
+  if (active_only === true)    extraWhere += ' AND s.active = true';
+  if (active_only === false)   extraWhere += ' AND s.active = false';
+  if (has_nav_data === true)   extraWhere += ' AND COALESCE(ns.nav_records, 0) > 0';
+  if (has_nav_data === false)  extraWhere += ' AND COALESCE(ns.nav_records, 0) = 0';
+
+  let dataQuery: string;
+  let countQuery: string;
+  let queryParams: Record<string, unknown>;
+
+  if (!cleanQuery) {
+    // No search — list all schemes ordered by name
+    dataQuery = `
+      ${BASE_SELECT}, 0 AS rank
+      WHERE 1=1 ${extraWhere}
+      ORDER BY s.scheme_name ASC
+      LIMIT $limit OFFSET $offset
+    `;
+    countQuery = `
+      SELECT COUNT(*) AS total
+      FROM ki_schemes s
+      LEFT JOIN LATERAL (
+          SELECT COUNT(*)::integer AS nav_records
+          FROM ki_nav_history nh WHERE nh.scheme_code = s.scheme_code
+      ) ns ON true
+      WHERE 1=1 ${extraWhere}
+    `;
+    queryParams = {
+      $tenant_id: ctx.tenant_id,
+      $limit: limit,
+      $offset: offset,
+    };
+  } else {
+    // Full-text + ILIKE search
+    dataQuery = `
+      ${BASE_SELECT},
+      ts_rank(to_tsvector('english', s.scheme_name), plainto_tsquery('english', $query)) AS rank
+      WHERE (
+          to_tsvector('english', s.scheme_name) @@ plainto_tsquery('english', $query)
+          OR s.scheme_name ILIKE $query_like
+          OR s.amc ILIKE $query_like
+          OR s.category ILIKE $query_like
+          OR s.scheme_code = $query
+      ) ${extraWhere}
+      ORDER BY rank DESC, s.scheme_name ASC
+      LIMIT $limit OFFSET $offset
+    `;
+    countQuery = `
+      SELECT COUNT(*) AS total
+      FROM ki_schemes s
+      LEFT JOIN LATERAL (
+          SELECT COUNT(*)::integer AS nav_records
+          FROM ki_nav_history nh WHERE nh.scheme_code = s.scheme_code
+      ) ns ON true
+      WHERE (
+          to_tsvector('english', s.scheme_name) @@ plainto_tsquery('english', $query)
+          OR s.scheme_name ILIKE $query_like
+          OR s.amc ILIKE $query_like
+          OR s.category ILIKE $query_like
+          OR s.scheme_code = $query
+      ) ${extraWhere}
+    `;
+    queryParams = {
+      $query: cleanQuery,
+      $query_like: `%${cleanQuery}%`,
+      $tenant_id: ctx.tenant_id,
+      $limit: limit,
+      $offset: offset,
+    };
+  }
 
   const [dataResult, countResult] = await Promise.all([
-    ctx.db.query<SearchRow>(SEARCH_QUERY, queryParams),
-    ctx.db.query<{ total: number }>(COUNT_QUERY, queryParams),
+    ctx.db.query<SearchRow>(dataQuery, queryParams),
+    ctx.db.query<{ total: number }>(countQuery, queryParams),
   ]);
 
   const total = Number(countResult.rows[0]?.total || 0);
