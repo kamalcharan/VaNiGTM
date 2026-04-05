@@ -277,22 +277,37 @@ export function createNavRouter(pool: Pool): Router {
           // Seed two aliases per new bookmark (kewalinvest parity):
           //   Alias 1: raw CSV name (source='csv_upload') — what the tenant calls this scheme
           //   Alias 2: master scheme_name (source='auto')  — canonical name from ki_schemes
-          // Both are used by lookup_scheme_by_alias() during future import matching.
+          // Track alias result and write back to mapped_data so the import dashboard can display it.
           if (isNew) {
+            let aliasStatus: 'created' | 'exists' | 'failed' = 'exists';
+            const aliasLabel = mapped.scheme_name || scheme.scheme_name;
             try {
               if (mapped.scheme_name) {
-                await pool.query(
+                const ar = await pool.query(
                   `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
                    VALUES ($1, $2, 'csv_upload')
-                   ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING`,
+                   ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING
+                   RETURNING id`,
                   [scheme.scheme_code, mapped.scheme_name],
                 );
+                aliasStatus = ar.rows.length > 0 ? 'created' : 'exists';
               }
               await pool.query(
                 `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
                  VALUES ($1, $2, 'auto')
                  ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING`,
                 [scheme.scheme_code, scheme.scheme_name],
+              );
+            } catch {
+              aliasStatus = 'failed';
+            }
+            // Write alias result back to staging row so the dashboard can display it
+            try {
+              await pool.query(
+                `UPDATE ki_import_staging
+                 SET mapped_data = mapped_data || $1::jsonb
+                 WHERE id = $2`,
+                [JSON.stringify({ _alias_name: aliasLabel, _alias_status: aliasStatus }), rowId],
               );
             } catch { /* non-fatal */ }
           }

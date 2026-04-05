@@ -42,6 +42,12 @@ const STATUS_MAP: Record<string, { label: string; color: BadgeVariant }> = {
   duplicate: { label: 'Duplicate', color: 'muted' },  // already tracked — rejected, no action
 };
 
+const ALIAS_STATUS_MAP: Record<string, { label: string; color: BadgeVariant }> = {
+  created: { label: 'Created', color: 'success' },
+  exists:  { label: 'Exists',  color: 'muted' },
+  failed:  { label: 'Failed',  color: 'danger' },
+};
+
 function timeAgo(iso: string): string {
   const h = Math.floor((Date.now() - new Date(iso).getTime()) / 3600000);
   if (h < 1) return 'Just now'; if (h < 24) return `${h}h ago`; return `${Math.floor(h / 24)}d ago`;
@@ -312,7 +318,8 @@ export default function ImportDashboardPage() {
                           <th>Row</th>
                           <th>Scheme Code</th>
                           <th>Scheme Name</th>
-                          <th>AMC</th>
+                          {selectedSession.import_type !== 'bookmark' && <th>AMC</th>}
+                          {selectedSession.import_type === 'bookmark' && <th>Alias</th>}
                           <th>Status</th>
                           <th style={{ textAlign: 'center' }}>Action</th>
                         </tr>
@@ -320,14 +327,30 @@ export default function ImportDashboardPage() {
                       <tbody>
                         {records.records.map(rec => {
                           const st = STATUS_MAP[rec.processing_status] || STATUS_MAP.pending;
-                          // Operational health: does this scheme have NAV data?
                           const schemeCode = rec.mapped_data?.scheme_code;
+                          const aliasStatus = rec.mapped_data?._alias_status as string | undefined;
+                          const aliasName = rec.mapped_data?._alias_name as string | undefined;
+                          const aliasBadge = aliasStatus ? (ALIAS_STATUS_MAP[aliasStatus] || ALIAS_STATUS_MAP.exists) : null;
                           return (
                             <tr key={rec.id} style={{ cursor: 'pointer' }} onClick={() => setDrawerRecord(rec)}>
                               <td style={{ color: 'var(--color-muted)', fontWeight: 500 }}>{rec.row_number}</td>
                               <td className={d.tdMono} style={{ fontSize: '0.72rem' }}>{schemeCode || '\u2014'}</td>
                               <td style={{ fontWeight: 600 }}>{rec.mapped_data?.scheme_name || '\u2014'}</td>
-                              <td style={{ fontSize: '0.72rem', color: 'var(--color-muted)' }}>{rec.mapped_data?.amc || '\u2014'}</td>
+                              {selectedSession.import_type !== 'bookmark' && (
+                                <td style={{ fontSize: '0.72rem', color: 'var(--color-muted)' }}>{rec.mapped_data?.amc || '\u2014'}</td>
+                              )}
+                              {selectedSession.import_type === 'bookmark' && (
+                                <td>
+                                  {aliasBadge ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <VdfStatusBadge label={aliasBadge.label} variant={aliasBadge.color} size="sm" />
+                                      {aliasName && <span style={{ fontSize: '0.68rem', color: 'var(--color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>{aliasName}</span>}
+                                    </div>
+                                  ) : (
+                                    <span style={{ color: 'var(--color-muted)', fontSize: '0.72rem' }}>\u2014</span>
+                                  )}
+                                </td>
+                              )}
                               <td><VdfStatusBadge label={st.label} variant={st.color} size="sm" /></td>
                               <td style={{ textAlign: 'center' }}>
                                 <button className={s.viewBtn} onClick={e => { e.stopPropagation(); setDrawerRecord(rec); }}>
@@ -406,7 +429,23 @@ export default function ImportDashboardPage() {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><polyline points="20 6 9 17 4 12" /></svg>
                   <span>Added to watchlist. Download NAV data to begin tracking.</span>
                 </div>
-              ) : (
+              ) : null}
+              {/* Alias status — bookmark imports only */}
+              {drawerRecord.mapped_data?._alias_status && (() => {
+                const a = ALIAS_STATUS_MAP[drawerRecord.mapped_data._alias_status] || ALIAS_STATUS_MAP.exists;
+                const name = drawerRecord.mapped_data?._alias_name;
+                return (
+                  <div className={`${s.drawerDiagnostic} ${s.diagInfo}`} style={{ marginTop: 8,
+                    color: a.color === 'success' ? 'var(--color-success)' : a.color === 'danger' ? 'var(--color-danger)' : 'var(--color-muted)',
+                    background: a.color === 'success' ? 'color-mix(in srgb, var(--color-success) 8%, transparent)' : a.color === 'danger' ? 'color-mix(in srgb, var(--color-danger) 8%, transparent)' : 'color-mix(in srgb, var(--color-muted) 8%, transparent)',
+                    border: `1px solid color-mix(in srgb, var(--color-${a.color === 'success' ? 'success' : a.color === 'danger' ? 'danger' : 'muted'}) 12%, transparent)`,
+                  }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M7 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2h-3" /><polyline points="16 3 12 7 8 3" /></svg>
+                    <span>Alias {a.label.toLowerCase()}{name ? `: "${name}"` : ''}</span>
+                  </div>
+                );
+              })()}
+              {!drawerRecord.error_messages?.length && drawerRecord.processing_status !== 'success' && drawerRecord.processing_status !== 'duplicate' && !drawerRecord.mapped_data?._alias_status && (
                 <div className={`${s.drawerDiagnostic} ${s.diagInfo}`}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                   <span>Pending processing.</span>
