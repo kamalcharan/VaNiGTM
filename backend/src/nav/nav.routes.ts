@@ -5,6 +5,7 @@
  * All downloads use withIdempotency() for global data safety.
  *
  * POST   /api/v1/nav/bookmarks              — Bookmark a scheme
+ * POST   /api/v1/nav/bookmarks/import       — Bulk import bookmarks from uploaded file
  * GET    /api/v1/nav/bookmarks              — List tenant's bookmarks with NAV status
  * DELETE /api/v1/nav/bookmarks/:schemeCode  — Remove bookmark
  * PATCH  /api/v1/nav/bookmarks/:schemeCode/alias — Update bookmark alias_name
@@ -27,6 +28,8 @@ import { verifyAccessToken, type JwtPayload } from '../auth/token.service';
 import { withIdempotency } from '../lib/idempotent';
 import { fetchAmfiDaily } from '../fetchers/amfi-fetcher';
 import { fetchMfapiHistory } from '../fetchers/mfapi-fetcher';
+import { parseExcelRows } from '../etl/excel-parser';
+import { BOOKMARK_FIELD_MAP } from '../etl/scheme-processor';
 
 /* ── Auth ──────────────────────────────────────────── */
 
@@ -96,6 +99,154 @@ export function createNavRouter(pool: Pool): Router {
     } catch (err: any) {
       console.error('[NAV:bookmark]', err);
       res.status(500).json({ error: { code: 'BOOKMARK_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── POST /bookmarks/import — Bulk import from uploaded file ── */
+
+  router.post('/bookmarks/import', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const { file_id, field_mappings } = req.body;
+      if (!file_id) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'file_id required' } });
+        return;
+      }
+
+      // Get uploaded file record
+      const fileResult = await pool.query(
+        'SELECT * FROM ki_file_uploads WHERE id = $1',
+        [file_id],
+      );
+      if (fileResult.rows.length === 0) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found' } });
+        return;
+      }
+      const file = fileResult.rows[0] as any;
+      const mappings: Record<string, string> = field_mappings || BOOKMARK_FIELD_MAP;
+
+      // Parse all rows from the uploaded file
+      const rows = parseExcelRows(file.file_path);
+
+      let added = 0;
+      let already_tracked = 0;
+      let not_found = 0;
+      const errors: { row: number; code: string; reason: string }[] = [];
+      const startMs = Date.now();
+
+      for (let i = 0; i < rows.length; i++) {
+        const raw = rows[i];
+
+        // Apply field mapping — extract scheme_code, isin, scheme_name from row
+        const mapped: Record<string, string> = {};
+        for (const [col, field] of Object.entries(mappings)) {
+          const val = raw[col];
+          if (val !== undefined && val !== null && String(val).trim() !== '') {
+            mapped[field] = String(val).trim();
+          }
+        }
+
+        // Normalise scheme_code (Excel may read numeric cells as floats)
+        if (mapped.scheme_code) {
+          mapped.scheme_code = String(mapped.scheme_code).replace(/\.0+$/, '').trim();
+        }
+
+        // Need at least one identifier
+        if (!mapped.scheme_code && !mapped.isin) {
+          errors.push({ row: i + 1, code: '—', reason: 'No scheme_code or ISIN found in row' });
+          continue;
+        }
+
+        try {
+          // Resolve scheme_code from ISIN if not directly provided
+          let schemeCode = mapped.scheme_code;
+          if (!schemeCode && mapped.isin) {
+            const isinResult = await pool.query(
+              `SELECT scheme_code FROM ki_schemes
+               WHERE isin_growth = $1 OR isin_dividend = $1 LIMIT 1`,
+              [mapped.isin],
+            );
+            if (isinResult.rows.length > 0) {
+              schemeCode = (isinResult.rows[0] as any).scheme_code;
+            }
+          }
+
+          if (!schemeCode) {
+            not_found++;
+            errors.push({ row: i + 1, code: mapped.isin || '—', reason: `ISIN ${mapped.isin} not found in ki_schemes` });
+            continue;
+          }
+
+          // Look up full scheme details (same as single add)
+          const schemeResult = await pool.query(
+            'SELECT scheme_code, scheme_name, amc, active, closure_date FROM ki_schemes WHERE scheme_code = $1',
+            [schemeCode],
+          );
+          if (schemeResult.rows.length === 0) {
+            not_found++;
+            errors.push({ row: i + 1, code: schemeCode, reason: `Scheme ${schemeCode} not found in ki_schemes` });
+            continue;
+          }
+
+          const scheme = schemeResult.rows[0] as any;
+          const isEnded = scheme.closure_date && new Date(scheme.closure_date) < new Date();
+          const dailyEnabled = scheme.active && !isEnded;
+
+          // Upsert bookmark — same SQL as single add
+          // (xmax = 0) is true for a fresh INSERT, false for DO UPDATE
+          const upsertResult = await pool.query(
+            `INSERT INTO ki_scheme_bookmarks
+               (tenant_id, user_id, scheme_code, scheme_name, amc, daily_download_enabled)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (tenant_id, scheme_code) DO UPDATE SET
+               daily_download_enabled = EXCLUDED.daily_download_enabled,
+               updated_at = now()
+             RETURNING (xmax = 0) AS is_new`,
+            [jwt.tenant_id, jwt.user_id, scheme.scheme_code, scheme.scheme_name, scheme.amc, dailyEnabled],
+          );
+
+          if ((upsertResult.rows[0] as any).is_new) added++;
+          else already_tracked++;
+
+          // Auto-seed global alias — same as single add, non-fatal
+          try {
+            await pool.query(
+              `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+               VALUES ($1, $2, 'auto')
+               ON CONFLICT (alias_name_normalized) DO NOTHING`,
+              [scheme.scheme_code, scheme.scheme_name],
+            );
+          } catch { /* non-fatal: alias table may not exist yet */ }
+
+        } catch (err: any) {
+          errors.push({ row: i + 1, code: mapped.scheme_code || mapped.isin || '—', reason: err.message });
+        }
+      }
+
+      // Mark file as completed
+      await pool.query(
+        `UPDATE ki_file_uploads SET processing_status = 'completed' WHERE id = $1`,
+        [file_id],
+      );
+
+      const duration_ms = Date.now() - startMs;
+      const failed = errors.length - not_found; // errors not caused by missing schemes
+
+      res.json({
+        session_id: null,
+        status: errors.length > 0 ? 'completed_with_errors' : 'completed',
+        processed: rows.length,
+        successful: added,
+        failed: not_found + failed,
+        duplicate: already_tracked,
+        duration_ms,
+        detail: { added, already_tracked, not_found, row_errors: errors.slice(0, 20) },
+      });
+    } catch (err: any) {
+      console.error('[NAV:bookmarks/import]', err);
+      res.status(500).json({ error: { code: 'IMPORT_FAILED', message: err.message || 'Bulk import failed' } });
     }
   });
 

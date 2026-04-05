@@ -10,6 +10,25 @@
  * Default field mapping: Excel column → mapped_data key.
  * These keys match what the DB function expects in mapped_data JSONB.
  */
+/**
+ * Bookmark import field mapping.
+ * Handles AMFI-style exports and common variations.
+ * Columns: numeric scheme code, ISIN, Fund/Scheme name.
+ */
+export const BOOKMARK_FIELD_MAP: Record<string, string> = {
+  'Code': 'scheme_code',
+  'Scheme Code': 'scheme_code',
+  'scheme_code': 'scheme_code',
+  'ISIN': 'isin',
+  'ISIN Div Payout/ ISIN Growth': 'isin',
+  'ISIN Growth': 'isin',
+  'Fund': 'scheme_name',
+  'Scheme Name': 'scheme_name',
+  'Fund Name': 'scheme_name',
+  'Name': 'scheme_name',
+  'AMC': 'amc',
+};
+
 export const SCHEME_FIELD_MAP: Record<string, string> = {
   'AMC': 'amc',
   'Code': 'scheme_code',

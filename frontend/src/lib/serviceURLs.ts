@@ -234,6 +234,12 @@ export const API = {
       auth: true,
       description: 'Bookmark a scheme for NAV tracking',
     },
+    bookmarkImport: {
+      method: 'POST',
+      path: '/api/v1/nav/bookmarks/import',
+      auth: true,
+      description: 'Bulk import bookmarks from uploaded file — reuses single-add upsert + alias seed',
+    },
     removeBookmark: {
       method: 'DELETE',
       path: '/api/v1/nav/bookmarks/:schemeCode',

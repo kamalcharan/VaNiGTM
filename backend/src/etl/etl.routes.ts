@@ -21,7 +21,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { parseExcelHeaders, parseExcelRows } from './excel-parser';
-import { mapSchemeRow, SCHEME_FIELD_MAP } from './scheme-processor';
+import { mapSchemeRow, SCHEME_FIELD_MAP, BOOKMARK_FIELD_MAP } from './scheme-processor';
 import { verifyAccessToken, type JwtPayload } from '../auth/token.service';
 
 const UPLOAD_DIR = path.resolve(__dirname, '../../uploads');
@@ -134,7 +134,9 @@ export function createEtlRouter(pool: Pool): Router {
       const { headers, sampleRows, totalRows } = parseExcelHeaders(file.file_path);
 
       // Auto-suggest mapping based on import type
-      const suggestedMapping = file.file_type === 'scheme' ? SCHEME_FIELD_MAP : {};
+      const suggestedMapping = file.file_type === 'scheme' ? SCHEME_FIELD_MAP
+        : file.file_type === 'bookmark' ? BOOKMARK_FIELD_MAP
+        : {};
 
       res.json({
         file_id: file.id,
