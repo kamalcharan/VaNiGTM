@@ -244,11 +244,6 @@ export default function MyNavPage() {
         onClick: () => openAliasModal(b),
         variant: 'muted' as const,
       },
-      {
-        label: 'Remove',
-        onClick: () => setRemoveConfirm([b.scheme_code]),
-        variant: 'warning' as const,
-      },
     ];
   }
 
@@ -487,6 +482,24 @@ export default function MyNavPage() {
   /* ── Render ────────────────────────────────────────── */
 
   // Full-page loader: show until both data is ready AND min duration has elapsed
+  /* ── Toolbar button helper ── */
+  function toolbarBtn(label: string, onClick: () => void, color?: string) {
+    return (
+      <button
+        key={label}
+        onClick={onClick}
+        style={{
+          height: 32, padding: '0 12px', border: `1px solid ${color || 'var(--color-border)'}`,
+          borderRadius: 6, background: 'transparent', color: color || 'var(--color-fg)',
+          fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+          transition: 'background 150ms',
+        }}
+      >
+        {label}
+      </button>
+    );
+  }
+
   if (bookmarksLoading || !minLoadDone) {
     return <VdfLoader message="Loading My NAV" hint="Fetching your tracked schemes" />;
   }
@@ -581,31 +594,22 @@ export default function MyNavPage() {
                 value={trackSearch}
                 onChange={e => setTrackSearch(e.target.value)}
               />
-              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
                 {selected.size > 0 ? (
                   <>
-                    <VdfButton variant="primary" size="sm" onClick={handleBulkDownload}>
-                      ↓ Download ({selected.size})
-                    </VdfButton>
-                    <VdfButton variant="outline" size="sm" onClick={handleBulkMetrics}>
-                      ⊕ Metrics
-                    </VdfButton>
-                    <button
-                      className={f.outlineBtn}
-                      style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', fontSize: '0.75rem', padding: '6px 12px' }}
-                      onClick={() => setRemoveConfirm([...selected])}
-                    >
-                      ✕ Remove ({selected.size})
-                    </button>
-                    <VdfButton variant="ghost" size="sm" onClick={() => setSelected(new Set())}>
-                      Clear
-                    </VdfButton>
+                    {toolbarBtn('↓ Download', handleBulkDownload, 'var(--color-primary)')}
+                    {toolbarBtn('⊕ Metrics', handleBulkMetrics)}
+                    {toolbarBtn(`✕ Remove (${selected.size})`, () => setRemoveConfirm([...selected]), 'var(--color-danger)')}
+                    {toolbarBtn('Clear', () => setSelected(new Set()))}
                   </>
                 ) : (
-                  <VdfButton variant="outline" size="sm" onClick={handleBulkMetrics}
-                    title="Recalculate metrics for all tracked schemes">
+                  <button
+                    onClick={handleBulkMetrics}
+                    title="Recalculate metrics for all tracked schemes"
+                    style={{ height: 32, padding: '0 12px', border: '1px solid var(--color-border)', borderRadius: 6, background: 'transparent', color: 'var(--color-fg)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
                     ⊕ All Metrics
-                  </VdfButton>
+                  </button>
                 )}
               </div>
             </div>
