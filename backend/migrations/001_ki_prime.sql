@@ -26,9 +26,9 @@ CREATE TABLE IF NOT EXISTS ki_schemes (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_ki_schemes_category ON ki_schemes(category);
-CREATE INDEX idx_ki_schemes_amc ON ki_schemes(amc);
-CREATE INDEX idx_ki_schemes_name_search ON ki_schemes USING gin(to_tsvector('english', scheme_name));
+CREATE INDEX IF NOT EXISTS idx_ki_schemes_category ON ki_schemes(category);
+CREATE INDEX IF NOT EXISTS idx_ki_schemes_amc ON ki_schemes(amc);
+CREATE INDEX IF NOT EXISTS idx_ki_schemes_name_search ON ki_schemes USING gin(to_tsvector('english', scheme_name));
 
 -- -----------------------------------------------------------
 -- NAV HISTORY (shared, not tenant-scoped)
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS ki_nav_history (
     UNIQUE(scheme_code, nav_date)
 );
 
-CREATE INDEX idx_ki_nav_scheme_date ON ki_nav_history(scheme_code, nav_date DESC);
+CREATE INDEX IF NOT EXISTS idx_ki_nav_scheme_date ON ki_nav_history(scheme_code, nav_date DESC);
 
 -- -----------------------------------------------------------
 -- SCHEME CATEGORIES (reference table)
@@ -89,10 +89,10 @@ CREATE TABLE IF NOT EXISTS ki_clients (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_ki_clients_tenant ON ki_clients(tenant_id);
-CREATE INDEX idx_ki_clients_tenant_name ON ki_clients(tenant_id, name);
-CREATE INDEX idx_ki_clients_family ON ki_clients(tenant_id, family_group_id);
-CREATE INDEX idx_ki_clients_name_search ON ki_clients USING gin(to_tsvector('english', name));
+CREATE INDEX IF NOT EXISTS idx_ki_clients_tenant ON ki_clients(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_ki_clients_tenant_name ON ki_clients(tenant_id, name);
+CREATE INDEX IF NOT EXISTS idx_ki_clients_family ON ki_clients(tenant_id, family_group_id);
+CREATE INDEX IF NOT EXISTS idx_ki_clients_name_search ON ki_clients USING gin(to_tsvector('english', name));
 
 -- -----------------------------------------------------------
 -- PORTFOLIOS (a client can have multiple — regular, direct, etc.)
@@ -107,8 +107,8 @@ CREATE TABLE IF NOT EXISTS ki_portfolios (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_ki_portfolios_tenant ON ki_portfolios(tenant_id);
-CREATE INDEX idx_ki_portfolios_client ON ki_portfolios(tenant_id, client_id);
+CREATE INDEX IF NOT EXISTS idx_ki_portfolios_tenant ON ki_portfolios(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_ki_portfolios_client ON ki_portfolios(tenant_id, client_id);
 
 -- -----------------------------------------------------------
 -- HOLDINGS (current state — units held per scheme)
@@ -132,9 +132,9 @@ CREATE TABLE IF NOT EXISTS ki_holdings (
     UNIQUE(tenant_id, client_id, portfolio_id, scheme_code)
 );
 
-CREATE INDEX idx_ki_holdings_tenant ON ki_holdings(tenant_id);
-CREATE INDEX idx_ki_holdings_client ON ki_holdings(tenant_id, client_id);
-CREATE INDEX idx_ki_holdings_scheme ON ki_holdings(scheme_code);
+CREATE INDEX IF NOT EXISTS idx_ki_holdings_tenant ON ki_holdings(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_ki_holdings_client ON ki_holdings(tenant_id, client_id);
+CREATE INDEX IF NOT EXISTS idx_ki_holdings_scheme ON ki_holdings(scheme_code);
 
 -- -----------------------------------------------------------
 -- TRANSACTIONS (buy, sell, switch, dividend)
@@ -157,12 +157,12 @@ CREATE TABLE IF NOT EXISTS ki_transactions (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_ki_txn_tenant ON ki_transactions(tenant_id);
-CREATE INDEX idx_ki_txn_client ON ki_transactions(tenant_id, client_id);
-CREATE INDEX idx_ki_txn_client_date ON ki_transactions(tenant_id, client_id, txn_date DESC);
-CREATE INDEX idx_ki_txn_scheme ON ki_transactions(scheme_code, txn_date);
+CREATE INDEX IF NOT EXISTS idx_ki_txn_tenant ON ki_transactions(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_ki_txn_client ON ki_transactions(tenant_id, client_id);
+CREATE INDEX IF NOT EXISTS idx_ki_txn_client_date ON ki_transactions(tenant_id, client_id, txn_date DESC);
+CREATE INDEX IF NOT EXISTS idx_ki_txn_scheme ON ki_transactions(scheme_code, txn_date);
 -- Dedup index for idempotent imports
-CREATE UNIQUE INDEX idx_ki_txn_dedup ON ki_transactions(tenant_id, client_id, scheme_code, txn_date, amount, units) WHERE source != 'manual';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ki_txn_dedup ON ki_transactions(tenant_id, client_id, scheme_code, txn_date, amount, units) WHERE source != 'manual';
 
 
 -- ============================================================
@@ -189,8 +189,8 @@ CREATE TABLE IF NOT EXISTS ki_goals (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_ki_goals_tenant ON ki_goals(tenant_id);
-CREATE INDEX idx_ki_goals_client ON ki_goals(tenant_id, client_id);
+CREATE INDEX IF NOT EXISTS idx_ki_goals_tenant ON ki_goals(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_ki_goals_client ON ki_goals(tenant_id, client_id);
 
 -- -----------------------------------------------------------
 -- GOAL PROJECTIONS CACHE (pre-computed monthly projections)
@@ -207,7 +207,7 @@ CREATE TABLE IF NOT EXISTS ki_goal_projections (
     computed_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_ki_projections_goal ON ki_goal_projections(goal_id);
+CREATE INDEX IF NOT EXISTS idx_ki_projections_goal ON ki_goal_projections(goal_id);
 
 
 -- ============================================================
@@ -235,9 +235,9 @@ CREATE TABLE IF NOT EXISTS ki_alerts (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_ki_alerts_tenant ON ki_alerts(tenant_id);
-CREATE INDEX idx_ki_alerts_tenant_active ON ki_alerts(tenant_id, dismissed, acted_on) WHERE dismissed = false AND acted_on = false;
-CREATE INDEX idx_ki_alerts_client ON ki_alerts(tenant_id, client_id);
+CREATE INDEX IF NOT EXISTS idx_ki_alerts_tenant ON ki_alerts(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_ki_alerts_tenant_active ON ki_alerts(tenant_id, dismissed, acted_on) WHERE dismissed = false AND acted_on = false;
+CREATE INDEX IF NOT EXISTS idx_ki_alerts_client ON ki_alerts(tenant_id, client_id);
 
 
 -- ============================================================

@@ -53,12 +53,13 @@ async function main() {
   }
 
   // Run pending migrations automatically on every startup
-  // Safe: idempotent, skips already-applied migrations, rolls back on failure
+  // Idempotent: skips already-applied migrations. Warns on failure but does not
+  // crash the server — DB may already have the schema from a previous manual run.
   try {
     await runMigrations(pool);
   } catch (err) {
-    console.error('[ProKey] Migration failed — server will not start:', err instanceof Error ? err.message : err);
-    process.exit(1);
+    console.error('[ProKey] Migration warning (server continuing):', err instanceof Error ? err.message : err);
+    console.error('[ProKey] Run "npm run db:migrate" manually if schema is out of date.');
   }
 
   // Mount auth + onboarding + tenant routes

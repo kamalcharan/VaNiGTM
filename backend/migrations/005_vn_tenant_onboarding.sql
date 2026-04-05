@@ -32,7 +32,7 @@ CREATE TABLE VN_tenant_onboarding (
     CONSTRAINT vn_tenant_onboarding_unique UNIQUE (tenant_id, step_id)
 );
 
-CREATE INDEX idx_tenant_onboarding_tenant ON VN_tenant_onboarding (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_tenant_onboarding_tenant ON VN_tenant_onboarding (tenant_id);
 
 COMMENT ON TABLE VN_tenant_onboarding IS 'Tracks onboarding step completion per tenant. Products define their own step_id conventions.';
 

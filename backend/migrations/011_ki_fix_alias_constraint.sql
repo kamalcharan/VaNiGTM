@@ -47,7 +47,7 @@ DO $$ BEGIN RAISE NOTICE '✓ Step 2: source CHECK expanded to include csv_uploa
 -- ── 3. Rebuild lookup index to match new constraint ───────────────────────────
 
 DROP INDEX IF EXISTS idx_ki_aliases_lookup;
-CREATE INDEX idx_ki_aliases_lookup
+CREATE INDEX IF NOT EXISTS idx_ki_aliases_lookup
   ON ki_scheme_aliases(alias_name_normalized)
   WHERE is_active = true;
 

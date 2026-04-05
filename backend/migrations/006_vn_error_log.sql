@@ -34,8 +34,8 @@ CREATE TABLE VN_error_log (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_error_log_tenant_created ON VN_error_log (tenant_id, created_at DESC);
-CREATE INDEX idx_error_log_severity ON VN_error_log (severity, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_error_log_tenant_created ON VN_error_log (tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_error_log_severity ON VN_error_log (severity, created_at DESC);
 
 COMMENT ON TABLE VN_error_log IS 'Structured error log for application errors. Append-only. Used for debugging, monitoring, and alerting.';
 

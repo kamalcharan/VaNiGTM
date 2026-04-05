@@ -33,8 +33,8 @@ CREATE TABLE VN_invitations (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_invitations_token ON VN_invitations (token_hash);
-CREATE INDEX idx_invitations_tenant ON VN_invitations (tenant_id, status);
+CREATE INDEX IF NOT EXISTS idx_invitations_token ON VN_invitations (token_hash);
+CREATE INDEX IF NOT EXISTS idx_invitations_tenant ON VN_invitations (tenant_id, status);
 
 COMMENT ON TABLE VN_invitations IS 'Team member invitations. An admin/owner invites a user by email with a specific role. Token is hashed for security.';
 
