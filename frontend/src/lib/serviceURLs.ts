@@ -294,6 +294,40 @@ export const API = {
       auth: true,
       description: 'Calculate metrics for all schemes with NAV data',
     },
+
+    /* ── Bookmark alias (per-tenant display name) ──── */
+    updateBookmarkAlias: {
+      method: 'PATCH',
+      path: '/api/v1/nav/bookmarks/:schemeCode/alias',
+      auth: true,
+      description: 'Set or clear the display alias for a bookmarked scheme',
+    },
+
+    /* ── Scheme aliases (global import matching) ───── */
+    aliases: {
+      method: 'GET',
+      path: '/api/v1/nav/aliases',
+      auth: true,
+      description: 'List global scheme aliases, optionally filtered by scheme_code or query',
+    },
+    createAlias: {
+      method: 'POST',
+      path: '/api/v1/nav/aliases',
+      auth: true,
+      description: 'Create a single global scheme alias',
+    },
+    bulkCreateAliases: {
+      method: 'POST',
+      path: '/api/v1/nav/aliases/bulk',
+      auth: true,
+      description: 'Bulk-create aliases for one scheme (used on bookmark add and import)',
+    },
+    deleteAlias: {
+      method: 'DELETE',
+      path: '/api/v1/nav/aliases/:id',
+      auth: true,
+      description: 'Soft-delete a global scheme alias',
+    },
   },
 
   /* ── Skills (generic) ─────────────────────────────── */

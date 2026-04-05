@@ -7,11 +7,18 @@
  * POST   /api/v1/nav/bookmarks              — Bookmark a scheme
  * GET    /api/v1/nav/bookmarks              — List tenant's bookmarks with NAV status
  * DELETE /api/v1/nav/bookmarks/:schemeCode  — Remove bookmark
+ * PATCH  /api/v1/nav/bookmarks/:schemeCode/alias — Update bookmark alias_name
  * POST   /api/v1/nav/download/daily         — Download today's NAV for all bookmarked schemes
  * POST   /api/v1/nav/download/scheme/:code  — Download historical NAV for one scheme
  * GET    /api/v1/nav/status                 — Cruise control status (all bookmarks + gaps + metrics)
  * POST   /api/v1/nav/metrics/:code          — Calculate metrics for one scheme
  * POST   /api/v1/nav/metrics/bulk           — Calculate metrics for all bookmarked schemes
+ *
+ * Aliases (global — no tenant scope):
+ * GET    /api/v1/nav/aliases                — List aliases (filter by ?scheme_code=)
+ * POST   /api/v1/nav/aliases                — Create single alias
+ * POST   /api/v1/nav/aliases/bulk           — Bulk-create aliases for one scheme
+ * DELETE /api/v1/nav/aliases/:id            — Soft-delete alias
  */
 
 import { Router } from 'express';
@@ -66,6 +73,19 @@ export function createNavRouter(pool: Pool): Router {
            updated_at = now()`,
         [jwt.tenant_id, jwt.user_id, scheme.scheme_code, scheme.scheme_name, scheme.amc, alias_name || null, dailyEnabled],
       );
+
+      // Auto-seed global alias from scheme_name so import pipeline can match it.
+      // ON CONFLICT DO NOTHING — safe to call repeatedly, won't overwrite manual aliases.
+      try {
+        await pool.query(
+          `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+           VALUES ($1, $2, 'auto')
+           ON CONFLICT (alias_name_normalized) DO NOTHING`,
+          [scheme.scheme_code, scheme.scheme_name],
+        );
+      } catch {
+        // Non-fatal: alias table may not exist yet (migration pending)
+      }
 
       res.status(201).json({
         scheme_code: scheme.scheme_code,
@@ -707,6 +727,216 @@ export function createNavRouter(pool: Pool): Router {
     } catch (err: any) {
       console.error('[NAV:bulk-metrics]', err);
       res.status(500).json({ error: { code: 'METRICS_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── PATCH /bookmarks/:schemeCode/alias — Update bookmark display alias ── */
+
+  router.patch('/bookmarks/:schemeCode/alias', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const { alias_name } = req.body;
+      // alias_name may be null/empty to clear the alias
+      const aliasValue = alias_name ? String(alias_name).trim() || null : null;
+
+      const result = await pool.query(
+        `UPDATE ki_scheme_bookmarks
+         SET alias_name = $1, updated_at = now()
+         WHERE tenant_id = $2 AND scheme_code = $3
+         RETURNING scheme_code, alias_name`,
+        [aliasValue, jwt.tenant_id, req.params.schemeCode],
+      );
+
+      if (result.rows.length === 0) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Bookmark not found' } });
+        return;
+      }
+
+      res.json({ scheme_code: result.rows[0].scheme_code, alias_name: result.rows[0].alias_name });
+    } catch (err: any) {
+      console.error('[NAV:alias-update]', err);
+      res.status(500).json({ error: { code: 'ALIAS_UPDATE_FAILED', message: err.message } });
+    }
+  });
+
+  /* ════════════════════════════════════════════════════
+     ALIASES — Global scheme name mapping
+     No tenant scope — shared across all tenants
+  ════════════════════════════════════════════════════ */
+
+  /* ── GET /aliases — List aliases (optionally filter by scheme_code) ── */
+
+  router.get('/aliases', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const { scheme_code, q, limit = '50', offset = '0' } = req.query as Record<string, string>;
+
+      const conditions: string[] = ['a.is_active = true'];
+      const params: any[] = [];
+
+      if (scheme_code) {
+        params.push(scheme_code);
+        conditions.push(`a.scheme_code = $${params.length}`);
+      }
+      if (q) {
+        params.push(`%${q.toUpperCase()}%`);
+        conditions.push(`a.alias_name_normalized LIKE $${params.length}`);
+      }
+
+      const where = conditions.join(' AND ');
+      params.push(parseInt(limit, 10) || 50, parseInt(offset, 10) || 0);
+
+      const result = await pool.query(
+        `SELECT a.id, a.scheme_code, a.alias_name, a.alias_name_normalized,
+                a.source, a.is_active, a.created_at,
+                s.scheme_name
+         FROM ki_scheme_aliases a
+         JOIN ki_schemes s ON s.scheme_code = a.scheme_code
+         WHERE ${where}
+         ORDER BY a.scheme_code, a.source, a.alias_name
+         LIMIT $${params.length - 1} OFFSET $${params.length}`,
+        params,
+      );
+
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::integer AS total
+         FROM ki_scheme_aliases a
+         WHERE ${where}`,
+        params.slice(0, -2),
+      );
+
+      res.json({
+        aliases: result.rows,
+        total: (countResult.rows[0] as any).total,
+      });
+    } catch (err: any) {
+      console.error('[NAV:aliases-list]', err);
+      res.status(500).json({ error: { code: 'FETCH_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── POST /aliases — Create a single alias ── */
+
+  router.post('/aliases', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const { scheme_code, alias_name, source = 'manual' } = req.body;
+      if (!scheme_code || !alias_name) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'scheme_code and alias_name required' } });
+        return;
+      }
+
+      // Verify scheme exists
+      const check = await pool.query('SELECT 1 FROM ki_schemes WHERE scheme_code = $1', [String(scheme_code).trim()]);
+      if (check.rows.length === 0) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Scheme not found' } });
+        return;
+      }
+
+      const result = await pool.query(
+        `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (alias_name_normalized) DO UPDATE
+           SET scheme_code = EXCLUDED.scheme_code,
+               source      = EXCLUDED.source,
+               is_active   = true,
+               updated_at  = now()
+         RETURNING id, scheme_code, alias_name, alias_name_normalized, source`,
+        [String(scheme_code).trim(), String(alias_name).trim(), source],
+      );
+
+      res.status(201).json({ alias: result.rows[0] });
+    } catch (err: any) {
+      console.error('[NAV:alias-create]', err);
+      res.status(500).json({ error: { code: 'ALIAS_CREATE_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── POST /aliases/bulk — Bulk-create aliases for one scheme ── */
+
+  router.post('/aliases/bulk', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const { scheme_code, aliases, source = 'manual' } = req.body as {
+        scheme_code: string;
+        aliases: string[];
+        source?: string;
+      };
+
+      if (!scheme_code || !Array.isArray(aliases) || aliases.length === 0) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'scheme_code and aliases[] required' } });
+        return;
+      }
+
+      // Verify scheme exists
+      const check = await pool.query('SELECT 1 FROM ki_schemes WHERE scheme_code = $1', [String(scheme_code).trim()]);
+      if (check.rows.length === 0) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Scheme not found' } });
+        return;
+      }
+
+      const code = String(scheme_code).trim();
+      const src = ['auto', 'manual', 'import'].includes(source) ? source : 'manual';
+
+      let created = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      for (const raw of aliases) {
+        const name = String(raw).trim();
+        if (!name) { skipped++; continue; }
+        try {
+          const r = await pool.query(
+            `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (alias_name_normalized) DO UPDATE
+               SET scheme_code = EXCLUDED.scheme_code,
+                   source      = EXCLUDED.source,
+                   is_active   = true,
+                   updated_at  = now()
+             RETURNING id`,
+            [code, name, src],
+          );
+          if (r.rows.length > 0) created++;
+        } catch (e: any) {
+          errors.push(`${name}: ${e.message}`);
+          skipped++;
+        }
+      }
+
+      res.status(201).json({ scheme_code: code, created, skipped, errors });
+    } catch (err: any) {
+      console.error('[NAV:aliases-bulk]', err);
+      res.status(500).json({ error: { code: 'ALIAS_BULK_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── DELETE /aliases/:id — Soft-delete an alias ── */
+
+  router.delete('/aliases/:id', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) { res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid alias id' } }); return; }
+
+      await pool.query(
+        'UPDATE ki_scheme_aliases SET is_active = false, updated_at = now() WHERE id = $1',
+        [id],
+      );
+      res.json({ message: 'Alias deactivated' });
+    } catch (err: any) {
+      console.error('[NAV:alias-delete]', err);
+      res.status(500).json({ error: { code: 'ALIAS_DELETE_FAILED', message: err.message } });
     }
   });
 
