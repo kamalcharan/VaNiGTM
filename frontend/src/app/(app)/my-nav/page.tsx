@@ -26,7 +26,7 @@ const MIN_LOADER_MS = 600; // always show loader for at least this long (brandin
 import {
   VdfTabs,
   VdfStatCard,
-  VdfTrackingCard, type TrackingBookmark, type TrackingCardAction, type TrackingStatus,
+  VdfTrackingCard, type TrackingBookmark, type TrackingCardAction, type TrackingStatus, type AliasRecord,
   VdfProactiveCard,
   VdfProgressOverlay, type ProgressItem,
   VdfLoader,
@@ -250,6 +250,34 @@ export default function MyNavPage() {
     } finally {
       setOpLoading(p => { const n = { ...p }; delete n[code]; delete n[code + '_calc']; return n; });
     }
+  }
+
+  /* ── Alias handlers ── */
+  async function handleAliasEdit(code: string, newAlias: string | null) {
+    try {
+      await apiFetch<any>({ ...API.nav.updateBookmarkAlias, path: API.nav.updateBookmarkAlias.path.replace(':schemeCode', code) }, { body: { alias_name: newAlias } });
+      setBookmarks(prev => prev.map(b => b.scheme_code === code ? { ...b, alias_name: newAlias } : b));
+      showToast({ message: newAlias ? `Display name set: ${newAlias}` : 'Display name cleared', type: 'success' });
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Failed to update alias', type: 'error' });
+      throw err;
+    }
+  }
+
+  async function handleAliasLoad(code: string): Promise<AliasRecord[]> {
+    const data = await apiFetch<{ aliases: AliasRecord[] }>({ ...API.nav.aliases, path: `${API.nav.aliases.path}?scheme_code=${encodeURIComponent(code)}` });
+    return data.aliases || [];
+  }
+
+  async function handleAliasAdd(code: string, alias: string): Promise<AliasRecord> {
+    const data = await apiFetch<{ alias: AliasRecord }>(API.nav.createAlias, { body: { scheme_code: code, alias_name: alias, source: 'manual' } });
+    showToast({ message: `Alias added: ${alias}`, type: 'success' });
+    return data.alias;
+  }
+
+  async function handleAliasDelete(id: number, code: string) {
+    await apiFetch<any>({ ...API.nav.deleteAlias, path: API.nav.deleteAlias.path.replace(':id', String(id)) });
+    showToast({ message: 'Alias removed', type: 'success' });
   }
 
   async function removeBookmark(code: string) {
@@ -559,6 +587,10 @@ export default function MyNavPage() {
                   onRemove={removeBookmark}
                   actions={cardActions(b)}
                   onClick={code => router.push(`/global-nav/${code}`)}
+                  onAliasEdit={handleAliasEdit}
+                  onAliasLoad={handleAliasLoad}
+                  onAliasAdd={handleAliasAdd}
+                  onAliasDelete={handleAliasDelete}
                 />
               ))}
             </div>

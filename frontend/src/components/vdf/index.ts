@@ -23,5 +23,5 @@ export { VdfEmptyState, type VdfEmptyStateProps } from './empty-state/VdfEmptySt
 export { VdfInsightsCard, type VdfInsightsCardProps, type Insight } from './insights-card/VdfInsightsCard';
 export { VdfLoader, type VdfLoaderProps } from './loader/VdfLoader';
 export { VdfProgressOverlay, type VdfProgressOverlayProps, type ProgressItem } from './progress-overlay/VdfProgressOverlay';
-export { VdfTrackingCard, type TrackingBookmark, type TrackingCardAction, type TrackingStatus } from './VdfTrackingCard';
+export { VdfTrackingCard, type TrackingBookmark, type TrackingCardAction, type TrackingStatus, type AliasRecord } from './VdfTrackingCard';
 export { VdfProactiveCard, type VdfProactiveCardProps } from './proactive-card/VdfProactiveCard';
