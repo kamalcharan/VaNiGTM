@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 
 interface ThemeInitClientProps {
   themeMap: Record<string, { light: string; dark: string }>;
@@ -11,17 +11,20 @@ interface ThemeInitClientProps {
 /**
  * Client component that applies the user's saved theme from localStorage.
  *
- * Runs in useEffect after hydration. The SSR fallback <style> in ThemeScript
- * ensures the default theme is visible immediately — this component only
- * swaps CSS variables if the user has a different saved theme.
+ * Uses useLayoutEffect (runs synchronously before browser paint) to minimize
+ * the flash between SSR default theme and saved theme.
  *
  * No <script> tag in the React tree = no React 19 console warning.
  */
 export function ThemeInitClient({ themeMap, defaultThemeId, defaultColorMode }: ThemeInitClientProps) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     try {
       const savedTheme = localStorage.getItem('pk-theme-id') || defaultThemeId;
       const savedMode = localStorage.getItem('pk-color-mode') || defaultColorMode;
+
+      // Skip if using default (SSR already rendered correctly)
+      if (savedTheme === defaultThemeId && savedMode === defaultColorMode) return;
+
       const entry = themeMap[savedTheme] || themeMap[defaultThemeId];
       if (!entry) return;
       const css = savedMode === 'dark' ? entry.dark : entry.light;

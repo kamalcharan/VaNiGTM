@@ -1,8 +1,9 @@
 'use client';
 
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { useMe, type MeUser, type MeTenant } from '@/hooks';
 import { clearTokens, getAccessToken } from '@/lib/api-client';
+import { useTheme } from '@/config/theme';
 
 /* ── Types ───────────────────────────────────────────── */
 
@@ -22,10 +23,35 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: me, isLoading } = useMe();
+  const { setTheme, themeId } = useTheme();
 
   const user = me?.user || null;
   const tenant = me?.tenant || null;
   const isAuthenticated = !!getAccessToken() && !!user;
+
+  // Sync theme from server (user.preferred_theme) → ThemeProvider
+  // This ensures the theme matches what the user saved, even on first load
+  useEffect(() => {
+    if (!user) return;
+
+    const serverTheme = (user as any).preferred_theme;
+    if (serverTheme && serverTheme !== themeId) {
+      setTheme(serverTheme);
+      // Also persist to localStorage for next SSR-to-client transition
+      try { localStorage.setItem('pk-theme-id', serverTheme); } catch {}
+    }
+
+    const prefs = user.preferences as Record<string, any> | undefined;
+    const serverMode = prefs?.color_mode;
+    if (serverMode) {
+      try {
+        const current = localStorage.getItem('pk-color-mode');
+        if (current !== serverMode) {
+          localStorage.setItem('pk-color-mode', serverMode);
+        }
+      } catch {}
+    }
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function logout() {
     clearTokens();
