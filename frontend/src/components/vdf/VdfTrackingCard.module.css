@@ -1,40 +1,47 @@
-/* VdfTrackingCard — mobile-first glassmorphic card */
+/* ═══════════════════════════════════════════════════════
+   VdfTrackingCard — glassmorphic bookmarked-scheme card
+   Theme-compliant: ALL colors via --color-* CSS variables
+   ═══════════════════════════════════════════════════════ */
 
 /* ── Card shell ─────────────────────────────────────── */
 
 .card {
   display: flex;
-  flex-direction: column;       /* mobile: stack vertically */
+  align-items: flex-start;
   gap: 12px;
-  padding: 16px;
+  padding: 14px 16px;
   background: var(--glass);
   border: 1px solid var(--glass-border);
+  border-left: 4px solid var(--color-border);
   border-radius: 12px;
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
   position: relative;
 }
 
 .card:hover {
-  border-color: var(--color-primary);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.18);
   transform: translateY(-1px);
 }
 
-.card.selected {
+/* ── Health status — left border color ──────────────── */
+
+.s_healthy    { border-left-color: var(--color-success); }
+.s_stale      { border-left-color: var(--color-warning); }
+.s_no_metrics { border-left-color: var(--color-primary); }
+.s_no_data    { border-left-color: var(--color-danger);  opacity: 0.8; }
+
+/* ── Selected state ─────────────────────────────────── */
+
+.selected {
   border-color: var(--color-primary);
   background: color-mix(in srgb, var(--color-primary) 6%, var(--glass));
 }
 
-.card.noData {
-  opacity: 0.75;
-}
-
 /* ── Checkbox ───────────────────────────────────────── */
 
-.checkCol {
-  position: absolute;
-  top: 16px;
-  left: 16px;
+.checkWrap {
+  padding-top: 2px;
+  flex-shrink: 0;
 }
 
 .check {
@@ -44,9 +51,40 @@
   cursor: pointer;
 }
 
-/* push info right when checkbox present */
-.card:has(.checkCol) .info {
-  padding-left: 28px;
+/* ── Remove button — top-right absolute ─────────────── */
+
+.removeBtn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--color-muted) 30%, transparent);
+  border-radius: 6px;
+  color: var(--color-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1.5;
+}
+
+.removeBtn:hover {
+  border-color: color-mix(in srgb, var(--color-danger) 50%, transparent);
+  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+}
+
+.removeBtnConfirm {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  animation: pulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: 0.75; }
+  to   { opacity: 1;    }
 }
 
 /* ── Info block ─────────────────────────────────────── */
@@ -56,7 +94,9 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
+  /* leave room for remove button */
+  padding-right: 48px;
 }
 
 /* Row 1: name + metrics badge */
@@ -67,8 +107,8 @@
   flex-wrap: wrap;
 }
 
-.schemeName {
-  font-size: 0.9rem;
+.name {
+  font-size: 0.88rem;
   font-weight: 700;
   color: var(--color-fg);
   line-height: 1.3;
@@ -76,158 +116,163 @@
   min-width: 0;
 }
 
+/* ── Metrics badge ──────────────────────────────────── */
+
 .metricsBadge {
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   font-weight: 800;
   letter-spacing: 0.06em;
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 20px;
   border: 1px solid;
   white-space: nowrap;
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
-.metrics_fresh {
+.mb_fresh {
   color: var(--color-success);
   border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
   background: color-mix(in srgb, var(--color-success) 10%, transparent);
 }
 
-.metrics_outdated {
+.mb_outdated {
   color: var(--color-warning);
   border-color: color-mix(in srgb, var(--color-warning) 40%, transparent);
   background: color-mix(in srgb, var(--color-warning) 10%, transparent);
 }
 
-.metrics_none {
+.mb_none {
   color: var(--color-muted);
-  border-color: color-mix(in srgb, var(--color-muted) 30%, transparent);
+  border-color: color-mix(in srgb, var(--color-muted) 25%, transparent);
   background: transparent;
 }
 
-/* Row 2: code · AMC */
+/* Row 2: code · AMC · Ended */
 .metaRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-wrap: wrap;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--color-muted);
 }
 
-.metaChip {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.metaLabel {
-  font-weight: 600;
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-muted);
-  opacity: 0.7;
-}
-
-.metaMono {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
+.monoChip {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.7rem;
   color: var(--color-fg);
+  font-weight: 600;
 }
 
-.metaDot {
-  opacity: 0.4;
+.sep {
+  opacity: 0.35;
 }
 
-.metaAmc {
+.amc {
   color: var(--color-muted);
 }
 
-.endedBadge {
-  font-size: 0.6rem;
+.endedChip {
+  font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   padding: 1px 6px;
   border-radius: 20px;
-  border: 1px solid color-mix(in srgb, var(--color-muted) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-muted) 35%, transparent);
   color: var(--color-muted);
   opacity: 0.7;
+  text-transform: uppercase;
 }
 
 /* Row 3: data range */
 .dataRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-wrap: wrap;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--color-muted);
   min-height: 18px;
 }
 
-.dataIcon {
-  font-size: 0.5rem;
-  color: var(--color-success);
+/* Status dot — color matches health */
+.statusDot {
+  font-size: 0.45rem;
   flex-shrink: 0;
+  line-height: 1;
 }
 
-.dataRecords {
+.dot_healthy    { color: var(--color-success); }
+.dot_stale      { color: var(--color-warning); }
+.dot_no_metrics { color: var(--color-primary); }
+.dot_no_data    { color: var(--color-danger);  }
+
+.records {
   font-weight: 700;
   color: var(--color-fg);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.7rem;
 }
 
-.dataSep {
-  opacity: 0.35;
-}
-
-.dataRange {
-  font-size: 0.68rem;
+.range {
+  font-size: 0.67rem;
   color: var(--color-muted);
 }
 
-.dataAgeing {
+.age {
   font-weight: 600;
-  font-size: 0.7rem;
-  color: var(--color-success);
+  font-size: 0.68rem;
 }
 
-.ageingStale {
-  color: var(--color-warning);
-}
+.ageFresh { color: var(--color-success); }
+.ageStale { color: var(--color-warning); }
 
-.dataNav {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
+.nav {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--color-primary);
 }
 
-.noDataLabel {
-  font-size: 0.7rem;
+.noData {
+  font-size: 0.68rem;
   color: var(--color-muted);
   font-style: italic;
 }
 
-/* ── Actions ────────────────────────────────────────── */
+/* ── Actions container ──────────────────────────────── */
 
 .actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  /* Mobile: full-width row of chips */
+  flex-shrink: 0;
 }
+
+/* Desktop: visible, hidden on mobile */
+.actionsDesktop {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+  align-items: stretch;
+}
+
+/* Mobile: visible by default */
+.actionsMobile {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Action button base ─────────────────────────────── */
 
 .actionBtn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  padding: 6px 12px;
+  padding: 5px 11px;
   border-radius: 8px;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
   cursor: pointer;
   border: 1px solid;
@@ -244,52 +289,94 @@
 
 .actionBtn:hover:not(:disabled) {
   transform: translateY(-1px);
-  filter: brightness(1.1);
+  filter: brightness(1.08);
 }
 
-/* Long label: show on desktop */
-.btnLong  { display: inline; }
-/* Short label: show on mobile */
-.btnShort { display: none;   }
+/* ── Button variants (ab_ = action button) ──────────── */
 
-.btn_primary {
+.ab_primary {
   color: var(--color-primary);
   border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
 }
-.btn_primary:hover:not(:disabled) {
+.ab_primary:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
-.btn_success {
+.ab_success {
   color: var(--color-success);
   border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
 }
-.btn_success:hover:not(:disabled) {
+.ab_success:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-success) 12%, transparent);
 }
 
-.btn_warning {
+.ab_warning {
   color: var(--color-warning);
   border-color: color-mix(in srgb, var(--color-warning) 40%, transparent);
 }
-.btn_warning:hover:not(:disabled) {
+.ab_warning:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-warning) 12%, transparent);
 }
 
-.btn_danger {
-  color: var(--color-danger);
-  border-color: color-mix(in srgb, var(--color-danger) 40%, transparent);
-}
-.btn_danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
-}
-
-.btn_muted {
+.ab_muted {
   color: var(--color-muted);
   border-color: color-mix(in srgb, var(--color-muted) 30%, transparent);
 }
-.btn_muted:hover:not(:disabled) {
+.ab_muted:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-muted) 8%, transparent);
+  color: var(--color-fg);
+}
+
+/* ── More dropdown (mobile) ─────────────────────────── */
+
+.moreWrap {
+  position: relative;
+}
+
+.moreDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+  z-index: 50;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+
+.moreItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 7px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  cursor: pointer;
+  background: none;
+  border: none;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.moreItem:hover {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  color: var(--color-primary);
+}
+
+.moreItemDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.moreItemDisabled:hover {
+  background: none;
   color: var(--color-fg);
 }
 
@@ -311,51 +398,19 @@
 
 @media (min-width: 640px) {
   .card {
-    flex-direction: row;        /* horizontal */
     align-items: center;
     gap: 16px;
   }
 
   .info {
-    gap: 5px;
-  }
-
-  .actions {
-    flex-direction: column;
-    align-items: flex-end;
-    flex-shrink: 0;
-    min-width: 140px;
     gap: 4px;
   }
 
-  .actionBtn {
-    width: 100%;
-    justify-content: center;
-    font-size: 0.7rem;
-    padding: 5px 10px;
-  }
-}
-
-/* ── Large desktop (≥1024px): actions in row ─────────── */
-
-@media (min-width: 1024px) {
-  .actions {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    align-items: center;
-    min-width: unset;
-    max-width: 340px;
-    gap: 6px;
+  .actionsDesktop {
+    display: flex;
   }
 
-  .actionBtn {
-    width: auto;
-    font-size: 0.72rem;
-    padding: 6px 12px;
+  .actionsMobile {
+    display: none;
   }
-
-  /* On large desktop, show short labels to save space */
-  .btnLong  { display: none;   }
-  .btnShort { display: inline; }
 }

@@ -36,6 +36,24 @@
   color: var(--color-muted);
 }
 
+/* Clickable filter variant */
+.clickable {
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  width: 100%;
+  text-align: center;
+}
+
+.clickable:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+.activeFilter {
+  border-color: var(--color-primary) !important;
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+}
+
 /* Accent variants */
 .a_success { border-color: color-mix(in srgb, var(--color-success) 20%, var(--color-border)); }
 .a_success .value { color: var(--color-success); }

@@ -11,14 +11,22 @@ export interface VdfStatCardProps {
   /** Optional percentage shown top-right */
   pct?: string;
   className?: string;
+  /** Makes the card a clickable filter button */
+  onClick?: () => void;
+  /** Highlights the card as the active filter */
+  active?: boolean;
 }
 
-export function VdfStatCard({ value, label, accent = 'default', pct, className }: VdfStatCardProps) {
+export function VdfStatCard({ value, label, accent = 'default', pct, className, onClick, active }: VdfStatCardProps) {
+  const Tag = onClick ? 'button' : 'div';
   return (
-    <div className={`${s.card} ${s[`a_${accent}`]} ${className || ''}`}>
+    <Tag
+      className={`${s.card} ${s[`a_${accent}`]} ${onClick ? s.clickable : ''} ${active ? s.activeFilter : ''} ${className || ''}`}
+      {...(onClick ? { onClick, type: 'button' as const } : {})}
+    >
       <span className={s.value}>{typeof value === 'number' ? value.toLocaleString() : value}</span>
       <span className={s.label}>{label}</span>
       {pct && <span className={s.pct}>{pct}</span>}
-    </div>
+    </Tag>
   );
 }

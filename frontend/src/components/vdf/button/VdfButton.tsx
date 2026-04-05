@@ -12,6 +12,8 @@ export interface VdfButtonProps {
   className?: string;
   disabled?: boolean;
   fullWidth?: boolean;
+  type?: 'button' | 'submit' | 'reset';
+  title?: string;
 }
 
 export function VdfButton({
@@ -24,6 +26,8 @@ export function VdfButton({
   className,
   disabled,
   fullWidth,
+  type = 'button',
+  title,
 }: VdfButtonProps) {
   const cls = `${s.btn} ${s[variant]} ${s[size]} ${fullWidth ? s.fullWidth : ''} ${className || ''}`;
 
@@ -37,7 +41,7 @@ export function VdfButton({
   }
 
   return (
-    <button className={cls} onClick={onClick} disabled={disabled} type="button">
+    <button className={cls} onClick={onClick} disabled={disabled} type={type} title={title}>
       {children}
       {icon && <span className={s.icon}>{icon}</span>}
     </button>

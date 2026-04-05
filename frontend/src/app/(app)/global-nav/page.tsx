@@ -3,10 +3,14 @@
 /**
  * Global NAV Explorer — Two tabs:
  *
- *  Tab 1 "Tracking"  — bookmarked schemes, card view, bulk ops
- *  Tab 2 "Discover"  — search all 16K schemes, add bookmarks
+ *  Tab 1 "Tracking"  — bookmarked schemes (default), card view, bulk ops
+ *  Tab 2 "Discover"  — search all 16K schemes, add to tracking
  *
- * Mobile-first throughout. No tables — card layout only.
+ * COMPLIANCE:
+ *  - No per-page CSS module for UI elements
+ *  - forms.module.css  → inputs, submit/outline buttons
+ *  - data.module.css   → pageTitle, pageSubtitle, pagination
+ *  - VDF components    → everything else visual
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -17,18 +21,22 @@ import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
 import {
-  VdfTrackingCard, type TrackingBookmark, type TrackingCardAction,
+  VdfTabs,
+  VdfStatCard,
+  VdfTrackingCard, type TrackingBookmark, type TrackingCardAction, type TrackingStatus,
+  VdfProactiveCard,
   VdfProgressOverlay, type ProgressItem,
   VdfLoader,
   VdfStatusBadge,
+  VdfEmptyState,
+  VdfButton,
 } from '@/components/vdf';
-import s from './global-nav.module.css';
+import f from '@/styles/forms.module.css';
+import d from '@/styles/data.module.css';
 
 /* ── Types ─────────────────────────────────────────── */
 
-interface BookmarksResponse {
-  bookmarks: TrackingBookmark[];
-}
+interface BookmarksResponse { bookmarks: TrackingBookmark[]; }
 
 interface SearchResult {
   scheme_code: string; scheme_name: string; amc: string;
@@ -48,7 +56,17 @@ interface StatsData {
   metrics_pending: number;
 }
 
+type FilterStatus = 'all' | 'no_data' | 'has_data' | 'no_metrics';
 type Tab = 'tracking' | 'discover';
+
+/* ── Helpers ────────────────────────────────────────── */
+
+function computeStatus(b: TrackingBookmark): TrackingStatus {
+  if (b.nav_records === 0) return 'no_data';
+  if ((b.nav_age_days ?? 0) > 7) return 'stale';
+  if (!b.metrics_calculated_at) return 'no_metrics';
+  return 'healthy';
+}
 
 /* ── Component ─────────────────────────────────────── */
 
@@ -65,8 +83,9 @@ export default function GlobalNavPage() {
   const [bookmarksLoading, setBookmarksLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [trackSearch, setTrackSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'no_data' | 'has_data' | 'no_metrics'>('all');
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [opLoading, setOpLoading] = useState<Record<string, boolean>>({});
+  const [vaniDismissed, setVaniDismissed] = useState(false);
 
   /* ── Discover tab state ── */
   const [discoverQuery, setDiscoverQuery] = useState('');
@@ -126,7 +145,17 @@ export default function GlobalNavPage() {
     no_data: bookmarks.filter(b => b.nav_records === 0).length,
     has_data: bookmarks.filter(b => b.nav_records > 0).length,
     no_metrics: bookmarks.filter(b => !b.metrics_calculated_at).length,
+    stale: bookmarks.filter(b => (b.nav_age_days ?? 0) > 7 && b.nav_records > 0).length,
   };
+
+  /* ── VaNi proactive message ── */
+  const gapCount = counts.no_data + counts.stale;
+  const showVani = !vaniDismissed && gapCount > 0 && !bookmarksLoading;
+  const vaniMessage = counts.no_data > 0 && counts.stale > 0
+    ? `${counts.no_data} scheme${counts.no_data !== 1 ? 's' : ''} have no NAV data and ${counts.stale} ${counts.stale !== 1 ? 'are' : 'is'} stale (>7 days). Download all to stay current.`
+    : counts.no_data > 0
+    ? `${counts.no_data} tracked scheme${counts.no_data !== 1 ? 's have' : ' has'} no NAV data yet. Download to start tracking.`
+    : `${counts.stale} tracked scheme${counts.stale !== 1 ? 's are' : ' is'} stale (last NAV >7 days ago). Download to refresh.`;
 
   /* ── Selection helpers ── */
   function toggleSelect(code: string) {
@@ -141,29 +170,22 @@ export default function GlobalNavPage() {
     const busy = !!opLoading[b.scheme_code];
     return [
       {
-        label: 'Dashboard', shortLabel: 'View',
+        label: 'Dashboard',
         onClick: () => router.push(`/global-nav/${b.scheme_code}`),
-        variant: 'primary',
+        variant: 'primary', primary: true,
       },
       {
         label: b.nav_records > 0 ? 'Update NAV' : 'Download NAV',
-        shortLabel: b.nav_records > 0 ? 'Update' : 'Download',
         onClick: () => downloadOne(b.scheme_code),
         variant: 'success',
-        disabled: busy, loading: busy && opLoading[b.scheme_code + '_dl'],
+        disabled: busy, loading: busy && !!opLoading[b.scheme_code + '_dl'],
       },
       ...(b.nav_records > 0 ? [{
-        label: 'Calculate Metrics', shortLabel: 'Metrics',
+        label: 'Calc Metrics',
         onClick: () => calcOne(b.scheme_code),
         variant: 'muted' as const,
-        disabled: busy, loading: busy && opLoading[b.scheme_code + '_calc'],
+        disabled: busy, loading: busy && !!opLoading[b.scheme_code + '_calc'],
       }] : []),
-      {
-        label: 'Remove', shortLabel: '✕',
-        onClick: () => removeBookmark(b.scheme_code),
-        variant: 'danger',
-        disabled: busy,
-      },
     ];
   }
 
@@ -173,7 +195,7 @@ export default function GlobalNavPage() {
       const r = await apiFetch<any>({ ...API.nav.downloadScheme, path: API.nav.downloadScheme.path.replace(':code', code) });
       showToast({ message: `${r.records || 0} records downloaded`, type: 'success' });
       loadBookmarks();
-    } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
+    } catch (err) { showToast({ message: (err as ApiError).message || 'Download failed', type: 'error' }); }
     finally { setOpLoading(p => { const n = { ...p }; delete n[code]; delete n[code + '_dl']; return n; }); }
   }
 
@@ -183,22 +205,52 @@ export default function GlobalNavPage() {
       const r = await apiFetch<any>({ ...API.nav.calculateMetrics, path: API.nav.calculateMetrics.path.replace(':code', code) });
       showToast({ message: r.status === 'already_fresh' ? 'Metrics up to date' : `${r.records_updated || 0} records updated`, type: 'success' });
       loadBookmarks();
-    } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
+    } catch (err) { showToast({ message: (err as ApiError).message || 'Metrics failed', type: 'error' }); }
     finally { setOpLoading(p => { const n = { ...p }; delete n[code]; delete n[code + '_calc']; return n; }); }
   }
 
   async function removeBookmark(code: string) {
-    setOpLoading(p => ({ ...p, [code]: true }));
     try {
       await apiFetch<any>({ ...API.nav.removeBookmark, path: API.nav.removeBookmark.path.replace(':schemeCode', code) });
       showToast({ message: 'Removed from tracking', type: 'success' });
       setBookmarks(prev => prev.filter(b => b.scheme_code !== code));
       setSelected(prev => { const n = new Set(prev); n.delete(code); return n; });
-    } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
-    finally { setOpLoading(p => { const n = { ...p }; delete n[code]; return n; }); }
+    } catch (err) { showToast({ message: (err as ApiError).message || 'Remove failed', type: 'error' }); }
   }
 
-  /* ── Bulk download (selected) ── */
+  /* ── Bulk: download all with gaps (VaNi CTA) ── */
+  async function handleFillAllGaps() {
+    const codes = bookmarks
+      .filter(b => b.nav_records === 0 || (b.nav_age_days ?? 0) > 7)
+      .map(b => b.scheme_code);
+    if (codes.length === 0) return;
+    cancelRef.current = false;
+
+    const items: ProgressItem[] = codes.map(c => ({
+      label: bookmarks.find(b => b.scheme_code === c)?.scheme_name || c,
+      status: 'pending' as const,
+    }));
+
+    setBulkOp({ title: 'Filling NAV Gaps', progress: 0, progressText: `0 of ${codes.length}`, items, vani: 'Starting sequential download...' });
+
+    let done = 0;
+    for (let i = 0; i < codes.length; i++) {
+      if (cancelRef.current) break;
+      items[i] = { ...items[i], status: 'running' };
+      setBulkOp(p => p ? { ...p, items: [...items], progress: (i / codes.length) * 100, progressText: `${i + 1} of ${codes.length}`, vani: `Fetching ${items[i].label.slice(0, 40)}...` } : null);
+      try {
+        const r = await apiFetch<any>({ ...API.nav.downloadScheme, path: API.nav.downloadScheme.path.replace(':code', codes[i]) });
+        items[i] = { ...items[i], status: 'done', detail: `${(r.records || 0).toLocaleString()} records` };
+        done++;
+      } catch { items[i] = { ...items[i], status: 'failed', detail: 'Error' }; }
+      setBulkOp(p => p ? { ...p, items: [...items], progress: ((i + 1) / codes.length) * 100, vani: `${done} complete.` } : null);
+    }
+
+    setBulkOp(p => p ? { ...p, progress: 100, progressText: `${done} of ${codes.length} complete`, vani: cancelRef.current ? 'Cancelled.' : `Done! ${done} schemes updated.` } : null);
+    setTimeout(() => { setBulkOp(null); loadBookmarks(); setVaniDismissed(true); }, 2500);
+  }
+
+  /* ── Bulk: download selected ── */
   async function handleBulkDownload() {
     const codes = [...selected];
     if (codes.length === 0) return;
@@ -228,7 +280,7 @@ export default function GlobalNavPage() {
     setTimeout(() => { setBulkOp(null); loadBookmarks(); }, 2500);
   }
 
-  /* ── Bulk metrics ── */
+  /* ── Bulk: recalculate all metrics ── */
   async function handleBulkMetrics() {
     setBulkOp({ title: 'Calculating Metrics', progress: 50, progressText: 'Running PostgreSQL RPC...', items: [{ label: 'calculate_all_scheme_metrics()', status: 'running' }], vani: 'Computing returns, volatility, Sharpe, CAGR for all tracked schemes...' });
     try {
@@ -249,8 +301,7 @@ export default function GlobalNavPage() {
         body: { scheme_code: scheme.scheme_code, scheme_name: scheme.scheme_name, amc: scheme.amc },
       });
       showToast({ message: `${scheme.scheme_name} added to tracking`, type: 'success' });
-      // Mark as bookmarked in local state
-      discoverSchemes.forEach(s2 => { if (s2.scheme_code === scheme.scheme_code) s2.is_bookmarked = true; });
+      scheme.is_bookmarked = true; // optimistic local update
       loadBookmarks();
     } catch (err) { showToast({ message: (err as ApiError).message || 'Failed to add', type: 'error' }); }
     finally { setBookmarking(null); }
@@ -258,7 +309,7 @@ export default function GlobalNavPage() {
 
   /* ── Render ────────────────────────────────────────── */
   return (
-    <div className={s.page}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '24px', maxWidth: 1100, margin: '0 auto' }}>
       {bulkOp && (
         <VdfProgressOverlay
           title={bulkOp.title}
@@ -271,10 +322,10 @@ export default function GlobalNavPage() {
       )}
 
       {/* ── Page header ── */}
-      <div className={s.pageHeader}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <h1 className={s.pageTitle}>Global NAV</h1>
-          <p className={s.pageSubtitle}>
+          <h1 className={d.pageTitle}>Global NAV</h1>
+          <p className={d.pageSubtitle}>
             {user?.name ? `${user.name} · ` : ''}
             {counts.total > 0
               ? `${counts.total} schemes tracked · ${counts.has_data} with data`
@@ -282,138 +333,142 @@ export default function GlobalNavPage() {
           </p>
         </div>
         {stats && (
-          <div className={s.headerStats}>
-            <div className={s.headerStat}>
-              <span className={s.headerStatVal}>{stats.total_schemes.toLocaleString()}</span>
-              <span className={s.headerStatLabel}>Total Schemes</span>
-            </div>
-            <div className={`${s.headerStat} ${s.headerStatSuccess}`}>
-              <span className={s.headerStatVal}>{stats.with_nav_data}</span>
-              <span className={s.headerStatLabel}>With NAV</span>
-            </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <VdfStatCard value={stats.total_schemes.toLocaleString()} label="Total Schemes" />
+            <VdfStatCard value={stats.with_nav_data} label="With NAV" accent="success" />
             {stats.stale_nav_7d > 0 && (
-              <div className={`${s.headerStat} ${s.headerStatWarn}`}>
-                <span className={s.headerStatVal}>{stats.stale_nav_7d}</span>
-                <span className={s.headerStatLabel}>Stale</span>
-              </div>
+              <VdfStatCard value={stats.stale_nav_7d} label="Stale" accent="warning" />
             )}
           </div>
         )}
       </div>
 
-      {/* ── Tabs ── */}
-      <div className={s.tabs}>
-        <button className={`${s.tab} ${tab === 'tracking' ? s.tabActive : ''}`} onClick={() => setTab('tracking')}>
-          Tracking {counts.total > 0 && <span className={s.tabCount}>{counts.total}</span>}
-        </button>
-        <button className={`${s.tab} ${tab === 'discover' ? s.tabActive : ''}`} onClick={() => setTab('discover')}>
-          Discover Schemes
-        </button>
-      </div>
+      {/* ── Tabs (pill) ── */}
+      <VdfTabs
+        variant="pill"
+        activeId={tab}
+        onChange={id => setTab(id as Tab)}
+        tabs={[
+          { id: 'tracking', label: 'Tracking', badge: counts.total > 0 ? counts.total : undefined },
+          { id: 'discover', label: 'Discover Schemes' },
+        ]}
+      />
 
       {/* ══════════════════════════════════════════════════
           TAB 1 — TRACKING
       ══════════════════════════════════════════════════ */}
       {tab === 'tracking' && (
-        <div className={s.trackingPane}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* VaNi proactive banner */}
+          {showVani && (
+            <VdfProactiveCard
+              label="VaNi"
+              message={vaniMessage}
+              ctaLabel={`Fill ${gapCount} Gap${gapCount !== 1 ? 's' : ''}`}
+              onCta={handleFillAllGaps}
+              onDismiss={() => setVaniDismissed(true)}
+            />
+          )}
 
           {/* Stat filter cards */}
-          <div className={s.filterCards}>
-            {[
-              { key: 'all',        label: 'All Tracked',  val: counts.total,      accent: '' },
-              { key: 'no_data',    label: 'No Data',      val: counts.no_data,    accent: s.fcDanger },
-              { key: 'has_data',   label: 'Has Data',     val: counts.has_data,   accent: s.fcSuccess },
-              { key: 'no_metrics', label: 'No Metrics',   val: counts.no_metrics, accent: s.fcWarn },
-            ].map(f => (
-              <button
-                key={f.key}
-                className={`${s.filterCard} ${f.accent} ${filterStatus === f.key ? s.filterCardActive : ''}`}
-                onClick={() => setFilterStatus(f.key as typeof filterStatus)}
-              >
-                <span className={s.fcVal}>{f.val}</span>
-                <span className={s.fcLabel}>{f.label}</span>
-              </button>
-            ))}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
+            <VdfStatCard
+              value={counts.total} label="All Tracked"
+              onClick={() => setFilterStatus('all')} active={filterStatus === 'all'}
+            />
+            <VdfStatCard
+              value={counts.no_data} label="No Data" accent={counts.no_data > 0 ? 'danger' : 'default'}
+              onClick={() => setFilterStatus('no_data')} active={filterStatus === 'no_data'}
+            />
+            <VdfStatCard
+              value={counts.has_data} label="Has Data" accent="success"
+              onClick={() => setFilterStatus('has_data')} active={filterStatus === 'has_data'}
+            />
+            <VdfStatCard
+              value={counts.no_metrics} label="No Metrics" accent={counts.no_metrics > 0 ? 'warning' : 'default'}
+              onClick={() => setFilterStatus('no_metrics')} active={filterStatus === 'no_metrics'}
+            />
           </div>
 
           {/* Search + bulk actions toolbar */}
-          <div className={s.trackToolbar}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input
-              className={s.searchInput}
+              className={f.input}
+              style={{ flex: 1, minWidth: 200 }}
               type="text"
               placeholder="Search by name, AMC, or code..."
               value={trackSearch}
               onChange={e => setTrackSearch(e.target.value)}
             />
-            <div className={s.toolbarRight}>
+            <div style={{ display: 'flex', gap: 6 }}>
               {selected.size > 0 ? (
                 <>
-                  <button className={`${s.toolBtn} ${s.toolBtnPrimary}`} onClick={handleBulkDownload}>
+                  <VdfButton variant="primary" size="sm" onClick={handleBulkDownload}>
                     ↓ Download ({selected.size})
-                  </button>
-                  <button className={`${s.toolBtn}`} onClick={handleBulkMetrics}>
+                  </VdfButton>
+                  <VdfButton variant="outline" size="sm" onClick={handleBulkMetrics}>
                     ⊕ Metrics
-                  </button>
-                  <button className={`${s.toolBtn} ${s.toolBtnMuted}`} onClick={() => setSelected(new Set())}>
+                  </VdfButton>
+                  <VdfButton variant="ghost" size="sm" onClick={() => setSelected(new Set())}>
                     Clear
-                  </button>
+                  </VdfButton>
                 </>
               ) : (
-                <>
-                  <button className={`${s.toolBtn}`} onClick={handleBulkMetrics} title="Calculate metrics for all tracked schemes">
-                    ⊕ All Metrics
-                  </button>
-                </>
+                <VdfButton variant="outline" size="sm" onClick={handleBulkMetrics} title="Calculate metrics for all tracked schemes">
+                  ⊕ All Metrics
+                </VdfButton>
               )}
             </div>
           </div>
 
           {/* Select-all row */}
           {filtered.length > 0 && (
-            <div className={s.selectAllRow}>
-              <label className={s.selectAllLabel}>
-                <input
-                  type="checkbox"
-                  className={s.check}
-                  checked={selected.size === filtered.length && filtered.length > 0}
-                  onChange={toggleAll}
-                />
-                {selected.size > 0
-                  ? `${selected.size} of ${filtered.length} selected`
-                  : `${filtered.length} scheme${filtered.length !== 1 ? 's' : ''}`}
-              </label>
-            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.72rem', color: 'var(--color-muted)', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                style={{ accentColor: 'var(--color-primary)', width: 15, height: 15 }}
+                checked={selected.size === filtered.length && filtered.length > 0}
+                onChange={toggleAll}
+              />
+              {selected.size > 0
+                ? `${selected.size} of ${filtered.length} selected`
+                : `${filtered.length} scheme${filtered.length !== 1 ? 's' : ''}`}
+            </label>
           )}
 
           {/* Card list */}
           {bookmarksLoading ? (
             <VdfLoader message="Loading tracked schemes" hint="Fetching from ProKey database" />
           ) : filtered.length === 0 ? (
-            <div className={s.emptyState}>
-              {bookmarks.length === 0 ? (
-                <>
-                  <div className={s.emptyIcon}>📋</div>
-                  <div className={s.emptyTitle}>No schemes tracked yet</div>
-                  <div className={s.emptyDesc}>
-                    Go to <button className={s.emptyLink} onClick={() => setTab('discover')}>Discover Schemes</button> to search and add schemes for your clients.
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className={s.emptyIcon}>🔍</div>
-                  <div className={s.emptyTitle}>No matches for "{trackSearch}"</div>
-                  <div className={s.emptyDesc}>Try a different name, AMC, or code.</div>
-                </>
-              )}
-            </div>
+            bookmarks.length === 0 ? (
+              <VdfEmptyState
+                icon="📋"
+                title="No schemes tracked yet"
+                description="Search for schemes in Discover and add them to your tracking list."
+                action={
+                  <VdfButton variant="primary" size="sm" onClick={() => setTab('discover')}>
+                    Discover Schemes
+                  </VdfButton>
+                }
+              />
+            ) : (
+              <VdfEmptyState
+                icon="🔍"
+                title={`No matches for "${trackSearch}"`}
+                description="Try a different name, AMC, or scheme code."
+              />
+            )
           ) : (
-            <div className={s.cardList}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {filtered.map(b => (
                 <VdfTrackingCard
                   key={b.scheme_code}
                   bookmark={b}
+                  status={computeStatus(b)}
                   selected={selected.has(b.scheme_code)}
                   onSelect={toggleSelect}
+                  onRemove={removeBookmark}
                   actions={cardActions(b)}
                   onClick={code => router.push(`/global-nav/${code}`)}
                 />
@@ -427,78 +482,92 @@ export default function GlobalNavPage() {
           TAB 2 — DISCOVER
       ══════════════════════════════════════════════════ */}
       {tab === 'discover' && (
-        <div className={s.discoverPane}>
-          <p className={s.discoverHint}>
-            Search across {stats?.total_schemes?.toLocaleString() || '16,000+'} schemes. Click <strong>+ Track</strong> to add a scheme to your tracking list.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-muted)' }}>
+            Search across {stats?.total_schemes?.toLocaleString() || '16,000+'} schemes.
+            Click <strong>+ Track</strong> to add a scheme to your tracking list.
           </p>
 
           <form
-            className={s.discoverSearch}
+            style={{ display: 'flex', gap: 8 }}
             onSubmit={e => { e.preventDefault(); if (discoverQuery.trim().length >= 2) { setDiscoverActive(discoverQuery.trim()); setDiscoverPage(1); } }}
           >
             <input
-              className={s.searchInput}
+              className={f.input}
+              style={{ flex: 1 }}
               type="text"
               placeholder="Search scheme name, AMC, or code…"
               value={discoverQuery}
               onChange={e => setDiscoverQuery(e.target.value)}
               autoFocus
             />
-            <button type="submit" className={`${s.toolBtn} ${s.toolBtnPrimary}`} disabled={discoverQuery.trim().length < 2}>
+            <VdfButton variant="primary" size="md" type="submit" disabled={discoverQuery.trim().length < 2}>
               Search
-            </button>
+            </VdfButton>
           </form>
 
-          {/* Results */}
           {searching && <VdfLoader message="Searching schemes" />}
 
           {!searching && discoverActive && discoverSchemes.length === 0 && (
-            <div className={s.emptyState}>
-              <div className={s.emptyIcon}>🔍</div>
-              <div className={s.emptyTitle}>No results for "{discoverActive}"</div>
-              <div className={s.emptyDesc}>Try a different name or scheme code.</div>
-            </div>
+            <VdfEmptyState
+              icon="🔍"
+              title={`No results for "${discoverActive}"`}
+              description="Try a different name or scheme code."
+            />
           )}
 
           {discoverSchemes.length > 0 && (
             <>
-              <div className={s.discoverCount}>
-                {discoverTotal.toLocaleString()} results for "{discoverActive}"
-              </div>
-              <div className={s.cardList}>
+              <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--color-muted)' }}>
+                {discoverTotal.toLocaleString()} results for &ldquo;{discoverActive}&rdquo;
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {discoverSchemes.map(sc => (
-                  <div key={sc.scheme_code} className={s.discoverCard}>
-                    <div className={s.discoverCardInfo}>
-                      <div className={s.discoverName}>
-                        {sc.scheme_name}
-                        {sc.is_bookmarked && <span className={s.trackingBadge}>✓ Tracking</span>}
+                  <div
+                    key={sc.scheme_code}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+                      background: 'var(--glass)', border: '1px solid var(--glass-border)',
+                      borderRadius: 10,
+                    }}
+                  >
+                    {/* Info */}
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-fg)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {sc.scheme_name}
+                        </span>
+                        {sc.is_bookmarked && <VdfStatusBadge label="Tracking" variant="success" size="sm" />}
                       </div>
-                      <div className={s.discoverMeta}>
-                        <span className={s.metaMono}>{sc.scheme_code}</span>
-                        <span className={s.metaDot}>·</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.7rem', color: 'var(--color-muted)', flexWrap: 'wrap' }}>
+                        <span style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 600, color: 'var(--color-fg)' }}>{sc.scheme_code}</span>
+                        <span style={{ opacity: 0.4 }}>·</span>
                         <span>{sc.amc}</span>
-                        {sc.category && <><span className={s.metaDot}>·</span><span className={s.metaMuted}>{sc.category}</span></>}
+                        {sc.category && <><span style={{ opacity: 0.4 }}>·</span><span>{sc.category}</span></>}
                         {!sc.active && <VdfStatusBadge label="Ended" variant="muted" size="sm" />}
                       </div>
-                      <div className={s.discoverNavRow}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.68rem', color: 'var(--color-muted)' }}>
                         {sc.nav
-                          ? <span className={s.discoverNav}>₹{Number(sc.nav).toFixed(4)}</span>
-                          : <span className={s.metaMuted}>No NAV data</span>}
-                        {sc.nav_date && <span className={s.metaMuted}>· {sc.nav_date}</span>}
-                        {sc.launch_date && <span className={s.metaMuted}>· Est. {sc.launch_date}</span>}
+                          ? <span style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700, color: 'var(--color-primary)' }}>₹{Number(sc.nav).toFixed(4)}</span>
+                          : <span>No NAV data</span>}
+                        {sc.nav_date && <><span style={{ opacity: 0.4 }}>·</span><span>{sc.nav_date}</span></>}
+                        {sc.launch_date && <><span style={{ opacity: 0.4 }}>·</span><span>Est. {sc.launch_date}</span></>}
                       </div>
                     </div>
-                    <div className={s.discoverCardAction}>
+
+                    {/* Action */}
+                    <div style={{ flexShrink: 0 }}>
                       {sc.is_bookmarked ? (
-                        <span className={s.alreadyTracking}>✓ Tracking</span>
+                        <VdfStatusBadge label="✓ Tracking" variant="success" size="sm" />
                       ) : (
-                        <button
-                          className={`${s.toolBtn} ${s.toolBtnPrimary}`}
+                        <VdfButton
+                          variant="primary" size="sm"
                           onClick={() => addBookmark(sc)}
                           disabled={bookmarking === sc.scheme_code}
                         >
                           {bookmarking === sc.scheme_code ? 'Adding…' : '+ Track'}
-                        </button>
+                        </VdfButton>
                       )}
                     </div>
                   </div>
@@ -507,22 +576,23 @@ export default function GlobalNavPage() {
 
               {/* Pagination */}
               {discoverPages > 1 && (
-                <div className={s.pagination}>
-                  <button className={s.pageBtn} disabled={discoverPage <= 1} onClick={() => setDiscoverPage(1)}>First</button>
-                  <button className={s.pageBtn} disabled={discoverPage <= 1} onClick={() => setDiscoverPage(p => p - 1)}>Prev</button>
-                  <span className={s.pageInfo}>{discoverPage} / {discoverPages}</span>
-                  <button className={s.pageBtn} disabled={discoverPage >= discoverPages} onClick={() => setDiscoverPage(p => p + 1)}>Next</button>
-                  <button className={s.pageBtn} disabled={discoverPage >= discoverPages} onClick={() => setDiscoverPage(discoverPages)}>Last</button>
+                <div className={d.pagination}>
+                  <button className={d.pageBtn} disabled={discoverPage <= 1} onClick={() => setDiscoverPage(1)}>First</button>
+                  <button className={d.pageBtn} disabled={discoverPage <= 1} onClick={() => setDiscoverPage(p => p - 1)}>Prev</button>
+                  <span className={d.pageInfo}>{discoverPage} / {discoverPages}</span>
+                  <button className={d.pageBtn} disabled={discoverPage >= discoverPages} onClick={() => setDiscoverPage(p => p + 1)}>Next</button>
+                  <button className={d.pageBtn} disabled={discoverPage >= discoverPages} onClick={() => setDiscoverPage(discoverPages)}>Last</button>
                 </div>
               )}
             </>
           )}
 
           {!discoverActive && (
-            <div className={s.discoverIdle}>
-              <div className={s.discoverIdleIcon}>🔭</div>
-              <div className={s.discoverIdleText}>Type a scheme name, AMC or code to search</div>
-            </div>
+            <VdfEmptyState
+              icon="🔭"
+              title="Search for a scheme"
+              description="Type a scheme name, AMC, or code above to browse 16,000+ mutual funds."
+            />
           )}
         </div>
       )}
