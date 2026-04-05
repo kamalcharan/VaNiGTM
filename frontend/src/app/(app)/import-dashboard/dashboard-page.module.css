@@ -41,12 +41,29 @@
 .filterTab:hover { color: var(--color-fg); background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
 .filterTabActive { flex: 1; padding: 5px 0; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 14%, transparent); border: none; border-radius: 6px; cursor: pointer; }
 
-.sessionCardActive {
+.sessionCard {
   padding: 12px 14px;
   background: var(--color-surface);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, var(--color-border));
+  border: 1px solid var(--color-border);
+  border-left: 3px solid transparent;
   border-radius: 12px;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-bg) 40%, transparent);
+  cursor: pointer;
+  transition: all 180ms;
+}
+.sessionCard:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+  border-left-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface));
+}
+
+.sessionCardActive {
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+  border-left: 3px solid var(--color-primary);
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .sidebarEmpty { padding: 20px 12px; text-align: center; }

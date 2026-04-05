@@ -203,7 +203,7 @@ export default function ImportDashboardPage() {
               <div className={s.sidebarEmptyText}>No imports yet</div>
             </div>
           ) : sessions.map(sess => (
-            <div key={sess.id} className={selectedSession?.id === sess.id ? s.sessionCardActive : s.sidebarLink}
+            <div key={sess.id} className={selectedSession?.id === sess.id ? s.sessionCardActive : s.sessionCard}
               onClick={() => handleSelectSession(sess)}>
               <div>
                 <div className={s.sessionCardLabel}>
