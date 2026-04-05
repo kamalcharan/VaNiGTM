@@ -160,22 +160,25 @@ export function createEtlRouter(pool: Pool): Router {
       if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
       const importType = req.query.type as string | undefined;
-      const params: any[] = [];
-      let where = '';
 
-      if (importType && importType !== 'all') {
-        params.push(importType);
-        where = `WHERE s.import_type = $1`;
-      }
+      // Tenant sees: their own sessions + global scheme master sessions (tenant_id IS NULL).
+      // Scheme master is admin-run but tenants can see when the DB was last refreshed.
+      const params: any[] = [auth.tenant_id];
+      const typeClause = (importType && importType !== 'all')
+        ? `AND s.import_type = $${params.push(importType) && params.length}`
+        : '';
 
       const result = await pool.query(
         `SELECT s.id, s.import_type, s.status, s.total_records, s.processed_records,
                 s.successful_records, s.failed_records, s.duplicate_records,
                 f.original_filename, s.created_at, s.staging_completed_at,
-                s.processing_started_at, s.processing_completed_at
+                s.processing_started_at, s.processing_completed_at,
+                -- Per-tenant sequential number: #1 = oldest visible session for this tenant
+                ROW_NUMBER() OVER (ORDER BY s.created_at) AS tenant_seq
          FROM ki_import_sessions s
          LEFT JOIN ki_file_uploads f ON f.id = s.file_upload_id
-         ${where}
+         WHERE (s.tenant_id = $1 OR (s.import_type = 'scheme' AND s.tenant_id IS NULL))
+         ${typeClause}
          ORDER BY s.created_at DESC
          LIMIT 50`,
         params,
