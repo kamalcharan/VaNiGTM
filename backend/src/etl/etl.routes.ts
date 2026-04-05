@@ -101,8 +101,8 @@ export function createEtlRouter(pool: Pool): Router {
         return;
       }
 
-      // Insert file record — tenant_id NULL for global (scheme) imports
-      const tenantId = importType === 'scheme' ? null : auth.tenant_id;
+      // Always associate uploads with the tenant who triggered the import
+      const tenantId = auth.tenant_id;
       const result = await pool.query(
         `INSERT INTO ki_file_uploads (tenant_id, file_type, original_filename, stored_filename, file_path, file_size, mime_type, file_hash, uploaded_by)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
@@ -211,7 +211,9 @@ export function createEtlRouter(pool: Pool): Router {
       if (fileResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found' } }); return; }
 
       const file = fileResult.rows[0] as any;
-      const tenantId = import_type === 'scheme' ? null : auth.tenant_id;
+      // Always set tenant_id — scheme imports are triggered by a tenant user,
+      // so the session belongs to that tenant for dashboard visibility and audit.
+      const tenantId = auth.tenant_id;
       const mappings = field_mappings || (import_type === 'scheme' ? SCHEME_FIELD_MAP : {});
 
       // Create session
