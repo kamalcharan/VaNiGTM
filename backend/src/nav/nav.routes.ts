@@ -188,19 +188,21 @@ export function createNavRouter(pool: Pool): Router {
         const mapped = stagedRow.mapped_data as Record<string, string>;
         const rowId = stagedRow.id;
 
-        if (!mapped.scheme_code && !mapped.isin) {
+        if (!mapped.scheme_code && !mapped.isin && !mapped.scheme_name) {
           total_failed++;
           await pool.query(
             `UPDATE ki_import_staging SET processing_status = 'failed',
              error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
-            [JSON.stringify(['No scheme_code or ISIN found in row']), rowId],
+            [JSON.stringify(['No scheme_code, ISIN, or scheme_name found in row']), rowId],
           );
           continue;
         }
 
         try {
-          // Resolve scheme_code from ISIN if only ISIN provided
+          // Resolution chain: scheme_code → ISIN → alias name
           let schemeCode = mapped.scheme_code;
+
+          // Step 2: resolve via ISIN
           if (!schemeCode && mapped.isin) {
             const isinResult = await pool.query(
               `SELECT scheme_code FROM ki_schemes WHERE isin_growth = $1 OR isin_dividend = $1 LIMIT 1`,
@@ -209,12 +211,21 @@ export function createNavRouter(pool: Pool): Router {
             if (isinResult.rows.length > 0) schemeCode = (isinResult.rows[0] as any).scheme_code;
           }
 
+          // Step 3: resolve via alias lookup (uses ki_scheme_aliases RPC)
+          if (!schemeCode && mapped.scheme_name) {
+            const aliasResult = await pool.query(
+              `SELECT scheme_code FROM lookup_scheme_by_alias($1)`,
+              [mapped.scheme_name],
+            );
+            if (aliasResult.rows.length > 0) schemeCode = (aliasResult.rows[0] as any).scheme_code;
+          }
+
           if (!schemeCode) {
             total_failed++;
             await pool.query(
               `UPDATE ki_import_staging SET processing_status = 'failed',
                error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
-              [JSON.stringify([`ISIN ${mapped.isin} not found in ki_schemes`]), rowId],
+              [JSON.stringify([`Scheme not resolved — no match by scheme_code, ISIN (${mapped.isin || 'none'}), or alias (${mapped.scheme_name || 'none'})`]), rowId],
             );
             continue;
           }
@@ -238,14 +249,20 @@ export function createNavRouter(pool: Pool): Router {
           const isEnded = scheme.closure_date && new Date(scheme.closure_date) < new Date();
           const dailyEnabled = scheme.active && !isEnded;
 
+          // alias_name = the raw name from the tenant's CSV file.
+          // This is the key field for transaction import matching — when a CAS/portfolio
+          // CSV row has a scheme name, it is matched against bookmark.alias_name.
+          // Fall back to scheme.scheme_name if the CSV had no scheme_name column.
+          const csvAlias = mapped.scheme_name || scheme.scheme_name;
+
           // Insert bookmark — DO NOTHING for duplicates (already tracked = rejected, not overwritten)
           const upsertResult = await pool.query(
             `INSERT INTO ki_scheme_bookmarks
-               (tenant_id, user_id, scheme_code, scheme_name, amc, daily_download_enabled)
-             VALUES ($1, $2, $3, $4, $5, $6)
+               (tenant_id, user_id, scheme_code, scheme_name, amc, alias_name, daily_download_enabled)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
              ON CONFLICT (tenant_id, scheme_code) DO NOTHING
              RETURNING scheme_code`,
-            [jwt.tenant_id, jwt.user_id, scheme.scheme_code, scheme.scheme_name, scheme.amc, dailyEnabled],
+            [jwt.tenant_id, jwt.user_id, scheme.scheme_code, scheme.scheme_name, scheme.amc, csvAlias, dailyEnabled],
           );
 
           const isNew = upsertResult.rows.length > 0;
@@ -257,12 +274,24 @@ export function createNavRouter(pool: Pool): Router {
             [isNew ? 'success' : 'duplicate', scheme.scheme_code, rowId],
           );
 
-          // Auto-seed alias only for new bookmarks
+          // Seed two aliases per new bookmark (kewalinvest parity):
+          //   Alias 1: raw CSV name (source='csv_upload') — what the tenant calls this scheme
+          //   Alias 2: master scheme_name (source='auto')  — canonical name from ki_schemes
+          // Both are used by lookup_scheme_by_alias() during future import matching.
           if (isNew) {
             try {
+              if (mapped.scheme_name) {
+                await pool.query(
+                  `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+                   VALUES ($1, $2, 'csv_upload')
+                   ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING`,
+                  [scheme.scheme_code, mapped.scheme_name],
+                );
+              }
               await pool.query(
                 `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
-                 VALUES ($1, $2, 'auto') ON CONFLICT (alias_name_normalized) DO NOTHING`,
+                 VALUES ($1, $2, 'auto')
+                 ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING`,
                 [scheme.scheme_code, scheme.scheme_name],
               );
             } catch { /* non-fatal */ }
