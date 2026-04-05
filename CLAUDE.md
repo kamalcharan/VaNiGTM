@@ -313,17 +313,42 @@ Pages MUST import shared CSS + VDF components. Page CSS should ONLY contain layo
 
 1. **NEVER modify files inside kewalinvest/.** Read-only submodule.
 2. **Port MVP logic into skills — don't reinvent.** Check kewalinvest/ first.
-3. **Every SQL query MUST filter by tenant_id.** No exceptions.
+3. **Every SQL query MUST filter by tenant_id.** No exceptions (except global tables like ki_schemes, ki_nav_history).
 4. **Every write operation MUST be in a transaction.** Use `ctx.db.transaction()`.
 5. **Every API endpoint and skill handler MUST have error handling.** try/catch, structured error response, logging.
-6. **Every frontend page MUST use Toast for errors and Loader for loading states.**
-7. **Every UI element MUST come from VDF.** No one-off styled components. No hardcoded colors.
+6. **Every frontend page MUST use VdfLoader for loading states and Toast for errors.**
+7. **Every UI element MUST come from VDF.** No one-off styled components. No hardcoded colors. No per-page CSS for shared patterns.
 8. **Every VDF component MUST use CSS variables** from the theme system.
 9. **Table prefix: KI_** for all tables.
 10. **SQL files in queries/ or sql/ subdirectory** — not inline in TypeScript.
 11. **Tests: 3-check pattern** — (a) valid data, (b) empty/not-found, (c) wrong tenant → zero rows.
 12. **No VaNi. No VaNiBase. No framework imports.** This is plain Express + Next.js.
-13. **UX: glassmorphic default, innovative, premium.** No generic/safe design. Match the Atlas design language quality.
+13. **UX: glassmorphic default, innovative, premium.** No generic/safe design. Match HTML reference designs in documents/HTML/.
+
+## kewalinvest Submodule — Mandatory Audit Rules
+
+ProKey is the **production upgrade** of kewalinvest (the MVP). When building any feature:
+
+### 1. ASK: Does this feature exist in kewalinvest?
+Before writing any code, **ask the user** if the kewalinvest submodule should be audited for the feature being built. If the user says yes:
+
+### 2. AUDIT: Full parity is mandatory
+- Run `git submodule update --init` if kewalinvest/ is empty
+- Read the kewalinvest implementation **completely** — every file, every function, every edge case
+- List every feature the kewalinvest version has
+- **100% of kewalinvest's working features must be implemented in ProKey** — no shortcuts, no "we'll add it later", no eliminating features
+- If unsure whether a feature is needed, **ask the user** — never skip silently
+- ProKey can ADD features beyond kewalinvest, but never have LESS
+
+### 3. USE: kewalinvest's proven patterns
+- **Database functions (RPC):** kewalinvest uses PostgreSQL functions for data processing (process_single_scheme_record, process_scheme_import_with_timing, etc.). ProKey MUST use the same RPC pattern — adapt table names but keep the logic in PL/pgSQL, not Node.js
+- **Database structures:** kewalinvest's table schemas are tested and production-proven. Ask the user before deviating from kewalinvest's column names, types, or constraints
+- **Take user confirmation** on any DB function or table structure before creating — these are the foundation and changing them later is expensive
+
+### 4. NEVER assume — ASK
+- "Should I match kewalinvest's X exactly, or is there a ProKey-specific change?"
+- "kewalinvest has Y — do we need this in ProKey?"
+- "kewalinvest uses Z pattern for this — should I follow the same?"
 
 ## Reference: MVP → ProKey Mapping
 
