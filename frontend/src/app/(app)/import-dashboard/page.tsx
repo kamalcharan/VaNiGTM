@@ -61,16 +61,18 @@ export default function ImportDashboardPage() {
   const [records, setRecords] = useState<RecordsResponse | null>(null);
   const [recordFilter, setRecordFilter] = useState<string>('all');
   const [recordPage, setRecordPage] = useState(1);
-  const [loadingSessions, setLoadingSessions] = useState(true);
+  const [loadingSessions, setLoadingSessions] = useState(false);
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [drawerRecord, setDrawerRecord] = useState<StagingRecord | null>(null);
   const [reprocessing, setReprocessing] = useState(false);
   const [deletingStaging, setDeletingStaging] = useState(false);
   const [typeFilter, setTypeFilter] = useState<'all' | 'bookmark'>('all');
+  const [sessionsFetched, setSessionsFetched] = useState(false);
 
   // Fetch sessions
   const fetchSessions = useCallback(async (type: 'all' | 'bookmark' = 'all') => {
     setLoadingSessions(true);
+    setSessionsFetched(false);
     try {
       const qs = type !== 'all' ? `?type=${type}` : '';
       const data = await apiFetch<{ sessions: Session[] }>({ ...API.etl.sessions, path: API.etl.sessions.path + qs });
@@ -80,8 +82,10 @@ export default function ImportDashboardPage() {
       console.error('[ImportDashboard] Failed to load sessions:', err);
       setSessions([]);
       showToast({ message: (err as ApiError).message || 'Failed to load import sessions', type: 'error' });
+    } finally {
+      setLoadingSessions(false);
+      setSessionsFetched(true);
     }
-    finally { setLoadingSessions(false); }
   }, []); // eslint-disable-line
 
   useEffect(() => { fetchSessions(typeFilter); }, [fetchSessions, typeFilter]);
@@ -149,7 +153,7 @@ export default function ImportDashboardPage() {
 
   const initials = user?.name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
 
-  if (loadingSessions) return <VdfLoader message="Loading import history" hint="Fetching sessions" />;
+  if (loadingSessions && !sessionsFetched) return <VdfLoader message="Loading import history" hint="Fetching sessions" />;
 
   return (
     <div className={s.page}>
