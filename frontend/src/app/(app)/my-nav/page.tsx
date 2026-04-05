@@ -283,7 +283,10 @@ export default function MyNavPage() {
   /* ── Alias modal ── */
   async function openAliasModal(b: TrackingBookmark) {
     setAliasModal({ scheme_code: b.scheme_code, scheme_name: b.scheme_name, display_alias: b.alias_name ?? null });
-    setDisplayAliasEdit(b.alias_name || '');
+    // Only pre-fill if the user has explicitly set an alias different from the scheme name.
+    // alias_name === scheme_name means it was backfilled from master data, not user-set.
+    const customAlias = b.alias_name && b.alias_name !== b.scheme_name ? b.alias_name : '';
+    setDisplayAliasEdit(customAlias);
     setNewAlias('');
     setAliases([]);
     setAliasesLoading(true);
@@ -843,11 +846,6 @@ export default function MyNavPage() {
                         variant={['csv_upload', 'import'].includes(alias.source) ? 'success' : alias.source === 'manual' ? 'info' : 'muted'}
                         size="sm"
                       />
-                      <button
-                        onClick={() => handleDeleteAlias(alias.id)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', fontSize: '0.8rem', padding: '2px 6px', borderRadius: 4, lineHeight: 1, flexShrink: 0 }}
-                        title="Remove alias"
-                      >✕</button>
                     </div>
                   ))}
                 </div>
