@@ -38,8 +38,8 @@ const STATUS_MAP: Record<string, { label: string; color: BadgeVariant }> = {
   staged: { label: 'Staged', color: 'info' },
   pending: { label: 'Pending', color: 'muted' },
   failed: { label: 'Failed', color: 'danger' },
-  success: { label: 'Success', color: 'success' },
-  duplicate: { label: 'Updated', color: 'info' },
+  success: { label: 'Added', color: 'success' },
+  duplicate: { label: 'Duplicate', color: 'muted' },  // already tracked — rejected, no action
 };
 
 function timeAgo(iso: string): string {
@@ -47,7 +47,11 @@ function timeAgo(iso: string): string {
   if (h < 1) return 'Just now'; if (h < 24) return `${h}h ago`; return `${Math.floor(h / 24)}d ago`;
 }
 
-const SCHEME_COLS = ['scheme_code', 'scheme_name', 'amc', 'category'];
+const COLS_BY_TYPE: Record<string, string[]> = {
+  scheme:   ['scheme_code', 'scheme_name', 'amc', 'category'],
+  bookmark: ['scheme_code', 'scheme_name', 'amc'],
+  default:  ['scheme_code', 'scheme_name', 'amc'],
+};
 
 /* ── Component ─────────────────────────────────────── */
 
@@ -136,11 +140,6 @@ export default function ImportDashboardPage() {
     } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
     finally { setDeletingStaging(false); }
   }
-
-  // Compute speed
-  const speed = selectedSession?.processing_started_at && selectedSession?.processing_completed_at
-    ? Math.round(selectedSession.total_records / ((new Date(selectedSession.processing_completed_at).getTime() - new Date(selectedSession.processing_started_at).getTime()) / 1000))
-    : null;
 
   // VaNi analysis
   const vaniMsg = selectedSession
@@ -254,10 +253,9 @@ export default function ImportDashboardPage() {
                   </div>
                 </div>
                 <div className={`${s.statCardAccent} ${s.stMuted}`}>
-                  <div className={s.statCardLabel}>Speed</div>
-                  <div className={s.statCardValue}>
-                    {speed ? speed.toLocaleString() : '\u2014'}
-                    {speed && <span className={s.statCardUnit}>row/s</span>}
+                  <div className={s.statCardLabel}>Duplicates</div>
+                  <div className={`${s.statCardValue} ${selectedSession.duplicate_records === 0 ? s.statCardValueMuted : ''}`}>
+                    {selectedSession.duplicate_records.toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -280,7 +278,7 @@ export default function ImportDashboardPage() {
                     {[
                       { key: 'all', label: 'All' },
                       { key: 'success', label: `New (${selectedSession.successful_records - selectedSession.duplicate_records})` },
-                      { key: 'duplicate', label: `Updated (${selectedSession.duplicate_records})` },
+                      { key: 'duplicate', label: `Duplicate (${selectedSession.duplicate_records})` },
                       { key: 'failed', label: `Failed (${selectedSession.failed_records})` },
                     ].map(f => (
                       <button key={f.key} className={`${s.filterTab} ${recordFilter === f.key ? s.filterTabActive : ''}`}
@@ -311,7 +309,6 @@ export default function ImportDashboardPage() {
                           <th>Scheme Name</th>
                           <th>AMC</th>
                           <th>Status</th>
-                          <th style={{ textAlign: 'right' }}>Operational Health</th>
                           <th style={{ textAlign: 'center' }}>Action</th>
                         </tr>
                       </thead>
@@ -327,9 +324,6 @@ export default function ImportDashboardPage() {
                               <td style={{ fontWeight: 600 }}>{rec.mapped_data?.scheme_name || '\u2014'}</td>
                               <td style={{ fontSize: '0.72rem', color: 'var(--color-muted)' }}>{rec.mapped_data?.amc || '\u2014'}</td>
                               <td><VdfStatusBadge label={st.label} variant={st.color} size="sm" /></td>
-                              <td style={{ textAlign: 'right' }}>
-                                <span className={`${s.healthBadge} ${s.healthNoNav}`}>No NAV Data</span>
-                              </td>
                               <td style={{ textAlign: 'center' }}>
                                 <button className={s.viewBtn} onClick={e => { e.stopPropagation(); setDrawerRecord(rec); }}>
                                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
@@ -376,7 +370,9 @@ export default function ImportDashboardPage() {
               <div className={s.drawerCardTitle}>{drawerRecord.mapped_data?.scheme_name || 'Unknown Scheme'}</div>
               <div className={s.drawerCardMeta}>
                 Code: {drawerRecord.mapped_data?.scheme_code || '\u2014'}
-                {' \u00B7 '}Category: {drawerRecord.mapped_data?.category || '\u2014'}
+                {drawerRecord.mapped_data?.category && (
+                  <>{' \u00B7 '}Category: {drawerRecord.mapped_data.category}</>
+                )}
               </div>
             </div>
 
@@ -395,10 +391,20 @@ export default function ImportDashboardPage() {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
                   <span>{drawerRecord.error_messages[0]}</span>
                 </div>
+              ) : drawerRecord.processing_status === 'duplicate' ? (
+                <div className={`${s.drawerDiagnostic} ${s.diagInfo}`}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                  <span>Already in your watchlist — no action taken.</span>
+                </div>
+              ) : drawerRecord.processing_status === 'success' ? (
+                <div className={`${s.drawerDiagnostic} ${s.diagInfo}`} style={{ color: 'var(--color-success)', background: 'color-mix(in srgb, var(--color-success) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-success) 12%, transparent)' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><polyline points="20 6 9 17 4 12" /></svg>
+                  <span>Added to watchlist. Download NAV data to begin tracking.</span>
+                </div>
               ) : (
                 <div className={`${s.drawerDiagnostic} ${s.diagInfo}`}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><circle cx="12" cy="12" r="10" /><polyline points="16 12 12 8 8 12" /><line x1="12" y1="16" x2="12" y2="8" /></svg>
-                  <span>This scheme may be missing from the NAV database. Download NAV data to complete tracking.</span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                  <span>Pending processing.</span>
                 </div>
               )}
             </div>

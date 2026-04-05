@@ -238,35 +238,35 @@ export function createNavRouter(pool: Pool): Router {
           const isEnded = scheme.closure_date && new Date(scheme.closure_date) < new Date();
           const dailyEnabled = scheme.active && !isEnded;
 
-          // Upsert bookmark — same SQL as single add
+          // Insert bookmark — DO NOTHING for duplicates (already tracked = rejected, not overwritten)
           const upsertResult = await pool.query(
             `INSERT INTO ki_scheme_bookmarks
                (tenant_id, user_id, scheme_code, scheme_name, amc, daily_download_enabled)
              VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (tenant_id, scheme_code) DO UPDATE SET
-               daily_download_enabled = EXCLUDED.daily_download_enabled,
-               updated_at = now()
-             RETURNING (xmax = 0) AS is_new`,
+             ON CONFLICT (tenant_id, scheme_code) DO NOTHING
+             RETURNING scheme_code`,
             [jwt.tenant_id, jwt.user_id, scheme.scheme_code, scheme.scheme_name, scheme.amc, dailyEnabled],
           );
 
-          const isNew = (upsertResult.rows[0] as any).is_new;
+          const isNew = upsertResult.rows.length > 0;
           if (isNew) added++; else already_tracked++;
 
-          // Update staging row
+          // Update staging row — duplicate = rejected (already tracked, no action taken)
           await pool.query(
             `UPDATE ki_import_staging SET processing_status = $1, created_record_id = $2, processed_at = now() WHERE id = $3`,
             [isNew ? 'success' : 'duplicate', scheme.scheme_code, rowId],
           );
 
-          // Auto-seed global alias — same as single add, non-fatal
-          try {
-            await pool.query(
-              `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
-               VALUES ($1, $2, 'auto') ON CONFLICT (alias_name_normalized) DO NOTHING`,
-              [scheme.scheme_code, scheme.scheme_name],
-            );
-          } catch { /* non-fatal */ }
+          // Auto-seed alias only for new bookmarks
+          if (isNew) {
+            try {
+              await pool.query(
+                `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+                 VALUES ($1, $2, 'auto') ON CONFLICT (alias_name_normalized) DO NOTHING`,
+                [scheme.scheme_code, scheme.scheme_name],
+              );
+            } catch { /* non-fatal */ }
+          }
 
         } catch (err: any) {
           total_failed++;
