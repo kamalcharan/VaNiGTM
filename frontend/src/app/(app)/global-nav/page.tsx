@@ -256,7 +256,7 @@ export default function GlobalNavPage() {
         )}
       </div>
 
-      {/* Table */}
+      {/* Scheme list */}
       {loading ? (
         <VdfLoader message="Loading schemes" hint="Fetching from global scheme database" />
       ) : loadError ? (
@@ -276,89 +276,86 @@ export default function GlobalNavPage() {
             : undefined}
         />
       ) : (
-        <div className={d.tableWrap}>
-          <table className={d.table}>
-            <thead>
-              <tr>
-                <th>Scheme</th>
-                <th>Category</th>
-                <th>Records</th>
-                <th>Latest NAV</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {schemes.map(row => {
-                const st = rowStatus(row);
-                const rowBg = st === 'danger'  ? 'color-mix(in srgb, var(--color-danger) 4%, transparent)'
-                            : st === 'warning' ? 'color-mix(in srgb, var(--color-warning) 4%, transparent)'
-                            : st === 'muted'   ? 'color-mix(in srgb, var(--color-muted) 3%, transparent)'
-                            : '';
-                return (
-                  <tr key={row.scheme_code} style={rowBg ? { background: rowBg } : undefined}>
-                    <td style={{ minWidth: 240, maxWidth: 380 }}>
-                      <button
-                        onClick={() => router.push(`/global-nav/${row.scheme_code}`)}
-                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
-                      >
-                        <div style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--color-fg)', lineHeight: 1.3 }}>{row.scheme_name}</div>
-                        <div style={{ fontSize: '0.68rem', color: 'var(--color-muted)', marginTop: 1 }}>{row.amc}</div>
-                      </button>
-                    </td>
-                    <td style={{ maxWidth: 160 }}>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--color-fg)' }}>{row.category || '—'}</div>
-                      <div style={{ fontSize: '0.65rem', color: 'var(--color-muted)' }}>{row.scheme_type}</div>
-                    </td>
-                    <td className={d.tdMono} style={{ fontSize: '0.78rem' }}>
-                      {row.nav_records > 0 ? row.nav_records.toLocaleString() : <span style={{ color: 'var(--color-muted)' }}>—</span>}
-                    </td>
-                    <td className={d.tdMono} style={{ fontSize: '0.78rem' }}>
-                      <div>{fmtNav(row.nav)}</div>
-                      {row.nav_date && <div style={{ fontSize: '0.65rem', color: 'var(--color-muted)' }}>{row.nav_date}</div>}
-                    </td>
-                    <td>
-                      <VdfStatusBadge
-                        label={st === 'success' ? 'Has Data' : st === 'warning' ? 'Stale' : st === 'danger' ? 'No Data' : 'Inactive'}
-                        variant={st === 'success' ? 'success' : st === 'warning' ? 'warning' : st === 'danger' ? 'danger' : 'muted'}
-                        size="sm"
-                      />
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
-                        {/* Bookmark toggle */}
-                        <button
-                          onClick={() => toggleBookmark(row)}
-                          disabled={bookmarkLoading === row.scheme_code}
-                          title={row.is_bookmarked ? 'Remove from My NAV' : 'Add to My NAV'}
-                          style={{
-                            background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px',
-                            fontSize: '0.9rem', opacity: bookmarkLoading === row.scheme_code ? 0.4 : 1,
-                            color: row.is_bookmarked ? 'var(--color-warning)' : 'var(--color-muted)',
-                          }}
-                        >
-                          {row.is_bookmarked ? '★' : '☆'}
-                        </button>
-                        {/* Download NAV */}
-                        <button
-                          onClick={() => setDownloadModal(row)}
-                          style={{
-                            height: 28, padding: '0 10px',
-                            border: '1px solid var(--color-border)', borderRadius: 5,
-                            background: 'transparent', color: 'var(--color-fg)',
-                            fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer',
-                            whiteSpace: 'nowrap', transition: 'border-color 150ms',
-                          }}
-                        >
-                          ↓ NAV
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {schemes.map(row => {
+            const st = rowStatus(row);
+            return (
+              <div
+                key={row.scheme_code}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px 16px',
+                  background: 'var(--glass)', border: '1px solid var(--glass-border)',
+                  borderRadius: 10,
+                }}
+              >
+                {/* Main info — clickable */}
+                <button
+                  onClick={() => router.push(`/global-nav/${row.scheme_code}`)}
+                  style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 4 }}
+                >
+                  {/* Name + status */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-fg)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {row.scheme_name}
+                    </span>
+                    <VdfStatusBadge
+                      label={st === 'success' ? 'Has Data' : st === 'warning' ? 'Stale' : st === 'danger' ? 'No Data' : 'Inactive'}
+                      variant={st === 'success' ? 'success' : st === 'warning' ? 'warning' : st === 'danger' ? 'danger' : 'muted'}
+                      size="sm"
+                    />
+                  </div>
+                  {/* Code · AMC · Category */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.7rem', color: 'var(--color-muted)', flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 600, color: 'var(--color-fg)' }}>{row.scheme_code}</span>
+                    <span style={{ opacity: 0.4 }}>·</span>
+                    <span>{row.amc}</span>
+                    {row.category && <><span style={{ opacity: 0.4 }}>·</span><span>{row.category}</span></>}
+                    {row.scheme_type && <><span style={{ opacity: 0.4 }}>·</span><span>{row.scheme_type}</span></>}
+                  </div>
+                  {/* NAV · date · records */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.68rem', color: 'var(--color-muted)' }}>
+                    {row.nav
+                      ? <span style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700, color: 'var(--color-primary)' }}>{fmtNav(row.nav)}</span>
+                      : <span>No NAV data</span>}
+                    {row.nav_date && <><span style={{ opacity: 0.4 }}>·</span><span>{row.nav_date}</span></>}
+                    {row.nav_records > 0 && <><span style={{ opacity: 0.4 }}>·</span><span style={{ fontFamily: 'var(--font-mono, monospace)' }}>{row.nav_records.toLocaleString()} records</span></>}
+                  </div>
+                </button>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+                  {/* Bookmark toggle */}
+                  <button
+                    onClick={() => toggleBookmark(row)}
+                    disabled={bookmarkLoading === row.scheme_code}
+                    title={row.is_bookmarked ? 'Remove from My NAV' : 'Add to My NAV'}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px',
+                      fontSize: '1rem', opacity: bookmarkLoading === row.scheme_code ? 0.4 : 1,
+                      color: row.is_bookmarked ? 'var(--color-warning)' : 'var(--color-muted)',
+                      transition: 'color 150ms',
+                    }}
+                  >
+                    {row.is_bookmarked ? '★' : '☆'}
+                  </button>
+                  {/* Download NAV */}
+                  <button
+                    onClick={() => setDownloadModal(row)}
+                    style={{
+                      height: 32, padding: '0 12px',
+                      border: '1px solid var(--color-border)', borderRadius: 6,
+                      background: 'transparent', color: 'var(--color-fg)',
+                      fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                      whiteSpace: 'nowrap', transition: 'border-color 150ms',
+                    }}
+                  >
+                    ↓ NAV
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
