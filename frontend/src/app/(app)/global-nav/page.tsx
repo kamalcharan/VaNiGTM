@@ -4,11 +4,8 @@
  * Global NAV Explorer — ALL 16K+ schemes.
  *
  * No tenant filter — global scheme reference.
- * Reuses VdfTrackingCard (same component as My NAV) for the scheme list.
- *  - Stat filter cards at top
- *  - Search bar (debounced, server-side)
- *  - Paginated list using VdfTrackingCard
- *  - VdfDownloadNavModal for per-row NAV download
+ * VdfTrackingCard reused identically from My NAV:
+ *   Dashboard | Update/Download NAV | Calc Metrics | Aliases
  *
  * COMPLIANCE:
  *  - forms.module.css  → inputs, buttons
@@ -21,8 +18,9 @@ import { useRouter } from 'next/navigation';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
+import { useAuth } from '@/context/auth-provider';
 import {
-  VdfStatCard, VdfLoader, VdfEmptyState, VdfButton,
+  VdfStatCard, VdfLoader, VdfEmptyState, VdfButton, VdfModal, VdfStatusBadge,
   VdfTrackingCard, type TrackingBookmark, type TrackingCardAction, type TrackingStatus,
 } from '@/components/vdf';
 import { VdfDownloadNavModal } from '@/components/vdf/download-nav-modal/VdfDownloadNavModal';
@@ -84,7 +82,7 @@ function toTrackingStatus(row: SchemeRow): TrackingStatus {
   return 'healthy';
 }
 
-/** Map SchemeRow → TrackingBookmark so VdfTrackingCard can render it */
+/** Map SchemeRow → TrackingBookmark so VdfTrackingCard renders identically to My NAV */
 function toBookmark(row: SchemeRow): TrackingBookmark {
   return {
     id: 0,
@@ -111,7 +109,9 @@ function toBookmark(row: SchemeRow): TrackingBookmark {
 export default function GlobalNavPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { isAdmin } = useAuth();
 
+  /* ── Scheme list state ── */
   const [stats, setStats] = useState<SchemeStats | null>(null);
   const [schemes, setSchemes] = useState<SchemeRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,9 +122,19 @@ export default function GlobalNavPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalMatches, setTotalMatches] = useState(0);
-  const [bookmarkLoading, setBookmarkLoading] = useState<string | null>(null);
   const [calcLoading, setCalcLoading] = useState<string | null>(null);
   const [downloadModal, setDownloadModal] = useState<SchemeRow | null>(null);
+
+  /* ── Alias modal state — identical to My NAV ── */
+  const [aliasModal, setAliasModal] = useState<{
+    scheme_code: string; scheme_name: string; display_alias: string | null;
+  } | null>(null);
+  const [aliases, setAliases] = useState<{ id: number; alias_name: string; source: string }[]>([]);
+  const [aliasesLoading, setAliasesLoading] = useState(false);
+  const [newAlias, setNewAlias] = useState('');
+  const [addingAlias, setAddingAlias] = useState(false);
+  const [displayAliasEdit, setDisplayAliasEdit] = useState('');
+  const [savingDisplayAlias, setSavingDisplayAlias] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -177,23 +187,17 @@ export default function GlobalNavPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  /* ── Bookmark toggle ── */
-  async function toggleBookmark(row: SchemeRow) {
-    if (bookmarkLoading) return;
-    setBookmarkLoading(row.scheme_code);
+  /* ── Calc metrics — identical to My NAV ── */
+  async function calcMetrics(code: string) {
+    if (calcLoading) return;
+    setCalcLoading(code);
     try {
-      if (row.is_bookmarked) {
-        await apiFetch<any>({ ...API.nav.removeBookmark, path: API.nav.removeBookmark.path.replace(':schemeCode', row.scheme_code) });
-        showToast({ message: 'Removed from My NAV', type: 'success' });
-      } else {
-        await apiFetch<any>(API.nav.addBookmark, { body: { scheme_code: row.scheme_code } });
-        showToast({ message: 'Added to My NAV', type: 'success' });
-      }
-      setSchemes(prev => prev.map(s => s.scheme_code === row.scheme_code ? { ...s, is_bookmarked: !s.is_bookmarked } : s));
+      const r = await apiFetch<any>({ ...API.nav.calculateMetrics, path: API.nav.calculateMetrics.path.replace(':code', code) });
+      showToast({ message: r.status === 'already_fresh' ? 'Metrics up to date' : `${r.records_updated || 0} records updated`, type: 'success' });
     } catch (err) {
-      showToast({ message: (err as ApiError).message || 'Action failed', type: 'error' });
+      showToast({ message: (err as ApiError).message || 'Metrics calculation failed', type: 'error' });
     } finally {
-      setBookmarkLoading(null);
+      setCalcLoading(null);
     }
   }
 
@@ -211,17 +215,67 @@ export default function GlobalNavPage() {
     }).then(r => setStats(r.data)).catch(() => {});
   }
 
-  /* ── Calc metrics for a single scheme ── */
-  async function calcMetrics(code: string) {
-    if (calcLoading) return;
-    setCalcLoading(code);
+  /* ── Alias modal — identical to My NAV ── */
+  async function openAliasModal(row: SchemeRow) {
+    setAliasModal({ scheme_code: row.scheme_code, scheme_name: row.scheme_name, display_alias: null });
+    setDisplayAliasEdit('');
+    setNewAlias('');
+    setAliases([]);
+    setAliasesLoading(true);
     try {
-      const r = await apiFetch<any>({ ...API.nav.calculateMetrics, path: API.nav.calculateMetrics.path.replace(':code', code) });
-      showToast({ message: r.status === 'already_fresh' ? 'Metrics up to date' : `${r.records_updated || 0} records updated`, type: 'success' });
-    } catch (err) {
-      showToast({ message: (err as ApiError).message || 'Metrics calculation failed', type: 'error' });
+      const data = await apiFetch<{ aliases: any[] }>({
+        ...API.nav.aliases,
+        path: `${API.nav.aliases.path}?scheme_code=${row.scheme_code}`,
+      });
+      setAliases(data.aliases || []);
+    } catch {
+      showToast({ message: 'Failed to load aliases', type: 'error' });
     } finally {
-      setCalcLoading(null);
+      setAliasesLoading(false);
+    }
+  }
+
+  async function handleAddAlias() {
+    if (!aliasModal || !newAlias.trim() || addingAlias) return;
+    setAddingAlias(true);
+    try {
+      const data = await apiFetch<{ alias: any }>(API.nav.createAlias, {
+        body: { scheme_code: aliasModal.scheme_code, alias_name: newAlias.trim(), source: 'manual' },
+      });
+      setAliases(prev => [...prev, data.alias]);
+      setNewAlias('');
+      showToast({ message: 'Alias added', type: 'success' });
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Failed to add alias', type: 'error' });
+    } finally {
+      setAddingAlias(false);
+    }
+  }
+
+  async function handleDeleteAlias(id: number) {
+    try {
+      await apiFetch<any>({ ...API.nav.deleteAlias, path: API.nav.deleteAlias.path.replace(':id', String(id)) });
+      setAliases(prev => prev.filter(a => a.id !== id));
+      showToast({ message: 'Alias removed', type: 'success' });
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Failed to remove alias', type: 'error' });
+    }
+  }
+
+  async function handleSaveDisplayAlias() {
+    if (!aliasModal || savingDisplayAlias) return;
+    setSavingDisplayAlias(true);
+    try {
+      await apiFetch<any>(
+        { ...API.nav.updateBookmarkAlias, path: API.nav.updateBookmarkAlias.path.replace(':schemeCode', aliasModal.scheme_code) },
+        { body: { alias_name: displayAliasEdit.trim() || null } },
+      );
+      setAliasModal(prev => prev ? { ...prev, display_alias: displayAliasEdit.trim() || null } : null);
+      showToast({ message: 'Display alias updated', type: 'success' });
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Failed to update alias', type: 'error' });
+    } finally {
+      setSavingDisplayAlias(false);
     }
   }
 
@@ -231,9 +285,8 @@ export default function GlobalNavPage() {
     setPage(1);
   }
 
-  /* ── Card actions — matches My NAV 4-button layout exactly ── */
+  /* ── Card actions — 100% identical to My NAV ── */
   function cardActions(row: SchemeRow): TrackingCardAction[] {
-    const bookmarkBusy = bookmarkLoading === row.scheme_code;
     const calcBusy = calcLoading === row.scheme_code;
     return [
       {
@@ -255,10 +308,9 @@ export default function GlobalNavPage() {
         loading: calcBusy,
       },
       {
-        label: row.is_bookmarked ? '★ My NAV' : '☆ My NAV',
-        onClick: () => toggleBookmark(row),
+        label: 'Aliases',
+        onClick: () => openAliasModal(row),
         variant: 'muted',
-        disabled: bookmarkBusy,
       },
     ];
   }
@@ -270,7 +322,7 @@ export default function GlobalNavPage() {
       {/* Header */}
       <div>
         <h1 className={d.pageTitle}>Global NAV</h1>
-        <p className={d.pageSubtitle}>All mutual fund schemes · search, download NAV, add to My NAV</p>
+        <p className={d.pageSubtitle}>All mutual fund schemes · search, download NAV, manage aliases</p>
       </div>
 
       {/* Stat filter cards */}
@@ -322,7 +374,7 @@ export default function GlobalNavPage() {
         )}
       </div>
 
-      {/* Scheme list — uses VdfTrackingCard (same component as My NAV) */}
+      {/* Scheme list — VdfTrackingCard, same component as My NAV */}
       {loading ? (
         <VdfLoader message="Loading schemes" hint="Fetching from global scheme database" />
       ) : loadError ? (
@@ -381,6 +433,103 @@ export default function GlobalNavPage() {
           onDownloaded={handleDownloaded}
         />
       )}
+
+      {/* Alias Management Modal — identical to My NAV */}
+      <VdfModal
+        isOpen={!!aliasModal}
+        onClose={() => setAliasModal(null)}
+        title="Scheme Aliases"
+        subtitle={aliasModal ? `${aliasModal.scheme_name} · used for CSV/CAS import matching` : ''}
+      >
+        {aliasModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+            {/* Display alias */}
+            <div>
+              <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-muted)', marginBottom: 6 }}>
+                Display Alias
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginBottom: 10 }}>
+                Shown on cards instead of the scheme name. Personal to your account.
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className={f.input}
+                  style={{ flex: 1 }}
+                  placeholder={aliasModal.scheme_name}
+                  value={displayAliasEdit}
+                  onChange={e => setDisplayAliasEdit(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSaveDisplayAlias(); }}
+                />
+                <VdfButton variant="primary" size="sm" onClick={handleSaveDisplayAlias} disabled={savingDisplayAlias}>
+                  {savingDisplayAlias ? '…' : 'Save'}
+                </VdfButton>
+                {displayAliasEdit && (
+                  <VdfButton variant="ghost" size="sm" onClick={() => setDisplayAliasEdit('')}>Clear</VdfButton>
+                )}
+              </div>
+            </div>
+
+            <div style={{ height: 1, background: 'var(--color-border)' }} />
+
+            {/* Import aliases */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-muted)' }}>
+                  Import Aliases
+                </div>
+                {aliases.length > 0 && <span style={{ fontSize: '0.65rem', color: 'var(--color-muted)' }}>{aliases.length} total</span>}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginBottom: 10 }}>
+                Global aliases used to match this scheme during CAS / CSV imports.
+              </div>
+
+              {aliasesLoading ? (
+                <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--color-muted)', fontSize: '0.8rem' }}>Loading…</div>
+              ) : aliases.length === 0 ? (
+                <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--color-muted)', fontSize: '0.8rem' }}>No aliases yet — add one below</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 210, overflowY: 'auto', marginBottom: 12 }}>
+                  {aliases.map(alias => (
+                    <div key={alias.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: 'var(--color-surface)', borderRadius: 6, border: '1px solid var(--color-border)' }}>
+                      <span style={{ flex: 1, fontSize: '0.8rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alias.alias_name}</span>
+                      <VdfStatusBadge
+                        label={alias.source}
+                        variant={['csv_upload', 'import'].includes(alias.source) ? 'success' : alias.source === 'manual' ? 'info' : 'muted'}
+                        size="sm"
+                      />
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDeleteAlias(alias.id)}
+                          title="Delete alias"
+                          style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', fontSize: '0.85rem', padding: '2px 4px', borderRadius: 4, lineHeight: 1 }}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className={f.input}
+                  style={{ flex: 1 }}
+                  placeholder="New alias (e.g. HDFC Top 100 Growth)"
+                  value={newAlias}
+                  onChange={e => setNewAlias(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAddAlias(); }}
+                />
+                <VdfButton variant="success" size="sm" onClick={handleAddAlias} disabled={!newAlias.trim() || addingAlias}>
+                  {addingAlias ? '…' : '+ Add'}
+                </VdfButton>
+              </div>
+            </div>
+
+          </div>
+        )}
+      </VdfModal>
 
     </div>
   );
