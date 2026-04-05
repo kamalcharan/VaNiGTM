@@ -307,6 +307,38 @@ export const API = {
       description: 'Calculate metrics for all schemes with NAV data',
     },
 
+    /* ── Global bulk jobs (background, polled) ── */
+    globalJobDownload: {
+      method: 'POST',
+      path: '/api/v1/nav/global/jobs/download',
+      auth: true,
+      description: 'Start background job: download NAV for all active schemes with no data',
+    },
+    globalJobRedownload: {
+      method: 'POST',
+      path: '/api/v1/nav/global/jobs/redownload',
+      auth: true,
+      description: 'Start background job: delete + redownload NAV for all schemes with data',
+    },
+    globalJobMetrics: {
+      method: 'POST',
+      path: '/api/v1/nav/global/jobs/metrics',
+      auth: true,
+      description: 'Start background job: calculate metrics for all schemes with stale/missing metrics',
+    },
+    globalJobRecalc: {
+      method: 'POST',
+      path: '/api/v1/nav/global/jobs/recalc',
+      auth: true,
+      description: 'Start background job: clear and recalculate all scheme metrics',
+    },
+    globalJobStatus: {
+      method: 'GET',
+      path: '/api/v1/nav/global/jobs/:jobId',
+      auth: true,
+      description: 'Poll global bulk job progress by job ID',
+    },
+
     /* ── Bookmark alias (per-tenant display name) ──── */
     updateBookmarkAlias: {
       method: 'PATCH',

@@ -1349,5 +1349,286 @@ export function createNavRouter(pool: Pool): Router {
     }
   });
 
+  /* ════════════════════════════════════════════════════
+     GLOBAL BULK JOBS
+     Long-running ops (download all / redownload / metrics / recalc).
+     Returns job_id immediately (202), client polls GET /global/jobs/:id.
+     Runs scheme-by-scheme in background to avoid HTTP timeout.
+  ════════════════════════════════════════════════════ */
+
+  type GlobalJobType = 'download' | 'redownload' | 'metrics' | 'recalc';
+
+  interface GlobalJob {
+    id: string;
+    type: GlobalJobType;
+    status: 'running' | 'done' | 'failed';
+    total: number;
+    done: number;
+    failed: number;
+    current_scheme: string | null;
+    started_at: number;
+    ended_at?: number;
+    error?: string;
+  }
+
+  const globalJobMap = new Map<string, GlobalJob>();
+
+  // Purge completed jobs older than 2 hours
+  setInterval(() => {
+    const cutoff = Date.now() - 2 * 3600_000;
+    for (const [id, job] of globalJobMap) {
+      if (job.status !== 'running' && job.started_at < cutoff) globalJobMap.delete(id);
+    }
+  }, 600_000);
+
+  function makeJobId(type: GlobalJobType) {
+    return `${type}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  }
+
+  /* ── GET /global/jobs/:id — Poll job progress ── */
+
+  router.get('/global/jobs/:id', async (req, res) => {
+    const jwt = extractJwt(req);
+    if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+    const job = globalJobMap.get(req.params.id);
+    if (!job) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Job not found or expired' } }); return; }
+
+    const elapsed_ms = (job.ended_at || Date.now()) - job.started_at;
+    const pct = job.total > 0 ? Math.round((job.done / job.total) * 100) : 0;
+
+    res.json({
+      id: job.id,
+      type: job.type,
+      status: job.status,
+      total: job.total,
+      done: job.done,
+      failed: job.failed,
+      pct,
+      current_scheme: job.current_scheme,
+      elapsed_ms,
+      error: job.error,
+    });
+  });
+
+  /* ── POST /global/jobs/download — Download NAV for all active schemes ── */
+
+  router.post('/global/jobs/download', async (req, res) => {
+    const jwt = extractJwt(req);
+    if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+    const id = makeJobId('download');
+    const job: GlobalJob = { id, type: 'download', status: 'running', total: 0, done: 0, failed: 0, current_scheme: null, started_at: Date.now() };
+    globalJobMap.set(id, job);
+
+    res.status(202).json({ job_id: id, status: 'started' });
+
+    (async () => {
+      try {
+        // Only download schemes that have NO data (skip those already downloaded)
+        const schemes = await pool.query(
+          `SELECT s.scheme_code FROM ki_schemes s
+           WHERE s.active = true
+             AND NOT EXISTS (SELECT 1 FROM ki_nav_history h WHERE h.scheme_code = s.scheme_code LIMIT 1)
+           ORDER BY s.scheme_code`,
+        );
+        job.total = schemes.rows.length;
+
+        for (const row of schemes.rows as any[]) {
+          job.current_scheme = row.scheme_code;
+          try {
+            const records = await fetchMfapiHistory(row.scheme_code);
+            if (records.length > 0) {
+              const BATCH = 500;
+              for (let i = 0; i < records.length; i += BATCH) {
+                const batch = records.slice(i, i + BATCH);
+                const vals: any[] = [];
+                const ph: string[] = [];
+                batch.forEach((rec, idx) => {
+                  const o = idx * 3;
+                  ph.push(`($${o + 1}, $${o + 2}, $${o + 3})`);
+                  vals.push(rec.scheme_code, rec.nav_date, rec.nav);
+                });
+                await pool.query(
+                  `INSERT INTO ki_nav_history (scheme_code, nav_date, nav) VALUES ${ph.join(', ')}
+                   ON CONFLICT (scheme_code, nav_date) DO UPDATE SET nav = EXCLUDED.nav`,
+                  vals,
+                );
+              }
+            }
+            job.done++;
+          } catch { job.failed++; }
+        }
+
+        job.status = 'done';
+        job.ended_at = Date.now();
+        job.current_scheme = null;
+      } catch (err: any) {
+        job.status = 'failed';
+        job.error = err instanceof Error ? err.message : String(err);
+        job.ended_at = Date.now();
+        job.current_scheme = null;
+      }
+    })();
+  });
+
+  /* ── POST /global/jobs/redownload — Delete + redownload NAV for all schemes with data ── */
+
+  router.post('/global/jobs/redownload', async (req, res) => {
+    const jwt = extractJwt(req);
+    if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+    const id = makeJobId('redownload');
+    const job: GlobalJob = { id, type: 'redownload', status: 'running', total: 0, done: 0, failed: 0, current_scheme: null, started_at: Date.now() };
+    globalJobMap.set(id, job);
+
+    res.status(202).json({ job_id: id, status: 'started' });
+
+    (async () => {
+      try {
+        // Schemes that already have data — redownload only those
+        const schemes = await pool.query(
+          `SELECT DISTINCT scheme_code FROM ki_nav_history ORDER BY scheme_code`,
+        );
+        job.total = schemes.rows.length;
+
+        for (const row of schemes.rows as any[]) {
+          job.current_scheme = row.scheme_code;
+          try {
+            // Delete existing data
+            await pool.query('DELETE FROM ki_nav_history WHERE scheme_code = $1', [row.scheme_code]);
+
+            // Re-fetch full history
+            const records = await fetchMfapiHistory(row.scheme_code);
+            if (records.length > 0) {
+              const BATCH = 500;
+              for (let i = 0; i < records.length; i += BATCH) {
+                const batch = records.slice(i, i + BATCH);
+                const vals: any[] = [];
+                const ph: string[] = [];
+                batch.forEach((rec, idx) => {
+                  const o = idx * 3;
+                  ph.push(`($${o + 1}, $${o + 2}, $${o + 3})`);
+                  vals.push(rec.scheme_code, rec.nav_date, rec.nav);
+                });
+                await pool.query(
+                  `INSERT INTO ki_nav_history (scheme_code, nav_date, nav) VALUES ${ph.join(', ')}
+                   ON CONFLICT (scheme_code, nav_date) DO UPDATE SET nav = EXCLUDED.nav`,
+                  vals,
+                );
+              }
+            }
+            job.done++;
+          } catch { job.failed++; }
+        }
+
+        job.status = 'done';
+        job.ended_at = Date.now();
+        job.current_scheme = null;
+      } catch (err: any) {
+        job.status = 'failed';
+        job.error = err instanceof Error ? err.message : String(err);
+        job.ended_at = Date.now();
+        job.current_scheme = null;
+      }
+    })();
+  });
+
+  /* ── POST /global/jobs/metrics — Calculate metrics for all schemes with NAV data ── */
+
+  router.post('/global/jobs/metrics', async (req, res) => {
+    const jwt = extractJwt(req);
+    if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+    const id = makeJobId('metrics');
+    const job: GlobalJob = { id, type: 'metrics', status: 'running', total: 0, done: 0, failed: 0, current_scheme: null, started_at: Date.now() };
+    globalJobMap.set(id, job);
+
+    res.status(202).json({ job_id: id, status: 'started' });
+
+    (async () => {
+      try {
+        // Schemes with data but no/stale metrics
+        const schemes = await pool.query(
+          `SELECT DISTINCT scheme_code FROM ki_nav_history
+           WHERE metrics_calculated_at IS NULL
+              OR metrics_calculated_at < now() - interval '1 day'
+           ORDER BY scheme_code`,
+        );
+        job.total = schemes.rows.length;
+
+        for (const row of schemes.rows as any[]) {
+          job.current_scheme = row.scheme_code;
+          try {
+            await pool.query('SELECT * FROM calculate_scheme_metrics($1::text)', [row.scheme_code]);
+            job.done++;
+          } catch { job.failed++; }
+        }
+
+        job.status = 'done';
+        job.ended_at = Date.now();
+        job.current_scheme = null;
+      } catch (err: any) {
+        job.status = 'failed';
+        job.error = err instanceof Error ? err.message : String(err);
+        job.ended_at = Date.now();
+        job.current_scheme = null;
+      }
+    })();
+  });
+
+  /* ── POST /global/jobs/recalc — Clear metrics + recalculate all ── */
+
+  router.post('/global/jobs/recalc', async (req, res) => {
+    const jwt = extractJwt(req);
+    if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+    const id = makeJobId('recalc');
+    const job: GlobalJob = { id, type: 'recalc', status: 'running', total: 0, done: 0, failed: 0, current_scheme: null, started_at: Date.now() };
+    globalJobMap.set(id, job);
+
+    res.status(202).json({ job_id: id, status: 'started' });
+
+    (async () => {
+      try {
+        const schemes = await pool.query(
+          `SELECT DISTINCT scheme_code FROM ki_nav_history ORDER BY scheme_code`,
+        );
+        job.total = schemes.rows.length;
+
+        for (const row of schemes.rows as any[]) {
+          job.current_scheme = row.scheme_code;
+          try {
+            // Clear existing metrics
+            await pool.query(
+              `UPDATE ki_nav_history SET
+                 metrics_calculated_at = NULL,
+                 daily_return = NULL, return_1w = NULL, return_1m = NULL,
+                 return_3m = NULL, return_6m = NULL, return_1y = NULL,
+                 return_ytd = NULL, return_all = NULL,
+                 sd_7d = NULL, sd_14d = NULL, sd_21d = NULL,
+                 sd_42d = NULL, sd_3m = NULL, sd_6m = NULL,
+                 sharpe_ratio = NULL, max_drawdown = NULL, cagr = NULL
+               WHERE scheme_code = $1`,
+              [row.scheme_code],
+            );
+            // Recalculate
+            await pool.query('SELECT * FROM calculate_scheme_metrics($1::text)', [row.scheme_code]);
+            job.done++;
+          } catch { job.failed++; }
+        }
+
+        job.status = 'done';
+        job.ended_at = Date.now();
+        job.current_scheme = null;
+      } catch (err: any) {
+        job.status = 'failed';
+        job.error = err instanceof Error ? err.message : String(err);
+        job.ended_at = Date.now();
+        job.current_scheme = null;
+      }
+    })();
+  });
+
   return router;
 }

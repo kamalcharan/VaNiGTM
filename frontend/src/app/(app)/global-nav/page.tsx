@@ -136,6 +136,83 @@ export default function GlobalNavPage() {
   const [displayAliasEdit, setDisplayAliasEdit] = useState('');
   const [savingDisplayAlias, setSavingDisplayAlias] = useState(false);
 
+  /* ── Global bulk job state ── */
+  interface BulkJob {
+    id: string;
+    type: 'download' | 'redownload' | 'metrics' | 'recalc';
+    status: 'running' | 'done' | 'failed';
+    total: number;
+    done: number;
+    failed: number;
+    pct: number;
+    current_scheme: string | null;
+    elapsed_ms: number;
+    error?: string;
+  }
+  const [bulkJob, setBulkJob] = useState<BulkJob | null>(null);
+  const [bulkJobStarting, setBulkJobStarting] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const JOB_LABELS: Record<string, string> = {
+    download:   'Downloading NAV — all schemes with no data',
+    redownload: 'Redownloading NAV — clean + full refetch',
+    metrics:    'Calculating Metrics — all stale/missing',
+    recalc:     'Recalculating Metrics — full clean slate',
+  };
+
+  function stopPoll() {
+    if (pollRef.current) { clearTimeout(pollRef.current); pollRef.current = null; }
+  }
+
+  async function pollJob(jobId: string) {
+    try {
+      const data = await apiFetch<BulkJob>({
+        ...API.nav.globalJobStatus,
+        path: API.nav.globalJobStatus.path.replace(':jobId', jobId),
+      });
+      setBulkJob(data);
+      if (data.status === 'running') {
+        pollRef.current = setTimeout(() => pollJob(jobId), 2500);
+      } else {
+        stopPoll();
+        if (data.status === 'done') {
+          showToast({ message: `Job complete — ${data.done} done, ${data.failed} failed`, type: data.failed > 0 ? 'warning' : 'success' });
+        } else {
+          showToast({ message: `Job failed: ${data.error || 'Unknown error'}`, type: 'error' });
+        }
+      }
+    } catch {
+      stopPoll();
+      showToast({ message: 'Lost contact with job', type: 'error' });
+    }
+  }
+
+  async function startBulkJob(type: 'download' | 'redownload' | 'metrics' | 'recalc') {
+    if (bulkJobStarting || bulkJob?.status === 'running') return;
+    setBulkJobStarting(type);
+    stopPoll();
+    setBulkJob(null);
+    try {
+      const apiKey = {
+        download:   API.nav.globalJobDownload,
+        redownload: API.nav.globalJobRedownload,
+        metrics:    API.nav.globalJobMetrics,
+        recalc:     API.nav.globalJobRecalc,
+      }[type];
+      const r = await apiFetch<{ job_id: string }>(apiKey);
+      // Seed initial state so modal opens immediately
+      setBulkJob({ id: r.job_id, type, status: 'running', total: 0, done: 0, failed: 0, pct: 0, current_scheme: null, elapsed_ms: 0 });
+      pollRef.current = setTimeout(() => pollJob(r.job_id), 2500);
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Failed to start job', type: 'error' });
+    } finally {
+      setBulkJobStarting(null);
+    }
+  }
+
+  // Cleanup poll on unmount
+  useEffect(() => () => stopPoll(), []);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ── Load stats (once) ── */
@@ -320,9 +397,50 @@ export default function GlobalNavPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '24px', maxWidth: 1100, margin: '0 auto' }}>
 
       {/* Header */}
-      <div>
-        <h1 className={d.pageTitle}>Global NAV</h1>
-        <p className={d.pageSubtitle}>All mutual fund schemes · search, download NAV, manage aliases</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <h1 className={d.pageTitle}>Global NAV</h1>
+          <p className={d.pageSubtitle}>All mutual fund schemes · search, download NAV, manage aliases</p>
+        </div>
+
+        {/* Bulk Operations */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-muted)', marginRight: 4 }}>
+            Bulk Ops
+          </span>
+          <VdfButton
+            variant="outline" size="sm"
+            onClick={() => startBulkJob('download')}
+            disabled={!!bulkJobStarting || bulkJob?.status === 'running'}
+            loading={bulkJobStarting === 'download'}
+          >
+            Download All
+          </VdfButton>
+          <VdfButton
+            variant="outline" size="sm"
+            onClick={() => startBulkJob('redownload')}
+            disabled={!!bulkJobStarting || bulkJob?.status === 'running'}
+            loading={bulkJobStarting === 'redownload'}
+          >
+            Redownload All
+          </VdfButton>
+          <VdfButton
+            variant="outline" size="sm"
+            onClick={() => startBulkJob('metrics')}
+            disabled={!!bulkJobStarting || bulkJob?.status === 'running'}
+            loading={bulkJobStarting === 'metrics'}
+          >
+            Calc All Metrics
+          </VdfButton>
+          <VdfButton
+            variant="outline" size="sm"
+            onClick={() => startBulkJob('recalc')}
+            disabled={!!bulkJobStarting || bulkJob?.status === 'running'}
+            loading={bulkJobStarting === 'recalc'}
+          >
+            Recalculate All
+          </VdfButton>
+        </div>
       </div>
 
       {/* Stat filter cards */}
@@ -343,7 +461,7 @@ export default function GlobalNavPage() {
         />
         <VdfStatCard
           value={statsLoading ? '…' : (stats?.without_nav_data ?? 0)}
-          label="No Data"
+          label="No NAV Data"
           accent="danger"
           active={filterStatus === 'no_data'}
           onClick={() => handleFilterClick('no_data')}
@@ -355,6 +473,23 @@ export default function GlobalNavPage() {
           active={filterStatus === 'inactive'}
           onClick={() => handleFilterClick('inactive')}
         />
+        <VdfStatCard
+          value={statsLoading ? '…' : (stats?.metrics_calculated ?? 0)}
+          label="Metrics Done"
+          accent="info"
+        />
+        <VdfStatCard
+          value={statsLoading ? '…' : (stats?.metrics_pending ?? 0)}
+          label="Metrics Pending"
+          accent="warning"
+        />
+        {stats && stats.with_nav_data > 0 && (
+          <VdfStatCard
+            value={statsLoading ? '…' : `${Math.round((stats.metrics_calculated / stats.with_nav_data) * 100)}%`}
+            label="Metrics Coverage"
+            accent="success"
+          />
+        )}
       </div>
 
       {/* Search bar */}
@@ -417,6 +552,78 @@ export default function GlobalNavPage() {
           <button className={d.pageBtn} onClick={() => setPage(totalPages)} disabled={page === totalPages}>»</button>
         </div>
       )}
+
+      {/* Bulk Job Progress Modal */}
+      <VdfModal
+        isOpen={!!bulkJob}
+        onClose={() => { if (bulkJob?.status !== 'running') { stopPoll(); setBulkJob(null); } }}
+        title={bulkJob ? JOB_LABELS[bulkJob.type] : ''}
+        subtitle={bulkJob?.status === 'running' ? 'Running in background — safe to navigate away' : bulkJob?.status === 'done' ? 'Completed' : 'Failed'}
+      >
+        {bulkJob && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+            {/* Progress bar */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: '0.75rem', color: 'var(--color-muted)' }}>
+                <span>{bulkJob.done} of {bulkJob.total || '?'} schemes</span>
+                <span>{bulkJob.pct}%</span>
+              </div>
+              <div style={{ height: 8, background: 'var(--color-surface)', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: `${bulkJob.pct}%`,
+                  background: bulkJob.status === 'failed' ? 'var(--color-danger)' : bulkJob.status === 'done' ? 'var(--color-success)' : 'var(--color-primary)',
+                  borderRadius: 4,
+                  transition: 'width 0.4s ease',
+                }} />
+              </div>
+            </div>
+
+            {/* Stats row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              {[
+                { label: 'Done', value: bulkJob.done, color: 'var(--color-success)' },
+                { label: 'Failed', value: bulkJob.failed, color: bulkJob.failed > 0 ? 'var(--color-danger)' : 'var(--color-muted)' },
+                { label: 'Elapsed', value: `${Math.round(bulkJob.elapsed_ms / 1000)}s`, color: 'var(--color-fg)' },
+              ].map(s => (
+                <div key={s.label} style={{ padding: '10px 14px', background: 'var(--color-surface)', borderRadius: 8, border: '1px solid var(--color-border)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 700, color: s.color, fontFamily: 'var(--font-mono, monospace)' }}>{s.value}</div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 3 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Current scheme */}
+            {bulkJob.current_scheme && (
+              <div style={{ padding: '8px 12px', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: 6, fontSize: '0.78rem', color: 'var(--color-muted)' }}>
+                <span style={{ color: 'var(--color-primary)', marginRight: 6 }}>▶</span>
+                <span style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--color-fg)' }}>{bulkJob.current_scheme}</span>
+              </div>
+            )}
+
+            {/* Error */}
+            {bulkJob.error && (
+              <div style={{ padding: '8px 12px', background: 'rgba(var(--color-danger-rgb, 239,68,68), 0.08)', border: '1px solid var(--color-danger)', borderRadius: 6, fontSize: '0.78rem', color: 'var(--color-danger)' }}>
+                {bulkJob.error}
+              </div>
+            )}
+
+            {/* Status message */}
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)', textAlign: 'center' }}>
+              {bulkJob.status === 'running' && 'Processing sequentially to avoid API rate limits…'}
+              {bulkJob.status === 'done' && `All done — ${bulkJob.failed > 0 ? `${bulkJob.failed} failed (network/data errors)` : 'no errors'}`}
+              {bulkJob.status === 'failed' && 'Job stopped due to an unexpected error'}
+            </div>
+
+            {bulkJob.status !== 'running' && (
+              <VdfButton variant="primary" size="sm" onClick={() => { stopPoll(); setBulkJob(null); }}>
+                Close
+              </VdfButton>
+            )}
+          </div>
+        )}
+      </VdfModal>
 
       {/* Download NAV modal */}
       {downloadModal && (
