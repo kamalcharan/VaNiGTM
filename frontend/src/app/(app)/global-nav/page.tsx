@@ -4,15 +4,15 @@
  * Global NAV Explorer — ALL 16K+ schemes.
  *
  * No tenant filter — global scheme reference.
- * Pattern: follows my-nav UX exactly.
+ * Reuses VdfTrackingCard (same component as My NAV) for the scheme list.
  *  - Stat filter cards at top
- *  - Search bar + toolbar row
- *  - Paginated table (server-side, 50/page)
- *  - VdfDownloadNavModal per row
+ *  - Search bar (debounced, server-side)
+ *  - Paginated list using VdfTrackingCard
+ *  - VdfDownloadNavModal for per-row NAV download
  *
  * COMPLIANCE:
  *  - forms.module.css  → inputs, buttons
- *  - data.module.css   → table, pagination, pageTitle
+ *  - data.module.css   → pagination, pageTitle
  *  - VDF components    → all UI
  */
 
@@ -21,7 +21,10 @@ import { useRouter } from 'next/navigation';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { VdfStatCard, VdfStatusBadge, VdfLoader, VdfEmptyState, VdfButton } from '@/components/vdf';
+import {
+  VdfStatCard, VdfLoader, VdfEmptyState, VdfButton,
+  VdfTrackingCard, type TrackingBookmark, type TrackingCardAction, type TrackingStatus,
+} from '@/components/vdf';
 import { VdfDownloadNavModal } from '@/components/vdf/download-nav-modal/VdfDownloadNavModal';
 import f from '@/styles/forms.module.css';
 import d from '@/styles/data.module.css';
@@ -68,20 +71,39 @@ interface SearchResult {
 type FilterStatus = 'all' | 'has_data' | 'no_data' | 'inactive';
 const LIMIT = 50;
 
-function navAge(d: string | null): number {
-  if (!d) return 999;
-  return Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
+/* ── Helpers ─────────────────────────────────────────── */
+
+function navAge(dateStr: string | null): number {
+  if (!dateStr) return 999;
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
 }
 
-function rowStatus(row: SchemeRow): 'success' | 'warning' | 'danger' | 'muted' {
-  if (!row.active) return 'muted';
-  if (row.nav_records === 0) return 'danger';
-  if (navAge(row.latest_nav_date) > 7) return 'warning';
-  return 'success';
+function toTrackingStatus(row: SchemeRow): TrackingStatus {
+  if (row.nav_records === 0) return 'no_data';
+  if (navAge(row.latest_nav_date) > 7) return 'stale';
+  return 'healthy';
 }
 
-function fmtNav(n: number | null): string {
-  return n == null ? '—' : `₹${n.toFixed(2)}`;
+/** Map SchemeRow → TrackingBookmark so VdfTrackingCard can render it */
+function toBookmark(row: SchemeRow): TrackingBookmark {
+  return {
+    id: 0,
+    scheme_code: row.scheme_code,
+    scheme_name: row.scheme_name,
+    amc: row.amc,
+    alias_name: null,
+    daily_download_enabled: false,
+    historical_download_done: row.nav_records > 0,
+    active: row.active,
+    category: row.category || null,
+    scheme_type: row.scheme_type || null,
+    nav_records: row.nav_records,
+    latest_nav_date: row.latest_nav_date,
+    latest_nav: row.nav,
+    earliest_nav_date: row.earliest_nav_date,
+    metrics_calculated_at: null,
+    nav_age_days: navAge(row.nav_date) < 999 ? navAge(row.nav_date) : null,
+  };
 }
 
 /* ── Component ─────────────────────────────────────── */
@@ -90,7 +112,6 @@ export default function GlobalNavPage() {
   const router = useRouter();
   const { showToast } = useToast();
 
-  /* ── State ── */
   const [stats, setStats] = useState<SchemeStats | null>(null);
   const [schemes, setSchemes] = useState<SchemeRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,7 +144,6 @@ export default function GlobalNavPage() {
       if (status === 'has_data')  params.has_nav_data = true;
       if (status === 'no_data')   params.has_nav_data = false;
       if (status === 'inactive')  params.active_only  = false;
-      if (status === 'all')       { /* no extra filter */ }
 
       const r = await apiFetch<{ data: SearchResult }>(API.skills.execute, {
         pathParams: { skill: 'market-skill', fn: 'search_schemes' },
@@ -140,7 +160,7 @@ export default function GlobalNavPage() {
     }
   }, [showToast]);
 
-  /* Debounce search, reset page on change */
+  /* Debounce search + filter changes, reset page */
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -176,7 +196,7 @@ export default function GlobalNavPage() {
     }
   }
 
-  /* ── After download — refresh that row ── */
+  /* ── After download — refresh that row's records count ── */
   function handleDownloaded(records: number) {
     if (!downloadModal) return;
     setSchemes(prev => prev.map(s =>
@@ -184,22 +204,45 @@ export default function GlobalNavPage() {
         ? { ...s, nav_records: s.nav_records + records, latest_nav_date: new Date().toISOString().split('T')[0] }
         : s,
     ));
-    // Also refresh stats
     apiFetch<{ data: SchemeStats }>(API.skills.execute, {
       pathParams: { skill: 'market-skill', fn: 'get_scheme_stats' },
       body: { params: {} },
     }).then(r => setStats(r.data)).catch(() => {});
   }
 
-  /* ── Status filter click — resets page ── */
+  /* ── Filter card click — resets page ── */
   function handleFilterClick(status: FilterStatus) {
     setFilterStatus(status);
     setPage(1);
   }
 
+  /* ── Card actions for each row ── */
+  function cardActions(row: SchemeRow): TrackingCardAction[] {
+    const busy = bookmarkLoading === row.scheme_code;
+    return [
+      {
+        label: 'Dashboard',
+        onClick: () => router.push(`/global-nav/${row.scheme_code}`),
+        variant: 'primary',
+        primary: true,
+      },
+      {
+        label: row.nav_records > 0 ? 'Update NAV' : 'Download NAV',
+        onClick: () => setDownloadModal(row),
+        variant: 'success',
+      },
+      {
+        label: row.is_bookmarked ? '★ My NAV' : '☆ Add to My NAV',
+        onClick: () => toggleBookmark(row),
+        variant: 'muted',
+        disabled: busy,
+      },
+    ];
+  }
+
   /* ── Render ── */
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '24px', maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '24px', maxWidth: 1100, margin: '0 auto' }}>
 
       {/* Header */}
       <div>
@@ -256,7 +299,7 @@ export default function GlobalNavPage() {
         )}
       </div>
 
-      {/* Scheme list */}
+      {/* Scheme list — uses VdfTrackingCard (same component as My NAV) */}
       {loading ? (
         <VdfLoader message="Loading schemes" hint="Fetching from global scheme database" />
       ) : loadError ? (
@@ -276,86 +319,16 @@ export default function GlobalNavPage() {
             : undefined}
         />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {schemes.map(row => {
-            const st = rowStatus(row);
-            return (
-              <div
-                key={row.scheme_code}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '12px 16px',
-                  background: 'var(--glass)', border: '1px solid var(--glass-border)',
-                  borderRadius: 10,
-                }}
-              >
-                {/* Main info — clickable */}
-                <button
-                  onClick={() => router.push(`/global-nav/${row.scheme_code}`)}
-                  style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 4 }}
-                >
-                  {/* Name + status */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-fg)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {row.scheme_name}
-                    </span>
-                    <VdfStatusBadge
-                      label={st === 'success' ? 'Has Data' : st === 'warning' ? 'Stale' : st === 'danger' ? 'No Data' : 'Inactive'}
-                      variant={st === 'success' ? 'success' : st === 'warning' ? 'warning' : st === 'danger' ? 'danger' : 'muted'}
-                      size="sm"
-                    />
-                  </div>
-                  {/* Code · AMC · Category */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.7rem', color: 'var(--color-muted)', flexWrap: 'wrap' }}>
-                    <span style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 600, color: 'var(--color-fg)' }}>{row.scheme_code}</span>
-                    <span style={{ opacity: 0.4 }}>·</span>
-                    <span>{row.amc}</span>
-                    {row.category && <><span style={{ opacity: 0.4 }}>·</span><span>{row.category}</span></>}
-                    {row.scheme_type && <><span style={{ opacity: 0.4 }}>·</span><span>{row.scheme_type}</span></>}
-                  </div>
-                  {/* NAV · date · records */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.68rem', color: 'var(--color-muted)' }}>
-                    {row.nav
-                      ? <span style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700, color: 'var(--color-primary)' }}>{fmtNav(row.nav)}</span>
-                      : <span>No NAV data</span>}
-                    {row.nav_date && <><span style={{ opacity: 0.4 }}>·</span><span>{row.nav_date}</span></>}
-                    {row.nav_records > 0 && <><span style={{ opacity: 0.4 }}>·</span><span style={{ fontFamily: 'var(--font-mono, monospace)' }}>{row.nav_records.toLocaleString()} records</span></>}
-                  </div>
-                </button>
-
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
-                  {/* Bookmark toggle */}
-                  <button
-                    onClick={() => toggleBookmark(row)}
-                    disabled={bookmarkLoading === row.scheme_code}
-                    title={row.is_bookmarked ? 'Remove from My NAV' : 'Add to My NAV'}
-                    style={{
-                      background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px',
-                      fontSize: '1rem', opacity: bookmarkLoading === row.scheme_code ? 0.4 : 1,
-                      color: row.is_bookmarked ? 'var(--color-warning)' : 'var(--color-muted)',
-                      transition: 'color 150ms',
-                    }}
-                  >
-                    {row.is_bookmarked ? '★' : '☆'}
-                  </button>
-                  {/* Download NAV */}
-                  <button
-                    onClick={() => setDownloadModal(row)}
-                    style={{
-                      height: 32, padding: '0 12px',
-                      border: '1px solid var(--color-border)', borderRadius: 6,
-                      background: 'transparent', color: 'var(--color-fg)',
-                      fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
-                      whiteSpace: 'nowrap', transition: 'border-color 150ms',
-                    }}
-                  >
-                    ↓ NAV
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {schemes.map(row => (
+            <VdfTrackingCard
+              key={row.scheme_code}
+              bookmark={toBookmark(row)}
+              status={toTrackingStatus(row)}
+              actions={cardActions(row)}
+              onClick={code => router.push(`/global-nav/${code}`)}
+            />
+          ))}
         </div>
       )}
 
