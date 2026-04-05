@@ -142,12 +142,17 @@ export default function ImportDashboardPage() {
   }
 
   // VaNi analysis
+  const isFinished = selectedSession ? ['completed', 'completed_with_errors'].includes(selectedSession.status) : false;
   const vaniMsg = selectedSession
-    ? selectedSession.failed_records > 0
-      ? `Import completed with ${selectedSession.failed_records} failures. Review failed records and reprocess, or check field mappings.`
-      : selectedSession.successful_records === selectedSession.total_records
-      ? `Import perfect. All ${selectedSession.total_records.toLocaleString()} records processed. Cross-referencing with NAV database for operational health.`
-      : 'Import in progress...'
+    ? !isFinished
+      ? 'Processing import...'
+      : selectedSession.failed_records > 0
+      ? `Import completed with ${selectedSession.failed_records} failure${selectedSession.failed_records > 1 ? 's' : ''}. Review failed records and reprocess, or check field mappings.`
+      : selectedSession.duplicate_records > 0 && selectedSession.successful_records > 0
+      ? `Import complete. ${selectedSession.successful_records.toLocaleString()} new bookmarks added, ${selectedSession.duplicate_records.toLocaleString()} already in your watchlist.`
+      : selectedSession.duplicate_records > 0 && selectedSession.successful_records === 0
+      ? `All ${selectedSession.duplicate_records.toLocaleString()} bookmarks are already in your watchlist — no new additions.`
+      : `Import perfect. All ${selectedSession.total_records.toLocaleString()} records processed successfully.`
     : null;
 
   const initials = user?.name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
