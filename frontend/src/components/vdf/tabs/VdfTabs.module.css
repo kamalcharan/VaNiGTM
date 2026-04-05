@@ -41,6 +41,58 @@
   background: color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
+/* ── Pill variant ───────────────────────────────────── */
+.pill {
+  flex-direction: row;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.pill .tab {
+  flex: 1;
+  justify-content: center;
+  padding: 9px 16px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.pill .active {
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+.pill .active:hover {
+  color: #fff;
+  background: var(--color-primary);
+  filter: brightness(1.08);
+}
+
+.pill .tab:hover:not(.active) {
+  background: color-mix(in srgb, var(--color-muted) 10%, transparent);
+  color: var(--color-fg);
+}
+
+/* ── Badge (count inside tab) ───────────────────────── */
+.badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  color: inherit;
+  line-height: 1.4;
+}
+
+.pill .active .badge {
+  background: rgba(255, 255, 255, 0.25);
+}
+
 /* ── Tab Button ─────────────────────────────────────── */
 .tab {
   display: flex;

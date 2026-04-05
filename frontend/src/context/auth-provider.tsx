@@ -1,8 +1,9 @@
 'use client';
 
 import { createContext, useContext, useEffect, type ReactNode } from 'react';
-import { useMe, type MeUser, type MeTenant } from '@/hooks';
-import { clearTokens, getAccessToken } from '@/lib/api-client';
+import { useMe, useInvalidateMe, type MeUser, type MeTenant } from '@/hooks';
+import { apiFetch, clearTokens, getAccessToken, getRefreshToken, storeTokens } from '@/lib/api-client';
+import { API } from '@/lib/serviceURLs';
 import { useTheme } from '@/config/theme';
 
 /* ── Types ───────────────────────────────────────────── */
@@ -12,7 +13,9 @@ interface AuthContextValue {
   tenant: MeTenant | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isLive: boolean;
   logout: () => void;
+  switchEnv: (live: boolean) => Promise<void>;
 }
 
 /* ── Context ─────────────────────────────────────────── */
@@ -23,11 +26,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: me, isLoading } = useMe();
+  const invalidateMe = useInvalidateMe();
   const { setTheme, themeId } = useTheme();
 
   const user = me?.user || null;
   const tenant = me?.tenant || null;
   const isAuthenticated = !!getAccessToken() && !!user;
+  const isLive: boolean = tenant?.is_live !== false;
 
   // Sync theme from server (user.preferred_theme) → ThemeProvider
   // This ensures the theme matches what the user saved, even on first load
@@ -54,12 +59,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function logout() {
+    // Fire-and-forget: revoke the specific session in DB by sending the refresh token
+    // Don't await — clear tokens and redirect immediately for instant UX
+    const refreshToken = getRefreshToken();
+    apiFetch(API.auth.logout, {
+      body: refreshToken ? { refresh_token: refreshToken } : {},
+    }).catch(() => {});
     clearTokens();
     window.location.href = '/login';
   }
 
+  async function switchEnv(live: boolean): Promise<void> {
+    const result = await apiFetch<{ access_token: string; expires_in: number; is_live: boolean }>(
+      API.auth.switchEnv,
+      { body: { is_live: live } },
+    );
+    // Replace only the access token — refresh token is unchanged
+    const TOKEN_ACCESS = 'pk-access-token';
+    const expiresAt = String(Date.now() + result.expires_in * 1000);
+    try {
+      sessionStorage.setItem(TOKEN_ACCESS, result.access_token);
+      sessionStorage.setItem('pk-token-expires-at', expiresAt);
+      localStorage.setItem(TOKEN_ACCESS, result.access_token);
+      localStorage.setItem('pk-token-expires-at', expiresAt);
+    } catch { /* storage unavailable */ }
+    // Invalidate useMe cache so all pages refetch with new environment
+    invalidateMe();
+  }
+
   return (
-    <AuthContext.Provider value={{ user, tenant, isAuthenticated, isLoading, logout }}>
+    <AuthContext.Provider value={{ user, tenant, isAuthenticated, isLoading, isLive, logout, switchEnv }}>
       {children}
     </AuthContext.Provider>
   );

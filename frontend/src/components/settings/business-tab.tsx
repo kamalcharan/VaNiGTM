@@ -80,6 +80,7 @@ export default function BusinessTab() {
       setDraft(data);
     } catch (err) {
       console.error('[BusinessTab] Failed to load profile:', err);
+      showToast({ message: (err as ApiError).message || 'Failed to load business profile', type: 'error' });
     } finally {
       setFetching(false);
     }

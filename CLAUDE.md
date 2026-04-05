@@ -324,6 +324,25 @@ Pages MUST import shared CSS + VDF components. Page CSS should ONLY contain layo
 11. **Tests: 3-check pattern** — (a) valid data, (b) empty/not-found, (c) wrong tenant → zero rows.
 12. **No VaNi. No VaNiBase. No framework imports.** This is plain Express + Next.js.
 13. **UX: glassmorphic default, innovative, premium.** No generic/safe design. Match HTML reference designs in documents/HTML/.
+14. **Tenant isolation is MANDATORY on every query, every endpoint, every feature.** No data from one tenant may ever be visible to another. Backend filter: `WHERE tenant_id = $tenant_id`. Frontend never receives cross-tenant data.
+15. **Environment isolation is MANDATORY.** Every tenant has `is_live` flag (boolean). Live (`is_live = true`) and sandbox (`is_live = false`) data are fully isolated. The `is_live` flag is resolved from the JWT/auth context — never from the request body. API endpoints and queries must filter by `is_live` where applicable. Frontend state must reflect the active environment and switch all data views accordingly.
+16. **Tenant-scoped sequence numbers.** Import sessions, transactions, and any user-facing IDs must use tenant-scoped sequential numbers (e.g., `ROW_NUMBER() OVER (PARTITION BY tenant_id ORDER BY created_at)`), NOT raw database PKs. Users must never see system-wide auto-increment IDs.
+
+## Environment Isolation
+
+### is_live flag
+- Every tenant operates in two modes: **Live** (`is_live = true`) and **Sandbox** (`is_live = false`)
+- The active environment is stored in auth context / JWT (resolved server-side from `vn_tenants.is_live` or a per-session flag)
+- **Frontend:** Auth context exposes `isLive: boolean`. UI shows an environment indicator (e.g., "LIVE" / "SANDBOX" badge in nav). All data fetches pass the environment context implicitly via JWT.
+- **Backend:** Every data query that is environment-sensitive must filter by `is_live`. Global reference tables (ki_schemes, ki_nav_history) are NOT environment-scoped (shared across live/sandbox).
+- **Never mix environments.** A sandbox import session must never appear in live mode queries and vice versa.
+- **Environment switch:** Changing environment reloads all data — no cross-environment data leaks into the UI.
+
+### What is environment-scoped (filtered by is_live)
+- ki_import_sessions, ki_clients, ki_portfolios, ki_holdings, ki_transactions, ki_goals, ki_alerts
+
+### What is NOT environment-scoped (global reference data)
+- ki_schemes, ki_nav_history, ki_scheme_aliases, ki_scheme_bookmarks (bookmarks are per-tenant but not per-environment — bookmarks are configuration, not transactional data)
 
 ## kewalinvest Submodule — Mandatory Audit Rules
 
@@ -553,11 +572,12 @@ Output: "WHERE tenant_id = $1 AND client_id = $2"
 | PATCH /api/v1/tenant/profile | ✅ Full (18 columns dynamic update) |
 | GET /api/v1/onboarding/status | ✅ Full |
 | PATCH /api/v1/onboarding/step | ✅ Full |
-| POST /api/v1/auth/refresh | ❌ Not built |
-| POST /api/v1/auth/logout | ❌ Not built |
-| GET /api/v1/auth/me | ❌ Not built |
-| GET /api/v1/auth/sessions | ❌ Not built |
-| POST /api/v1/auth/sessions/revoke | ❌ Not built |
+| POST /api/v1/auth/refresh | ✅ Full (token rotation, 30-day refresh, replay protection) |
+| POST /api/v1/auth/logout | ✅ Full (revokes current session in DB) |
+| GET /api/v1/auth/me | ✅ Full (user + tenant, role lookup) |
+| GET /api/v1/auth/sessions | ✅ Full (lists active sessions with device info) |
+| POST /api/v1/auth/sessions/revoke | ✅ Full (pre-login email+password, revokes selected sessions) |
+| POST /api/v1/auth/change-password | ✅ Full (current password verify, bcrypt 12, revokes all sessions) |
 
 ## Lessons Learned (March 2026 Session)
 
@@ -571,3 +591,6 @@ Output: "WHERE tenant_id = $1 AND client_id = $2"
 8. **Onboarding steps should use full-width card layout, not split narrative panels.** The form needs space; narrative panels waste 40% of viewport.
 9. **Back button belongs in the step footer next to Save & Continue, not in the topbar.** Nobody sees it in the topbar.
 10. **No "Atlas Design Language" — the design system is: 12 themes + CSS variables + form tokens + VDF components.** Don't invent names.
+11. **Tenant isolation bug: GET /sessions had no tenant filter.** All tenants were seeing all sessions globally. Every list endpoint MUST have `WHERE tenant_id = $1` (or equivalent). Never assume a query is tenant-isolated — verify the WHERE clause.
+12. **Never show raw DB PKs to users.** Import session IDs are system-wide auto-increment — "Session #1" means nothing to a tenant. Use `ROW_NUMBER() OVER (ORDER BY created_at)` scoped to the tenant's visible rows to generate user-facing sequence numbers.
+13. **Environment isolation (is_live) must be designed in from day one.** Adding it retroactively requires touching every query, every endpoint, every frontend context. Decide the environment model before writing any data schema.

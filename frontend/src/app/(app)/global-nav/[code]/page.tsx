@@ -6,7 +6,7 @@ import { apiFetch, type ApiError } from '@/lib/api-client';
 import { useSkillQuery } from '@/hooks';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { VdfLineChart, VdfStatusBadge, VdfInsightsCard, VdfLoader, type Insight } from '@/components/vdf';
+import { VdfLineChart, VdfStatusBadge, VdfInsightsCard, VdfLoader, VdfEmptyState, VdfButton, type Insight } from '@/components/vdf';
 // FullPageLoader removed — using VdfLoader
 import d from '@/styles/data.module.css';
 import s from './scheme-dashboard.module.css';
@@ -49,6 +49,7 @@ export default function SchemeDashboardPage() {
 
   const [detail, setDetail] = useState<SchemeDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [calculating, setCalculating] = useState(false);
   const [period, setPeriod] = useState<Period>('1y');
@@ -59,12 +60,15 @@ export default function SchemeDashboardPage() {
   const PAGE_SIZE = 50;
 
   const fetchDetail = useCallback(async () => {
+    setFetchError(false);
     try {
       const data = await apiFetch<SchemeDetail>({ ...API.nav.schemeDetail, path: API.nav.schemeDetail.path.replace(':code', code) });
       setDetail(data);
-    } catch { /* fail silently */ }
-    finally { setLoading(false); }
-  }, [code]);
+    } catch (err) {
+      setFetchError(true);
+      showToast({ message: (err as ApiError).message || 'Failed to load scheme data', type: 'error' });
+    } finally { setLoading(false); }
+  }, [code, showToast]);
 
   useEffect(() => { fetchDetail(); }, [fetchDetail]);
 
@@ -132,7 +136,20 @@ export default function SchemeDashboardPage() {
   }
 
   if (loading) return <VdfLoader message={`Loading scheme ${code}`} hint="Fetching data from ProKey database" />;
-  if (!detail) return <div className={s.error}>Scheme not found</div>;
+  if (fetchError || !detail) return (
+    <div style={{ padding: '48px 24px' }}>
+      <VdfEmptyState
+        icon="⚠️"
+        title={fetchError ? 'Failed to load scheme' : 'Scheme not found'}
+        description={fetchError ? 'Could not fetch scheme data. Check your connection and try again.' : `No scheme found for code ${code}.`}
+        action={
+          fetchError
+            ? <VdfButton variant="primary" size="sm" onClick={() => { setLoading(true); fetchDetail(); }}>Retry</VdfButton>
+            : <VdfButton variant="outline" size="sm" onClick={() => router.push('/global-nav')}>Back to Global NAV</VdfButton>
+        }
+      />
+    </div>
+  );
 
   const { scheme, nav, metrics, gaps, bookmark } = detail;
   const change = metrics?.daily_return;

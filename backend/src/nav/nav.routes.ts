@@ -5,13 +5,21 @@
  * All downloads use withIdempotency() for global data safety.
  *
  * POST   /api/v1/nav/bookmarks              — Bookmark a scheme
+ * POST   /api/v1/nav/bookmarks/import       — Bulk import bookmarks from uploaded file
  * GET    /api/v1/nav/bookmarks              — List tenant's bookmarks with NAV status
  * DELETE /api/v1/nav/bookmarks/:schemeCode  — Remove bookmark
+ * PATCH  /api/v1/nav/bookmarks/:schemeCode/alias — Update bookmark alias_name
  * POST   /api/v1/nav/download/daily         — Download today's NAV for all bookmarked schemes
  * POST   /api/v1/nav/download/scheme/:code  — Download historical NAV for one scheme
  * GET    /api/v1/nav/status                 — Cruise control status (all bookmarks + gaps + metrics)
  * POST   /api/v1/nav/metrics/:code          — Calculate metrics for one scheme
  * POST   /api/v1/nav/metrics/bulk           — Calculate metrics for all bookmarked schemes
+ *
+ * Aliases (global — no tenant scope):
+ * GET    /api/v1/nav/aliases                — List aliases (filter by ?scheme_code=)
+ * POST   /api/v1/nav/aliases                — Create single alias
+ * POST   /api/v1/nav/aliases/bulk           — Bulk-create aliases for one scheme
+ * DELETE /api/v1/nav/aliases/:id            — Soft-delete alias
  */
 
 import { Router } from 'express';
@@ -20,6 +28,8 @@ import { verifyAccessToken, type JwtPayload } from '../auth/token.service';
 import { withIdempotency } from '../lib/idempotent';
 import { fetchAmfiDaily } from '../fetchers/amfi-fetcher';
 import { fetchMfapiHistory } from '../fetchers/mfapi-fetcher';
+import { parseExcelRows } from '../etl/excel-parser';
+import { BOOKMARK_FIELD_MAP } from '../etl/scheme-processor';
 
 /* ── Auth ──────────────────────────────────────────── */
 
@@ -67,6 +77,19 @@ export function createNavRouter(pool: Pool): Router {
         [jwt.tenant_id, jwt.user_id, scheme.scheme_code, scheme.scheme_name, scheme.amc, alias_name || null, dailyEnabled],
       );
 
+      // Auto-seed global alias from scheme_name so import pipeline can match it.
+      // ON CONFLICT DO NOTHING — safe to call repeatedly, won't overwrite manual aliases.
+      try {
+        await pool.query(
+          `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+           VALUES ($1, $2, 'auto')
+           ON CONFLICT (alias_name_normalized) DO NOTHING`,
+          [scheme.scheme_code, scheme.scheme_name],
+        );
+      } catch {
+        // Non-fatal: alias table may not exist yet (migration pending)
+      }
+
       res.status(201).json({
         scheme_code: scheme.scheme_code,
         scheme_name: scheme.scheme_name,
@@ -76,6 +99,210 @@ export function createNavRouter(pool: Pool): Router {
     } catch (err: any) {
       console.error('[NAV:bookmark]', err);
       res.status(500).json({ error: { code: 'BOOKMARK_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── POST /bookmarks/import — Bulk import from uploaded file ── */
+
+  router.post('/bookmarks/import', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const { file_id, field_mappings } = req.body;
+      if (!file_id) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'file_id required' } });
+        return;
+      }
+
+      // Get uploaded file record
+      const fileResult = await pool.query('SELECT * FROM ki_file_uploads WHERE id = $1', [file_id]);
+      if (fileResult.rows.length === 0) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found' } });
+        return;
+      }
+      const file = fileResult.rows[0] as any;
+      const mappings: Record<string, string> = field_mappings || BOOKMARK_FIELD_MAP;
+
+      // ── Phase 1: Parse + Stage ───────────────────────────
+
+      const rows = parseExcelRows(file.file_path);
+
+      // Create import session (tenant-scoped, unlike scheme which is global)
+      const sessionResult = await pool.query(
+        `INSERT INTO ki_import_sessions (tenant_id, file_upload_id, import_type, field_mappings, created_by)
+         VALUES ($1, $2, 'bookmark', $3, $4) RETURNING id`,
+        [jwt.tenant_id, file_id, JSON.stringify(mappings), jwt.user_id],
+      );
+      const sessionId = (sessionResult.rows[0] as any).id;
+
+      // Stage all rows in batches of 500
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+        const batch = rows.slice(i, i + BATCH_SIZE);
+        const values: any[] = [];
+        const placeholders: string[] = [];
+        batch.forEach((raw, batchIdx) => {
+          const rowNum = i + batchIdx + 1;
+          const mapped: Record<string, any> = {};
+          for (const [col, field] of Object.entries(mappings)) {
+            const val = raw[col];
+            if (val !== undefined && val !== null && String(val).trim() !== '') {
+              mapped[field] = String(val).trim();
+            }
+          }
+          // Normalise scheme_code (Excel reads numeric cells as floats like 131578.0)
+          if (mapped.scheme_code) mapped.scheme_code = String(mapped.scheme_code).replace(/\.0+$/, '').trim();
+
+          const offset = batchIdx * 4;
+          placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}::jsonb, $${offset + 4}::jsonb)`);
+          values.push(sessionId, rowNum, JSON.stringify(raw), JSON.stringify(mapped));
+        });
+        await pool.query(
+          `INSERT INTO ki_import_staging (session_id, row_number, raw_data, mapped_data) VALUES ${placeholders.join(', ')}`,
+          values,
+        );
+      }
+
+      await pool.query(
+        `UPDATE ki_import_sessions SET status = 'staged', total_records = $1, staging_completed_at = now() WHERE id = $2`,
+        [rows.length, sessionId],
+      );
+
+      // ── Phase 2: Process staged rows ─────────────────────
+
+      await pool.query(
+        `UPDATE ki_import_sessions SET status = 'processing', processing_started_at = now() WHERE id = $1`,
+        [sessionId],
+      );
+
+      const staged = await pool.query(
+        'SELECT id, row_number, mapped_data FROM ki_import_staging WHERE session_id = $1 ORDER BY row_number',
+        [sessionId],
+      );
+
+      let added = 0, already_tracked = 0, total_failed = 0;
+      const startMs = Date.now();
+
+      for (const stagedRow of staged.rows as any[]) {
+        const mapped = stagedRow.mapped_data as Record<string, string>;
+        const rowId = stagedRow.id;
+
+        if (!mapped.scheme_code && !mapped.isin) {
+          total_failed++;
+          await pool.query(
+            `UPDATE ki_import_staging SET processing_status = 'failed',
+             error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
+            [JSON.stringify(['No scheme_code or ISIN found in row']), rowId],
+          );
+          continue;
+        }
+
+        try {
+          // Resolve scheme_code from ISIN if only ISIN provided
+          let schemeCode = mapped.scheme_code;
+          if (!schemeCode && mapped.isin) {
+            const isinResult = await pool.query(
+              `SELECT scheme_code FROM ki_schemes WHERE isin_growth = $1 OR isin_dividend = $1 LIMIT 1`,
+              [mapped.isin],
+            );
+            if (isinResult.rows.length > 0) schemeCode = (isinResult.rows[0] as any).scheme_code;
+          }
+
+          if (!schemeCode) {
+            total_failed++;
+            await pool.query(
+              `UPDATE ki_import_staging SET processing_status = 'failed',
+               error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
+              [JSON.stringify([`ISIN ${mapped.isin} not found in ki_schemes`]), rowId],
+            );
+            continue;
+          }
+
+          // Verify scheme exists (same as single add)
+          const schemeResult = await pool.query(
+            'SELECT scheme_code, scheme_name, amc, active, closure_date FROM ki_schemes WHERE scheme_code = $1',
+            [schemeCode],
+          );
+          if (schemeResult.rows.length === 0) {
+            total_failed++;
+            await pool.query(
+              `UPDATE ki_import_staging SET processing_status = 'failed',
+               error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
+              [JSON.stringify([`Scheme ${schemeCode} not found in ki_schemes`]), rowId],
+            );
+            continue;
+          }
+
+          const scheme = schemeResult.rows[0] as any;
+          const isEnded = scheme.closure_date && new Date(scheme.closure_date) < new Date();
+          const dailyEnabled = scheme.active && !isEnded;
+
+          // Insert bookmark — DO NOTHING for duplicates (already tracked = rejected, not overwritten)
+          const upsertResult = await pool.query(
+            `INSERT INTO ki_scheme_bookmarks
+               (tenant_id, user_id, scheme_code, scheme_name, amc, daily_download_enabled)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (tenant_id, scheme_code) DO NOTHING
+             RETURNING scheme_code`,
+            [jwt.tenant_id, jwt.user_id, scheme.scheme_code, scheme.scheme_name, scheme.amc, dailyEnabled],
+          );
+
+          const isNew = upsertResult.rows.length > 0;
+          if (isNew) added++; else already_tracked++;
+
+          // Update staging row — duplicate = rejected (already tracked, no action taken)
+          await pool.query(
+            `UPDATE ki_import_staging SET processing_status = $1, created_record_id = $2, processed_at = now() WHERE id = $3`,
+            [isNew ? 'success' : 'duplicate', scheme.scheme_code, rowId],
+          );
+
+          // Auto-seed alias only for new bookmarks
+          if (isNew) {
+            try {
+              await pool.query(
+                `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+                 VALUES ($1, $2, 'auto') ON CONFLICT (alias_name_normalized) DO NOTHING`,
+                [scheme.scheme_code, scheme.scheme_name],
+              );
+            } catch { /* non-fatal */ }
+          }
+
+        } catch (err: any) {
+          total_failed++;
+          await pool.query(
+            `UPDATE ki_import_staging SET processing_status = 'failed',
+             error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
+            [JSON.stringify([err.message]), rowId],
+          );
+        }
+      }
+
+      // ── Finalise session ──────────────────────────────────
+
+      const finalStatus = total_failed > 0 ? 'completed_with_errors' : 'completed';
+      await pool.query(
+        `UPDATE ki_import_sessions SET
+           status = $1, processed_records = $2, successful_records = $3,
+           failed_records = $4, duplicate_records = $5, processing_completed_at = now()
+         WHERE id = $6`,
+        [finalStatus, rows.length, added, total_failed, already_tracked, sessionId],
+      );
+
+      await pool.query(`UPDATE ki_file_uploads SET processing_status = 'completed' WHERE id = $1`, [file_id]);
+
+      res.json({
+        session_id: sessionId,
+        status: finalStatus,
+        processed: rows.length,
+        successful: added,
+        failed: total_failed,
+        duplicate: already_tracked,
+        duration_ms: Date.now() - startMs,
+      });
+    } catch (err: any) {
+      console.error('[NAV:bookmarks/import]', err);
+      res.status(500).json({ error: { code: 'IMPORT_FAILED', message: err.message || 'Bulk import failed' } });
     }
   });
 
@@ -89,19 +316,30 @@ export function createNavRouter(pool: Pool): Router {
       const result = await pool.query(
         `SELECT b.id, b.scheme_code, b.scheme_name, b.amc, b.alias_name,
                 b.daily_download_enabled, b.historical_download_done,
-                s.active, s.closure_date,
-                COUNT(n.id) as nav_records,
-                MAX(n.nav_date) as latest_nav_date,
-                MAX(n.nav) FILTER (WHERE n.nav_date = (SELECT MAX(nav_date) FROM ki_nav_history WHERE scheme_code = b.scheme_code)) as latest_nav,
-                MIN(n.nav_date) as earliest_nav_date,
-                MAX(n.metrics_calculated_at) as metrics_calculated_at
+                s.active, s.category, s.scheme_type, s.closure_date,
+                COALESCE(ns.nav_records, 0)::integer          AS nav_records,
+                ns.latest_nav_date,
+                ns.latest_nav,
+                ns.earliest_nav_date,
+                ns.metrics_calculated_at,
+                -- NAV ageing in days (null if no data)
+                CASE WHEN ns.latest_nav_date IS NOT NULL
+                     THEN (CURRENT_DATE - ns.latest_nav_date::date)
+                     ELSE NULL
+                END AS nav_age_days
          FROM ki_scheme_bookmarks b
          JOIN ki_schemes s ON s.scheme_code = b.scheme_code
-         LEFT JOIN ki_nav_history n ON n.scheme_code = b.scheme_code
+         LEFT JOIN LATERAL (
+           SELECT
+             COUNT(*)::integer                                         AS nav_records,
+             MAX(nav_date)::text                                       AS latest_nav_date,
+             MIN(nav_date)::text                                       AS earliest_nav_date,
+             MAX(nav) FILTER (WHERE nav_date = (SELECT MAX(nav_date) FROM ki_nav_history WHERE scheme_code = b.scheme_code)) AS latest_nav,
+             MAX(metrics_calculated_at)                                AS metrics_calculated_at
+           FROM ki_nav_history n
+           WHERE n.scheme_code = b.scheme_code
+         ) ns ON true
          WHERE b.tenant_id = $1
-         GROUP BY b.id, b.scheme_code, b.scheme_name, b.amc, b.alias_name,
-                  b.daily_download_enabled, b.historical_download_done,
-                  s.active, s.closure_date
          ORDER BY b.scheme_name`,
         [jwt.tenant_id],
       );
@@ -696,6 +934,216 @@ export function createNavRouter(pool: Pool): Router {
     } catch (err: any) {
       console.error('[NAV:bulk-metrics]', err);
       res.status(500).json({ error: { code: 'METRICS_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── PATCH /bookmarks/:schemeCode/alias — Update bookmark display alias ── */
+
+  router.patch('/bookmarks/:schemeCode/alias', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const { alias_name } = req.body;
+      // alias_name may be null/empty to clear the alias
+      const aliasValue = alias_name ? String(alias_name).trim() || null : null;
+
+      const result = await pool.query(
+        `UPDATE ki_scheme_bookmarks
+         SET alias_name = $1, updated_at = now()
+         WHERE tenant_id = $2 AND scheme_code = $3
+         RETURNING scheme_code, alias_name`,
+        [aliasValue, jwt.tenant_id, req.params.schemeCode],
+      );
+
+      if (result.rows.length === 0) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Bookmark not found' } });
+        return;
+      }
+
+      res.json({ scheme_code: result.rows[0].scheme_code, alias_name: result.rows[0].alias_name });
+    } catch (err: any) {
+      console.error('[NAV:alias-update]', err);
+      res.status(500).json({ error: { code: 'ALIAS_UPDATE_FAILED', message: err.message } });
+    }
+  });
+
+  /* ════════════════════════════════════════════════════
+     ALIASES — Global scheme name mapping
+     No tenant scope — shared across all tenants
+  ════════════════════════════════════════════════════ */
+
+  /* ── GET /aliases — List aliases (optionally filter by scheme_code) ── */
+
+  router.get('/aliases', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const { scheme_code, q, limit = '50', offset = '0' } = req.query as Record<string, string>;
+
+      const conditions: string[] = ['a.is_active = true'];
+      const params: any[] = [];
+
+      if (scheme_code) {
+        params.push(scheme_code);
+        conditions.push(`a.scheme_code = $${params.length}`);
+      }
+      if (q) {
+        params.push(`%${q.toUpperCase()}%`);
+        conditions.push(`a.alias_name_normalized LIKE $${params.length}`);
+      }
+
+      const where = conditions.join(' AND ');
+      params.push(parseInt(limit, 10) || 50, parseInt(offset, 10) || 0);
+
+      const result = await pool.query(
+        `SELECT a.id, a.scheme_code, a.alias_name, a.alias_name_normalized,
+                a.source, a.is_active, a.created_at,
+                s.scheme_name
+         FROM ki_scheme_aliases a
+         JOIN ki_schemes s ON s.scheme_code = a.scheme_code
+         WHERE ${where}
+         ORDER BY a.scheme_code, a.source, a.alias_name
+         LIMIT $${params.length - 1} OFFSET $${params.length}`,
+        params,
+      );
+
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::integer AS total
+         FROM ki_scheme_aliases a
+         WHERE ${where}`,
+        params.slice(0, -2),
+      );
+
+      res.json({
+        aliases: result.rows,
+        total: (countResult.rows[0] as any).total,
+      });
+    } catch (err: any) {
+      console.error('[NAV:aliases-list]', err);
+      res.status(500).json({ error: { code: 'FETCH_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── POST /aliases — Create a single alias ── */
+
+  router.post('/aliases', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const { scheme_code, alias_name, source = 'manual' } = req.body;
+      if (!scheme_code || !alias_name) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'scheme_code and alias_name required' } });
+        return;
+      }
+
+      // Verify scheme exists
+      const check = await pool.query('SELECT 1 FROM ki_schemes WHERE scheme_code = $1', [String(scheme_code).trim()]);
+      if (check.rows.length === 0) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Scheme not found' } });
+        return;
+      }
+
+      const result = await pool.query(
+        `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (alias_name_normalized) DO UPDATE
+           SET scheme_code = EXCLUDED.scheme_code,
+               source      = EXCLUDED.source,
+               is_active   = true,
+               updated_at  = now()
+         RETURNING id, scheme_code, alias_name, alias_name_normalized, source`,
+        [String(scheme_code).trim(), String(alias_name).trim(), source],
+      );
+
+      res.status(201).json({ alias: result.rows[0] });
+    } catch (err: any) {
+      console.error('[NAV:alias-create]', err);
+      res.status(500).json({ error: { code: 'ALIAS_CREATE_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── POST /aliases/bulk — Bulk-create aliases for one scheme ── */
+
+  router.post('/aliases/bulk', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const { scheme_code, aliases, source = 'manual' } = req.body as {
+        scheme_code: string;
+        aliases: string[];
+        source?: string;
+      };
+
+      if (!scheme_code || !Array.isArray(aliases) || aliases.length === 0) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'scheme_code and aliases[] required' } });
+        return;
+      }
+
+      // Verify scheme exists
+      const check = await pool.query('SELECT 1 FROM ki_schemes WHERE scheme_code = $1', [String(scheme_code).trim()]);
+      if (check.rows.length === 0) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Scheme not found' } });
+        return;
+      }
+
+      const code = String(scheme_code).trim();
+      const src = ['auto', 'manual', 'import'].includes(source) ? source : 'manual';
+
+      let created = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      for (const raw of aliases) {
+        const name = String(raw).trim();
+        if (!name) { skipped++; continue; }
+        try {
+          const r = await pool.query(
+            `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (alias_name_normalized) DO UPDATE
+               SET scheme_code = EXCLUDED.scheme_code,
+                   source      = EXCLUDED.source,
+                   is_active   = true,
+                   updated_at  = now()
+             RETURNING id`,
+            [code, name, src],
+          );
+          if (r.rows.length > 0) created++;
+        } catch (e: any) {
+          errors.push(`${name}: ${e.message}`);
+          skipped++;
+        }
+      }
+
+      res.status(201).json({ scheme_code: code, created, skipped, errors });
+    } catch (err: any) {
+      console.error('[NAV:aliases-bulk]', err);
+      res.status(500).json({ error: { code: 'ALIAS_BULK_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── DELETE /aliases/:id — Soft-delete an alias ── */
+
+  router.delete('/aliases/:id', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) { res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid alias id' } }); return; }
+
+      await pool.query(
+        'UPDATE ki_scheme_aliases SET is_active = false, updated_at = now() WHERE id = $1',
+        [id],
+      );
+      res.json({ message: 'Alias deactivated' });
+    } catch (err: any) {
+      console.error('[NAV:alias-delete]', err);
+      res.status(500).json({ error: { code: 'ALIAS_DELETE_FAILED', message: err.message } });
     }
   });
 

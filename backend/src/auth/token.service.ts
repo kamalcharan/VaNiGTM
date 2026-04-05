@@ -29,6 +29,7 @@ export interface JwtPayload {
   tenant_id: string;
   email: string;
   role: string;
+  is_live: boolean;  // TRUE = live environment, FALSE = sandbox
 }
 
 export interface TokenPair {
@@ -109,8 +110,9 @@ export async function createSession(
   email: string,
   role: string,
   device: DeviceInfo,
+  isLive: boolean = true,
 ): Promise<TokenPair> {
-  const accessToken = signAccessToken({ user_id: userId, tenant_id: tenantId, email, role });
+  const accessToken = signAccessToken({ user_id: userId, tenant_id: tenantId, email, role, is_live: isLive });
   const rawRefreshToken = generateRefreshToken();
   const tokenHash = hashToken(rawRefreshToken);
 
@@ -174,6 +176,14 @@ export async function refreshSession(
   );
   const role = roleResult.rows.length > 0 ? (roleResult.rows[0] as any).code : 'planner';
 
+  // Read current environment preference from user preferences (default: live)
+  const prefResult = await pool.query(
+    `SELECT preferences FROM vn_users WHERE id = $1`,
+    [session.user_id],
+  );
+  const prefs = prefResult.rows.length > 0 ? ((prefResult.rows[0] as any).preferences || {}) : {};
+  const isLive: boolean = prefs.env_mode !== 'sandbox';
+
   // Token rotation: revoke old refresh token
   await pool.query(
     `UPDATE vn_refresh_tokens
@@ -188,6 +198,7 @@ export async function refreshSession(
     tenant_id: session.tenant_id,
     email: session.email,
     role,
+    is_live: isLive,
   });
   const newRawRefreshToken = generateRefreshToken();
   const newTokenHash = hashToken(newRawRefreshToken);

@@ -24,6 +24,7 @@ interface SearchRow {
   earliest_nav_date: string | null;
   latest_nav_date: string | null;
   metrics_calculated: boolean;
+  is_bookmarked: boolean;
   rank: number;
 }
 
@@ -42,6 +43,7 @@ interface SearchResultItem {
   earliest_nav_date: string | null;
   latest_nav_date: string | null;
   metrics_calculated: boolean;
+  is_bookmarked: boolean;
 }
 
 interface SearchSchemesResult {
@@ -69,6 +71,7 @@ SELECT
     ns.earliest_nav_date::text,
     ns.latest_nav_date::text,
     COALESCE(ns.has_metrics, false) AS metrics_calculated,
+    (kb.scheme_code IS NOT NULL) AS is_bookmarked,
     ts_rank(to_tsvector('english', s.scheme_name), plainto_tsquery('english', $query)) AS rank
 FROM ki_schemes s
 LEFT JOIN LATERAL (
@@ -87,6 +90,8 @@ LEFT JOIN LATERAL (
     FROM ki_nav_history nh
     WHERE nh.scheme_code = s.scheme_code
 ) ns ON true
+LEFT JOIN ki_scheme_bookmarks kb
+    ON kb.scheme_code = s.scheme_code AND kb.tenant_id = $tenant_id
 WHERE (
     to_tsvector('english', s.scheme_name) @@ plainto_tsquery('english', $query)
     OR s.scheme_name ILIKE $query_like
@@ -122,6 +127,7 @@ export async function search_schemes(
     $query_like: `%${query}%`,
     $limit: limit,
     $offset: offset,
+    $tenant_id: ctx.tenant_id,
   };
 
   const [dataResult, countResult] = await Promise.all([
@@ -146,6 +152,7 @@ export async function search_schemes(
     earliest_nav_date: r.earliest_nav_date,
     latest_nav_date: r.latest_nav_date,
     metrics_calculated: r.metrics_calculated || false,
+    is_bookmarked: r.is_bookmarked || false,
   }));
 
   return {

@@ -1,0 +1,125 @@
+/* ═══════════════════════════════════════════════════════
+   VdfProactiveCard — VaNi gradient banner
+   Theme-compliant: ALL colors via --color-* CSS variables
+   ═══════════════════════════════════════════════════════ */
+
+.card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-primary) 18%, var(--color-surface)),
+    color-mix(in srgb, var(--color-accent,  var(--color-secondary)) 14%, var(--color-surface))
+  );
+  padding: 14px 18px;
+}
+
+/* Subtle noise texture */
+.noise {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+/* ── Body ───────────────────────────────────────────── */
+
+.body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  position: relative; /* above noise */
+}
+
+.textGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.label {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  opacity: 0.85;
+}
+
+.message {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  line-height: 1.45;
+}
+
+/* ── CTA button ─────────────────────────────────────── */
+
+.cta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  transition: filter 0.15s, transform 0.12s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cta:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.cta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Spinner ─────────────────────────────────────────── */
+
+.spinner {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Dismiss button ──────────────────────────────────── */
+
+.dismiss {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  font-size: 0.65rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.dismiss:hover {
+  opacity: 1;
+}

@@ -2,10 +2,11 @@
 
 import s from './VdfTabs.module.css';
 
-interface VdfTab {
+export interface VdfTab {
   id: string;
   label: string;
   icon?: string;
+  badge?: string | number;
 }
 
 export interface VdfTabsProps {
@@ -13,11 +14,17 @@ export interface VdfTabsProps {
   activeId: string;
   onChange: (id: string) => void;
   orientation?: 'horizontal' | 'vertical';
+  /** pill — glass container, filled active tab (page-level navigation)
+   *  underline — border-bottom style (settings/detail panels) */
+  variant?: 'underline' | 'pill';
 }
 
-export function VdfTabs({ tabs, activeId, onChange, orientation = 'horizontal' }: VdfTabsProps) {
+export function VdfTabs({ tabs, activeId, onChange, orientation = 'horizontal', variant = 'underline' }: VdfTabsProps) {
   return (
-    <nav className={`${s.tabs} ${s[orientation]}`} role="tablist">
+    <nav
+      className={`${s.tabs} ${variant === 'pill' ? s.pill : s[orientation]}`}
+      role="tablist"
+    >
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -28,6 +35,9 @@ export function VdfTabs({ tabs, activeId, onChange, orientation = 'horizontal' }
         >
           {tab.icon && <span className={s.icon}>{tab.icon}</span>}
           <span>{tab.label}</span>
+          {tab.badge !== undefined && (
+            <span className={s.badge}>{tab.badge}</span>
+          )}
         </button>
       ))}
     </nav>

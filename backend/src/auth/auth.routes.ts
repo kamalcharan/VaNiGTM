@@ -403,7 +403,7 @@ export function createAuthRouter(pool: Pool): Router {
         return;
       }
 
-      const { user_id, tenant_id } = jwt;
+      const { user_id, tenant_id, is_live } = jwt;
 
       // User profile
       const userResult = await pool.query(
@@ -471,12 +471,69 @@ export function createAuthRouter(pool: Pool): Router {
           theme_id: tenant.theme_id,
           logo_url: tenant.logo_url,
           onboarding_complete: onboardingComplete,
+          is_live: is_live !== false,  // default true if somehow missing from JWT
         },
       });
     } catch (err: any) {
       console.error('[Auth:me]', err);
       res.status(500).json({
         error: { code: 'FETCH_FAILED', message: 'Failed to fetch user profile' },
+      });
+    }
+  });
+
+  /* ── PATCH /api/v1/auth/switch-env ─────────────────── */
+  /*
+   * Toggle live/sandbox environment for the current user.
+   * Persists preference to vn_users.preferences and issues a new access token
+   * with the updated is_live flag. The refresh token is NOT rotated — only the
+   * short-lived access token changes.
+   */
+
+  router.patch('/switch-env', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+
+      const { is_live: requestedLive } = req.body as { is_live?: boolean };
+      if (typeof requestedLive !== 'boolean') {
+        res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'is_live (boolean) is required' } });
+        return;
+      }
+
+      // Persist preference
+      const envMode = requestedLive ? 'live' : 'sandbox';
+      await pool.query(
+        `UPDATE vn_users
+         SET preferences = COALESCE(preferences, '{}'::jsonb) || jsonb_build_object('env_mode', $1::text),
+             updated_at = now()
+         WHERE id = $2 AND tenant_id = $3`,
+        [envMode, jwt.user_id, jwt.tenant_id],
+      );
+
+      // Issue a new access token with the updated is_live flag
+      // (same user, same role, same tenant — only environment changes)
+      const { signAccessToken } = await import('./token.service');
+      const newAccessToken = signAccessToken({
+        user_id: jwt.user_id,
+        tenant_id: jwt.tenant_id,
+        email: jwt.email,
+        role: jwt.role,
+        is_live: requestedLive,
+      });
+
+      res.json({
+        access_token: newAccessToken,
+        expires_in: 15 * 60,
+        is_live: requestedLive,
+      });
+    } catch (err: any) {
+      console.error('[Auth:switch-env]', err);
+      res.status(500).json({
+        error: { code: 'SWITCH_ENV_FAILED', message: 'Failed to switch environment' },
       });
     }
   });

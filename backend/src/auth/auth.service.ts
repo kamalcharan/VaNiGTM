@@ -222,7 +222,8 @@ export async function register(
     await client.query('COMMIT');
 
     // 9. Create session (outside transaction — separate concern)
-    const tokens = await createSession(pool, userId, tenantId, email, 'owner', device);
+    // New tenants always start in live mode
+    const tokens = await createSession(pool, userId, tenantId, email, 'owner', device, true);
 
     return {
       tokens,

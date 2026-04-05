@@ -89,6 +89,12 @@ export const API = {
       auth: true,
       description: 'List all active sessions for current user',
     },
+    switchEnv: {
+      method: 'PATCH',
+      path: '/api/v1/auth/switch-env',
+      auth: true,
+      description: 'Toggle live/sandbox environment — persists preference, issues new access token with updated is_live',
+    },
   },
 
   /* ── Invitations ──────────────────────────────────── */
@@ -234,6 +240,12 @@ export const API = {
       auth: true,
       description: 'Bookmark a scheme for NAV tracking',
     },
+    bookmarkImport: {
+      method: 'POST',
+      path: '/api/v1/nav/bookmarks/import',
+      auth: true,
+      description: 'Bulk import bookmarks from uploaded file — reuses single-add upsert + alias seed',
+    },
     removeBookmark: {
       method: 'DELETE',
       path: '/api/v1/nav/bookmarks/:schemeCode',
@@ -293,6 +305,40 @@ export const API = {
       path: '/api/v1/nav/metrics/bulk',
       auth: true,
       description: 'Calculate metrics for all schemes with NAV data',
+    },
+
+    /* ── Bookmark alias (per-tenant display name) ──── */
+    updateBookmarkAlias: {
+      method: 'PATCH',
+      path: '/api/v1/nav/bookmarks/:schemeCode/alias',
+      auth: true,
+      description: 'Set or clear the display alias for a bookmarked scheme',
+    },
+
+    /* ── Scheme aliases (global import matching) ───── */
+    aliases: {
+      method: 'GET',
+      path: '/api/v1/nav/aliases',
+      auth: true,
+      description: 'List global scheme aliases, optionally filtered by scheme_code or query',
+    },
+    createAlias: {
+      method: 'POST',
+      path: '/api/v1/nav/aliases',
+      auth: true,
+      description: 'Create a single global scheme alias',
+    },
+    bulkCreateAliases: {
+      method: 'POST',
+      path: '/api/v1/nav/aliases/bulk',
+      auth: true,
+      description: 'Bulk-create aliases for one scheme (used on bookmark add and import)',
+    },
+    deleteAlias: {
+      method: 'DELETE',
+      path: '/api/v1/nav/aliases/:id',
+      auth: true,
+      description: 'Soft-delete a global scheme alias',
     },
   },
 

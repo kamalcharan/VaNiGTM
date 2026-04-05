@@ -26,6 +26,7 @@ export interface MeTenant {
   theme_id?: string;
   logo_url?: string;
   onboarding_complete: boolean;
+  is_live: boolean;  // TRUE = live environment, FALSE = sandbox
 }
 
 export interface MeResponse {

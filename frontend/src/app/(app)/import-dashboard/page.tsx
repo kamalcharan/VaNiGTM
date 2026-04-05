@@ -6,7 +6,7 @@ import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
-import { VdfStatusBadge, VdfLoader, type BadgeVariant } from '@/components/vdf';
+import { VdfStatusBadge, VdfLoader, VdfProactiveCard, VdfEmptyState, VdfButton, type BadgeVariant } from '@/components/vdf';
 import d from '@/styles/data.module.css';
 import s from './dashboard-page.module.css';
 
@@ -38,8 +38,8 @@ const STATUS_MAP: Record<string, { label: string; color: BadgeVariant }> = {
   staged: { label: 'Staged', color: 'info' },
   pending: { label: 'Pending', color: 'muted' },
   failed: { label: 'Failed', color: 'danger' },
-  success: { label: 'Success', color: 'success' },
-  duplicate: { label: 'Updated', color: 'info' },
+  success: { label: 'Added', color: 'success' },
+  duplicate: { label: 'Duplicate', color: 'muted' },  // already tracked — rejected, no action
 };
 
 function timeAgo(iso: string): string {
@@ -47,7 +47,11 @@ function timeAgo(iso: string): string {
   if (h < 1) return 'Just now'; if (h < 24) return `${h}h ago`; return `${Math.floor(h / 24)}d ago`;
 }
 
-const SCHEME_COLS = ['scheme_code', 'scheme_name', 'amc', 'category'];
+const COLS_BY_TYPE: Record<string, string[]> = {
+  scheme:   ['scheme_code', 'scheme_name', 'amc', 'category'],
+  bookmark: ['scheme_code', 'scheme_name', 'amc'],
+  default:  ['scheme_code', 'scheme_name', 'amc'],
+};
 
 /* ── Component ─────────────────────────────────────── */
 
@@ -61,24 +65,40 @@ export default function ImportDashboardPage() {
   const [records, setRecords] = useState<RecordsResponse | null>(null);
   const [recordFilter, setRecordFilter] = useState<string>('all');
   const [recordPage, setRecordPage] = useState(1);
-  const [loadingSessions, setLoadingSessions] = useState(true);
+  const [loadingSessions, setLoadingSessions] = useState(false);
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [drawerRecord, setDrawerRecord] = useState<StagingRecord | null>(null);
   const [reprocessing, setReprocessing] = useState(false);
   const [deletingStaging, setDeletingStaging] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'bookmark'>('all');
+  const [sessionsFetched, setSessionsFetched] = useState(false);
 
   // Fetch sessions
-  const fetchSessions = useCallback(async () => {
+  const fetchSessions = useCallback(async (type: 'all' | 'bookmark' = 'all') => {
     setLoadingSessions(true);
+    setSessionsFetched(false);
     try {
-      const data = await apiFetch<{ sessions: Session[] }>(API.etl.sessions);
+      const qs = type !== 'all' ? `?type=${type}` : '';
+      const data = await apiFetch<{ sessions: Session[] }>({ ...API.etl.sessions, path: API.etl.sessions.path + qs });
       setSessions(data.sessions || []);
-      if (data.sessions?.length > 0 && !selectedSession) setSelectedSession(data.sessions[0]);
-    } catch (err) { console.error('[ImportDashboard] Failed to load sessions:', err); setSessions([]); }
-    finally { setLoadingSessions(false); }
+      setSelectedSession(data.sessions?.length > 0 ? data.sessions[0] : null);
+    } catch (err) {
+      console.error('[ImportDashboard] Failed to load sessions:', err);
+      setSessions([]);
+      showToast({ message: (err as ApiError).message || 'Failed to load import sessions', type: 'error' });
+    } finally {
+      setLoadingSessions(false);
+      setSessionsFetched(true);
+    }
   }, []); // eslint-disable-line
 
-  useEffect(() => { fetchSessions(); }, [fetchSessions]);
+  useEffect(() => { fetchSessions(typeFilter); }, [fetchSessions, typeFilter]);
+
+  function handleTypeFilter(t: 'all' | 'bookmark') {
+    setTypeFilter(t);
+    setSelectedSession(null);
+    setRecords(null);
+  }
 
   // Fetch records
   const fetchRecords = useCallback(async () => {
@@ -88,7 +108,10 @@ export default function ImportDashboardPage() {
       const qs = `?status=${recordFilter}&page=${recordPage}&limit=50`;
       const data = await apiFetch<RecordsResponse>({ ...API.etl.records, path: API.etl.records.path.replace(':id', String(selectedSession.id)) + qs });
       setRecords(data);
-    } catch { setRecords(null); }
+    } catch (err) {
+      setRecords(null);
+      showToast({ message: (err as ApiError).message || 'Failed to load records', type: 'error' });
+    }
     finally { setLoadingRecords(false); }
   }, [selectedSession, recordFilter, recordPage]);
 
@@ -118,23 +141,23 @@ export default function ImportDashboardPage() {
     finally { setDeletingStaging(false); }
   }
 
-  // Compute speed
-  const speed = selectedSession?.processing_started_at && selectedSession?.processing_completed_at
-    ? Math.round(selectedSession.total_records / ((new Date(selectedSession.processing_completed_at).getTime() - new Date(selectedSession.processing_started_at).getTime()) / 1000))
-    : null;
-
   // VaNi analysis
+  const isFinished = selectedSession ? ['completed', 'completed_with_errors'].includes(selectedSession.status) : false;
   const vaniMsg = selectedSession
-    ? selectedSession.failed_records > 0
-      ? `Import completed with ${selectedSession.failed_records} failures. Review failed records and reprocess, or check field mappings.`
-      : selectedSession.successful_records === selectedSession.total_records
-      ? `Import perfect. All ${selectedSession.total_records.toLocaleString()} records processed. Cross-referencing with NAV database for operational health.`
-      : 'Import in progress...'
+    ? !isFinished
+      ? 'Processing import...'
+      : selectedSession.failed_records > 0
+      ? `Import completed with ${selectedSession.failed_records} failure${selectedSession.failed_records > 1 ? 's' : ''}. Review failed records and reprocess, or check field mappings.`
+      : selectedSession.duplicate_records > 0 && selectedSession.successful_records > 0
+      ? `Import complete. ${selectedSession.successful_records.toLocaleString()} new bookmarks added, ${selectedSession.duplicate_records.toLocaleString()} already in your watchlist.`
+      : selectedSession.duplicate_records > 0 && selectedSession.successful_records === 0
+      ? `All ${selectedSession.duplicate_records.toLocaleString()} bookmarks are already in your watchlist — no new additions.`
+      : `Import perfect. All ${selectedSession.total_records.toLocaleString()} records processed successfully.`
     : null;
 
   const initials = user?.name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
 
-  if (loadingSessions) return <VdfLoader message="Loading import history" hint="Fetching sessions" />;
+  if (loadingSessions && !sessionsFetched) return <VdfLoader message="Loading import history" hint="Fetching sessions" />;
 
   return (
     <div className={s.page}>
@@ -145,7 +168,11 @@ export default function ImportDashboardPage() {
           {selectedSession && (
             <>
               <span className={s.breadcrumbSep}>/</span>
-              <span className={s.breadcrumbSession}>Session #{selectedSession.id}: {selectedSession.original_filename || 'Unknown'}</span>
+              <span className={s.breadcrumbSession}>
+                Import #{(selectedSession as any).tenant_seq ?? selectedSession.id}
+                <span className={s.breadcrumbSessionId}>· Session {selectedSession.id}</span>
+                {selectedSession.original_filename ? ` · ${selectedSession.original_filename}` : ''}
+              </span>
             </>
           )}
         </div>
@@ -161,11 +188,28 @@ export default function ImportDashboardPage() {
       <div className={s.grid}>
         {/* ═══ SIDEBAR ═══ */}
         <aside className={s.sidebar}>
-          {sessions.map(sess => (
-            <div key={sess.id} className={selectedSession?.id === sess.id ? s.sessionCardActive : s.sidebarLink}
+          {/* Type filter tabs */}
+          <div className={s.sidebarFilters}>
+            {(['all', 'bookmark'] as const).map(t => (
+              <button key={t} className={typeFilter === t ? s.filterTabActive : s.filterTab}
+                onClick={() => handleTypeFilter(t)}>
+                {t === 'all' ? 'All' : 'Bookmark'}
+              </button>
+            ))}
+          </div>
+          {sessions.length === 0 && sessionsFetched ? (
+            <div className={s.sidebarEmpty}>
+              <div className={s.sidebarEmptyIcon}>📭</div>
+              <div className={s.sidebarEmptyText}>No imports yet</div>
+            </div>
+          ) : sessions.map(sess => (
+            <div key={sess.id} className={selectedSession?.id === sess.id ? s.sessionCardActive : s.sessionCard}
               onClick={() => handleSelectSession(sess)}>
               <div>
-                <div className={s.sessionCardLabel}>Session #{sess.id}</div>
+                <div className={s.sessionCardLabel}>
+                  Import #{(sess as any).tenant_seq ?? sess.id}
+                  <span className={s.sessionIdBadge}>ID {sess.id}</span>
+                </div>
                 <div className={s.sessionCardFile}>{sess.original_filename || `${sess.import_type} import`}</div>
                 <div className={s.sessionCardMeta}>{timeAgo(sess.created_at)} {'\u00B7'} {sess.import_type}</div>
               </div>
@@ -180,7 +224,16 @@ export default function ImportDashboardPage() {
         {/* ═══ MAIN ═══ */}
         <main className={s.main}>
           {!selectedSession ? (
-            <VdfLoader message="No sessions" hint="Click New Import to start" />
+            <VdfEmptyState
+              icon="📂"
+              title={sessions.length === 0 ? 'No imports yet' : 'Select an import'}
+              description={sessions.length === 0
+                ? 'Your import history will appear here. Start by importing your bookmark list.'
+                : 'Choose an import session from the sidebar to review records.'}
+              action={sessions.length === 0
+                ? <VdfButton variant="primary" onClick={() => router.push('/import')}>Start First Import</VdfButton>
+                : undefined}
+            />
           ) : (
             <>
               {/* Stat cards (bottom-border accent) */}
@@ -205,36 +258,22 @@ export default function ImportDashboardPage() {
                   </div>
                 </div>
                 <div className={`${s.statCardAccent} ${s.stMuted}`}>
-                  <div className={s.statCardLabel}>Speed</div>
-                  <div className={s.statCardValue}>
-                    {speed ? speed.toLocaleString() : '\u2014'}
-                    {speed && <span className={s.statCardUnit}>row/s</span>}
+                  <div className={s.statCardLabel}>Duplicates</div>
+                  <div className={`${s.statCardValue} ${selectedSession.duplicate_records === 0 ? s.statCardValueMuted : ''}`}>
+                    {selectedSession.duplicate_records.toLocaleString()}
                   </div>
                 </div>
               </div>
 
               {/* VaNi Hero Card */}
               {vaniMsg && (
-                <div className={s.vaniHero}>
-                  <div className={s.vaniHeroContent}>
-                    <div className={s.vaniHeroIcon}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
-                    </div>
-                    <div>
-                      <div className={s.vaniHeroTitle}>VaNi Post-Import Analysis</div>
-                      <div className={s.vaniHeroText}>{vaniMsg}</div>
-                      {selectedSession.failed_records > 0 && (
-                        <div className={s.vaniHeroActions}>
-                          <button className={d.pageBtn} onClick={handleReprocess} disabled={reprocessing}
-                            style={{ background: 'var(--color-primary)', color: 'var(--color-primary-fg)', borderColor: 'var(--color-primary)', fontWeight: 700 }}>
-                            {reprocessing ? 'Reprocessing...' : `Reprocess ${selectedSession.failed_records} Failed`}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className={s.vaniHeroWatermark}>{'\u26A1'}</div>
-                </div>
+                <VdfProactiveCard
+                  label="VaNi Post-Import Analysis"
+                  message={vaniMsg}
+                  ctaLabel={selectedSession.failed_records > 0 ? `Reprocess ${selectedSession.failed_records} Failed` : undefined}
+                  onCta={selectedSession.failed_records > 0 ? handleReprocess : undefined}
+                  ctaLoading={reprocessing}
+                />
               )}
 
               {/* Table card */}
@@ -244,7 +283,7 @@ export default function ImportDashboardPage() {
                     {[
                       { key: 'all', label: 'All' },
                       { key: 'success', label: `New (${selectedSession.successful_records - selectedSession.duplicate_records})` },
-                      { key: 'duplicate', label: `Updated (${selectedSession.duplicate_records})` },
+                      { key: 'duplicate', label: `Duplicate (${selectedSession.duplicate_records})` },
                       { key: 'failed', label: `Failed (${selectedSession.failed_records})` },
                     ].map(f => (
                       <button key={f.key} className={`${s.filterTab} ${recordFilter === f.key ? s.filterTabActive : ''}`}
@@ -275,7 +314,6 @@ export default function ImportDashboardPage() {
                           <th>Scheme Name</th>
                           <th>AMC</th>
                           <th>Status</th>
-                          <th style={{ textAlign: 'right' }}>Operational Health</th>
                           <th style={{ textAlign: 'center' }}>Action</th>
                         </tr>
                       </thead>
@@ -291,9 +329,6 @@ export default function ImportDashboardPage() {
                               <td style={{ fontWeight: 600 }}>{rec.mapped_data?.scheme_name || '\u2014'}</td>
                               <td style={{ fontSize: '0.72rem', color: 'var(--color-muted)' }}>{rec.mapped_data?.amc || '\u2014'}</td>
                               <td><VdfStatusBadge label={st.label} variant={st.color} size="sm" /></td>
-                              <td style={{ textAlign: 'right' }}>
-                                <span className={`${s.healthBadge} ${s.healthNoNav}`}>No NAV Data</span>
-                              </td>
                               <td style={{ textAlign: 'center' }}>
                                 <button className={s.viewBtn} onClick={e => { e.stopPropagation(); setDrawerRecord(rec); }}>
                                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
@@ -340,7 +375,9 @@ export default function ImportDashboardPage() {
               <div className={s.drawerCardTitle}>{drawerRecord.mapped_data?.scheme_name || 'Unknown Scheme'}</div>
               <div className={s.drawerCardMeta}>
                 Code: {drawerRecord.mapped_data?.scheme_code || '\u2014'}
-                {' \u00B7 '}Category: {drawerRecord.mapped_data?.category || '\u2014'}
+                {drawerRecord.mapped_data?.category && (
+                  <>{' \u00B7 '}Category: {drawerRecord.mapped_data.category}</>
+                )}
               </div>
             </div>
 
@@ -359,10 +396,20 @@ export default function ImportDashboardPage() {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
                   <span>{drawerRecord.error_messages[0]}</span>
                 </div>
+              ) : drawerRecord.processing_status === 'duplicate' ? (
+                <div className={`${s.drawerDiagnostic} ${s.diagInfo}`}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                  <span>Already in your watchlist — no action taken.</span>
+                </div>
+              ) : drawerRecord.processing_status === 'success' ? (
+                <div className={`${s.drawerDiagnostic} ${s.diagInfo}`} style={{ color: 'var(--color-success)', background: 'color-mix(in srgb, var(--color-success) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-success) 12%, transparent)' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><polyline points="20 6 9 17 4 12" /></svg>
+                  <span>Added to watchlist. Download NAV data to begin tracking.</span>
+                </div>
               ) : (
                 <div className={`${s.drawerDiagnostic} ${s.diagInfo}`}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><circle cx="12" cy="12" r="10" /><polyline points="16 12 12 8 8 12" /><line x1="12" y1="16" x2="12" y2="8" /></svg>
-                  <span>This scheme may be missing from the NAV database. Download NAV data to complete tracking.</span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                  <span>Pending processing.</span>
                 </div>
               )}
             </div>

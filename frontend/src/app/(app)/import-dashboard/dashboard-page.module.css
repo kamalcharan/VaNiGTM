@@ -18,7 +18,8 @@
 
 .breadcrumbLeft { display: flex; align-items: center; gap: 12px; }
 .breadcrumbSep { color: var(--color-border); }
-.breadcrumbSession { font-size: 0.82rem; font-weight: 500; color: var(--color-muted); }
+.breadcrumbSession { font-size: 0.82rem; font-weight: 500; color: var(--color-muted); display: flex; align-items: center; gap: 6px; }
+.breadcrumbSessionId { font-size: 0.72rem; font-weight: 400; color: color-mix(in srgb, var(--color-muted) 70%, transparent); font-family: var(--font-mono, monospace); }
 
 .breadcrumbRight { display: flex; align-items: center; gap: 10px; }
 .userBadge {
@@ -35,15 +36,42 @@
 /* ── Sidebar ─────────────────────────────────────────── */
 .sidebar { display: flex; flex-direction: column; gap: 8px; }
 
-.sessionCardActive {
+.sidebarFilters { display: flex; gap: 4px; padding: 2px; background: var(--color-surface); border-radius: 8px; border: 1px solid var(--color-border); }
+.filterTab { flex: 1; padding: 5px 0; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); background: transparent; border: none; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+.filterTab:hover { color: var(--color-fg); background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
+.filterTabActive { flex: 1; padding: 5px 0; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 14%, transparent); border: none; border-radius: 6px; cursor: pointer; }
+
+.sessionCard {
   padding: 12px 14px;
   background: var(--color-surface);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, var(--color-border));
+  border: 1px solid var(--color-border);
+  border-left: 3px solid transparent;
   border-radius: 12px;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-bg) 40%, transparent);
+  cursor: pointer;
+  transition: all 180ms;
+}
+.sessionCard:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+  border-left-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface));
 }
 
-.sessionCardLabel { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--color-primary); }
+.sessionCardActive {
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+  border-left: 3px solid var(--color-primary);
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.sidebarEmpty { padding: 20px 12px; text-align: center; }
+.sidebarEmptyIcon { font-size: 1.4rem; margin-bottom: 6px; opacity: 0.5; }
+.sidebarEmptyText { font-size: 0.7rem; color: var(--color-muted); font-style: italic; }
+
+.sessionCardLabel { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--color-primary); display: flex; align-items: center; gap: 6px; }
+.sessionIdBadge { font-size: 0.52rem; font-weight: 500; letter-spacing: 0.04em; text-transform: none; color: var(--color-muted); background: color-mix(in srgb, var(--color-muted) 10%, transparent); border-radius: 4px; padding: 1px 5px; font-family: var(--font-mono, monospace); }
 .sessionCardFile { font-size: 0.82rem; font-weight: 600; color: var(--color-fg); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sessionCardMeta { font-size: 0.6rem; color: var(--color-muted); font-style: italic; margin-top: 4px; }
 
@@ -79,37 +107,6 @@
 .statCardValueMuted { color: var(--color-muted); }
 .statCardUnit { font-size: 0.75rem; font-weight: 500; color: var(--color-muted); margin-left: 4px; }
 .statCardPct { font-size: 0.78rem; font-weight: 500; color: var(--color-muted); opacity: 0.6; margin-left: 6px; }
-
-/* ── VaNi Hero Card ──────────────────────────────────── */
-.vaniHero {
-  background: linear-gradient(135deg,
-    color-mix(in srgb, var(--color-primary) 6%, var(--color-surface)),
-    color-mix(in srgb, var(--color-info) 6%, var(--color-surface)));
-  border: 1px solid color-mix(in srgb, var(--color-primary) 15%, transparent);
-  border-radius: 16px;
-  padding: 20px 24px;
-  position: relative; overflow: hidden;
-}
-
-.vaniHeroContent { display: flex; align-items: flex-start; gap: 14px; position: relative; z-index: 2; }
-
-.vaniHeroIcon {
-  width: 36px; height: 36px; border-radius: 10px;
-  background: var(--color-primary); color: var(--color-primary-fg);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-
-.vaniHeroTitle { font-size: 1rem; font-weight: 700; color: var(--color-fg); margin-bottom: 6px; }
-.vaniHeroText { font-size: 0.8rem; color: var(--color-muted); line-height: 1.6; max-width: 600px; }
-
-.vaniHeroActions { display: flex; gap: 8px; margin-top: 12px; }
-
-.vaniHeroWatermark {
-  position: absolute; right: -16px; bottom: -16px;
-  font-size: 8rem; opacity: 0.04; color: var(--color-primary);
-  transform: rotate(12deg); pointer-events: none;
-}
 
 /* ── Table Card ──────────────────────────────────────── */
 .tableCard {

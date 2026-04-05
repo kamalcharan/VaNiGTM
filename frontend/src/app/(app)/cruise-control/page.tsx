@@ -79,12 +79,12 @@ export default function CruiseControlPage() {
     try {
       const data = await apiFetch<NavStatus>(API.nav.status);
       setNavStatus(data);
-    } catch {
-      // Failed to load
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Failed to load NAV status', type: 'error' });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => { fetchStatus(); }, [fetchStatus]);
 

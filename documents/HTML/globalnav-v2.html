@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global NAV — ProKey v2 Mockup</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #080c14;
+      color: #f0f4ff;
+      margin: 0;
+      padding: 0;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .glass {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(12px);
+    }
+    .glass-sm {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    /* Tab switching */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .tab-btn { transition: all 0.15s; }
+    .tab-btn.active { background: #6366f1; color: white; }
+
+    /* Discover browse mode toggle */
+    #discover-results { display: none; }
+    #discover-idle { display: block; }
+
+    /* Confirm remove state */
+    .remove-btn { transition: all 0.2s; }
+    .remove-btn:hover { background: rgba(239,68,68,0.15); color: #ef4444; border-color: rgba(239,68,68,0.4); }
+
+    /* Card health borders */
+    .card-healthy  { border-left: 3px solid #22c55e; }
+    .card-stale    { border-left: 3px solid #f59e0b; background: rgba(245,158,11,0.03); }
+    .card-nodata   { border-left: 3px solid #ef4444; background: rgba(239,68,68,0.03); opacity: 0.8; }
+    .card-nometrics{ border-left: 3px solid #6366f1; }
+
+    /* Pulse dot */
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .pulse { animation: pulse 2s infinite; }
+
+    /* VaNi gradient */
+    .vani-grad { background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%); }
+
+    /* Tooltip */
+    [title] { cursor: help; }
+  </style>
+</head>
+<body>
+
+<!-- ─────────────────────────────────────────
+     LAYOUT SHELL
+───────────────────────────────────────── -->
+<div class="flex h-screen overflow-hidden">
+
+  <!-- Sidebar (simplified) -->
+  <div class="w-14 bg-black/40 border-r border-white/5 flex flex-col items-center py-4 gap-4 flex-shrink-0">
+    <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-xs font-black">P</div>
+    <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-xs opacity-60">⊞</div>
+    <div class="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-xs text-indigo-400">📊</div>
+    <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-xs opacity-40">👥</div>
+    <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-xs opacity-40">🎯</div>
+  </div>
+
+  <!-- Main content -->
+  <div class="flex-1 overflow-y-auto">
+    <div class="max-w-4xl mx-auto p-5 space-y-5">
+
+      <!-- ── PAGE HEADER ── -->
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-black tracking-tight">Global NAV</h1>
+          <p class="text-slate-400 text-sm mt-1">Rajesh · 12 schemes tracked · 8 with data · 3 stale</p>
+        </div>
+        <!-- User-specific stats only — no global 16K noise -->
+        <div class="flex gap-2 flex-shrink-0">
+          <div class="glass rounded-xl px-4 py-2 text-center min-w-[64px]">
+            <div class="mono text-xl font-black">12</div>
+            <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Tracked</div>
+          </div>
+          <div class="glass rounded-xl px-4 py-2 text-center min-w-[64px] border-amber-500/20">
+            <div class="mono text-xl font-black text-amber-400">3</div>
+            <div class="text-[10px] text-amber-500 uppercase tracking-widest font-bold">Stale</div>
+          </div>
+          <div class="glass rounded-xl px-4 py-2 text-center min-w-[64px] border-red-500/20">
+            <div class="mono text-xl font-black text-red-400">2</div>
+            <div class="text-[10px] text-red-500 uppercase tracking-widest font-bold">No Data</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TABS ── -->
+      <div class="glass rounded-xl p-1 flex gap-1">
+        <button class="tab-btn active flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2"
+          onclick="switchTab('tracking')">
+          Tracking
+          <span class="bg-white/20 text-[10px] font-black px-2 py-0.5 rounded-full">12</span>
+        </button>
+        <button class="tab-btn flex-1 py-2.5 rounded-lg text-sm font-bold text-slate-400 flex items-center justify-center gap-2"
+          onclick="switchTab('discover')">
+          Discover Schemes
+        </button>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           TAB 1 — TRACKING
+      ══════════════════════════════════════ -->
+      <div id="tab-tracking" class="tab-content active space-y-4">
+
+        <!-- Filter stat cards — 4 col -->
+        <div class="grid grid-cols-4 gap-3">
+          <button class="glass rounded-xl p-3 text-center hover:border-indigo-500/50 transition border-indigo-500/40 bg-indigo-500/5"
+            onclick="setFilter('all')">
+            <div class="mono text-2xl font-black">12</div>
+            <div class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1">All</div>
+          </button>
+          <button class="glass rounded-xl p-3 text-center hover:border-red-500/50 transition"
+            onclick="setFilter('nodata')">
+            <div class="mono text-2xl font-black text-red-400">2</div>
+            <div class="text-[10px] text-red-500 uppercase tracking-widest font-bold mt-1">No Data</div>
+          </button>
+          <button class="glass rounded-xl p-3 text-center hover:border-green-500/50 transition"
+            onclick="setFilter('hasdata')">
+            <div class="mono text-2xl font-black text-green-400">8</div>
+            <div class="text-[10px] text-green-500 uppercase tracking-widest font-bold mt-1">Has Data</div>
+          </button>
+          <button class="glass rounded-xl p-3 text-center hover:border-indigo-500/50 transition"
+            onclick="setFilter('nometrics')">
+            <div class="mono text-2xl font-black text-indigo-400">4</div>
+            <div class="text-[10px] text-indigo-400 uppercase tracking-widest font-bold mt-1">No Metrics</div>
+          </button>
+        </div>
+
+        <!-- ── STABLE TOOLBAR (never changes shape) ── -->
+        <div class="flex items-center gap-2">
+          <!-- Select all checkbox — lives IN toolbar -->
+          <label class="flex items-center gap-2 cursor-pointer flex-shrink-0">
+            <input type="checkbox" class="w-4 h-4 rounded accent-indigo-500" id="selectAll">
+            <span class="text-xs text-slate-400 font-semibold whitespace-nowrap">All</span>
+          </label>
+
+          <!-- Search -->
+          <input type="text" placeholder="Search by name, AMC, code…"
+            class="flex-1 bg-white/5 border border-white/8 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500/60 min-w-0"
+            style="border-color:rgba(255,255,255,0.08)">
+
+          <!-- Sort -->
+          <select class="bg-white/5 border border-white/8 rounded-lg px-3 py-2 text-xs text-slate-300 outline-none flex-shrink-0"
+            style="border-color:rgba(255,255,255,0.08)">
+            <option>Name A→Z</option>
+            <option>Stale First</option>
+            <option>No Data First</option>
+            <option>Recently Added</option>
+          </select>
+
+          <!-- Action buttons — always present, disabled state shown -->
+          <button class="flex-shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition">
+            ↓ Download <span class="bg-white/20 px-1.5 py-0.5 rounded-full ml-1">3</span>
+          </button>
+          <button class="flex-shrink-0 glass hover:border-indigo-500/50 px-3 py-2 rounded-lg text-xs font-bold text-slate-300 whitespace-nowrap transition">
+            ⊕ Metrics
+          </button>
+          <button class="flex-shrink-0 glass hover:border-amber-500/50 px-3 py-2 rounded-lg text-xs font-bold text-amber-400 whitespace-nowrap transition">
+            ⌇ Fill Gaps
+          </button>
+        </div>
+
+        <!-- ── VANI CARD — back, above list, single message + CTA ── -->
+        <div class="vani-grad rounded-2xl p-4 flex items-center gap-4">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-black/70 text-xs font-black uppercase tracking-widest">VaNi</span>
+              <span class="bg-black/10 text-black/60 text-[10px] font-bold px-2 py-0.5 rounded-full">proactive</span>
+            </div>
+            <p class="text-slate-900 text-sm font-semibold leading-snug">
+              3 schemes have stale NAV data (>7 days). HDFC Mid-Cap, Parag Parikh, and Axis ELSS need updating.
+            </p>
+          </div>
+          <button class="flex-shrink-0 bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-black transition whitespace-nowrap">
+            Fill All Gaps
+          </button>
+        </div>
+
+        <!-- ── CARD LIST ── -->
+        <div class="space-y-2">
+
+          <!-- Card 1: HEALTHY -->
+          <div class="glass card-healthy rounded-xl p-4 relative hover:-translate-y-0.5 transition-all hover:border-green-500/40 cursor-pointer">
+            <!-- ✕ Remove — top right, safe, separated -->
+            <button class="remove-btn absolute top-3 right-3 w-6 h-6 rounded-md border border-white/10 text-slate-500 text-xs flex items-center justify-center hover:text-red-400 hover:border-red-400/40 transition">✕</button>
+
+            <div class="pr-8">
+              <!-- Row 1: name + metrics badge -->
+              <div class="flex items-start gap-2 flex-wrap mb-1.5">
+                <span class="font-bold text-sm leading-snug flex-1">SBI Blue Chip Fund – Direct Growth</span>
+                <span class="text-[10px] font-black px-2 py-0.5 rounded-full border border-green-500/30 bg-green-500/10 text-green-400 flex-shrink-0">Metrics ✓</span>
+              </div>
+
+              <!-- Row 2: code · AMC -->
+              <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-2 flex-wrap">
+                <span class="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Code</span>
+                <span class="mono text-slate-200">119551</span>
+                <span class="opacity-30">·</span>
+                <span>SBI Funds Management</span>
+                <span class="opacity-30">·</span>
+                <span class="text-slate-500">Large Cap</span>
+              </div>
+
+              <!-- Row 3: data range + ageing + NAV -->
+              <div class="flex items-center gap-1.5 text-xs flex-wrap">
+                <span class="text-green-400 text-[9px]">●</span>
+                <span class="mono font-bold text-slate-200">5,240 records</span>
+                <span class="opacity-30">·</span>
+                <span class="text-slate-400">01 Jan 2018 → 04 Apr 2026</span>
+                <span class="opacity-30">·</span>
+                <span class="text-green-400 font-semibold">Today</span>
+                <span class="opacity-30">·</span>
+                <span class="mono font-bold text-indigo-400">₹74.3228</span>
+              </div>
+            </div>
+
+            <!-- Actions row — mobile: flex-wrap chips, desktop: same row -->
+            <div class="flex gap-1.5 mt-3 flex-wrap">
+              <button class="px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-400 text-xs font-bold hover:bg-indigo-500/10 transition">Dashboard</button>
+              <button class="px-3 py-1.5 rounded-lg border border-green-500/30 text-green-400 text-xs font-bold hover:bg-green-500/10 transition">Update NAV</button>
+              <button class="px-3 py-1.5 rounded-lg border border-white/10 text-slate-400 text-xs font-bold hover:bg-white/5 transition">Recalculate</button>
+            </div>
+          </div>
+
+          <!-- Card 2: STALE -->
+          <div class="glass card-stale rounded-xl p-4 relative hover:-translate-y-0.5 transition-all hover:border-amber-500/40 cursor-pointer">
+            <button class="remove-btn absolute top-3 right-3 w-6 h-6 rounded-md border border-white/10 text-slate-500 text-xs flex items-center justify-center hover:text-red-400 hover:border-red-400/40 transition">✕</button>
+            <div class="pr-8">
+              <div class="flex items-start gap-2 flex-wrap mb-1.5">
+                <span class="font-bold text-sm leading-snug flex-1">HDFC Mid-Cap Opportunities Fund</span>
+                <span class="text-[10px] font-black px-2 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 flex-shrink-0">Metrics ↻</span>
+              </div>
+              <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-2 flex-wrap">
+                <span class="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Code</span>
+                <span class="mono text-slate-200">100180</span>
+                <span class="opacity-30">·</span>
+                <span>HDFC Asset Management</span>
+              </div>
+              <div class="flex items-center gap-1.5 text-xs flex-wrap">
+                <span class="text-amber-400 text-[9px]">●</span>
+                <span class="mono font-bold text-slate-200">4,810 records</span>
+                <span class="opacity-30">·</span>
+                <span class="text-slate-400">15 Mar 2018 → 28 Mar 2026</span>
+                <span class="opacity-30">·</span>
+                <span class="text-amber-400 font-bold">7d ago</span>
+                <span class="opacity-30">·</span>
+                <span class="mono font-bold text-indigo-400">₹89.1240</span>
+              </div>
+            </div>
+            <div class="flex gap-1.5 mt-3 flex-wrap">
+              <button class="px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-400 text-xs font-bold hover:bg-indigo-500/10 transition">Dashboard</button>
+              <button class="px-3 py-1.5 rounded-lg border border-green-500/30 text-green-400 text-xs font-bold hover:bg-green-500/10 transition">Update NAV</button>
+              <button class="px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-400 text-xs font-bold hover:bg-amber-500/10 transition">Fill Gaps</button>
+              <button class="px-3 py-1.5 rounded-lg border border-white/10 text-slate-400 text-xs font-bold hover:bg-white/5 transition">Recalculate</button>
+            </div>
+          </div>
+
+          <!-- Card 3: NO DATA -->
+          <div class="glass card-nodata rounded-xl p-4 relative hover:-translate-y-0.5 transition-all hover:border-red-500/40 cursor-pointer">
+            <button class="remove-btn absolute top-3 right-3 w-6 h-6 rounded-md border border-white/10 text-slate-500 text-xs flex items-center justify-center hover:text-red-400 hover:border-red-400/40 transition">✕</button>
+            <div class="pr-8">
+              <div class="flex items-start gap-2 flex-wrap mb-1.5">
+                <span class="font-bold text-sm leading-snug flex-1">Parag Parikh Flexi Cap Fund – Direct</span>
+                <span class="text-[10px] font-black px-2 py-0.5 rounded-full border border-white/10 text-slate-500 flex-shrink-0">No Metrics</span>
+              </div>
+              <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-2 flex-wrap">
+                <span class="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Code</span>
+                <span class="mono text-slate-200">122639</span>
+                <span class="opacity-30">·</span>
+                <span>PPFAS Asset Management</span>
+              </div>
+              <div class="flex items-center gap-1.5 text-xs">
+                <span class="text-slate-500 italic text-xs">No NAV data — download to start tracking</span>
+              </div>
+            </div>
+            <div class="flex gap-1.5 mt-3">
+              <button class="px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-400 text-xs font-bold hover:bg-indigo-500/10 transition">Dashboard</button>
+              <button class="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-500 transition">Download NAV</button>
+            </div>
+          </div>
+
+          <!-- Card 4: NO METRICS -->
+          <div class="glass card-nometrics rounded-xl p-4 relative hover:-translate-y-0.5 transition-all hover:border-indigo-500/40 cursor-pointer">
+            <button class="remove-btn absolute top-3 right-3 w-6 h-6 rounded-md border border-white/10 text-slate-500 text-xs flex items-center justify-center hover:text-red-400 hover:border-red-400/40 transition">✕</button>
+            <div class="pr-8">
+              <div class="flex items-start gap-2 flex-wrap mb-1.5">
+                <span class="font-bold text-sm leading-snug flex-1">Axis ELSS Tax Saver Fund – Direct</span>
+                <span class="text-[10px] font-black px-2 py-0.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-400 flex-shrink-0">No Metrics</span>
+              </div>
+              <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-2 flex-wrap">
+                <span class="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Code</span>
+                <span class="mono text-slate-200">120503</span>
+                <span class="opacity-30">·</span>
+                <span>Axis Asset Management</span>
+              </div>
+              <div class="flex items-center gap-1.5 text-xs flex-wrap">
+                <span class="text-green-400 text-[9px]">●</span>
+                <span class="mono font-bold text-slate-200">3,100 records</span>
+                <span class="opacity-30">·</span>
+                <span class="text-slate-400">01 Jan 2019 → 04 Apr 2026</span>
+                <span class="opacity-30">·</span>
+                <span class="text-green-400 font-semibold">Today</span>
+                <span class="opacity-30">·</span>
+                <span class="mono font-bold text-indigo-400">₹34.8812</span>
+              </div>
+            </div>
+            <div class="flex gap-1.5 mt-3 flex-wrap">
+              <button class="px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-400 text-xs font-bold hover:bg-indigo-500/10 transition">Dashboard</button>
+              <button class="px-3 py-1.5 rounded-lg border border-green-500/30 text-green-400 text-xs font-bold hover:bg-green-500/10 transition">Update NAV</button>
+              <button class="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-500 transition">Calculate Metrics</button>
+            </div>
+          </div>
+
+        </div>
+        <!-- end card list -->
+
+      </div>
+      <!-- end tracking tab -->
+
+
+      <!-- ══════════════════════════════════════
+           TAB 2 — DISCOVER
+      ══════════════════════════════════════ -->
+      <div id="tab-discover" class="tab-content space-y-4">
+
+        <p class="text-slate-400 text-sm">Search across 16,041 schemes. Click <strong class="text-white">+ Track</strong> to add to your list.</p>
+
+        <!-- Search row -->
+        <div class="flex gap-2">
+          <input id="discoverInput" type="text" placeholder="Search scheme name, AMC, or code…"
+            oninput="handleDiscoverInput(this.value)"
+            class="flex-1 bg-white/5 border border-white/8 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-indigo-500/60"
+            style="border-color:rgba(255,255,255,0.08)">
+          <button class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition">Search</button>
+        </div>
+
+        <!-- ── IDLE STATE: Browse chips ── -->
+        <div id="discover-idle">
+          <p class="text-xs text-slate-500 uppercase tracking-widest font-bold mb-3">Browse by AMC</p>
+          <div class="flex gap-2 flex-wrap mb-5">
+            <button onclick="discoverSearch('SBI')" class="glass px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:border-indigo-500/50 hover:text-indigo-300 transition">SBI Funds</button>
+            <button onclick="discoverSearch('HDFC')" class="glass px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:border-indigo-500/50 hover:text-indigo-300 transition">HDFC AMC</button>
+            <button onclick="discoverSearch('ICICI')" class="glass px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:border-indigo-500/50 hover:text-indigo-300 transition">ICICI Prudential</button>
+            <button onclick="discoverSearch('Axis')" class="glass px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:border-indigo-500/50 hover:text-indigo-300 transition">Axis Mutual Fund</button>
+            <button onclick="discoverSearch('Mirae')" class="glass px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:border-indigo-500/50 hover:text-indigo-300 transition">Mirae Asset</button>
+            <button onclick="discoverSearch('Parag')" class="glass px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:border-indigo-500/50 hover:text-indigo-300 transition">Parag Parikh</button>
+            <button onclick="discoverSearch('Kotak')" class="glass px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:border-indigo-500/50 hover:text-indigo-300 transition">Kotak</button>
+            <button onclick="discoverSearch('Nippon')" class="glass px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:border-indigo-500/50 hover:text-indigo-300 transition">Nippon India</button>
+          </div>
+
+          <p class="text-xs text-slate-500 uppercase tracking-widest font-bold mb-3">Browse by Category</p>
+          <div class="flex gap-2 flex-wrap">
+            <button class="glass px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:border-indigo-500/50 transition">Large Cap</button>
+            <button class="glass px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:border-indigo-500/50 transition">Mid Cap</button>
+            <button class="glass px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:border-indigo-500/50 transition">Flexi Cap</button>
+            <button class="glass px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:border-indigo-500/50 transition">ELSS</button>
+            <button class="glass px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:border-indigo-500/50 transition">Debt – Short Duration</button>
+            <button class="glass px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:border-indigo-500/50 transition">Index Fund</button>
+          </div>
+        </div>
+
+        <!-- ── RESULTS STATE ── -->
+        <div id="discover-results" class="space-y-2">
+          <p id="discover-count" class="text-xs text-slate-500 font-semibold"></p>
+
+          <!-- Result: NOT tracked -->
+          <div class="glass rounded-xl p-4 flex items-center gap-4 hover:border-white/15 transition">
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-sm mb-1">Mirae Asset Large Cap Fund – Direct Growth</div>
+              <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-1.5 flex-wrap">
+                <span class="mono text-slate-200">118989</span>
+                <span class="opacity-30">·</span>
+                <span>Mirae Asset Investment</span>
+                <span class="opacity-30">·</span>
+                <span class="text-slate-500">Large Cap</span>
+              </div>
+              <div class="flex items-center gap-2 text-xs">
+                <span class="mono font-bold text-indigo-400">₹102.4400</span>
+                <span class="text-slate-500">· 04 Apr 2026</span>
+                <span class="text-slate-600">· Est. Jan 2008</span>
+              </div>
+            </div>
+            <button onclick="trackScheme(this)" class="flex-shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap">
+              + Track
+            </button>
+          </div>
+
+          <!-- Inline alias expansion (after clicking + Track) — shown here for reference -->
+          <div class="glass rounded-xl border-indigo-500/40 overflow-hidden" style="border-color:rgba(99,102,241,0.4)">
+            <div class="p-4 flex items-center gap-4">
+              <div class="flex-1 min-w-0">
+                <div class="font-bold text-sm mb-1">Mirae Asset Emerging Bluechip Fund – Direct</div>
+                <div class="flex items-center gap-1.5 text-xs text-slate-400 flex-wrap">
+                  <span class="mono text-slate-200">118778</span>
+                  <span class="opacity-30">·</span>
+                  <span>Mirae Asset Investment</span>
+                </div>
+              </div>
+              <span class="flex-shrink-0 text-xs text-amber-400 font-bold">Confirming…</span>
+            </div>
+            <!-- Inline alias input — expands below the card row -->
+            <div class="border-t border-indigo-500/20 px-4 py-3 bg-indigo-500/5 flex items-center gap-3">
+              <span class="text-xs text-slate-400 flex-shrink-0">Alias <span class="text-slate-600">(optional)</span></span>
+              <input type="text" placeholder="e.g. Mirae Bluechip" value=""
+                class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-indigo-500/50 font-mono"
+                style="border-color:rgba(255,255,255,0.08)">
+              <button class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition flex-shrink-0">
+                Confirm Track
+              </button>
+              <button class="text-slate-500 hover:text-slate-300 text-xs font-bold flex-shrink-0">Cancel</button>
+            </div>
+          </div>
+
+          <!-- Result: ALREADY TRACKED — visually subdued -->
+          <div class="rounded-xl p-4 flex items-center gap-4 opacity-50" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05)">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="font-bold text-sm">Parag Parikh Flexi Cap Fund – Direct Growth</span>
+                <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-400">✓ Tracking</span>
+              </div>
+              <div class="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
+                <span class="mono">122639</span>
+                <span class="opacity-30">·</span>
+                <span>PPFAS Asset Management</span>
+                <span class="opacity-30">·</span>
+                <span>Flexi Cap</span>
+              </div>
+            </div>
+            <span class="flex-shrink-0 text-xs text-green-400 font-bold">✓ Tracking</span>
+          </div>
+
+          <!-- Result: NOT tracked -->
+          <div class="glass rounded-xl p-4 flex items-center gap-4 hover:border-white/15 transition">
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-sm mb-1">Mirae Asset Tax Saver Fund – Direct Growth</div>
+              <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-1.5 flex-wrap">
+                <span class="mono text-slate-200">139954</span>
+                <span class="opacity-30">·</span>
+                <span>Mirae Asset Investment</span>
+                <span class="opacity-30">·</span>
+                <span class="text-slate-500">ELSS</span>
+              </div>
+              <div class="text-xs">
+                <span class="mono font-bold text-indigo-400">₹42.1800</span>
+                <span class="text-slate-500 ml-2">· 04 Apr 2026</span>
+              </div>
+            </div>
+            <button class="flex-shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition">
+              + Track
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+      <!-- end discover tab -->
+
+    </div>
+  </div>
+</div>
+
+<!-- ── MOBILE PREVIEW TOGGLE ── -->
+<div class="fixed bottom-4 right-4 flex gap-2 z-50">
+  <button onclick="setMobile(false)"
+    class="glass px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white transition">
+    🖥 Desktop
+  </button>
+  <button onclick="setMobile(true)"
+    class="glass px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white transition">
+    📱 Mobile
+  </button>
+</div>
+
+<script>
+  function switchTab(t) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + t).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  function setFilter(f) {
+    document.querySelectorAll('.filter-card').forEach(el => el.classList.remove('active'));
+  }
+
+  function handleDiscoverInput(val) {
+    if (val.length >= 2) {
+      document.getElementById('discover-idle').style.display = 'none';
+      document.getElementById('discover-results').style.display = 'block';
+      document.getElementById('discover-count').textContent = '847 results for "' + val + '"';
+    } else {
+      document.getElementById('discover-idle').style.display = 'block';
+      document.getElementById('discover-results').style.display = 'none';
+    }
+  }
+
+  function discoverSearch(term) {
+    document.getElementById('discoverInput').value = term;
+    document.getElementById('discover-idle').style.display = 'none';
+    document.getElementById('discover-results').style.display = 'block';
+    document.getElementById('discover-count').textContent =
+      { SBI: '312', HDFC: '287', ICICI: '301', Axis: '198', Mirae: '89', Parag: '12', Kotak: '210', Nippon: '244' }[term] + ' schemes from ' + term;
+  }
+
+  function trackScheme(btn) {
+    btn.textContent = 'Adding…';
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.textContent = '✓ Tracking';
+      btn.className = 'flex-shrink-0 text-green-400 text-xs font-bold';
+    }, 800);
+  }
+
+  function setMobile(mobile) {
+    const main = document.querySelector('.flex.h-screen');
+    if (mobile) {
+      main.style.maxWidth = '390px';
+      main.style.margin = '0 auto';
+      main.style.border = '2px solid rgba(255,255,255,0.1)';
+      main.style.borderRadius = '12px';
+      document.querySelector('.w-14').style.display = 'none';
+    } else {
+      main.style.maxWidth = '';
+      main.style.margin = '';
+      main.style.border = '';
+      main.style.borderRadius = '';
+      document.querySelector('.w-14').style.display = '';
+    }
+  }
+</script>
+</body>
+</html>

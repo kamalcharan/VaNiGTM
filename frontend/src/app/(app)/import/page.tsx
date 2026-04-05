@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
+import { VdfInsightsCard } from '@/components/vdf';
 import s from './import-page.module.css';
 
 /* ── Types ─────────────────────────────────────────── */
@@ -46,7 +47,7 @@ const IMPORT_TYPES: { id: ImportType; label: string; desc: string; icon: string;
   { id: 'scheme', label: 'Scheme Master', desc: 'AMFI scheme database — codes, ISINs, categories, NAV names', icon: '\u{1F4CA}', enabled: true },
   { id: 'customer', label: 'Customers', desc: 'Client contacts — PAN, mobile, email, addresses', icon: '\u{1F465}', enabled: false },
   { id: 'transaction', label: 'Transactions', desc: 'Purchases, redemptions, SIPs, switches, dividends', icon: '\u{1F4C4}', enabled: false },
-  { id: 'bookmark', label: 'Bookmarks', desc: 'Tracked scheme codes and ISINs', icon: '\u{1F516}', enabled: false },
+  { id: 'bookmark', label: 'Bookmarks', desc: 'Tracked scheme codes and ISINs — bulk add to My NAV', icon: '\u{1F516}', enabled: true },
 ];
 
 /* ── Main Component ────────────────────────────────── */
@@ -136,18 +137,31 @@ export default function ImportPage() {
     if (!fileInfo || loading) return; // Prevent double-submit
     setLoading(true);
     try {
-      const session = await apiFetch<SessionInfo>(API.etl.createSession, {
-        body: { file_id: fileInfo.file_id, import_type: importType, field_mappings: mapping },
-      });
-      setSessionInfo(session);
-      setStep('processing');
+      if (importType === 'bookmark') {
+        // Bookmark import: reuses existing bulk upsert + alias seed in nav.routes.ts.
+        // No ETL staging/session needed — direct bulk insert.
+        setSessionInfo({ session_id: 0, status: 'processing', total_records: headerInfo?.total_rows || 0 });
+        setStep('processing');
+        const processResult = await apiFetch<ProcessResult>(API.nav.bookmarkImport, {
+          body: { file_id: fileInfo.file_id, field_mappings: mapping },
+        });
+        setResult(processResult);
+        setStep('results');
+      } else {
+        // Standard ETL pipeline (scheme master, customer, transaction)
+        const session = await apiFetch<SessionInfo>(API.etl.createSession, {
+          body: { file_id: fileInfo.file_id, import_type: importType, field_mappings: mapping },
+        });
+        setSessionInfo(session);
+        setStep('processing');
 
-      // Immediately trigger processing
-      const processResult = await apiFetch<ProcessResult>(API.etl.process, {
-        pathParams: { id: String(session.session_id) },
-      });
-      setResult(processResult);
-      setStep('results');
+        // Immediately trigger processing
+        const processResult = await apiFetch<ProcessResult>(API.etl.process, {
+          pathParams: { id: String(session.session_id) },
+        });
+        setResult(processResult);
+        setStep('results');
+      }
     } catch (err: any) {
       showToast({ message: err.message || 'Processing failed', type: 'error' });
       setStep('mapping');
@@ -183,23 +197,33 @@ export default function ImportPage() {
   function getVaniInsights(): string[] {
     if (!result || !headerInfo) return [];
     const insights: string[] = [];
+    const isBookmark = importType === 'bookmark';
 
     if (result.successful > 0 && result.failed === 0) {
-      insights.push(`All ${result.successful.toLocaleString()} records processed successfully.`);
+      insights.push(isBookmark
+        ? `${result.successful.toLocaleString()} scheme${result.successful !== 1 ? 's' : ''} added to My NAV.`
+        : `All ${result.successful.toLocaleString()} records processed successfully.`);
     }
     if (result.duplicate > 0) {
-      insights.push(`${result.duplicate.toLocaleString()} existing schemes updated with latest data.`);
+      insights.push(isBookmark
+        ? `${result.duplicate.toLocaleString()} scheme${result.duplicate !== 1 ? 's were' : ' was'} already in My NAV — skipped.`
+        : `${result.duplicate.toLocaleString()} existing schemes updated with latest data.`);
     }
     if (result.failed > 0) {
-      insights.push(`${result.failed} records failed \u2014 check error details below.`);
+      insights.push(isBookmark
+        ? `${result.failed} row${result.failed !== 1 ? 's' : ''} could not be matched to a scheme — check codes/ISINs.`
+        : `${result.failed} records failed \u2014 check error details below.`);
     }
-    const newSchemes = result.successful - result.duplicate;
-    if (newSchemes > 0) {
-      insights.push(`${newSchemes.toLocaleString()} new schemes added to the database.`);
+    if (isBookmark && result.successful > 0) {
+      insights.push('Aliases auto-seeded — your imported schemes are now matchable by name during future imports.');
+      insights.push('Go to My NAV to download NAV data and calculate metrics for your new bookmarks.');
     }
-    if (result.duration_ms) {
-      const seconds = (result.duration_ms / 1000).toFixed(1);
-      insights.push(`Processed ${result.processed.toLocaleString()} rows in ${seconds}s via PostgreSQL RPC.`);
+    if (!isBookmark) {
+      const newSchemes = result.successful - result.duplicate;
+      if (newSchemes > 0) insights.push(`${newSchemes.toLocaleString()} new schemes added to the database.`);
+      if (result.duration_ms) {
+        insights.push(`Processed ${result.processed.toLocaleString()} rows in ${(result.duration_ms / 1000).toFixed(1)}s via PostgreSQL RPC.`);
+      }
     }
     return insights;
   }
@@ -235,9 +259,8 @@ export default function ImportPage() {
       {/* ── STEP 1: Type Selection ──────────────────── */}
       {step === 'type' && (
         <div className={s.stepContent}>
-          <div className={s.vaniHint}>
-            <span className={s.vaniIcon}>{'\u2728'}</span>
-            <span>Choose the data type you want to import. Scheme Master is the foundation \u2014 import it first.</span>
+          <div style={{ marginBottom: 24 }}>
+            <VdfInsightsCard insights={[{ icon: '✨', text: 'Choose the data type you want to import. Scheme Master is the foundation — import it first.' }]} />
           </div>
           <div className={s.typeGrid}>
             {IMPORT_TYPES.map((t) => (
@@ -260,9 +283,8 @@ export default function ImportPage() {
       {/* ── STEP 2: Upload ──────────────────────────── */}
       {step === 'upload' && (
         <div className={s.stepContent}>
-          <div className={s.vaniHint}>
-            <span className={s.vaniIcon}>{'\u{1F4C1}'}</span>
-            <span>Upload your <strong>{IMPORT_TYPES.find((t) => t.id === importType)?.label}</strong> file. Supports .xlsx, .xls, and .csv (max 10MB).</span>
+          <div style={{ marginBottom: 24 }}>
+            <VdfInsightsCard insights={[{ icon: '📁', text: `Upload your ${IMPORT_TYPES.find((t) => t.id === importType)?.label || ''} file. Supports .xlsx, .xls, and .csv (max 10MB).` }]} />
           </div>
           <label
             className={`${s.dropZone} ${dragOver ? s.dropZoneActive : ''} ${loading ? s.dropZoneLoading : ''}`}
@@ -294,12 +316,8 @@ export default function ImportPage() {
       {/* ── STEP 3: Mapping Review ──────────────────── */}
       {step === 'mapping' && headerInfo && (
         <div className={s.stepContent}>
-          <div className={s.vaniHint}>
-            <span className={s.vaniIcon}>{'\u{1F9E0}'}</span>
-            <span>
-              Detected <strong>{headerInfo.total_rows.toLocaleString()}</strong> rows with <strong>{headerInfo.headers.length}</strong> columns.
-              {' '}Field mapping auto-applied \u2014 review and confirm.
-            </span>
+          <div style={{ marginBottom: 24 }}>
+            <VdfInsightsCard insights={[{ icon: '🧠', text: `Detected ${headerInfo.total_rows.toLocaleString()} rows with ${headerInfo.headers.length} columns. Field mapping auto-applied — review and confirm.` }]} />
           </div>
 
           {/* Mapping table */}
@@ -423,17 +441,11 @@ export default function ImportPage() {
           </div>
 
           {/* VaNi insights */}
-          <div className={s.insightsCard}>
-            <div className={s.insightsHeader}>
-              <span className={s.vaniIcon}>{'\u2728'}</span>
-              <span>VaNi Insights</span>
-            </div>
-            {getVaniInsights().map((insight, i) => (
-              <div key={i} className={s.insightRow}>
-                <span className={s.insightDot} />
-                <span>{insight}</span>
-              </div>
-            ))}
+          <div style={{ marginBottom: 24 }}>
+            <VdfInsightsCard
+              title="VaNi Insights"
+              insights={getVaniInsights().map(text => ({ icon: '•', text }))}
+            />
           </div>
 
           {/* Actions */}
