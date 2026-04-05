@@ -12,78 +12,108 @@
 --
 -- All existing rows are backfilled to TRUE (live) since they were created before
 -- sandbox mode existed.
+--
+-- Uses ALTER TABLE IF EXISTS throughout — safe to run even if a table was not yet
+-- created on this DB instance (e.g. migrations 001–009 were recorded in
+-- vn_migrations from a different environment but not actually applied here).
 -- ─────────────────────────────────────────────────────────────────────────────
 
--- ki_clients
-ALTER TABLE ki_clients
-  ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+DO $$
+BEGIN
 
--- ki_portfolios
-ALTER TABLE ki_portfolios
-  ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+  -- ki_clients
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_clients') THEN
+    ALTER TABLE ki_clients ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+    COMMENT ON COLUMN ki_clients.is_live IS 'TRUE = live environment, FALSE = sandbox. Set from JWT at record creation time.';
+  END IF;
 
--- ki_holdings
-ALTER TABLE ki_holdings
-  ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+  -- ki_portfolios
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_portfolios') THEN
+    ALTER TABLE ki_portfolios ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+    COMMENT ON COLUMN ki_portfolios.is_live IS 'TRUE = live environment, FALSE = sandbox.';
+  END IF;
 
--- ki_transactions
-ALTER TABLE ki_transactions
-  ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+  -- ki_holdings
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_holdings') THEN
+    ALTER TABLE ki_holdings ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+    COMMENT ON COLUMN ki_holdings.is_live IS 'TRUE = live environment, FALSE = sandbox.';
+  END IF;
 
--- ki_goals
-ALTER TABLE ki_goals
-  ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+  -- ki_transactions
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_transactions') THEN
+    ALTER TABLE ki_transactions ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+    COMMENT ON COLUMN ki_transactions.is_live IS 'TRUE = live environment, FALSE = sandbox.';
+  END IF;
 
--- ki_goal_projections
-ALTER TABLE ki_goal_projections
-  ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+  -- ki_goals
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_goals') THEN
+    ALTER TABLE ki_goals ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+    COMMENT ON COLUMN ki_goals.is_live IS 'TRUE = live environment, FALSE = sandbox.';
+  END IF;
 
--- ki_alerts
-ALTER TABLE ki_alerts
-  ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+  -- ki_goal_projections
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_goal_projections') THEN
+    ALTER TABLE ki_goal_projections ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+    COMMENT ON COLUMN ki_goal_projections.is_live IS 'TRUE = live environment, FALSE = sandbox.';
+  END IF;
 
--- ki_file_uploads (upload context is environment-specific)
-ALTER TABLE ki_file_uploads
-  ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+  -- ki_alerts
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_alerts') THEN
+    ALTER TABLE ki_alerts ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+    COMMENT ON COLUMN ki_alerts.is_live IS 'TRUE = live environment, FALSE = sandbox.';
+  END IF;
 
--- ki_import_sessions
-ALTER TABLE ki_import_sessions
-  ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+  -- ki_file_uploads
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_file_uploads') THEN
+    ALTER TABLE ki_file_uploads ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+    COMMENT ON COLUMN ki_file_uploads.is_live IS 'TRUE = live environment, FALSE = sandbox.';
+  END IF;
 
--- ki_import_staging (rows follow their session's environment)
-ALTER TABLE ki_import_staging
-  ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+  -- ki_import_sessions
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_import_sessions') THEN
+    ALTER TABLE ki_import_sessions ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+    COMMENT ON COLUMN ki_import_sessions.is_live IS 'TRUE = live environment, FALSE = sandbox.';
+  END IF;
 
--- ─── Indexes for common filter pattern: WHERE tenant_id = ? AND is_live = ? ──
+  -- ki_import_staging
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_import_staging') THEN
+    ALTER TABLE ki_import_staging ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT TRUE;
+    COMMENT ON COLUMN ki_import_staging.is_live IS 'TRUE = live environment, FALSE = sandbox. Mirrors the parent session.';
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_ki_clients_tenant_env
-  ON ki_clients (tenant_id, is_live);
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_ki_portfolios_tenant_env
-  ON ki_portfolios (tenant_id, is_live);
+-- ─── Indexes — only created if the table exists ───────────────────────────────
 
-CREATE INDEX IF NOT EXISTS idx_ki_holdings_tenant_env
-  ON ki_holdings (tenant_id, is_live);
+DO $$
+BEGIN
 
-CREATE INDEX IF NOT EXISTS idx_ki_transactions_tenant_env
-  ON ki_transactions (tenant_id, is_live);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_clients') THEN
+    CREATE INDEX IF NOT EXISTS idx_ki_clients_tenant_env ON ki_clients (tenant_id, is_live);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_ki_goals_tenant_env
-  ON ki_goals (tenant_id, is_live);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_portfolios') THEN
+    CREATE INDEX IF NOT EXISTS idx_ki_portfolios_tenant_env ON ki_portfolios (tenant_id, is_live);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_ki_alerts_tenant_env
-  ON ki_alerts (tenant_id, is_live);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_holdings') THEN
+    CREATE INDEX IF NOT EXISTS idx_ki_holdings_tenant_env ON ki_holdings (tenant_id, is_live);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_ki_import_sessions_tenant_env
-  ON ki_import_sessions (tenant_id, is_live);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_transactions') THEN
+    CREATE INDEX IF NOT EXISTS idx_ki_transactions_tenant_env ON ki_transactions (tenant_id, is_live);
+  END IF;
 
-COMMENT ON COLUMN ki_clients.is_live          IS 'TRUE = live environment, FALSE = sandbox. Set from JWT at record creation time.';
-COMMENT ON COLUMN ki_portfolios.is_live        IS 'TRUE = live environment, FALSE = sandbox.';
-COMMENT ON COLUMN ki_holdings.is_live          IS 'TRUE = live environment, FALSE = sandbox.';
-COMMENT ON COLUMN ki_transactions.is_live      IS 'TRUE = live environment, FALSE = sandbox.';
-COMMENT ON COLUMN ki_goals.is_live             IS 'TRUE = live environment, FALSE = sandbox.';
-COMMENT ON COLUMN ki_goal_projections.is_live  IS 'TRUE = live environment, FALSE = sandbox.';
-COMMENT ON COLUMN ki_alerts.is_live            IS 'TRUE = live environment, FALSE = sandbox.';
-COMMENT ON COLUMN ki_file_uploads.is_live      IS 'TRUE = live environment, FALSE = sandbox.';
-COMMENT ON COLUMN ki_import_sessions.is_live   IS 'TRUE = live environment, FALSE = sandbox.';
-COMMENT ON COLUMN ki_import_staging.is_live    IS 'TRUE = live environment, FALSE = sandbox. Mirrors the parent session.';
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_goals') THEN
+    CREATE INDEX IF NOT EXISTS idx_ki_goals_tenant_env ON ki_goals (tenant_id, is_live);
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_alerts') THEN
+    CREATE INDEX IF NOT EXISTS idx_ki_alerts_tenant_env ON ki_alerts (tenant_id, is_live);
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ki_import_sessions') THEN
+    CREATE INDEX IF NOT EXISTS idx_ki_import_sessions_tenant_env ON ki_import_sessions (tenant_id, is_live);
+  END IF;
+
+END $$;
