@@ -21,7 +21,7 @@ const navLinks = [
 export default function LandingPage() {
   return (
     <>
-      <Navbar brandName="ProessionalKey" links={navLinks} />
+      <Navbar brandName="ProKey" links={navLinks} />
       <main>
         <HeroSection />
 

@@ -146,11 +146,153 @@ export const API = {
   /* ── Tenant ───────────────────────────────────────── */
 
   tenant: {
+    profileGet: {
+      method: 'GET',
+      path: '/api/v1/tenant/profile',
+      auth: true,
+      description: 'Get tenant business profile',
+    },
     profile: {
       method: 'PATCH',
       path: '/api/v1/tenant/profile',
       auth: true,
       description: 'Update tenant business profile (name, ARN, theme)',
+    },
+  },
+
+  /* ── ETL ──────────────────────────────────────────── */
+
+  etl: {
+    upload: {
+      method: 'POST',
+      path: '/api/v1/etl/upload',
+      auth: true,
+      description: 'Upload a file for import (multipart/form-data)',
+    },
+    headers: {
+      method: 'GET',
+      path: '/api/v1/etl/headers/:fileId',
+      auth: true,
+      description: 'Detect headers and sample rows from uploaded file',
+    },
+    sessions: {
+      method: 'GET',
+      path: '/api/v1/etl/sessions',
+      auth: true,
+      description: 'List all import sessions',
+    },
+    createSession: {
+      method: 'POST',
+      path: '/api/v1/etl/sessions',
+      auth: true,
+      description: 'Create import session with field mapping and stage data',
+    },
+    process: {
+      method: 'POST',
+      path: '/api/v1/etl/sessions/:id/process',
+      auth: true,
+      description: 'Process staged data into target table',
+    },
+    status: {
+      method: 'GET',
+      path: '/api/v1/etl/sessions/:id/status',
+      auth: true,
+      description: 'Get import session status and progress',
+    },
+    records: {
+      method: 'GET',
+      path: '/api/v1/etl/sessions/:id/records',
+      auth: true,
+      description: 'Get paginated staging records for a session',
+    },
+    reprocess: {
+      method: 'POST',
+      path: '/api/v1/etl/sessions/:id/reprocess',
+      auth: true,
+      description: 'Reprocess failed records in a session',
+    },
+    deleteStaging: {
+      method: 'DELETE',
+      path: '/api/v1/etl/sessions/:id/staging',
+      auth: true,
+      description: 'Delete staging data for a completed session',
+    },
+  },
+
+  /* ── NAV ──────────────────────────────────────────── */
+
+  nav: {
+    bookmarks: {
+      method: 'GET',
+      path: '/api/v1/nav/bookmarks',
+      auth: true,
+      description: 'List bookmarked schemes with NAV status',
+    },
+    addBookmark: {
+      method: 'POST',
+      path: '/api/v1/nav/bookmarks',
+      auth: true,
+      description: 'Bookmark a scheme for NAV tracking',
+    },
+    removeBookmark: {
+      method: 'DELETE',
+      path: '/api/v1/nav/bookmarks/:schemeCode',
+      auth: true,
+      description: 'Remove a scheme bookmark',
+    },
+    downloadDaily: {
+      method: 'POST',
+      path: '/api/v1/nav/download/daily',
+      auth: true,
+      description: 'Download daily NAV for all bookmarked schemes',
+    },
+    downloadScheme: {
+      method: 'POST',
+      path: '/api/v1/nav/download/scheme/:code',
+      auth: true,
+      description: 'Download historical NAV for a specific scheme',
+    },
+    schemeDetail: {
+      method: 'GET',
+      path: '/api/v1/nav/scheme/:code',
+      auth: true,
+      description: 'Full scheme detail with metrics, gaps, bookmark status',
+    },
+    downloadGap: {
+      method: 'POST',
+      path: '/api/v1/nav/download/gap/:code',
+      auth: true,
+      description: 'Download only missing NAV gaps for a scheme',
+    },
+    downloadAll: {
+      method: 'POST',
+      path: '/api/v1/nav/download/all',
+      auth: true,
+      description: 'Download full history for all bookmarked schemes',
+    },
+    downloadGapAll: {
+      method: 'POST',
+      path: '/api/v1/nav/download/gap/all',
+      auth: true,
+      description: 'Fill NAV gaps for all bookmarked schemes',
+    },
+    status: {
+      method: 'GET',
+      path: '/api/v1/nav/status',
+      auth: true,
+      description: 'Cruise control NAV status for all bookmarks',
+    },
+    calculateMetrics: {
+      method: 'POST',
+      path: '/api/v1/nav/metrics/:code',
+      auth: true,
+      description: 'Calculate metrics for a specific scheme',
+    },
+    calculateMetricsBulk: {
+      method: 'POST',
+      path: '/api/v1/nav/metrics/bulk',
+      auth: true,
+      description: 'Calculate metrics for all schemes with NAV data',
     },
   },
 

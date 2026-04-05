@@ -1,0 +1,217 @@
+/* ═══════════════════════════════════════════════════════
+   SCHEME DASHBOARD — Layout only
+   All badges, tables, stats from VDF + data.module.css
+   Reference: documents/HTML/globalnavscheme.html
+   ═══════════════════════════════════════════════════════ */
+
+.page { padding: 24px 40px 48px; max-width: 1100px; margin: 0 auto; }
+.error { padding: 48px; text-align: center; color: var(--color-danger); }
+
+/* ── Back + Header ───────────────────────────────────── */
+.topRow { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+
+.topLeft { display: flex; gap: 12px; align-items: flex-start; }
+
+.backBtn {
+  width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--color-border); border-radius: 12px;
+  background: transparent; color: var(--color-muted); cursor: pointer;
+  transition: all 200ms; flex-shrink: 0;
+}
+.backBtn:hover { border-color: var(--color-primary); color: var(--color-fg); }
+
+.heroName {
+  font-family: var(--font-display, serif);
+  font-size: 1.5rem; font-weight: 800; font-style: italic;
+  color: var(--color-fg); margin: 0 0 4px; line-height: 1.2;
+}
+
+.heroMeta { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--color-muted); }
+.heroCode { font-family: var(--font-mono, monospace); }
+
+.typeBadge {
+  padding: 2px 10px; font-size: 0.55rem; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  border-radius: 4px;
+}
+
+.topRight { text-align: right; flex-shrink: 0; }
+.navDateLabel { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--color-muted); }
+
+.navBig {
+  font-family: var(--font-mono, monospace);
+  font-size: 2.2rem; font-weight: 900; color: var(--color-fg);
+}
+
+.navChange { font-family: var(--font-mono, monospace); font-size: 1rem; font-weight: 700; margin-left: 8px; }
+.changeUp { color: var(--color-success); }
+.changeDown { color: var(--color-danger); }
+
+/* ── 2-Column Layout (chart+actions | risk sidebar) ── */
+.columns { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+
+/* ── Left Column ─────────────────────────────────────── */
+.leftCol { display: flex; flex-direction: column; gap: 16px; }
+
+/* ── Chart Panel ─────────────────────────────────────── */
+.chartPanel {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 20px;
+  backdrop-filter: blur(12px);
+}
+
+.chartControls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+
+.periodToggle {
+  display: flex; background: var(--color-bg); padding: 3px;
+  border-radius: 10px; border: 1px solid var(--color-border);
+}
+
+.periodBtn {
+  padding: 5px 12px; border: none; border-radius: 7px;
+  background: transparent; color: var(--color-muted);
+  font-size: 0.68rem; font-weight: 700; cursor: pointer; transition: all 150ms;
+}
+
+.periodBtnActive {
+  background: var(--color-surface); color: var(--color-fg);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.chartActions { display: flex; gap: 6px; }
+
+/* ── Action Cards (2-col) ────────────────────────────── */
+.actionCards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.actionCard {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 16px 20px;
+  backdrop-filter: blur(12px);
+}
+
+.actionCardGreen { background: color-mix(in srgb, var(--color-success) 4%, transparent); border-color: color-mix(in srgb, var(--color-success) 15%, transparent); }
+.actionCardBlue { background: color-mix(in srgb, var(--color-info) 4%, transparent); border-color: color-mix(in srgb, var(--color-info) 15%, transparent); }
+
+.actionCardTitle {
+  font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.actionCardGreen .actionCardTitle { color: var(--color-success); }
+.actionCardBlue .actionCardTitle { color: var(--color-info); }
+
+.actionCardBtns { display: flex; flex-direction: column; gap: 8px; }
+
+.actionBtnFull {
+  width: 100%; padding: 10px; border-radius: 12px;
+  font-size: 0.8rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all 200ms;
+}
+
+.actionBtnPrimary { background: var(--color-primary); border: none; color: var(--color-primary-fg); }
+.actionBtnPrimary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px color-mix(in srgb, var(--color-primary) 30%, transparent); }
+.actionBtnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.actionBtnOutline { background: transparent; border: 1px solid var(--color-border); color: var(--color-muted); }
+.actionBtnOutline:hover { border-color: var(--color-primary); color: var(--color-fg); }
+.actionBtnOutline:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.actionBtnWarn { background: color-mix(in srgb, var(--color-warning) 6%, transparent); border: 1px solid color-mix(in srgb, var(--color-warning) 25%, transparent); color: var(--color-warning); }
+.actionBtnWarn:hover { background: color-mix(in srgb, var(--color-warning) 12%, transparent); }
+
+.actionHint { font-size: 0.6rem; color: var(--color-muted); text-align: center; font-style: italic; margin-top: 4px; }
+
+/* ── Right Column (Risk Sidebar) ─────────────────────── */
+.rightCol { display: flex; flex-direction: column; gap: 16px; }
+
+.riskPanel {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 20px;
+  backdrop-filter: blur(12px);
+}
+
+.riskTitle {
+  font-size: 0.7rem; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--color-muted); margin-bottom: 20px;
+}
+
+.riskItem { margin-bottom: 20px; }
+
+.riskItemHeader { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.riskItemLabel { font-size: 0.68rem; color: var(--color-muted); }
+.riskItemTag { font-size: 0.65rem; font-weight: 700; font-style: italic; }
+
+.riskItemBigValue {
+  font-family: var(--font-mono, monospace);
+  font-size: 1.5rem; font-weight: 800; color: var(--color-fg);
+}
+
+.riskItemSmall { font-size: 0.68rem; color: var(--color-muted); font-weight: 400; margin-left: 6px; }
+
+.riskDivider { height: 1px; background: var(--color-border); margin: 16px 0; }
+
+/* ── Drawdown Progress Bar ───────────────────────────── */
+.progressTrack { width: 100%; height: 6px; background: var(--color-bg); border-radius: 3px; margin-top: 6px; }
+.progressFill { height: 100%; border-radius: 3px; background: var(--color-danger); transition: width 300ms; }
+
+/* ── Risk Grid ───────────────────────────────────────── */
+.riskGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.riskGridLabel { font-size: 0.55rem; text-transform: uppercase; color: var(--color-muted); letter-spacing: 0.1em; }
+.riskGridValue { font-family: var(--font-mono, monospace); font-size: 1.1rem; font-weight: 800; color: var(--color-fg); }
+
+/* ── Audit Trail Panel ───────────────────────────────── */
+.auditPanel {
+  background: var(--glass);
+  border: 1px dashed var(--glass-border);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.auditTitle {
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--color-muted);
+  margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+}
+
+.auditRow { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+.auditDot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.auditDotBlue { background: var(--color-info); }
+.auditDotGreen { background: var(--color-success); }
+.auditDotAmber { background: var(--color-warning); }
+.auditText { font-size: 0.65rem; color: var(--color-muted); }
+
+/* ── NAV Table Section (below columns) ───────────────── */
+.tableSection { margin-top: 20px; }
+.tableHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.tableCount { font-size: 0.68rem; color: var(--color-muted); }
+
+.customRange { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.dateInput { padding: 5px 10px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 6px; color: var(--color-fg); font-size: 0.75rem; outline: none; }
+.dateInput:focus { border-color: var(--color-primary); }
+.dateSep { color: var(--color-muted); }
+
+.chartEmpty { padding: 48px; text-align: center; color: var(--color-muted); font-size: 0.82rem; border: 1px dashed var(--color-border); border-radius: 10px; }
+
+/* ── VaNi Section ────────────────────────────────────── */
+.vaniSection { margin-top: 20px; }
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 900px) {
+  .page { padding: 16px 20px; }
+  .topRow { flex-direction: column; gap: 16px; }
+  .columns { grid-template-columns: 1fr; }
+  .actionCards { grid-template-columns: 1fr; }
+  .riskGrid { grid-template-columns: 1fr; }
+}

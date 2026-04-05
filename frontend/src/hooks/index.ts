@@ -11,12 +11,16 @@ export {
   useLogin,
   useLogout,
   useRevokeSessions,
+  useSessions,
+  useChangePassword,
   useForgotPassword,
   useResetPassword,
   type RegisterPayload,
   type LoginPayload,
   type ActiveSession,
+  type SessionInfo,
   type AuthTokens,
+  type ChangePasswordPayload,
   type RevokeSessionsPayload,
 } from './useAuthMutation';
 export {

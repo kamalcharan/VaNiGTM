@@ -2,11 +2,11 @@
 
 import { Suspense } from 'react';
 import ResetPasswordPage from '@/components/auth/reset-password-page';
-import { FullPageLoader } from '@/components/loader';
+import { VdfLoader } from '@/components/vdf';
 
 export default function ResetPasswordRoute() {
   return (
-    <Suspense fallback={<FullPageLoader message="Loading..." />}>
+    <Suspense fallback={<VdfLoader message="Loading" hint="Preparing password reset" />}>
       <ResetPasswordPage />
     </Suspense>
   );

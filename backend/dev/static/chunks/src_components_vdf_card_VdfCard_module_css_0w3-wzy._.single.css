@@ -1,0 +1,78 @@
+/* [project]/src/components/vdf/card/VdfCard.module.css [app-client] (css) */
+.VdfCard-module__raMgwW__card {
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 20px;
+  padding: 32px;
+  transition: all .5s cubic-bezier(.16, 1, .3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.VdfCard-module__raMgwW__card:after {
+  content: "";
+  background: linear-gradient(90deg, var(--card-accent, var(--color-primary)), transparent);
+  opacity: 0;
+  height: 2px;
+  transition: opacity .4s;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.VdfCard-module__raMgwW__hoverLift:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 64px #0000004d;
+}
+
+.VdfCard-module__raMgwW__hoverLift:hover:after {
+  opacity: 1;
+}
+
+.VdfCard-module__raMgwW__glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+}
+
+.VdfCard-module__raMgwW__glass:hover {
+  border-color: var(--color-primary-glow);
+}
+
+.VdfCard-module__raMgwW__glassStrong {
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+}
+
+.VdfCard-module__raMgwW__featured {
+  background: var(--glass-strong);
+  border: 1px solid var(--color-primary-dim);
+}
+
+.VdfCard-module__raMgwW__featured:before {
+  content: "";
+  background: linear-gradient(180deg, var(--color-primary-dim), transparent 40%);
+  z-index: -1;
+  -webkit-mask-composite: xor;
+  border-radius: 20px;
+  padding: 1px;
+  position: absolute;
+  inset: -1px;
+  -webkit-mask-image: linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
+  mask-image: linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
+  -webkit-mask-position: 0 0, 0 0;
+  mask-position: 0 0, 0 0;
+  -webkit-mask-size: auto, auto;
+  mask-size: auto, auto;
+  -webkit-mask-repeat: repeat, repeat;
+  mask-repeat: repeat, repeat;
+  -webkit-mask-clip: content-box, border-box;
+  mask-clip: content-box, border-box;
+  -webkit-mask-origin: content-box, border-box;
+  mask-origin: content-box, border-box;
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  -webkit-mask-source-type: auto, auto;
+  mask-mode: match-source, match-source;
+}
+
+/*# sourceMappingURL=src_components_vdf_card_VdfCard_module_css_0w3-wzy._.single.css.map*/

@@ -1,7 +1,7 @@
-# CLAUDE.md — ProessionalKey (KI-Prime)
+# CLAUDE.md — ProKey (KI-Prime)
 
 ## What is this repo?
-ProessionalKey — multi-tenant SaaS financial planning platform for Mutual Fund Distributors (MFDs) in India. Built on a lightweight Skills.md convention — no framework dependency.
+ProKey — multi-tenant SaaS financial planning platform for Mutual Fund Distributors (MFDs) in India. Built on a lightweight Skills.md convention — no framework dependency.
 
 ## Architecture
 - **kewalinvest/** is a git submodule (kamalcharan/kewalinvest). READ-ONLY reference for business logic patterns (XIRR, MFAPI, InvestWell parser). DO NOT modify.
@@ -219,11 +219,73 @@ VDF is the single source of truth for all visual elements. Located in `component
 
 - **Glassmorphic design is DEFAULT.** Backdrop blur, glass surfaces, subtle borders, depth through transparency.
 - **No safe/generic design.** Every screen should feel premium, innovative, best-in-class.
-- **The Atlas design language** (login-vault, landing-page) sets the bar — dashboard pages match this quality.
+- **No "Atlas Design Language"** — the design system is: 12 themes + CSS variables + form tokens + VDF components.
 - Animations: subtle, purposeful (fadeInUp, transitions on hover/focus). No gratuitous animation.
 - Typography: clean hierarchy. Playfair Display for display text, DM Sans for body, JetBrains Mono for data.
 - Data density: dashboard pages are data-rich but never cluttered. Whitespace is intentional.
 - Mobile responsive: every page works on tablet and mobile. Not just desktop.
+
+### UX Reference Designs (MANDATORY)
+The HTML mockups in `documents/HTML/` define the visual bar for each feature area:
+- `globalnav.html` — Global NAV explorer: glassmorphic stats, sidebar search, VaNi accent gradient card, color-coded table rows, mini bar charts in metric cards
+- `globalnavadmin.html` — Admin ops: pixel heat map for fleet health, background worker progress bars, storage/compute stats, critical exceptions table
+- `globalnavscheme.html` — Scheme dashboard: 2-column (chart+actions | risk sidebar), accent-bordered cards, Sharpe with category comparison, max drawdown progress bar, data audit timeline
+- `ProKey-Landing-Page.html` — Landing page: the original premium design benchmark
+
+**When building ANY data page:**
+1. Check `documents/HTML/` for a reference design FIRST
+2. Match or exceed that visual quality — never downgrade
+3. If no reference exists, match the quality of existing reference designs
+
+### Visual Patterns (from reference designs)
+- **Stat cards**: glassmorphic with accent left-border, mini visualization inside (bar chart / sparkline)
+- **VaNi card**: accent gradient background (not flat), proactive suggestion with action button
+- **Table rows**: color-coded by status (amber bg for stale/warning, not just a badge)
+- **Status indicators**: pulsing dots for live status, not just text
+- **Metrics display**: large numbers with category average comparison, progress bars for drawdown
+- **Data audit trail**: timeline dots showing import → fetch → gap events
+- **Pixel heat maps**: GitHub-contribution-style grid for fleet/batch health
+- **Background workers**: live progress bars with ETA text
+
+### CSS Architecture — CRITICAL RULES
+
+#### NO per-page CSS for shared patterns
+Pages MUST import shared CSS + VDF components. Page CSS should ONLY contain layout.
+
+**Shared CSS files:**
+- `styles/forms.module.css` — all form controls (input, select, label, button, error)
+- `styles/data.module.css` — all data display (table, pagination, value colors, section titles)
+
+**VDF components for data display:**
+- `VdfStatusBadge` — status pills (success/warning/danger/info/muted)
+- `VdfStatCard` — stat number + label + accent color
+- `VdfEmptyState` — icon + title + description + action
+- `VdfInsightsCard` — VaNi analysis panel
+- `VdfLineChart` — SVG line chart
+- `ThemePicker` — theme selection (shared between onboarding + settings)
+
+**What page CSS SHOULD contain:**
+- Page layout (`.page`, `.layout`, `.sidebar`, `.main`, `.hero`)
+- Grid structure (column spans, gaps)
+- Page-specific visual effects (gradients, atmosphere)
+- Component positioning within the page
+
+**What page CSS MUST NOT contain:**
+- Status badge styles (use VdfStatusBadge)
+- Stat card styles (use VdfStatCard)
+- Table th/td/hover styles (use data.module.css)
+- Pagination styles (use data.module.css)
+- Empty state styles (use VdfEmptyState)
+- VaNi/insights card styles (use VdfInsightsCard)
+- Button base styles (use forms.module.css or VdfButton)
+- Any hardcoded colors (use CSS variables)
+
+### First Time Right — Production Quality
+- **No rework.** Code written once, correctly. No "build now, refactor later."
+- **No safe designs.** Every page matches the HTML reference quality.
+- **No inline CSS for shared patterns.** If it appears on 2+ pages, it's a VDF component or shared CSS.
+- **No hardcoded values.** Every color, font, spacing uses CSS variables/tokens.
+- **No mock data in production code.** Real auth, real API calls, real error handling.
 
 ## Skills Status
 | Skill | Functions | Handlers | Status |
@@ -233,6 +295,8 @@ VDF is the single source of truth for all visual elements. Located in `component
 | market-skill | 5 | 5 | ✅ Done |
 | planning-skill | 5 | 5 | ✅ Done |
 | import-skill | 4 | 4 | ✅ Done |
+| etl-skill | 12 | 0 | ⬜ Spec only (import dashboard, cruise control, course correction) |
+| transaction-skill | 4 | 0 | ⬜ Spec only |
 | alert-skill | 5 | 0 | ⬜ Spec only |
 | report-skill | 4 | 0 | ⬜ Spec only |
 | comms-skill | 4 | 0 | ⬜ Spec only |
@@ -249,21 +313,46 @@ VDF is the single source of truth for all visual elements. Located in `component
 
 1. **NEVER modify files inside kewalinvest/.** Read-only submodule.
 2. **Port MVP logic into skills — don't reinvent.** Check kewalinvest/ first.
-3. **Every SQL query MUST filter by tenant_id.** No exceptions.
+3. **Every SQL query MUST filter by tenant_id.** No exceptions (except global tables like ki_schemes, ki_nav_history).
 4. **Every write operation MUST be in a transaction.** Use `ctx.db.transaction()`.
 5. **Every API endpoint and skill handler MUST have error handling.** try/catch, structured error response, logging.
-6. **Every frontend page MUST use Toast for errors and Loader for loading states.**
-7. **Every UI element MUST come from VDF.** No one-off styled components. No hardcoded colors.
+6. **Every frontend page MUST use VdfLoader for loading states and Toast for errors.**
+7. **Every UI element MUST come from VDF.** No one-off styled components. No hardcoded colors. No per-page CSS for shared patterns.
 8. **Every VDF component MUST use CSS variables** from the theme system.
 9. **Table prefix: KI_** for all tables.
 10. **SQL files in queries/ or sql/ subdirectory** — not inline in TypeScript.
 11. **Tests: 3-check pattern** — (a) valid data, (b) empty/not-found, (c) wrong tenant → zero rows.
 12. **No VaNi. No VaNiBase. No framework imports.** This is plain Express + Next.js.
-13. **UX: glassmorphic default, innovative, premium.** No generic/safe design. Match the Atlas design language quality.
+13. **UX: glassmorphic default, innovative, premium.** No generic/safe design. Match HTML reference designs in documents/HTML/.
 
-## Reference: MVP → ProessionalKey Mapping
+## kewalinvest Submodule — Mandatory Audit Rules
 
-| MVP (kewalinvest)                    | ProessionalKey                              |
+ProKey is the **production upgrade** of kewalinvest (the MVP). When building any feature:
+
+### 1. ASK: Does this feature exist in kewalinvest?
+Before writing any code, **ask the user** if the kewalinvest submodule should be audited for the feature being built. If the user says yes:
+
+### 2. AUDIT: Full parity is mandatory
+- Run `git submodule update --init` if kewalinvest/ is empty
+- Read the kewalinvest implementation **completely** — every file, every function, every edge case
+- List every feature the kewalinvest version has
+- **100% of kewalinvest's working features must be implemented in ProKey** — no shortcuts, no "we'll add it later", no eliminating features
+- If unsure whether a feature is needed, **ask the user** — never skip silently
+- ProKey can ADD features beyond kewalinvest, but never have LESS
+
+### 3. USE: kewalinvest's proven patterns
+- **Database functions (RPC):** kewalinvest uses PostgreSQL functions for data processing (process_single_scheme_record, process_scheme_import_with_timing, etc.). ProKey MUST use the same RPC pattern — adapt table names but keep the logic in PL/pgSQL, not Node.js
+- **Database structures:** kewalinvest's table schemas are tested and production-proven. Ask the user before deviating from kewalinvest's column names, types, or constraints
+- **Take user confirmation** on any DB function or table structure before creating — these are the foundation and changing them later is expensive
+
+### 4. NEVER assume — ASK
+- "Should I match kewalinvest's X exactly, or is there a ProKey-specific change?"
+- "kewalinvest has Y — do we need this in ProKey?"
+- "kewalinvest uses Z pattern for this — should I follow the same?"
+
+## Reference: MVP → ProKey Mapping
+
+| MVP (kewalinvest)                    | ProKey                              |
 |--------------------------------------|---------------------------------------------|
 | `backend/src/services/portfolio.*`   | `skills/portfolio-skill/functions/`         |
 | `backend/src/services/transaction.*` | `skills/import-skill/functions/`            |
@@ -404,11 +493,20 @@ Tokens stored in BOTH sessionStorage and localStorage:
 ## VDF Component Library
 Located in `frontend/src/components/vdf/`. Naming: `Vdf<Name>` (e.g., `VdfButton`, `VdfMobileInput`).
 
-Current components (18):
-- **Layout**: VdfCard, VdfModal, VdfNavRail, VdfTabs, VdfWizard
+Current components (20):
+- **Layout**: VdfCard, VdfModal, VdfNavRail, VdfTabs, VdfWizard, VdfSidebar
 - **Form**: VdfButton, VdfCheckbox, VdfMobileInput, VdfRichText
-- **Display**: VdfBadge, VdfAvatar, VdfIcon
+- **Display**: VdfBadge, VdfAvatar, VdfIcon, ThemePicker
 - **Decorative**: VdfAtmosphere, VdfParticles, VdfNoiseOverlay, VdfGoldThread
+
+### PENDING REVIEW — Future VDF Data Components
+- **VdfDataTable**: Paginated table with sticky headers, status badges, row selection, actions. Currently inline in Import Dashboard, Global NAV, Cruise Control — extract into VDF once pattern stabilizes across 3+ pages.
+- **VdfStatusBadge**: Configurable status badge (success/warning/danger/info/muted). Currently hardcoded per page.
+- **VdfLineChart**: Lightweight SVG line chart for NAV history, portfolio performance. No chart library.
+- **VdfDateRangePicker**: From/to date inputs with presets (1M, 3M, 6M, 1Y, YTD).
+- **VdfSearchBar**: Debounced search input with filter pills + clear button.
+- **VdfEmptyState**: Icon + title + description + CTA. Currently duplicated everywhere.
+- **VdfConfirmDialog**: Warning modal with typed confirmation ("type DELETE").
 
 ### VdfMobileInput
 - Uses `constants/countries.ts` (22 countries with validation rules)

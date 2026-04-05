@@ -35,8 +35,13 @@ Category-level performance for benchmarking.
 
 ### search_schemes
 Fuzzy search across scheme names, AMCs, and categories.
-- Parameters: query (required, string), limit (optional, number, default 20)
-- Returns: { results: [{ scheme_code, scheme_name, amc, category, nav, nav_date }], total_matches, recipe: 'data-table' }
+- Parameters: query (required, string), limit (optional, number, default 50), page (optional, number, default 1)
+- Returns: { results: [{ scheme_code, scheme_name, amc, category, scheme_type, active, nav, nav_date, nav_records, earliest_nav_date, latest_nav_date, metrics_calculated }], total_matches, page, limit, total_pages, recipe: 'data-table' }
+
+### get_scheme_stats
+Global scheme statistics for dashboard stats row.
+- Parameters: none
+- Returns: { total_schemes, active_schemes, ended_schemes, with_nav_data, without_nav_data, stale_nav_7d, metrics_calculated, metrics_pending, recipe: 'stat-row' }
 
 ## Constraints
 - NAV data sourced from MFAPI, updated daily by market close + 1 hour

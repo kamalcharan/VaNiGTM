@@ -62,28 +62,8 @@
   color: var(--color-muted);
 }
 
-.input {
-  width: 100%; height: var(--input-height); padding: var(--input-padding);
-  background: var(--color-bg); border: var(--input-border-width) solid var(--color-border);
-  border-radius: var(--input-radius); color: var(--color-fg);
-  font-family: var(--font-body, 'DM Sans', sans-serif);
-  font-size: var(--input-font-size); outline: none;
-  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1); box-sizing: border-box;
-}
-
-.input::placeholder { color: var(--color-muted); opacity: var(--input-placeholder-opacity); }
-.input:focus::placeholder { opacity: 0; }
-.input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 var(--input-focus-ring-size) color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity), transparent);
-}
-.input:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.select { composes: input; -webkit-appearance: none; appearance: none; cursor: pointer; padding-right: 36px;
-  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a8578' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: right 14px center;
-}
-.select option { background: var(--color-surface); color: var(--color-fg); }
+.input { composes: input from '../../styles/forms.module.css'; }
+.select { composes: select from '../../styles/forms.module.css'; }
 
 .sendBtn {
   display: flex; align-items: center; gap: 6px;
@@ -196,28 +176,10 @@
 .skipBtn:hover { border-color: var(--color-primary); color: var(--color-fg); }
 
 .saveBtn {
-  padding: var(--btn-padding); background: var(--color-primary);
-  border: none; border-radius: var(--btn-radius);
-  color: var(--color-primary-fg); font-family: var(--font-body, 'DM Sans', sans-serif);
-  font-size: var(--btn-font-size); font-weight: var(--btn-font-weight);
-  letter-spacing: var(--btn-letter-spacing); cursor: pointer;
-  transition: all 400ms cubic-bezier(0.16, 1, 0.3, 1);
-  position: relative; overflow: hidden;
+  composes: submitBtn from '../../styles/forms.module.css';
+  width: auto;
+  height: auto;
 }
-
-.saveBtn::before {
-  content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-  transition: left 0.6s;
-}
-
-.saveBtn:hover:not(:disabled) {
-  background: var(--color-primary-hover); transform: translateY(-2px);
-  box-shadow: 0 8px 40px color-mix(in srgb, var(--color-primary) 30%, transparent);
-}
-
-.saveBtn:hover:not(:disabled)::before { left: 100%; }
-.saveBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Scrollbar ───────────────────────────────────────── */
 .page::-webkit-scrollbar { width: 5px; }

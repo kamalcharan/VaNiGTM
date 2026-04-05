@@ -1,0 +1,270 @@
+/* ═══════════════════════════════════════════════════════
+   GLOBAL NAV EXPLORER — Layout only
+   All badges, tables, stats, insights from VDF + data.module.css
+   Reference: documents/HTML/globalnav.html
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Page ────────────────────────────────────────────── */
+.page { padding: 24px 32px; min-height: calc(100vh - 40px); display: flex; flex-direction: column; }
+
+/* ── Header ──────────────────────────────────────────── */
+.header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; }
+.headerLeft { flex: 1; }
+.statsCards { display: flex; gap: 12px; }
+
+/* ── 12-Column Grid ──────────────────────────────────── */
+.grid { display: grid; grid-template-columns: 280px 1fr; gap: 24px; flex: 1; min-height: 0; }
+
+/* ── Sidebar ─────────────────────────────────────────── */
+.sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+.searchPanel {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 20px;
+  backdrop-filter: blur(12px);
+}
+
+.searchTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-fg);
+  font-size: 0.82rem;
+  outline: none;
+  transition: border-color 200ms;
+  box-sizing: border-box;
+}
+
+.searchInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.searchInput::placeholder { color: var(--color-muted); opacity: var(--input-placeholder-opacity); }
+
+/* ── Status Filters ──────────────────────────────────── */
+.filterSection { margin-top: 20px; }
+
+.filterTitle {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 12px;
+}
+
+.filterOption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--color-fg);
+  transition: color 200ms;
+}
+
+.filterOption:hover { color: var(--color-primary); }
+
+.filterDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1.5px solid var(--color-border);
+  flex-shrink: 0;
+  transition: all 200ms;
+}
+
+.filterDotActive { background: var(--color-primary); border-color: var(--color-primary); }
+.filterDotSuccess { border-color: var(--color-success); background: color-mix(in srgb, var(--color-success) 20%, transparent); }
+.filterDotWarning { border-color: var(--color-warning); background: color-mix(in srgb, var(--color-warning) 20%, transparent); }
+.filterDotDanger { border-color: var(--color-danger); }
+
+/* ── VaNi Accent Gradient Card ───────────────────────── */
+.vaniCard {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  border-radius: 16px;
+  padding: 20px;
+  color: var(--color-primary-fg);
+}
+
+.vaniCardTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vaniCardText {
+  font-size: 0.8rem;
+  font-weight: 500;
+  opacity: 0.9;
+  line-height: 1.5;
+}
+
+.vaniCardBtn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 8px;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  border: none;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 200ms;
+}
+
+.vaniCardBtn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+/* ── Main Content ────────────────────────────────────── */
+.main { display: flex; flex-direction: column; min-height: 0; }
+
+/* ── Table Card ──────────────────────────────────────── */
+.tableCard {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tableToolbar {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.toolbarActions { display: flex; gap: 8px; }
+.toolbarInfo { font-size: 0.78rem; color: var(--color-muted); }
+
+.tableScrollArea { flex: 1; overflow: auto; min-height: 0; }
+
+/* ── Color-coded rows ────────────────────────────────── */
+.rowStale { background: color-mix(in srgb, var(--color-warning) 5%, transparent); }
+.rowStale:hover { background: color-mix(in srgb, var(--color-warning) 10%, transparent) !important; }
+.rowNoData { }
+.rowHealthy { }
+
+/* ── Bottom Metric Cards ─────────────────────────────── */
+.bottomCards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 20px;
+  flex-shrink: 0;
+}
+
+.accentCard {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 20px;
+  backdrop-filter: blur(12px);
+  border-left: 4px solid var(--color-primary);
+}
+
+.accentCardBlue { border-left-color: var(--color-info); }
+.accentCardPurple { border-left-color: var(--color-accent); }
+.accentCardGreen { border-left-color: var(--color-success); }
+
+.accentCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.accentCardTitle {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.accentCardValue {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.accentCardBigValue {
+  font-family: var(--font-mono, monospace);
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--color-fg);
+}
+
+.accentCardDesc {
+  font-size: 0.68rem;
+  color: var(--color-accent);
+  font-style: italic;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+/* ── Mini bar chart ──────────────────────────────────── */
+.miniChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 48px;
+  margin-top: 4px;
+}
+
+.miniBar {
+  flex: 1;
+  border-radius: 2px 2px 0 0;
+  background: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  transition: background 200ms;
+}
+
+.miniBar:hover { background: color-mix(in srgb, var(--color-primary) 50%, transparent); }
+
+/* ── Pulse indicator ─────────────────────────────────── */
+.pulseDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-success);
+  animation: statusPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+  .sidebar { max-height: 300px; overflow-y: auto; }
+  .bottomCards { grid-template-columns: 1fr; }
+  .statsCards { flex-wrap: wrap; }
+}

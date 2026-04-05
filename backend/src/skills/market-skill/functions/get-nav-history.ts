@@ -50,16 +50,28 @@ export async function get_nav_history(
     }),
   ]);
 
-  const data = historyResult.rows.map((r) => ({
+  const allData = historyResult.rows.map((r) => ({
     date: r.date,
     nav: Number(r.nav),
   }));
 
-  // Calculate period return from first to last NAV
+  // Downsample to max 300 points for chart performance
+  // Keeps first, last, and evenly spaced points
+  const MAX_POINTS = 300;
+  let data = allData;
+  if (allData.length > MAX_POINTS) {
+    const step = (allData.length - 1) / (MAX_POINTS - 1);
+    data = [];
+    for (let i = 0; i < MAX_POINTS; i++) {
+      data.push(allData[Math.round(i * step)]);
+    }
+  }
+
+  // Calculate period return from first to last NAV (using full data, not downsampled)
   let period_return_pct = 0;
-  if (data.length >= 2) {
-    const firstNav = data[0].nav;
-    const lastNav = data[data.length - 1].nav;
+  if (allData.length >= 2) {
+    const firstNav = allData[0].nav;
+    const lastNav = allData[allData.length - 1].nav;
     if (firstNav > 0) {
       period_return_pct =
         Math.round(((lastNav - firstNav) / firstNav) * 10000) / 100;

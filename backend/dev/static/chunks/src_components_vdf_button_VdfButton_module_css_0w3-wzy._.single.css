@@ -1,0 +1,100 @@
+/* [project]/src/components/vdf/button/VdfButton.module.css [app-client] (css) */
+.VdfButton-module__-M0Teq__btn {
+  cursor: pointer;
+  font-family: var(--font-body, sans-serif);
+  letter-spacing: .04em;
+  border: none;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all .3s cubic-bezier(.16, 1, .3, 1);
+  display: inline-flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.VdfButton-module__-M0Teq__btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.VdfButton-module__-M0Teq__icon {
+  align-items: center;
+  display: inline-flex;
+}
+
+.VdfButton-module__-M0Teq__sm {
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-size: .82rem;
+}
+
+.VdfButton-module__-M0Teq__md {
+  border-radius: 6px;
+  padding: 14px 36px;
+  font-size: .9rem;
+}
+
+.VdfButton-module__-M0Teq__lg {
+  border-radius: 8px;
+  padding: 16px 44px;
+  font-size: 1rem;
+}
+
+.VdfButton-module__-M0Teq__fullWidth {
+  justify-content: center;
+  width: 100%;
+}
+
+.VdfButton-module__-M0Teq__primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  color: var(--color-primary-fg);
+}
+
+.VdfButton-module__-M0Teq__primary:before {
+  content: "";
+  background: linear-gradient(135deg, #0000, #ffffff26, #0000);
+  transition: transform .5s cubic-bezier(.16, 1, .3, 1);
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+}
+
+.VdfButton-module__-M0Teq__primary:hover:before {
+  transform: translateX(100%);
+}
+
+.VdfButton-module__-M0Teq__primary:hover {
+  box-shadow: 0 8px 32px var(--color-primary-glow);
+  transform: translateY(-2px);
+}
+
+.VdfButton-module__-M0Teq__ghost {
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  background: none;
+}
+
+.VdfButton-module__-M0Teq__ghost:hover {
+  border-color: var(--color-primary-dim);
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+
+.VdfButton-module__-M0Teq__outline {
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  background: none;
+  font-size: .82rem;
+  font-weight: 600;
+}
+
+.VdfButton-module__-M0Teq__outline:hover {
+  background: var(--color-primary);
+  color: var(--color-primary-fg);
+}
+
+/*# sourceMappingURL=src_components_vdf_button_VdfButton_module_css_0w3-wzy._.single.css.map*/

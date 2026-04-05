@@ -2,6 +2,9 @@
 node_modules/
 dist/
 
+# TypeScript build info
+*.tsbuildinfo
+
 # Environment (secrets)
 .env
 .env.local

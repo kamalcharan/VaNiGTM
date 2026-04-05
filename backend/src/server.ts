@@ -5,6 +5,9 @@ import path from 'path';
 import { buildRegistry } from './services/skill-registry';
 import { getPool, createTenantDb, closePool, healthCheck } from './db';
 import { createAuthRouter, createOnboardingRouter, createTenantRouter } from './auth/auth.routes';
+import { createEtlRouter } from './etl/etl.routes';
+import { createNavRouter } from './nav/nav.routes';
+import { verifyAccessToken } from './auth/token.service';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -19,14 +22,14 @@ app.get('/health', async (_req, res) => {
     const db = await healthCheck();
     res.json({
       status: 'ok',
-      service: 'proessionalkey-api',
+      service: 'prokey-api',
       version: '2.0.0',
       db: db,
     });
   } catch (err) {
     res.status(503).json({
       status: 'degraded',
-      service: 'proessionalkey-api',
+      service: 'prokey-api',
       version: '2.0.0',
       db: { ok: false, error: err instanceof Error ? err.message : 'Unknown' },
     });
@@ -42,23 +45,25 @@ async function main() {
   // Verify database connectivity at startup
   try {
     const check = await healthCheck();
-    console.log(`[ProessionalKey] Database connected (${check.latency_ms}ms)`);
+    console.log(`[ProKey] Database connected (${check.latency_ms}ms)`);
   } catch (err) {
-    console.error('[ProessionalKey] Database connection failed:', err instanceof Error ? err.message : err);
-    console.error('[ProessionalKey] Continuing without DB — skill calls will fail.');
+    console.error('[ProKey] Database connection failed:', err instanceof Error ? err.message : err);
+    console.error('[ProKey] Continuing without DB — skill calls will fail.');
   }
 
   // Mount auth + onboarding + tenant routes
   app.use('/api/v1/auth', createAuthRouter(pool));
   app.use('/api/v1/onboarding', createOnboardingRouter(pool));
   app.use('/api/v1/tenant', createTenantRouter(pool));
-  console.log('[ProessionalKey] Auth routes mounted at /api/v1/auth, /api/v1/onboarding, /api/v1/tenant');
+  app.use('/api/v1/etl', createEtlRouter(pool));
+  app.use('/api/v1/nav', createNavRouter(pool));
+  console.log('[ProKey] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /nav');
 
   // Build skill registry
   const skillsDir = path.resolve(__dirname, 'skills');
   const registry = await buildRegistry(skillsDir);
   const summary = registry.summary();
-  console.log(`[ProessionalKey] Loaded ${summary.skills} skills, ${summary.handlers} handlers`);
+  console.log(`[ProKey] Loaded ${summary.skills} skills, ${summary.handlers} handlers`);
 
   /* ── Skill execution route ──────────────────────────── */
 
@@ -66,15 +71,22 @@ async function main() {
     const { skillName, functionName } = req.params;
     const params = req.body.params || {};
 
-    // TODO: Replace with real JWT auth middleware
-    // For now: X-Dev-Tenant-Id header for development
-    const tenantId = req.headers['x-dev-tenant-id'] as string;
-    if (!tenantId) {
+    // JWT auth — extract tenant_id from token
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
       res.status(401).json({
-        error: {
-          code: 'MISSING_TENANT',
-          message: 'X-Dev-Tenant-Id header required (JWT auth not yet implemented)',
-        },
+        error: { code: 'UNAUTHORIZED', message: 'Valid token required' },
+      });
+      return;
+    }
+
+    let tenantId: string;
+    try {
+      const jwt = verifyAccessToken(authHeader.slice(7));
+      tenantId = jwt.tenant_id;
+    } catch {
+      res.status(401).json({
+        error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token' },
       });
       return;
     }
@@ -102,17 +114,17 @@ async function main() {
   /* ── Start server ───────────────────────────────────── */
 
   const server = app.listen(PORT, () => {
-    console.log(`[ProessionalKey] API running on port ${PORT}`);
+    console.log(`[ProKey] API running on port ${PORT}`);
   });
 
   /* ── Graceful shutdown ──────────────────────────────── */
 
   async function shutdown(signal: string) {
-    console.log(`\n[ProessionalKey] ${signal} received — shutting down gracefully...`);
+    console.log(`\n[ProKey] ${signal} received — shutting down gracefully...`);
 
     // Stop accepting new connections
     server.close(() => {
-      console.log('[ProessionalKey] HTTP server closed.');
+      console.log('[ProKey] HTTP server closed.');
     });
 
     // Drain DB pool
@@ -126,6 +138,6 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error('[ProessionalKey] Failed to start:', err);
+  console.error('[ProKey] Failed to start:', err);
   process.exit(1);
 });

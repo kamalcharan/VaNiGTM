@@ -18,7 +18,7 @@ export const ClassicElegantTheme: ThemeConfig = {
     },
     accent: {
       accent1: '#444b598c',
-      accent2: '#445f28163',
+      accent2: '#44928163',
       accent3: '#4c6d604a',
       accent4: '#cfffffff',
     },
@@ -40,10 +40,10 @@ export const ClassicElegantTheme: ThemeConfig = {
   darkMode: {
     colors: {
       brand: {
-        primary: '#4b496cc',
+        primary: '#4b998c',
         secondary: '#928163',
         tertiary: '#c6604a',
-        alternate: '#7282e',
+        alternate: '#07282e',
       },
       utility: {
         primaryText: '#ffffff',

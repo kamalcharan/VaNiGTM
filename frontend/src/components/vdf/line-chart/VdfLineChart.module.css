@@ -1,0 +1,90 @@
+/* VdfLineChart — lightweight SVG line chart */
+
+.container {
+  position: relative;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.gridLine {
+  stroke: var(--color-border);
+  stroke-width: 0.5;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.yLabel {
+  font-size: 3px;
+  fill: var(--color-muted);
+  font-family: var(--font-mono, monospace);
+}
+
+.xLabel {
+  font-size: 3px;
+  fill: var(--color-muted);
+  font-family: var(--font-mono, monospace);
+}
+
+.hoverLine {
+  stroke: var(--color-muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.5;
+}
+
+.hoverDot {
+  fill: var(--color-primary);
+  stroke: var(--color-surface);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+/* ── Tooltip ─────────────────────────────────────────── */
+.tooltip {
+  position: absolute;
+  transform: translateX(-50%);
+  pointer-events: none;
+  padding: 4px 10px;
+  background: var(--color-fg);
+  border-radius: 6px;
+  white-space: nowrap;
+  z-index: 10;
+  animation: tooltipIn 100ms ease-out;
+}
+
+@keyframes tooltipIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.tooltipValue {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-bg);
+}
+
+.tooltipDate {
+  font-size: 0.58rem;
+  color: var(--color-muted);
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+}

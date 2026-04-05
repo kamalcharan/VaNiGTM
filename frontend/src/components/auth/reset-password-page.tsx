@@ -8,6 +8,7 @@ import FormInput from '@/components/ui/form-input';
 import PasswordStrength from '@/components/ui/password-strength';
 import { useResetPassword } from '@/hooks';
 import type { ApiError } from '@/lib/api-client';
+import f from '@/styles/forms.module.css';
 import s from './reset-password-page.module.css';
 
 export default function ResetPasswordPage() {
@@ -59,7 +60,7 @@ export default function ResetPasswordPage() {
 
   function EyeToggle({ visible, onToggle }: { visible: boolean; onToggle: () => void }) {
     return (
-      <button type="button" className={s.eyeToggle} onClick={onToggle} aria-label={visible ? 'Hide password' : 'Show password'} tabIndex={-1}>
+      <button type="button" className={f.eyeToggle} onClick={onToggle} aria-label={visible ? 'Hide password' : 'Show password'} tabIndex={-1}>
         {visible ? '\u{1F648}' : '\u{1F441}'}
       </button>
     );
@@ -163,7 +164,7 @@ export default function ResetPasswordPage() {
                 disabled={loading}
                 rightElement={<EyeToggle visible={showPw} onToggle={() => setShowPw(!showPw)} />}
               />
-              <div className={s.strengthWrap}>
+              <div className={f.strengthWrap}>
                 <PasswordStrength password={newPassword} />
               </div>
 
@@ -179,8 +180,8 @@ export default function ResetPasswordPage() {
                 rightElement={<EyeToggle visible={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} />}
               />
               {showMatch && (
-                <div className={`${s.matchIndicator} ${matched ? s.matchOk : s.matchNo}`}>
-                  <span className={s.matchDot} />
+                <div className={`${f.matchIndicator} ${matched ? f.matchOk : f.matchNo}`}>
+                  <span className={f.matchDot} />
                   <span>{matched ? 'Passwords match' : 'Passwords do not match'}</span>
                 </div>
               )}

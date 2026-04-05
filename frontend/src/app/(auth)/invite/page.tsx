@@ -2,11 +2,11 @@
 
 import { Suspense } from 'react';
 import InviteAcceptPage from '@/components/auth/invite-accept-page';
-import { FullPageLoader } from '@/components/loader';
+import { VdfLoader } from '@/components/vdf';
 
 export default function InviteRoute() {
   return (
-    <Suspense fallback={<FullPageLoader message="Loading invitation..." />}>
+    <Suspense fallback={<VdfLoader message="Loading invitation" hint="Verifying invite token" />}>
       <InviteAcceptPage />
     </Suspense>
   );

@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["turbopack:///[project]/src/components/vdf/atmosphere/VdfAtmosphere.module.css"],"sourcesContent":[".atmosphere {\r\n  position: fixed;\r\n  inset: 0;\r\n  pointer-events: none;\r\n  z-index: 0;\r\n  background:\r\n    radial-gradient(ellipse 80% 60% at 20% 10%, var(--color-primary-subtle) 0%, transparent 60%),\r\n    radial-gradient(ellipse 60% 50% at 80% 80%, var(--color-primary-glow) 0%, transparent 50%),\r\n    radial-gradient(ellipse 50% 40% at 50% 50%, var(--color-primary-subtle) 0%, transparent 40%);\r\n}\r\n"],"names":[],"mappings":"AAAA"}}]
+}

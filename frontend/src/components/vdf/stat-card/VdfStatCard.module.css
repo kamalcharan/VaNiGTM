@@ -1,0 +1,50 @@
+.card {
+  padding: 10px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+}
+
+.value {
+  display: block;
+  font-family: var(--font-mono, monospace);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-fg);
+}
+
+.label {
+  display: block;
+  font-size: 0.5rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-top: 2px;
+}
+
+.pct {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+/* Accent variants */
+.a_success { border-color: color-mix(in srgb, var(--color-success) 20%, var(--color-border)); }
+.a_success .value { color: var(--color-success); }
+
+.a_danger { border-color: color-mix(in srgb, var(--color-danger) 20%, var(--color-border)); }
+.a_danger .value { color: var(--color-danger); }
+
+.a_warning { border-color: color-mix(in srgb, var(--color-warning) 20%, var(--color-border)); }
+.a_warning .value { color: var(--color-warning); }
+
+.a_info { border-color: color-mix(in srgb, var(--color-info) 20%, var(--color-border)); }
+.a_info .value { color: var(--color-info); }

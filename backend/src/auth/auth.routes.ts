@@ -1,17 +1,24 @@
 /**
  * KI-Prime — Auth Routes
  *
- * POST  /api/v1/auth/register      — Create account + tenant + session
- * PATCH /api/v1/auth/preferences   — Update user profile fields (onboarding step 1)
- * PATCH /api/v1/onboarding/step    — Mark onboarding step as completed
- * GET   /api/v1/onboarding/status  — Get onboarding completion status
+ * POST  /api/v1/auth/register        — Create account + tenant + session
+ * POST  /api/v1/auth/login           — Sign in
+ * POST  /api/v1/auth/logout          — Sign out (revoke current session)
+ * GET   /api/v1/auth/me              — Get current user + tenant
+ * POST  /api/v1/auth/change-password — Change password while logged in
+ * GET   /api/v1/auth/sessions        — List active sessions
+ * POST  /api/v1/auth/sessions/revoke — Revoke specific sessions
+ * PATCH /api/v1/auth/preferences     — Update user profile fields
+ * POST  /api/v1/auth/invite          — Send team invitations
+ * POST  /api/v1/auth/forgot-password — Request reset link
+ * POST  /api/v1/auth/reset-password  — Reset password with token
  */
 
 import { Router } from 'express';
 import type { Pool } from 'pg';
 import { register, validateRegisterInput, type RegisterInput } from './auth.service';
 import { login as loginService, type LoginInput } from './login.service';
-import { verifyAccessToken, type JwtPayload } from './token.service';
+import { verifyAccessToken, refreshSession, parseDeviceInfo, type JwtPayload } from './token.service';
 
 /* ── JWT extraction helper ──────────────────────────── */
 
@@ -123,6 +130,38 @@ export function createAuthRouter(pool: Pool): Router {
             ? 'Login failed. Please try again.'
             : err.message || 'Unknown error',
         },
+      });
+    }
+  });
+
+  /* ── POST /api/v1/auth/refresh ──────────────────────── */
+
+  router.post('/refresh', async (req, res) => {
+    try {
+      const { refresh_token } = req.body;
+
+      if (!refresh_token || typeof refresh_token !== 'string') {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: 'refresh_token is required' },
+        });
+        return;
+      }
+
+      const device = parseDeviceInfo(req as any);
+      const tokens = await refreshSession(pool, refresh_token, device);
+
+      if (!tokens) {
+        res.status(401).json({
+          error: { code: 'INVALID_REFRESH_TOKEN', message: 'Invalid, expired, or revoked refresh token' },
+        });
+        return;
+      }
+
+      res.json({ tokens });
+    } catch (err: any) {
+      console.error('[Auth:refresh]', err);
+      res.status(500).json({
+        error: { code: 'REFRESH_FAILED', message: 'Token refresh failed' },
       });
     }
   });
@@ -303,6 +342,331 @@ export function createAuthRouter(pool: Pool): Router {
             ? 'Failed to update preferences'
             : err.message || 'Unknown error',
         },
+      });
+    }
+  });
+
+  /* ── POST /api/v1/auth/logout ────────────────────────── */
+
+  router.post('/logout', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+
+      // Revoke the refresh token for this session
+      // We identify the session by user_id — revoke the most recently active session
+      // A more precise approach would pass the refresh_token, but for MVP we revoke
+      // the latest active session for this user.
+      const refreshToken = req.body.refresh_token;
+
+      if (refreshToken) {
+        // If client sends the refresh token, revoke that specific session
+        const crypto = await import('crypto');
+        const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+        await pool.query(
+          `UPDATE vn_refresh_tokens SET is_active = false, revoked_at = now(), revoked_reason = 'logout'
+           WHERE token_hash = $1 AND user_id = $2 AND is_active = true`,
+          [tokenHash, jwt.user_id],
+        );
+      } else {
+        // Fallback: revoke the most recently active session for this user
+        await pool.query(
+          `UPDATE vn_refresh_tokens SET is_active = false, revoked_at = now(), revoked_reason = 'logout'
+           WHERE id = (
+             SELECT id FROM vn_refresh_tokens
+             WHERE user_id = $1 AND is_active = true
+             ORDER BY last_activity_at DESC LIMIT 1
+           )`,
+          [jwt.user_id],
+        );
+      }
+
+      res.json({ message: 'Signed out successfully' });
+    } catch (err: any) {
+      console.error('[Auth:logout]', err);
+      res.status(500).json({
+        error: { code: 'LOGOUT_FAILED', message: 'Failed to sign out' },
+      });
+    }
+  });
+
+  /* ── GET /api/v1/auth/me ───────────────────────────── */
+
+  router.get('/me', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+
+      const { user_id, tenant_id } = jwt;
+
+      // User profile
+      const userResult = await pool.query(
+        `SELECT id, email, name, first_name, last_name, designation, country_code, mobile, bio,
+                preferred_theme, preferences, avatar_url
+         FROM vn_users WHERE id = $1 AND tenant_id = $2`,
+        [user_id, tenant_id],
+      );
+
+      if (userResult.rows.length === 0) {
+        res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+        return;
+      }
+
+      const user = userResult.rows[0] as any;
+
+      // User role
+      const roleResult = await pool.query(
+        `SELECT r.code FROM vn_user_roles ur
+         JOIN vn_roles r ON r.id = ur.role_id
+         WHERE ur.user_id = $1 AND ur.revoked_at IS NULL
+         ORDER BY r.sort_order LIMIT 1`,
+        [user_id],
+      );
+      const role = roleResult.rows.length > 0 ? (roleResult.rows[0] as any).code : 'planner';
+
+      // Tenant info
+      const tenantResult = await pool.query(
+        `SELECT t.id, t.slug, tp.name, tp.display_name, tp.theme_id, tp.logo_url
+         FROM vn_tenants t
+         JOIN vn_tenant_profiles tp ON tp.tenant_id = t.id
+         WHERE t.id = $1`,
+        [tenant_id],
+      );
+      const tenant = tenantResult.rows[0] as any || {};
+
+      // Onboarding status
+      const onboardingResult = await pool.query(
+        `SELECT count(*) as pending FROM vn_tenant_onboarding
+         WHERE tenant_id = $1 AND status != 'completed'`,
+        [tenant_id],
+      );
+      const onboardingComplete = Number((onboardingResult.rows[0] as any).pending) === 0;
+
+      res.json({
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          designation: user.designation,
+          country_code: user.country_code,
+          mobile: user.mobile,
+          bio: user.bio,
+          preferred_theme: user.preferred_theme,
+          preferences: user.preferences || {},
+          avatar_url: user.avatar_url,
+          role,
+        },
+        tenant: {
+          id: tenant_id,
+          name: tenant.display_name || tenant.name || '',
+          slug: tenant.slug || '',
+          theme_id: tenant.theme_id,
+          logo_url: tenant.logo_url,
+          onboarding_complete: onboardingComplete,
+        },
+      });
+    } catch (err: any) {
+      console.error('[Auth:me]', err);
+      res.status(500).json({
+        error: { code: 'FETCH_FAILED', message: 'Failed to fetch user profile' },
+      });
+    }
+  });
+
+  /* ── POST /api/v1/auth/change-password ─────────────── */
+
+  router.post('/change-password', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+
+      const { current_password, new_password } = req.body;
+
+      if (!current_password || !new_password) {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: 'Current and new password are required' },
+        });
+        return;
+      }
+
+      if (new_password.length < 8) {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: 'New password must be at least 8 characters' },
+        });
+        return;
+      }
+
+      if (!/[A-Z]/.test(new_password)) {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: 'New password must contain at least 1 uppercase letter' },
+        });
+        return;
+      }
+
+      if (!/[0-9]/.test(new_password)) {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: 'New password must contain at least 1 number' },
+        });
+        return;
+      }
+
+      // Verify current password
+      const userResult = await pool.query(
+        'SELECT password_hash FROM vn_users WHERE id = $1 AND tenant_id = $2',
+        [jwt.user_id, jwt.tenant_id],
+      );
+
+      if (userResult.rows.length === 0) {
+        res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+        return;
+      }
+
+      const bcrypt = await import('bcryptjs');
+      const valid = await bcrypt.compare(current_password, (userResult.rows[0] as any).password_hash);
+
+      if (!valid) {
+        res.status(401).json({
+          error: { code: 'WRONG_PASSWORD', message: 'Current password is incorrect' },
+        });
+        return;
+      }
+
+      // Hash new password and update
+      const newHash = await bcrypt.hash(new_password, 12);
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        await client.query(
+          'UPDATE vn_users SET password_hash = $1, updated_at = now() WHERE id = $2 AND tenant_id = $3',
+          [newHash, jwt.user_id, jwt.tenant_id],
+        );
+
+        await client.query('COMMIT');
+      } catch (err) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw err;
+      } finally {
+        client.release();
+      }
+
+      res.json({ message: 'Password changed successfully' });
+    } catch (err: any) {
+      console.error('[Auth:change-password]', err);
+      res.status(500).json({
+        error: { code: 'CHANGE_PASSWORD_FAILED', message: 'Failed to change password' },
+      });
+    }
+  });
+
+  /* ── GET /api/v1/auth/sessions ─────────────────────── */
+
+  router.get('/sessions', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+
+      const result = await pool.query(
+        `SELECT id as session_id, device_type, os, browser, ip_address::text,
+                last_activity_at, created_at
+         FROM vn_refresh_tokens
+         WHERE user_id = $1 AND is_active = true AND expires_at > now()
+         ORDER BY last_activity_at DESC`,
+        [jwt.user_id],
+      );
+
+      res.json({ sessions: result.rows });
+    } catch (err: any) {
+      console.error('[Auth:sessions]', err);
+      res.status(500).json({
+        error: { code: 'FETCH_FAILED', message: 'Failed to fetch sessions' },
+      });
+    }
+  });
+
+  /* ── POST /api/v1/auth/sessions/revoke ─────────────── */
+
+  router.post('/sessions/revoke', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        // Pre-login revoke (email + password based) — for session limit flow
+        const { email, password, session_ids } = req.body;
+
+        if (!email || !password || !Array.isArray(session_ids) || session_ids.length === 0) {
+          res.status(400).json({
+            error: { code: 'VALIDATION_ERROR', message: 'email, password, and session_ids required' },
+          });
+          return;
+        }
+
+        // Verify credentials
+        const userResult = await pool.query(
+          'SELECT id, password_hash FROM vn_users WHERE LOWER(email) = $1',
+          [String(email).trim().toLowerCase()],
+        );
+
+        if (userResult.rows.length === 0) {
+          res.status(401).json({ error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } });
+          return;
+        }
+
+        const bcrypt = await import('bcryptjs');
+        const valid = await bcrypt.compare(password, (userResult.rows[0] as any).password_hash);
+        if (!valid) {
+          res.status(401).json({ error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } });
+          return;
+        }
+
+        const userId = (userResult.rows[0] as any).id;
+
+        // Revoke specified sessions
+        await pool.query(
+          `UPDATE vn_refresh_tokens SET is_active = false, revoked_at = now(), revoked_reason = 'user_revoked'
+           WHERE user_id = $1 AND id = ANY($2::uuid[]) AND is_active = true`,
+          [userId, session_ids],
+        );
+
+        res.json({ message: `${session_ids.length} session(s) revoked` });
+        return;
+      }
+
+      // Authenticated revoke
+      const { session_ids } = req.body;
+
+      if (!Array.isArray(session_ids) || session_ids.length === 0) {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: 'session_ids array required' },
+        });
+        return;
+      }
+
+      await pool.query(
+        `UPDATE vn_refresh_tokens SET is_active = false, revoked_at = now(), revoked_reason = 'user_revoked'
+         WHERE user_id = $1 AND id = ANY($2::uuid[]) AND is_active = true`,
+        [jwt.user_id, session_ids],
+      );
+
+      res.json({ message: `${session_ids.length} session(s) revoked` });
+    } catch (err: any) {
+      console.error('[Auth:sessions/revoke]', err);
+      res.status(500).json({
+        error: { code: 'REVOKE_FAILED', message: 'Failed to revoke sessions' },
       });
     }
   });
@@ -599,6 +963,34 @@ const TENANT_PROFILE_FIELDS = [
 
 export function createTenantRouter(pool: Pool): Router {
   const router = Router();
+
+  /* ── GET /api/v1/tenant/profile ───────────────────── */
+
+  router.get('/profile', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+
+      const result = await pool.query(
+        `SELECT tenant_id, name, short_name, display_name, type, description,
+                logo_url, brand_color, theme_id, tagline, email, phone, website,
+                address_line1, address_line2, city, state, country, postal_code,
+                gstin, pan, industry, arn, updated_at
+         FROM vn_tenant_profiles WHERE tenant_id = $1`,
+        [jwt.tenant_id],
+      );
+
+      res.json({ profile: result.rows[0] || {} });
+    } catch (err: any) {
+      console.error('[Tenant:profile:get]', err);
+      res.status(500).json({
+        error: { code: 'FETCH_FAILED', message: 'Failed to fetch tenant profile' },
+      });
+    }
+  });
 
   /* ── PATCH /api/v1/tenant/profile ──────────────────── */
 

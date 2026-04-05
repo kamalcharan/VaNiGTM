@@ -1,0 +1,92 @@
+/* [project]/src/components/vdf/particles/VdfParticles.module.css [app-client] (css) */
+.VdfParticles-module__t9zAHW__particles {
+  pointer-events: none;
+  z-index: 1;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+.VdfParticles-module__t9zAHW__particle {
+  background: var(--particle-color, var(--color-primary));
+  opacity: 0;
+  border-radius: 50%;
+  width: 2px;
+  height: 2px;
+  animation: 12s ease-in-out infinite VdfParticles-module__t9zAHW__particleDrift;
+  position: absolute;
+}
+
+.VdfParticles-module__t9zAHW__particle:first-child {
+  animation-duration: 14s;
+  animation-delay: 0s;
+  left: 15%;
+}
+
+.VdfParticles-module__t9zAHW__particle:nth-child(2) {
+  animation-duration: 11s;
+  animation-delay: 2s;
+  left: 35%;
+}
+
+.VdfParticles-module__t9zAHW__particle:nth-child(3) {
+  animation-duration: 13s;
+  animation-delay: 4s;
+  left: 55%;
+}
+
+.VdfParticles-module__t9zAHW__particle:nth-child(4) {
+  animation-duration: 10s;
+  animation-delay: 1s;
+  left: 75%;
+}
+
+.VdfParticles-module__t9zAHW__particle:nth-child(5) {
+  animation-duration: 15s;
+  animation-delay: 3s;
+  left: 90%;
+}
+
+.VdfParticles-module__t9zAHW__particle:nth-child(6) {
+  animation-duration: 12s;
+  animation-delay: 5s;
+  left: 25%;
+}
+
+.VdfParticles-module__t9zAHW__particle:nth-child(7) {
+  animation-duration: 9s;
+  animation-delay: 7s;
+  left: 65%;
+}
+
+.VdfParticles-module__t9zAHW__particle:nth-child(8) {
+  animation-duration: 16s;
+  animation-delay: 6s;
+  left: 45%;
+}
+
+@keyframes VdfParticles-module__t9zAHW__particleDrift {
+  0% {
+    opacity: 0;
+    transform: translateY(100vh)scale(0);
+  }
+
+  8% {
+    opacity: .5;
+  }
+
+  50% {
+    opacity: .3;
+  }
+
+  92% {
+    opacity: .5;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-80px)scale(1.2);
+  }
+}
+
+/*# sourceMappingURL=src_components_vdf_particles_VdfParticles_module_css_0w3-wzy._.single.css.map*/
