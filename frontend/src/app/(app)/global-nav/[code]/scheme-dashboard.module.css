@@ -434,11 +434,26 @@
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: var(--color-bg);
-  padding: 20px 28px;
+  background: color-mix(in srgb, var(--color-bg) 96%, var(--color-primary));
+  padding: 20px 32px 16px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* Subtle atmospheric depth */
+  background-image:
+    radial-gradient(ellipse 60% 40% at 50% 0%, color-mix(in srgb, var(--color-primary) 6%, transparent) 0%, transparent 70%);
+}
+
+.fullscreenChart {
+  flex: 1;
+  min-height: 0;
+  /* Glass surface for the chart area */
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 4px;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
 }
 
 .fullscreenHeader {
@@ -456,9 +471,14 @@
   gap: 10px;
 }
 
-.fullscreenChart {
-  flex: 1;
-  min-height: 0;
+/* .fullscreenChart defined above in fullscreenOverlay block */
+
+/* VdfLineChart inside fullscreen — remove redundant border/bg */
+.fullscreenChartInner {
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  width: 100% !important;
 }
 
 .closeFullscreen {

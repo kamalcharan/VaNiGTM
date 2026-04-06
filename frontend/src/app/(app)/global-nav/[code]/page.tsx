@@ -897,13 +897,14 @@ export default function SchemeDashboardPage() {
               </span>
             </div>
           )}
-          <div className={s.fullscreenChart} id="nav-chart-container">
+          <div className={s.fullscreenChart} id="nav-chart-container" style={{ display: 'flex', flexDirection: 'column' }}>
             {displayData.length >= 2 ? (
               <VdfLineChart
                 data={displayData.map(p => ({ date: p.date, value: p.nav }))}
-                height={Math.max(400, (typeof window !== 'undefined' ? window.innerHeight : 800) - 180)}
+                height={typeof window !== 'undefined' ? Math.max(360, window.innerHeight - 160) : 600}
                 color={chartColor || undefined}
                 formatValue={v => fmtNav(v)}
+                className={s.fullscreenChartInner}
               />
             ) : (
               <div className={s.chartEmpty}>Not enough data for this period</div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useRef, useCallback } from 'react';
+import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import s from './VdfLineChart.module.css';
 
 export interface VdfLineChartProps {
@@ -20,7 +20,7 @@ export interface VdfLineChartProps {
   containerId?: string;
 }
 
-const PADDING = { top: 12, right: 12, bottom: 24, left: 56 };
+const PAD = { top: 16, right: 20, bottom: 28, left: 70 };
 
 export function VdfLineChart({
   data,
@@ -31,134 +31,262 @@ export function VdfLineChart({
   color,
   containerId,
 }: VdfLineChartProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const dragStateRef = useRef<{ startX: number; window: [number, number] } | null>(null);
+  const zoomWindowRef = useRef<[number, number] | null>(null);
+
+  const [containerWidth, setContainerWidth] = useState(800);
+  const [zoomWindow, setZoomWindow] = useState<[number, number] | null>(null);
   const [hover, setHover] = useState<{ x: number; y: number; date: string; value: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Compute chart dimensions and scales
-  const chart = useMemo(() => {
-    if (data.length < 2) return null;
+  // Keep ref in sync for wheel handler (avoids stale closure)
+  zoomWindowRef.current = zoomWindow;
 
-    const values = data.map((d) => d.value);
-    const minVal = Math.min(...values);
-    const maxVal = Math.max(...values);
-    const range = maxVal - minVal || 1;
-    const padding = range * 0.05;
+  // Container width via ResizeObserver
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setContainerWidth(el.clientWidth || 800);
+    const ro = new ResizeObserver(entries => {
+      setContainerWidth(entries[0].contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
-    const yMin = minVal - padding;
-    const yMax = maxVal + padding;
-    const yRange = yMax - yMin;
-
-    return { yMin, yMax, yRange };
+  // Reset zoom when data changes (e.g. period switch)
+  useEffect(() => {
+    setZoomWindow(null);
   }, [data]);
 
-  // Build SVG path
-  const pathD = useMemo(() => {
-    if (!chart || data.length < 2) return '';
+  // Wheel zoom — must be non-passive to call preventDefault
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || data.length < 2) return;
+    const chartW = containerWidth - PAD.left - PAD.right;
 
-    const w = 100; // viewBox width percentage
-    const h = height - PADDING.top - PADDING.bottom;
-    const xStep = w / (data.length - 1);
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left - PAD.left;
+      const ratio = Math.max(0, Math.min(1, mouseX / chartW));
 
-    return data.map((d, i) => {
-      const x = i * xStep;
-      const y = h - ((d.value - chart.yMin) / chart.yRange) * h;
-      return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`;
-    }).join(' ');
-  }, [data, chart, height]);
+      const cur = zoomWindowRef.current;
+      const ws = cur ? cur[0] : 0;
+      const we = cur ? cur[1] : data.length - 1;
+      const range = we - ws;
+      const minRange = 10;
 
-  // Gradient fill path (same line + close to bottom)
-  const fillD = useMemo(() => {
-    if (!pathD || data.length < 2) return '';
-    const w = 100;
-    const h = height - PADDING.top - PADDING.bottom;
-    return `${pathD} L${w},${h} L0,${h} Z`;
-  }, [pathD, data, height]);
+      // scroll down = zoom out, scroll up = zoom in
+      const factor = e.deltaY > 0 ? 1.25 : 0.8;
+      let newRange = Math.max(minRange, Math.min(data.length - 1, Math.round(range * factor)));
 
-  // Y-axis labels
+      // Keep anchor point (mouse position) fixed
+      let newStart = Math.round(ws + ratio * range - ratio * newRange);
+      let newEnd = newStart + newRange;
+
+      if (newStart < 0) { newStart = 0; newEnd = Math.min(data.length - 1, newRange); }
+      if (newEnd > data.length - 1) { newEnd = data.length - 1; newStart = Math.max(0, newEnd - newRange); }
+
+      const next: [number, number] | null =
+        newStart === 0 && newEnd === data.length - 1 ? null : [newStart, newEnd];
+      zoomWindowRef.current = next;
+      setZoomWindow(next);
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [data, containerWidth]);
+
+  // ── Derived dimensions ───────────────────────────────────────
+  const chartW = Math.max(1, containerWidth - PAD.left - PAD.right);
+  const chartH = Math.max(1, height - PAD.top - PAD.bottom);
+
+  // Visible data slice
+  const visibleData = useMemo(() => {
+    if (!zoomWindow) return data;
+    return data.slice(zoomWindow[0], zoomWindow[1] + 1);
+  }, [data, zoomWindow]);
+
+  // Y scale
+  const chartScale = useMemo(() => {
+    if (visibleData.length < 2) return null;
+    const vals = visibleData.map(d => d.value);
+    const minVal = Math.min(...vals);
+    const maxVal = Math.max(...vals);
+    const range = maxVal - minVal || 1;
+    const pad = range * 0.06;
+    return { yMin: minVal - pad, yMax: maxVal + pad, yRange: (maxVal - minVal + 2 * pad) || 1 };
+  }, [visibleData]);
+
+  // Coordinate helpers
+  const xOf = useCallback((i: number) =>
+    visibleData.length <= 1
+      ? PAD.left
+      : PAD.left + (i / (visibleData.length - 1)) * chartW,
+  [visibleData.length, chartW]);
+
+  const yOf = useCallback((v: number) =>
+    chartScale
+      ? PAD.top + chartH - ((v - chartScale.yMin) / chartScale.yRange) * chartH
+      : PAD.top,
+  [chartScale, chartH]);
+
+  // SVG paths
+  const { pathD, fillD } = useMemo(() => {
+    if (!chartScale || visibleData.length < 2) return { pathD: '', fillD: '' };
+    const pts = visibleData
+      .map((d, i) => `${i === 0 ? 'M' : 'L'}${xOf(i).toFixed(1)},${yOf(d.value).toFixed(1)}`)
+      .join(' ');
+    const bottomY = (PAD.top + chartH).toFixed(1);
+    const fill = `${pts} L${xOf(visibleData.length - 1).toFixed(1)},${bottomY} L${PAD.left.toFixed(1)},${bottomY} Z`;
+    return { pathD: pts, fillD: fill };
+  }, [visibleData, chartScale, xOf, yOf, chartH]);
+
+  // Y-axis labels (5 grid lines)
   const yLabels = useMemo(() => {
-    if (!chart) return [];
-    const steps = 4;
-    const labels: { value: number; y: number }[] = [];
-    const h = height - PADDING.top - PADDING.bottom;
-    for (let i = 0; i <= steps; i++) {
-      const value = chart.yMin + (chart.yRange * i) / steps;
-      const y = h - (i / steps) * h;
-      labels.push({ value, y });
-    }
-    return labels;
-  }, [chart, height]);
+    if (!chartScale) return [];
+    return Array.from({ length: 5 }, (_, i) => {
+      const v = chartScale.yMin + (chartScale.yRange * i) / 4;
+      return { v, y: yOf(v) };
+    });
+  }, [chartScale, yOf]);
 
-  // Handle mouse move for tooltip
-  const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
-    if (!svgRef.current || !chart || data.length < 2) return;
+  // X-axis labels (first, quarter, mid, three-quarter, last)
+  const xLabels = useMemo(() => {
+    if (visibleData.length < 2) return [];
+    const N = visibleData.length - 1;
+    const indices = Array.from(new Set([0, Math.round(N * 0.25), Math.round(N * 0.5), Math.round(N * 0.75), N]));
+    return indices.map(i => ({
+      x: xOf(i),
+      label: visibleData[i].date.slice(5, 10),
+    }));
+  }, [visibleData, xOf]);
 
-    const rect = svgRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left - PADDING.left;
-    const chartWidth = rect.width - PADDING.left - PADDING.right;
-
-    if (mouseX < 0 || mouseX > chartWidth) { setHover(null); return; }
-
-    const ratio = mouseX / chartWidth;
-    const idx = Math.round(ratio * (data.length - 1));
-    const d = data[Math.max(0, Math.min(idx, data.length - 1))];
-
-    const h = height - PADDING.top - PADDING.bottom;
-    const x = (idx / (data.length - 1)) * chartWidth + PADDING.left;
-    const y = PADDING.top + h - ((d.value - chart.yMin) / chart.yRange) * h;
-
-    setHover({ x, y, date: d.date, value: d.value });
-  }, [data, chart, height]);
-
-  // Color: user override → auto-detect from trend
-  const isPositive = data.length >= 2 && data[data.length - 1].value >= data[0].value;
+  // Color
+  const isPositive = visibleData.length >= 2 && visibleData[visibleData.length - 1].value >= visibleData[0].value;
   const lineColor = color || (isPositive ? 'var(--color-success)' : 'var(--color-danger)');
+  const gradId = `navFill_${containerId || 'default'}`;
+  const clipId = `navClip_${containerId || 'default'}`;
+
+  // ── Mouse handlers ────────────────────────────────────────────
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    if (!containerRef.current) return;
+    const cur = zoomWindowRef.current;
+    const ws = cur ? cur[0] : 0;
+    const we = cur ? cur[1] : data.length - 1;
+    dragStateRef.current = { startX: e.clientX, window: [ws, we] };
+  }, [data.length]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    const ds = dragStateRef.current;
+    if (ds) {
+      const dx = e.clientX - ds.startX;
+      if (Math.abs(dx) > 4 && !isDragging) setIsDragging(true);
+      if (Math.abs(dx) <= 4) return;
+
+      setHover(null);
+      const [ws, we] = ds.window;
+      const range = we - ws;
+      const delta = Math.round(-(dx * range) / chartW);
+
+      let newStart = Math.max(0, Math.min(data.length - 1 - range, ws + delta));
+      const newEnd = newStart + range;
+      const next: [number, number] | null =
+        newStart === 0 && newEnd === data.length - 1 ? null : [newStart, newEnd];
+      zoomWindowRef.current = next;
+      setZoomWindow(next);
+    } else {
+      // Tooltip crosshair
+      if (!containerRef.current || !chartScale || visibleData.length < 2) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const mx = e.clientX - rect.left - PAD.left;
+      if (mx < 0 || mx > chartW) { setHover(null); return; }
+      const ratio = mx / chartW;
+      const idx = Math.max(0, Math.min(visibleData.length - 1, Math.round(ratio * (visibleData.length - 1))));
+      const d = visibleData[idx];
+      setHover({ x: xOf(idx), y: yOf(d.value), date: d.date, value: d.value });
+    }
+  }, [data.length, isDragging, chartW, chartScale, visibleData, xOf, yOf]);
+
+  const handleMouseUp = useCallback(() => {
+    dragStateRef.current = null;
+    setIsDragging(false);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setHover(null);
+    dragStateRef.current = null;
+    setIsDragging(false);
+  }, []);
+
+  const handleDoubleClick = useCallback(() => {
+    setZoomWindow(null);
+    zoomWindowRef.current = null;
+  }, []);
+
+  // ── Render ────────────────────────────────────────────────────
 
   if (data.length < 2) {
-    return <div className={`${s.empty} ${className || ''}`}>Not enough data for chart</div>;
+    return <div className={`${s.empty} ${className || ''}`} style={{ height }}>Not enough data</div>;
   }
 
-  const chartH = height - PADDING.top - PADDING.bottom;
-  const viewBox = `0 0 100 ${chartH}`;
-
   return (
-    <div id={containerId} className={`${s.container} ${className || ''}`} style={{ height }}>
+    <div
+      ref={containerRef}
+      id={containerId}
+      className={`${s.container} ${className || ''}`}
+      style={{ height }}
+    >
       <svg
         ref={svgRef}
         className={s.svg}
-        viewBox={`0 0 ${100 + PADDING.left + PADDING.right} ${height}`}
-        preserveAspectRatio="none"
-        onMouseMove={showTooltip ? handleMouseMove : undefined}
-        onMouseLeave={() => setHover(null)}
+        width={containerWidth}
+        height={height}
+        viewBox={`0 0 ${containerWidth} ${height}`}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onDoubleClick={handleDoubleClick}
+        style={{ cursor: isDragging ? 'grabbing' : 'crosshair', display: 'block' }}
       >
-        {/* Y-axis labels */}
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={lineColor} stopOpacity="0.22" />
+            <stop offset="100%" stopColor={lineColor} stopOpacity="0.02" />
+          </linearGradient>
+          <clipPath id={clipId}>
+            <rect x={PAD.left} y={PAD.top - 4} width={chartW} height={chartH + 8} />
+          </clipPath>
+        </defs>
+
+        {/* Grid lines + Y-axis labels */}
         {yLabels.map((l, i) => (
           <g key={i}>
             <line
-              x1={PADDING.left} y1={PADDING.top + l.y}
-              x2={PADDING.left + 100} y2={PADDING.top + l.y}
+              x1={PAD.left} y1={l.y}
+              x2={PAD.left + chartW} y2={l.y}
               className={s.gridLine}
             />
             <text
-              x={PADDING.left - 6} y={PADDING.top + l.y + 1}
-              className={s.yLabel}
+              x={PAD.left - 8} y={l.y}
+              fontSize="10"
               textAnchor="end"
               dominantBaseline="middle"
+              className={s.yLabel}
             >
-              {l.value >= 1000 ? `${(l.value / 1000).toFixed(0)}K` : l.value.toFixed(1)}
+              {l.v >= 1000 ? `${(l.v / 1000).toFixed(1)}K` : l.v.toFixed(2)}
             </text>
           </g>
         ))}
 
-        {/* Chart area */}
-        <g transform={`translate(${PADDING.left}, ${PADDING.top})`}>
-          {/* Gradient fill */}
-          <defs>
-            <linearGradient id={`navFill_${containerId || 'default'}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={lineColor} stopOpacity="0.2" />
-              <stop offset="100%" stopColor={lineColor} stopOpacity="0.02" />
-            </linearGradient>
-          </defs>
-          <path d={fillD} fill={`url(#navFill_${containerId || 'default'})`} />
+        {/* Chart area (clipped) */}
+        <g clipPath={`url(#${clipId})`}>
+          <path d={fillD} fill={`url(#${gradId})`} />
           <path
             d={pathD}
             fill="none"
@@ -168,32 +296,47 @@ export function VdfLineChart({
           />
         </g>
 
-        {/* X-axis labels (first, middle, last) */}
-        {data.length > 2 && [0, Math.floor(data.length / 2), data.length - 1].map((idx) => {
-          const x = PADDING.left + (idx / (data.length - 1)) * 100;
-          // Safely extract MM-DD from either "YYYY-MM-DD" or full ISO timestamp
-          const label = data[idx].date.slice(5, 10);
-          return (
-            <text key={idx} x={x} y={height - 4} className={s.xLabel} textAnchor="middle">
-              {label}
-            </text>
-          );
-        })}
+        {/* X-axis labels */}
+        {xLabels.map((l, i) => (
+          <text key={i} x={l.x} y={height - 6} fontSize="9" textAnchor="middle" className={s.xLabel}>
+            {l.label}
+          </text>
+        ))}
 
-        {/* Hover indicator */}
+        {/* Zoom hint */}
+        {zoomWindow && (
+          <text
+            x={PAD.left + chartW - 4}
+            y={PAD.top + 10}
+            fontSize="9"
+            textAnchor="end"
+            className={s.zoomHint}
+          >
+            zoomed · dbl-click to reset
+          </text>
+        )}
+
+        {/* Hover crosshair */}
         {hover && (
           <>
-            <line x1={hover.x} y1={PADDING.top} x2={hover.x} y2={height - PADDING.bottom} className={s.hoverLine} />
-            <circle cx={hover.x} cy={hover.y} r="3" className={s.hoverDot} />
+            <line
+              x1={hover.x} y1={PAD.top}
+              x2={hover.x} y2={PAD.top + chartH}
+              className={s.hoverLine}
+            />
+            <circle cx={hover.x} cy={hover.y} r="3.5" className={s.hoverDot} style={{ fill: lineColor }} />
           </>
         )}
       </svg>
 
-      {/* Tooltip */}
-      {hover && showTooltip && (
-        <div className={s.tooltip} style={{ left: hover.x, top: hover.y - 36 }}>
+      {/* Tooltip (HTML overlay for crisp text) */}
+      {hover && showTooltip && !isDragging && (
+        <div
+          className={s.tooltip}
+          style={{ left: hover.x, top: Math.max(8, hover.y - 44) }}
+        >
           <div className={s.tooltipValue}>{formatValue(hover.value)}</div>
-          <div className={s.tooltipDate}>{hover.date}</div>
+          <div className={s.tooltipDate}>{hover.date.slice(0, 10)}</div>
         </div>
       )}
     </div>
