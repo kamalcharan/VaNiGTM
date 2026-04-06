@@ -113,6 +113,26 @@ export const NAV_ITEMS: NavItem[] = [
   /* ── DATA (import, ETL, operations) ────────────────── */
 
   {
+    id: 'market-dashboard',
+    label: 'Market',
+    icon: <Icon><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 10l3 3 3-3 4 4" /></Icon>,
+    href: '/market/dashboard',
+    section: 'data',
+    skill: 'market-skill',
+    fn: 'get_market_stats',
+    recipe: 'market-dashboard',
+  },
+  {
+    id: 'market-history',
+    label: 'Market Data',
+    icon: <Icon><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></Icon>,
+    href: '/market/history',
+    section: 'data',
+    skill: 'market-skill',
+    fn: 'get_market_indices',
+    recipe: 'market-history',
+  },
+  {
     id: 'global-nav',
     label: 'Global NAV',
     icon: <Icon><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></Icon>,
@@ -205,6 +225,10 @@ export const NAV_ITEMS: NavItem[] = [
 export function getActiveNavId(pathname: string): string {
   const exact = NAV_ITEMS.find((item) => item.href === pathname);
   if (exact) return exact.id;
+
+  // Market sub-routes: /market/dashboard → market-dashboard, /market/history|indices → market-history
+  if (pathname.startsWith('/market/dashboard')) return 'market-dashboard';
+  if (pathname.startsWith('/market/')) return 'market-history';
 
   const prefix = NAV_ITEMS.find((item) => item.href !== '/' && pathname.startsWith(item.href));
   if (prefix) return prefix.id;
