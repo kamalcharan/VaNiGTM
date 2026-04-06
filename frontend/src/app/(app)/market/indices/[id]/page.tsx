@@ -18,7 +18,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { VdfLoader, VdfEmptyState, VdfStatusBadge, VdfButton } from '@/components/vdf';
+import { VdfLoader, VdfEmptyState, VdfStatusBadge, VdfButton, VdfInsightsCard, type Insight } from '@/components/vdf';
 import { VdfLineChart } from '@/components/vdf/line-chart/VdfLineChart';
 import type { OhlcPoint, ChartType } from '@/components/vdf/line-chart/VdfLineChart';
 import s from './market-index-detail.module.css';
@@ -132,6 +132,80 @@ function fmtDate(s: string | null): string {
 function returnClass(v: number | null): string {
   if (v == null) return '';
   return v >= 0 ? s.positive : s.negative;
+}
+
+/* ── VaNi: rule-based insights from calculated metrics ─── */
+
+function deriveVaNiInsights(m: LatestMetrics): Insight[] {
+  const insights: Insight[] = [];
+
+  // 1. Short-term vs long-term momentum
+  if (m.return_1m != null && m.return_1y != null) {
+    const r1m = Number(m.return_1m);
+    const r1y = Number(m.return_1y);
+    if (r1m > 0 && r1y > 0 && r1m > r1y / 8) {
+      insights.push({ icon: '📈', text: `Strong monthly momentum: ${fmtPct(r1m)} (1M) vs ${fmtPct(r1y)} annual` });
+    } else if (r1m < 0 && r1y > 0) {
+      insights.push({ icon: '⚠️', text: `Short-term pullback (${fmtPct(r1m)} 1M) within a positive annual trend (${fmtPct(r1y)})` });
+    } else if (r1m > 0 && r1y < 0) {
+      insights.push({ icon: '🔄', text: `Recent recovery (${fmtPct(r1m)} 1M) from an annual loss (${fmtPct(r1y)})` });
+    } else if (r1m < 0 && r1y < 0) {
+      insights.push({ icon: '📉', text: `Continued weakness: ${fmtPct(r1m)} this month, ${fmtPct(r1y)} over 1Y` });
+    }
+  }
+
+  // 2. Sharpe ratio — risk-adjusted return quality
+  if (m.sharpe_ratio != null) {
+    const s = Number(m.sharpe_ratio);
+    if (s > 1.5) {
+      insights.push({ icon: '⭐', text: `Excellent risk-adjusted return — Sharpe ${s.toFixed(2)} (>1.5 is strong alpha)` });
+    } else if (s > 0.5) {
+      insights.push({ icon: '✅', text: `Adequate risk-adjusted return — Sharpe ${s.toFixed(2)}` });
+    } else if (s < 0) {
+      insights.push({ icon: '🔴', text: `Return below risk-free rate — Sharpe ${s.toFixed(2)}, reconsider allocation` });
+    } else {
+      insights.push({ icon: '🟡', text: `Below-average risk-adjusted return — Sharpe ${s.toFixed(2)} (target >0.5)` });
+    }
+  }
+
+  // 3. Max drawdown — downside risk signal
+  if (m.max_drawdown != null) {
+    const dd = Math.abs(Number(m.max_drawdown)) * 100;
+    if (dd > 40) {
+      insights.push({ icon: '🌪️', text: `High historical risk: max drawdown ${dd.toFixed(1)}% — significant tail risk present` });
+    } else if (dd > 20) {
+      insights.push({ icon: '📐', text: `Moderate drawdown history: ${dd.toFixed(1)}% peak-to-trough` });
+    } else if (dd > 0) {
+      insights.push({ icon: '🛡️', text: `Historically resilient: max drawdown only ${dd.toFixed(1)}%` });
+    }
+  }
+
+  // 4. CAGR — long-term compounding power
+  if (m.cagr != null) {
+    const cagr = Number(m.cagr) * 100;
+    if (cagr > 15) {
+      insights.push({ icon: '🚀', text: `Strong long-term compounder: CAGR ${fmtPct(cagr)} — beats typical equity benchmarks` });
+    } else if (cagr > 10) {
+      insights.push({ icon: '📈', text: `Solid long-run performance: CAGR ${fmtPct(cagr)}` });
+    } else if (cagr > 0) {
+      insights.push({ icon: '🟡', text: `Modest CAGR ${fmtPct(cagr)} — verify real returns after inflation` });
+    } else {
+      insights.push({ icon: '🔴', text: `Negative CAGR (${fmtPct(cagr)}) — long-term wealth erosion at this level` });
+    }
+  }
+
+  // 5. Volatility vs return trade-off
+  if (m.total_risk != null && m.return_1y != null) {
+    const vol = Number(m.total_risk) * 100;
+    const r1y = Number(m.return_1y);
+    if (vol > 30 && r1y < 5) {
+      insights.push({ icon: '⚠️', text: `Poor risk/reward: ${vol.toFixed(1)}% ann. volatility for only ${fmtPct(r1y)} 1Y return` });
+    } else if (vol < 12 && r1y > 10) {
+      insights.push({ icon: '💎', text: `Efficient index: low volatility (${vol.toFixed(1)}%) with strong 1Y return (${fmtPct(r1y)})` });
+    }
+  }
+
+  return insights.slice(0, 4);
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -457,6 +531,14 @@ export default function MarketIndexDetailPage() {
                 cls={returnClass(metrics?.cagr != null ? Number(metrics.cagr) : null)} />
             </div>
           </div>
+
+          {/* VaNi — rule-based inference from metrics */}
+          {metrics && (() => {
+            const insights = deriveVaNiInsights(metrics);
+            return insights.length > 0
+              ? <VdfInsightsCard title="VaNi Analysis" insights={insights} />
+              : null;
+          })()}
 
           {/* Last metrics calc timestamp */}
           {metrics?.metrics_calculated_at && (

@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { VdfLoader, VdfEmptyState, VdfKpiCard, VdfButton } from '@/components/vdf';
+import { VdfLoader, VdfEmptyState, VdfKpiCard, VdfButton, VdfInsightsCard, type Insight } from '@/components/vdf';
 import f from '@/styles/forms.module.css';
 import s from './market-dashboard.module.css';
 
@@ -78,6 +78,60 @@ function fmtVol(v: number | null | undefined): string {
 
 function truncate(str: string, max: number): string {
   return str.length <= max ? str : str.slice(0, max - 1) + '…';
+}
+
+/* ── VaNi: market-level insights from dashboard stats ─── */
+
+function deriveMarketInsights(stats: DashboardStats, period: TimePeriod): Insight[] {
+  const insights: Insight[] = [];
+  const breadth = stats.market_breadth;
+  const total   = stats.total_indices_analyzed;
+  const label   = PERIOD_LABELS[period];
+
+  // 1. Breadth signal
+  if (total > 0) {
+    if (breadth >= 70) {
+      insights.push({ icon: '🟢', text: `Broad market rally: ${breadth}% of ${total} indices positive over ${label}` });
+    } else if (breadth >= 50) {
+      insights.push({ icon: '🟡', text: `Mixed market: ${breadth}% of ${total} indices positive over ${label}` });
+    } else if (breadth >= 30) {
+      insights.push({ icon: '🔴', text: `Market weakness: only ${breadth}% of ${total} indices positive over ${label}` });
+    } else {
+      insights.push({ icon: '⚠️', text: `Broad decline: only ${breadth}% of ${total} indices positive over ${label}` });
+    }
+  }
+
+  // 2. Best performer context
+  if (stats.best_performer?.return_value != null) {
+    const rv = Number(stats.best_performer.return_value);
+    if (rv > 30) {
+      insights.push({ icon: '🚀', text: `Standout: ${stats.best_performer.index_code} +${rv.toFixed(2)}% — strong sectoral outperformance` });
+    } else if (rv > 15) {
+      insights.push({ icon: '📈', text: `Top performer: ${stats.best_performer.index_code} +${rv.toFixed(2)}% over ${label}` });
+    }
+  }
+
+  // 3. Worst performer signal
+  if (stats.worst_performer?.return_value != null) {
+    const rv = Number(stats.worst_performer.return_value);
+    if (rv < -20) {
+      insights.push({ icon: '🔻', text: `Significant laggard: ${stats.worst_performer.index_code} ${rv.toFixed(2)}% — watch for mean reversion or structural weakness` });
+    } else if (rv < -10) {
+      insights.push({ icon: '📉', text: `Underperformer: ${stats.worst_performer.index_code} ${rv.toFixed(2)}% over ${label}` });
+    }
+  }
+
+  // 4. Divergence: up vs down count
+  if (stats.indices_up > 0 && stats.indices_down > 0) {
+    const ratio = stats.indices_up / Math.max(stats.indices_down, 1);
+    if (ratio >= 3) {
+      insights.push({ icon: '💹', text: `Strong advance/decline ratio: ${stats.indices_up} up vs ${stats.indices_down} down` });
+    } else if (ratio <= 0.5) {
+      insights.push({ icon: '⬇️', text: `Negative advance/decline ratio: ${stats.indices_up} up vs ${stats.indices_down} down` });
+    }
+  }
+
+  return insights.slice(0, 4);
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -252,6 +306,14 @@ export default function MarketDashboardPage() {
           );
         })}
       </div>
+
+      {/* ── VaNi market insights ─────────────────── */}
+      {stats && (() => {
+        const insights = deriveMarketInsights(stats, period);
+        return insights.length > 0
+          ? <VdfInsightsCard title="VaNi Market Pulse" insights={insights} />
+          : null;
+      })()}
 
       {/* ── Heatmap section ──────────────────────── */}
       <div className={s.heatmapSection}>
