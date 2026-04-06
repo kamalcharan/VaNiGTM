@@ -171,9 +171,11 @@ export function VdfLineChart({
         {/* X-axis labels (first, middle, last) */}
         {data.length > 2 && [0, Math.floor(data.length / 2), data.length - 1].map((idx) => {
           const x = PADDING.left + (idx / (data.length - 1)) * 100;
+          // Safely extract MM-DD from either "YYYY-MM-DD" or full ISO timestamp
+          const label = data[idx].date.slice(5, 10);
           return (
             <text key={idx} x={x} y={height - 4} className={s.xLabel} textAnchor="middle">
-              {data[idx].date.slice(5)} {/* MM-DD */}
+              {label}
             </text>
           );
         })}

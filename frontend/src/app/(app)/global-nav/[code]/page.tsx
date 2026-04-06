@@ -107,6 +107,9 @@ export default function SchemeDashboardPage() {
   const [tablePage, setTablePage] = useState(1);
   const PAGE_SIZE = 50;
 
+  // Chart fullscreen
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   // Actions
   const [downloading, setDownloading] = useState<string | null>(null);
   const [calculating, setCalculating] = useState(false);
@@ -488,6 +491,13 @@ export default function SchemeDashboardPage() {
                 <button className={s.toolBtn} onClick={handleExportPNG} disabled={displayData.length < 2 || viewMode !== 'chart' || exportingPng} title="Save chart as PNG">
                   {exportingPng ? '…' : 'PNG'}
                 </button>
+
+                {/* Fullscreen */}
+                <button className={s.toolBtn} onClick={() => setIsFullscreen(true)} disabled={displayData.length < 2 || viewMode !== 'chart'} title="Full page view">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                  </svg>
+                </button>
               </div>
             </div>
 
@@ -578,67 +588,107 @@ export default function SchemeDashboardPage() {
             )}
           </div>
 
-          {/* ACTION CARDS */}
-          <div className={s.actionCards}>
+          {/* BOTTOM ROW: VaNi (half) + Action cards (half, stacked) */}
+          <div className={s.bottomRow}>
 
-            {/* NAV History */}
-            <div className={`${s.actionCard} ${s.actionCardGreen}`}>
-              <div className={s.actionCardTitle}>NAV History</div>
-              <div className={s.actionCardBtns}>
-                <button className={`${s.actionBtnFull} ${s.actionBtnPrimary}`} onClick={() => handleDownload('all')} disabled={!!downloading}>
-                  {downloading === 'all' ? 'Downloading…' : 'Download Full History'}
-                </button>
-                <div className={s.quickBtns}>
-                  <span className={s.quickLabel}>Quick</span>
-                  {(['1y', '6m', '3m'] as const).map(r => (
-                    <button key={r} className={s.quickBtn} onClick={() => handleDownload(r)} disabled={!!downloading}>
-                      {downloading === r ? '…' : r.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-                {showCustom ? (
-                  <div className={s.customRange}>
-                    <input type="date" className={s.dateInput} value={customFrom} onChange={e => setCustomFrom(e.target.value)} />
-                    <span className={s.dateSep}>→</span>
-                    <input type="date" className={s.dateInput} value={customTo} onChange={e => setCustomTo(e.target.value)} />
-                    <button className={s.quickBtn} onClick={() => handleDownload('custom')} disabled={!!downloading || !customFrom}>
-                      {downloading === 'custom' ? '…' : 'Go'}
-                    </button>
-                  </div>
-                ) : (
-                  <button className={`${s.actionBtnFull} ${s.actionBtnOutline}`} onClick={() => setShowCustom(true)}>
-                    Custom Date Range
-                  </button>
+            {/* VaNi panel */}
+            <div className={s.vaniPanel}>
+              <div className={s.vaniLabel}>VaNi · Scheme Analysis</div>
+              <div className={s.vaniLines}>
+                {nav.total_records === 0 && (
+                  <p>No NAV history available for this scheme. Download from MFAPI to begin tracking performance.</p>
                 )}
-                {/* Gaps */}
-                {gaps.length > 0 ? (
-                  <button className={`${s.actionBtnFull} ${s.actionBtnWarn}`} onClick={handleRepairGaps} disabled={!!downloading}>
-                    {downloading === 'gap' ? 'Repairing…' : `Repair ${gaps.length} Gap${gaps.length !== 1 ? 's' : ''}`}
-                  </button>
-                ) : nav.total_records > 0 ? (
-                  <div className={s.noGaps}>No gaps detected</div>
-                ) : null}
+                {nav.total_records > 0 && !metrics && (
+                  <p>NAV history is loaded ({nav.total_records.toLocaleString()} records). Calculate metrics to unlock returns, volatility, and risk analysis.</p>
+                )}
+                {metrics?.cagr != null && (
+                  <p>
+                    CAGR of <strong>{fmtPct(metrics.cagr)}</strong> —{' '}
+                    {metrics.cagr >= 15 ? 'strong long-term growth, outpacing most benchmarks.'
+                      : metrics.cagr >= 10 ? 'moderate growth, broadly in line with category.'
+                      : metrics.cagr >= 0 ? 'below-benchmark growth — consider reviewing allocation.'
+                      : 'negative returns over the tracking period.'}
+                  </p>
+                )}
+                {metrics?.sharpe_ratio != null && (
+                  <p>
+                    Sharpe ratio of <strong>{metrics.sharpe_ratio.toFixed(2)}</strong> ({sharpeLabel}) —{' '}
+                    {metrics.sharpe_ratio > 2 ? 'exceptional risk-adjusted return.'
+                      : metrics.sharpe_ratio > 1 ? 'good risk-adjusted return relative to volatility.'
+                      : metrics.sharpe_ratio > 0 ? 'positive but modest risk-adjusted return.'
+                      : 'returns not compensating for risk taken.'}
+                  </p>
+                )}
+                {gaps.length > 0 && (
+                  <p>{gaps.length} gap{gaps.length !== 1 ? 's' : ''} in NAV history — period returns may be understated until repaired.</p>
+                )}
+                {nav.total_records > 0 && metrics && gaps.length === 0 && scheme.active && (
+                  <p>Data is complete — {nav.total_records.toLocaleString()} records, no gaps, metrics current as of {metrics.metrics_date}.</p>
+                )}
+                {!scheme.active && (
+                  <p>Scheme closed {scheme.closure_date ? `on ${scheme.closure_date}` : ''}. Historical data remains available for analysis.</p>
+                )}
               </div>
             </div>
 
-            {/* Performance Analytics */}
-            <div className={`${s.actionCard} ${s.actionCardBlue}`}>
-              <div className={s.actionCardTitle}>Performance Analytics</div>
-              <div className={s.actionCardBtns}>
-                <button
-                  className={`${s.actionBtnFull} ${metrics ? s.actionBtnOutline : s.actionBtnPrimary}`}
-                  onClick={handleCalculate}
-                  disabled={calculating || nav.total_records === 0}
-                >
-                  {calculating ? 'Calculating…' : metrics ? 'Recalculate Metrics' : 'Calculate Metrics'}
-                </button>
-                {nav.total_records === 0 && (
-                  <div className={s.actionHint}>Download NAV history first</div>
+            {/* Action cards — stacked vertically */}
+            <div className={s.actionCol}>
+
+              <div className={`${s.actionCard} ${s.actionCardGreen}`}>
+                <div className={s.actionCardTitle}>NAV History</div>
+                <div className={s.actionCardBtns}>
+                  <button className={`${s.actionBtnFull} ${s.actionBtnPrimary}`} onClick={() => handleDownload('all')} disabled={!!downloading}>
+                    {downloading === 'all' ? 'Downloading…' : 'Download Full History'}
+                  </button>
+                  <div className={s.quickBtns}>
+                    <span className={s.quickLabel}>Quick</span>
+                    {(['1y', '6m', '3m'] as const).map(r => (
+                      <button key={r} className={s.quickBtn} onClick={() => handleDownload(r)} disabled={!!downloading}>
+                        {downloading === r ? '…' : r.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                  {showCustom ? (
+                    <div className={s.customRange}>
+                      <input type="date" className={s.dateInput} value={customFrom} onChange={e => setCustomFrom(e.target.value)} />
+                      <span className={s.dateSep}>→</span>
+                      <input type="date" className={s.dateInput} value={customTo} onChange={e => setCustomTo(e.target.value)} />
+                      <button className={s.quickBtn} onClick={() => handleDownload('custom')} disabled={!!downloading || !customFrom}>
+                        {downloading === 'custom' ? '…' : 'Go'}
+                      </button>
+                    </div>
+                  ) : (
+                    <button className={`${s.actionBtnFull} ${s.actionBtnOutline}`} onClick={() => setShowCustom(true)}>
+                      Custom Date Range
+                    </button>
+                  )}
+                  {gaps.length > 0 ? (
+                    <button className={`${s.actionBtnFull} ${s.actionBtnWarn}`} onClick={handleRepairGaps} disabled={!!downloading}>
+                      {downloading === 'gap' ? 'Repairing…' : `Repair ${gaps.length} Gap${gaps.length !== 1 ? 's' : ''}`}
+                    </button>
+                  ) : nav.total_records > 0 ? (
+                    <div className={s.noGaps}>No gaps detected</div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className={`${s.actionCard} ${s.actionCardBlue}`}>
+                <div className={s.actionCardTitle}>Performance Analytics</div>
+                <div className={s.actionCardBtns}>
+                  <button
+                    className={`${s.actionBtnFull} ${metrics ? s.actionBtnOutline : s.actionBtnPrimary}`}
+                    onClick={handleCalculate}
+                    disabled={calculating || nav.total_records === 0}
+                  >
+                    {calculating ? 'Calculating…' : metrics ? 'Recalculate Metrics' : 'Calculate Metrics'}
+                  </button>
+                  {nav.total_records === 0 && <div className={s.actionHint}>Download NAV history first</div>}
+                </div>
+                {metrics?.metrics_calculated_at && (
+                  <div className={s.actionHint}>Last calculated: {metrics.metrics_date}</div>
                 )}
               </div>
-              {metrics?.metrics_calculated_at && (
-                <div className={s.actionHint}>Last calculated: {metrics.metrics_date}</div>
-              )}
+
             </div>
           </div>
         </div>
@@ -794,6 +844,73 @@ export default function SchemeDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* ═══ FULLSCREEN CHART OVERLAY ═════════════════════ */}
+      {isFullscreen && (
+        <div className={s.fullscreenOverlay}>
+          <div className={s.fullscreenHeader}>
+            <div className={s.fullscreenTitle}>
+              <span className={s.heroName} style={{ fontSize: '1rem' }}>{scheme.scheme_name}</span>
+              <span className={s.typeBadge}>{scheme.scheme_type}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Period pills */}
+              <div className={s.periodToggle}>
+                {(['1m', '6m', '1y', '3y', '5y', 'max'] as Period[]).map(p => (
+                  <button key={p} className={`${s.periodBtn} ${period === p ? s.periodBtnActive : ''}`} onClick={() => setPeriod(p)}>
+                    {PERIOD_LABELS[p]}
+                  </button>
+                ))}
+              </div>
+              {/* Granularity */}
+              <div className={s.segmentGroup}>
+                {(['daily', 'weekly', 'monthly'] as Granularity[]).map(g => (
+                  <button key={g} className={`${s.segBtn} ${granularity === g ? s.segBtnActive : ''}`} onClick={() => setGranularity(g)}>
+                    {g[0].toUpperCase() + g.slice(1, 3)}
+                  </button>
+                ))}
+              </div>
+              <button className={s.toolBtn} onClick={handleExportPNG} disabled={exportingPng}>
+                {exportingPng ? '…' : 'PNG'}
+              </button>
+              <button className={`${s.toolBtn} ${s.closeFullscreen}`} onClick={() => setIsFullscreen(false)} title="Exit full page">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                  <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
+                </svg>
+                Exit
+              </button>
+            </div>
+          </div>
+          {periodStats && (
+            <div className={s.statsStrip} style={{ margin: '0 0 12px' }}>
+              <span className={s.statItem}><span className={s.statLabel}>Current</span><span className={s.statVal}>{fmtNav(periodStats.current)}</span></span>
+              <span className={s.statSep}>·</span>
+              <span className={s.statItem}><span className={s.statLabel}>Min</span><span className={s.statVal}>{fmtNav(periodStats.min)}</span></span>
+              <span className={s.statSep}>·</span>
+              <span className={s.statItem}><span className={s.statLabel}>Max</span><span className={s.statVal}>{fmtNav(periodStats.max)}</span></span>
+              <span className={s.statSep}>·</span>
+              <span className={s.statItem}>
+                <span className={s.statLabel}>Change</span>
+                <span className={`${s.statVal} ${periodStats.change >= 0 ? s.statUp : s.statDown}`}>
+                  {fmtChange(periodStats.change)} ({fmtPct(periodStats.changePct)})
+                </span>
+              </span>
+            </div>
+          )}
+          <div className={s.fullscreenChart} id="nav-chart-container">
+            {displayData.length >= 2 ? (
+              <VdfLineChart
+                data={displayData.map(p => ({ date: p.date, value: p.nav }))}
+                height={Math.max(400, (typeof window !== 'undefined' ? window.innerHeight : 800) - 180)}
+                color={chartColor || undefined}
+                formatValue={v => fmtNav(v)}
+              />
+            ) : (
+              <div className={s.chartEmpty}>Not enough data for this period</div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
