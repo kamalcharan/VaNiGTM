@@ -27,3 +27,4 @@ export { VdfTrackingCard, type TrackingBookmark, type TrackingCardAction, type T
 export { VdfProactiveCard, type VdfProactiveCardProps } from './proactive-card/VdfProactiveCard';
 export { VdfDownloadNavModal, type VdfDownloadNavModalProps } from './download-nav-modal/VdfDownloadNavModal';
 export { VdfKpiCard, type VdfKpiCardProps } from './kpi-card/VdfKpiCard';
+export { VdfErrorScreen, type VdfErrorScreenProps } from './error-screen/VdfErrorScreen';

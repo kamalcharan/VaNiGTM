@@ -1,0 +1,71 @@
+/* VdfErrorScreen — centered error state, renders within its container */
+
+.wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 60vh;
+  padding: 48px 24px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 440px;
+  gap: 0;
+
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 48px 40px;
+
+  /* subtle glow */
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+}
+
+.icon {
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
+}
+
+.code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+
+  /* accent line above */
+  padding-top: 10px;
+  border-top: 2px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  margin: 0 0 12px 0;
+  line-height: 1.25;
+}
+
+.description {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  margin: 0 0 28px 0;
+  line-height: 1.65;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}

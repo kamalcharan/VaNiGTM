@@ -1,0 +1,32 @@
+/* 404 — standalone full-viewport, no sidebar */
+
+.page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+/* Override VdfErrorScreen's min-height since the page itself is full-viewport */
+.page :global(.wrap) {
+  min-height: unset;
+}
+
+.homeLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 22px;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: var(--btn-radius, 8px);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.homeLink:hover {
+  opacity: 0.88;
+}

@@ -21,7 +21,8 @@ import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
 import {
   VdfStatCard, VdfLoader, VdfEmptyState, VdfButton, VdfModal, VdfStatusBadge,
-  VdfTrackingCard, type TrackingBookmark, type TrackingCardAction, type TrackingStatus,
+  VdfTrackingCard, VdfErrorScreen,
+  type TrackingBookmark, type TrackingCardAction, type TrackingStatus,
 } from '@/components/vdf';
 import { VdfDownloadNavModal } from '@/components/vdf/download-nav-modal/VdfDownloadNavModal';
 import f from '@/styles/forms.module.css';
@@ -109,7 +110,7 @@ function toBookmark(row: SchemeRow): TrackingBookmark {
 export default function GlobalNavPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isLoading: authLoading } = useAuth();
 
   /* ── Scheme list state ── */
   const [stats, setStats] = useState<SchemeStats | null>(null);
@@ -399,6 +400,25 @@ export default function GlobalNavPage() {
       },
     ];
   }
+
+  /* ── Auth guards — after all hooks (Rules of Hooks) ── */
+  if (authLoading) return <VdfLoader message="Loading..." />;
+  if (!isAdmin) return (
+    <VdfErrorScreen
+      code="403"
+      icon="🔒"
+      title="Access Restricted"
+      description="Global NAV Explorer requires administrator privileges."
+      action={
+        <button
+          style={{ padding: '10px 22px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--btn-radius, 8px)', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer' }}
+          onClick={() => router.push('/dashboard')}
+        >
+          Go to Dashboard
+        </button>
+      }
+    />
+  );
 
   /* ── Render ── */
   return (

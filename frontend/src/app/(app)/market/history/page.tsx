@@ -16,9 +16,10 @@ import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
+import { useAuth } from '@/context/auth-provider';
 import {
   VdfStatCard, VdfLoader, VdfEmptyState, VdfButton, VdfModal,
-  VdfTrackingCard,
+  VdfTrackingCard, VdfErrorScreen,
   type TrackingBookmark, type TrackingCardAction, type TrackingStatus,
 } from '@/components/vdf';
 import f from '@/styles/forms.module.css';
@@ -126,6 +127,7 @@ function indexToBookmark(idx: MarketIndex): TrackingBookmark {
 export default function MarketHistoryPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { isAdmin, isLoading: authLoading } = useAuth();
 
   /* ── Data state ─────────────────────────────────────── */
   const [indices, setIndices] = useState<MarketIndex[]>([]);
@@ -344,6 +346,25 @@ export default function MarketHistoryPage() {
   };
 
   /* ── Render ──────────────────────────────────────────── */
+
+  // Auth guards — after all hooks (Rules of Hooks)
+  if (authLoading) return <VdfLoader message="Loading..." />;
+  if (!isAdmin) return (
+    <VdfErrorScreen
+      code="403"
+      icon="🔒"
+      title="Access Restricted"
+      description="Market Data management requires administrator privileges."
+      action={
+        <button
+          style={{ padding: '10px 22px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--btn-radius, 8px)', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer' }}
+          onClick={() => router.push('/dashboard')}
+        >
+          Go to Dashboard
+        </button>
+      }
+    />
+  );
 
   if (loading) return <VdfLoader message="Loading market indices..." />;
 
