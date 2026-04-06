@@ -5,6 +5,7 @@ import { apiFetch, getAccessToken } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { VdfInsightsCard } from '@/components/vdf';
+import { useAuth } from '@/context/auth-provider';
 import s from './import-page.module.css';
 
 /* ── Types ─────────────────────────────────────────── */
@@ -54,9 +55,11 @@ const IMPORT_TYPES: { id: ImportType; label: string; desc: string; icon: string;
 
 export default function ImportPage() {
   const { showToast } = useToast();
+  const { isAdmin } = useAuth();
 
   const [step, setStep] = useState<Step>('type');
-  const [importType, setImportType] = useState<ImportType>('scheme');
+  // Default to 'scheme' for admins, 'bookmark' for non-admins
+  const [importType, setImportType] = useState<ImportType>(() => isAdmin ? 'scheme' : 'bookmark');
   const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
   const [headerInfo, setHeaderInfo] = useState<HeaderInfo | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
@@ -263,7 +266,7 @@ export default function ImportPage() {
             <VdfInsightsCard insights={[{ icon: '✨', text: 'Choose the data type you want to import. Scheme Master is the foundation — import it first.' }]} />
           </div>
           <div className={s.typeGrid}>
-            {IMPORT_TYPES.map((t) => (
+            {IMPORT_TYPES.filter((t) => t.id !== 'scheme' || isAdmin).map((t) => (
               <button
                 key={t.id}
                 className={`${s.typeCard} ${!t.enabled ? s.typeDisabled : ''}`}

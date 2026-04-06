@@ -14,6 +14,8 @@ export interface NavItem {
   icon: ReactNode;
   href: string;
   section: 'main' | 'data' | 'system';
+  /** If true, item is only shown to users with isAdmin = true */
+  adminOnly?: boolean;
   /** Skill to execute when this item is activated */
   skill?: string;
   /** Default function to call on the skill */
@@ -128,6 +130,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: <Icon><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></Icon>,
     href: '/market/history',
     section: 'data',
+    adminOnly: true,
     skill: 'market-skill',
     fn: 'get_market_indices',
     recipe: 'market-history',
@@ -138,6 +141,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: <Icon><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></Icon>,
     href: '/global-nav',
     section: 'data',
+    adminOnly: true,
     skill: 'market-skill',
     fn: 'search_schemes',
     recipe: 'scheme-explorer',
