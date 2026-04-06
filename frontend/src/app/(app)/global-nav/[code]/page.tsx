@@ -53,6 +53,9 @@ const CHART_COLOR_PRESETS = [
   '#06b6d4', '#8b5cf6', '#ec4899', '#0ea5e9',
 ];
 
+function fmtDate(d: string): string {
+  return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 function fmtPct(v: number | null): string {
   return v == null ? '\u2014' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
 }
@@ -379,7 +382,7 @@ export default function SchemeDashboardPage() {
         <div className={s.topRight}>
           {nav.latest_nav != null ? (
             <>
-              <div className={s.navDateLabel}>NAV as of {nav.latest_nav_date}</div>
+              <div className={s.navDateLabel}>NAV as of {nav.latest_nav_date ? fmtDate(nav.latest_nav_date) : '—'}</div>
               <div className={s.navBig}>
                 {fmtNav(Number(nav.latest_nav))}
                 {dailyChange != null && (
@@ -388,7 +391,7 @@ export default function SchemeDashboardPage() {
                   </span>
                 )}
               </div>
-              <div className={s.navRecords}>{nav.total_records.toLocaleString()} records · {nav.earliest_date} → {nav.latest_date}</div>
+              <div className={s.navRecords}>{nav.total_records.toLocaleString()} records · {nav.earliest_date ? fmtDate(nav.earliest_date) : '—'} → {nav.latest_date ? fmtDate(nav.latest_date) : '—'}</div>
             </>
           ) : (
             <div className={s.navNoData}>No NAV data</div>
@@ -429,7 +432,7 @@ export default function SchemeDashboardPage() {
           {!scheme.active && (
             <div className={s.alertItem}>
               <span className={s.alertIcon} style={{ color: 'var(--color-muted)' }}>◆</span>
-              <span className={s.alertText}>Scheme ended {scheme.closure_date ? `on ${scheme.closure_date}` : ''} — daily downloads disabled</span>
+              <span className={s.alertText}>Scheme ended {scheme.closure_date ? `on ${fmtDate(scheme.closure_date)}` : ''} — daily downloads disabled</span>
             </div>
           )}
         </div>
@@ -655,7 +658,7 @@ export default function SchemeDashboardPage() {
                             const ret = prev && prev > 0 ? ((row.nav - prev) / prev) * 100 : null;
                             return (
                               <tr key={row.date}>
-                                <td>{row.date.slice(0, 10)}</td>
+                                <td>{fmtDate(row.date)}</td>
                                 <td className={d.tdMono}>{fmtNav(row.nav)}</td>
                                 <td className={`${d.tdMono} ${ret != null ? (ret >= 0 ? d.valUp : d.valDown) : ''}`}>
                                   {ret != null ? fmtPct(ret) : '—'}
@@ -716,10 +719,10 @@ export default function SchemeDashboardPage() {
                   <p>{gaps.length} gap{gaps.length !== 1 ? 's' : ''} in NAV history — period returns may be understated until repaired.</p>
                 )}
                 {nav.total_records > 0 && metrics && gaps.length === 0 && scheme.active && (
-                  <p>Data is complete — {nav.total_records.toLocaleString()} records, no gaps, metrics current as of {metrics.metrics_date}.</p>
+                  <p>Data is complete — {nav.total_records.toLocaleString()} records, no gaps, metrics current as of {metrics.metrics_date ? fmtDate(metrics.metrics_date) : '—'}.</p>
                 )}
                 {!scheme.active && (
-                  <p>Scheme closed {scheme.closure_date ? `on ${scheme.closure_date}` : ''}. Historical data remains available for analysis.</p>
+                  <p>Scheme closed {scheme.closure_date ? `on ${fmtDate(scheme.closure_date)}` : ''}. Historical data remains available for analysis.</p>
                 )}
               </div>
             </div>
@@ -778,7 +781,7 @@ export default function SchemeDashboardPage() {
                   {nav.total_records === 0 && <div className={s.actionHint}>Download NAV history first</div>}
                 </div>
                 {metrics?.metrics_calculated_at && (
-                  <div className={s.actionHint}>Last calculated: {metrics.metrics_date}</div>
+                  <div className={s.actionHint}>Last calculated: {metrics.metrics_date ? fmtDate(metrics.metrics_date) : '—'}</div>
                 )}
               </div>
 
@@ -888,7 +891,7 @@ export default function SchemeDashboardPage() {
                   )}
                 </div>
 
-                <div className={s.metricsTimestamp}>Calculated {metrics.metrics_date}</div>
+                <div className={s.metricsTimestamp}>Calculated {metrics.metrics_date ? fmtDate(metrics.metrics_date) : '—'}</div>
               </>
             )}
           </div>
@@ -931,7 +934,7 @@ export default function SchemeDashboardPage() {
             {metrics?.metrics_calculated_at && (
               <div className={s.auditRow}>
                 <div className={`${s.auditDot} ${s.auditDotGreen}`} />
-                <span className={s.auditText}>Metrics calculated — {metrics.metrics_date}</span>
+                <span className={s.auditText}>Metrics calculated — {metrics.metrics_date ? fmtDate(metrics.metrics_date) : '—'}</span>
               </div>
             )}
           </div>

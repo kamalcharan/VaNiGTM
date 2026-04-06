@@ -48,6 +48,11 @@ type Tab = 'nav' | 'market' | 'snapshots' | 'settings';
 
 /* ── Helpers ───────────────────────────────────────── */
 
+function fmtDate(d?: string | null): string {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
@@ -339,7 +344,7 @@ export default function CruiseControlPage() {
                         <td className={s.tdMono}>
                           {sc.latest_nav ? `\u20B9${Number(sc.latest_nav).toFixed(2)}` : '\u2014'}
                         </td>
-                        <td className={s.tdDate}>{sc.latest_nav_date || '\u2014'}</td>
+                        <td className={s.tdDate}>{fmtDate(sc.latest_nav_date)}</td>
                         <td>
                           <VdfStatusBadge label={sc.daily_download_enabled ? 'On' : isEnded ? 'Ended' : 'Off'} variant={sc.daily_download_enabled ? 'success' : 'muted'} size="sm" />
                         </td>
