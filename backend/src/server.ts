@@ -7,6 +7,8 @@ import { getPool, createTenantDb, closePool, healthCheck } from './db';
 import { createAuthRouter, createOnboardingRouter, createTenantRouter } from './auth/auth.routes';
 import { createEtlRouter } from './etl/etl.routes';
 import { createNavRouter } from './nav/nav.routes';
+import { createMarketRouter } from './market/market.routes';
+import { createMarketAnalysisRouter } from './market/market-analysis.routes';
 import { verifyAccessToken } from './auth/token.service';
 
 const app = express();
@@ -57,7 +59,9 @@ async function main() {
   app.use('/api/v1/tenant', createTenantRouter(pool));
   app.use('/api/v1/etl', createEtlRouter(pool));
   app.use('/api/v1/nav', createNavRouter(pool));
-  console.log('[ProKey] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /nav');
+  app.use('/api/v1/market', createMarketRouter(pool));
+  app.use('/api/v1/market-analysis', createMarketAnalysisRouter(pool));
+  console.log('[ProKey] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /nav, /market, /market-analysis');
 
   // Build skill registry
   const skillsDir = path.resolve(__dirname, 'skills');
