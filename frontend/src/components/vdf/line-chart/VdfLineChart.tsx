@@ -14,6 +14,10 @@ export interface VdfLineChartProps {
   formatValue?: (v: number) => string;
   /** CSS class for the container */
   className?: string;
+  /** Override line/fill color (default: auto — green if up, red if down) */
+  color?: string;
+  /** ID for the container div (used for PNG export targeting) */
+  containerId?: string;
 }
 
 const PADDING = { top: 12, right: 12, bottom: 24, left: 56 };
@@ -24,6 +28,8 @@ export function VdfLineChart({
   showTooltip = true,
   formatValue = (v) => `\u20B9${v.toFixed(2)}`,
   className,
+  color,
+  containerId,
 }: VdfLineChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hover, setHover] = useState<{ x: number; y: number; date: string; value: number } | null>(null);
@@ -103,8 +109,9 @@ export function VdfLineChart({
     setHover({ x, y, date: d.date, value: d.value });
   }, [data, chart, height]);
 
-  // Change color based on trend
+  // Color: user override → auto-detect from trend
   const isPositive = data.length >= 2 && data[data.length - 1].value >= data[0].value;
+  const lineColor = color || (isPositive ? 'var(--color-success)' : 'var(--color-danger)');
 
   if (data.length < 2) {
     return <div className={`${s.empty} ${className || ''}`}>Not enough data for chart</div>;
@@ -114,7 +121,7 @@ export function VdfLineChart({
   const viewBox = `0 0 100 ${chartH}`;
 
   return (
-    <div className={`${s.container} ${className || ''}`} style={{ height }}>
+    <div id={containerId} className={`${s.container} ${className || ''}`} style={{ height }}>
       <svg
         ref={svgRef}
         className={s.svg}
@@ -146,16 +153,16 @@ export function VdfLineChart({
         <g transform={`translate(${PADDING.left}, ${PADDING.top})`}>
           {/* Gradient fill */}
           <defs>
-            <linearGradient id="navFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={isPositive ? 'var(--color-success)' : 'var(--color-danger)'} stopOpacity="0.2" />
-              <stop offset="100%" stopColor={isPositive ? 'var(--color-success)' : 'var(--color-danger)'} stopOpacity="0.02" />
+            <linearGradient id={`navFill_${containerId || 'default'}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={lineColor} stopOpacity="0.2" />
+              <stop offset="100%" stopColor={lineColor} stopOpacity="0.02" />
             </linearGradient>
           </defs>
-          <path d={fillD} fill="url(#navFill)" />
+          <path d={fillD} fill={`url(#navFill_${containerId || 'default'})`} />
           <path
             d={pathD}
             fill="none"
-            stroke={isPositive ? 'var(--color-success)' : 'var(--color-danger)'}
+            stroke={lineColor}
             strokeWidth="1.5"
             vectorEffect="non-scaling-stroke"
           />
