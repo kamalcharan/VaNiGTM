@@ -33,6 +33,7 @@ import {
   VdfStatusBadge,
   VdfEmptyState,
   VdfButton,
+  VdfModal,
 } from '@/components/vdf';
 import f from '@/styles/forms.module.css';
 import d from '@/styles/data.module.css';
@@ -76,7 +77,7 @@ function computeStatus(b: TrackingBookmark): TrackingStatus {
 export default function MyNavPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const cancelRef = useRef(false);
 
   const [tab, setTab] = useState<Tab>('my-schemes');
@@ -91,6 +92,24 @@ export default function MyNavPage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [opLoading, setOpLoading] = useState<Record<string, boolean>>({});
   const [vaniDismissed, setVaniDismissed] = useState(false);
+
+  /* ── Remove bookmark confirmation modal ── */
+  const [removeConfirm, setRemoveConfirm] = useState<string[] | null>(null);
+  const [removing, setRemoving] = useState(false);
+
+  /* ── Bulk metrics pre-check modal ── */
+  const [metricsPreCheck, setMetricsPreCheck] = useState(false);
+
+  /* ── Alias modal state ── */
+  const [aliasModal, setAliasModal] = useState<{
+    scheme_code: string; scheme_name: string; display_alias: string | null;
+  } | null>(null);
+  const [aliases, setAliases] = useState<{ id: number; alias_name: string; source: string }[]>([]);
+  const [aliasesLoading, setAliasesLoading] = useState(false);
+  const [newAlias, setNewAlias] = useState('');
+  const [addingAlias, setAddingAlias] = useState(false);
+  const [displayAliasEdit, setDisplayAliasEdit] = useState('');
+  const [savingDisplayAlias, setSavingDisplayAlias] = useState(false);
 
   /* ── Discover tab state ── */
   const [discoverQuery, setDiscoverQuery] = useState('');
@@ -223,6 +242,11 @@ export default function MyNavPage() {
         variant: 'muted' as const,
         disabled: busy, loading: busy && !!opLoading[b.scheme_code + '_calc'],
       }] : []),
+      {
+        label: 'Aliases',
+        onClick: () => openAliasModal(b),
+        variant: 'muted' as const,
+      },
     ];
   }
 
@@ -252,14 +276,91 @@ export default function MyNavPage() {
     }
   }
 
-  async function removeBookmark(code: string) {
+  async function confirmRemoveBookmarks() {
+    if (!removeConfirm || removing) return;
+    setRemoving(true);
     try {
-      await apiFetch<any>({ ...API.nav.removeBookmark, path: API.nav.removeBookmark.path.replace(':schemeCode', code) });
-      showToast({ message: 'Removed from My NAV', type: 'success' });
-      setBookmarks(prev => prev.filter(b => b.scheme_code !== code));
-      setSelected(prev => { const n = new Set(prev); n.delete(code); return n; });
+      await Promise.all(removeConfirm.map(code =>
+        apiFetch<any>({ ...API.nav.removeBookmark, path: API.nav.removeBookmark.path.replace(':schemeCode', code) }),
+      ));
+      const count = removeConfirm.length;
+      setBookmarks(prev => prev.filter(b => !removeConfirm.includes(b.scheme_code)));
+      setSelected(prev => { const n = new Set(prev); removeConfirm.forEach(c => n.delete(c)); return n; });
+      setRemoveConfirm(null);
+      showToast({ message: count === 1 ? 'Removed from My NAV' : `${count} schemes removed`, type: 'success' });
     } catch (err) {
       showToast({ message: (err as ApiError).message || 'Remove failed', type: 'error' });
+    } finally {
+      setRemoving(false);
+    }
+  }
+
+  /* ── Alias modal ── */
+  async function openAliasModal(b: TrackingBookmark) {
+    setAliasModal({ scheme_code: b.scheme_code, scheme_name: b.scheme_name, display_alias: b.alias_name ?? null });
+    // Only pre-fill if the user has explicitly set an alias different from the scheme name.
+    // alias_name === scheme_name means it was backfilled from master data, not user-set.
+    const customAlias = b.alias_name && b.alias_name !== b.scheme_name ? b.alias_name : '';
+    setDisplayAliasEdit(customAlias);
+    setNewAlias('');
+    setAliases([]);
+    setAliasesLoading(true);
+    try {
+      const data = await apiFetch<{ aliases: any[] }>({
+        ...API.nav.aliases,
+        path: `${API.nav.aliases.path}?scheme_code=${b.scheme_code}`,
+      });
+      setAliases(data.aliases || []);
+    } catch {
+      showToast({ message: 'Failed to load aliases', type: 'error' });
+    } finally {
+      setAliasesLoading(false);
+    }
+  }
+
+  async function handleAddAlias() {
+    if (!aliasModal || !newAlias.trim() || addingAlias) return;
+    setAddingAlias(true);
+    try {
+      const data = await apiFetch<{ alias: any }>(API.nav.createAlias, {
+        body: { scheme_code: aliasModal.scheme_code, alias_name: newAlias.trim(), source: 'manual' },
+      });
+      setAliases(prev => [...prev, data.alias]);
+      setNewAlias('');
+      showToast({ message: 'Alias added', type: 'success' });
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Failed to add alias', type: 'error' });
+    } finally {
+      setAddingAlias(false);
+    }
+  }
+
+  async function handleDeleteAlias(id: number) {
+    try {
+      await apiFetch<any>({ ...API.nav.deleteAlias, path: API.nav.deleteAlias.path.replace(':id', String(id)) });
+      setAliases(prev => prev.filter(a => a.id !== id));
+      showToast({ message: 'Alias removed', type: 'success' });
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Failed to remove alias', type: 'error' });
+    }
+  }
+
+  async function handleSaveDisplayAlias() {
+    if (!aliasModal || savingDisplayAlias) return;
+    setSavingDisplayAlias(true);
+    try {
+      await apiFetch<any>(
+        { ...API.nav.updateBookmarkAlias, path: API.nav.updateBookmarkAlias.path.replace(':schemeCode', aliasModal.scheme_code) },
+        { body: { alias_name: displayAliasEdit.trim() || null } },
+      );
+      const saved = displayAliasEdit.trim() || null;
+      setBookmarks(prev => prev.map(b => b.scheme_code === aliasModal.scheme_code ? { ...b, alias_name: saved } : b));
+      setAliasModal(prev => prev ? { ...prev, display_alias: saved } : null);
+      showToast({ message: 'Display alias updated', type: 'success' });
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Failed to update alias', type: 'error' });
+    } finally {
+      setSavingDisplayAlias(false);
     }
   }
 
@@ -339,8 +440,14 @@ export default function MyNavPage() {
     setTimeout(() => { setBulkOp(null); loadBookmarks(); }, 2500);
   }
 
-  /* ── Bulk: recalculate all metrics ── */
-  async function handleBulkMetrics() {
+  /* ── Bulk: open pre-check modal ── */
+  function handleBulkMetrics() {
+    setMetricsPreCheck(true);
+  }
+
+  /* ── Bulk: fire after pre-check confirmation ── */
+  async function confirmBulkMetrics() {
+    setMetricsPreCheck(false);
     setBulkOp({
       title: 'Calculating Metrics', progress: 50,
       progressText: 'Running PostgreSQL RPC...',
@@ -384,6 +491,24 @@ export default function MyNavPage() {
   /* ── Render ────────────────────────────────────────── */
 
   // Full-page loader: show until both data is ready AND min duration has elapsed
+  /* ── Toolbar button helper ── */
+  function toolbarBtn(label: string, onClick: () => void, color?: string) {
+    return (
+      <button
+        key={label}
+        onClick={onClick}
+        style={{
+          height: 32, padding: '0 12px', border: `1px solid ${color || 'var(--color-border)'}`,
+          borderRadius: 6, background: 'transparent', color: color || 'var(--color-fg)',
+          fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+          transition: 'background 150ms',
+        }}
+      >
+        {label}
+      </button>
+    );
+  }
+
   if (bookmarksLoading || !minLoadDone) {
     return <VdfLoader message="Loading My NAV" hint="Fetching your tracked schemes" />;
   }
@@ -478,24 +603,22 @@ export default function MyNavPage() {
                 value={trackSearch}
                 onChange={e => setTrackSearch(e.target.value)}
               />
-              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
                 {selected.size > 0 ? (
                   <>
-                    <VdfButton variant="primary" size="sm" onClick={handleBulkDownload}>
-                      ↓ Download ({selected.size})
-                    </VdfButton>
-                    <VdfButton variant="outline" size="sm" onClick={handleBulkMetrics}>
-                      ⊕ Metrics
-                    </VdfButton>
-                    <VdfButton variant="ghost" size="sm" onClick={() => setSelected(new Set())}>
-                      Clear
-                    </VdfButton>
+                    {toolbarBtn('↓ Download', handleBulkDownload, 'var(--color-primary)')}
+                    {toolbarBtn('⊕ Metrics', handleBulkMetrics)}
+                    {toolbarBtn(`✕ Remove (${selected.size})`, () => setRemoveConfirm([...selected]), 'var(--color-danger)')}
+                    {toolbarBtn('Clear', () => setSelected(new Set()))}
                   </>
                 ) : (
-                  <VdfButton variant="outline" size="sm" onClick={handleBulkMetrics}
-                    title="Recalculate metrics for all tracked schemes">
+                  <button
+                    onClick={handleBulkMetrics}
+                    title="Recalculate metrics for all tracked schemes"
+                    style={{ height: 32, padding: '0 12px', border: '1px solid var(--color-border)', borderRadius: 6, background: 'transparent', color: 'var(--color-fg)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
                     ⊕ All Metrics
-                  </VdfButton>
+                  </button>
                 )}
               </div>
             </div>
@@ -556,7 +679,6 @@ export default function MyNavPage() {
                   status={computeStatus(b)}
                   selected={selected.has(b.scheme_code)}
                   onSelect={toggleSelect}
-                  onRemove={removeBookmark}
                   actions={cardActions(b)}
                   onClick={code => router.push(`/global-nav/${code}`)}
                 />
@@ -693,6 +815,227 @@ export default function MyNavPage() {
           )}
         </div>
       )}
+
+      {/* ── Alias Management Modal ── */}
+      <VdfModal
+        isOpen={!!aliasModal}
+        onClose={() => setAliasModal(null)}
+        title="Scheme Aliases"
+        subtitle={aliasModal ? `${aliasModal.scheme_name} · used for CSV/CAS import matching` : ''}
+      >
+        {aliasModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+            {/* ── Display alias ── */}
+            <div>
+              <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-muted)', marginBottom: 6 }}>
+                Display Alias
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginBottom: 10 }}>
+                Shown on My NAV cards instead of the scheme name. Personal to your account.
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className={f.input}
+                  style={{ flex: 1 }}
+                  placeholder={aliasModal.scheme_name}
+                  value={displayAliasEdit}
+                  onChange={e => setDisplayAliasEdit(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSaveDisplayAlias(); }}
+                />
+                <VdfButton variant="primary" size="sm" onClick={handleSaveDisplayAlias} disabled={savingDisplayAlias}>
+                  {savingDisplayAlias ? '…' : 'Save'}
+                </VdfButton>
+                {displayAliasEdit && (
+                  <VdfButton variant="ghost" size="sm" onClick={() => setDisplayAliasEdit('')}>
+                    Clear
+                  </VdfButton>
+                )}
+              </div>
+            </div>
+
+            <div style={{ height: 1, background: 'var(--color-border)' }} />
+
+            {/* ── Import aliases ── */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-muted)' }}>
+                  Import Aliases
+                </div>
+                {aliases.length > 0 && <span style={{ fontSize: '0.65rem', color: 'var(--color-muted)' }}>{aliases.length} total</span>}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginBottom: 10 }}>
+                Global aliases used to match this scheme during CAS / CSV imports.
+              </div>
+
+              {aliasesLoading ? (
+                <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--color-muted)', fontSize: '0.8rem' }}>Loading…</div>
+              ) : aliases.length === 0 ? (
+                <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--color-muted)', fontSize: '0.8rem' }}>No aliases yet — add one below</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 210, overflowY: 'auto', marginBottom: 12 }}>
+                  {aliases.map(alias => (
+                    <div key={alias.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: 'var(--color-surface)', borderRadius: 6, border: '1px solid var(--color-border)' }}>
+                      <span style={{ flex: 1, fontSize: '0.8rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alias.alias_name}</span>
+                      <VdfStatusBadge
+                        label={alias.source}
+                        variant={['csv_upload', 'import'].includes(alias.source) ? 'success' : alias.source === 'manual' ? 'info' : 'muted'}
+                        size="sm"
+                      />
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDeleteAlias(alias.id)}
+                          title="Delete alias"
+                          style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', fontSize: '0.85rem', padding: '2px 4px', borderRadius: 4, lineHeight: 1 }}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className={f.input}
+                  style={{ flex: 1 }}
+                  placeholder="New alias (e.g. HDFC Top 100 Growth)"
+                  value={newAlias}
+                  onChange={e => setNewAlias(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAddAlias(); }}
+                />
+                <VdfButton variant="success" size="sm" onClick={handleAddAlias} disabled={!newAlias.trim() || addingAlias}>
+                  {addingAlias ? '…' : '+ Add'}
+                </VdfButton>
+              </div>
+            </div>
+
+          </div>
+        )}
+      </VdfModal>
+
+      {/* ── Bulk Metrics Pre-Check Modal ── */}
+      {metricsPreCheck && (() => {
+        const ready   = bookmarks.filter(b => b.nav_records >= 100);
+        const partial = bookmarks.filter(b => b.nav_records > 0 && b.nav_records < 100);
+        const noData  = bookmarks.filter(b => b.nav_records === 0);
+        return (
+          <VdfModal
+            isOpen={metricsPreCheck}
+            onClose={() => setMetricsPreCheck(false)}
+            title="Calculate All Metrics"
+            subtitle="Runs calculate_all_scheme_metrics() — single PostgreSQL pass over all schemes with NAV data."
+            footer={
+              <>
+                <VdfButton variant="ghost" size="sm" onClick={() => setMetricsPreCheck(false)}>Cancel</VdfButton>
+                <VdfButton variant="primary" size="sm" onClick={confirmBulkMetrics} disabled={ready.length + partial.length === 0}>
+                  Calculate {ready.length + partial.length} Scheme{ready.length + partial.length !== 1 ? 's' : ''}
+                </VdfButton>
+              </>
+            }
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Summary counts */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {[
+                  { label: 'Ready', count: ready.length, color: 'var(--color-success)', desc: '≥ 100 records' },
+                  { label: 'Partial', count: partial.length, color: 'var(--color-warning)', desc: '1–99 records' },
+                  { label: 'No Data', count: noData.length, color: 'var(--color-danger)', desc: '0 records' },
+                ].map(cat => (
+                  <div key={cat.label} style={{ padding: '12px', background: 'var(--color-surface)', borderRadius: 8, border: `1px solid color-mix(in srgb, ${cat.color} 20%, transparent)`, textAlign: 'center' }}>
+                    <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '1.4rem', fontWeight: 800, color: cat.color }}>{cat.count}</div>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 700, color: cat.color, marginTop: 2 }}>{cat.label}</div>
+                    <div style={{ fontSize: '0.6rem', color: 'var(--color-muted)', marginTop: 2 }}>{cat.desc}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Ready schemes */}
+              {ready.length > 0 && (
+                <div>
+                  <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-success)', marginBottom: 6 }}>
+                    Ready ({ready.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 120, overflowY: 'auto' }}>
+                    {ready.map(b => (
+                      <div key={b.scheme_code} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', padding: '3px 0' }}>
+                        <span style={{ color: 'var(--color-fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{b.alias_name || b.scheme_name}</span>
+                        <span style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--color-muted)', flexShrink: 0, marginLeft: 8 }}>{b.nav_records.toLocaleString()} rec</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Partial schemes */}
+              {partial.length > 0 && (
+                <div>
+                  <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-warning)', marginBottom: 4 }}>
+                    Partial — limited data, some metrics may be inaccurate ({partial.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 80, overflowY: 'auto' }}>
+                    {partial.map(b => (
+                      <div key={b.scheme_code} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', padding: '3px 0' }}>
+                        <span style={{ color: 'var(--color-fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{b.alias_name || b.scheme_name}</span>
+                        <span style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--color-warning)', flexShrink: 0, marginLeft: 8 }}>{b.nav_records} rec</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* No data schemes */}
+              {noData.length > 0 && (
+                <div style={{ fontSize: '0.72rem', color: 'var(--color-muted)', padding: '8px 10px', background: 'color-mix(in srgb, var(--color-danger) 5%, transparent)', borderRadius: 6, border: '1px solid color-mix(in srgb, var(--color-danger) 15%, transparent)' }}>
+                  {noData.length} scheme{noData.length !== 1 ? 's have' : ' has'} no NAV data and will be skipped. Download NAV data first.
+                </div>
+              )}
+            </div>
+          </VdfModal>
+        );
+      })()}
+
+      {/* ── Remove Bookmark confirmation modal ── */}
+      <VdfModal
+        isOpen={!!removeConfirm}
+        onClose={() => { if (!removing) setRemoveConfirm(null); }}
+        title="Remove Bookmark"
+        subtitle={
+          removeConfirm && removeConfirm.length === 1
+            ? `Remove this scheme from My NAV? This will not delete any downloaded data.`
+            : `Remove ${removeConfirm?.length || 0} schemes from My NAV? This will not delete any downloaded data.`
+        }
+        width="sm"
+        footer={
+          <>
+            <VdfButton variant="ghost" size="sm" onClick={() => setRemoveConfirm(null)} disabled={removing}>
+              Cancel
+            </VdfButton>
+            <VdfButton variant="primary" size="sm" onClick={confirmRemoveBookmarks} disabled={removing}>
+              {removing ? 'Removing…' : 'Remove'}
+            </VdfButton>
+          </>
+        }
+      >
+        {removeConfirm && removeConfirm.length > 1 && (
+          <ul style={{ margin: 0, padding: '0 0 0 16px', fontSize: '0.82rem', color: 'var(--color-fg)', maxHeight: 180, overflowY: 'auto' }}>
+            {removeConfirm.map(code => {
+              const b = bookmarks.find(bk => bk.scheme_code === code);
+              return <li key={code} style={{ marginBottom: 4 }}>{b?.alias_name || b?.scheme_name || code}</li>;
+            })}
+          </ul>
+        )}
+        {removeConfirm && removeConfirm.length === 1 && (() => {
+          const b = bookmarks.find(bk => bk.scheme_code === removeConfirm[0]);
+          return b ? (
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-fg)' }}>
+              {b.alias_name || b.scheme_name}
+            </div>
+          ) : null;
+        })()}
+      </VdfModal>
+
     </div>
   );
 }

@@ -18,7 +18,7 @@
  * Desktop:        all action buttons visible in a row.
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import s from './VdfTrackingCard.module.css';
 
 /* ── Types ──────────────────────────────────────────── */
@@ -95,26 +95,17 @@ function metricsLabel(calculatedAt?: string | null): 'Metrics ✓' | 'Metrics �
 export function VdfTrackingCard({
   bookmark, status, selected, onSelect, onRemove, actions = [], onClick,
 }: VdfTrackingCardProps) {
-  const [confirmRemove, setConfirmRemove] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasData = bookmark.nav_records > 0;
   const ageLabel = navAgeLabel(bookmark.nav_age_days, hasData);
   const ageStale = (bookmark.nav_age_days ?? 0) > 7;
   const ml = metricsLabel(bookmark.metrics_calculated_at);
 
-  /* Safe remove */
+  /* Remove — single click, confirmation handled by parent */
   const handleRemoveClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirmRemove) {
-      setConfirmRemove(true);
-      confirmTimer.current = setTimeout(() => setConfirmRemove(false), 3000);
-    } else {
-      if (confirmTimer.current) clearTimeout(confirmTimer.current);
-      setConfirmRemove(false);
-      onRemove?.(bookmark.scheme_code);
-    }
-  }, [confirmRemove, onRemove, bookmark.scheme_code]);
+    onRemove?.(bookmark.scheme_code);
+  }, [onRemove, bookmark.scheme_code]);
 
   /* Mobile primary action = first action marked primary, else first action */
   const primaryAction = actions.find(a => a.primary) ?? actions[0];
@@ -138,14 +129,14 @@ export function VdfTrackingCard({
         </div>
       )}
 
-      {/* ── Remove button — top-right, safe ── */}
+      {/* ── Remove button — top-right ── */}
       {onRemove && (
         <button
-          className={`${s.removeBtn} ${confirmRemove ? s.removeBtnConfirm : ''}`}
+          className={s.removeBtn}
           onClick={handleRemoveClick}
-          title={confirmRemove ? 'Click again to confirm' : 'Remove from tracking'}
+          title="Remove from tracking"
         >
-          {confirmRemove ? 'Sure?' : '✕'}
+          ✕
         </button>
       )}
 

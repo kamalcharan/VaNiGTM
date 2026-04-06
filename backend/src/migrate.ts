@@ -166,6 +166,75 @@ async function showStatus(pool: Pool): Promise<void> {
   console.log(`\n  ${applied.length} applied, ${pending.length} pending\n`);
 }
 
+/* ── Check if base schema already exists ────────────── */
+
+async function schemaAlreadyExists(pool: Pool): Promise<boolean> {
+  const result = await pool.query(
+    `SELECT 1 FROM information_schema.tables
+     WHERE table_name = 'ki_schemes' AND table_schema = 'public' LIMIT 1`,
+  );
+  return result.rows.length > 0;
+}
+
+/* ── Seed vn_migrations without re-running SQL ──────── */
+// Used when schema was applied outside the runner (e.g. manual psql).
+// Records every migration file as "applied" so the runner skips them.
+
+async function seedAppliedMigrations(pool: Pool, files: MigrationFile[]): Promise<void> {
+  const client = await pool.connect();
+  try {
+    for (const f of files) {
+      await client.query(
+        `INSERT INTO vn_migrations (filename, checksum, applied_by, execution_ms, notes)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (filename) DO NOTHING`,
+        [f.filename, f.checksum, 'ki-prime-seed', 0, 'Seeded — schema pre-existed before migration runner'],
+      );
+    }
+  } finally {
+    client.release();
+  }
+}
+
+/* ── Exported: run migrations against an existing pool ─ */
+
+export async function runMigrations(pool: Pool): Promise<void> {
+  const files = discoverMigrations();
+  const applied = await getAppliedMigrations(pool);
+
+  // Bootstrap: schema exists but no migration records.
+  // This happens when migrations were applied manually (psql/Railway deploy)
+  // before the migration runner was wired into startup.
+  // Seed all files as applied so the runner doesn't try to re-run them.
+  if (applied.length === 0 && files.length > 0 && await schemaAlreadyExists(pool)) {
+    console.log('[Migrate] Schema exists but no migration records — seeding vn_migrations (first-time bootstrap)...');
+    await seedAppliedMigrations(pool, files);
+    console.log(`[Migrate] ${files.length} migrations seeded as applied. Future migrations will run normally.`);
+    return;
+  }
+
+  const appliedSet = new Set(applied.map((a) => a.filename));
+  const pending = files.filter((f) => !appliedSet.has(f.filename));
+
+  if (pending.length === 0) {
+    console.log('[Migrate] All migrations up to date.');
+    return;
+  }
+
+  console.log(`[Migrate] ${pending.length} pending migration(s) — applying...`);
+  for (const migration of pending) {
+    process.stdout.write(`  ${migration.filename}...`);
+    try {
+      const ms = await applyMigration(pool, migration);
+      console.log(` done (${ms}ms)`);
+    } catch (err) {
+      console.error(` FAILED: ${err instanceof Error ? err.message : String(err)}`);
+      throw err;
+    }
+  }
+  console.log(`[Migrate] ${pending.length} migration(s) applied.`);
+}
+
 /* ── Main ───────────────────────────────────────────── */
 
 async function main(): Promise<void> {

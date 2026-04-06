@@ -188,19 +188,21 @@ export function createNavRouter(pool: Pool): Router {
         const mapped = stagedRow.mapped_data as Record<string, string>;
         const rowId = stagedRow.id;
 
-        if (!mapped.scheme_code && !mapped.isin) {
+        if (!mapped.scheme_code && !mapped.isin && !mapped.scheme_name) {
           total_failed++;
           await pool.query(
             `UPDATE ki_import_staging SET processing_status = 'failed',
              error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
-            [JSON.stringify(['No scheme_code or ISIN found in row']), rowId],
+            [JSON.stringify(['No scheme_code, ISIN, or scheme_name found in row']), rowId],
           );
           continue;
         }
 
         try {
-          // Resolve scheme_code from ISIN if only ISIN provided
+          // Resolution chain: scheme_code → ISIN → alias name
           let schemeCode = mapped.scheme_code;
+
+          // Step 2: resolve via ISIN
           if (!schemeCode && mapped.isin) {
             const isinResult = await pool.query(
               `SELECT scheme_code FROM ki_schemes WHERE isin_growth = $1 OR isin_dividend = $1 LIMIT 1`,
@@ -209,12 +211,21 @@ export function createNavRouter(pool: Pool): Router {
             if (isinResult.rows.length > 0) schemeCode = (isinResult.rows[0] as any).scheme_code;
           }
 
+          // Step 3: resolve via alias lookup (uses ki_scheme_aliases RPC)
+          if (!schemeCode && mapped.scheme_name) {
+            const aliasResult = await pool.query(
+              `SELECT scheme_code FROM lookup_scheme_by_alias($1)`,
+              [mapped.scheme_name],
+            );
+            if (aliasResult.rows.length > 0) schemeCode = (aliasResult.rows[0] as any).scheme_code;
+          }
+
           if (!schemeCode) {
             total_failed++;
             await pool.query(
               `UPDATE ki_import_staging SET processing_status = 'failed',
                error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
-              [JSON.stringify([`ISIN ${mapped.isin} not found in ki_schemes`]), rowId],
+              [JSON.stringify([`Scheme not resolved — no match by scheme_code, ISIN (${mapped.isin || 'none'}), or alias (${mapped.scheme_name || 'none'})`]), rowId],
             );
             continue;
           }
@@ -238,14 +249,20 @@ export function createNavRouter(pool: Pool): Router {
           const isEnded = scheme.closure_date && new Date(scheme.closure_date) < new Date();
           const dailyEnabled = scheme.active && !isEnded;
 
+          // alias_name = the raw name from the tenant's CSV file.
+          // This is the key field for transaction import matching — when a CAS/portfolio
+          // CSV row has a scheme name, it is matched against bookmark.alias_name.
+          // Fall back to scheme.scheme_name if the CSV had no scheme_name column.
+          const csvAlias = mapped.scheme_name || scheme.scheme_name;
+
           // Insert bookmark — DO NOTHING for duplicates (already tracked = rejected, not overwritten)
           const upsertResult = await pool.query(
             `INSERT INTO ki_scheme_bookmarks
-               (tenant_id, user_id, scheme_code, scheme_name, amc, daily_download_enabled)
-             VALUES ($1, $2, $3, $4, $5, $6)
+               (tenant_id, user_id, scheme_code, scheme_name, amc, alias_name, daily_download_enabled)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
              ON CONFLICT (tenant_id, scheme_code) DO NOTHING
              RETURNING scheme_code`,
-            [jwt.tenant_id, jwt.user_id, scheme.scheme_code, scheme.scheme_name, scheme.amc, dailyEnabled],
+            [jwt.tenant_id, jwt.user_id, scheme.scheme_code, scheme.scheme_name, scheme.amc, csvAlias, dailyEnabled],
           );
 
           const isNew = upsertResult.rows.length > 0;
@@ -257,13 +274,40 @@ export function createNavRouter(pool: Pool): Router {
             [isNew ? 'success' : 'duplicate', scheme.scheme_code, rowId],
           );
 
-          // Auto-seed alias only for new bookmarks
+          // Seed two aliases per new bookmark (kewalinvest parity):
+          //   Alias 1: raw CSV name (source='csv_upload') — what the tenant calls this scheme
+          //   Alias 2: master scheme_name (source='auto')  — canonical name from ki_schemes
+          // Track alias result and write back to mapped_data so the import dashboard can display it.
           if (isNew) {
+            let aliasStatus: 'created' | 'exists' | 'failed' = 'exists';
+            const aliasLabel = mapped.scheme_name || scheme.scheme_name;
             try {
+              if (mapped.scheme_name) {
+                const ar = await pool.query(
+                  `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+                   VALUES ($1, $2, 'csv_upload')
+                   ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING
+                   RETURNING id`,
+                  [scheme.scheme_code, mapped.scheme_name],
+                );
+                aliasStatus = ar.rows.length > 0 ? 'created' : 'exists';
+              }
               await pool.query(
                 `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
-                 VALUES ($1, $2, 'auto') ON CONFLICT (alias_name_normalized) DO NOTHING`,
+                 VALUES ($1, $2, 'auto')
+                 ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING`,
                 [scheme.scheme_code, scheme.scheme_name],
+              );
+            } catch {
+              aliasStatus = 'failed';
+            }
+            // Write alias result back to staging row so the dashboard can display it
+            try {
+              await pool.query(
+                `UPDATE ki_import_staging
+                 SET mapped_data = mapped_data || $1::jsonb
+                 WHERE id = $2`,
+                [JSON.stringify({ _alias_name: aliasLabel, _alias_status: aliasStatus }), rowId],
               );
             } catch { /* non-fatal */ }
           }
@@ -823,7 +867,7 @@ export function createNavRouter(pool: Pool): Router {
           return r.rows.length > 0;
         },
         async () => {
-          const r = await pool.query('SELECT * FROM calculate_scheme_metrics($1)', [schemeCode]);
+          const r = await pool.query('SELECT * FROM calculate_scheme_metrics($1::text)', [schemeCode]);
           return r.rows[0];
         },
       );
@@ -1133,6 +1177,11 @@ export function createNavRouter(pool: Pool): Router {
       const jwt = extractJwt(req);
       if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
+      if (!jwt.is_admin) {
+        res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Admin privileges required to delete aliases' } });
+        return;
+      }
+
       const id = parseInt(req.params.id, 10);
       if (isNaN(id)) { res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid alias id' } }); return; }
 
@@ -1145,6 +1194,440 @@ export function createNavRouter(pool: Pool): Router {
       console.error('[NAV:alias-delete]', err);
       res.status(500).json({ error: { code: 'ALIAS_DELETE_FAILED', message: err.message } });
     }
+  });
+
+  /* ── Backfill: in-memory state per user ── */
+
+  interface BackfillState {
+    status: 'running' | 'completed' | 'cancelled' | 'error';
+    total: number;
+    current: number;
+    created: number;
+    skipped: number;
+    error?: string;
+    started_at: string;
+    completed_at?: string;
+  }
+  const backfillMap = new Map<string, BackfillState>();
+  const cancelSet  = new Set<string>();
+  // Purge completed/failed entries older than 1 hour to prevent unbounded growth
+  setInterval(() => {
+    const cutoff = Date.now() - 3600_000;
+    for (const [key, state] of backfillMap) {
+      if (state.status !== 'running' && state.completed_at && new Date(state.completed_at).getTime() < cutoff) {
+        backfillMap.delete(key);
+        cancelSet.delete(key);
+      }
+    }
+  }, 600_000); // check every 10 minutes
+
+  /* ── POST /aliases/backfill — Start async alias backfill ── */
+
+  router.post('/aliases/backfill', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const key = jwt.user_id;
+      if (backfillMap.get(key)?.status === 'running') {
+        res.status(409).json({ error: { code: 'ALREADY_RUNNING', message: 'Backfill already in progress' } });
+        return;
+      }
+
+      const state: BackfillState = { status: 'running', total: 0, current: 0, created: 0, skipped: 0, started_at: new Date().toISOString() };
+      backfillMap.set(key, state);
+      cancelSet.delete(key);
+
+      // Return immediately — process in background
+      res.status(202).json({ message: 'Backfill started', started_at: state.started_at });
+
+      // Background processing
+      (async () => {
+        try {
+          const BATCH = 100;
+
+          // Count total active schemes with a name
+          const countResult = await pool.query(
+            `SELECT COUNT(*)::integer AS n FROM ki_schemes WHERE scheme_name IS NOT NULL AND TRIM(scheme_name) != ''`,
+          );
+          state.total = (countResult.rows[0] as any).n;
+
+          let offset = 0;
+          while (true) {
+            if (cancelSet.has(key)) { state.status = 'cancelled'; state.completed_at = new Date().toISOString(); return; }
+
+            const batch = await pool.query(
+              `SELECT scheme_code, scheme_name, nav_name
+               FROM ki_schemes
+               WHERE scheme_name IS NOT NULL AND TRIM(scheme_name) != ''
+               ORDER BY scheme_code
+               LIMIT $1 OFFSET $2`,
+              [BATCH, offset],
+            );
+            if (batch.rows.length === 0) break;
+
+            for (const row of batch.rows as any[]) {
+              if (cancelSet.has(key)) { state.status = 'cancelled'; state.completed_at = new Date().toISOString(); return; }
+
+              try {
+                // Seed scheme_name
+                const r1 = await pool.query(
+                  `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+                   VALUES ($1, $2, 'auto')
+                   ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING
+                   RETURNING id`,
+                  [row.scheme_code, row.scheme_name],
+                );
+                if (r1.rows.length > 0) state.created++; else state.skipped++;
+
+                // Seed nav_name if different
+                if (row.nav_name && row.nav_name.trim()) {
+                  await pool.query(
+                    `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+                     SELECT $1, $2, 'auto'
+                     WHERE normalize_scheme_name($2) IS DISTINCT FROM normalize_scheme_name($3)
+                     ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING`,
+                    [row.scheme_code, row.nav_name, row.scheme_name],
+                  );
+                }
+              } catch { state.skipped++; }
+
+              state.current++;
+            }
+
+            offset += BATCH;
+          }
+
+          state.status = 'completed';
+          state.completed_at = new Date().toISOString();
+        } catch (err: any) {
+          state.status = 'error';
+          state.error = err.message;
+          state.completed_at = new Date().toISOString();
+          console.error('[NAV:backfill]', err);
+        }
+      })();
+
+    } catch (err: any) {
+      console.error('[NAV:backfill-start]', err);
+      res.status(500).json({ error: { code: 'BACKFILL_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── GET /aliases/backfill/progress — Poll backfill status ── */
+
+  router.get('/aliases/backfill/progress', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const state = backfillMap.get(jwt.user_id);
+      if (!state) { res.json({ status: 'idle' }); return; }
+
+      const pct = state.total > 0 ? Math.round((state.current / state.total) * 100) : 0;
+      res.json({ ...state, percent: pct });
+    } catch (err: any) {
+      res.status(500).json({ error: { code: 'FETCH_FAILED', message: err.message } });
+    }
+  });
+
+  /* ── POST /aliases/backfill/cancel — Cancel running backfill ── */
+
+  router.post('/aliases/backfill/cancel', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const state = backfillMap.get(jwt.user_id);
+      if (!state || state.status !== 'running') {
+        res.json({ message: 'No running backfill to cancel' }); return;
+      }
+      cancelSet.add(jwt.user_id);
+      res.json({ message: 'Cancel requested' });
+    } catch (err: any) {
+      res.status(500).json({ error: { code: 'CANCEL_FAILED', message: err.message } });
+    }
+  });
+
+  /* ════════════════════════════════════════════════════
+     GLOBAL BULK JOBS
+     Long-running ops (download all / redownload / metrics / recalc).
+     Returns job_id immediately (202), client polls GET /global/jobs/:id.
+     Runs scheme-by-scheme in background to avoid HTTP timeout.
+  ════════════════════════════════════════════════════ */
+
+  type GlobalJobType = 'download' | 'redownload' | 'metrics' | 'recalc';
+
+  interface GlobalJob {
+    id: string;
+    type: GlobalJobType;
+    status: 'running' | 'done' | 'failed';
+    total: number;
+    done: number;
+    failed: number;
+    current_scheme: string | null;
+    started_at: number;
+    ended_at?: number;
+    error?: string;
+  }
+
+  const globalJobMap = new Map<string, GlobalJob>();
+
+  // Purge completed jobs older than 2 hours
+  setInterval(() => {
+    const cutoff = Date.now() - 2 * 3600_000;
+    for (const [id, job] of globalJobMap) {
+      if (job.status !== 'running' && job.started_at < cutoff) globalJobMap.delete(id);
+    }
+  }, 600_000);
+
+  function makeJobId(type: GlobalJobType) {
+    return `${type}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  }
+
+  /* ── GET /global/jobs/:id — Poll job progress ── */
+
+  router.get('/global/jobs/:id', async (req, res) => {
+    const jwt = extractJwt(req);
+    if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+    const job = globalJobMap.get(req.params.id);
+    if (!job) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Job not found or expired' } }); return; }
+
+    const elapsed_ms = (job.ended_at || Date.now()) - job.started_at;
+    const pct = job.total > 0 ? Math.round((job.done / job.total) * 100) : 0;
+
+    res.json({
+      id: job.id,
+      type: job.type,
+      status: job.status,
+      total: job.total,
+      done: job.done,
+      failed: job.failed,
+      pct,
+      current_scheme: job.current_scheme,
+      elapsed_ms,
+      error: job.error,
+    });
+  });
+
+  /* ── POST /global/jobs/download — Download NAV for all active schemes ── */
+
+  router.post('/global/jobs/download', async (req, res) => {
+    const jwt = extractJwt(req);
+    if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+    const id = makeJobId('download');
+    const job: GlobalJob = { id, type: 'download', status: 'running', total: 0, done: 0, failed: 0, current_scheme: null, started_at: Date.now() };
+    globalJobMap.set(id, job);
+
+    res.status(202).json({ job_id: id, status: 'started' });
+
+    (async () => {
+      try {
+        // Only download schemes that have NO data (skip those already downloaded)
+        const schemes = await pool.query(
+          `SELECT s.scheme_code FROM ki_schemes s
+           WHERE s.active = true
+             AND NOT EXISTS (SELECT 1 FROM ki_nav_history h WHERE h.scheme_code = s.scheme_code LIMIT 1)
+           ORDER BY s.scheme_code`,
+        );
+        job.total = schemes.rows.length;
+
+        for (const row of schemes.rows as any[]) {
+          job.current_scheme = row.scheme_code;
+          try {
+            const records = await fetchMfapiHistory(row.scheme_code);
+            if (records.length > 0) {
+              const BATCH = 500;
+              for (let i = 0; i < records.length; i += BATCH) {
+                const batch = records.slice(i, i + BATCH);
+                const vals: any[] = [];
+                const ph: string[] = [];
+                batch.forEach((rec, idx) => {
+                  const o = idx * 3;
+                  ph.push(`($${o + 1}, $${o + 2}, $${o + 3})`);
+                  vals.push(rec.scheme_code, rec.nav_date, rec.nav);
+                });
+                await pool.query(
+                  `INSERT INTO ki_nav_history (scheme_code, nav_date, nav) VALUES ${ph.join(', ')}
+                   ON CONFLICT (scheme_code, nav_date) DO UPDATE SET nav = EXCLUDED.nav`,
+                  vals,
+                );
+              }
+            }
+            job.done++;
+          } catch { job.failed++; }
+        }
+
+        job.status = 'done';
+        job.ended_at = Date.now();
+        job.current_scheme = null;
+      } catch (err: any) {
+        job.status = 'failed';
+        job.error = err instanceof Error ? err.message : String(err);
+        job.ended_at = Date.now();
+        job.current_scheme = null;
+      }
+    })();
+  });
+
+  /* ── POST /global/jobs/redownload — Delete + redownload NAV for all schemes with data ── */
+
+  router.post('/global/jobs/redownload', async (req, res) => {
+    const jwt = extractJwt(req);
+    if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+    const id = makeJobId('redownload');
+    const job: GlobalJob = { id, type: 'redownload', status: 'running', total: 0, done: 0, failed: 0, current_scheme: null, started_at: Date.now() };
+    globalJobMap.set(id, job);
+
+    res.status(202).json({ job_id: id, status: 'started' });
+
+    (async () => {
+      try {
+        // Schemes that already have data — redownload only those
+        const schemes = await pool.query(
+          `SELECT DISTINCT scheme_code FROM ki_nav_history ORDER BY scheme_code`,
+        );
+        job.total = schemes.rows.length;
+
+        for (const row of schemes.rows as any[]) {
+          job.current_scheme = row.scheme_code;
+          try {
+            // Delete existing data
+            await pool.query('DELETE FROM ki_nav_history WHERE scheme_code = $1', [row.scheme_code]);
+
+            // Re-fetch full history
+            const records = await fetchMfapiHistory(row.scheme_code);
+            if (records.length > 0) {
+              const BATCH = 500;
+              for (let i = 0; i < records.length; i += BATCH) {
+                const batch = records.slice(i, i + BATCH);
+                const vals: any[] = [];
+                const ph: string[] = [];
+                batch.forEach((rec, idx) => {
+                  const o = idx * 3;
+                  ph.push(`($${o + 1}, $${o + 2}, $${o + 3})`);
+                  vals.push(rec.scheme_code, rec.nav_date, rec.nav);
+                });
+                await pool.query(
+                  `INSERT INTO ki_nav_history (scheme_code, nav_date, nav) VALUES ${ph.join(', ')}
+                   ON CONFLICT (scheme_code, nav_date) DO UPDATE SET nav = EXCLUDED.nav`,
+                  vals,
+                );
+              }
+            }
+            job.done++;
+          } catch { job.failed++; }
+        }
+
+        job.status = 'done';
+        job.ended_at = Date.now();
+        job.current_scheme = null;
+      } catch (err: any) {
+        job.status = 'failed';
+        job.error = err instanceof Error ? err.message : String(err);
+        job.ended_at = Date.now();
+        job.current_scheme = null;
+      }
+    })();
+  });
+
+  /* ── POST /global/jobs/metrics — Calculate metrics for all schemes with NAV data ── */
+
+  router.post('/global/jobs/metrics', async (req, res) => {
+    const jwt = extractJwt(req);
+    if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+    const id = makeJobId('metrics');
+    const job: GlobalJob = { id, type: 'metrics', status: 'running', total: 0, done: 0, failed: 0, current_scheme: null, started_at: Date.now() };
+    globalJobMap.set(id, job);
+
+    res.status(202).json({ job_id: id, status: 'started' });
+
+    (async () => {
+      try {
+        // Schemes with data but no/stale metrics
+        const schemes = await pool.query(
+          `SELECT DISTINCT scheme_code FROM ki_nav_history
+           WHERE metrics_calculated_at IS NULL
+              OR metrics_calculated_at < now() - interval '1 day'
+           ORDER BY scheme_code`,
+        );
+        job.total = schemes.rows.length;
+
+        for (const row of schemes.rows as any[]) {
+          job.current_scheme = row.scheme_code;
+          try {
+            await pool.query('SELECT * FROM calculate_scheme_metrics($1::text)', [row.scheme_code]);
+            job.done++;
+          } catch { job.failed++; }
+        }
+
+        job.status = 'done';
+        job.ended_at = Date.now();
+        job.current_scheme = null;
+      } catch (err: any) {
+        job.status = 'failed';
+        job.error = err instanceof Error ? err.message : String(err);
+        job.ended_at = Date.now();
+        job.current_scheme = null;
+      }
+    })();
+  });
+
+  /* ── POST /global/jobs/recalc — Clear metrics + recalculate all ── */
+
+  router.post('/global/jobs/recalc', async (req, res) => {
+    const jwt = extractJwt(req);
+    if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+    const id = makeJobId('recalc');
+    const job: GlobalJob = { id, type: 'recalc', status: 'running', total: 0, done: 0, failed: 0, current_scheme: null, started_at: Date.now() };
+    globalJobMap.set(id, job);
+
+    res.status(202).json({ job_id: id, status: 'started' });
+
+    (async () => {
+      try {
+        const schemes = await pool.query(
+          `SELECT DISTINCT scheme_code FROM ki_nav_history ORDER BY scheme_code`,
+        );
+        job.total = schemes.rows.length;
+
+        for (const row of schemes.rows as any[]) {
+          job.current_scheme = row.scheme_code;
+          try {
+            // Clear existing metrics
+            await pool.query(
+              `UPDATE ki_nav_history SET
+                 metrics_calculated_at = NULL,
+                 daily_return = NULL, return_1w = NULL, return_1m = NULL,
+                 return_3m = NULL, return_6m = NULL, return_1y = NULL,
+                 return_ytd = NULL, return_all = NULL,
+                 sd_7d = NULL, sd_14d = NULL, sd_21d = NULL,
+                 sd_42d = NULL, sd_3m = NULL, sd_6m = NULL,
+                 sharpe_ratio = NULL, max_drawdown = NULL, cagr = NULL
+               WHERE scheme_code = $1`,
+              [row.scheme_code],
+            );
+            // Recalculate
+            await pool.query('SELECT * FROM calculate_scheme_metrics($1::text)', [row.scheme_code]);
+            job.done++;
+          } catch { job.failed++; }
+        }
+
+        job.status = 'done';
+        job.ended_at = Date.now();
+        job.current_scheme = null;
+      } catch (err: any) {
+        job.status = 'failed';
+        job.error = err instanceof Error ? err.message : String(err);
+        job.ended_at = Date.now();
+        job.current_scheme = null;
+      }
+    })();
   });
 
   return router;

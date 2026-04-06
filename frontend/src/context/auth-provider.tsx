@@ -14,6 +14,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   isLive: boolean;
+  isAdmin: boolean;
   logout: () => void;
   switchEnv: (live: boolean) => Promise<void>;
 }
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const tenant = me?.tenant || null;
   const isAuthenticated = !!getAccessToken() && !!user;
   const isLive: boolean = tenant?.is_live !== false;
+  const isAdmin: boolean = tenant?.is_admin === true;
 
   // Sync theme from server (user.preferred_theme) → ThemeProvider
   // This ensures the theme matches what the user saved, even on first load
@@ -88,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, tenant, isAuthenticated, isLoading, isLive, logout, switchEnv }}>
+    <AuthContext.Provider value={{ user, tenant, isAuthenticated, isLoading, isLive, isAdmin, logout, switchEnv }}>
       {children}
     </AuthContext.Provider>
   );

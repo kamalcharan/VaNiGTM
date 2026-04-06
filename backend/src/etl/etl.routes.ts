@@ -503,7 +503,9 @@ export function createEtlRouter(pool: Pool): Router {
           const rowId = stagedRow.id;
 
           try {
+            // Resolution chain: scheme_code → ISIN → alias name (matches nav.routes.ts)
             let schemeCode = mapped.scheme_code;
+
             if (!schemeCode && mapped.isin) {
               const isinResult = await pool.query(
                 `SELECT scheme_code FROM ki_schemes WHERE isin_growth = $1 OR isin_dividend = $1 LIMIT 1`,
@@ -512,12 +514,20 @@ export function createEtlRouter(pool: Pool): Router {
               if (isinResult.rows.length > 0) schemeCode = (isinResult.rows[0] as any).scheme_code;
             }
 
+            if (!schemeCode && mapped.scheme_name) {
+              const aliasResult = await pool.query(
+                `SELECT scheme_code FROM lookup_scheme_by_alias($1)`,
+                [mapped.scheme_name],
+              );
+              if (aliasResult.rows.length > 0) schemeCode = (aliasResult.rows[0] as any).scheme_code;
+            }
+
             if (!schemeCode) {
               failed++;
               await pool.query(
                 `UPDATE ki_import_staging SET processing_status = 'failed',
                  error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
-                [JSON.stringify([`ISIN ${mapped.isin} not found`]), rowId],
+                [JSON.stringify([`Scheme not resolved — no match by scheme_code, ISIN (${mapped.isin || 'none'}), or alias (${mapped.scheme_name || 'none'})`]), rowId],
               );
               continue;
             }
@@ -538,14 +548,16 @@ export function createEtlRouter(pool: Pool): Router {
 
             const scheme = schemeResult.rows[0] as any;
             const isEnded = scheme.closure_date && new Date(scheme.closure_date) < new Date();
+            const csvAlias = mapped.scheme_name || scheme.scheme_name;
+
             const upsertResult = await pool.query(
               `INSERT INTO ki_scheme_bookmarks
-                 (tenant_id, user_id, scheme_code, scheme_name, amc, daily_download_enabled)
-               VALUES ($1, $2, $3, $4, $5, $6)
+                 (tenant_id, user_id, scheme_code, scheme_name, amc, alias_name, daily_download_enabled)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
                ON CONFLICT (tenant_id, scheme_code) DO UPDATE SET
                  daily_download_enabled = EXCLUDED.daily_download_enabled, updated_at = now()
                RETURNING (xmax = 0) AS is_new`,
-              [tenantId, userId, scheme.scheme_code, scheme.scheme_name, scheme.amc, scheme.active && !isEnded],
+              [tenantId, userId, scheme.scheme_code, scheme.scheme_name, scheme.amc, csvAlias, scheme.active && !isEnded],
             );
 
             const isNew = (upsertResult.rows[0] as any).is_new;
@@ -556,13 +568,39 @@ export function createEtlRouter(pool: Pool): Router {
               [isNew ? 'success' : 'duplicate', scheme.scheme_code, rowId],
             );
 
-            try {
-              await pool.query(
-                `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
-                 VALUES ($1, $2, 'auto') ON CONFLICT (alias_name_normalized) DO NOTHING`,
-                [scheme.scheme_code, scheme.scheme_name],
-              );
-            } catch { /* non-fatal */ }
+            // Seed two aliases + track status back to staged row
+            if (isNew) {
+              let aliasStatus: 'created' | 'exists' | 'failed' = 'exists';
+              const aliasLabel = mapped.scheme_name || scheme.scheme_name;
+              try {
+                if (mapped.scheme_name) {
+                  const ar = await pool.query(
+                    `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+                     VALUES ($1, $2, 'csv_upload')
+                     ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING
+                     RETURNING id`,
+                    [scheme.scheme_code, mapped.scheme_name],
+                  );
+                  aliasStatus = ar.rows.length > 0 ? 'created' : 'exists';
+                }
+                await pool.query(
+                  `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+                   VALUES ($1, $2, 'auto')
+                   ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING`,
+                  [scheme.scheme_code, scheme.scheme_name],
+                );
+              } catch {
+                aliasStatus = 'failed';
+              }
+              try {
+                await pool.query(
+                  `UPDATE ki_import_staging
+                   SET mapped_data = mapped_data || $1::jsonb
+                   WHERE id = $2`,
+                  [JSON.stringify({ _alias_name: aliasLabel, _alias_status: aliasStatus }), rowId],
+                );
+              } catch { /* non-fatal */ }
+            }
 
           } catch (err: any) {
             failed++;

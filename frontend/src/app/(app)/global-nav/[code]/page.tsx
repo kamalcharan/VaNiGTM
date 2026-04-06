@@ -25,7 +25,8 @@ interface SchemeDetail {
     daily_return: number | null; return_1w: number | null; return_1m: number | null;
     return_3m: number | null; return_6m: number | null; return_1y: number | null;
     return_ytd: number | null; return_all: number | null;
-    sd_7d: number | null; sd_21d: number | null; sd_42d: number | null;
+    sd_7d: number | null; sd_14d: number | null; sd_21d: number | null;
+    sd_42d: number | null; sd_3m: number | null; sd_6m: number | null;
     sharpe_ratio: number | null; max_drawdown: number | null; cagr: number | null;
     metrics_calculated_at: string | null; metrics_date: string | null;
   } | null;
@@ -276,54 +277,102 @@ export default function SchemeDashboardPage() {
           </div>
         </div>
 
-        {/* RIGHT: Risk Sidebar */}
+        {/* RIGHT: Full Metrics Sidebar — matches kewalinvest MetricsSidebar */}
         <div className={s.rightCol}>
-          {/* Risk & Performance */}
-          <div className={s.riskPanel}>
-            <div className={s.riskTitle}>Risk & Performance</div>
+          <div className={s.metricsPanel}>
+            {!metrics ? (
+              <div className={s.metricsPanelEmpty}>
+                No metrics yet — click &ldquo;Run RPC One-Pass&rdquo; to calculate
+              </div>
+            ) : (
+              <>
+                {/* ── RETURNS ── */}
+                <div className={s.metricSection}>
+                  <div className={s.metricSectionTitle}>Returns</div>
+                  {[
+                    { label: 'Daily',    v: metrics.daily_return },
+                    { label: '1 Week',   v: metrics.return_1w },
+                    { label: '1 Month',  v: metrics.return_1m },
+                    { label: '3 Months', v: metrics.return_3m },
+                    { label: '6 Months', v: metrics.return_6m },
+                    { label: '1 Year',   v: metrics.return_1y },
+                    { label: 'YTD',      v: metrics.return_ytd },
+                    { label: 'All-Time', v: metrics.return_all },
+                  ].map(({ label, v }) => (
+                    <div key={label} className={s.metricRow}>
+                      <span className={s.metricLabel}>{label}</span>
+                      <span className={`${s.metricValue} ${v == null ? s.metricMuted : v >= 0 ? s.metricPos : s.metricNeg}`}>
+                        {v == null ? '—' : fmtPct(v)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
 
-            {/* Sharpe */}
-            <div className={s.riskItem}>
-              <div className={s.riskItemHeader}>
-                <span className={s.riskItemLabel}>Sharpe Ratio</span>
-                <span className={s.riskItemTag} style={{ color: 'var(--color-success)' }}>
-                  {metrics?.sharpe_ratio != null && metrics.sharpe_ratio > 1 ? 'High Efficiency' : metrics?.sharpe_ratio != null ? 'Moderate' : ''}
-                </span>
-              </div>
-              <div className={s.riskItemBigValue}>
-                {metrics?.sharpe_ratio != null ? metrics.sharpe_ratio.toFixed(2) : '\u2014'}
-                <span className={s.riskItemSmall}>vs 1.10 Cat. Avg</span>
-              </div>
-            </div>
+                {/* ── VOLATILITY ── */}
+                <div className={s.metricSection}>
+                  <div className={s.metricSectionTitle}>Volatility (Std Dev)</div>
+                  {[
+                    { label: '7-Day',   v: metrics.sd_7d },
+                    { label: '21-Day',  v: metrics.sd_21d },
+                    { label: '42-Day',  v: metrics.sd_42d },
+                    { label: '3-Month', v: metrics.sd_3m },
+                    { label: '6-Month', v: metrics.sd_6m },
+                  ].map(({ label, v }) => (
+                    <div key={label} className={s.metricRow}>
+                      <span className={s.metricLabel}>{label}</span>
+                      <span className={`${s.metricValue} ${v == null ? s.metricMuted : ''}`}>
+                        {v == null ? '—' : `${Number(v).toFixed(2)}%`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
 
-            <div className={s.riskDivider} />
+                {/* ── KEY METRICS ── */}
+                <div className={s.metricSection}>
+                  <div className={s.metricSectionTitle}>Key Metrics</div>
 
-            {/* Max Drawdown */}
-            <div className={s.riskItem}>
-              <div className={s.riskItemHeader}>
-                <span className={s.riskItemLabel}>Max Drawdown</span>
-                <span className={s.riskItemTag} style={{ color: 'var(--color-danger)' }}>
-                  {metrics?.max_drawdown != null ? fmtPct(metrics.max_drawdown) : ''}
-                </span>
-              </div>
-              <div className={s.progressTrack}>
-                <div className={s.progressFill} style={{ width: `${Math.min(100, Math.abs(metrics?.max_drawdown ?? 0) * 3)}%` }} />
-              </div>
-            </div>
+                  {/* CAGR */}
+                  <div className={s.keyMetricRow}>
+                    <span className={s.keyMetricLabel}>CAGR</span>
+                    <span className={`${s.keyMetricValue} ${metrics.cagr == null ? s.metricMuted : metrics.cagr >= 0 ? s.metricPos : s.metricNeg}`}>
+                      {metrics.cagr == null ? '—' : fmtPct(metrics.cagr)}
+                    </span>
+                  </div>
 
-            <div className={s.riskDivider} />
+                  {/* Sharpe */}
+                  <div className={s.keyMetricRow}>
+                    <span className={s.keyMetricLabel}>
+                      Sharpe Ratio
+                      {metrics.sharpe_ratio != null && (
+                        <span style={{ marginLeft: 6, fontSize: '0.58rem', fontStyle: 'italic', color: metrics.sharpe_ratio > 1 ? 'var(--color-success)' : 'var(--color-muted)' }}>
+                          {metrics.sharpe_ratio > 2 ? 'Excellent' : metrics.sharpe_ratio > 1 ? 'Good' : metrics.sharpe_ratio > 0 ? 'Moderate' : 'Poor'}
+                        </span>
+                      )}
+                    </span>
+                    <span className={`${s.keyMetricValue} ${metrics.sharpe_ratio == null ? s.metricMuted : ''}`}>
+                      {metrics.sharpe_ratio == null ? '—' : metrics.sharpe_ratio.toFixed(2)}
+                    </span>
+                  </div>
 
-            {/* SD + CAGR grid */}
-            <div className={s.riskGrid}>
-              <div>
-                <div className={s.riskGridLabel}>Std Deviation</div>
-                <div className={s.riskGridValue}>{metrics?.sd_21d != null ? metrics.sd_21d.toFixed(2) : '\u2014'}</div>
-              </div>
-              <div>
-                <div className={s.riskGridLabel}>CAGR</div>
-                <div className={s.riskGridValue}>{metrics?.cagr != null ? fmtPct(metrics.cagr) : '\u2014'}</div>
-              </div>
-            </div>
+                  {/* Max Drawdown */}
+                  <div className={s.keyMetricRow}>
+                    <span className={s.keyMetricLabel}>Max Drawdown</span>
+                    <span className={`${s.keyMetricValue} ${metrics.max_drawdown == null ? s.metricMuted : s.metricNeg}`}>
+                      {metrics.max_drawdown == null ? '—' : fmtPct(metrics.max_drawdown)}
+                    </span>
+                  </div>
+                  {metrics.max_drawdown != null && (
+                    <div className={s.progressTrack}>
+                      <div className={s.progressFill} style={{ width: `${Math.min(100, Math.abs(metrics.max_drawdown) * 3)}%` }} />
+                    </div>
+                  )}
+                </div>
+
+                <div className={s.metricsTimestamp}>
+                  Calculated {metrics.metrics_date}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Data Audit Trail */}

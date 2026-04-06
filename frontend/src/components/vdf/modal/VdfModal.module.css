@@ -35,7 +35,14 @@
 
 /* ── Header ─────────────────────────────────────────── */
 .header {
-  padding: 24px 24px 0;
+  padding: 20px 20px 0;
+}
+
+.headerTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .title {
@@ -50,6 +57,27 @@
   color: var(--color-muted);
   margin: 0;
   line-height: 1.5;
+}
+
+.closeBtn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+  margin-top: -4px;
+}
+
+.closeBtn:hover {
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  color: var(--color-fg);
 }
 
 /* ── Body ───────────────────────────────────────────── */
