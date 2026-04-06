@@ -88,3 +88,51 @@
   border-radius: 8px;
   width: 100%;
 }
+
+/* ── OHLC / Candlestick tooltip ──────────────────────── */
+
+.ohlcTooltip {
+  position: absolute;
+  pointer-events: none;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--color-surface) 96%, transparent);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+  z-index: 10;
+  min-width: 140px;
+  animation: tooltipIn 80ms ease-out;
+}
+
+.ohlcDate {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+  font-family: var(--font-mono, monospace);
+}
+
+.ohlcRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 0.72rem;
+  font-family: var(--font-mono, monospace);
+  margin-bottom: 2px;
+}
+
+.ohlcLabel {
+  font-weight: 700;
+  color: var(--color-muted);
+  font-size: 0.65rem;
+}
+
+.ohlcHigh  { color: var(--color-success); font-weight: 600; }
+.ohlcLow   { color: var(--color-danger);  font-weight: 600; }
+.ohlcUp    { color: var(--color-success); font-weight: 700; }
+.ohlcDown  { color: var(--color-danger);  font-weight: 700; }
+.ohlcVol   { color: var(--color-muted);   font-size: 0.68rem; }

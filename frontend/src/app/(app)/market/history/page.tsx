@@ -461,7 +461,7 @@ export default function MarketHistoryPage() {
                 <div className={s.cardMeta}>
                   <span className={s.cardCode}>{idx.index_code}</span>
                   <span className={s.cardSymbol}>{idx.yahoo_symbol}</span>
-                  <VdfStatusBadge status={indexStatus(idx)} label={statusLabel(idx)} />
+                  <VdfStatusBadge variant={indexStatus(idx)} label={statusLabel(idx)} />
                 </div>
               </div>
 
