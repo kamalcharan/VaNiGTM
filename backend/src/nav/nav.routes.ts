@@ -662,6 +662,7 @@ export function createNavRouter(pool: Pool): Router {
                 SELECT nav_date, LEAD(nav_date) OVER (ORDER BY nav_date) AS next_date,
                        (LEAD(nav_date) OVER (ORDER BY nav_date) - nav_date) AS gap_days
                 FROM ki_nav_history WHERE scheme_code = $1
+                  AND nav_date >= CURRENT_DATE - INTERVAL '45 days'
               ) pairs
               WHERE gap_days > 3
               ORDER BY nav_date DESC LIMIT 20
@@ -727,6 +728,7 @@ export function createNavRouter(pool: Pool): Router {
                    LEAD(nav_date) OVER (ORDER BY nav_date) AS next_date,
                    (LEAD(nav_date) OVER (ORDER BY nav_date) - nav_date) AS gap_days
             FROM ki_nav_history WHERE scheme_code = $1
+              AND nav_date >= CURRENT_DATE - INTERVAL '45 days'
          )
          SELECT nav_date::text AS from_date, next_date::text AS to_date, gap_days::integer
          FROM nav_pairs WHERE gap_days > 3 ORDER BY nav_date`,
@@ -916,6 +918,7 @@ export function createNavRouter(pool: Pool): Router {
               SELECT nav_date, LEAD(nav_date) OVER (ORDER BY nav_date) AS next_date,
                      (LEAD(nav_date) OVER (ORDER BY nav_date) - nav_date) AS gap_days
               FROM ki_nav_history WHERE scheme_code = $1
+                AND nav_date >= CURRENT_DATE - INTERVAL '45 days'
            )
            SELECT nav_date::text AS from_date, next_date::text AS to_date
            FROM pairs WHERE gap_days > 3`,
@@ -1364,6 +1367,7 @@ export function createNavRouter(pool: Pool): Router {
     status: 'running' | 'done' | 'failed';
     total: number;
     done: number;
+    skipped: number;   // MFAPI returned 0 records (scheme not in MFAPI)
     failed: number;
     current_scheme: string | null;
     started_at: number;
@@ -1395,7 +1399,8 @@ export function createNavRouter(pool: Pool): Router {
     if (!job) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Job not found or expired' } }); return; }
 
     const elapsed_ms = (job.ended_at || Date.now()) - job.started_at;
-    const pct = job.total > 0 ? Math.round((job.done / job.total) * 100) : 0;
+    const processed = job.done + job.skipped + job.failed;
+    const pct = job.total > 0 ? Math.round((processed / job.total) * 100) : 0;
 
     res.json({
       id: job.id,
@@ -1403,6 +1408,7 @@ export function createNavRouter(pool: Pool): Router {
       status: job.status,
       total: job.total,
       done: job.done,
+      skipped: job.skipped,
       failed: job.failed,
       pct,
       current_scheme: job.current_scheme,
@@ -1418,7 +1424,7 @@ export function createNavRouter(pool: Pool): Router {
     if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
     const id = makeJobId('download');
-    const job: GlobalJob = { id, type: 'download', status: 'running', total: 0, done: 0, failed: 0, current_scheme: null, started_at: Date.now() };
+    const job: GlobalJob = { id, type: 'download', status: 'running', total: 0, done: 0, skipped: 0, failed: 0, current_scheme: null, started_at: Date.now() };
     globalJobMap.set(id, job);
 
     res.status(202).json({ job_id: id, status: 'started' });
@@ -1455,8 +1461,11 @@ export function createNavRouter(pool: Pool): Router {
                   vals,
                 );
               }
+              job.done++;
+            } else {
+              // MFAPI has no history for this scheme (not all AMFI schemes are in MFAPI)
+              job.skipped++;
             }
-            job.done++;
           } catch { job.failed++; }
         }
 
@@ -1479,7 +1488,7 @@ export function createNavRouter(pool: Pool): Router {
     if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
     const id = makeJobId('redownload');
-    const job: GlobalJob = { id, type: 'redownload', status: 'running', total: 0, done: 0, failed: 0, current_scheme: null, started_at: Date.now() };
+    const job: GlobalJob = { id, type: 'redownload', status: 'running', total: 0, done: 0, skipped: 0, failed: 0, current_scheme: null, started_at: Date.now() };
     globalJobMap.set(id, job);
 
     res.status(202).json({ job_id: id, status: 'started' });
@@ -1517,8 +1526,10 @@ export function createNavRouter(pool: Pool): Router {
                   vals,
                 );
               }
+              job.done++;
+            } else {
+              job.skipped++;
             }
-            job.done++;
           } catch { job.failed++; }
         }
 
@@ -1541,7 +1552,7 @@ export function createNavRouter(pool: Pool): Router {
     if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
     const id = makeJobId('metrics');
-    const job: GlobalJob = { id, type: 'metrics', status: 'running', total: 0, done: 0, failed: 0, current_scheme: null, started_at: Date.now() };
+    const job: GlobalJob = { id, type: 'metrics', status: 'running', total: 0, done: 0, skipped: 0, failed: 0, current_scheme: null, started_at: Date.now() };
     globalJobMap.set(id, job);
 
     res.status(202).json({ job_id: id, status: 'started' });
@@ -1584,7 +1595,7 @@ export function createNavRouter(pool: Pool): Router {
     if (!jwt) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
     const id = makeJobId('recalc');
-    const job: GlobalJob = { id, type: 'recalc', status: 'running', total: 0, done: 0, failed: 0, current_scheme: null, started_at: Date.now() };
+    const job: GlobalJob = { id, type: 'recalc', status: 'running', total: 0, done: 0, skipped: 0, failed: 0, current_scheme: null, started_at: Date.now() };
     globalJobMap.set(id, job);
 
     res.status(202).json({ job_id: id, status: 'started' });

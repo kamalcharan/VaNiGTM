@@ -65,6 +65,11 @@ type Tab = 'my-schemes' | 'discover';
 
 /* ── Helpers ────────────────────────────────────────── */
 
+function fmtDate(d?: string | null): string {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 function computeStatus(b: TrackingBookmark): TrackingStatus {
   if (b.nav_records === 0) return 'no_data';
   if ((b.nav_age_days ?? 0) > 7) return 'stale';
@@ -771,7 +776,7 @@ export default function MyNavPage() {
                         {sc.nav
                           ? <span style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700, color: 'var(--color-primary)' }}>₹{Number(sc.nav).toFixed(4)}</span>
                           : <span>No NAV data</span>}
-                        {sc.nav_date && <><span style={{ opacity: 0.4 }}>·</span><span>{sc.nav_date}</span></>}
+                        {sc.nav_date && <><span style={{ opacity: 0.4 }}>·</span><span>{fmtDate(sc.nav_date)}</span></>}
                       </div>
                     </div>
 

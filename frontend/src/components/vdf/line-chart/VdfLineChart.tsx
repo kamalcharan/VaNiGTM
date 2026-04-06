@@ -1,7 +1,9 @@
 'use client';
 
-import { useMemo, useState, useRef, useCallback } from 'react';
+import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import s from './VdfLineChart.module.css';
+
+export type ChartType = 'line' | 'area' | 'bar';
 
 export interface VdfLineChartProps {
   /** Array of { date, value } sorted ascending by date */
@@ -14,9 +16,27 @@ export interface VdfLineChartProps {
   formatValue?: (v: number) => string;
   /** CSS class for the container */
   className?: string;
+  /** Override line color (default: auto — green if up, red if down) */
+  color?: string;
+  /** ID for the container div (used for PNG export targeting) */
+  containerId?: string;
+  /**
+   * When provided, renders an area-baseline chart (line/area modes):
+   * fill is green above this value, red below.
+   * Typical usage: baseline={0} in returns (%) mode.
+   * In bar mode: used as the zero reference line.
+   */
+  baseline?: number;
+  /**
+   * Chart rendering type:
+   * - 'line': line with subtle gradient fill (default)
+   * - 'area': line with prominent gradient fill
+   * - 'bar': vertical bars, green ≥ baseline, red < baseline
+   */
+  chartType?: ChartType;
 }
 
-const PADDING = { top: 12, right: 12, bottom: 24, left: 56 };
+const PAD = { top: 16, right: 20, bottom: 28, left: 70 };
 
 export function VdfLineChart({
   data,
@@ -24,167 +44,355 @@ export function VdfLineChart({
   showTooltip = true,
   formatValue = (v) => `\u20B9${v.toFixed(2)}`,
   className,
+  color,
+  containerId,
+  baseline,
+  chartType = 'line',
 }: VdfLineChartProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const dragStateRef = useRef<{ startX: number; window: [number, number] } | null>(null);
+  const zoomWindowRef = useRef<[number, number] | null>(null);
+
+  const [containerWidth, setContainerWidth] = useState(800);
+  const [zoomWindow, setZoomWindow] = useState<[number, number] | null>(null);
   const [hover, setHover] = useState<{ x: number; y: number; date: string; value: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Compute chart dimensions and scales
-  const chart = useMemo(() => {
-    if (data.length < 2) return null;
+  // Keep ref in sync for wheel handler (avoids stale closure)
+  zoomWindowRef.current = zoomWindow;
 
-    const values = data.map((d) => d.value);
-    const minVal = Math.min(...values);
-    const maxVal = Math.max(...values);
+  // Container width via ResizeObserver
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setContainerWidth(el.clientWidth || 800);
+    const ro = new ResizeObserver(entries => setContainerWidth(entries[0].contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Reset zoom when data changes (period/mode switch)
+  useEffect(() => { setZoomWindow(null); }, [data]);
+
+  // Wheel zoom — non-passive to prevent page scroll
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || data.length < 2) return;
+    const chartW = containerWidth - PAD.left - PAD.right;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left - PAD.left) / chartW));
+
+      const cur = zoomWindowRef.current;
+      const ws = cur ? cur[0] : 0;
+      const we = cur ? cur[1] : data.length - 1;
+      const range = we - ws;
+
+      const factor = e.deltaY > 0 ? 1.25 : 0.8;
+      let newRange = Math.max(10, Math.min(data.length - 1, Math.round(range * factor)));
+
+      let newStart = Math.round(ws + ratio * range - ratio * newRange);
+      let newEnd = newStart + newRange;
+      if (newStart < 0) { newStart = 0; newEnd = Math.min(data.length - 1, newRange); }
+      if (newEnd > data.length - 1) { newEnd = data.length - 1; newStart = Math.max(0, newEnd - newRange); }
+
+      const next: [number, number] | null =
+        newStart === 0 && newEnd === data.length - 1 ? null : [newStart, newEnd];
+      zoomWindowRef.current = next;
+      setZoomWindow(next);
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [data, containerWidth]);
+
+  // ── Derived dimensions ───────────────────────────────────────
+  const chartW = Math.max(1, containerWidth - PAD.left - PAD.right);
+  const chartH = Math.max(1, height - PAD.top - PAD.bottom);
+
+  const visibleData = useMemo(() => {
+    if (!zoomWindow) return data;
+    return data.slice(zoomWindow[0], zoomWindow[1] + 1);
+  }, [data, zoomWindow]);
+
+  const chartScale = useMemo(() => {
+    if (visibleData.length < 2) return null;
+    const vals = visibleData.map(d => d.value);
+    let minVal = Math.min(...vals);
+    let maxVal = Math.max(...vals);
+    // Include baseline in Y range if provided
+    if (baseline !== undefined) { minVal = Math.min(minVal, baseline); maxVal = Math.max(maxVal, baseline); }
     const range = maxVal - minVal || 1;
-    const padding = range * 0.05;
+    const pad = range * 0.06;
+    return { yMin: minVal - pad, yRange: (maxVal - minVal + 2 * pad) || 1 };
+  }, [visibleData, baseline]);
 
-    const yMin = minVal - padding;
-    const yMax = maxVal + padding;
-    const yRange = yMax - yMin;
+  const xOf = useCallback((i: number) =>
+    visibleData.length <= 1 ? PAD.left : PAD.left + (i / (visibleData.length - 1)) * chartW,
+  [visibleData.length, chartW]);
 
-    return { yMin, yMax, yRange };
-  }, [data]);
+  const yOf = useCallback((v: number) =>
+    chartScale ? PAD.top + chartH - ((v - chartScale.yMin) / chartScale.yRange) * chartH : PAD.top,
+  [chartScale, chartH]);
 
-  // Build SVG path
-  const pathD = useMemo(() => {
-    if (!chart || data.length < 2) return '';
+  // SVG paths
+  const { pathD, fillD, baselineFillD } = useMemo(() => {
+    if (!chartScale || visibleData.length < 2) return { pathD: '', fillD: '', baselineFillD: '' };
+    const pts = visibleData
+      .map((d, i) => `${i === 0 ? 'M' : 'L'}${xOf(i).toFixed(1)},${yOf(d.value).toFixed(1)}`)
+      .join(' ');
+    const lastX = xOf(visibleData.length - 1).toFixed(1);
+    const bottomY = (PAD.top + chartH).toFixed(1);
+    const bY = baseline !== undefined ? yOf(baseline).toFixed(1) : bottomY;
+    return {
+      pathD: pts,
+      fillD: `${pts} L${lastX},${bottomY} L${PAD.left.toFixed(1)},${bottomY} Z`,
+      baselineFillD: `${pts} L${lastX},${bY} L${PAD.left.toFixed(1)},${bY} Z`,
+    };
+  }, [visibleData, chartScale, xOf, yOf, chartH, baseline]);
 
-    const w = 100; // viewBox width percentage
-    const h = height - PADDING.top - PADDING.bottom;
-    const xStep = w / (data.length - 1);
-
-    return data.map((d, i) => {
-      const x = i * xStep;
-      const y = h - ((d.value - chart.yMin) / chart.yRange) * h;
-      return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`;
-    }).join(' ');
-  }, [data, chart, height]);
-
-  // Gradient fill path (same line + close to bottom)
-  const fillD = useMemo(() => {
-    if (!pathD || data.length < 2) return '';
-    const w = 100;
-    const h = height - PADDING.top - PADDING.bottom;
-    return `${pathD} L${w},${h} L0,${h} Z`;
-  }, [pathD, data, height]);
+  // Baseline Y position
+  const baselineY = baseline !== undefined && chartScale ? yOf(baseline) : null;
 
   // Y-axis labels
   const yLabels = useMemo(() => {
-    if (!chart) return [];
-    const steps = 4;
-    const labels: { value: number; y: number }[] = [];
-    const h = height - PADDING.top - PADDING.bottom;
-    for (let i = 0; i <= steps; i++) {
-      const value = chart.yMin + (chart.yRange * i) / steps;
-      const y = h - (i / steps) * h;
-      labels.push({ value, y });
-    }
-    return labels;
-  }, [chart, height]);
+    if (!chartScale) return [];
+    return Array.from({ length: 5 }, (_, i) => {
+      const v = chartScale.yMin + (chartScale.yRange * i) / 4;
+      return { v, y: yOf(v) };
+    });
+  }, [chartScale, yOf]);
 
-  // Handle mouse move for tooltip
+  // X-axis labels
+  const xLabels = useMemo(() => {
+    if (visibleData.length < 2) return [];
+    const N = visibleData.length - 1;
+    const indices = [...new Set([0, Math.round(N * 0.25), Math.round(N * 0.5), Math.round(N * 0.75), N])];
+    return indices.map(i => ({ x: xOf(i), label: visibleData[i].date.slice(5, 10) }));
+  }, [visibleData, xOf]);
+
+  // Bar chart geometry (density-adaptive width, matching kewalinvest)
+  const barWidth = useMemo(() => {
+    if (chartType !== 'bar' || visibleData.length === 0) return 0;
+    const slotW = chartW / visibleData.length;
+    const ratio = visibleData.length > 100 ? 0.55 : visibleData.length > 50 ? 0.65 : 0.75;
+    return Math.max(1, slotW * ratio);
+  }, [chartType, visibleData.length, chartW]);
+
+  // Colors
+  const isPositive = visibleData.length >= 2 && visibleData[visibleData.length - 1].value >= visibleData[0].value;
+  // With baseline or bar: line is neutral primary (fill/bars show green/red). Without: line auto-colors.
+  const lineColor = color || (baseline !== undefined || chartType === 'bar'
+    ? 'var(--color-primary)'
+    : isPositive ? 'var(--color-success)' : 'var(--color-danger)');
+
+  // Unique IDs per instance
+  const uid = containerId || 'default';
+  const gradId      = `navFill_${uid}`;
+  const greenGradId = `greenFill_${uid}`;
+  const redGradId   = `redFill_${uid}`;
+  const clipId      = `navClip_${uid}`;
+  const clipAboveId = `clipAbove_${uid}`;
+  const clipBelowId = `clipBelow_${uid}`;
+
+  // ── Mouse handlers ────────────────────────────────────────────
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    const cur = zoomWindowRef.current;
+    dragStateRef.current = { startX: e.clientX, window: [cur ? cur[0] : 0, cur ? cur[1] : data.length - 1] };
+  }, [data.length]);
+
   const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
-    if (!svgRef.current || !chart || data.length < 2) return;
+    const ds = dragStateRef.current;
+    if (ds) {
+      const dx = e.clientX - ds.startX;
+      if (Math.abs(dx) > 4 && !isDragging) setIsDragging(true);
+      if (Math.abs(dx) <= 4) return;
+      setHover(null);
+      const [ws, we] = ds.window;
+      const range = we - ws;
+      const delta = Math.round(-(dx * range) / chartW);
+      let ns = Math.max(0, Math.min(data.length - 1 - range, ws + delta));
+      const ne = ns + range;
+      const next: [number, number] | null = ns === 0 && ne === data.length - 1 ? null : [ns, ne];
+      zoomWindowRef.current = next;
+      setZoomWindow(next);
+    } else {
+      if (!containerRef.current || !chartScale || visibleData.length < 2) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const mx = e.clientX - rect.left - PAD.left;
+      if (mx < 0 || mx > chartW) { setHover(null); return; }
+      const idx = Math.max(0, Math.min(visibleData.length - 1, Math.round((mx / chartW) * (visibleData.length - 1))));
+      const d = visibleData[idx];
+      setHover({ x: xOf(idx), y: yOf(d.value), date: d.date, value: d.value });
+    }
+  }, [data.length, isDragging, chartW, chartScale, visibleData, xOf, yOf]);
 
-    const rect = svgRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left - PADDING.left;
-    const chartWidth = rect.width - PADDING.left - PADDING.right;
-
-    if (mouseX < 0 || mouseX > chartWidth) { setHover(null); return; }
-
-    const ratio = mouseX / chartWidth;
-    const idx = Math.round(ratio * (data.length - 1));
-    const d = data[Math.max(0, Math.min(idx, data.length - 1))];
-
-    const h = height - PADDING.top - PADDING.bottom;
-    const x = (idx / (data.length - 1)) * chartWidth + PADDING.left;
-    const y = PADDING.top + h - ((d.value - chart.yMin) / chart.yRange) * h;
-
-    setHover({ x, y, date: d.date, value: d.value });
-  }, [data, chart, height]);
-
-  // Change color based on trend
-  const isPositive = data.length >= 2 && data[data.length - 1].value >= data[0].value;
+  const handleMouseUp    = useCallback(() => { dragStateRef.current = null; setIsDragging(false); }, []);
+  const handleMouseLeave = useCallback(() => { setHover(null); dragStateRef.current = null; setIsDragging(false); }, []);
+  const handleDoubleClick = useCallback(() => { setZoomWindow(null); zoomWindowRef.current = null; }, []);
 
   if (data.length < 2) {
-    return <div className={`${s.empty} ${className || ''}`}>Not enough data for chart</div>;
+    return <div className={`${s.empty} ${className || ''}`} style={{ height }}>Not enough data</div>;
   }
 
-  const chartH = height - PADDING.top - PADDING.bottom;
-  const viewBox = `0 0 100 ${chartH}`;
-
   return (
-    <div className={`${s.container} ${className || ''}`} style={{ height }}>
+    <div
+      ref={containerRef}
+      id={containerId}
+      className={`${s.container} ${className || ''}`}
+      style={{ height }}
+    >
       <svg
         ref={svgRef}
         className={s.svg}
-        viewBox={`0 0 ${100 + PADDING.left + PADDING.right} ${height}`}
-        preserveAspectRatio="none"
-        onMouseMove={showTooltip ? handleMouseMove : undefined}
-        onMouseLeave={() => setHover(null)}
+        width={containerWidth}
+        height={height}
+        viewBox={`0 0 ${containerWidth} ${height}`}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onDoubleClick={handleDoubleClick}
+        style={{ cursor: isDragging ? 'grabbing' : 'crosshair', display: 'block' }}
       >
-        {/* Y-axis labels */}
+        <defs>
+          {/* Single-color gradient — area mode uses higher opacity */}
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={lineColor} stopOpacity={chartType === 'area' ? '0.48' : '0.22'} />
+            <stop offset="100%" stopColor={lineColor} stopOpacity={chartType === 'area' ? '0.06' : '0.02'} />
+          </linearGradient>
+
+          {/* Baseline dual-color gradients */}
+          {baselineY !== null && <>
+            <linearGradient id={greenGradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--color-success)" stopOpacity="0.26" />
+              <stop offset="100%" stopColor="var(--color-success)" stopOpacity="0.03" />
+            </linearGradient>
+            <linearGradient id={redGradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--color-danger)" stopOpacity="0.04" />
+              <stop offset="100%" stopColor="var(--color-danger)" stopOpacity="0.26" />
+            </linearGradient>
+            {/* Above baseline clip (positive) — y < baselineY in SVG coords */}
+            <clipPath id={clipAboveId}>
+              <rect x={PAD.left} y={PAD.top} width={chartW} height={Math.max(0, (baselineY ?? 0) - PAD.top)} />
+            </clipPath>
+            {/* Below baseline clip (negative) */}
+            <clipPath id={clipBelowId}>
+              <rect
+                x={PAD.left}
+                y={(baselineY ?? 0)}
+                width={chartW}
+                height={Math.max(0, PAD.top + chartH - (baselineY ?? 0))}
+              />
+            </clipPath>
+          </>}
+
+          {/* Chart area clip (prevents overflow into padding) */}
+          <clipPath id={clipId}>
+            <rect x={PAD.left} y={PAD.top - 4} width={chartW} height={chartH + 8} />
+          </clipPath>
+        </defs>
+
+        {/* Y-axis grid + labels */}
         {yLabels.map((l, i) => (
           <g key={i}>
-            <line
-              x1={PADDING.left} y1={PADDING.top + l.y}
-              x2={PADDING.left + 100} y2={PADDING.top + l.y}
-              className={s.gridLine}
-            />
-            <text
-              x={PADDING.left - 6} y={PADDING.top + l.y + 1}
-              className={s.yLabel}
-              textAnchor="end"
-              dominantBaseline="middle"
-            >
-              {l.value >= 1000 ? `${(l.value / 1000).toFixed(0)}K` : l.value.toFixed(1)}
+            <line x1={PAD.left} y1={l.y} x2={PAD.left + chartW} y2={l.y} className={s.gridLine} />
+            <text x={PAD.left - 8} y={l.y} fontSize="10" textAnchor="end" dominantBaseline="middle" className={s.yLabel}>
+              {baseline !== undefined
+                ? `${l.v >= 0 ? '+' : ''}${l.v.toFixed(1)}%`
+                : l.v >= 1000 ? `${(l.v / 1000).toFixed(1)}K` : l.v.toFixed(2)}
             </text>
           </g>
         ))}
 
-        {/* Chart area */}
-        <g transform={`translate(${PADDING.left}, ${PADDING.top})`}>
-          {/* Gradient fill */}
-          <defs>
-            <linearGradient id="navFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={isPositive ? 'var(--color-success)' : 'var(--color-danger)'} stopOpacity="0.2" />
-              <stop offset="100%" stopColor={isPositive ? 'var(--color-success)' : 'var(--color-danger)'} stopOpacity="0.02" />
-            </linearGradient>
-          </defs>
-          <path d={fillD} fill="url(#navFill)" />
-          <path
-            d={pathD}
-            fill="none"
-            stroke={isPositive ? 'var(--color-success)' : 'var(--color-danger)'}
-            strokeWidth="1.5"
+        {/* X-axis labels */}
+        {xLabels.map((l, i) => (
+          <text key={i} x={l.x} y={height - 6} fontSize="9" textAnchor="middle" className={s.xLabel}>
+            {l.label}
+          </text>
+        ))}
+
+        {/* ── Chart area ── */}
+        {chartType === 'bar' ? (
+          /* ── Bar chart ─────────────────────────────────────── */
+          <g clipPath={`url(#${clipId})`}>
+            {visibleData.map((d, i) => {
+              const refY = baselineY ?? PAD.top + chartH;
+              const dY   = yOf(d.value);
+              const isPos = baseline !== undefined ? d.value >= baseline : d.value >= 0;
+              const barY  = isPos ? dY : refY;
+              const barH  = Math.max(1, Math.abs(dY - refY));
+              return (
+                <rect
+                  key={i}
+                  x={xOf(i) - barWidth / 2}
+                  y={barY}
+                  width={barWidth}
+                  height={barH}
+                  fill={isPos ? 'var(--color-success)' : 'var(--color-danger)'}
+                  opacity={hover?.date === d.date ? '0.92' : '0.68'}
+                />
+              );
+            })}
+          </g>
+        ) : (
+          /* ── Line / Area chart ─────────────────────────────── */
+          <g clipPath={`url(#${clipId})`}>
+            {baselineY !== null ? (
+              /* Dual-color baseline fill */
+              <>
+                <g clipPath={`url(#${clipAboveId})`}>
+                  <path d={baselineFillD} fill={`url(#${greenGradId})`} />
+                </g>
+                <g clipPath={`url(#${clipBelowId})`}>
+                  <path d={baselineFillD} fill={`url(#${redGradId})`} />
+                </g>
+              </>
+            ) : (
+              <path d={fillD} fill={`url(#${gradId})`} />
+            )}
+            <path d={pathD} fill="none" stroke={lineColor} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+          </g>
+        )}
+
+        {/* Baseline / zero reference line */}
+        {baselineY !== null && (
+          <line
+            x1={PAD.left} y1={baselineY}
+            x2={PAD.left + chartW} y2={baselineY}
+            stroke="var(--color-muted)" strokeWidth="1"
+            strokeDasharray="4 4" opacity="0.45"
             vectorEffect="non-scaling-stroke"
           />
-        </g>
+        )}
 
-        {/* X-axis labels (first, middle, last) */}
-        {data.length > 2 && [0, Math.floor(data.length / 2), data.length - 1].map((idx) => {
-          const x = PADDING.left + (idx / (data.length - 1)) * 100;
-          return (
-            <text key={idx} x={x} y={height - 4} className={s.xLabel} textAnchor="middle">
-              {data[idx].date.slice(5)} {/* MM-DD */}
-            </text>
-          );
-        })}
+        {/* Zoom hint */}
+        {zoomWindow && (
+          <text x={PAD.left + chartW - 4} y={PAD.top + 10} fontSize="9" textAnchor="end" className={s.zoomHint}>
+            zoomed · dbl-click to reset
+          </text>
+        )}
 
-        {/* Hover indicator */}
+        {/* Hover crosshair */}
         {hover && (
           <>
-            <line x1={hover.x} y1={PADDING.top} x2={hover.x} y2={height - PADDING.bottom} className={s.hoverLine} />
-            <circle cx={hover.x} cy={hover.y} r="3" className={s.hoverDot} />
+            <line x1={hover.x} y1={PAD.top} x2={hover.x} y2={PAD.top + chartH} className={s.hoverLine} />
+            {chartType !== 'bar' && (
+              <circle cx={hover.x} cy={hover.y} r="3.5" className={s.hoverDot} style={{ fill: lineColor }} />
+            )}
           </>
         )}
       </svg>
 
       {/* Tooltip */}
-      {hover && showTooltip && (
-        <div className={s.tooltip} style={{ left: hover.x, top: hover.y - 36 }}>
+      {hover && showTooltip && !isDragging && (
+        <div className={s.tooltip} style={{ left: hover.x, top: Math.max(8, hover.y - 44) }}>
           <div className={s.tooltipValue}>{formatValue(hover.value)}</div>
-          <div className={s.tooltipDate}>{hover.date}</div>
+          <div className={s.tooltipDate}>{hover.date.slice(0, 10)}</div>
         </div>
       )}
     </div>

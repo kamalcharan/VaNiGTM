@@ -1,52 +1,51 @@
-/* VdfLineChart — lightweight SVG line chart */
+/* VdfLineChart — interactive SVG line chart with zoom/pan */
 
 .container {
   position: relative;
   width: 100%;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
   overflow: hidden;
+  /* No border/background — container provides its own surface */
 }
 
 .svg {
-  width: 100%;
-  height: 100%;
   display: block;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .gridLine {
   stroke: var(--color-border);
   stroke-width: 0.5;
-  stroke-dasharray: 3 3;
-  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 3 4;
+  opacity: 0.5;
 }
 
 .yLabel {
-  font-size: 3px;
   fill: var(--color-muted);
   font-family: var(--font-mono, monospace);
 }
 
 .xLabel {
-  font-size: 3px;
   fill: var(--color-muted);
   font-family: var(--font-mono, monospace);
+}
+
+.zoomHint {
+  fill: var(--color-muted);
+  font-family: var(--font-mono, monospace);
+  opacity: 0.6;
 }
 
 .hoverLine {
   stroke: var(--color-muted);
   stroke-width: 1;
-  stroke-dasharray: 2 2;
-  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 2 3;
   opacity: 0.5;
 }
 
 .hoverDot {
-  fill: var(--color-primary);
-  stroke: var(--color-surface);
-  stroke-width: 1.5;
-  vector-effect: non-scaling-stroke;
+  stroke: var(--color-surface, #fff);
+  stroke-width: 2;
 }
 
 /* ── Tooltip ─────────────────────────────────────────── */
@@ -54,17 +53,17 @@
   position: absolute;
   transform: translateX(-50%);
   pointer-events: none;
-  padding: 4px 10px;
+  padding: 5px 10px;
   background: var(--color-fg);
   border-radius: 6px;
   white-space: nowrap;
   z-index: 10;
-  animation: tooltipIn 100ms ease-out;
+  animation: tooltipIn 80ms ease-out;
 }
 
 @keyframes tooltipIn {
   from { opacity: 0; transform: translateX(-50%) translateY(4px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 .tooltipValue {
@@ -76,7 +75,7 @@
 
 .tooltipDate {
   font-size: 0.58rem;
-  color: var(--color-muted);
+  color: color-mix(in srgb, var(--color-bg) 60%, transparent);
 }
 
 .empty {
@@ -87,4 +86,5 @@
   font-size: 0.75rem;
   border: 1px dashed var(--color-border);
   border-radius: 8px;
+  width: 100%;
 }
