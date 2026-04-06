@@ -10,7 +10,6 @@ import { createNavRouter } from './nav/nav.routes';
 import { createMarketRouter } from './market/market.routes';
 import { createMarketAnalysisRouter } from './market/market-analysis.routes';
 import { createMasterDataRouter } from './master-data/master-data.routes';
-import { runMigrations } from './migrate';
 import { verifyAccessToken } from './auth/token.service';
 
 const app = express();
@@ -53,14 +52,6 @@ async function main() {
   } catch (err) {
     console.error('[ProKey] Database connection failed:', err instanceof Error ? err.message : err);
     console.error('[ProKey] Continuing without DB — skill calls will fail.');
-  }
-
-  // Run pending migrations on every boot
-  try {
-    await runMigrations(pool);
-  } catch (err) {
-    console.error('[ProKey] Migration failed:', err instanceof Error ? err.message : err);
-    console.error('[ProKey] Continuing — server will start but some features may be unavailable.');
   }
 
   // Mount auth + onboarding + tenant routes
