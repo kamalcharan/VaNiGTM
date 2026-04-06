@@ -58,7 +58,21 @@
   letter-spacing: 0.04em;
 }
 
-/* ── Navigation ─────────────────────────────────────── */
+/* ── Scrollable nav wrapper — flex:1, all sections scroll together ── */
+.navScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.navScroll::-webkit-scrollbar { width: 3px; }
+.navScroll::-webkit-scrollbar-track { background: transparent; }
+.navScroll::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+
+/* ── Navigation sections ─────────────────────────────── */
 .nav {
   display: flex;
   flex-direction: column;
@@ -70,7 +84,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 0 8px;
+  padding: 0 8px 8px;
 }
 
 .sectionLabel {
@@ -144,8 +158,8 @@
   flex-shrink: 0;
 }
 
-/* ── Spacer ─────────────────────────────────────────── */
-.spacer { flex: 1; }
+/* ── Spacer (removed — navScroll handles flex growth) ── */
+.spacer { display: none; }
 
 /* ── Env Pill (logo area) ───────────────────────────── */
 .envPill {

@@ -108,72 +108,72 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
           )}
         </div>
 
-        {/* Main nav items */}
-        <nav className={s.nav}>
-          {mainItems.map((item) => {
-            const active = currentId === item.id;
-            return (
-              <button
-                key={item.id}
-                className={`${s.navItem} ${active ? s.navItemActive : ''}`}
-                onClick={() => navigate(item)}
-                title={expanded ? undefined : item.label}
-                aria-label={item.label}
-              >
-                {active && <div className={s.activeBar} />}
-                <span className={s.navIcon}>{item.icon}</span>
-                {expanded && <span className={s.navLabel}>{item.label}</span>}
-              </button>
-            );
-          })}
-        </nav>
+        {/* Scrollable nav area — all three sections scroll together */}
+        <div className={s.navScroll}>
+          {/* Main nav items */}
+          <nav className={s.nav}>
+            {mainItems.map((item) => {
+              const active = currentId === item.id;
+              return (
+                <button
+                  key={item.id}
+                  className={`${s.navItem} ${active ? s.navItemActive : ''}`}
+                  onClick={() => navigate(item)}
+                  title={expanded ? undefined : item.label}
+                  aria-label={item.label}
+                >
+                  {active && <div className={s.activeBar} />}
+                  <span className={s.navIcon}>{item.icon}</span>
+                  {expanded && <span className={s.navLabel}>{item.label}</span>}
+                </button>
+              );
+            })}
+          </nav>
 
-        {/* Data & Operations */}
-        <div className={s.separator} />
-        {expanded && <div className={s.sectionLabel}>Data</div>}
-        <div className={s.sectionNav}>
-          {dataItems.map((item) => {
-            const active = currentId === item.id;
-            return (
-              <button
-                key={item.id}
-                className={`${s.navItem} ${active ? s.navItemActive : ''}`}
-                onClick={() => navigate(item)}
-                title={expanded ? undefined : item.label}
-                aria-label={item.label}
-              >
-                {active && <div className={s.activeBar} />}
-                <span className={s.navIcon}>{item.icon}</span>
-                {expanded && <span className={s.navLabel}>{item.label}</span>}
-              </button>
-            );
-          })}
+          {/* Data & Operations */}
+          <div className={s.separator} />
+          {expanded && <div className={s.sectionLabel}>Data</div>}
+          <div className={s.sectionNav}>
+            {dataItems.map((item) => {
+              const active = currentId === item.id;
+              return (
+                <button
+                  key={item.id}
+                  className={`${s.navItem} ${active ? s.navItemActive : ''}`}
+                  onClick={() => navigate(item)}
+                  title={expanded ? undefined : item.label}
+                  aria-label={item.label}
+                >
+                  {active && <div className={s.activeBar} />}
+                  <span className={s.navIcon}>{item.icon}</span>
+                  {expanded && <span className={s.navLabel}>{item.label}</span>}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* System */}
+          <div className={s.separator} />
+          {expanded && <div className={s.sectionLabel}>System</div>}
+          <div className={s.sectionNav}>
+            {systemItems.map((item) => {
+              const active = currentId === item.id;
+              return (
+                <button
+                  key={item.id}
+                  className={`${s.navItem} ${active ? s.navItemActive : ''}`}
+                  onClick={() => navigate(item)}
+                  title={expanded ? undefined : item.label}
+                  aria-label={item.label}
+                >
+                  {active && <div className={s.activeBar} />}
+                  <span className={s.navIcon}>{item.icon}</span>
+                  {expanded && <span className={s.navLabel}>{item.label}</span>}
+                </button>
+              );
+            })}
+          </div>
         </div>
-
-        {/* System */}
-        <div className={s.separator} />
-        {expanded && <div className={s.sectionLabel}>System</div>}
-        <div className={s.sectionNav}>
-          {systemItems.map((item) => {
-            const active = currentId === item.id;
-            return (
-              <button
-                key={item.id}
-                className={`${s.navItem} ${active ? s.navItemActive : ''}`}
-                onClick={() => navigate(item)}
-                title={expanded ? undefined : item.label}
-                aria-label={item.label}
-              >
-                {active && <div className={s.activeBar} />}
-                <span className={s.navIcon}>{item.icon}</span>
-                {expanded && <span className={s.navLabel}>{item.label}</span>}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Spacer */}
-        <div className={s.spacer} />
 
         {/* Environment badge — collapsed: colored dot; expanded: text label */}
         <button
