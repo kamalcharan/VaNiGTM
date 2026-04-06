@@ -114,14 +114,19 @@ function periodToQueryParams(period: Period, earliestDate: string | null): Recor
 
 /* ── Formatters ─────────────────────────────────────────── */
 
-function fmtNum(v: number | null, decimals = 2): string {
+// PG returns NUMERIC columns as strings — always coerce with Number()
+function fmtNum(v: number | string | null, decimals = 2): string {
   if (v == null) return '—';
-  return v.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  const n = Number(v);
+  if (isNaN(n)) return '—';
+  return n.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
-function fmtPct(v: number | null): string {
+function fmtPct(v: number | string | null): string {
   if (v == null) return '—';
-  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+  const n = Number(v);
+  if (isNaN(n)) return '—';
+  return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
 }
 
 function fmtDate(s: string | null): string {
@@ -129,9 +134,9 @@ function fmtDate(s: string | null): string {
   return new Date(s).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function returnClass(v: number | null): string {
+function returnClass(v: number | string | null): string {
   if (v == null) return '';
-  return v >= 0 ? s.positive : s.negative;
+  return Number(v) >= 0 ? s.positive : s.negative;
 }
 
 /* ── VaNi: rule-based insights from calculated metrics ─── */

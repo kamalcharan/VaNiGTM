@@ -66,14 +66,19 @@ function heatColor(v: number | null): { bg: string; fg: string; border: string }
 
 /* ── Formatters ─────────────────────────────────────────── */
 
-function fmtPct(v: number | null | undefined): string {
+// PG returns NUMERIC as strings — coerce with Number()
+function fmtPct(v: number | string | null | undefined): string {
   if (v == null) return '—';
-  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+  const n = Number(v);
+  if (isNaN(n)) return '—';
+  return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
 }
 
-function fmtVol(v: number | null | undefined): string {
+function fmtVol(v: number | string | null | undefined): string {
   if (v == null) return '—';
-  return `${(v * 100).toFixed(2)}%`;
+  const n = Number(v);
+  if (isNaN(n)) return '—';
+  return `${(n * 100).toFixed(2)}%`;
 }
 
 function truncate(str: string, max: number): string {
