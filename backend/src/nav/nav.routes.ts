@@ -662,6 +662,7 @@ export function createNavRouter(pool: Pool): Router {
                 SELECT nav_date, LEAD(nav_date) OVER (ORDER BY nav_date) AS next_date,
                        (LEAD(nav_date) OVER (ORDER BY nav_date) - nav_date) AS gap_days
                 FROM ki_nav_history WHERE scheme_code = $1
+                  AND nav_date >= CURRENT_DATE - INTERVAL '45 days'
               ) pairs
               WHERE gap_days > 3
               ORDER BY nav_date DESC LIMIT 20
@@ -727,6 +728,7 @@ export function createNavRouter(pool: Pool): Router {
                    LEAD(nav_date) OVER (ORDER BY nav_date) AS next_date,
                    (LEAD(nav_date) OVER (ORDER BY nav_date) - nav_date) AS gap_days
             FROM ki_nav_history WHERE scheme_code = $1
+              AND nav_date >= CURRENT_DATE - INTERVAL '45 days'
          )
          SELECT nav_date::text AS from_date, next_date::text AS to_date, gap_days::integer
          FROM nav_pairs WHERE gap_days > 3 ORDER BY nav_date`,
@@ -916,6 +918,7 @@ export function createNavRouter(pool: Pool): Router {
               SELECT nav_date, LEAD(nav_date) OVER (ORDER BY nav_date) AS next_date,
                      (LEAD(nav_date) OVER (ORDER BY nav_date) - nav_date) AS gap_days
               FROM ki_nav_history WHERE scheme_code = $1
+                AND nav_date >= CURRENT_DATE - INTERVAL '45 days'
            )
            SELECT nav_date::text AS from_date, next_date::text AS to_date
            FROM pairs WHERE gap_days > 3`,

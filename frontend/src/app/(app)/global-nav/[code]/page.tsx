@@ -126,6 +126,7 @@ export default function SchemeDashboardPage() {
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
   const [exportingPng, setExportingPng] = useState(false);
+  const [showGapDetail, setShowGapDetail] = useState(false);
 
   const fetchDetail = useCallback(async () => {
     setFetchError(false);
@@ -407,17 +408,41 @@ export default function SchemeDashboardPage() {
               <span className={s.alertIcon} style={{ color: 'var(--color-warning)' }}>◆</span>
               <span className={s.alertText}>No NAV history — download from MFAPI to begin tracking</span>
               <button className={s.alertAction} onClick={() => handleDownload('all')} disabled={!!downloading}>
-                {downloading === 'all' ? 'Downloading…' : 'Download Full History'}
+                <span className={s.alertActionInner}>
+                  {downloading === 'all' && <span className={s.btnSpinner} />}
+                  {downloading === 'all' ? 'Downloading…' : 'Download Full History'}
+                </span>
               </button>
             </div>
           )}
           {gaps.length > 0 && (
-            <div className={s.alertItem}>
-              <span className={s.alertIcon} style={{ color: 'var(--color-warning)' }}>◆</span>
-              <span className={s.alertText}>{gaps.length} date gap{gaps.length !== 1 ? 's' : ''} detected in NAV history</span>
-              <button className={s.alertAction} onClick={handleRepairGaps} disabled={!!downloading}>
-                {downloading === 'gap' ? 'Repairing…' : `Repair ${gaps.length} Gap${gaps.length !== 1 ? 's' : ''}`}
-              </button>
+            <div>
+              <div className={s.alertItem}>
+                <span className={s.alertIcon} style={{ color: 'var(--color-warning)' }}>◆</span>
+                <span className={s.alertText}>
+                  {gaps.length} date gap{gaps.length !== 1 ? 's' : ''} detected in last 45 days
+                  {' '}
+                  <button className={s.alertToggleGaps} onClick={() => setShowGapDetail(v => !v)}>
+                    {showGapDetail ? 'hide' : 'show details'}
+                  </button>
+                </span>
+                <button className={s.alertAction} onClick={handleRepairGaps} disabled={!!downloading}>
+                  <span className={s.alertActionInner}>
+                    {downloading === 'gap' && <span className={s.btnSpinner} />}
+                    {downloading === 'gap' ? 'Repairing…' : `Repair ${gaps.length} Gap${gaps.length !== 1 ? 's' : ''}`}
+                  </span>
+                </button>
+              </div>
+              {showGapDetail && (
+                <div className={s.gapDetail}>
+                  {gaps.map((g, i) => (
+                    <div key={i} className={s.gapDetailItem}>
+                      <span className={s.gapDaysBadge}>{g.gap_days}d gap</span>
+                      <span>{fmtDate(g.gap_after)} → {fmtDate(g.gap_before)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           {!metrics && nav.total_records > 0 && (
@@ -425,7 +450,10 @@ export default function SchemeDashboardPage() {
               <span className={s.alertIcon} style={{ color: 'var(--color-info)' }}>◆</span>
               <span className={s.alertText}>Performance metrics not yet calculated</span>
               <button className={s.alertAction} onClick={handleCalculate} disabled={calculating}>
-                {calculating ? 'Calculating…' : 'Calculate Metrics'}
+                <span className={s.alertActionInner}>
+                  {calculating && <span className={s.btnSpinner} />}
+                  {calculating ? 'Calculating…' : 'Calculate Metrics'}
+                </span>
               </button>
             </div>
           )}
@@ -734,13 +762,16 @@ export default function SchemeDashboardPage() {
                 <div className={s.actionCardTitle}>NAV History</div>
                 <div className={s.actionCardBtns}>
                   <button className={`${s.actionBtnFull} ${s.actionBtnPrimary}`} onClick={() => handleDownload('all')} disabled={!!downloading}>
-                    {downloading === 'all' ? 'Downloading…' : 'Download Full History'}
+                    <span className={s.alertActionInner}>
+                      {downloading === 'all' && <span className={s.btnSpinner} />}
+                      {downloading === 'all' ? 'Downloading…' : 'Download Full History'}
+                    </span>
                   </button>
                   <div className={s.quickBtns}>
                     <span className={s.quickLabel}>Quick</span>
                     {(['1y', '6m', '3m'] as const).map(r => (
                       <button key={r} className={s.quickBtn} onClick={() => handleDownload(r)} disabled={!!downloading}>
-                        {downloading === r ? '…' : r.toUpperCase()}
+                        {downloading === r ? <span className={s.btnSpinner} style={{ borderTopColor: 'var(--color-fg)' }} /> : r.toUpperCase()}
                       </button>
                     ))}
                   </div>
@@ -750,7 +781,7 @@ export default function SchemeDashboardPage() {
                       <span className={s.dateSep}>→</span>
                       <input type="date" className={s.dateInput} value={customTo} onChange={e => setCustomTo(e.target.value)} />
                       <button className={s.quickBtn} onClick={() => handleDownload('custom')} disabled={!!downloading || !customFrom}>
-                        {downloading === 'custom' ? '…' : 'Go'}
+                        {downloading === 'custom' ? <span className={s.btnSpinner} style={{ borderTopColor: 'var(--color-fg)' }} /> : 'Go'}
                       </button>
                     </div>
                   ) : (
@@ -760,7 +791,10 @@ export default function SchemeDashboardPage() {
                   )}
                   {gaps.length > 0 ? (
                     <button className={`${s.actionBtnFull} ${s.actionBtnWarn}`} onClick={handleRepairGaps} disabled={!!downloading}>
-                      {downloading === 'gap' ? 'Repairing…' : `Repair ${gaps.length} Gap${gaps.length !== 1 ? 's' : ''}`}
+                      <span className={s.alertActionInner}>
+                        {downloading === 'gap' && <span className={s.btnSpinner} style={{ borderTopColor: '#000' }} />}
+                        {downloading === 'gap' ? 'Repairing…' : `Repair ${gaps.length} Gap${gaps.length !== 1 ? 's' : ''}`}
+                      </span>
                     </button>
                   ) : nav.total_records > 0 ? (
                     <div className={s.noGaps}>No gaps detected</div>
@@ -776,7 +810,10 @@ export default function SchemeDashboardPage() {
                     onClick={handleCalculate}
                     disabled={calculating || nav.total_records === 0}
                   >
-                    {calculating ? 'Calculating…' : metrics ? 'Recalculate Metrics' : 'Calculate Metrics'}
+                    <span className={s.alertActionInner}>
+                      {calculating && <span className={s.btnSpinner} />}
+                      {calculating ? 'Calculating…' : metrics ? 'Recalculate Metrics' : 'Calculate Metrics'}
+                    </span>
                   </button>
                   {nav.total_records === 0 && <div className={s.actionHint}>Download NAV history first</div>}
                 </div>

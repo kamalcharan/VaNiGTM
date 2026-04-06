@@ -89,6 +89,42 @@
 .alertAction:hover    { opacity: 0.85; }
 .alertAction:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* inline spinner for buttons */
+.btnSpinner {
+  display: inline-block; width: 10px; height: 10px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.alertActionInner { display: flex; align-items: center; gap: 6px; }
+
+/* Gap detail list */
+.gapDetail {
+  margin-top: 6px; padding: 0 0 0 26px;
+}
+.gapDetailItem {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 0; border-top: 1px solid color-mix(in srgb, var(--color-warning) 15%, transparent);
+  font-size: 0.68rem; color: var(--color-muted);
+}
+.gapDetailItem:first-child { border-top: none; }
+.gapDaysBadge {
+  padding: 1px 7px; border-radius: 4px; font-size: 0.6rem; font-weight: 700;
+  background: color-mix(in srgb, var(--color-warning) 15%, transparent);
+  color: var(--color-warning); white-space: nowrap; flex-shrink: 0;
+}
+
+.alertToggleGaps {
+  background: none; border: none; cursor: pointer;
+  color: var(--color-muted); font-size: 0.68rem; text-decoration: underline;
+  padding: 0; white-space: nowrap;
+}
+.alertToggleGaps:hover { color: var(--color-fg); }
+
 /* ── 2-Column grid ────────────────────────────────────────── */
 
 .columns {
