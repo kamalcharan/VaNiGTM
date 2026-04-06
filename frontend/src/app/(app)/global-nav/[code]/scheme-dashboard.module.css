@@ -199,6 +199,13 @@
   color: var(--color-primary-fg, #fff); font-size: 0.7rem; font-weight: 700; cursor: pointer;
 }
 
+/* Custom date range row (below toolbar when period=custom) */
+.chartCustomRow {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 4px 4px; flex-wrap: wrap;
+  font-size: 0.72rem;
+}
+
 /* Stats strip */
 .statsStrip {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;

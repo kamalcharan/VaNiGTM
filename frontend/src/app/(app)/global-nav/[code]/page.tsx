@@ -35,15 +35,16 @@ interface SchemeDetail {
 
 interface NavHistoryData { data: { date: string; nav: number }[]; }
 
-type Period = '1m' | '6m' | '1y' | '3y' | '5y' | 'max';
+type Period = '1w' | '1m' | '6m' | 'ytd' | '1y' | '3y' | '5y' | 'max' | 'custom';
 type Granularity = 'daily' | 'weekly' | 'monthly';
 type ViewMode = 'chart' | 'table';
+type DataMode = 'price' | 'returns';
 
 const PERIOD_DAYS: Record<Period, number | null> = {
-  '1m': 30, '6m': 180, '1y': 365, '3y': 1095, '5y': 1825, 'max': null,
+  '1w': 7, '1m': 30, '6m': 180, 'ytd': null, '1y': 365, '3y': 1095, '5y': 1825, 'max': null, 'custom': null,
 };
 const PERIOD_LABELS: Record<Period, string> = {
-  '1m': '1M', '6m': '6M', '1y': '1Y', '3y': '3Y', '5y': '5Y', 'max': 'Max',
+  '1w': '1W', '1m': '1M', '6m': '6M', 'ytd': 'YTD', '1y': '1Y', '3y': '3Y', '5y': '5Y', 'max': 'Max', 'custom': 'Custom',
 };
 
 const CHART_COLOR_PRESETS = [
@@ -98,6 +99,9 @@ export default function SchemeDashboardPage() {
   const [period, setPeriod] = useState<Period>('1y');
   const [granularity, setGranularity] = useState<Granularity>('daily');
   const [viewMode, setViewMode] = useState<ViewMode>('chart');
+  const [dataMode, setDataMode] = useState<DataMode>('price');
+  const [chartCustomFrom, setChartCustomFrom] = useState('');
+  const [chartCustomTo, setChartCustomTo] = useState('');
   const [chartColor, setChartColor] = useState(''); // '' = auto
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [pendingColor, setPendingColor] = useState('');
@@ -132,25 +136,41 @@ export default function SchemeDashboardPage() {
   useEffect(() => { fetchDetail(); }, [fetchDetail]);
 
   // ── Period → API date range ──────────────────────────
-  const dateFrom = useMemo(() => {
+  const { dateFrom, dateTo } = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    if (period === 'ytd') {
+      return { dateFrom: `${new Date().getFullYear()}-01-01`, dateTo: today };
+    }
+    if (period === 'custom') {
+      return { dateFrom: chartCustomFrom || '2000-01-01', dateTo: chartCustomTo || today };
+    }
     const days = PERIOD_DAYS[period];
-    return days === null ? '2000-01-01' : new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
-  }, [period]);
+    return { dateFrom: days === null ? '2000-01-01' : new Date(Date.now() - days * 86400000).toISOString().split('T')[0], dateTo: today };
+  }, [period, chartCustomFrom, chartCustomTo]);
 
   const { data: navHistory } = useSkillQuery<NavHistoryData>(
     'market-skill', 'get_nav_history',
-    { scheme_code: code, from_date: dateFrom, to_date: new Date().toISOString().split('T')[0] },
-    { enabled: !!code },
+    { scheme_code: code, from_date: dateFrom, to_date: dateTo },
+    { enabled: !!code && (period !== 'custom' || !!chartCustomFrom) },
   );
   const rawNavData = navHistory?.data?.data || [];
 
   // ── Client-side aggregation ───────────────────────────
   const displayData = useMemo(() => aggregateData(rawNavData, granularity), [rawNavData, granularity]);
 
+  // ── Returns mode: transform NAV → % return from period start ─
+  const chartData = useMemo(() => {
+    if (dataMode === 'price' || displayData.length < 2) return displayData;
+    const first = displayData[0].nav;
+    if (first === 0) return displayData;
+    return displayData.map(p => ({ date: p.date, nav: ((p.nav - first) / first) * 100 }));
+  }, [displayData, dataMode]);
+
   // ── Period stats strip ────────────────────────────────
   const periodStats = useMemo(() => {
-    if (displayData.length < 2) return null;
-    const navs = displayData.map(p => p.nav);
+    const src = chartData;
+    if (src.length < 2) return null;
+    const navs = src.map(p => p.nav);
     const current = navs[navs.length - 1];
     const first = navs[0];
     const min = Math.min(...navs);
@@ -158,13 +178,13 @@ export default function SchemeDashboardPage() {
     const change = current - first;
     const changePct = first > 0 ? (change / first) * 100 : 0;
     return { current, min, max, change, changePct };
-  }, [displayData]);
+  }, [chartData]);
 
   // ── Table (newest first, inside chart panel) ──────────
   const tableData = useMemo(() => [...rawNavData].reverse(), [rawNavData]);
   const totalTablePages = Math.ceil(tableData.length / PAGE_SIZE);
   const pagedData = tableData.slice((tablePage - 1) * PAGE_SIZE, tablePage * PAGE_SIZE);
-  useEffect(() => { setTablePage(1); }, [period, viewMode]);
+  useEffect(() => { setTablePage(1); }, [period, viewMode, dataMode]);
 
   // ── Close color picker on outside click ───────────────
   useEffect(() => {
@@ -416,11 +436,11 @@ export default function SchemeDashboardPage() {
           {/* CHART PANEL */}
           <div className={s.chartPanel}>
 
-            {/* Toolbar row 1: periods + granularity + view toggle + tools */}
+            {/* Toolbar: periods + granularity + data mode + view toggle + tools */}
             <div className={s.toolbar}>
               {/* Period pills */}
               <div className={s.periodToggle}>
-                {(['1m', '6m', '1y', '3y', '5y', 'max'] as Period[]).map(p => (
+                {(['1w', '1m', '6m', 'ytd', '1y', '3y', '5y', 'max', 'custom'] as Period[]).map(p => (
                   <button
                     key={p}
                     className={`${s.periodBtn} ${period === p ? s.periodBtnActive : ''}`}
@@ -439,6 +459,12 @@ export default function SchemeDashboardPage() {
                       {g[0].toUpperCase() + g.slice(1, g === 'daily' ? 1 : g === 'weekly' ? 2 : 2)}
                     </button>
                   ))}
+                </div>
+
+                {/* Price / Returns toggle */}
+                <div className={s.segmentGroup}>
+                  <button className={`${s.segBtn} ${dataMode === 'price' ? s.segBtnActive : ''}`} onClick={() => setDataMode('price')} title="Show NAV price">₹</button>
+                  <button className={`${s.segBtn} ${dataMode === 'returns' ? s.segBtnActive : ''}`} onClick={() => setDataMode('returns')} title="Show % return from period start">%</button>
                 </div>
 
                 {/* Graph / Table toggle */}
@@ -488,12 +514,12 @@ export default function SchemeDashboardPage() {
                 <button className={s.toolBtn} onClick={handleExportCSV} disabled={rawNavData.length === 0} title="Export CSV">
                   CSV
                 </button>
-                <button className={s.toolBtn} onClick={handleExportPNG} disabled={displayData.length < 2 || viewMode !== 'chart' || exportingPng} title="Save chart as PNG">
+                <button className={s.toolBtn} onClick={handleExportPNG} disabled={chartData.length < 2 || viewMode !== 'chart' || exportingPng} title="Save chart as PNG">
                   {exportingPng ? '…' : 'PNG'}
                 </button>
 
                 {/* Fullscreen */}
-                <button className={s.toolBtn} onClick={() => setIsFullscreen(true)} disabled={displayData.length < 2 || viewMode !== 'chart'} title="Full page view">
+                <button className={s.toolBtn} onClick={() => setIsFullscreen(true)} disabled={chartData.length < 2 || viewMode !== 'chart'} title="Full page view">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
                     <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
                   </svg>
@@ -501,42 +527,77 @@ export default function SchemeDashboardPage() {
               </div>
             </div>
 
+            {/* Custom date row */}
+            {period === 'custom' && (
+              <div className={s.chartCustomRow}>
+                <span className={s.statLabel}>From</span>
+                <input type="date" className={s.dateInput} value={chartCustomFrom} onChange={e => setChartCustomFrom(e.target.value)} />
+                <span className={s.dateSep}>→</span>
+                <input type="date" className={s.dateInput} value={chartCustomTo} onChange={e => setChartCustomTo(e.target.value)} />
+                {!chartCustomFrom && <span className={s.actionHint} style={{ marginLeft: 4 }}>Enter a start date to load data</span>}
+              </div>
+            )}
+
             {/* Stats strip */}
             {periodStats && (
               <div className={s.statsStrip}>
-                <span className={s.statItem}>
-                  <span className={s.statLabel}>Current</span>
-                  <span className={s.statVal}>{fmtNav(periodStats.current)}</span>
-                </span>
-                <span className={s.statSep}>·</span>
-                <span className={s.statItem}>
-                  <span className={s.statLabel}>Min</span>
-                  <span className={s.statVal}>{fmtNav(periodStats.min)}</span>
-                </span>
-                <span className={s.statSep}>·</span>
-                <span className={s.statItem}>
-                  <span className={s.statLabel}>Max</span>
-                  <span className={s.statVal}>{fmtNav(periodStats.max)}</span>
-                </span>
-                <span className={s.statSep}>·</span>
-                <span className={s.statItem}>
-                  <span className={s.statLabel}>Change</span>
-                  <span className={`${s.statVal} ${periodStats.change >= 0 ? s.statUp : s.statDown}`}>
-                    {fmtChange(periodStats.change)} ({fmtPct(periodStats.changePct)})
+                {dataMode === 'returns' ? <>
+                  <span className={s.statItem}>
+                    <span className={s.statLabel}>Return</span>
+                    <span className={`${s.statVal} ${periodStats.current >= 0 ? s.statUp : s.statDown}`}>
+                      {fmtPct(periodStats.current)}
+                    </span>
                   </span>
-                </span>
+                  <span className={s.statSep}>·</span>
+                  <span className={s.statItem}>
+                    <span className={s.statLabel}>Min</span>
+                    <span className={`${s.statVal} ${periodStats.min >= 0 ? s.statUp : s.statDown}`}>
+                      {fmtPct(periodStats.min)}
+                    </span>
+                  </span>
+                  <span className={s.statSep}>·</span>
+                  <span className={s.statItem}>
+                    <span className={s.statLabel}>Peak</span>
+                    <span className={`${s.statVal} ${periodStats.max >= 0 ? s.statUp : s.statDown}`}>
+                      {fmtPct(periodStats.max)}
+                    </span>
+                  </span>
+                </> : <>
+                  <span className={s.statItem}>
+                    <span className={s.statLabel}>Current</span>
+                    <span className={s.statVal}>{fmtNav(periodStats.current)}</span>
+                  </span>
+                  <span className={s.statSep}>·</span>
+                  <span className={s.statItem}>
+                    <span className={s.statLabel}>Min</span>
+                    <span className={s.statVal}>{fmtNav(periodStats.min)}</span>
+                  </span>
+                  <span className={s.statSep}>·</span>
+                  <span className={s.statItem}>
+                    <span className={s.statLabel}>Max</span>
+                    <span className={s.statVal}>{fmtNav(periodStats.max)}</span>
+                  </span>
+                  <span className={s.statSep}>·</span>
+                  <span className={s.statItem}>
+                    <span className={s.statLabel}>Change</span>
+                    <span className={`${s.statVal} ${periodStats.change >= 0 ? s.statUp : s.statDown}`}>
+                      {fmtChange(periodStats.change)} ({fmtPct(periodStats.changePct)})
+                    </span>
+                  </span>
+                </>}
               </div>
             )}
 
             {/* Chart or Table */}
             {viewMode === 'chart' ? (
-              displayData.length >= 2 ? (
+              chartData.length >= 2 ? (
                 <VdfLineChart
-                  data={displayData.map(p => ({ date: p.date, value: p.nav }))}
+                  data={chartData.map(p => ({ date: p.date, value: p.nav }))}
                   height={340}
                   color={chartColor || undefined}
                   containerId="nav-chart-container"
-                  formatValue={v => fmtNav(v)}
+                  formatValue={dataMode === 'returns' ? v => fmtPct(v) : v => fmtNav(v)}
+                  baseline={dataMode === 'returns' ? 0 : undefined}
                 />
               ) : (
                 <div className={s.chartEmpty}>
@@ -870,6 +931,11 @@ export default function SchemeDashboardPage() {
                   </button>
                 ))}
               </div>
+              {/* Price / Returns */}
+              <div className={s.segmentGroup}>
+                <button className={`${s.segBtn} ${dataMode === 'price' ? s.segBtnActive : ''}`} onClick={() => setDataMode('price')}>₹</button>
+                <button className={`${s.segBtn} ${dataMode === 'returns' ? s.segBtnActive : ''}`} onClick={() => setDataMode('returns')}>%</button>
+              </div>
               <button className={s.toolBtn} onClick={handleExportPNG} disabled={exportingPng}>
                 {exportingPng ? '…' : 'PNG'}
               </button>
@@ -883,27 +949,31 @@ export default function SchemeDashboardPage() {
           </div>
           {periodStats && (
             <div className={s.statsStrip} style={{ margin: '0 0 12px' }}>
-              <span className={s.statItem}><span className={s.statLabel}>Current</span><span className={s.statVal}>{fmtNav(periodStats.current)}</span></span>
-              <span className={s.statSep}>·</span>
-              <span className={s.statItem}><span className={s.statLabel}>Min</span><span className={s.statVal}>{fmtNav(periodStats.min)}</span></span>
-              <span className={s.statSep}>·</span>
-              <span className={s.statItem}><span className={s.statLabel}>Max</span><span className={s.statVal}>{fmtNav(periodStats.max)}</span></span>
-              <span className={s.statSep}>·</span>
-              <span className={s.statItem}>
-                <span className={s.statLabel}>Change</span>
-                <span className={`${s.statVal} ${periodStats.change >= 0 ? s.statUp : s.statDown}`}>
-                  {fmtChange(periodStats.change)} ({fmtPct(periodStats.changePct)})
-                </span>
-              </span>
+              {dataMode === 'returns' ? <>
+                <span className={s.statItem}><span className={s.statLabel}>Return</span><span className={`${s.statVal} ${periodStats.current >= 0 ? s.statUp : s.statDown}`}>{fmtPct(periodStats.current)}</span></span>
+                <span className={s.statSep}>·</span>
+                <span className={s.statItem}><span className={s.statLabel}>Min</span><span className={`${s.statVal} ${periodStats.min >= 0 ? s.statUp : s.statDown}`}>{fmtPct(periodStats.min)}</span></span>
+                <span className={s.statSep}>·</span>
+                <span className={s.statItem}><span className={s.statLabel}>Peak</span><span className={`${s.statVal} ${periodStats.max >= 0 ? s.statUp : s.statDown}`}>{fmtPct(periodStats.max)}</span></span>
+              </> : <>
+                <span className={s.statItem}><span className={s.statLabel}>Current</span><span className={s.statVal}>{fmtNav(periodStats.current)}</span></span>
+                <span className={s.statSep}>·</span>
+                <span className={s.statItem}><span className={s.statLabel}>Min</span><span className={s.statVal}>{fmtNav(periodStats.min)}</span></span>
+                <span className={s.statSep}>·</span>
+                <span className={s.statItem}><span className={s.statLabel}>Max</span><span className={s.statVal}>{fmtNav(periodStats.max)}</span></span>
+                <span className={s.statSep}>·</span>
+                <span className={s.statItem}><span className={s.statLabel}>Change</span><span className={`${s.statVal} ${periodStats.change >= 0 ? s.statUp : s.statDown}`}>{fmtChange(periodStats.change)} ({fmtPct(periodStats.changePct)})</span></span>
+              </>}
             </div>
           )}
           <div className={s.fullscreenChart} id="nav-chart-container" style={{ display: 'flex', flexDirection: 'column' }}>
-            {displayData.length >= 2 ? (
+            {chartData.length >= 2 ? (
               <VdfLineChart
-                data={displayData.map(p => ({ date: p.date, value: p.nav }))}
+                data={chartData.map(p => ({ date: p.date, value: p.nav }))}
                 height={typeof window !== 'undefined' ? Math.max(360, window.innerHeight - 160) : 600}
                 color={chartColor || undefined}
-                formatValue={v => fmtNav(v)}
+                formatValue={dataMode === 'returns' ? v => fmtPct(v) : v => fmtNav(v)}
+                baseline={dataMode === 'returns' ? 0 : undefined}
                 className={s.fullscreenChartInner}
               />
             ) : (
