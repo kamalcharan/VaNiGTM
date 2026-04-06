@@ -9,6 +9,7 @@ import { createEtlRouter } from './etl/etl.routes';
 import { createNavRouter } from './nav/nav.routes';
 import { createMarketRouter } from './market/market.routes';
 import { createMarketAnalysisRouter } from './market/market-analysis.routes';
+import { createMasterDataRouter } from './master-data/master-data.routes';
 import { verifyAccessToken } from './auth/token.service';
 
 const app = express();
@@ -61,7 +62,8 @@ async function main() {
   app.use('/api/v1/nav', createNavRouter(pool));
   app.use('/api/v1/market', createMarketRouter(pool));
   app.use('/api/v1/market-analysis', createMarketAnalysisRouter(pool));
-  console.log('[ProKey] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /nav, /market, /market-analysis');
+  app.use('/api/v1/master-data', createMasterDataRouter(pool));
+  console.log('[ProKey] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /nav, /market, /market-analysis, /master-data');
 
   // Build skill registry
   const skillsDir = path.resolve(__dirname, 'skills');

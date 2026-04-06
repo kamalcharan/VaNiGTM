@@ -492,6 +492,65 @@ export const API = {
     },
   },
 
+  /* ── Master Data (admin only) ────────────────────── */
+
+  masterData: {
+    transactionTypes: {
+      method: 'GET',
+      path: '/api/v1/master-data/transaction-types',
+      auth: true,
+      description: 'List all transaction types',
+    },
+    updateTransactionType: {
+      method: 'PATCH',
+      path: '/api/v1/master-data/transaction-types/:id',
+      auth: true,
+      description: 'Update a transaction type (name, description, active toggle)',
+    },
+    assetTypes: {
+      method: 'GET',
+      path: '/api/v1/master-data/asset-types',
+      auth: true,
+      description: 'List all asset types',
+    },
+    updateAssetType: {
+      method: 'PATCH',
+      path: '/api/v1/master-data/asset-types/:id',
+      auth: true,
+      description: 'Update an asset type (name, assumption rate, active toggle)',
+    },
+    bookmarkReasons: {
+      method: 'GET',
+      path: '/api/v1/master-data/bookmark-reasons',
+      auth: true,
+      description: 'List bookmark reasons for current tenant + environment',
+    },
+    createBookmarkReason: {
+      method: 'POST',
+      path: '/api/v1/master-data/bookmark-reasons',
+      auth: true,
+      description: 'Create a new bookmark reason for current tenant',
+    },
+    updateBookmarkReason: {
+      method: 'PATCH',
+      path: '/api/v1/master-data/bookmark-reasons/:id',
+      auth: true,
+      description: 'Update a bookmark reason (label, order, active toggle)',
+    },
+    jobTypes: {
+      method: 'GET',
+      path: '/api/v1/master-data/job-types',
+      auth: true,
+      description: 'List all job types with current tenant scheduler config',
+    },
+    updateJobConfig: {
+      method: 'PATCH',
+      path: '/api/v1/master-data/job-configs/:id',
+      auth: true,
+      description: 'Update tenant scheduler config for a job (cron, enabled toggle)',
+    },
+  },
+
   /* ── Skills (generic) ─────────────────────────────── */
 
   skills: {
