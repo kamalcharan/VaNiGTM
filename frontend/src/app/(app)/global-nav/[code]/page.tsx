@@ -655,7 +655,7 @@ export default function SchemeDashboardPage() {
                             const ret = prev && prev > 0 ? ((row.nav - prev) / prev) * 100 : null;
                             return (
                               <tr key={row.date}>
-                                <td>{row.date}</td>
+                                <td>{row.date.slice(0, 10)}</td>
                                 <td className={d.tdMono}>{fmtNav(row.nav)}</td>
                                 <td className={`${d.tdMono} ${ret != null ? (ret >= 0 ? d.valUp : d.valDown) : ''}`}>
                                   {ret != null ? fmtPct(ret) : '—'}
