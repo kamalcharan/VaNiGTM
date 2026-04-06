@@ -143,6 +143,7 @@ export default function GlobalNavPage() {
     status: 'running' | 'done' | 'failed';
     total: number;
     done: number;
+    skipped: number;   // MFAPI returned 0 records (scheme not covered by MFAPI)
     failed: number;
     pct: number;
     current_scheme: string | null;
@@ -176,7 +177,8 @@ export default function GlobalNavPage() {
       } else {
         stopPoll();
         if (data.status === 'done') {
-          showToast({ message: `Job complete — ${data.done} done, ${data.failed} failed`, type: data.failed > 0 ? 'warning' : 'success' });
+          const skippedNote = data.skipped > 0 ? `, ${data.skipped} not in MFAPI` : '';
+          showToast({ message: `Job complete — ${data.done} downloaded, ${data.failed} failed${skippedNote}`, type: data.failed > 0 ? 'warning' : 'success' });
           // Refresh stat cards and current scheme list so counts reflect the completed job
           apiFetch<{ data: SchemeStats }>(API.skills.execute, {
             pathParams: { skill: 'market-skill', fn: 'get_scheme_stats' },
@@ -207,7 +209,7 @@ export default function GlobalNavPage() {
       }[type];
       const r = await apiFetch<{ job_id: string }>(apiKey);
       // Seed initial state so modal opens immediately
-      setBulkJob({ id: r.job_id, type, status: 'running', total: 0, done: 0, failed: 0, pct: 0, current_scheme: null, elapsed_ms: 0 });
+      setBulkJob({ id: r.job_id, type, status: 'running', total: 0, done: 0, skipped: 0, failed: 0, pct: 0, current_scheme: null, elapsed_ms: 0 });
       pollRef.current = setTimeout(() => pollJob(r.job_id), 2500);
     } catch (err) {
       showToast({ message: (err as ApiError).message || 'Failed to start job', type: 'error' });
@@ -572,7 +574,7 @@ export default function GlobalNavPage() {
             {/* Progress bar */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: '0.75rem', color: 'var(--color-muted)' }}>
-                <span>{bulkJob.done} of {bulkJob.total || '?'} schemes</span>
+                <span>{bulkJob.done + bulkJob.skipped + bulkJob.failed} of {bulkJob.total || '?'} processed</span>
                 <span>{bulkJob.pct}%</span>
               </div>
               <div style={{ height: 8, background: 'var(--color-surface)', borderRadius: 4, overflow: 'hidden' }}>
@@ -587,9 +589,10 @@ export default function GlobalNavPage() {
             </div>
 
             {/* Stats row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
               {[
-                { label: 'Done', value: bulkJob.done, color: 'var(--color-success)' },
+                { label: 'Downloaded', value: bulkJob.done, color: 'var(--color-success)' },
+                { label: 'Not in MFAPI', value: bulkJob.skipped, color: bulkJob.skipped > 0 ? 'var(--color-warning)' : 'var(--color-muted)' },
                 { label: 'Failed', value: bulkJob.failed, color: bulkJob.failed > 0 ? 'var(--color-danger)' : 'var(--color-muted)' },
                 { label: 'Elapsed', value: `${Math.round(bulkJob.elapsed_ms / 1000)}s`, color: 'var(--color-fg)' },
               ].map(s => (
@@ -618,7 +621,7 @@ export default function GlobalNavPage() {
             {/* Status message */}
             <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)', textAlign: 'center' }}>
               {bulkJob.status === 'running' && 'Processing sequentially to avoid API rate limits…'}
-              {bulkJob.status === 'done' && `All done — ${bulkJob.failed > 0 ? `${bulkJob.failed} failed (network/data errors)` : 'no errors'}`}
+              {bulkJob.status === 'done' && `${bulkJob.done} schemes downloaded${bulkJob.skipped > 0 ? ` · ${bulkJob.skipped} not in MFAPI (normal — AMFI has more schemes than MFAPI)` : ''}${bulkJob.failed > 0 ? ` · ${bulkJob.failed} failed` : ''}`}
               {bulkJob.status === 'failed' && 'Job stopped due to an unexpected error'}
             </div>
 
