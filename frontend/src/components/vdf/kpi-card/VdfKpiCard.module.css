@@ -1,0 +1,57 @@
+/* VdfKpiCard — glass surface card for KPI / performer highlights */
+
+.card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.clickable {
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+  width: 100%;
+}
+
+.clickable:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.clickable:disabled {
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+  border-color: var(--glass-border);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.icon {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
