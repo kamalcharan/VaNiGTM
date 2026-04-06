@@ -177,6 +177,12 @@ export default function GlobalNavPage() {
         stopPoll();
         if (data.status === 'done') {
           showToast({ message: `Job complete — ${data.done} done, ${data.failed} failed`, type: data.failed > 0 ? 'warning' : 'success' });
+          // Refresh stat cards and current scheme list so counts reflect the completed job
+          apiFetch<{ data: SchemeStats }>(API.skills.execute, {
+            pathParams: { skill: 'market-skill', fn: 'get_scheme_stats' },
+            body: { params: {} },
+          }).then(r => setStats(r.data)).catch(() => {});
+          loadSchemes(search, filterStatus, page);
         } else {
           showToast({ message: `Job failed: ${data.error || 'Unknown error'}`, type: 'error' });
         }
