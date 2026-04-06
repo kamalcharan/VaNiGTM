@@ -12,13 +12,38 @@
  * Admin-only: 403 guard via useAuth().isAdmin
  */
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/context/auth-provider';
-import { VdfTabs, VdfLoader, VdfErrorScreen, VdfEmptyState } from '@/components/vdf';
-import { apiFetch } from '@/lib/api-client';
+import { VdfTabs, VdfLoader, VdfErrorScreen } from '@/components/vdf';
+import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import s from './master-data.module.css';
+
+/* ── Shared error banner ─────────────────────────────────────────────── */
+
+function TabError({ error }: { error: unknown }) {
+  const e = error as ApiError | Error | null;
+  const msg = e ? ('message' in e ? e.message : String(e)) : 'Unknown error';
+  const code = e && 'code' in e ? (e as ApiError).code : null;
+  const status = e && 'status' in e ? (e as ApiError).status : null;
+  return (
+    <div style={{
+      padding: '16px 20px',
+      borderRadius: 10,
+      background: 'rgba(239,68,68,0.08)',
+      border: '1px solid rgba(239,68,68,0.25)',
+      color: 'var(--color-danger)',
+      fontSize: '0.85rem',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: 4,
+    }}>
+      <strong>{status === 403 ? '403 Forbidden — JWT may lack is_admin. Log out and back in.' : code ?? 'Error'}</strong>
+      <span style={{ opacity: 0.8 }}>{msg}</span>
+    </div>
+  );
+}
 
 /* ── Types ──────────────────────────────────────────────────────────── */
 
@@ -86,7 +111,7 @@ function TransactionTypesTab() {
   const [editId, setEditId] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<{ txn_name: string; description: string }>({ txn_name: '', description: '' });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['master-data', 'transaction-types'],
     queryFn: () => apiFetch<{ transaction_types: TransactionType[] }>(API.masterData.transactionTypes),
   });
@@ -130,7 +155,7 @@ function TransactionTypesTab() {
         <div style={{ display: 'flex', justifyContent: 'center', padding: '32px' }}>
           <VdfLoader size="md" />
         </div>
-      ) : (
+      ) : isError ? <TabError error={error} /> : (
         <div className={s.tableWrap}>
           <table className={s.table}>
             <thead>
@@ -221,7 +246,7 @@ function AssetTypesTab() {
     asset_type_name: string; description: string; default_assumption_rate: string;
   }>({ asset_type_name: '', description: '', default_assumption_rate: '' });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['master-data', 'asset-types'],
     queryFn: () => apiFetch<{ asset_types: AssetType[] }>(API.masterData.assetTypes),
   });
@@ -265,7 +290,7 @@ function AssetTypesTab() {
         <div style={{ display: 'flex', justifyContent: 'center', padding: '32px' }}>
           <VdfLoader size="md" />
         </div>
-      ) : (
+      ) : isError ? <TabError error={error} /> : (
         <div className={s.tableWrap}>
           <table className={s.table}>
             <thead>
@@ -371,7 +396,7 @@ function BookmarkReasonsTab() {
   const [newCode, setNewCode] = useState('');
   const [newLabel, setNewLabel] = useState('');
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['master-data', 'bookmark-reasons', isLive],
     queryFn: () =>
       apiFetch<{ bookmark_reasons: BookmarkReason[] }>(
@@ -432,7 +457,7 @@ function BookmarkReasonsTab() {
         <div style={{ display: 'flex', justifyContent: 'center', padding: '32px' }}>
           <VdfLoader size="md" />
         </div>
-      ) : (
+      ) : isError ? <TabError error={error} /> : (
         <>
           <div className={s.tableWrap}>
             <table className={s.table}>
@@ -565,7 +590,7 @@ function JobSchedulerTab() {
     cron_expression: '', max_retries: '',
   });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['master-data', 'job-types', isLive],
     queryFn: () =>
       apiFetch<{ job_types: JobType[] }>(
@@ -617,7 +642,7 @@ function JobSchedulerTab() {
         <div style={{ display: 'flex', justifyContent: 'center', padding: '32px' }}>
           <VdfLoader size="md" />
         </div>
-      ) : (
+      ) : isError ? <TabError error={error} /> : (
         <div className={s.tableWrap}>
           <table className={s.table}>
             <thead>
