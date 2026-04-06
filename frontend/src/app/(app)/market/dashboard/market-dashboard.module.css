@@ -389,6 +389,26 @@
 
 .footer strong { color: var(--color-info); }
 
+/* ── Empty state action button ───────────────────────── */
+
+.emptyAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--btn-radius, 8px);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  margin-top: 8px;
+}
+
+.emptyAction:hover { opacity: 0.85; }
+
 /* ── Animations ──────────────────────────────────────── */
 
 @keyframes fadeInUp {

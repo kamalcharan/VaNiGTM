@@ -435,7 +435,7 @@ export default function MarketHistoryPage() {
           description={search ? `No results for "${search}"` : 'Try adjusting your filters'}
           action={
             (search || filterStatus !== 'all' || filterCategory !== 'all')
-              ? { label: 'Clear Filters', onClick: () => { setSearch(''); setFilterStatus('all'); setFilterCategory('all'); } }
+              ? <button className={s.headerBtn} onClick={() => { setSearch(''); setFilterStatus('all'); setFilterCategory('all'); }}>Clear Filters</button>
               : undefined
           }
         />

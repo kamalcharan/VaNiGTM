@@ -260,7 +260,7 @@ export default function MarketIndexDetailPage() {
   if (loading) return <VdfLoader message="Loading index detail..." />;
   if (!meta) return (
     <VdfEmptyState icon="📊" title="Index not found" description="This index does not exist."
-      action={{ label: 'Back to Market History', onClick: () => router.push('/market/history') }} />
+      action={<button className={s.calcBtnSm} onClick={() => router.push('/market/history')}>Back to Market History</button>} />
   );
 
   const PERIODS: Period[] = ['1W', '1M', '3M', '6M', '1Y', 'YTD', 'ALL'];

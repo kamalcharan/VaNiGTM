@@ -275,7 +275,11 @@ export default function MarketDashboardPage() {
             icon="📊"
             title="No metrics data"
             description="Calculate metrics for indices first to see the heatmap."
-            action={{ label: 'Go to Market History', onClick: () => router.push('/market/history') }}
+            action={
+              <button className={s.emptyAction} onClick={() => router.push('/market/history')}>
+                Go to Market History
+              </button>
+            }
           />
         ) : (
           <div className={s.heatmap}>
