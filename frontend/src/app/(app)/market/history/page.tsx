@@ -16,9 +16,12 @@ import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { VdfStatCard, VdfLoader, VdfEmptyState, VdfButton, VdfModal, VdfStatusBadge } from '@/components/vdf';
+import {
+  VdfStatCard, VdfLoader, VdfEmptyState, VdfButton, VdfModal,
+  VdfTrackingCard,
+  type TrackingBookmark, type TrackingCardAction, type TrackingStatus,
+} from '@/components/vdf';
 import f from '@/styles/forms.module.css';
-import d from '@/styles/data.module.css';
 import s from './market-history.module.css';
 
 /* ── Types ──────────────────────────────────────────── */
@@ -82,20 +85,38 @@ function fmtRecords(n: number): string {
   return String(n);
 }
 
-/* ── Status helpers ──────────────────────────────────── */
+/* ── VdfTrackingCard mapping helpers ─────────────────── */
 
-function indexStatus(idx: MarketIndex): 'success' | 'warning' | 'danger' | 'muted' {
-  if (!idx.historical_data_available) return 'muted';
-  if (idx.last_download_status === 'failed') return 'danger';
-  if (!idx.has_metrics) return 'warning';
-  return 'success';
+function indexToStatus(idx: MarketIndex): TrackingStatus {
+  if (!idx.historical_data_available) return 'no_data';
+  if (idx.last_download_status === 'failed') return 'stale';
+  if (!idx.has_metrics) return 'no_metrics';
+  return 'healthy';
 }
 
-function statusLabel(idx: MarketIndex): string {
-  if (!idx.historical_data_available) return 'No Data';
-  if (idx.last_download_status === 'failed') return 'Download Failed';
-  if (!idx.has_metrics) return 'Needs Metrics';
-  return 'Ready';
+function indexToBookmark(idx: MarketIndex): TrackingBookmark {
+  const ageDays = idx.latest_date
+    ? Math.floor((Date.now() - new Date(idx.latest_date).getTime()) / 86400000)
+    : null;
+  return {
+    id: idx.id,
+    scheme_code: idx.index_code,
+    scheme_name: idx.index_name,
+    amc: idx.yahoo_symbol,
+    alias_name: null,
+    daily_download_enabled: idx.provider_enabled,
+    historical_download_done: idx.historical_data_available,
+    active: idx.is_active,
+    category: idx.category,
+    scheme_type: null,
+    nav_records: idx.total_records,
+    latest_nav_date: idx.latest_date,
+    latest_nav: null,
+    earliest_nav_date: idx.earliest_date,
+    // If metrics exist, use "today" so badge shows "Metrics ✓"
+    metrics_calculated_at: idx.has_metrics ? new Date().toISOString() : null,
+    nav_age_days: ageDays,
+  };
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -441,78 +462,47 @@ export default function MarketHistoryPage() {
         />
       ) : (
         <div className={s.indexList}>
-          {filtered.map(idx => (
-            <div
-              key={idx.id}
-              className={`${s.indexCard} ${selected.has(idx.id) ? s.selected : ''}`}
-            >
-              {/* Checkbox */}
-              <span
-                className={`${s.cardCheckbox} ${selected.has(idx.id) ? s.checked : ''}`}
-                onClick={() => idx.provider_enabled && toggleSelect(idx.id)}
-                style={{ cursor: idx.provider_enabled ? 'pointer' : 'not-allowed', opacity: idx.provider_enabled ? 1 : 0.3 }}
-              >
-                {selected.has(idx.id) ? '☑' : '☐'}
-              </span>
-
-              {/* Left: name + meta */}
-              <div className={s.cardLeft}>
-                <div className={s.cardTitle}>{idx.index_name}</div>
-                <div className={s.cardMeta}>
-                  <span className={s.cardCode}>{idx.index_code}</span>
-                  <span className={s.cardSymbol}>{idx.yahoo_symbol}</span>
-                  <VdfStatusBadge variant={indexStatus(idx)} label={statusLabel(idx)} />
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className={s.cardStats}>
-                <div className={s.statItem}>
-                  <div className={s.statLabel}>Records</div>
-                  <div className={s.statValue}>{fmtRecords(idx.total_records)}</div>
-                </div>
-                <div className={s.statItem}>
-                  <div className={s.statLabel}>From</div>
-                  <div className={s.statValue} style={{ fontSize: '0.78rem' }}>{fmtDate(idx.earliest_date)}</div>
-                </div>
-                <div className={s.statItem}>
-                  <div className={s.statLabel}>Latest</div>
-                  <div className={s.statValue} style={{ fontSize: '0.78rem' }}>{fmtDate(idx.latest_date)}</div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className={s.cardActions}>
-                <button className={s.actionBtn} onClick={() => handleViewDetail(idx)}>
-                  Detail
-                </button>
-                <button
-                  className={s.actionBtn}
-                  disabled={!idx.provider_enabled || spinningId === `eod-${idx.id}`}
-                  onClick={() => handleEod(idx)}
-                >
-                  {spinningId === `eod-${idx.id}` ? <span className={s.btnSpinner} /> : null}
-                  EOD
-                </button>
-                <button
-                  className={s.actionBtn}
-                  disabled={!idx.provider_enabled || spinningId === `download-${idx.id}`}
-                  onClick={() => handleOpenDatePicker(idx)}
-                >
-                  {spinningId === `download-${idx.id}` ? <span className={s.btnSpinner} /> : null}
-                  Historical
-                </button>
-                <button
-                  className={s.actionBtn}
-                  disabled={!idx.historical_data_available || spinningId === `calc-${idx.id}`}
-                  onClick={() => handleCalculate(idx)}
-                >
-                  {spinningId === `calc-${idx.id}` ? <span className={s.btnSpinner} /> : null}
-                  Metrics
-                </button>
-              </div>
-            </div>
-          ))}
+          {filtered.map(idx => {
+            const actions: TrackingCardAction[] = [
+              {
+                label: 'Dashboard',
+                onClick: () => handleViewDetail(idx),
+                variant: 'primary',
+                primary: true,
+              },
+              {
+                label: 'EOD',
+                onClick: () => handleEod(idx),
+                variant: 'muted',
+                disabled: !idx.provider_enabled,
+                loading: spinningId === `eod-${idx.id}`,
+              },
+              {
+                label: 'Historical',
+                onClick: () => handleOpenDatePicker(idx),
+                variant: 'muted',
+                disabled: !idx.provider_enabled,
+                loading: spinningId === `download-${idx.id}`,
+              },
+              {
+                label: 'Metrics',
+                onClick: () => handleCalculate(idx),
+                variant: idx.historical_data_available && !idx.has_metrics ? 'success' : 'muted',
+                disabled: !idx.historical_data_available || spinningId === `calc-${idx.id}`,
+                loading: spinningId === `calc-${idx.id}`,
+              },
+            ];
+            return (
+              <VdfTrackingCard
+                key={idx.id}
+                bookmark={indexToBookmark(idx)}
+                status={indexToStatus(idx)}
+                selected={selected.has(idx.id)}
+                onSelect={idx.provider_enabled ? () => toggleSelect(idx.id) : undefined}
+                actions={actions}
+              />
+            );
+          })}
         </div>
       )}
 
