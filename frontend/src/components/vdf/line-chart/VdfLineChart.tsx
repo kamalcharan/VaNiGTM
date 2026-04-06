@@ -3,6 +3,8 @@
 import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import s from './VdfLineChart.module.css';
 
+export type ChartType = 'line' | 'area' | 'bar';
+
 export interface VdfLineChartProps {
   /** Array of { date, value } sorted ascending by date */
   data: { date: string; value: number }[];
@@ -19,11 +21,19 @@ export interface VdfLineChartProps {
   /** ID for the container div (used for PNG export targeting) */
   containerId?: string;
   /**
-   * When provided, renders an area-baseline chart:
+   * When provided, renders an area-baseline chart (line/area modes):
    * fill is green above this value, red below.
    * Typical usage: baseline={0} in returns (%) mode.
+   * In bar mode: used as the zero reference line.
    */
   baseline?: number;
+  /**
+   * Chart rendering type:
+   * - 'line': line with subtle gradient fill (default)
+   * - 'area': line with prominent gradient fill
+   * - 'bar': vertical bars, green ≥ baseline, red < baseline
+   */
+  chartType?: ChartType;
 }
 
 const PAD = { top: 16, right: 20, bottom: 28, left: 70 };
@@ -37,6 +47,7 @@ export function VdfLineChart({
   color,
   containerId,
   baseline,
+  chartType = 'line',
 }: VdfLineChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -163,10 +174,20 @@ export function VdfLineChart({
     return indices.map(i => ({ x: xOf(i), label: visibleData[i].date.slice(5, 10) }));
   }, [visibleData, xOf]);
 
+  // Bar chart geometry (density-adaptive width, matching kewalinvest)
+  const barWidth = useMemo(() => {
+    if (chartType !== 'bar' || visibleData.length === 0) return 0;
+    const slotW = chartW / visibleData.length;
+    const ratio = visibleData.length > 100 ? 0.55 : visibleData.length > 50 ? 0.65 : 0.75;
+    return Math.max(1, slotW * ratio);
+  }, [chartType, visibleData.length, chartW]);
+
   // Colors
   const isPositive = visibleData.length >= 2 && visibleData[visibleData.length - 1].value >= visibleData[0].value;
-  // With baseline: line is neutral primary (fill shows green/red). Without: line auto-colors.
-  const lineColor = color || (baseline !== undefined ? 'var(--color-primary)' : isPositive ? 'var(--color-success)' : 'var(--color-danger)');
+  // With baseline or bar: line is neutral primary (fill/bars show green/red). Without: line auto-colors.
+  const lineColor = color || (baseline !== undefined || chartType === 'bar'
+    ? 'var(--color-primary)'
+    : isPositive ? 'var(--color-success)' : 'var(--color-danger)');
 
   // Unique IDs per instance
   const uid = containerId || 'default';
@@ -239,10 +260,10 @@ export function VdfLineChart({
         style={{ cursor: isDragging ? 'grabbing' : 'crosshair', display: 'block' }}
       >
         <defs>
-          {/* Single-color gradient (price mode) */}
+          {/* Single-color gradient — area mode uses higher opacity */}
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={lineColor} stopOpacity="0.22" />
-            <stop offset="100%" stopColor={lineColor} stopOpacity="0.02" />
+            <stop offset="0%" stopColor={lineColor} stopOpacity={chartType === 'area' ? '0.48' : '0.22'} />
+            <stop offset="100%" stopColor={lineColor} stopOpacity={chartType === 'area' ? '0.06' : '0.02'} />
           </linearGradient>
 
           {/* Baseline dual-color gradients */}
@@ -295,28 +316,50 @@ export function VdfLineChart({
           </text>
         ))}
 
-        {/* ── Chart fill area ── */}
-        <g clipPath={`url(#${clipId})`}>
-          {baselineY !== null ? (
-            /* Dual-color baseline fill */
-            <>
-              <g clipPath={`url(#${clipAboveId})`}>
-                <path d={baselineFillD} fill={`url(#${greenGradId})`} />
-              </g>
-              <g clipPath={`url(#${clipBelowId})`}>
-                <path d={baselineFillD} fill={`url(#${redGradId})`} />
-              </g>
-            </>
-          ) : (
-            /* Single-color gradient fill */
-            <path d={fillD} fill={`url(#${gradId})`} />
-          )}
+        {/* ── Chart area ── */}
+        {chartType === 'bar' ? (
+          /* ── Bar chart ─────────────────────────────────────── */
+          <g clipPath={`url(#${clipId})`}>
+            {visibleData.map((d, i) => {
+              const refY = baselineY ?? PAD.top + chartH;
+              const dY   = yOf(d.value);
+              const isPos = baseline !== undefined ? d.value >= baseline : d.value >= 0;
+              const barY  = isPos ? dY : refY;
+              const barH  = Math.max(1, Math.abs(dY - refY));
+              return (
+                <rect
+                  key={i}
+                  x={xOf(i) - barWidth / 2}
+                  y={barY}
+                  width={barWidth}
+                  height={barH}
+                  fill={isPos ? 'var(--color-success)' : 'var(--color-danger)'}
+                  opacity={hover?.date === d.date ? '0.92' : '0.68'}
+                />
+              );
+            })}
+          </g>
+        ) : (
+          /* ── Line / Area chart ─────────────────────────────── */
+          <g clipPath={`url(#${clipId})`}>
+            {baselineY !== null ? (
+              /* Dual-color baseline fill */
+              <>
+                <g clipPath={`url(#${clipAboveId})`}>
+                  <path d={baselineFillD} fill={`url(#${greenGradId})`} />
+                </g>
+                <g clipPath={`url(#${clipBelowId})`}>
+                  <path d={baselineFillD} fill={`url(#${redGradId})`} />
+                </g>
+              </>
+            ) : (
+              <path d={fillD} fill={`url(#${gradId})`} />
+            )}
+            <path d={pathD} fill="none" stroke={lineColor} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+          </g>
+        )}
 
-          {/* Chart line */}
-          <path d={pathD} fill="none" stroke={lineColor} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-        </g>
-
-        {/* Baseline reference line */}
+        {/* Baseline / zero reference line */}
         {baselineY !== null && (
           <line
             x1={PAD.left} y1={baselineY}
@@ -338,7 +381,9 @@ export function VdfLineChart({
         {hover && (
           <>
             <line x1={hover.x} y1={PAD.top} x2={hover.x} y2={PAD.top + chartH} className={s.hoverLine} />
-            <circle cx={hover.x} cy={hover.y} r="3.5" className={s.hoverDot} style={{ fill: lineColor }} />
+            {chartType !== 'bar' && (
+              <circle cx={hover.x} cy={hover.y} r="3.5" className={s.hoverDot} style={{ fill: lineColor }} />
+            )}
           </>
         )}
       </svg>

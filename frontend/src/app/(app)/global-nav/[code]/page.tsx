@@ -7,6 +7,7 @@ import { useSkillQuery } from '@/hooks';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { VdfLineChart, VdfLoader, VdfEmptyState, VdfButton } from '@/components/vdf';
+import type { ChartType } from '@/components/vdf/line-chart/VdfLineChart';
 import d from '@/styles/data.module.css';
 import s from './scheme-dashboard.module.css';
 
@@ -100,6 +101,7 @@ export default function SchemeDashboardPage() {
   const [granularity, setGranularity] = useState<Granularity>('daily');
   const [viewMode, setViewMode] = useState<ViewMode>('chart');
   const [dataMode, setDataMode] = useState<DataMode>('price');
+  const [chartType, setChartType] = useState<ChartType>('line');
   const [chartCustomFrom, setChartCustomFrom] = useState('');
   const [chartCustomTo, setChartCustomTo] = useState('');
   const [chartColor, setChartColor] = useState(''); // '' = auto
@@ -185,6 +187,12 @@ export default function SchemeDashboardPage() {
   const totalTablePages = Math.ceil(tableData.length / PAGE_SIZE);
   const pagedData = tableData.slice((tablePage - 1) * PAGE_SIZE, tablePage * PAGE_SIZE);
   useEffect(() => { setTablePage(1); }, [period, viewMode, dataMode]);
+
+  // Auto-switch chart type when data mode changes (bar only valid in returns, area only in price)
+  useEffect(() => {
+    if (dataMode === 'returns' && chartType === 'area') setChartType('line');
+    if (dataMode === 'price'   && chartType === 'bar')  setChartType('line');
+  }, [dataMode, chartType]);
 
   // ── Close color picker on outside click ───────────────
   useEffect(() => {
@@ -467,6 +475,29 @@ export default function SchemeDashboardPage() {
                   <button className={`${s.segBtn} ${dataMode === 'returns' ? s.segBtnActive : ''}`} onClick={() => setDataMode('returns')} title="Show % return from period start">%</button>
                 </div>
 
+                {/* Chart type selector — context-sensitive */}
+                {viewMode === 'chart' && (
+                  <div className={s.segmentGroup}>
+                    {dataMode === 'price' ? <>
+                      <button className={`${s.segBtn} ${chartType === 'line' ? s.segBtnActive : ''}`} onClick={() => setChartType('line')} title="Line chart">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" width="13" height="13"><polyline points="1,12 5,6 9,9 15,3"/></svg>
+                      </button>
+                      <button className={`${s.segBtn} ${chartType === 'area' ? s.segBtnActive : ''}`} onClick={() => setChartType('area')} title="Area chart">
+                        <svg viewBox="0 0 16 16" fill="currentColor" width="13" height="13"><path d="M1 13 L5 6 L9 9 L15 3 L15 13 Z" opacity="0.55"/><path d="M1 13 L5 6 L9 9 L15 3" fill="none" stroke="currentColor" strokeWidth="1.5"/></svg>
+                      </button>
+                    </> : <>
+                      <button className={`${s.segBtn} ${chartType === 'line' ? s.segBtnActive : ''}`} onClick={() => setChartType('line')} title="Line + baseline">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" width="13" height="13"><polyline points="1,12 5,6 9,9 15,3"/></svg>
+                      </button>
+                      <button className={`${s.segBtn} ${chartType === 'bar' ? s.segBtnActive : ''}`} onClick={() => setChartType('bar')} title="Bar chart — returns per period">
+                        <svg viewBox="0 0 16 16" fill="currentColor" width="13" height="13">
+                          <rect x="1" y="5" width="3" height="8" opacity="0.9"/><rect x="6" y="3" width="3" height="10" opacity="0.9"/><rect x="11" y="7" width="3" height="6" opacity="0.9"/>
+                        </svg>
+                      </button>
+                    </>}
+                  </div>
+                )}
+
                 {/* Graph / Table toggle */}
                 <div className={s.segmentGroup}>
                   <button className={`${s.segBtn} ${viewMode === 'chart' ? s.segBtnActive : ''}`} onClick={() => setViewMode('chart')}>Chart</button>
@@ -598,6 +629,7 @@ export default function SchemeDashboardPage() {
                   containerId="nav-chart-container"
                   formatValue={dataMode === 'returns' ? v => fmtPct(v) : v => fmtNav(v)}
                   baseline={dataMode === 'returns' ? 0 : undefined}
+                  chartType={chartType}
                 />
               ) : (
                 <div className={s.chartEmpty}>
@@ -936,6 +968,24 @@ export default function SchemeDashboardPage() {
                 <button className={`${s.segBtn} ${dataMode === 'price' ? s.segBtnActive : ''}`} onClick={() => setDataMode('price')}>₹</button>
                 <button className={`${s.segBtn} ${dataMode === 'returns' ? s.segBtnActive : ''}`} onClick={() => setDataMode('returns')}>%</button>
               </div>
+              {/* Chart type */}
+              <div className={s.segmentGroup}>
+                {dataMode === 'price' ? <>
+                  <button className={`${s.segBtn} ${chartType === 'line' ? s.segBtnActive : ''}`} onClick={() => setChartType('line')} title="Line">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" width="12" height="12"><polyline points="1,12 5,6 9,9 15,3"/></svg>
+                  </button>
+                  <button className={`${s.segBtn} ${chartType === 'area' ? s.segBtnActive : ''}`} onClick={() => setChartType('area')} title="Area">
+                    <svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12"><path d="M1 13 L5 6 L9 9 L15 3 L15 13 Z" opacity="0.55"/><path d="M1 13 L5 6 L9 9 L15 3" fill="none" stroke="currentColor" strokeWidth="1.5"/></svg>
+                  </button>
+                </> : <>
+                  <button className={`${s.segBtn} ${chartType === 'line' ? s.segBtnActive : ''}`} onClick={() => setChartType('line')} title="Line">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" width="12" height="12"><polyline points="1,12 5,6 9,9 15,3"/></svg>
+                  </button>
+                  <button className={`${s.segBtn} ${chartType === 'bar' ? s.segBtnActive : ''}`} onClick={() => setChartType('bar')} title="Bar">
+                    <svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12"><rect x="1" y="5" width="3" height="8" opacity="0.9"/><rect x="6" y="3" width="3" height="10" opacity="0.9"/><rect x="11" y="7" width="3" height="6" opacity="0.9"/></svg>
+                  </button>
+                </>}
+              </div>
               <button className={s.toolBtn} onClick={handleExportPNG} disabled={exportingPng}>
                 {exportingPng ? '…' : 'PNG'}
               </button>
@@ -974,6 +1024,7 @@ export default function SchemeDashboardPage() {
                 color={chartColor || undefined}
                 formatValue={dataMode === 'returns' ? v => fmtPct(v) : v => fmtNav(v)}
                 baseline={dataMode === 'returns' ? 0 : undefined}
+                chartType={chartType}
                 className={s.fullscreenChartInner}
               />
             ) : (
