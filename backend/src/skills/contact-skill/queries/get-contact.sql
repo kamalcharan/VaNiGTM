@@ -11,6 +11,8 @@ SELECT
     c.created_at,
     c.updated_at,
     c.created_by,
+    -- client record id (non-null once converted)
+    kc.id AS client_id,
 
     -- Channels as JSON array
     COALESCE(
@@ -49,6 +51,10 @@ SELECT
     ) AS snapshot_summary
 
 FROM ki_contacts c
+LEFT JOIN ki_clients kc
+       ON kc.contact_id = c.id
+      AND kc.tenant_id  = c.tenant_id
+      AND kc.is_live    = c.is_live
 WHERE c.tenant_id  = $tenant_id
   AND c.is_live    = $is_live
   AND c.id         = $contact_id

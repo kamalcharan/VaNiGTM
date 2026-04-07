@@ -467,7 +467,14 @@ export default function ClientProfilePage() {
   const { showToast } = useToast();
   const clientId = Number(id);
 
-  const [activeTab, setActiveTab] = useState('overview');
+  // Support deep-link tab activation via ?tab=addresses or ?tab=kyc
+  const searchParams = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search)
+    : new URLSearchParams();
+  const tabParam = searchParams.get('tab');
+  const initialTab = tabParam === 'addresses' ? 'addresses' : tabParam === 'kyc' ? 'overview' : 'overview';
+
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [bookmarked, setBookmarked] = useState(false);
 
   const { data, isLoading, isError } = useSkillQuery<{ client: Client | null }>(

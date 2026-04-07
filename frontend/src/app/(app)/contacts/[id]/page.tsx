@@ -51,6 +51,7 @@ interface Contact {
   channels: Channel[];
   snapshot_summary: SnapshotSummary | null;
   created_at: string;
+  client_id: number | null;
 }
 
 /* ── Helpers ─────────────────────────────────────────── */
@@ -465,50 +466,109 @@ export default function ContactProfilePage() {
     {
       id: 'overview',
       label: 'Overview',
-      content: (
-        <div className={s.overviewGrid}>
-          {/* Left — details */}
-          <div className={s.detailCard}>
-            <h3 className={s.cardTitle}>Personal Details</h3>
-            <div className={s.detailRows}>
-              <div className={s.detailRow}><span className={s.detailLabel}>Full Name</span><span className={s.detailValue}>{contact.prefix} {contact.name}</span></div>
-              <div className={s.detailRow}><span className={s.detailLabel}>Status</span><VdfStatusBadge label={contact.is_client ? 'Client' : 'Prospect'} variant={contact.is_client ? 'success' : 'warning'} size="sm" /></div>
-              <div className={s.detailRow}><span className={s.detailLabel}>Added</span><span className={s.detailValue}>{new Date(contact.created_at).toLocaleDateString('en-IN')}</span></div>
-              {contact.snapshot_summary?.risk_profile && (
+      content: (() => {
+        const primaryMobile  = contact.channels.find(ch => ch.channel_type === 'mobile' && ch.is_primary) ?? contact.channels.find(ch => ch.channel_type === 'mobile');
+        const primaryEmail   = contact.channels.find(ch => ch.channel_type === 'email'  && ch.is_primary) ?? contact.channels.find(ch => ch.channel_type === 'email');
+        const whatsapp       = contact.channels.find(ch => ch.channel_type === 'whatsapp');
+        const otherChannels  = contact.channels.filter(ch => !['mobile','email','whatsapp'].includes(ch.channel_type));
+        return (
+          <div className={s.overviewGrid}>
+            {/* Left — personal details + key channels */}
+            <div className={s.detailCard}>
+              <h3 className={s.cardTitle}>Personal Details</h3>
+              <div className={s.detailRows}>
                 <div className={s.detailRow}>
-                  <span className={s.detailLabel}>Risk Profile</span>
-                  <span className={s.detailValue} style={{ color: RISK_COLORS[contact.snapshot_summary.risk_profile] }}>
-                    {contact.snapshot_summary.risk_profile.charAt(0).toUpperCase() + contact.snapshot_summary.risk_profile.slice(1)}
-                  </span>
+                  <span className={s.detailLabel}>Full Name</span>
+                  <span className={s.detailValue}>{contact.prefix} {contact.name}</span>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right — readiness */}
-          <div className={s.readinessCard}>
-            <VdfReadinessRing pct={pct} size={64} strokeWidth={4} />
-            <div>
-              <div className={s.readinessTitle}>
-                {pct === 100 ? 'Converted to client' : pct >= 70 ? 'Ready to convert' : pct >= 35 ? 'Profile in progress' : 'Just added'}
-              </div>
-              <div className={s.readinessSub}>
-                {!contact.is_client && (
-                  <VdfButton
-                    variant="primary"
-                    size="sm"
-                    loading={converting}
-                    disabled={pct < 35}
-                    onClick={() => convertToClient({ contact_id: contactId })}
-                  >
-                    Convert to Client →
-                  </VdfButton>
+                {primaryMobile && (
+                  <div className={s.detailRow}>
+                    <span className={s.detailLabel}>Primary Mobile</span>
+                    <span className={`${s.detailValue} ${s.detailMono}`}>{primaryMobile.channel_value}</span>
+                  </div>
+                )}
+                {primaryEmail && (
+                  <div className={s.detailRow}>
+                    <span className={s.detailLabel}>Email</span>
+                    <span className={s.detailValue}>{primaryEmail.channel_value}</span>
+                  </div>
+                )}
+                {whatsapp && (
+                  <div className={s.detailRow}>
+                    <span className={s.detailLabel}>WhatsApp</span>
+                    <span className={`${s.detailValue} ${s.detailMono}`}>{whatsapp.channel_value}</span>
+                  </div>
+                )}
+                {otherChannels.map(ch => (
+                  <div key={ch.id} className={s.detailRow}>
+                    <span className={s.detailLabel}>{ch.channel_type.charAt(0).toUpperCase() + ch.channel_type.slice(1)}</span>
+                    <span className={s.detailValue}>{ch.channel_value}</span>
+                  </div>
+                ))}
+                <div className={s.detailRow}>
+                  <span className={s.detailLabel}>Added</span>
+                  <span className={s.detailValue}>{new Date(contact.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                </div>
+                {contact.snapshot_summary?.risk_profile && (
+                  <div className={s.detailRow}>
+                    <span className={s.detailLabel}>Risk Profile</span>
+                    <span className={s.detailValue} style={{ color: RISK_COLORS[contact.snapshot_summary.risk_profile] }}>
+                      {contact.snapshot_summary.risk_profile.charAt(0).toUpperCase() + contact.snapshot_summary.risk_profile.slice(1)}
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
+
+            {/* Right — readiness / client card */}
+            {contact.is_client && contact.client_id ? (
+              <div className={s.clientCard}>
+                <div className={s.clientCardTop}>
+                  <VdfReadinessRing pct={100} size={48} strokeWidth={3} />
+                  <div>
+                    <div className={s.clientCardTitle}>Active Client</div>
+                    <div className={s.clientCardSub}>Profile fully managed in Clients</div>
+                  </div>
+                </div>
+                <div className={s.clientCardLinks}>
+                  <button className={s.clientCardLink} onClick={() => router.push(`/clients/${contact.client_id}`)}>
+                    View Client Profile
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  </button>
+                  <button className={s.clientCardLink} onClick={() => router.push(`/clients/${contact.client_id}?tab=addresses`)}>
+                    Manage Addresses
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  </button>
+                  <button className={s.clientCardLink} onClick={() => router.push(`/clients/${contact.client_id}?tab=kyc`)}>
+                    KYC / PAN / DOB
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className={s.readinessCard}>
+                <VdfReadinessRing pct={pct} size={64} strokeWidth={4} />
+                <div>
+                  <div className={s.readinessTitle}>
+                    {pct >= 70 ? 'Ready to convert' : pct >= 35 ? 'Profile in progress' : 'Just added'}
+                  </div>
+                  <div className={s.readinessSub}>
+                    <VdfButton
+                      variant="primary"
+                      size="sm"
+                      loading={converting}
+                      disabled={pct < 35}
+                      onClick={() => router.push(`/contacts/${contactId}/convert`)}
+                    >
+                      Convert to Client →
+                    </VdfButton>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      ),
+        );
+      })(),
     },
     {
       id: 'channels',

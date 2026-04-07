@@ -96,9 +96,10 @@
 
 .overviewGrid {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
   padding: 28px 32px;
+  align-items: start;
 }
 
 .detailCard,
@@ -147,6 +148,11 @@
   color: var(--color-fg);
 }
 
+.detailMono {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.82rem !important;
+}
+
 .readinessTitle {
   font-size: 0.85rem;
   font-weight: 600;
@@ -157,6 +163,64 @@
 .readinessSub {
   font-size: 0.75rem;
   color: var(--color-muted);
+}
+
+/* ── Client card (post-conversion) ── */
+
+.clientCard {
+  background: var(--glass, var(--color-surface));
+  border: 1px solid var(--glass-border, var(--color-border));
+  border-radius: 14px;
+  padding: 22px;
+}
+
+.clientCardTop {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.clientCardTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  margin-bottom: 3px;
+}
+
+.clientCardSub {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+}
+
+.clientCardLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.clientCardLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--color-fg);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 150ms;
+  text-align: left;
+  width: 100%;
+}
+
+.clientCardLink:hover {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  color: var(--color-primary);
 }
 
 /* ── Channels Tab ────────────────────────────────────── */
