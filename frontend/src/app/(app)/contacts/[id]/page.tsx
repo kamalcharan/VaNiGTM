@@ -255,10 +255,12 @@ export default function ContactProfilePage() {
     </div>
   );
 
+  const [activeTab, setActiveTab] = useState('overview');
+
   const contact = data.data.contact;
   const pct     = readinessPct(contact);
 
-  const tabs = [
+  const TAB_DEFS = [
     {
       id: 'overview',
       label: 'Overview',
@@ -344,6 +346,9 @@ export default function ContactProfilePage() {
     },
   ];
 
+  const tabs = TAB_DEFS.map(({ id, label }) => ({ id, label }));
+  const activeContent = TAB_DEFS.find(t => t.id === activeTab)?.content;
+
   return (
     <div className={s.page}>
       {/* ── Hero ── */}
@@ -368,7 +373,8 @@ export default function ContactProfilePage() {
       </div>
 
       {/* ── Tabs ── */}
-      <VdfTabs tabs={tabs} variant="underline" />
+      <VdfTabs tabs={tabs} activeId={activeTab} onChange={setActiveTab} variant="underline" />
+      <div className={s.tabPanel}>{activeContent}</div>
     </div>
   );
 }
