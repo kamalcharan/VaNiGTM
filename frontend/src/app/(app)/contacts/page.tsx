@@ -252,7 +252,7 @@ export default function ContactsPage() {
                         <span className={s.prefix}>{contact.prefix}</span>{contact.name}
                       </div>
                       <div className={s.contactSub}>
-                        Added {new Date(contact.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                        {contact.primary_mobile ? `${contact.primary_mobile} · ` : ''}Added {new Date(contact.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                       </div>
                     </div>
                   </div>
