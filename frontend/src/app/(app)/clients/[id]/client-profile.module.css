@@ -1,0 +1,509 @@
+/* ═══════════════════════════════════════════════════════
+   /clients/[id] — Client profile page layout
+   ═══════════════════════════════════════════════════════ */
+
+.page {
+  max-width: 960px;
+  min-height: 100%;
+}
+
+.errorBanner {
+  margin: 32px;
+  padding: 16px 20px;
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border: 1px solid var(--color-danger);
+  border-radius: 10px;
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
+/* ── Hero ────────────────────────────────────────────── */
+
+.hero {
+  padding: 28px 32px 24px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--glass, var(--color-surface));
+  backdrop-filter: blur(8px);
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 20px;
+  display: block;
+  transition: color 160ms;
+}
+
+.backBtn:hover { color: var(--color-fg); }
+
+.heroContent {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.heroAvatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.heroText { flex: 1; }
+
+.heroNameRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.heroName {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  margin: 0;
+  font-family: var(--font-display, 'Playfair Display', serif);
+  letter-spacing: -0.02em;
+}
+
+.bookmarkBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 160ms;
+  flex-shrink: 0;
+}
+
+.bookmarkBtn:hover,
+.bookmarkBtn.bookmarked {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.heroBadges {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Risk tag */
+.riskTag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: capitalize;
+}
+
+.riskDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* License plate ext_ref_id */
+.refId {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 1px 0 var(--color-border);
+}
+
+.refBadge {
+  background: var(--color-fg);
+  color: var(--color-bg);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 2px 6px;
+}
+
+.refValue {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  color: var(--color-fg);
+}
+
+/* ── Tabs bar ────────────────────────────────────────── */
+
+.tabsBar {
+  padding: 0 32px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--glass, var(--color-surface));
+  backdrop-filter: blur(8px);
+}
+
+.tabPanel {
+  /* Content area below tabs */
+}
+
+/* ── Overview Grid ───────────────────────────────────── */
+
+.overviewGrid {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 20px;
+  padding: 28px 32px;
+}
+
+.detailCard {
+  background: var(--glass, var(--color-surface));
+  border: 1px solid var(--glass-border, var(--color-border));
+  border-radius: 14px;
+  padding: 22px;
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.cardTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin: 0 0 16px;
+}
+
+.cardTitleRow .cardTitle { margin: 0; }
+
+/* ── Detail rows (read view) ─────────────────────────── */
+
+.detailRows { display: flex; flex-direction: column; gap: 14px; }
+
+.detailRow {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.detailLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.detailValue {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-fg);
+}
+
+.empty {
+  color: var(--color-muted);
+  font-style: italic;
+  opacity: 0.6;
+}
+
+/* ── Edit form ───────────────────────────────────────── */
+
+.editForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.editRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.editField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.editFieldFull {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.editLabel {
+  font-size: var(--label-font-size, 0.65rem);
+  font-weight: var(--label-font-weight, 600);
+  letter-spacing: var(--label-letter-spacing, 0.12em);
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.editInput {
+  height: var(--input-height, 44px);
+  padding: var(--input-padding, 13px 16px);
+  background: var(--color-bg);
+  border: var(--input-border-width, 1px) solid var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  color: var(--color-fg);
+  font-size: var(--input-font-size, 0.9rem);
+  outline: none;
+  transition: border-color 200ms, box-shadow 200ms;
+  box-sizing: border-box;
+  width: 100%;
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+}
+
+.editInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 var(--input-focus-ring-size, 3px) color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity, 12%), transparent);
+}
+
+.editActions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+/* ── Side panel ──────────────────────────────────────── */
+
+.sidePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.familyCard,
+.contactLinkCard {
+  background: var(--glass, var(--color-surface));
+  border: 1px solid var(--glass-border, var(--color-border));
+  border-radius: 14px;
+  padding: 18px 20px;
+}
+
+.familyInfo { margin-top: 8px; }
+
+.familyName {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  margin-bottom: 4px;
+  font-family: var(--font-display, 'Playfair Display', serif);
+}
+
+.familyMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+
+.headPill {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.emptyNote {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  margin: 0 0 12px;
+  font-style: italic;
+}
+
+/* ── Channels Tab ────────────────────────────────────── */
+
+.tabContent {
+  padding: 32px;
+}
+
+.channelsList {
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.channelItem {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  transition: border-color 160ms;
+}
+
+.channelItem:hover { border-color: var(--color-primary); }
+
+.channelIcon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+
+.channelMeta { flex: 1; }
+
+.channelType {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 2px;
+}
+
+.channelValue {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-fg);
+}
+
+.channelRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.primaryPill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.subtype {
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  text-transform: capitalize;
+}
+
+/* ── Addresses Tab ───────────────────────────────────── */
+
+.addressesWrap {
+  padding: 24px 32px;
+}
+
+.addressesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.addressCount {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.addrForm {
+  background: var(--glass, var(--color-surface));
+  border: 1px solid var(--glass-border, var(--color-border));
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.primaryRow {
+  display: flex;
+  align-items: center;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.addressList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.addrCard {
+  padding: 16px 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  transition: border-color 160ms;
+}
+
+.addrCard:hover { border-color: var(--color-primary); }
+
+.addrCardTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.addrType {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.addrLines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.85rem;
+  color: var(--color-fg);
+  line-height: 1.5;
+}

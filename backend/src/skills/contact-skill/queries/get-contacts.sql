@@ -11,6 +11,12 @@ SELECT
     c.is_active,
     c.created_at,
 
+    -- Snapshot completeness flag (for readiness ring)
+    EXISTS(
+        SELECT 1 FROM ki_contact_snapshot s
+        WHERE s.contact_id = c.id AND s.is_live = c.is_live
+    ) AS has_snapshot,
+
     -- Primary mobile (first active primary, or first active mobile)
     (
         SELECT ch.channel_value

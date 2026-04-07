@@ -52,6 +52,16 @@ export const NAV_ITEMS: NavItem[] = [
     recipe: 'daily-briefing',
   },
   {
+    id: 'contacts',
+    label: 'Contacts',
+    icon: <Icon><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></Icon>,
+    href: '/contacts',
+    section: 'main',
+    skill: 'contact-skill',
+    fn: 'get_contacts',
+    recipe: 'contact-list',
+  },
+  {
     id: 'clients',
     label: 'Clients',
     icon: <Icon><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></Icon>,
@@ -241,6 +251,10 @@ export function getActiveNavId(pathname: string): string {
   // Market sub-routes: /market/dashboard → market-dashboard, /market/history|indices → market-history
   if (pathname.startsWith('/market/dashboard')) return 'market-dashboard';
   if (pathname.startsWith('/market/')) return 'market-history';
+
+  // Contact/client profile pages
+  if (pathname.startsWith('/contacts')) return 'contacts';
+  if (pathname.startsWith('/clients'))  return 'clients';
 
   const prefix = NAV_ITEMS.find((item) => item.href !== '/' && pathname.startsWith(item.href));
   if (prefix) return prefix.id;

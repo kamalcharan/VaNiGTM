@@ -28,3 +28,4 @@ export { VdfProactiveCard, type VdfProactiveCardProps } from './proactive-card/V
 export { VdfDownloadNavModal, type VdfDownloadNavModalProps } from './download-nav-modal/VdfDownloadNavModal';
 export { VdfKpiCard, type VdfKpiCardProps } from './kpi-card/VdfKpiCard';
 export { VdfErrorScreen, type VdfErrorScreenProps } from './error-screen/VdfErrorScreen';
+export { VdfReadinessRing, type VdfReadinessRingProps } from './readiness-ring/VdfReadinessRing';

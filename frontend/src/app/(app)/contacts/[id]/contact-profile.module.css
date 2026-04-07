@@ -1,0 +1,398 @@
+/* ═══════════════════════════════════════════════════════
+   /contacts/[id] — Contact profile page layout
+   ═══════════════════════════════════════════════════════ */
+
+.page {
+  max-width: 960px;
+  min-height: 100%;
+}
+
+.errorBanner {
+  margin: 32px;
+  padding: 16px 20px;
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border: 1px solid var(--color-danger);
+  border-radius: 10px;
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
+/* ── Hero ────────────────────────────────────────────── */
+
+.hero {
+  padding: 28px 32px 24px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--glass, var(--color-surface));
+  backdrop-filter: blur(8px);
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 20px;
+  display: block;
+  transition: color 160ms;
+}
+
+.backBtn:hover { color: var(--color-fg); }
+
+.heroContent {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.heroAvatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.heroText { flex: 1; }
+
+.heroName {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  margin: 0 0 8px;
+  font-family: var(--font-display, 'Playfair Display', serif);
+  letter-spacing: -0.02em;
+}
+
+.heroBadges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.goalCount {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  padding: 3px 8px;
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-radius: 4px;
+}
+
+/* ── Overview Tab ────────────────────────────────────── */
+
+.overviewGrid {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 20px;
+  padding: 28px 32px;
+}
+
+.detailCard,
+.readinessCard {
+  background: var(--glass, var(--color-surface));
+  border: 1px solid var(--glass-border, var(--color-border));
+  border-radius: 14px;
+  padding: 22px;
+}
+
+.readinessCard {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.cardTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin: 0 0 16px;
+}
+
+.detailRows { display: flex; flex-direction: column; gap: 14px; }
+
+.detailRow {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.detailLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.detailValue {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-fg);
+}
+
+.readinessTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  margin-bottom: 8px;
+}
+
+.readinessSub {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+/* ── Channels Tab ────────────────────────────────────── */
+
+.channelsList {
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.channelItem {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  transition: border-color 160ms;
+}
+
+.channelItem:hover { border-color: var(--color-primary); }
+
+.channelIcon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+
+.channelMeta { flex: 1; }
+
+.channelType {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 2px;
+}
+
+.channelValue {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-fg);
+}
+
+.channelRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.primaryPill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.subtype {
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  text-transform: capitalize;
+}
+
+/* ── Snapshot Tab ────────────────────────────────────── */
+
+.snapshotGrid {
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.section {}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.sectionTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin: 0 0 14px;
+}
+
+.sectionHead .sectionTitle { margin: 0; }
+
+.riskCards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.riskCard {
+  padding: 16px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 200ms ease;
+  text-align: left;
+}
+
+.riskCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px color-mix(in srgb, #000 8%, transparent);
+}
+
+.riskSelected {
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+}
+
+.riskDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.riskName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  text-transform: capitalize;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+
+.fieldLabel {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.fieldInput {
+  height: var(--input-height, 44px);
+  padding: var(--input-padding, 13px 16px);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  color: var(--color-fg);
+  font-size: var(--input-font-size, 0.9rem);
+  outline: none;
+  transition: border-color 200ms, box-shadow 200ms;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.fieldInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.goalRow {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 80px 36px;
+  gap: 10px;
+  align-items: start;
+  margin-bottom: 10px;
+}
+
+.deleteGoal {
+  height: var(--input-height, 44px);
+  width: 36px;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 160ms;
+}
+
+.deleteGoal:hover {
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.emptyGoals {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.textarea {
+  width: 100%;
+  padding: 13px 16px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  color: var(--color-fg);
+  font-size: 0.88rem;
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 200ms, box-shadow 200ms;
+}
+
+.textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.saveRow {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
