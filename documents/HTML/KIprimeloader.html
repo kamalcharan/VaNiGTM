@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProKey | Institutional Terminal</title>
+    <style>
+        /* Base Styling - Dark, sophisticated environment */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #020617; /* Very dark slate */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        /* The Loader Container */
+        .prokey-loader-container {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        /* The "Flying Packets" animation (Subtle background element) */
+        .data-stream {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            opacity: 0.15;
+        }
+        .packet {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background-color: #38bdf8; /* Blue accent */
+            border-radius: 50%;
+            animation: flyingPackets 2.5s infinite linear;
+        }
+        /* Positions for different packets */
+        .p1 { top: 10%; left: 10%; animation-delay: 0s; }
+        .p2 { top: 50%; left: 30%; animation-delay: 0.5s; }
+        .p3 { top: 80%; left: 60%; animation-delay: 1s; }
+        .p4 { top: 30%; left: 90%; animation-delay: 1.5s; }
+
+        @keyframes flyingPackets {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-100px) scale(0.1); opacity: 0; }
+        }
+
+        /* Logo and Text Styling */
+        .prokey-logo-frame {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* SVG 'Key' Mark Styling */
+        .prokey-mark {
+            width: 44px;
+            height: 44px;
+        }
+        .mark-path {
+            stroke: #f8fafc; /* White/Off-white */
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            fill: none;
+            stroke-dasharray: 150;
+            stroke-dashoffset: 150;
+            animation: drawMark 2s cubic-bezier(0.65, 0, 0.35, 1) forwards,
+                       markShimmer 3s infinite 2.2s; /* Shimmer after drawing */
+        }
+
+        /* 'ProKey' Text Styling */
+        .prokey-text {
+            font-size: 36px;
+            font-weight: 700;
+            letter-spacing: -1.5px;
+            color: #f8fafc;
+            position: relative;
+            opacity: 0;
+            animation: fadeTextIn 1.5s ease forwards 0.8s;
+        }
+        
+        /* Premium Text Shimmer Effect */
+        .prokey-text::after {
+            content: "ProKey";
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: #38bdf8; /* Accent Color */
+            width: 0%;
+            overflow: hidden;
+            animation: textShimmer 3s infinite 2.5s;
+            white-space: nowrap;
+        }
+
+        /* Status Text (Below the logo) */
+        .status-text {
+            color: #94a3b8; /* Slate 400 */
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+            opacity: 0;
+            animation: fadeStatusIn 1s ease forwards 1.8s;
+        }
+        .dots::after {
+            content: '';
+            animation: loadingDots 1.5s infinite;
+        }
+
+        /* --- Animations Definitions --- */
+
+        /* 1. Drawing the SVG Key Mark */
+        @keyframes drawMark {
+            to { stroke-dashoffset: 0; }
+        }
+
+        /* 2. Subtle pulse/shimmer on the Mark */
+        @keyframes markShimmer {
+            0%, 100% { opacity: 1; stroke-width: 2.5; }
+            50% { opacity: 0.7; stroke-width: 3; filter: blur(1px); }
+        }
+
+        /* 3. Fading in the main text */
+        @keyframes fadeTextIn {
+            to { opacity: 1; }
+        }
+
+        /* 4. The main premium text shimmer */
+        @keyframes textShimmer {
+            0% { width: 0%; opacity: 0; }
+            10%, 90% { opacity: 1; }
+            40%, 60% { width: 100%; text-shadow: 0 0 10px #38bdf8, 0 0 20px #38bdf8; }
+            100% { width: 100%; opacity: 0; }
+        }
+
+        /* 5. Fading in status text */
+        @keyframes fadeStatusIn {
+            to { opacity: 1; }
+        }
+
+        /* 6. Status text dots animation */
+        @keyframes loadingDots {
+            0% { content: ''; }
+            33% { content: '.'; }
+            66% { content: '..'; }
+            100% { content: '...'; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="data-stream">
+        <div class="packet p1"></div>
+        <div class="packet p2"></div>
+        <div class="packet p3"></div>
+        <div class="packet p4"></div>
+    </div>
+
+    <div class="prokey-loader-container">
+        
+        <div class="prokey-logo-frame">
+            
+            <svg class="prokey-mark" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+                <path class="mark-path" d="M25 5 L10 12 V25 C10 35, 25 45, 25 45 C25 45, 40 35, 40 25 V12 L25 5 Z M25 18 A4 4 0 1 1 25 26 A4 4 0 1 1 25 18 M25 26 V34" />
+            </svg>
+
+            <div class="prokey-text">ProKey</div>
+        </div>
+
+        <div class="status-text">
+            Initializing Institutional Terminal<span class="dots"></span>
+            <br>
+            <span style="font-size: 11px; color: #64748b; margin-top: 5px; display: block;">Securing connection & verifying assets</span>
+        </div>
+
+    </div>
+
+</body>
+</html>
