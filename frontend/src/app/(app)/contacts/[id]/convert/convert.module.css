@@ -46,6 +46,12 @@
 
 .backBtn:hover { color: var(--color-fg); }
 
+.headerCrumb {
+  color: var(--color-border);
+  font-size: 0.82rem;
+  padding: 0 2px;
+}
+
 .headerDivider {
   width: 1px;
   height: 16px;
@@ -107,6 +113,11 @@
   line-height: 1.2;
   color: var(--color-fg);
   margin-bottom: 6px;
+}
+
+.railTitle em {
+  font-style: italic;
+  color: var(--color-primary);
 }
 
 .railSub {

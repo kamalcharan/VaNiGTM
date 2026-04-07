@@ -42,9 +42,13 @@ function formatAmount(v: number): string {
 }
 
 const RAIL_ITEMS = (c: Contact) => {
-  const mobile  = c.channels.find(ch => ch.channel_type === 'mobile');
-  const email   = c.channels.find(ch => ch.channel_type === 'email');
-  const snap    = c.snapshot_summary;
+  const snap       = c.snapshot_summary;
+  const channelTypes = c.channels.map(ch =>
+    ch.channel_type.charAt(0).toUpperCase() + ch.channel_type.slice(1)
+  );
+  const channelSummary = channelTypes.length
+    ? channelTypes.join(' · ')
+    : null;
 
   return [
     {
@@ -53,14 +57,9 @@ const RAIL_ITEMS = (c: Contact) => {
       done: true,
     },
     {
-      label: 'Mobile',
-      value: mobile?.channel_value ?? null,
-      done: !!mobile,
-    },
-    {
-      label: 'Email',
-      value: email?.channel_value ?? null,
-      done: !!email,
+      label: `${c.channels.length} Channel${c.channels.length !== 1 ? 's' : ''}`,
+      value: channelSummary,
+      done: c.channels.length > 0,
     },
     {
       label: 'Risk Profile',
@@ -75,10 +74,8 @@ const RAIL_ITEMS = (c: Contact) => {
       done: !!snap?.net_worth_estimate,
     },
     {
-      label: 'Goals',
-      value: snap?.goals_lite_count
-        ? `${snap.goals_lite_count} goal${snap.goals_lite_count > 1 ? 's' : ''} defined`
-        : null,
+      label: `${snap?.goals_lite_count ?? 0} Aspirational Goal${(snap?.goals_lite_count ?? 0) !== 1 ? 's' : ''}`,
+      value: (snap?.goals_lite_count ?? 0) > 0 ? 'Defined in snapshot' : null,
       done: (snap?.goals_lite_count ?? 0) > 0,
     },
   ];
@@ -108,6 +105,15 @@ export default function ConvertPage() {
     'contact-skill', 'get_contact', { contact_id: contactId }
   );
 
+  const contact = data?.data?.contact ?? null;
+
+  // ALL hooks before any early returns — Rules of Hooks
+  useEffect(() => {
+    if (contact?.is_client) {
+      router.replace(`/contacts/${contactId}`);
+    }
+  }, [contact?.is_client, contactId, router]);
+
   const { mutate: convert, isPending } = useSkillMutation(
     'contact-skill', 'convert_to_client',
     {
@@ -123,7 +129,7 @@ export default function ConvertPage() {
   if (isLoading) return <VdfLoader overlay message="Loading…" />;
 
   const skillError = !data?.success ? data?.error : null;
-  if (isError || skillError || !data?.data?.contact) {
+  if (isError || skillError || !contact) {
     return (
       <div className={s.page}>
         <div className={s.errorBanner}>
@@ -132,15 +138,6 @@ export default function ConvertPage() {
       </div>
     );
   }
-
-  const contact = data.data.contact;
-
-  // Move navigation out of render — calling router during render is illegal in React 19
-  useEffect(() => {
-    if (contact.is_client) {
-      router.replace(`/contacts/${contactId}`);
-    }
-  }, [contact.is_client, contactId, router]);
 
   if (contact.is_client) return null;
 
@@ -172,15 +169,16 @@ export default function ConvertPage() {
       {/* ── Header ── */}
       <header className={s.header}>
         <div className={s.headerLeft}>
-          <button className={s.backBtn} onClick={() => router.push(`/contacts/${contactId}`)}>
-            ← Back to profile
-          </button>
-          <div className={s.headerDivider} />
+          <button className={s.backBtn} onClick={() => router.push('/contacts')}>Contacts</button>
+          <span className={s.headerCrumb}>/</span>
+          <button className={s.backBtn} onClick={() => router.push(`/contacts/${contactId}`)}>{contact.name}</button>
+          <span className={s.headerCrumb}>/</span>
           <span className={s.headerTitle}>Convert to Client</span>
         </div>
         <div className={s.headerStepper}>
-          Converting{' '}
-          <span className={s.headerStepperStrong}>{contact.prefix} {contact.name}</span>
+          The final step ·{' '}
+          <span className={s.headerStepperStrong}>5 new fields</span>
+          {' '}· ~2 min
         </div>
       </header>
 
@@ -190,9 +188,11 @@ export default function ConvertPage() {
         {/* Left rail */}
         <aside className={s.rail}>
           <div className={s.railEyebrow}>Conversion Brief</div>
-          <div className={s.railTitle}>What we know</div>
+          <div className={s.railTitle}>
+            Welcome <em>{contact.name.split(' ')[0]}</em> to<br />your client family.
+          </div>
           <div className={s.railSub}>
-            Review the profile before creating their client record.
+            You&apos;ve already gathered everything that matters. Here&apos;s what&apos;s on file — just fill the official details on the right.
           </div>
 
           <div className={s.railKnown}>
@@ -215,7 +215,7 @@ export default function ConvertPage() {
           <div className={s.railQuote}>
             <span className={s.railQuoteMark}>"</span>
             <p className={s.railQuoteText}>
-              A client record creates the foundation for their entire financial journey with you.
+              A conversion isn&apos;t paperwork — it&apos;s the moment a stranger trusts you with their future.
             </p>
             <div className={s.railQuoteAuthor}>ProKey · Client Management</div>
           </div>
@@ -228,8 +228,8 @@ export default function ConvertPage() {
           <div className={s.formSection}>
             <div className={s.formSectionHead}>
               <span className={s.formSectionNum}>01</span>
-              <span className={s.formSectionTitle}>KYC & Identity</span>
-              <span className={s.formSectionSub}>All fields optional</span>
+              <span className={s.formSectionTitle}>Identity Verification</span>
+              <span className={s.formSectionSub}>Required by SEBI</span>
             </div>
 
             <div className={s.formGrid2} style={{ marginBottom: 18 }}>
@@ -270,14 +270,14 @@ export default function ConvertPage() {
           <div className={s.formSection}>
             <div className={s.formSectionHead}>
               <span className={s.formSectionNum}>02</span>
-              <span className={s.formSectionTitle}>Client Reference</span>
-              <span className={s.formSectionSub}>Your internal ID system</span>
+              <span className={s.formSectionTitle}>Distributor Reference</span>
+              <span className={s.formSectionSub}>Your tracking code</span>
             </div>
 
             <div className={s.field} style={{ marginBottom: 24 }}>
               <label className={s.fieldLabel}>External Reference ID</label>
               <div className={s.extRefWrap}>
-                <span className={s.extRefLabel}>REF</span>
+                <span className={s.extRefLabel}>CLIENT · CODE</span>
                 <input
                   className={s.extRefInput}
                   value={extRef}
@@ -295,8 +295,8 @@ export default function ConvertPage() {
           <div className={s.formSection}>
             <div className={s.formSectionHead}>
               <span className={s.formSectionNum}>03</span>
-              <span className={s.formSectionTitle}>Family Grouping</span>
-              <span className={s.formSectionSub}>Optional</span>
+              <span className={s.formSectionTitle}>Family Structure</span>
+              <span className={s.formSectionSub}>Group household members</span>
             </div>
 
             <div className={s.toggleCards}>
@@ -312,8 +312,8 @@ export default function ConvertPage() {
                   </svg>
                 </div>
                 <div>
-                  <div className={s.toggleLabel}>Create as Family Head</div>
-                  <div className={s.toggleSub}>Start a new family group for this client</div>
+                  <div className={s.toggleLabel}>Family Head</div>
+                  <div className={s.toggleSub}>Will create a new family</div>
                 </div>
               </button>
 
@@ -328,8 +328,8 @@ export default function ConvertPage() {
                   </svg>
                 </div>
                 <div>
-                  <div className={s.toggleLabel}>Individual Client</div>
-                  <div className={s.toggleSub}>No family group — standalone record</div>
+                  <div className={s.toggleLabel}>Family Member</div>
+                  <div className={s.toggleSub}>Link to existing family</div>
                 </div>
               </button>
             </div>
@@ -424,18 +424,11 @@ export default function ConvertPage() {
           Goals from snapshot will be seeded automatically if set.
         </div>
         <div className={s.footerRight}>
-          <VdfButton
-            variant="ghost"
-            onClick={() => router.push(`/contacts/${contactId}`)}
-          >
-            Cancel
+          <VdfButton variant="ghost" onClick={() => router.push(`/contacts/${contactId}`)}>
+            ← Back to profile
           </VdfButton>
-          <VdfButton
-            variant="primary"
-            loading={isPending}
-            onClick={handleConvert}
-          >
-            Convert to Client →
+          <VdfButton variant="primary" loading={isPending} onClick={handleConvert}>
+            Convert {contact.name.split(' ')[0]} to Client →
           </VdfButton>
         </div>
       </footer>
