@@ -4,10 +4,11 @@
 
 /* ── Page shell ── */
 .page {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   background: var(--color-bg);
+  overflow: hidden;  /* form column scrolls internally */
 }
 
 /* ── Header ── */
@@ -76,6 +77,8 @@
   display: grid;
   grid-template-columns: 320px 1fr;
   flex: 1;
+  min-height: 0;          /* allow flex child to shrink below content size */
+  overflow: hidden;
 }
 
 /* ── Left Rail ── */
@@ -83,11 +86,8 @@
   padding: 36px 28px;
   border-right: 1px solid var(--color-border);
   background: var(--color-surface);
-  position: sticky;
-  top: 65px;
-  align-self: start;
-  max-height: calc(100vh - 65px);
   overflow-y: auto;
+  height: 100%;
 }
 
 .railEyebrow {
@@ -220,8 +220,11 @@
 
 /* ── Right Form ── */
 .form {
-  padding: 40px 56px 100px;
+  padding: 40px 56px 40px;
   max-width: 760px;
+  overflow-y: auto;     /* form column scrolls independently */
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .formSection {
@@ -413,17 +416,16 @@
   line-height: 1.4;
 }
 
-/* ── Sticky footer CTA ── */
+/* ── Footer CTA ── */
 .footer {
-  position: sticky;
-  bottom: 0;
-  background: color-mix(in srgb, var(--color-bg) 92%, transparent);
+  background: color-mix(in srgb, var(--color-bg) 96%, transparent);
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--color-border);
   padding: 16px 56px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;   /* never shrink — always visible at bottom */
 }
 
 .footerLeft {
