@@ -7,8 +7,9 @@ import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfEmptyState, VdfButton, VdfStatusBadge, VdfReadinessRing,
-  VdfCard, VdfSearchBar,
+  VdfCard, VdfSearchBar, VdfMobileInput,
 } from '@/components/vdf';
+import { getCountryByCode } from '@/constants/countries';
 import s from './contacts.module.css';
 
 /* ── Types ───────────────────────────────────────────── */
@@ -70,7 +71,16 @@ const FILTER_PILLS = [
   { id: 'clients',   label: 'Clients' },
 ];
 
-const PREFIX_OPTIONS = ['Mr', 'Ms', 'Mrs', 'Dr', 'Prof'];
+// Must match DB CHECK constraint: ('Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Sri', 'Smt')
+const PREFIX_OPTIONS = [
+  { value: 'Mr',   label: 'Mr.'   },
+  { value: 'Mrs',  label: 'Mrs.'  },
+  { value: 'Ms',   label: 'Ms.'   },
+  { value: 'Dr',   label: 'Dr.'   },
+  { value: 'Prof', label: 'Prof.' },
+  { value: 'Sri',  label: 'Sri.'  },  // Indian male honorific
+  { value: 'Smt',  label: 'Smt.'  },  // Indian female honorific (Shrimati)
+];
 
 /* ── Component ───────────────────────────────────────── */
 
@@ -84,11 +94,12 @@ export default function ContactsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // Create drawer state
-  const [drawerOpen, setDrawerOpen]   = useState(false);
-  const [newPrefix, setNewPrefix]     = useState('Mr');
-  const [newName, setNewName]         = useState('');
-  const [newMobile, setNewMobile]     = useState('');
-  const [newEmail, setNewEmail]       = useState('');
+  const [drawerOpen, setDrawerOpen]     = useState(false);
+  const [newPrefix, setNewPrefix]       = useState('Mr');
+  const [newName, setNewName]           = useState('');
+  const [newCountryCode, setNewCountryCode] = useState('in');
+  const [newMobile, setNewMobile]       = useState('');
+  const [newEmail, setNewEmail]         = useState('');
 
   const handleSearch = (v: string) => {
     setSearch(v);
@@ -131,6 +142,8 @@ export default function ContactsPage() {
 
   function closeDrawer() {
     setDrawerOpen(false);
+    setNewCountryCode('in');
+    setNewMobile('');
   }
 
   function handleCreate() {
@@ -139,8 +152,12 @@ export default function ContactsPage() {
       return;
     }
     const channels: { channel_type: string; channel_value: string; is_primary: boolean }[] = [];
-    if (newMobile.trim()) channels.push({ channel_type: 'mobile', channel_value: newMobile.trim(), is_primary: true });
-    if (newEmail.trim())  channels.push({ channel_type: 'email',  channel_value: newEmail.trim(),  is_primary: !newMobile.trim() });
+    if (newMobile.trim()) {
+      const country = getCountryByCode(newCountryCode);
+      const dialCode = country?.dial_code ?? '+91';
+      channels.push({ channel_type: 'mobile', channel_value: `${dialCode}${newMobile.trim()}`, is_primary: true });
+    }
+    if (newEmail.trim()) channels.push({ channel_type: 'email', channel_value: newEmail.trim(), is_primary: !newMobile.trim() });
 
     createContact({ prefix: newPrefix, name: newName.trim(), channels });
   }
@@ -286,7 +303,7 @@ export default function ContactsPage() {
               <div className={s.fieldGroup}>
                 <label className={s.fieldLabel}>Prefix</label>
                 <select className={s.fieldSelect} value={newPrefix} onChange={e => setNewPrefix(e.target.value)}>
-                  {PREFIX_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                  {PREFIX_OPTIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
               </div>
 
@@ -304,13 +321,12 @@ export default function ContactsPage() {
               </div>
 
               <div className={s.fieldGroup}>
-                <label className={s.fieldLabel}>Mobile <span className={s.optional}>(optional)</span></label>
-                <input
-                  className={s.fieldInput}
-                  type="tel"
-                  placeholder="10-digit mobile number"
-                  value={newMobile}
-                  onChange={e => setNewMobile(e.target.value)}
+                <VdfMobileInput
+                  label="Mobile (optional)"
+                  countryCode={newCountryCode}
+                  mobile={newMobile}
+                  onCountryChange={setNewCountryCode}
+                  onMobileChange={setNewMobile}
                 />
               </div>
 
