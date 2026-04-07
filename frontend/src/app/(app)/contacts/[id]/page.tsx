@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import {
@@ -107,24 +108,45 @@ const CHANNEL_ICONS: Record<string, string> = {
 
 function SnapshotTab({ contactId }: { contactId: number }) {
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
+
   const { data, isLoading } = useSkillQuery<{ snapshot: Snapshot | null }>(
     'contact-skill', 'get_snapshot', { contact_id: contactId }
   );
   const snap = data?.data?.snapshot;
 
-  const [riskProfile, setRiskProfile] = useState<string>(snap?.risk_profile ?? '');
-  const [netWorth, setNetWorth]        = useState(snap?.net_worth_estimate?.toString() ?? '');
-  const [annualIncome, setAnnualIncome] = useState(snap?.annual_income_estimate?.toString() ?? '');
-  const [horizon, setHorizon]          = useState(snap?.investment_horizon_years?.toString() ?? '');
-  const [notes, setNotes]              = useState(snap?.notes ?? '');
-  const [goals, setGoals]              = useState<Array<{ name: string; target_amount: string; timeline_years: string }>>(
-    snap?.goals_lite?.map(g => ({ name: g.name, target_amount: String(g.target_amount), timeline_years: String(g.timeline_years) })) ?? []
-  );
+  // Initialize state as empty — synced from query via useEffect once data arrives
+  const [riskProfile, setRiskProfile]   = useState<string>('');
+  const [netWorth, setNetWorth]         = useState('');
+  const [annualIncome, setAnnualIncome] = useState('');
+  const [horizon, setHorizon]           = useState('');
+  const [notes, setNotes]               = useState('');
+  const [goals, setGoals]               = useState<Array<{ name: string; target_amount: string; timeline_years: string }>>([]);
+
+  // Sync form state whenever query data loads or changes
+  useEffect(() => {
+    if (!snap) return;
+    setRiskProfile(snap.risk_profile ?? '');
+    setNetWorth(snap.net_worth_estimate?.toString() ?? '');
+    setAnnualIncome(snap.annual_income_estimate?.toString() ?? '');
+    setHorizon(snap.investment_horizon_years?.toString() ?? '');
+    setNotes(snap.notes ?? '');
+    setGoals(snap.goals_lite?.map(g => ({
+      name: g.name,
+      target_amount: String(g.target_amount),
+      timeline_years: String(g.timeline_years),
+    })) ?? []);
+  }, [snap]);
 
   const { mutate: save, isPending } = useSkillMutation(
     'contact-skill', 'update_snapshot',
     {
-      onSuccess: () => showToast({ message: 'Snapshot saved', type: 'success' }),
+      onSuccess: () => {
+        // Invalidate both the snapshot detail and the contact (snapshot_summary in hero)
+        queryClient.invalidateQueries({ queryKey: ['skill', 'contact-skill', 'get_snapshot'] });
+        queryClient.invalidateQueries({ queryKey: ['skill', 'contact-skill', 'get_contact'] });
+        showToast({ message: 'Snapshot saved', type: 'success' });
+      },
       onError: (e) => showToast({ message: e.message || 'Save failed', type: 'error' }),
     }
   );
