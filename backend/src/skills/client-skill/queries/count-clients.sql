@@ -11,11 +11,11 @@ WHERE cl.tenant_id = $tenant_id
   AND cl.is_live   = $is_live
   AND cl.is_active = true
   AND (
-      $search IS NULL
-      OR c.normalized_name ILIKE '%' || UPPER($search) || '%'
-      OR c.name ILIKE '%' || $search || '%'
-      OR cl.pan ILIKE '%' || $search || '%'
-      OR cl.ext_ref_id ILIKE '%' || $search || '%'
+      $search::text IS NULL
+      OR c.normalized_name ILIKE '%' || UPPER($search::text) || '%'
+      OR c.name ILIKE '%' || $search::text || '%'
+      OR cl.pan ILIKE '%' || $search::text || '%'
+      OR cl.ext_ref_id ILIKE '%' || $search::text || '%'
   )
-  AND ($risk_profile IS NULL OR cl.risk_profile = $risk_profile)
-  AND ($bookmarked_only IS NULL OR $bookmarked_only = false OR bm.is_active = true);
+  AND ($risk_profile::text IS NULL OR cl.risk_profile = $risk_profile::text)
+  AND ($bookmarked_only::boolean IS NULL OR $bookmarked_only::boolean = false OR bm.is_active = true);
