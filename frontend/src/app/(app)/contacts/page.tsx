@@ -7,7 +7,7 @@ import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfEmptyState, VdfButton, VdfStatusBadge, VdfReadinessRing,
-  VdfCard, VdfSearchBar, VdfMobileInput,
+  VdfCard, VdfSearchBar, VdfMobileInput, VdfInput,
 } from '@/components/vdf';
 import { getCountryByCode } from '@/constants/countries';
 import s from './contacts.module.css';
@@ -307,18 +307,15 @@ export default function ContactsPage() {
                 </select>
               </div>
 
-              <div className={s.fieldGroup}>
-                <label className={s.fieldLabel}>Full Name <span className={s.required}>*</span></label>
-                <input
-                  className={s.fieldInput}
-                  type="text"
-                  placeholder="e.g. Rajesh Kumar"
-                  value={newName}
-                  onChange={e => setNewName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleCreate()}
-                  autoFocus
-                />
-              </div>
+              <VdfInput
+                label="Full Name"
+                required
+                placeholder="e.g. Rajesh Kumar"
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                autoFocus
+              />
 
               <div className={s.fieldGroup}>
                 <VdfMobileInput
@@ -330,17 +327,14 @@ export default function ContactsPage() {
                 />
               </div>
 
-              <div className={s.fieldGroup}>
-                <label className={s.fieldLabel}>Email <span className={s.optional}>(optional)</span></label>
-                <input
-                  className={s.fieldInput}
-                  type="email"
-                  placeholder="email@example.com"
-                  value={newEmail}
-                  onChange={e => setNewEmail(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleCreate()}
-                />
-              </div>
+              <VdfInput
+                label="Email"
+                type="email"
+                placeholder="email@example.com"
+                value={newEmail}
+                onChange={e => setNewEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleCreate()}
+              />
             </div>
 
             <div className={s.drawerFooter}>

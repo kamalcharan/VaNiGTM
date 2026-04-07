@@ -225,6 +225,7 @@
   flex-shrink: 0;
 }
 
+/* Prefix select — only element not covered by VdfInput/VdfMobileInput */
 .fieldGroup {
   display: flex;
   flex-direction: column;
@@ -239,10 +240,6 @@
   color: var(--color-muted);
 }
 
-.required { color: var(--color-danger); margin-left: 2px; }
-.optional  { color: var(--color-muted); font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 0.7rem; }
-
-.fieldInput,
 .fieldSelect {
   height: var(--input-height, 44px);
   padding: var(--input-padding, 13px 16px);
@@ -257,7 +254,6 @@
   transition: border-color 150ms;
 }
 
-.fieldInput:focus,
 .fieldSelect:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 var(--input-focus-ring-size, 3px) color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity, 12%), transparent);

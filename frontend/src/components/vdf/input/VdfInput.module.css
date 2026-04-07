@@ -1,0 +1,62 @@
+/* VdfInput — composes from shared form tokens.
+   ALL sizing/color via design tokens from ThemeScript. */
+
+@import '../../../styles/forms.module.css';
+
+.group  { composes: group  from '../../../styles/forms.module.css'; }
+.label  { composes: label  from '../../../styles/forms.module.css'; }
+.input  { composes: input  from '../../../styles/forms.module.css'; }
+.error  { composes: error  from '../../../styles/forms.module.css'; }
+
+.required { color: var(--color-danger); }
+
+.hint {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  margin-top: 4px;
+}
+
+/* ── Input wrapper (positions icon/right element) ── */
+
+.inputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.withIcon  { padding-left: 42px; }
+.withRight { padding-right: 48px; }
+
+.icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-muted);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.right {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+}
+
+/* ── Error state ── */
+
+.hasError .input {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 var(--input-focus-ring-size)
+    color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+.hasError .input:focus {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 var(--input-focus-ring-size)
+    color-mix(in srgb, var(--color-danger) var(--input-focus-ring-opacity), transparent);
+}
