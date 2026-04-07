@@ -62,9 +62,9 @@ export async function convert_to_client(
   const result = await ctx.db.transaction(async (tx) => {
     // 1. Fetch contact — must exist, be active, and not already a client
     const contactRes = await tx.query<{
-      id: number; is_client: boolean; is_active: boolean;
+      id: number; name: string; prefix: string; is_client: boolean; is_active: boolean;
     }>(
-      `SELECT id, is_client, is_active FROM ki_contacts
+      `SELECT id, name, prefix, is_client, is_active FROM ki_contacts
        WHERE id = $contact_id AND tenant_id = $tenant_id AND is_live = $is_live`,
       { $contact_id: contact_id, $tenant_id: ctx.tenant_id, $is_live: ctx.is_live }
     );
@@ -97,19 +97,21 @@ export async function convert_to_client(
     }
 
     // 4. Create ki_clients record
+    // name is required (NOT NULL from migration 001) — carry from contact
     const clientRes = await tx.query<{
       id: number; client_uid: string; contact_id: number;
       ext_ref_id: string | null; pan: string | null;
       risk_profile: string | null; onboarding_status: string;
     }>(
       `INSERT INTO ki_clients
-         (contact_id, tenant_id, is_live, pan, dob, anniversary_date, ext_ref_id,
+         (name, contact_id, tenant_id, is_live, pan, dob, anniversary_date, ext_ref_id,
           family_id, is_family_head, risk_profile, referred_by_name, created_by)
        VALUES
-         ($contact_id, $tenant_id, $is_live, $pan, $dob, $anniversary_date, $ext_ref_id,
+         ($name, $contact_id, $tenant_id, $is_live, $pan, $dob, $anniversary_date, $ext_ref_id,
           $family_id, $is_family_head, $risk_profile, $referred_by_name, $created_by)
        RETURNING id, client_uid, contact_id, ext_ref_id, pan, risk_profile, onboarding_status`,
       {
+        $name:            contact.name,
         $contact_id:      contact_id,
         $tenant_id:       ctx.tenant_id,
         $is_live:         ctx.is_live,
