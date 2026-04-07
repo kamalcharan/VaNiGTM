@@ -87,9 +87,13 @@ async function main() {
     }
 
     let tenantId: string;
+    let isLive: boolean;
+    let userId: string;
     try {
       const jwt = verifyAccessToken(authHeader.slice(7));
       tenantId = jwt.tenant_id;
+      isLive   = jwt.is_live;
+      userId   = jwt.user_id;
     } catch {
       res.status(401).json({
         error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token' },
@@ -99,7 +103,7 @@ async function main() {
 
     // Create tenant-scoped DB interface (RLS context set per query)
     const db = createTenantDb(pool, tenantId);
-    const ctx = { tenant_id: tenantId, db };
+    const ctx = { tenant_id: tenantId, is_live: isLive, user_id: userId, db };
 
     try {
       const result = await registry.execute(skillName, functionName, params, ctx);

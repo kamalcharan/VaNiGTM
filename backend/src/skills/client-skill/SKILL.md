@@ -1,7 +1,7 @@
 ---
 name: client-skill
-version: 1.0.0
-description: Client CRM, risk profiling, and family group management
+version: 2.0.0
+description: Full client profile management — KYC, family, addresses, bookmarks, and stats
 tier: starter
 default_recipe: client-list
 ---
@@ -9,38 +9,46 @@ default_recipe: client-list
 # Client Skill
 
 ## Purpose
-Manages the distributor's client database — contact information, risk profiles, family groups, and client-level aggregates. This is the CRM layer of KI-Prime.
+Manages the MFD's full client database. Clients are contacts that have been onboarded with KYC details (PAN, DOB, ext_ref_id), addresses, family grouping, and bookmarks. Portfolio, goals, and transactions are managed by their respective skills.
 
 ## Functions
 
 ### get_clients
-Returns client list with key metrics. Supports filtering and search.
-- Parameters: filters (optional, object: { search?: string, tag?: string, min_aum?: number, max_aum?: number, risk_profile?: string, sort_by?: 'name' | 'aum' | 'last_interaction' | 'sip_count', sort_order?: 'asc' | 'desc', limit?: number, offset?: number })
-- Returns: { clients: [{ id, name, email, phone, aum, sip_count, active_sips_total, goals_count, risk_profile, last_interaction_date, tags }], total, recipe: 'client-list' }
+Paginated list of clients with optional search and filter.
+- Parameters: search (optional, string), risk_profile (optional, string), bookmarked_only (optional, boolean), limit (optional, number), offset (optional, number)
+- Returns: { clients: [{ id, client_uid, name, prefix, ext_ref_id, pan, risk_profile, onboarding_status, is_bookmarked, primary_mobile, primary_email }], total, recipe: 'client-list' }
 
-### get_client_profile
-Complete client profile with demographics, portfolio summary, goals summary, risk score.
+### get_client
+Single client with full profile — channels, addresses, family info.
 - Parameters: client_id (required, number)
-- Returns: { id, name, email, phone, pan, dob, address, occupation, annual_income, portfolio_summary: { total_value, total_invested, return_pct, scheme_count }, goals_summary: { total_goals, on_track, at_risk, behind }, risk_profile: { capacity, tolerance, required, overall }, family_group_id, tags, notes, created_at, last_interaction, recipe: 'client-360' }
-
-### get_risk_profile
-Detailed risk assessment: capacity (financial ability), tolerance (emotional comfort), required (goal-driven need).
-- Parameters: client_id (required, number)
-- Returns: { client_name, risk_capacity: { score, factors }, risk_tolerance: { score, factors }, risk_required: { score, factors }, overall_risk: string, recommendation, last_assessed, recipe: 'detail-sidebar' }
-- Risk levels: conservative, moderate-conservative, moderate, moderate-aggressive, aggressive
+- Returns: { client: { id, client_uid, contact_id, name, prefix, pan, dob, ext_ref_id, risk_profile, onboarding_status, family, channels, addresses, bookmark }, recipe: 'client-profile' }
 
 ### update_client
-Update profile fields. Requires distributor confirmation via approval-card recipe.
-- Parameters: client_id (required, number), fields (required, object: partial client fields)
-- Returns: { updated_fields, previous_values, recipe: 'approval-card' }
+Update client fields (KYC, risk profile, onboarding status).
+- Parameters: client_id (required, number), pan (optional, string), dob (optional, string), anniversary_date (optional, string), ext_ref_id (optional, string), risk_profile (optional, string), onboarding_status (optional, string), referred_by_name (optional, string)
+- Returns: { client: { id, pan, dob, risk_profile, onboarding_status, updated_at }, recipe: 'client-card' }
 
-### get_family_group
-Returns linked family members with combined AUM and shared goals.
+### add_address
+Add or update an address for a client.
+- Parameters: client_id (required, number), address_type (required, string), line1 (required, string), line2 (optional, string), city (required, string), state (required, string), country (optional, string), pincode (required, string), is_primary (optional, boolean)
+- Returns: { address: { id, address_type, line1, city, state, pincode, is_primary }, recipe: 'inline-item' }
+
+### add_bookmark
+Add or update a bookmark for a client (user-scoped).
+- Parameters: client_id (required, number), reason_id (optional, number), custom_reason (optional, string), notes (optional, string)
+- Returns: { bookmark: { id, client_id, reason_id, custom_reason, notes }, recipe: 'inline-item' }
+
+### remove_bookmark
+Remove a bookmark (soft delete).
 - Parameters: client_id (required, number)
-- Returns: { group_id, members: [{ id, name, relationship, aum, goals_count }], combined_aum, shared_goals: [{ name, combined_corpus }], recipe: 'data-table' }
+- Returns: { removed: true, client_id, recipe: 'confirmation' }
 
-## Constraints
-- PAN is stored encrypted, displayed masked (XXXXX1234X)
-- Client creation/deletion is via direct API, not through VaNi (safety)
-- update_client always returns an approval-card — distributor must confirm before write
-- Risk profile recalculation triggered on significant AUM change or annually
+### get_family_members
+Get all clients in the same family group.
+- Parameters: family_id (required, string)
+- Returns: { members: [{ id, client_uid, name, prefix, is_family_head, ext_ref_id }], family_name, recipe: 'data-table' }
+
+### get_stats
+Summary stats for the clients dashboard.
+- Parameters: none
+- Returns: { total_clients, active_clients, pending_onboarding, bookmarked, recipe: 'stat-summary' }

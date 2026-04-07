@@ -38,6 +38,10 @@ export interface SkillDb {
 export interface SkillContext {
   tenant_id: string;
   db: SkillDb;
+  /** Active environment (from JWT). false = sandbox, true = live. */
+  is_live: boolean;
+  /** User ID from JWT — for audit fields (created_by, user_id). */
+  user_id: string;
 }
 
 /* ── Skill layer types ────────────────────────────────── */
