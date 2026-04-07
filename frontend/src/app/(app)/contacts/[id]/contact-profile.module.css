@@ -24,53 +24,80 @@
 /* ── Hero ────────────────────────────────────────────── */
 
 .hero {
-  padding: 28px 32px 24px;
+  padding: 20px 32px 24px;
   border-bottom: 1px solid var(--color-border);
   background: var(--glass, var(--color-surface));
   backdrop-filter: blur(8px);
+}
+
+/* Breadcrumb */
+.heroCrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
 }
 
 .backBtn {
   background: none;
   border: none;
   color: var(--color-muted);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   cursor: pointer;
   padding: 0;
-  margin-bottom: 20px;
-  display: block;
   transition: color 160ms;
 }
 
 .backBtn:hover { color: var(--color-fg); }
 
+.heroCrumbSep {
+  color: var(--color-border);
+  font-size: 0.78rem;
+}
+
+.heroCrumbCurrent {
+  font-size: 0.78rem;
+  color: var(--color-fg);
+  font-weight: 500;
+}
+
+/* Hero body: left identity + right ring card */
 .heroContent {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.heroLeft {
   display: flex;
   align-items: center;
   gap: 20px;
+  flex: 1;
+  min-width: 0;
 }
 
 .heroAvatar {
-  width: 72px;
-  height: 72px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: #fff;
   flex-shrink: 0;
   box-shadow: 0 8px 24px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
-.heroText { flex: 1; }
+.heroText { flex: 1; min-width: 0; }
 
 .heroName {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 600;
   color: var(--color-fg);
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   font-family: var(--font-display, 'Playfair Display', serif);
   letter-spacing: -0.02em;
 }
@@ -79,17 +106,102 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-bottom: 6px;
+}
+
+.heroMeta {
+  font-size: 0.75rem;
+  color: var(--color-muted);
 }
 
 .goalCount {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-accent);
-  padding: 3px 8px;
+  padding: 2px 8px;
   background: color-mix(in srgb, var(--color-accent) 12%, transparent);
   border-radius: 4px;
+}
+
+/* Hero right: ring card */
+.heroRingCard {
+  background: var(--glass, var(--color-surface));
+  border: 1px solid var(--glass-border, var(--color-border));
+  border-radius: 14px;
+  padding: 18px 20px;
+  min-width: 220px;
+  flex-shrink: 0;
+}
+
+.heroRingCardTop {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.heroRingTitle {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  margin-bottom: 4px;
+}
+
+.heroRingHint {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  line-height: 1.4;
+}
+
+.heroRingCta {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.heroRingCtaBtn {
+  width: 100%;
+  padding: 9px 14px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 150ms;
+}
+
+.heroRingCtaBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.heroRingLinks {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.heroRingLink {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+}
+
+.heroRingDot {
+  color: var(--color-border);
+  font-size: 0.75rem;
 }
 
 /* ── Overview Tab ────────────────────────────────────── */
@@ -103,17 +215,23 @@
 }
 
 .detailCard,
-.readinessCard {
+.channelsCard {
   background: var(--glass, var(--color-surface));
   border: 1px solid var(--glass-border, var(--color-border));
   border-radius: 14px;
   padding: 22px;
 }
 
-.readinessCard {
+.channelsCardList {
   display: flex;
-  align-items: center;
-  gap: 20px;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.emptyChannels {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  font-style: italic;
 }
 
 .cardTitle {
@@ -153,75 +271,6 @@
   font-size: 0.82rem !important;
 }
 
-.readinessTitle {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--color-fg);
-  margin-bottom: 8px;
-}
-
-.readinessSub {
-  font-size: 0.75rem;
-  color: var(--color-muted);
-}
-
-/* ── Client card (post-conversion) ── */
-
-.clientCard {
-  background: var(--glass, var(--color-surface));
-  border: 1px solid var(--glass-border, var(--color-border));
-  border-radius: 14px;
-  padding: 22px;
-}
-
-.clientCardTop {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.clientCardTitle {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--color-fg);
-  margin-bottom: 3px;
-}
-
-.clientCardSub {
-  font-size: 0.72rem;
-  color: var(--color-muted);
-}
-
-.clientCardLinks {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.clientCardLink {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 12px;
-  background: none;
-  border: none;
-  border-radius: 8px;
-  color: var(--color-fg);
-  font-size: 0.82rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 150ms;
-  text-align: left;
-  width: 100%;
-}
-
-.clientCardLink:hover {
-  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
-  color: var(--color-primary);
-}
 
 /* ── Channels Tab ────────────────────────────────────── */
 

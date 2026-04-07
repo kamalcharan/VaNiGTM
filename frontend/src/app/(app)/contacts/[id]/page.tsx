@@ -422,7 +422,6 @@ function SnapshotTab({ contactId, isClient }: { contactId: number; isClient: boo
 export default function ContactProfilePage() {
   const { id } = useParams<{ id: string }>();
   const router  = useRouter();
-  const { showToast } = useToast();
   const contactId = Number(id);
 
   // All hooks must be at the top — before any early returns
@@ -430,18 +429,6 @@ export default function ContactProfilePage() {
 
   const { data, isLoading, isError } = useSkillQuery<{ contact: Contact | null }>(
     'contact-skill', 'get_contact', { contact_id: contactId }
-  );
-
-  const { mutate: convertToClient, isPending: converting } = useSkillMutation(
-    'contact-skill', 'convert_to_client',
-    {
-      onSuccess: (res) => {
-        const clientId = (res.data as { client: { id: number } }).client.id;
-        showToast({ message: 'Contact converted to client!', type: 'success' });
-        router.push(`/clients/${clientId}`);
-      },
-      onError: (e) => showToast({ message: e.message || 'Conversion failed', type: 'error' }),
-    }
   );
 
   if (isLoading) return <VdfLoader overlay message="Loading contact…" />;
@@ -520,52 +507,31 @@ export default function ContactProfilePage() {
               </div>
             </div>
 
-            {/* Right — readiness / client card */}
-            {contact.is_client && contact.client_id ? (
-              <div className={s.clientCard}>
-                <div className={s.clientCardTop}>
-                  <VdfReadinessRing pct={100} size={48} strokeWidth={3} />
-                  <div>
-                    <div className={s.clientCardTitle}>Active Client</div>
-                    <div className={s.clientCardSub}>Profile fully managed in Clients</div>
-                  </div>
+            {/* Right — channels card */}
+            <div className={s.channelsCard}>
+              <h3 className={s.cardTitle}>Channels</h3>
+              {contact.channels.length === 0 ? (
+                <p className={s.emptyChannels}>No channels added yet.</p>
+              ) : (
+                <div className={s.channelsCardList}>
+                  {contact.channels.map(ch => (
+                    <div key={ch.id} className={s.channelItem}>
+                      <div className={s.channelIcon}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="15" height="15">
+                          <path d={CHANNEL_ICONS[ch.channel_type] ?? CHANNEL_ICONS.other} />
+                          {ch.channel_type === 'email' && <polyline points="22,6 12,13 2,6" />}
+                        </svg>
+                      </div>
+                      <div className={s.channelMeta}>
+                        <span className={s.channelType}>{ch.channel_type}</span>
+                        <span className={s.channelValue}>{ch.channel_value}</span>
+                      </div>
+                      {ch.is_primary && <span className={s.primaryPill}>Primary</span>}
+                    </div>
+                  ))}
                 </div>
-                <div className={s.clientCardLinks}>
-                  <button className={s.clientCardLink} onClick={() => router.push(`/clients/${contact.client_id}`)}>
-                    View Client Profile
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                  </button>
-                  <button className={s.clientCardLink} onClick={() => router.push(`/clients/${contact.client_id}?tab=addresses`)}>
-                    Manage Addresses
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                  </button>
-                  <button className={s.clientCardLink} onClick={() => router.push(`/clients/${contact.client_id}?tab=kyc`)}>
-                    KYC / PAN / DOB
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className={s.readinessCard}>
-                <VdfReadinessRing pct={pct} size={64} strokeWidth={4} />
-                <div>
-                  <div className={s.readinessTitle}>
-                    {pct >= 70 ? 'Ready to convert' : pct >= 35 ? 'Profile in progress' : 'Just added'}
-                  </div>
-                  <div className={s.readinessSub}>
-                    <VdfButton
-                      variant="primary"
-                      size="sm"
-                      loading={converting}
-                      disabled={pct < 35}
-                      onClick={() => router.push(`/contacts/${contactId}/convert`)}
-                    >
-                      Convert to Client →
-                    </VdfButton>
-                  </div>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         );
       })(),
@@ -614,22 +580,78 @@ export default function ContactProfilePage() {
     <div className={s.page}>
       {/* ── Hero ── */}
       <div className={s.hero}>
-        <button className={s.backBtn} onClick={() => router.push('/contacts')}>
-          ← Back
-        </button>
+        <div className={s.heroCrumb}>
+          <button className={s.backBtn} onClick={() => router.push('/contacts')}>Contacts</button>
+          <span className={s.heroCrumbSep}>/</span>
+          <span className={s.heroCrumbCurrent}>{contact.name}</span>
+        </div>
         <div className={s.heroContent}>
-          <div className={s.heroAvatar} style={{ background: avatarGradient(contact.name) }}>
-            {initials(contact.name)}
-          </div>
-          <div className={s.heroText}>
-            <h1 className={s.heroName}>{contact.prefix} {contact.name}</h1>
-            <div className={s.heroBadges}>
-              <VdfStatusBadge label={contact.is_client ? 'Client' : 'Prospect'} variant={contact.is_client ? 'success' : 'warning'} />
-              {contact.snapshot_summary?.goals_lite_count > 0 && (
-                <span className={s.goalCount}>{contact.snapshot_summary.goals_lite_count} goal{contact.snapshot_summary.goals_lite_count > 1 ? 's' : ''}</span>
-              )}
+          {/* Left: avatar + identity */}
+          <div className={s.heroLeft}>
+            <div className={s.heroAvatar} style={{ background: avatarGradient(contact.name) }}>
+              {initials(contact.name)}
+            </div>
+            <div className={s.heroText}>
+              <h1 className={s.heroName}>{contact.prefix} {contact.name}</h1>
+              <div className={s.heroBadges}>
+                <VdfStatusBadge label={contact.is_client ? 'Client' : 'Prospect'} variant={contact.is_client ? 'success' : 'warning'} />
+                {contact.snapshot_summary?.goals_lite_count > 0 && (
+                  <span className={s.goalCount}>{contact.snapshot_summary.goals_lite_count} goal{contact.snapshot_summary.goals_lite_count > 1 ? 's' : ''}</span>
+                )}
+              </div>
+              <div className={s.heroMeta}>
+                Added {new Date(contact.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                {contact.channels.length > 0 && (
+                  <> · {contact.channels.length} channel{contact.channels.length !== 1 ? 's' : ''}</>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Right: readiness ring card (for prospects) or client quick-links (for clients) */}
+          {contact.is_client && contact.client_id ? (
+            <div className={s.heroRingCard}>
+              <div className={s.heroRingCardTop}>
+                <VdfReadinessRing pct={100} size={44} strokeWidth={3} />
+                <div>
+                  <div className={s.heroRingTitle}>Active Client</div>
+                  <button className={s.heroRingCta} onClick={() => router.push(`/clients/${contact.client_id}`)}>
+                    View client profile →
+                  </button>
+                </div>
+              </div>
+              <div className={s.heroRingLinks}>
+                <button className={s.heroRingLink} onClick={() => router.push(`/clients/${contact.client_id}?tab=addresses`)}>Addresses</button>
+                <span className={s.heroRingDot}>·</span>
+                <button className={s.heroRingLink} onClick={() => router.push(`/clients/${contact.client_id}`)}>KYC / PAN</button>
+              </div>
+            </div>
+          ) : (
+            <div className={s.heroRingCard}>
+              <div className={s.heroRingCardTop}>
+                <VdfReadinessRing pct={pct} size={44} strokeWidth={3} />
+                <div>
+                  <div className={s.heroRingTitle}>
+                    {pct >= 70 ? 'Ready to convert' : pct >= 35 ? 'Profile in progress' : 'Just added'}
+                  </div>
+                  {pct < 70 && (
+                    <div className={s.heroRingHint}>
+                      {!contact.channels.some(c => c.channel_type === 'mobile') ? 'Add a mobile number' :
+                       !contact.snapshot_summary?.has_snapshot ? 'Fill financial snapshot' :
+                       'Complete snapshot to convert'}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                className={s.heroRingCtaBtn}
+                disabled={pct < 35}
+                onClick={() => router.push(`/contacts/${contactId}/convert`)}
+              >
+                Convert to Client →
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
