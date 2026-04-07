@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import {
@@ -464,15 +464,13 @@ function AddressesTab({ addresses, clientId }: { addresses: Address[]; clientId:
 export default function ClientProfilePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showToast } = useToast();
   const clientId = Number(id);
 
   // Support deep-link tab activation via ?tab=addresses or ?tab=kyc
-  const searchParams = typeof window !== 'undefined'
-    ? new URLSearchParams(window.location.search)
-    : new URLSearchParams();
   const tabParam = searchParams.get('tab');
-  const initialTab = tabParam === 'addresses' ? 'addresses' : tabParam === 'kyc' ? 'overview' : 'overview';
+  const initialTab = tabParam === 'addresses' ? 'addresses' : 'overview';
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [bookmarked, setBookmarked] = useState(false);

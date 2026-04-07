@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
@@ -135,10 +135,14 @@ export default function ConvertPage() {
 
   const contact = data.data.contact;
 
-  if (contact.is_client) {
-    router.replace(`/contacts/${contactId}`);
-    return null;
-  }
+  // Move navigation out of render — calling router during render is illegal in React 19
+  useEffect(() => {
+    if (contact.is_client) {
+      router.replace(`/contacts/${contactId}`);
+    }
+  }, [contact.is_client, contactId, router]);
+
+  if (contact.is_client) return null;
 
   const railItems = RAIL_ITEMS(contact);
 
