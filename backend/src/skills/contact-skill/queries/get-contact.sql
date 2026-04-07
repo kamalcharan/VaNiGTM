@@ -38,7 +38,7 @@ SELECT
         SELECT json_build_object(
             'has_snapshot',            true,
             'risk_profile',            s.risk_profile,
-            'goals_lite_count',        COALESCE(json_array_length(s.goals_lite), 0),
+            'goals_lite_count',        COALESCE(jsonb_array_length(s.goals_lite), 0),
             'net_worth_estimate',      s.net_worth_estimate,
             'investment_horizon_years', s.investment_horizon_years
         )
