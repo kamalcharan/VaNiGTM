@@ -132,9 +132,17 @@ COMMENT ON COLUMN ki_clients.contact_id    IS '1:1 with ki_contacts. Nullable fo
 -- FK: ki_families.head_client_id → ki_clients.id
 -- ────────────────────────────────────────────────────────────────────────────
 
-ALTER TABLE ki_families
-    ADD CONSTRAINT fk_ki_families_head_client
-    FOREIGN KEY (head_client_id) REFERENCES ki_clients(id) ON DELETE SET NULL;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'ki_families' AND constraint_name = 'fk_ki_families_head_client'
+    ) THEN
+        ALTER TABLE ki_families
+            ADD CONSTRAINT fk_ki_families_head_client
+            FOREIGN KEY (head_client_id) REFERENCES ki_clients(id) ON DELETE SET NULL;
+    END IF;
+END $$;
 
 
 -- ────────────────────────────────────────────────────────────────────────────
