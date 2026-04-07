@@ -104,26 +104,65 @@ const CHANNEL_ICONS: Record<string, string> = {
   other:     'M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z',
 };
 
+/* ── Helpers ─────────────────────────────────────────── */
+
+function formatAmount(v: number): string {
+  if (v >= 1_00_00_000) return `₹ ${(v / 1_00_00_000).toFixed(1)} Cr`;
+  if (v >= 1_00_000)    return `₹ ${(v / 1_00_000).toFixed(1)} L`;
+  return `₹ ${v.toLocaleString('en-IN')}`;
+}
+
+// Map from risk key → CSS bar class (avoids s[dynamicKey] TS issues)
+const RISK_BAR_CLASS: Record<string, string> = {
+  conservative: 'riskBarCons',
+  moderate:     'riskBarMod',
+  aggressive:   'riskBarAggr',
+};
+
+const RISK_META = {
+  conservative: {
+    label: 'Conservative',
+    tagline: 'Low volatility, steady returns',
+    returns: '7–9% p.a.',
+    bars: [30, 35, 32, 38, 34],
+  },
+  moderate: {
+    label: 'Moderate',
+    tagline: 'Balanced growth & stability',
+    returns: '10–13% p.a.',
+    bars: [40, 65, 50, 72, 58],
+  },
+  aggressive: {
+    label: 'Aggressive',
+    tagline: 'Maximum growth potential',
+    returns: '14–18% p.a.',
+    bars: [30, 90, 45, 95, 60],
+  },
+} as const;
+
+type RiskKey = keyof typeof RISK_META;
+
 /* ── Snapshot Editor ─────────────────────────────────── */
 
-function SnapshotTab({ contactId }: { contactId: number }) {
+function SnapshotTab({ contactId, isClient }: { contactId: number; isClient: boolean }) {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const { data, isLoading } = useSkillQuery<{ snapshot: Snapshot | null }>(
     'contact-skill', 'get_snapshot', { contact_id: contactId }
   );
   const snap = data?.data?.snapshot;
 
-  // Initialize state as empty — synced from query via useEffect once data arrives
   const [riskProfile, setRiskProfile]   = useState<string>('');
   const [netWorth, setNetWorth]         = useState('');
   const [annualIncome, setAnnualIncome] = useState('');
   const [horizon, setHorizon]           = useState('');
   const [notes, setNotes]               = useState('');
   const [goals, setGoals]               = useState<Array<{ name: string; target_amount: string; timeline_years: string }>>([]);
+  const [addingGoal, setAddingGoal]     = useState(false);
+  const [newGoal, setNewGoal]           = useState({ name: '', target_amount: '', timeline_years: '' });
 
-  // Sync form state whenever query data loads or changes
   useEffect(() => {
     if (!snap) return;
     setRiskProfile(snap.risk_profile ?? '');
@@ -142,7 +181,6 @@ function SnapshotTab({ contactId }: { contactId: number }) {
     'contact-skill', 'update_snapshot',
     {
       onSuccess: () => {
-        // Invalidate both the snapshot detail and the contact (snapshot_summary in hero)
         queryClient.invalidateQueries({ queryKey: ['skill', 'contact-skill', 'get_snapshot'] });
         queryClient.invalidateQueries({ queryKey: ['skill', 'contact-skill', 'get_contact'] });
         showToast({ message: 'Snapshot saved', type: 'success' });
@@ -167,21 +205,56 @@ function SnapshotTab({ contactId }: { contactId: number }) {
     })),
   });
 
+  const confirmGoal = () => {
+    if (!newGoal.name || !newGoal.target_amount) return;
+    setGoals(gs => [...gs, newGoal]);
+    setNewGoal({ name: '', target_amount: '', timeline_years: '' });
+    setAddingGoal(false);
+  };
+
+  // Progress: risk / netWorth / income / horizon / goals
+  const steps = [!!riskProfile, !!netWorth, !!annualIncome, !!horizon, goals.length > 0];
+  const doneCount = steps.filter(Boolean).length;
+
   return (
     <div className={s.snapshotGrid}>
+
+      {/* Progress stepper */}
+      <div className={s.progressSteps}>
+        {steps.map((done, i) => (
+          <div
+            key={i}
+            className={`${s.progressStep} ${done ? s.stepDone : i === doneCount ? s.stepActive : ''}`}
+          />
+        ))}
+      </div>
+
       {/* Risk Profile */}
       <section className={s.section}>
-        <h3 className={s.sectionTitle}>Risk Profile</h3>
+        <h3 className={s.sectionTitle}>What is their risk appetite?</h3>
         <div className={s.riskCards}>
-          {(['conservative', 'moderate', 'aggressive'] as const).map(r => (
+          {(Object.entries(RISK_META) as [RiskKey, typeof RISK_META[RiskKey]][]).map(([key, meta]) => (
             <button
-              key={r}
-              className={`${s.riskCard} ${riskProfile === r ? s.riskSelected : ''}`}
-              style={riskProfile === r ? { borderColor: RISK_COLORS[r] } : {}}
-              onClick={() => setRiskProfile(r)}
+              key={key}
+              className={`${s.riskCard} ${riskProfile === key ? s.riskSelected : ''}`}
+              onClick={() => setRiskProfile(riskProfile === key ? '' : key)}
             >
-              <div className={s.riskDot} style={{ background: RISK_COLORS[r] }} />
-              <span className={s.riskName}>{r.charAt(0).toUpperCase() + r.slice(1)}</span>
+              {riskProfile === key && <span className={s.riskCheckmark}>✓</span>}
+              <div className={s.riskViz}>
+                {meta.bars.map((h, i) => (
+                  <div
+                    key={i}
+                    className={`${s.riskBar} ${s[RISK_BAR_CLASS[key] as keyof typeof s] ?? ''}`}
+                    style={{ height: `${h}%` }}
+                  />
+                ))}
+              </div>
+              <div className={s.riskName}>{meta.label}</div>
+              <div className={s.riskTagline}>{meta.tagline}</div>
+              <div className={s.riskStat}>
+                <span className={s.riskStatLabel}>Expected returns</span>
+                <span className={s.riskStatValue}>{meta.returns}</span>
+              </div>
             </button>
           ))}
         </div>
@@ -190,19 +263,53 @@ function SnapshotTab({ contactId }: { contactId: number }) {
       {/* Financial Overview */}
       <section className={s.section}>
         <h3 className={s.sectionTitle}>Financial Overview</h3>
-        <div className={s.fieldGrid}>
-          <div className={s.field}>
-            <label className={s.fieldLabel}>Net Worth Estimate (₹)</label>
-            <input className={s.fieldInput} type="number" value={netWorth} onChange={e => setNetWorth(e.target.value)} placeholder="e.g. 5000000" />
+        <div className={s.finGrid}>
+          <div className={s.bigInputCard}>
+            <div className={s.bigInputLabel}>Net Worth Estimate</div>
+            <div className={s.bigInputWrap}>
+              <span className={s.bigInputCurrency}>₹</span>
+              <input
+                className={s.bigInput}
+                type="number"
+                value={netWorth}
+                onChange={e => setNetWorth(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className={s.bigInputHelper}>
+              {netWorth ? formatAmount(Number(netWorth)) : 'Total assets minus liabilities'}
+            </div>
           </div>
-          <div className={s.field}>
-            <label className={s.fieldLabel}>Annual Income (₹)</label>
-            <input className={s.fieldInput} type="number" value={annualIncome} onChange={e => setAnnualIncome(e.target.value)} placeholder="e.g. 1200000" />
+          <div className={s.bigInputCard}>
+            <div className={s.bigInputLabel}>Annual Income</div>
+            <div className={s.bigInputWrap}>
+              <span className={s.bigInputCurrency}>₹</span>
+              <input
+                className={s.bigInput}
+                type="number"
+                value={annualIncome}
+                onChange={e => setAnnualIncome(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className={s.bigInputHelper}>
+              {annualIncome ? formatAmount(Number(annualIncome)) : 'Gross annual income from all sources'}
+            </div>
           </div>
-          <div className={s.field}>
-            <label className={s.fieldLabel}>Investment Horizon (Years)</label>
-            <input className={s.fieldInput} type="number" value={horizon} onChange={e => setHorizon(e.target.value)} placeholder="e.g. 15" min={1} max={40} />
-          </div>
+        </div>
+
+        <div className={s.horizonCard}>
+          <div className={s.horizonLabel}>Investment Horizon</div>
+          <input
+            className={s.horizonInput}
+            type="number"
+            value={horizon}
+            onChange={e => setHorizon(e.target.value)}
+            placeholder="—"
+            min={1}
+            max={40}
+          />
+          <span className={s.horizonUnit}>yrs</span>
         </div>
       </section>
 
@@ -210,29 +317,100 @@ function SnapshotTab({ contactId }: { contactId: number }) {
       <section className={s.section}>
         <div className={s.sectionHead}>
           <h3 className={s.sectionTitle}>Aspirational Goals</h3>
-          <VdfButton variant="ghost" size="sm" onClick={() => setGoals(g => [...g, { name: '', target_amount: '', timeline_years: '' }])}>
-            + Add Goal
-          </VdfButton>
         </div>
-        {goals.map((g, i) => (
-          <div key={i} className={s.goalRow}>
-            <input className={s.fieldInput} placeholder="Goal name (e.g. Retirement)" value={g.name} onChange={e => setGoals(gs => gs.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
-            <input className={s.fieldInput} type="number" placeholder="Target ₹" value={g.target_amount} onChange={e => setGoals(gs => gs.map((x, j) => j === i ? { ...x, target_amount: e.target.value } : x))} />
-            <input className={s.fieldInput} type="number" placeholder="Years" value={g.timeline_years} onChange={e => setGoals(gs => gs.map((x, j) => j === i ? { ...x, timeline_years: e.target.value } : x))} min={1} max={40} />
-            <button className={s.deleteGoal} onClick={() => setGoals(gs => gs.filter((_, j) => j !== i))}>×</button>
+
+        <div className={s.goalList}>
+          {goals.map((g, i) => (
+            <div key={i} className={s.goalBubble}>
+              <div className={s.goalIcon}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                </svg>
+              </div>
+              <span className={s.goalName}>{g.name}</span>
+              <span className={s.goalAmount}>
+                {g.target_amount ? formatAmount(Number(g.target_amount)) : '—'}
+              </span>
+              <span className={s.goalTimeline}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                </svg>
+                {g.timeline_years || '?'} yrs
+              </span>
+              <button
+                className={s.goalDelete}
+                onClick={() => setGoals(gs => gs.filter((_, j) => j !== i))}
+                aria-label="Remove goal"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {addingGoal ? (
+          <div className={s.addGoalForm}>
+            <input
+              className={s.inlineInput}
+              placeholder="Goal name (e.g. Retirement)"
+              value={newGoal.name}
+              onChange={e => setNewGoal(g => ({ ...g, name: e.target.value }))}
+              autoFocus
+            />
+            <input
+              className={`${s.inlineInput} ${s.inlineInputSm}`}
+              type="number"
+              placeholder="Target ₹"
+              value={newGoal.target_amount}
+              onChange={e => setNewGoal(g => ({ ...g, target_amount: e.target.value }))}
+            />
+            <input
+              className={`${s.inlineInput} ${s.inlineInputSm}`}
+              type="number"
+              placeholder="Years"
+              value={newGoal.timeline_years}
+              onChange={e => setNewGoal(g => ({ ...g, timeline_years: e.target.value }))}
+              min={1} max={40}
+            />
+            <button className={s.inlineSave} onClick={confirmGoal}>Add</button>
           </div>
-        ))}
-        {goals.length === 0 && <p className={s.emptyGoals}>No goals added yet. Click + Add Goal to begin.</p>}
+        ) : (
+          <button className={s.addGoalBtn} onClick={() => setAddingGoal(true)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add a goal
+          </button>
+        )}
       </section>
 
       {/* Notes */}
       <section className={s.section}>
         <h3 className={s.sectionTitle}>Notes</h3>
-        <textarea className={s.textarea} rows={4} value={notes} onChange={e => setNotes(e.target.value)} placeholder="MFD observations about this prospect…" />
+        <textarea
+          className={s.textarea}
+          rows={3}
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          placeholder="MFD observations about this prospect…"
+        />
       </section>
 
       <div className={s.saveRow}>
-        <VdfButton variant="primary" loading={isPending} onClick={handleSave}>Save Snapshot</VdfButton>
+        <VdfButton variant="primary" loading={isPending} onClick={handleSave}>
+          Save Snapshot
+        </VdfButton>
+        {!isClient && riskProfile && (
+          <span className={s.convertCta}>
+            Ready to convert?{' '}
+            <button
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', fontWeight: 600, fontSize: 'inherit' }}
+              onClick={() => router.push(`/contacts/${contactId}/convert`)}
+            >
+              Continue to convert →
+            </button>
+          </span>
+        )}
       </div>
     </div>
   );
@@ -274,7 +452,7 @@ export default function ContactProfilePage() {
         {skillError
           ? `Skill error: ${skillError}`
           : isError
-            ? `Request failed: ${error?.message ?? 'Unknown error'}`
+            ? 'Request failed — please try again'
             : 'Contact not found.'}
       </div>
     </div>
@@ -365,7 +543,7 @@ export default function ContactProfilePage() {
     {
       id: 'snapshot',
       label: 'Financial Snapshot',
-      content: <SnapshotTab contactId={contactId} />,
+      content: <SnapshotTab contactId={contactId} isClient={contact.is_client} />,
     },
   ];
 
