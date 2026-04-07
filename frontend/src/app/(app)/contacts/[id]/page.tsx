@@ -224,6 +224,9 @@ export default function ContactProfilePage() {
   const { showToast } = useToast();
   const contactId = Number(id);
 
+  // All hooks must be at the top — before any early returns
+  const [activeTab, setActiveTab] = useState('overview');
+
   const { data, isLoading, isError } = useSkillQuery<{ contact: Contact | null }>(
     'contact-skill', 'get_contact', { contact_id: contactId }
   );
@@ -254,8 +257,6 @@ export default function ContactProfilePage() {
       </div>
     </div>
   );
-
-  const [activeTab, setActiveTab] = useState('overview');
 
   const contact = data.data.contact;
   const pct     = readinessPct(contact);

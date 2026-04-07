@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import {
@@ -69,15 +70,25 @@ const FILTER_PILLS = [
   { id: 'clients',   label: 'Clients' },
 ];
 
+const PREFIX_OPTIONS = ['Mr', 'Ms', 'Mrs', 'Dr', 'Prof'];
+
 /* ── Component ───────────────────────────────────────── */
 
 export default function ContactsPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
 
   const [search, setSearch]     = useState('');
   const [filter, setFilter]     = useState<FilterMode>('all');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Create drawer state
+  const [drawerOpen, setDrawerOpen]   = useState(false);
+  const [newPrefix, setNewPrefix]     = useState('Mr');
+  const [newName, setNewName]         = useState('');
+  const [newMobile, setNewMobile]     = useState('');
+  const [newEmail, setNewEmail]       = useState('');
 
   const handleSearch = (v: string) => {
     setSearch(v);
@@ -101,13 +112,38 @@ export default function ContactsPage() {
   const { mutate: createContact, isPending: creating } = useSkillMutation(
     'contact-skill', 'create_contact',
     {
-      onSuccess: (res) => {
-        const id = (res.data as { contact: { id: number } }).contact.id;
-        router.push(`/contacts/${id}`);
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['skill', 'contact-skill', 'get_contacts'] });
+        showToast({ message: 'Contact added.', type: 'success' });
+        closeDrawer();
       },
       onError: (err) => showToast({ message: err.message || 'Failed to create contact', type: 'error' }),
     }
   );
+
+  function openDrawer() {
+    setNewPrefix('Mr');
+    setNewName('');
+    setNewMobile('');
+    setNewEmail('');
+    setDrawerOpen(true);
+  }
+
+  function closeDrawer() {
+    setDrawerOpen(false);
+  }
+
+  function handleCreate() {
+    if (!newName.trim()) {
+      showToast({ message: 'Name is required', type: 'error' });
+      return;
+    }
+    const channels: { channel_type: string; channel_value: string; is_primary: boolean }[] = [];
+    if (newMobile.trim()) channels.push({ channel_type: 'mobile', channel_value: newMobile.trim(), is_primary: true });
+    if (newEmail.trim())  channels.push({ channel_type: 'email',  channel_value: newEmail.trim(),  is_primary: !newMobile.trim() });
+
+    createContact({ prefix: newPrefix, name: newName.trim(), channels });
+  }
 
   const contacts  = data?.data?.contacts ?? [];
   const total     = data?.data?.total ?? 0;
@@ -136,12 +172,7 @@ export default function ContactsPage() {
               <strong>{converted}</strong> converted
             </p>
           </div>
-          <VdfButton
-            variant="primary"
-            size="sm"
-            loading={creating}
-            onClick={() => createContact({ prefix: 'Mr', name: 'New Contact' })}
-          >
+          <VdfButton variant="primary" size="sm" onClick={openDrawer}>
             + Add Contact
           </VdfButton>
         </div>
@@ -164,7 +195,7 @@ export default function ContactsPage() {
           title="No contacts yet"
           description="Add your first prospect to start building your client pipeline."
           action={
-            <VdfButton variant="outline" size="sm" onClick={() => createContact({ prefix: 'Mr', name: 'New Contact' })}>
+            <VdfButton variant="outline" size="sm" onClick={openDrawer}>
               + Add Contact
             </VdfButton>
           }
@@ -235,6 +266,76 @@ export default function ContactsPage() {
               </VdfCard>
             );
           })}
+        </div>
+      )}
+
+      {/* ── Create Contact Drawer ── */}
+      {drawerOpen && (
+        <div className={s.drawerOverlay} onClick={closeDrawer}>
+          <div className={s.drawer} onClick={e => e.stopPropagation()}>
+            <div className={s.drawerHeader}>
+              <h2 className={s.drawerTitle}>New Contact</h2>
+              <button className={s.drawerClose} onClick={closeDrawer} aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className={s.drawerBody}>
+              <div className={s.fieldGroup}>
+                <label className={s.fieldLabel}>Prefix</label>
+                <select className={s.fieldSelect} value={newPrefix} onChange={e => setNewPrefix(e.target.value)}>
+                  {PREFIX_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+
+              <div className={s.fieldGroup}>
+                <label className={s.fieldLabel}>Full Name <span className={s.required}>*</span></label>
+                <input
+                  className={s.fieldInput}
+                  type="text"
+                  placeholder="e.g. Rajesh Kumar"
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                  autoFocus
+                />
+              </div>
+
+              <div className={s.fieldGroup}>
+                <label className={s.fieldLabel}>Mobile <span className={s.optional}>(optional)</span></label>
+                <input
+                  className={s.fieldInput}
+                  type="tel"
+                  placeholder="10-digit mobile number"
+                  value={newMobile}
+                  onChange={e => setNewMobile(e.target.value)}
+                />
+              </div>
+
+              <div className={s.fieldGroup}>
+                <label className={s.fieldLabel}>Email <span className={s.optional}>(optional)</span></label>
+                <input
+                  className={s.fieldInput}
+                  type="email"
+                  placeholder="email@example.com"
+                  value={newEmail}
+                  onChange={e => setNewEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                />
+              </div>
+            </div>
+
+            <div className={s.drawerFooter}>
+              <VdfButton variant="outline" size="sm" onClick={closeDrawer} disabled={creating}>
+                Cancel
+              </VdfButton>
+              <VdfButton variant="primary" size="sm" loading={creating} onClick={handleCreate}>
+                Add Contact
+              </VdfButton>
+            </div>
+          </div>
         </div>
       )}
     </div>
