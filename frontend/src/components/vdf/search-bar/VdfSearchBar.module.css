@@ -1,0 +1,97 @@
+/* VdfSearchBar — search input + filter pills + optional addon slot */
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── Search input ─────────────────────────────────── */
+
+.searchWrap {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+  max-width: 380px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px 0 36px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  color: var(--color-fg);
+  font-size: 0.85rem;
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  outline: none;
+  transition: border-color 200ms, box-shadow 200ms;
+  box-sizing: border-box;
+}
+
+.searchInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 var(--input-focus-ring-size, 3px)
+    color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity, 12%), transparent);
+}
+
+.searchInput::placeholder {
+  color: var(--color-muted);
+  opacity: var(--input-placeholder-opacity, 0.5);
+}
+
+/* ── Filter pills ─────────────────────────────────── */
+
+.pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  cursor: pointer;
+  transition: all 160ms ease;
+  text-transform: capitalize;
+}
+
+.pill:hover {
+  border-color: var(--color-fg);
+  color: var(--color-fg);
+}
+
+.pillActive {
+  background: var(--color-fg);
+  border-color: var(--color-fg);
+  color: var(--color-bg);
+}
+
+/* When pillActive has an explicit color style, the inline style overrides bg/border/color,
+   so the .pillActive background is only applied when no color is set (the "All" pill). */
+
+/* ── Addon slot ───────────────────────────────────── */
+
+.addon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}

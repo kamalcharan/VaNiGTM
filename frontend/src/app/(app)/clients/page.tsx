@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSkillQuery } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import {
-  VdfLoader, VdfEmptyState, VdfStatusBadge,
+  VdfLoader, VdfEmptyState, VdfButton, VdfStatusBadge, VdfCard, VdfSearchBar,
 } from '@/components/vdf';
 import s from './clients.module.css';
 
@@ -69,6 +69,13 @@ const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'muted' | 'danger'>
   cancelled:   'danger',
 };
 
+const RISK_PILLS = [
+  { id: 'all',          label: 'All' },
+  { id: 'conservative', label: 'Conservative', color: 'var(--color-info)' },
+  { id: 'moderate',     label: 'Moderate',     color: 'var(--color-warning)' },
+  { id: 'aggressive',   label: 'Aggressive',   color: 'var(--color-danger)' },
+];
+
 /* ── Component ───────────────────────────────────────── */
 
 export default function ClientsPage() {
@@ -89,8 +96,8 @@ export default function ClientsPage() {
   };
 
   const skillParams = useMemo(() => ({
-    search:         debouncedSearch || undefined,
-    risk_profile:   riskFilter === 'all' ? undefined : riskFilter,
+    search:          debouncedSearch || undefined,
+    risk_profile:    riskFilter === 'all' ? undefined : riskFilter,
     bookmarked_only: bookmarkedOnly || undefined,
     limit: 100,
     offset: 0,
@@ -106,8 +113,23 @@ export default function ClientsPage() {
   if (isLoading) return <VdfLoader overlay message="Loading clients…" />;
   if (isError) return (
     <div className={s.page}>
-      <div className={s.errorBanner}>Failed to load clients — {error?.message ?? 'Unknown error'}</div>
+      <p style={{ color: 'var(--color-danger)', padding: '16px' }}>
+        Failed to load clients — {error?.message ?? 'Unknown error'}
+      </p>
     </div>
+  );
+
+  /* Bookmark toggle — used as VdfSearchBar addon */
+  const bookmarkAddon = (
+    <button
+      className={`${s.bookmarkToggle} ${bookmarkedOnly ? s.active : ''}`}
+      onClick={() => setBookmarkedOnly(v => !v)}
+      title="Bookmarked only"
+    >
+      <svg viewBox="0 0 24 24" fill={bookmarkedOnly ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" width="16" height="16">
+        <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+      </svg>
+    </button>
   );
 
   return (
@@ -119,46 +141,18 @@ export default function ClientsPage() {
             <h1 className={s.title}>Clients</h1>
             <p className={s.meta}><strong>{total}</strong> total clients</p>
           </div>
-          <button className={s.addFromContacts} onClick={() => router.push('/contacts')}>
-            Add via Contacts →
-          </button>
         </div>
 
         <div className={s.toolbar}>
-          <div className={s.searchWrap}>
-            <svg className={s.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
-              <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-            </svg>
-            <input
-              className={s.searchInput}
-              placeholder="Search by name, PAN, or reference code…"
-              value={search}
-              onChange={e => handleSearch(e.target.value)}
-            />
-          </div>
-
-          <div className={s.filters}>
-            {(['all', 'conservative', 'moderate', 'aggressive'] as RiskFilter[]).map(r => (
-              <button
-                key={r}
-                className={`${s.filterPill} ${riskFilter === r ? s.active : ''}`}
-                style={riskFilter === r && r !== 'all' ? { borderColor: RISK_COLORS[r], color: RISK_COLORS[r] } : {}}
-                onClick={() => setRiskFilter(r)}
-              >
-                {r === 'all' ? 'All' : r.charAt(0).toUpperCase() + r.slice(1)}
-              </button>
-            ))}
-          </div>
-
-          <button
-            className={`${s.bookmarkToggle} ${bookmarkedOnly ? s.active : ''}`}
-            onClick={() => setBookmarkedOnly(v => !v)}
-            title="Bookmarked only"
-          >
-            <svg viewBox="0 0 24 24" fill={bookmarkedOnly ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" width="16" height="16">
-              <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
-            </svg>
-          </button>
+          <VdfSearchBar
+            value={search}
+            onChange={handleSearch}
+            placeholder="Search by name, PAN, or reference code…"
+            pills={RISK_PILLS}
+            activePill={riskFilter}
+            onPillChange={(id) => setRiskFilter(id as RiskFilter)}
+            addon={bookmarkAddon}
+          />
         </div>
       </div>
 
@@ -167,14 +161,19 @@ export default function ClientsPage() {
         <VdfEmptyState
           title="No clients yet"
           description="Convert a contact to a client to get started."
-          action={{ label: 'Go to Contacts', onClick: () => router.push('/contacts') }}
+          action={
+            <VdfButton variant="outline" size="sm" onClick={() => router.push('/contacts')}>
+              Go to Contacts
+            </VdfButton>
+          }
         />
       ) : (
         <div className={s.grid}>
           {clients.map(client => (
-            <button
+            <VdfCard
               key={client.id}
-              className={s.card}
+              hoverLift
+              accentColor={client.risk_profile ? RISK_COLORS[client.risk_profile] : undefined}
               onClick={() => router.push(`/clients/${client.id}`)}
             >
               {/* Risk corner fold */}
@@ -213,8 +212,18 @@ export default function ClientsPage() {
 
               {/* Meta row */}
               <div className={s.cardMeta}>
-                {client.pan && <span className={s.metaItem}><span className={s.metaLabel}>PAN</span> {client.pan.slice(0, 5)}•••{client.pan.slice(-2)}</span>}
-                {client.dob && <span className={s.metaItem}><span className={s.metaLabel}>DOB</span> {new Date(client.dob).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}</span>}
+                {client.pan && (
+                  <span className={s.metaItem}>
+                    <span className={s.metaLabel}>PAN</span>
+                    {client.pan.slice(0, 5)}•••{client.pan.slice(-2)}
+                  </span>
+                )}
+                {client.dob && (
+                  <span className={s.metaItem}>
+                    <span className={s.metaLabel}>DOB</span>
+                    {new Date(client.dob).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                  </span>
+                )}
               </div>
 
               {/* Footer */}
@@ -231,7 +240,7 @@ export default function ClientsPage() {
                   </span>
                 )}
               </div>
-            </button>
+            </VdfCard>
           ))}
         </div>
       )}

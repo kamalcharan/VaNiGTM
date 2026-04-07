@@ -6,6 +6,7 @@ import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfEmptyState, VdfButton, VdfStatusBadge, VdfReadinessRing,
+  VdfCard, VdfSearchBar,
 } from '@/components/vdf';
 import s from './contacts.module.css';
 
@@ -53,7 +54,6 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-/** 20% base + 20% per factor (mobile, email, snapshot) → 80% max for prospects; clients = 100% */
 function readinessPct(c: Contact): number {
   if (c.is_client) return 100;
   let pct = 20;
@@ -62,6 +62,12 @@ function readinessPct(c: Contact): number {
   if (c.has_snapshot)   pct += 30;
   return pct;
 }
+
+const FILTER_PILLS = [
+  { id: 'all',       label: 'All' },
+  { id: 'prospects', label: 'Prospects' },
+  { id: 'clients',   label: 'Clients' },
+];
 
 /* ── Component ───────────────────────────────────────── */
 
@@ -73,7 +79,6 @@ export default function ContactsPage() {
   const [filter, setFilter]     = useState<FilterMode>('all');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Debounce search
   const handleSearch = (v: string) => {
     setSearch(v);
     clearTimeout((handleSearch as unknown as { timer: ReturnType<typeof setTimeout> }).timer);
@@ -104,17 +109,17 @@ export default function ContactsPage() {
     }
   );
 
-  const contacts = data?.data?.contacts ?? [];
-  const total    = data?.data?.total ?? 0;
+  const contacts  = data?.data?.contacts ?? [];
+  const total     = data?.data?.total ?? 0;
   const prospects = contacts.filter(c => !c.is_client).length;
-  const clients   = contacts.filter(c => c.is_client).length;
+  const converted = contacts.filter(c => c.is_client).length;
 
   if (isLoading) return <VdfLoader overlay message="Loading contacts…" />;
   if (isError)   return (
     <div className={s.page}>
-      <div className={s.errorBanner}>
+      <p style={{ color: 'var(--color-danger)', padding: '16px' }}>
         Failed to load contacts — {error?.message ?? 'Unknown error'}
-      </div>
+      </p>
     </div>
   );
 
@@ -128,7 +133,7 @@ export default function ContactsPage() {
             <p className={s.meta}>
               <strong>{total}</strong> total ·&nbsp;
               <strong>{prospects}</strong> prospects ·&nbsp;
-              <strong>{clients}</strong> converted
+              <strong>{converted}</strong> converted
             </p>
           </div>
           <VdfButton
@@ -141,31 +146,15 @@ export default function ContactsPage() {
           </VdfButton>
         </div>
 
-        {/* ── Toolbar ── */}
         <div className={s.toolbar}>
-          <div className={s.searchWrap}>
-            <svg className={s.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
-              <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-            </svg>
-            <input
-              className={s.searchInput}
-              placeholder="Search by name, mobile, email…"
-              value={search}
-              onChange={e => handleSearch(e.target.value)}
-            />
-          </div>
-
-          <div className={s.filters}>
-            {(['all', 'prospects', 'clients'] as FilterMode[]).map(f => (
-              <button
-                key={f}
-                className={`${s.filterPill} ${filter === f ? s.active : ''}`}
-                onClick={() => setFilter(f)}
-              >
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
-            ))}
-          </div>
+          <VdfSearchBar
+            value={search}
+            onChange={handleSearch}
+            placeholder="Search by name, mobile, email…"
+            pills={FILTER_PILLS}
+            activePill={filter}
+            onPillChange={(id) => setFilter(id as FilterMode)}
+          />
         </div>
       </div>
 
@@ -174,32 +163,28 @@ export default function ContactsPage() {
         <VdfEmptyState
           title="No contacts yet"
           description="Add your first prospect to start building your client pipeline."
-          action={{ label: '+ Add Contact', onClick: () => createContact({ prefix: 'Mr', name: 'New Contact' }) }}
+          action={
+            <VdfButton variant="outline" size="sm" onClick={() => createContact({ prefix: 'Mr', name: 'New Contact' })}>
+              + Add Contact
+            </VdfButton>
+          }
         />
       ) : (
         <div className={s.grid}>
           {contacts.map(contact => {
             const pct = readinessPct(contact);
             return (
-              <button
-                key={contact.id}
-                className={s.card}
-                onClick={() => router.push(`/contacts/${contact.id}`)}
-              >
+              <VdfCard key={contact.id} hoverLift onClick={() => router.push(`/contacts/${contact.id}`)}>
                 {/* Avatar + readiness ring */}
                 <div className={s.cardTop}>
                   <div className={s.avatarWrap}>
-                    <div
-                      className={s.avatar}
-                      style={{ background: avatarGradient(contact.name) }}
-                    >
+                    <div className={s.avatar} style={{ background: avatarGradient(contact.name) }}>
                       {initials(contact.name)}
                     </div>
                     <div className={s.ring}>
                       <VdfReadinessRing pct={pct} size={36} strokeWidth={3} />
                     </div>
                   </div>
-
                   <VdfStatusBadge
                     label={contact.is_client ? 'Client' : 'Prospect'}
                     variant={contact.is_client ? 'success' : 'warning'}
@@ -213,7 +198,7 @@ export default function ContactsPage() {
                   {contact.name}
                 </div>
 
-                {/* Channels */}
+                {/* Channel icons */}
                 <div className={s.channels}>
                   {contact.primary_mobile && (
                     <span className={s.channelBadge} title={contact.primary_mobile}>
@@ -247,7 +232,7 @@ export default function ContactsPage() {
                     {pct >= 70 ? 'Ready to convert' : pct >= 35 ? 'In progress' : 'Just added'}
                   </div>
                 )}
-              </button>
+              </VdfCard>
             );
           })}
         </div>
