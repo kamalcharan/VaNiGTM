@@ -97,6 +97,12 @@ export default function ConvertPage() {
   const [anniversary, setAnniversary] = useState('');
   const [extRef, setExtRef]           = useState('');
   const [isFamilyHead, setFamilyHead] = useState<boolean | null>(null);
+  const [referredBy, setReferredBy]   = useState('');
+  const [addrLine1, setAddrLine1]     = useState('');
+  const [addrLine2, setAddrLine2]     = useState('');
+  const [addrCity, setAddrCity]       = useState('');
+  const [addrState, setAddrState]     = useState('');
+  const [addrPin, setAddrPin]         = useState('');
 
   const { data, isLoading, isError } = useSkillQuery<{ contact: Contact | null }>(
     'contact-skill', 'get_contact', { contact_id: contactId }
@@ -137,13 +143,23 @@ export default function ConvertPage() {
   const railItems = RAIL_ITEMS(contact);
 
   const handleConvert = () => {
+    const hasAddress = addrLine1.trim() && addrCity.trim() && addrState.trim() && addrPin.trim();
     convert({
-      contact_id:       contactId,
-      pan:              pan.trim().toUpperCase() || undefined,
-      dob:              dob || undefined,
-      anniversary_date: anniversary || undefined,
-      ext_ref_id:       extRef.trim() || undefined,
-      is_family_head:   isFamilyHead === true,
+      contact_id:        contactId,
+      pan:               pan.trim().toUpperCase() || undefined,
+      dob:               dob || undefined,
+      anniversary_date:  anniversary || undefined,
+      ext_ref_id:        extRef.trim() || undefined,
+      is_family_head:    isFamilyHead === true,
+      referred_by_name:  referredBy.trim() || undefined,
+      address: hasAddress ? {
+        address_type: 'residential',
+        line1:   addrLine1.trim(),
+        line2:   addrLine2.trim() || undefined,
+        city:    addrCity.trim(),
+        state:   addrState.trim(),
+        pincode: addrPin.trim(),
+      } : undefined,
     });
   };
 
@@ -312,6 +328,86 @@ export default function ConvertPage() {
                   <div className={s.toggleSub}>No family group — standalone record</div>
                 </div>
               </button>
+            </div>
+          </div>
+
+          {/* Section 4 — Address */}
+          <div className={s.formSection}>
+            <div className={s.formSectionHead}>
+              <span className={s.formSectionNum}>04</span>
+              <span className={s.formSectionTitle}>Residential Address</span>
+              <span className={s.formSectionSub}>Sets as primary · Optional</span>
+            </div>
+
+            <div className={s.field} style={{ marginBottom: 14 }}>
+              <label className={s.fieldLabel}>Address Line 1</label>
+              <input
+                className={s.fieldInput}
+                value={addrLine1}
+                onChange={e => setAddrLine1(e.target.value)}
+                placeholder="Flat / House no., Building"
+              />
+            </div>
+            <div className={s.field} style={{ marginBottom: 18 }}>
+              <label className={s.fieldLabel}>
+                Address Line 2{' '}
+                <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, opacity: 0.6 }}>(optional)</span>
+              </label>
+              <input
+                className={s.fieldInput}
+                value={addrLine2}
+                onChange={e => setAddrLine2(e.target.value)}
+                placeholder="Street, Area, Landmark"
+              />
+            </div>
+            <div className={s.formGrid3}>
+              <div className={s.field}>
+                <label className={s.fieldLabel}>City</label>
+                <input
+                  className={s.fieldInput}
+                  value={addrCity}
+                  onChange={e => setAddrCity(e.target.value)}
+                  placeholder="Mumbai"
+                />
+              </div>
+              <div className={s.field}>
+                <label className={s.fieldLabel}>State</label>
+                <input
+                  className={s.fieldInput}
+                  value={addrState}
+                  onChange={e => setAddrState(e.target.value)}
+                  placeholder="Maharashtra"
+                />
+              </div>
+              <div className={s.field}>
+                <label className={s.fieldLabel}>Pincode</label>
+                <input
+                  className={s.fieldInput}
+                  value={addrPin}
+                  onChange={e => setAddrPin(e.target.value)}
+                  placeholder="400001"
+                  maxLength={6}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 5 — Referral */}
+          <div className={s.formSection}>
+            <div className={s.formSectionHead}>
+              <span className={s.formSectionNum}>05</span>
+              <span className={s.formSectionTitle}>Referral</span>
+              <span className={s.formSectionSub}>Optional</span>
+            </div>
+            <div className={s.field}>
+              <label className={s.fieldLabel}>Referred By</label>
+              <input
+                className={s.fieldInput}
+                value={referredBy}
+                onChange={e => setReferredBy(e.target.value)}
+                placeholder="Name of person who referred this client"
+                style={{ maxWidth: 380 }}
+              />
             </div>
           </div>
 

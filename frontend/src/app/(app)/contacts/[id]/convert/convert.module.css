@@ -264,6 +264,12 @@
   gap: 18px;
 }
 
+.formGrid3 {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 18px;
+}
+
 /* Field */
 .field {
   display: flex;
