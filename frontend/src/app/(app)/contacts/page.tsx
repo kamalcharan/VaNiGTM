@@ -7,9 +7,8 @@ import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfEmptyState, VdfButton, VdfStatusBadge, VdfReadinessRing,
-  VdfCard, VdfSearchBar, VdfMobileInput, VdfInput,
+  VdfSearchBar, VdfMobileInput, VdfInput,
 } from '@/components/vdf';
-import { getCountryByCode } from '@/constants/countries';
 import s from './contacts.module.css';
 
 /* ── Types ───────────────────────────────────────────── */
@@ -71,16 +70,17 @@ const FILTER_PILLS = [
   { id: 'clients',   label: 'Clients' },
 ];
 
-// Must match DB CHECK constraint: ('Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Sri', 'Smt')
 const PREFIX_OPTIONS = [
   { value: 'Mr',   label: 'Mr.'   },
   { value: 'Mrs',  label: 'Mrs.'  },
   { value: 'Ms',   label: 'Ms.'   },
   { value: 'Dr',   label: 'Dr.'   },
   { value: 'Prof', label: 'Prof.' },
-  { value: 'Sri',  label: 'Sri.'  },  // Indian male honorific
-  { value: 'Smt',  label: 'Smt.'  },  // Indian female honorific (Shrimati)
+  { value: 'Sri',  label: 'Sri.'  },
+  { value: 'Smt',  label: 'Smt.'  },
 ];
+
+import { getCountryByCode } from '@/constants/countries';
 
 /* ── Component ───────────────────────────────────────── */
 
@@ -89,17 +89,18 @@ export default function ContactsPage() {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
 
-  const [search, setSearch]     = useState('');
-  const [filter, setFilter]     = useState<FilterMode>('all');
+  const [search, setSearch]           = useState('');
+  const [filter, setFilter]           = useState<FilterMode>('all');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [deletingId, setDeletingId]   = useState<number | null>(null);
 
-  // Create drawer state
-  const [drawerOpen, setDrawerOpen]     = useState(false);
-  const [newPrefix, setNewPrefix]       = useState('Mr');
-  const [newName, setNewName]           = useState('');
+  // Create drawer
+  const [drawerOpen, setDrawerOpen]       = useState(false);
+  const [newPrefix, setNewPrefix]         = useState('Mr');
+  const [newName, setNewName]             = useState('');
   const [newCountryCode, setNewCountryCode] = useState('in');
-  const [newMobile, setNewMobile]       = useState('');
-  const [newEmail, setNewEmail]         = useState('');
+  const [newMobile, setNewMobile]         = useState('');
+  const [newEmail, setNewEmail]           = useState('');
 
   const handleSearch = (v: string) => {
     setSearch(v);
@@ -132,34 +133,43 @@ export default function ContactsPage() {
     }
   );
 
+  const { mutate: deleteContact } = useSkillMutation(
+    'contact-skill', 'delete_contact',
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['skill', 'contact-skill', 'get_contacts'] });
+        showToast({ message: 'Contact deleted.', type: 'success' });
+        setDeletingId(null);
+      },
+      onError: (err) => {
+        showToast({ message: err.message || 'Failed to delete contact', type: 'error' });
+        setDeletingId(null);
+      },
+    }
+  );
+
   function openDrawer() {
-    setNewPrefix('Mr');
-    setNewName('');
-    setNewMobile('');
-    setNewEmail('');
+    setNewPrefix('Mr'); setNewName(''); setNewCountryCode('in'); setNewMobile(''); setNewEmail('');
     setDrawerOpen(true);
   }
 
-  function closeDrawer() {
-    setDrawerOpen(false);
-    setNewCountryCode('in');
-    setNewMobile('');
-  }
+  function closeDrawer() { setDrawerOpen(false); }
 
   function handleCreate() {
-    if (!newName.trim()) {
-      showToast({ message: 'Name is required', type: 'error' });
-      return;
-    }
+    if (!newName.trim()) { showToast({ message: 'Name is required', type: 'error' }); return; }
     const channels: { channel_type: string; channel_value: string; is_primary: boolean }[] = [];
     if (newMobile.trim()) {
       const country = getCountryByCode(newCountryCode);
-      const dialCode = country?.dial_code ?? '+91';
-      channels.push({ channel_type: 'mobile', channel_value: `${dialCode}${newMobile.trim()}`, is_primary: true });
+      channels.push({ channel_type: 'mobile', channel_value: `${country?.dial_code ?? '+91'}${newMobile.trim()}`, is_primary: true });
     }
     if (newEmail.trim()) channels.push({ channel_type: 'email', channel_value: newEmail.trim(), is_primary: !newMobile.trim() });
-
     createContact({ prefix: newPrefix, name: newName.trim(), channels });
+  }
+
+  function handleDelete(e: React.MouseEvent, contactId: number) {
+    e.stopPropagation();
+    setDeletingId(contactId);
+    deleteContact({ contact_id: contactId });
   }
 
   const contacts  = data?.data?.contacts ?? [];
@@ -168,7 +178,7 @@ export default function ContactsPage() {
   const converted = contacts.filter(c => c.is_client).length;
 
   if (isLoading) return <VdfLoader overlay message="Loading contacts…" />;
-  if (isError)   return (
+  if (isError) return (
     <div className={s.page}>
       <p style={{ color: 'var(--color-danger)', padding: '16px' }}>
         Failed to load contacts — {error?.message ?? 'Unknown error'}
@@ -178,133 +188,178 @@ export default function ContactsPage() {
 
   return (
     <div className={s.page}>
-      {/* ── Header ── */}
-      <div className={s.header}>
-        <div className={s.titleRow}>
+      {/* ── Sticky header ── */}
+      <div className={s.pageHeader}>
+        <div className={s.pageHeaderRow}>
           <div>
-            <h1 className={s.title}>Contacts</h1>
-            <p className={s.meta}>
-              <strong>{total}</strong> total ·&nbsp;
-              <strong>{prospects}</strong> prospects ·&nbsp;
-              <strong>{converted}</strong> converted
-            </p>
+            <p className={s.eyebrow}>Contact Pipeline</p>
+            <h1 className={s.pageTitle}>Contacts <em>&amp; Prospects</em></h1>
+            <div className={s.pageMeta}>
+              <span><strong>{total}</strong> total</span>
+              <span><strong>{prospects}</strong> prospects</span>
+              <span><strong>{converted}</strong> converted</span>
+            </div>
           </div>
-          <VdfButton variant="primary" size="sm" onClick={openDrawer}>
-            + Add Contact
-          </VdfButton>
-        </div>
-
-        <div className={s.toolbar}>
-          <VdfSearchBar
-            value={search}
-            onChange={handleSearch}
-            placeholder="Search by name, mobile, email…"
-            pills={FILTER_PILLS}
-            activePill={filter}
-            onPillChange={(id) => setFilter(id as FilterMode)}
-          />
+          <VdfButton variant="primary" size="sm" onClick={openDrawer}>+ Add Contact</VdfButton>
         </div>
       </div>
 
-      {/* ── Card Grid ── */}
-      {contacts.length === 0 ? (
-        <VdfEmptyState
-          title="No contacts yet"
-          description="Add your first prospect to start building your client pipeline."
-          action={
-            <VdfButton variant="outline" size="sm" onClick={openDrawer}>
-              + Add Contact
-            </VdfButton>
-          }
+      {/* ── Toolbar ── */}
+      <div className={s.toolbar}>
+        <VdfSearchBar
+          value={search}
+          onChange={handleSearch}
+          placeholder="Search by name, mobile, email…"
+          pills={FILTER_PILLS}
+          activePill={filter}
+          onPillChange={(id) => setFilter(id as FilterMode)}
         />
-      ) : (
-        <div className={s.grid}>
-          {contacts.map(contact => {
-            const pct = readinessPct(contact);
-            return (
-              <VdfCard key={contact.id} hoverLift onClick={() => router.push(`/contacts/${contact.id}`)}>
-                {/* Avatar + readiness ring */}
-                <div className={s.cardTop}>
-                  <div className={s.avatarWrap}>
+      </div>
+
+      {/* ── List ── */}
+      <div className={s.listContent}>
+        {contacts.length === 0 ? (
+          <VdfEmptyState
+            title="No contacts yet"
+            description="Add your first prospect to start building your client pipeline."
+            action={<VdfButton variant="outline" size="sm" onClick={openDrawer}>+ Add Contact</VdfButton>}
+          />
+        ) : (
+          <div className={s.table}>
+            <div className={s.tableHead}>
+              <span>Contact</span>
+              <span>Channels</span>
+              <span>Readiness</span>
+              <span>Status</span>
+              <span />
+            </div>
+
+            {contacts.map(contact => {
+              const pct = readinessPct(contact);
+              return (
+                <div
+                  key={contact.id}
+                  className={s.row}
+                  onClick={() => router.push(`/contacts/${contact.id}`)}
+                >
+                  {/* Name cell */}
+                  <div className={s.nameCell}>
                     <div className={s.avatar} style={{ background: avatarGradient(contact.name) }}>
                       {initials(contact.name)}
                     </div>
-                    <div className={s.ring}>
-                      <VdfReadinessRing pct={pct} size={36} strokeWidth={3} />
+                    <div>
+                      <div className={s.contactName}>
+                        <span className={s.prefix}>{contact.prefix}</span>{contact.name}
+                      </div>
+                      <div className={s.contactSub}>
+                        Added {new Date(contact.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                      </div>
                     </div>
                   </div>
-                  <VdfStatusBadge
-                    label={contact.is_client ? 'Client' : 'Prospect'}
-                    variant={contact.is_client ? 'success' : 'warning'}
-                    size="sm"
-                  />
-                </div>
 
-                {/* Name */}
-                <div className={s.cardName}>
-                  <span className={s.prefix}>{contact.prefix}</span>
-                  {contact.name}
-                </div>
-
-                {/* Channel icons */}
-                <div className={s.channels}>
-                  {contact.primary_mobile && (
-                    <span className={s.channelBadge} title={contact.primary_mobile}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
-                        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8 19.79 19.79 0 01.12 2.2 2 2 0 012.11 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.56-.56a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z" />
-                      </svg>
-                    </span>
-                  )}
-                  {contact.primary_email && (
-                    <span className={s.channelBadge} title={contact.primary_email}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
-                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />
-                      </svg>
-                    </span>
-                  )}
-                  {contact.has_snapshot && (
-                    <span className={s.channelBadge} title="Financial snapshot captured">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
-                        <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
-                      </svg>
-                    </span>
-                  )}
-                  {!contact.primary_mobile && !contact.primary_email && (
-                    <span className={s.noChannels}>No channels</span>
-                  )}
-                </div>
-
-                {/* Readiness label */}
-                {!contact.is_client && (
-                  <div className={s.readinessLabel}>
-                    {pct >= 70 ? 'Ready to convert' : pct >= 35 ? 'In progress' : 'Just added'}
+                  {/* Channels cell */}
+                  <div className={s.channelsCell}>
+                    {contact.primary_mobile && (
+                      <span className={s.channelIcon} title={contact.primary_mobile}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="12" height="12">
+                          <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8 19.79 19.79 0 01.12 2.2 2 2 0 012.11 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.56-.56a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z" />
+                        </svg>
+                      </span>
+                    )}
+                    {contact.primary_email && (
+                      <span className={s.channelIcon} title={contact.primary_email}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="12" height="12">
+                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />
+                        </svg>
+                      </span>
+                    )}
+                    {contact.has_snapshot && (
+                      <span className={s.channelIcon} title="Snapshot">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="12" height="12">
+                          <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+                        </svg>
+                      </span>
+                    )}
+                    {!contact.primary_mobile && !contact.primary_email && (
+                      <span className={s.noChannels}>—</span>
+                    )}
                   </div>
-                )}
-              </VdfCard>
-            );
-          })}
-        </div>
-      )}
 
-      {/* ── Create Contact Drawer ── */}
+                  {/* Readiness cell */}
+                  <div className={s.readinessCell}>
+                    <VdfReadinessRing pct={pct} size={36} strokeWidth={3} />
+                    <span className={s.readinessLabel}>
+                      {pct === 100 ? 'Client' : pct >= 70 ? 'Ready' : pct >= 35 ? 'In progress' : 'Just added'}
+                    </span>
+                  </div>
+
+                  {/* Status cell */}
+                  <div className={s.statusCell}>
+                    <VdfStatusBadge
+                      label={contact.is_client ? 'Client' : 'Prospect'}
+                      variant={contact.is_client ? 'success' : 'warning'}
+                      size="sm"
+                    />
+                  </div>
+
+                  {/* Actions cell */}
+                  <div className={s.actionsCell}>
+                    {!contact.is_client && (
+                      <button
+                        className={s.deleteBtn}
+                        disabled={deletingId === contact.id}
+                        onClick={(e) => handleDelete(e, contact.id)}
+                        title="Delete contact"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                          <path d="M10 11v6M14 11v6" />
+                          <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+                        </svg>
+                      </button>
+                    )}
+                    <span className={s.rowArrow}>→</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Create drawer ── */}
       {drawerOpen && (
         <div className={s.drawerOverlay} onClick={closeDrawer}>
           <div className={s.drawer} onClick={e => e.stopPropagation()}>
             <div className={s.drawerHeader}>
-              <h2 className={s.drawerTitle}>New Contact</h2>
+              <div>
+                <h2 className={s.drawerTitle}>New Contact</h2>
+                <p className={s.drawerSub}>Add a prospect to your pipeline</p>
+              </div>
               <button className={s.drawerClose} onClick={closeDrawer} aria-label="Close">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
             <div className={s.drawerBody}>
+              {/* Prefix pills */}
               <div className={s.fieldGroup}>
                 <label className={s.fieldLabel}>Prefix</label>
-                <select className={s.fieldSelect} value={newPrefix} onChange={e => setNewPrefix(e.target.value)}>
-                  {PREFIX_OPTIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                </select>
+                <div className={s.prefixPills}>
+                  {PREFIX_OPTIONS.map(p => (
+                    <button
+                      key={p.value}
+                      className={`${s.prefixPill} ${newPrefix === p.value ? s.prefixPillActive : ''}`}
+                      onClick={() => setNewPrefix(p.value)}
+                      type="button"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <VdfInput
@@ -317,15 +372,13 @@ export default function ContactsPage() {
                 autoFocus
               />
 
-              <div className={s.fieldGroup}>
-                <VdfMobileInput
-                  label="Mobile (optional)"
-                  countryCode={newCountryCode}
-                  mobile={newMobile}
-                  onCountryChange={setNewCountryCode}
-                  onMobileChange={setNewMobile}
-                />
-              </div>
+              <VdfMobileInput
+                label="Mobile (optional)"
+                countryCode={newCountryCode}
+                mobile={newMobile}
+                onCountryChange={setNewCountryCode}
+                onMobileChange={setNewMobile}
+              />
 
               <VdfInput
                 label="Email"
@@ -338,12 +391,8 @@ export default function ContactsPage() {
             </div>
 
             <div className={s.drawerFooter}>
-              <VdfButton variant="outline" size="sm" onClick={closeDrawer} disabled={creating}>
-                Cancel
-              </VdfButton>
-              <VdfButton variant="primary" size="sm" loading={creating} onClick={handleCreate}>
-                Add Contact
-              </VdfButton>
+              <VdfButton variant="outline" size="sm" onClick={closeDrawer} disabled={creating}>Cancel</VdfButton>
+              <VdfButton variant="primary" size="sm" loading={creating} onClick={handleCreate}>Add Contact</VdfButton>
             </div>
           </div>
         </div>
