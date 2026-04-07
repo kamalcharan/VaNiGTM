@@ -241,9 +241,17 @@ export default function ContactProfilePage() {
   );
 
   if (isLoading) return <VdfLoader overlay message="Loading contact…" />;
-  if (isError || !data?.data?.contact) return (
+
+  const skillError = !data?.success ? data?.error : null;
+  if (isError || skillError || !data?.data?.contact) return (
     <div className={s.page}>
-      <div className={s.errorBanner}>Contact not found.</div>
+      <div className={s.errorBanner}>
+        {skillError
+          ? `Skill error: ${skillError}`
+          : isError
+            ? `Request failed: ${error?.message ?? 'Unknown error'}`
+            : 'Contact not found.'}
+      </div>
     </div>
   );
 

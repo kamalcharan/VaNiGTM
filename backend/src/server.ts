@@ -107,6 +107,9 @@ async function main() {
 
     try {
       const result = await registry.execute(skillName, functionName, params, ctx);
+      if (!result.success) {
+        console.error(`[Skill:${skillName}.${functionName}] execution failed:`, result.error);
+      }
       res.json(result);
     } catch (err) {
       console.error(`[Skill:${skillName}.${functionName}]`, err);

@@ -62,6 +62,11 @@ ALTER TABLE ki_clients ALTER COLUMN client_uid SET NOT NULL;
 -- Unique index for client_uid
 CREATE UNIQUE INDEX IF NOT EXISTS uq_ki_clients_uid ON ki_clients(client_uid);
 
+-- PAN (plain text for search/display — separate from legacy pan_encrypted/pan_last4)
+ALTER TABLE ki_clients ADD COLUMN IF NOT EXISTS pan               VARCHAR(10);
+CREATE INDEX IF NOT EXISTS idx_ki_clients_pan
+    ON ki_clients(tenant_id, is_live, pan) WHERE pan IS NOT NULL;
+
 -- distributor platform reference code
 ALTER TABLE ki_clients ADD COLUMN IF NOT EXISTS ext_ref_id        VARCHAR(100);
 
