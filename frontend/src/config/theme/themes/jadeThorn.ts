@@ -42,34 +42,34 @@ export const JadeThornTheme: ThemeConfig = {
       brand: {
         primary: '#35c27a',    // Vivid jade — pops on near-black
         secondary: '#e4f0e6',  // Pale jade-white
-        tertiary: '#4a8a6a',   // Mid jade
-        alternate: '#0d1a10',  // Deep forest black surface
+        tertiary: '#5aaa82',   // Lighter mid jade — readable on dark
+        alternate: '#182c1e',  // Lifted forest surface — clearly above bg
       },
       utility: {
         primaryText: '#e4f0e6',              // Pale jade-white — not pure white
-        secondaryText: 'rgba(228,240,230,0.6)',
+        secondaryText: 'rgba(228,240,230,0.68)',
         primaryBackground: '#07100a',       // Very deep forest black with green undertone
-        secondaryBackground: '#0d1a10',     // Slightly lighter forest surface
+        secondaryBackground: '#182c1e',     // Clearly lifted surface — cards visible against bg
       },
       accent: {
         accent1: '#35c27a',  // Vivid jade
         accent2: '#e07040',  // Warm ember — thorn in dark
-        accent3: '#4a90c4',  // Bright slate-blue
-        accent4: '#9a60d0',  // Bright violet
+        accent3: '#5aaad4',  // Lifted slate-blue — readable on dark
+        accent4: '#aa70e0',  // Lighter violet — readable on dark
       },
       semantic: {
         success: '#35c27a',  // Vivid jade
         error: '#e04444',    // Bright crimson
         warning: '#e09040',  // Bright amber
-        info: '#4a90c4',     // Bright slate-blue
+        info: '#5aaad4',     // Lifted slate-blue
       },
       surface: {
-        glass: 'rgba(53,194,122,0.06)',
-        glassStrong: 'rgba(53,194,122,0.1)',
-        glassBorder: 'rgba(53,194,122,0.14)',
-        primaryDim: 'rgba(53,194,122,0.32)',
-        primaryGlow: 'rgba(53,194,122,0.15)',
-        primarySubtle: 'rgba(53,194,122,0.06)',
+        glass: 'rgba(53,194,122,0.07)',
+        glassStrong: 'rgba(53,194,122,0.13)',
+        glassBorder: 'rgba(53,194,122,0.24)',  // Lifted — borders now visible
+        primaryDim: 'rgba(53,194,122,0.34)',
+        primaryGlow: 'rgba(53,194,122,0.16)',
+        primarySubtle: 'rgba(53,194,122,0.07)',
       },
     },
   },

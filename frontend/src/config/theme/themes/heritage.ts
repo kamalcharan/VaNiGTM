@@ -42,20 +42,20 @@ export const HeritageTheme: ThemeConfig = {
       brand: {
         primary: '#3aad7e',    // Bright jade — legible on near-black
         secondary: '#d4b46a',  // Softened brass
-        tertiary: '#4a7a6a',   // Muted sage
-        alternate: '#0d1a15',  // Near-black with jade tint
+        tertiary: '#5a9a7a',   // Lighter sage — readable on dark
+        alternate: '#1a2e22',  // Lifted parchment-forest surface — clearly above bg
       },
       utility: {
         primaryText: '#f4f1e9',           // Warm cream — not pure white
-        secondaryText: 'rgba(244,241,233,0.6)',
+        secondaryText: 'rgba(244,241,233,0.68)',
         primaryBackground: '#0a0f0d',    // Near-black with green undertone
-        secondaryBackground: '#111a15',  // Slightly lighter jade-black
+        secondaryBackground: '#1a2e22',  // Clearly lifted surface — cards visible against bg
       },
       accent: {
-        accent1: '#3aad7e',
-        accent2: '#d4b46a',
-        accent3: '#a06040',
-        accent4: '#2a8a6a',
+        accent1: '#3aad7e',  // Bright jade
+        accent2: '#d4b46a',  // Brass gold — good on dark
+        accent3: '#c47848',  // Warm amber-brown — lifted for legibility
+        accent4: '#42a882',  // Bright mid-jade — lifted for legibility
       },
       semantic: {
         success: '#4ecb8a',
@@ -64,12 +64,12 @@ export const HeritageTheme: ThemeConfig = {
         info: '#4a8fc4',
       },
       surface: {
-        glass: 'rgba(58,173,126,0.06)',
-        glassStrong: 'rgba(58,173,126,0.1)',
-        glassBorder: 'rgba(58,173,126,0.12)',
-        primaryDim: 'rgba(58,173,126,0.35)',
-        primaryGlow: 'rgba(58,173,126,0.15)',
-        primarySubtle: 'rgba(58,173,126,0.06)',
+        glass: 'rgba(58,173,126,0.07)',
+        glassStrong: 'rgba(58,173,126,0.13)',
+        glassBorder: 'rgba(58,173,126,0.24)',  // Lifted — borders now visible
+        primaryDim: 'rgba(58,173,126,0.36)',
+        primaryGlow: 'rgba(58,173,126,0.16)',
+        primarySubtle: 'rgba(58,173,126,0.07)',
       },
     },
   },
