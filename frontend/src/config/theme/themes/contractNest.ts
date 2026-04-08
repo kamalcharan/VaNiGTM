@@ -7,21 +7,21 @@ export const ContractNestTheme: ThemeConfig = {
   colors: {
     brand: {
       primary: '#E53E3E',
-      secondary: '#000000',
-      tertiary: '#757575',
-      alternate: '#F5F5F5',
+      secondary: '#111111',
+      tertiary: '#888888',
+      alternate: '#f5f5f5',
     },
     utility: {
-      primaryText: '#000000',
-      secondaryText: 'rgba(0,0,0,0.58)',
-      primaryBackground: '#FFFFFF',
-      secondaryBackground: '#F5F5F5',
+      primaryText: '#111111',
+      secondaryText: '#6b6b6b',
+      primaryBackground: '#f8f8f8',  // near-white with very faint warmth
+      secondaryBackground: '#ffffff', // white cards
     },
     accent: {
-      accent1: '#E53E3E',
-      accent2: '#000000',
-      accent3: '#BBBBBB',
-      accent4: '#F0F0F0',
+      accent1: 'rgba(229,62,62,0.12)',
+      accent2: 'rgba(17,17,17,0.10)',
+      accent3: 'rgba(229,62,62,0.07)',
+      accent4: 'rgba(17,17,17,0.05)',
     },
     semantic: {
       success: '#2E7D32',
@@ -30,11 +30,11 @@ export const ContractNestTheme: ThemeConfig = {
       info: '#0277BD',
     },
     surface: {
-      glass: 'rgba(229,62,62,0.04)',        // Red-tinted (was generic black)
+      glass: 'rgba(229,62,62,0.04)',
       glassStrong: 'rgba(229,62,62,0.08)',
-      glassBorder: 'rgba(229,62,62,0.16)',
-      primaryDim: 'rgba(229,62,62,0.35)',
-      primaryGlow: 'rgba(229,62,62,0.1)',
+      glassBorder: '#e8e8e8',
+      primaryDim: 'rgba(229,62,62,0.22)',
+      primaryGlow: 'rgba(229,62,62,0.10)',
       primarySubtle: 'rgba(229,62,62,0.04)',
     },
   },
@@ -42,21 +42,21 @@ export const ContractNestTheme: ThemeConfig = {
     colors: {
       brand: {
         primary: '#F56565',
-        secondary: '#FFFFFF',
-        tertiary: '#AAAAAA',
-        alternate: '#1F1F1F',
+        secondary: '#f0f0f0',
+        tertiary: '#aaaaaa',
+        alternate: '#222222',
       },
       utility: {
-        primaryText: '#FFFFFF',
-        secondaryText: 'rgba(255,255,255,0.65)',
-        primaryBackground: '#000000',
-        secondaryBackground: '#2A2A2A',     // Slightly more lifted (was #1F1F1F — ok delta but more is better)
+        primaryText: '#f8f8f8',
+        secondaryText: 'rgba(248,248,248,0.65)',
+        primaryBackground: '#0a0a0a',
+        secondaryBackground: '#222222',
       },
       accent: {
-        accent1: '#FF6B6B',
-        accent2: '#FFFFFF',
-        accent3: '#888888',
-        accent4: '#333333',
+        accent1: 'rgba(245,101,101,0.18)',
+        accent2: 'rgba(240,240,240,0.10)',
+        accent3: 'rgba(245,101,101,0.12)',
+        accent4: 'rgba(240,240,240,0.06)',
       },
       semantic: {
         success: '#66BB6A',
@@ -65,12 +65,12 @@ export const ContractNestTheme: ThemeConfig = {
         info: '#42A5F5',
       },
       surface: {
-        glass: 'rgba(245,101,101,0.06)',
-        glassStrong: 'rgba(245,101,101,0.11)',
-        glassBorder: 'rgba(245,101,101,0.24)', // Was 8% — now visible
-        primaryDim: 'rgba(245,101,101,0.4)',
-        primaryGlow: 'rgba(245,101,101,0.15)',
-        primarySubtle: 'rgba(245,101,101,0.06)',
+        glass: 'rgba(245,101,101,0.07)',
+        glassStrong: 'rgba(245,101,101,0.12)',
+        glassBorder: 'rgba(245,101,101,0.24)',
+        primaryDim: 'rgba(245,101,101,0.38)',
+        primaryGlow: 'rgba(245,101,101,0.16)',
+        primarySubtle: 'rgba(245,101,101,0.07)',
       },
     },
   },

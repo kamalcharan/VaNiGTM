@@ -6,70 +6,70 @@ export const PurpleToneTheme: ThemeConfig = {
   colors: {
     brand: {
       primary: '#6f61ef',
-      secondary: '#392d2c',
+      secondary: '#4a3f8c',
       tertiary: '#984bb6',
-      alternate: '#e0e3e7',
+      alternate: '#ebe8fa',
     },
     utility: {
-      primaryText: '#151616',
-      secondaryText: 'rgba(21,22,22,0.58)',
-      primaryBackground: '#f5f3fc',         // Purple-tinted (was generic #f1f4f8)
-      secondaryBackground: '#edeaf8',
+      primaryText: '#18161e',
+      secondaryText: '#6a6478',
+      primaryBackground: '#f7f5ff',  // very subtle lavender tint
+      secondaryBackground: '#ffffff', // white cards
     },
     accent: {
-      accent1: '#4d9489f5',
-      accent2: '#4d392d2c',
-      accent3: '#4d6469f5',
-      accent4: '#b2ffffff',
+      accent1: 'rgba(111,97,239,0.15)',
+      accent2: 'rgba(74,63,140,0.15)',
+      accent3: 'rgba(152,75,182,0.15)',
+      accent4: 'rgba(111,97,239,0.08)',
     },
     semantic: {
-      success: '#24a891',
-      error: '#ff5963',
-      warning: '#e09030',
-      info: '#4a7abf',                      // Was #ffffff — invisible on light bg
+      success: '#2d7a4f',
+      error: '#b54034',
+      warning: '#c47e1a',
+      info: '#4a7abf',
     },
     surface: {
-      glass: 'rgba(111,97,239,0.05)',       // Purple-tinted (was generic black)
+      glass: 'rgba(111,97,239,0.05)',
       glassStrong: 'rgba(111,97,239,0.09)',
-      glassBorder: 'rgba(111,97,239,0.16)',
-      primaryDim: 'rgba(111,97,239,0.35)',
-      primaryGlow: 'rgba(111,97,239,0.1)',
-      primarySubtle: 'rgba(111,97,239,0.04)',
+      glassBorder: '#e2dff4',
+      primaryDim: 'rgba(111,97,239,0.25)',
+      primaryGlow: 'rgba(111,97,239,0.12)',
+      primarySubtle: 'rgba(111,97,239,0.05)',
     },
   },
   darkMode: {
     colors: {
       brand: {
-        primary: '#8878f5',                 // Brighter purple for dark bg (was #6f61ef — ~3.8:1)
-        secondary: '#392d2c',
-        tertiary: '#b060d0',                // Brighter violet
-        alternate: '#313442',
+        primary: '#8878f5',
+        secondary: '#6a5fc0',
+        tertiary: '#b060d0',
+        alternate: '#25273a',
       },
       utility: {
-        primaryText: '#ffffff',
-        secondaryText: 'rgba(255,255,255,0.65)',
+        primaryText: '#f0eeff',
+        secondaryText: 'rgba(240,238,255,0.65)',
         primaryBackground: '#151616',
-        secondaryBackground: '#25273a',     // Clearly lifted + purple-tinted (was #1a1f24)
+        secondaryBackground: '#25273a',
       },
       accent: {
-        accent1: '#4d9489f5',
-        accent2: '#4d392d2c',
-        accent3: '#4d6469f5',
-        accent4: '#b325273a',
+        accent1: 'rgba(136,120,245,0.20)',
+        accent2: 'rgba(106,95,192,0.18)',
+        accent3: 'rgba(176,96,208,0.18)',
+        accent4: 'rgba(136,120,245,0.10)',
       },
       semantic: {
-        success: '#36c4a8',
-        error: '#ff5963',
+        success: '#4ecb8a',
+        error: '#e05555',
         warning: '#e09030',
         info: '#6090d8',
       },
       surface: {
         glass: 'rgba(136,120,245,0.07)',
         glassStrong: 'rgba(136,120,245,0.12)',
-        glassBorder: 'rgba(136,120,245,0.24)', // Was 8% — now visible
-        primaryDim: 'rgba(111,97,239,0.4)',
-        primaryGlow: 'rgba(111,97,239,0.15)',
-        primarySubtle: 'rgba(111,97,239,0.06)',
+        glassBorder: 'rgba(136,120,245,0.24)',
+        primaryDim: 'rgba(111,97,239,0.38)',
+        primaryGlow: 'rgba(111,97,239,0.16)',
+        primarySubtle: 'rgba(111,97,239,0.07)',
       },
     },
   },

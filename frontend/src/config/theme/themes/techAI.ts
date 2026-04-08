@@ -9,57 +9,57 @@ export const TechAITheme: ThemeConfig = {
       primary: '#06d5cd',
       secondary: '#18aa99',
       tertiary: '#984bb6',
-      alternate: '#dfedec',
+      alternate: '#d4f6f4',
     },
     utility: {
-      primaryText: '#101518',
-      secondaryText: 'rgba(16,21,24,0.58)',   // Was #5763cc (blue-purple) — wrong for muted text
-      primaryBackground: '#f0f7f6',            // Cyan-tinted (was generic #f1f4f8)
-      secondaryBackground: '#e4f2f0',
+      primaryText: '#0e1c1c',
+      secondaryText: '#4a7070',
+      primaryBackground: '#f0f9f8',  // very subtle cyan tint
+      secondaryBackground: '#ffffff', // white cards
     },
     accent: {
-      accent1: '#4c06d5cd',
-      accent2: '#4d18aa99',
-      accent3: '#4d984bb6',
-      accent4: '#b2ffffff',
+      accent1: 'rgba(6,213,205,0.15)',
+      accent2: 'rgba(24,170,153,0.15)',
+      accent3: 'rgba(152,75,182,0.15)',
+      accent4: 'rgba(6,213,205,0.08)',
     },
     semantic: {
-      success: '#16a878',
-      error: '#c4454d',
-      warning: '#e09030',
-      info: '#06d5cd',
+      success: '#2d8a6a',
+      error: '#b54034',
+      warning: '#c47e1a',
+      info: '#2a7abf',
     },
     surface: {
-      glass: 'rgba(6,213,205,0.05)',           // Cyan-tinted (was generic black)
+      glass: 'rgba(6,213,205,0.05)',
       glassStrong: 'rgba(6,213,205,0.09)',
-      glassBorder: 'rgba(6,213,205,0.16)',
-      primaryDim: 'rgba(6,213,205,0.35)',
-      primaryGlow: 'rgba(6,213,205,0.1)',
-      primarySubtle: 'rgba(6,213,205,0.04)',
+      glassBorder: '#c2eeec',
+      primaryDim: 'rgba(6,213,205,0.25)',
+      primaryGlow: 'rgba(6,213,205,0.12)',
+      primarySubtle: 'rgba(6,213,205,0.05)',
     },
   },
   darkMode: {
     colors: {
       brand: {
-        primary: '#10e8de',                    // Brighter cyan for dark bg
+        primary: '#10e8de',
         secondary: '#22c0aa',
         tertiary: '#b060d0',
-        alternate: '#293d42',
+        alternate: '#1a3030',
       },
       utility: {
-        primaryText: '#ffffff',
-        secondaryText: 'rgba(255,255,255,0.65)',
-        primaryBackground: '#132121',
-        secondaryBackground: '#1c3230',        // FIXED: was #101818 — inverted (darker than bg)!
+        primaryText: '#e8fffd',
+        secondaryText: 'rgba(232,255,253,0.65)',
+        primaryBackground: '#0a1818',
+        secondaryBackground: '#1a3030',
       },
       accent: {
-        accent1: '#4c10e8de',
-        accent2: '#4d22c0aa',
-        accent3: '#4db060d0',
-        accent4: '#b31c3230',
+        accent1: 'rgba(16,232,222,0.20)',
+        accent2: 'rgba(34,192,170,0.18)',
+        accent3: 'rgba(176,96,208,0.18)',
+        accent4: 'rgba(16,232,222,0.10)',
       },
       semantic: {
-        success: '#28d8a0',
+        success: '#4ecb8a',
         error: '#e05555',
         warning: '#e09030',
         info: '#10e8de',
@@ -67,10 +67,10 @@ export const TechAITheme: ThemeConfig = {
       surface: {
         glass: 'rgba(16,232,222,0.07)',
         glassStrong: 'rgba(16,232,222,0.12)',
-        glassBorder: 'rgba(16,232,222,0.24)', // Was 8% — now visible
-        primaryDim: 'rgba(6,213,205,0.4)',
-        primaryGlow: 'rgba(6,213,205,0.15)',
-        primarySubtle: 'rgba(6,213,205,0.06)',
+        glassBorder: 'rgba(16,232,222,0.24)',
+        primaryDim: 'rgba(6,213,205,0.38)',
+        primaryGlow: 'rgba(6,213,205,0.16)',
+        primarySubtle: 'rgba(6,213,205,0.07)',
       },
     },
   },

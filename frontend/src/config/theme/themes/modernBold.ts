@@ -9,68 +9,68 @@ export const ModernBoldTheme: ThemeConfig = {
       primary: '#19db8a',
       secondary: '#38b4ff',
       tertiary: '#ffa130',
-      alternate: '#e0a3e7',
+      alternate: '#dcf8ed',
     },
     utility: {
-      primaryText: '#14181b',
-      secondaryText: 'rgba(20,24,27,0.58)',  // Was #576c36 (olive) — wrong
-      primaryBackground: '#f0f8f4',           // Mint-tinted (was generic #f1f4f8)
-      secondaryBackground: '#e4f2ec',
+      primaryText: '#111a16',
+      secondaryText: '#5a7268',
+      primaryBackground: '#f2fcf7',  // subtle mint tint
+      secondaryBackground: '#ffffff', // white cards
     },
     accent: {
-      accent1: '#4c19db8a',
-      accent2: '#4438b4ff',
-      accent3: '#44ffa130',
-      accent4: '#b2ffffff',
+      accent1: 'rgba(25,219,138,0.15)',
+      accent2: 'rgba(56,180,255,0.15)',
+      accent3: 'rgba(255,161,48,0.15)',
+      accent4: 'rgba(25,219,138,0.08)',
     },
     semantic: {
       success: '#16b070',
-      error: '#ff6973',
-      warning: '#cc8a30',
-      info: '#38b4ff',
+      error: '#b54034',
+      warning: '#c47e1a',
+      info: '#2a7abf',
     },
     surface: {
-      glass: 'rgba(25,219,138,0.05)',        // Green-tinted (was generic black)
+      glass: 'rgba(25,219,138,0.05)',
       glassStrong: 'rgba(25,219,138,0.09)',
-      glassBorder: 'rgba(25,219,138,0.16)',
-      primaryDim: 'rgba(25,219,138,0.35)',
-      primaryGlow: 'rgba(25,219,138,0.1)',
-      primarySubtle: 'rgba(25,219,138,0.04)',
+      glassBorder: '#d4f0e4',
+      primaryDim: 'rgba(25,219,138,0.25)',
+      primaryGlow: 'rgba(25,219,138,0.12)',
+      primarySubtle: 'rgba(25,219,138,0.05)',
     },
   },
   darkMode: {
     colors: {
       brand: {
-        primary: '#22e898',                  // Slightly brighter for dark bg
+        primary: '#22e898',
         secondary: '#50c4ff',
         tertiary: '#ffb850',
-        alternate: '#1c2230',               // Was #2b32db (bright blue) — wrong for dark surface
+        alternate: '#1c2230',
       },
       utility: {
-        primaryText: '#ffffff',
-        secondaryText: 'rgba(255,255,255,0.65)',
-        primaryBackground: '#14181b',
-        secondaryBackground: '#202e38',     // Clearly lifted (was #1a2429 — close delta)
+        primaryText: '#edfff6',
+        secondaryText: 'rgba(237,255,246,0.65)',
+        primaryBackground: '#0e1814',
+        secondaryBackground: '#1c2e24',
       },
       accent: {
-        accent1: '#4c22e898',
-        accent2: '#4450c4ff',
-        accent3: '#4cffb850',
-        accent4: '#b21c2230',
+        accent1: 'rgba(34,232,152,0.20)',
+        accent2: 'rgba(80,196,255,0.18)',
+        accent3: 'rgba(255,184,80,0.18)',
+        accent4: 'rgba(34,232,152,0.10)',
       },
       semantic: {
         success: '#22e898',
-        error: '#ff6973',
-        warning: '#cc6b30',
+        error: '#e05555',
+        warning: '#e0a040',
         info: '#50c4ff',
       },
       surface: {
         glass: 'rgba(34,232,152,0.07)',
         glassStrong: 'rgba(34,232,152,0.12)',
-        glassBorder: 'rgba(34,232,152,0.24)', // Was 8% — now visible
-        primaryDim: 'rgba(25,219,138,0.4)',
-        primaryGlow: 'rgba(25,219,138,0.15)',
-        primarySubtle: 'rgba(25,219,138,0.06)',
+        glassBorder: 'rgba(34,232,152,0.24)',
+        primaryDim: 'rgba(25,219,138,0.38)',
+        primaryGlow: 'rgba(25,219,138,0.16)',
+        primarySubtle: 'rgba(25,219,138,0.07)',
       },
     },
   },

@@ -9,57 +9,57 @@ export const ModernBusinessTheme: ThemeConfig = {
       primary: '#39d2c0',
       secondary: '#1aaa99',
       tertiary: '#ee8b60',
-      alternate: '#dfe3e7',
+      alternate: '#d8f4f1',
     },
     utility: {
-      primaryText: '#1a1f24',
-      secondaryText: 'rgba(26,31,36,0.58)',
-      primaryBackground: '#f0f6f5',         // Teal-tinted (was generic #f1f4f8)
-      secondaryBackground: '#e4f0ee',
+      primaryText: '#111e1c',
+      secondaryText: '#567870',
+      primaryBackground: '#f2f9f8',  // very subtle teal tint
+      secondaryBackground: '#ffffff', // white cards
     },
     accent: {
-      accent1: '#4c39d2c0',
-      accent2: '#4d1aaa99',
-      accent3: '#4cee8b60',
-      accent4: '#b2ffffff',
+      accent1: 'rgba(57,210,192,0.15)',
+      accent2: 'rgba(26,170,153,0.15)',
+      accent3: 'rgba(238,139,96,0.15)',
+      accent4: 'rgba(57,210,192,0.08)',
     },
     semantic: {
-      success: '#22a870',                    // Was #165070 (dark slate-blue) — wrong colour for success
-      error: '#c44454',
-      warning: '#cc8e30',
+      success: '#2d8a6a',
+      error: '#b54034',
+      warning: '#c47e1a',
       info: '#2a7abf',
     },
     surface: {
-      glass: 'rgba(57,210,192,0.05)',        // Teal-tinted (was generic black)
+      glass: 'rgba(57,210,192,0.05)',
       glassStrong: 'rgba(57,210,192,0.09)',
-      glassBorder: 'rgba(57,210,192,0.16)',
-      primaryDim: 'rgba(57,210,192,0.35)',
-      primaryGlow: 'rgba(57,210,192,0.1)',
-      primarySubtle: 'rgba(57,210,192,0.04)',
+      glassBorder: '#cceee9',
+      primaryDim: 'rgba(57,210,192,0.25)',
+      primaryGlow: 'rgba(57,210,192,0.12)',
+      primarySubtle: 'rgba(57,210,192,0.05)',
     },
   },
   darkMode: {
     colors: {
       brand: {
-        primary: '#45e0cc',                  // Brighter teal for dark bg
+        primary: '#45e0cc',
         secondary: '#28c0aa',
         tertiary: '#f0a070',
-        alternate: '#2b3238',
+        alternate: '#1a2e2c',
       },
       utility: {
-        primaryText: '#ffffff',
-        secondaryText: 'rgba(255,255,255,0.65)',
-        primaryBackground: '#1a1f24',
-        secondaryBackground: '#262e38',     // FIXED: was #12161b — inverted (darker than bg)!
+        primaryText: '#ecfaf8',
+        secondaryText: 'rgba(236,250,248,0.65)',
+        primaryBackground: '#0e1a18',
+        secondaryBackground: '#1a2e2c',
       },
       accent: {
-        accent1: '#4c45e0cc',
-        accent2: '#4d28c0aa',
-        accent3: '#4cf0a070',
-        accent4: '#b3262e38',
+        accent1: 'rgba(69,224,204,0.20)',
+        accent2: 'rgba(40,192,170,0.18)',
+        accent3: 'rgba(240,160,112,0.18)',
+        accent4: 'rgba(69,224,204,0.10)',
       },
       semantic: {
-        success: '#3acc8a',                  // Was #165070 dark slate — wrong colour for success
+        success: '#3acc8a',
         error: '#e05555',
         warning: '#e09030',
         info: '#4a90c4',
@@ -67,10 +67,10 @@ export const ModernBusinessTheme: ThemeConfig = {
       surface: {
         glass: 'rgba(69,224,204,0.07)',
         glassStrong: 'rgba(69,224,204,0.12)',
-        glassBorder: 'rgba(69,224,204,0.24)', // Was 8% — now visible
-        primaryDim: 'rgba(57,210,192,0.4)',
-        primaryGlow: 'rgba(57,210,192,0.15)',
-        primarySubtle: 'rgba(57,210,192,0.06)',
+        glassBorder: 'rgba(69,224,204,0.24)',
+        primaryDim: 'rgba(57,210,192,0.38)',
+        primaryGlow: 'rgba(57,210,192,0.16)',
+        primarySubtle: 'rgba(57,210,192,0.07)',
       },
     },
   },
