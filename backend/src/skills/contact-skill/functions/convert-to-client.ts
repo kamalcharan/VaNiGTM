@@ -73,16 +73,50 @@ export async function convert_to_client(
     if (!contact.is_active) throw new Error(`Contact ${contact_id} is inactive`);
     if (contact.is_client)  throw new Error(`Contact ${contact_id} is already a client`);
 
-    // 2. Fetch snapshot for risk_profile + goals_lite
+    // 2. Fetch snapshot — try new versioned table first, fall back to legacy
     const snapRes = await tx.query<{
+      id: number;
       risk_profile: string | null;
-      goals_lite: Array<{ name: string; target_amount: number; timeline_years: number }> | null;
     }>(
-      `SELECT risk_profile, goals_lite FROM ki_contact_snapshot
-       WHERE contact_id = $contact_id AND is_live = $is_live`,
-      { $contact_id: contact_id, $is_live: ctx.is_live }
+      `SELECT id, risk_profile FROM ki_contact_snapshots
+       WHERE contact_id = $contact_id AND tenant_id = $tenant_id
+         AND is_live = $is_live AND status = 'active'
+       LIMIT 1`,
+      { $contact_id: contact_id, $tenant_id: ctx.tenant_id, $is_live: ctx.is_live }
     );
     const snapshot = snapRes.rows[0] ?? null;
+
+    // Fetch goals from new ki_snapshot_goals (or fall back to legacy goals_lite)
+    let goalsFromSnapshot: Array<{ name: string; target_amount: number; timeline_years: number; goal_type: string; snapshot_goal_id: number }> = [];
+    if (snapshot?.id) {
+      const goalsRes = await tx.query<{
+        id: number; goal_type: string; name: string;
+        target_amount: number; timeline_years: number;
+      }>(
+        `SELECT id, goal_type, name, target_amount, timeline_years
+         FROM ki_snapshot_goals WHERE snapshot_id = $snapshot_id
+         ORDER BY priority, sort_order, id`,
+        { $snapshot_id: snapshot.id }
+      );
+      goalsFromSnapshot = goalsRes.rows.map(r => ({
+        name: r.name, target_amount: r.target_amount,
+        timeline_years: r.timeline_years, goal_type: r.goal_type,
+        snapshot_goal_id: r.id,
+      }));
+    } else {
+      // Legacy fallback: goals_lite from old ki_contact_snapshot table
+      const legacyRes = await tx.query<{
+        goals_lite: Array<{ name: string; target_amount: number; timeline_years: number }> | null;
+      }>(
+        `SELECT goals_lite FROM ki_contact_snapshot
+         WHERE contact_id = $contact_id AND is_live = $is_live`,
+        { $contact_id: contact_id, $is_live: ctx.is_live }
+      );
+      const legacy = legacyRes.rows[0]?.goals_lite ?? [];
+      goalsFromSnapshot = legacy.map(g => ({
+        ...g, goal_type: 'custom', snapshot_goal_id: 0,
+      }));
+    }
 
     // 3. Resolve family_id — create new family if is_family_head and no family given
     let resolvedFamilyId: string | null = family_id ?? null;
@@ -160,25 +194,40 @@ export async function convert_to_client(
       );
     }
 
-    // 7. Seed ki_goals from goals_lite
+    // 7. Seed ki_goals from ki_snapshot_goals (or legacy goals_lite)
     let goalsSeeded = 0;
-    const goalsLite = snapshot?.goals_lite ?? [];
-    for (const goal of goalsLite) {
-      await tx.query(
+    for (const goal of goalsFromSnapshot) {
+      const goalRes = await tx.query<{ id: number }>(
         `INSERT INTO ki_goals
-           (tenant_id, is_live, client_id, goal_name, target_amount, target_years, status, created_by)
-         VALUES ($tenant_id, $is_live, $client_id, $goal_name, $target_amount, $target_years, 'active', $created_by)`,
+           (tenant_id, is_live, client_id, name, goal_type,
+            target_amount, target_date, inflation_rate, expected_return,
+            current_corpus, monthly_sip, status)
+         VALUES ($tenant_id, $is_live, $client_id, $name, $goal_type,
+                 $target_amount,
+                 (CURRENT_DATE + ($timeline_years || ' years')::INTERVAL)::DATE,
+                 6.0, 12.0, 0, 0, 'active')
+         RETURNING id`,
         {
-          $tenant_id:     ctx.tenant_id,
-          $is_live:       ctx.is_live,
-          $client_id:     client.id,
-          $goal_name:     goal.name,
-          $target_amount: goal.target_amount,
-          $target_years:  goal.timeline_years,
-          $created_by:    ctx.user_id,
+          $tenant_id:      ctx.tenant_id,
+          $is_live:        ctx.is_live,
+          $client_id:      client.id,
+          $name:           goal.name,
+          $goal_type:      goal.goal_type,
+          $target_amount:  goal.target_amount,
+          $timeline_years: goal.timeline_years,
         }
       );
+      const newGoalId = goalRes.rows[0]?.id;
       goalsSeeded++;
+
+      // Link snapshot goal → ki_goals so history view knows where this goal went
+      if (goal.snapshot_goal_id > 0 && newGoalId) {
+        await tx.query(
+          `UPDATE ki_snapshot_goals SET seeded_goal_id = $goal_id
+           WHERE id = $snapshot_goal_id`,
+          { $goal_id: newGoalId, $snapshot_goal_id: goal.snapshot_goal_id }
+        );
+      }
     }
 
     // 8. Mark contact as converted
