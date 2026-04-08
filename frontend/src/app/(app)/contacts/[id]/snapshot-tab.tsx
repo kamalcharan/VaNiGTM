@@ -168,6 +168,10 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
   const { showToast } = useToast();
   const queryClient  = useQueryClient();
 
+  const [showWizard,    setShowWizard]    = useState(false);
+  const [intakeUrl,     setIntakeUrl]     = useState<string | null>(null);
+  const [copied,        setCopied]        = useState(false);
+
   const [activeSection, setActiveSection] = useState(0);
   const [riskProfile,   setRiskProfile]   = useState('');
   const [notes,         setNotes]         = useState('');
@@ -202,6 +206,11 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
   const assetTypes   = assetTypesData?.data?.asset_types ?? [];
   const liabTypes    = liabTypesData?.data?.liability_types ?? [];
   const snap         = snapData?.data?.snapshot as Record<string, unknown> | null;
+
+  // Auto-enter wizard when a snapshot already exists
+  useEffect(() => {
+    if (snap) setShowWizard(true);
+  }, [snap]);
 
   // Populate form from loaded snapshot
   useEffect(() => {
@@ -330,6 +339,24 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
   const handleDraft  = () => saveMutation(buildPayload('draft') as Record<string, unknown>);
   const handleSubmit = () => saveMutation(buildPayload('active') as Record<string, unknown>);
 
+  const { mutate: genToken, isPending: isGenning } = useSkillMutation<{ intake_url: string }>(
+    'contact-skill', 'generate_intake_token',
+    {
+      onSuccess: (res) => {
+        const url = res.data?.intake_url;
+        if (url) { setIntakeUrl(url); setCopied(false); }
+      },
+      onError: (e) => showToast({ message: e.message || 'Failed to generate link', type: 'error' }),
+    }
+  );
+
+  const handleCopy = (url: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
+
   // ── Live metrics ──────────────────────────────────────────────────────────
 
   const metrics = computeMetrics(income, expenses, assets, liabs);
@@ -350,6 +377,57 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
   const brief = talkingBrief(metrics, goals.filter(g => g.name).length);
 
   if (snapLoading) return <VdfLoader message="Loading snapshot…" />;
+
+  // ── Empty state — no snapshot yet, user hasn't chosen an action ───────────
+
+  if (!snap && !showWizard) {
+    return (
+      <div className={s.emptyState}>
+        <div className={s.emptyIcon}>
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5" width="48" height="48">
+            <rect x="8" y="6" width="32" height="36" rx="4" />
+            <path d="M16 16h16M16 22h16M16 28h10" />
+          </svg>
+        </div>
+        <h3 className={s.emptyTitle}>No financial snapshot yet</h3>
+        <p className={s.emptyDesc}>
+          Capture this {isClient ? 'client' : 'prospect'}'s complete financial picture — cash flow, assets, liabilities, protection, and goals.
+        </p>
+
+        <div className={s.emptyActions}>
+          <button className={s.emptyPrimaryBtn} onClick={() => setShowWizard(true)}>
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
+              <path d="M10 4v12M4 10h12" />
+            </svg>
+            Fill snapshot myself
+          </button>
+
+          <div className={s.emptyDivider}>or</div>
+
+          <button
+            className={s.emptySendBtn}
+            disabled={isGenning}
+            onClick={() => genToken({ contact_id: contactId } as Record<string, unknown>)}
+          >
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
+              <path d="M17.5 2.5L9.5 10.5M17.5 2.5L12.5 17.5L9.5 10.5M17.5 2.5L2.5 7.5L9.5 10.5" />
+            </svg>
+            {isGenning ? 'Generating…' : 'Send intake link to client'}
+          </button>
+        </div>
+
+        {intakeUrl && (
+          <div className={s.intakeLinkBox}>
+            <span className={s.intakeLinkUrl}>{intakeUrl}</span>
+            <button className={s.intakeCopyBtn} onClick={() => handleCopy(intakeUrl)}>
+              {copied ? '✓ Copied' : 'Copy'}
+            </button>
+            <button className={s.intakeDismiss} onClick={() => setIntakeUrl(null)}>×</button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────
 
