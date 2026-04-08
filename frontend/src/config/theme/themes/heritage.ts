@@ -1,75 +1,78 @@
 import { ThemeConfig } from '../types';
 
+// Heritage — Colonial Burgundy. Warm ivory bg + deep burgundy-wine primary + antique gold.
+// Distinct from Jade Thorn (jade/green) — same premium warmth, different colour family.
+
 export const HeritageTheme: ThemeConfig = {
   id: 'heritage',
   name: 'Heritage',
   colors: {
     brand: {
-      primary: '#0f4c3a',    // Deep forest jade — saturated, rich, high contrast
-      secondary: '#c7a557',  // Brass gold — warm complement
-      tertiary: '#5a7a6e',   // Muted sage — mid-tone bridge
-      alternate: '#ede9e1',  // Warm parchment surface
+      primary: '#6a1f2a',    // Deep burgundy-wine
+      secondary: '#b8914a',  // Antique gold
+      tertiary: '#5a4030',   // Dark teak
+      alternate: '#ede4d4',  // Warm sand surface
     },
     utility: {
-      primaryText: '#1a1a1a',          // Near-black — readable without harshness
-      secondaryText: 'rgba(26,26,26,0.55)',
-      primaryBackground: '#f6f4ef',   // Warm parchment — the key that makes jade pop
-      secondaryBackground: '#ede9e1', // Slightly deeper parchment
+      primaryText: '#1a1214',          // Warm near-black
+      secondaryText: '#7a6860',        // Warm muted brown-grey
+      primaryBackground: '#faf6f0',   // Warmer ivory (distinct from Jade Thorn's parchment)
+      secondaryBackground: '#ffffff', // White cards
     },
     accent: {
-      accent1: '#0f4c3a',  // Jade (same as primary for cohesion)
-      accent2: '#c7a557',  // Brass gold
-      accent3: '#7a4a2a',  // Warm brown — tertiary accent
-      accent4: '#2d6a5a',  // Mid-jade
+      accent1: '#6a1f2a',  // Burgundy
+      accent2: '#b8914a',  // Antique gold
+      accent3: '#8a5030',  // Warm sienna
+      accent4: '#3a5a70',  // Deep slate contrast
     },
     semantic: {
-      success: '#1a6b4a',  // Deep green — success with jade family
-      error: '#b83232',    // Deep red — warm tone matches parchment
-      warning: '#c7831a',  // Amber — warm, on-brand
-      info: '#2a5f8a',     // Deep slate-blue — cool contrast
+      success: '#2d6a3a',  // Deep forest green
+      error: '#8b2020',    // Deep crimson
+      warning: '#b8781a',  // Amber
+      info: '#2a5070',     // Deep slate
     },
     surface: {
-      glass: 'rgba(15,76,58,0.04)',
-      glassStrong: 'rgba(15,76,58,0.07)',
-      glassBorder: 'rgba(15,76,58,0.12)',
-      primaryDim: 'rgba(15,76,58,0.3)',
-      primaryGlow: 'rgba(15,76,58,0.12)',
-      primarySubtle: 'rgba(15,76,58,0.05)',
+      glass: 'rgba(106,31,42,0.04)',
+      glassStrong: 'rgba(106,31,42,0.07)',
+      glassBorder: '#e8dfd4',           // Warm sand border
+      primaryDim: 'rgba(106,31,42,0.22)',
+      primaryGlow: 'rgba(106,31,42,0.09)',
+      primarySubtle: 'rgba(106,31,42,0.04)',
     },
   },
   darkMode: {
     colors: {
       brand: {
-        primary: '#3aad7e',    // Bright jade — legible on near-black
-        secondary: '#d4b46a',  // Softened brass
-        tertiary: '#5a9a7a',   // Lighter sage — readable on dark
-        alternate: '#1a2e22',  // Lifted parchment-forest surface — clearly above bg
+        primary: '#c05060',    // Bright burgundy-rose for dark bg
+        secondary: '#d4a85a',  // Warm gold
+        tertiary: '#8a6848',   // Teak mid-tone
+        alternate: '#1e1018',  // Deep plum-black surface
       },
       utility: {
-        primaryText: '#f4f1e9',           // Warm cream — not pure white
-        secondaryText: 'rgba(244,241,233,0.68)',
-        primaryBackground: '#0a0f0d',    // Near-black with green undertone
-        secondaryBackground: '#1a2e22',  // Clearly lifted surface — cards visible against bg
+        primaryText: '#f8f0e8',           // Warm ivory text
+        secondaryText: 'rgba(248,240,232,0.68)',
+        primaryBackground: '#0f0810',    // Deep plum-black — distinct dark
+        secondaryBackground: '#221420',  // Lifted burgundy-dark surface
       },
       accent: {
-        accent1: '#3aad7e',  // Bright jade
-        accent2: '#d4b46a',  // Brass gold — good on dark
-        accent3: '#c47848',  // Warm amber-brown — lifted for legibility
-        accent4: '#42a882',  // Bright mid-jade — lifted for legibility
+        accent1: '#c05060',
+        accent2: '#d4a85a',
+        accent3: '#c07850',
+        accent4: '#5080a0',
       },
       semantic: {
-        success: '#4ecb8a',
-        error: '#e05555',
-        warning: '#e0a040',
-        info: '#4a8fc4',
+        success: '#4a9a60',
+        error: '#e05050',
+        warning: '#e09840',
+        info: '#5090b8',
       },
       surface: {
-        glass: 'rgba(58,173,126,0.07)',
-        glassStrong: 'rgba(58,173,126,0.13)',
-        glassBorder: 'rgba(58,173,126,0.24)',  // Lifted — borders now visible
-        primaryDim: 'rgba(58,173,126,0.36)',
-        primaryGlow: 'rgba(58,173,126,0.16)',
-        primarySubtle: 'rgba(58,173,126,0.07)',
+        glass: 'rgba(192,80,96,0.07)',
+        glassStrong: 'rgba(192,80,96,0.13)',
+        glassBorder: 'rgba(192,80,96,0.24)',
+        primaryDim: 'rgba(192,80,96,0.34)',
+        primaryGlow: 'rgba(192,80,96,0.15)',
+        primarySubtle: 'rgba(192,80,96,0.07)',
       },
     },
   },
