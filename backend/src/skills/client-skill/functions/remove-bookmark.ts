@@ -3,7 +3,11 @@
  * Soft-delete the requesting user's bookmark on a client.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import { SkillContext } from '../../../shared/types';
+
+const REMOVE_BOOKMARK_SQL = fs.readFileSync(path.join(__dirname, '../queries/remove-bookmark.sql'), 'utf-8');
 
 interface RemoveBookmarkParams {
   client_id: number;
@@ -21,14 +25,12 @@ export async function remove_bookmark(
 ): Promise<RemoveBookmarkResult> {
   const { client_id } = params;
 
-  const res = await ctx.db.query<{ id: number }>(
-    `UPDATE ki_client_bookmarks
-     SET is_active = false, updated_at = now()
-     WHERE client_id = $client_id AND tenant_id = $tenant_id
-       AND is_live = $is_live AND user_id = $user_id AND is_active = true
-     RETURNING id`,
-    { $client_id: client_id, $tenant_id: ctx.tenant_id, $is_live: ctx.is_live, $user_id: ctx.user_id }
-  );
+  const res = await ctx.db.query<{ id: number }>(REMOVE_BOOKMARK_SQL, {
+    $client_id: client_id,
+    $tenant_id: ctx.tenant_id,
+    $is_live:   ctx.is_live,
+    $user_id:   ctx.user_id,
+  });
 
   if (!res.rows[0]) {
     throw new Error(`No active bookmark found for client ${client_id}`);

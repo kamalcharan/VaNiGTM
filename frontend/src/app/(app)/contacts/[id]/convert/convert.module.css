@@ -467,6 +467,18 @@
 }
 
 .successScreen {
+  /*
+   * Paper-card tokens: the success card intentionally renders as a physical
+   * "paper" membership card — light regardless of active theme. These are
+   * scoped here so they can be overridden per-theme if needed without
+   * touching every rule that references them.
+   */
+  --_paper-bg:      #faf9f5;
+  --_paper-bg-2:    #f0eee7;
+  --_paper-fg:      #1a1a1a;
+  --_paper-border:  #1a1a1a;
+  --_paper-meta:    #6b6b6b;
+
   position: fixed;
   inset: 0;
   background: var(--color-fg);
@@ -497,7 +509,7 @@
 
 /* Card — flips in from the back */
 .successCard {
-  background: linear-gradient(160deg, #faf9f5 0%, #f0eee7 100%);
+  background: linear-gradient(160deg, var(--_paper-bg) 0%, var(--_paper-bg-2) 100%);
   border-radius: 20px;
   padding: 36px 40px;
   margin: 0 auto 32px;
@@ -524,7 +536,7 @@
   font-size: 8px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #777;
+  color: var(--_paper-meta);
   font-weight: 700;
   margin-bottom: 8px;
 }
@@ -534,7 +546,7 @@
   font-size: 28px;
   font-weight: 400;
   letter-spacing: -0.02em;
-  color: #1a1a1a;
+  color: var(--_paper-fg);
   margin-bottom: 4px;
   line-height: 1.1;
 }
@@ -543,15 +555,15 @@
 .successExtRef {
   display: inline-flex;
   align-items: stretch;
-  border: 1.5px solid #1a1a1a;
+  border: 1.5px solid var(--_paper-border);
   border-radius: 8px;
   overflow: hidden;
   margin: 16px 0 12px;
-  box-shadow: 0 2px 0 #1a1a1a;
+  box-shadow: 0 2px 0 var(--_paper-border);
 }
 
 .successExtRefLabel {
-  background: #1a1a1a;
+  background: var(--_paper-border);
   color: var(--color-primary);
   padding: 7px 11px;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
@@ -568,7 +580,7 @@
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 14px;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--_paper-fg);
   display: flex;
   align-items: center;
   letter-spacing: 0.04em;
@@ -578,11 +590,11 @@
   display: flex;
   justify-content: space-between;
   padding-top: 14px;
-  border-top: 1px solid rgba(0,0,0,0.1);
+  border-top: 1px solid color-mix(in srgb, var(--_paper-fg) 10%, transparent);
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 9px;
   letter-spacing: 0.08em;
-  color: #777;
+  color: var(--_paper-meta);
   text-transform: uppercase;
 }
 
@@ -591,7 +603,7 @@
   font-family: var(--font-display, 'Playfair Display', serif);
   font-size: 42px;
   font-weight: 300;
-  color: #fff;
+  color: color-mix(in srgb, var(--color-bg) 100%, transparent);
   letter-spacing: -0.025em;
   line-height: 1.12;
   margin-bottom: 14px;
@@ -604,7 +616,7 @@
 }
 
 .successSub {
-  color: rgba(255,255,255,0.65);
+  color: color-mix(in srgb, var(--color-bg) 65%, transparent);
   font-size: 14px;
   margin-bottom: 32px;
   line-height: 1.6;

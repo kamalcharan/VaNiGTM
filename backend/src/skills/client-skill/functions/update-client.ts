@@ -58,6 +58,8 @@ export async function update_client(
     throw new Error('At least one field to update is required');
   }
 
+  // Dynamic SET clause built from caller-supplied fields.
+  // Cannot be extracted to a static .sql file — intentional exception to the SQL-file rule.
   const setClauses = Object.keys(fields).map((k) => `${k} = $${k}`).join(', ');
   const queryParams: Record<string, unknown> = { $client_id: client_id, $tenant_id: ctx.tenant_id, $is_live: ctx.is_live };
   for (const [k, v] of Object.entries(fields)) {

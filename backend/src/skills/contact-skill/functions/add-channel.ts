@@ -4,10 +4,16 @@
  * If is_primary=true, unsets the previous primary for that channel type first.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import { SkillContext } from '../../../shared/types';
 
 const VALID_CHANNEL_TYPES = ['email', 'mobile', 'whatsapp', 'instagram', 'twitter', 'linkedin', 'other'] as const;
-const VALID_SUBTYPES = ['personal', 'work', 'other'] as const;
+const VALID_SUBTYPES      = ['personal', 'work', 'other'] as const;
+
+const CHECK_CONTACT_SQL       = fs.readFileSync(path.join(__dirname, '../queries/check-contact.sql'),       'utf-8');
+const UNSET_PRIMARY_SQL       = fs.readFileSync(path.join(__dirname, '../queries/unset-primary-channel.sql'), 'utf-8');
+const UPSERT_CHANNEL_SQL      = fs.readFileSync(path.join(__dirname, '../queries/upsert-channel.sql'),      'utf-8');
 
 interface AddChannelParams {
   contact_id: number;
@@ -44,46 +50,33 @@ export async function add_channel(
     ? params.channel_subtype! : 'personal';
 
   // Verify contact belongs to this tenant
-  const contactCheck = await ctx.db.query<{ id: number }>(
-    `SELECT id FROM ki_contacts
-     WHERE id = $contact_id AND tenant_id = $tenant_id AND is_live = $is_live AND is_active = true`,
-    { $contact_id: contact_id, $tenant_id: ctx.tenant_id, $is_live: ctx.is_live }
-  );
+  const contactCheck = await ctx.db.query<{ id: number }>(CHECK_CONTACT_SQL, {
+    $contact_id: contact_id, $tenant_id: ctx.tenant_id, $is_live: ctx.is_live,
+  });
   if (!contactCheck.rows[0]) {
     throw new Error(`Contact ${contact_id} not found`);
   }
 
   const channel = await ctx.db.transaction(async (tx) => {
-    // If setting as primary, unset existing primary for this type
     if (is_primary) {
-      await tx.query(
-        `UPDATE ki_contact_channels
-         SET is_primary = false
-         WHERE contact_id = $contact_id AND channel_type = $channel_type
-           AND is_live = $is_live AND is_active = true AND is_primary = true`,
-        { $contact_id: contact_id, $channel_type: channel_type, $is_live: ctx.is_live }
-      );
+      await tx.query(UNSET_PRIMARY_SQL, {
+        $contact_id:  contact_id,
+        $channel_type: channel_type,
+        $is_live:      ctx.is_live,
+      });
     }
 
     const res = await tx.query<{
       id: number; channel_type: string; channel_value: string; channel_subtype: string; is_primary: boolean;
-    }>(
-      `INSERT INTO ki_contact_channels
-         (contact_id, tenant_id, is_live, channel_type, channel_value, channel_subtype, is_primary)
-       VALUES ($contact_id, $tenant_id, $is_live, $channel_type, $channel_value, $channel_subtype, $is_primary)
-       ON CONFLICT (contact_id, channel_type, channel_value, is_live)
-         DO UPDATE SET channel_subtype = EXCLUDED.channel_subtype, is_primary = EXCLUDED.is_primary
-       RETURNING id, channel_type, channel_value, channel_subtype, is_primary`,
-      {
-        $contact_id:      contact_id,
-        $tenant_id:       ctx.tenant_id,
-        $is_live:         ctx.is_live,
-        $channel_type:    channel_type,
-        $channel_value:   channel_value.trim(),
-        $channel_subtype: subtype,
-        $is_primary:      is_primary,
-      }
-    );
+    }>(UPSERT_CHANNEL_SQL, {
+      $contact_id:      contact_id,
+      $tenant_id:       ctx.tenant_id,
+      $is_live:         ctx.is_live,
+      $channel_type:    channel_type,
+      $channel_value:   channel_value.trim(),
+      $channel_subtype: subtype,
+      $is_primary:      is_primary,
+    });
     return res.rows[0];
   });
 

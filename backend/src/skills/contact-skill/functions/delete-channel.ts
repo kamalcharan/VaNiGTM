@@ -3,7 +3,11 @@
  * Soft-delete a communication channel.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import { SkillContext } from '../../../shared/types';
+
+const DELETE_CHANNEL_SQL = fs.readFileSync(path.join(__dirname, '../queries/delete-channel.sql'), 'utf-8');
 
 interface DeleteChannelParams {
   channel_id: number;
@@ -21,13 +25,11 @@ export async function delete_channel(
 ): Promise<DeleteChannelResult> {
   const { channel_id } = params;
 
-  const res = await ctx.db.query<{ id: number }>(
-    `UPDATE ki_contact_channels
-     SET is_active = false
-     WHERE id = $channel_id AND tenant_id = $tenant_id AND is_live = $is_live AND is_active = true
-     RETURNING id`,
-    { $channel_id: channel_id, $tenant_id: ctx.tenant_id, $is_live: ctx.is_live }
-  );
+  const res = await ctx.db.query<{ id: number }>(DELETE_CHANNEL_SQL, {
+    $channel_id: channel_id,
+    $tenant_id:  ctx.tenant_id,
+    $is_live:    ctx.is_live,
+  });
 
   if (!res.rows[0]) {
     throw new Error(`Channel ${channel_id} not found`);
