@@ -551,6 +551,23 @@ export const API = {
     },
   },
 
+  /* ── Public Intake (no auth — token-based) ────────── */
+
+  intake: {
+    validate: {
+      method: 'POST',
+      path: '/api/v1/intake/validate',
+      auth: false,
+      description: 'Validate an intake token, return tenant brand + contact pre-fill',
+    },
+    submit: {
+      method: 'POST',
+      path: '/api/v1/intake/submit',
+      auth: false,
+      description: 'Submit a filled financial snapshot via intake token',
+    },
+  },
+
   /* ── Skills (generic) ─────────────────────────────── */
 
   skills: {

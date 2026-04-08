@@ -6,6 +6,7 @@ import { buildRegistry } from './services/skill-registry';
 import { getPool, createTenantDb, closePool, healthCheck } from './db';
 import { createAuthRouter, createOnboardingRouter, createTenantRouter } from './auth/auth.routes';
 import { createEtlRouter } from './etl/etl.routes';
+import { createIntakeRouter } from './intake/intake.routes';
 import { createNavRouter } from './nav/nav.routes';
 import { createMarketRouter } from './market/market.routes';
 import { createMarketAnalysisRouter } from './market/market-analysis.routes';
@@ -58,6 +59,7 @@ async function main() {
   app.use('/api/v1/auth', createAuthRouter(pool));
   app.use('/api/v1/onboarding', createOnboardingRouter(pool));
   app.use('/api/v1/tenant', createTenantRouter(pool));
+  app.use('/api/v1/intake', createIntakeRouter(pool));  // public — no JWT
   app.use('/api/v1/etl', createEtlRouter(pool));
   app.use('/api/v1/nav', createNavRouter(pool));
   app.use('/api/v1/market', createMarketRouter(pool));
