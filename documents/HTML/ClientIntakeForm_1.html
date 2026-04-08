@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Financial Planning — Client Intake Form</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0D1F3C;--navy2:#162B50;--ac:#3B6FE8;--ac2:#5585ED;--gr:#059669;--gr2:#D1FAE5;--am:#D97706;--am2:#FEF3C7;--re:#DC2626;--re2:#FEE2E2;--pu:#7C3AED;--te:#0891B2;--surf:#F8FAFC;--surf2:#F1F5F9;--bdr:#E2E8F0;--bdr2:#CBD5E1;--dark:#0F172A;--mu:#64748B;--mu2:#94A3B8;--white:#fff}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--navy);min-height:100vh;color:var(--dark)}
+.shell{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+.sidebar{background:var(--navy2);padding:36px 0;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+.sidebar-brand{padding:0 28px 28px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:20px}
+.brand-label{font-size:9px;font-weight:700;letter-spacing:.14em;color:rgba(255,255,255,.35);text-transform:uppercase;margin-bottom:8px}
+.brand-title{font-family:'Instrument Serif',serif;font-size:20px;color:#fff;line-height:1.2;font-style:italic}
+.nav-steps{flex:1;padding:0 16px}
+.nav-step{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;transition:all .2s;margin-bottom:2px;opacity:.45}
+.nav-step.done{opacity:.7}
+.nav-step.active{background:rgba(59,111,232,.18);opacity:1}
+.nav-step.active .step-num{background:var(--ac);color:#fff;border-color:var(--ac)}
+.nav-step.done .step-num{background:var(--gr);color:#fff;border-color:var(--gr)}
+.step-num{width:26px;height:26px;border-radius:50%;border:1.5px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:rgba(255,255,255,.5);flex-shrink:0;transition:all .2s}
+.nav-step-name{font-size:12px;font-weight:600;color:#fff}
+.nav-step-sub{font-size:10px;color:rgba(255,255,255,.35);margin-top:1px}
+.sidebar-footer{padding:16px 28px 0;border-top:1px solid rgba(255,255,255,.08);margin-top:16px}
+.progress-bar-wrap{background:rgba(255,255,255,.08);border-radius:4px;height:4px;margin-top:8px}
+.progress-bar-fill{background:var(--ac);border-radius:4px;height:4px;transition:width .4s ease}
+.progress-text{font-size:11px;color:rgba(255,255,255,.4);margin-top:6px}
+.main{background:#fff;display:flex;flex-direction:column;min-height:100vh}
+.step-header{background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);padding:40px 52px 36px;position:relative;overflow:hidden}
+.step-header::before{content:'';position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:rgba(59,111,232,.12);pointer-events:none}
+.step-tag{display:inline-flex;align-items:center;gap:6px;background:rgba(59,111,232,.2);border:1px solid rgba(59,111,232,.4);color:#93B4F5;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px}
+.step-header h1{font-family:'Instrument Serif',serif;font-size:30px;font-weight:400;color:#fff;line-height:1.1;margin-bottom:8px}
+.step-header p{color:rgba(255,255,255,.5);font-size:14px;line-height:1.5;max-width:480px}
+.step-body{flex:1;padding:40px 52px}
+.section-title{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--mu2);margin-bottom:16px;margin-top:28px;display:flex;align-items:center;gap:10px}
+.section-title::after{content:'';flex:1;height:1px;background:var(--bdr)}
+.section-title:first-child{margin-top:0}
+.field-group{margin-bottom:18px}
+.field-group label{display:block;font-size:12px;font-weight:700;color:var(--dark);margin-bottom:6px;letter-spacing:.02em}
+.field-group label .opt{font-weight:400;color:var(--mu2);font-size:11px}
+.field-group input,.field-group select,.field-group textarea{width:100%;padding:11px 14px;border:1.5px solid var(--bdr);border-radius:10px;font-size:14px;font-family:'Plus Jakarta Sans',sans-serif;color:var(--dark);background:var(--surf);transition:border-color .2s,box-shadow .2s;outline:none;-webkit-appearance:none;appearance:none}
+.field-group input:focus,.field-group select:focus,.field-group textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(59,111,232,.1);background:#fff}
+.field-group select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394A3B8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+.field-group textarea{resize:vertical;min-height:80px;line-height:1.5}
+.hint{font-size:11.5px;color:var(--mu2);margin-top:5px;line-height:1.4}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+.pill-group{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.pill{padding:7px 16px;border-radius:20px;border:1.5px solid var(--bdr);background:#fff;font-size:13px;font-weight:600;color:var(--mu);cursor:pointer;transition:all .15s;user-select:none}
+.pill:hover{border-color:var(--ac2);color:var(--ac)}
+.pill.sel-blue{border-color:var(--ac);background:#EEF3FD;color:var(--ac)}
+.pill.sel-green{border-color:var(--gr);background:var(--gr2);color:var(--gr)}
+.pill.sel-amber{border-color:var(--am);background:var(--am2);color:var(--am)}
+.items-container{display:flex;flex-direction:column;gap:14px;margin-bottom:14px}
+.item-card{background:var(--surf);border:1.5px solid var(--bdr);border-radius:14px;padding:20px 22px;position:relative;transition:border-color .2s}
+.item-card:hover{border-color:var(--bdr2)}
+.item-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.item-hd-label{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ac)}
+.btn-remove{background:none;border:none;color:var(--mu2);cursor:pointer;font-size:16px;padding:4px 8px;border-radius:6px;transition:all .15s}
+.btn-remove:hover{background:var(--re2);color:var(--re)}
+.btn-add{width:100%;padding:12px;border:2px dashed var(--bdr);border-radius:12px;background:none;color:var(--ac);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-add:hover{border-color:var(--ac);background:rgba(59,111,232,.04)}
+.liq-toggle{display:flex;gap:6px}
+.liq-btn{flex:1;padding:9px 8px;border:1.5px solid var(--bdr);border-radius:8px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--mu);background:#fff;user-select:none}
+.liq-btn.liq{border-color:var(--gr);color:var(--gr);background:var(--gr2)}
+.liq-btn.illiq{border-color:var(--am);color:var(--am);background:var(--am2)}
+.risk-slider{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;outline:none;cursor:pointer;background:linear-gradient(to right,var(--gr) 0%,var(--am) 50%,var(--re) 100%)}
+.risk-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:var(--navy);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer}
+.risk-labels{display:flex;justify-content:space-between;margin-top:6px}
+.risk-label{font-size:11px;font-weight:600;color:var(--mu2)}
+.risk-val-disp{display:inline-block;padding:4px 14px;border-radius:20px;font-size:13px;font-weight:700;margin-top:10px;background:var(--surf2);color:var(--dark);transition:all .2s}
+.step-page{display:none}
+.step-page.active{display:block;animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.step-footer{background:var(--surf);border-top:1px solid var(--bdr);padding:18px 52px;display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;bottom:0;z-index:10}
+.btn-back{padding:11px 22px;border:1.5px solid var(--bdr);border-radius:10px;background:#fff;color:var(--mu);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
+.btn-back:hover{border-color:var(--bdr2);color:var(--dark)}
+.btn-skip{padding:11px 18px;border:none;background:none;color:var(--mu2);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer}
+.btn-next{padding:12px 28px;border:none;border-radius:10px;background:var(--navy);color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px;box-shadow:0 2px 12px rgba(13,31,60,.2)}
+.btn-next:hover{background:var(--navy2);transform:translateY(-1px);box-shadow:0 6px 20px rgba(13,31,60,.25)}
+.review-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.review-section{background:var(--surf);border:1.5px solid var(--bdr);border-radius:12px;padding:18px}
+.review-section h4{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mu2);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--bdr)}
+.review-row{display:flex;justify-content:space-between;align-items:flex-start;padding:4px 0;font-size:13px}
+.review-lbl{color:var(--mu);flex-shrink:0;margin-right:8px}
+.review-val{font-weight:600;color:var(--dark);text-align:right}
+.review-item{background:#fff;border:1px solid var(--bdr);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:12.5px}
+.review-item-name{font-weight:700;color:var(--dark);margin-bottom:2px}
+.review-item-sub{color:var(--mu);font-size:11.5px}
+.code-panel{background:var(--navy);border-radius:16px;padding:24px;margin-top:8px}
+.code-panel-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:12px}
+.code-display{background:rgba(255,255,255,.06);border-radius:10px;padding:14px;font-family:'Courier New',monospace;font-size:11px;color:#7CDFB8;word-break:break-all;line-height:1.6;max-height:72px;overflow:hidden;margin-bottom:16px}
+.btn-copy{width:100%;padding:13px;border:none;border-radius:10px;background:var(--ac);color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-copy:hover{background:var(--ac2)}
+.btn-copy.ok{background:var(--gr)}
+.code-note{color:rgba(255,255,255,.35);font-size:12px;text-align:center;margin-top:12px;line-height:1.5}
+.info-box{background:#EEF3FD;border:1px solid #C3D4F8;border-radius:10px;padding:12px 16px;font-size:13px;color:#2D4C9E;margin-bottom:18px;line-height:1.5}
+@media(max-width:768px){.shell{grid-template-columns:1fr}.sidebar{display:none}.step-header,.step-body,.step-footer{padding-left:20px;padding-right:20px}.g2,.g3,.g4{grid-template-columns:1fr}.review-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-label">Financial Planning</div>
+    <div class="brand-title">Client Intake<br>Form</div>
+  </div>
+  <nav class="nav-steps" id="nav"></nav>
+  <div class="sidebar-footer">
+    <div style="font-size:11px;color:rgba(255,255,255,.3)">Progress</div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="pfill" style="width:12.5%"></div></div>
+    <div class="progress-text" id="ptxt">Step 1 of 8</div>
+  </div>
+</aside>
+<main class="main">
+
+<!-- STEP 1 -->
+<div class="step-page active" id="step-1">
+  <div class="step-header">
+    <div class="step-tag">Step 1 of 8 &middot; Personal</div>
+    <h1>Personal &amp; Family Profile</h1>
+    <p>Basic details about the client. This appears on the financial roadmap and all reports.</p>
+  </div>
+  <div class="step-body">
+    <div class="section-title">Personal Details</div>
+    <div class="g2">
+      <div class="field-group"><label>Full Name</label><input type="text" id="c-name" placeholder="e.g. Rahul Sharma"></div>
+      <div class="field-group"><label>Date of Birth</label><input type="date" id="c-dob"></div>
+    </div>
+    <div class="g3">
+      <div class="field-group"><label>Email</label><input type="email" id="c-email" placeholder="rahul@email.com"></div>
+      <div class="field-group"><label>Phone</label><input type="tel" id="c-phone" placeholder="+91 98765 43210"></div>
+      <div class="field-group"><label>City</label><input type="text" id="c-city" placeholder="Mumbai"></div>
+    </div>
+    <div class="g4">
+      <div class="field-group"><label>Marital Status</label>
+        <select id="c-marital"><option value="">Select</option><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option></select></div>
+      <div class="field-group"><label>No. of Children</label>
+        <select id="c-children"><option value="0">0</option><option>1</option><option>2</option><option>3</option><option>4+</option></select></div>
+      <div class="field-group"><label>Parents Dependent?</label>
+        <select id="c-parents"><option value="no">No</option><option value="yes">Yes</option><option value="partial">Partially</option></select></div>
+      <div class="field-group"><label>Years to Retirement</label><input type="number" id="c-retire-in" placeholder="25" min="0" max="45"></div>
+    </div>
+    <div class="section-title">Employment</div>
+    <div class="g2">
+      <div class="field-group"><label>Occupation Type</label>
+        <select id="c-occ"><option value="">Select</option><option>Salaried — Private Sector</option><option>Salaried — Government / PSU</option><option>Self-Employed / Business Owner</option><option>Freelancer / Consultant</option><option>Professional (Doctor / CA / Lawyer)</option><option>Retired</option></select></div>
+      <div class="field-group"><label>Employer / Business <span class="opt">(optional)</span></label><input type="text" id="c-employer" placeholder="e.g. Infosys Ltd."></div>
+    </div>
+  </div>
+  <div class="step-footer"><div></div>
+    <button class="btn-next" onclick="goNext(1)">Next &mdash; Income &rarr;</button>
+  </div>
+</div>
+
+<!-- STEP 2 -->
+<div class="step-page" id="step-2">
+  <div class="step-header">
+    <div class="step-tag">Step 2 of 8 &middot; Income</div>
+    <h1>Income &amp; Monthly Expenses</h1>
+    <p>Understanding your cash flow helps estimate savings potential and investment capacity.</p>
+  </div>
+  <div class="step-body">
+    <div class="section-title">Monthly Income</div>
+    <div class="g3">
+      <div class="field-group"><label>Take-Home Salary (&#8377;)</label><input type="number" id="i-salary" placeholder="150000" oninput="updateCF()"></div>
+      <div class="field-group"><label>Spouse / Partner Income <span class="opt">(&#8377;)</span></label><input type="number" id="i-spouse" placeholder="0" oninput="updateCF()"></div>
+      <div class="field-group"><label>Rental Income <span class="opt">(&#8377;/mo)</span></label><input type="number" id="i-rent" placeholder="0" oninput="updateCF()"></div>
+    </div>
+    <div class="g2">
+      <div class="field-group"><label>Business / Freelance Income <span class="opt">(&#8377;/mo)</span></label><input type="number" id="i-biz" placeholder="0" oninput="updateCF()"></div>
+      <div class="field-group"><label>Other Income <span class="opt">(&#8377;/mo)</span></label><input type="number" id="i-other" placeholder="0" oninput="updateCF()"></div>
+    </div>
+    <div class="section-title">Monthly Expenses</div>
+    <div class="info-box">&#128161; <strong>Exclude all EMIs</strong> &mdash; loans are captured separately. Include rent, groceries, utilities, school fees, lifestyle, etc.</div>
+    <div class="g3">
+      <div class="field-group"><label>Housing / Rent (&#8377;)</label><input type="number" id="e-housing" placeholder="30000" oninput="updateCF()"></div>
+      <div class="field-group"><label>Groceries &amp; Food (&#8377;)</label><input type="number" id="e-food" placeholder="15000" oninput="updateCF()"></div>
+      <div class="field-group"><label>Utilities &amp; Bills (&#8377;)</label><input type="number" id="e-util" placeholder="5000" oninput="updateCF()"></div>
+    </div>
+    <div class="g3">
+      <div class="field-group"><label>Transport (&#8377;)</label><input type="number" id="e-transport" placeholder="8000" oninput="updateCF()"></div>
+      <div class="field-group"><label>Education / School Fees (&#8377;)</label><input type="number" id="e-edu" placeholder="10000" oninput="updateCF()"></div>
+      <div class="field-group"><label>Health / Medical (&#8377;)</label><input type="number" id="e-health" placeholder="3000" oninput="updateCF()"></div>
+    </div>
+    <div class="g3">
+      <div class="field-group"><label>Lifestyle / Entertainment (&#8377;)</label><input type="number" id="e-life" placeholder="10000" oninput="updateCF()"></div>
+      <div class="field-group"><label>Insurance Premiums (&#8377;)</label><input type="number" id="e-insure" placeholder="5000" oninput="updateCF()"></div>
+      <div class="field-group"><label>Other Expenses (&#8377;)</label><input type="number" id="e-other" placeholder="5000" oninput="updateCF()"></div>
+    </div>
+    <div id="cf-summary"></div>
+  </div>
+  <div class="step-footer">
+    <button class="btn-back" onclick="goStep(1)">&larr; Back</button>
+    <button class="btn-next" onclick="goNext(2)">Next &mdash; Assets &rarr;</button>
+  </div>
+</div>
+
+<!-- STEP 3 -->
+<div class="step-page" id="step-3">
+  <div class="step-header">
+    <div class="step-tag">Step 3 of 8 &middot; Assets</div>
+    <h1>Assets &amp; Investments</h1>
+    <p>List all current assets &mdash; equity, real estate, gold, FDs, PPF, NPS, EPF, etc.</p>
+  </div>
+  <div class="step-body">
+    <div class="items-container" id="assets-list"></div>
+    <button class="btn-add" onclick="addAsset()">&#65291; Add Asset</button>
+  </div>
+  <div class="step-footer">
+    <button class="btn-back" onclick="goStep(2)">&larr; Back</button>
+    <button class="btn-next" onclick="goNext(3)">Next &mdash; Loans &rarr;</button>
+  </div>
+</div>
+
+<!-- STEP 4 -->
+<div class="step-page" id="step-4">
+  <div class="step-header">
+    <div class="step-tag">Step 4 of 8 &middot; Loans</div>
+    <h1>Loans &amp; Liabilities</h1>
+    <p>Home loan, car loan, personal loan, education loan, credit card outstanding, etc.</p>
+  </div>
+  <div class="step-body">
+    <div class="items-container" id="loans-list"></div>
+    <button class="btn-add" onclick="addLoan()">&#65291; Add Loan</button>
+    <p class="hint" style="margin-top:10px">No loans? Leave empty and proceed.</p>
+  </div>
+  <div class="step-footer">
+    <button class="btn-back" onclick="goStep(3)">&larr; Back</button>
+    <button class="btn-next" onclick="goNext(4)">Next &mdash; SIPs &rarr;</button>
+  </div>
+</div>
+
+<!-- STEP 5 -->
+<div class="step-page" id="step-5">
+  <div class="step-header">
+    <div class="step-tag">Step 5 of 8 &middot; SIPs</div>
+    <h1>SIPs &amp; Regular Investments</h1>
+    <p>Monthly systematic investments &mdash; equity MF, debt MF, ELSS, RD, NPS contributions, etc.</p>
+  </div>
+  <div class="step-body">
+    <div class="items-container" id="sips-list"></div>
+    <button class="btn-add" onclick="addSIP()">&#65291; Add SIP / Recurring Investment</button>
+    <p class="hint" style="margin-top:10px">No SIPs? Leave empty and continue.</p>
+  </div>
+  <div class="step-footer">
+    <button class="btn-back" onclick="goStep(4)">&larr; Back</button>
+    <button class="btn-next" onclick="goNext(5)">Next &mdash; Insurance &rarr;</button>
+  </div>
+</div>
+
+<!-- STEP 6 -->
+<div class="step-page" id="step-6">
+  <div class="step-header">
+    <div class="step-tag">Step 6 of 8 &middot; Insurance</div>
+    <h1>Insurance Coverage</h1>
+    <p>Existing life, health, and other policies. Helps your advisor identify coverage gaps.</p>
+  </div>
+  <div class="step-body">
+    <div class="section-title">Life Insurance Policies</div>
+    <div class="items-container" id="life-list"></div>
+    <button class="btn-add" onclick="addLife()">&#65291; Add Life Insurance Policy</button>
+    <div class="section-title" style="margin-top:28px">Health Insurance</div>
+    <div class="g3">
+      <div class="field-group"><label>Health Cover Amount (&#8377;)</label><input type="number" id="h-cover" placeholder="500000"></div>
+      <div class="field-group"><label>Type</label>
+        <select id="h-type"><option value="">Select</option><option>Individual</option><option>Family Floater</option><option>Group (Employer)</option><option>None</option></select></div>
+      <div class="field-group"><label>Annual Premium (&#8377;) <span class="opt">(optional)</span></label><input type="number" id="h-premium" placeholder="15000"></div>
+    </div>
+    <div class="section-title">Other Cover <span class="opt" style="text-transform:none;letter-spacing:0;font-size:11px;font-weight:400">(optional)</span></div>
+    <div class="g2">
+      <div class="field-group"><label>Personal Accident Cover (&#8377;)</label><input type="number" id="ins-acc" placeholder="1000000"></div>
+      <div class="field-group"><label>Critical Illness Cover (&#8377;)</label><input type="number" id="ins-ci" placeholder="0"></div>
+    </div>
+  </div>
+  <div class="step-footer">
+    <button class="btn-back" onclick="goStep(5)">&larr; Back</button>
+    <button class="btn-skip" onclick="goStep(7)">Skip &rarr;</button>
+    <button class="btn-next" onclick="goNext(6)">Next &mdash; Goals &rarr;</button>
+  </div>
+</div>
+
+<!-- STEP 7 -->
+<div class="step-page" id="step-7">
+  <div class="step-header">
+    <div class="step-tag">Step 7 of 8 &middot; Goals</div>
+    <h1>Financial Goals &amp; Retirement</h1>
+    <p>What are you saving for? List all major life goals and retirement expectations.</p>
+  </div>
+  <div class="step-body">
+    <div class="section-title">Financial Goals</div>
+    <div class="items-container" id="goals-list"></div>
+    <button class="btn-add" onclick="addGoal()">&#65291; Add Goal</button>
+    <div class="section-title" style="margin-top:28px">Retirement Planning</div>
+    <div class="g3">
+      <div class="field-group"><label>Expected Retirement Age</label><input type="number" id="r-age" placeholder="60" min="40" max="75"></div>
+      <div class="field-group"><label>Monthly Expenses After Retirement (&#8377;)</label><input type="number" id="r-monthly" placeholder="80000"></div>
+      <div class="field-group"><label>Withdrawal Inflation Rate (%)</label><input type="number" id="r-inf" placeholder="5" step="0.5"></div>
+    </div>
+    <div class="g3">
+      <div class="field-group"><label>EPF Balance (&#8377;) <span class="opt">(optional)</span></label><input type="number" id="r-epf" placeholder="0"></div>
+      <div class="field-group"><label>NPS Balance (&#8377;) <span class="opt">(optional)</span></label><input type="number" id="r-nps" placeholder="0"></div>
+      <div class="field-group"><label>Expected Gratuity (&#8377;) <span class="opt">(optional)</span></label><input type="number" id="r-gratuity" placeholder="0"></div>
+    </div>
+  </div>
+  <div class="step-footer">
+    <button class="btn-back" onclick="goStep(6)">&larr; Back</button>
+    <button class="btn-next" onclick="goNext(7)">Next &mdash; Risk Profile &rarr;</button>
+  </div>
+</div>
+
+<!-- STEP 8 -->
+<div class="step-page" id="step-8">
+  <div class="step-header">
+    <div class="step-tag">Step 8 of 8 &middot; Review</div>
+    <h1>Risk Profile &amp; Review</h1>
+    <p>Almost done! Tell us your investment mindset, then generate your data code for the advisor.</p>
+  </div>
+  <div class="step-body">
+    <div class="section-title">Investment Risk Appetite</div>
+    <div class="field-group">
+      <label>How would you react if your portfolio dropped 20% in a year?</label>
+      <div class="pill-group" id="rq1">
+        <div class="pill" onclick="pillSel(this,'rq1','amber')">&#128560; Sell everything immediately</div>
+        <div class="pill" onclick="pillSel(this,'rq1','amber')">&#128543; Reduce equity exposure</div>
+        <div class="pill" onclick="pillSel(this,'rq1','blue')">&#128528; Hold and wait</div>
+        <div class="pill" onclick="pillSel(this,'rq1','green')">&#128522; Buy more at lower prices</div>
+      </div>
+    </div>
+    <div class="field-group" style="margin-top:8px">
+      <label>Overall Risk Appetite</label>
+      <input type="range" class="risk-slider" id="risk-sl" min="1" max="5" value="3" oninput="updateRisk(this.value)">
+      <div class="risk-labels">
+        <span class="risk-label" style="color:var(--gr)">Conservative</span>
+        <span class="risk-label" style="color:var(--am)">Moderate</span>
+        <span class="risk-label" style="color:var(--re)">Aggressive</span>
+      </div>
+      <div class="risk-val-disp" id="risk-disp">Moderate</div>
+    </div>
+    <div class="g2" style="margin-top:8px">
+      <div class="field-group">
+        <label>Investment Experience</label>
+        <div class="pill-group" id="inv-exp">
+          <div class="pill" onclick="pillSel(this,'inv-exp','blue')">Beginner</div>
+          <div class="pill" onclick="pillSel(this,'inv-exp','blue')">Intermediate</div>
+          <div class="pill" onclick="pillSel(this,'inv-exp','blue')">Experienced</div>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Tax Bracket</label>
+        <select id="tax-br"><option value="">Select</option><option value="0">0% (No tax)</option><option value="5">5%</option><option value="20">20%</option><option value="30">30%</option></select>
+      </div>
+    </div>
+    <div class="field-group">
+      <label>Any specific concerns or notes for your advisor? <span class="opt">(optional)</span></label>
+      <textarea id="c-notes" placeholder="e.g. I want to buy a house in 5 years. I'm worried about my parents' medical expenses..."></textarea>
+    </div>
+    <div class="section-title">Summary</div>
+    <div id="review-out"></div>
+    <div class="section-title">Your Data Code</div>
+    <div class="code-panel">
+      <div class="code-panel-label">&#128203; Copy this and send to your advisor</div>
+      <div class="code-display" id="code-disp">Click Regenerate to generate your code&hellip;</div>
+      <button class="btn-copy" id="copy-btn" onclick="copyCode()">&#128203; Copy Data Code</button>
+      <div class="code-note">Share this code with your financial advisor.<br>They paste it into NetWorthPlanner to load your data instantly.</div>
+    </div>
+  </div>
+  <div class="step-footer">
+    <button class="btn-back" onclick="goStep(7)">&larr; Back</button>
+    <button class="btn-next" onclick="buildFinal()" style="background:var(--gr)">&#10003; Generate Code</button>
+  </div>
+</div>
+
+</main>
+</div>
+<script>
+const CY=new Date().getFullYear();
+let cur=1;
+const TOTAL=8;
+const STEPS=[
+  {n:'Personal & Family',   s:'Name, age, family'},
+  {n:'Income & Expenses',   s:'Salary, monthly outflow'},
+  {n:'Assets',              s:'Equity, real estate, gold'},
+  {n:'Loans',               s:'Home, car, personal loans'},
+  {n:'SIPs & Investments',  s:'Mutual funds, RD, NPS'},
+  {n:'Insurance',           s:'Life, health, accident'},
+  {n:'Goals & Retirement',  s:'Life goals, corpus'},
+  {n:'Risk Profile',        s:'Mindset & review'},
+];
+function buildNav(){
+  const c=document.getElementById('nav');
+  c.innerHTML=STEPS.map((s,i)=>`<div class="nav-step" id="nv-${i+1}" onclick="navCk(${i+1})"><div class="step-num" id="nm-${i+1}">${i+1}</div><div><div class="nav-step-name">${s.n}</div><div class="nav-step-sub">${s.s}</div></div></div>`).join('');
+}
+function updateNav(){
+  for(let i=1;i<=TOTAL;i++){
+    const nv=document.getElementById(`nv-${i}`),nm=document.getElementById(`nm-${i}`);
+    nv.className='nav-step'+(i===cur?' active':i<cur?' done':'');
+    nm.innerHTML=i<cur?'&#10003;':String(i);
+  }
+  document.getElementById('pfill').style.width=(cur/TOTAL*100)+'%';
+  document.getElementById('ptxt').textContent=`Step ${cur} of ${TOTAL}`;
+}
+function navCk(n){if(n<=cur)goStep(n);}
+function goStep(n){
+  document.getElementById(`step-${cur}`).classList.remove('active');
+  cur=n;
+  document.getElementById(`step-${cur}`).classList.add('active');
+  updateNav();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function goNext(from){
+  if(from===1&&!v('c-name').trim()){alert('Please enter the client name.');return;}
+  if(from===3&&getAssets().length===0){alert('Please add at least one asset.');return;}
+  if(from===7&&getGoals().length===0){alert('Please add at least one goal.');return;}
+  goStep(from+1);
+  if(from+1===8)buildFinal();
+}
+const v=id=>(document.getElementById(id)||{}).value||'';
+const vf=id=>parseFloat(v(id))||0;
+const vi=id=>parseInt(v(id))||0;
+function fmt(n){if(!n||isNaN(n))return '\u2014';if(n>=1e7)return '\u20b9'+(n/1e7).toFixed(2)+' Cr';if(n>=1e5)return '\u20b9'+(n/1e5).toFixed(2)+' L';return '\u20b9'+Number(n).toLocaleString('en-IN');}
+function updateCF(){
+  const sal=vf('i-salary')+vf('i-spouse')+vf('i-rent')+vf('i-biz')+vf('i-other');
+  const exp=vf('e-housing')+vf('e-food')+vf('e-util')+vf('e-transport')+vf('e-edu')+vf('e-health')+vf('e-life')+vf('e-insure')+vf('e-other');
+  if(!sal&&!exp)return;
+  const sav=sal-exp;
+  const col=sav>=0?'var(--gr)':'var(--re)';
+  document.getElementById('cf-summary').innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;background:var(--surf);border:1.5px solid var(--bdr);border-radius:12px;padding:16px;margin-top:8px"><div><div style="font-size:11px;color:var(--mu2);margin-bottom:4px">Total Income</div><div style="font-size:16px;font-weight:800;color:var(--gr)">${fmt(sal)}/mo</div></div><div><div style="font-size:11px;color:var(--mu2);margin-bottom:4px">Total Expenses</div><div style="font-size:16px;font-weight:800;color:var(--re)">${fmt(exp)}/mo</div></div><div><div style="font-size:11px;color:var(--mu2);margin-bottom:4px">Monthly Surplus</div><div style="font-size:16px;font-weight:800;color:${col}">${fmt(Math.abs(sav))}/mo${sav<0?' (deficit)':''}</div></div></div>`;
+}
+function pillSel(el,gid,color){document.querySelectorAll(`#${gid} .pill`).forEach(p=>p.className='pill');el.className=`pill sel-${color}`;}
+const RLBLS=['','Conservative','Moderately Conservative','Moderate','Moderately Aggressive','Aggressive'];
+const RCOLS=['','var(--gr)','#65A861','var(--am)','#E07730','var(--re)'];
+function updateRisk(val){const d=document.getElementById('risk-disp');d.textContent=RLBLS[val];d.style.color=RCOLS[val];d.style.background=val<=2?'var(--gr2)':val===3?'var(--am2)':'var(--re2)';}
+updateRisk(3);
+const APRE=['Equity Portfolio','Stocks / Shares','Equity Mutual Funds','Debt Mutual Funds','Hybrid Funds','Index Funds','ETFs','Fixed Deposits','Recurring Deposit','PPF','EPF','NPS','Real Estate','Gold / Jewellery','REITs','Savings Account','US Stocks','Crypto','Business Stake','Other'];
+let aC=0;
+function addAsset(d={}){
+  const id=++aC;const liq=d.liquid!==false;
+  const el=document.createElement('div');el.className='item-card';el.id=`ast-${id}`;
+  el.innerHTML=`<div class="item-hd"><div class="item-hd-label">&#127970; Asset ${id}</div><button class="btn-remove" onclick="rm('ast-${id}')">&#10005;</button></div><div class="g2"><div class="field-group"><label>Asset Name / Type</label><input type="text" id="an-${id}" list="apl" placeholder="e.g. Equity Portfolio" value="${d.name||''}"><datalist id="apl">${APRE.map(p=>`<option value="${p}">`).join('')}</datalist></div><div class="field-group"><label>Current Value (&#8377;)</label><input type="number" id="av-${id}" placeholder="1500000" value="${d.value||''}"></div></div><div class="g3"><div class="field-group"><label>Expected Growth (% p.a.)</label><input type="number" id="ag-${id}" placeholder="12" step="0.5" value="${d.growth||''}"></div><div class="field-group"><label>Account / Folio No. <span class="opt">(optional)</span></label><input type="text" id="aref-${id}" placeholder="for records"></div><div class="field-group"><label>Liquidity</label><div class="liq-toggle"><div class="liq-btn ${liq?'liq':''}" id="alq-${id}" onclick="setLiq(${id},true)">&#128167; Liquid</div><div class="liq-btn ${!liq?'illiq':''}" id="ailq-${id}" onclick="setLiq(${id},false)">&#128274; Illiquid</div></div><input type="hidden" id="alk-${id}" value="${liq}"></div></div>`;
+  document.getElementById('assets-list').appendChild(el);
+}
+function setLiq(id,liq){document.getElementById(`alq-${id}`).className='liq-btn'+(liq?' liq':'');document.getElementById(`ailq-${id}`).className='liq-btn'+(!liq?' illiq':'');document.getElementById(`alk-${id}`).value=liq;}
+function getAssets(){return Array.from({length:aC},(_,i)=>{const id=i+1;const el=document.getElementById(`ast-${id}`);if(!el)return null;const name=v(`an-${id}`).trim();const value=vf(`av-${id}`);if(!name&&!value)return null;return{name:name||'Asset',value,growth:parseFloat(v(`ag-${id}`))||8,liquid:v(`alk-${id}`)!=='false'};}).filter(Boolean);}
+const LPRE=['Home Loan','Car Loan','Personal Loan','Education Loan','Business Loan','Loan Against Property','Gold Loan','Credit Card Outstanding','Other'];
+let lC=0;
+function addLoan(d={}){
+  const id=++lC;const el=document.createElement('div');el.className='item-card';el.id=`ln-${id}`;
+  el.innerHTML=`<div class="item-hd"><div class="item-hd-label">&#127968; Loan ${id}</div><button class="btn-remove" onclick="rm('ln-${id}')">&#10005;</button></div><div class="g2"><div class="field-group"><label>Loan Type</label><input type="text" id="lnm-${id}" list="lpl" placeholder="e.g. Home Loan" value="${d.name||''}"><datalist id="lpl">${LPRE.map(p=>`<option value="${p}">`).join('')}</datalist></div><div class="field-group"><label>Lender <span class="opt">(optional)</span></label><input type="text" id="llnd-${id}" placeholder="e.g. HDFC Bank"></div></div><div class="g4"><div class="field-group"><label>Outstanding Balance (&#8377;)</label><input type="number" id="lv-${id}" placeholder="3000000" value="${d.value||''}"></div><div class="field-group"><label>Interest Rate (% p.a.)</label><input type="number" id="lr-${id}" placeholder="8.5" step="0.1" value="${d.rate||''}"></div><div class="field-group"><label>Remaining Tenure (yrs)</label><input type="number" id="lt-${id}" placeholder="15" value="${d.tenure||''}"></div><div class="field-group"><label>EMI / Month (&#8377;) <span class="opt">(optional)</span></label><input type="number" id="lemi-${id}" placeholder="auto"></div></div>`;
+  document.getElementById('loans-list').appendChild(el);
+}
+function getLoans(){return Array.from({length:lC},(_,i)=>{const id=i+1;const el=document.getElementById(`ln-${id}`);if(!el)return null;const name=v(`lnm-${id}`).trim();const value=vf(`lv-${id}`);if(!name&&!value)return null;return{name:name||'Loan',value,rate:parseFloat(v(`lr-${id}`))||8,tenure:parseInt(v(`lt-${id}`))||10,startYear:CY};}).filter(Boolean);}
+const SPRE=['Equity MF','Debt MF','ELSS (Tax Saving)','Hybrid / Balanced Fund','Index Fund','Small Cap Fund','Mid Cap Fund','Flexi Cap Fund','NPS (Tier 1)','PPF Contribution','Recurring Deposit','ULIP','Other'];
+let sC=0;
+function addSIP(d={}){
+  const id=++sC;const el=document.createElement('div');el.className='item-card';el.id=`sp-${id}`;
+  el.innerHTML=`<div class="item-hd"><div class="item-hd-label">&#128200; SIP ${id}</div><button class="btn-remove" onclick="rm('sp-${id}')">&#10005;</button></div><div class="g2"><div class="field-group"><label>Fund / Scheme Name</label><input type="text" id="snm-${id}" list="spl" placeholder="e.g. Equity MF" value="${d.name||''}"><datalist id="spl">${SPRE.map(p=>`<option value="${p}">`).join('')}</datalist></div><div class="field-group"><label>Monthly Amount (&#8377;)</label><input type="number" id="samt-${id}" placeholder="10000" value="${d.amount||''}"></div></div><div class="g4"><div class="field-group"><label>Expected Return (% p.a.)</label><input type="number" id="sroi-${id}" placeholder="12" step="0.5" value="${d.roi||''}"></div><div class="field-group"><label>Start Year</label><input type="number" id="ssy-${id}" placeholder="${CY}" value="${d.startYear||CY}"></div><div class="field-group"><label>End Year</label><input type="number" id="sey-${id}" placeholder="${CY+20}" value="${d.endYear||CY+20}"></div><div class="field-group"><label>Annual Step-up (%)</label><input type="number" id="ssu-${id}" placeholder="10" value="${d.stepup!==undefined?d.stepup:10}"></div></div>`;
+  document.getElementById('sips-list').appendChild(el);
+}
+function getSIPs(){return Array.from({length:sC},(_,i)=>{const id=i+1;const el=document.getElementById(`sp-${id}`);if(!el)return null;const name=v(`snm-${id}`).trim();const amount=vf(`samt-${id}`);if(!name&&!amount)return null;return{name:name||'SIP',amount,roi:parseFloat(v(`sroi-${id}`))||12,startYear:parseInt(v(`ssy-${id}`))||CY,endYear:parseInt(v(`sey-${id}`))||CY+20,stepup:parseFloat(v(`ssu-${id}`))||0};}).filter(Boolean);}
+let liC=0;
+function addLife(d={}){
+  const id=++liC;const el=document.createElement('div');el.className='item-card';el.id=`li-${id}`;
+  el.innerHTML=`<div class="item-hd"><div class="item-hd-label">&#128737;&#65039; Policy ${id}</div><button class="btn-remove" onclick="rm('li-${id}')">&#10005;</button></div><div class="g2"><div class="field-group"><label>Policy Type</label><select id="litype-${id}"><option>Term Plan</option><option>Endowment</option><option>ULIP</option><option>Money Back</option><option>Whole Life</option><option>Other</option></select></div><div class="field-group"><label>Insurer / Policy Name</label><input type="text" id="linm-${id}" placeholder="e.g. LIC Jeevan Anand"></div></div><div class="g3"><div class="field-group"><label>Sum Assured (&#8377;)</label><input type="number" id="lisa-${id}" placeholder="10000000"></div><div class="field-group"><label>Annual Premium (&#8377;)</label><input type="number" id="liprem-${id}" placeholder="25000"></div><div class="field-group"><label>Policy Ends (Year)</label><input type="number" id="liend-${id}" placeholder="${CY+20}"></div></div>`;
+  document.getElementById('life-list').appendChild(el);
+}
+function getLife(){return Array.from({length:liC},(_,i)=>{const id=i+1;const el=document.getElementById(`li-${id}`);if(!el)return null;const sa=vf(`lisa-${id}`);if(!sa)return null;return{type:v(`litype-${id}`),name:v(`linm-${id}`).trim()||'Policy',sa,premium:vf(`liprem-${id}`),endYear:vi(`liend-${id}`)};}).filter(Boolean);}
+const GPRE=["Child's Education","Child's Marriage","Retirement Corpus","Home Purchase","Car Purchase","Foreign Travel","Emergency Fund","Business Startup","Higher Studies / MBA","Wealth Creation","Other"];
+let gC=0;
+function addGoal(d={}){
+  const id=++gC;const el=document.createElement('div');el.className='item-card';el.id=`gl-${id}`;
+  el.innerHTML=`<div class="item-hd"><div class="item-hd-label">&#127919; Goal ${id}</div><button class="btn-remove" onclick="rm('gl-${id}')">&#10005;</button></div><div class="g2"><div class="field-group"><label>Goal Name</label><input type="text" id="gnm-${id}" list="gpl" placeholder="e.g. Child's Education" value="${d.name||''}"><datalist id="gpl">${GPRE.map(p=>`<option value="${p}">`).join('')}</datalist></div><div class="field-group"><label>Priority</label><select id="gpri-${id}"><option value="normal">Normal</option><option value="high">High Priority</option></select></div></div><div class="g3"><div class="field-group"><label>Target Amount &mdash; Today's Value (&#8377;)</label><input type="number" id="gcost-${id}" placeholder="2000000" value="${d.cost||''}"></div><div class="field-group"><label>Target Year</label><input type="number" id="gyr-${id}" placeholder="${CY+10}" value="${d.year||CY+10}"></div><div class="field-group"><label>Inflation on Goal (% p.a.) <span class="opt">(optional)</span></label><input type="number" id="ginf-${id}" placeholder="6" step="0.5"></div></div>`;
+  document.getElementById('goals-list').appendChild(el);
+}
+function getGoals(){return Array.from({length:gC},(_,i)=>{const id=i+1;const el=document.getElementById(`gl-${id}`);if(!el)return null;const name=v(`gnm-${id}`).trim();const cost=vf(`gcost-${id}`);if(!name&&!cost)return null;const year=vi(`gyr-${id}`)||CY+10;const inf=parseFloat(v(`ginf-${id}`))||0;const yrs=year-CY;const futCost=inf>0?Math.round(cost*Math.pow(1+inf/100,yrs)):cost;return{name:name||'Goal',cost:futCost,year,priority:v(`gpri-${id}`)==='high'};}).filter(Boolean);}
+function rm(id){document.getElementById(id)?.remove();}
+function calcAge(){const dob=v('c-dob');if(!dob)return 0;return Math.floor((Date.now()-new Date(dob))/(365.25*24*3600*1000));}
+const selPill=gid=>{const el=document.querySelector(`#${gid} .pill.sel-blue,#${gid} .pill.sel-green,#${gid} .pill.sel-amber`);return el?el.textContent.trim():'';};
+function buildFinal(){
+  const assets=getAssets(),loans=getLoans(),sips=getSIPs(),goals=getGoals(),life=getLife();
+  const name=v('c-name').trim()||'Client';
+  const sal=vf('i-salary')+vf('i-spouse')+vf('i-rent')+vf('i-biz')+vf('i-other');
+  const exp=vf('e-housing')+vf('e-food')+vf('e-util')+vf('e-transport')+vf('e-edu')+vf('e-health')+vf('e-life')+vf('e-insure')+vf('e-other');
+  const tA=assets.reduce((s,a)=>s+a.value,0);
+  const tL=loans.reduce((s,l)=>s+l.value,0);
+  const tSIP=sips.reduce((s,p)=>s+p.amount,0);
+  const tSA=life.reduce((s,p)=>s+p.sa,0);
+  const rv=vi('risk-sl');const rl=RLBLS[rv];
+  let rev=`<div class="review-grid"><div class="review-section"><h4>Personal</h4><div class="review-row"><span class="review-lbl">Name</span><span class="review-val">${name}</span></div>${v('c-dob')?`<div class="review-row"><span class="review-lbl">DOB</span><span class="review-val">${v('c-dob')}</span></div>`:''}<div class="review-row"><span class="review-lbl">Status</span><span class="review-val">${v('c-marital')||'\u2014'}</span></div><div class="review-row"><span class="review-lbl">Occupation</span><span class="review-val">${v('c-occ')||'\u2014'}</span></div></div><div class="review-section"><h4>Cash Flow</h4><div class="review-row"><span class="review-lbl">Monthly Income</span><span class="review-val">${fmt(sal)}/mo</span></div><div class="review-row"><span class="review-lbl">Monthly Expenses</span><span class="review-val">${fmt(exp)}/mo</span></div><div class="review-row"><span class="review-lbl">Surplus</span><span class="review-val" style="color:${sal-exp>=0?'var(--gr)':'var(--re)'}">${fmt(Math.abs(sal-exp))}/mo</span></div></div><div class="review-section"><h4>Net Worth</h4><div class="review-row"><span class="review-lbl">Total Assets</span><span class="review-val" style="color:var(--gr)">${fmt(tA)}</span></div><div class="review-row"><span class="review-lbl">Total Loans</span><span class="review-val" style="color:var(--re)">${fmt(tL)}</span></div><div class="review-row"><span class="review-lbl">Net Worth</span><span class="review-val" style="color:var(--ac);font-size:15px">${fmt(tA-tL)}</span></div></div><div class="review-section"><h4>Profile &amp; Insurance</h4><div class="review-row"><span class="review-lbl">Risk</span><span class="review-val">${rl}</span></div><div class="review-row"><span class="review-lbl">Life Cover</span><span class="review-val">${tSA?fmt(tSA):'None'}</span></div><div class="review-row"><span class="review-lbl">Health Cover</span><span class="review-val">${vf('h-cover')?fmt(vf('h-cover')):'None'}</span></div><div class="review-row"><span class="review-lbl">SIP Total</span><span class="review-val">${tSIP?fmt(tSIP)+'/mo':'None'}</span></div></div></div>`;
+  if(assets.length){rev+=`<div class="review-section" style="margin-bottom:14px"><h4>Assets (${assets.length})</h4>`;assets.forEach(a=>{rev+=`<div class="review-item"><div class="review-item-name">${a.name}</div><div class="review-item-sub">${fmt(a.value)} &middot; ${a.growth}% growth &middot; ${a.liquid?'&#128167; Liquid':'&#128274; Illiquid'}</div></div>`;});rev+='</div>';}
+  if(goals.length){rev+=`<div class="review-section" style="margin-bottom:14px"><h4>Goals (${goals.length})</h4>`;goals.forEach(g=>{rev+=`<div class="review-item"><div class="review-item-name">${g.name}</div><div class="review-item-sub">${fmt(g.cost)} by ${g.year}${g.priority?' &middot; High Priority':''}</div></div>`;});rev+='</div>';}
+  document.getElementById('review-out').innerHTML=rev;
+  const data={v:2,client:{name,age:calcAge(),dob:v('c-dob'),email:v('c-email').trim(),phone:v('c-phone').trim(),city:v('c-city').trim(),marital:v('c-marital'),children:vi('c-children'),parentsDependent:v('c-parents'),occupation:v('c-occ'),employer:v('c-employer').trim(),yearsToRetirement:vi('c-retire-in')},income:{salary:vf('i-salary'),spouseIncome:vf('i-spouse'),rentalIncome:vf('i-rent'),bizIncome:vf('i-biz'),otherIncome:vf('i-other'),totalMonthly:sal},expenses:{housing:vf('e-housing'),food:vf('e-food'),utilities:vf('e-util'),transport:vf('e-transport'),education:vf('e-edu'),health:vf('e-health'),lifestyle:vf('e-life'),insurance:vf('e-insure'),other:vf('e-other'),totalMonthly:exp},assets,liabilities:loans,sips,goals,insurance:{lifePolicies:life,healthCover:vf('h-cover'),healthType:v('h-type'),healthPremium:vf('h-premium'),accidentCover:vf('ins-acc'),criticalIllnessCover:vf('ins-ci')},retirement:{retireAge:vi('r-age')||60,monthlyExpense:vf('r-monthly'),withdrawalInflation:parseFloat(v('r-inf'))||5,epf:vf('r-epf'),nps:vf('r-nps'),gratuity:vf('r-gratuity')},profile:{riskScore:rv,riskLabel:rl,riskReaction:selPill('rq1'),investmentExperience:selPill('inv-exp'),taxBracket:v('tax-br'),notes:v('c-notes').trim()}};
+  const code='NWP2:'+btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  window._code=code;
+  document.getElementById('code-disp').textContent=code;
+}
+function copyCode(){
+  if(!window._code)return;
+  const btn=document.getElementById('copy-btn');
+  navigator.clipboard.writeText(window._code).then(()=>{btn.classList.add('ok');btn.innerHTML='&#10003; Copied! Send this to your advisor';setTimeout(()=>{btn.classList.remove('ok');btn.innerHTML='&#128203; Copy Data Code';},3500);}).catch(()=>{const ta=document.createElement('textarea');ta.value=window._code;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();btn.innerHTML='&#10003; Copied!';});
+}
+buildNav();updateNav();
+addAsset({name:'Equity Portfolio',value:1500000,growth:12,liquid:true});
+addLoan();
+addSIP({name:'Equity MF',amount:10000,roi:12,startYear:CY,endYear:CY+20,stepup:10});
+addGoal();
+</script>
+</body>
+</html>

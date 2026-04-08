@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Financial Profile — Client Intake</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0F2044;
+    --navy2: #1A3560;
+    --ac: #4F6BED;
+    --ac2: #6B84F0;
+    --gr: #10B981;
+    --am: #F59E0B;
+    --re: #EF4444;
+    --surf: #F8FAFC;
+    --surf2: #F1F5F9;
+    --bdr: #E2E8F0;
+    --dark: #1E293B;
+    --mu: #64748B;
+    --white: #FFFFFF;
+    --step-h: 4px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: linear-gradient(135deg, #0F2044 0%, #1a3a6e 50%, #0f2044 100%);
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+    color: var(--dark);
+  }
+
+  /* ── Progress bar ── */
+  .progress-wrap {
+    max-width: 680px;
+    margin: 0 auto 24px;
+  }
+  .progress-steps {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .step-pip {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.2);
+    transition: background 0.3s ease;
+  }
+  .step-pip.done { background: var(--gr); }
+  .step-pip.active { background: var(--ac2); }
+  .progress-label {
+    color: rgba(255,255,255,0.7);
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    justify-content: space-between;
+  }
+  .step-name { color: #fff; font-weight: 600; }
+
+  /* ── Card ── */
+  .card {
+    max-width: 680px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.35);
+  }
+  .card-header {
+    background: var(--navy);
+    padding: 32px 36px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-header::after {
+    content: '';
+    position: absolute;
+    right: -40px; top: -40px;
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    background: rgba(79,107,237,0.15);
+    pointer-events: none;
+  }
+  .step-badge {
+    display: inline-block;
+    background: rgba(79,107,237,0.25);
+    color: var(--ac2);
+    border: 1px solid rgba(79,107,237,0.4);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .card-header h2 {
+    font-family: 'DM Serif Display', serif;
+    color: #fff;
+    font-size: 26px;
+    font-weight: 400;
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+  .card-header p {
+    color: rgba(255,255,255,0.55);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .card-body { padding: 32px 36px; }
+
+  /* ── Form elements ── */
+  .field-group { margin-bottom: 20px; }
+  .field-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 7px;
+    letter-spacing: 0.02em;
+  }
+  .field-group label .opt {
+    font-weight: 400;
+    color: var(--mu);
+    font-size: 12px;
+  }
+  .field-group input, .field-group select {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid var(--bdr);
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--dark);
+    background: var(--surf);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  .field-group input:focus, .field-group select:focus {
+    border-color: var(--ac);
+    box-shadow: 0 0 0 3px rgba(79,107,237,0.12);
+    background: #fff;
+  }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+  /* ── Dynamic list items ── */
+  .item-card {
+    background: var(--surf);
+    border: 1.5px solid var(--bdr);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+  .item-card:hover { border-color: #c7d3e8; }
+  .item-card .item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .item-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .btn-remove {
+    background: none;
+    border: none;
+    color: var(--re);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transition: background 0.15s;
+  }
+  .btn-remove:hover { background: #FEF2F2; }
+
+  .btn-add {
+    width: 100%;
+    padding: 12px;
+    border: 2px dashed var(--bdr);
+    border-radius: 12px;
+    background: none;
+    color: var(--ac);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .btn-add:hover {
+    border-color: var(--ac);
+    background: rgba(79,107,237,0.04);
+  }
+
+  /* ── Liquid toggle ── */
+  .toggle-group {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .toggle-opt {
+    flex: 1;
+    padding: 9px;
+    border: 1.5px solid var(--bdr);
+    border-radius: 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--mu);
+    background: #fff;
+    user-select: none;
+  }
+  .toggle-opt.active-liq { border-color: var(--gr); color: var(--gr); background: #F0FDF4; }
+  .toggle-opt.active-illiq { border-color: var(--am); color: var(--am); background: #FFFBEB; }
+
+  /* ── Navigation ── */
+  .card-footer {
+    padding: 0 36px 32px;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+  }
+  .btn-back {
+    padding: 12px 24px;
+    border: 1.5px solid var(--bdr);
+    border-radius: 10px;
+    background: none;
+    color: var(--mu);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-back:hover { border-color: #aaa; color: var(--dark); }
+  .btn-next {
+    flex: 1;
+    padding: 13px 24px;
+    border: none;
+    border-radius: 10px;
+    background: var(--navy);
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-next:hover { background: var(--navy2); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(15,32,68,0.25); }
+
+  /* ── Steps visibility ── */
+  .step { display: none; }
+  .step.active { display: block; }
+
+  /* ── Review / final ── */
+  .review-section { margin-bottom: 20px; }
+  .review-section h4 {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mu);
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--bdr);
+  }
+  .review-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    font-size: 13.5px;
+  }
+  .review-row .lbl { color: var(--mu); }
+  .review-row .val { font-weight: 600; color: var(--dark); }
+  .review-chip {
+    display: inline-block;
+    background: var(--surf2);
+    border: 1px solid var(--bdr);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    margin: 3px;
+    color: var(--dark);
+  }
+
+  /* ── Code output ── */
+  .code-box {
+    background: var(--navy);
+    border-radius: 14px;
+    padding: 20px;
+    margin-top: 24px;
+  }
+  .code-box .code-label {
+    color: rgba(255,255,255,0.5);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .code-text {
+    color: #7CDFB8;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    word-break: break-all;
+    line-height: 1.5;
+    max-height: 80px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    opacity: 0.9;
+  }
+  .btn-copy {
+    width: 100%;
+    padding: 12px;
+    background: var(--ac);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-copy:hover { background: #3d57d4; }
+  .btn-copy.copied { background: var(--gr); }
+  .copy-note {
+    color: rgba(255,255,255,0.5);
+    font-size: 12px;
+    text-align: center;
+    margin-top: 12px;
+    line-height: 1.5;
+  }
+
+  /* ── Divider ── */
+  .divider { height: 1px; background: var(--bdr); margin: 4px 0 20px; }
+
+  /* ── Hint text ── */
+  .hint { font-size: 12px; color: var(--mu); margin-top: 5px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 520px) {
+    .card-body { padding: 24px 20px; }
+    .card-header { padding: 24px 20px 20px; }
+    .card-footer { padding: 0 20px 24px; }
+    .field-row, .field-row-3 { grid-template-columns: 1fr; }
+    .card-header h2 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Progress -->
+<div class="progress-wrap">
+  <div class="progress-steps" id="pips"></div>
+  <div class="progress-label">
+    <span class="step-name" id="step-name-lbl">Personal Info</span>
+    <span id="step-counter-lbl">Step 1 of 6</span>
+  </div>
+</div>
+
+<!-- Card -->
+<div class="card">
+  <!-- Step 1: Personal Info -->
+  <div class="step active" id="step-1">
+    <div class="card-header">
+      <div class="step-badge">Step 1 of 6</div>
+      <h2>Personal Information</h2>
+      <p>Basic details about the client. This will appear on the financial roadmap.</p>
+    </div>
+    <div class="card-body">
+      <div class="field-row">
+        <div class="field-group">
+          <label>Full Name</label>
+          <input type="text" id="c-name" placeholder="e.g. Rahul Sharma">
+        </div>
+        <div class="field-group">
+          <label>Age</label>
+          <input type="number" id="c-age" placeholder="35" min="18" max="80">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Email <span class="opt">(optional)</span></label>
+          <input type="email" id="c-email" placeholder="rahul@email.com">
+        </div>
+        <div class="field-group">
+          <label>Phone <span class="opt">(optional)</span></label>
+          <input type="text" id="c-phone" placeholder="+91 98765 43210">
+        </div>
+      </div>
+      <div class="field-group">
+        <label>City <span class="opt">(optional)</span></label>
+        <input type="text" id="c-city" placeholder="Mumbai">
+      </div>
+    </div>
+    <div class="card-footer">
+      <div></div>
+      <button class="btn-next" onclick="goNext(1)">Next — Assets →</button>
+    </div>
+  </div>
+
+  <!-- Step 2: Assets -->
+  <div class="step" id="step-2">
+    <div class="card-header">
+      <div class="step-badge">Step 2 of 6</div>
+      <h2>Assets & Investments</h2>
+      <p>List all current assets — equity, real estate, gold, fixed deposits, savings, etc.</p>
+    </div>
+    <div class="card-body">
+      <div id="assets-list"></div>
+      <button class="btn-add" onclick="addAssetRow()">＋ Add Another Asset</button>
+    </div>
+    <div class="card-footer">
+      <button class="btn-back" onclick="goStep(1)">← Back</button>
+      <button class="btn-next" onclick="goNext(2)">Next — Loans →</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Loans -->
+  <div class="step" id="step-3">
+    <div class="card-header">
+      <div class="step-badge">Step 3 of 6</div>
+      <h2>Loans & Liabilities</h2>
+      <p>Home loan, car loan, personal loan, or any other outstanding debts.</p>
+    </div>
+    <div class="card-body">
+      <div id="loans-list"></div>
+      <button class="btn-add" onclick="addLoanRow()">＋ Add Another Loan</button>
+      <p class="hint" style="margin-top:10px">No loans? Leave this empty and proceed.</p>
+    </div>
+    <div class="card-footer">
+      <button class="btn-back" onclick="goStep(2)">← Back</button>
+      <button class="btn-next" onclick="goNext(3)">Next — SIPs →</button>
+    </div>
+  </div>
+
+  <!-- Step 4: SIPs -->
+  <div class="step" id="step-4">
+    <div class="card-header">
+      <div class="step-badge">Step 4 of 6</div>
+      <h2>SIP Investments</h2>
+      <p>Monthly systematic investment plans — equity MF, debt MF, ELSS, etc.</p>
+    </div>
+    <div class="card-body">
+      <div id="sips-list"></div>
+      <button class="btn-add" onclick="addSIPRow()">＋ Add Another SIP</button>
+      <p class="hint" style="margin-top:10px">No SIPs? Leave empty and continue.</p>
+    </div>
+    <div class="card-footer">
+      <button class="btn-back" onclick="goStep(3)">← Back</button>
+      <button class="btn-next" onclick="goNext(4)">Next — Goals →</button>
+    </div>
+  </div>
+
+  <!-- Step 5: Goals -->
+  <div class="step" id="step-5">
+    <div class="card-header">
+      <div class="step-badge">Step 5 of 6</div>
+      <h2>Financial Goals</h2>
+      <p>What are you saving for? Child's education, marriage, retirement, home purchase, etc.</p>
+    </div>
+    <div class="card-body">
+      <div id="goals-list"></div>
+      <button class="btn-add" onclick="addGoalRow()">＋ Add Another Goal</button>
+    </div>
+    <div class="card-footer">
+      <button class="btn-back" onclick="goStep(4)">← Back</button>
+      <button class="btn-next" onclick="goNext(5)">Review & Generate →</button>
+    </div>
+  </div>
+
+  <!-- Step 6: Review + Generate -->
+  <div class="step" id="step-6">
+    <div class="card-header">
+      <div class="step-badge">Step 6 of 6</div>
+      <h2>Review & Generate</h2>
+      <p>Your data is ready. Copy the code and send it to your advisor.</p>
+    </div>
+    <div class="card-body">
+      <div id="review-content"></div>
+      <div class="code-box">
+        <div class="code-label">📋 Your Data Code — copy &amp; send to advisor</div>
+        <div class="code-text" id="code-output">Generating...</div>
+        <button class="btn-copy" id="copy-btn" onclick="copyCode()">
+          <span>📋</span> Copy Data Code
+        </button>
+        <div class="copy-note">Share this code with your financial advisor.<br>They will paste it into NetWorthPlanner to load your data instantly.</div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <button class="btn-back" onclick="goStep(5)">← Edit</button>
+      <button class="btn-next" onclick="window.print()" style="flex:0;padding:12px 20px;background:#334155;">🖨 Print</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CY = new Date().getFullYear();
+let currentStep = 1;
+const TOTAL_STEPS = 6;
+const STEP_NAMES = ['Personal Info','Assets','Loans','SIPs','Goals','Review'];
+
+// ── Build progress pips ──────────────────────────────────────────────
+function buildPips(){
+  const c = document.getElementById('pips');
+  c.innerHTML = Array.from({length:TOTAL_STEPS},(_,i)=>`<div class="step-pip" id="pip-${i+1}"></div>`).join('');
+}
+
+function updateProgress(s){
+  document.getElementById('step-name-lbl').textContent = STEP_NAMES[s-1];
+  document.getElementById('step-counter-lbl').textContent = `Step ${s} of ${TOTAL_STEPS}`;
+  for(let i=1;i<=TOTAL_STEPS;i++){
+    const p = document.getElementById(`pip-${i}`);
+    p.className = 'step-pip' + (i<s?' done':i===s?' active':'');
+  }
+}
+
+function goStep(n){
+  document.getElementById(`step-${currentStep}`).classList.remove('active');
+  currentStep = n;
+  document.getElementById(`step-${currentStep}`).classList.add('active');
+  updateProgress(n);
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(n===6) buildReview();
+}
+
+function goNext(from){
+  if(from===1 && !document.getElementById('c-name').value.trim()){
+    alert('Please enter client name.'); return;
+  }
+  if(from===2 && getAssets().length===0){
+    alert('Please add at least one asset.'); return;
+  }
+  if(from===5 && getGoals().length===0){
+    alert('Please add at least one financial goal.'); return;
+  }
+  goStep(from+1);
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────
+function fmt(v){ if(!v||isNaN(v))return '—'; if(v>=1e7) return '₹'+(v/1e7).toFixed(2)+' Cr'; if(v>=1e5) return '₹'+(v/1e5).toFixed(2)+' L'; return '₹'+Number(v).toLocaleString('en-IN'); }
+let _assetCount=0,_loanCount=0,_sipCount=0,_goalCount=0;
+
+// ── ASSETS ───────────────────────────────────────────────────────────
+const ASSET_PRESETS = ['Equity Portfolio','Real Estate','Gold','Fixed Deposits','PPF','NPS','Mutual Funds','Savings Account','Other'];
+
+function addAssetRow(d={}){
+  const id = ++_assetCount;
+  const liquid = d.liquid!==false;
+  const list = document.getElementById('assets-list');
+  const div = document.createElement('div');
+  div.className='item-card'; div.id=`asset-${id}`;
+  div.innerHTML=`
+    <div class="item-header">
+      <span class="item-label">Asset ${id}</span>
+      <button class="btn-remove" onclick="removeItem('asset-${id}')">✕</button>
+    </div>
+    <div class="field-group">
+      <label>Asset Name</label>
+      <input type="text" id="a-name-${id}" list="asset-presets" placeholder="e.g. Equity Portfolio" value="${d.name||''}">
+      <datalist id="asset-presets">${ASSET_PRESETS.map(p=>`<option value="${p}">`).join('')}</datalist>
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label>Current Value (₹)</label>
+        <input type="number" id="a-val-${id}" placeholder="1500000" value="${d.value||''}">
+      </div>
+      <div class="field-group">
+        <label>Expected Growth (% p.a.)</label>
+        <input type="number" id="a-growth-${id}" placeholder="12" step="0.5" value="${d.growth||''}">
+      </div>
+    </div>
+    <div class="field-group">
+      <label>Liquidity</label>
+      <div class="toggle-group">
+        <div class="toggle-opt ${liquid?'active-liq':''}" id="a-liq-${id}" onclick="toggleLiquid(${id},true)">💧 Liquid</div>
+        <div class="toggle-opt ${!liquid?'active-illiq':''}" id="a-illiq-${id}" onclick="toggleLiquid(${id},false)">🔒 Illiquid</div>
+      </div>
+      <input type="hidden" id="a-liquid-${id}" value="${liquid?'true':'false'}">
+      <p class="hint">Liquid = can be sold quickly. Real estate, locked-in investments = Illiquid.</p>
+    </div>`;
+  list.appendChild(div);
+}
+
+function toggleLiquid(id, isLiq){
+  document.getElementById(`a-liq-${id}`).className = 'toggle-opt'+(isLiq?' active-liq':'');
+  document.getElementById(`a-illiq-${id}`).className = 'toggle-opt'+(!isLiq?' active-illiq':'');
+  document.getElementById(`a-liquid-${id}`).value = isLiq?'true':'false';
+}
+
+function getAssets(){
+  return Array.from({length:_assetCount},(_,i)=>{
+    const id=i+1;
+    const el = document.getElementById(`asset-${id}`);
+    if(!el) return null;
+    const name = document.getElementById(`a-name-${id}`)?.value?.trim();
+    const value = parseFloat(document.getElementById(`a-val-${id}`)?.value)||0;
+    const growth = parseFloat(document.getElementById(`a-growth-${id}`)?.value)||8;
+    const liquid = document.getElementById(`a-liquid-${id}`)?.value !== 'false';
+    if(!name && !value) return null;
+    return {name:name||'Asset', value, growth, liquid};
+  }).filter(Boolean);
+}
+
+// ── LOANS ────────────────────────────────────────────────────────────
+const LOAN_PRESETS = ['Home Loan','Car Loan','Personal Loan','Education Loan','Business Loan','Other'];
+
+function addLoanRow(d={}){
+  const id = ++_loanCount;
+  const list = document.getElementById('loans-list');
+  const div = document.createElement('div');
+  div.className='item-card'; div.id=`loan-${id}`;
+  div.innerHTML=`
+    <div class="item-header">
+      <span class="item-label">Loan ${id}</span>
+      <button class="btn-remove" onclick="removeItem('loan-${id}')">✕</button>
+    </div>
+    <div class="field-group">
+      <label>Loan Name</label>
+      <input type="text" id="l-name-${id}" list="loan-presets" placeholder="e.g. Home Loan" value="${d.name||''}">
+      <datalist id="loan-presets">${LOAN_PRESETS.map(p=>`<option value="${p}">`).join('')}</datalist>
+    </div>
+    <div class="field-row-3">
+      <div class="field-group">
+        <label>Outstanding Balance (₹)</label>
+        <input type="number" id="l-val-${id}" placeholder="3000000" value="${d.value||''}">
+      </div>
+      <div class="field-group">
+        <label>Interest Rate (% p.a.)</label>
+        <input type="number" id="l-rate-${id}" placeholder="8.5" step="0.1" value="${d.rate||''}">
+      </div>
+      <div class="field-group">
+        <label>Remaining Tenure (yrs)</label>
+        <input type="number" id="l-tenure-${id}" placeholder="15" value="${d.tenure||''}">
+      </div>
+    </div>`;
+  list.appendChild(div);
+}
+
+function getLoans(){
+  return Array.from({length:_loanCount},(_,i)=>{
+    const id=i+1;
+    const el = document.getElementById(`loan-${id}`);
+    if(!el) return null;
+    const name = document.getElementById(`l-name-${id}`)?.value?.trim();
+    const value = parseFloat(document.getElementById(`l-val-${id}`)?.value)||0;
+    const rate = parseFloat(document.getElementById(`l-rate-${id}`)?.value)||8;
+    const tenure = parseInt(document.getElementById(`l-tenure-${id}`)?.value)||10;
+    if(!name && !value) return null;
+    return {name:name||'Loan', value, rate, tenure, startYear:CY};
+  }).filter(Boolean);
+}
+
+// ── SIPs ─────────────────────────────────────────────────────────────
+const SIP_PRESETS = ['Equity MF','Debt MF','ELSS','Hybrid Fund','Index Fund','NPS','PPF','Other MF'];
+
+function addSIPRow(d={}){
+  const id = ++_sipCount;
+  const list = document.getElementById('sips-list');
+  const div = document.createElement('div');
+  div.className='item-card'; div.id=`sip-${id}`;
+  div.innerHTML=`
+    <div class="item-header">
+      <span class="item-label">SIP ${id}</span>
+      <button class="btn-remove" onclick="removeItem('sip-${id}')">✕</button>
+    </div>
+    <div class="field-group">
+      <label>SIP Name / Fund</label>
+      <input type="text" id="s-name-${id}" list="sip-presets" placeholder="e.g. Equity MF" value="${d.name||''}">
+      <datalist id="sip-presets">${SIP_PRESETS.map(p=>`<option value="${p}">`).join('')}</datalist>
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label>Monthly Amount (₹)</label>
+        <input type="number" id="s-amt-${id}" placeholder="10000" value="${d.amount||''}">
+      </div>
+      <div class="field-group">
+        <label>Expected Return (% p.a.)</label>
+        <input type="number" id="s-roi-${id}" placeholder="12" step="0.5" value="${d.roi||''}">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label>Start Year</label>
+        <input type="number" id="s-start-${id}" placeholder="${CY}" value="${d.startYear||CY}">
+      </div>
+      <div class="field-group">
+        <label>End Year</label>
+        <input type="number" id="s-end-${id}" placeholder="${CY+20}" value="${d.endYear||CY+20}">
+      </div>
+    </div>
+    <div class="field-group">
+      <label>Annual Step-up (%) <span class="opt">— increase SIP amount each year</span></label>
+      <input type="number" id="s-step-${id}" placeholder="10" step="1" value="${d.stepup??10}">
+    </div>`;
+  list.appendChild(div);
+}
+
+function getSIPs(){
+  return Array.from({length:_sipCount},(_,i)=>{
+    const id=i+1;
+    const el = document.getElementById(`sip-${id}`);
+    if(!el) return null;
+    const name = document.getElementById(`s-name-${id}`)?.value?.trim();
+    const amount = parseFloat(document.getElementById(`s-amt-${id}`)?.value)||0;
+    const roi = parseFloat(document.getElementById(`s-roi-${id}`)?.value)||12;
+    const startYear = parseInt(document.getElementById(`s-start-${id}`)?.value)||CY;
+    const endYear = parseInt(document.getElementById(`s-end-${id}`)?.value)||CY+20;
+    const stepup = parseFloat(document.getElementById(`s-step-${id}`)?.value)||0;
+    if(!name && !amount) return null;
+    return {name:name||'SIP', amount, roi, startYear, endYear, stepup};
+  }).filter(Boolean);
+}
+
+// ── GOALS ────────────────────────────────────────────────────────────
+const GOAL_PRESETS = ["Child's Education","Child's Marriage","Retirement Corpus","Home Purchase","Car Purchase","Emergency Fund","Foreign Travel","Business Fund","Other"];
+
+function addGoalRow(d={}){
+  const id = ++_goalCount;
+  const list = document.getElementById('goals-list');
+  const div = document.createElement('div');
+  div.className='item-card'; div.id=`goal-${id}`;
+  div.innerHTML=`
+    <div class="item-header">
+      <span class="item-label">Goal ${id}</span>
+      <button class="btn-remove" onclick="removeItem('goal-${id}')">✕</button>
+    </div>
+    <div class="field-group">
+      <label>Goal Name</label>
+      <input type="text" id="g-name-${id}" list="goal-presets" placeholder="e.g. Child's Education" value="${d.name||''}">
+      <datalist id="goal-presets">${GOAL_PRESETS.map(p=>`<option value="${p}">`).join('')}</datalist>
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label>Target Amount (₹ today's value)</label>
+        <input type="number" id="g-cost-${id}" placeholder="2000000" value="${d.cost||''}">
+      </div>
+      <div class="field-group">
+        <label>Target Year</label>
+        <input type="number" id="g-year-${id}" placeholder="${CY+5}" value="${d.year||CY+5}">
+      </div>
+    </div>`;
+  list.appendChild(div);
+}
+
+function getGoals(){
+  return Array.from({length:_goalCount},(_,i)=>{
+    const id=i+1;
+    const el = document.getElementById(`goal-${id}`);
+    if(!el) return null;
+    const name = document.getElementById(`g-name-${id}`)?.value?.trim();
+    const cost = parseFloat(document.getElementById(`g-cost-${id}`)?.value)||0;
+    const year = parseInt(document.getElementById(`g-year-${id}`)?.value)||CY+5;
+    if(!name && !cost) return null;
+    return {name:name||'Goal', cost, year};
+  }).filter(Boolean);
+}
+
+// ── Remove item ──────────────────────────────────────────────────────
+function removeItem(id){ document.getElementById(id)?.remove(); }
+
+// ── Review ───────────────────────────────────────────────────────────
+function buildReview(){
+  const assets = getAssets(), loans = getLoans(), sips = getSIPs(), goals = getGoals();
+  const name = document.getElementById('c-name').value.trim()||'—';
+  const age = document.getElementById('c-age').value||'—';
+  const email = document.getElementById('c-email').value||'—';
+  const phone = document.getElementById('c-phone').value||'—';
+
+  let html = `
+    <div class="review-section">
+      <h4>Personal</h4>
+      <div class="review-row"><span class="lbl">Name</span><span class="val">${name}</span></div>
+      <div class="review-row"><span class="lbl">Age</span><span class="val">${age} yrs</span></div>
+      ${email!=='—'?`<div class="review-row"><span class="lbl">Email</span><span class="val">${email}</span></div>`:''}
+      ${phone!=='—'?`<div class="review-row"><span class="lbl">Phone</span><span class="val">${phone}</span></div>`:''}
+    </div>`;
+
+  if(assets.length){
+    const total = assets.reduce((s,a)=>s+a.value,0);
+    html += `<div class="review-section"><h4>Assets — Total ${fmt(total)}</h4>`;
+    assets.forEach(a=>{ html+=`<div class="review-row"><span class="lbl">${a.name}</span><span class="val">${fmt(a.value)} · ${a.growth}% · ${a.liquid?'💧 Liquid':'🔒 Illiquid'}</span></div>`; });
+    html += '</div>';
+  }
+  if(loans.length){
+    const total = loans.reduce((s,l)=>s+l.value,0);
+    html += `<div class="review-section"><h4>Loans — Total ${fmt(total)}</h4>`;
+    loans.forEach(l=>{ html+=`<div class="review-row"><span class="lbl">${l.name}</span><span class="val">${fmt(l.value)} · ${l.rate}% · ${l.tenure}yr</span></div>`; });
+    html += '</div>';
+  }
+  if(sips.length){
+    const total = sips.reduce((s,p)=>s+p.amount,0);
+    html += `<div class="review-section"><h4>SIPs — Total ${fmt(total)}/mo</h4>`;
+    sips.forEach(s=>{ html+=`<div class="review-row"><span class="lbl">${s.name}</span><span class="val">₹${s.amount.toLocaleString('en-IN')}/mo · ${s.roi}% roi</span></div>`; });
+    html += '</div>';
+  }
+  if(goals.length){
+    html += `<div class="review-section"><h4>Goals</h4>`;
+    goals.forEach(g=>{ html+=`<div class="review-row"><span class="lbl">${g.name}</span><span class="val">${fmt(g.cost)} by ${g.year}</span></div>`; });
+    html += '</div>';
+  }
+
+  document.getElementById('review-content').innerHTML = html;
+
+  // Generate code
+  const data = {
+    v:1,
+    client:{
+      name: document.getElementById('c-name').value.trim(),
+      age: parseInt(document.getElementById('c-age').value)||0,
+      email: document.getElementById('c-email').value.trim(),
+      phone: document.getElementById('c-phone').value.trim(),
+      city: document.getElementById('c-city').value.trim()
+    },
+    assets, liabilities: loans, sips, goals
+  };
+  const code = 'NWP1:' + btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  document.getElementById('code-output').textContent = code;
+  window._generatedCode = code;
+}
+
+function copyCode(){
+  if(!window._generatedCode) return;
+  navigator.clipboard.writeText(window._generatedCode).then(()=>{
+    const btn = document.getElementById('copy-btn');
+    btn.classList.add('copied');
+    btn.innerHTML = '<span>✅</span> Copied! Send this to your advisor';
+    setTimeout(()=>{ btn.classList.remove('copied'); btn.innerHTML = '<span>📋</span> Copy Data Code'; }, 3000);
+  }).catch(()=>{
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = window._generatedCode;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    document.getElementById('copy-btn').innerHTML = '<span>✅</span> Copied!';
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────
+buildPips();
+updateProgress(1);
+// Pre-populate with one row each
+addAssetRow({name:'Equity Portfolio', value:1500000, growth:12, liquid:true});
+addLoanRow();
+addSIPRow({name:'Equity MF', amount:10000, roi:12, startYear:CY, endYear:CY+20, stepup:10});
+addGoalRow();
+</script>
+</body>
+</html>
