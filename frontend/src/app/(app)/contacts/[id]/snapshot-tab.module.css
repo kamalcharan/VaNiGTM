@@ -1,0 +1,795 @@
+/* ── snapshot-tab.module.css ────────────────────────────────────────────────
+   Financial Snapshot — MFD internal flow (Flow 3)
+   2-column layout: scrollable form (left) + sticky Benchmark Pulse (right)
+   Glassmorphic, premium. Matches mfd-snapshot-flow.html reference.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── Root layout ─────────────────────────────────────────────────────────── */
+
+.wrapper {
+  display: grid;
+  grid-template-columns: 1fr 272px;
+  gap: 24px;
+  align-items: start;
+  min-height: 0;
+}
+
+.formArea {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* ── Stepper ──────────────────────────────────────────────────────────────── */
+
+.stepper {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  background: color-mix(in srgb, var(--color-bg) 60%, transparent);
+  border-bottom: 1px solid var(--glass-border);
+  overflow: hidden;
+}
+
+.stepDot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 14px 8px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+  position: relative;
+  z-index: 1;
+}
+.stepDot:hover {
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+.stepDot + .stepDot::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20%;
+  height: 60%;
+  width: 1px;
+  background: var(--glass-border);
+}
+
+.stepNum {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+  font-family: 'JetBrains Mono', monospace;
+  transition: color 0.2s;
+}
+.stepLabel {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--color-muted);
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.stepDot.stepActive .stepNum,
+.stepDot.stepActive .stepLabel {
+  color: var(--color-primary);
+}
+.stepDot.stepActive {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+.stepDot.stepDone .stepNum {
+  color: var(--color-success);
+}
+.stepDot.stepDone .stepLabel {
+  color: var(--color-fg);
+}
+
+/* Progress line along the very bottom of stepper */
+.stepProgress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--color-primary);
+  transition: width 0.4s ease;
+}
+
+/* ── Section header ──────────────────────────────────────────────────────── */
+
+.sectionHeader {
+  padding: 20px 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sectionNum {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--color-primary);
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+}
+.sectionTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.sectionSub {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+/* ── Section body ─────────────────────────────────────────────────────────── */
+
+.sectionBody {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 320px;
+}
+
+/* ── Sub-group ────────────────────────────────────────────────────────────── */
+
+.subGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.subGroupLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* ── Input grids ─────────────────────────────────────────────────────────── */
+
+.inputGrid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.inputGrid2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+/* ── Amount card ─────────────────────────────────────────────────────────── */
+
+.amountCard {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: color-mix(in srgb, var(--color-bg) 50%, transparent);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  transition: border-color 0.2s;
+}
+.amountCard:focus-within {
+  border-color: var(--color-primary);
+}
+
+.amountLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
+  text-transform: uppercase;
+}
+.optionalTag {
+  font-size: 0.6rem;
+  font-weight: 400;
+  color: var(--color-muted);
+  opacity: 0.6;
+  text-transform: lowercase;
+  letter-spacing: 0;
+}
+
+.amountInputWrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.currencyPrefix {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  font-family: 'JetBrains Mono', monospace;
+  flex-shrink: 0;
+}
+.amountInput {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  font-family: 'JetBrains Mono', monospace;
+  padding: 0;
+}
+.amountInput::placeholder {
+  color: var(--color-muted);
+  opacity: var(--input-placeholder-opacity, 0.35);
+  font-weight: 400;
+}
+/* Remove number spinners */
+.amountInput::-webkit-inner-spin-button,
+.amountInput::-webkit-outer-spin-button { -webkit-appearance: none; }
+.amountInput[type=number] { -moz-appearance: textfield; }
+
+.amountSuffix {
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.amountHelper {
+  font-size: 0.65rem;
+  color: var(--color-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+}
+
+/* ── Expense rows ─────────────────────────────────────────────────────────── */
+
+.expenseRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: color-mix(in srgb, var(--color-bg) 50%, transparent);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  gap: 12px;
+  transition: border-color 0.2s;
+}
+.expenseRow:focus-within {
+  border-color: var(--color-primary);
+}
+.expenseLabel {
+  font-size: 0.8rem;
+  color: var(--color-fg);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 140px;
+}
+.expenseInputWrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.expenseInput {
+  width: 90px;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  font-family: 'JetBrains Mono', monospace;
+  text-align: right;
+}
+.expenseInput::placeholder { color: var(--color-muted); opacity: 0.35; font-weight: 400; }
+.expenseInput::-webkit-inner-spin-button,
+.expenseInput::-webkit-outer-spin-button { -webkit-appearance: none; }
+.expenseInput[type=number] { -moz-appearance: textfield; }
+
+/* ── Savings summary bar ─────────────────────────────────────────────────── */
+
+.savingsSummary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: color-mix(in srgb, var(--color-bg) 40%, transparent);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+.savingsLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.savingsValue {
+  font-size: 1rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  margin-left: auto;
+}
+.savingsRate {
+  font-size: 0.7rem;
+  color: var(--color-muted);
+}
+
+/* ── Item cards (assets / liabilities / goals) ───────────────────────────── */
+
+.itemCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: color-mix(in srgb, var(--color-surface) 50%, transparent);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 14px;
+  transition: border-color 0.2s;
+}
+.itemCard:focus-within {
+  border-color: var(--color-primary);
+}
+.itemCardRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.typeSelect {
+  flex: 1;
+  background: color-mix(in srgb, var(--color-bg) 60%, transparent);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--input-radius, 8px);
+  color: var(--color-fg);
+  font-size: 0.82rem;
+  padding: 7px 10px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.typeSelect:focus { border-color: var(--color-primary); }
+.typeSelect option { background: var(--color-bg); color: var(--color-fg); }
+
+.removeBtn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+  border-radius: 6px;
+  color: var(--color-danger);
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.2s;
+}
+.removeBtn:hover {
+  background: color-mix(in srgb, var(--color-danger) 22%, transparent);
+}
+
+.descInput {
+  background: color-mix(in srgb, var(--color-bg) 50%, transparent);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--input-radius, 8px);
+  color: var(--color-fg);
+  font-size: 0.82rem;
+  padding: 7px 10px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+.descInput:focus { border-color: var(--color-primary); }
+.descInput::placeholder { color: var(--color-muted); opacity: 0.5; }
+
+.loanFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.miniLabel {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 4px;
+}
+
+.liquidToggle {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.liquidOn {
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
+  color: var(--color-success);
+}
+.liquidOff {
+  background: color-mix(in srgb, var(--color-muted) 10%, transparent);
+  border-color: var(--glass-border);
+  color: var(--color-muted);
+}
+
+.addItemBtn {
+  align-self: flex-start;
+  background: none;
+  border: 1px dashed color-mix(in srgb, var(--color-primary) 40%, transparent);
+  border-radius: 8px;
+  color: var(--color-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.addItemBtn:hover {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  border-color: var(--color-primary);
+}
+
+.sectionTotal {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  padding: 8px 0 0;
+  border-top: 1px solid var(--glass-border);
+}
+
+/* ── Goal card ────────────────────────────────────────────────────────────── */
+
+.goalCard {
+  composes: itemCard;
+}
+.goalCardRow {
+  composes: itemCardRow;
+}
+
+/* ── Protection toggles ──────────────────────────────────────────────────── */
+
+.protectionToggles {
+  display: flex;
+  gap: 10px;
+}
+.protToggle {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: color-mix(in srgb, var(--color-bg) 50%, transparent);
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+.protToggle:hover {
+  border-color: var(--color-primary);
+  color: var(--color-fg);
+}
+.protToggleOn {
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
+  color: var(--color-success);
+}
+
+/* ── Risk cards (in Goals section) ──────────────────────────────────────── */
+
+.riskCards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.riskCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 10px 10px;
+  background: color-mix(in srgb, var(--color-bg) 50%, transparent);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+.riskCard:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+.riskSelected {
+  border-color: var(--color-primary) !important;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent) !important;
+}
+.riskCheck {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 0.7rem;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+.riskLabel {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-fg);
+}
+.riskSub {
+  font-size: 0.65rem;
+  color: var(--color-muted);
+}
+
+/* ── Textarea ─────────────────────────────────────────────────────────────── */
+
+.textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--color-bg) 50%, transparent);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--input-radius, 8px);
+  color: var(--color-fg);
+  font-size: 0.85rem;
+  padding: 10px 14px;
+  resize: vertical;
+  outline: none;
+  font-family: 'DM Sans', sans-serif;
+  line-height: 1.5;
+  transition: border-color 0.2s;
+}
+.textarea:focus { border-color: var(--color-primary); }
+.textarea::placeholder { color: var(--color-muted); opacity: 0.5; }
+
+/* ── Navigation footer ────────────────────────────────────────────────────── */
+
+.navFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-top: 1px solid var(--glass-border);
+  background: color-mix(in srgb, var(--color-bg) 40%, transparent);
+}
+.navLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.navRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Convert banner ───────────────────────────────────────────────────────── */
+
+.convertBanner {
+  margin: 0 24px 16px;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--color-success) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
+  border-radius: 10px;
+  font-size: 0.82rem;
+  color: var(--color-fg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.convertLink {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-success);
+  font-weight: 700;
+  font-size: inherit;
+  padding: 0;
+  transition: opacity 0.2s;
+}
+.convertLink:hover { opacity: 0.8; }
+
+/* ── Benchmark Pulse sidebar ─────────────────────────────────────────────── */
+
+.pulseSidebar {
+  position: sticky;
+  top: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 20px 16px;
+}
+
+.pulseHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--glass-border);
+}
+.pulseTitle {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--color-fg);
+  letter-spacing: -0.01em;
+}
+.pulseSubtitle {
+  font-size: 0.65rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* ── Pulse rings ─────────────────────────────────────────────────────────── */
+
+.pulseRings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pulseRing {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--color-bg) 40%, transparent);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+}
+.pulseRingInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+.pulseRingLabel {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pulseRingValue {
+  font-size: 0.9rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1;
+}
+.pulseRingUnit {
+  font-size: 0.65rem;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+/* ── Net worth card ──────────────────────────────────────────────────────── */
+
+.netWorthCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.netWorthLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.netWorthValue {
+  font-size: 1.2rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1;
+}
+.netWorthBreakdown {
+  display: flex;
+  gap: 12px;
+  font-size: 0.65rem;
+  color: var(--color-muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 2px;
+}
+
+/* ── Talking Brief ───────────────────────────────────────────────────────── */
+
+.talkingBrief {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: color-mix(in srgb, var(--color-bg) 40%, transparent);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.briefTitle {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  display: block;
+  margin-bottom: 2px;
+}
+.briefLine {
+  font-size: 0.75rem;
+  color: var(--color-fg);
+  line-height: 1.45;
+  margin: 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--color-primary);
+  opacity: 0.85;
+}
+
+/* ── Mobile responsive ───────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .wrapper {
+    grid-template-columns: 1fr;
+  }
+  .pulseSidebar {
+    position: static;
+    order: -1;
+  }
+  .pulseRings {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .inputGrid3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .inputGrid3,
+  .inputGrid2 {
+    grid-template-columns: 1fr;
+  }
+  .loanFieldGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .riskCards {
+    grid-template-columns: 1fr;
+  }
+  .pulseRings {
+    grid-template-columns: 1fr;
+  }
+  .sectionBody {
+    padding: 16px;
+  }
+  .navFooter {
+    padding: 12px 16px;
+  }
+}
