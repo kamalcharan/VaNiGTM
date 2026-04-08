@@ -18,6 +18,12 @@
   z-index: 100;
 }
 
+@media (max-width: 768px) {
+  .rail {
+    display: none;
+  }
+}
+
 /* ── Logo ───────────────────────────────────────────── */
 .logo {
   width: 44px;

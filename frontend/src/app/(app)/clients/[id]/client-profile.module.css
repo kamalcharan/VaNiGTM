@@ -507,3 +507,19 @@
   color: var(--color-fg);
   line-height: 1.5;
 }
+
+/* ── Responsive ──────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .overviewGrid {
+    grid-template-columns: 1fr;
+    padding: 20px;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .overviewGrid {
+    padding: 14px;
+  }
+}

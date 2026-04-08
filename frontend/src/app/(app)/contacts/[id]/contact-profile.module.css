@@ -911,3 +911,42 @@
   font-size: 0.78rem;
   color: var(--color-muted);
 }
+
+/* ── Responsive ──────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .overviewGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding-bottom: 40px;
+  }
+
+  .overviewGrid {
+    grid-template-columns: 1fr;
+    padding: 20px;
+    gap: 16px;
+  }
+
+  .detailRow {
+    grid-template-columns: 110px 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .overviewGrid {
+    padding: 14px;
+  }
+
+  .detailRow {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .detailLabel {
+    font-size: 0.62rem;
+  }
+}

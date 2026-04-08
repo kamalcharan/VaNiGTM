@@ -677,3 +677,24 @@
   color: var(--color-danger);
   font-size: 0.85rem;
 }
+
+/* ── Responsive ──────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .page {
+    padding: 0;
+  }
+
+  .form {
+    padding: 24px 24px 32px;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .form {
+    padding: 20px 16px 28px;
+  }
+}

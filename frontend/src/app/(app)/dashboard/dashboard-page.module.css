@@ -62,3 +62,9 @@
 @media (max-width: 768px) {
   .content { padding: 24px; }
 }
+
+@media (max-width: 480px) {
+  .content {
+    padding: 14px;
+  }
+}
