@@ -1,8 +1,8 @@
 import { ThemeConfig } from '../types';
 
-export const JadeEstateTheme: ThemeConfig = {
-  id: 'jade-estate',
-  name: 'Jade Estate',
+export const HeritageTheme: ThemeConfig = {
+  id: 'heritage',
+  name: 'Heritage',
   colors: {
     brand: {
       primary: '#0f4c3a',    // Deep forest jade — saturated, rich, high contrast
