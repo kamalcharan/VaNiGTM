@@ -20,6 +20,7 @@
 import bcrypt from 'bcryptjs';
 import type { Pool, PoolClient } from 'pg';
 import { createSession, parseDeviceInfo, type DeviceInfo, type TokenPair } from './token.service';
+import { seedTenantData } from './seed-tenant.service';
 import type { Request } from 'express';
 
 /* ── Types ──────────────────────────────────────────── */
@@ -218,6 +219,9 @@ export async function register(
          (gen_random_uuid(), $1, 'business_profile', 'pending', '{}'::jsonb, now())`,
       [tenantId],
     );
+
+    // 9. Seed per-tenant KI master data (bookmark reasons + job scheduler configs)
+    await seedTenantData(client, tenantId);
 
     await client.query('COMMIT');
 

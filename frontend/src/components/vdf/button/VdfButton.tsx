@@ -11,6 +11,7 @@ export interface VdfButtonProps {
   onClick?: () => void;
   className?: string;
   disabled?: boolean;
+  loading?: boolean;
   fullWidth?: boolean;
   type?: 'button' | 'submit' | 'reset';
   title?: string;
@@ -25,6 +26,7 @@ export function VdfButton({
   onClick,
   className,
   disabled,
+  loading,
   fullWidth,
   type = 'button',
   title,
@@ -41,9 +43,9 @@ export function VdfButton({
   }
 
   return (
-    <button className={cls} onClick={onClick} disabled={disabled} type={type} title={title}>
-      {children}
-      {icon && <span className={s.icon}>{icon}</span>}
+    <button className={cls} onClick={onClick} disabled={disabled || loading} type={type} title={title}>
+      {loading ? '…' : children}
+      {!loading && icon && <span className={s.icon}>{icon}</span>}
     </button>
   );
 }

@@ -166,12 +166,19 @@ async function showStatus(pool: Pool): Promise<void> {
   console.log(`\n  ${applied.length} applied, ${pending.length} pending\n`);
 }
 
-/* ── Check if base schema already exists ────────────── */
+/* ── Check if KI schema already exists ──────────────── */
+// Checks both the table AND its first index — the index creation is what
+// fails on re-run because 001_ki_prime.sql uses CREATE TABLE IF NOT EXISTS
+// but plain CREATE INDEX (not idempotent).
 
 async function schemaAlreadyExists(pool: Pool): Promise<boolean> {
   const result = await pool.query(
     `SELECT 1 FROM information_schema.tables
-     WHERE table_name = 'ki_schemes' AND table_schema = 'public' LIMIT 1`,
+      WHERE table_name = 'ki_schemes' AND table_schema = 'public'
+     UNION ALL
+     SELECT 1 FROM pg_indexes
+      WHERE indexname = 'idx_ki_schemes_category'
+     LIMIT 1`,
   );
   return result.rows.length > 0;
 }
@@ -256,8 +263,17 @@ async function main(): Promise<void> {
     // Discover and apply
     const files = discoverMigrations();
     const applied = await getAppliedMigrations(pool);
-    const appliedSet = new Set(applied.map(a => a.filename));
 
+    // Bootstrap: schema exists (from a previous manual apply) but vn_migrations is empty.
+    // Seed all files as applied so the runner doesn't re-try migrations that already ran.
+    if (applied.length === 0 && files.length > 0 && await schemaAlreadyExists(pool)) {
+      console.log('[Migrate] Schema exists but vn_migrations is empty — bootstrapping...');
+      await seedAppliedMigrations(pool, files);
+      console.log(`[Migrate] ${files.length} migrations seeded as applied. Future migrations will run normally.`);
+      return;
+    }
+
+    const appliedSet = new Set(applied.map(a => a.filename));
     const pending = files.filter(f => !appliedSet.has(f.filename));
 
     if (pending.length === 0) {

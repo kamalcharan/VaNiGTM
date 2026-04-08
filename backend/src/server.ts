@@ -7,6 +7,9 @@ import { getPool, createTenantDb, closePool, healthCheck } from './db';
 import { createAuthRouter, createOnboardingRouter, createTenantRouter } from './auth/auth.routes';
 import { createEtlRouter } from './etl/etl.routes';
 import { createNavRouter } from './nav/nav.routes';
+import { createMarketRouter } from './market/market.routes';
+import { createMarketAnalysisRouter } from './market/market-analysis.routes';
+import { createMasterDataRouter } from './master-data/master-data.routes';
 import { verifyAccessToken } from './auth/token.service';
 
 const app = express();
@@ -57,7 +60,10 @@ async function main() {
   app.use('/api/v1/tenant', createTenantRouter(pool));
   app.use('/api/v1/etl', createEtlRouter(pool));
   app.use('/api/v1/nav', createNavRouter(pool));
-  console.log('[ProKey] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /nav');
+  app.use('/api/v1/market', createMarketRouter(pool));
+  app.use('/api/v1/market-analysis', createMarketAnalysisRouter(pool));
+  app.use('/api/v1/master-data', createMasterDataRouter(pool));
+  console.log('[ProKey] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /nav, /market, /market-analysis, /master-data');
 
   // Build skill registry
   const skillsDir = path.resolve(__dirname, 'skills');
@@ -81,9 +87,13 @@ async function main() {
     }
 
     let tenantId: string;
+    let isLive: boolean;
+    let userId: string;
     try {
       const jwt = verifyAccessToken(authHeader.slice(7));
       tenantId = jwt.tenant_id;
+      isLive   = jwt.is_live;
+      userId   = jwt.user_id;
     } catch {
       res.status(401).json({
         error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token' },
@@ -93,10 +103,13 @@ async function main() {
 
     // Create tenant-scoped DB interface (RLS context set per query)
     const db = createTenantDb(pool, tenantId);
-    const ctx = { tenant_id: tenantId, db };
+    const ctx = { tenant_id: tenantId, is_live: isLive, user_id: userId, db };
 
     try {
       const result = await registry.execute(skillName, functionName, params, ctx);
+      if (!result.success) {
+        console.error(`[Skill:${skillName}.${functionName}] execution failed:`, result.error);
+      }
       res.json(result);
     } catch (err) {
       console.error(`[Skill:${skillName}.${functionName}]`, err);

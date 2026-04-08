@@ -1,0 +1,361 @@
+/* ================================================================
+   Market History Page — layout only.
+   All form controls come from forms.module.css.
+   All data display comes from data.module.css.
+   All components come from VDF.
+   ================================================================ */
+
+.page {
+  padding: 28px 32px;
+  max-width: 1600px;
+  margin: 0 auto;
+  min-height: calc(100vh - 64px);
+}
+
+/* ── Header ──────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 28px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.headerLeft h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  margin: 0 0 4px 0;
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.headerLeft p {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+/* ── Stats strip ─────────────────────────────────────── */
+
+.statsStrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+/* ── Filter bar ──────────────────────────────────────── */
+
+.filterBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.searchWrap {
+  flex: 1;
+  min-width: 200px;
+  max-width: 360px;
+}
+
+.filterPills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.categoryPills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ── Bulk actions bar ────────────────────────────────── */
+
+.bulkBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.bulkBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bulkBarRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.selectAllBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.selectAllBtn:hover {
+  background: var(--color-surface);
+}
+
+.selectedBadge {
+  padding: 3px 10px;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+/* ── Index list ──────────────────────────────────────── */
+
+.indexList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.listHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.listHeader h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  margin: 0;
+}
+
+/* ── Index cards rendered by VdfTrackingCard ─────────── */
+/* (no per-card CSS needed — VdfTrackingCard owns its styles) */
+
+/* ── Date picker modal ───────────────────────────────── */
+
+.datePickerBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.dateRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ── Progress overlay ────────────────────────────────── */
+
+.progressOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progressCard {
+  background: var(--color-surface);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 36px 40px;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 20px;
+  border: 3px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+.spinnerGreen {
+  border-top-color: var(--color-success);
+}
+
+.progressTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  margin: 0 0 8px 0;
+}
+
+.progressMsg {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+/* ── Footer info ─────────────────────────────────────── */
+
+.footer {
+  margin-top: 24px;
+  padding: 14px 18px;
+  background: color-mix(in srgb, var(--color-info) 8%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-info) 20%, transparent);
+  border-radius: 10px;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  line-height: 1.7;
+}
+
+.footer strong {
+  color: var(--color-info);
+}
+
+/* ── Action buttons ──────────────────────────────────── */
+
+.headerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--btn-radius, 8px);
+  color: var(--color-fg);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.headerBtn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.headerBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.actionBtn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.actionBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bulkBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--btn-radius, 8px);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.bulkBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnSpinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── Filter pills ────────────────────────────────────── */
+
+.filterPill {
+  padding: 5px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  background: var(--glass);
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.filterPill:hover {
+  border-color: var(--color-primary);
+  color: var(--color-fg);
+}
+
+.filterPillActive {
+  composes: filterPill;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+/* ── Animations ──────────────────────────────────────── */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.indexList { animation: fadeInUp 0.25s ease; }

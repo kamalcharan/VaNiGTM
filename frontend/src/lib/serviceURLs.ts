@@ -392,6 +392,165 @@ export const API = {
     },
   },
 
+  /* ── Market Indices ───────────────────────────────── */
+
+  market: {
+    indices: {
+      method: 'GET',
+      path: '/api/v1/market/indices',
+      auth: true,
+      description: 'List all NSE market indices with download and metrics status',
+    },
+    indexDetail: {
+      method: 'GET',
+      path: '/api/v1/market/indices/:id',
+      auth: true,
+      description: 'Get single market index details',
+    },
+    indexData: {
+      method: 'GET',
+      path: '/api/v1/market/data/:indexId',
+      auth: true,
+      description: 'Get paginated OHLCV data for a market index',
+    },
+    latestData: {
+      method: 'GET',
+      path: '/api/v1/market/data/:indexId/latest',
+      auth: true,
+      description: 'Get the most recent OHLCV data point for a market index',
+    },
+    downloadHistorical: {
+      method: 'POST',
+      path: '/api/v1/market/download/historical',
+      auth: true,
+      description: 'Trigger historical OHLCV download from Yahoo Finance for one index',
+    },
+    downloadEod: {
+      method: 'POST',
+      path: '/api/v1/market/download/eod',
+      auth: true,
+      description: 'Trigger end-of-day download for one market index',
+    },
+    downloadEodAll: {
+      method: 'POST',
+      path: '/api/v1/market/download/eod-all',
+      auth: true,
+      description: 'Trigger EOD download for all active market indices',
+    },
+    statistics: {
+      method: 'GET',
+      path: '/api/v1/market/statistics',
+      auth: true,
+      description: 'Aggregate statistics: total indices, with/without data, records count',
+    },
+    detailedStatus: {
+      method: 'GET',
+      path: '/api/v1/market/detailed-status',
+      auth: true,
+      description: 'Per-index download status, metrics status, latest close — used by Market History page',
+    },
+    jobStatus: {
+      method: 'GET',
+      path: '/api/v1/market/jobs/:jobId',
+      auth: true,
+      description: 'Poll the status of a running market download or metrics job',
+    },
+  },
+
+  /* ── Market Analysis ──────────────────────────────── */
+
+  marketAnalysis: {
+    calculate: {
+      method: 'POST',
+      path: '/api/v1/market-analysis/calculate/:indexId',
+      auth: true,
+      description: 'Calculate metrics for one market index using PL/pgSQL RPC',
+    },
+    bulkCalculate: {
+      method: 'POST',
+      path: '/api/v1/market-analysis/bulk-calculate',
+      auth: true,
+      description: 'Calculate metrics for multiple indices (or all if no ids provided)',
+    },
+    metrics: {
+      method: 'GET',
+      path: '/api/v1/market-analysis/metrics/:indexId',
+      auth: true,
+      description: 'Get latest calculated metrics for a market index',
+    },
+    indexReturns: {
+      method: 'GET',
+      path: '/api/v1/market-analysis/index-returns/:indexId',
+      auth: true,
+      description: 'Time-series OHLCV + returns data for charting (daily/weekly/monthly granularity)',
+    },
+    dashboardStatistics: {
+      method: 'GET',
+      path: '/api/v1/market-analysis/dashboard-statistics',
+      auth: true,
+      description: 'Market dashboard KPIs: best/worst/most volatile + performance heatmap per index',
+    },
+  },
+
+  /* ── Master Data (admin only) ────────────────────── */
+
+  masterData: {
+    transactionTypes: {
+      method: 'GET',
+      path: '/api/v1/master-data/transaction-types',
+      auth: true,
+      description: 'List all transaction types',
+    },
+    updateTransactionType: {
+      method: 'PATCH',
+      path: '/api/v1/master-data/transaction-types/:id',
+      auth: true,
+      description: 'Update a transaction type (name, description, active toggle)',
+    },
+    assetTypes: {
+      method: 'GET',
+      path: '/api/v1/master-data/asset-types',
+      auth: true,
+      description: 'List all asset types',
+    },
+    updateAssetType: {
+      method: 'PATCH',
+      path: '/api/v1/master-data/asset-types/:id',
+      auth: true,
+      description: 'Update an asset type (name, assumption rate, active toggle)',
+    },
+    bookmarkReasons: {
+      method: 'GET',
+      path: '/api/v1/master-data/bookmark-reasons',
+      auth: true,
+      description: 'List bookmark reasons for current tenant + environment',
+    },
+    createBookmarkReason: {
+      method: 'POST',
+      path: '/api/v1/master-data/bookmark-reasons',
+      auth: true,
+      description: 'Create a new bookmark reason for current tenant',
+    },
+    updateBookmarkReason: {
+      method: 'PATCH',
+      path: '/api/v1/master-data/bookmark-reasons/:id',
+      auth: true,
+      description: 'Update a bookmark reason (label, order, active toggle)',
+    },
+    jobTypes: {
+      method: 'GET',
+      path: '/api/v1/master-data/job-types',
+      auth: true,
+      description: 'List all job types with current tenant scheduler config',
+    },
+    updateJobConfig: {
+      method: 'PATCH',
+      path: '/api/v1/master-data/job-configs/:id',
+      auth: true,
+      description: 'Update tenant scheduler config for a job (cron, enabled toggle)',
+    },
+  },
+
   /* ── Skills (generic) ─────────────────────────────── */
 
   skills: {

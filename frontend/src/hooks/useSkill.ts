@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useMutation, type UseQueryOptions } from '@tanstack/react-query';
+import { useQuery, useMutation, type UseQueryOptions, type UseMutationOptions } from '@tanstack/react-query';
 import { apiFetch, getAccessToken, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 
@@ -31,11 +31,20 @@ export function useSkillQuery<T = Record<string, unknown>>(
 ) {
   return useQuery<SkillResult<T>, ApiError>({
     queryKey: ['skill', skill, fn, params],
-    queryFn: () =>
-      apiFetch<SkillResult<T>>(API.skills.execute, {
+    queryFn: async () => {
+      const result = await apiFetch<SkillResult<T>>(API.skills.execute, {
         pathParams: { skill, fn },
         body: { params },
-      }),
+      });
+      if (!result.success) {
+        const err: ApiError & Error = Object.assign(
+          new Error(result.error ?? `${skill}.${fn} failed`),
+          { code: 'SKILL_ERROR' } satisfies Partial<ApiError>,
+        );
+        throw err;
+      }
+      return result;
+    },
     enabled: !!getAccessToken(),
     ...options,
   });
@@ -53,12 +62,25 @@ export function useSkillQuery<T = Record<string, unknown>>(
 export function useSkillMutation<T = Record<string, unknown>>(
   skill: string,
   fn: string,
+  options?: Omit<UseMutationOptions<SkillResult<T>, ApiError, Record<string, unknown>>, 'mutationFn'>,
 ) {
   return useMutation<SkillResult<T>, ApiError, Record<string, unknown>>({
-    mutationFn: (params) =>
-      apiFetch<SkillResult<T>>(API.skills.execute, {
+    mutationFn: async (params) => {
+      const result = await apiFetch<SkillResult<T>>(API.skills.execute, {
         pathParams: { skill, fn },
         body: { params },
-      }),
+      });
+      // Skill returned success:false with HTTP 200 — surface as error
+      // so onError handles it and onSuccess only fires for real successes.
+      if (!result.success) {
+        const err: ApiError & Error = Object.assign(
+          new Error(result.error ?? `${skill}.${fn} failed`),
+          { code: 'SKILL_ERROR' } satisfies Partial<ApiError>,
+        );
+        throw err;
+      }
+      return result;
+    },
+    ...options,
   });
 }

@@ -1,0 +1,3350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ContactNest — Contacts & Clients</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   THEME TOKENS — swap these for your 12 themes
+   ============================================ */
+:root {
+  /* Neutral sophisticated theme — warm graphite + jade */
+  --bg:           #f6f4ef;
+  --bg-deep:      #ecebe4;
+  --surface:      #ffffff;
+  --surface-2:    #faf9f5;
+  --surface-sunk: #f0eee7;
+  --ink:          #1a1a1a;
+  --ink-2:        #4a4a47;
+  --ink-3:        #8a8884;
+  --ink-4:        #c4c1b8;
+  --line:         #e6e3d9;
+  --line-strong:  #d6d2c4;
+
+  --accent:       #0f4c3a;     /* deep jade */
+  --accent-2:     #c7a557;     /* aged brass */
+  --accent-soft:  #e8f0ec;
+  --accent-2-soft:#f6efdc;
+
+  --danger:       #b54034;
+  --warn:         #c47e1a;
+  --ok:           #2d7a4f;
+
+  --risk-cons:    #4a7a8c;
+  --risk-mod:     #c47e1a;
+  --risk-aggr:    #b54034;
+
+  --shadow-sm:    0 1px 2px rgba(20,18,10,0.04), 0 1px 1px rgba(20,18,10,0.03);
+  --shadow-md:    0 4px 12px rgba(20,18,10,0.06), 0 2px 4px rgba(20,18,10,0.04);
+  --shadow-lg:    0 24px 48px -12px rgba(20,18,10,0.18), 0 8px 16px -8px rgba(20,18,10,0.08);
+  --shadow-xl:    0 40px 80px -20px rgba(20,18,10,0.28);
+
+  --radius-sm:    6px;
+  --radius:       10px;
+  --radius-lg:    18px;
+  --radius-xl:    28px;
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body:    'Inter Tight', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ============================================
+   RESET + BASE
+   ============================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea, select { font-family: inherit; font-size: inherit; color: inherit; }
+a { color: inherit; text-decoration: none; }
+::selection { background: var(--accent); color: #fff; }
+
+/* Subtle paper texture */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(15,76,58,0.025) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(199,165,87,0.025) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ============================================
+   APP SHELL
+   ============================================ */
+.app {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: 22px 16px;
+  position: relative;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 26px;
+}
+.brand-mark {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--accent);
+  position: relative;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,0.15), 0 2px 6px rgba(15,76,58,0.25);
+}
+.brand-mark::after {
+  content: '';
+  width: 14px; height: 14px;
+  border: 2px solid var(--accent-2);
+  border-radius: 50%;
+  border-top-color: transparent;
+  border-left-color: transparent;
+  transform: rotate(-30deg);
+}
+.brand-name {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  font-variation-settings: "opsz" 144;
+}
+.brand-sub {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: -2px;
+}
+
+.nav-section {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 12px 12px 8px;
+  font-weight: 600;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: var(--radius);
+  font-weight: 500;
+  font-size: 13.5px;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  position: relative;
+}
+.nav-item:hover { background: var(--surface-sunk); color: var(--ink); }
+.nav-item.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(15,76,58,0.25);
+}
+.nav-item.active .nav-icon { color: var(--accent-2); }
+.nav-icon { width: 16px; height: 16px; flex-shrink: 0; color: var(--ink-3); }
+.nav-item.active .nav-icon { color: var(--accent-2); }
+.nav-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--surface-sunk);
+  color: var(--ink-3);
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+.nav-item.active .nav-count {
+  background: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.9);
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+}
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: var(--radius);
+}
+.user-chip:hover { background: var(--surface-sunk); }
+.avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #1a6a52);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+.user-name { font-size: 13px; font-weight: 600; line-height: 1.2; }
+.user-role { font-size: 11px; color: var(--ink-3); }
+
+/* ============================================
+   MAIN CONTENT
+   ============================================ */
+.main {
+  overflow-y: auto;
+  position: relative;
+}
+.main::-webkit-scrollbar { width: 10px; }
+.main::-webkit-scrollbar-track { background: transparent; }
+.main::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 10px; border: 2px solid var(--bg); }
+
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: block; animation: fadeIn 0.35s ease; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================
+   PAGE HEADER
+   ============================================ */
+.page-header {
+  padding: 32px 48px 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+}
+.page-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.page-title {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  font-variation-settings: "opsz" 144;
+  line-height: 1.1;
+}
+.page-title em {
+  font-style: italic;
+  font-weight: 300;
+  color: var(--ink-2);
+}
+.page-header-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+}
+.page-meta {
+  display: flex;
+  gap: 28px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.page-meta strong { color: var(--ink); font-weight: 600; font-family: var(--font-mono); font-size: 13px; }
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.1) inset, 0 4px 12px rgba(0,0,0,0.12);
+}
+.btn-primary:hover { background: #000; transform: translateY(-1px); box-shadow: 0 1px 0 rgba(255,255,255,0.1) inset, 0 8px 18px rgba(0,0,0,0.18); }
+.btn-accent {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset, 0 4px 12px rgba(15,76,58,0.25);
+}
+.btn-accent:hover { background: #0d3f31; transform: translateY(-1px); }
+.btn-ghost {
+  color: var(--ink-2);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+}
+.btn-ghost:hover { background: var(--surface-sunk); border-color: var(--ink-3); color: var(--ink); }
+.btn-icon { padding: 9px; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-lg { padding: 14px 26px; font-size: 14px; }
+
+/* ============================================
+   CONTACTS LIST
+   ============================================ */
+.toolbar {
+  padding: 18px 48px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.search {
+  flex: 1;
+  max-width: 380px;
+  position: relative;
+}
+.search input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 9px 14px 9px 38px;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+.search input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-3); width: 14px; height: 14px; }
+.kbd {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-3);
+  background: var(--surface-sunk);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+}
+.filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.filter-pill:hover { border-color: var(--ink-3); }
+.filter-pill.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.view-toggle {
+  margin-left: auto;
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 3px;
+}
+.view-toggle button {
+  padding: 5px 11px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.view-toggle button.active {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.contacts-list-content {
+  padding: 24px 48px 80px;
+}
+
+/* Contact rows */
+.contacts-table {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.table-head {
+  display: grid;
+  grid-template-columns: 2.2fr 1.4fr 1.1fr 1fr 80px;
+  padding: 14px 22px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.contact-row {
+  display: grid;
+  grid-template-columns: 2.2fr 1.4fr 1.1fr 1fr 80px;
+  padding: 16px 22px;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  transition: background 0.15s ease;
+  position: relative;
+}
+.contact-row:last-child { border-bottom: none; }
+.contact-row:hover { background: var(--surface-2); }
+.contact-row:hover .contact-arrow { opacity: 1; transform: translateX(0); }
+
+.contact-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.contact-avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-size: 13px;
+  color: #fff;
+  flex-shrink: 0;
+  position: relative;
+}
+.contact-avatar.av-1 { background: linear-gradient(135deg, #5b8a72, #2d5944); }
+.contact-avatar.av-2 { background: linear-gradient(135deg, #c47e1a, #8a5410); }
+.contact-avatar.av-3 { background: linear-gradient(135deg, #4a7a8c, #2d4f5c); }
+.contact-avatar.av-4 { background: linear-gradient(135deg, #b54034, #7a2820); }
+.contact-avatar.av-5 { background: linear-gradient(135deg, #6b4e8a, #3d2a55); }
+.contact-avatar.av-6 { background: linear-gradient(135deg, #1a6a52, #0d3f31); }
+
+.contact-name { font-weight: 600; font-size: 14px; line-height: 1.3; }
+.contact-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
+
+.channels {
+  display: flex;
+  gap: 5px;
+}
+.channel-icon {
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  background: var(--surface-sunk);
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+  font-size: 11px;
+}
+.channel-icon svg { width: 12px; height: 12px; }
+
+/* Readiness Ring — the centerpiece innovation */
+.readiness {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ring {
+  width: 36px; height: 36px;
+  position: relative;
+  flex-shrink: 0;
+}
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring-bg { fill: none; stroke: var(--line-strong); stroke-width: 3; }
+.ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.6s ease;
+}
+.ring-fill.high { stroke: var(--accent); }
+.ring-fill.mid { stroke: var(--accent-2); }
+.ring-fill.low { stroke: var(--ink-3); }
+.ring-text {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 9.5px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.readiness-label { font-size: 11px; color: var(--ink-3); }
+.readiness-status {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.badge-prospect { background: var(--accent-2-soft); color: #8a5410; border: 1px solid #e8d59a; }
+.badge-client { background: var(--accent-soft); color: var(--accent); border: 1px solid #c1d9cd; }
+.badge-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+.contact-arrow {
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: all 0.2s ease;
+  color: var(--ink-3);
+  text-align: right;
+}
+
+/* Add Contact Drawer */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20,18,10,0.4);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: none;
+  animation: fadeIn 0.25s ease;
+}
+.drawer-backdrop.active { display: block; }
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 480px;
+  background: var(--surface);
+  z-index: 101;
+  transform: translateX(100%);
+  transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-xl);
+}
+.drawer.active { transform: translateX(0); }
+.drawer-header {
+  padding: 28px 32px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.drawer-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  font-variation-settings: "opsz" 144;
+}
+.drawer-sub { font-size: 12.5px; color: var(--ink-3); margin-top: 4px; }
+.drawer-close {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+}
+.drawer-close:hover { background: var(--surface-sunk); color: var(--ink); }
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px;
+}
+.drawer-footer {
+  padding: 18px 32px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.field { margin-bottom: 18px; }
+.field-row { display: grid; grid-template-columns: 110px 1fr; gap: 10px; }
+.field-row .field { margin-bottom: 18px; }
+.label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 600;
+  margin-bottom: 7px;
+}
+.label-optional { color: var(--ink-4); font-weight: 500; text-transform: none; letter-spacing: 0; margin-left: 6px; }
+.input {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 11px 14px;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+.input:focus {
+  background: var(--surface);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.input-icon-wrap { position: relative; }
+.input-icon-wrap .input { padding-left: 38px; }
+.input-icon-wrap svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--ink-3); width: 14px; height: 14px; }
+
+.prefix-pills {
+  display: flex;
+  gap: 6px;
+}
+.prefix-pill {
+  padding: 9px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.prefix-pill:hover { border-color: var(--ink-3); }
+.prefix-pill.active {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+
+/* ============================================
+   CONTACT PROFILE
+   ============================================ */
+.profile-hero {
+  padding: 36px 48px 0;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-bottom: 20px;
+}
+.breadcrumb a:hover { color: var(--ink); }
+.breadcrumb-sep { color: var(--ink-4); }
+
+.profile-hero-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 32px;
+  align-items: center;
+  padding-bottom: 28px;
+}
+.profile-identity {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.profile-avatar {
+  width: 78px; height: 78px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #c47e1a, #8a5410);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 500;
+  font-size: 28px;
+  font-family: var(--font-display);
+  box-shadow: 0 8px 24px rgba(196,126,26,0.25);
+}
+.profile-name {
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  font-variation-settings: "opsz" 144;
+  line-height: 1.05;
+}
+.profile-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.profile-meta-row .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--ink-4); }
+
+/* Big readiness ring on profile */
+.readiness-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  box-shadow: var(--shadow-sm);
+  min-width: 260px;
+}
+.ring-lg { width: 64px; height: 64px; }
+.ring-lg .ring-text { font-size: 13px; }
+.readiness-card-text { font-size: 12px; color: var(--ink-3); }
+.readiness-card-text strong {
+  display: block;
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.unlock-btn {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 48px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+.tab {
+  padding: 13px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-3);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition: all 0.18s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tab:hover { color: var(--ink-2); }
+.tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+.tab-check {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+}
+.tab-check.empty { background: var(--line-strong); }
+
+.tab-content { padding: 32px 48px 80px; }
+
+/* Overview tab */
+.overview-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 24px 26px;
+  box-shadow: var(--shadow-sm);
+}
+.card-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.detail-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-label {
+  color: var(--ink-3);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding-top: 2px;
+}
+.detail-value { color: var(--ink); font-weight: 500; }
+.detail-value .mono { font-family: var(--font-mono); font-size: 12.5px; }
+
+.channel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.channel-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.channel-badge {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+  flex-shrink: 0;
+}
+.channel-badge svg { width: 14px; height: 14px; }
+.channel-meta { flex: 1; }
+.channel-type { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.channel-value { font-size: 13px; font-weight: 500; font-family: var(--font-mono); }
+.primary-pill {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+/* ============================================
+   FINANCIAL SNAPSHOT — the gamified flow
+   ============================================ */
+.snapshot-stage {
+  max-width: 720px;
+  margin: 0 auto;
+}
+.snapshot-progress {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 32px;
+}
+.progress-step {
+  flex: 1;
+  height: 4px;
+  background: var(--line-strong);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.progress-step.done { background: var(--accent); }
+.progress-step.active { background: var(--line-strong); }
+.progress-step.active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  width: 50%;
+  animation: progressPulse 2s ease-in-out infinite;
+}
+@keyframes progressPulse {
+  0%, 100% { width: 30%; opacity: 0.6; }
+  50% { width: 70%; opacity: 1; }
+}
+.snapshot-step-label {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.snapshot-question {
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  font-variation-settings: "opsz" 144;
+  line-height: 1.15;
+  text-align: center;
+  margin-bottom: 12px;
+}
+.snapshot-question em { font-style: italic; font-weight: 300; color: var(--ink-2); }
+.snapshot-helper {
+  text-align: center;
+  font-size: 14px;
+  color: var(--ink-3);
+  margin-bottom: 40px;
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Risk profile cards — illustrated */
+.risk-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-bottom: 36px;
+}
+.risk-card {
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 28px 22px 24px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+.risk-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--ink-4); }
+.risk-card.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 12px 32px -8px rgba(15,76,58,0.2);
+  transform: translateY(-3px);
+}
+.risk-card.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 24px; height: 24px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  animation: pop 0.3s ease;
+}
+@keyframes pop { 0% { transform: scale(0); } 80% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+.risk-viz {
+  height: 80px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 5px;
+  margin-bottom: 18px;
+  padding: 0 12px;
+}
+.risk-bar {
+  flex: 1;
+  background: linear-gradient(180deg, currentColor 0%, transparent 130%);
+  border-radius: 3px 3px 0 0;
+  opacity: 0.85;
+}
+.risk-card.cons .risk-bar { color: var(--risk-cons); }
+.risk-card.mod .risk-bar { color: var(--risk-mod); }
+.risk-card.aggr .risk-bar { color: var(--risk-aggr); }
+
+.risk-card.cons .risk-bar:nth-child(1) { height: 30%; }
+.risk-card.cons .risk-bar:nth-child(2) { height: 35%; }
+.risk-card.cons .risk-bar:nth-child(3) { height: 32%; }
+.risk-card.cons .risk-bar:nth-child(4) { height: 38%; }
+.risk-card.cons .risk-bar:nth-child(5) { height: 34%; }
+
+.risk-card.mod .risk-bar:nth-child(1) { height: 40%; }
+.risk-card.mod .risk-bar:nth-child(2) { height: 65%; }
+.risk-card.mod .risk-bar:nth-child(3) { height: 50%; }
+.risk-card.mod .risk-bar:nth-child(4) { height: 72%; }
+.risk-card.mod .risk-bar:nth-child(5) { height: 58%; }
+
+.risk-card.aggr .risk-bar:nth-child(1) { height: 30%; }
+.risk-card.aggr .risk-bar:nth-child(2) { height: 90%; }
+.risk-card.aggr .risk-bar:nth-child(3) { height: 45%; }
+.risk-card.aggr .risk-bar:nth-child(4) { height: 95%; }
+.risk-card.aggr .risk-bar:nth-child(5) { height: 60%; }
+
+.risk-name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+  text-align: center;
+}
+.risk-tagline {
+  font-size: 12px;
+  color: var(--ink-3);
+  text-align: center;
+  line-height: 1.4;
+}
+.risk-stat {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+.risk-stat-label { color: var(--ink-3); }
+.risk-stat-value { font-weight: 700; font-family: var(--font-mono); }
+
+/* Snapshot navigation */
+.snapshot-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.step-counter {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.step-counter strong { color: var(--ink); }
+
+/* Financial overview inputs */
+.fin-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.big-input-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  transition: all 0.2s;
+}
+.big-input-card:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.big-input-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.big-input-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.big-input-currency {
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--ink-3);
+  font-weight: 400;
+}
+.big-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 500;
+  color: var(--ink);
+  font-variation-settings: "opsz" 144;
+  letter-spacing: -0.02em;
+}
+.big-input::placeholder { color: var(--ink-4); }
+.big-input-helper { font-size: 11px; color: var(--ink-3); margin-top: 8px; }
+
+/* Investment allocation */
+.alloc-section { margin-bottom: 24px; }
+.alloc-bar {
+  height: 14px;
+  background: var(--surface-sunk);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+}
+.alloc-segment {
+  height: 100%;
+  transition: width 0.5s ease;
+}
+.alloc-eq { background: var(--accent); }
+.alloc-debt { background: var(--accent-2); }
+.alloc-hyb { background: var(--risk-cons); }
+
+.alloc-controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.alloc-control {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.alloc-control-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.alloc-dot { width: 10px; height: 10px; border-radius: 3px; }
+.alloc-name { font-size: 12px; font-weight: 600; }
+.alloc-percent { font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); }
+.alloc-amount {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.alloc-amount-prefix { color: var(--ink-3); font-size: 16px; }
+
+/* Aspirational goals — chat-bubble style */
+.goal-list { margin-bottom: 22px; }
+.goal-bubble {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+  margin-bottom: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 18px;
+  align-items: center;
+  animation: slideUp 0.4s ease;
+}
+@keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.goal-icon {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: var(--accent-2-soft);
+  color: var(--accent-2);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.goal-name { font-weight: 600; font-size: 14px; }
+.goal-amount {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-2);
+  background: var(--surface-sunk);
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+.goal-timeline {
+  font-size: 12px;
+  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.goal-delete {
+  color: var(--ink-4);
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+}
+.goal-delete:hover { background: var(--surface-sunk); color: var(--danger); }
+
+.add-goal-btn {
+  width: 100%;
+  padding: 16px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  color: var(--ink-3);
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+.add-goal-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+/* ============================================
+   CONVERT TO CLIENT — hero moment
+   ============================================ */
+.convert-screen { background: var(--surface-2); min-height: 100vh; }
+.convert-header {
+  padding: 28px 48px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface-2);
+}
+.convert-stepper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.convert-stepper strong { color: var(--ink); font-family: var(--font-mono); }
+
+.convert-body {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 0;
+  min-height: calc(100vh - 88px);
+}
+
+/* Left rail — story of what we know */
+.convert-rail {
+  padding: 36px 32px;
+  border-right: 1px solid var(--line);
+  background: var(--surface-2);
+  position: sticky;
+  top: 88px;
+  align-self: start;
+  height: calc(100vh - 88px);
+  overflow-y: auto;
+}
+.rail-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.rail-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin-bottom: 6px;
+}
+.rail-sub { font-size: 12.5px; color: var(--ink-3); margin-bottom: 28px; line-height: 1.5; }
+
+.rail-known {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 4px 0;
+  margin-bottom: 24px;
+}
+.rail-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+.rail-item:last-child { border-bottom: none; }
+.rail-check {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.rail-item-label { font-size: 10px; color: var(--ink-3); letter-spacing: 0.05em; text-transform: uppercase; font-weight: 600; }
+.rail-item-value { font-size: 12.5px; font-weight: 500; line-height: 1.3; }
+
+.rail-quote {
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  position: relative;
+}
+.rail-quote::before {
+  content: '"';
+  position: absolute;
+  top: 4px;
+  left: 16px;
+  font-family: var(--font-display);
+  font-size: 70px;
+  color: var(--accent-2);
+  line-height: 1;
+  opacity: 0.7;
+}
+.rail-quote-text {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 14px;
+  line-height: 1.5;
+  position: relative;
+  margin-top: 18px;
+  color: rgba(255,255,255,0.9);
+}
+.rail-quote-author {
+  font-size: 11px;
+  color: var(--accent-2);
+  margin-top: 12px;
+  letter-spacing: 0.05em;
+}
+
+/* Right form */
+.convert-form {
+  padding: 40px 56px 80px;
+  max-width: 760px;
+}
+.form-section {
+  margin-bottom: 44px;
+}
+.form-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 22px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.form-section-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.form-section-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+.form-section-sub {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  margin-left: auto;
+}
+
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.form-grid-3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 18px; }
+
+/* PAN input — special styling */
+.pan-input {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ext_ref — license plate style */
+.ext-ref-wrap {
+  display: flex;
+  align-items: stretch;
+  background: var(--surface);
+  border: 1.5px solid var(--ink);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 0 var(--ink), 0 6px 12px rgba(0,0,0,0.08);
+}
+.ext-ref-label {
+  background: var(--ink);
+  color: var(--accent-2);
+  padding: 12px 16px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-mono);
+}
+.ext-ref-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+
+/* Family head toggle */
+.toggle-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.toggle-card {
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.toggle-card:hover { border-color: var(--ink-3); }
+.toggle-card.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.toggle-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: var(--surface-sunk);
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+}
+.toggle-card.selected .toggle-icon { background: var(--accent); color: var(--accent-2); }
+.toggle-label { font-weight: 600; font-size: 13px; }
+.toggle-sub { font-size: 11px; color: var(--ink-3); margin-top: 1px; }
+
+/* Convert footer CTA */
+.convert-footer {
+  position: sticky;
+  bottom: 0;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+  padding: 18px 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 60px -56px -80px;
+}
+
+/* ============================================
+   CONVERSION SUCCESS SCREEN
+   ============================================ */
+.success-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--ink);
+  z-index: 200;
+  display: none;
+  place-items: center;
+  overflow: hidden;
+}
+.success-screen.active { display: grid; animation: fadeIn 0.4s; }
+.success-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(199,165,87,0.15) 0%, transparent 50%),
+    radial-gradient(circle at 70% 60%, rgba(15,76,58,0.2) 0%, transparent 50%);
+}
+
+.success-content {
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  max-width: 540px;
+  padding: 40px;
+}
+.success-card {
+  background: linear-gradient(160deg, #faf9f5 0%, #f0eee7 100%);
+  border-radius: 20px;
+  padding: 36px 40px;
+  margin: 0 auto 32px;
+  box-shadow: 0 40px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px rgba(199,165,87,0.3);
+  position: relative;
+  overflow: hidden;
+  animation: cardFlip 0.8s cubic-bezier(0.32, 0.72, 0, 1);
+  max-width: 380px;
+}
+@keyframes cardFlip {
+  from { transform: rotateY(180deg) scale(0.8); opacity: 0; }
+  to { transform: rotateY(0) scale(1); opacity: 1; }
+}
+.success-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent));
+}
+.success-card-eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.success-card-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+.success-ext-ref {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1.5px solid var(--ink);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 18px 0 14px;
+  box-shadow: 0 2px 0 var(--ink);
+}
+.success-ext-ref .ext-ref-label { padding: 8px 12px; font-size: 8px; }
+.success-ext-ref .ext-ref-input {
+  padding: 8px 14px;
+  font-size: 14px;
+  background: var(--surface);
+}
+.success-card-meta {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+  color: var(--ink-3);
+}
+
+.success-headline {
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 300;
+  color: #fff;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  margin-bottom: 14px;
+  font-variation-settings: "opsz" 144;
+  animation: slideUp 0.6s ease 0.4s both;
+}
+.success-headline em { font-style: italic; color: var(--accent-2); }
+.success-sub {
+  color: rgba(255,255,255,0.7);
+  font-size: 15px;
+  margin-bottom: 32px;
+  animation: slideUp 0.6s ease 0.5s both;
+}
+.success-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  animation: slideUp 0.6s ease 0.6s both;
+}
+.btn-success-primary {
+  background: var(--accent-2);
+  color: var(--ink);
+  padding: 14px 28px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 13px;
+}
+.btn-success-ghost {
+  background: transparent;
+  color: rgba(255,255,255,0.8);
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 14px 28px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* ============================================
+   CLIENTS LIST — roster view
+   ============================================ */
+.clients-roster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 20px;
+}
+.client-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+.client-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--ink-4);
+}
+/* Risk corner-fold */
+.client-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 36px 36px 0;
+  border-color: transparent var(--risk-mod) transparent transparent;
+}
+.client-card.risk-cons::before { border-color: transparent var(--risk-cons) transparent transparent; }
+.client-card.risk-aggr::before { border-color: transparent var(--risk-aggr) transparent transparent; }
+
+/* Bookmark ribbon */
+.bookmark-ribbon {
+  position: absolute;
+  top: -2px;
+  left: 22px;
+  width: 22px;
+  background: var(--accent-2);
+  color: var(--ink);
+  text-align: center;
+  font-size: 10px;
+  padding: 6px 0 8px;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.client-card-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  margin-top: 6px;
+}
+.client-avatar {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 600;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.client-name {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+.client-card-ref {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-3);
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.client-card-ref .badge-mini {
+  background: var(--ink);
+  color: var(--accent-2);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.client-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 14px;
+}
+.client-stat-label {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.client-stat-value {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.client-stat-value .currency { color: var(--ink-3); font-size: 13px; margin-right: 2px; }
+.client-stat-value .delta { font-size: 11px; color: var(--ok); margin-left: 4px; font-family: var(--font-body); font-weight: 600; }
+.client-stat-value .delta.down { color: var(--danger); }
+
+/* Mini sparkline */
+.sparkline { display: block; width: 100%; height: 32px; margin-top: 4px; }
+.sparkline path { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.sparkline .area { fill: var(--accent-soft); stroke: none; opacity: 0.6; }
+
+.client-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.risk-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.risk-tag .dot { width: 7px; height: 7px; border-radius: 2px; }
+.risk-tag.cons { color: var(--risk-cons); }
+.risk-tag.cons .dot { background: var(--risk-cons); }
+.risk-tag.mod { color: var(--risk-mod); }
+.risk-tag.mod .dot { background: var(--risk-mod); }
+.risk-tag.aggr { color: var(--risk-aggr); }
+.risk-tag.aggr .dot { background: var(--risk-aggr); }
+
+/* Dense table view for clients */
+.clients-table { display: none; }
+.clients-table.active { display: block; }
+.clients-roster.hidden { display: none; }
+
+/* ============================================
+   CLIENT PROFILE
+   ============================================ */
+.client-profile-hero {
+  background: linear-gradient(180deg, var(--surface-2) 0%, var(--bg) 100%);
+  padding: 36px 48px 0;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+.client-hero-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 32px;
+  align-items: flex-start;
+  padding-bottom: 28px;
+}
+.client-hero-left { display: flex; gap: 22px; align-items: flex-start; }
+.client-hero-avatar {
+  width: 92px; height: 92px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5b8a72, #1a6a52);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 500;
+  box-shadow: 0 12px 32px rgba(15,76,58,0.3);
+  flex-shrink: 0;
+}
+.client-hero-name {
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  font-variation-settings: "opsz" 144;
+}
+.client-hero-tags {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  align-items: center;
+}
+.hero-ext-ref {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1.5px solid var(--ink);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 0 var(--ink);
+  font-family: var(--font-mono);
+}
+.hero-ext-ref .label { background: var(--ink); color: var(--accent-2); padding: 4px 8px; font-size: 8px; font-weight: 800; letter-spacing: 0.15em; display: flex; align-items: center; }
+.hero-ext-ref .value { padding: 4px 10px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; background: var(--surface); }
+
+.client-hero-right {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.bookmark-btn {
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+  transition: all 0.2s;
+}
+.bookmark-btn:hover { border-color: var(--accent-2); color: var(--accent-2); }
+.bookmark-btn.active { background: var(--accent-2); border-color: var(--accent-2); color: var(--ink); }
+
+/* Client KPI strip */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 28px;
+  box-shadow: var(--shadow-sm);
+}
+.kpi {
+  padding: 20px 24px;
+  border-right: 1px solid var(--line);
+  position: relative;
+}
+.kpi:last-child { border-right: none; }
+.kpi-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.kpi-value {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1;
+}
+.kpi-value .unit { font-size: 14px; color: var(--ink-3); margin-right: 2px; }
+.kpi-delta {
+  font-size: 11px;
+  color: var(--ok);
+  margin-top: 6px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Empty future tabs */
+.future-tab-empty {
+  text-align: center;
+  padding: 80px 40px;
+  background: var(--surface);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+}
+.future-icon {
+  width: 64px; height: 64px;
+  margin: 0 auto 20px;
+  border-radius: 18px;
+  background: var(--surface-sunk);
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+}
+.future-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  letter-spacing: -0.015em;
+}
+.future-sub {
+  font-size: 13px;
+  color: var(--ink-3);
+  max-width: 360px;
+  margin: 0 auto 20px;
+}
+
+/* ============================================
+   EMPTY STATE — Contacts
+   ============================================ */
+.empty-state {
+  text-align: center;
+  padding: 120px 40px 80px;
+}
+.empty-illustration {
+  width: 160px;
+  height: 160px;
+  margin: 0 auto 32px;
+  position: relative;
+}
+.empty-title {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  margin-bottom: 12px;
+  font-variation-settings: "opsz" 144;
+}
+.empty-title em { font-style: italic; color: var(--ink-2); font-weight: 300; }
+.empty-sub {
+  font-size: 15px;
+  color: var(--ink-3);
+  max-width: 480px;
+  margin: 0 auto 32px;
+  line-height: 1.5;
+}
+
+/* ============================================
+   UTILITY
+   ============================================ */
+.hidden { display: none !important; }
+
+/* Range slider */
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  background: transparent;
+  margin: 10px 0;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--line-strong);
+  border-radius: 2px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: var(--ink);
+  margin-top: -7px;
+  border: 2px solid var(--surface);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============== SIDEBAR ============== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">ContactNest</div>
+        <div class="brand-sub">MFD Workspace</div>
+      </div>
+    </div>
+
+    <div class="nav-section">Pipeline</div>
+    <div class="nav-item active" data-screen="contacts-list">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Contacts
+      <span class="nav-count">128</span>
+    </div>
+    <div class="nav-item" data-screen="clients-list">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Clients
+      <span class="nav-count">47</span>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="avatar">RK</div>
+        <div>
+          <div class="user-name">Rajiv Khanna</div>
+          <div class="user-role">MFD · ARN-12345</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============== MAIN ============== -->
+  <main class="main">
+
+    <!-- ============== CONTACTS LIST ============== -->
+    <section class="screen active" id="contacts-list">
+      <div class="page-header">
+        <div class="page-header-row">
+          <div>
+            <div class="page-eyebrow">Pipeline</div>
+            <h1 class="page-title">Contacts <em>& prospects</em></h1>
+            <div class="page-meta">
+              <div><strong>128</strong> total</div>
+              <div><strong>23</strong> ready to convert</div>
+              <div><strong>5</strong> added this week</div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-lg" id="open-add-contact">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Add Contact
+          </button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="search">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" placeholder="Search by name, mobile, email…" />
+          <span class="kbd">⌘K</span>
+        </div>
+        <button class="filter-pill active">All</button>
+        <button class="filter-pill">Ready to convert</button>
+        <button class="filter-pill">Snapshot pending</button>
+        <button class="filter-pill">Recently added</button>
+      </div>
+
+      <div class="contacts-list-content">
+        <div class="contacts-table">
+          <div class="table-head">
+            <div>Contact</div>
+            <div>Channels</div>
+            <div>Readiness</div>
+            <div>Status</div>
+            <div></div>
+          </div>
+
+          <div class="contact-row" data-contact="priya">
+            <div class="contact-name-cell">
+              <div class="contact-avatar av-2">PM</div>
+              <div>
+                <div class="contact-name">Priya Mehta</div>
+                <div class="contact-sub">+91 98765 43210 · Added Mar 14</div>
+              </div>
+            </div>
+            <div class="channels">
+              <div class="channel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+              <div class="channel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg></div>
+              <div class="channel-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 3.5A12 12 0 0 0 3.6 20.4L2 22l1.7-.5a12 12 0 0 0 16.8-18z"/></svg></div>
+            </div>
+            <div class="readiness">
+              <div class="ring">
+                <svg viewBox="0 0 36 36">
+                  <circle class="ring-bg" cx="18" cy="18" r="15"/>
+                  <circle class="ring-fill high" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="9.4"/>
+                </svg>
+                <div class="ring-text">90</div>
+              </div>
+              <div>
+                <div class="readiness-status">Ready to convert</div>
+                <div class="readiness-label">Snapshot complete</div>
+              </div>
+            </div>
+            <div><span class="badge badge-prospect"><span class="badge-dot"></span>Prospect</span></div>
+            <div class="contact-arrow">→</div>
+          </div>
+
+          <div class="contact-row">
+            <div class="contact-name-cell">
+              <div class="contact-avatar av-1">AS</div>
+              <div>
+                <div class="contact-name">Arjun Sharma</div>
+                <div class="contact-sub">+91 99887 65432 · Added Mar 12</div>
+              </div>
+            </div>
+            <div class="channels">
+              <div class="channel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+              <div class="channel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg></div>
+            </div>
+            <div class="readiness">
+              <div class="ring">
+                <svg viewBox="0 0 36 36">
+                  <circle class="ring-bg" cx="18" cy="18" r="15"/>
+                  <circle class="ring-fill mid" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="56.5"/>
+                </svg>
+                <div class="ring-text">40</div>
+              </div>
+              <div>
+                <div class="readiness-status">Snapshot pending</div>
+                <div class="readiness-label">2 of 5 sections</div>
+              </div>
+            </div>
+            <div><span class="badge badge-prospect"><span class="badge-dot"></span>Prospect</span></div>
+            <div class="contact-arrow">→</div>
+          </div>
+
+          <div class="contact-row">
+            <div class="contact-name-cell">
+              <div class="contact-avatar av-3">SK</div>
+              <div>
+                <div class="contact-name">Sanjana Kapoor</div>
+                <div class="contact-sub">+91 98123 45678 · Added Mar 10</div>
+              </div>
+            </div>
+            <div class="channels">
+              <div class="channel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+              <div class="channel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg></div>
+              <div class="channel-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 3.5A12 12 0 0 0 3.6 20.4L2 22l1.7-.5a12 12 0 0 0 16.8-18z"/></svg></div>
+              <div class="channel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></div>
+            </div>
+            <div class="readiness">
+              <div class="ring">
+                <svg viewBox="0 0 36 36">
+                  <circle class="ring-bg" cx="18" cy="18" r="15"/>
+                  <circle class="ring-fill high" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="0"/>
+                </svg>
+                <div class="ring-text">100</div>
+              </div>
+              <div>
+                <div class="readiness-status">Ready to convert</div>
+                <div class="readiness-label">All sections done</div>
+              </div>
+            </div>
+            <div><span class="badge badge-prospect"><span class="badge-dot"></span>Prospect</span></div>
+            <div class="contact-arrow">→</div>
+          </div>
+
+          <div class="contact-row">
+            <div class="contact-name-cell">
+              <div class="contact-avatar av-4">RV</div>
+              <div>
+                <div class="contact-name">Rohan Verma</div>
+                <div class="contact-sub">+91 87654 32109 · Added Mar 8</div>
+              </div>
+            </div>
+            <div class="channels">
+              <div class="channel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+            </div>
+            <div class="readiness">
+              <div class="ring">
+                <svg viewBox="0 0 36 36">
+                  <circle class="ring-bg" cx="18" cy="18" r="15"/>
+                  <circle class="ring-fill low" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="80"/>
+                </svg>
+                <div class="ring-text">15</div>
+              </div>
+              <div>
+                <div class="readiness-status">Just added</div>
+                <div class="readiness-label">Add channels</div>
+              </div>
+            </div>
+            <div><span class="badge badge-prospect"><span class="badge-dot"></span>Prospect</span></div>
+            <div class="contact-arrow">→</div>
+          </div>
+
+          <div class="contact-row">
+            <div class="contact-name-cell">
+              <div class="contact-avatar av-5">NB</div>
+              <div>
+                <div class="contact-name">Neha Bhatia</div>
+                <div class="contact-sub">+91 90123 45678 · Added Mar 5</div>
+              </div>
+            </div>
+            <div class="channels">
+              <div class="channel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+              <div class="channel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg></div>
+              <div class="channel-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 3.5A12 12 0 0 0 3.6 20.4L2 22l1.7-.5a12 12 0 0 0 16.8-18z"/></svg></div>
+            </div>
+            <div class="readiness">
+              <div class="ring">
+                <svg viewBox="0 0 36 36">
+                  <circle class="ring-bg" cx="18" cy="18" r="15"/>
+                  <circle class="ring-fill mid" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="33"/>
+                </svg>
+                <div class="ring-text">65</div>
+              </div>
+              <div>
+                <div class="readiness-status">In progress</div>
+                <div class="readiness-label">Goals pending</div>
+              </div>
+            </div>
+            <div><span class="badge badge-prospect"><span class="badge-dot"></span>Prospect</span></div>
+            <div class="contact-arrow">→</div>
+          </div>
+
+          <div class="contact-row">
+            <div class="contact-name-cell">
+              <div class="contact-avatar av-6">VG</div>
+              <div>
+                <div class="contact-name">Vikram Goyal</div>
+                <div class="contact-sub">+91 99001 12233 · Added Feb 28</div>
+              </div>
+            </div>
+            <div class="channels">
+              <div class="channel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+              <div class="channel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg></div>
+            </div>
+            <div class="readiness">
+              <div class="ring">
+                <svg viewBox="0 0 36 36">
+                  <circle class="ring-bg" cx="18" cy="18" r="15"/>
+                  <circle class="ring-fill high" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="14"/>
+                </svg>
+                <div class="ring-text">85</div>
+              </div>
+              <div>
+                <div class="readiness-status">Almost there</div>
+                <div class="readiness-label">Add WhatsApp</div>
+              </div>
+            </div>
+            <div><span class="badge badge-prospect"><span class="badge-dot"></span>Prospect</span></div>
+            <div class="contact-arrow">→</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== CONTACT PROFILE ============== -->
+    <section class="screen" id="contact-profile">
+      <div class="profile-hero">
+        <div class="breadcrumb">
+          <a href="#" data-screen="contacts-list">Contacts</a>
+          <span class="breadcrumb-sep">/</span>
+          <span>Priya Mehta</span>
+        </div>
+        <div class="profile-hero-grid">
+          <div class="profile-identity">
+            <div class="profile-avatar">PM</div>
+            <div>
+              <h1 class="profile-name">Priya Mehta</h1>
+              <div class="profile-meta-row">
+                <span><span class="badge badge-prospect"><span class="badge-dot"></span>Prospect</span></span>
+                <span class="dot"></span>
+                <span>Added by Rajiv on Mar 14, 2026</span>
+                <span class="dot"></span>
+                <span>Last activity 2h ago</span>
+              </div>
+            </div>
+          </div>
+          <div class="readiness-card">
+            <div class="ring ring-lg">
+              <svg viewBox="0 0 36 36">
+                <circle class="ring-bg" cx="18" cy="18" r="15"/>
+                <circle class="ring-fill high" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="9.4"/>
+              </svg>
+              <div class="ring-text">90</div>
+            </div>
+            <div class="readiness-card-text">
+              <strong>Ready to convert</strong>
+              Add residential address to unlock conversion.
+              <button class="unlock-btn" data-screen="convert">
+                Convert to client
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="tabs" style="padding: 0; border-bottom: none; background: transparent;">
+          <div class="tab" data-profile-tab="overview">
+            <div class="tab-check">✓</div>
+            Overview
+          </div>
+          <div class="tab" data-profile-tab="channels">
+            <div class="tab-check">✓</div>
+            Channels
+          </div>
+          <div class="tab active" data-profile-tab="snapshot">
+            <div class="tab-check">✓</div>
+            Financial Snapshot
+          </div>
+        </div>
+      </div>
+
+      <!-- Overview tab -->
+      <div class="tab-content profile-tab" id="profile-tab-overview" style="display:none;">
+        <div class="overview-grid">
+          <div class="card">
+            <div class="card-title">Personal Details</div>
+            <div class="detail-row"><div class="detail-label">Full Name</div><div class="detail-value">Mrs. Priya Mehta</div></div>
+            <div class="detail-row"><div class="detail-label">Primary Mobile</div><div class="detail-value mono">+91 98765 43210</div></div>
+            <div class="detail-row"><div class="detail-label">Email</div><div class="detail-value">priya.mehta@gmail.com</div></div>
+            <div class="detail-row"><div class="detail-label">WhatsApp</div><div class="detail-value mono">+91 98765 43210</div></div>
+            <div class="detail-row"><div class="detail-label">LinkedIn</div><div class="detail-value">linkedin.com/in/priyamehta</div></div>
+            <div class="detail-row"><div class="detail-label">Added By</div><div class="detail-value">Rajiv Khanna · Mar 14, 2026</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Channels</div>
+            <div class="channel-list">
+              <div class="channel-item">
+                <div class="channel-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+                <div class="channel-meta">
+                  <div class="channel-type">Mobile</div>
+                  <div class="channel-value">+91 98765 43210</div>
+                </div>
+                <div class="primary-pill">Primary</div>
+              </div>
+              <div class="channel-item">
+                <div class="channel-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg></div>
+                <div class="channel-meta">
+                  <div class="channel-type">Email</div>
+                  <div class="channel-value">priya.mehta@gmail.com</div>
+                </div>
+                <div class="primary-pill">Primary</div>
+              </div>
+              <div class="channel-item">
+                <div class="channel-badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 3.5A12 12 0 0 0 3.6 20.4L2 22l1.7-.5a12 12 0 0 0 16.8-18z"/></svg></div>
+                <div class="channel-meta">
+                  <div class="channel-type">WhatsApp</div>
+                  <div class="channel-value">+91 98765 43210</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Channels tab -->
+      <div class="tab-content profile-tab" id="profile-tab-channels" style="display:none;">
+        <div class="card" style="max-width: 720px;">
+          <div class="card-title">All Channels <button class="btn btn-ghost" style="padding: 6px 12px; font-size: 11px;">+ Add Channel</button></div>
+          <div class="channel-list">
+            <div class="channel-item">
+              <div class="channel-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+              <div class="channel-meta">
+                <div class="channel-type">Mobile</div>
+                <div class="channel-value">+91 98765 43210</div>
+              </div>
+              <div class="primary-pill">Primary</div>
+            </div>
+            <div class="channel-item">
+              <div class="channel-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg></div>
+              <div class="channel-meta">
+                <div class="channel-type">Email</div>
+                <div class="channel-value">priya.mehta@gmail.com</div>
+              </div>
+              <div class="primary-pill">Primary</div>
+            </div>
+            <div class="channel-item">
+              <div class="channel-badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 3.5A12 12 0 0 0 3.6 20.4L2 22l1.7-.5a12 12 0 0 0 16.8-18z"/></svg></div>
+              <div class="channel-meta">
+                <div class="channel-type">WhatsApp</div>
+                <div class="channel-value">+91 98765 43210</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Snapshot tab — the gamified flow -->
+      <div class="tab-content profile-tab" id="profile-tab-snapshot">
+        <div class="snapshot-stage">
+          <div class="snapshot-progress">
+            <div class="progress-step done"></div>
+            <div class="progress-step active"></div>
+            <div class="progress-step"></div>
+            <div class="progress-step"></div>
+            <div class="progress-step"></div>
+          </div>
+          <div class="snapshot-step-label">Step 02 of 05 · Risk Profile</div>
+          <h2 class="snapshot-question">How does Priya feel about <em>investment risk?</em></h2>
+          <p class="snapshot-helper">Pick the profile that best matches her appetite. We'll use this to shape every recommendation.</p>
+
+          <div class="risk-cards">
+            <div class="risk-card cons">
+              <div class="risk-viz">
+                <div class="risk-bar"></div><div class="risk-bar"></div><div class="risk-bar"></div><div class="risk-bar"></div><div class="risk-bar"></div>
+              </div>
+              <div class="risk-name">Conservative</div>
+              <div class="risk-tagline">Sleep well at night. Capital protection first.</div>
+              <div class="risk-stat">
+                <span class="risk-stat-label">Expected return</span>
+                <span class="risk-stat-value">7–9%</span>
+              </div>
+            </div>
+            <div class="risk-card mod selected">
+              <div class="risk-viz">
+                <div class="risk-bar"></div><div class="risk-bar"></div><div class="risk-bar"></div><div class="risk-bar"></div><div class="risk-bar"></div>
+              </div>
+              <div class="risk-name">Moderate</div>
+              <div class="risk-tagline">Balanced growth. Some bumps are okay.</div>
+              <div class="risk-stat">
+                <span class="risk-stat-label">Expected return</span>
+                <span class="risk-stat-value">10–13%</span>
+              </div>
+            </div>
+            <div class="risk-card aggr">
+              <div class="risk-viz">
+                <div class="risk-bar"></div><div class="risk-bar"></div><div class="risk-bar"></div><div class="risk-bar"></div><div class="risk-bar"></div>
+              </div>
+              <div class="risk-name">Aggressive</div>
+              <div class="risk-tagline">Long horizon. Volatility is the price of growth.</div>
+              <div class="risk-stat">
+                <span class="risk-stat-label">Expected return</span>
+                <span class="risk-stat-value">14–18%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Financial overview -->
+          <h3 class="snapshot-step-label" style="margin-top: 48px;">Financial Overview</h3>
+          <div class="fin-grid">
+            <div class="big-input-card">
+              <div class="big-input-label">Annual Income</div>
+              <div class="big-input-wrap">
+                <span class="big-input-currency">₹</span>
+                <input class="big-input" value="42,00,000" />
+              </div>
+              <div class="big-input-helper">Estimate is fine — refine later</div>
+            </div>
+            <div class="big-input-card">
+              <div class="big-input-label">Net Worth</div>
+              <div class="big-input-wrap">
+                <span class="big-input-currency">₹</span>
+                <input class="big-input" value="1,80,00,000" />
+              </div>
+              <div class="big-input-helper">Liquid + property + investments</div>
+            </div>
+          </div>
+
+          <!-- Investment allocation -->
+          <h3 class="snapshot-step-label" style="margin-top: 36px;">Existing Investments</h3>
+          <div class="alloc-section">
+            <div class="alloc-bar">
+              <div class="alloc-segment alloc-eq" style="width: 55%"></div>
+              <div class="alloc-segment alloc-debt" style="width: 30%"></div>
+              <div class="alloc-segment alloc-hyb" style="width: 15%"></div>
+            </div>
+            <div class="alloc-controls">
+              <div class="alloc-control">
+                <div class="alloc-control-head">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="alloc-dot" style="background: var(--accent);"></div>
+                    <span class="alloc-name">Equity</span>
+                  </div>
+                  <span class="alloc-percent">55%</span>
+                </div>
+                <div class="alloc-amount"><span class="alloc-amount-prefix">₹</span>33L</div>
+              </div>
+              <div class="alloc-control">
+                <div class="alloc-control-head">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="alloc-dot" style="background: var(--accent-2);"></div>
+                    <span class="alloc-name">Debt</span>
+                  </div>
+                  <span class="alloc-percent">30%</span>
+                </div>
+                <div class="alloc-amount"><span class="alloc-amount-prefix">₹</span>18L</div>
+              </div>
+              <div class="alloc-control">
+                <div class="alloc-control-head">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="alloc-dot" style="background: var(--risk-cons);"></div>
+                    <span class="alloc-name">Hybrid</span>
+                  </div>
+                  <span class="alloc-percent">15%</span>
+                </div>
+                <div class="alloc-amount"><span class="alloc-amount-prefix">₹</span>9L</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Aspirational goals -->
+          <h3 class="snapshot-step-label" style="margin-top: 36px;">Aspirational Goals</h3>
+          <div class="goal-list">
+            <div class="goal-bubble">
+              <div style="display: flex; align-items: center; gap: 14px;">
+                <div class="goal-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></div>
+                <div class="goal-name">Beach house in Goa</div>
+              </div>
+              <div class="goal-amount">₹2.5 Cr</div>
+              <div class="goal-timeline"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> 8 yrs</div>
+              <button class="goal-delete">×</button>
+            </div>
+            <div class="goal-bubble">
+              <div style="display: flex; align-items: center; gap: 14px;">
+                <div class="goal-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></div>
+                <div class="goal-name">Daughter's higher education</div>
+              </div>
+              <div class="goal-amount">₹80 L</div>
+              <div class="goal-timeline"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> 12 yrs</div>
+              <button class="goal-delete">×</button>
+            </div>
+            <div class="goal-bubble">
+              <div style="display: flex; align-items: center; gap: 14px;">
+                <div class="goal-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"/><path d="M8.21 13.89 7 23l5-3 5 3-1.21-9.12"/></svg></div>
+                <div class="goal-name">Retirement corpus</div>
+              </div>
+              <div class="goal-amount">₹6 Cr</div>
+              <div class="goal-timeline"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> 20 yrs</div>
+              <button class="goal-delete">×</button>
+            </div>
+          </div>
+          <button class="add-goal-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Add another goal
+          </button>
+
+          <div class="snapshot-nav">
+            <button class="btn btn-ghost">← Back</button>
+            <div class="step-counter"><strong>2</strong> / 5</div>
+            <button class="btn btn-accent" data-screen="convert">
+              Continue to convert
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== CONVERT TO CLIENT ============== -->
+    <section class="screen convert-screen" id="convert">
+      <div class="convert-header">
+        <div class="breadcrumb">
+          <a href="#" data-screen="contacts-list">Contacts</a>
+          <span class="breadcrumb-sep">/</span>
+          <a href="#" data-screen="contact-profile">Priya Mehta</a>
+          <span class="breadcrumb-sep">/</span>
+          <span>Convert to Client</span>
+        </div>
+        <div class="convert-stepper">
+          The final step · <strong>5</strong> new fields · ~2 min
+        </div>
+      </div>
+
+      <div class="convert-body">
+        <!-- Left rail: story of what we know -->
+        <aside class="convert-rail">
+          <div class="rail-eyebrow">Conversion Brief</div>
+          <h2 class="rail-title">Welcome <em>Priya</em> to your client family.</h2>
+          <p class="rail-sub">You've already gathered everything that matters. Here's what's on file — just fill the official details on the right.</p>
+
+          <div class="rail-known">
+            <div class="rail-item">
+              <div class="rail-check">✓</div>
+              <div>
+                <div class="rail-item-label">Identity</div>
+                <div class="rail-item-value">Mrs. Priya Mehta</div>
+              </div>
+            </div>
+            <div class="rail-item">
+              <div class="rail-check">✓</div>
+              <div>
+                <div class="rail-item-label">3 Channels</div>
+                <div class="rail-item-value">Mobile · Email · WhatsApp</div>
+              </div>
+            </div>
+            <div class="rail-item">
+              <div class="rail-check">✓</div>
+              <div>
+                <div class="rail-item-label">Risk Profile</div>
+                <div class="rail-item-value">Moderate</div>
+              </div>
+            </div>
+            <div class="rail-item">
+              <div class="rail-check">✓</div>
+              <div>
+                <div class="rail-item-label">Net Worth</div>
+                <div class="rail-item-value">₹1.80 Cr</div>
+              </div>
+            </div>
+            <div class="rail-item">
+              <div class="rail-check">✓</div>
+              <div>
+                <div class="rail-item-label">3 Aspirational Goals</div>
+                <div class="rail-item-value">Goa house, education, retirement</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="rail-quote">
+            <div class="rail-quote-text">A conversion isn't paperwork — it's the moment a stranger trusts you with their future.</div>
+            <div class="rail-quote-author">— ContactNest philosophy</div>
+          </div>
+        </aside>
+
+        <!-- Right form -->
+        <div class="convert-form">
+          <div class="form-section">
+            <div class="form-section-head">
+              <span class="form-section-num">01</span>
+              <h3 class="form-section-title">Identity Verification</h3>
+              <span class="form-section-sub">Required by SEBI</span>
+            </div>
+            <div class="form-grid-3">
+              <div class="field">
+                <label class="label">PAN Number</label>
+                <input class="input pan-input" placeholder="ABCDE1234F" />
+              </div>
+              <div class="field">
+                <label class="label">Date of Birth</label>
+                <input class="input" type="date" />
+              </div>
+              <div class="field">
+                <label class="label">Anniversary <span class="label-optional">optional</span></label>
+                <input class="input" type="date" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section-head">
+              <span class="form-section-num">02</span>
+              <h3 class="form-section-title">Distributor Reference</h3>
+              <span class="form-section-sub">Your tracking code</span>
+            </div>
+            <div class="ext-ref-wrap">
+              <div class="ext-ref-label">IWELL · Code</div>
+              <input class="ext-ref-input" value="PMT-2026-0047" />
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section-head">
+              <span class="form-section-num">03</span>
+              <h3 class="form-section-title">Family Structure</h3>
+              <span class="form-section-sub">Group household members</span>
+            </div>
+            <div class="toggle-cards">
+              <div class="toggle-card selected">
+                <div class="toggle-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h1M9 12h1M9 15h1M14 9h1M14 12h1M14 15h1"/></svg>
+                </div>
+                <div>
+                  <div class="toggle-label">Family Head</div>
+                  <div class="toggle-sub">Will create a new family</div>
+                </div>
+              </div>
+              <div class="toggle-card">
+                <div class="toggle-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+                </div>
+                <div>
+                  <div class="toggle-label">Family Member</div>
+                  <div class="toggle-sub">Link to existing family</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section-head">
+              <span class="form-section-num">04</span>
+              <h3 class="form-section-title">Residential Address</h3>
+              <span class="form-section-sub">Sets as primary</span>
+            </div>
+            <div class="field">
+              <label class="label">Address Line 1</label>
+              <input class="input" placeholder="Flat / House no., Building" />
+            </div>
+            <div class="field">
+              <label class="label">Address Line 2 <span class="label-optional">optional</span></label>
+              <input class="input" placeholder="Street, Area, Landmark" />
+            </div>
+            <div class="form-grid-3">
+              <div class="field">
+                <label class="label">City</label>
+                <input class="input" placeholder="Mumbai" />
+              </div>
+              <div class="field">
+                <label class="label">State</label>
+                <input class="input" placeholder="Maharashtra" />
+              </div>
+              <div class="field">
+                <label class="label">Pincode</label>
+                <input class="input" placeholder="400001" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section-head">
+              <span class="form-section-num">05</span>
+              <h3 class="form-section-title">Referral</h3>
+              <span class="form-section-sub">Optional</span>
+            </div>
+            <div class="field">
+              <label class="label">Referred By</label>
+              <input class="input" placeholder="Name of person who referred" />
+            </div>
+          </div>
+
+          <div class="convert-footer">
+            <button class="btn btn-ghost" data-screen="contact-profile">← Back to profile</button>
+            <button class="btn btn-accent btn-lg" id="trigger-success">
+              Convert Priya to Client
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== CLIENTS LIST ============== -->
+    <section class="screen" id="clients-list">
+      <div class="page-header">
+        <div class="page-header-row">
+          <div>
+            <div class="page-eyebrow">Roster</div>
+            <h1 class="page-title">Clients <em>under management</em></h1>
+            <div class="page-meta">
+              <div><strong>47</strong> active</div>
+              <div><strong>₹38.4 Cr</strong> AUM</div>
+              <div><strong>12</strong> bookmarked</div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-lg">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Add Client
+          </button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="search">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" placeholder="Search by name, PAN, IWELL code…" />
+          <span class="kbd">⌘K</span>
+        </div>
+        <button class="filter-pill active">All</button>
+        <button class="filter-pill">Bookmarked</button>
+        <button class="filter-pill">Conservative</button>
+        <button class="filter-pill">Moderate</button>
+        <button class="filter-pill">Aggressive</button>
+        <div class="view-toggle">
+          <button class="active" id="view-cards">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            Cards
+          </button>
+          <button id="view-table">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            Table
+          </button>
+        </div>
+      </div>
+
+      <div class="contacts-list-content">
+        <div class="clients-roster" id="roster-view">
+          <div class="client-card risk-mod" data-client="priya">
+            <div class="bookmark-ribbon"></div>
+            <div class="client-card-head">
+              <div class="client-avatar" style="background: linear-gradient(135deg, #c47e1a, #8a5410);">PM</div>
+              <div>
+                <div class="client-name">Priya Mehta</div>
+                <div class="client-card-ref">
+                  <span class="badge-mini">IWELL</span> PMT-2026-0047
+                </div>
+              </div>
+            </div>
+            <div class="client-stats">
+              <div>
+                <div class="client-stat-label">Portfolio</div>
+                <div class="client-stat-value"><span class="currency">₹</span>62.4L <span class="delta">+8.2%</span></div>
+              </div>
+              <div>
+                <div class="client-stat-label">XIRR</div>
+                <div class="client-stat-value">14.2<span class="currency">%</span></div>
+              </div>
+            </div>
+            <svg class="sparkline" viewBox="0 0 200 32" preserveAspectRatio="none">
+              <path class="area" d="M0,24 L20,22 L40,18 L60,20 L80,14 L100,12 L120,8 L140,10 L160,6 L180,4 L200,2 L200,32 L0,32 Z"/>
+              <path d="M0,24 L20,22 L40,18 L60,20 L80,14 L100,12 L120,8 L140,10 L160,6 L180,4 L200,2"/>
+            </svg>
+            <div class="client-card-foot">
+              <span class="risk-tag mod"><span class="dot"></span>Moderate</span>
+              <span>Last activity 2h ago</span>
+            </div>
+          </div>
+
+          <div class="client-card risk-cons">
+            <div class="client-card-head">
+              <div class="client-avatar" style="background: linear-gradient(135deg, #4a7a8c, #2d4f5c);">RG</div>
+              <div>
+                <div class="client-name">Ramesh Gupta</div>
+                <div class="client-card-ref">
+                  <span class="badge-mini">IWELL</span> RGP-2025-0021
+                </div>
+              </div>
+            </div>
+            <div class="client-stats">
+              <div>
+                <div class="client-stat-label">Portfolio</div>
+                <div class="client-stat-value"><span class="currency">₹</span>1.84Cr <span class="delta">+4.1%</span></div>
+              </div>
+              <div>
+                <div class="client-stat-label">XIRR</div>
+                <div class="client-stat-value">9.8<span class="currency">%</span></div>
+              </div>
+            </div>
+            <svg class="sparkline" viewBox="0 0 200 32" preserveAspectRatio="none">
+              <path class="area" d="M0,20 L20,22 L40,19 L60,21 L80,18 L100,16 L120,17 L140,14 L160,15 L180,12 L200,10 L200,32 L0,32 Z"/>
+              <path d="M0,20 L20,22 L40,19 L60,21 L80,18 L100,16 L120,17 L140,14 L160,15 L180,12 L200,10"/>
+            </svg>
+            <div class="client-card-foot">
+              <span class="risk-tag cons"><span class="dot"></span>Conservative</span>
+              <span>Last activity 1d ago</span>
+            </div>
+          </div>
+
+          <div class="client-card risk-aggr">
+            <div class="bookmark-ribbon"></div>
+            <div class="client-card-head">
+              <div class="client-avatar" style="background: linear-gradient(135deg, #b54034, #7a2820);">KI</div>
+              <div>
+                <div class="client-name">Karthik Iyer</div>
+                <div class="client-card-ref">
+                  <span class="badge-mini">IWELL</span> KIY-2024-0089
+                </div>
+              </div>
+            </div>
+            <div class="client-stats">
+              <div>
+                <div class="client-stat-label">Portfolio</div>
+                <div class="client-stat-value"><span class="currency">₹</span>3.21Cr <span class="delta">+18.5%</span></div>
+              </div>
+              <div>
+                <div class="client-stat-label">XIRR</div>
+                <div class="client-stat-value">21.4<span class="currency">%</span></div>
+              </div>
+            </div>
+            <svg class="sparkline" viewBox="0 0 200 32" preserveAspectRatio="none">
+              <path class="area" d="M0,28 L20,24 L40,26 L60,18 L80,22 L100,12 L120,16 L140,8 L160,10 L180,4 L200,2 L200,32 L0,32 Z"/>
+              <path d="M0,28 L20,24 L40,26 L60,18 L80,22 L100,12 L120,16 L140,8 L160,10 L180,4 L200,2"/>
+            </svg>
+            <div class="client-card-foot">
+              <span class="risk-tag aggr"><span class="dot"></span>Aggressive</span>
+              <span>Last activity 3h ago</span>
+            </div>
+          </div>
+
+          <div class="client-card risk-mod">
+            <div class="client-card-head">
+              <div class="client-avatar" style="background: linear-gradient(135deg, #5b8a72, #2d5944);">AN</div>
+              <div>
+                <div class="client-name">Anita Nair</div>
+                <div class="client-card-ref">
+                  <span class="badge-mini">IWELL</span> ANR-2025-0114
+                </div>
+              </div>
+            </div>
+            <div class="client-stats">
+              <div>
+                <div class="client-stat-label">Portfolio</div>
+                <div class="client-stat-value"><span class="currency">₹</span>89.2L <span class="delta">+11.3%</span></div>
+              </div>
+              <div>
+                <div class="client-stat-label">XIRR</div>
+                <div class="client-stat-value">12.7<span class="currency">%</span></div>
+              </div>
+            </div>
+            <svg class="sparkline" viewBox="0 0 200 32" preserveAspectRatio="none">
+              <path class="area" d="M0,22 L20,18 L40,20 L60,14 L80,16 L100,10 L120,12 L140,8 L160,9 L180,6 L200,5 L200,32 L0,32 Z"/>
+              <path d="M0,22 L20,18 L40,20 L60,14 L80,16 L100,10 L120,12 L140,8 L160,9 L180,6 L200,5"/>
+            </svg>
+            <div class="client-card-foot">
+              <span class="risk-tag mod"><span class="dot"></span>Moderate</span>
+              <span>Last activity 5h ago</span>
+            </div>
+          </div>
+
+          <div class="client-card risk-cons">
+            <div class="bookmark-ribbon"></div>
+            <div class="client-card-head">
+              <div class="client-avatar" style="background: linear-gradient(135deg, #6b4e8a, #3d2a55);">SD</div>
+              <div>
+                <div class="client-name">Sunil Desai</div>
+                <div class="client-card-ref">
+                  <span class="badge-mini">IWELL</span> SDS-2023-0008
+                </div>
+              </div>
+            </div>
+            <div class="client-stats">
+              <div>
+                <div class="client-stat-label">Portfolio</div>
+                <div class="client-stat-value"><span class="currency">₹</span>4.62Cr <span class="delta">+3.8%</span></div>
+              </div>
+              <div>
+                <div class="client-stat-label">XIRR</div>
+                <div class="client-stat-value">8.9<span class="currency">%</span></div>
+              </div>
+            </div>
+            <svg class="sparkline" viewBox="0 0 200 32" preserveAspectRatio="none">
+              <path class="area" d="M0,18 L20,20 L40,17 L60,19 L80,15 L100,17 L120,14 L140,15 L160,12 L180,13 L200,10 L200,32 L0,32 Z"/>
+              <path d="M0,18 L20,20 L40,17 L60,19 L80,15 L100,17 L120,14 L140,15 L160,12 L180,13 L200,10"/>
+            </svg>
+            <div class="client-card-foot">
+              <span class="risk-tag cons"><span class="dot"></span>Conservative</span>
+              <span>Last activity 2d ago</span>
+            </div>
+          </div>
+
+          <div class="client-card risk-aggr">
+            <div class="client-card-head">
+              <div class="client-avatar" style="background: linear-gradient(135deg, #1a6a52, #0d3f31);">MP</div>
+              <div>
+                <div class="client-name">Manish Patel</div>
+                <div class="client-card-ref">
+                  <span class="badge-mini">IWELL</span> MPT-2025-0067
+                </div>
+              </div>
+            </div>
+            <div class="client-stats">
+              <div>
+                <div class="client-stat-label">Portfolio</div>
+                <div class="client-stat-value"><span class="currency">₹</span>1.12Cr <span class="delta down">−2.4%</span></div>
+              </div>
+              <div>
+                <div class="client-stat-label">XIRR</div>
+                <div class="client-stat-value">16.8<span class="currency">%</span></div>
+              </div>
+            </div>
+            <svg class="sparkline" viewBox="0 0 200 32" preserveAspectRatio="none">
+              <path class="area" d="M0,12 L20,14 L40,10 L60,16 L80,8 L100,18 L120,12 L140,20 L160,14 L180,22 L200,18 L200,32 L0,32 Z"/>
+              <path d="M0,12 L20,14 L40,10 L60,16 L80,8 L100,18 L120,12 L140,20 L160,14 L180,22 L200,18"/>
+            </svg>
+            <div class="client-card-foot">
+              <span class="risk-tag aggr"><span class="dot"></span>Aggressive</span>
+              <span>Last activity 1h ago</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dense table view -->
+        <div class="clients-table" id="table-view">
+          <div class="contacts-table">
+            <div class="table-head" style="grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr 60px;">
+              <div>Client</div>
+              <div>IWELL Code</div>
+              <div>Risk</div>
+              <div>Portfolio</div>
+              <div>XIRR</div>
+              <div></div>
+            </div>
+            <div class="contact-row" style="grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr 60px;">
+              <div class="contact-name-cell">
+                <div class="contact-avatar av-2">PM</div>
+                <div>
+                  <div class="contact-name">Priya Mehta</div>
+                  <div class="contact-sub">Mumbai · 1 family</div>
+                </div>
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 12px;">PMT-2026-0047</div>
+              <div><span class="risk-tag mod"><span class="dot"></span>Moderate</span></div>
+              <div style="font-weight: 600;">₹62.4L <span style="color: var(--ok); font-size: 11px;">+8.2%</span></div>
+              <div style="font-weight: 600; font-family: var(--font-mono);">14.2%</div>
+              <div class="contact-arrow">→</div>
+            </div>
+            <div class="contact-row" style="grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr 60px;">
+              <div class="contact-name-cell">
+                <div class="contact-avatar av-3">RG</div>
+                <div>
+                  <div class="contact-name">Ramesh Gupta</div>
+                  <div class="contact-sub">Pune · 4 family</div>
+                </div>
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 12px;">RGP-2025-0021</div>
+              <div><span class="risk-tag cons"><span class="dot"></span>Conservative</span></div>
+              <div style="font-weight: 600;">₹1.84Cr <span style="color: var(--ok); font-size: 11px;">+4.1%</span></div>
+              <div style="font-weight: 600; font-family: var(--font-mono);">9.8%</div>
+              <div class="contact-arrow">→</div>
+            </div>
+            <div class="contact-row" style="grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr 60px;">
+              <div class="contact-name-cell">
+                <div class="contact-avatar av-4">KI</div>
+                <div>
+                  <div class="contact-name">Karthik Iyer</div>
+                  <div class="contact-sub">Bangalore · 2 family</div>
+                </div>
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 12px;">KIY-2024-0089</div>
+              <div><span class="risk-tag aggr"><span class="dot"></span>Aggressive</span></div>
+              <div style="font-weight: 600;">₹3.21Cr <span style="color: var(--ok); font-size: 11px;">+18.5%</span></div>
+              <div style="font-weight: 600; font-family: var(--font-mono);">21.4%</div>
+              <div class="contact-arrow">→</div>
+            </div>
+            <div class="contact-row" style="grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr 60px;">
+              <div class="contact-name-cell">
+                <div class="contact-avatar av-1">AN</div>
+                <div>
+                  <div class="contact-name">Anita Nair</div>
+                  <div class="contact-sub">Kochi · 1 family</div>
+                </div>
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 12px;">ANR-2025-0114</div>
+              <div><span class="risk-tag mod"><span class="dot"></span>Moderate</span></div>
+              <div style="font-weight: 600;">₹89.2L <span style="color: var(--ok); font-size: 11px;">+11.3%</span></div>
+              <div style="font-weight: 600; font-family: var(--font-mono);">12.7%</div>
+              <div class="contact-arrow">→</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== CLIENT PROFILE ============== -->
+    <section class="screen" id="client-profile">
+      <div class="client-profile-hero">
+        <div class="breadcrumb">
+          <a href="#" data-screen="clients-list">Clients</a>
+          <span class="breadcrumb-sep">/</span>
+          <span>Priya Mehta</span>
+        </div>
+        <div class="client-hero-grid">
+          <div class="client-hero-left">
+            <div class="client-hero-avatar">PM</div>
+            <div>
+              <h1 class="client-hero-name">Priya Mehta</h1>
+              <div class="client-hero-tags">
+                <span class="badge badge-client"><span class="badge-dot"></span>Active Client</span>
+                <div class="hero-ext-ref">
+                  <div class="label">IWELL</div>
+                  <div class="value">PMT-2026-0047</div>
+                </div>
+                <span class="risk-tag mod"><span class="dot"></span>Moderate</span>
+              </div>
+            </div>
+          </div>
+          <div class="client-hero-right">
+            <button class="bookmark-btn active">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            </button>
+            <button class="btn btn-ghost"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</button>
+            <button class="btn btn-accent">+ New Goal</button>
+          </div>
+        </div>
+
+        <div class="kpi-strip">
+          <div class="kpi">
+            <div class="kpi-label">Portfolio Value</div>
+            <div class="kpi-value"><span class="unit">₹</span>62.4<span class="unit">L</span></div>
+            <div class="kpi-delta">↑ ₹4.7L this month</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">XIRR</div>
+            <div class="kpi-value">14.2<span class="unit">%</span></div>
+            <div class="kpi-delta">↑ 0.8% vs benchmark</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Active Goals</div>
+            <div class="kpi-value">3</div>
+            <div class="kpi-delta" style="color: var(--ink-3);">2 on track · 1 lagging</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Family Members</div>
+            <div class="kpi-value">1</div>
+            <div class="kpi-delta" style="color: var(--ink-3);">Family head</div>
+          </div>
+        </div>
+
+        <div class="tabs" style="padding: 0; border-bottom: none; background: transparent;">
+          <div class="tab active" data-client-tab="overview">Overview</div>
+          <div class="tab" data-client-tab="channels">Channels</div>
+          <div class="tab" data-client-tab="addresses">Addresses</div>
+          <div class="tab" data-client-tab="goals">Goals</div>
+          <div class="tab" data-client-tab="portfolio">Portfolio</div>
+        </div>
+      </div>
+
+      <div class="tab-content client-tab" id="client-tab-overview">
+        <div class="overview-grid">
+          <div class="card">
+            <div class="card-title">Personal & Identity</div>
+            <div class="detail-row"><div class="detail-label">Full Name</div><div class="detail-value">Mrs. Priya Mehta</div></div>
+            <div class="detail-row"><div class="detail-label">PAN</div><div class="detail-value mono">ABCDE1234F</div></div>
+            <div class="detail-row"><div class="detail-label">Date of Birth</div><div class="detail-value">12 May 1985</div></div>
+            <div class="detail-row"><div class="detail-label">Anniversary</div><div class="detail-value">8 Nov 2010</div></div>
+            <div class="detail-row"><div class="detail-label">IWELL Code</div><div class="detail-value mono">PMT-2026-0047</div></div>
+            <div class="detail-row"><div class="detail-label">Family</div><div class="detail-value">Family Head · Mehta family</div></div>
+            <div class="detail-row"><div class="detail-label">Onboarded</div><div class="detail-value">Mar 14, 2026 · by Rajiv Khanna</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Financial Snapshot</div>
+            <div class="detail-row"><div class="detail-label">Risk Profile</div><div class="detail-value"><span class="risk-tag mod"><span class="dot"></span>Moderate</span></div></div>
+            <div class="detail-row"><div class="detail-label">Annual Income</div><div class="detail-value mono">₹42,00,000</div></div>
+            <div class="detail-row"><div class="detail-label">Net Worth</div><div class="detail-value mono">₹1,80,00,000</div></div>
+            <div class="detail-row"><div class="detail-label">Equity</div><div class="detail-value mono">₹33,00,000 · 55%</div></div>
+            <div class="detail-row"><div class="detail-label">Debt</div><div class="detail-value mono">₹18,00,000 · 30%</div></div>
+            <div class="detail-row"><div class="detail-label">Hybrid</div><div class="detail-value mono">₹9,00,000 · 15%</div></div>
+            <div class="detail-row"><div class="detail-label">Goals</div><div class="detail-value">3 active</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content client-tab" id="client-tab-channels" style="display:none;">
+        <div class="card" style="max-width: 720px;">
+          <div class="card-title">Channels <button class="btn btn-ghost" style="padding: 6px 12px; font-size: 11px;">+ Add</button></div>
+          <div class="channel-list">
+            <div class="channel-item">
+              <div class="channel-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+              <div class="channel-meta"><div class="channel-type">Mobile</div><div class="channel-value">+91 98765 43210</div></div>
+              <div class="primary-pill">Primary</div>
+            </div>
+            <div class="channel-item">
+              <div class="channel-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg></div>
+              <div class="channel-meta"><div class="channel-type">Email</div><div class="channel-value">priya.mehta@gmail.com</div></div>
+              <div class="primary-pill">Primary</div>
+            </div>
+            <div class="channel-item">
+              <div class="channel-badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 3.5A12 12 0 0 0 3.6 20.4L2 22l1.7-.5a12 12 0 0 0 16.8-18z"/></svg></div>
+              <div class="channel-meta"><div class="channel-type">WhatsApp</div><div class="channel-value">+91 98765 43210</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content client-tab" id="client-tab-addresses" style="display:none;">
+        <div class="card" style="max-width: 720px;">
+          <div class="card-title">Addresses <button class="btn btn-ghost" style="padding: 6px 12px; font-size: 11px;">+ Add</button></div>
+          <div class="channel-list">
+            <div class="channel-item">
+              <div class="channel-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></div>
+              <div class="channel-meta">
+                <div class="channel-type">Residential</div>
+                <div class="channel-value" style="font-family: inherit; font-weight: 500;">A-704, Marina Heights, Bandra West, Mumbai 400050</div>
+              </div>
+              <div class="primary-pill">Primary</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content client-tab" id="client-tab-goals" style="display:none;">
+        <div class="future-tab-empty">
+          <div class="future-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+          <div class="future-title">Goals & Planning</div>
+          <div class="future-sub">Connect the Planning skill to map Priya's 3 aspirational goals to live portfolios with progress tracking, SIP recommendations, and shortfall alerts.</div>
+          <button class="btn btn-ghost">Enable Planning Skill →</button>
+        </div>
+      </div>
+
+      <div class="tab-content client-tab" id="client-tab-portfolio" style="display:none;">
+        <div class="future-tab-empty">
+          <div class="future-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 6-6"/></svg></div>
+          <div class="future-title">Live Portfolio</div>
+          <div class="future-sub">Connect the Portfolio skill to see live folio values, transaction history, scheme breakdowns, capital gains, and benchmark comparisons.</div>
+          <button class="btn btn-ghost">Enable Portfolio Skill →</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ============== ADD CONTACT DRAWER ============== -->
+<div class="drawer-backdrop" id="drawer-backdrop"></div>
+<aside class="drawer" id="add-contact-drawer">
+  <div class="drawer-header">
+    <h2 class="drawer-title">New Contact</h2>
+    <p class="drawer-sub">Capture the basics now — you can refine the rest later.</p>
+    <button class="drawer-close" id="close-drawer">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body">
+    <div class="field">
+      <label class="label">Prefix</label>
+      <div class="prefix-pills">
+        <button class="prefix-pill">Mr</button>
+        <button class="prefix-pill active">Mrs</button>
+        <button class="prefix-pill">Ms</button>
+        <button class="prefix-pill">Dr</button>
+      </div>
+    </div>
+    <div class="field">
+      <label class="label">Full Name</label>
+      <input class="input" placeholder="Priya Mehta" />
+    </div>
+    <div class="field">
+      <label class="label">Primary Mobile</label>
+      <div class="input-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        <input class="input" placeholder="+91 98765 43210" />
+      </div>
+    </div>
+    <div class="field">
+      <label class="label">Email <span class="label-optional">optional</span></label>
+      <div class="input-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
+        <input class="input" placeholder="name@example.com" />
+      </div>
+    </div>
+    <div class="field">
+      <label class="label">WhatsApp <span class="label-optional">optional</span></label>
+      <div class="input-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 3.5A12 12 0 0 0 3.6 20.4L2 22l1.7-.5a12 12 0 0 0 16.8-18z"/></svg>
+        <input class="input" placeholder="Same as mobile? Toggle to copy" />
+      </div>
+    </div>
+    <div class="field">
+      <label class="label">LinkedIn URL <span class="label-optional">optional</span></label>
+      <input class="input" placeholder="linkedin.com/in/…" />
+    </div>
+  </div>
+  <div class="drawer-footer">
+    <button class="btn btn-ghost" id="cancel-drawer">Cancel</button>
+    <button class="btn btn-accent" id="save-drawer">Save Contact</button>
+  </div>
+</aside>
+
+<!-- ============== SUCCESS SCREEN ============== -->
+<div class="success-screen" id="success-screen">
+  <div class="success-content">
+    <div class="success-card">
+      <div class="success-card-eyebrow">ContactNest · Active Client</div>
+      <div class="success-card-title">Priya Mehta</div>
+      <div class="success-ext-ref">
+        <div class="ext-ref-label">IWELL · Code</div>
+        <div class="ext-ref-input" style="border:none; padding: 8px 14px;">PMT-2026-0047</div>
+      </div>
+      <div class="success-card-meta">
+        <span>SINCE APR 2026</span>
+        <span>RAJIV KHANNA · MFD</span>
+      </div>
+    </div>
+    <h1 class="success-headline">Welcome <em>Priya</em><br/>to your client family.</h1>
+    <p class="success-sub">All snapshot data has been migrated · 3 goals seeded · Family record created.</p>
+    <div class="success-actions">
+      <button class="btn-success-primary" data-screen="client-profile">View Client Profile →</button>
+      <button class="btn-success-ghost" data-screen="clients-list">Back to Roster</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============== Navigation ==============
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const target = document.getElementById(id);
+  if (target) {
+    target.classList.add('active');
+    document.querySelector('.main').scrollTop = 0;
+  }
+  // Update sidebar nav
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (id === 'contacts-list' || id === 'contact-profile') {
+    document.querySelector('[data-screen="contacts-list"].nav-item')?.classList.add('active');
+  } else if (id === 'clients-list' || id === 'client-profile' || id === 'convert') {
+    document.querySelector('[data-screen="clients-list"].nav-item')?.classList.add('active');
+  }
+  // Hide success screen on any nav
+  document.getElementById('success-screen').classList.remove('active');
+}
+
+document.addEventListener('click', e => {
+  const trigger = e.target.closest('[data-screen]');
+  if (trigger) {
+    e.preventDefault();
+    const screen = trigger.dataset.screen;
+    showScreen(screen);
+  }
+});
+
+// ============== Drawer ==============
+const drawer = document.getElementById('add-contact-drawer');
+const backdrop = document.getElementById('drawer-backdrop');
+function openDrawer() { drawer.classList.add('active'); backdrop.classList.add('active'); }
+function closeDrawer() { drawer.classList.remove('active'); backdrop.classList.remove('active'); }
+document.getElementById('open-add-contact').addEventListener('click', openDrawer);
+document.getElementById('close-drawer').addEventListener('click', closeDrawer);
+document.getElementById('cancel-drawer').addEventListener('click', closeDrawer);
+document.getElementById('save-drawer').addEventListener('click', closeDrawer);
+backdrop.addEventListener('click', closeDrawer);
+
+// Prefix pills
+document.querySelectorAll('.prefix-pill').forEach(p => {
+  p.addEventListener('click', () => {
+    p.parentElement.querySelectorAll('.prefix-pill').forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+  });
+});
+
+// ============== Profile tabs ==============
+document.querySelectorAll('[data-profile-tab]').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('[data-profile-tab]').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.profile-tab').forEach(c => c.style.display = 'none');
+    document.getElementById('profile-tab-' + tab.dataset.profileTab).style.display = 'block';
+  });
+});
+
+// ============== Client tabs ==============
+document.querySelectorAll('[data-client-tab]').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('[data-client-tab]').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.client-tab').forEach(c => c.style.display = 'none');
+    document.getElementById('client-tab-' + tab.dataset.clientTab).style.display = 'block';
+  });
+});
+
+// ============== Risk card selection ==============
+document.querySelectorAll('.risk-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.risk-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+  });
+});
+
+// ============== Filter pills ==============
+document.querySelectorAll('.filter-pill').forEach(p => {
+  p.addEventListener('click', () => {
+    p.parentElement.querySelectorAll('.filter-pill').forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+  });
+});
+
+// ============== View toggle (cards/table) ==============
+const viewCards = document.getElementById('view-cards');
+const viewTable = document.getElementById('view-table');
+const rosterView = document.getElementById('roster-view');
+const tableView = document.getElementById('table-view');
+viewCards?.addEventListener('click', () => {
+  viewCards.classList.add('active');
+  viewTable.classList.remove('active');
+  rosterView.classList.remove('hidden');
+  tableView.classList.remove('active');
+});
+viewTable?.addEventListener('click', () => {
+  viewTable.classList.add('active');
+  viewCards.classList.remove('active');
+  rosterView.classList.add('hidden');
+  tableView.classList.add('active');
+});
+
+// ============== Click contact row → profile ==============
+document.querySelectorAll('#contacts-list .contact-row').forEach(row => {
+  row.addEventListener('click', () => showScreen('contact-profile'));
+});
+
+// ============== Click client card → profile ==============
+document.querySelectorAll('.client-card').forEach(card => {
+  card.addEventListener('click', () => showScreen('client-profile'));
+});
+document.querySelectorAll('#clients-list .contact-row').forEach(row => {
+  row.addEventListener('click', () => showScreen('client-profile'));
+});
+
+// ============== Trigger success screen ==============
+document.getElementById('trigger-success').addEventListener('click', () => {
+  document.getElementById('success-screen').classList.add('active');
+});
+</script>
+
+</body>
+</html>

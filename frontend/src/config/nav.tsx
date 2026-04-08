@@ -14,6 +14,8 @@ export interface NavItem {
   icon: ReactNode;
   href: string;
   section: 'main' | 'data' | 'system';
+  /** If true, item is only shown to users with isAdmin = true */
+  adminOnly?: boolean;
   /** Skill to execute when this item is activated */
   skill?: string;
   /** Default function to call on the skill */
@@ -48,6 +50,16 @@ export const NAV_ITEMS: NavItem[] = [
     skill: 'alert-skill',
     fn: 'generate_daily_briefing',
     recipe: 'daily-briefing',
+  },
+  {
+    id: 'contacts',
+    label: 'Contacts',
+    icon: <Icon><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></Icon>,
+    href: '/contacts',
+    section: 'main',
+    skill: 'contact-skill',
+    fn: 'get_contacts',
+    recipe: 'contact-list',
   },
   {
     id: 'clients',
@@ -113,11 +125,33 @@ export const NAV_ITEMS: NavItem[] = [
   /* ── DATA (import, ETL, operations) ────────────────── */
 
   {
+    id: 'market-dashboard',
+    label: 'Market',
+    icon: <Icon><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 10l3 3 3-3 4 4" /></Icon>,
+    href: '/market/dashboard',
+    section: 'data',
+    skill: 'market-skill',
+    fn: 'get_market_stats',
+    recipe: 'market-dashboard',
+  },
+  {
+    id: 'market-history',
+    label: 'Market Data',
+    icon: <Icon><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></Icon>,
+    href: '/market/history',
+    section: 'data',
+    adminOnly: true,
+    skill: 'market-skill',
+    fn: 'get_market_indices',
+    recipe: 'market-history',
+  },
+  {
     id: 'global-nav',
     label: 'Global NAV',
     icon: <Icon><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></Icon>,
     href: '/global-nav',
     section: 'data',
+    adminOnly: true,
     skill: 'market-skill',
     fn: 'search_schemes',
     recipe: 'scheme-explorer',
@@ -162,6 +196,14 @@ export const NAV_ITEMS: NavItem[] = [
     fn: 'get_corrections',
     recipe: 'course-correction',
   },
+  {
+    id: 'master-data',
+    label: 'Master Data',
+    icon: <Icon><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /></Icon>,
+    href: '/master-data',
+    section: 'data',
+    adminOnly: true,
+  },
 
   /* ── SYSTEM (alerts, reports, settings) ─────────────── */
 
@@ -205,6 +247,14 @@ export const NAV_ITEMS: NavItem[] = [
 export function getActiveNavId(pathname: string): string {
   const exact = NAV_ITEMS.find((item) => item.href === pathname);
   if (exact) return exact.id;
+
+  // Market sub-routes: /market/dashboard → market-dashboard, /market/history|indices → market-history
+  if (pathname.startsWith('/market/dashboard')) return 'market-dashboard';
+  if (pathname.startsWith('/market/')) return 'market-history';
+
+  // Contact/client profile pages
+  if (pathname.startsWith('/contacts')) return 'contacts';
+  if (pathname.startsWith('/clients'))  return 'clients';
 
   const prefix = NAV_ITEMS.find((item) => item.href !== '/' && pathname.startsWith(item.href));
   if (prefix) return prefix.id;

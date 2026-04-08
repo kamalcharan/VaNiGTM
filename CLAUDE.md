@@ -384,6 +384,15 @@ Before writing any code, **ask the user** if the kewalinvest submodule should be
 npm run dev    # Single process: Express + Next.js on port 3000
 ```
 
+## Migrations — MANUAL ONLY, NO AUTO-MIGRATE
+
+**Migrations are NEVER run automatically on server startup. No exceptions.**
+
+- `server.ts` does NOT call `runMigrations()`. Do not add it.
+- Migrations are applied manually by the developer: `cd backend && npm run db:migrate`
+- Before adding a migration: discuss with the user. Schema changes are permanent.
+- `npm run db:migrate -- --status` to check what's pending vs applied.
+
 ## Testing skills directly
 ```
 POST http://localhost:3000/api/v1/skills/:skillName/:functionName

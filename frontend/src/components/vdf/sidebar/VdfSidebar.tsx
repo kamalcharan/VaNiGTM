@@ -22,7 +22,7 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
   const { data: me } = useMe();
   const logoutMutation = useLogout();
   const { showToast } = useToast();
-  const { isLive, switchEnv } = useAuth();
+  const { isLive, isAdmin, switchEnv } = useAuth();
 
   const [expanded, setExpanded] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -32,9 +32,10 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
   const [switching, setSwitching] = useState(false);
 
   const currentId = activeId || getActiveNavId(pathname);
-  const mainItems = NAV_ITEMS.filter((item) => item.section === 'main');
-  const dataItems = NAV_ITEMS.filter((item) => item.section === 'data');
-  const systemItems = NAV_ITEMS.filter((item) => item.section === 'system');
+  const visible = (item: NavItem) => !item.adminOnly || isAdmin;
+  const mainItems   = NAV_ITEMS.filter((item) => item.section === 'main'   && visible(item));
+  const dataItems   = NAV_ITEMS.filter((item) => item.section === 'data'   && visible(item));
+  const systemItems = NAV_ITEMS.filter((item) => item.section === 'system' && visible(item));
 
   const user = me?.user;
   const initials = user?.name
