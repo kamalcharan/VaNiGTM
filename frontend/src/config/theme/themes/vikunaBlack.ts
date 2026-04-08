@@ -29,9 +29,9 @@ export const VikunaBlackTheme: ThemeConfig = {
       info: '#4A8FD4',
     },
     surface: {
-      glass: 'rgba(0,0,0,0.03)',
-      glassStrong: 'rgba(0,0,0,0.05)',
-      glassBorder: 'rgba(0,0,0,0.08)',
+      glass: 'rgba(184,148,47,0.05)',
+      glassStrong: 'rgba(184,148,47,0.09)',
+      glassBorder: 'rgba(184,148,47,0.16)',
       primaryDim: 'rgba(184,148,47,0.35)',
       primaryGlow: 'rgba(184,148,47,0.1)',
       primarySubtle: 'rgba(184,148,47,0.04)',
@@ -47,9 +47,9 @@ export const VikunaBlackTheme: ThemeConfig = {
       },
       utility: {
         primaryText: '#F0ECE2',
-        secondaryText: 'rgba(240,236,226,0.6)',
+        secondaryText: 'rgba(240,236,226,0.65)',
         primaryBackground: '#0A0A0F',
-        secondaryBackground: '#111118',
+        secondaryBackground: '#1A1A24',
       },
       accent: {
         accent1: '#5EAAF0',
@@ -64,9 +64,9 @@ export const VikunaBlackTheme: ThemeConfig = {
         info: '#5EAAF0',
       },
       surface: {
-        glass: 'rgba(255,255,255,0.04)',
-        glassStrong: 'rgba(255,255,255,0.07)',
-        glassBorder: 'rgba(255,255,255,0.08)',
+        glass: 'rgba(201,168,76,0.06)',
+        glassStrong: 'rgba(201,168,76,0.11)',
+        glassBorder: 'rgba(201,168,76,0.22)',
         primaryDim: 'rgba(201,168,76,0.4)',
         primaryGlow: 'rgba(201,168,76,0.15)',
         primarySubtle: 'rgba(201,168,76,0.06)',

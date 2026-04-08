@@ -12,9 +12,9 @@ export const ClassicElegantTheme: ThemeConfig = {
     },
     utility: {
       primaryText: '#0b191e',
-      secondaryText: '#384e58',
-      primaryBackground: '#f1f4f8',
-      secondaryBackground: '#ffffff',
+      secondaryText: 'rgba(11,25,30,0.58)',
+      primaryBackground: '#f2f5f2',        // Subtle teal-green tint (was generic #f1f4f8)
+      secondaryBackground: '#e8eeec',
     },
     accent: {
       accent1: '#444b598c',
@@ -26,12 +26,12 @@ export const ClassicElegantTheme: ThemeConfig = {
       success: '#336a4a',
       error: '#c4454d',
       warning: '#f3c344',
-      info: '#ffffff',
+      info: '#2a6b8a',                      // Was #ffffff — invisible on light bg
     },
     surface: {
-      glass: 'rgba(0,0,0,0.03)',
-      glassStrong: 'rgba(0,0,0,0.05)',
-      glassBorder: 'rgba(0,0,0,0.08)',
+      glass: 'rgba(75,153,140,0.05)',       // Teal-tinted (was generic black)
+      glassStrong: 'rgba(75,153,140,0.09)',
+      glassBorder: 'rgba(75,153,140,0.16)',
       primaryDim: 'rgba(75,153,140,0.35)',
       primaryGlow: 'rgba(75,153,140,0.1)',
       primarySubtle: 'rgba(75,153,140,0.04)',
@@ -40,16 +40,16 @@ export const ClassicElegantTheme: ThemeConfig = {
   darkMode: {
     colors: {
       brand: {
-        primary: '#4b998c',
+        primary: '#5ab8aa',                 // Slightly brighter teal for dark bg legibility
         secondary: '#928163',
         tertiary: '#c6604a',
         alternate: '#07282e',
       },
       utility: {
         primaryText: '#ffffff',
-        secondaryText: '#95a1ac',
+        secondaryText: 'rgba(255,255,255,0.65)',
         primaryBackground: '#0b191e',
-        secondaryBackground: '#131f24',
+        secondaryBackground: '#1e3040',     // Clearly lifted (was #131f24 — too close)
       },
       accent: {
         accent1: '#44db986c',
@@ -58,15 +58,15 @@ export const ClassicElegantTheme: ThemeConfig = {
         accent4: '#b20cb7be',
       },
       semantic: {
-        success: '#336ada',
-        error: '#c4454d',
+        success: '#4ecb8a',
+        error: '#e05555',
         warning: '#f3c344',
-        info: '#ffffff',
+        info: '#4a90c4',                    // Was #ffffff — invisible
       },
       surface: {
-        glass: 'rgba(255,255,255,0.04)',
-        glassStrong: 'rgba(255,255,255,0.07)',
-        glassBorder: 'rgba(255,255,255,0.08)',
+        glass: 'rgba(90,184,170,0.07)',
+        glassStrong: 'rgba(90,184,170,0.12)',
+        glassBorder: 'rgba(90,184,170,0.24)', // Was 8% — now visible
         primaryDim: 'rgba(75,153,140,0.4)',
         primaryGlow: 'rgba(75,153,140,0.15)',
         primarySubtle: 'rgba(75,153,140,0.06)',

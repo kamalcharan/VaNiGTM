@@ -5,33 +5,33 @@ export const BharathaVarshaTheme: ThemeConfig = {
   name: 'Bharathavarsha',
   colors: {
     brand: {
-      primary: '#e67e22',      // Primary orange from UI design
-      secondary: '#d35400',    // Darker orange for contrast
-      tertiary: '#8e44ad',     // Purple as complementary color
-      alternate: '#f39c12',    // Yellow-orange for variety
+      primary: '#e67e22',
+      secondary: '#d35400',
+      tertiary: '#8e44ad',
+      alternate: '#f39c12',
     },
     utility: {
-      primaryText: '#2c3e50',  // Dark slate for main text
-      secondaryText: '#7f8c8d', // Medium gray for secondary text
-      primaryBackground: '#f9f5f0', // Light cream background
-      secondaryBackground: '#ffffff', // White background
+      primaryText: '#2c3e50',
+      secondaryText: 'rgba(44,62,80,0.6)',
+      primaryBackground: '#f9f5f0',        // Already warm — kept
+      secondaryBackground: '#f0e8dc',
     },
     accent: {
-      accent1: '#4ce67e22',    // Transparent versions of the primary colors
-      accent2: '#4cd35400',    
-      accent3: '#4c8e44ad',    
-      accent4: '#b2ffffff',    
+      accent1: '#4ce67e22',
+      accent2: '#4cd35400',
+      accent3: '#4c8e44ad',
+      accent4: '#b2ffffff',
     },
     semantic: {
-      success: '#27ae60',      // Green for success
-      error: '#e74c3c',        // Red for error
-      warning: '#f1c40f',      // Yellow for warning
-      info: '#3498db',         // Blue for information
+      success: '#27ae60',
+      error: '#e74c3c',
+      warning: '#f1c40f',
+      info: '#3498db',
     },
     surface: {
-      glass: 'rgba(0,0,0,0.03)',
-      glassStrong: 'rgba(0,0,0,0.05)',
-      glassBorder: 'rgba(0,0,0,0.08)',
+      glass: 'rgba(230,126,34,0.05)',       // Orange-tinted (was generic black)
+      glassStrong: 'rgba(230,126,34,0.09)',
+      glassBorder: 'rgba(230,126,34,0.16)',
       primaryDim: 'rgba(230,126,34,0.35)',
       primaryGlow: 'rgba(230,126,34,0.1)',
       primarySubtle: 'rgba(230,126,34,0.04)',
@@ -40,22 +40,22 @@ export const BharathaVarshaTheme: ThemeConfig = {
   darkMode: {
     colors: {
       brand: {
-        primary: '#e67e22',    // Keep primary orange consistent
-        secondary: '#d35400',  // Darker orange
-        tertiary: '#8e44ad',   // Purple
-        alternate: '#f39c12',  // Yellow-orange
+        primary: '#f09030',                 // Warmer, brighter orange for dark bg
+        secondary: '#e06020',
+        tertiary: '#a855c8',
+        alternate: '#1c1208',               // Was #f39c12 — bright yellow was wrong for dark surface
       },
       utility: {
-        primaryText: '#ecf0f1', // Light gray almost white for text
-        secondaryText: '#bdc3c7', // Medium light gray for secondary text
-        primaryBackground: '#2c3e50', // Dark slate background
-        secondaryBackground: '#34495e', // Slightly lighter slate
+        primaryText: '#ecf0f1',
+        secondaryText: 'rgba(236,240,241,0.65)',
+        primaryBackground: '#2c3e50',
+        secondaryBackground: '#3a5068',     // Clearly lifted (was #34495e — close delta)
       },
       accent: {
-        accent1: '#4ce67e22',
-        accent2: '#4cd35400',
-        accent3: '#4c8e44ad',
-        accent4: '#b2f39c12',
+        accent1: '#4cf09030',
+        accent2: '#4ce06020',
+        accent3: '#4ca855c8',
+        accent4: '#b21c1208',
       },
       semantic: {
         success: '#2ecc71',
@@ -64,9 +64,9 @@ export const BharathaVarshaTheme: ThemeConfig = {
         info: '#3498db',
       },
       surface: {
-        glass: 'rgba(255,255,255,0.04)',
-        glassStrong: 'rgba(255,255,255,0.07)',
-        glassBorder: 'rgba(255,255,255,0.08)',
+        glass: 'rgba(240,144,48,0.07)',
+        glassStrong: 'rgba(240,144,48,0.12)',
+        glassBorder: 'rgba(240,144,48,0.24)', // Was 8% — now visible
         primaryDim: 'rgba(230,126,34,0.4)',
         primaryGlow: 'rgba(230,126,34,0.15)',
         primarySubtle: 'rgba(230,126,34,0.06)',

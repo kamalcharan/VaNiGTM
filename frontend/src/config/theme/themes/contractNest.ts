@@ -6,33 +6,33 @@ export const ContractNestTheme: ThemeConfig = {
   name: 'Contract Nest',
   colors: {
     brand: {
-      primary: '#E53E3E',  // Red from your logo (keeping this as an accent)
-      secondary: '#000000', // Pure black
-      tertiary: '#757575',  // Mid gray
-      alternate: '#F5F5F5',  // Very light gray
+      primary: '#E53E3E',
+      secondary: '#000000',
+      tertiary: '#757575',
+      alternate: '#F5F5F5',
     },
     utility: {
-      primaryText: '#000000',  // Pure black
-      secondaryText: '#525252', // Dark gray
-      primaryBackground: '#FFFFFF', // Pure white
-      secondaryBackground: '#F5F5F5', // Very light gray
+      primaryText: '#000000',
+      secondaryText: 'rgba(0,0,0,0.58)',
+      primaryBackground: '#FFFFFF',
+      secondaryBackground: '#F5F5F5',
     },
     accent: {
-      accent1: '#E53E3E', // Red accent
-      accent2: '#000000', // Black
-      accent3: '#BBBBBB', // Light gray
-      accent4: '#F0F0F0', // Very light gray
+      accent1: '#E53E3E',
+      accent2: '#000000',
+      accent3: '#BBBBBB',
+      accent4: '#F0F0F0',
     },
     semantic: {
-      success: '#2E7D32', // Green
-      error: '#E53E3E',   // Red
-      warning: '#F57C00', // Orange
-      info: '#0277BD',    // Blue
+      success: '#2E7D32',
+      error: '#E53E3E',
+      warning: '#F57C00',
+      info: '#0277BD',
     },
     surface: {
-      glass: 'rgba(0,0,0,0.03)',
-      glassStrong: 'rgba(0,0,0,0.05)',
-      glassBorder: 'rgba(0,0,0,0.08)',
+      glass: 'rgba(229,62,62,0.04)',        // Red-tinted (was generic black)
+      glassStrong: 'rgba(229,62,62,0.08)',
+      glassBorder: 'rgba(229,62,62,0.16)',
       primaryDim: 'rgba(229,62,62,0.35)',
       primaryGlow: 'rgba(229,62,62,0.1)',
       primarySubtle: 'rgba(229,62,62,0.04)',
@@ -41,33 +41,33 @@ export const ContractNestTheme: ThemeConfig = {
   darkMode: {
     colors: {
       brand: {
-        primary: '#F56565',  // Brighter red for dark mode
-        secondary: '#FFFFFF', // Pure white
-        tertiary: '#AAAAAA',  // Light gray
-        alternate: '#1F1F1F',  // Very dark gray
+        primary: '#F56565',
+        secondary: '#FFFFFF',
+        tertiary: '#AAAAAA',
+        alternate: '#1F1F1F',
       },
       utility: {
-        primaryText: '#FFFFFF', // Pure white
-        secondaryText: '#BBBBBB', // Light gray
-        primaryBackground: '#000000', // Pure black
-        secondaryBackground: '#1F1F1F', // Very dark gray
+        primaryText: '#FFFFFF',
+        secondaryText: 'rgba(255,255,255,0.65)',
+        primaryBackground: '#000000',
+        secondaryBackground: '#2A2A2A',     // Slightly more lifted (was #1F1F1F — ok delta but more is better)
       },
       accent: {
-        accent1: '#FF6B6B', // Lighter red
-        accent2: '#FFFFFF', // White
-        accent3: '#888888', // Mid gray
-        accent4: '#333333', // Dark gray
+        accent1: '#FF6B6B',
+        accent2: '#FFFFFF',
+        accent3: '#888888',
+        accent4: '#333333',
       },
       semantic: {
-        success: '#66BB6A', // Green
-        error: '#EF5350',   // Red
-        warning: '#FFA726', // Orange
-        info: '#42A5F5',    // Blue
+        success: '#66BB6A',
+        error: '#EF5350',
+        warning: '#FFA726',
+        info: '#42A5F5',
       },
       surface: {
-        glass: 'rgba(255,255,255,0.04)',
-        glassStrong: 'rgba(255,255,255,0.07)',
-        glassBorder: 'rgba(255,255,255,0.08)',
+        glass: 'rgba(245,101,101,0.06)',
+        glassStrong: 'rgba(245,101,101,0.11)',
+        glassBorder: 'rgba(245,101,101,0.24)', // Was 8% — now visible
         primaryDim: 'rgba(245,101,101,0.4)',
         primaryGlow: 'rgba(245,101,101,0.15)',
         primarySubtle: 'rgba(245,101,101,0.06)',

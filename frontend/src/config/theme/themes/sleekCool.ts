@@ -7,15 +7,15 @@ export const SleekCoolTheme: ThemeConfig = {
   colors: {
     brand: {
       primary: '#2797ff',
-      secondary: '#8ac7ff',
+      secondary: '#8ac7ff',                  // Sky blue — lighter, airier than Tech Future
       tertiary: '#acc420',
       alternate: '#e0e3e7',
     },
     utility: {
       primaryText: '#121518',
-      secondaryText: '#636f81',
-      primaryBackground: '#f1f4f8',
-      secondaryBackground: '#ffffff',
+      secondaryText: 'rgba(18,21,24,0.58)',
+      primaryBackground: '#f0f5fb',           // Icy blue-white (was generic #f1f4f8)
+      secondaryBackground: '#e4eef8',
     },
     accent: {
       accent1: '#4c2797ff',
@@ -30,9 +30,9 @@ export const SleekCoolTheme: ThemeConfig = {
       info: '#2797ff',
     },
     surface: {
-      glass: 'rgba(0,0,0,0.03)',
-      glassStrong: 'rgba(0,0,0,0.05)',
-      glassBorder: 'rgba(0,0,0,0.08)',
+      glass: 'rgba(39,151,255,0.05)',         // Blue-tinted (was generic black)
+      glassStrong: 'rgba(39,151,255,0.09)',
+      glassBorder: 'rgba(39,151,255,0.16)',
       primaryDim: 'rgba(39,151,255,0.35)',
       primaryGlow: 'rgba(39,151,255,0.1)',
       primarySubtle: 'rgba(39,151,255,0.04)',
@@ -41,33 +41,33 @@ export const SleekCoolTheme: ThemeConfig = {
   darkMode: {
     colors: {
       brand: {
-        primary: '#2797ff',
-        secondary: '#8ac7ff',
-        tertiary: '#acc420',
+        primary: '#50aaff',                   // Brighter sky blue for dark bg
+        secondary: '#90d0ff',
+        tertiary: '#c8e040',
         alternate: '#212836',
       },
       utility: {
         primaryText: '#ffffff',
-        secondaryText: '#919eab',
+        secondaryText: 'rgba(255,255,255,0.65)',
         primaryBackground: '#121518',
-        secondaryBackground: '#1a1d24',
+        secondaryBackground: '#22273a',       // Clearly lifted + blue-tinted (was #1a1d24)
       },
       accent: {
-        accent1: '#4c2797ff',
-        accent2: '#4c8ac7ff',
-        accent3: '#4cacc420',
-        accent4: '#b3212836',
+        accent1: '#4c50aaff',
+        accent2: '#4c90d0ff',
+        accent3: '#4cc8e040',
+        accent4: '#b322273a',
       },
       semantic: {
-        success: '#27ae52',
+        success: '#36c468',
         error: '#e44444',
-        warning: '#c96446',
-        info: '#2797ff',
+        warning: '#d07040',
+        info: '#50aaff',
       },
       surface: {
-        glass: 'rgba(255,255,255,0.04)',
-        glassStrong: 'rgba(255,255,255,0.07)',
-        glassBorder: 'rgba(255,255,255,0.08)',
+        glass: 'rgba(80,170,255,0.07)',
+        glassStrong: 'rgba(80,170,255,0.12)',
+        glassBorder: 'rgba(80,170,255,0.24)', // Was 8% — now visible
         primaryDim: 'rgba(39,151,255,0.4)',
         primaryGlow: 'rgba(39,151,255,0.15)',
         primarySubtle: 'rgba(39,151,255,0.06)',

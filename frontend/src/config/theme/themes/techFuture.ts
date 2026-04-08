@@ -6,71 +6,71 @@ export const TechFutureTheme: ThemeConfig = {
   name: 'Tech Future',
   colors: {
     brand: {
-      primary: '#2797ff',
-      secondary: '#0b67bc',
+      primary: '#4060e0',                    // Electric indigo — distinct from Sleek Cool's sky #2797ff
+      secondary: '#5030b0',                  // Deep electric purple
       tertiary: '#acc420',
-      alternate: '#e0e3e7',
+      alternate: '#e8e4f8',
     },
     utility: {
       primaryText: '#161624',
-      secondaryText: '#636f81',
-      primaryBackground: '#f1f4f8',
-      secondaryBackground: '#ffffff',
+      secondaryText: 'rgba(22,22,36,0.58)',
+      primaryBackground: '#f0f2fa',           // Deep blue-purple tint (distinct from Sleek Cool's icy blue)
+      secondaryBackground: '#e4e8f8',
     },
     accent: {
-      accent1: '#4c2797ff',
-      accent2: '#4c0b67bc',
+      accent1: '#4c4060e0',
+      accent2: '#4c5030b0',
       accent3: '#4cacc420',
-      accent4: '#b2ffffff',
+      accent4: '#b2e8e4f8',
     },
     semantic: {
       success: '#27a852',
       error: '#e74444',
       warning: '#c96446',
-      info: '#2797ff',
+      info: '#4060e0',
     },
     surface: {
-      glass: 'rgba(0,0,0,0.03)',
-      glassStrong: 'rgba(0,0,0,0.05)',
-      glassBorder: 'rgba(0,0,0,0.08)',
-      primaryDim: 'rgba(39,151,255,0.35)',
-      primaryGlow: 'rgba(39,151,255,0.1)',
-      primarySubtle: 'rgba(39,151,255,0.04)',
+      glass: 'rgba(64,96,224,0.05)',          // Indigo-tinted (was generic black)
+      glassStrong: 'rgba(64,96,224,0.09)',
+      glassBorder: 'rgba(64,96,224,0.16)',
+      primaryDim: 'rgba(64,96,224,0.35)',
+      primaryGlow: 'rgba(64,96,224,0.1)',
+      primarySubtle: 'rgba(64,96,224,0.04)',
     },
   },
   darkMode: {
     colors: {
       brand: {
-        primary: '#2797ff',
-        secondary: '#0b67bc',
-        tertiary: '#acc420',
+        primary: '#6080f0',                   // Bright electric indigo for dark bg
+        secondary: '#8050d0',
+        tertiary: '#c8e040',
         alternate: '#212836',
       },
       utility: {
         primaryText: '#ffffff',
-        secondaryText: '#919eab',
-        primaryBackground: '#161624',
-        secondaryBackground: '#1d1d2d',
+        secondaryText: 'rgba(255,255,255,0.65)',
+        primaryBackground: '#161624',         // Midnight navy (deeper purple-black than Sleek Cool)
+        secondaryBackground: '#26264a',       // Clearly lifted + indigo-tinted (was #1d1d2d)
       },
       accent: {
-        accent1: '#4c2797ff',
-        accent2: '#4c0b67bc',
-        accent3: '#4cacc420',
-        accent4: '#b3212836',
+        accent1: '#4c6080f0',
+        accent2: '#4c8050d0',
+        accent3: '#4cc8e040',
+        accent4: '#b326264a',
       },
       semantic: {
-        success: '#27a852',
+        success: '#36c468',
         error: '#e74444',
-        warning: '#c96446',
-        info: '#2797ff',
+        warning: '#d07040',
+        info: '#6080f0',
       },
       surface: {
-        glass: 'rgba(255,255,255,0.04)',
-        glassStrong: 'rgba(255,255,255,0.07)',
-        glassBorder: 'rgba(255,255,255,0.08)',
-        primaryDim: 'rgba(39,151,255,0.4)',
-        primaryGlow: 'rgba(39,151,255,0.15)',
-        primarySubtle: 'rgba(39,151,255,0.06)',
+        glass: 'rgba(96,128,240,0.07)',
+        glassStrong: 'rgba(96,128,240,0.12)',
+        glassBorder: 'rgba(96,128,240,0.24)', // Was 8% — now visible
+        primaryDim: 'rgba(64,96,224,0.4)',
+        primaryGlow: 'rgba(64,96,224,0.15)',
+        primarySubtle: 'rgba(64,96,224,0.06)',
       },
     },
   },
