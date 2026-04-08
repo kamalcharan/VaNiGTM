@@ -1,10 +1,10 @@
-import { ThemeProvider, ThemeScript, ThemeInitClient, buildThemeMap } from '@/config/theme';
+import { ThemeProvider, ThemeScript, ThemeInitClient, buildThemeMap, defaultTheme } from '@/config/theme';
 import { AuthProvider } from '@/context/auth-provider';
 import { ShellConfigProvider } from '@/lib/shell-config';
 import { QueryProvider } from '@/lib/query-provider';
 import { ToastProvider } from '@/components/toast';
 
-const DEFAULT_THEME = process.env.NEXT_PUBLIC_DEFAULT_THEME || 'vikuna-black';
+const DEFAULT_THEME = process.env.NEXT_PUBLIC_DEFAULT_THEME || defaultTheme.id;
 const DEFAULT_MODE = (process.env.NEXT_PUBLIC_DEFAULT_COLOR_MODE || 'dark') as 'light' | 'dark';
 const THEME_MAP = buildThemeMap();
 
