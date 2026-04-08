@@ -83,9 +83,9 @@
 .checkBadge {
   position: absolute; top: 8px; right: 8px;
   width: 18px; height: 18px; border-radius: 50%;
-  background: var(--color-primary); color: var(--color-primary-fg);
   font-size: 0.6rem; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
+  /* background and color supplied via inline style (per-card theme color) */
 }
 
 /* ── Color Swatches ──────────────────────────────────── */
