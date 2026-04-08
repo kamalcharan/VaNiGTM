@@ -1,0 +1,2800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Your Financial Snapshot — with Vani</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300,0;9..144,400,0;9..144,500,50;9..144,600,100&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   THEME — Warmer client-facing palette
+   Same DNA as ContactNest, dialed softer
+   ============================================ */
+:root {
+  --bg:           #fbf8f2;
+  --bg-deep:      #f2ede2;
+  --surface:      #ffffff;
+  --surface-2:    #faf7f0;
+  --surface-sunk: #f0ebdd;
+
+  --ink:          #1c1a14;
+  --ink-2:        #4a463b;
+  --ink-3:        #8b8575;
+  --ink-4:        #c8c2af;
+  --line:         #ebe5d2;
+  --line-strong:  #dcd4bc;
+
+  --jade:         #0e5240;      /* primary accent — deeper for warmth */
+  --jade-2:       #1b7358;
+  --jade-soft:    #e6efe9;
+  --jade-sunk:    #d4e4d9;
+
+  --coral:        #d97757;      /* secondary accent — warm, inviting */
+  --coral-2:      #e88b6e;
+  --coral-soft:   #fae8dd;
+
+  --ok:           #2e7d4f;
+  --warn:         #c47e1a;
+  --danger:       #b54034;
+
+  --pulse-1:      #0e5240;      /* jade - savings */
+  --pulse-2:      #4a7a8c;      /* slate - debt */
+  --pulse-3:      #d97757;      /* coral - protection */
+  --pulse-4:      #c47e1a;      /* amber - liquidity */
+  --pulse-5:      #6b4e8a;      /* plum - future */
+
+  --shadow-sm:    0 1px 2px rgba(28,26,20,0.04), 0 1px 1px rgba(28,26,20,0.03);
+  --shadow-md:    0 4px 12px rgba(28,26,20,0.06), 0 2px 4px rgba(28,26,20,0.04);
+  --shadow-lg:    0 24px 48px -12px rgba(28,26,20,0.14), 0 8px 16px -8px rgba(28,26,20,0.06);
+  --shadow-xl:    0 40px 80px -20px rgba(28,26,20,0.22);
+
+  --radius-sm:    8px;
+  --radius:       12px;
+  --radius-lg:    20px;
+  --radius-xl:    28px;
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body:    'Inter Tight', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ============================================
+   RESET + BASE
+   ============================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea, select { font-family: inherit; color: inherit; }
+a { color: inherit; text-decoration: none; }
+::selection { background: var(--jade); color: #fff; }
+
+/* Subtle background texture — warm paper */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(14,82,64,0.03) 0%, transparent 50%),
+    radial-gradient(circle at 85% 80%, rgba(217,119,87,0.04) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ============================================
+   APP LAYOUT
+   ============================================ */
+.app {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================
+   TOP BAR — minimal, trust-building
+   ============================================ */
+.topbar {
+  display: flex;
+  align-items: center;
+  padding: 20px 36px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(251,248,242,0.85);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-mark {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: var(--jade);
+  position: relative;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,0.15);
+}
+.brand-mark::after {
+  content: '';
+  width: 13px; height: 13px;
+  border: 2px solid var(--coral);
+  border-radius: 50%;
+  border-top-color: transparent;
+  border-left-color: transparent;
+  transform: rotate(-30deg);
+}
+.brand-text {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  font-variation-settings: "opsz" 144;
+}
+.topbar-mid {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.saved-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.saved-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+  animation: pulseDot 2s ease-in-out infinite;
+}
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.9); }
+}
+.topbar-help {
+  font-size: 12px;
+  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ============================================
+   SCREEN SYSTEM
+   ============================================ */
+.screen { display: none; flex: 1; animation: fadeIn 0.35s ease; }
+.screen.active { display: block; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================
+   WELCOME SCREEN
+   ============================================ */
+.welcome {
+  min-height: calc(100vh - 69px);
+  display: grid;
+  place-items: center;
+  padding: 40px 24px;
+  position: relative;
+}
+.welcome::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 50% 30%, rgba(14,82,64,0.06) 0%, transparent 40%);
+  pointer-events: none;
+}
+.welcome-card {
+  max-width: 560px;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  padding: 48px 44px;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  text-align: center;
+}
+.welcome-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 32px; right: 32px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--coral), var(--jade), transparent);
+}
+
+.mfd-intro {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  justify-content: center;
+  padding: 10px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  margin: 0 auto 28px;
+  width: fit-content;
+}
+.mfd-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--jade), var(--jade-2));
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+.mfd-intro-text {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.mfd-intro-text strong { color: var(--ink); font-weight: 600; }
+
+.welcome-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--jade);
+  font-weight: 700;
+  background: var(--jade-soft);
+  padding: 6px 14px;
+  border-radius: 100px;
+  margin-bottom: 20px;
+}
+.welcome-title {
+  font-family: var(--font-display);
+  font-size: 48px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  font-variation-settings: "opsz" 144;
+  margin-bottom: 16px;
+}
+.welcome-title em {
+  font-style: italic;
+  font-weight: 300;
+  color: var(--ink-2);
+}
+.welcome-sub {
+  font-size: 15px;
+  color: var(--ink-3);
+  line-height: 1.55;
+  max-width: 440px;
+  margin: 0 auto 36px;
+}
+
+/* Vani speaking card */
+.vani-speaks {
+  background: linear-gradient(135deg, var(--jade), #083527);
+  color: #fff;
+  border-radius: var(--radius-lg);
+  padding: 24px 26px;
+  margin-bottom: 32px;
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+}
+.vani-speaks::before {
+  content: '';
+  position: absolute;
+  top: -20px; right: -20px;
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(217,119,87,0.15), transparent 60%);
+}
+.vani-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.vani-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--coral), var(--coral-2));
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--ink);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
+}
+.vani-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 500;
+  font-style: italic;
+  letter-spacing: -0.01em;
+}
+.vani-tag {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--coral);
+  background: rgba(217,119,87,0.15);
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.vani-message {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.94);
+  font-style: italic;
+  position: relative;
+}
+
+/* Trust bullets */
+.trust-list {
+  text-align: left;
+  margin-bottom: 36px;
+  padding: 22px 24px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.trust-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.trust-item:last-child { margin-bottom: 0; }
+.trust-item svg {
+  width: 16px; height: 16px;
+  color: var(--jade);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.trust-item strong { color: var(--ink); font-weight: 600; }
+
+/* ============================================
+   MAIN FORM LAYOUT
+   ============================================ */
+.form-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 0;
+  min-height: calc(100vh - 69px);
+}
+.form-main {
+  padding: 36px 56px 160px;
+  max-width: 780px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Sidebar — pulse + progress */
+.pulse-sidebar {
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  padding: 32px 28px;
+  position: sticky;
+  top: 69px;
+  align-self: start;
+  height: calc(100vh - 69px);
+  overflow-y: auto;
+}
+.pulse-sidebar::-webkit-scrollbar { width: 6px; }
+.pulse-sidebar::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 3px; }
+
+/* Progress rail */
+.progress-rail {
+  margin-bottom: 32px;
+}
+.progress-title {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.rail-track {
+  position: relative;
+}
+.rail-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+  cursor: pointer;
+  position: relative;
+}
+.rail-step::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 26px;
+  bottom: -7px;
+  width: 2px;
+  background: var(--line);
+}
+.rail-step:last-child::before { display: none; }
+.rail-bullet {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-3);
+  flex-shrink: 0;
+  z-index: 1;
+  transition: all 0.25s ease;
+}
+.rail-step.done .rail-bullet {
+  background: var(--jade);
+  border-color: var(--jade);
+  color: #fff;
+}
+.rail-step.done::before { background: var(--jade); }
+.rail-step.active .rail-bullet {
+  background: var(--surface);
+  border-color: var(--jade);
+  color: var(--jade);
+  box-shadow: 0 0 0 4px var(--jade-soft);
+}
+.rail-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+.rail-step.active .rail-label { color: var(--ink); font-weight: 600; }
+.rail-step.done .rail-label { color: var(--ink-2); }
+
+/* ============================================
+   FINANCIAL PULSE — the live metrics panel
+   ============================================ */
+.pulse-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.pulse-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.pulse-tag {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--jade);
+  background: var(--jade-soft);
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.pulse-subtitle {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+.pulse-metric {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.pulse-metric:last-child { border-bottom: none; }
+.pulse-metric-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.pulse-metric-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.pulse-dot {
+  width: 7px; height: 7px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.pulse-metric-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.pulse-metric-value.empty {
+  color: var(--ink-4);
+  font-weight: 500;
+}
+.pulse-bar {
+  height: 6px;
+  background: var(--surface-sunk);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.pulse-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1), background 0.3s ease;
+}
+.pulse-bar-fill.state-empty { background: var(--line-strong); }
+.pulse-bar-fill.state-low { background: var(--danger); }
+.pulse-bar-fill.state-mid { background: var(--warn); }
+.pulse-bar-fill.state-good { background: var(--ok); }
+.pulse-hint {
+  font-size: 10.5px;
+  color: var(--ink-3);
+  margin-top: 6px;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+.pulse-footer {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+  font-size: 10px;
+  color: var(--ink-4);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ============================================
+   FORM SECTION SHARED
+   ============================================ */
+.form-head {
+  margin-bottom: 32px;
+}
+.form-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.form-eyebrow span {
+  color: var(--jade);
+}
+.form-eyebrow::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.form-title {
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  font-variation-settings: "opsz" 144;
+  margin-bottom: 14px;
+}
+.form-title em {
+  font-style: italic;
+  font-weight: 300;
+  color: var(--ink-2);
+}
+.form-sub {
+  font-size: 15px;
+  color: var(--ink-3);
+  line-height: 1.55;
+  max-width: 560px;
+}
+
+/* ============================================
+   FIELDS
+   ============================================ */
+.field { margin-bottom: 22px; }
+.field-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.label-optional {
+  color: var(--ink-4);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-left: 6px;
+  font-size: 11px;
+}
+.input {
+  width: 100%;
+  background: var(--surface);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 13px 16px;
+  font-size: 15px;
+  font-weight: 500;
+  outline: none;
+  transition: all 0.2s ease;
+}
+.input:focus {
+  border-color: var(--jade);
+  box-shadow: 0 0 0 4px var(--jade-soft);
+}
+.input::placeholder { color: var(--ink-4); }
+
+/* Currency input — big visual */
+.currency-input {
+  display: flex;
+  align-items: baseline;
+  background: var(--surface);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  transition: all 0.2s ease;
+}
+.currency-input:focus-within {
+  border-color: var(--jade);
+  box-shadow: 0 0 0 4px var(--jade-soft);
+}
+.currency-symbol {
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--ink-3);
+  font-weight: 400;
+  margin-right: 8px;
+}
+.currency-value {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 500;
+  color: var(--ink);
+  font-variation-settings: "opsz" 144;
+  letter-spacing: -0.02em;
+  min-width: 0;
+}
+.currency-value::placeholder { color: var(--ink-4); }
+.currency-suffix {
+  font-size: 11px;
+  color: var(--ink-3);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-left: 12px;
+}
+
+/* Pill selectors */
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pill {
+  padding: 10px 18px;
+  background: var(--surface);
+  border: 1.5px solid var(--line-strong);
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  transition: all 0.18s;
+}
+.pill:hover { border-color: var(--ink-3); }
+.pill.active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+/* Option cards — bigger visual selection */
+.option-cards {
+  display: grid;
+  gap: 12px;
+}
+.option-cards.cols-2 { grid-template-columns: 1fr 1fr; }
+.option-cards.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.option-cards.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.option-card {
+  background: var(--surface);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  position: relative;
+}
+.option-card:hover { border-color: var(--ink-3); transform: translateY(-1px); }
+.option-card.selected {
+  border-color: var(--jade);
+  background: var(--jade-soft);
+}
+.option-card.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 20px; height: 20px;
+  background: var(--jade);
+  color: #fff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  animation: pop 0.3s ease;
+}
+@keyframes pop { 0% { transform: scale(0); } 80% { transform: scale(1.2); } 100% { transform: scale(1); } }
+.option-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--surface-sunk);
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+  margin-bottom: 10px;
+}
+.option-card.selected .option-icon { background: var(--jade); color: var(--coral); }
+.option-label {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.option-sub {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  line-height: 1.3;
+}
+
+/* ============================================
+   VANI INLINE NUDGE
+   ============================================ */
+.vani-nudge {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--coral);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin: 22px 0;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  animation: slideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.vani-nudge-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--coral), var(--coral-2));
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+.vani-nudge-content { flex: 1; }
+.vani-nudge-name {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--coral);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.vani-nudge-text {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.vani-nudge-text strong { font-style: normal; font-weight: 600; color: var(--jade); }
+
+/* ============================================
+   SECTION HEADERS WITHIN FORM
+   ============================================ */
+.sub-section {
+  margin-top: 36px;
+}
+.sub-section:first-child { margin-top: 0; }
+.sub-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+.sub-hint {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+
+/* ============================================
+   DYNAMIC ITEM CARDS (assets, loans, goals, etc)
+   ============================================ */
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.item-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  position: relative;
+  animation: slideIn 0.3s ease;
+  transition: border-color 0.2s;
+}
+.item-card:hover { border-color: var(--line-strong); }
+.item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.item-num {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--jade);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.item-num::before {
+  content: '';
+  width: 16px; height: 1px;
+  background: var(--jade);
+}
+.item-remove {
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  color: var(--ink-4);
+  display: grid;
+  place-items: center;
+  transition: all 0.15s;
+  font-size: 14px;
+}
+.item-remove:hover { background: #fcebea; color: var(--danger); }
+
+.add-item-btn {
+  width: 100%;
+  padding: 16px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  color: var(--ink-3);
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+  background: transparent;
+}
+.add-item-btn:hover {
+  border-color: var(--jade);
+  color: var(--jade);
+  background: var(--jade-soft);
+}
+
+/* Liquid toggle */
+.liq-toggle {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.liq-btn {
+  flex: 1;
+  padding: 10px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+  transition: all 0.15s;
+}
+.liq-btn.active-liq {
+  border-color: var(--jade);
+  background: var(--jade-soft);
+  color: var(--jade);
+}
+.liq-btn.active-illiq {
+  border-color: var(--warn);
+  background: #fdf4e3;
+  color: var(--warn);
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 24px;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  justify-content: center;
+}
+.btn-primary {
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.1) inset, 0 6px 16px rgba(0,0,0,0.12);
+}
+.btn-primary:hover { background: #000; transform: translateY(-1px); }
+.btn-jade {
+  background: var(--jade);
+  color: #fff;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.1) inset, 0 6px 16px rgba(14,82,64,0.28);
+}
+.btn-jade:hover { background: var(--jade-2); transform: translateY(-1px); }
+.btn-ghost {
+  color: var(--ink-2);
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
+}
+.btn-ghost:hover { border-color: var(--ink-3); color: var(--ink); }
+.btn-lg { padding: 17px 32px; font-size: 15px; }
+.btn-xl {
+  padding: 20px 38px;
+  font-size: 16px;
+  border-radius: 14px;
+}
+
+/* Sticky footer */
+.form-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 340px;
+  background: rgba(251,248,242,0.94);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+  padding: 18px 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  z-index: 40;
+}
+.form-footer-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.form-footer-meta strong { color: var(--ink); }
+
+/* ============================================
+   CHECKBOX + YES/NO CARDS
+   ============================================ */
+.yesno-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.yesno-card {
+  background: var(--surface);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+.yesno-card:hover { border-color: var(--ink-3); }
+.yesno-card.selected {
+  border-color: var(--jade);
+  background: var(--jade-soft);
+  color: var(--jade);
+}
+.yesno-label {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+.yesno-sub {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.yesno-card.selected .yesno-sub { color: var(--jade-2); }
+
+/* ============================================
+   SNAPSHOT OUTCOME — the reward screen
+   ============================================ */
+.snapshot-screen {
+  background: var(--bg);
+}
+.snapshot-hero {
+  background: linear-gradient(160deg, var(--jade) 0%, #083527 100%);
+  color: #fff;
+  padding: 60px 48px 48px;
+  position: relative;
+  overflow: hidden;
+}
+.snapshot-hero::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 300px; height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(217,119,87,0.2), transparent 60%);
+}
+.snapshot-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -40px; left: 10%;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(14,82,64,0.4), transparent 60%);
+}
+.snapshot-hero-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+.snapshot-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--coral);
+  background: rgba(217,119,87,0.15);
+  padding: 6px 14px;
+  border-radius: 100px;
+  font-weight: 700;
+  margin-bottom: 18px;
+  border: 1px solid rgba(217,119,87,0.3);
+}
+.snapshot-headline {
+  font-family: var(--font-display);
+  font-size: 62px;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  font-variation-settings: "opsz" 144;
+  margin-bottom: 18px;
+  color: #fff;
+}
+.snapshot-headline em { font-style: italic; color: var(--coral); }
+.snapshot-hero-sub {
+  font-size: 16px;
+  color: rgba(255,255,255,0.7);
+  max-width: 520px;
+  margin-bottom: 36px;
+  line-height: 1.5;
+}
+.snapshot-hero-meta {
+  display: flex;
+  gap: 32px;
+  padding: 18px 0;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  max-width: 560px;
+}
+.hero-meta-item {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.hero-meta-item strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+  color: #fff;
+  margin-top: 3px;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+.snapshot-body {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 48px 80px;
+  margin-top: -60px;
+  position: relative;
+  z-index: 2;
+}
+
+/* Net worth card — the showstopper */
+.networth-card {
+  background: var(--surface);
+  border-radius: var(--radius-xl);
+  padding: 40px 44px;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--line);
+  margin-bottom: 28px;
+  position: relative;
+  overflow: hidden;
+}
+.networth-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 40px; right: 40px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--coral), var(--jade), transparent);
+}
+.networth-label {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.networth-value {
+  font-family: var(--font-display);
+  font-size: 72px;
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  font-variation-settings: "opsz" 144;
+  margin-bottom: 12px;
+}
+.networth-value .currency {
+  font-size: 36px;
+  color: var(--ink-3);
+  margin-right: 6px;
+  vertical-align: top;
+  line-height: 1.4;
+}
+.networth-breakdown {
+  display: flex;
+  gap: 32px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  margin-top: 18px;
+}
+.breakdown-item {
+  flex: 1;
+}
+.breakdown-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+.breakdown-value {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.breakdown-item.plus .breakdown-value { color: var(--ok); }
+.breakdown-item.minus .breakdown-value { color: var(--danger); }
+
+/* Snapshot grid */
+.snapshot-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+.snap-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  padding: 32px 34px;
+  box-shadow: var(--shadow-sm);
+}
+.snap-card-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  margin-bottom: 4px;
+}
+.snap-card-sub {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-bottom: 24px;
+}
+
+/* Asset donut */
+.donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+.donut-svg {
+  width: 180px;
+  height: 180px;
+  flex-shrink: 0;
+}
+.donut-center-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  fill: var(--ink-3);
+  font-weight: 600;
+}
+.donut-center-value {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  fill: var(--ink);
+}
+.donut-legend {
+  flex: 1;
+}
+.legend-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.legend-row:last-child { border-bottom: none; }
+.legend-swatch {
+  width: 12px; height: 12px;
+  border-radius: 3px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+.legend-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+}
+.legend-amount {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-right: 14px;
+}
+.legend-pct {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* Health score card (pulse in snapshot) */
+.health-score-card {
+  background: linear-gradient(160deg, var(--surface) 0%, var(--surface-2) 100%);
+}
+.health-rings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.health-ring-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.mini-ring {
+  width: 44px; height: 44px;
+  position: relative;
+  flex-shrink: 0;
+}
+.mini-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.mini-ring-bg { fill: none; stroke: var(--line); stroke-width: 4; }
+.mini-ring-fill {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.8s ease;
+}
+.mini-ring-text {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.health-ring-label {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+}
+.health-ring-state {
+  font-size: 10px;
+  color: var(--ink-3);
+  margin-top: 1px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Cash flow visualization */
+.cashflow-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 8px;
+}
+.cf-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 90px;
+  gap: 14px;
+  align-items: center;
+}
+.cf-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.cf-track {
+  height: 12px;
+  background: var(--surface-sunk);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.cf-fill {
+  height: 100%;
+  border-radius: 6px;
+}
+.cf-fill.income { background: linear-gradient(90deg, var(--jade), var(--jade-2)); }
+.cf-fill.expenses { background: linear-gradient(90deg, var(--warn), #d68f2e); }
+.cf-fill.savings { background: linear-gradient(90deg, var(--coral), var(--coral-2)); }
+.cf-amount {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+
+/* Goals timeline */
+.goals-timeline {
+  position: relative;
+  padding-left: 20px;
+}
+.goals-timeline::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: var(--line);
+}
+.goal-item {
+  position: relative;
+  padding: 14px 0 14px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.goal-item:last-child { border-bottom: none; }
+.goal-item::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 22px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--jade);
+  z-index: 1;
+}
+.goal-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.goal-item-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+.goal-item-amount {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+}
+.goal-item-meta {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 3px;
+}
+
+/* Vani observations */
+.vani-observations {
+  background: linear-gradient(135deg, var(--jade) 0%, #0a3d2e 100%);
+  color: #fff;
+  border-radius: var(--radius-xl);
+  padding: 36px 40px;
+  margin-bottom: 28px;
+  position: relative;
+  overflow: hidden;
+}
+.vani-observations::before {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(217,119,87,0.2), transparent 60%);
+}
+.obs-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.obs-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--coral), var(--coral-2));
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 17px;
+  color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.1);
+}
+.obs-name {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+  font-style: italic;
+  letter-spacing: -0.01em;
+}
+.obs-tag {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--coral);
+  font-weight: 700;
+  margin-top: 2px;
+}
+.obs-list {
+  position: relative;
+}
+.obs-item {
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  display: flex;
+  gap: 18px;
+}
+.obs-item:last-child { border-bottom: none; }
+.obs-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--coral);
+  font-weight: 700;
+  width: 20px;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+.obs-text {
+  font-family: var(--font-display);
+  font-size: 17px;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.92);
+  font-style: italic;
+  font-weight: 400;
+}
+.obs-text strong { font-weight: 600; font-style: normal; color: #fff; }
+.obs-text em { color: var(--coral); font-style: normal; font-weight: 600; }
+
+/* Snapshot actions */
+.snapshot-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  padding: 32px 0;
+  margin-top: 12px;
+}
+
+/* ============================================
+   RESPONSIVE — mobile-first grace
+   ============================================ */
+@media (max-width: 960px) {
+  .form-layout { grid-template-columns: 1fr; }
+  .pulse-sidebar {
+    position: static;
+    height: auto;
+    border-left: none;
+    border-top: 1px solid var(--line);
+    padding: 24px 20px;
+  }
+  .form-footer { right: 0; }
+  .form-main { padding: 28px 24px 140px; }
+  .form-title { font-size: 32px; }
+  .snapshot-headline { font-size: 42px; }
+  .networth-value { font-size: 52px; }
+  .networth-value .currency { font-size: 28px; }
+  .snapshot-grid { grid-template-columns: 1fr; }
+  .donut-wrap { flex-direction: column; }
+  .snapshot-hero { padding: 40px 24px 36px; }
+  .snapshot-body { padding: 0 24px 60px; }
+  .welcome-card { padding: 36px 28px; }
+  .welcome-title { font-size: 36px; }
+  .field-row-2, .field-row-3 { grid-template-columns: 1fr; }
+  .option-cards.cols-3, .option-cards.cols-4 { grid-template-columns: 1fr 1fr; }
+  .topbar { padding: 16px 20px; }
+  .topbar-mid { display: none; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- =========== TOPBAR =========== -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-mark"></div>
+      <div class="brand-text">ContactNest</div>
+    </div>
+    <div class="topbar-mid">
+      <span class="saved-indicator">
+        <span class="saved-dot"></span>
+        <span id="saved-text">Auto-saved</span>
+      </span>
+    </div>
+    <div class="topbar-help">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Need help?
+    </div>
+  </header>
+
+  <!-- =========== SCREEN 1: WELCOME =========== -->
+  <section class="screen active" id="screen-welcome">
+    <div class="welcome">
+      <div class="welcome-card">
+        <div class="mfd-intro">
+          <div class="mfd-avatar">RK</div>
+          <div class="mfd-intro-text">Sent to you by <strong>Rajiv Khanna</strong> · MFD</div>
+        </div>
+
+        <div class="welcome-eyebrow">● Financial Snapshot</div>
+        <h1 class="welcome-title">Let's paint<br/><em>your money picture.</em></h1>
+        <p class="welcome-sub">In about 10 minutes, you'll see your complete financial health in one beautiful view — net worth, savings rate, protection, and the gaps worth closing.</p>
+
+        <div class="vani-speaks">
+          <div class="vani-header">
+            <div class="vani-avatar">V</div>
+            <div style="flex: 1;">
+              <div class="vani-name">Vani</div>
+            </div>
+            <div class="vani-tag">Your Guide</div>
+          </div>
+          <p class="vani-message">"Hi Priya — I'll walk you through this. No jargon, no judgement. I'll even do some of the math for you along the way. Ready when you are."</p>
+        </div>
+
+        <div class="trust-list">
+          <div class="trust-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2 4 7v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V7l-8-5z"/><path d="m9 12 2 2 4-4"/></svg>
+            <div><strong>Your data is private.</strong> Only Rajiv sees it — never shared, never sold.</div>
+          </div>
+          <div class="trust-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <div><strong>Takes ~10 minutes.</strong> You can pause anytime — your progress saves automatically.</div>
+          </div>
+          <div class="trust-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+            <div><strong>You'll walk away with a snapshot.</strong> A beautiful summary you can keep.</div>
+          </div>
+        </div>
+
+        <button class="btn btn-jade btn-xl" style="width: 100%;" data-goto="about">
+          Let's Begin
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== SCREENS 2-7: FORM WITH SIDEBAR =========== -->
+  <section class="screen" id="screen-form">
+    <div class="form-layout">
+      <div class="form-main">
+
+        <!-- About You -->
+        <div class="form-step" id="step-about">
+          <div class="form-head">
+            <div class="form-eyebrow"><span>Step 1 of 6</span> · About you</div>
+            <h1 class="form-title">Tell us a bit<br/><em>about yourself.</em></h1>
+            <p class="form-sub">The basics first. This shapes everything that follows — we'll only ask what's relevant to your situation.</p>
+          </div>
+
+          <div class="field">
+            <label class="label">What should we call you?</label>
+            <input class="input" value="Priya Mehta" />
+          </div>
+
+          <div class="field-row-2">
+            <div class="field">
+              <label class="label">Your age</label>
+              <input class="input" placeholder="35" value="38" type="number" />
+            </div>
+            <div class="field">
+              <label class="label">City you live in</label>
+              <input class="input" placeholder="Mumbai" value="Mumbai" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label">Your situation</label>
+            <div class="option-cards cols-4">
+              <button class="option-card">
+                <div class="option-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></div>
+                <div class="option-label">Single</div>
+                <div class="option-sub">No dependents</div>
+              </button>
+              <button class="option-card selected">
+                <div class="option-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                <div class="option-label">Married</div>
+                <div class="option-sub">With partner</div>
+              </button>
+              <button class="option-card">
+                <div class="option-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 12h.01M9 15h.01M14 9h.01M14 12h.01M14 15h.01"/></svg></div>
+                <div class="option-label">Family</div>
+                <div class="option-sub">With kids</div>
+              </button>
+              <button class="option-card">
+                <div class="option-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg></div>
+                <div class="option-label">Other</div>
+                <div class="option-sub">Will specify</div>
+              </button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label">How many dependents do you support?</label>
+            <div class="pills">
+              <button class="pill">0</button>
+              <button class="pill">1</button>
+              <button class="pill active">2</button>
+              <button class="pill">3</button>
+              <button class="pill">4+</button>
+            </div>
+          </div>
+
+          <div class="vani-nudge">
+            <div class="vani-nudge-avatar">V</div>
+            <div class="vani-nudge-content">
+              <div class="vani-nudge-name">Vani</div>
+              <div class="vani-nudge-text">Great start, Priya. Two dependents at 38 — I'll pay extra attention to <strong>protection</strong> and <strong>long-term goals</strong> as we go.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Income & Expenses -->
+        <div class="form-step" id="step-income" style="display:none;">
+          <div class="form-head">
+            <div class="form-eyebrow"><span>Step 2 of 6</span> · Cash flow</div>
+            <h1 class="form-title">What comes in,<br/><em>what goes out.</em></h1>
+            <p class="form-sub">Your monthly rhythm. This is the single most important thing — it tells us how much you can actually save.</p>
+          </div>
+
+          <div class="sub-section">
+            <div class="sub-title">Money coming in</div>
+            <div class="sub-hint">Take-home (after tax) monthly income from all sources.</div>
+
+            <div class="field">
+              <label class="label">Your take-home salary</label>
+              <div class="currency-input">
+                <span class="currency-symbol">₹</span>
+                <input class="currency-value" placeholder="1,50,000" value="1,80,000" />
+                <span class="currency-suffix">/ month</span>
+              </div>
+            </div>
+
+            <div class="field-row-2">
+              <div class="field">
+                <label class="label">Partner's income <span class="label-optional">optional</span></label>
+                <div class="currency-input">
+                  <span class="currency-symbol">₹</span>
+                  <input class="currency-value" placeholder="0" value="90,000" style="font-size: 24px;" />
+                </div>
+              </div>
+              <div class="field">
+                <label class="label">Other (rent, business) <span class="label-optional">optional</span></label>
+                <div class="currency-input">
+                  <span class="currency-symbol">₹</span>
+                  <input class="currency-value" placeholder="0" value="0" style="font-size: 24px;" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sub-section">
+            <div class="sub-title">Money going out</div>
+            <div class="sub-hint">Monthly spending — <em>excluding EMIs</em>. We'll cover loans separately.</div>
+
+            <div class="field-row-3">
+              <div class="field">
+                <label class="label">Housing / Rent</label>
+                <div class="currency-input" style="padding: 12px 14px;">
+                  <span class="currency-symbol" style="font-size: 18px;">₹</span>
+                  <input class="currency-value" placeholder="0" value="45,000" style="font-size: 18px;" />
+                </div>
+              </div>
+              <div class="field">
+                <label class="label">Groceries & Food</label>
+                <div class="currency-input" style="padding: 12px 14px;">
+                  <span class="currency-symbol" style="font-size: 18px;">₹</span>
+                  <input class="currency-value" placeholder="0" value="22,000" style="font-size: 18px;" />
+                </div>
+              </div>
+              <div class="field">
+                <label class="label">Utilities</label>
+                <div class="currency-input" style="padding: 12px 14px;">
+                  <span class="currency-symbol" style="font-size: 18px;">₹</span>
+                  <input class="currency-value" placeholder="0" value="6,500" style="font-size: 18px;" />
+                </div>
+              </div>
+            </div>
+            <div class="field-row-3">
+              <div class="field">
+                <label class="label">Transport</label>
+                <div class="currency-input" style="padding: 12px 14px;">
+                  <span class="currency-symbol" style="font-size: 18px;">₹</span>
+                  <input class="currency-value" placeholder="0" value="9,000" style="font-size: 18px;" />
+                </div>
+              </div>
+              <div class="field">
+                <label class="label">Education / Kids</label>
+                <div class="currency-input" style="padding: 12px 14px;">
+                  <span class="currency-symbol" style="font-size: 18px;">₹</span>
+                  <input class="currency-value" placeholder="0" value="28,000" style="font-size: 18px;" />
+                </div>
+              </div>
+              <div class="field">
+                <label class="label">Lifestyle</label>
+                <div class="currency-input" style="padding: 12px 14px;">
+                  <span class="currency-symbol" style="font-size: 18px;">₹</span>
+                  <input class="currency-value" placeholder="0" value="18,000" style="font-size: 18px;" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="vani-nudge">
+            <div class="vani-nudge-avatar">V</div>
+            <div class="vani-nudge-content">
+              <div class="vani-nudge-name">Vani</div>
+              <div class="vani-nudge-text">You're saving <strong>₹1,41,500/month</strong> — that's a <em>savings rate of 52%</em>. Seriously impressive for your bracket. See the Pulse panel on the right? It just lit up.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- What You Own (Assets) -->
+        <div class="form-step" id="step-assets" style="display:none;">
+          <div class="form-head">
+            <div class="form-eyebrow"><span>Step 3 of 6</span> · What you own</div>
+            <h1 class="form-title">Your assets,<br/><em>big and small.</em></h1>
+            <p class="form-sub">Investments, savings, property, gold — anything with value. Rough estimates are fine.</p>
+          </div>
+
+          <div class="item-list">
+            <div class="item-card">
+              <div class="item-head">
+                <div class="item-num">Asset 01</div>
+                <button class="item-remove">✕</button>
+              </div>
+              <div class="field">
+                <label class="label">What is it?</label>
+                <input class="input" value="Equity Mutual Funds" />
+              </div>
+              <div class="field-row-2">
+                <div class="field">
+                  <label class="label">Current value</label>
+                  <div class="currency-input" style="padding: 12px 14px;">
+                    <span class="currency-symbol" style="font-size: 20px;">₹</span>
+                    <input class="currency-value" value="24,00,000" style="font-size: 22px;" />
+                  </div>
+                </div>
+                <div>
+                  <label class="label">Can you sell quickly?</label>
+                  <div class="liq-toggle">
+                    <button class="liq-btn active-liq">💧 Liquid</button>
+                    <button class="liq-btn">🔒 Illiquid</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="item-card">
+              <div class="item-head">
+                <div class="item-num">Asset 02</div>
+                <button class="item-remove">✕</button>
+              </div>
+              <div class="field">
+                <label class="label">What is it?</label>
+                <input class="input" value="PPF" />
+              </div>
+              <div class="field-row-2">
+                <div class="field">
+                  <label class="label">Current value</label>
+                  <div class="currency-input" style="padding: 12px 14px;">
+                    <span class="currency-symbol" style="font-size: 20px;">₹</span>
+                    <input class="currency-value" value="9,00,000" style="font-size: 22px;" />
+                  </div>
+                </div>
+                <div>
+                  <label class="label">Can you sell quickly?</label>
+                  <div class="liq-toggle">
+                    <button class="liq-btn">💧 Liquid</button>
+                    <button class="liq-btn active-illiq">🔒 Illiquid</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="item-card">
+              <div class="item-head">
+                <div class="item-num">Asset 03</div>
+                <button class="item-remove">✕</button>
+              </div>
+              <div class="field">
+                <label class="label">What is it?</label>
+                <input class="input" value="Apartment (Bandra)" />
+              </div>
+              <div class="field-row-2">
+                <div class="field">
+                  <label class="label">Current value</label>
+                  <div class="currency-input" style="padding: 12px 14px;">
+                    <span class="currency-symbol" style="font-size: 20px;">₹</span>
+                    <input class="currency-value" value="1,40,00,000" style="font-size: 22px;" />
+                  </div>
+                </div>
+                <div>
+                  <label class="label">Can you sell quickly?</label>
+                  <div class="liq-toggle">
+                    <button class="liq-btn">💧 Liquid</button>
+                    <button class="liq-btn active-illiq">🔒 Illiquid</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="item-card">
+              <div class="item-head">
+                <div class="item-num">Asset 04</div>
+                <button class="item-remove">✕</button>
+              </div>
+              <div class="field">
+                <label class="label">What is it?</label>
+                <input class="input" value="Savings Account" />
+              </div>
+              <div class="field-row-2">
+                <div class="field">
+                  <label class="label">Current value</label>
+                  <div class="currency-input" style="padding: 12px 14px;">
+                    <span class="currency-symbol" style="font-size: 20px;">₹</span>
+                    <input class="currency-value" value="4,50,000" style="font-size: 22px;" />
+                  </div>
+                </div>
+                <div>
+                  <label class="label">Can you sell quickly?</label>
+                  <div class="liq-toggle">
+                    <button class="liq-btn active-liq">💧 Liquid</button>
+                    <button class="liq-btn">🔒 Illiquid</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button class="add-item-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Add another asset
+          </button>
+
+          <div class="vani-nudge">
+            <div class="vani-nudge-avatar">V</div>
+            <div class="vani-nudge-content">
+              <div class="vani-nudge-name">Vani</div>
+              <div class="vani-nudge-text">Total assets: <strong>₹1.77 Cr</strong>. Nice mix — but <em>79% is locked in real estate</em>. We'll flag liquidity in your pulse. Worth a conversation with Rajiv.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- What You Owe (Loans) -->
+        <div class="form-step" id="step-loans" style="display:none;">
+          <div class="form-head">
+            <div class="form-eyebrow"><span>Step 4 of 6</span> · What you owe</div>
+            <h1 class="form-title">Loans<br/><em>and liabilities.</em></h1>
+            <p class="form-sub">Home loan, car loan, personal loan, credit card debt — anything you owe. If you're debt-free, just skip.</p>
+          </div>
+
+          <div class="item-list">
+            <div class="item-card">
+              <div class="item-head">
+                <div class="item-num">Loan 01</div>
+                <button class="item-remove">✕</button>
+              </div>
+              <div class="field">
+                <label class="label">Loan type</label>
+                <input class="input" value="Home Loan" />
+              </div>
+              <div class="field-row-3">
+                <div class="field">
+                  <label class="label">Outstanding</label>
+                  <div class="currency-input" style="padding: 12px 14px;">
+                    <span class="currency-symbol" style="font-size: 18px;">₹</span>
+                    <input class="currency-value" value="62,00,000" style="font-size: 18px;" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label">Monthly EMI</label>
+                  <div class="currency-input" style="padding: 12px 14px;">
+                    <span class="currency-symbol" style="font-size: 18px;">₹</span>
+                    <input class="currency-value" value="54,000" style="font-size: 18px;" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label">Interest rate</label>
+                  <input class="input" value="8.6%" />
+                </div>
+              </div>
+            </div>
+
+            <div class="item-card">
+              <div class="item-head">
+                <div class="item-num">Loan 02</div>
+                <button class="item-remove">✕</button>
+              </div>
+              <div class="field">
+                <label class="label">Loan type</label>
+                <input class="input" value="Car Loan" />
+              </div>
+              <div class="field-row-3">
+                <div class="field">
+                  <label class="label">Outstanding</label>
+                  <div class="currency-input" style="padding: 12px 14px;">
+                    <span class="currency-symbol" style="font-size: 18px;">₹</span>
+                    <input class="currency-value" value="4,20,000" style="font-size: 18px;" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label">Monthly EMI</label>
+                  <div class="currency-input" style="padding: 12px 14px;">
+                    <span class="currency-symbol" style="font-size: 18px;">₹</span>
+                    <input class="currency-value" value="12,500" style="font-size: 18px;" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label">Interest rate</label>
+                  <input class="input" value="9.2%" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button class="add-item-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Add another loan
+          </button>
+
+          <div class="vani-nudge">
+            <div class="vani-nudge-avatar">V</div>
+            <div class="vani-nudge-content">
+              <div class="vani-nudge-name">Vani</div>
+              <div class="vani-nudge-text">EMIs total <strong>₹66,500/month</strong> — that's <em>24.6% of your income</em>. Healthy! Anything under 40% is fine. Your home loan rate at 8.6% is average — Rajiv can check if refinancing helps.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Protection (Insurance) -->
+        <div class="form-step" id="step-protection" style="display:none;">
+          <div class="form-head">
+            <div class="form-eyebrow"><span>Step 5 of 6</span> · Protection</div>
+            <h1 class="form-title">Safety nets<br/><em>for your family.</em></h1>
+            <p class="form-sub">Life and health insurance. This is often the most-skipped step — but it's the difference between a setback and a disaster.</p>
+          </div>
+
+          <div class="sub-section">
+            <div class="sub-title">Life insurance</div>
+            <div class="sub-hint">Term plans, endowment, or any policy that pays your family if something happens to you.</div>
+
+            <div class="field">
+              <label class="label">Do you have life insurance?</label>
+              <div class="yesno-cards">
+                <button class="yesno-card selected">
+                  <div class="yesno-label">Yes</div>
+                  <div class="yesno-sub">I have a policy</div>
+                </button>
+                <button class="yesno-card">
+                  <div class="yesno-label">Not yet</div>
+                  <div class="yesno-sub">Will add later</div>
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">Total life cover (sum assured)</label>
+              <div class="currency-input">
+                <span class="currency-symbol">₹</span>
+                <input class="currency-value" value="75,00,000" />
+                <span class="currency-suffix">Total</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">Annual premium you pay <span class="label-optional">optional</span></label>
+              <div class="currency-input" style="padding: 14px 18px;">
+                <span class="currency-symbol" style="font-size: 22px;">₹</span>
+                <input class="currency-value" value="18,000" style="font-size: 24px;" />
+                <span class="currency-suffix">/ year</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="sub-section">
+            <div class="sub-title">Health insurance</div>
+            <div class="sub-hint">Mediclaim, family floater, or employer-provided health cover.</div>
+
+            <div class="field">
+              <label class="label">Type of health cover</label>
+              <div class="option-cards cols-3">
+                <button class="option-card">
+                  <div class="option-label">Individual</div>
+                  <div class="option-sub">Just for me</div>
+                </button>
+                <button class="option-card selected">
+                  <div class="option-label">Family Floater</div>
+                  <div class="option-sub">Whole family</div>
+                </button>
+                <button class="option-card">
+                  <div class="option-label">Employer</div>
+                  <div class="option-sub">Company-provided</div>
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">Total health cover</label>
+              <div class="currency-input">
+                <span class="currency-symbol">₹</span>
+                <input class="currency-value" value="10,00,000" />
+                <span class="currency-suffix">Sum insured</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="vani-nudge">
+            <div class="vani-nudge-avatar">V</div>
+            <div class="vani-nudge-content">
+              <div class="vani-nudge-name">Vani</div>
+              <div class="vani-nudge-text">Your life cover is <strong>₹75L</strong> — that's only <em>2.3× your annual income</em>. Most advisors suggest 10–15× for someone with 2 dependents. This is the biggest gap in your profile. Worth a real conversation.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Goals -->
+        <div class="form-step" id="step-goals" style="display:none;">
+          <div class="form-head">
+            <div class="form-eyebrow"><span>Step 6 of 6</span> · Dreams</div>
+            <h1 class="form-title">What are you<br/><em>saving for?</em></h1>
+            <p class="form-sub">The reason behind the numbers. Your dreams give your money a job to do.</p>
+          </div>
+
+          <div class="item-list">
+            <div class="item-card">
+              <div class="item-head">
+                <div class="item-num">Dream 01</div>
+                <button class="item-remove">✕</button>
+              </div>
+              <div class="field">
+                <label class="label">What are you saving for?</label>
+                <input class="input" value="Children's higher education" />
+              </div>
+              <div class="field-row-2">
+                <div class="field">
+                  <label class="label">Target amount (today's value)</label>
+                  <div class="currency-input" style="padding: 12px 14px;">
+                    <span class="currency-symbol" style="font-size: 20px;">₹</span>
+                    <input class="currency-value" value="80,00,000" style="font-size: 22px;" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label">When do you need it?</label>
+                  <div class="pills">
+                    <button class="pill">3 yrs</button>
+                    <button class="pill">5 yrs</button>
+                    <button class="pill active">12 yrs</button>
+                    <button class="pill">20 yrs</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="item-card">
+              <div class="item-head">
+                <div class="item-num">Dream 02</div>
+                <button class="item-remove">✕</button>
+              </div>
+              <div class="field">
+                <label class="label">What are you saving for?</label>
+                <input class="input" value="Retirement corpus" />
+              </div>
+              <div class="field-row-2">
+                <div class="field">
+                  <label class="label">Target amount (today's value)</label>
+                  <div class="currency-input" style="padding: 12px 14px;">
+                    <span class="currency-symbol" style="font-size: 20px;">₹</span>
+                    <input class="currency-value" value="6,00,00,000" style="font-size: 22px;" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label">When do you need it?</label>
+                  <div class="pills">
+                    <button class="pill">5 yrs</button>
+                    <button class="pill">10 yrs</button>
+                    <button class="pill">20 yrs</button>
+                    <button class="pill active">22 yrs</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="item-card">
+              <div class="item-head">
+                <div class="item-num">Dream 03</div>
+                <button class="item-remove">✕</button>
+              </div>
+              <div class="field">
+                <label class="label">What are you saving for?</label>
+                <input class="input" value="Beach house in Goa" />
+              </div>
+              <div class="field-row-2">
+                <div class="field">
+                  <label class="label">Target amount (today's value)</label>
+                  <div class="currency-input" style="padding: 12px 14px;">
+                    <span class="currency-symbol" style="font-size: 20px;">₹</span>
+                    <input class="currency-value" value="2,50,00,000" style="font-size: 22px;" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label">When do you need it?</label>
+                  <div class="pills">
+                    <button class="pill">3 yrs</button>
+                    <button class="pill active">8 yrs</button>
+                    <button class="pill">15 yrs</button>
+                    <button class="pill">20 yrs</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button class="add-item-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Add another dream
+          </button>
+
+          <div class="vani-nudge">
+            <div class="vani-nudge-avatar">V</div>
+            <div class="vani-nudge-content">
+              <div class="vani-nudge-name">Vani</div>
+              <div class="vani-nudge-text">Three goals totaling <strong>₹9.3 Cr</strong> in today's money. With your savings rate and 12–22 year horizons, two of these are well within reach. Let's see your snapshot.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-footer">
+          <button class="btn btn-ghost" id="btn-back">← Back</button>
+          <div class="form-footer-meta">Step <strong id="step-curr">1</strong> of <strong>6</strong></div>
+          <button class="btn btn-jade" id="btn-next">
+            Continue
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- =========== PULSE SIDEBAR =========== -->
+      <aside class="pulse-sidebar">
+        <!-- Progress Rail -->
+        <div class="progress-rail">
+          <div class="progress-title">Progress</div>
+          <div class="rail-track">
+            <div class="rail-step active" data-step="about">
+              <div class="rail-bullet">1</div>
+              <div class="rail-label">About You</div>
+            </div>
+            <div class="rail-step" data-step="income">
+              <div class="rail-bullet">2</div>
+              <div class="rail-label">Cash Flow</div>
+            </div>
+            <div class="rail-step" data-step="assets">
+              <div class="rail-bullet">3</div>
+              <div class="rail-label">What You Own</div>
+            </div>
+            <div class="rail-step" data-step="loans">
+              <div class="rail-bullet">4</div>
+              <div class="rail-label">What You Owe</div>
+            </div>
+            <div class="rail-step" data-step="protection">
+              <div class="rail-bullet">5</div>
+              <div class="rail-label">Protection</div>
+            </div>
+            <div class="rail-step" data-step="goals">
+              <div class="rail-bullet">6</div>
+              <div class="rail-label">Dreams</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pulse Metrics -->
+        <div class="pulse-title-row">
+          <div class="pulse-title">Your Pulse</div>
+          <div class="pulse-tag">● Live</div>
+        </div>
+        <p class="pulse-subtitle">Your financial health — updating as you type.</p>
+
+        <div class="pulse-metric" data-metric="savings">
+          <div class="pulse-metric-head">
+            <div class="pulse-metric-label">
+              <span class="pulse-dot" style="background: var(--pulse-1);"></span>
+              Savings Rate
+            </div>
+            <div class="pulse-metric-value empty">—</div>
+          </div>
+          <div class="pulse-bar"><div class="pulse-bar-fill state-empty"></div></div>
+          <div class="pulse-hint">% of income you keep each month</div>
+        </div>
+
+        <div class="pulse-metric" data-metric="debt">
+          <div class="pulse-metric-head">
+            <div class="pulse-metric-label">
+              <span class="pulse-dot" style="background: var(--pulse-2);"></span>
+              Debt Load
+            </div>
+            <div class="pulse-metric-value empty">—</div>
+          </div>
+          <div class="pulse-bar"><div class="pulse-bar-fill state-empty"></div></div>
+          <div class="pulse-hint">EMI as % of income · &lt;40% is healthy</div>
+        </div>
+
+        <div class="pulse-metric" data-metric="protection">
+          <div class="pulse-metric-head">
+            <div class="pulse-metric-label">
+              <span class="pulse-dot" style="background: var(--pulse-3);"></span>
+              Protection
+            </div>
+            <div class="pulse-metric-value empty">—</div>
+          </div>
+          <div class="pulse-bar"><div class="pulse-bar-fill state-empty"></div></div>
+          <div class="pulse-hint">Life cover as × of annual income</div>
+        </div>
+
+        <div class="pulse-metric" data-metric="liquidity">
+          <div class="pulse-metric-head">
+            <div class="pulse-metric-label">
+              <span class="pulse-dot" style="background: var(--pulse-4);"></span>
+              Liquidity
+            </div>
+            <div class="pulse-metric-value empty">—</div>
+          </div>
+          <div class="pulse-bar"><div class="pulse-bar-fill state-empty"></div></div>
+          <div class="pulse-hint">Emergency fund as months of expenses</div>
+        </div>
+
+        <div class="pulse-metric" data-metric="future">
+          <div class="pulse-metric-head">
+            <div class="pulse-metric-label">
+              <span class="pulse-dot" style="background: var(--pulse-5);"></span>
+              Future Focus
+            </div>
+            <div class="pulse-metric-value empty">—</div>
+          </div>
+          <div class="pulse-bar"><div class="pulse-bar-fill state-empty"></div></div>
+          <div class="pulse-hint">Goal savings as % of total assets</div>
+        </div>
+
+        <div class="pulse-footer">● PULSE v1 · ContactNest</div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- =========== SCREEN 8: SNAPSHOT OUTCOME =========== -->
+  <section class="screen snapshot-screen" id="screen-snapshot">
+    <div class="snapshot-hero">
+      <div class="snapshot-hero-inner">
+        <div class="snapshot-eyebrow">● Your Financial Snapshot</div>
+        <h1 class="snapshot-headline">Priya, here's<br/><em>your whole picture.</em></h1>
+        <p class="snapshot-hero-sub">Generated in 9 minutes. Save it, share it with Rajiv, or use it as the starting point for your first real conversation about money.</p>
+        <div class="snapshot-hero-meta">
+          <div class="hero-meta-item">
+            Generated
+            <strong>Apr 8, 2026</strong>
+          </div>
+          <div class="hero-meta-item">
+            Advisor
+            <strong>Rajiv Khanna</strong>
+          </div>
+          <div class="hero-meta-item">
+            Snapshot ID
+            <strong style="font-family: var(--font-mono); font-size: 14px;">PMT-0047</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="snapshot-body">
+
+      <!-- Net Worth -->
+      <div class="networth-card">
+        <div class="networth-label">Your net worth</div>
+        <div class="networth-value"><span class="currency">₹</span>1,11,10,000</div>
+        <div class="networth-breakdown">
+          <div class="breakdown-item plus">
+            <div class="breakdown-label">Total Assets</div>
+            <div class="breakdown-value">+ ₹1,77,50,000</div>
+          </div>
+          <div class="breakdown-item minus">
+            <div class="breakdown-label">Total Liabilities</div>
+            <div class="breakdown-value">− ₹66,20,000</div>
+          </div>
+          <div class="breakdown-item">
+            <div class="breakdown-label">Monthly Savings</div>
+            <div class="breakdown-value" style="color: var(--jade);">₹1,41,500</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vani Observations -->
+      <div class="vani-observations">
+        <div class="obs-header">
+          <div class="obs-avatar">V</div>
+          <div>
+            <div class="obs-name">Vani's take</div>
+            <div class="obs-tag">3 things worth knowing</div>
+          </div>
+        </div>
+        <div class="obs-list">
+          <div class="obs-item">
+            <div class="obs-num">01</div>
+            <div class="obs-text">Your savings rate of <em>52%</em> is genuinely exceptional — top 5% for your income bracket. Whatever you're doing, <strong>keep doing it.</strong></div>
+          </div>
+          <div class="obs-item">
+            <div class="obs-num">02</div>
+            <div class="obs-text">But <em>79% of your wealth</em> is locked in one apartment. If life throws you a curveball, you can't easily access it. <strong>Ask Rajiv about building a liquid emergency buffer.</strong></div>
+          </div>
+          <div class="obs-item">
+            <div class="obs-num">03</div>
+            <div class="obs-text">Your life cover at <em>2.3× annual income</em> is the biggest gap I see. With two dependents, most advisors recommend 10–15×. <strong>This is the single most important conversation to have this month.</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid: Assets + Health -->
+      <div class="snapshot-grid">
+        <div class="snap-card">
+          <div class="snap-card-title">Where your money lives</div>
+          <div class="snap-card-sub">Asset allocation across your portfolio</div>
+          <div class="donut-wrap">
+            <svg class="donut-svg" viewBox="0 0 100 100">
+              <!-- background -->
+              <circle cx="50" cy="50" r="38" fill="none" stroke="var(--line)" stroke-width="14"/>
+              <!-- Apartment 79% -->
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#6b4e8a" stroke-width="14"
+                stroke-dasharray="188.5 238.8" stroke-dashoffset="0" transform="rotate(-90 50 50)"/>
+              <!-- Equity MF 13.5% -->
+              <circle cx="50" cy="50" r="38" fill="none" stroke="var(--jade)" stroke-width="14"
+                stroke-dasharray="32.2 238.8" stroke-dashoffset="-188.5" transform="rotate(-90 50 50)"/>
+              <!-- PPF 5% -->
+              <circle cx="50" cy="50" r="38" fill="none" stroke="var(--warn)" stroke-width="14"
+                stroke-dasharray="12 238.8" stroke-dashoffset="-220.7" transform="rotate(-90 50 50)"/>
+              <!-- Savings 2.5% -->
+              <circle cx="50" cy="50" r="38" fill="none" stroke="var(--coral)" stroke-width="14"
+                stroke-dasharray="6 238.8" stroke-dashoffset="-232.7" transform="rotate(-90 50 50)"/>
+              <text x="50" y="46" text-anchor="middle" class="donut-center-label">Total</text>
+              <text x="50" y="58" text-anchor="middle" class="donut-center-value">₹1.77 Cr</text>
+            </svg>
+            <div class="donut-legend">
+              <div class="legend-row">
+                <div class="legend-swatch" style="background: #6b4e8a;"></div>
+                <div class="legend-label">Apartment</div>
+                <div class="legend-amount">₹1.40 Cr</div>
+                <div class="legend-pct">79%</div>
+              </div>
+              <div class="legend-row">
+                <div class="legend-swatch" style="background: var(--jade);"></div>
+                <div class="legend-label">Equity MF</div>
+                <div class="legend-amount">₹24.0 L</div>
+                <div class="legend-pct">13.5%</div>
+              </div>
+              <div class="legend-row">
+                <div class="legend-swatch" style="background: var(--warn);"></div>
+                <div class="legend-label">PPF</div>
+                <div class="legend-amount">₹9.0 L</div>
+                <div class="legend-pct">5.1%</div>
+              </div>
+              <div class="legend-row">
+                <div class="legend-swatch" style="background: var(--coral);"></div>
+                <div class="legend-label">Savings</div>
+                <div class="legend-amount">₹4.5 L</div>
+                <div class="legend-pct">2.5%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="snap-card health-score-card">
+          <div class="snap-card-title">Health rings</div>
+          <div class="snap-card-sub">Your 5 vital signs</div>
+          <div class="health-rings">
+            <div class="health-ring-row">
+              <div class="mini-ring">
+                <svg viewBox="0 0 40 40"><circle class="mini-ring-bg" cx="20" cy="20" r="16"/><circle class="mini-ring-fill" cx="20" cy="20" r="16" stroke="var(--ok)" stroke-dasharray="100.5" stroke-dashoffset="4"/></svg>
+                <div class="mini-ring-text">96</div>
+              </div>
+              <div>
+                <div class="health-ring-label">Savings Rate</div>
+                <div class="health-ring-state" style="color: var(--ok);">● Excellent</div>
+              </div>
+            </div>
+            <div class="health-ring-row">
+              <div class="mini-ring">
+                <svg viewBox="0 0 40 40"><circle class="mini-ring-bg" cx="20" cy="20" r="16"/><circle class="mini-ring-fill" cx="20" cy="20" r="16" stroke="var(--ok)" stroke-dasharray="100.5" stroke-dashoffset="22"/></svg>
+                <div class="mini-ring-text">78</div>
+              </div>
+              <div>
+                <div class="health-ring-label">Debt Load</div>
+                <div class="health-ring-state" style="color: var(--ok);">● Healthy</div>
+              </div>
+            </div>
+            <div class="health-ring-row">
+              <div class="mini-ring">
+                <svg viewBox="0 0 40 40"><circle class="mini-ring-bg" cx="20" cy="20" r="16"/><circle class="mini-ring-fill" cx="20" cy="20" r="16" stroke="var(--danger)" stroke-dasharray="100.5" stroke-dashoffset="78"/></svg>
+                <div class="mini-ring-text">22</div>
+              </div>
+              <div>
+                <div class="health-ring-label">Protection</div>
+                <div class="health-ring-state" style="color: var(--danger);">● Action needed</div>
+              </div>
+            </div>
+            <div class="health-ring-row">
+              <div class="mini-ring">
+                <svg viewBox="0 0 40 40"><circle class="mini-ring-bg" cx="20" cy="20" r="16"/><circle class="mini-ring-fill" cx="20" cy="20" r="16" stroke="var(--warn)" stroke-dasharray="100.5" stroke-dashoffset="55"/></svg>
+                <div class="mini-ring-text">45</div>
+              </div>
+              <div>
+                <div class="health-ring-label">Liquidity</div>
+                <div class="health-ring-state" style="color: var(--warn);">● Could improve</div>
+              </div>
+            </div>
+            <div class="health-ring-row">
+              <div class="mini-ring">
+                <svg viewBox="0 0 40 40"><circle class="mini-ring-bg" cx="20" cy="20" r="16"/><circle class="mini-ring-fill" cx="20" cy="20" r="16" stroke="var(--ok)" stroke-dasharray="100.5" stroke-dashoffset="18"/></svg>
+                <div class="mini-ring-text">82</div>
+              </div>
+              <div>
+                <div class="health-ring-label">Future Focus</div>
+                <div class="health-ring-state" style="color: var(--ok);">● Strong</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cash Flow + Goals -->
+      <div class="snapshot-grid">
+        <div class="snap-card">
+          <div class="snap-card-title">Your monthly rhythm</div>
+          <div class="snap-card-sub">How the money moves</div>
+          <div class="cashflow-bars">
+            <div class="cf-row">
+              <div class="cf-label" style="color: var(--jade);">Income</div>
+              <div class="cf-track"><div class="cf-fill income" style="width: 100%;"></div></div>
+              <div class="cf-amount">₹2,70,000</div>
+            </div>
+            <div class="cf-row">
+              <div class="cf-label" style="color: var(--warn);">Expenses</div>
+              <div class="cf-track"><div class="cf-fill expenses" style="width: 47.4%;"></div></div>
+              <div class="cf-amount">₹1,28,500</div>
+            </div>
+            <div class="cf-row">
+              <div class="cf-label" style="color: var(--coral);">Savings</div>
+              <div class="cf-track"><div class="cf-fill savings" style="width: 52.4%;"></div></div>
+              <div class="cf-amount">₹1,41,500</div>
+            </div>
+          </div>
+          <div style="margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-3);">
+            You're keeping <strong style="color: var(--ink); font-weight: 700;">52% of every rupee</strong> that comes in. That's in the top quartile for your income bracket.
+          </div>
+        </div>
+
+        <div class="snap-card">
+          <div class="snap-card-title">Your dreams, on a timeline</div>
+          <div class="snap-card-sub">When each goal needs to happen</div>
+          <div class="goals-timeline">
+            <div class="goal-item">
+              <div class="goal-item-head">
+                <div class="goal-item-name">Beach house in Goa</div>
+                <div class="goal-item-amount">₹2.50 Cr</div>
+              </div>
+              <div class="goal-item-meta">In 8 years · by 2034</div>
+            </div>
+            <div class="goal-item">
+              <div class="goal-item-head">
+                <div class="goal-item-name">Children's education</div>
+                <div class="goal-item-amount">₹80.0 L</div>
+              </div>
+              <div class="goal-item-meta">In 12 years · by 2038</div>
+            </div>
+            <div class="goal-item">
+              <div class="goal-item-head">
+                <div class="goal-item-name">Retirement corpus</div>
+                <div class="goal-item-amount">₹6.00 Cr</div>
+              </div>
+              <div class="goal-item-meta">In 22 years · by 2048</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="snapshot-actions">
+        <button class="btn btn-ghost btn-lg">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download PDF
+        </button>
+        <button class="btn btn-jade btn-lg">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          Share with Rajiv
+        </button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+// ============================================
+// STATE
+// ============================================
+const STEPS = ['about', 'income', 'assets', 'loans', 'protection', 'goals'];
+let currentStepIdx = 0;
+
+// Pre-computed pulse values for each step (simulates progressive reveal)
+// These are the real calculations based on the hardcoded form data
+const PULSE_BY_STEP = {
+  0: { savings: null, debt: null, protection: null, liquidity: null, future: null },
+  1: {
+    // After income/expenses entered
+    savings: { value: '52%', pct: 96, state: 'good', hint: '52% of income saved — exceptional' }
+  },
+  2: {
+    savings: { value: '52%', pct: 96, state: 'good', hint: '52% of income saved — exceptional' },
+    liquidity: { value: '3.5 mo', pct: 45, state: 'mid', hint: 'Emergency fund covers 3.5 months' },
+    future: { value: '19%', pct: 62, state: 'good', hint: 'Assets in future-focused buckets' }
+  },
+  3: {
+    savings: { value: '52%', pct: 96, state: 'good', hint: '52% of income saved — exceptional' },
+    debt: { value: '25%', pct: 78, state: 'good', hint: 'EMI at 25% of income — healthy' },
+    liquidity: { value: '3.5 mo', pct: 45, state: 'mid', hint: 'Emergency fund covers 3.5 months' },
+    future: { value: '19%', pct: 62, state: 'good', hint: 'Assets in future-focused buckets' }
+  },
+  4: {
+    savings: { value: '52%', pct: 96, state: 'good', hint: '52% of income saved — exceptional' },
+    debt: { value: '25%', pct: 78, state: 'good', hint: 'EMI at 25% of income — healthy' },
+    protection: { value: '2.3×', pct: 22, state: 'low', hint: 'Life cover only 2.3× income — gap' },
+    liquidity: { value: '3.5 mo', pct: 45, state: 'mid', hint: 'Emergency fund covers 3.5 months' },
+    future: { value: '19%', pct: 62, state: 'good', hint: 'Assets in future-focused buckets' }
+  },
+  5: {
+    savings: { value: '52%', pct: 96, state: 'good', hint: '52% of income saved — exceptional' },
+    debt: { value: '25%', pct: 78, state: 'good', hint: 'EMI at 25% of income — healthy' },
+    protection: { value: '2.3×', pct: 22, state: 'low', hint: 'Life cover only 2.3× income — gap' },
+    liquidity: { value: '3.5 mo', pct: 45, state: 'mid', hint: 'Emergency fund covers 3.5 months' },
+    future: { value: '82%', pct: 82, state: 'good', hint: 'Strong goal alignment' }
+  }
+};
+
+// ============================================
+// NAVIGATION
+// ============================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showFormStep(idx) {
+  document.querySelectorAll('.form-step').forEach(s => s.style.display = 'none');
+  document.getElementById('step-' + STEPS[idx]).style.display = 'block';
+  currentStepIdx = idx;
+
+  // Update rail
+  document.querySelectorAll('.rail-step').forEach((el, i) => {
+    el.classList.remove('active', 'done');
+    if (i < idx) el.classList.add('done');
+    else if (i === idx) el.classList.add('active');
+  });
+
+  // Update counter
+  document.getElementById('step-curr').textContent = idx + 1;
+
+  // Update back button visibility
+  document.getElementById('btn-back').style.visibility = idx === 0 ? 'hidden' : 'visible';
+
+  // Update next button text on last step
+  const nextBtn = document.getElementById('btn-next');
+  if (idx === STEPS.length - 1) {
+    nextBtn.innerHTML = 'See my snapshot <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+  } else {
+    nextBtn.innerHTML = 'Continue <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+  }
+
+  // Update pulse
+  updatePulse(idx);
+
+  // Scroll main into view
+  document.querySelector('.form-main').scrollTop = 0;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Update saved indicator
+  flashSaved();
+}
+
+function flashSaved() {
+  const el = document.getElementById('saved-text');
+  el.textContent = 'Saving...';
+  setTimeout(() => { el.textContent = 'Auto-saved'; }, 600);
+}
+
+// ============================================
+// PULSE UPDATES
+// ============================================
+function updatePulse(stepIdx) {
+  const data = PULSE_BY_STEP[stepIdx] || {};
+  const metrics = ['savings', 'debt', 'protection', 'liquidity', 'future'];
+
+  metrics.forEach(metric => {
+    const row = document.querySelector(`[data-metric="${metric}"]`);
+    if (!row) return;
+    const valueEl = row.querySelector('.pulse-metric-value');
+    const barFill = row.querySelector('.pulse-bar-fill');
+    const hintEl = row.querySelector('.pulse-hint');
+
+    const m = data[metric];
+    if (m) {
+      valueEl.textContent = m.value;
+      valueEl.classList.remove('empty');
+      barFill.style.width = m.pct + '%';
+      barFill.className = 'pulse-bar-fill state-' + m.state;
+      // Animate hint update
+      setTimeout(() => { hintEl.textContent = m.hint; }, 200);
+    } else {
+      valueEl.textContent = '—';
+      valueEl.classList.add('empty');
+      barFill.style.width = '0%';
+      barFill.className = 'pulse-bar-fill state-empty';
+    }
+  });
+}
+
+// ============================================
+// EVENT WIRING
+// ============================================
+// Welcome → form
+document.querySelector('[data-goto="about"]').addEventListener('click', () => {
+  showScreen('screen-form');
+  showFormStep(0);
+});
+
+// Next/Back
+document.getElementById('btn-next').addEventListener('click', () => {
+  if (currentStepIdx < STEPS.length - 1) {
+    showFormStep(currentStepIdx + 1);
+  } else {
+    showScreen('screen-snapshot');
+  }
+});
+document.getElementById('btn-back').addEventListener('click', () => {
+  if (currentStepIdx > 0) showFormStep(currentStepIdx - 1);
+});
+
+// Rail clicks (jump to step)
+document.querySelectorAll('.rail-step').forEach((el, i) => {
+  el.addEventListener('click', () => showFormStep(i));
+});
+
+// Option card selection
+document.querySelectorAll('.option-cards').forEach(group => {
+  group.querySelectorAll('.option-card').forEach(card => {
+    card.addEventListener('click', () => {
+      group.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+    });
+  });
+});
+
+// Pill selection
+document.querySelectorAll('.pills').forEach(group => {
+  group.querySelectorAll('.pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      group.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+    });
+  });
+});
+
+// Yes/No cards
+document.querySelectorAll('.yesno-cards').forEach(group => {
+  group.querySelectorAll('.yesno-card').forEach(card => {
+    card.addEventListener('click', () => {
+      group.querySelectorAll('.yesno-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+    });
+  });
+});
+
+// Liquid toggle
+document.querySelectorAll('.liq-toggle').forEach(group => {
+  group.querySelectorAll('.liq-btn').forEach((btn, idx) => {
+    btn.addEventListener('click', () => {
+      group.querySelectorAll('.liq-btn').forEach(b => { b.classList.remove('active-liq', 'active-illiq'); });
+      btn.classList.add(idx === 0 ? 'active-liq' : 'active-illiq');
+    });
+  });
+});
+
+// Initialize
+showFormStep(0);
+</script>
+
+</body>
+</html>
