@@ -2,6 +2,7 @@ import { ThemeConfig } from './types';
 import { BharathaVarshaTheme } from './themes/bharathavarshaTheme';
 import { ClassicElegantTheme } from './themes/classicElegantTheme';
 import { ContractNestTheme } from './themes/contractNest';
+import { JadeEstateTheme } from './themes/jadeEstate';
 import { ModernBoldTheme } from './themes/modernBold';
 import { ModernBusinessTheme } from './themes/modernBusiness';
 import { ProfessionalRedefinedTheme } from './themes/professionalRedefined';
@@ -14,6 +15,7 @@ import { VikunaBlackTheme } from './themes/vikunaBlack';
 
 export const themes: ThemeConfig[] = [
   VikunaBlackTheme,           // Default — listed first
+  JadeEstateTheme,
   ClassicElegantTheme,
   PurpleToneTheme,
   BharathaVarshaTheme,
