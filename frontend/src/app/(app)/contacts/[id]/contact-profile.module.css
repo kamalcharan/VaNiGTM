@@ -262,7 +262,7 @@
 .detailValue {
   font-size: 0.85rem;
   font-weight: 500;
-  color: var(--color-muted);
+  color: var(--color-primary);
 }
 
 .detailMono {
@@ -422,7 +422,7 @@
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 0.85rem;
   font-weight: 500;
-  color: var(--color-muted);
+  color: var(--color-primary);
 }
 
 .channelRight {
