@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useSkillQuery } from '@/hooks/useSkill';
+import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
+import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfStatusBadge, VdfReadinessRing, VdfTabs,
 } from '@/components/vdf';
@@ -105,11 +106,33 @@ export default function ContactProfilePage() {
   const contactId = Number(id);
 
   // All hooks must be at the top — before any early returns
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab]     = useState('overview');
+  const [intakeUrl,  setIntakeUrl]    = useState<string | null>(null);
+  const [copied,     setCopied]       = useState(false);
+  const { showToast } = useToast();
 
   const { data, isLoading, isError } = useSkillQuery<{ contact: Contact | null }>(
     'contact-skill', 'get_contact', { contact_id: contactId }
   );
+
+  const { mutate: genToken, isPending: isGenning } = useSkillMutation<{ intake_url: string }>(
+    'contact-skill', 'generate_intake_token',
+    {
+      onSuccess: (res) => {
+        const url = res.data?.intake_url;
+        if (url) setIntakeUrl(url);
+        else showToast({ message: 'Could not generate link', type: 'error' });
+      },
+      onError: (e) => showToast({ message: e.message || 'Failed to generate link', type: 'error' }),
+    }
+  );
+
+  const handleCopy = (url: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   if (isLoading) return <VdfLoader overlay message="Loading contact…" />;
 
@@ -386,13 +409,42 @@ export default function ContactProfilePage() {
                   )}
                 </div>
               </div>
-              <button
-                className={s.heroRingCtaBtn}
-                disabled={pct < 35}
-                onClick={() => router.push(`/contacts/${contactId}/convert`)}
-              >
-                Convert to Client →
-              </button>
+              <div className={s.heroRingActions}>
+                <button
+                  className={s.heroRingCtaBtn}
+                  disabled={pct < 35}
+                  onClick={() => router.push(`/contacts/${contactId}/convert`)}
+                >
+                  Convert to Client →
+                </button>
+                <button
+                  className={s.heroIntakeBtn}
+                  disabled={isGenning}
+                  onClick={() => genToken({ contact_id: contactId })}
+                >
+                  {isGenning ? '…' : (
+                    <>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                        <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+                      </svg>
+                      Send Intake Link
+                    </>
+                  )}
+                </button>
+              </div>
+              {intakeUrl && (
+                <div className={s.intakeLinkBox}>
+                  <span className={s.intakeLinkUrl}>{intakeUrl}</span>
+                  <button
+                    className={s.intakeCopyBtn}
+                    onClick={() => handleCopy(intakeUrl)}
+                  >
+                    {copied ? '✓ Copied' : 'Copy'}
+                  </button>
+                  <button className={s.intakeDismiss} onClick={() => setIntakeUrl(null)}>×</button>
+                </div>
+              )}
             </div>
           )}
         </div>

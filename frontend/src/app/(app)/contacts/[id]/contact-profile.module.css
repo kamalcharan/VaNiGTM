@@ -950,3 +950,81 @@
     font-size: 0.62rem;
   }
 }
+
+/* ── Intake link — hero prospect card ────────────────────────────────────── */
+
+.heroRingActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.heroIntakeBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
+  border-radius: 8px;
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.heroIntakeBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  border-color: var(--color-primary);
+}
+.heroIntakeBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.intakeLinkBox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--color-success) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
+  border-radius: 8px;
+}
+.intakeLinkUrl {
+  flex: 1;
+  font-size: 0.65rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--color-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.intakeCopyBtn {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  background: var(--color-success);
+  border: none;
+  border-radius: 5px;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.intakeCopyBtn:hover { opacity: 0.85; }
+
+.intakeDismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+}
