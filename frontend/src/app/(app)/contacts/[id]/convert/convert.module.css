@@ -232,7 +232,6 @@
 /* ── Right Form ── */
 .form {
   padding: 40px 56px 40px;
-  max-width: 760px;
   overflow-y: auto;     /* form column scrolls independently */
   height: 100%;
   box-sizing: border-box;
