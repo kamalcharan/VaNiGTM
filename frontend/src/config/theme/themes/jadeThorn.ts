@@ -1,75 +1,79 @@
 import { ThemeConfig } from '../types';
 
+// Jade Thorn — dark forest identity. Always dark, never parchment.
+// Heritage owns warm-light. Jade Thorn owns deep-dark.
+// The "thorn": sharp bright jade cutting through near-black forest.
+
 export const JadeThornTheme: ThemeConfig = {
   id: 'jade-thorn',
   name: 'Jade Thorn',
   colors: {
     brand: {
-      primary: '#1a6948',    // Deep vibrant jade
-      secondary: '#0c1a0f',  // Near-black thorn — the sharp contrast anchor
-      tertiary: '#5a8a6e',   // Mid sage — softer bridge
-      alternate: '#e5ece5',  // Jade-tinted surface
+      primary: '#35c27a',    // Vivid jade — pops on near-black
+      secondary: '#e4f0e6',  // Pale jade-white
+      tertiary: '#5aaa82',   // Mid jade
+      alternate: '#182c1e',  // Lifted forest surface
     },
     utility: {
-      primaryText: '#0c1a0f',              // Deep forest black — near-black with green undertone
-      secondaryText: 'rgba(12,26,15,0.55)',
-      primaryBackground: '#f1f5f1',       // Cool marble white — jade-tinted, not parchment
-      secondaryBackground: '#e5ece5',     // Slightly deeper jade-white surface
+      primaryText: '#e4f0e6',              // Pale jade-white text
+      secondaryText: 'rgba(228,240,230,0.68)',
+      primaryBackground: '#07100a',        // Very deep forest black — the dark identity
+      secondaryBackground: '#182c1e',      // Clearly lifted surface
     },
     accent: {
-      accent1: '#1a6948',  // Jade primary
-      accent2: '#a0421a',  // Burnt umber thorn — warm-dark complement
-      accent3: '#2a5a7a',  // Deep slate-blue contrast
-      accent4: '#6a3a8a',  // Deep violet fourth
+      accent1: '#35c27a',  // Vivid jade
+      accent2: '#e07040',  // Warm ember — the thorn's heat
+      accent3: '#5aaad4',  // Slate-blue contrast
+      accent4: '#aa70e0',  // Violet fourth
     },
     semantic: {
-      success: '#1a6948',  // Jade itself as success
-      error: '#b82020',    // Deep crimson thorn
-      warning: '#b86820',  // Dark amber thorn
-      info: '#1a4a6e',     // Deep slate-blue
+      success: '#35c27a',
+      error: '#e04444',
+      warning: '#e09040',
+      info: '#5aaad4',
     },
     surface: {
-      glass: 'rgba(26,105,72,0.04)',
-      glassStrong: 'rgba(26,105,72,0.08)',
-      glassBorder: 'rgba(26,105,72,0.14)',
-      primaryDim: 'rgba(26,105,72,0.28)',
-      primaryGlow: 'rgba(26,105,72,0.12)',
-      primarySubtle: 'rgba(26,105,72,0.05)',
+      glass: 'rgba(53,194,122,0.07)',
+      glassStrong: 'rgba(53,194,122,0.13)',
+      glassBorder: 'rgba(53,194,122,0.24)',
+      primaryDim: 'rgba(53,194,122,0.34)',
+      primaryGlow: 'rgba(53,194,122,0.16)',
+      primarySubtle: 'rgba(53,194,122,0.07)',
     },
   },
   darkMode: {
     colors: {
       brand: {
-        primary: '#35c27a',    // Vivid jade — pops on near-black
-        secondary: '#e4f0e6',  // Pale jade-white
-        tertiary: '#5aaa82',   // Lighter mid jade — readable on dark
-        alternate: '#182c1e',  // Lifted forest surface — clearly above bg
+        primary: '#42d88a',    // Even brighter jade for deeper dark
+        secondary: '#f0f8f2',
+        tertiary: '#6abf90',
+        alternate: '#0f1c12',
       },
       utility: {
-        primaryText: '#e4f0e6',              // Pale jade-white — not pure white
-        secondaryText: 'rgba(228,240,230,0.68)',
-        primaryBackground: '#07100a',       // Very deep forest black with green undertone
-        secondaryBackground: '#182c1e',     // Clearly lifted surface — cards visible against bg
+        primaryText: '#f0f8f2',
+        secondaryText: 'rgba(240,248,242,0.68)',
+        primaryBackground: '#030806',        // Deeper still for OS dark mode
+        secondaryBackground: '#0f1c12',
       },
       accent: {
-        accent1: '#35c27a',  // Vivid jade
-        accent2: '#e07040',  // Warm ember — thorn in dark
-        accent3: '#5aaad4',  // Lifted slate-blue — readable on dark
-        accent4: '#aa70e0',  // Lighter violet — readable on dark
+        accent1: '#42d88a',
+        accent2: '#f08050',
+        accent3: '#6abcee',
+        accent4: '#c090f0',
       },
       semantic: {
-        success: '#35c27a',  // Vivid jade
-        error: '#e04444',    // Bright crimson
-        warning: '#e09040',  // Bright amber
-        info: '#5aaad4',     // Lifted slate-blue
+        success: '#42d88a',
+        error: '#f05050',
+        warning: '#f0a050',
+        info: '#6abcee',
       },
       surface: {
-        glass: 'rgba(53,194,122,0.07)',
-        glassStrong: 'rgba(53,194,122,0.13)',
-        glassBorder: 'rgba(53,194,122,0.24)',  // Lifted — borders now visible
-        primaryDim: 'rgba(53,194,122,0.34)',
-        primaryGlow: 'rgba(53,194,122,0.16)',
-        primarySubtle: 'rgba(53,194,122,0.07)',
+        glass: 'rgba(66,216,138,0.08)',
+        glassStrong: 'rgba(66,216,138,0.14)',
+        glassBorder: 'rgba(66,216,138,0.26)',
+        primaryDim: 'rgba(66,216,138,0.36)',
+        primaryGlow: 'rgba(66,216,138,0.18)',
+        primarySubtle: 'rgba(66,216,138,0.08)',
       },
     },
   },
