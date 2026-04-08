@@ -450,6 +450,212 @@
   gap: 12px;
 }
 
+/* ── Conversion Success Screen ── */
+
+@keyframes successFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes cardFlip {
+  from { transform: rotateY(180deg) scale(0.8); opacity: 0; }
+  to   { transform: rotateY(0deg) scale(1);    opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.successScreen {
+  position: fixed;
+  inset: 0;
+  background: var(--color-fg);
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  animation: successFadeIn 0.35s ease both;
+}
+
+.successScreen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 28% 38%, color-mix(in srgb, var(--color-primary) 18%, transparent) 0%, transparent 52%),
+    radial-gradient(circle at 72% 62%, color-mix(in srgb, var(--color-success) 14%, transparent) 0%, transparent 52%);
+  pointer-events: none;
+}
+
+.successContent {
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  max-width: 540px;
+  padding: 40px 24px;
+}
+
+/* Card — flips in from the back */
+.successCard {
+  background: linear-gradient(160deg, #faf9f5 0%, #f0eee7 100%);
+  border-radius: 20px;
+  padding: 36px 40px;
+  margin: 0 auto 32px;
+  max-width: 380px;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 40px 80px -20px rgba(0,0,0,0.55),
+    0 0 0 1px color-mix(in srgb, var(--color-primary) 28%, transparent);
+  animation: cardFlip 0.8s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* Gold accent bar at the top of the card */
+.successCard::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-info), var(--color-primary));
+}
+
+.successCardEyebrow {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #777;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.successCardTitle {
+  font-family: var(--font-display, 'Playfair Display', serif);
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+  line-height: 1.1;
+}
+
+/* License-plate ext_ref (only rendered if extRef exists) */
+.successExtRef {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1.5px solid #1a1a1a;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 16px 0 12px;
+  box-shadow: 0 2px 0 #1a1a1a;
+}
+
+.successExtRefLabel {
+  background: #1a1a1a;
+  color: var(--color-primary);
+  padding: 7px 11px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+}
+
+.successExtRefValue {
+  padding: 7px 14px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  letter-spacing: 0.04em;
+}
+
+.successCardMeta {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0,0,0,0.1);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: #777;
+  text-transform: uppercase;
+}
+
+/* Headline below the card */
+.successHeadline {
+  font-family: var(--font-display, 'Playfair Display', serif);
+  font-size: 42px;
+  font-weight: 300;
+  color: #fff;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+  margin-bottom: 14px;
+  animation: slideUp 0.6s ease 0.35s both;
+}
+
+.successHeadline em {
+  font-style: italic;
+  color: var(--color-primary);
+}
+
+.successSub {
+  color: rgba(255,255,255,0.65);
+  font-size: 14px;
+  margin-bottom: 32px;
+  line-height: 1.6;
+  animation: slideUp 0.6s ease 0.48s both;
+}
+
+.successActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  animation: slideUp 0.6s ease 0.60s both;
+}
+
+/* Primary action — uses primary accent */
+.successBtnPrimary {
+  background: var(--color-primary);
+  color: var(--color-bg);
+  padding: 13px 26px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.successBtnPrimary:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+/* Ghost action — white on dark */
+.successBtnGhost {
+  background: transparent;
+  color: rgba(255,255,255,0.75);
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 13px 26px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.successBtnGhost:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.35);
+}
+
 /* ── Error state ── */
 .errorBanner {
   margin: 32px;
