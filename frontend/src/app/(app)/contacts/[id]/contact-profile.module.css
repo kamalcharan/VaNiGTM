@@ -3,7 +3,6 @@
    ═══════════════════════════════════════════════════════ */
 
 .page {
-  max-width: 960px;
   min-height: 100%;
 }
 
@@ -208,7 +207,7 @@
 
 .overviewGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.4fr 1fr 1fr;
   gap: 20px;
   padding: 28px 32px;
   align-items: start;
@@ -271,6 +270,106 @@
   font-size: 0.82rem !important;
 }
 
+/* ── Snapshot Summary Card (3rd column in overview) ── */
+
+.snapshotCard {
+  background: var(--glass, var(--color-surface));
+  border: 1px solid var(--glass-border, var(--color-border));
+  border-radius: 14px;
+  padding: 22px;
+}
+
+.snapshotCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.snapshotCardHead .cardTitle {
+  margin-bottom: 0;
+}
+
+.snapshotCardLink {
+  background: none;
+  border: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 150ms;
+}
+
+.snapshotCardLink:hover { opacity: 0.75; }
+
+/* Empty state */
+.snapshotEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 20px 8px 8px;
+  gap: 6px;
+}
+
+.snapshotEmptyIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  display: grid;
+  place-items: center;
+  color: var(--color-primary);
+  margin-bottom: 4px;
+}
+
+.snapshotEmptyText {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-fg);
+}
+
+.snapshotEmptyHint {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  line-height: 1.45;
+}
+
+/* Stats list */
+.snapshotStats {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.snapshotStat {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.snapshotStat:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.snapshotStatLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.snapshotStatValue {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
 
 /* ── Channels Tab ────────────────────────────────────── */
 

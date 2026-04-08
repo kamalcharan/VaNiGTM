@@ -507,7 +507,7 @@ export default function ContactProfilePage() {
               </div>
             </div>
 
-            {/* Right — channels card */}
+            {/* Middle — channels card */}
             <div className={s.channelsCard}>
               <h3 className={s.cardTitle}>Channels</h3>
               {contact.channels.length === 0 ? (
@@ -532,6 +532,69 @@ export default function ContactProfilePage() {
                 </div>
               )}
             </div>
+
+            {/* Right — snapshot summary card */}
+            {(() => {
+              const snap = contact.snapshot_summary;
+              return (
+                <div className={s.snapshotCard}>
+                  <div className={s.snapshotCardHead}>
+                    <h3 className={s.cardTitle}>Snapshot</h3>
+                    <button
+                      className={s.snapshotCardLink}
+                      onClick={() => setActiveTab('snapshot')}
+                    >
+                      {snap?.has_snapshot ? 'Edit →' : 'Build →'}
+                    </button>
+                  </div>
+                  {!snap?.has_snapshot ? (
+                    <div className={s.snapshotEmpty}>
+                      <div className={s.snapshotEmptyIcon}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="24" height="24">
+                          <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
+                      <p className={s.snapshotEmptyText}>No financial snapshot yet.</p>
+                      <p className={s.snapshotEmptyHint}>Add risk profile, net worth, and goals to unlock conversion.</p>
+                    </div>
+                  ) : (
+                    <div className={s.snapshotStats}>
+                      {snap.risk_profile && (
+                        <div className={s.snapshotStat}>
+                          <span className={s.snapshotStatLabel}>Risk Profile</span>
+                          <span
+                            className={s.snapshotStatValue}
+                            style={{ color: RISK_COLORS[snap.risk_profile] ?? 'var(--color-fg)' }}
+                          >
+                            {snap.risk_profile.charAt(0).toUpperCase() + snap.risk_profile.slice(1)}
+                          </span>
+                        </div>
+                      )}
+                      {snap.net_worth_estimate != null && snap.net_worth_estimate > 0 && (
+                        <div className={s.snapshotStat}>
+                          <span className={s.snapshotStatLabel}>Net Worth (est.)</span>
+                          <span className={s.snapshotStatValue}>{formatAmount(snap.net_worth_estimate)}</span>
+                        </div>
+                      )}
+                      {snap.investment_horizon_years != null && (
+                        <div className={s.snapshotStat}>
+                          <span className={s.snapshotStatLabel}>Horizon</span>
+                          <span className={s.snapshotStatValue}>{snap.investment_horizon_years} yr{snap.investment_horizon_years !== 1 ? 's' : ''}</span>
+                        </div>
+                      )}
+                      <div className={s.snapshotStat}>
+                        <span className={s.snapshotStatLabel}>Goals</span>
+                        <span className={s.snapshotStatValue}>
+                          {snap.goals_lite_count > 0
+                            ? `${snap.goals_lite_count} defined`
+                            : <span style={{ color: 'var(--color-muted)', fontStyle: 'italic', fontWeight: 400 }}>None yet</span>}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         );
       })(),
