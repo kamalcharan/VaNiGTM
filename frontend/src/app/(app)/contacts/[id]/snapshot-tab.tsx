@@ -2,13 +2,12 @@
 
 /**
  * SnapshotTab — MFD-fills flow (Flow 3)
- * Matches mfd-snapshot-flow.html reference design.
+ * Matches contactnest-ux.html reference: centered editorial wizard,
+ * 720px max-width, Fraunces question headers, 4px progress segments,
+ * 80px risk bars with taglines, horizontal goal bubbles.
  *
- * 5-section stepper:
+ * 5-section wizard:
  *   01 Cash Flow → 02 Assets → 03 Liabilities → 04 Protection → 05 Goals
- *
- * Benchmark Pulse sidebar: 5 health rings computed live from form state.
- * Draft/Submit lifecycle: draft auto-saved, submit archives old active.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -16,7 +15,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
-import { VdfLoader, VdfButton, VdfReadinessRing } from '@/components/vdf';
+import { VdfLoader, VdfButton } from '@/components/vdf';
 import s from './snapshot-tab.module.css';
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -101,57 +100,25 @@ function fmt(v: number): string {
   return `₹${v.toLocaleString('en-IN')}`;
 }
 
-// ── Talking Brief ──────────────────────────────────────────────────────────
-
-function talkingBrief(metrics: ReturnType<typeof computeMetrics>, goalsCount: number): string[] {
-  const lines: string[] = [];
-  if (metrics.savingsRate !== null) {
-    if (metrics.savingsRate >= 30) lines.push(`Savings rate of ${metrics.savingsRate.toFixed(0)}% — impressive discipline.`);
-    else if (metrics.savingsRate >= 10) lines.push(`Savings rate at ${metrics.savingsRate.toFixed(0)}% — room to grow.`);
-    else lines.push(`Low savings rate (${metrics.savingsRate.toFixed(0)}%) — review expenses.`);
-  }
-  if (metrics.dti !== null) {
-    if (metrics.dti > 50) lines.push(`Debt load at ${metrics.dti.toFixed(0)}% DTI — high. Prioritise reduction.`);
-    else if (metrics.dti > 30) lines.push(`Moderate debt load (${metrics.dti.toFixed(0)}% DTI) — manageable.`);
-    else if (metrics.dti > 0) lines.push(`Healthy debt level at ${metrics.dti.toFixed(0)}% DTI.`);
-  }
-  if (metrics.liquidityMonths !== null) {
-    if (metrics.liquidityMonths < 3) lines.push(`Emergency fund below 3 months — critical gap.`);
-    else if (metrics.liquidityMonths < 6) lines.push(`Emergency fund ${metrics.liquidityMonths.toFixed(1)} months — build towards 6.`);
-    else lines.push(`Good liquidity buffer: ${metrics.liquidityMonths.toFixed(1)} months covered.`);
-  }
-  if (goalsCount > 0) lines.push(`${goalsCount} goal${goalsCount > 1 ? 's' : ''} captured — ready for planning.`);
-  if (lines.length === 0) lines.push('Fill in the sections to see a financial brief.');
-  return lines;
-}
-
-// ── Pulse Ring Component ───────────────────────────────────────────────────
-
-function PulseRing({ label, value, unit, pct, status }: {
-  label: string; value: string; unit: string; pct: number; status: PulseStatus;
-}) {
-  const color = STATUS_COLOR[status];
-  return (
-    <div className={s.pulseRing}>
-      <VdfReadinessRing pct={pct} size={48} strokeWidth={4} color={color} showLabel={false} />
-      <div className={s.pulseRingInfo}>
-        <span className={s.pulseRingLabel}>{label}</span>
-        <span className={s.pulseRingValue} style={{ color }}>
-          {value}<span className={s.pulseRingUnit}>{unit}</span>
-        </span>
-      </div>
-    </div>
-  );
-}
-
 // ── Section headers ────────────────────────────────────────────────────────
 
+// question: qBefore + <name> + qItalic — matches contactnest-ux.html pattern
 const SECTIONS = [
-  { num: '01', title: 'Cash Flow',   sub: 'Income & monthly expenses'      },
-  { num: '02', title: 'Assets',      sub: 'What they own'                  },
-  { num: '03', title: 'Liabilities', sub: 'Loans & outstanding debts'      },
-  { num: '04', title: 'Protection',  sub: 'Insurance coverage'             },
-  { num: '05', title: 'Goals',       sub: 'Aspirational financial targets'  },
+  { num: '01', label: 'Cash Flow',
+    qBefore: 'How does ', qItalic: ' earn and spend?',
+    helper: 'Monthly income and expenses — the heartbeat of every financial plan.' },
+  { num: '02', label: 'Assets',
+    qBefore: 'What does ', qItalic: ' own?',
+    helper: 'Property, investments, savings — capture everything of value.' },
+  { num: '03', label: 'Liabilities',
+    qBefore: 'What does ', qItalic: ' owe?',
+    helper: 'Loans and outstanding debts. No judgment — clarity helps planning.' },
+  { num: '04', label: 'Protection',
+    qBefore: 'How protected is ', qItalic: '?',
+    helper: 'Insurance coverage, life and health — quantify the safety net.' },
+  { num: '05', label: 'Goals',
+    qBefore: 'What are ', qItalic: "'s financial goals?",
+    helper: 'Aspirations, risk appetite, and dreams to plan towards.' },
 ];
 
 const GOAL_TYPES = ['retirement','education','house','wedding','emergency','vehicle','travel','custom'] as const;
@@ -161,16 +128,26 @@ const GOAL_ICONS: Record<string, string> = {
   emergency: '🛡️', vehicle: '🚗', travel: '✈️', custom: '⭐',
 };
 
-// Bar heights for risk volatility mini-chart (conservative → low/stable, aggressive → high/volatile)
+// Bar heights matching contactnest-ux.html reference exactly (5 bars per card)
 const RISK_BARS: Record<'conservative' | 'moderate' | 'aggressive', number[]> = {
-  conservative: [20, 28, 22, 30, 24, 26, 20],
-  moderate:     [24, 38, 28, 46, 32, 42, 30],
-  aggressive:   [28, 48, 36, 54, 38, 50, 42],
+  conservative: [30, 35, 32, 38, 34],
+  moderate:     [40, 65, 50, 72, 58],
+  aggressive:   [30, 90, 45, 95, 60],
 };
 const RISK_BAR_COLORS: Record<'conservative' | 'moderate' | 'aggressive', string> = {
-  conservative: 'var(--color-success)',
+  conservative: 'var(--color-info, #4a7a8c)',
   moderate:     'var(--color-warning)',
   aggressive:   'var(--color-danger)',
+};
+const RISK_TAGLINES: Record<'conservative' | 'moderate' | 'aggressive', string> = {
+  conservative: 'Sleep well at night. Capital protection first.',
+  moderate:     'Balanced growth. Some bumps are okay.',
+  aggressive:   'Long horizon. Volatility is the price of growth.',
+};
+const RISK_RETURNS: Record<'conservative' | 'moderate' | 'aggressive', string> = {
+  conservative: '7–9%',
+  moderate:     '10–13%',
+  aggressive:   '14–18%',
 };
 
 const EXPENSE_LABELS: Record<keyof Expenses, string> = {
@@ -180,7 +157,8 @@ const EXPENSE_LABELS: Record<keyof Expenses, string> = {
 
 // ── Main component ─────────────────────────────────────────────────────────
 
-export function SnapshotTab({ contactId, isClient }: { contactId: number; isClient: boolean }) {
+export function SnapshotTab({ contactId, isClient, contactName }: { contactId: number; isClient: boolean; contactName?: string }) {
+  const them = contactName ? contactName : 'the client';
   const router       = useRouter();
   const { showToast } = useToast();
   const queryClient  = useQueryClient();
@@ -393,8 +371,6 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
     goals.some(g => g.name && Number(g.target_amount) > 0),
   ];
 
-  const brief = talkingBrief(metrics, goals.filter(g => g.name).length);
-
   if (snapLoading) return <VdfLoader message="Loading snapshot…" />;
 
   // ── Empty state — no snapshot yet, user hasn't chosen an action ───────────
@@ -450,63 +426,58 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  const sec = SECTIONS[activeSection];
+
   return (
     <div className={s.wrapper}>
+      <div className={s.snapshotStage}>
 
-      {/* ── Left: Form ─────────────────────────────────────── */}
-      <div className={s.formArea}>
-
-        {/* Stepper */}
-        <div className={s.stepper}>
-          {SECTIONS.map((sec, i) => (
-            <button
+        {/* ── 5-segment progress bar ─────────────────────────────── */}
+        <div className={s.progressWrap}>
+          {SECTIONS.map((_, i) => (
+            <div
               key={i}
-              className={`${s.stepDot} ${i === activeSection ? s.stepActive : ''} ${sectionDone[i] ? s.stepDone : ''}`}
+              className={`${s.progressSegment} ${i < activeSection ? s.progressSegmentDone : ''} ${i === activeSection ? s.progressSegmentActive : ''}`}
               onClick={() => setActiveSection(i)}
-              title={sec.title}
-            >
-              <span className={s.stepNum}>{sectionDone[i] && i !== activeSection ? '✓' : sec.num}</span>
-              <span className={s.stepLabel}>{sec.title}</span>
-            </button>
+              style={{ cursor: 'pointer' }}
+            />
           ))}
-          <div
-            className={s.stepProgress}
-            style={{ width: `${(sectionDone.filter(Boolean).length / 5) * 100}%` }}
-          />
         </div>
 
-        {/* Section header */}
-        <div className={s.sectionHeader}>
-          <span className={s.sectionNum}>{SECTIONS[activeSection].num} / 05</span>
-          <h2 className={s.sectionTitle}>{SECTIONS[activeSection].title}</h2>
-          <p className={s.sectionSub}>{SECTIONS[activeSection].sub}</p>
+        {/* ── Step counter + editorial question header ─────────────── */}
+        <div className={s.stepCounterLabel}>
+          Step {sec.num} of 05 · {sec.label}
         </div>
+        <h2 className={s.stepQuestion}>
+          {sec.qBefore}{them}<em className={s.stepQuestionEm}>{sec.qItalic}</em>
+        </h2>
+        <p className={s.stepHelper}>{sec.helper}</p>
 
-        {/* ── 01 Cash Flow ─────────────────────────────────── */}
+        {/* ── 01 Cash Flow ─────────────────────────────────────────── */}
         {activeSection === 0 && (
           <div className={s.sectionBody}>
             <div className={s.subGroup}>
               <div className={s.subGroupLabel}>Monthly Income</div>
               <div className={s.inputGrid3}>
                 {(['salary', 'partner', 'rental_other'] as const).map(key => (
-                  <div key={key} className={s.amountCard}>
-                    <label className={s.amountLabel}>
+                  <div key={key} className={s.bigInputCard}>
+                    <label className={s.bigInputLabel}>
                       {key === 'salary' ? 'Take-home Salary' : key === 'partner' ? 'Partner Income' : 'Rental / Other'}
                       {key !== 'salary' && <span className={s.optionalTag}>optional</span>}
                     </label>
-                    <div className={s.amountInputWrap}>
-                      <span className={s.currencyPrefix}>₹</span>
+                    <div className={s.bigInputWrap}>
+                      <span className={s.bigInputCurrency}>₹</span>
                       <input
-                        className={s.amountInput}
+                        className={s.bigInput}
                         type="number"
                         value={income[key]}
                         onChange={e => setIncome(prev => ({ ...prev, [key]: e.target.value }))}
                         placeholder="0"
                       />
-                      <span className={s.amountSuffix}>/mo</span>
+                      <span className={s.bigInputSuffix}>/mo</span>
                     </div>
                     {Number(income[key]) > 0 && (
-                      <div className={s.amountHelper}>{fmt(Number(income[key]))}</div>
+                      <div className={s.bigInputHelper}>{fmt(Number(income[key]))}</div>
                     )}
                   </div>
                 ))}
@@ -520,7 +491,7 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
                   <div key={key} className={s.expenseRow}>
                     <label className={s.expenseLabel}>{EXPENSE_LABELS[key]}</label>
                     <div className={s.expenseInputWrap}>
-                      <span className={s.currencyPrefix}>₹</span>
+                      <span className={s.expenseCurrency}>₹</span>
                       <input
                         className={s.expenseInput}
                         type="number"
@@ -548,7 +519,7 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
           </div>
         )}
 
-        {/* ── 02 Assets ────────────────────────────────────── */}
+        {/* ── 02 Assets ────────────────────────────────────────────── */}
         {activeSection === 1 && (
           <div className={s.sectionBody}>
             {assets.map((asset, i) => (
@@ -557,7 +528,11 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
                   <select
                     className={s.typeSelect}
                     value={asset.asset_type_id}
-                    onChange={e => setAssets(prev => prev.map((a, j) => j === i ? { ...a, asset_type_id: e.target.value, is_liquid: assetTypes.find(t => String(t.id) === e.target.value)?.is_liquid_default ?? false } : a))}
+                    onChange={e => setAssets(prev => prev.map((a, j) => j === i ? {
+                      ...a,
+                      asset_type_id: e.target.value,
+                      is_liquid: assetTypes.find(t => String(t.id) === e.target.value)?.is_liquid_default ?? false,
+                    } : a))}
                   >
                     <option value="">Select asset type</option>
                     {assetTypes.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
@@ -570,28 +545,28 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
                   value={asset.description}
                   onChange={e => setAssets(prev => prev.map((a, j) => j === i ? { ...a, description: e.target.value } : a))}
                 />
-                <div className={s.itemCardRow}>
-                  <div className={s.amountInputWrap} style={{ flex: 1 }}>
-                    <span className={s.currencyPrefix}>₹</span>
+                <div className={s.assetValueRow}>
+                  <div className={s.assetValueWrap}>
+                    <span className={s.assetCurrency}>₹</span>
                     <input
-                      className={s.amountInput}
+                      className={s.assetValueInput}
                       type="number"
                       placeholder="Current value"
                       value={asset.current_value}
                       onChange={e => setAssets(prev => prev.map((a, j) => j === i ? { ...a, current_value: e.target.value } : a))}
                     />
                   </div>
-                  <div className={s.amountInputWrap} style={{ width: '100px' }}>
+                  <div className={s.yrsHeldWrap}>
                     <input
-                      className={s.amountInput}
+                      className={s.yrsHeldInput}
                       type="number"
-                      placeholder="Yrs held"
+                      placeholder="—"
                       min={0}
                       max={99}
                       value={asset.years_held}
                       onChange={e => setAssets(prev => prev.map((a, j) => j === i ? { ...a, years_held: e.target.value } : a))}
                     />
-                    <span className={s.amountSuffix}>yrs</span>
+                    <span className={s.yrsHeldSuffix}>yrs</span>
                   </div>
                   <button
                     className={`${s.liquidToggle} ${asset.is_liquid ? s.liquidOn : s.liquidOff}`}
@@ -601,23 +576,26 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
                   </button>
                 </div>
                 {Number(asset.current_value) > 0 && (
-                  <div className={s.amountHelper}>{fmt(Number(asset.current_value))}</div>
+                  <div className={s.itemHelper}>{fmt(Number(asset.current_value))}</div>
                 )}
               </div>
             ))}
-            <button className={s.addItemBtn} onClick={() => setAssets(prev => [...prev, { asset_type_id: '', description: '', current_value: '', is_liquid: false, years_held: '' }])}>
+            <button
+              className={s.addItemBtn}
+              onClick={() => setAssets(prev => [...prev, { asset_type_id: '', description: '', current_value: '', is_liquid: false, years_held: '' }])}
+            >
               + Add asset
             </button>
             {assets.length > 0 && (
               <div className={s.sectionTotal}>
-                Total Assets: <strong>{fmt(metrics.totalAssets)}</strong>
+                Total: <strong>{fmt(metrics.totalAssets)}</strong>
                 {' · '}Liquid: <strong style={{ color: 'var(--color-success)' }}>{fmt(metrics.liquidAssets)}</strong>
               </div>
             )}
           </div>
         )}
 
-        {/* ── 03 Liabilities ───────────────────────────────── */}
+        {/* ── 03 Liabilities ───────────────────────────────────────── */}
         {activeSection === 2 && (
           <div className={s.sectionBody}>
             {liabs.map((liab, i) => (
@@ -642,48 +620,51 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
                 <div className={s.loanFieldGrid}>
                   <div>
                     <label className={s.miniLabel}>Outstanding</label>
-                    <div className={s.amountInputWrap}>
-                      <span className={s.currencyPrefix}>₹</span>
-                      <input className={s.amountInput} type="number" placeholder="0" value={liab.outstanding_amount}
+                    <div className={s.loanInputWrap}>
+                      <span className={s.loanCurrency}>₹</span>
+                      <input className={s.loanInput} type="number" placeholder="0" value={liab.outstanding_amount}
                         onChange={e => setLiabs(prev => prev.map((l, j) => j === i ? { ...l, outstanding_amount: e.target.value } : l))} />
                     </div>
                   </div>
                   <div>
                     <label className={s.miniLabel}>Monthly EMI</label>
-                    <div className={s.amountInputWrap}>
-                      <span className={s.currencyPrefix}>₹</span>
-                      <input className={s.amountInput} type="number" placeholder="0" value={liab.monthly_emi}
+                    <div className={s.loanInputWrap}>
+                      <span className={s.loanCurrency}>₹</span>
+                      <input className={s.loanInput} type="number" placeholder="0" value={liab.monthly_emi}
                         onChange={e => setLiabs(prev => prev.map((l, j) => j === i ? { ...l, monthly_emi: e.target.value } : l))} />
                     </div>
                   </div>
                   <div>
-                    <label className={s.miniLabel}>Interest Rate %</label>
-                    <div className={s.amountInputWrap}>
-                      <input className={s.amountInput} type="number" placeholder="e.g. 8.5" value={liab.interest_rate_pct}
+                    <label className={s.miniLabel}>Interest Rate</label>
+                    <div className={s.loanInputWrap}>
+                      <input className={s.loanInput} type="number" placeholder="8.5" value={liab.interest_rate_pct}
                         onChange={e => setLiabs(prev => prev.map((l, j) => j === i ? { ...l, interest_rate_pct: e.target.value } : l))} />
-                      <span className={s.amountSuffix}>%</span>
+                      <span className={s.loanSuffix}>%</span>
                     </div>
                   </div>
                 </div>
                 {Number(liab.outstanding_amount) > 0 && (
-                  <div className={s.amountHelper}>{fmt(Number(liab.outstanding_amount))}</div>
+                  <div className={s.itemHelper}>{fmt(Number(liab.outstanding_amount))}</div>
                 )}
               </div>
             ))}
-            <button className={s.addItemBtn} onClick={() => setLiabs(prev => [...prev, { liability_type_id: '', description: '', outstanding_amount: '', monthly_emi: '', interest_rate_pct: '' }])}>
+            <button
+              className={s.addItemBtn}
+              onClick={() => setLiabs(prev => [...prev, { liability_type_id: '', description: '', outstanding_amount: '', monthly_emi: '', interest_rate_pct: '' }])}
+            >
               + Add loan
             </button>
             {liabs.length > 0 && (
               <div className={s.sectionTotal}>
-                Total Liabilities: <strong>{fmt(metrics.totalLiabs)}</strong>
-                {metrics.totalEmi > 0 && <> · Monthly EMI: <strong>{fmt(metrics.totalEmi)}</strong></>}
+                Total: <strong>{fmt(metrics.totalLiabs)}</strong>
+                {metrics.totalEmi > 0 && <> · EMI: <strong>{fmt(metrics.totalEmi)}</strong>/mo</>}
                 {metrics.dti !== null && <> · DTI: <strong style={{ color: metrics.dti > 50 ? 'var(--color-danger)' : metrics.dti > 30 ? 'var(--color-warning)' : 'var(--color-success)' }}>{metrics.dti.toFixed(1)}%</strong></>}
               </div>
             )}
           </div>
         )}
 
-        {/* ── 04 Protection ────────────────────────────────── */}
+        {/* ── 04 Protection ────────────────────────────────────────── */}
         {activeSection === 3 && (
           <div className={s.sectionBody}>
             <div className={s.protectionToggles}>
@@ -709,12 +690,12 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
                 { key: 'health_premium_annual',label: 'Health Premium (Annual)' },
                 { key: 'ci_cover_amount',      label: 'Critical Illness Cover' },
               ] as const).map(({ key, label }) => (
-                <div key={key} className={s.amountCard}>
-                  <label className={s.amountLabel}>{label}<span className={s.optionalTag}>optional</span></label>
-                  <div className={s.amountInputWrap}>
-                    <span className={s.currencyPrefix}>₹</span>
+                <div key={key} className={s.bigInputCard}>
+                  <label className={s.bigInputLabel}>{label}<span className={s.optionalTag}>optional</span></label>
+                  <div className={s.bigInputWrap}>
+                    <span className={s.bigInputCurrency}>₹</span>
                     <input
-                      className={s.amountInput}
+                      className={s.bigInput}
                       type="number"
                       value={protection[key]}
                       onChange={e => setProtection(p => ({ ...p, [key]: e.target.value }))}
@@ -722,7 +703,7 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
                     />
                   </div>
                   {Number(protection[key]) > 0 && (
-                    <div className={s.amountHelper}>{fmt(Number(protection[key]))}</div>
+                    <div className={s.bigInputHelper}>{fmt(Number(protection[key]))}</div>
                   )}
                 </div>
               ))}
@@ -740,96 +721,121 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
           </div>
         )}
 
-        {/* ── 05 Goals ─────────────────────────────────────── */}
+        {/* ── 05 Goals + Risk Profile ───────────────────────────────── */}
         {activeSection === 4 && (
           <div className={s.sectionBody}>
-            {/* Risk profile — lives in goals section as final step */}
+
+            {/* Risk profile — big illustrated cards */}
             <div className={s.subGroup}>
-              <div className={s.subGroupLabel}>Risk Appetite</div>
+              <div className={s.subGroupLabel}>Risk Profile</div>
               <div className={s.riskCards}>
-                {(['conservative', 'moderate', 'aggressive'] as const).map(key => {
-                  const bars = RISK_BARS[key];
-                  const barColor = RISK_BAR_COLORS[key];
-                  const maxH = Math.max(...bars);
-                  return (
-                    <button
-                      key={key}
-                      className={`${s.riskCard} ${riskProfile === key ? s.riskSelected : ''}`}
-                      onClick={() => setRiskProfile(prev => prev === key ? '' : key)}
-                    >
-                      {riskProfile === key && <span className={s.riskCheck}>✓</span>}
-                      {/* Mini volatility bar chart */}
-                      <div className={s.riskViz}>
-                        {bars.map((h, i) => (
-                          <div
-                            key={i}
-                            className={s.riskBar}
-                            style={{
-                              height: `${(h / maxH) * 100}%`,
-                              background: barColor,
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <span className={s.riskLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}</span>
-                      <span className={s.riskSub}>
-                        {key === 'conservative' ? '7–9% p.a.' : key === 'moderate' ? '10–13% p.a.' : '14–18% p.a.'}
-                      </span>
-                    </button>
-                  );
-                })}
+                {(['conservative', 'moderate', 'aggressive'] as const).map(key => (
+                  <button
+                    key={key}
+                    className={`${s.riskCard} ${riskProfile === key ? s.riskSelected : ''}`}
+                    onClick={() => setRiskProfile(prev => prev === key ? '' : key)}
+                  >
+                    {riskProfile === key && <span className={s.riskCheck}>✓</span>}
+
+                    {/* 5-bar volatility visualization */}
+                    <div className={s.riskViz}>
+                      {RISK_BARS[key].map((h, i) => (
+                        <div
+                          key={i}
+                          className={s.riskBar}
+                          style={{ height: `${h}%`, background: RISK_BAR_COLORS[key] }}
+                        />
+                      ))}
+                    </div>
+
+                    <div className={s.riskName}>{key.charAt(0).toUpperCase() + key.slice(1)}</div>
+                    <div className={s.riskTagline}>{RISK_TAGLINES[key]}</div>
+
+                    <div className={s.riskStat}>
+                      <span className={s.riskStatLabel}>Expected return</span>
+                      <span className={s.riskStatValue}>{RISK_RETURNS[key]}</span>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
 
+            {/* Aspirational goals — horizontal bubble layout */}
             <div className={s.subGroup}>
               <div className={s.subGroupLabel}>Aspirational Goals</div>
-              {goals.map((goal, i) => (
-                <div key={i} className={s.goalCard}>
-                  <div className={s.goalCardRow}>
-                    <span className={s.goalIcon}>{GOAL_ICONS[goal.goal_type] ?? '⭐'}</span>
-                    <select
-                      className={s.typeSelect}
-                      value={goal.goal_type}
-                      onChange={e => setGoals(prev => prev.map((g, j) => j === i ? { ...g, goal_type: e.target.value } : g))}
-                    >
-                      {GOAL_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-                    </select>
-                    <button className={s.removeBtn} onClick={() => setGoals(prev => prev.filter((_, j) => j !== i))}>×</button>
-                  </div>
-                  <input
-                    className={s.descInput}
-                    placeholder="Goal name (e.g. Daughter's Education)"
-                    value={goal.name}
-                    onChange={e => setGoals(prev => prev.map((g, j) => j === i ? { ...g, name: e.target.value } : g))}
-                  />
-                  <div className={s.loanFieldGrid}>
-                    <div>
-                      <label className={s.miniLabel}>Target Amount</label>
-                      <div className={s.amountInputWrap}>
-                        <span className={s.currencyPrefix}>₹</span>
-                        <input className={s.amountInput} type="number" placeholder="0" value={goal.target_amount}
-                          onChange={e => setGoals(prev => prev.map((g, j) => j === i ? { ...g, target_amount: e.target.value } : g))} />
+              <div className={s.goalList}>
+                {goals.map((goal, i) => (
+                  <div key={i} className={s.goalBubble}>
+                    {/* Left: icon + type + name */}
+                    <div className={s.goalBubbleLeft}>
+                      <div className={s.goalBubbleIcon}>{GOAL_ICONS[goal.goal_type] ?? '⭐'}</div>
+                      <div className={s.goalBubbleMeta}>
+                        <select
+                          className={s.goalTypeSelectInline}
+                          value={goal.goal_type}
+                          onChange={e => setGoals(prev => prev.map((g, j) => j === i ? { ...g, goal_type: e.target.value } : g))}
+                        >
+                          {GOAL_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                        </select>
+                        <input
+                          className={s.goalNameInput}
+                          placeholder="Goal name…"
+                          value={goal.name}
+                          onChange={e => setGoals(prev => prev.map((g, j) => j === i ? { ...g, name: e.target.value } : g))}
+                        />
                       </div>
                     </div>
-                    <div>
-                      <label className={s.miniLabel}>Timeline</label>
-                      <div className={s.amountInputWrap}>
-                        <input className={s.amountInput} type="number" placeholder="10" min={1} max={40} value={goal.timeline_years}
-                          onChange={e => setGoals(prev => prev.map((g, j) => j === i ? { ...g, timeline_years: e.target.value } : g))} />
-                        <span className={s.amountSuffix}>yrs</span>
-                      </div>
+
+                    {/* Amount badge */}
+                    <div className={s.goalAmountBadge}>
+                      <span className={s.goalAmountCurrency}>₹</span>
+                      <input
+                        className={s.goalAmountInput}
+                        type="number"
+                        placeholder="0"
+                        value={goal.target_amount}
+                        onChange={e => setGoals(prev => prev.map((g, j) => j === i ? { ...g, target_amount: e.target.value } : g))}
+                      />
                     </div>
+
+                    {/* Timeline chip */}
+                    <div className={s.goalTimelineChip}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                      </svg>
+                      <input
+                        className={s.goalTimelineInput}
+                        type="number"
+                        placeholder="10"
+                        min={1}
+                        max={40}
+                        value={goal.timeline_years}
+                        onChange={e => setGoals(prev => prev.map((g, j) => j === i ? { ...g, timeline_years: e.target.value } : g))}
+                      />
+                      <span>yrs</span>
+                    </div>
+
+                    {/* Delete */}
+                    <button
+                      className={s.goalDeleteBtn}
+                      onClick={() => setGoals(prev => prev.filter((_, j) => j !== i))}
+                    >×</button>
                   </div>
-                  {Number(goal.target_amount) > 0 && (
-                    <div className={s.amountHelper}>{fmt(Number(goal.target_amount))} in {goal.timeline_years || '?'} years</div>
-                  )}
-                </div>
-              ))}
-              <button className={s.addItemBtn} onClick={() => setGoals(prev => [...prev, { goal_type: 'custom', name: '', target_amount: '', timeline_years: '' }])}>
-                + Add goal
+                ))}
+              </div>
+
+              <button
+                className={s.addGoalBtn}
+                onClick={() => setGoals(prev => [...prev, { goal_type: 'custom', name: '', target_amount: '', timeline_years: '' }])}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Add another goal
               </button>
             </div>
 
+            {/* MFD Notes */}
             <div className={s.subGroup}>
               <div className={s.subGroupLabel}>MFD Notes</div>
               <textarea
@@ -843,20 +849,23 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
           </div>
         )}
 
-        {/* ── Section nav footer ───────────────────────────── */}
+        {/* ── Navigation footer ────────────────────────────────────── */}
         <div className={s.navFooter}>
           <div className={s.navLeft}>
             {activeSection > 0 && (
-              <VdfButton variant="ghost" onClick={() => setActiveSection(s => s - 1)}>← Back</VdfButton>
+              <VdfButton variant="ghost" onClick={() => setActiveSection(i => i - 1)}>← Back</VdfButton>
             )}
           </div>
+          <span className={s.stepCounterNav}>
+            <strong>{activeSection + 1}</strong> / 5
+          </span>
           <div className={s.navRight}>
             <VdfButton variant="outline" loading={isSaving} onClick={handleDraft}>
               Save Draft
             </VdfButton>
             {activeSection < 4 ? (
-              <VdfButton variant="primary" onClick={() => setActiveSection(s => s + 1)}>
-                Next →
+              <VdfButton variant="primary" onClick={() => setActiveSection(i => i + 1)}>
+                Continue →
               </VdfButton>
             ) : (
               <VdfButton variant="primary" loading={isSaving} onClick={handleSubmit}>
@@ -865,6 +874,42 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
             )}
           </div>
         </div>
+
+        {/* ── Compact financial health strip ───────────────────────── */}
+        {(metrics.monthlyIncome > 0 || metrics.totalAssets > 0) && (
+          <div className={s.pulseStrip}>
+            <div className={s.pulseStripItem}>
+              <span className={s.pulseStripLabel}>Savings Rate</span>
+              <span className={s.pulseStripValue} style={{ color: metrics.savingsRate !== null ? STATUS_COLOR[savingsStatus(metrics.savingsRate)] : undefined }}>
+                {metrics.savingsRate !== null ? `${metrics.savingsRate.toFixed(0)}%` : <span className={s.pulseStripEmpty}>—</span>}
+              </span>
+            </div>
+            <div className={s.pulseStripItem}>
+              <span className={s.pulseStripLabel}>Net Worth</span>
+              <span className={s.pulseStripValue}>
+                {metrics.totalAssets > 0 ? fmt(metrics.netWorth) : <span className={s.pulseStripEmpty}>—</span>}
+              </span>
+            </div>
+            <div className={s.pulseStripItem}>
+              <span className={s.pulseStripLabel}>DTI</span>
+              <span className={s.pulseStripValue} style={{ color: metrics.dti !== null ? STATUS_COLOR[dtiStatus(metrics.dti)] : undefined }}>
+                {metrics.dti !== null ? `${metrics.dti.toFixed(0)}%` : <span className={s.pulseStripEmpty}>—</span>}
+              </span>
+            </div>
+            <div className={s.pulseStripItem}>
+              <span className={s.pulseStripLabel}>Liquidity</span>
+              <span className={s.pulseStripValue} style={{ color: metrics.liquidityMonths !== null ? STATUS_COLOR[liquidityStatus(metrics.liquidityMonths)] : undefined }}>
+                {metrics.liquidityMonths !== null ? `${metrics.liquidityMonths.toFixed(1)} mo` : <span className={s.pulseStripEmpty}>—</span>}
+              </span>
+            </div>
+            <div className={s.pulseStripItem}>
+              <span className={s.pulseStripLabel}>Protection</span>
+              <span className={s.pulseStripValue} style={{ color: protRatio !== null ? STATUS_COLOR[protectionStatus(protRatio)] : undefined }}>
+                {protRatio !== null ? `${protRatio.toFixed(1)}x` : <span className={s.pulseStripEmpty}>—</span>}
+              </span>
+            </div>
+          </div>
+        )}
 
         {!isClient && activeSection === 4 && riskProfile && goals.some(g => g.name) && (
           <div className={s.convertBanner}>
@@ -877,73 +922,8 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
             </button>
           </div>
         )}
+
       </div>
-
-      {/* ── Right: Benchmark Pulse ─────────────────────────── */}
-      <aside className={s.pulseSidebar}>
-        <div className={s.pulseHeader}>
-          <span className={s.pulseTitle}>Benchmark Pulse</span>
-          <span className={s.pulseSubtitle}>Live financial health</span>
-        </div>
-
-        <div className={s.pulseRings}>
-          <PulseRing
-            label="Savings Rate"
-            value={metrics.savingsRate !== null ? metrics.savingsRate.toFixed(1) : '—'}
-            unit="%"
-            pct={pulsePct(metrics.savingsRate, 50)}
-            status={savingsStatus(metrics.savingsRate)}
-          />
-          <PulseRing
-            label="Debt Load (DTI)"
-            value={metrics.dti !== null ? metrics.dti.toFixed(1) : '—'}
-            unit="%"
-            pct={pulsePct(metrics.dti, 60, true)}
-            status={dtiStatus(metrics.dti)}
-          />
-          <PulseRing
-            label="Protection"
-            value={protRatio !== null ? protRatio.toFixed(1) : '—'}
-            unit="x"
-            pct={pulsePct(protRatio, 15)}
-            status={protectionStatus(protRatio)}
-          />
-          <PulseRing
-            label="Liquidity"
-            value={metrics.liquidityMonths !== null ? metrics.liquidityMonths.toFixed(1) : '—'}
-            unit=" mo"
-            pct={pulsePct(metrics.liquidityMonths, 12)}
-            status={liquidityStatus(metrics.liquidityMonths)}
-          />
-          <PulseRing
-            label="Future Focus"
-            value={goals.filter(g => g.name).length > 0 ? String(goals.filter(g => g.name).length) : '—'}
-            unit={goals.filter(g => g.name).length === 1 ? ' goal' : ' goals'}
-            pct={Math.min(100, goals.filter(g => g.name).length * 20)}
-            status={goals.filter(g => g.name).length >= 3 ? 'good' : goals.filter(g => g.name).length > 0 ? 'warn' : 'empty'}
-          />
-        </div>
-
-        {metrics.monthlyIncome > 0 && (
-          <div className={s.netWorthCard}>
-            <span className={s.netWorthLabel}>Net Worth</span>
-            <span className={s.netWorthValue} style={{ color: metrics.netWorth >= 0 ? 'var(--color-fg)' : 'var(--color-danger)' }}>
-              {metrics.netWorth >= 0 ? '' : '−'}{fmt(Math.abs(metrics.netWorth))}
-            </span>
-            <div className={s.netWorthBreakdown}>
-              <span>Assets {fmt(metrics.totalAssets)}</span>
-              <span>Liabs {fmt(metrics.totalLiabs)}</span>
-            </div>
-          </div>
-        )}
-
-        <div className={s.talkingBrief}>
-          <span className={s.briefTitle}>Talking Brief</span>
-          {brief.map((line, i) => (
-            <p key={i} className={s.briefLine}>{line}</p>
-          ))}
-        </div>
-      </aside>
     </div>
   );
 }
