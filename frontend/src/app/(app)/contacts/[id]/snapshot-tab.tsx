@@ -14,6 +14,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
+import { useMe } from '@/hooks/useMe';
 import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfButton, VdfItemCardList, VdfMetricLabel, VdfProactiveCard,
@@ -164,8 +165,16 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   const queryClient  = useQueryClient();
 
   const [showWizard,    setShowWizard]    = useState(false);
+  const [showCapture,   setShowCapture]   = useState(false);
+  const [inheritedOpen, setInheritedOpen] = useState(false);
   const [intakeUrl,     setIntakeUrl]     = useState<string | null>(null);
   const [copied,        setCopied]        = useState(false);
+
+  const { data: meData } = useMe();
+  const mfdFirstName = meData?.user?.first_name || meData?.user?.name?.split(' ')[0] || '';
+  const contactInitials = contactName
+    ? contactName.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()
+    : '?';
 
   const [activeSection, setActiveSection] = useState(0);
   const [riskProfile,   setRiskProfile]   = useState('');
@@ -424,7 +433,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
         </p>
 
         <div className={s.emptyActions}>
-          <button className={s.emptyPrimaryBtn} onClick={() => setShowWizard(true)}>
+          <button className={s.emptyPrimaryBtn} onClick={() => setShowCapture(true)}>
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
               <path d="M10 4v12M4 10h12" />
             </svg>
@@ -454,6 +463,125 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
             <button className={s.intakeDismiss} onClick={() => setIntakeUrl(null)}>×</button>
           </div>
         )}
+      </div>
+    );
+  }
+
+  // ── Capture confirmation screen ───────────────────────────────────────────
+
+  if (showCapture && !showWizard) {
+    return (
+      <div className={s.captureWrap}>
+        <div className={s.captureCard}>
+
+          {/* Gradient top accent bar */}
+          <div className={s.captureHeader}>
+            <div className={s.captureEyebrow}>Snapshot Capture · MFD Mode</div>
+            <h2 className={s.captureTitle}>
+              Ready when<br />
+              <em>you are{mfdFirstName ? `, ${mfdFirstName}.` : '.'}</em>
+            </h2>
+            <p className={s.captureSub}>
+              You'll capture {contactName || 'the client'}'s cash flow, assets, loans, protection, and goals.
+              About 10 minutes if you know the numbers.
+            </p>
+          </div>
+
+          {/* Contact chip */}
+          <div className={s.targetChip}>
+            <div className={s.targetAvatar}>{contactInitials}</div>
+            <div className={s.targetInfo}>
+              <div className={s.targetName}>{contactName || 'Client'}</div>
+              <div className={s.targetMeta}>
+                <span>{isClient ? 'Client' : 'Prospect'}</span>
+              </div>
+            </div>
+            <span className={`${s.captureBadge} ${isClient ? s.captureBadgeClient : s.captureBadgeProspect}`}>
+              <span className={s.captureBadgeDot} />
+              {isClient ? 'Client' : 'Prospect'}
+            </span>
+          </div>
+
+          {/* Inherited fields accordion */}
+          <div className={`${s.inheritedBlock} ${inheritedOpen ? s.inheritedOpen : ''}`}>
+            <button
+              className={s.inheritedHead}
+              onClick={() => setInheritedOpen(o => !o)}
+              type="button"
+            >
+              <div className={s.inheritedHeadLeft}>
+                <div className={s.inheritedCheckmark}>✓</div>
+                <div>
+                  <div className={s.inheritedHeadTitle}>Inheriting fields from contact</div>
+                  <div className={s.inheritedHeadSub}>Click to review basic details</div>
+                </div>
+              </div>
+              <svg
+                className={s.inheritedChevron}
+                width="14" height="14" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" strokeWidth="2.5"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            {inheritedOpen && (
+              <div className={s.inheritedBody}>
+                <div className={s.inheritedGrid}>
+                  <div className={s.inheritedField}>
+                    <div className={s.inheritedFieldLabel}>Full Name</div>
+                    <div className={s.inheritedFieldValue}>{contactName || '—'}</div>
+                  </div>
+                  <div className={s.inheritedField}>
+                    <div className={s.inheritedFieldLabel}>Status</div>
+                    <div className={s.inheritedFieldValue}>{isClient ? 'Client' : 'Prospect'}</div>
+                  </div>
+                  <div className={s.inheritedField}>
+                    <div className={s.inheritedFieldLabel}>Phone</div>
+                    <div className={s.inheritedFieldValue}>From contact record</div>
+                  </div>
+                  <div className={s.inheritedField}>
+                    <div className={s.inheritedFieldLabel}>City</div>
+                    <div className={s.inheritedFieldValue}>From contact record</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* VaNi copilot preview */}
+          <div className={s.vaniCard}>
+            <div className={s.vaniAvatar}>V</div>
+            <div className={s.vaniContent}>
+              <div className={s.vaniLabel}>VaNi · Copilot Mode</div>
+              <div className={s.vaniText}>
+                Running pro mode. I'll flag benchmarks, gaps, and{' '}
+                <strong>talking points</strong> as you type. Keyboard shortcuts enabled.
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className={s.captureFooter}>
+            <button
+              className={s.captureBackBtn}
+              onClick={() => setShowCapture(false)}
+              type="button"
+            >
+              ← Back to profile
+            </button>
+            <button
+              className={s.captureStartBtn}
+              onClick={() => { setShowCapture(false); setShowWizard(true); }}
+              type="button"
+            >
+              Start capture
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
+        </div>
       </div>
     );
   }

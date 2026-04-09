@@ -5,6 +5,384 @@
    4px progress segments, 80px risk bars, horizontal goal bubbles.
    ────────────────────────────────────────────────────────────────────────── */
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCREEN 2 — Capture Confirmation
+   Matches mfd-snapshot-flow.html: centered card, gradient top bar, accordion,
+   VaNi copilot preview.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Full-page centering wrapper */
+.captureWrap {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+  padding: 40px 24px;
+}
+
+/* Main card */
+.captureCard {
+  max-width: 640px;
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 24px;
+  box-shadow: 0 24px 48px -12px rgba(0,0,0,0.14), 0 8px 16px -8px rgba(0,0,0,0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Gradient top accent bar */
+.captureCard::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 24px; right: 24px;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-accent),
+    var(--color-primary),
+    transparent
+  );
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.captureHeader {
+  padding: 32px 36px 24px;
+}
+
+.captureEyebrow {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.captureEyebrow::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+  flex-shrink: 0;
+}
+
+.captureTitle {
+  font-family: 'Fraunces', 'Playfair Display', Georgia, serif;
+  font-size: 30px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  margin-bottom: 8px;
+  color: var(--color-fg);
+}
+
+.captureTitle em {
+  font-style: italic;
+  color: var(--color-muted);
+  font-weight: 300;
+}
+
+.captureSub {
+  font-size: 13px;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+/* ── Contact target chip ─────────────────────────────────────────────────── */
+
+.targetChip {
+  margin: 0 36px 20px;
+  padding: 18px 20px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.targetAvatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    var(--color-accent),
+    color-mix(in srgb, var(--color-accent) 60%, black)
+  );
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 500;
+  font-size: 16px;
+  font-family: 'Fraunces', 'Playfair Display', Georgia, serif;
+  flex-shrink: 0;
+  letter-spacing: -0.02em;
+}
+
+.targetInfo { flex: 1; }
+
+.targetName {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-fg);
+}
+
+.targetMeta {
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-top: 2px;
+}
+
+.captureBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.captureBadgeDot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.captureBadgeProspect {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: color-mix(in srgb, var(--color-accent) 80%, var(--color-fg));
+  border: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
+.captureBadgeClient {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+/* ── Inherited fields accordion ──────────────────────────────────────────── */
+
+.inheritedBlock {
+  margin: 0 36px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg);
+  overflow: hidden;
+}
+
+.inheritedHead {
+  width: 100%;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  background: none;
+  border: none;
+  text-align: left;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+
+.inheritedHead:hover {
+  background: color-mix(in srgb, var(--color-border) 40%, transparent);
+}
+
+.inheritedHeadLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inheritedCheckmark {
+  width: 18px; height: 18px;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.inheritedHeadTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-fg);
+  line-height: 1.3;
+}
+
+.inheritedHeadSub {
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-top: 1px;
+}
+
+.inheritedChevron {
+  color: var(--color-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.inheritedOpen .inheritedChevron {
+  transform: rotate(180deg);
+}
+
+.inheritedBody {
+  padding: 0 18px 18px;
+  border-top: 1px solid var(--color-border);
+}
+
+.inheritedGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding-top: 16px;
+}
+
+.inheritedField {}
+
+.inheritedFieldLabel {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.inheritedFieldValue {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-fg);
+}
+
+/* ── VaNi copilot preview ────────────────────────────────────────────────── */
+
+.vaniCard {
+  margin: 0 36px 0;
+  padding: 16px 20px;
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    color-mix(in srgb, var(--color-primary) 55%, black)
+  );
+  border-radius: 10px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.vaniAvatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 70%, white));
+  display: grid;
+  place-items: center;
+  font-family: 'Fraunces', 'Playfair Display', Georgia, serif;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--color-fg);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.15);
+}
+
+.vaniContent { flex: 1; }
+
+.vaniLabel {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.vaniText {
+  font-family: 'Fraunces', 'Playfair Display', Georgia, serif;
+  font-size: 13px;
+  font-style: italic;
+  color: rgba(255,255,255,0.92);
+  line-height: 1.45;
+}
+
+.vaniText strong {
+  color: var(--color-accent);
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+
+.captureFooter {
+  padding: 24px 36px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.captureBackBtn {
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s;
+  font-family: inherit;
+}
+
+.captureBackBtn:hover {
+  border-color: var(--color-muted);
+  color: var(--color-fg);
+}
+
+.captureStartBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 30%, transparent);
+  transition: background 0.18s, transform 0.18s;
+  font-family: inherit;
+}
+
+.captureStartBtn:hover {
+  background: color-mix(in srgb, var(--color-primary) 85%, black);
+  transform: translateY(-1px);
+}
+
 /* ── Root stage — centered single column ─────────────────────────────────── */
 
 .wrapper {
