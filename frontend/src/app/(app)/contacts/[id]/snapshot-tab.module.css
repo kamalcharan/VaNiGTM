@@ -2358,6 +2358,7 @@
   .goalRow2 > *:last-child {
     grid-column: 1 / -1;
   }
+  .assetRow1 {
     grid-template-columns: 1fr;
   }
   .assetRow2 {
