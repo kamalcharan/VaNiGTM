@@ -74,7 +74,7 @@
   cursor: pointer;
   border: none;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
   transition: filter 0.15s, transform 0.12s;
   white-space: nowrap;
   flex-shrink: 0;
@@ -95,8 +95,8 @@
 .spinner {
   width: 10px;
   height: 10px;
-  border: 2px solid rgba(255,255,255,0.4);
-  border-top-color: #fff;
+  border: 2px solid color-mix(in srgb, var(--color-bg) 40%, transparent);
+  border-top-color: var(--color-bg);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   flex-shrink: 0;

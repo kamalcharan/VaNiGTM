@@ -552,7 +552,7 @@
 .primaryBtn {
   padding: 13px 28px;
   background: var(--intake-primary, var(--color-primary));
-  color: #fff;
+  color: var(--color-bg);
   border: none;
   border-radius: 10px;
   font-size: 0.9rem;

@@ -136,7 +136,7 @@
   place-items: center;
   font-weight: 600;
   font-size: 0.8rem;
-  color: #fff;
+  color: var(--color-bg);
   flex-shrink: 0;
   letter-spacing: 0.02em;
 }

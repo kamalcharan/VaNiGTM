@@ -19,7 +19,7 @@
   gap: 6px;
   padding: 10px 22px;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
   border-radius: var(--btn-radius, 8px);
   font-size: 0.875rem;
   font-weight: 700;

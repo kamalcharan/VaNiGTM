@@ -113,7 +113,7 @@
   background: var(--color-primary);
   border: none;
   border-radius: var(--btn-radius, 8px);
-  color: #fff;
+  color: var(--color-bg);
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
@@ -134,7 +134,7 @@
   background: var(--color-primary);
   border: none;
   border-radius: var(--btn-radius, 8px);
-  color: #fff;
+  color: var(--color-bg);
   font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
@@ -242,7 +242,7 @@
   composes: periodBtn;
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
 }
 
 /* Chart type strip */
@@ -273,7 +273,7 @@
   composes: chartTypeBtn;
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: #fff;
+  color: var(--color-bg);
 }
 
 /* Volume toggle */

@@ -82,7 +82,7 @@
 .alertText  { flex: 1; color: var(--color-fg); }
 .alertAction {
   padding: 5px 14px; border-radius: 6px; border: none;
-  background: var(--color-warning); color: #000;
+  background: var(--color-warning); color: var(--color-bg);
   font-size: 0.7rem; font-weight: 700; cursor: pointer;
   white-space: nowrap; transition: opacity 150ms;
 }

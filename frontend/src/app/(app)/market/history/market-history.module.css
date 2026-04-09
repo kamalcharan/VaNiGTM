@@ -123,7 +123,7 @@
 .selectedBadge {
   padding: 3px 10px;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
   border-radius: 20px;
   font-size: 0.78rem;
   font-weight: 700;
@@ -297,7 +297,7 @@
   background: var(--color-primary);
   border: none;
   border-radius: var(--btn-radius, 8px);
-  color: #fff;
+  color: var(--color-bg);
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
@@ -344,7 +344,7 @@
   composes: filterPill;
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
 }
 
 /* ── Animations ──────────────────────────────────────── */

@@ -63,12 +63,12 @@
 
 .pill .active {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
   font-weight: 700;
 }
 
 .pill .active:hover {
-  color: #fff;
+  color: var(--color-bg);
   background: var(--color-primary);
   filter: brightness(1.08);
 }
