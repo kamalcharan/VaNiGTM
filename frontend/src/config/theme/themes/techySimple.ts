@@ -14,8 +14,8 @@ export const TechySimpleTheme: ThemeConfig = {
     utility: {
       primaryText: '#1a1010',
       secondaryText: '#785060',
-      primaryBackground: '#fdf3f4',  // very subtle rose tint
-      secondaryBackground: '#ffffff', // white cards
+      primaryBackground: '#fdf3f4',
+      secondaryBackground: '#ffffff',
     },
     accent: {
       accent1: 'rgba(248,59,70,0.15)',

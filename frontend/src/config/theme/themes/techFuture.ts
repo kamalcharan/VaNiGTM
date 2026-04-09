@@ -14,7 +14,7 @@ export const TechFutureTheme: ThemeConfig = {
     utility: {
       primaryText: '#121220',
       secondaryText: '#505080',
-      primaryBackground: '#f3f3fc',  // subtle indigo tint — distinct from Sleek Cool
+      primaryBackground: '#f3f3fc',  // subtle indigo tint
       secondaryBackground: '#ffffff', // white cards
     },
     accent: {
@@ -68,9 +68,9 @@ export const TechFutureTheme: ThemeConfig = {
         glass: 'rgba(96,128,240,0.07)',
         glassStrong: 'rgba(96,128,240,0.12)',
         glassBorder: 'rgba(96,128,240,0.24)',
-        primaryDim: 'rgba(64,96,224,0.38)',
-        primaryGlow: 'rgba(64,96,224,0.16)',
-        primarySubtle: 'rgba(64,96,224,0.07)',
+        primaryDim: 'rgba(96,128,240,0.30)', // Adjusted for Dark Mode depth
+        primaryGlow: 'rgba(96,128,240,0.18)', // Increased for "Tech" feel
+        primarySubtle: 'rgba(96,128,240,0.08)',
       },
     },
   },
