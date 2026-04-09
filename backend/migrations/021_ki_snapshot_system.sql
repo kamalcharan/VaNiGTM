@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS ki_intake_tokens (
     id                  SERIAL      PRIMARY KEY,
     tenant_id           UUID        NOT NULL,               -- FK to vn_tenants.id (not enforced — cross-schema)
     token               VARCHAR(64) UNIQUE NOT NULL,        -- hex(32 random bytes)
-    contact_id          BIGINT      REFERENCES ki_contacts(id) ON DELETE SET NULL,
+    contact_id          BIGINT,                                -- FK to ki_contacts.id (not enforced — cross-migration)
     created_by_user_id  INTEGER     NOT NULL,               -- FK to vn_users.id (not enforced — cross-schema)
     expires_at          TIMESTAMPTZ NOT NULL,               -- created_at + 5 days
     used_at             TIMESTAMPTZ,                        -- null until submitted
@@ -190,7 +190,7 @@ CREATE INDEX IF NOT EXISTS idx_ki_intake_tokens_lookup
 CREATE TABLE IF NOT EXISTS ki_contact_snapshots (
     id                  SERIAL      PRIMARY KEY,
     tenant_id           UUID        NOT NULL,               -- FK to vn_tenants.id (not enforced — cross-schema)
-    contact_id          BIGINT      NOT NULL REFERENCES ki_contacts(id) ON DELETE CASCADE,
+    contact_id          BIGINT      NOT NULL,               -- FK to ki_contacts.id (not enforced — cross-migration)
     is_live             BOOLEAN     NOT NULL DEFAULT false,
 
     -- Version tracking (per-contact sequential, not global)
@@ -316,7 +316,7 @@ CREATE TABLE IF NOT EXISTS ki_snapshot_assets (
     id              SERIAL      PRIMARY KEY,
     snapshot_id     INTEGER     NOT NULL REFERENCES ki_contact_snapshots(id) ON DELETE CASCADE,
     tenant_id       UUID        NOT NULL,
-    asset_type_id   INTEGER     NOT NULL REFERENCES ki_asset_types(id),
+    asset_type_id   INTEGER     NOT NULL,               -- FK to ki_asset_types.id (not enforced — cross-migration)
     description     TEXT,                               -- free text (e.g. "2BHK in Koramangala")
     current_value   NUMERIC(16,2) NOT NULL,
     is_liquid       BOOLEAN     NOT NULL DEFAULT false, -- pre-filled from asset_types.is_liquid_default
@@ -427,7 +427,7 @@ CREATE TABLE IF NOT EXISTS ki_snapshot_goals (
 
     -- Set to the seeded ki_goals.id after convert_to_client
     -- Allows history view to link "this goal became that plan"
-    seeded_goal_id  INTEGER     REFERENCES ki_goals(id) ON DELETE SET NULL,
+    seeded_goal_id  INTEGER,                            -- FK to ki_goals.id (not enforced — cross-migration)
 
     notes           TEXT,
     sort_order      INTEGER     NOT NULL DEFAULT 99,
