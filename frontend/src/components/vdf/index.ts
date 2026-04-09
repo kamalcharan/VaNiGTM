@@ -52,3 +52,11 @@ export {
   type VdfRiskProfileCardProps,
   type RiskOption,
 } from './risk-profile-card/VdfRiskProfileCard';
+export { VdfPulseRing, type VdfPulseRingProps } from './pulse-ring/VdfPulseRing';
+export {
+  VdfBenchmarkBar,
+  type VdfBenchmarkBarProps,
+  type BenchmarkState,
+  type PercentileTone,
+} from './benchmark-bar/VdfBenchmarkBar';
+export { VdfActionCard, type VdfActionCardProps, type ActionTone } from './action-card/VdfActionCard';
