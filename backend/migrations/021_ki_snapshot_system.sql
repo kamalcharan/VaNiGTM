@@ -141,12 +141,12 @@ ON CONFLICT (code) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS ki_intake_tokens (
     id                  SERIAL      PRIMARY KEY,
-    tenant_id           UUID        NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
-    token               VARCHAR(64) UNIQUE NOT NULL,     -- hex(32 random bytes)
+    tenant_id           UUID        NOT NULL,               -- FK to vn_tenants.id (not enforced — cross-schema)
+    token               VARCHAR(64) UNIQUE NOT NULL,        -- hex(32 random bytes)
     contact_id          BIGINT      REFERENCES ki_contacts(id) ON DELETE SET NULL,
-    created_by_user_id  INTEGER     NOT NULL REFERENCES vn_users(id) ON DELETE RESTRICT,
-    expires_at          TIMESTAMPTZ NOT NULL,            -- created_at + 5 days
-    used_at             TIMESTAMPTZ,                     -- null until submitted
+    created_by_user_id  INTEGER     NOT NULL,               -- FK to vn_users.id (not enforced — cross-schema)
+    expires_at          TIMESTAMPTZ NOT NULL,               -- created_at + 5 days
+    used_at             TIMESTAMPTZ,                        -- null until submitted
     status              VARCHAR(10) NOT NULL DEFAULT 'active'
                             CHECK (status IN ('active', 'used', 'expired')),
     -- Flow 2 only: captured name during lead step (before contact row exists)
@@ -189,7 +189,7 @@ CREATE INDEX IF NOT EXISTS idx_ki_intake_tokens_lookup
 
 CREATE TABLE IF NOT EXISTS ki_contact_snapshots (
     id                  SERIAL      PRIMARY KEY,
-    tenant_id           UUID        NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
+    tenant_id           UUID        NOT NULL,               -- FK to vn_tenants.id (not enforced — cross-schema)
     contact_id          BIGINT      NOT NULL REFERENCES ki_contacts(id) ON DELETE CASCADE,
     is_live             BOOLEAN     NOT NULL DEFAULT false,
 
@@ -201,7 +201,7 @@ CREATE TABLE IF NOT EXISTS ki_contact_snapshots (
                             CHECK (status IN ('draft', 'active', 'archived')),
 
     -- Who filled this snapshot and how
-    created_by_user_id  INTEGER     REFERENCES vn_users(id) ON DELETE SET NULL,
+    created_by_user_id  INTEGER,                           -- FK to vn_users.id (not enforced — cross-schema)
     intake_token_id     INTEGER     REFERENCES ki_intake_tokens(id) ON DELETE SET NULL,
 
     -- Risk profile (carried forward to ki_clients on conversion)
