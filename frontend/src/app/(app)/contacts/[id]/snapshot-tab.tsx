@@ -25,6 +25,7 @@ import s from './snapshot-tab.module.css';
 
 interface AssetType    { id: number; code: string; label: string; is_liquid_default: boolean; }
 interface LiabilityType { id: number; code: string; label: string; }
+interface GoalType      { id: number; code: string; label: string; icon: string; default_horizon_years?: number; }
 
 interface AssetRow    { _id: string; asset_type_id: string; description: string; current_value: string; is_liquid: boolean; years_held: string; }
 interface LiabRow     { _id: string; liability_type_id: string; description: string; outstanding_amount: string; monthly_emi: string; interest_rate_pct: string; }
@@ -127,12 +128,19 @@ const SECTIONS = [
     sectionSub:   'Aspirations and risk appetite — the plan\'s destination.' },
 ];
 
-const GOAL_TYPES = ['retirement','education','house','wedding','emergency','vehicle','travel','custom'] as const;
+// Fallback goal types — used if get_goal_types API not yet available
+const GOAL_TYPE_FALLBACK: GoalType[] = [
+  { id: 1, code: 'retirement', label: 'Retirement',       icon: '🌿', default_horizon_years: 20 },
+  { id: 2, code: 'education',  label: 'Education',        icon: '🎓', default_horizon_years: 10 },
+  { id: 3, code: 'house',      label: 'Home / Property',  icon: '🏡', default_horizon_years: 7  },
+  { id: 4, code: 'wedding',    label: 'Wedding',          icon: '💍', default_horizon_years: 3  },
+  { id: 5, code: 'emergency',  label: 'Emergency Fund',   icon: '🛡️', default_horizon_years: 2  },
+  { id: 6, code: 'vehicle',    label: 'Vehicle',          icon: '🚗', default_horizon_years: 3  },
+  { id: 7, code: 'travel',     label: 'Travel',           icon: '✈️', default_horizon_years: 2  },
+  { id: 8, code: 'custom',     label: 'Other',            icon: '⭐', default_horizon_years: 10 },
+];
 
-const GOAL_ICONS: Record<string, string> = {
-  retirement: '🌿', education: '🎓', house: '🏡', wedding: '💍',
-  emergency: '🛡️', vehicle: '🚗', travel: '✈️', custom: '⭐',
-};
+const HORIZON_PRESETS = [3, 5, 7, 10, 15, 20, 25, 30];
 
 // Bar heights matching contactnest-ux.html reference exactly (5 bars per card)
 const RISK_BARS: Record<'conservative' | 'moderate' | 'aggressive', number[]> = {
@@ -212,9 +220,13 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   const { data: liabTypesData } = useSkillQuery<{ liability_types: LiabilityType[] }>(
     'contact-skill', 'get_liability_types', {}
   );
+  const { data: goalTypesData } = useSkillQuery<{ goal_types: GoalType[] }>(
+    'contact-skill', 'get_goal_types', {}
+  );
 
-  const assetTypes   = assetTypesData?.data?.asset_types ?? [];
-  const liabTypes    = liabTypesData?.data?.liability_types ?? [];
+  const assetTypes = assetTypesData?.data?.asset_types ?? [];
+  const liabTypes  = liabTypesData?.data?.liability_types ?? [];
+  const goalTypes  = goalTypesData?.data?.goal_types?.length ? goalTypesData.data.goal_types : GOAL_TYPE_FALLBACK;
   const snap         = snapData?.data?.snapshot as Record<string, unknown> | null;
 
   // Auto-enter wizard when a snapshot already exists
@@ -623,6 +635,20 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   const vaniPremBurden  = metrics.monthlyIncome > 0
     ? ((Number(protection.life_premium_annual) + Number(protection.health_premium_annual)) / (metrics.monthlyIncome * 12)) * 100
     : null;
+
+  // ── VaNi Goals pre-computed values ───────────────────────────────────────
+  const vaniGoalsFilled   = goals.filter(g => g.name && Number(g.target_amount) > 0);
+  const vaniTotalCorpus   = vaniGoalsFilled.reduce((s, g) => s + Number(g.target_amount), 0);
+  const vaniTotalFV       = vaniGoalsFilled.reduce((s, g) => {
+    const yrs = Number(g.timeline_years) || 10;
+    return s + Number(g.target_amount) * Math.pow(1.06, yrs);
+  }, 0);
+  const vaniTotalSIP      = vaniGoalsFilled.reduce((s, g) => {
+    const months = (Number(g.timeline_years) || 10) * 12;
+    const r      = 0.12 / 12;
+    const fv     = Number(g.target_amount) * Math.pow(1.06, Number(g.timeline_years) || 10);
+    return s + fv * r / (Math.pow(1 + r, months) - 1);
+  }, 0);
 
   return (
     <div className={s.formLayout}>
@@ -1343,79 +1369,132 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
               </div>
             </div>
 
-            {/* Aspirational goals — horizontal bubble layout */}
-            <div className={s.subGroup}>
-              <div className={s.subGroupLabel}>Aspirational Goals</div>
-              <div className={s.goalList}>
-                {goals.map((goal, i) => (
-                  <div key={i} className={s.goalBubble}>
-                    {/* Left: icon + type + name */}
-                    <div className={s.goalBubbleLeft}>
-                      <div className={s.goalBubbleIcon}>{GOAL_ICONS[goal.goal_type] ?? '⭐'}</div>
-                      <div className={s.goalBubbleMeta}>
-                        <select
-                          className={s.goalTypeSelectInline}
-                          value={goal.goal_type}
-                          onChange={e => setGoals(prev => prev.map((g, j) => j === i ? { ...g, goal_type: e.target.value } : g))}
-                        >
-                          {GOAL_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-                        </select>
-                        <input
-                          className={s.goalNameInput}
-                          placeholder="Goal name…"
-                          value={goal.name}
-                          onChange={e => setGoals(prev => prev.map((g, j) => j === i ? { ...g, name: e.target.value } : g))}
-                        />
+            {/* Goals — item-card layout matching Assets / Loans */}
+            <div className={s.subBlock}>
+              <div className={s.subHead}>Aspirational Goals</div>
+
+              {goals.length === 0 ? (
+                <div className={s.itemEmptyState}>
+                  Retirement, children's education, home, wedding — add every financial milestone
+                </div>
+              ) : (
+                <div className={s.itemList}>
+                  {goals.map((goal, i) => {
+                    const gt = goalTypes.find(t => t.code === goal.goal_type);
+                    return (
+                      <div key={i} className={s.itemCard}>
+                        <div className={s.itemHead}>
+                          <span className={s.itemNum}>
+                            {gt?.icon ?? '⭐'} GOAL_{String(i + 1).padStart(2, '0')}
+                          </span>
+                          <button type="button" className={s.itemRemove}
+                            onClick={() => setGoals(prev => prev.filter((_, j) => j !== i))}
+                          >×</button>
+                        </div>
+                        {/* Row 1: Goal type */}
+                        <div className={s.goalRow1}>
+                          <div className={s.curField}>
+                            <label className={s.curFieldLabel}>Goal Type</label>
+                            <select className={s.plainSelect} value={goal.goal_type}
+                              onChange={e => {
+                                const selected = goalTypes.find(t => t.code === e.target.value);
+                                setGoals(prev => prev.map((g, j) => j !== i ? g : {
+                                  ...g,
+                                  goal_type: e.target.value,
+                                  timeline_years: g.timeline_years || String(selected?.default_horizon_years ?? ''),
+                                }));
+                              }}
+                            >
+                              <option value="">Select type</option>
+                              {goalTypes.map(t => (
+                                <option key={t.code} value={t.code}>{t.icon} {t.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        {/* Row 2: Name + Target + Horizon pills */}
+                        <div className={s.goalRow2}>
+                          <div className={s.curField}>
+                            <label className={s.curFieldLabel}>Goal Name</label>
+                            <input className={s.plainInput} type="text"
+                              placeholder="e.g. Retire to Goa, IIT for Aryan"
+                              value={goal.name}
+                              onChange={e => setGoals(prev => prev.map((g, j) => j !== i ? g : { ...g, name: e.target.value }))}
+                            />
+                          </div>
+                          <div className={s.curField}>
+                            <label className={s.curFieldLabel}>Target (today's ₹)</label>
+                            <div className={s.curInputWrap}>
+                              <span className={s.curSym}>₹</span>
+                              <input className={s.curVal} type="number" placeholder="0"
+                                value={goal.target_amount}
+                                onChange={e => setGoals(prev => prev.map((g, j) => j !== i ? g : { ...g, target_amount: e.target.value }))}
+                              />
+                            </div>
+                          </div>
+                          <div className={s.curField}>
+                            <label className={s.curFieldLabel}>Horizon</label>
+                            <div className={s.horizonPills}>
+                              {HORIZON_PRESETS.map(yr => (
+                                <button key={yr} type="button"
+                                  className={`${s.horizonPill} ${Number(goal.timeline_years) === yr ? s.horizonPillActive : ''}`}
+                                  onClick={() => setGoals(prev => prev.map((g, j) => j !== i ? g : { ...g, timeline_years: String(yr) }))}
+                                >{yr}y</button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    );
+                  })}
+                </div>
+              )}
 
-                    {/* Amount badge */}
-                    <div className={s.goalAmountBadge}>
-                      <span className={s.goalAmountCurrency}>₹</span>
-                      <input
-                        className={s.goalAmountInput}
-                        type="number"
-                        placeholder="0"
-                        value={goal.target_amount}
-                        onChange={e => setGoals(prev => prev.map((g, j) => j === i ? { ...g, target_amount: e.target.value } : g))}
-                      />
-                    </div>
-
-                    {/* Timeline chip */}
-                    <div className={s.goalTimelineChip}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-                      </svg>
-                      <input
-                        className={s.goalTimelineInput}
-                        type="number"
-                        placeholder="10"
-                        min={1}
-                        max={40}
-                        value={goal.timeline_years}
-                        onChange={e => setGoals(prev => prev.map((g, j) => j === i ? { ...g, timeline_years: e.target.value } : g))}
-                      />
-                      <span>yrs</span>
-                    </div>
-
-                    {/* Delete */}
-                    <button
-                      className={s.goalDeleteBtn}
-                      onClick={() => setGoals(prev => prev.filter((_, j) => j !== i))}
-                    >×</button>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                className={s.addGoalBtn}
-                onClick={() => setGoals(prev => [...prev, { goal_type: 'custom', name: '', target_amount: '', timeline_years: '' }])}
+              <button type="button" className={s.addItemBtn}
+                onClick={() => setGoals(prev => [...prev, { goal_type: '', name: '', target_amount: '', timeline_years: '' }])}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 5v14M5 12h14"/>
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                  <path d="M10 4v12M4 10h12" />
                 </svg>
-                Add another goal
+                Add goal
               </button>
+
+              {/* VaNi copilot */}
+              {vaniGoalsFilled.length > 0 && (
+                <div className={s.vaniCopilot}>
+                  <div className={s.vaniCopilotMarker}>V ▸</div>
+                  <div className={s.vaniCopilotText}>
+                    <span className={s.vaniHi}>{vaniGoalsFilled.length} goal{vaniGoalsFilled.length > 1 ? 's' : ''}</span>
+                    <span className={s.vaniSep}> · </span>
+                    <span className={s.vaniHi}>{fmt(vaniTotalCorpus)} today</span>
+                    <span className={s.vaniSep}> · </span>
+                    FV @ 6% inflation ≈ <span className={s.vaniHi}>{fmt(Math.round(vaniTotalFV))}</span>
+                    {vaniTotalSIP > 0 && (
+                      <><span className={s.vaniSep}> · </span>
+                      Combined SIP needed ≈ <span className={vaniTotalSIP > metrics.monthlySavings && metrics.monthlySavings > 0 ? s.vaniWarn : s.vaniOk}>{fmt(Math.round(vaniTotalSIP))}/mo</span></>
+                    )}
+                    {vaniTotalSIP > metrics.monthlySavings && metrics.monthlySavings > 0 && (
+                      <><br /><span className={s.vaniWarn}>SIP requirement exceeds current savings capacity of {fmt(metrics.monthlySavings)}/mo.</span>{' '}Discuss goal prioritisation.</>
+                    )}
+                    {vaniGoalsFilled.map((g, i) => {
+                      const yrs  = Number(g.timeline_years) || 10;
+                      const fv   = Number(g.target_amount) * Math.pow(1.06, yrs);
+                      const r    = 0.12 / 12;
+                      const n    = yrs * 12;
+                      const sip  = fv * r / (Math.pow(1 + r, n) - 1);
+                      return (
+                        <Fragment key={i}>
+                          <br />
+                          <span className={s.vaniHi}>{g.name || goalTypes.find(t => t.code === g.goal_type)?.label || 'Goal'}</span>
+                          {' '}({yrs}y) — {fmt(Math.round(fv))} FV
+                          <span className={s.vaniSep}> · </span>
+                          SIP ≈ <span className={s.vaniOk}>{fmt(Math.round(sip))}/mo</span>
+                        </Fragment>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* MFD Notes */}

@@ -2280,7 +2280,52 @@
   color: var(--color-warning);
 }
 
-/* ── Add item button (full-width dashed) ─────────────────────────────────── */
+/* ── Goal card rows ─────────────────────────────────────────────────────── */
+
+/* Row 1: goal type select (full width) */
+.goalRow1 { /* intentionally empty — full width by default */ }
+
+/* Row 2: Name (2fr) + Target (1.5fr) + Horizon pills (2fr) */
+.goalRow2 {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 2fr;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+/* ── Horizon preset pills ────────────────────────────────────────────────── */
+
+.horizonPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-top: 2px;
+}
+
+.horizonPill {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.horizonPill:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 50%, transparent);
+  color: var(--color-fg);
+}
+.horizonPillActive {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  font-weight: 700;
+}
 
 .addItemBtn {
   width: 100%;
@@ -2307,7 +2352,12 @@
 }
 
 @media (max-width: 640px) {
-  .assetRow1 {
+  .goalRow2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .goalRow2 > *:last-child {
+    grid-column: 1 / -1;
+  }
     grid-template-columns: 1fr;
   }
   .assetRow2 {
