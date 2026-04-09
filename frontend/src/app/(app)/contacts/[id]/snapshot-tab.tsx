@@ -1460,41 +1460,45 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
               </button>
 
               {/* VaNi copilot */}
-              {vaniGoalsFilled.length > 0 && (
-                <div className={s.vaniCopilot}>
-                  <div className={s.vaniCopilotMarker}>V ▸</div>
-                  <div className={s.vaniCopilotText}>
-                    <span className={s.vaniHi}>{vaniGoalsFilled.length} goal{vaniGoalsFilled.length > 1 ? 's' : ''}</span>
-                    <span className={s.vaniSep}> · </span>
-                    <span className={s.vaniHi}>{fmt(vaniTotalCorpus)} today</span>
-                    <span className={s.vaniSep}> · </span>
-                    FV @ 6% inflation ≈ <span className={s.vaniHi}>{fmt(Math.round(vaniTotalFV))}</span>
-                    {vaniTotalSIP > 0 && (
-                      <><span className={s.vaniSep}> · </span>
-                      Combined SIP needed ≈ <span className={vaniTotalSIP > metrics.monthlySavings && metrics.monthlySavings > 0 ? s.vaniWarn : s.vaniOk}>{fmt(Math.round(vaniTotalSIP))}/mo</span></>
-                    )}
-                    {vaniTotalSIP > metrics.monthlySavings && metrics.monthlySavings > 0 && (
-                      <><br /><span className={s.vaniWarn}>SIP requirement exceeds current savings capacity of {fmt(metrics.monthlySavings)}/mo.</span>{' '}Discuss goal prioritisation.</>
-                    )}
-                    {vaniGoalsFilled.map((g, i) => {
-                      const yrs  = Number(g.timeline_years) || 10;
-                      const fv   = Number(g.target_amount) * Math.pow(1.06, yrs);
-                      const r    = 0.12 / 12;
-                      const n    = yrs * 12;
-                      const sip  = fv * r / (Math.pow(1 + r, n) - 1);
-                      return (
-                        <Fragment key={i}>
-                          <br />
-                          <span className={s.vaniHi}>{g.name || goalTypes.find(t => t.code === g.goal_type)?.label || 'Goal'}</span>
-                          {' '}({yrs}y) — {fmt(Math.round(fv))} FV
-                          <span className={s.vaniSep}> · </span>
-                          SIP ≈ <span className={s.vaniOk}>{fmt(Math.round(sip))}/mo</span>
-                        </Fragment>
-                      );
-                    })}
-                  </div>
+              <div className={s.vaniCopilot}>
+                <div className={s.vaniCopilotMarker}>V ▸</div>
+                <div className={s.vaniCopilotText}>
+                  {vaniGoalsFilled.length === 0 ? (
+                    <span className={s.vaniHi}>Add goals to see SIP estimates, inflation-adjusted corpus, and funding gap analysis.</span>
+                  ) : (
+                    <>
+                      <span className={s.vaniHi}>{vaniGoalsFilled.length} goal{vaniGoalsFilled.length > 1 ? 's' : ''}</span>
+                      <span className={s.vaniSep}> · </span>
+                      <span className={s.vaniHi}>{fmt(vaniTotalCorpus)} today</span>
+                      <span className={s.vaniSep}> · </span>
+                      FV @ 6% inflation ≈ <span className={s.vaniHi}>{fmt(Math.round(vaniTotalFV))}</span>
+                      {vaniTotalSIP > 0 && (
+                        <><span className={s.vaniSep}> · </span>
+                        Combined SIP needed ≈ <span className={vaniTotalSIP > metrics.monthlySavings && metrics.monthlySavings > 0 ? s.vaniWarn : s.vaniOk}>{fmt(Math.round(vaniTotalSIP))}/mo</span></>
+                      )}
+                      {vaniTotalSIP > metrics.monthlySavings && metrics.monthlySavings > 0 && (
+                        <><br /><span className={s.vaniWarn}>SIP requirement exceeds current savings capacity of {fmt(metrics.monthlySavings)}/mo.</span>{' '}Discuss goal prioritisation.</>
+                      )}
+                      {vaniGoalsFilled.map((g, i) => {
+                        const yrs  = Number(g.timeline_years) || 10;
+                        const fv   = Number(g.target_amount) * Math.pow(1.06, yrs);
+                        const r    = 0.12 / 12;
+                        const n    = yrs * 12;
+                        const sip  = fv * r / (Math.pow(1 + r, n) - 1);
+                        return (
+                          <Fragment key={i}>
+                            <br />
+                            <span className={s.vaniHi}>{g.name || goalTypes.find(t => t.code === g.goal_type)?.label || 'Goal'}</span>
+                            {' '}({yrs}y) — {fmt(Math.round(fv))} FV
+                            <span className={s.vaniSep}> · </span>
+                            SIP ≈ <span className={s.vaniOk}>{fmt(Math.round(sip))}/mo</span>
+                          </Fragment>
+                        );
+                      })}
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
 
             {/* MFD Notes */}
