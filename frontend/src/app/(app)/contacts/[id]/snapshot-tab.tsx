@@ -24,7 +24,7 @@ import s from './snapshot-tab.module.css';
 interface AssetType   { id: number; code: string; label: string; is_liquid_default: boolean; }
 interface LiabilityType { id: number; code: string; label: string; }
 
-interface AssetRow    { asset_type_id: string; description: string; current_value: string; is_liquid: boolean; }
+interface AssetRow    { asset_type_id: string; description: string; current_value: string; is_liquid: boolean; years_held: string; }
 interface LiabRow     { liability_type_id: string; description: string; outstanding_amount: string; monthly_emi: string; interest_rate_pct: string; }
 interface GoalRow     { goal_type: string; name: string; target_amount: string; timeline_years: string; }
 
@@ -255,6 +255,7 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
       description:    String(a.description ?? ''),
       current_value:  String(a.current_value ?? ''),
       is_liquid:      Boolean(a.is_liquid),
+      years_held:     a.years_held != null ? String(a.years_held) : '',
     })));
 
     const snapLiabs = (snap.liabilities as Array<Record<string, unknown>>) ?? [];
@@ -306,6 +307,7 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
       description:   a.description || undefined,
       current_value: Number(a.current_value),
       is_liquid:     a.is_liquid,
+      years_held:    Number(a.years_held) > 0 ? Number(a.years_held) : undefined,
       sort_order:    i + 1,
     })),
     liabilities: liabs.filter(l => l.liability_type_id && Number(l.outstanding_amount) > 0).map((l, i) => ({
@@ -579,6 +581,18 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
                       onChange={e => setAssets(prev => prev.map((a, j) => j === i ? { ...a, current_value: e.target.value } : a))}
                     />
                   </div>
+                  <div className={s.amountInputWrap} style={{ width: '100px' }}>
+                    <input
+                      className={s.amountInput}
+                      type="number"
+                      placeholder="Yrs held"
+                      min={0}
+                      max={99}
+                      value={asset.years_held}
+                      onChange={e => setAssets(prev => prev.map((a, j) => j === i ? { ...a, years_held: e.target.value } : a))}
+                    />
+                    <span className={s.amountSuffix}>yrs</span>
+                  </div>
                   <button
                     className={`${s.liquidToggle} ${asset.is_liquid ? s.liquidOn : s.liquidOff}`}
                     onClick={() => setAssets(prev => prev.map((a, j) => j === i ? { ...a, is_liquid: !a.is_liquid } : a))}
@@ -591,7 +605,7 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
                 )}
               </div>
             ))}
-            <button className={s.addItemBtn} onClick={() => setAssets(prev => [...prev, { asset_type_id: '', description: '', current_value: '', is_liquid: false }])}>
+            <button className={s.addItemBtn} onClick={() => setAssets(prev => [...prev, { asset_type_id: '', description: '', current_value: '', is_liquid: false, years_held: '' }])}>
               + Add asset
             </button>
             {assets.length > 0 && (

@@ -36,6 +36,7 @@ export interface AssetRow {
   description?: string;
   current_value: number;
   is_liquid: boolean;
+  years_held?: number;
   sort_order?: number;
 }
 
@@ -314,8 +315,8 @@ export async function save_snapshot(
       const row = assets[i];
       await tx.query(
         `INSERT INTO ki_snapshot_assets
-           (snapshot_id, tenant_id, asset_type_id, description, current_value, is_liquid, sort_order)
-         VALUES ($snapshot_id, $tenant_id, $asset_type_id, $description, $current_value, $is_liquid, $sort_order)`,
+           (snapshot_id, tenant_id, asset_type_id, description, current_value, is_liquid, years_held, sort_order)
+         VALUES ($snapshot_id, $tenant_id, $asset_type_id, $description, $current_value, $is_liquid, $years_held, $sort_order)`,
         {
           $snapshot_id:   snapshotId,
           $tenant_id:     ctx.tenant_id,
@@ -323,6 +324,7 @@ export async function save_snapshot(
           $description:   row.description ?? null,
           $current_value: row.current_value,
           $is_liquid:     row.is_liquid,
+          $years_held:    row.years_held ?? null,
           $sort_order:    row.sort_order ?? i + 1,
         }
       );

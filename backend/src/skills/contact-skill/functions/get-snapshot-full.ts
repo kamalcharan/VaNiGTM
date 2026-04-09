@@ -54,8 +54,10 @@ export async function get_snapshot_full(
       snapParam
     ),
     ctx.db.query(
-      `SELECT a.id, a.asset_type_id, t.label AS asset_type_label, t.code AS asset_type_code,
-              a.description, a.current_value, a.is_liquid, a.sort_order
+      `SELECT a.id, a.asset_type_id,
+              COALESCE(t.label, t.asset_type_name) AS asset_type_label,
+              COALESCE(t.code,  t.asset_type_code)  AS asset_type_code,
+              a.description, a.current_value, a.is_liquid, a.years_held, a.sort_order
        FROM ki_snapshot_assets a
        JOIN ki_asset_types t ON t.id = a.asset_type_id
        WHERE a.snapshot_id = $snapshot_id ORDER BY a.sort_order, a.id`,
