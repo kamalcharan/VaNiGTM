@@ -310,7 +310,7 @@ export default function ContactProfilePage() {
     {
       id: 'snapshot',
       label: 'Financial Snapshot',
-      content: <SnapshotTab contactId={contactId} isClient={contact.is_client} />,
+      content: <SnapshotTab contactId={contactId} isClient={contact.is_client} contactName={contact.name} />,
     },
   ];
 

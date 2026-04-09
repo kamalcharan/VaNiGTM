@@ -314,7 +314,7 @@
   font-size: 9px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--color-accent);
+  color: var(--color-warning);
   font-weight: 700;
   margin-bottom: 3px;
 }
@@ -328,7 +328,7 @@
 }
 
 .vaniText strong {
-  color: var(--color-accent);
+  color: var(--color-warning);
   font-style: normal;
   font-weight: 600;
 }
