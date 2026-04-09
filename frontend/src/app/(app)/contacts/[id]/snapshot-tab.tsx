@@ -605,6 +605,14 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     { key: 'goals',      label: 'Goals',          value: goals.filter(g => g.name).length || null, peerMedian: 2, max: 6, note: '2+ active goals' },
   ];
 
+  // ── VaNi Cash Flow pre-computed values (avoids IIFE in JSX) ──────────────
+  const vaniSr         = metrics.savingsRate ?? 0;
+  const vaniBracket    = vaniSr >= 50 ? 'p95' : vaniSr >= 35 ? 'p80' : vaniSr >= 25 ? 'p65' : vaniSr >= 18 ? 'p50' : vaniSr >= 10 ? 'p35' : 'p15';
+  const vaniSrClass    = vaniSr >= 20 ? s.vaniOk : vaniSr >= 10 ? s.vaniWarn : s.vaniBad;
+  const vaniHousingPct = metrics.monthlyIncome > 0 ? (Number(expenses.housing) / metrics.monthlyIncome) * 100 : 0;
+  const vaniAnnual     = metrics.monthlySavings * 12;
+  const vaniSrLabel    = vaniSr >= 30 ? 'Strong cash flow.' : vaniSr >= 15 ? 'Moderate cash flow.' : vaniSr >= 0 ? 'Tight margins.' : null;
+
   return (
     <div className={s.formLayout}>
 
@@ -738,38 +746,43 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
               <div className={s.vaniCopilot}>
                 <div className={s.vaniCopilotMarker}>V ▸</div>
                 <div className={s.vaniCopilotText}>
-                  {metrics.monthlyIncome > 0 && metrics.monthlyExpenses > 0 ? (() => {
-                    const sr = metrics.savingsRate ?? 0;
-                    const bracket = sr >= 50 ? 'p95' : sr >= 35 ? 'p80' : sr >= 25 ? 'p65' : sr >= 18 ? 'p50' : sr >= 10 ? 'p35' : 'p15';
-                    const srClass = sr >= 20 ? s.vaniOk : sr >= 10 ? s.vaniWarn : s.vaniBad;
-                    const housingPct = (Number(expenses.housing) / metrics.monthlyIncome) * 100;
-                    const annualSavings = metrics.monthlySavings * 12;
-                    return (
-                      <>
-                        <span className={s.vaniHi}>{fmt(metrics.monthlyIncome)}/mo income</span>
-                        <span className={s.vaniSep}> · </span>
-                        <span className={s.vaniHi}>{fmt(metrics.monthlyExpenses)}/mo expenses</span>
-                        <span className={s.vaniSep}> · </span>
-                        <span className={srClass}>Saves {sr.toFixed(0)}% ▸ {bracket} bracket</span>
-                        <br />
-                        {metrics.monthlySavings >= 0
-                          ? <>Savings capacity ≈ <span className={s.vaniHi}>{fmt(annualSavings)}/yr</span>.{' '}
-                              {housingPct > 30
-                                ? <>Housing at <span className={s.vaniWarn}>{housingPct.toFixed(0)}%</span> of income — above 30% threshold.</>
-                                : housingPct > 25
-                                  ? <>Housing at {housingPct.toFixed(0)}% — near upper band.</>
-                                  : null
-                              }
-                            </>
-                          : <><span className={s.vaniBad}>Expenses exceed income by {fmt(Math.abs(metrics.monthlySavings))}/mo.</span> Review discretionary spending.</>
-                        }
-                      </>
-                    );
-                  })()
-                  : metrics.monthlyIncome > 0
-                    ? <>Income locked at <span className={s.vaniHi}>{fmt(metrics.monthlyIncome)}/mo</span>. Add expenses to compute savings rate.</>
-                    : <>Expenses at <span className={s.vaniHi}>{fmt(metrics.monthlyExpenses)}/mo</span>. Add income to activate full analysis.</>
-                  }
+
+                  {/* Full analysis: both income and expenses present */}
+                  {metrics.monthlyIncome > 0 && metrics.monthlyExpenses > 0 && (
+                    <>
+                      <span className={s.vaniHi}>{fmt(metrics.monthlyIncome)}/mo income</span>
+                      <span className={s.vaniSep}> · </span>
+                      <span className={s.vaniHi}>{fmt(metrics.monthlyExpenses)}/mo expenses</span>
+                      <span className={s.vaniSep}> · </span>
+                      <span className={vaniSrClass}>Savings {vaniSr.toFixed(0)}% ▸ {vaniBracket} bracket</span>
+                      <br />
+                      {metrics.monthlySavings >= 0 ? (
+                        <>
+                          {vaniSrLabel}{vaniSrLabel ? ' ' : ''}
+                          Savings capacity ≈ <span className={s.vaniHi}>{fmt(vaniAnnual)}/yr</span>.
+                          {vaniHousingPct > 30 && (
+                            <> Watch for lifestyle creep — housing at <span className={s.vaniWarn}>{vaniHousingPct.toFixed(0)}%</span> of income, above 30% threshold.</>
+                          )}
+                          {vaniHousingPct > 25 && vaniHousingPct <= 30 && (
+                            <> Watch for lifestyle creep — housing share at {vaniHousingPct.toFixed(0)}% is near upper band.</>
+                          )}
+                        </>
+                      ) : (
+                        <><span className={s.vaniBad}>Expenses exceed income by {fmt(Math.abs(metrics.monthlySavings))}/mo.</span> Review discretionary spending.</>
+                      )}
+                    </>
+                  )}
+
+                  {/* Income only */}
+                  {metrics.monthlyIncome > 0 && metrics.monthlyExpenses === 0 && (
+                    <>Income locked at <span className={s.vaniHi}>{fmt(metrics.monthlyIncome)}/mo</span>. Add expenses to compute savings rate.</>
+                  )}
+
+                  {/* Expenses only */}
+                  {metrics.monthlyIncome === 0 && metrics.monthlyExpenses > 0 && (
+                    <>Expenses at <span className={s.vaniHi}>{fmt(metrics.monthlyExpenses)}/mo</span>. Add income to activate full analysis.</>
+                  )}
+
                 </div>
               </div>
             )}
