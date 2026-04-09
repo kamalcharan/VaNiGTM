@@ -2,17 +2,22 @@
 -- No tenant filter — global master table
 -- Named params: (none)
 --
--- NOTE: migration 017 uses asset_type_code/asset_type_name columns.
--- migration 023 adds code/label columns and back-fills them.
--- We use COALESCE so this query works both before and after 023 runs.
+-- Migration 017 created ki_asset_types with columns:
+--   asset_type_code, asset_type_name, display_order
+-- Migration 023 will add: is_liquid_default, sort_order
+-- This query uses the 017 columns that definitely exist, aliased for the frontend.
 
 SELECT
     id,
-    COALESCE(code, asset_type_code)          AS code,
-    COALESCE(label, asset_type_name)         AS label,
+    asset_type_code  AS code,
+    asset_type_name  AS label,
     description,
-    COALESCE(is_liquid_default, false)       AS is_liquid_default,
-    COALESCE(sort_order, display_order, 99)  AS sort_order
+    CASE
+        WHEN asset_type_code IN ('MF', 'EQUITY', 'SILVER', 'SAVINGS_BANK', 'MUTUAL_FUNDS', 'STOCKS_EQUITY')
+        THEN true
+        ELSE false
+    END              AS is_liquid_default,
+    display_order    AS sort_order
 FROM ki_asset_types
 WHERE is_active = true
-ORDER BY COALESCE(sort_order, display_order, 99), COALESCE(label, asset_type_name);
+ORDER BY display_order, asset_type_name;

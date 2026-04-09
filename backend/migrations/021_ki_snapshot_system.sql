@@ -51,15 +51,21 @@
 -- liquidity flag pre-fill in the intake wizard.
 -- ────────────────────────────────────────────────────────────────────────────
 
+-- ki_asset_types: migration 017 (ki_master_data) may have already created this table
+-- with columns: asset_type_code, asset_type_name, display_order, is_active, description
+-- CREATE TABLE IF NOT EXISTS is a no-op if 017 ran first.
+-- We add the snapshot-specific columns (is_liquid_default, sort_order) if missing,
+-- then insert using the 017 column names so it works regardless of which migration ran first.
+
 CREATE TABLE IF NOT EXISTS ki_asset_types (
-    id                  SERIAL      PRIMARY KEY,
-    code                VARCHAR(50) UNIQUE NOT NULL,
-    label               VARCHAR(100) NOT NULL,
+    id                  SERIAL       PRIMARY KEY,
+    asset_type_code     VARCHAR(50)  UNIQUE NOT NULL,
+    asset_type_name     VARCHAR(100) NOT NULL,
     description         TEXT,
-    is_liquid_default   BOOLEAN     NOT NULL DEFAULT false,
-    sort_order          INTEGER     NOT NULL DEFAULT 99,
-    is_active           BOOLEAN     NOT NULL DEFAULT true,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+    display_order       INTEGER      NOT NULL DEFAULT 99,
+    is_active           BOOLEAN      NOT NULL DEFAULT true,
+    is_liquid_default   BOOLEAN      NOT NULL DEFAULT false,
+    created_at          TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
 COMMENT ON TABLE ki_asset_types IS
@@ -67,19 +73,27 @@ COMMENT ON TABLE ki_asset_types IS
 COMMENT ON COLUMN ki_asset_types.is_liquid_default IS
     'Pre-fills the liquid/illiquid toggle in the intake wizard.';
 
-INSERT INTO ki_asset_types (code, label, description, is_liquid_default, sort_order) VALUES
+-- Add snapshot-specific columns if they don't exist (in case 017 ran first without them)
+ALTER TABLE ki_asset_types ADD COLUMN IF NOT EXISTS is_liquid_default BOOLEAN NOT NULL DEFAULT false;
+
+-- Insert snapshot-specific asset types using the 017 column names.
+-- Updates liquidity flags on existing rows (MF, GOLD, etc. from 017 seed).
+-- Inserts new rows (SAVINGS_BANK, VEHICLE, BUSINESS, OTHER) not in 017.
+INSERT INTO ki_asset_types (asset_type_code, asset_type_name, description, is_liquid_default, display_order) VALUES
     ('REAL_ESTATE',     'Real Estate',          'Residential or commercial property',               false,  1),
     ('GOLD',            'Gold & Jewellery',      'Physical gold, jewellery, sovereign gold bonds',   false,  2),
-    ('FIXED_DEPOSIT',   'Fixed Deposit',         'Bank FDs, corporate FDs, RDs',                     false,  3),
+    ('FD',              'Fixed Deposit',         'Bank FDs, corporate FDs, RDs',                     false,  3),
     ('SAVINGS_BANK',    'Savings / Bank',        'Savings accounts, current accounts',               true,   4),
-    ('MUTUAL_FUNDS',    'Mutual Funds',          'Existing MF investments (not in ProKey)',           true,   5),
-    ('STOCKS_EQUITY',   'Stocks & Equity',       'Direct equity, demat holdings',                    true,   6),
-    ('PPF_EPF',         'PPF / EPF / NPS',       'Provident fund, pension corpus',                   false,  7),
+    ('MF',              'Mutual Funds',          'Existing MF investments',                          true,   5),
+    ('EQUITY',          'Stocks & Equity',       'Direct equity, demat holdings',                    true,   6),
+    ('PPF',             'PPF / EPF / NPS',       'Provident fund, pension corpus',                   false,  7),
     ('VEHICLE',         'Vehicle',               'Car, motorcycle, commercial vehicle',              false,  8),
     ('BUSINESS',        'Business / Partnership','Stake in a business, partnership, LLP',            false,  9),
-    ('INSURANCE_VALUE', 'Insurance (Cash Value)','Endowment / ULIP surrender value',                 false, 10),
+    ('INSURANCE',       'Insurance (Cash Value)','Endowment / ULIP surrender value',                 false, 10),
     ('OTHER',           'Other Asset',           'Any other asset not listed above',                 false, 99)
-ON CONFLICT (code) DO NOTHING;
+ON CONFLICT (asset_type_code) DO UPDATE
+    SET is_liquid_default = EXCLUDED.is_liquid_default,
+        display_order     = EXCLUDED.display_order;
 
 
 -- ────────────────────────────────────────────────────────────────────────────
