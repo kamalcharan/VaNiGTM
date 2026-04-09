@@ -1,0 +1,67 @@
+/* ═══════════════════════════════════════════════════════
+   VdfGoalBubble — emoji pill for goal type selection
+   All colours via --color-* CSS variables (theme-compliant).
+   ═══════════════════════════════════════════════════════ */
+
+.bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: var(--input-border-width) solid var(--color-border);
+  border-radius: 100px;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: border-color 150ms ease,
+              background 150ms ease,
+              color 150ms ease,
+              transform 100ms ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.bubble:hover:not(.disabled):not(.selected) {
+  border-color: var(--color-primary);
+  color: var(--color-fg);
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+/* ── Selected state ──────────────────────────────────── */
+
+.selected {
+  background: var(--color-fg);
+  border-color: var(--color-fg);
+  color: var(--color-bg);
+  transform: translateY(-1px);
+}
+
+.selected:hover:not(.disabled) {
+  background: var(--color-fg);
+  border-color: var(--color-fg);
+  color: var(--color-bg);
+}
+
+/* ── Disabled ────────────────────────────────────────── */
+
+.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Emoji icon ──────────────────────────────────────── */
+
+.icon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+/* ── Label ───────────────────────────────────────────── */
+
+.label {
+  line-height: 1;
+}

@@ -1,0 +1,65 @@
+/* ═══════════════════════════════════════════════════════
+   VdfLiquidityToggle — Liquid / Illiquid two-button toggle
+   All colours via --color-* CSS variables (theme-compliant).
+   ═══════════════════════════════════════════════════════ */
+
+.wrap {
+  display: inline-flex;
+  border: var(--input-border-width) solid var(--color-border);
+  border-radius: var(--input-radius);
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Individual button ───────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  letter-spacing: 0.03em;
+  transition: background 150ms ease, color 150ms ease;
+  white-space: nowrap;
+}
+
+/* Separator between the two buttons */
+.btn + .btn {
+  border-left: var(--input-border-width) solid var(--color-border);
+}
+
+.btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  color: var(--color-fg);
+}
+
+/* ── Active state ────────────────────────────────────── */
+
+.active {
+  background: var(--color-primary);
+  color: var(--color-primary-fg, #fff);
+}
+
+.active:hover:not(:disabled) {
+  background: var(--color-primary-hover, var(--color-primary));
+  color: var(--color-primary-fg, #fff);
+}
+
+/* ── Emoji icon ──────────────────────────────────────── */
+
+.icon {
+  font-size: 0.85rem;
+  line-height: 1;
+}

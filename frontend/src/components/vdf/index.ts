@@ -24,7 +24,11 @@ export { VdfInsightsCard, type VdfInsightsCardProps, type Insight } from './insi
 export { VdfLoader, type VdfLoaderProps } from './loader/VdfLoader';
 export { VdfProgressOverlay, type VdfProgressOverlayProps, type ProgressItem } from './progress-overlay/VdfProgressOverlay';
 export { VdfTrackingCard, type TrackingBookmark, type TrackingCardAction, type TrackingStatus } from './VdfTrackingCard';
-export { VdfProactiveCard, type VdfProactiveCardProps } from './proactive-card/VdfProactiveCard';
+export { VdfProactiveCard, type VdfProactiveCardProps, type ProactiveTag } from './proactive-card/VdfProactiveCard';
+export { VdfCurrencyInput, type VdfCurrencyInputProps } from './currency-input/VdfCurrencyInput';
+export { VdfLiquidityToggle, type VdfLiquidityToggleProps } from './liquidity-toggle/VdfLiquidityToggle';
+export { VdfGoalBubble, type VdfGoalBubbleProps } from './goal-bubble/VdfGoalBubble';
+export { VdfMetricLabel, type VdfMetricLabelProps } from './metric-label/VdfMetricLabel';
 export { VdfDownloadNavModal, type VdfDownloadNavModalProps } from './download-nav-modal/VdfDownloadNavModal';
 export { VdfKpiCard, type VdfKpiCardProps } from './kpi-card/VdfKpiCard';
 export { VdfErrorScreen, type VdfErrorScreenProps } from './error-screen/VdfErrorScreen';
@@ -32,3 +36,19 @@ export { VdfReadinessRing, type VdfReadinessRingProps } from './readiness-ring/V
 export { VdfSearchBar, type VdfSearchBarProps, type VdfSearchPill } from './search-bar/VdfSearchBar';
 export { VdfInput, type VdfInputProps } from './input/VdfInput';
 export { VdfChannelItem, type VdfChannelItemProps } from './channel-item/VdfChannelItem';
+export {
+  VdfItemCardList,
+  type VdfItemCardListProps,
+  type ItemRow,
+  type ItemFieldDef,
+  type ItemFieldText,
+  type ItemFieldCurrency,
+  type ItemFieldLiquidity,
+  type ItemFieldPills,
+  type ItemFieldSelect,
+} from './item-card-list/VdfItemCardList';
+export {
+  VdfRiskProfileCard,
+  type VdfRiskProfileCardProps,
+  type RiskOption,
+} from './risk-profile-card/VdfRiskProfileCard';

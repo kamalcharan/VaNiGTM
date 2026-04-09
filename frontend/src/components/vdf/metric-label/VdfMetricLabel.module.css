@@ -1,0 +1,57 @@
+/* ═══════════════════════════════════════════════════════
+   VdfMetricLabel — stacked label + value metric display
+   All colours via --color-* CSS variables (theme-compliant).
+   ═══════════════════════════════════════════════════════ */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ── Label ───────────────────────────────────────────── */
+
+.label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  line-height: 1;
+}
+
+/* ── Value ───────────────────────────────────────────── */
+
+.value {
+  font-weight: 700;
+  color: var(--color-fg);
+  line-height: 1.2;
+}
+
+/* Font variants */
+.default {
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+}
+
+.mono {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  letter-spacing: -0.01em;
+}
+
+/* ── Sizes ───────────────────────────────────────────── */
+
+.sm .label { font-size: 0.55rem; letter-spacing: 0.10em; }
+.sm .value { font-size: 0.82rem; }
+
+.md .value { font-size: 1rem; }
+
+.lg .label { font-size: 0.65rem; letter-spacing: 0.14em; }
+.lg .value { font-size: 1.5rem; }
+
+/* ── Tone overrides ──────────────────────────────────── */
+
+.tone_default { color: var(--color-fg); }
+.tone_success { color: var(--color-success); }
+.tone_warning { color: var(--color-warning); }
+.tone_danger  { color: var(--color-danger); }
+.tone_muted   { color: var(--color-muted); }
