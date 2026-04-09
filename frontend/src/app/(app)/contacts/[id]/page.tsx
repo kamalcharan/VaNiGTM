@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import {
-  VdfLoader, VdfButton, VdfStatusBadge, VdfReadinessRing, VdfTabs,
+  VdfLoader, VdfStatusBadge, VdfReadinessRing, VdfTabs, VdfChannelItem,
 } from '@/components/vdf';
 import s from './contact-profile.module.css';
+import { SnapshotTab } from './snapshot-tab';
 
 /* ── Types ───────────────────────────────────────────── */
 
@@ -26,19 +26,6 @@ interface SnapshotSummary {
   goals_lite_count: number;
   net_worth_estimate: number | null;
   investment_horizon_years: number | null;
-}
-
-interface Snapshot {
-  id: number;
-  contact_id: number;
-  risk_profile: string | null;
-  net_worth_estimate: number | null;
-  annual_income_estimate: number | null;
-  investment_horizon_years: number | null;
-  existing_mf_breakdown: Record<string, number> | null;
-  goals_lite: Array<{ name: string; target_amount: number; timeline_years: number }> | null;
-  notes: string | null;
-  updated_at: string;
 }
 
 interface Contact {
@@ -95,326 +82,11 @@ const RISK_COLORS: Record<string, string> = {
   aggressive:   'var(--color-danger)',
 };
 
-const CHANNEL_ICONS: Record<string, string> = {
-  mobile:    'M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8 19.79 19.79 0 01.12 2.2 2 2 0 012.11 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.56-.56a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z',
-  email:     'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z',
-  whatsapp:  'M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z',
-  linkedin:  'M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z',
-  instagram: 'M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z',
-  twitter:   'M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z',
-  other:     'M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z',
-};
-
-/* ── Helpers ─────────────────────────────────────────── */
 
 function formatAmount(v: number): string {
   if (v >= 1_00_00_000) return `₹ ${(v / 1_00_00_000).toFixed(1)} Cr`;
   if (v >= 1_00_000)    return `₹ ${(v / 1_00_000).toFixed(1)} L`;
   return `₹ ${v.toLocaleString('en-IN')}`;
-}
-
-// Map from risk key → CSS bar class (avoids s[dynamicKey] TS issues)
-const RISK_BAR_CLASS: Record<string, string> = {
-  conservative: 'riskBarCons',
-  moderate:     'riskBarMod',
-  aggressive:   'riskBarAggr',
-};
-
-const RISK_META = {
-  conservative: {
-    label: 'Conservative',
-    tagline: 'Low volatility, steady returns',
-    returns: '7–9% p.a.',
-    bars: [30, 35, 32, 38, 34],
-  },
-  moderate: {
-    label: 'Moderate',
-    tagline: 'Balanced growth & stability',
-    returns: '10–13% p.a.',
-    bars: [40, 65, 50, 72, 58],
-  },
-  aggressive: {
-    label: 'Aggressive',
-    tagline: 'Maximum growth potential',
-    returns: '14–18% p.a.',
-    bars: [30, 90, 45, 95, 60],
-  },
-} as const;
-
-type RiskKey = keyof typeof RISK_META;
-
-/* ── Snapshot Editor ─────────────────────────────────── */
-
-function SnapshotTab({ contactId, isClient }: { contactId: number; isClient: boolean }) {
-  const { showToast } = useToast();
-  const queryClient = useQueryClient();
-  const router = useRouter();
-
-  const { data, isLoading } = useSkillQuery<{ snapshot: Snapshot | null }>(
-    'contact-skill', 'get_snapshot', { contact_id: contactId }
-  );
-  const snap = data?.data?.snapshot;
-
-  const [riskProfile, setRiskProfile]   = useState<string>('');
-  const [netWorth, setNetWorth]         = useState('');
-  const [annualIncome, setAnnualIncome] = useState('');
-  const [horizon, setHorizon]           = useState('');
-  const [notes, setNotes]               = useState('');
-  const [goals, setGoals]               = useState<Array<{ name: string; target_amount: string; timeline_years: string }>>([]);
-  const [addingGoal, setAddingGoal]     = useState(false);
-  const [newGoal, setNewGoal]           = useState({ name: '', target_amount: '', timeline_years: '' });
-
-  useEffect(() => {
-    if (!snap) return;
-    setRiskProfile(snap.risk_profile ?? '');
-    setNetWorth(snap.net_worth_estimate?.toString() ?? '');
-    setAnnualIncome(snap.annual_income_estimate?.toString() ?? '');
-    setHorizon(snap.investment_horizon_years?.toString() ?? '');
-    setNotes(snap.notes ?? '');
-    setGoals(snap.goals_lite?.map(g => ({
-      name: g.name,
-      target_amount: String(g.target_amount),
-      timeline_years: String(g.timeline_years),
-    })) ?? []);
-  }, [snap]);
-
-  const { mutate: save, isPending } = useSkillMutation(
-    'contact-skill', 'update_snapshot',
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['skill', 'contact-skill', 'get_snapshot'] });
-        queryClient.invalidateQueries({ queryKey: ['skill', 'contact-skill', 'get_contact'] });
-        showToast({ message: 'Snapshot saved', type: 'success' });
-      },
-      onError: (e) => showToast({ message: e.message || 'Save failed', type: 'error' }),
-    }
-  );
-
-  if (isLoading) return <VdfLoader message="Loading snapshot…" />;
-
-  const handleSave = () => save({
-    contact_id: contactId,
-    risk_profile:             riskProfile || undefined,
-    net_worth_estimate:       netWorth ? Number(netWorth) : undefined,
-    annual_income_estimate:   annualIncome ? Number(annualIncome) : undefined,
-    investment_horizon_years: horizon ? Number(horizon) : undefined,
-    notes:                    notes || undefined,
-    goals_lite: goals.filter(g => g.name && g.target_amount).map(g => ({
-      name: g.name,
-      target_amount: Number(g.target_amount),
-      timeline_years: Number(g.timeline_years) || 10,
-    })),
-  });
-
-  const confirmGoal = () => {
-    if (!newGoal.name || !newGoal.target_amount) return;
-    setGoals(gs => [...gs, newGoal]);
-    setNewGoal({ name: '', target_amount: '', timeline_years: '' });
-    setAddingGoal(false);
-  };
-
-  // Progress: risk / netWorth / income / horizon / goals
-  const steps = [!!riskProfile, !!netWorth, !!annualIncome, !!horizon, goals.length > 0];
-  const doneCount = steps.filter(Boolean).length;
-
-  return (
-    <div className={s.snapshotGrid}>
-
-      {/* Progress stepper */}
-      <div className={s.progressSteps}>
-        {steps.map((done, i) => (
-          <div
-            key={i}
-            className={`${s.progressStep} ${done ? s.stepDone : i === doneCount ? s.stepActive : ''}`}
-          />
-        ))}
-      </div>
-
-      {/* Risk Profile */}
-      <section className={s.section}>
-        <h3 className={s.sectionTitle}>What is their risk appetite?</h3>
-        <div className={s.riskCards}>
-          {(Object.entries(RISK_META) as [RiskKey, typeof RISK_META[RiskKey]][]).map(([key, meta]) => (
-            <button
-              key={key}
-              className={`${s.riskCard} ${riskProfile === key ? s.riskSelected : ''}`}
-              onClick={() => setRiskProfile(riskProfile === key ? '' : key)}
-            >
-              {riskProfile === key && <span className={s.riskCheckmark}>✓</span>}
-              <div className={s.riskViz}>
-                {meta.bars.map((h, i) => (
-                  <div
-                    key={i}
-                    className={`${s.riskBar} ${s[RISK_BAR_CLASS[key] as keyof typeof s] ?? ''}`}
-                    style={{ height: `${h}%` }}
-                  />
-                ))}
-              </div>
-              <div className={s.riskName}>{meta.label}</div>
-              <div className={s.riskTagline}>{meta.tagline}</div>
-              <div className={s.riskStat}>
-                <span className={s.riskStatLabel}>Expected returns</span>
-                <span className={s.riskStatValue}>{meta.returns}</span>
-              </div>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Financial Overview */}
-      <section className={s.section}>
-        <h3 className={s.sectionTitle}>Financial Overview</h3>
-        <div className={s.finGrid}>
-          <div className={s.bigInputCard}>
-            <div className={s.bigInputLabel}>Net Worth Estimate</div>
-            <div className={s.bigInputWrap}>
-              <span className={s.bigInputCurrency}>₹</span>
-              <input
-                className={s.bigInput}
-                type="number"
-                value={netWorth}
-                onChange={e => setNetWorth(e.target.value)}
-                placeholder="0"
-              />
-            </div>
-            <div className={s.bigInputHelper}>
-              {netWorth ? formatAmount(Number(netWorth)) : 'Total assets minus liabilities'}
-            </div>
-          </div>
-          <div className={s.bigInputCard}>
-            <div className={s.bigInputLabel}>Annual Income</div>
-            <div className={s.bigInputWrap}>
-              <span className={s.bigInputCurrency}>₹</span>
-              <input
-                className={s.bigInput}
-                type="number"
-                value={annualIncome}
-                onChange={e => setAnnualIncome(e.target.value)}
-                placeholder="0"
-              />
-            </div>
-            <div className={s.bigInputHelper}>
-              {annualIncome ? formatAmount(Number(annualIncome)) : 'Gross annual income from all sources'}
-            </div>
-          </div>
-        </div>
-
-        <div className={s.horizonCard}>
-          <div className={s.horizonLabel}>Investment Horizon</div>
-          <input
-            className={s.horizonInput}
-            type="number"
-            value={horizon}
-            onChange={e => setHorizon(e.target.value)}
-            placeholder="—"
-            min={1}
-            max={40}
-          />
-          <span className={s.horizonUnit}>yrs</span>
-        </div>
-      </section>
-
-      {/* Aspirational Goals */}
-      <section className={s.section}>
-        <div className={s.sectionHead}>
-          <h3 className={s.sectionTitle}>Aspirational Goals</h3>
-        </div>
-
-        <div className={s.goalList}>
-          {goals.map((g, i) => (
-            <div key={i} className={s.goalBubble}>
-              <div className={s.goalIcon}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-                </svg>
-              </div>
-              <span className={s.goalName}>{g.name}</span>
-              <span className={s.goalAmount}>
-                {g.target_amount ? formatAmount(Number(g.target_amount)) : '—'}
-              </span>
-              <span className={s.goalTimeline}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-                </svg>
-                {g.timeline_years || '?'} yrs
-              </span>
-              <button
-                className={s.goalDelete}
-                onClick={() => setGoals(gs => gs.filter((_, j) => j !== i))}
-                aria-label="Remove goal"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {addingGoal ? (
-          <div className={s.addGoalForm}>
-            <input
-              className={s.inlineInput}
-              placeholder="Goal name (e.g. Retirement)"
-              value={newGoal.name}
-              onChange={e => setNewGoal(g => ({ ...g, name: e.target.value }))}
-              autoFocus
-            />
-            <input
-              className={`${s.inlineInput} ${s.inlineInputSm}`}
-              type="number"
-              placeholder="Target ₹"
-              value={newGoal.target_amount}
-              onChange={e => setNewGoal(g => ({ ...g, target_amount: e.target.value }))}
-            />
-            <input
-              className={`${s.inlineInput} ${s.inlineInputSm}`}
-              type="number"
-              placeholder="Years"
-              value={newGoal.timeline_years}
-              onChange={e => setNewGoal(g => ({ ...g, timeline_years: e.target.value }))}
-              min={1} max={40}
-            />
-            <button className={s.inlineSave} onClick={confirmGoal}>Add</button>
-          </div>
-        ) : (
-          <button className={s.addGoalBtn} onClick={() => setAddingGoal(true)}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            Add a goal
-          </button>
-        )}
-      </section>
-
-      {/* Notes */}
-      <section className={s.section}>
-        <h3 className={s.sectionTitle}>Notes</h3>
-        <textarea
-          className={s.textarea}
-          rows={3}
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
-          placeholder="MFD observations about this prospect…"
-        />
-      </section>
-
-      <div className={s.saveRow}>
-        <VdfButton variant="primary" loading={isPending} onClick={handleSave}>
-          Save Snapshot
-        </VdfButton>
-        {!isClient && riskProfile && (
-          <span className={s.convertCta}>
-            Ready to convert?{' '}
-            <button
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', fontWeight: 600, fontSize: 'inherit' }}
-              onClick={() => router.push(`/contacts/${contactId}/convert`)}
-            >
-              Continue to convert →
-            </button>
-          </span>
-        )}
-      </div>
-    </div>
-  );
 }
 
 /* ── Main Page ───────────────────────────────────────── */
@@ -425,11 +97,33 @@ export default function ContactProfilePage() {
   const contactId = Number(id);
 
   // All hooks must be at the top — before any early returns
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab]     = useState('overview');
+  const [intakeUrl,  setIntakeUrl]    = useState<string | null>(null);
+  const [copied,     setCopied]       = useState(false);
+  const { showToast } = useToast();
 
   const { data, isLoading, isError } = useSkillQuery<{ contact: Contact | null }>(
     'contact-skill', 'get_contact', { contact_id: contactId }
   );
+
+  const { mutate: genToken, isPending: isGenning } = useSkillMutation<{ intake_url: string }>(
+    'contact-skill', 'generate_intake_token',
+    {
+      onSuccess: (res) => {
+        const url = res.data?.intake_url;
+        if (url) setIntakeUrl(url);
+        else showToast({ message: 'Could not generate link', type: 'error' });
+      },
+      onError: (e) => showToast({ message: e.message || 'Failed to generate link', type: 'error' }),
+    }
+  );
+
+  const handleCopy = (url: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   if (isLoading) return <VdfLoader overlay message="Loading contact…" />;
 
@@ -507,7 +201,7 @@ export default function ContactProfilePage() {
               </div>
             </div>
 
-            {/* Right — channels card */}
+            {/* Middle — channels card */}
             <div className={s.channelsCard}>
               <h3 className={s.cardTitle}>Channels</h3>
               {contact.channels.length === 0 ? (
@@ -515,23 +209,79 @@ export default function ContactProfilePage() {
               ) : (
                 <div className={s.channelsCardList}>
                   {contact.channels.map(ch => (
-                    <div key={ch.id} className={s.channelItem}>
-                      <div className={s.channelIcon}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="15" height="15">
-                          <path d={CHANNEL_ICONS[ch.channel_type] ?? CHANNEL_ICONS.other} />
-                          {ch.channel_type === 'email' && <polyline points="22,6 12,13 2,6" />}
-                        </svg>
-                      </div>
-                      <div className={s.channelMeta}>
-                        <span className={s.channelType}>{ch.channel_type}</span>
-                        <span className={s.channelValue}>{ch.channel_value}</span>
-                      </div>
-                      {ch.is_primary && <span className={s.primaryPill}>Primary</span>}
-                    </div>
+                    <VdfChannelItem
+                      key={ch.id}
+                      channelType={ch.channel_type}
+                      channelValue={ch.channel_value}
+                      isPrimary={ch.is_primary}
+                    />
                   ))}
                 </div>
               )}
             </div>
+
+            {/* Right — snapshot summary card */}
+            {(() => {
+              const snap = contact.snapshot_summary;
+              return (
+                <div className={s.snapshotCard}>
+                  <div className={s.snapshotCardHead}>
+                    <h3 className={s.cardTitle}>Snapshot</h3>
+                    <button
+                      className={s.snapshotCardLink}
+                      onClick={() => setActiveTab('snapshot')}
+                    >
+                      {snap?.has_snapshot ? 'Edit →' : 'Build →'}
+                    </button>
+                  </div>
+                  {!snap?.has_snapshot ? (
+                    <div className={s.snapshotEmpty}>
+                      <div className={s.snapshotEmptyIcon}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="24" height="24">
+                          <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
+                      <p className={s.snapshotEmptyText}>No financial snapshot yet.</p>
+                      <p className={s.snapshotEmptyHint}>Add risk profile, net worth, and goals to unlock conversion.</p>
+                    </div>
+                  ) : (
+                    <div className={s.snapshotStats}>
+                      {snap.risk_profile && (
+                        <div className={s.snapshotStat}>
+                          <span className={s.snapshotStatLabel}>Risk Profile</span>
+                          <span
+                            className={s.snapshotStatValue}
+                            style={{ color: RISK_COLORS[snap.risk_profile] ?? 'var(--color-fg)' }}
+                          >
+                            {snap.risk_profile.charAt(0).toUpperCase() + snap.risk_profile.slice(1)}
+                          </span>
+                        </div>
+                      )}
+                      {snap.net_worth_estimate != null && snap.net_worth_estimate > 0 && (
+                        <div className={s.snapshotStat}>
+                          <span className={s.snapshotStatLabel}>Net Worth (est.)</span>
+                          <span className={s.snapshotStatValue}>{formatAmount(snap.net_worth_estimate)}</span>
+                        </div>
+                      )}
+                      {snap.investment_horizon_years != null && (
+                        <div className={s.snapshotStat}>
+                          <span className={s.snapshotStatLabel}>Horizon</span>
+                          <span className={s.snapshotStatValue}>{snap.investment_horizon_years} yr{snap.investment_horizon_years !== 1 ? 's' : ''}</span>
+                        </div>
+                      )}
+                      <div className={s.snapshotStat}>
+                        <span className={s.snapshotStatLabel}>Goals</span>
+                        <span className={s.snapshotStatValue}>
+                          {snap.goals_lite_count > 0
+                            ? `${snap.goals_lite_count} defined`
+                            : <span style={{ color: 'var(--color-muted)', fontStyle: 'italic', fontWeight: 400 }}>None yet</span>}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         );
       })(),
@@ -545,22 +295,13 @@ export default function ContactProfilePage() {
             <p className={s.emptyGoals}>No channels added yet.</p>
           ) : (
             contact.channels.map(ch => (
-              <div key={ch.id} className={s.channelItem}>
-                <div className={s.channelIcon}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
-                    <path d={CHANNEL_ICONS[ch.channel_type] ?? CHANNEL_ICONS.other} />
-                    {ch.channel_type === 'email' && <polyline points="22,6 12,13 2,6" />}
-                  </svg>
-                </div>
-                <div className={s.channelMeta}>
-                  <span className={s.channelType}>{ch.channel_type}</span>
-                  <span className={s.channelValue}>{ch.channel_value}</span>
-                </div>
-                <div className={s.channelRight}>
-                  {ch.is_primary && <span className={s.primaryPill}>Primary</span>}
-                  <span className={s.subtype}>{ch.channel_subtype}</span>
-                </div>
-              </div>
+              <VdfChannelItem
+                key={ch.id}
+                channelType={ch.channel_type}
+                channelValue={ch.channel_value}
+                isPrimary={ch.is_primary}
+                subtype={ch.channel_subtype}
+              />
             ))
           )}
         </div>
@@ -643,13 +384,42 @@ export default function ContactProfilePage() {
                   )}
                 </div>
               </div>
-              <button
-                className={s.heroRingCtaBtn}
-                disabled={pct < 35}
-                onClick={() => router.push(`/contacts/${contactId}/convert`)}
-              >
-                Convert to Client →
-              </button>
+              <div className={s.heroRingActions}>
+                <button
+                  className={s.heroRingCtaBtn}
+                  disabled={pct < 35}
+                  onClick={() => router.push(`/contacts/${contactId}/convert`)}
+                >
+                  Convert to Client →
+                </button>
+                <button
+                  className={s.heroIntakeBtn}
+                  disabled={isGenning}
+                  onClick={() => genToken({ contact_id: contactId })}
+                >
+                  {isGenning ? '…' : (
+                    <>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                        <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+                      </svg>
+                      Send Intake Link
+                    </>
+                  )}
+                </button>
+              </div>
+              {intakeUrl && (
+                <div className={s.intakeLinkBox}>
+                  <span className={s.intakeLinkUrl}>{intakeUrl}</span>
+                  <button
+                    className={s.intakeCopyBtn}
+                    onClick={() => handleCopy(intakeUrl)}
+                  >
+                    {copied ? '✓ Copied' : 'Copy'}
+                  </button>
+                  <button className={s.intakeDismiss} onClick={() => setIntakeUrl(null)}>×</button>
+                </div>
+              )}
             </div>
           )}
         </div>

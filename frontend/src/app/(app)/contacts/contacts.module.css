@@ -136,7 +136,7 @@
   place-items: center;
   font-weight: 600;
   font-size: 0.8rem;
-  color: #fff;
+  color: var(--color-bg);
   flex-shrink: 0;
   letter-spacing: 0.02em;
 }
@@ -370,4 +370,100 @@
   background: var(--color-fg);
   color: var(--color-bg);
   border-color: var(--color-fg);
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .pageHeader {
+    padding: 20px 20px 14px;
+  }
+
+  .pageTitle {
+    font-size: 1.7rem;
+  }
+
+  .toolbar {
+    padding: 12px 20px;
+  }
+
+  .listContent {
+    padding: 16px 16px 80px;
+  }
+
+  /* Tablet: hide Channels column */
+  .tableHead,
+  .row {
+    grid-template-columns: 2fr 1.2fr 1fr 44px;
+  }
+
+  .channelsCell { display: none; }
+  .tableHead > *:nth-child(2) { display: none; }
+}
+
+@media (max-width: 480px) {
+  .pageHeader {
+    padding: 16px 16px 12px;
+  }
+
+  .pageTitle {
+    font-size: 1.4rem;
+  }
+
+  .pageMeta {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .pageHeaderRow {
+    gap: 12px;
+    align-items: center;
+  }
+
+  /* Mobile: Contact + Status only, hide Readiness too */
+  .tableHead,
+  .row {
+    grid-template-columns: 1fr 88px 44px;
+    padding: 12px 14px;
+  }
+
+  .channelsCell { display: none; }
+  .readinessCell { display: none; }
+  .tableHead > *:nth-child(2) { display: none; }
+  .tableHead > *:nth-child(3) { display: none; }
+
+  .avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 0.72rem;
+  }
+
+  .contactName {
+    font-size: 0.82rem;
+  }
+
+  /* Drawer: full-width sheet on mobile */
+  .drawer {
+    width: 100vw;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+    border-radius: 16px 16px 0 0;
+  }
+
+  .drawerOverlay {
+    align-items: flex-end;
+    justify-content: stretch;
+  }
+
+  .drawerHeader {
+    padding: 20px 20px 16px;
+  }
+
+  .drawerBody {
+    padding: 16px 20px;
+  }
+
+  .drawerFooter {
+    padding: 14px 20px;
+  }
 }

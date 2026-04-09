@@ -37,7 +37,8 @@ export async function update_contact(
     throw new Error(`Invalid prefix. Must be one of: ${VALID_PREFIXES.join(', ')}`);
   }
 
-  // Build dynamic SET clause for only provided fields
+  // Dynamic SET clause built from caller-supplied fields.
+  // Cannot be extracted to a static .sql file — intentional exception to the SQL-file rule.
   const setClauses: string[] = ['updated_at = now()'];
   const queryParams: Record<string, unknown> = {
     $tenant_id:  ctx.tenant_id,

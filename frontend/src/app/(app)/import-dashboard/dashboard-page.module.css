@@ -230,3 +230,27 @@
   .statsGrid { grid-template-columns: repeat(2, 1fr); }
   .drawer { width: 100%; }
 }
+
+/* ── Responsive ──────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .grid {
+    padding: 12px;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+}

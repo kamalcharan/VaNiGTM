@@ -3,7 +3,6 @@
    ═══════════════════════════════════════════════════════ */
 
 .page {
-  max-width: 960px;
   min-height: 100%;
 }
 
@@ -86,7 +85,7 @@
   justify-content: center;
   font-size: 1.35rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--color-bg);
   flex-shrink: 0;
   box-shadow: 0 8px 24px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
@@ -127,8 +126,8 @@
 
 /* Hero right: ring card */
 .heroRingCard {
-  background: var(--glass, var(--color-surface));
-  border: 1px solid var(--glass-border, var(--color-border));
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 18px 20px;
   min-width: 220px;
@@ -169,7 +168,7 @@
   width: 100%;
   padding: 9px 14px;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
   border: none;
   border-radius: 8px;
   font-size: 0.8rem;
@@ -208,7 +207,7 @@
 
 .overviewGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.4fr 1fr 1fr;
   gap: 20px;
   padding: 28px 32px;
   align-items: start;
@@ -216,8 +215,8 @@
 
 .detailCard,
 .channelsCard {
-  background: var(--glass, var(--color-surface));
-  border: 1px solid var(--glass-border, var(--color-border));
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 22px;
 }
@@ -235,9 +234,9 @@
 }
 
 .cardTitle {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-muted);
   margin: 0 0 16px;
@@ -271,6 +270,106 @@
   font-size: 0.82rem !important;
 }
 
+/* ── Snapshot Summary Card (3rd column in overview) ── */
+
+.snapshotCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 22px;
+}
+
+.snapshotCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.snapshotCardHead .cardTitle {
+  margin-bottom: 0;
+}
+
+.snapshotCardLink {
+  background: none;
+  border: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 150ms;
+}
+
+.snapshotCardLink:hover { opacity: 0.75; }
+
+/* Empty state */
+.snapshotEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 20px 8px 8px;
+  gap: 6px;
+}
+
+.snapshotEmptyIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  display: grid;
+  place-items: center;
+  color: var(--color-primary);
+  margin-bottom: 4px;
+}
+
+.snapshotEmptyText {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-fg);
+}
+
+.snapshotEmptyHint {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  line-height: 1.45;
+}
+
+/* Stats list */
+.snapshotStats {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.snapshotStat {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.snapshotStat:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.snapshotStatLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.snapshotStatValue {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
 
 /* ── Channels Tab ────────────────────────────────────── */
 
@@ -281,534 +380,119 @@
   gap: 10px;
 }
 
-.channelItem {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 18px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  transition: border-color 160ms;
+/* ── Responsive ──────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .overviewGrid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
-.channelItem:hover { border-color: var(--color-primary); }
+@media (max-width: 768px) {
+  .page {
+    padding-bottom: 40px;
+  }
 
-.channelIcon {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  color: var(--color-muted);
-  flex-shrink: 0;
+  .overviewGrid {
+    grid-template-columns: 1fr;
+    padding: 20px;
+    gap: 16px;
+  }
+
+  .detailRow {
+    grid-template-columns: 110px 1fr;
+  }
 }
 
-.channelMeta { flex: 1; }
+@media (max-width: 480px) {
+  .overviewGrid {
+    padding: 14px;
+  }
 
-.channelType {
-  display: block;
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-  margin-bottom: 2px;
+  .detailRow {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .detailLabel {
+    font-size: 0.62rem;
+  }
 }
 
-.channelValue {
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--color-fg);
-}
+/* ── Intake link — hero prospect card ────────────────────────────────────── */
 
-.channelRight {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.primaryPill {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
-  padding: 3px 8px;
-  border-radius: 4px;
-}
-
-.subtype {
-  font-size: 0.7rem;
-  color: var(--color-muted);
-  text-transform: capitalize;
-}
-
-/* ── Snapshot Tab ────────────────────────────────────── */
-
-.snapshotGrid {
-  padding: 28px 32px;
-  max-width: 720px;
-  margin: 0 auto;
+.heroRingActions {
   display: flex;
   flex-direction: column;
-  gap: 36px;
+  gap: 6px;
 }
 
-/* Progress stepper */
-.progressSteps {
-  display: flex;
-  gap: 8px;
-}
-
-.progressStep {
-  flex: 1;
-  height: 4px;
-  background: var(--color-border);
-  border-radius: 2px;
-  overflow: hidden;
-  position: relative;
-}
-
-.progressStep.stepDone { background: var(--color-primary); }
-
-.progressStep.stepActive {
-  background: var(--color-border);
-}
-
-.progressStep.stepActive::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--color-primary);
-  width: 50%;
-  animation: progressPulse 2s ease-in-out infinite;
-}
-
-@keyframes progressPulse {
-  0%, 100% { width: 30%; opacity: 0.6; }
-  50% { width: 70%; opacity: 1; }
-}
-
-.section {}
-
-.sectionHead {
+.heroIntakeBtn {
+  width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 18px;
-}
-
-.sectionTitle {
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-  margin: 0 0 18px;
-}
-
-.sectionHead .sectionTitle { margin: 0; }
-
-/* ── Illustrated risk cards ── */
-.riskCards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-
-.riskCard {
-  background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  border-radius: 14px;
-  padding: 22px 18px 18px;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  position: relative;
-  overflow: hidden;
-  text-align: center;
-}
-
-.riskCard:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px color-mix(in srgb, #000 12%, transparent);
-  border-color: color-mix(in srgb, var(--color-fg) 25%, transparent);
-}
-
-.riskSelected {
-  border-color: var(--color-primary) !important;
-  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
-  box-shadow: 0 12px 32px -8px color-mix(in srgb, var(--color-primary) 20%, transparent);
-  transform: translateY(-3px);
-}
-
-.riskCheckmark {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 22px;
-  height: 22px;
-  background: var(--color-primary);
-  color: #fff;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-size: 0.7rem;
-  font-weight: 700;
-  animation: popIn 0.3s ease;
-}
-
-@keyframes popIn {
-  0% { transform: scale(0); }
-  80% { transform: scale(1.2); }
-  100% { transform: scale(1); }
-}
-
-.riskViz {
-  height: 72px;
-  display: flex;
-  align-items: flex-end;
   justify-content: center;
-  gap: 5px;
-  margin-bottom: 16px;
-  padding: 0 8px;
-}
-
-.riskBar {
-  flex: 1;
-  border-radius: 3px 3px 0 0;
-  opacity: 0.85;
-  background: linear-gradient(180deg, currentColor 0%, transparent 160%);
-}
-
-.riskBarCons { color: var(--color-info); }
-.riskBarMod  { color: var(--color-warning); }
-.riskBarAggr { color: var(--color-danger); }
-
-.riskName {
-  font-family: var(--font-display, 'Playfair Display', serif);
-  font-size: 1.25rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--color-fg);
-  margin-bottom: 4px;
-}
-
-.riskTagline {
-  font-size: 0.72rem;
-  color: var(--color-muted);
-  line-height: 1.4;
-  margin-bottom: 12px;
-}
-
-.riskStat {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-border);
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.68rem;
-}
-
-.riskStatLabel { color: var(--color-muted); }
-
-.riskStatValue {
-  font-weight: 700;
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  color: var(--color-fg);
-}
-
-/* ── Big ₹ input cards ── */
-.finGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.bigInputCard {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  padding: 20px 22px;
+  gap: 6px;
+  padding: 8px 14px;
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
+  border-radius: 8px;
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
   transition: all 0.2s;
 }
-
-.bigInputCard:focus-within {
+.heroIntakeBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+.heroIntakeBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
-.bigInputLabel {
-  font-size: 0.65rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-
-.bigInputWrap {
+.intakeLinkBox {
   display: flex;
-  align-items: baseline;
-  gap: 5px;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--color-success) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
+  border-radius: 8px;
 }
-
-.bigInputCurrency {
-  font-family: var(--font-display, 'Playfair Display', serif);
-  font-size: 1.5rem;
-  color: var(--color-muted);
-  font-weight: 400;
-  line-height: 1;
-}
-
-.bigInput {
+.intakeLinkUrl {
   flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  font-family: var(--font-display, 'Playfair Display', serif);
-  font-size: 2rem;
-  font-weight: 500;
+  font-size: 0.65rem;
+  font-family: 'JetBrains Mono', monospace;
   color: var(--color-fg);
-  letter-spacing: -0.02em;
-  width: 0; /* flex takes over */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   min-width: 0;
 }
-
-.bigInput::placeholder { color: var(--color-muted); opacity: 0.4; }
-
-.bigInputHelper {
-  font-size: 0.68rem;
-  color: var(--color-muted);
-  margin-top: 6px;
-}
-
-/* Horizon as single compact card */
-.horizonCard {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  padding: 18px 22px;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.horizonCard:focus-within {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 10%, transparent);
-}
-
-.horizonLabel {
-  font-size: 0.65rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-  font-weight: 600;
-  flex: 1;
-}
-
-.horizonInput {
-  font-family: var(--font-display, 'Playfair Display', serif);
-  font-size: 1.6rem;
-  font-weight: 500;
-  color: var(--color-fg);
-  background: transparent;
-  border: none;
-  outline: none;
-  width: 80px;
-  text-align: right;
-}
-
-.horizonUnit {
-  font-size: 0.78rem;
-  color: var(--color-muted);
-  min-width: 30px;
-}
-
-/* ── Goal bubbles ── */
-.goalList { margin-bottom: 8px; }
-
-.goalBubble {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  padding: 16px 18px;
-  margin-bottom: 10px;
-  display: grid;
-  grid-template-columns: 38px 1fr auto auto auto;
-  gap: 14px;
-  align-items: center;
-  animation: slideUp 0.35s ease;
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.goalIcon {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
-  color: var(--color-primary);
-  display: grid;
-  place-items: center;
+.intakeCopyBtn {
   flex-shrink: 0;
+  padding: 3px 8px;
+  background: var(--color-success);
+  border: none;
+  border-radius: 5px;
+  color: var(--color-bg);
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
 }
+.intakeCopyBtn:hover { opacity: 0.85; }
 
-.goalName {
-  font-weight: 600;
-  font-size: 0.88rem;
-  color: var(--color-fg);
-}
-
-.goalAmount {
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 0.8rem;
-  color: var(--color-fg);
-  background: var(--color-bg);
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-weight: 600;
-  border: 1px solid var(--color-border);
-  white-space: nowrap;
-}
-
-.goalTimeline {
-  font-size: 0.75rem;
-  color: var(--color-muted);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-.goalDelete {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  display: grid;
-  place-items: center;
+.intakeDismiss {
+  flex-shrink: 0;
   background: none;
   border: none;
   color: var(--color-muted);
+  font-size: 1rem;
   cursor: pointer;
-  transition: all 150ms;
-  opacity: 0;
-}
-
-.goalBubble:hover .goalDelete { opacity: 1; }
-.goalDelete:hover {
-  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
-  color: var(--color-danger);
-}
-
-.addGoalBtn {
-  width: 100%;
-  padding: 16px;
-  border: 1.5px dashed var(--color-border);
-  border-radius: 14px;
-  background: none;
-  color: var(--color-muted);
-  font-weight: 600;
-  font-size: 0.85rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.addGoalBtn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
-}
-
-/* ── Add goal inline form ── */
-.addGoalForm {
-  display: grid;
-  grid-template-columns: 2fr 1.4fr 70px 36px;
-  gap: 8px;
-  align-items: start;
-  padding: 14px 18px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  margin-bottom: 10px;
-  animation: slideUp 0.25s ease;
-}
-
-.inlineInput {
-  height: 36px;
-  padding: 0 12px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  color: var(--color-fg);
-  font-size: 0.85rem;
-  outline: none;
-  transition: border-color 200ms;
-}
-
-.inlineInput:focus { border-color: var(--color-primary); }
-
-.inlineInputSm { height: 36px; }
-
-.inlineSave {
-  height: 36px;
-  padding: 0 12px;
-  background: var(--color-primary);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-/* ── Notes ── */
-.textarea {
-  width: 100%;
-  padding: 13px 16px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--input-radius, 8px);
-  color: var(--color-fg);
-  font-size: 0.88rem;
-  font-family: var(--font-body, 'DM Sans', sans-serif);
-  resize: vertical;
-  outline: none;
-  box-sizing: border-box;
-  transition: border-color 200ms, box-shadow 200ms;
-}
-
-.textarea:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
-}
-
-/* ── Save / CTA row ── */
-.saveRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 16px;
-  border-top: 1px solid var(--color-border);
-  gap: 12px;
-}
-
-.convertCta {
-  font-size: 0.78rem;
-  color: var(--color-muted);
+  line-height: 1;
+  padding: 0 2px;
 }

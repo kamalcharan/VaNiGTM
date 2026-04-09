@@ -1,10 +1,10 @@
-import { ThemeProvider, ThemeScript, ThemeInitClient, buildThemeMap } from '@/config/theme';
+import { ThemeProvider, ThemeScript, ThemeInitClient, buildThemeMap, defaultTheme } from '@/config/theme';
 import { AuthProvider } from '@/context/auth-provider';
 import { ShellConfigProvider } from '@/lib/shell-config';
 import { QueryProvider } from '@/lib/query-provider';
 import { ToastProvider } from '@/components/toast';
 
-const DEFAULT_THEME = process.env.NEXT_PUBLIC_DEFAULT_THEME || 'vikuna-black';
+const DEFAULT_THEME = process.env.NEXT_PUBLIC_DEFAULT_THEME || defaultTheme.id;
 const DEFAULT_MODE = (process.env.NEXT_PUBLIC_DEFAULT_COLOR_MODE || 'dark') as 'light' | 'dark';
 const THEME_MAP = buildThemeMap();
 
@@ -17,6 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"

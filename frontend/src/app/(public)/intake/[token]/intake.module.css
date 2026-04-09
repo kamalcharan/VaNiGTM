@@ -1,0 +1,579 @@
+/* ── intake.module.css ──────────────────────────────────────────────────────
+   Public intake wizard — mobile-first, single column.
+   Uses --intake-primary (injected from tenant brand_color).
+   Falls back to --color-primary when not set.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── Centered utility (loading / done / invalid) ──────────────────────────── */
+
+.centered {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  text-align: center;
+  gap: 16px;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--glass-border, rgba(255,255,255,0.12));
+  border-top-color: var(--intake-primary, var(--color-primary));
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loadingText {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+/* Invalid state */
+.invalidIcon { color: var(--color-danger); }
+.invalidTitle {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-fg);
+}
+.invalidSub {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+/* Done state */
+.doneIcon { color: var(--intake-primary, var(--color-success)); }
+.doneTitle {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-fg);
+}
+.doneSub {
+  font-size: 0.9rem;
+  color: var(--color-fg);
+  max-width: 340px;
+  line-height: 1.6;
+}
+.doneBy {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  margin-top: 8px;
+}
+
+/* ── Page wrapper ──────────────────────────────────────────────────────────── */
+
+.page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 0 100px; /* bottom padding for fixed nav bar */
+}
+
+/* ── Header (brand) ────────────────────────────────────────────────────────── */
+
+.header {
+  padding: 20px 24px 12px;
+  border-bottom: 1px solid var(--glass-border, rgba(255,255,255,0.08));
+}
+.headerBrand {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--intake-primary, var(--color-primary));
+  letter-spacing: -0.01em;
+}
+.headerSub {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  margin-top: 2px;
+}
+
+/* ── Progress bar ──────────────────────────────────────────────────────────── */
+
+.progressBar {
+  height: 3px;
+  background: var(--glass-border, rgba(255,255,255,0.1));
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.progressFill {
+  height: 100%;
+  background: var(--intake-primary, var(--color-primary));
+  transition: width 0.4s ease;
+}
+
+/* ── Step indicator ─────────────────────────────────────────────────────────── */
+
+.stepIndicator {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 14px 24px 0;
+}
+.stepNum {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--intake-primary, var(--color-primary));
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+}
+.stepName {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ── Step body ──────────────────────────────────────────────────────────────── */
+
+.stepBody {
+  flex: 1;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stepTitle {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--color-fg);
+  line-height: 1.3;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+.stepSub {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Lead capture card (Step 0) ────────────────────────────────────────────── */
+
+.card {
+  margin: 0 24px;
+  padding: 24px;
+  background: var(--glass, rgba(255,255,255,0.04));
+  border: 1px solid var(--glass-border, rgba(255,255,255,0.1));
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.stepLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--intake-primary, var(--color-primary));
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Form elements ──────────────────────────────────────────────────────────── */
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.miniLabel {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.req  { color: var(--color-danger); }
+.opt  { font-weight: 400; opacity: 0.6; text-transform: lowercase; letter-spacing: 0; }
+
+.input {
+  background: var(--glass, rgba(255,255,255,0.04));
+  border: 1px solid var(--glass-border, rgba(255,255,255,0.1));
+  border-radius: var(--input-radius, 8px);
+  color: var(--color-fg);
+  font-size: 1rem;
+  padding: 12px 14px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+}
+.input:focus { border-color: var(--intake-primary, var(--color-primary)); }
+.input::placeholder { color: var(--color-muted); opacity: 0.45; }
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Amount row ──────────────────────────────────────────────────────────────── */
+
+.amountRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--glass, rgba(255,255,255,0.04));
+  border: 1px solid var(--glass-border, rgba(255,255,255,0.1));
+  border-radius: var(--input-radius, 8px);
+  padding: 0 12px;
+  height: 48px;
+  transition: border-color 0.2s;
+}
+.amountRow:focus-within {
+  border-color: var(--intake-primary, var(--color-primary));
+}
+.rupee {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  font-family: 'JetBrains Mono', monospace;
+  flex-shrink: 0;
+}
+.amountInput {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  font-family: 'JetBrains Mono', monospace;
+  min-width: 0;
+}
+.amountInput::placeholder { color: var(--color-muted); opacity: 0.35; font-weight: 400; }
+.amountInput::-webkit-inner-spin-button,
+.amountInput::-webkit-outer-spin-button { -webkit-appearance: none; }
+.amountInput[type=number] { -moz-appearance: textfield; }
+
+.unit {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+.hint {
+  font-size: 0.65rem;
+  color: var(--intake-primary, var(--color-primary));
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+}
+
+/* ── Expense rows ────────────────────────────────────────────────────────────── */
+
+.separator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0;
+}
+.separator::before, .separator::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--glass-border, rgba(255,255,255,0.1));
+}
+.separatorLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.expenseRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--glass, rgba(255,255,255,0.03));
+  border: 1px solid var(--glass-border, rgba(255,255,255,0.08));
+  border-radius: 8px;
+}
+.expenseLabel {
+  font-size: 0.85rem;
+  color: var(--color-fg);
+  flex: 1;
+}
+.expenseRight {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.expenseInput {
+  width: 80px;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  font-family: 'JetBrains Mono', monospace;
+  text-align: right;
+}
+.expenseInput::placeholder { color: var(--color-muted); opacity: 0.35; font-weight: 400; }
+.expenseInput::-webkit-inner-spin-button { -webkit-appearance: none; }
+.expenseInput[type=number] { -moz-appearance: textfield; }
+
+.savingsPill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--intake-primary-soft, rgba(99,102,241,0.06));
+  border: 1px solid var(--intake-primary-border, rgba(99,102,241,0.2));
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+
+/* ── Item cards (assets / liabilities / goals) ───────────────────────────────── */
+
+.itemCard {
+  background: var(--glass, rgba(255,255,255,0.04));
+  border: 1px solid var(--glass-border, rgba(255,255,255,0.1));
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.2s;
+}
+.itemCard:focus-within {
+  border-color: var(--intake-primary, var(--color-primary));
+}
+.itemCardTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.typeSelect {
+  flex: 1;
+  background: var(--glass, rgba(255,255,255,0.05));
+  border: 1px solid var(--glass-border, rgba(255,255,255,0.1));
+  border-radius: 8px;
+  color: var(--color-fg);
+  font-size: 0.85rem;
+  padding: 8px 10px;
+  outline: none;
+  -webkit-appearance: none;
+  transition: border-color 0.2s;
+}
+.typeSelect:focus { border-color: var(--intake-primary, var(--color-primary)); }
+.typeSelect option { background: var(--color-bg, #0f0f15); color: var(--color-fg, #fff); }
+
+.removeBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 25%, transparent);
+  color: var(--color-danger);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.descInput {
+  background: var(--glass, rgba(255,255,255,0.04));
+  border: 1px solid var(--glass-border, rgba(255,255,255,0.1));
+  border-radius: 8px;
+  color: var(--color-fg);
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.descInput::placeholder { color: var(--color-muted); opacity: 0.45; }
+.descInput:focus { border-color: var(--intake-primary, var(--color-primary)); outline: none; }
+
+.loanGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.liquidChip {
+  flex-shrink: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  transition: all 0.2s;
+}
+.liquidOn  { background: color-mix(in srgb, var(--color-success) 12%, transparent); border-color: color-mix(in srgb, var(--color-success) 30%, transparent); }
+.liquidOff { opacity: 0.5; }
+
+.addBtn {
+  align-self: flex-start;
+  background: none;
+  border: 1px dashed var(--intake-primary-border, color-mix(in srgb, var(--color-primary) 40%, transparent));
+  border-radius: 8px;
+  color: var(--intake-primary, var(--color-primary));
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.addBtn:hover {
+  background: var(--intake-primary-soft, color-mix(in srgb, var(--color-primary) 8%, transparent));
+}
+
+/* ── Protection toggles ───────────────────────────────────────────────────── */
+
+.toggleRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.coverToggle {
+  padding: 12px 10px;
+  background: var(--glass, rgba(255,255,255,0.04));
+  border: 1px solid var(--glass-border, rgba(255,255,255,0.1));
+  border-radius: 10px;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+}
+.toggleOn {
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-success) 35%, transparent);
+  color: var(--color-success);
+}
+
+/* ── Risk chips ───────────────────────────────────────────────────────────── */
+
+.riskRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.riskChip {
+  padding: 12px 8px;
+  background: var(--glass, rgba(255,255,255,0.04));
+  border: 1px solid var(--glass-border, rgba(255,255,255,0.1));
+  border-radius: 10px;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+}
+.riskSelected {
+  background: var(--intake-primary-soft, color-mix(in srgb, var(--color-primary) 10%, transparent));
+  border-color: var(--intake-primary, var(--color-primary));
+  color: var(--intake-primary, var(--color-primary));
+}
+
+/* ── Textarea ─────────────────────────────────────────────────────────────── */
+
+.textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--glass, rgba(255,255,255,0.04));
+  border: 1px solid var(--glass-border, rgba(255,255,255,0.1));
+  border-radius: 8px;
+  color: var(--color-fg);
+  font-size: 0.85rem;
+  padding: 12px 14px;
+  resize: none;
+  outline: none;
+  line-height: 1.5;
+  font-family: 'DM Sans', sans-serif;
+}
+.textarea:focus { border-color: var(--intake-primary, var(--color-primary)); }
+.textarea::placeholder { color: var(--color-muted); opacity: 0.45; }
+
+/* ── Error banner ─────────────────────────────────────────────────────────── */
+
+.errorBanner {
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: var(--color-danger);
+}
+
+/* ── Navigation bar (fixed bottom) ──────────────────────────────────────────── */
+
+.navBar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: var(--color-bg, #0f0f15);
+  border-top: 1px solid var(--glass-border, rgba(255,255,255,0.08));
+  z-index: 20;
+}
+
+.primaryBtn {
+  padding: 13px 28px;
+  background: var(--intake-primary, var(--color-primary));
+  color: var(--color-bg);
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  letter-spacing: 0.02em;
+  min-width: 120px;
+}
+.primaryBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+.primaryBtn:hover:not(:disabled) { opacity: 0.9; }
+
+.ghostBtn {
+  padding: 13px 20px;
+  background: none;
+  border: 1px solid var(--glass-border, rgba(255,255,255,0.1));
+  border-radius: 10px;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ghostBtn:hover { border-color: var(--color-muted); color: var(--color-fg); }

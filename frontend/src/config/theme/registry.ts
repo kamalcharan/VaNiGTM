@@ -2,6 +2,8 @@ import { ThemeConfig } from './types';
 import { BharathaVarshaTheme } from './themes/bharathavarshaTheme';
 import { ClassicElegantTheme } from './themes/classicElegantTheme';
 import { ContractNestTheme } from './themes/contractNest';
+import { HeritageTheme } from './themes/heritage';
+import { JadeThornTheme } from './themes/jadeThorn';
 import { ModernBoldTheme } from './themes/modernBold';
 import { ModernBusinessTheme } from './themes/modernBusiness';
 import { ProfessionalRedefinedTheme } from './themes/professionalRedefined';
@@ -13,7 +15,9 @@ import { TechySimpleTheme } from './themes/techySimple';
 import { VikunaBlackTheme } from './themes/vikunaBlack';
 
 export const themes: ThemeConfig[] = [
-  VikunaBlackTheme,           // Default — listed first
+  JadeThornTheme,             // Default — listed first
+  HeritageTheme,
+  VikunaBlackTheme,
   ClassicElegantTheme,
   PurpleToneTheme,
   BharathaVarshaTheme,
@@ -27,7 +31,7 @@ export const themes: ThemeConfig[] = [
   TechySimpleTheme,
 ];
 
-export const defaultTheme = VikunaBlackTheme;
+export const defaultTheme = JadeThornTheme;
 
 export function getTheme(id: string): ThemeConfig {
   return themes.find(t => t.id === id) || defaultTheme;

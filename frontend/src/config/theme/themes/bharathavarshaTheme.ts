@@ -5,71 +5,71 @@ export const BharathaVarshaTheme: ThemeConfig = {
   name: 'Bharathavarsha',
   colors: {
     brand: {
-      primary: '#e67e22',      // Primary orange from UI design
-      secondary: '#d35400',    // Darker orange for contrast
-      tertiary: '#8e44ad',     // Purple as complementary color
-      alternate: '#f39c12',    // Yellow-orange for variety
+      primary: '#e67e22',
+      secondary: '#d35400',
+      tertiary: '#8e44ad',
+      alternate: '#fdebd0',
     },
     utility: {
-      primaryText: '#2c3e50',  // Dark slate for main text
-      secondaryText: '#7f8c8d', // Medium gray for secondary text
-      primaryBackground: '#f9f5f0', // Light cream background
-      secondaryBackground: '#ffffff', // White background
+      primaryText: '#1e1610',
+      secondaryText: '#7a6a58',
+      primaryBackground: '#fdf6ed',  // warm cream — Indian warmth
+      secondaryBackground: '#ffffff', // white cards
     },
     accent: {
-      accent1: '#4ce67e22',    // Transparent versions of the primary colors
-      accent2: '#4cd35400',    
-      accent3: '#4c8e44ad',    
-      accent4: '#b2ffffff',    
+      accent1: 'rgba(230,126,34,0.15)',
+      accent2: 'rgba(211,84,0,0.15)',
+      accent3: 'rgba(142,68,173,0.15)',
+      accent4: 'rgba(230,126,34,0.08)',
     },
     semantic: {
-      success: '#27ae60',      // Green for success
-      error: '#e74c3c',        // Red for error
-      warning: '#f1c40f',      // Yellow for warning
-      info: '#3498db',         // Blue for information
+      success: '#27ae60',
+      error: '#b54034',
+      warning: '#c47e1a',
+      info: '#2a6b9a',
     },
     surface: {
-      glass: 'rgba(0,0,0,0.03)',
-      glassStrong: 'rgba(0,0,0,0.05)',
-      glassBorder: 'rgba(0,0,0,0.08)',
-      primaryDim: 'rgba(230,126,34,0.35)',
-      primaryGlow: 'rgba(230,126,34,0.1)',
-      primarySubtle: 'rgba(230,126,34,0.04)',
+      glass: 'rgba(230,126,34,0.05)',
+      glassStrong: 'rgba(230,126,34,0.09)',
+      glassBorder: '#f0dfc8',
+      primaryDim: 'rgba(230,126,34,0.25)',
+      primaryGlow: 'rgba(230,126,34,0.12)',
+      primarySubtle: 'rgba(230,126,34,0.05)',
     },
   },
   darkMode: {
     colors: {
       brand: {
-        primary: '#e67e22',    // Keep primary orange consistent
-        secondary: '#d35400',  // Darker orange
-        tertiary: '#8e44ad',   // Purple
-        alternate: '#f39c12',  // Yellow-orange
+        primary: '#f09030',
+        secondary: '#e06020',
+        tertiary: '#a855c8',
+        alternate: '#1c1208',
       },
       utility: {
-        primaryText: '#ecf0f1', // Light gray almost white for text
-        secondaryText: '#bdc3c7', // Medium light gray for secondary text
-        primaryBackground: '#2c3e50', // Dark slate background
-        secondaryBackground: '#34495e', // Slightly lighter slate
+        primaryText: '#fdf0e0',
+        secondaryText: 'rgba(253,240,224,0.65)',
+        primaryBackground: '#1a1008',
+        secondaryBackground: '#2e1e0e',
       },
       accent: {
-        accent1: '#4ce67e22',
-        accent2: '#4cd35400',
-        accent3: '#4c8e44ad',
-        accent4: '#b2f39c12',
+        accent1: 'rgba(240,144,48,0.20)',
+        accent2: 'rgba(224,96,32,0.18)',
+        accent3: 'rgba(168,85,200,0.18)',
+        accent4: 'rgba(240,144,48,0.10)',
       },
       semantic: {
-        success: '#2ecc71',
-        error: '#e74c3c',
-        warning: '#f1c40f',
-        info: '#3498db',
+        success: '#4ecb8a',
+        error: '#e05555',
+        warning: '#e0a040',
+        info: '#4a90c4',
       },
       surface: {
-        glass: 'rgba(255,255,255,0.04)',
-        glassStrong: 'rgba(255,255,255,0.07)',
-        glassBorder: 'rgba(255,255,255,0.08)',
-        primaryDim: 'rgba(230,126,34,0.4)',
-        primaryGlow: 'rgba(230,126,34,0.15)',
-        primarySubtle: 'rgba(230,126,34,0.06)',
+        glass: 'rgba(240,144,48,0.07)',
+        glassStrong: 'rgba(240,144,48,0.12)',
+        glassBorder: 'rgba(240,144,48,0.24)',
+        primaryDim: 'rgba(230,126,34,0.38)',
+        primaryGlow: 'rgba(230,126,34,0.16)',
+        primarySubtle: 'rgba(230,126,34,0.07)',
       },
     },
   },

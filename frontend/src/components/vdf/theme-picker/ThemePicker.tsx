@@ -67,7 +67,14 @@ export function ThemePicker({ onSelectTheme }: ThemePickerProps) {
               className={`${s.themeCard} ${isSelected ? s.themeCardSelected : ''}`}
               onClick={() => handleSelect(id)}
             >
-              {isSelected && <div className={s.checkBadge}>{'\u2713'}</div>}
+              {isSelected && (
+                <div
+                  className={s.checkBadge}
+                  style={{ background: colors.brand.primary, color: colors.utility.primaryBackground }}
+                >
+                  {'\u2713'}
+                </div>
+              )}
               <div className={s.swatches}>
                 <div className={s.swatch} style={{ background: colors.brand.primary }} />
                 <div className={s.swatch} style={{ background: colors.utility.primaryText }} />

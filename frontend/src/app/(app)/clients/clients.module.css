@@ -85,7 +85,7 @@
   background: var(--color-accent);
   display: flex;
   justify-content: center;
-  color: color-mix(in srgb, var(--color-accent) 20%, #000);
+  color: color-mix(in srgb, var(--color-accent) 20%, var(--color-fg));
   clip-path: polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%);
 }
 
@@ -125,7 +125,7 @@
   justify-content: center;
   font-size: 1rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--color-bg);
   flex-shrink: 0;
 }
 
@@ -212,4 +212,32 @@
   height: 7px;
   border-radius: 2px;
   flex-shrink: 0;
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .page {
+    padding: 20px;
+  }
+
+  .titleRow {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: 14px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .title {
+    font-size: 1.4rem;
+  }
 }

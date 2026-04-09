@@ -18,6 +18,12 @@
   z-index: 100;
 }
 
+@media (max-width: 768px) {
+  .rail {
+    display: none;
+  }
+}
+
 /* ── Logo ───────────────────────────────────────────── */
 .logo {
   width: 44px;
@@ -69,7 +75,8 @@
 
 .active {
   color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  font-weight: 600;
 }
 
 .active::before {

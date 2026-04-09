@@ -31,3 +31,4 @@ export { VdfErrorScreen, type VdfErrorScreenProps } from './error-screen/VdfErro
 export { VdfReadinessRing, type VdfReadinessRingProps } from './readiness-ring/VdfReadinessRing';
 export { VdfSearchBar, type VdfSearchBarProps, type VdfSearchPill } from './search-bar/VdfSearchBar';
 export { VdfInput, type VdfInputProps } from './input/VdfInput';
+export { VdfChannelItem, type VdfChannelItemProps } from './channel-item/VdfChannelItem';

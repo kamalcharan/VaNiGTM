@@ -6,71 +6,71 @@ export const ContractNestTheme: ThemeConfig = {
   name: 'Contract Nest',
   colors: {
     brand: {
-      primary: '#E53E3E',  // Red from your logo (keeping this as an accent)
-      secondary: '#000000', // Pure black
-      tertiary: '#757575',  // Mid gray
-      alternate: '#F5F5F5',  // Very light gray
+      primary: '#E53E3E',
+      secondary: '#111111',
+      tertiary: '#888888',
+      alternate: '#f5f5f5',
     },
     utility: {
-      primaryText: '#000000',  // Pure black
-      secondaryText: '#525252', // Dark gray
-      primaryBackground: '#FFFFFF', // Pure white
-      secondaryBackground: '#F5F5F5', // Very light gray
+      primaryText: '#111111',
+      secondaryText: '#6b6b6b',
+      primaryBackground: '#f8f8f8',  // near-white with very faint warmth
+      secondaryBackground: '#ffffff', // white cards
     },
     accent: {
-      accent1: '#E53E3E', // Red accent
-      accent2: '#000000', // Black
-      accent3: '#BBBBBB', // Light gray
-      accent4: '#F0F0F0', // Very light gray
+      accent1: 'rgba(229,62,62,0.12)',
+      accent2: 'rgba(17,17,17,0.10)',
+      accent3: 'rgba(229,62,62,0.07)',
+      accent4: 'rgba(17,17,17,0.05)',
     },
     semantic: {
-      success: '#2E7D32', // Green
-      error: '#E53E3E',   // Red
-      warning: '#F57C00', // Orange
-      info: '#0277BD',    // Blue
+      success: '#2E7D32',
+      error: '#E53E3E',
+      warning: '#F57C00',
+      info: '#0277BD',
     },
     surface: {
-      glass: 'rgba(0,0,0,0.03)',
-      glassStrong: 'rgba(0,0,0,0.05)',
-      glassBorder: 'rgba(0,0,0,0.08)',
-      primaryDim: 'rgba(229,62,62,0.35)',
-      primaryGlow: 'rgba(229,62,62,0.1)',
+      glass: 'rgba(229,62,62,0.04)',
+      glassStrong: 'rgba(229,62,62,0.08)',
+      glassBorder: '#e8e8e8',
+      primaryDim: 'rgba(229,62,62,0.22)',
+      primaryGlow: 'rgba(229,62,62,0.10)',
       primarySubtle: 'rgba(229,62,62,0.04)',
     },
   },
   darkMode: {
     colors: {
       brand: {
-        primary: '#F56565',  // Brighter red for dark mode
-        secondary: '#FFFFFF', // Pure white
-        tertiary: '#AAAAAA',  // Light gray
-        alternate: '#1F1F1F',  // Very dark gray
+        primary: '#F56565',
+        secondary: '#f0f0f0',
+        tertiary: '#aaaaaa',
+        alternate: '#222222',
       },
       utility: {
-        primaryText: '#FFFFFF', // Pure white
-        secondaryText: '#BBBBBB', // Light gray
-        primaryBackground: '#000000', // Pure black
-        secondaryBackground: '#1F1F1F', // Very dark gray
+        primaryText: '#f8f8f8',
+        secondaryText: 'rgba(248,248,248,0.65)',
+        primaryBackground: '#0a0a0a',
+        secondaryBackground: '#222222',
       },
       accent: {
-        accent1: '#FF6B6B', // Lighter red
-        accent2: '#FFFFFF', // White
-        accent3: '#888888', // Mid gray
-        accent4: '#333333', // Dark gray
+        accent1: 'rgba(245,101,101,0.18)',
+        accent2: 'rgba(240,240,240,0.10)',
+        accent3: 'rgba(245,101,101,0.12)',
+        accent4: 'rgba(240,240,240,0.06)',
       },
       semantic: {
-        success: '#66BB6A', // Green
-        error: '#EF5350',   // Red
-        warning: '#FFA726', // Orange
-        info: '#42A5F5',    // Blue
+        success: '#66BB6A',
+        error: '#EF5350',
+        warning: '#FFA726',
+        info: '#42A5F5',
       },
       surface: {
-        glass: 'rgba(255,255,255,0.04)',
-        glassStrong: 'rgba(255,255,255,0.07)',
-        glassBorder: 'rgba(255,255,255,0.08)',
-        primaryDim: 'rgba(245,101,101,0.4)',
-        primaryGlow: 'rgba(245,101,101,0.15)',
-        primarySubtle: 'rgba(245,101,101,0.06)',
+        glass: 'rgba(245,101,101,0.07)',
+        glassStrong: 'rgba(245,101,101,0.12)',
+        glassBorder: 'rgba(245,101,101,0.24)',
+        primaryDim: 'rgba(245,101,101,0.38)',
+        primaryGlow: 'rgba(245,101,101,0.16)',
+        primarySubtle: 'rgba(245,101,101,0.07)',
       },
     },
   },

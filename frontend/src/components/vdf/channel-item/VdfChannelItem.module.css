@@ -1,0 +1,69 @@
+/* VdfChannelItem — contact channel row (mobile, email, whatsapp, etc.)
+   Background: var(--color-primary) — intentional accent card.
+   All interior colors derive from --color-bg for contrast on primary bg. */
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: var(--color-primary);
+  border-radius: 10px;
+  transition: filter 160ms;
+}
+
+.item:hover { filter: brightness(1.08); }
+
+.icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--color-bg) 18%, transparent);
+  border-radius: 8px;
+  color: var(--color-bg);
+  flex-shrink: 0;
+}
+
+.meta { flex: 1; }
+
+.type {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-bg) 70%, transparent);
+  margin-bottom: 2px;
+}
+
+.value {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-bg);
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-bg);
+  background: color-mix(in srgb, var(--color-bg) 22%, transparent);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.subtype {
+  font-size: 0.7rem;
+  color: color-mix(in srgb, var(--color-bg) 60%, transparent);
+  text-transform: capitalize;
+}

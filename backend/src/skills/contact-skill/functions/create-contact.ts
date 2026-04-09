@@ -4,11 +4,16 @@
  * All writes in a single transaction.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import { SkillContext } from '../../../shared/types';
 
-const VALID_PREFIXES = ['Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Sri', 'Smt'] as const;
+const VALID_PREFIXES      = ['Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Sri', 'Smt'] as const;
 const VALID_CHANNEL_TYPES = ['email', 'mobile', 'whatsapp', 'instagram', 'twitter', 'linkedin', 'other'] as const;
-const VALID_SUBTYPES = ['personal', 'work', 'other'] as const;
+const VALID_SUBTYPES      = ['personal', 'work', 'other'] as const;
+
+const INSERT_CONTACT_SQL = fs.readFileSync(path.join(__dirname, '../queries/insert-contact.sql'), 'utf-8');
+const INSERT_CHANNEL_SQL = fs.readFileSync(path.join(__dirname, '../queries/insert-channel.sql'), 'utf-8');
 
 interface ChannelInput {
   channel_type: string;
@@ -59,18 +64,13 @@ export async function create_contact(
   const result = await ctx.db.transaction(async (tx) => {
     const contactRes = await tx.query<{
       id: number; name: string; prefix: string; normalized_name: string; is_client: boolean;
-    }>(
-      `INSERT INTO ki_contacts (tenant_id, is_live, prefix, name, created_by)
-       VALUES ($tenant_id, $is_live, $prefix, $name, $created_by)
-       RETURNING id, prefix, name, normalized_name, is_client`,
-      {
-        $tenant_id: ctx.tenant_id,
-        $is_live:   ctx.is_live,
-        $prefix:    prefix,
-        $name:      name.trim(),
-        $created_by: ctx.user_id,
-      }
-    );
+    }>(INSERT_CONTACT_SQL, {
+      $tenant_id:  ctx.tenant_id,
+      $is_live:    ctx.is_live,
+      $prefix:     prefix,
+      $name:       name.trim(),
+      $created_by: ctx.user_id,
+    });
     const contact = contactRes.rows[0];
 
     const insertedChannels: ChannelItem[] = [];
@@ -79,22 +79,15 @@ export async function create_contact(
       const subtype = VALID_SUBTYPES.includes(ch.channel_subtype as typeof VALID_SUBTYPES[number])
         ? ch.channel_subtype! : 'personal';
 
-      const chRes = await tx.query<ChannelItem>(
-        `INSERT INTO ki_contact_channels
-           (contact_id, tenant_id, is_live, channel_type, channel_value, channel_subtype, is_primary)
-         VALUES ($contact_id, $tenant_id, $is_live, $channel_type, $channel_value, $channel_subtype, $is_primary)
-         ON CONFLICT (contact_id, channel_type, channel_value, is_live) DO NOTHING
-         RETURNING id, channel_type, channel_value, channel_subtype, is_primary`,
-        {
-          $contact_id:      contact.id,
-          $tenant_id:       ctx.tenant_id,
-          $is_live:         ctx.is_live,
-          $channel_type:    ch.channel_type,
-          $channel_value:   ch.channel_value.trim(),
-          $channel_subtype: subtype,
-          $is_primary:      ch.is_primary ?? false,
-        }
-      );
+      const chRes = await tx.query<ChannelItem>(INSERT_CHANNEL_SQL, {
+        $contact_id:      contact.id,
+        $tenant_id:       ctx.tenant_id,
+        $is_live:         ctx.is_live,
+        $channel_type:    ch.channel_type,
+        $channel_value:   ch.channel_value.trim(),
+        $channel_subtype: subtype,
+        $is_primary:      ch.is_primary ?? false,
+      });
       if (chRes.rows[0]) insertedChannels.push(chRes.rows[0]);
     }
 

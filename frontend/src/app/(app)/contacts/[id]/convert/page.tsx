@@ -33,6 +33,12 @@ interface Contact {
   created_at: string;
 }
 
+interface SuccessData {
+  clientId: number;
+  extRef: string | null;
+  goalsSeeded: number;
+}
+
 /* ── Helpers ── */
 
 function formatAmount(v: number): string {
@@ -114,13 +120,17 @@ export default function ConvertPage() {
     }
   }, [contact?.is_client, contactId, router]);
 
+  const [successData, setSuccessData] = useState<SuccessData | null>(null);
+
   const { mutate: convert, isPending } = useSkillMutation(
     'contact-skill', 'convert_to_client',
     {
-      onSuccess: (res: { data: { client: { id: number } } }) => {
-        const clientId = res.data.client.id;
-        showToast({ message: `${contact?.name} is now a client!`, type: 'success' });
-        router.push(`/clients/${clientId}`);
+      onSuccess: (res: { data: { client: { id: number; ext_ref_id: string | null }; goals_seeded: number } }) => {
+        setSuccessData({
+          clientId:   res.data.client.id,
+          extRef:     res.data.client.ext_ref_id,
+          goalsSeeded: res.data.goals_seeded,
+        });
       },
       onError: (e: Error) => showToast({ message: e.message || 'Conversion failed', type: 'error' }),
     }
@@ -432,6 +442,73 @@ export default function ConvertPage() {
           </VdfButton>
         </div>
       </footer>
+
+      {/* ── Conversion Success Screen ── */}
+      {successData && (
+        <div className={s.successScreen}>
+          <div className={s.successContent}>
+
+            {/* Card — flips in */}
+            <div className={s.successCard}>
+              <div className={s.successCardEyebrow}>ProKey · Active Client</div>
+              <div className={s.successCardTitle}>{contact.name}</div>
+
+              {successData.extRef && (
+                <div className={s.successExtRef}>
+                  <span className={s.successExtRefLabel}>CLIENT · CODE</span>
+                  <span className={s.successExtRefValue}>{successData.extRef}</span>
+                </div>
+              )}
+
+              <div className={s.successCardMeta}>
+                <span>
+                  SINCE{' '}
+                  {new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }).toUpperCase()}
+                </span>
+                <span>
+                  {contact.snapshot_summary?.risk_profile
+                    ? `${contact.snapshot_summary.risk_profile.toUpperCase()} RISK`
+                    : 'PROKEY · MFD'}
+                </span>
+              </div>
+            </div>
+
+            {/* Headline */}
+            <h1 className={s.successHeadline}>
+              Welcome <em>{contact.name.split(' ')[0]}</em><br />
+              to your client family.
+            </h1>
+
+            {/* Sub */}
+            <p className={s.successSub}>
+              {[
+                contact.snapshot_summary?.has_snapshot ? 'Snapshot data migrated' : null,
+                successData.goalsSeeded > 0
+                  ? `${successData.goalsSeeded} goal${successData.goalsSeeded !== 1 ? 's' : ''} seeded`
+                  : null,
+                'Client profile created',
+              ].filter(Boolean).join(' · ')}
+            </p>
+
+            {/* Actions */}
+            <div className={s.successActions}>
+              <button
+                className={s.successBtnPrimary}
+                onClick={() => router.push(`/clients/${successData.clientId}`)}
+              >
+                View Client Profile →
+              </button>
+              <button
+                className={s.successBtnGhost}
+                onClick={() => router.push('/contacts')}
+              >
+                Back to Roster
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

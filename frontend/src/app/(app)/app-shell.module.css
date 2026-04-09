@@ -11,3 +11,10 @@
   overflow-y: auto;
   min-width: 0;
 }
+
+@media (max-width: 768px) {
+  /* Sidebar becomes position:fixed overlay — main fills full width */
+  .shell {
+    flex-direction: column;
+  }
+}

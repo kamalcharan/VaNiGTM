@@ -67,3 +67,33 @@ Convert a contact to a full client. Requires contact to exist and not already be
 Summary stats for the contacts dashboard.
 - Parameters: none
 - Returns: { total_contacts, total_clients, total_prospects, has_snapshot, recipe: 'stat-summary' }
+
+### save_snapshot
+Create or update a versioned financial snapshot for a contact. Handles draft/active lifecycle. All child tables (income, expenses, assets, liabilities, protection, goals) are fully replaced on every call.
+- Parameters: contact_id (required, number), status (required, string), income (optional, array), expenses (optional, array), assets (optional, array), liabilities (optional, array), protection (optional, object), goals (optional, array), risk_profile (optional, string), notes (optional, string)
+- Returns: { snapshot_id, version_number, status, calc_monthly_income, calc_net_worth, calc_savings_rate_pct, recipe: 'snapshot-view' }
+
+### get_snapshot_full
+Load the active (or draft) versioned snapshot with all child tables for a contact.
+- Parameters: contact_id (required, number), status (optional, string)
+- Returns: { snapshot: { id, version_number, status, risk_profile, notes, calc_monthly_income, calc_net_worth, calc_savings_rate_pct, income, expenses, assets, liabilities, protection, goals } | null, recipe: 'snapshot-view' }
+
+### get_snapshot_history
+List all snapshot versions for a contact (active + archived), ordered newest first.
+- Parameters: contact_id (required, number)
+- Returns: { versions: [{ id, version_number, status, submitted_at, calc_net_worth, calc_savings_rate_pct, created_by_name }], recipe: 'snapshot-history' }
+
+### get_asset_types
+Global master list of asset types for the snapshot assets form.
+- Parameters: none
+- Returns: { asset_types: [{ id, code, label, is_liquid_default }], recipe: 'master-list' }
+
+### get_liability_types
+Global master list of liability types for the snapshot liabilities form.
+- Parameters: none
+- Returns: { liability_types: [{ id, code, label }], recipe: 'master-list' }
+
+### generate_intake_token
+Generate a signed intake link. Flow 1: pass contact_id for a known contact. Flow 2: omit contact_id for a generic tenant-level link.
+- Parameters: contact_id (optional, number)
+- Returns: { token_id, token, intake_url, expires_at, recipe: 'intake-link' }

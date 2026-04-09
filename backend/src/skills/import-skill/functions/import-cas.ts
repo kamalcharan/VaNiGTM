@@ -255,32 +255,29 @@ export async function import_cas(
   let importedCount = 0;
   let skippedCount = 0;
 
-  // DB transaction
-  await ctx.db.query('BEGIN');
   try {
-    for (const txn of transactions) {
-      const result = await ctx.db.query<InsertResult>(INSERT_TXN_SQL, {
-        $tenant_id: ctx.tenant_id,
-        $client_id: clientId,
-        $scheme_code: txn.scheme_code,
-        $txn_date: txn.txn_date,
-        $txn_type: txn.txn_type,
-        $amount: txn.amount,
-        $units: txn.units,
-        $nav: txn.nav,
-        $description: `CAS import: ${txn.scheme_name} (Folio: ${txn.folio})`,
-        $source: 'cas',
-      });
-
-      if (result.rows.length > 0) {
-        importedCount++;
-      } else {
-        skippedCount++;
+    ({ importedCount, skippedCount } = await ctx.db.transaction(async (tx) => {
+      let imported = 0;
+      let skipped  = 0;
+      for (const txn of transactions) {
+        const result = await tx.query<InsertResult>(INSERT_TXN_SQL, {
+          $tenant_id:   ctx.tenant_id,
+          $client_id:   clientId,
+          $scheme_code: txn.scheme_code,
+          $txn_date:    txn.txn_date,
+          $txn_type:    txn.txn_type,
+          $amount:      txn.amount,
+          $units:       txn.units,
+          $nav:         txn.nav,
+          $description: `CAS import: ${txn.scheme_name} (Folio: ${txn.folio})`,
+          $source:      'cas',
+        });
+        if (result.rows.length > 0) imported++;
+        else                        skipped++;
       }
-    }
-    await ctx.db.query('COMMIT');
+      return { importedCount: imported, skippedCount: skipped };
+    }));
   } catch (err) {
-    await ctx.db.query('ROLLBACK');
     return {
       imported_count: 0,
       clients_found: clientPANs.size,
