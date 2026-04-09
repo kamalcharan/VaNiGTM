@@ -418,7 +418,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
 
   // ── Empty state — no snapshot yet, user hasn't chosen an action ───────────
 
-  if (!snap && !showWizard) {
+  if (!snap && !showWizard && !showCapture) {
     return (
       <div className={s.emptyState}>
         <div className={s.emptyIcon}>
