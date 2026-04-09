@@ -70,11 +70,12 @@ CREATE TABLE IF NOT EXISTS ki_asset_types (
 
 COMMENT ON TABLE ki_asset_types IS
     'Global master: asset categories for snapshot asset capture. Shared across all tenants.';
+
+-- Add is_liquid_default if missing (017 created this table without it)
+ALTER TABLE ki_asset_types ADD COLUMN IF NOT EXISTS is_liquid_default BOOLEAN NOT NULL DEFAULT false;
+
 COMMENT ON COLUMN ki_asset_types.is_liquid_default IS
     'Pre-fills the liquid/illiquid toggle in the intake wizard.';
-
--- Add snapshot-specific columns if they don't exist (in case 017 ran first without them)
-ALTER TABLE ki_asset_types ADD COLUMN IF NOT EXISTS is_liquid_default BOOLEAN NOT NULL DEFAULT false;
 
 -- Insert snapshot-specific asset types using the 017 column names.
 -- Updates liquidity flags on existing rows (MF, GOLD, etc. from 017 seed).
@@ -505,6 +506,15 @@ CREATE POLICY ki_snapshot_goals_tenant_isolation ON ki_snapshot_goals
 -- SECTION 6: DEPRECATION NOTE
 -- ============================================================================
 
-COMMENT ON TABLE ki_contact_snapshot IS
-    '[DEPRECATED — migration 021] Superseded by ki_contact_snapshots (versioned). '
-    'Kept intact for data preservation. Will be dropped after data migration to new schema.';
+-- ki_contact_snapshot (singular, from migration 019) is superseded by
+-- ki_contact_snapshots (plural, versioned). Kept intact if it exists.
+-- Will be dropped after data migration to new schema.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables
+               WHERE table_schema = 'public' AND table_name = 'ki_contact_snapshot') THEN
+        COMMENT ON TABLE ki_contact_snapshot IS
+            '[DEPRECATED — migration 021] Superseded by ki_contact_snapshots (versioned). '
+            'Kept intact for data preservation. Will be dropped after data migration to new schema.';
+    END IF;
+END $$;
