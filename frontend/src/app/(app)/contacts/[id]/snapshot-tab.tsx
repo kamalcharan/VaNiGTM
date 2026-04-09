@@ -17,17 +17,16 @@ import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useMe } from '@/hooks/useMe';
 import { useToast } from '@/components/toast';
 import {
-  VdfLoader, VdfButton, VdfItemCardList, VdfMetricLabel, VdfProactiveCard,
+  VdfLoader, VdfButton, VdfItemCardList, VdfProactiveCard,
   type ItemRow, type ItemFieldDef,
 } from '@/components/vdf';
 import s from './snapshot-tab.module.css';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
-interface AssetType   { id: number; code: string; label: string; is_liquid_default: boolean; }
 interface LiabilityType { id: number; code: string; label: string; }
 
-interface AssetRow    { _id: string; asset_type_id: string; description: string; current_value: string; is_liquid: boolean; years_held: string; }
+interface AssetRow    { _id: string; description: string; current_value: string; is_liquid: boolean; }
 interface LiabRow     { _id: string; liability_type_id: string; description: string; outstanding_amount: string; monthly_emi: string; interest_rate_pct: string; }
 interface GoalRow     { goal_type: string; name: string; target_amount: string; timeline_years: string; }
 
@@ -207,14 +206,10 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   const { data: snapData, isLoading: snapLoading } = useSkillQuery<{ snapshot: Record<string, unknown> | null }>(
     'contact-skill', 'get_snapshot_full', { contact_id: contactId }
   );
-  const { data: assetTypesData } = useSkillQuery<{ asset_types: AssetType[] }>(
-    'contact-skill', 'get_asset_types', {}
-  );
   const { data: liabTypesData } = useSkillQuery<{ liability_types: LiabilityType[] }>(
     'contact-skill', 'get_liability_types', {}
   );
 
-  const assetTypes   = assetTypesData?.data?.asset_types ?? [];
   const liabTypes    = liabTypesData?.data?.liability_types ?? [];
   const snap         = snapData?.data?.snapshot as Record<string, unknown> | null;
 
@@ -245,12 +240,10 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
 
     const snapAssets = (snap.assets as Array<Record<string, unknown>>) ?? [];
     setAssets(snapAssets.map(a => ({
-      _id:            genId(),
-      asset_type_id:  String(a.asset_type_id ?? ''),
-      description:    String(a.description ?? ''),
-      current_value:  String(a.current_value ?? ''),
-      is_liquid:      Boolean(a.is_liquid),
-      years_held:     a.years_held != null ? String(a.years_held) : '',
+      _id:           genId(),
+      description:   String(a.description ?? ''),
+      current_value: String(a.current_value ?? ''),
+      is_liquid:     Boolean(a.is_liquid),
     })));
 
     const snapLiabs = (snap.liabilities as Array<Record<string, unknown>>) ?? [];
@@ -287,15 +280,6 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
 
   // ── Schemas for VdfItemCardList ───────────────────────────────────────────
 
-  const assetSchema = useMemo<ItemFieldDef[]>(() => [
-    { type: 'select', key: 'asset_type_id', label: 'Asset Type',
-      options: [{ value: '', label: 'Select type' }, ...assetTypes.map(t => ({ value: String(t.id), label: t.label }))] },
-    { type: 'text',     key: 'description',   label: 'Description',  placeholder: 'e.g. 2BHK in Koramangala' },
-    { type: 'currency', key: 'current_value', label: 'Current Value' },
-    { type: 'text',     key: 'years_held',    label: 'Yrs Held',     placeholder: '—' },
-    { type: 'liquidity',key: 'is_liquid',     label: 'Liquidity' },
-  ], [assetTypes]);
-
   const liabSchema = useMemo<ItemFieldDef[]>(() => [
     { type: 'select', key: 'liability_type_id', label: 'Loan Type',
       options: [{ value: '', label: 'Select type' }, ...liabTypes.map(t => ({ value: String(t.id), label: t.label }))] },
@@ -304,18 +288,6 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     { type: 'currency', key: 'monthly_emi',        label: 'Monthly EMI',  suffix: '/mo' },
     { type: 'text',     key: 'interest_rate_pct',  label: 'Rate %',       placeholder: '8.5' },
   ], [liabTypes]);
-
-  const handleAssetsChange = useCallback((rows: ItemRow[]) => {
-    const updated = rows.map(row => {
-      const prev = assets.find(a => a._id === row._id);
-      if (prev && String(prev.asset_type_id) !== String(row.asset_type_id)) {
-        const assetType = assetTypes.find(t => String(t.id) === String(row.asset_type_id));
-        return { ...row, is_liquid: assetType?.is_liquid_default ?? false };
-      }
-      return row;
-    });
-    setAssets(updated as unknown as AssetRow[]);
-  }, [assets, assetTypes]);
 
   // ── Build save payload ────────────────────────────────────────────────────
 
@@ -330,12 +302,10 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     expenses: Object.entries(expenses)
       .filter(([, v]) => Number(v) > 0)
       .map(([category, v]) => ({ category, amount_monthly: Number(v) })),
-    assets: assets.filter(a => a.asset_type_id && Number(a.current_value) > 0).map((a, i) => ({
-      asset_type_id: Number(a.asset_type_id),
+    assets: assets.filter(a => Number(a.current_value) > 0).map((a, i) => ({
       description:   a.description || undefined,
       current_value: Number(a.current_value),
       is_liquid:     a.is_liquid,
-      years_held:    Number(a.years_held) > 0 ? Number(a.years_held) : undefined,
       sort_order:    i + 1,
     })),
     liabilities: liabs.filter(l => l.liability_type_id && Number(l.outstanding_amount) > 0).map((l, i) => ({
@@ -415,7 +385,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
 
   const sectionDone = [
     metrics.monthlyIncome > 0 || metrics.monthlyExpenses > 0,
-    assets.some(a => a.asset_type_id && Number(a.current_value) > 0),
+    assets.some(a => Number(a.current_value) > 0),
     liabs.some(l => l.liability_type_id && Number(l.outstanding_amount) > 0),
     !!(protection.life_cover_amount || protection.health_cover_amount),
     goals.some(g => g.name && Number(g.target_amount) > 0),
@@ -613,6 +583,16 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   const vaniAnnual     = metrics.monthlySavings * 12;
   const vaniSrLabel    = vaniSr >= 30 ? 'Strong cash flow.' : vaniSr >= 15 ? 'Moderate cash flow.' : vaniSr >= 0 ? 'Tight margins.' : null;
 
+  // ── VaNi Assets pre-computed values ──────────────────────────────────────
+  const vaniLiqPct       = metrics.totalAssets > 0 ? (metrics.liquidAssets / metrics.totalAssets) * 100 : 0;
+  const vaniLargestAsset = assets.length > 0
+    ? assets.reduce((max, a) => Number(a.current_value) > Number(max.current_value) ? a : max, assets[0])
+    : null;
+  const vaniLargestPct   = vaniLargestAsset && metrics.totalAssets > 0
+    ? (Number(vaniLargestAsset.current_value) / metrics.totalAssets) * 100
+    : 0;
+  const vaniLiqMonths    = metrics.monthlyExpenses > 0 ? metrics.liquidAssets / metrics.monthlyExpenses : null;
+
   return (
     <div className={s.formLayout}>
 
@@ -793,33 +773,137 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
         {/* ── 02 Assets ────────────────────────────────────────────── */}
         {activeSection === 1 && (
           <div className={s.sectionBody}>
-            <VdfItemCardList
-              schema={assetSchema}
-              value={assets as unknown as ItemRow[]}
-              onChange={handleAssetsChange}
-              columns={3}
-              prefix="ASSET"
-              addLabel="+ Add asset"
-              maxItems={20}
-            />
-            {assets.length > 0 && (
-              <div className={s.sectionTotal}>
-                Total: <strong>{fmt(metrics.totalAssets)}</strong>
-                {' · '}Liquid: <strong style={{ color: 'var(--color-success)' }}>{fmt(metrics.liquidAssets)}</strong>
+
+            {/* Item list or empty hint */}
+            {assets.length === 0 ? (
+              <div className={s.itemEmptyState}>
+                Equity funds, property, savings, gold — add everything of value
+              </div>
+            ) : (
+              <div className={s.itemList}>
+                {assets.map((asset, i) => (
+                  <div key={asset._id} className={s.itemCard}>
+                    <div className={s.itemHead}>
+                      <span className={s.itemNum}>ASSET_{String(i + 1).padStart(2, '0')}</span>
+                      <button
+                        type="button"
+                        className={s.itemRemove}
+                        onClick={() => setAssets(prev => prev.filter(a => a._id !== asset._id))}
+                      >×</button>
+                    </div>
+                    <div className={s.assetFieldRow}>
+                      {/* Description */}
+                      <div className={s.curField}>
+                        <label className={s.curFieldLabel}>Description</label>
+                        <input
+                          className={s.plainInput}
+                          type="text"
+                          placeholder="e.g. SBI Equity Fund, 2BHK Flat, FD"
+                          value={asset.description}
+                          onChange={e => setAssets(prev =>
+                            prev.map(a => a._id === asset._id ? { ...a, description: e.target.value } : a)
+                          )}
+                        />
+                      </div>
+                      {/* Current Value */}
+                      <div className={s.curField}>
+                        <label className={s.curFieldLabel}>Current Value</label>
+                        <div className={s.curInputWrap}>
+                          <span className={s.curSym}>₹</span>
+                          <input
+                            className={s.curVal}
+                            type="number"
+                            placeholder="0"
+                            value={asset.current_value}
+                            onChange={e => setAssets(prev =>
+                              prev.map(a => a._id === asset._id ? { ...a, current_value: e.target.value } : a)
+                            )}
+                          />
+                        </div>
+                      </div>
+                      {/* Liquidity toggle */}
+                      <div className={s.curField}>
+                        <label className={s.curFieldLabel}>Liquidity</label>
+                        <div className={s.liqToggle}>
+                          <button
+                            type="button"
+                            className={`${s.liqBtn} ${asset.is_liquid ? s.liqBtnActive : ''}`}
+                            onClick={() => setAssets(prev =>
+                              prev.map(a => a._id === asset._id ? { ...a, is_liquid: true } : a)
+                            )}
+                          >💧 Liquid</button>
+                          <button
+                            type="button"
+                            className={`${s.liqBtn} ${!asset.is_liquid ? s.liqBtnIlliq : ''}`}
+                            onClick={() => setAssets(prev =>
+                              prev.map(a => a._id === asset._id ? { ...a, is_liquid: false } : a)
+                            )}
+                          >🔒 Illiq</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
+
+            {/* Add asset button */}
+            <button
+              type="button"
+              className={s.addItemBtn}
+              onClick={() => setAssets(prev => [...prev, { _id: genId(), description: '', current_value: '', is_liquid: true }])}
+            >
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                <path d="M10 4v12M4 10h12" />
+              </svg>
+              Add asset
+            </button>
+
+            {/* VaNi copilot */}
             {metrics.totalAssets > 0 && (
-              <VdfProactiveCard
-                variant="data"
-                label="VaNi"
-                message={`Total assets ${fmt(metrics.totalAssets)} · Liquid ${fmt(metrics.liquidAssets)} · Illiquid ${fmt(metrics.totalAssets - metrics.liquidAssets)}`}
-                tags={[
-                  metrics.totalAssets > 0 && metrics.liquidAssets / metrics.totalAssets >= 0.3
-                    ? { text: 'liquidity ok', status: 'ok' }
-                    : { text: 'illiquid-heavy', status: 'warn' },
-                ]}
-              />
+              <div className={s.vaniCopilot}>
+                <div className={s.vaniCopilotMarker}>V ▸</div>
+                <div className={s.vaniCopilotText}>
+                  <span className={s.vaniHi}>{fmt(metrics.totalAssets)} total</span>
+                  <span className={s.vaniSep}> · </span>
+                  <span className={vaniLiqPct >= 30 ? s.vaniOk : vaniLiqPct >= 15 ? s.vaniWarn : s.vaniBad}>
+                    Liquid {vaniLiqPct.toFixed(0)}%
+                  </span>
+                  <span className={s.vaniSep}> · </span>
+                  <span className={s.vaniHi}>Illiquid {(100 - vaniLiqPct).toFixed(0)}%</span>
+                  {vaniLargestAsset && vaniLargestPct > 0 && (
+                    <>
+                      <br />
+                      Concentration:{' '}
+                      <span className={s.vaniHi}>{vaniLargestAsset.description || 'Top asset'}</span>
+                      {' = '}
+                      <span className={vaniLargestPct > 50 ? s.vaniBad : vaniLargestPct > 35 ? s.vaniWarn : s.vaniOk}>
+                        {vaniLargestPct.toFixed(0)}% of total
+                      </span>
+                      {vaniLargestPct > 50 && (
+                        <><span className={s.vaniSep}> · </span><span className={s.vaniWarn}>High concentration risk.</span></>
+                      )}
+                    </>
+                  )}
+                  {vaniLiqMonths !== null && (
+                    <>
+                      <br />
+                      Emergency liquidity:{' '}
+                      <span className={vaniLiqMonths >= 6 ? s.vaniOk : vaniLiqMonths >= 3 ? s.vaniWarn : s.vaniBad}>
+                        {vaniLiqMonths.toFixed(1)} months runway
+                      </span>
+                      {vaniLiqMonths < 3 && (
+                        <><span className={s.vaniSep}> · </span><span className={s.vaniBad}>Below 3-month threshold.</span></>
+                      )}
+                      {vaniLiqMonths >= 6 && (
+                        <><span className={s.vaniSep}> · </span><span className={s.vaniOk}>Adequate buffer.</span></>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
             )}
+
           </div>
         )}
 
