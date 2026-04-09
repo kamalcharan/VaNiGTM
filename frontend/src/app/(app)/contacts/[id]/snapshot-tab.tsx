@@ -612,6 +612,16 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     ? (Number(vaniLargestLiab.outstanding_amount) / metrics.totalLiabs) * 100
     : 0;
 
+  // ── VaNi Protection pre-computed values ──────────────────────────────────
+  const vaniProtClass   = protRatio === null ? s.vaniHi : protRatio >= 10 ? s.vaniOk : protRatio >= 5 ? s.vaniWarn : s.vaniBad;
+  const vaniProtBracket = protRatio === null ? null : protRatio >= 15 ? 'p95' : protRatio >= 10 ? 'p80' : protRatio >= 7 ? 'p65' : protRatio >= 5 ? 'p50' : protRatio >= 3 ? 'p35' : 'p15';
+  const vaniLifeGap     = metrics.monthlyIncome > 0 && Number(protection.life_cover_amount) > 0
+    ? Math.max(0, metrics.monthlyIncome * 12 * 10 - Number(protection.life_cover_amount))
+    : null;
+  const vaniPremBurden  = metrics.monthlyIncome > 0
+    ? ((Number(protection.life_premium_annual) + Number(protection.health_premium_annual)) / (metrics.monthlyIncome * 12)) * 100
+    : null;
+
   return (
     <div className={s.formLayout}>
 
@@ -1082,57 +1092,183 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
         {/* ── 04 Protection ────────────────────────────────────────── */}
         {activeSection === 3 && (
           <div className={s.sectionBody}>
-            <div className={s.protectionToggles}>
-              <button
-                className={`${s.protToggle} ${protection.has_term_plan ? s.protToggleOn : ''}`}
-                onClick={() => setProtection(p => ({ ...p, has_term_plan: !p.has_term_plan }))}
-              >
-                {protection.has_term_plan ? '✓' : '○'} Term Plan
-              </button>
-              <button
-                className={`${s.protToggle} ${protection.has_health_cover ? s.protToggleOn : ''}`}
-                onClick={() => setProtection(p => ({ ...p, has_health_cover: !p.has_health_cover }))}
-              >
-                {protection.has_health_cover ? '✓' : '○'} Health Cover
-              </button>
+
+            {/* Life Insurance sub-block */}
+            <div className={s.subBlock}>
+              <div className={s.subHead}>Life Insurance</div>
+              <div className={s.protField}>
+                <label className={s.curFieldLabel}>Has active term / life policy?</label>
+                <div className={s.optCards2}>
+                  <button
+                    type="button"
+                    className={`${s.optCard} ${protection.has_term_plan ? s.optCardSelected : ''}`}
+                    onClick={() => setProtection(p => ({ ...p, has_term_plan: true }))}
+                  >
+                    <svg className={s.optCardIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 2 4 7v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V7l-8-5z"/><path d="m9 12 2 2 4-4"/>
+                    </svg>
+                    <div>
+                      <div className={s.optCardLabel}>Yes</div>
+                      <div className={s.optCardSub}>Has coverage</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${s.optCard} ${!protection.has_term_plan ? s.optCardSelected : ''}`}
+                    onClick={() => setProtection(p => ({ ...p, has_term_plan: false }))}
+                  >
+                    <svg className={s.optCardIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>
+                    </svg>
+                    <div>
+                      <div className={s.optCardLabel}>No / unsure</div>
+                      <div className={s.optCardSub}>Gap flagged</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+              <div className={s.protFieldRow3}>
+                <div className={s.curField}>
+                  <label className={s.curFieldLabel}>Sum Assured</label>
+                  <div className={s.curInputWrap}>
+                    <span className={s.curSym}>₹</span>
+                    <input className={s.curVal} type="number" placeholder="0"
+                      value={protection.life_cover_amount}
+                      onChange={e => setProtection(p => ({ ...p, life_cover_amount: e.target.value }))} />
+                  </div>
+                </div>
+                <div className={s.curField}>
+                  <label className={s.curFieldLabel}>Annual Premium</label>
+                  <div className={s.curInputWrap}>
+                    <span className={s.curSym}>₹</span>
+                    <input className={s.curVal} type="number" placeholder="0"
+                      value={protection.life_premium_annual}
+                      onChange={e => setProtection(p => ({ ...p, life_premium_annual: e.target.value }))} />
+                    <span className={s.curSuffix}>/yr</span>
+                  </div>
+                </div>
+                {protRatio !== null && (
+                  <div className={s.curField}>
+                    <label className={s.curFieldLabel}>Cover Ratio</label>
+                    <div className={s.protRatioBadge}>
+                      <span className={protRatio >= 10 ? s.protRatioOk : protRatio >= 5 ? s.protRatioWarn : s.protRatioBad}>
+                        {protRatio.toFixed(1)}×
+                      </span>
+                      <span className={s.protRatioSub}>of annual income</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className={s.inputGrid2}>
-              {([
-                { key: 'life_cover_amount',    label: 'Life Cover (Sum Assured)' },
-                { key: 'life_premium_annual',  label: 'Life Premium (Annual)' },
-                { key: 'health_cover_amount',  label: 'Health Cover (Sum Insured)' },
-                { key: 'health_premium_annual',label: 'Health Premium (Annual)' },
-                { key: 'ci_cover_amount',      label: 'Critical Illness Cover' },
-              ] as const).map(({ key, label }) => (
-                <div key={key} className={s.bigInputCard}>
-                  <label className={s.bigInputLabel}>{label}<span className={s.optionalTag}>optional</span></label>
-                  <div className={s.bigInputWrap}>
-                    <span className={s.bigInputCurrency}>₹</span>
-                    <input
-                      className={s.bigInput}
-                      type="number"
-                      value={protection[key]}
-                      onChange={e => setProtection(p => ({ ...p, [key]: e.target.value }))}
-                      placeholder="0"
-                    />
+            {/* Health Insurance sub-block */}
+            <div className={s.subBlock}>
+              <div className={s.subHead}>Health Insurance</div>
+              <div className={s.protField}>
+                <label className={s.curFieldLabel}>Has health cover?</label>
+                <div className={s.optCards2}>
+                  <button
+                    type="button"
+                    className={`${s.optCard} ${protection.has_health_cover ? s.optCardSelected : ''}`}
+                    onClick={() => setProtection(p => ({ ...p, has_health_cover: true }))}
+                  >
+                    <svg className={s.optCardIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 2 4 7v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V7l-8-5z"/><path d="m9 12 2 2 4-4"/>
+                    </svg>
+                    <div>
+                      <div className={s.optCardLabel}>Yes</div>
+                      <div className={s.optCardSub}>Has coverage</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${s.optCard} ${!protection.has_health_cover ? s.optCardSelected : ''}`}
+                    onClick={() => setProtection(p => ({ ...p, has_health_cover: false }))}
+                  >
+                    <svg className={s.optCardIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>
+                    </svg>
+                    <div>
+                      <div className={s.optCardLabel}>No / unsure</div>
+                      <div className={s.optCardSub}>Gap flagged</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+              <div className={s.protFieldRow3}>
+                <div className={s.curField}>
+                  <label className={s.curFieldLabel}>Sum Insured</label>
+                  <div className={s.curInputWrap}>
+                    <span className={s.curSym}>₹</span>
+                    <input className={s.curVal} type="number" placeholder="0"
+                      value={protection.health_cover_amount}
+                      onChange={e => setProtection(p => ({ ...p, health_cover_amount: e.target.value }))} />
                   </div>
-                  {Number(protection[key]) > 0 && (
-                    <div className={s.bigInputHelper}>{fmt(Number(protection[key]))}</div>
+                </div>
+                <div className={s.curField}>
+                  <label className={s.curFieldLabel}>Annual Premium</label>
+                  <div className={s.curInputWrap}>
+                    <span className={s.curSym}>₹</span>
+                    <input className={s.curVal} type="number" placeholder="0"
+                      value={protection.health_premium_annual}
+                      onChange={e => setProtection(p => ({ ...p, health_premium_annual: e.target.value }))} />
+                    <span className={s.curSuffix}>/yr</span>
+                  </div>
+                </div>
+                <div className={s.curField}>
+                  <label className={s.curFieldLabel}>Critical Illness <span className={s.optionalTag}>opt</span></label>
+                  <div className={s.curInputWrap}>
+                    <span className={s.curSym}>₹</span>
+                    <input className={s.curVal} type="number" placeholder="0"
+                      value={protection.ci_cover_amount}
+                      onChange={e => setProtection(p => ({ ...p, ci_cover_amount: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* VaNi copilot */}
+            {(Number(protection.life_cover_amount) > 0 || Number(protection.health_cover_amount) > 0) && (
+              <div className={s.vaniCopilot}>
+                <div className={s.vaniCopilotMarker}>V ▸</div>
+                <div className={s.vaniCopilotText}>
+                  {Number(protection.life_cover_amount) > 0 && (
+                    <>
+                      Life cover{' '}
+                      <span className={s.vaniHi}>{fmt(Number(protection.life_cover_amount))}</span>
+                      {protRatio !== null && (
+                        <><span className={s.vaniSep}> · </span>
+                        <span className={vaniProtClass}>{protRatio.toFixed(1)}× annual income ▸ {vaniProtBracket}</span></>
+                      )}
+                      {vaniLifeGap !== null && vaniLifeGap > 0 && (
+                        <><span className={s.vaniSep}> · </span>
+                        <span className={s.vaniBad}>Gap vs 10× benchmark: {fmt(vaniLifeGap)}</span></>
+                      )}
+                    </>
+                  )}
+                  {!protection.has_term_plan && (
+                    <><br /><span className={s.vaniBad}>No active life policy flagged.</span>{' '}Life cover is the #1 protection priority.</>
+                  )}
+                  {Number(protection.health_cover_amount) > 0 && (
+                    <><br />Health cover{' '}
+                    <span className={s.vaniHi}>{fmt(Number(protection.health_cover_amount))}</span>
+                    {Number(protection.ci_cover_amount) > 0 && (
+                      <><span className={s.vaniSep}> · </span>CI {fmt(Number(protection.ci_cover_amount))}</>
+                    )}</>
+                  )}
+                  {!protection.has_health_cover && (
+                    <><br /><span className={s.vaniWarn}>No health cover flagged.</span>{' '}Medical inflation in India is 14%/yr.</>
+                  )}
+                  {vaniPremBurden !== null && vaniPremBurden > 0 && (
+                    <><br />Premium burden:{' '}
+                    <span className={vaniPremBurden > 5 ? s.vaniWarn : s.vaniOk}>
+                      {vaniPremBurden.toFixed(1)}% of annual income
+                    </span></>
                   )}
                 </div>
-              ))}
-            </div>
-
-            {protRatio !== null && (
-              <div className={s.savingsSummary}>
-                <span className={s.savingsLabel}>Protection Ratio</span>
-                <span className={s.savingsValue} style={{ color: protRatio >= 10 ? 'var(--color-success)' : protRatio >= 5 ? 'var(--color-warning)' : 'var(--color-danger)' }}>
-                  {protRatio.toFixed(1)}x
-                </span>
-                <span className={s.savingsRate}>life cover / annual income — target 10x</span>
               </div>
             )}
+
           </div>
         )}
 
