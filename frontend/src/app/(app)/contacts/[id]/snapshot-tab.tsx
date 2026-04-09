@@ -1038,7 +1038,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
             </div>
           )}
 
-        </div>{/* /formWork */}
+        </div>
 
         {/* Right: Benchmark Pulse sidebar */}
         <aside className={s.pulseSidebar}>
@@ -1102,7 +1102,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
           </div>
         </aside>
 
-      </div>{/* /formBody */}
-    </div>{/* /formLayout */}
+      </div>
+    </div>
   );
 }
