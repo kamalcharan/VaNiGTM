@@ -2100,6 +2100,17 @@
   align-items: flex-start;
 }
 
+/* Loan card rows */
+.loanRow1 {
+  /* Loan type full-width */
+}
+.loanRow2 {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1fr 1fr;
+  gap: 10px;
+  align-items: flex-start;
+}
+
 /* Plain select (same height as curInputWrap) */
 .plainSelect {
   display: block;
@@ -2230,6 +2241,12 @@
     grid-template-columns: 1fr 1fr;
   }
   .assetRow2 > *:first-child {
+    grid-column: 1 / -1;
+  }
+  .loanRow2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .loanRow2 > *:first-child {
     grid-column: 1 / -1;
   }
 }

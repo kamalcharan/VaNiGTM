@@ -10,15 +10,14 @@
  *   01 Cash Flow → 02 Assets → 03 Liabilities → 04 Protection → 05 Goals
  */
 
-import { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useMe } from '@/hooks/useMe';
 import { useToast } from '@/components/toast';
 import {
-  VdfLoader, VdfButton, VdfItemCardList, VdfProactiveCard,
-  type ItemRow, type ItemFieldDef,
+  VdfLoader, VdfButton,
 } from '@/components/vdf';
 import s from './snapshot-tab.module.css';
 
@@ -284,17 +283,6 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
       timeline_years: String(g.timeline_years ?? ''),
     })));
   }, [snap]);
-
-  // ── Schemas for VdfItemCardList ───────────────────────────────────────────
-
-  const liabSchema = useMemo<ItemFieldDef[]>(() => [
-    { type: 'select', key: 'liability_type_id', label: 'Loan Type',
-      options: [{ value: '', label: 'Select type' }, ...liabTypes.map(t => ({ value: String(t.id), label: t.label }))] },
-    { type: 'text',     key: 'description',       label: 'Description',  placeholder: 'e.g. SBI Home Loan' },
-    { type: 'currency', key: 'outstanding_amount', label: 'Outstanding' },
-    { type: 'currency', key: 'monthly_emi',        label: 'Monthly EMI',  suffix: '/mo' },
-    { type: 'text',     key: 'interest_rate_pct',  label: 'Rate %',       placeholder: '8.5' },
-  ], [liabTypes]);
 
   const handleAssetsChange = useCallback((asset: AssetRow, field: keyof AssetRow, value: string | boolean) => {
     setAssets(prev => prev.map(a => {
@@ -614,6 +602,15 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     ? (Number(vaniLargestAsset.current_value) / metrics.totalAssets) * 100
     : 0;
   const vaniLiqMonths    = metrics.monthlyExpenses > 0 ? metrics.liquidAssets / metrics.monthlyExpenses : null;
+
+  // ── VaNi Liabilities pre-computed values ─────────────────────────────────
+  const vaniDtiClass      = metrics.dti === null ? s.vaniHi : metrics.dti <= 30 ? s.vaniOk : metrics.dti <= 50 ? s.vaniWarn : s.vaniBad;
+  const vaniLargestLiab   = liabs.length > 0
+    ? liabs.reduce((max, l) => Number(l.outstanding_amount) > Number(max.outstanding_amount) ? l : max, liabs[0])
+    : null;
+  const vaniLargestLiabPct = vaniLargestLiab && metrics.totalLiabs > 0
+    ? (Number(vaniLargestLiab.outstanding_amount) / metrics.totalLiabs) * 100
+    : 0;
 
   return (
     <div className={s.formLayout}>
@@ -946,33 +943,139 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
         {/* ── 03 Liabilities ───────────────────────────────────────── */}
         {activeSection === 2 && (
           <div className={s.sectionBody}>
-            <VdfItemCardList
-              schema={liabSchema}
-              value={liabs as unknown as ItemRow[]}
-              onChange={(rows) => setLiabs(rows as unknown as LiabRow[])}
-              columns={3}
-              prefix="LOAN"
-              addLabel="+ Add loan"
-              maxItems={10}
-            />
-            {liabs.length > 0 && (
-              <div className={s.sectionTotal}>
-                Total: <strong>{fmt(metrics.totalLiabs)}</strong>
-                {metrics.totalEmi > 0 && <> · EMI: <strong>{fmt(metrics.totalEmi)}</strong>/mo</>}
-                {metrics.dti !== null && <> · DTI: <strong style={{ color: metrics.dti > 50 ? 'var(--color-danger)' : metrics.dti > 30 ? 'var(--color-warning)' : 'var(--color-success)' }}>{metrics.dti.toFixed(1)}%</strong></>}
+
+            {liabs.length === 0 ? (
+              <div className={s.itemEmptyState}>
+                Home loan, car loan, personal loan, credit card — list every outstanding debt
+              </div>
+            ) : (
+              <div className={s.itemList}>
+                {liabs.map((liab, i) => (
+                  <div key={liab._id} className={s.itemCard}>
+                    <div className={s.itemHead}>
+                      <span className={s.itemNum}>LOAN_{String(i + 1).padStart(2, '0')}</span>
+                      <button
+                        type="button"
+                        className={s.itemRemove}
+                        onClick={() => setLiabs(prev => prev.filter(l => l._id !== liab._id))}
+                      >×</button>
+                    </div>
+                    {/* Row 1: Loan Type (full width) */}
+                    <div className={s.loanRow1}>
+                      <div className={s.curField}>
+                        <label className={s.curFieldLabel}>Loan Type</label>
+                        <select
+                          className={s.plainSelect}
+                          value={liab.liability_type_id}
+                          onChange={e => setLiabs(prev => prev.map(l => l._id === liab._id ? { ...l, liability_type_id: e.target.value } : l))}
+                        >
+                          <option value="">Select type</option>
+                          {liabTypes.map(t => (
+                            <option key={t.id} value={String(t.id)}>{t.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    {/* Row 2: Description + Outstanding + EMI + Rate */}
+                    <div className={s.loanRow2}>
+                      <div className={s.curField}>
+                        <label className={s.curFieldLabel}>Description</label>
+                        <input
+                          className={s.plainInput}
+                          type="text"
+                          placeholder="e.g. SBI Home Loan"
+                          value={liab.description}
+                          onChange={e => setLiabs(prev => prev.map(l => l._id === liab._id ? { ...l, description: e.target.value } : l))}
+                        />
+                      </div>
+                      <div className={s.curField}>
+                        <label className={s.curFieldLabel}>Outstanding</label>
+                        <div className={s.curInputWrap}>
+                          <span className={s.curSym}>₹</span>
+                          <input
+                            className={s.curVal}
+                            type="number"
+                            placeholder="0"
+                            value={liab.outstanding_amount}
+                            onChange={e => setLiabs(prev => prev.map(l => l._id === liab._id ? { ...l, outstanding_amount: e.target.value } : l))}
+                          />
+                        </div>
+                      </div>
+                      <div className={s.curField}>
+                        <label className={s.curFieldLabel}>EMI /mo</label>
+                        <div className={s.curInputWrap}>
+                          <span className={s.curSym}>₹</span>
+                          <input
+                            className={s.curVal}
+                            type="number"
+                            placeholder="0"
+                            value={liab.monthly_emi}
+                            onChange={e => setLiabs(prev => prev.map(l => l._id === liab._id ? { ...l, monthly_emi: e.target.value } : l))}
+                          />
+                        </div>
+                      </div>
+                      <div className={s.curField}>
+                        <label className={s.curFieldLabel}>Rate %</label>
+                        <input
+                          className={s.plainInput}
+                          type="number"
+                          placeholder="8.5"
+                          value={liab.interest_rate_pct}
+                          onChange={e => setLiabs(prev => prev.map(l => l._id === liab._id ? { ...l, interest_rate_pct: e.target.value } : l))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
+
+            {/* Add loan button */}
+            <button
+              type="button"
+              className={s.addItemBtn}
+              onClick={() => setLiabs(prev => [...prev, { _id: genId(), liability_type_id: '', description: '', outstanding_amount: '', monthly_emi: '', interest_rate_pct: '' }])}
+            >
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                <path d="M10 4v12M4 10h12" />
+              </svg>
+              Add loan
+            </button>
+
+            {/* VaNi copilot */}
             {metrics.totalLiabs > 0 && (
-              <VdfProactiveCard
-                variant="data"
-                label="VaNi"
-                message={`Total debt ${fmt(metrics.totalLiabs)}${metrics.dti !== null ? ` · DTI ${metrics.dti.toFixed(0)}%` : ''}`}
-                tags={metrics.dti !== null ? [
-                  { text: metrics.dti <= 30 ? 'DTI healthy' : metrics.dti <= 50 ? 'DTI elevated' : 'DTI high',
-                    status: (metrics.dti <= 30 ? 'ok' : metrics.dti <= 50 ? 'warn' : 'bad') as 'ok' | 'warn' | 'bad' },
-                ] : undefined}
-              />
+              <div className={s.vaniCopilot}>
+                <div className={s.vaniCopilotMarker}>V ▸</div>
+                <div className={s.vaniCopilotText}>
+                  <span className={s.vaniHi}>{fmt(metrics.totalLiabs)} total debt</span>
+                  {metrics.totalEmi > 0 && (
+                    <><span className={s.vaniSep}> · </span><span className={s.vaniHi}>{fmt(metrics.totalEmi)}/mo EMI</span></>
+                  )}
+                  {metrics.dti !== null && (
+                    <><span className={s.vaniSep}> · </span>
+                    DTI{' '}
+                    <span className={vaniDtiClass}>{metrics.dti.toFixed(0)}%
+                      {metrics.dti <= 30 ? ' — healthy' : metrics.dti <= 50 ? ' — elevated' : ' — high'}
+                    </span></>
+                  )}
+                  {vaniLargestLiab && vaniLargestLiabPct > 0 && (
+                    <>
+                      <br />
+                      Largest:{' '}
+                      <span className={s.vaniHi}>{vaniLargestLiab.description || 'Top loan'}</span>
+                      {' = '}
+                      <span className={vaniLargestLiabPct > 60 ? s.vaniWarn : s.vaniHi}>
+                        {vaniLargestLiabPct.toFixed(0)}% of total debt
+                      </span>
+                    </>
+                  )}
+                  {metrics.dti !== null && metrics.dti > 50 && (
+                    <><br /><span className={s.vaniBad}>DTI above 50% — debt repayment is constraining savings capacity.</span></>
+                  )}
+                </div>
+              </div>
             )}
+
           </div>
         )}
 
