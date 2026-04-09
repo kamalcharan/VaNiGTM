@@ -10,7 +10,7 @@
  *   01 Cash Flow → 02 Assets → 03 Liabilities → 04 Protection → 05 Goals
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
@@ -89,6 +89,13 @@ function fmt(v: number): string {
   if (v >= 1_00_00_000) return `₹${(v / 1_00_00_000).toFixed(1)}Cr`;
   if (v >= 1_00_000)    return `₹${(v / 1_00_000).toFixed(1)}L`;
   return `₹${v.toLocaleString('en-IN')}`;
+}
+
+function fmtBench(key: string, v: number): string {
+  if (key === 'savings' || key === 'debt') return `${v.toFixed(0)}%`;
+  if (key === 'protection') return `${v.toFixed(1)}x`;
+  if (key === 'liquidity') return `${v.toFixed(1)} mo`;
+  return String(Math.round(v));
 }
 
 let _rseq = 0;
@@ -590,30 +597,88 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
 
   const sec = SECTIONS[activeSection];
 
+  const benchData: Array<{ key: string; label: string; value: number | null; peerMedian: number; max: number; note: string }> = [
+    { key: 'savings',    label: 'Savings Rate',   value: metrics.savingsRate,     peerMedian: 18, max: 45, note: 'Peer median 18%' },
+    { key: 'debt',       label: 'Debt-to-Income', value: metrics.dti,             peerMedian: 35, max: 80, note: 'Under 30% healthy' },
+    { key: 'protection', label: 'Protection',     value: protRatio,               peerMedian: 6,  max: 15, note: 'Target 10x income' },
+    { key: 'liquidity',  label: 'Liquidity',      value: metrics.liquidityMonths, peerMedian: 4,  max: 12, note: '6+ months ideal' },
+    { key: 'goals',      label: 'Goals',          value: goals.filter(g => g.name).length || null, peerMedian: 2, max: 6, note: '2+ active goals' },
+  ];
+
   return (
-    <div className={s.wrapper}>
-      <div className={s.snapshotStage}>
+    <div className={s.formLayout}>
 
-        {/* ── 5-segment progress bar ─────────────────────────────── */}
-        <div className={s.progressWrap}>
-          {SECTIONS.map((_, i) => (
-            <div
-              key={i}
-              className={`${s.progressSegment} ${i < activeSection ? s.progressSegmentDone : ''} ${i === activeSection ? s.progressSegmentActive : ''}`}
-              onClick={() => setActiveSection(i)}
-              style={{ cursor: 'pointer' }}
-            />
-          ))}
+      {/* ── Pinned sticky header ────────────────────────────────────────────── */}
+      <header className={s.pinnedHeader}>
+
+        {/* Client chip */}
+        <div className={s.headerChip}>
+          <div className={s.headerAvatar}>{contactInitials}</div>
+          <div className={s.headerChipMeta}>
+            <span className={s.headerChipName}>{contactName || 'Client'}</span>
+            <span className={s.headerChipSub}>{isClient ? 'Client' : 'Prospect'}</span>
+          </div>
         </div>
 
-        {/* ── Step counter + editorial question header ─────────────── */}
-        <div className={s.stepCounterLabel}>
-          Step {sec.num} of 05 · {sec.label}
+        {/* Horizontal stepper */}
+        <nav className={s.stepper}>
+          {SECTIONS.map((section, i) => {
+            const isPast   = i < activeSection;
+            const isActive = i === activeSection;
+            return (
+              <Fragment key={i}>
+                {i > 0 && (
+                  <div className={`${s.stepConnector} ${isPast ? s.stepConnectorDone : ''}`} />
+                )}
+                <div
+                  className={`${s.stepItem} ${isPast ? s.stepDone : ''} ${isActive ? s.stepActive : ''}`}
+                  onClick={() => setActiveSection(i)}
+                >
+                  <div className={s.stepBullet}>
+                    {isPast ? (
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                    ) : (
+                      <span>{i + 1}</span>
+                    )}
+                  </div>
+                  <span className={s.stepLabel}>{section.label}</span>
+                </div>
+              </Fragment>
+            );
+          })}
+        </nav>
+
+        {/* Header right: save indicator + exit */}
+        <div className={s.headerActions}>
+          {isSaving && (
+            <div className={s.saveIndicator}>
+              <span className={s.saveDot} />
+              Saving…
+            </div>
+          )}
+          <button className={s.exitSaveBtn} onClick={handleDraft} disabled={isSaving}>
+            Exit &amp; Save
+          </button>
         </div>
-        <h2 className={s.stepQuestion}>
-          {sec.qBefore}{them}<em className={s.stepQuestionEm}>{sec.qItalic}</em>
-        </h2>
-        <p className={s.stepHelper}>{sec.helper}</p>
+
+      </header>
+
+      {/* ── Form body: work area + pulse sidebar ────────────────────────────── */}
+      <div className={s.formBody}>
+
+        {/* Left: form work area */}
+        <div className={s.formWork}>
+
+          {/* Step question header */}
+          <div className={s.stepCounterLabel}>
+            Step {sec.num} of 05 · {sec.label}
+          </div>
+          <h2 className={s.stepQuestion}>
+            {sec.qBefore}{them}<em className={s.stepQuestionEm}>{sec.qItalic}</em>
+          </h2>
+          <p className={s.stepHelper}>{sec.helper}</p>
 
         {/* ── 01 Cash Flow ─────────────────────────────────────────── */}
         {activeSection === 0 && (
@@ -932,81 +997,112 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
           </div>
         )}
 
-        {/* ── Navigation footer ────────────────────────────────────── */}
-        <div className={s.navFooter}>
-          <div className={s.navLeft}>
-            {activeSection > 0 && (
-              <VdfButton variant="ghost" onClick={() => setActiveSection(i => i - 1)}>← Back</VdfButton>
-            )}
+          {/* ── Form footer ──────────────────────────────────────────── */}
+          <div className={s.formFooter}>
+            <div className={s.formFooterLeft}>
+              {activeSection > 0 && (
+                <button className={s.footerBackBtn} onClick={() => setActiveSection(i => i - 1)}>
+                  ← Back
+                </button>
+              )}
+            </div>
+            <span className={s.footerStepMeta}>
+              Step {activeSection + 1} of 5 · {sec.label}
+            </span>
+            <div className={s.formFooterRight}>
+              {activeSection < 4 ? (
+                <button className={s.footerContinueBtn} onClick={() => setActiveSection(i => i + 1)}>
+                  Continue
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </button>
+              ) : (
+                <button className={s.footerContinueBtn} onClick={handleSubmit} disabled={isSaving}>
+                  {isSaving ? 'Submitting…' : 'Submit Snapshot'}
+                </button>
+              )}
+            </div>
           </div>
-          <span className={s.stepCounterNav}>
-            <strong>{activeSection + 1}</strong> / 5
-          </span>
-          <div className={s.navRight}>
-            <VdfButton variant="outline" loading={isSaving} onClick={handleDraft}>
-              Save Draft
-            </VdfButton>
-            {activeSection < 4 ? (
-              <VdfButton variant="primary" onClick={() => setActiveSection(i => i + 1)}>
-                Continue →
-              </VdfButton>
-            ) : (
-              <VdfButton variant="primary" loading={isSaving} onClick={handleSubmit}>
-                Submit Snapshot
-              </VdfButton>
-            )}
-          </div>
-        </div>
 
-        {/* ── Compact financial health strip ───────────────────────── */}
-        {(metrics.monthlyIncome > 0 || metrics.totalAssets > 0) && (
-          <div className={s.pulseStrip}>
-            <VdfMetricLabel
-              label="Savings Rate"
-              value={metrics.savingsRate !== null ? `${metrics.savingsRate.toFixed(0)}%` : '—'}
-              variant="mono" size="sm"
-              tone={metrics.savingsRate !== null ? statusToTone(savingsStatus(metrics.savingsRate)) : 'muted'}
-            />
-            <VdfMetricLabel
-              label="Net Worth"
-              value={metrics.totalAssets > 0 ? fmt(metrics.netWorth) : '—'}
-              variant="mono" size="sm"
-              tone={metrics.totalAssets > 0 ? 'default' : 'muted'}
-            />
-            <VdfMetricLabel
-              label="DTI"
-              value={metrics.dti !== null ? `${metrics.dti.toFixed(0)}%` : '—'}
-              variant="mono" size="sm"
-              tone={metrics.dti !== null ? statusToTone(dtiStatus(metrics.dti)) : 'muted'}
-            />
-            <VdfMetricLabel
-              label="Liquidity"
-              value={metrics.liquidityMonths !== null ? `${metrics.liquidityMonths.toFixed(1)} mo` : '—'}
-              variant="mono" size="sm"
-              tone={metrics.liquidityMonths !== null ? statusToTone(liquidityStatus(metrics.liquidityMonths)) : 'muted'}
-            />
-            <VdfMetricLabel
-              label="Protection"
-              value={protRatio !== null ? `${protRatio.toFixed(1)}x` : '—'}
-              variant="mono" size="sm"
-              tone={protRatio !== null ? statusToTone(protectionStatus(protRatio)) : 'muted'}
-            />
-          </div>
-        )}
+          {/* Convert banner */}
+          {!isClient && activeSection === 4 && riskProfile && goals.some(g => g.name) && (
+            <div className={s.convertBanner}>
+              Ready to convert?{' '}
+              <button
+                className={s.convertLink}
+                onClick={() => router.push(`/contacts/${contactId}/convert`)}
+              >
+                Continue to Convert →
+              </button>
+            </div>
+          )}
 
-        {!isClient && activeSection === 4 && riskProfile && goals.some(g => g.name) && (
-          <div className={s.convertBanner}>
-            Ready to convert?{' '}
-            <button
-              className={s.convertLink}
-              onClick={() => router.push(`/contacts/${contactId}/convert`)}
-            >
-              Continue to Convert →
-            </button>
-          </div>
-        )}
+        </div>{/* /formWork */}
 
-      </div>
-    </div>
+        {/* Right: Benchmark Pulse sidebar */}
+        <aside className={s.pulseSidebar}>
+          <div className={s.pulseHdr}>
+            <span className={s.pulseHdrDot} />
+            <span className={s.pulseHdrLabel}>Benchmark Pulse</span>
+          </div>
+
+          <div className={s.benchMetrics}>
+            {benchData.map(b => {
+              const filledPct = b.value !== null ? Math.min(Math.max((b.value / b.max) * 100, 0), 100) : 0;
+              const medianPct = Math.min((b.peerMedian / b.max) * 100, 100);
+              const dotColor  = `var(--pulse-${b.key})`;
+              return (
+                <div key={b.key} className={s.benchMetric}>
+                  <div className={s.benchTop}>
+                    <div className={s.benchIdentity}>
+                      <span className={s.benchDot} style={{ background: dotColor }} />
+                      <span className={s.benchLabel}>{b.label}</span>
+                    </div>
+                    <span className={s.benchValue} style={{ color: b.value !== null ? dotColor : undefined }}>
+                      {b.value !== null ? fmtBench(b.key, b.value) : '—'}
+                    </span>
+                  </div>
+                  <div className={s.benchScaleWrap}>
+                    <div className={s.benchScaleTrack}>
+                      {b.value !== null && (
+                        <div
+                          className={s.benchScaleFill}
+                          style={{ width: `${filledPct}%`, background: dotColor }}
+                        />
+                      )}
+                      <div className={s.benchScaleMarker} style={{ left: `${medianPct}%` }} />
+                    </div>
+                    <div className={s.benchScaleLabels}>
+                      <span>0</span>
+                      <span className={s.benchScalePeer} style={{ left: `${medianPct}%` }}>peer</span>
+                      <span>max</span>
+                    </div>
+                  </div>
+                  <div className={s.benchNote}>{b.note}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className={s.talkingBrief}>
+            <div className={s.talkingBriefHdr}>▸ Talking Brief</div>
+            <div className={s.talkingBriefText}>
+              {metrics.monthlyIncome > 0 ? (
+                <>
+                  Income {fmt(metrics.monthlyIncome)}/mo
+                  {metrics.savingsRate !== null && <> · saves <strong>{metrics.savingsRate.toFixed(0)}%</strong></>}
+                  {metrics.dti !== null && <> · DTI <strong>{metrics.dti.toFixed(0)}%</strong></>}
+                  {protRatio !== null && <> · protection <strong>{protRatio.toFixed(1)}x</strong></>}
+                </>
+              ) : (
+                'Fill in cash flow to see talking points.'
+              )}
+            </div>
+          </div>
+        </aside>
+
+      </div>{/* /formBody */}
+    </div>{/* /formLayout */}
   );
 }
