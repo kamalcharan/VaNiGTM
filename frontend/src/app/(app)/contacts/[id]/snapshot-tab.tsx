@@ -32,7 +32,7 @@ interface LiabRow     { _id: string; liability_type_id: string; description: str
 interface GoalRow     { goal_type: string; name: string; target_amount: string; timeline_years: string; }
 
 interface Income      { salary: string; partner: string; rental_other: string; }
-interface Expenses    { housing: string; food: string; utilities: string; transport: string; education: string; lifestyle: string; }
+interface Expenses    { housing: string; food: string; utilities: string; transport: string; education: string; healthcare: string; lifestyle: string; other: string; }
 interface Protection  { life_cover_amount: string; health_cover_amount: string; ci_cover_amount: string; life_premium_annual: string; health_premium_annual: string; has_term_plan: boolean; has_health_cover: boolean; }
 
 // ── Metric computation (mirrors backend computeMetrics) ───────────────────
@@ -159,8 +159,9 @@ const RISK_RETURNS: Record<'conservative' | 'moderate' | 'aggressive', string> =
 };
 
 const EXPENSE_LABELS: Record<keyof Expenses, string> = {
-  housing: 'Housing / Rent', food: 'Groceries & Food', utilities: 'Utilities',
-  transport: 'Transport', education: 'Education / Kids', lifestyle: 'Lifestyle',
+  housing: 'Housing', food: 'Groceries', utilities: 'Utilities',
+  transport: 'Transport', education: 'Education / Kids', healthcare: 'Healthcare',
+  lifestyle: 'Lifestyle', other: 'Other',
 };
 
 // ── Main component ─────────────────────────────────────────────────────────
@@ -191,7 +192,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     salary: '', partner: '', rental_other: '',
   });
   const [expenses, setExpenses] = useState<Expenses>({
-    housing: '', food: '', utilities: '', transport: '', education: '', lifestyle: '',
+    housing: '', food: '', utilities: '', transport: '', education: '', healthcare: '', lifestyle: '', other: '',
   });
   const [assets,      setAssets]      = useState<AssetRow[]>([]);
   const [liabs,       setLiabs]       = useState<LiabRow[]>([]);
@@ -237,7 +238,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     setIncome(inc);
 
     const snapExp = (snap.expenses as Array<{ category: string; amount_monthly: number }>) ?? [];
-    const exp: Expenses = { housing: '', food: '', utilities: '', transport: '', education: '', lifestyle: '' };
+    const exp: Expenses = { housing: '', food: '', utilities: '', transport: '', education: '', healthcare: '', lifestyle: '', other: '' };
     for (const row of snapExp) {
       if (row.category in exp) (exp as Record<string, string>)[row.category] = String(row.amount_monthly);
     }
@@ -683,14 +684,16 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
         {/* ── 01 Cash Flow ─────────────────────────────────────────── */}
         {activeSection === 0 && (
           <div className={s.sectionBody}>
-            <div className={s.subGroup}>
-              <div className={s.subGroupLabel}>Monthly Income</div>
+
+            {/* Monthly Income */}
+            <div className={s.subBlock}>
+              <div className={s.subHead}>Monthly Income</div>
               <div className={s.inputGrid3}>
                 {(['salary', 'partner', 'rental_other'] as const).map(key => (
                   <div key={key} className={s.bigInputCard}>
                     <label className={s.bigInputLabel}>
-                      {key === 'salary' ? 'Take-home Salary' : key === 'partner' ? 'Partner Income' : 'Rental / Other'}
-                      {key !== 'salary' && <span className={s.optionalTag}>optional</span>}
+                      {key === 'salary' ? 'Salary (take-home)' : key === 'partner' ? 'Partner income' : 'Rental / Other'}
+                      {key !== 'salary' && <span className={s.optionalTag}>opt</span>}
                     </label>
                     <div className={s.bigInputWrap}>
                       <span className={s.bigInputCurrency}>₹</span>
@@ -711,16 +714,17 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
               </div>
             </div>
 
-            <div className={s.subGroup}>
-              <div className={s.subGroupLabel}>Monthly Expenses</div>
-              <div className={s.inputGrid2}>
-                {(Object.keys(EXPENSE_LABELS) as Array<keyof Expenses>).map(key => (
-                  <div key={key} className={s.expenseRow}>
-                    <label className={s.expenseLabel}>{EXPENSE_LABELS[key]}</label>
-                    <div className={s.expenseInputWrap}>
-                      <span className={s.expenseCurrency}>₹</span>
+            {/* Monthly Expenses — 4-column grid, 8 fields */}
+            <div className={s.subBlock}>
+              <div className={s.subHead}>Monthly Expenses · Exclude EMIs</div>
+              <div className={s.expenseGrid4}>
+                {(['housing', 'food', 'utilities', 'transport', 'education', 'healthcare', 'lifestyle', 'other'] as const).map(key => (
+                  <div key={key} className={s.curField}>
+                    <label className={s.curFieldLabel}>{EXPENSE_LABELS[key]}</label>
+                    <div className={s.curInputWrap}>
+                      <span className={s.curSym}>₹</span>
                       <input
-                        className={s.expenseInput}
+                        className={s.curVal}
                         type="number"
                         value={expenses[key]}
                         onChange={e => setExpenses(prev => ({ ...prev, [key]: e.target.value }))}
@@ -732,17 +736,47 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
               </div>
             </div>
 
-            {metrics.monthlyIncome > 0 && (
-              <div className={s.savingsSummary}>
-                <span className={s.savingsLabel}>Monthly Savings</span>
-                <span className={s.savingsValue} style={{ color: metrics.monthlySavings >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                  {metrics.monthlySavings >= 0 ? '+' : ''}{fmt(metrics.monthlySavings)}
-                </span>
-                {metrics.savingsRate !== null && (
-                  <span className={s.savingsRate}>{metrics.savingsRate.toFixed(1)}% savings rate</span>
-                )}
+            {/* VaNi copilot — activates live as user types */}
+            {(metrics.monthlyIncome > 0 || metrics.monthlyExpenses > 0) && (
+              <div className={s.vaniCopilot}>
+                <div className={s.vaniCopilotMarker}>V ▸</div>
+                <div className={s.vaniCopilotText}>
+                  {metrics.monthlyIncome > 0 && metrics.monthlyExpenses > 0 ? (() => {
+                    const sr = metrics.savingsRate ?? 0;
+                    const bracket = sr >= 50 ? 'p95' : sr >= 35 ? 'p80' : sr >= 25 ? 'p65' : sr >= 18 ? 'p50' : sr >= 10 ? 'p35' : 'p15';
+                    const srClass = sr >= 20 ? s.vaniOk : sr >= 10 ? s.vaniWarn : s.vaniBad;
+                    const housingPct = (Number(expenses.housing) / metrics.monthlyIncome) * 100;
+                    const annualSavings = metrics.monthlySavings * 12;
+                    return (
+                      <>
+                        <span className={s.vaniHi}>{fmt(metrics.monthlyIncome)}/mo income</span>
+                        <span className={s.vaniSep}> · </span>
+                        <span className={s.vaniHi}>{fmt(metrics.monthlyExpenses)}/mo expenses</span>
+                        <span className={s.vaniSep}> · </span>
+                        <span className={srClass}>Saves {sr.toFixed(0)}% ▸ {bracket} bracket</span>
+                        <br />
+                        {metrics.monthlySavings >= 0
+                          ? <>Savings capacity ≈ <span className={s.vaniHi}>{fmt(annualSavings)}/yr</span>.{' '}
+                              {housingPct > 30
+                                ? <>Housing at <span className={s.vaniWarn}>{housingPct.toFixed(0)}%</span> of income — above 30% threshold.</>
+                                : housingPct > 25
+                                  ? <>Housing at {housingPct.toFixed(0)}% — near upper band.</>
+                                  : null
+                              }
+                            </>
+                          : <><span className={s.vaniBad}>Expenses exceed income by {fmt(Math.abs(metrics.monthlySavings))}/mo.</span> Review discretionary spending.</>
+                        }
+                      </>
+                    );
+                  })()
+                  : metrics.monthlyIncome > 0
+                    ? <>Income locked at <span className={s.vaniHi}>{fmt(metrics.monthlyIncome)}/mo</span>. Add expenses to compute savings rate.</>
+                    : <>Expenses at <span className={s.vaniHi}>{fmt(metrics.monthlyExpenses)}/mo</span>. Add income to activate full analysis.</>
+                  }
+                </div>
               </div>
             )}
+
           </div>
         )}
 
