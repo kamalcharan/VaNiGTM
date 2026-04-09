@@ -6,14 +6,32 @@
 -- (a UUID from the JWT) is passed on snapshot save.
 --
 -- Fix: ALTER both columns to UUID, matching vn_users.id.
+-- Uses DO blocks so we skip gracefully if the table doesn't exist yet.
 
--- Table: ki_intake_tokens — created_by_user_id INTEGER → UUID
-ALTER TABLE ki_intake_tokens
-  ALTER COLUMN created_by_user_id TYPE UUID USING NULL;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_name = 'ki_intake_tokens'
+  ) THEN
+    ALTER TABLE ki_intake_tokens
+      ALTER COLUMN created_by_user_id TYPE UUID USING NULL;
+    COMMENT ON COLUMN ki_intake_tokens.created_by_user_id
+      IS 'FK to vn_users.id (UUID). Not enforced — cross-schema.';
+  END IF;
+END;
+$$;
 
--- Table: ki_contact_snapshots — created_by_user_id INTEGER → UUID
-ALTER TABLE ki_contact_snapshots
-  ALTER COLUMN created_by_user_id TYPE UUID USING NULL;
-
-COMMENT ON COLUMN ki_intake_tokens.created_by_user_id     IS 'FK to vn_users.id (UUID). Not enforced — cross-schema.';
-COMMENT ON COLUMN ki_contact_snapshots.created_by_user_id IS 'FK to vn_users.id (UUID). Not enforced — cross-schema.';
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_name = 'ki_contact_snapshots'
+  ) THEN
+    ALTER TABLE ki_contact_snapshots
+      ALTER COLUMN created_by_user_id TYPE UUID USING NULL;
+    COMMENT ON COLUMN ki_contact_snapshots.created_by_user_id
+      IS 'FK to vn_users.id (UUID). Not enforced — cross-schema.';
+  END IF;
+END;
+$$;
