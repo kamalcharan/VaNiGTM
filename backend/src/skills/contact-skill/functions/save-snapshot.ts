@@ -217,14 +217,15 @@ export async function save_snapshot(
            calc_dti_pct            = $calc_dti_pct,
            calc_liquid_assets      = $calc_liquid_assets,
            calc_liquidity_months   = $calc_liquidity_months,
-           submitted_at            = CASE WHEN $status = 'active' THEN now() ELSE submitted_at END,
+           submitted_at            = CASE WHEN $is_submitting THEN now() ELSE submitted_at END,
            updated_at              = now()
          WHERE id = $id`,
         {
-          $id:     snapshotId,
-          $status: status,
-          $risk_profile: risk_profile ?? null,
-          $notes:        notes ?? null,
+          $id:             snapshotId,
+          $status:         status,
+          $is_submitting:  status === 'active',
+          $risk_profile:   risk_profile ?? null,
+          $notes:          notes ?? null,
           ...metrics,
         }
       );
@@ -255,7 +256,7 @@ export async function save_snapshot(
             $calc_savings_rate_pct, $calc_total_assets, $calc_total_liabilities,
             $calc_net_worth, $calc_total_emi, $calc_dti_pct,
             $calc_liquid_assets, $calc_liquidity_months,
-            CASE WHEN $status = 'active' THEN now() ELSE NULL END)
+            CASE WHEN $is_submitting THEN now() ELSE NULL END)
          RETURNING id`,
         {
           $tenant_id:           ctx.tenant_id,
@@ -263,6 +264,7 @@ export async function save_snapshot(
           $is_live:             ctx.is_live,
           $version_number:      versionNumber,
           $status:              status,
+          $is_submitting:       status === 'active',
           $created_by_user_id:  ctx.user_id,
           $risk_profile:        risk_profile ?? null,
           $notes:               notes ?? null,
