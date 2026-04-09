@@ -30,9 +30,9 @@ export default function DevColorsPage() {
                 <span style={{ color: '#555', fontSize: '0.7rem', marginLeft: '10px' }}>{theme.id}</span>
               </div>
 
-              {/* Light mode */}
-              <div style={{ padding: '16px', background: '#1a1a1a' }}>
-                <div style={{ color: '#888', fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '10px' }}>Light mode</div>
+              {/* Light mode — page bg = primaryBackground, cards = secondaryBackground */}
+              <div style={{ padding: '16px', background: c.utility.primaryBackground }}>
+                <div style={{ color: c.utility.secondaryText, fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '10px' }}>Light mode</div>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <Swatch label="primaryBg" color={c.utility.primaryBackground} />
                   <Swatch label="secondaryBg" color={c.utility.secondaryBackground} />
@@ -40,8 +40,8 @@ export default function DevColorsPage() {
                   <Swatch label="brand.secondary" color={c.brand.secondary} />
                 </div>
 
-                {/* Live card preview — light */}
-                <div style={{ marginTop: '14px', padding: '16px', background: c.utility.primaryBackground, borderRadius: '10px', border: `1px solid ${c.surface?.glassBorder ?? '#ddd'}` }}>
+                {/* Live card preview — light (secondaryBackground = card surface) */}
+                <div style={{ marginTop: '14px', padding: '16px', background: c.utility.secondaryBackground, borderRadius: '10px', border: `1px solid ${c.surface?.glassBorder ?? '#ddd'}` }}>
                   <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.utility.secondaryText, marginBottom: '10px' }}>
                     Personal Details
                   </div>
@@ -73,8 +73,8 @@ export default function DevColorsPage() {
                   <Swatch label="brand.secondary" color={dc.brand.secondary} />
                 </div>
 
-                {/* Live card preview — dark */}
-                <div style={{ marginTop: '14px', padding: '16px', background: dc.utility.primaryBackground, borderRadius: '10px', border: `1px solid ${dc.surface?.glassBorder ?? '#333'}` }}>
+                {/* Live card preview — dark (secondaryBackground = card surface) */}
+                <div style={{ marginTop: '14px', padding: '16px', background: dc.utility.secondaryBackground, borderRadius: '10px', border: `1px solid ${dc.surface?.glassBorder ?? '#333'}` }}>
                   <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: dc.utility.secondaryText, marginBottom: '10px' }}>
                     Personal Details
                   </div>
