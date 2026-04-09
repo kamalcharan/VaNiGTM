@@ -10,12 +10,15 @@
  *   01 Cash Flow → 02 Assets → 03 Liabilities → 04 Protection → 05 Goals
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
-import { VdfLoader, VdfButton } from '@/components/vdf';
+import {
+  VdfLoader, VdfButton, VdfItemCardList, VdfMetricLabel, VdfProactiveCard,
+  type ItemRow, type ItemFieldDef,
+} from '@/components/vdf';
 import s from './snapshot-tab.module.css';
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -23,8 +26,8 @@ import s from './snapshot-tab.module.css';
 interface AssetType   { id: number; code: string; label: string; is_liquid_default: boolean; }
 interface LiabilityType { id: number; code: string; label: string; }
 
-interface AssetRow    { asset_type_id: string; description: string; current_value: string; is_liquid: boolean; years_held: string; }
-interface LiabRow     { liability_type_id: string; description: string; outstanding_amount: string; monthly_emi: string; interest_rate_pct: string; }
+interface AssetRow    { _id: string; asset_type_id: string; description: string; current_value: string; is_liquid: boolean; years_held: string; }
+interface LiabRow     { _id: string; liability_type_id: string; description: string; outstanding_amount: string; monthly_emi: string; interest_rate_pct: string; }
 interface GoalRow     { goal_type: string; name: string; target_amount: string; timeline_years: string; }
 
 interface Income      { salary: string; partner: string; rental_other: string; }
@@ -81,23 +84,20 @@ function liquidityStatus(months: number | null): PulseStatus {
   return 'bad';
 }
 
-const STATUS_COLOR: Record<PulseStatus, string> = {
-  good:  'var(--color-success)',
-  warn:  'var(--color-warning)',
-  bad:   'var(--color-danger)',
-  empty: 'var(--color-border)',
-};
-
-function pulsePct(val: number | null, max: number, invert = false): number {
-  if (val === null) return 0;
-  const raw = Math.min(100, Math.max(0, (val / max) * 100));
-  return invert ? 100 - raw : raw;
-}
-
 function fmt(v: number): string {
   if (v >= 1_00_00_000) return `₹${(v / 1_00_00_000).toFixed(1)}Cr`;
   if (v >= 1_00_000)    return `₹${(v / 1_00_000).toFixed(1)}L`;
   return `₹${v.toLocaleString('en-IN')}`;
+}
+
+let _rseq = 0;
+function genId() { return `r${++_rseq}`; }
+
+function statusToTone(status: PulseStatus): 'success' | 'warning' | 'danger' | 'muted' {
+  if (status === 'good') return 'success';
+  if (status === 'warn') return 'warning';
+  if (status === 'bad')  return 'danger';
+  return 'muted';
 }
 
 // ── Section headers ────────────────────────────────────────────────────────
@@ -229,6 +229,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
 
     const snapAssets = (snap.assets as Array<Record<string, unknown>>) ?? [];
     setAssets(snapAssets.map(a => ({
+      _id:            genId(),
       asset_type_id:  String(a.asset_type_id ?? ''),
       description:    String(a.description ?? ''),
       current_value:  String(a.current_value ?? ''),
@@ -238,6 +239,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
 
     const snapLiabs = (snap.liabilities as Array<Record<string, unknown>>) ?? [];
     setLiabs(snapLiabs.map(l => ({
+      _id:               genId(),
       liability_type_id: String(l.liability_type_id ?? ''),
       description:       String(l.description ?? ''),
       outstanding_amount:String(l.outstanding_amount ?? ''),
@@ -266,6 +268,38 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
       timeline_years: String(g.timeline_years ?? ''),
     })));
   }, [snap]);
+
+  // ── Schemas for VdfItemCardList ───────────────────────────────────────────
+
+  const assetSchema = useMemo<ItemFieldDef[]>(() => [
+    { type: 'select', key: 'asset_type_id', label: 'Asset Type',
+      options: [{ value: '', label: 'Select type' }, ...assetTypes.map(t => ({ value: String(t.id), label: t.label }))] },
+    { type: 'text',     key: 'description',   label: 'Description',  placeholder: 'e.g. 2BHK in Koramangala' },
+    { type: 'currency', key: 'current_value', label: 'Current Value' },
+    { type: 'text',     key: 'years_held',    label: 'Yrs Held',     placeholder: '—' },
+    { type: 'liquidity',key: 'is_liquid',     label: 'Liquidity' },
+  ], [assetTypes]);
+
+  const liabSchema = useMemo<ItemFieldDef[]>(() => [
+    { type: 'select', key: 'liability_type_id', label: 'Loan Type',
+      options: [{ value: '', label: 'Select type' }, ...liabTypes.map(t => ({ value: String(t.id), label: t.label }))] },
+    { type: 'text',     key: 'description',       label: 'Description',  placeholder: 'e.g. SBI Home Loan' },
+    { type: 'currency', key: 'outstanding_amount', label: 'Outstanding' },
+    { type: 'currency', key: 'monthly_emi',        label: 'Monthly EMI',  suffix: '/mo' },
+    { type: 'text',     key: 'interest_rate_pct',  label: 'Rate %',       placeholder: '8.5' },
+  ], [liabTypes]);
+
+  const handleAssetsChange = useCallback((rows: ItemRow[]) => {
+    const updated = rows.map(row => {
+      const prev = assets.find(a => a._id === row._id);
+      if (prev && String(prev.asset_type_id) !== String(row.asset_type_id)) {
+        const assetType = assetTypes.find(t => String(t.id) === String(row.asset_type_id));
+        return { ...row, is_liquid: assetType?.is_liquid_default ?? false };
+      }
+      return row;
+    });
+    setAssets(updated as unknown as AssetRow[]);
+  }, [assets, assetTypes]);
 
   // ── Build save payload ────────────────────────────────────────────────────
 
@@ -522,75 +556,32 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
         {/* ── 02 Assets ────────────────────────────────────────────── */}
         {activeSection === 1 && (
           <div className={s.sectionBody}>
-            {assets.map((asset, i) => (
-              <div key={i} className={s.itemCard}>
-                <div className={s.itemCardRow}>
-                  <select
-                    className={s.typeSelect}
-                    value={asset.asset_type_id}
-                    onChange={e => setAssets(prev => prev.map((a, j) => j === i ? {
-                      ...a,
-                      asset_type_id: e.target.value,
-                      is_liquid: assetTypes.find(t => String(t.id) === e.target.value)?.is_liquid_default ?? false,
-                    } : a))}
-                  >
-                    <option value="">Select asset type</option>
-                    {assetTypes.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                  </select>
-                  <button className={s.removeBtn} onClick={() => setAssets(prev => prev.filter((_, j) => j !== i))}>×</button>
-                </div>
-                <input
-                  className={s.descInput}
-                  placeholder="Description (e.g. 2BHK in Koramangala)"
-                  value={asset.description}
-                  onChange={e => setAssets(prev => prev.map((a, j) => j === i ? { ...a, description: e.target.value } : a))}
-                />
-                <div className={s.assetValueRow}>
-                  <div className={s.assetValueWrap}>
-                    <span className={s.assetCurrency}>₹</span>
-                    <input
-                      className={s.assetValueInput}
-                      type="number"
-                      placeholder="Current value"
-                      value={asset.current_value}
-                      onChange={e => setAssets(prev => prev.map((a, j) => j === i ? { ...a, current_value: e.target.value } : a))}
-                    />
-                  </div>
-                  <div className={s.yrsHeldWrap}>
-                    <input
-                      className={s.yrsHeldInput}
-                      type="number"
-                      placeholder="—"
-                      min={0}
-                      max={99}
-                      value={asset.years_held}
-                      onChange={e => setAssets(prev => prev.map((a, j) => j === i ? { ...a, years_held: e.target.value } : a))}
-                    />
-                    <span className={s.yrsHeldSuffix}>yrs</span>
-                  </div>
-                  <button
-                    className={`${s.liquidToggle} ${asset.is_liquid ? s.liquidOn : s.liquidOff}`}
-                    onClick={() => setAssets(prev => prev.map((a, j) => j === i ? { ...a, is_liquid: !a.is_liquid } : a))}
-                  >
-                    {asset.is_liquid ? '💧 Liquid' : '🔒 Illiquid'}
-                  </button>
-                </div>
-                {Number(asset.current_value) > 0 && (
-                  <div className={s.itemHelper}>{fmt(Number(asset.current_value))}</div>
-                )}
-              </div>
-            ))}
-            <button
-              className={s.addItemBtn}
-              onClick={() => setAssets(prev => [...prev, { asset_type_id: '', description: '', current_value: '', is_liquid: false, years_held: '' }])}
-            >
-              + Add asset
-            </button>
+            <VdfItemCardList
+              schema={assetSchema}
+              value={assets as unknown as ItemRow[]}
+              onChange={handleAssetsChange}
+              columns={3}
+              prefix="ASSET"
+              addLabel="+ Add asset"
+              maxItems={20}
+            />
             {assets.length > 0 && (
               <div className={s.sectionTotal}>
                 Total: <strong>{fmt(metrics.totalAssets)}</strong>
                 {' · '}Liquid: <strong style={{ color: 'var(--color-success)' }}>{fmt(metrics.liquidAssets)}</strong>
               </div>
+            )}
+            {metrics.totalAssets > 0 && (
+              <VdfProactiveCard
+                variant="data"
+                label="VaNi"
+                message={`Total assets ${fmt(metrics.totalAssets)} · Liquid ${fmt(metrics.liquidAssets)} · Illiquid ${fmt(metrics.totalAssets - metrics.liquidAssets)}`}
+                tags={[
+                  metrics.totalAssets > 0 && metrics.liquidAssets / metrics.totalAssets >= 0.3
+                    ? { text: 'liquidity ok', status: 'ok' }
+                    : { text: 'illiquid-heavy', status: 'warn' },
+                ]}
+              />
             )}
           </div>
         )}
@@ -598,68 +589,32 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
         {/* ── 03 Liabilities ───────────────────────────────────────── */}
         {activeSection === 2 && (
           <div className={s.sectionBody}>
-            {liabs.map((liab, i) => (
-              <div key={i} className={s.itemCard}>
-                <div className={s.itemCardRow}>
-                  <select
-                    className={s.typeSelect}
-                    value={liab.liability_type_id}
-                    onChange={e => setLiabs(prev => prev.map((l, j) => j === i ? { ...l, liability_type_id: e.target.value } : l))}
-                  >
-                    <option value="">Select loan type</option>
-                    {liabTypes.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                  </select>
-                  <button className={s.removeBtn} onClick={() => setLiabs(prev => prev.filter((_, j) => j !== i))}>×</button>
-                </div>
-                <input
-                  className={s.descInput}
-                  placeholder="Description (e.g. SBI Home Loan)"
-                  value={liab.description}
-                  onChange={e => setLiabs(prev => prev.map((l, j) => j === i ? { ...l, description: e.target.value } : l))}
-                />
-                <div className={s.loanFieldGrid}>
-                  <div>
-                    <label className={s.miniLabel}>Outstanding</label>
-                    <div className={s.loanInputWrap}>
-                      <span className={s.loanCurrency}>₹</span>
-                      <input className={s.loanInput} type="number" placeholder="0" value={liab.outstanding_amount}
-                        onChange={e => setLiabs(prev => prev.map((l, j) => j === i ? { ...l, outstanding_amount: e.target.value } : l))} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={s.miniLabel}>Monthly EMI</label>
-                    <div className={s.loanInputWrap}>
-                      <span className={s.loanCurrency}>₹</span>
-                      <input className={s.loanInput} type="number" placeholder="0" value={liab.monthly_emi}
-                        onChange={e => setLiabs(prev => prev.map((l, j) => j === i ? { ...l, monthly_emi: e.target.value } : l))} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={s.miniLabel}>Interest Rate</label>
-                    <div className={s.loanInputWrap}>
-                      <input className={s.loanInput} type="number" placeholder="8.5" value={liab.interest_rate_pct}
-                        onChange={e => setLiabs(prev => prev.map((l, j) => j === i ? { ...l, interest_rate_pct: e.target.value } : l))} />
-                      <span className={s.loanSuffix}>%</span>
-                    </div>
-                  </div>
-                </div>
-                {Number(liab.outstanding_amount) > 0 && (
-                  <div className={s.itemHelper}>{fmt(Number(liab.outstanding_amount))}</div>
-                )}
-              </div>
-            ))}
-            <button
-              className={s.addItemBtn}
-              onClick={() => setLiabs(prev => [...prev, { liability_type_id: '', description: '', outstanding_amount: '', monthly_emi: '', interest_rate_pct: '' }])}
-            >
-              + Add loan
-            </button>
+            <VdfItemCardList
+              schema={liabSchema}
+              value={liabs as unknown as ItemRow[]}
+              onChange={(rows) => setLiabs(rows as unknown as LiabRow[])}
+              columns={3}
+              prefix="LOAN"
+              addLabel="+ Add loan"
+              maxItems={10}
+            />
             {liabs.length > 0 && (
               <div className={s.sectionTotal}>
                 Total: <strong>{fmt(metrics.totalLiabs)}</strong>
                 {metrics.totalEmi > 0 && <> · EMI: <strong>{fmt(metrics.totalEmi)}</strong>/mo</>}
                 {metrics.dti !== null && <> · DTI: <strong style={{ color: metrics.dti > 50 ? 'var(--color-danger)' : metrics.dti > 30 ? 'var(--color-warning)' : 'var(--color-success)' }}>{metrics.dti.toFixed(1)}%</strong></>}
               </div>
+            )}
+            {metrics.totalLiabs > 0 && (
+              <VdfProactiveCard
+                variant="data"
+                label="VaNi"
+                message={`Total debt ${fmt(metrics.totalLiabs)}${metrics.dti !== null ? ` · DTI ${metrics.dti.toFixed(0)}%` : ''}`}
+                tags={metrics.dti !== null ? [
+                  { text: metrics.dti <= 30 ? 'DTI healthy' : metrics.dti <= 50 ? 'DTI elevated' : 'DTI high',
+                    status: (metrics.dti <= 30 ? 'ok' : metrics.dti <= 50 ? 'warn' : 'bad') as 'ok' | 'warn' | 'bad' },
+                ] : undefined}
+              />
             )}
           </div>
         )}
@@ -878,36 +833,36 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
         {/* ── Compact financial health strip ───────────────────────── */}
         {(metrics.monthlyIncome > 0 || metrics.totalAssets > 0) && (
           <div className={s.pulseStrip}>
-            <div className={s.pulseStripItem}>
-              <span className={s.pulseStripLabel}>Savings Rate</span>
-              <span className={s.pulseStripValue} style={{ color: metrics.savingsRate !== null ? STATUS_COLOR[savingsStatus(metrics.savingsRate)] : undefined }}>
-                {metrics.savingsRate !== null ? `${metrics.savingsRate.toFixed(0)}%` : <span className={s.pulseStripEmpty}>—</span>}
-              </span>
-            </div>
-            <div className={s.pulseStripItem}>
-              <span className={s.pulseStripLabel}>Net Worth</span>
-              <span className={s.pulseStripValue}>
-                {metrics.totalAssets > 0 ? fmt(metrics.netWorth) : <span className={s.pulseStripEmpty}>—</span>}
-              </span>
-            </div>
-            <div className={s.pulseStripItem}>
-              <span className={s.pulseStripLabel}>DTI</span>
-              <span className={s.pulseStripValue} style={{ color: metrics.dti !== null ? STATUS_COLOR[dtiStatus(metrics.dti)] : undefined }}>
-                {metrics.dti !== null ? `${metrics.dti.toFixed(0)}%` : <span className={s.pulseStripEmpty}>—</span>}
-              </span>
-            </div>
-            <div className={s.pulseStripItem}>
-              <span className={s.pulseStripLabel}>Liquidity</span>
-              <span className={s.pulseStripValue} style={{ color: metrics.liquidityMonths !== null ? STATUS_COLOR[liquidityStatus(metrics.liquidityMonths)] : undefined }}>
-                {metrics.liquidityMonths !== null ? `${metrics.liquidityMonths.toFixed(1)} mo` : <span className={s.pulseStripEmpty}>—</span>}
-              </span>
-            </div>
-            <div className={s.pulseStripItem}>
-              <span className={s.pulseStripLabel}>Protection</span>
-              <span className={s.pulseStripValue} style={{ color: protRatio !== null ? STATUS_COLOR[protectionStatus(protRatio)] : undefined }}>
-                {protRatio !== null ? `${protRatio.toFixed(1)}x` : <span className={s.pulseStripEmpty}>—</span>}
-              </span>
-            </div>
+            <VdfMetricLabel
+              label="Savings Rate"
+              value={metrics.savingsRate !== null ? `${metrics.savingsRate.toFixed(0)}%` : '—'}
+              variant="mono" size="sm"
+              tone={metrics.savingsRate !== null ? statusToTone(savingsStatus(metrics.savingsRate)) : 'muted'}
+            />
+            <VdfMetricLabel
+              label="Net Worth"
+              value={metrics.totalAssets > 0 ? fmt(metrics.netWorth) : '—'}
+              variant="mono" size="sm"
+              tone={metrics.totalAssets > 0 ? 'default' : 'muted'}
+            />
+            <VdfMetricLabel
+              label="DTI"
+              value={metrics.dti !== null ? `${metrics.dti.toFixed(0)}%` : '—'}
+              variant="mono" size="sm"
+              tone={metrics.dti !== null ? statusToTone(dtiStatus(metrics.dti)) : 'muted'}
+            />
+            <VdfMetricLabel
+              label="Liquidity"
+              value={metrics.liquidityMonths !== null ? `${metrics.liquidityMonths.toFixed(1)} mo` : '—'}
+              variant="mono" size="sm"
+              tone={metrics.liquidityMonths !== null ? statusToTone(liquidityStatus(metrics.liquidityMonths)) : 'muted'}
+            />
+            <VdfMetricLabel
+              label="Protection"
+              value={protRatio !== null ? `${protRatio.toFixed(1)}x` : '—'}
+              variant="mono" size="sm"
+              tone={protRatio !== null ? statusToTone(protectionStatus(protRatio)) : 'muted'}
+            />
           </div>
         )}
 
