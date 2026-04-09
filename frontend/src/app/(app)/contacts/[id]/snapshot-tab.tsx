@@ -32,7 +32,7 @@ interface GoalRow     { goal_type: string; name: string; target_amount: string; 
 
 interface Income      { salary: string; partner: string; rental_other: string; }
 interface Expenses    { housing: string; food: string; utilities: string; transport: string; education: string; healthcare: string; lifestyle: string; other: string; }
-interface Protection  { life_cover_amount: string; health_cover_amount: string; ci_cover_amount: string; life_premium_annual: string; health_premium_annual: string; has_term_plan: boolean; has_health_cover: boolean; }
+interface Protection  { life_cover_amount: string; health_cover_amount: string; ci_cover_amount: string; life_premium_annual: string; health_premium_annual: string; has_term_plan: boolean; has_health_cover: boolean; health_cover_type: 'individual' | 'family_floater' | 'employer' | 'none' | ''; }
 
 // ── Metric computation (mirrors backend computeMetrics) ───────────────────
 
@@ -197,7 +197,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   const [protection,  setProtection]  = useState<Protection>({
     life_cover_amount: '', health_cover_amount: '', ci_cover_amount: '',
     life_premium_annual: '', health_premium_annual: '',
-    has_term_plan: false, has_health_cover: false,
+    has_term_plan: false, has_health_cover: false, health_cover_type: '',
   });
   const [goals, setGoals] = useState<GoalRow[]>([]);
 
@@ -272,6 +272,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
         health_premium_annual: String(snapProt.health_premium_annual ?? ''),
         has_term_plan:       Boolean(snapProt.has_term_plan),
         has_health_cover:    Boolean(snapProt.has_health_cover),
+        health_cover_type:   (snapProt.health_cover_type as Protection['health_cover_type']) ?? '',
       });
     }
 
@@ -334,6 +335,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
       health_premium_annual:Number(protection.health_premium_annual) || undefined,
       has_term_plan:        protection.has_term_plan,
       has_health_cover:     protection.has_health_cover,
+      health_cover_type:    protection.health_cover_type || undefined,
     },
     goals: goals.filter(g => g.name && Number(g.target_amount) > 0).map((g, i) => ({
       goal_type:      g.goal_type || 'custom',
@@ -1195,6 +1197,32 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
                   </button>
                 </div>
               </div>
+
+              {/* Coverage type — 4 opt-cards */}
+              <div className={s.protField}>
+                <label className={s.curFieldLabel}>Coverage type</label>
+                <div className={s.optCards4}>
+                  {([
+                    { key: 'individual'    as const, label: 'Individual',      sub: 'Self only'   },
+                    { key: 'family_floater'as const, label: 'Family Floater',  sub: 'Household'   },
+                    { key: 'employer'      as const, label: 'Employer',        sub: 'Corp group'  },
+                    { key: 'none'          as const, label: 'None',            sub: 'Gap'         },
+                  ]).map(({ key, label, sub }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`${s.optCard} ${protection.health_cover_type === key ? s.optCardSelected : ''}`}
+                      onClick={() => setProtection(p => ({ ...p, health_cover_type: key }))}
+                    >
+                      <div>
+                        <div className={s.optCardLabel}>{label}</div>
+                        <div className={s.optCardSub}>{sub}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className={s.protFieldRow3}>
                 <div className={s.curField}>
                   <label className={s.curFieldLabel}>Sum Insured</label>
@@ -1252,6 +1280,10 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
                   {Number(protection.health_cover_amount) > 0 && (
                     <><br />Health cover{' '}
                     <span className={s.vaniHi}>{fmt(Number(protection.health_cover_amount))}</span>
+                    {protection.health_cover_type && protection.health_cover_type !== 'none' && (
+                      <><span className={s.vaniSep}> · </span>
+                      {protection.health_cover_type === 'family_floater' ? 'Family floater' : protection.health_cover_type === 'employer' ? 'Employer group' : 'Individual'}</>
+                    )}
                     {Number(protection.ci_cover_amount) > 0 && (
                       <><span className={s.vaniSep}> · </span>CI {fmt(Number(protection.ci_cover_amount))}</>
                     )}</>
