@@ -24,9 +24,10 @@ import s from './snapshot-tab.module.css';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
+interface AssetType    { id: number; code: string; label: string; is_liquid_default: boolean; }
 interface LiabilityType { id: number; code: string; label: string; }
 
-interface AssetRow    { _id: string; description: string; current_value: string; is_liquid: boolean; }
+interface AssetRow    { _id: string; asset_type_id: string; description: string; current_value: string; is_liquid: boolean; years_held: string; }
 interface LiabRow     { _id: string; liability_type_id: string; description: string; outstanding_amount: string; monthly_emi: string; interest_rate_pct: string; }
 interface GoalRow     { goal_type: string; name: string; target_amount: string; timeline_years: string; }
 
@@ -206,10 +207,14 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   const { data: snapData, isLoading: snapLoading } = useSkillQuery<{ snapshot: Record<string, unknown> | null }>(
     'contact-skill', 'get_snapshot_full', { contact_id: contactId }
   );
+  const { data: assetTypesData } = useSkillQuery<{ asset_types: AssetType[] }>(
+    'contact-skill', 'get_asset_types', {}
+  );
   const { data: liabTypesData } = useSkillQuery<{ liability_types: LiabilityType[] }>(
     'contact-skill', 'get_liability_types', {}
   );
 
+  const assetTypes   = assetTypesData?.data?.asset_types ?? [];
   const liabTypes    = liabTypesData?.data?.liability_types ?? [];
   const snap         = snapData?.data?.snapshot as Record<string, unknown> | null;
 
@@ -241,9 +246,11 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     const snapAssets = (snap.assets as Array<Record<string, unknown>>) ?? [];
     setAssets(snapAssets.map(a => ({
       _id:           genId(),
+      asset_type_id: String(a.asset_type_id ?? ''),
       description:   String(a.description ?? ''),
       current_value: String(a.current_value ?? ''),
       is_liquid:     Boolean(a.is_liquid),
+      years_held:    a.years_held != null ? String(a.years_held) : '',
     })));
 
     const snapLiabs = (snap.liabilities as Array<Record<string, unknown>>) ?? [];
@@ -289,6 +296,19 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     { type: 'text',     key: 'interest_rate_pct',  label: 'Rate %',       placeholder: '8.5' },
   ], [liabTypes]);
 
+  const handleAssetsChange = useCallback((asset: AssetRow, field: keyof AssetRow, value: string | boolean) => {
+    setAssets(prev => prev.map(a => {
+      if (a._id !== asset._id) return a;
+      const updated = { ...a, [field]: value };
+      // Auto-set liquidity when asset type changes
+      if (field === 'asset_type_id') {
+        const assetType = assetTypes.find(t => String(t.id) === String(value));
+        if (assetType) updated.is_liquid = assetType.is_liquid_default;
+      }
+      return updated;
+    }));
+  }, [assetTypes]);
+
   // ── Build save payload ────────────────────────────────────────────────────
 
   const buildPayload = useCallback((status: 'draft' | 'active') => ({
@@ -303,9 +323,11 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
       .filter(([, v]) => Number(v) > 0)
       .map(([category, v]) => ({ category, amount_monthly: Number(v) })),
     assets: assets.filter(a => Number(a.current_value) > 0).map((a, i) => ({
+      asset_type_id: Number(a.asset_type_id) || undefined,
       description:   a.description || undefined,
       current_value: Number(a.current_value),
       is_liquid:     a.is_liquid,
+      years_held:    Number(a.years_held) > 0 ? Number(a.years_held) : undefined,
       sort_order:    i + 1,
     })),
     liabilities: liabs.filter(l => l.liability_type_id && Number(l.outstanding_amount) > 0).map((l, i) => ({
@@ -791,8 +813,37 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
                         onClick={() => setAssets(prev => prev.filter(a => a._id !== asset._id))}
                       >×</button>
                     </div>
-                    <div className={s.assetFieldRow}>
-                      {/* Description */}
+                    {/* Row 1: Asset type + Liquidity */}
+                    <div className={s.assetRow1}>
+                      <div className={s.curField}>
+                        <label className={s.curFieldLabel}>Asset Type</label>
+                        <select
+                          className={s.plainSelect}
+                          value={asset.asset_type_id}
+                          onChange={e => handleAssetsChange(asset, 'asset_type_id', e.target.value)}
+                        >
+                          <option value="">Select type</option>
+                          {assetTypes.map(t => (
+                            <option key={t.id} value={String(t.id)}>{t.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className={s.curField}>
+                        <label className={s.curFieldLabel}>Liquidity</label>
+                        <div className={s.liqToggle}>
+                          <button type="button"
+                            className={`${s.liqBtn} ${asset.is_liquid ? s.liqBtnActive : ''}`}
+                            onClick={() => handleAssetsChange(asset, 'is_liquid', true)}
+                          >💧 Liquid</button>
+                          <button type="button"
+                            className={`${s.liqBtn} ${!asset.is_liquid ? s.liqBtnIlliq : ''}`}
+                            onClick={() => handleAssetsChange(asset, 'is_liquid', false)}
+                          >🔒 Illiq</button>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Row 2: Description + Value + Years Held */}
+                    <div className={s.assetRow2}>
                       <div className={s.curField}>
                         <label className={s.curFieldLabel}>Description</label>
                         <input
@@ -800,12 +851,9 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
                           type="text"
                           placeholder="e.g. SBI Equity Fund, 2BHK Flat, FD"
                           value={asset.description}
-                          onChange={e => setAssets(prev =>
-                            prev.map(a => a._id === asset._id ? { ...a, description: e.target.value } : a)
-                          )}
+                          onChange={e => handleAssetsChange(asset, 'description', e.target.value)}
                         />
                       </div>
-                      {/* Current Value */}
                       <div className={s.curField}>
                         <label className={s.curFieldLabel}>Current Value</label>
                         <div className={s.curInputWrap}>
@@ -815,31 +863,19 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
                             type="number"
                             placeholder="0"
                             value={asset.current_value}
-                            onChange={e => setAssets(prev =>
-                              prev.map(a => a._id === asset._id ? { ...a, current_value: e.target.value } : a)
-                            )}
+                            onChange={e => handleAssetsChange(asset, 'current_value', e.target.value)}
                           />
                         </div>
                       </div>
-                      {/* Liquidity toggle */}
                       <div className={s.curField}>
-                        <label className={s.curFieldLabel}>Liquidity</label>
-                        <div className={s.liqToggle}>
-                          <button
-                            type="button"
-                            className={`${s.liqBtn} ${asset.is_liquid ? s.liqBtnActive : ''}`}
-                            onClick={() => setAssets(prev =>
-                              prev.map(a => a._id === asset._id ? { ...a, is_liquid: true } : a)
-                            )}
-                          >💧 Liquid</button>
-                          <button
-                            type="button"
-                            className={`${s.liqBtn} ${!asset.is_liquid ? s.liqBtnIlliq : ''}`}
-                            onClick={() => setAssets(prev =>
-                              prev.map(a => a._id === asset._id ? { ...a, is_liquid: false } : a)
-                            )}
-                          >🔒 Illiq</button>
-                        </div>
+                        <label className={s.curFieldLabel}>Yrs Held</label>
+                        <input
+                          className={s.plainInput}
+                          type="number"
+                          placeholder="—"
+                          value={asset.years_held}
+                          onChange={e => handleAssetsChange(asset, 'years_held', e.target.value)}
+                        />
                       </div>
                     </div>
                   </div>
@@ -851,7 +887,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
             <button
               type="button"
               className={s.addItemBtn}
-              onClick={() => setAssets(prev => [...prev, { _id: genId(), description: '', current_value: '', is_liquid: true }])}
+              onClick={() => setAssets(prev => [...prev, { _id: genId(), asset_type_id: '', description: '', current_value: '', is_liquid: true, years_held: '' }])}
             >
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
                 <path d="M10 4v12M4 10h12" />
