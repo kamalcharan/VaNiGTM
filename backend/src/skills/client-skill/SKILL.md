@@ -15,7 +15,7 @@ Manages the MFD's full client database. Clients are contacts that have been onbo
 
 ### get_clients
 Paginated list of clients with optional search and filter.
-- Parameters: search (optional, string), risk_profile (optional, string), bookmarked_only (optional, boolean), limit (optional, number), offset (optional, number)
+- Parameters: filters (optional, object: { search?: string, risk_profile?: string, bookmarked_only?: boolean }), limit (optional, number), offset (optional, number)
 - Returns: { clients: [{ id, client_uid, name, prefix, ext_ref_id, pan, risk_profile, onboarding_status, is_bookmarked, primary_mobile, primary_email }], total, recipe: 'client-list' }
 
 ### get_client

@@ -21,6 +21,8 @@ function createMockContext(
 ): SkillContext {
   return {
     tenant_id,
+    is_live: false,
+    user_id: 'test-user-001',
     db: {
       query: queryFn as SkillContext['db']['query'],
       transaction: async <T>(fn: (tx: any) => Promise<T>) => fn({ query: queryFn as SkillContext['db']['query'], transaction: async () => { throw new Error('nested'); } }),
@@ -200,7 +202,7 @@ describe('get_nav_history', () => {
 describe('search_schemes', () => {
   test('(a) returns matching schemes for valid query', async () => {
     const queryFn: MockQueryFn = async (sql) => {
-      if (sql.includes('COUNT(*)')) return { rows: [{ total: 2 }] };
+      if (sql.includes('COUNT(*) AS total')) return { rows: [{ total: 2 }] };
       return { rows: searchResults };
     };
     const ctx = createMockContext(TENANT_A, queryFn);
@@ -217,7 +219,7 @@ describe('search_schemes', () => {
 
   test('(b) returns empty results for no-match query', async () => {
     const queryFn: MockQueryFn = async (sql) => {
-      if (sql.includes('COUNT(*)')) return { rows: [{ total: 0 }] };
+      if (sql.includes('COUNT(*) AS total')) return { rows: [{ total: 0 }] };
       return { rows: [] };
     };
     const ctx = createMockContext(TENANT_A, queryFn);
@@ -231,7 +233,7 @@ describe('search_schemes', () => {
 
   test('(c) respects limit parameter', async () => {
     const queryFn: MockQueryFn = async (sql, params) => {
-      if (sql.includes('COUNT(*)')) return { rows: [{ total: 50 }] };
+      if (sql.includes('COUNT(*) AS total')) return { rows: [{ total: 50 }] };
       expect(params?.$limit).toBe(5);
       return { rows: searchResults.slice(0, 1) };
     };

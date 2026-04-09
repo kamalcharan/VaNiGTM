@@ -524,6 +524,7 @@ export function createAuthRouter(pool: Pool): Router {
         email: jwt.email,
         role: jwt.role,
         is_live: requestedLive,
+        is_admin: jwt.is_admin,
       });
 
       res.json({

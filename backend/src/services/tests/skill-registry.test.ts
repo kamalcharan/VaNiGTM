@@ -12,6 +12,8 @@ const SKILLS_ROOT = path.resolve(__dirname, '../../skills');
 function mockCtx(): SkillContext {
   return {
     tenant_id: 'test-tenant-001',
+    is_live: false,
+    user_id: 'test-user-001',
     db: {
       query: async () => ({ rows: [] }),
       transaction: async <T>(fn: (tx: any) => Promise<T>) => fn({ query: async () => ({ rows: [] }), transaction: async () => { throw new Error('nested'); } }),
@@ -134,7 +136,7 @@ describe('SkillRegistry', () => {
 describe('buildRegistry', () => {
   it('discovers and loads all KI-Prime skills', async () => {
     const registry = await buildRegistry(SKILLS_ROOT);
-    expect(registry.skills.size).toBe(8);
+    expect(registry.skills.size).toBe(11);
   });
 
   it('imports function handlers from skills with functions/ dir', async () => {
