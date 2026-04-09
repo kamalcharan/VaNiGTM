@@ -253,6 +253,16 @@ CREATE INDEX IF NOT EXISTS idx_ki_snapshots_active
     ON ki_contact_snapshots(tenant_id, contact_id, is_live)
     WHERE status = 'active';
 
+-- Ensure update_updated_at() exists (defined in 001_ki_prime — included
+-- here with CREATE OR REPLACE as a safety net for fresh installations).
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$;
+
 CREATE TRIGGER trg_ki_contact_snapshots_updated
     BEFORE UPDATE ON ki_contact_snapshots
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
