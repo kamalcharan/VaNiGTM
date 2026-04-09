@@ -156,6 +156,23 @@ const SECTIONS = [
 
 const GOAL_TYPES = ['retirement','education','house','wedding','emergency','vehicle','travel','custom'] as const;
 
+const GOAL_ICONS: Record<string, string> = {
+  retirement: '🌿', education: '🎓', house: '🏡', wedding: '💍',
+  emergency: '🛡️', vehicle: '🚗', travel: '✈️', custom: '⭐',
+};
+
+// Bar heights for risk volatility mini-chart (conservative → low/stable, aggressive → high/volatile)
+const RISK_BARS: Record<'conservative' | 'moderate' | 'aggressive', number[]> = {
+  conservative: [20, 28, 22, 30, 24, 26, 20],
+  moderate:     [24, 38, 28, 46, 32, 42, 30],
+  aggressive:   [28, 48, 36, 54, 38, 50, 42],
+};
+const RISK_BAR_COLORS: Record<'conservative' | 'moderate' | 'aggressive', string> = {
+  conservative: 'var(--color-success)',
+  moderate:     'var(--color-warning)',
+  aggressive:   'var(--color-danger)',
+};
+
 const EXPENSE_LABELS: Record<keyof Expenses, string> = {
   housing: 'Housing / Rent', food: 'Groceries & Food', utilities: 'Utilities',
   transport: 'Transport', education: 'Education / Kids', lifestyle: 'Lifestyle',
@@ -716,19 +733,37 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
             <div className={s.subGroup}>
               <div className={s.subGroupLabel}>Risk Appetite</div>
               <div className={s.riskCards}>
-                {(['conservative', 'moderate', 'aggressive'] as const).map(key => (
-                  <button
-                    key={key}
-                    className={`${s.riskCard} ${riskProfile === key ? s.riskSelected : ''}`}
-                    onClick={() => setRiskProfile(prev => prev === key ? '' : key)}
-                  >
-                    {riskProfile === key && <span className={s.riskCheck}>✓</span>}
-                    <span className={s.riskLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}</span>
-                    <span className={s.riskSub}>
-                      {key === 'conservative' ? '7–9% p.a.' : key === 'moderate' ? '10–13% p.a.' : '14–18% p.a.'}
-                    </span>
-                  </button>
-                ))}
+                {(['conservative', 'moderate', 'aggressive'] as const).map(key => {
+                  const bars = RISK_BARS[key];
+                  const barColor = RISK_BAR_COLORS[key];
+                  const maxH = Math.max(...bars);
+                  return (
+                    <button
+                      key={key}
+                      className={`${s.riskCard} ${riskProfile === key ? s.riskSelected : ''}`}
+                      onClick={() => setRiskProfile(prev => prev === key ? '' : key)}
+                    >
+                      {riskProfile === key && <span className={s.riskCheck}>✓</span>}
+                      {/* Mini volatility bar chart */}
+                      <div className={s.riskViz}>
+                        {bars.map((h, i) => (
+                          <div
+                            key={i}
+                            className={s.riskBar}
+                            style={{
+                              height: `${(h / maxH) * 100}%`,
+                              background: barColor,
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <span className={s.riskLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}</span>
+                      <span className={s.riskSub}>
+                        {key === 'conservative' ? '7–9% p.a.' : key === 'moderate' ? '10–13% p.a.' : '14–18% p.a.'}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -737,6 +772,7 @@ export function SnapshotTab({ contactId, isClient }: { contactId: number; isClie
               {goals.map((goal, i) => (
                 <div key={i} className={s.goalCard}>
                   <div className={s.goalCardRow}>
+                    <span className={s.goalIcon}>{GOAL_ICONS[goal.goal_type] ?? '⭐'}</span>
                     <select
                       className={s.typeSelect}
                       value={goal.goal_type}

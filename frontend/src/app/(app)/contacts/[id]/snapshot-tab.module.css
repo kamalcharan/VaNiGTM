@@ -18,8 +18,8 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
   overflow: hidden;
 }
@@ -30,8 +30,8 @@
   position: relative;
   display: flex;
   align-items: stretch;
-  background: color-mix(in srgb, var(--color-bg) 60%, transparent);
-  border-bottom: 1px solid var(--glass-border);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
   overflow: hidden;
 }
 
@@ -59,7 +59,7 @@
   top: 20%;
   height: 60%;
   width: 1px;
-  background: var(--glass-border);
+  background: var(--color-border);
 }
 
 .stepNum {
@@ -120,11 +120,12 @@
   text-transform: uppercase;
 }
 .sectionTitle {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 1.65rem;
+  font-weight: 600;
   color: var(--color-fg);
   margin: 0;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.025em;
+  font-family: var(--font-display, 'Playfair Display', serif);
 }
 .sectionSub {
   font-size: 0.75rem;
@@ -135,7 +136,7 @@
 /* ── Section body ─────────────────────────────────────────────────────────── */
 
 .sectionBody {
-  padding: 20px 24px;
+  padding: 24px 28px;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -175,15 +176,16 @@
 .amountCard {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  background: color-mix(in srgb, var(--color-bg) 50%, transparent);
-  border: 1px solid var(--glass-border);
-  border-radius: 10px;
-  padding: 12px 14px;
-  transition: border-color 0.2s;
+  gap: 8px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 18px 22px;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 .amountCard:focus-within {
   border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
 .amountLabel {
@@ -211,11 +213,12 @@
   gap: 4px;
 }
 .currencyPrefix {
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 1.4rem;
+  font-weight: 400;
   color: var(--color-muted);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-display, 'Playfair Display', serif);
   flex-shrink: 0;
+  line-height: 1;
 }
 .amountInput {
   flex: 1;
@@ -223,10 +226,11 @@
   background: none;
   border: none;
   outline: none;
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 500;
   color: var(--color-fg);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-display, 'Playfair Display', serif);
+  letter-spacing: -0.02em;
   padding: 0;
 }
 .amountInput::placeholder {
@@ -246,10 +250,11 @@
   flex-shrink: 0;
 }
 .amountHelper {
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   color: var(--color-primary);
   font-family: 'JetBrains Mono', monospace;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 /* ── Expense rows ─────────────────────────────────────────────────────────── */
@@ -258,10 +263,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: color-mix(in srgb, var(--color-bg) 50%, transparent);
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  padding: 10px 12px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 12px 16px;
   gap: 12px;
   transition: border-color 0.2s;
 }
@@ -303,10 +308,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: color-mix(in srgb, var(--color-bg) 40%, transparent);
-  border: 1px solid var(--glass-border);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
-  padding: 12px 16px;
+  padding: 14px 18px;
 }
 .savingsLabel {
   font-size: 0.7rem;
@@ -332,11 +337,12 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: color-mix(in srgb, var(--color-surface) 50%, transparent);
-  border: 1px solid var(--glass-border);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  padding: 14px;
+  padding: 16px;
   transition: border-color 0.2s;
+  animation: slideUp 0.3s ease;
 }
 .itemCard:focus-within {
   border-color: var(--color-primary);
@@ -349,8 +355,8 @@
 
 .typeSelect {
   flex: 1;
-  background: color-mix(in srgb, var(--color-bg) 60%, transparent);
-  border: 1px solid var(--glass-border);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--input-radius, 8px);
   color: var(--color-fg);
   font-size: 0.82rem;
@@ -360,7 +366,7 @@
   transition: border-color 0.2s;
 }
 .typeSelect:focus { border-color: var(--color-primary); }
-.typeSelect option { background: var(--color-bg); color: var(--color-fg); }
+.typeSelect option { background: var(--color-surface); color: var(--color-fg); }
 
 .removeBtn {
   flex-shrink: 0;
@@ -383,8 +389,8 @@
 }
 
 .descInput {
-  background: color-mix(in srgb, var(--color-bg) 50%, transparent);
-  border: 1px solid var(--glass-border);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--input-radius, 8px);
   color: var(--color-fg);
   font-size: 0.82rem;
@@ -467,6 +473,18 @@
 .goalCardRow {
   composes: itemCardRow;
 }
+.goalIcon {
+  font-size: 1.25rem;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  border-radius: 8px;
+  flex-shrink: 0;
+  line-height: 1;
+}
 
 /* ── Protection toggles ──────────────────────────────────────────────────── */
 
@@ -476,10 +494,10 @@
 }
 .protToggle {
   flex: 1;
-  padding: 10px 14px;
+  padding: 12px 14px;
   border-radius: 10px;
-  border: 1px solid var(--glass-border);
-  background: color-mix(in srgb, var(--color-bg) 50%, transparent);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
   color: var(--color-muted);
   font-size: 0.82rem;
   font-weight: 600;
@@ -510,38 +528,78 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 12px 10px 10px;
-  background: color-mix(in srgb, var(--color-bg) 50%, transparent);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
+  padding: 20px 14px 16px;
+  background: var(--color-bg);
+  border: 2px solid var(--color-border);
+  border-radius: 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
   text-align: center;
+  overflow: hidden;
 }
 .riskCard:hover {
-  border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+  border-color: color-mix(in srgb, var(--color-fg) 25%, transparent);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px -4px color-mix(in srgb, var(--color-fg) 12%, transparent);
 }
 .riskSelected {
   border-color: var(--color-primary) !important;
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent) !important;
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-bg)) !important;
+  transform: translateY(-3px) !important;
+  box-shadow: 0 12px 32px -8px color-mix(in srgb, var(--color-primary) 25%, transparent) !important;
 }
 .riskCheck {
   position: absolute;
-  top: 8px;
-  right: 10px;
-  font-size: 0.7rem;
-  color: var(--color-primary);
+  top: 12px;
+  right: 12px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-bg);
+  font-size: 0.65rem;
   font-weight: 700;
+  display: grid;
+  place-items: center;
 }
+.riskViz {
+  height: 54px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 0 6px;
+  width: 100%;
+}
+.riskBar {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  opacity: 0.75;
+  transition: opacity 0.2s, height 0.2s;
+}
+.riskCard:hover .riskBar,
+.riskSelected .riskBar { opacity: 1; }
 .riskLabel {
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 1.05rem;
+  font-weight: 500;
   color: var(--color-fg);
+  font-family: var(--font-display, 'Playfair Display', serif);
+  letter-spacing: -0.01em;
 }
 .riskSub {
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   color: var(--color-muted);
+  margin-top: 2px;
+}
+.riskReturn {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+  width: 100%;
+  font-size: 0.7rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: var(--color-fg);
 }
 
 /* ── Textarea ─────────────────────────────────────────────────────────────── */
@@ -549,8 +607,8 @@
 .textarea {
   width: 100%;
   box-sizing: border-box;
-  background: color-mix(in srgb, var(--color-bg) 50%, transparent);
-  border: 1px solid var(--glass-border);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   border-radius: var(--input-radius, 8px);
   color: var(--color-fg);
   font-size: 0.85rem;
@@ -570,9 +628,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 24px;
-  border-top: 1px solid var(--glass-border);
-  background: color-mix(in srgb, var(--color-bg) 40%, transparent);
+  padding: 16px 28px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
 }
 .navLeft {
   display: flex;
@@ -619,8 +677,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
   padding: 20px 16px;
 }
@@ -657,8 +715,8 @@
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  background: color-mix(in srgb, var(--color-bg) 40%, transparent);
-  border: 1px solid var(--glass-border);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
 }
 .pulseRingInfo {
@@ -729,10 +787,10 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  background: color-mix(in srgb, var(--color-bg) 40%, transparent);
-  border: 1px solid var(--glass-border);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  padding: 12px 14px;
+  padding: 14px 16px;
 }
 .briefTitle {
   font-size: 0.6rem;
