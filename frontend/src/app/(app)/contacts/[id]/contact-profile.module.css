@@ -126,8 +126,8 @@
 
 /* Hero right: ring card */
 .heroRingCard {
-  background: var(--glass, var(--color-surface));
-  border: 1px solid var(--glass-border, var(--color-border));
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 18px 20px;
   min-width: 220px;
@@ -215,8 +215,8 @@
 
 .detailCard,
 .channelsCard {
-  background: var(--glass, var(--color-surface));
-  border: 1px solid var(--glass-border, var(--color-border));
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 22px;
 }
@@ -273,8 +273,8 @@
 /* ── Snapshot Summary Card (3rd column in overview) ── */
 
 .snapshotCard {
-  background: var(--glass, var(--color-surface));
-  border: 1px solid var(--glass-border, var(--color-border));
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 22px;
 }
@@ -385,13 +385,13 @@
   align-items: center;
   gap: 14px;
   padding: 14px 18px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--color-primary);
+  border: 1px solid transparent;
   border-radius: 10px;
-  transition: border-color 160ms;
+  transition: filter 160ms;
 }
 
-.channelItem:hover { border-color: var(--color-primary); }
+.channelItem:hover { filter: brightness(1.08); }
 
 .channelIcon {
   width: 36px;
@@ -399,10 +399,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-bg) 18%, transparent);
+  border: none;
   border-radius: 8px;
-  color: var(--color-muted);
+  color: var(--color-bg);
   flex-shrink: 0;
 }
 
@@ -414,15 +414,15 @@
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--color-muted);
+  color: color-mix(in srgb, var(--color-bg) 70%, transparent);
   margin-bottom: 2px;
 }
 
 .channelValue {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--color-muted);
+  font-weight: 600;
+  color: var(--color-bg);
 }
 
 .channelRight {
@@ -436,8 +436,8 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-bg);
+  background: color-mix(in srgb, var(--color-bg) 22%, transparent);
   padding: 3px 8px;
   border-radius: 4px;
 }
