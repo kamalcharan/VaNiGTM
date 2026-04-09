@@ -110,23 +110,22 @@ function statusToTone(status: PulseStatus): 'success' | 'warning' | 'danger' | '
 
 // ── Section headers ────────────────────────────────────────────────────────
 
-// question: qBefore + <name> + qItalic — matches contactnest-ux.html pattern
 const SECTIONS = [
   { num: '01', label: 'Cash Flow',
-    qBefore: 'How does ', qItalic: ' earn and spend?',
-    helper: 'Monthly income and expenses — the heartbeat of every financial plan.' },
+    sectionTitle: 'Income & monthly expenses',
+    sectionSub:   'Monthly cash in, monthly cash out. Savings rate computes automatically.' },
   { num: '02', label: 'Assets',
-    qBefore: 'What does ', qItalic: ' own?',
-    helper: 'Property, investments, savings — capture everything of value.' },
+    sectionTitle: 'Assets & investments',
+    sectionSub:   'Investments, property, savings, gold. Tag liquidity to flag concentration risk.' },
   { num: '03', label: 'Liabilities',
-    qBefore: 'What does ', qItalic: ' owe?',
-    helper: 'Loans and outstanding debts. No judgment — clarity helps planning.' },
+    sectionTitle: 'Loans & liabilities',
+    sectionSub:   'Loans and outstanding debts. No judgment — clarity helps planning.' },
   { num: '04', label: 'Protection',
-    qBefore: 'How protected is ', qItalic: '?',
-    helper: 'Insurance coverage, life and health — quantify the safety net.' },
-  { num: '05', label: 'Goals',
-    qBefore: 'What are ', qItalic: "'s financial goals?",
-    helper: 'Aspirations, risk appetite, and dreams to plan towards.' },
+    sectionTitle: 'Insurance & protection',
+    sectionSub:   'Life and health coverage — quantify the safety net.' },
+  { num: '05', label: 'Goals & Risk',
+    sectionTitle: 'Goals & risk profile',
+    sectionSub:   'Aspirations and risk appetite — the plan\'s destination.' },
 ];
 
 const GOAL_TYPES = ['retirement','education','house','wedding','emergency','vehicle','travel','custom'] as const;
@@ -672,14 +671,12 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
         {/* Left: form work area */}
         <div className={s.formWork}>
 
-          {/* Step question header */}
-          <div className={s.stepCounterLabel}>
-            Step {sec.num} of 05 · {sec.label}
+          {/* Section head — compact reference style */}
+          <div className={s.sectionHead}>
+            <div className={s.sectionNum}>Section {sec.num} / 05 · {sec.label}</div>
+            <h2 className={s.sectionTitle}>{sec.sectionTitle}</h2>
+            <p className={s.sectionSub}>{sec.sectionSub}</p>
           </div>
-          <h2 className={s.stepQuestion}>
-            {sec.qBefore}{them}<em className={s.stepQuestionEm}>{sec.qItalic}</em>
-          </h2>
-          <p className={s.stepHelper}>{sec.helper}</p>
 
         {/* ── 01 Cash Flow ─────────────────────────────────────────── */}
         {activeSection === 0 && (
@@ -689,26 +686,26 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
             <div className={s.subBlock}>
               <div className={s.subHead}>Monthly Income</div>
               <div className={s.inputGrid3}>
-                {(['salary', 'partner', 'rental_other'] as const).map(key => (
-                  <div key={key} className={s.bigInputCard}>
-                    <label className={s.bigInputLabel}>
-                      {key === 'salary' ? 'Salary (take-home)' : key === 'partner' ? 'Partner income' : 'Rental / Other'}
-                      {key !== 'salary' && <span className={s.optionalTag}>opt</span>}
+                {([
+                  { key: 'salary'       as const, label: 'Salary (take-home)', opt: false },
+                  { key: 'partner'      as const, label: 'Partner income',      opt: true  },
+                  { key: 'rental_other' as const, label: 'Rental / Other',      opt: true  },
+                ]).map(({ key, label, opt }) => (
+                  <div key={key} className={s.curField}>
+                    <label className={s.curFieldLabel}>
+                      {label}{opt && <span className={s.optionalTag}> opt</span>}
                     </label>
-                    <div className={s.bigInputWrap}>
-                      <span className={s.bigInputCurrency}>₹</span>
+                    <div className={s.curInputWrap}>
+                      <span className={s.curSym}>₹</span>
                       <input
-                        className={s.bigInput}
+                        className={s.curVal}
                         type="number"
                         value={income[key]}
                         onChange={e => setIncome(prev => ({ ...prev, [key]: e.target.value }))}
                         placeholder="0"
                       />
-                      <span className={s.bigInputSuffix}>/mo</span>
+                      <span className={s.curSuffix}>/mo</span>
                     </div>
-                    {Number(income[key]) > 0 && (
-                      <div className={s.bigInputHelper}>{fmt(Number(income[key]))}</div>
-                    )}
                   </div>
                 ))}
               </div>
