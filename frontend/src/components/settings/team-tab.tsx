@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { apiFetch, type ApiError } from '@/lib/api-client';
+import { apiFetch, getAccessToken, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/components/toast';
@@ -54,6 +54,7 @@ export default function TeamTab() {
   const [emailError, setEmailError] = useState('');
 
   const load = useCallback(async () => {
+    if (!getAccessToken()) return;
     setLoading(true);
     try {
       const [membersRes, invitesRes] = await Promise.all([
@@ -69,7 +70,13 @@ export default function TeamTab() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (getAccessToken()) {
+      load();
+    } else {
+      setLoading(false);
+    }
+  }, [load]);
 
   async function handleSend() {
     if (sending) return;
