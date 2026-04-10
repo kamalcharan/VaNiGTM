@@ -133,11 +133,13 @@ BEGIN
         END IF;
 
         IF v_risk_profile IS NULL THEN
-            SELECT default_risk_profile INTO v_tenant_default_risk
+            SELECT settings->>'default_risk_profile' INTO v_tenant_default_risk
             FROM vn_tenant_profiles
             WHERE tenant_id = v_staging.tenant_id;
 
-            v_risk_profile := v_tenant_default_risk;
+            IF v_tenant_default_risk IN ('conservative', 'moderate', 'aggressive') THEN
+                v_risk_profile := v_tenant_default_risk;
+            END IF;
         END IF;
 
         -- INSERT ki_contacts

@@ -355,17 +355,16 @@ export function createAuthRouter(pool: Pool): Router {
         preferencesMerge = { ...(preferencesMerge || {}), theme_override: body.theme_override };
       }
 
-      // Tenant-level settings → vn_tenant_profiles
-      const VALID_RISK_PROFILES = ['conservative', 'moderate', 'aggressive'];
-      let tenantProfileUpdates: Record<string, unknown> | null = null;
+      // Tenant-level settings → vn_tenant_profiles.settings JSONB
+      let tenantSettingsMerge: Record<string, unknown> | null = null;
       if (body.default_risk_profile !== undefined) {
         const rp = String(body.default_risk_profile).toLowerCase().trim();
-        if (VALID_RISK_PROFILES.includes(rp)) {
-          tenantProfileUpdates = { ...(tenantProfileUpdates || {}), default_risk_profile: rp };
+        if (['conservative', 'moderate', 'aggressive'].includes(rp)) {
+          tenantSettingsMerge = { ...(tenantSettingsMerge || {}), default_risk_profile: rp };
         }
       }
 
-      if (Object.keys(updates).length === 0 && !preferencesMerge && !tenantProfileUpdates) {
+      if (Object.keys(updates).length === 0 && !preferencesMerge && !tenantSettingsMerge) {
         res.status(400).json({ error: { code: 'NO_FIELDS', message: 'No valid fields to update' } });
         return;
       }
@@ -405,21 +404,14 @@ export function createAuthRouter(pool: Pool): Router {
           );
         }
 
-        // Update vn_tenant_profiles for tenant-level settings
-        if (tenantProfileUpdates) {
-          const setClauses: string[] = [];
-          const values: unknown[] = [];
-          let idx = 1;
-          for (const [col, val] of Object.entries(tenantProfileUpdates)) {
-            setClauses.push(`${col} = $${idx}`);
-            values.push(val);
-            idx++;
-          }
-          setClauses.push(`updated_at = now()`);
-          values.push(tenant_id);
+        // Merge tenant-level settings into vn_tenant_profiles.settings JSONB
+        if (tenantSettingsMerge) {
           await client.query(
-            `UPDATE vn_tenant_profiles SET ${setClauses.join(', ')} WHERE tenant_id = $${idx}`,
-            values,
+            `UPDATE vn_tenant_profiles
+             SET settings   = COALESCE(settings, '{}'::jsonb) || $1::jsonb,
+                 updated_at = now()
+             WHERE tenant_id = $2`,
+            [JSON.stringify(tenantSettingsMerge), tenant_id],
           );
         }
 
@@ -541,7 +533,7 @@ export function createAuthRouter(pool: Pool): Router {
       const tenantResult = await pool.query(
         `SELECT t.id, t.slug, t.is_admin, t.ext_ref_type_code,
                 tp.name, tp.display_name, tp.theme_id, tp.logo_url,
-                tp.default_risk_profile
+                tp.settings->>'default_risk_profile' AS default_risk_profile
          FROM vn_tenants t
          JOIN vn_tenant_profiles tp ON tp.tenant_id = t.id
          WHERE t.id = $1`,

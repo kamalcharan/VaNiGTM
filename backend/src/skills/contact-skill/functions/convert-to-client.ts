@@ -87,9 +87,10 @@ export async function convert_to_client(
     );
     const snapshot = snapRes.rows[0] ?? null;
 
-    // Fetch tenant default risk profile for fallback
+    // Fetch tenant default risk profile from settings JSONB for fallback
     const tenantProfileRes = await tx.query<{ default_risk_profile: string | null }>(
-      `SELECT default_risk_profile FROM vn_tenant_profiles WHERE tenant_id = $tenant_id`,
+      `SELECT settings->>'default_risk_profile' AS default_risk_profile
+       FROM vn_tenant_profiles WHERE tenant_id = $tenant_id`,
       { $tenant_id: ctx.tenant_id }
     );
     const tenantDefaultRisk = tenantProfileRes.rows[0]?.default_risk_profile ?? null;
