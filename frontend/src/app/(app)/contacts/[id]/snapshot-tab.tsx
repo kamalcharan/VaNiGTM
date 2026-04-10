@@ -695,6 +695,15 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
 
   // ── Snapshot view derived data ────────────────────────────────────────────
 
+  // Per-goal SIP estimate (12% CAGR target, 6% inflation escalation)
+  const goalSip = (targetAmount: number, timelineYears: number) => {
+    if (!timelineYears) return 0;
+    const months = timelineYears * 12;
+    const r = 0.12 / 12;
+    const fv = targetAmount * Math.pow(1.06, timelineYears);
+    return Math.round(fv * r / (Math.pow(1 + r, months) - 1));
+  };
+
   const DONUT_COLORS = ['#6b4e8a', 'var(--color-success)', 'var(--color-warning)', 'var(--color-accent)', '#4a7a8c', 'var(--color-muted)'];
   const donutTotal = metrics.totalAssets;
   const sortedAssets = assets.filter(a => Number(a.current_value) > 0).sort((a, b) => Number(b.current_value) - Number(a.current_value));
@@ -791,12 +800,8 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
             {(snap?.created_by_name || mfdFirstName) && <><span className={s.snapSep}>/</span><span>by {(snap?.created_by_name as string) || mfdFirstName}</span></>}
           </div>
           <div className={s.snapMetaActions}>
-            <button className={s.snapActionBtn} onClick={() => setShowSnapshot(false)}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              Edit
-            </button>
             {!isClient && (
-              <button className={s.snapActionBtnPrimary} onClick={() => router.push(`/contacts/${contactId}/convert`)}>
+              <button className={s.snapConvertBtn} onClick={() => router.push(`/contacts/${contactId}/convert`)}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 Convert to Client
               </button>
@@ -903,6 +908,152 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
 
         </div>
 
+        {/* Goals section */}
+        <div className={s.snapSectionBlock}>
+          <div className={s.snapSectionHead}>
+            <span className={s.snapSectionLabel}>Goals &amp; Future Focus</span>
+            {vaniGoalsFilled.length > 0 && (
+              <span className={s.snapSectionMeta}>
+                Combined SIP needed ≈ {fmt(Math.round(vaniTotalSIP))}/mo
+              </span>
+            )}
+          </div>
+          {vaniGoalsFilled.length === 0 ? (
+            <div className={s.snapEmpty} style={{ padding: '16px 0' }}>No goals captured — <button className={s.snapInlineEdit} onClick={() => setShowSnapshot(false)}>add goals in edit mode</button></div>
+          ) : (
+            <div className={s.goalChips}>
+              {vaniGoalsFilled.map((g, i) => {
+                const gt   = goalTypes.find(t => t.code === g.goal_type);
+                const sip  = goalSip(Number(g.target_amount), Number(g.timeline_years) || 10);
+                const yrs  = Number(g.timeline_years) || 10;
+                return (
+                  <div key={i} className={s.goalChip}>
+                    <div className={s.goalChipIcon}>{gt?.icon || '⭐'}</div>
+                    <div className={s.goalChipBody}>
+                      <div className={s.goalChipName}>{g.name}</div>
+                      <div className={s.goalChipMeta}>{fmt(Number(g.target_amount))} · {yrs}yr</div>
+                      <div className={s.goalChipSip}>SIP ≈ {fmt(sip)}/mo</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Captured data summary */}
+        <div className={s.snapSectionBlock}>
+          <div className={s.snapSectionHead}>
+            <span className={s.snapSectionLabel}>Captured Data</span>
+            <button className={s.snapSectionEditLink} onClick={() => setShowSnapshot(false)}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Edit
+            </button>
+          </div>
+          <div className={s.dataGrid}>
+
+            {/* Cash flow column */}
+            <div className={s.dataCol}>
+              <div className={s.dataColHead}>Cash Flow</div>
+              {(['salary', 'partner', 'rental_other'] as const).map(src => Number(income[src]) > 0 && (
+                <div key={src} className={s.dataRow}>
+                  <span className={s.dataRowLabel}>{src === 'salary' ? 'Salary' : src === 'partner' ? 'Partner' : 'Rental / Other'}</span>
+                  <span className={s.dataRowVal}>{fmt(Number(income[src]))}/mo</span>
+                </div>
+              ))}
+              {metrics.monthlyIncome === 0 && <div className={s.dataEmpty}>No income entered</div>}
+              <div className={s.dataRowDivider} />
+              <div className={s.dataColHead} style={{ marginTop: 8 }}>Expenses</div>
+              {(Object.entries(expenses) as [keyof Expenses, string][]).map(([cat, val]) => Number(val) > 0 && (
+                <div key={cat} className={s.dataRow}>
+                  <span className={s.dataRowLabel}>{EXPENSE_LABELS[cat]}</span>
+                  <span className={s.dataRowVal}>{fmt(Number(val))}/mo</span>
+                </div>
+              ))}
+              {metrics.monthlyExpenses === 0 && <div className={s.dataEmpty}>No expenses entered</div>}
+            </div>
+
+            {/* Assets column */}
+            <div className={s.dataCol}>
+              <div className={s.dataColHead}>Assets</div>
+              {assets.filter(a => Number(a.current_value) > 0).map((a, i) => {
+                const typeLabel = assetTypes.find(t => String(t.id) === a.asset_type_id)?.label || 'Asset';
+                return (
+                  <div key={i} className={s.dataRow}>
+                    <span className={s.dataRowLabel}>{a.description || typeLabel}</span>
+                    <span className={s.dataRowVal}>{fmt(Number(a.current_value))}{a.is_liquid ? <span className={s.dataTag}>liquid</span> : null}</span>
+                  </div>
+                );
+              })}
+              {assets.filter(a => Number(a.current_value) > 0).length === 0 && <div className={s.dataEmpty}>No assets entered</div>}
+              <div className={s.dataRowDivider} />
+              <div className={s.dataColHead} style={{ marginTop: 8 }}>Liabilities</div>
+              {liabs.filter(l => l.liability_type_id && Number(l.outstanding_amount) > 0).map((l, i) => {
+                const typeLabel = liabTypes.find(t => String(t.id) === l.liability_type_id)?.label || 'Loan';
+                return (
+                  <div key={i} className={s.dataRow}>
+                    <span className={s.dataRowLabel}>{l.description || typeLabel}</span>
+                    <span className={s.dataRowVal}>{fmt(Number(l.outstanding_amount))}{Number(l.monthly_emi) > 0 && <span className={s.dataRowSub}> · EMI {fmt(Number(l.monthly_emi))}</span>}</span>
+                  </div>
+                );
+              })}
+              {liabs.filter(l => l.liability_type_id && Number(l.outstanding_amount) > 0).length === 0 && <div className={s.dataEmpty}>No liabilities entered</div>}
+            </div>
+
+            {/* Protection column */}
+            <div className={s.dataCol}>
+              <div className={s.dataColHead}>Protection</div>
+              {Number(protection.life_cover_amount) > 0 && (
+                <div className={s.dataRow}>
+                  <span className={s.dataRowLabel}>Life Cover</span>
+                  <span className={s.dataRowVal}>{fmt(Number(protection.life_cover_amount))}</span>
+                </div>
+              )}
+              {Number(protection.life_premium_annual) > 0 && (
+                <div className={s.dataRow}>
+                  <span className={s.dataRowLabel}>Life Premium</span>
+                  <span className={s.dataRowVal}>{fmt(Number(protection.life_premium_annual))}/yr</span>
+                </div>
+              )}
+              {Number(protection.health_cover_amount) > 0 && (
+                <div className={s.dataRow}>
+                  <span className={s.dataRowLabel}>Health Cover</span>
+                  <span className={s.dataRowVal}>
+                    {fmt(Number(protection.health_cover_amount))}
+                    {protection.health_cover_type && <span className={s.dataTag}>{protection.health_cover_type.replace('_', ' ')}</span>}
+                  </span>
+                </div>
+              )}
+              {Number(protection.health_premium_annual) > 0 && (
+                <div className={s.dataRow}>
+                  <span className={s.dataRowLabel}>Health Premium</span>
+                  <span className={s.dataRowVal}>{fmt(Number(protection.health_premium_annual))}/yr</span>
+                </div>
+              )}
+              {Number(protection.ci_cover_amount) > 0 && (
+                <div className={s.dataRow}>
+                  <span className={s.dataRowLabel}>Critical Illness</span>
+                  <span className={s.dataRowVal}>{fmt(Number(protection.ci_cover_amount))}</span>
+                </div>
+              )}
+              {!Number(protection.life_cover_amount) && !Number(protection.health_cover_amount) && !Number(protection.ci_cover_amount) && (
+                <div className={s.dataEmpty}>No protection entered</div>
+              )}
+              {snap?.risk_profile && (
+                <>
+                  <div className={s.dataRowDivider} />
+                  <div className={s.dataColHead} style={{ marginTop: 8 }}>Risk Profile</div>
+                  <div className={s.dataRow}>
+                    <span className={s.dataRowLabel}>Appetite</span>
+                    <span className={s.dataRowVal} style={{ textTransform: 'capitalize' }}>{String(snap.risk_profile)}</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+          </div>
+        </div>
+
         {/* VaNi action cards */}
         {actionCards.length > 0 && (
           <div className={s.actionCardsWrap}>
@@ -924,6 +1075,14 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
             </div>
           </div>
         )}
+
+        {/* Prominent Edit button at bottom */}
+        <div className={s.snapEditBar}>
+          <button className={s.snapEditBtn} onClick={() => setShowSnapshot(false)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit Snapshot
+          </button>
+        </div>
 
       </div>
     ) : (

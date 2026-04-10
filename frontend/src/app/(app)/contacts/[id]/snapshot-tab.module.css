@@ -2829,3 +2829,234 @@
   text-transform: uppercase;
 }
 .actionCta:hover { text-decoration: underline; }
+
+/* ── Action card color tints ──────────────────────────────────────────────── */
+.actionCard_ok   {
+  border-left: 3px solid var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 6%, var(--color-surface));
+}
+.actionCard_warn {
+  border-left: 3px solid var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 6%, var(--color-surface));
+}
+.actionCard_bad  {
+  border-left: 3px solid var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 6%, var(--color-surface));
+}
+
+/* ── Convert button in meta bar ──────────────────────────────────────────── */
+.snapConvertBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.snapConvertBtn:hover { opacity: 0.85; }
+
+/* ── Section block (goals, data summary) ────────────────────────────────── */
+.snapSectionBlock {
+  background: var(--glass, var(--color-surface));
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+.snapSectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.snapSectionLabel {
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.snapSectionMeta {
+  font-size: 11px;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+.snapSectionEditLink {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--color-muted);
+  font-family: inherit;
+  transition: color 0.15s;
+  padding: 0;
+}
+.snapSectionEditLink:hover { color: var(--color-primary); }
+.snapInlineEdit {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-primary);
+  font-size: inherit;
+  font-family: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+
+/* ── Goal chips ──────────────────────────────────────────────────────────── */
+.goalChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.goalChip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-width: 160px;
+  flex: 1 1 160px;
+  max-width: 220px;
+}
+.goalChipIcon {
+  font-size: 20px;
+  line-height: 1;
+  margin-top: 1px;
+}
+.goalChipBody {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.goalChipName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+.goalChipMeta {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+.goalChipSip {
+  font-size: 11px;
+  color: var(--color-primary);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* ── Captured data grid ──────────────────────────────────────────────────── */
+.dataGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+@media (max-width: 680px) {
+  .dataGrid { grid-template-columns: 1fr; }
+}
+.dataCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.dataColHead {
+  font-size: 9px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 8px;
+}
+.dataRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--color-border);
+}
+.dataRow:last-child { border-bottom: none; }
+.dataRowLabel {
+  font-size: 11px;
+  color: var(--color-muted);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dataRowVal {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-fg);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.dataRowSub {
+  font-weight: 400;
+  color: var(--color-muted);
+}
+.dataTag {
+  font-size: 9px;
+  font-family: var(--font-mono, monospace);
+  background: var(--color-border);
+  color: var(--color-muted);
+  border-radius: 4px;
+  padding: 1px 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.dataRowDivider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 10px 0 6px;
+}
+.dataEmpty {
+  font-size: 11px;
+  color: var(--color-muted);
+  font-style: italic;
+  padding: 4px 0;
+}
+
+/* ── Bottom edit bar ─────────────────────────────────────────────────────── */
+.snapEditBar {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+.snapEditBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 32px;
+  border-radius: 10px;
+  border: 1.5px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  letter-spacing: 0.02em;
+}
+.snapEditBtn:hover {
+  background: var(--color-primary);
+  color: #fff;
+}
