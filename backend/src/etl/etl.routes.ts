@@ -313,6 +313,18 @@ export function createEtlRouter(pool: Pool): Router {
           'SELECT * FROM process_customer_import_with_timing($1, $2)',
           [sessionId, targetDurationMs],
         );
+
+        // Auto-resolve family linkages immediately after customer import completes.
+        // resolve_customer_families is idempotent — safe to call unconditionally.
+        try {
+          await pool.query(
+            'SELECT * FROM resolve_customer_families($1, $2)',
+            [auth.tenant_id, auth.is_live],
+          );
+        } catch (familyErr: any) {
+          // Non-fatal — families can be re-resolved via /resolve-families endpoint
+          console.warn('[ETL:process] auto resolve_customer_families failed:', familyErr.message);
+        }
       } else {
         // transaction import not yet implemented
         res.status(400).json({ error: { code: 'UNSUPPORTED', message: `Import type "${session.import_type}" processing not yet implemented` } });

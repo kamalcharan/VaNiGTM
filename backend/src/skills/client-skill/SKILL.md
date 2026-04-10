@@ -48,6 +48,11 @@ Get all clients in the same family group.
 - Parameters: family_id (required, string)
 - Returns: { members: [{ id, client_uid, name, prefix, is_family_head, ext_ref_id }], family_name, recipe: 'data-table' }
 
+### get_bookmark_reasons
+List active bookmark reason master data for the tenant (populates the reason picker modal).
+- Parameters: none
+- Returns: { reasons: [{ id, reason_code, reason_label, display_order }], recipe: 'option-list' }
+
 ### get_stats
 Summary stats for the clients dashboard.
 - Parameters: none

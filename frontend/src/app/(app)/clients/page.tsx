@@ -7,7 +7,7 @@ import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfEmptyState, VdfButton, VdfStatusBadge,
-  VdfCard, VdfSearchBar, VdfStatCard,
+  VdfCard, VdfSearchBar, VdfStatCard, VdfModal,
 } from '@/components/vdf';
 import s from './clients.module.css';
 
@@ -31,6 +31,15 @@ interface Client {
 }
 
 interface ClientsData { clients: Client[]; total: number; }
+
+interface BookmarkReason {
+  id: number;
+  reason_code: string;
+  reason_label: string;
+  display_order: number;
+}
+
+interface ReasonsData { reasons: BookmarkReason[]; }
 
 interface StatsData {
   total_clients: number;
@@ -117,9 +126,21 @@ export default function ClientsPage() {
   const [page,           setPage]           = useState(1);
   const [bookmarkingId,  setBookmarkingId]  = useState<number | null>(null);
 
+  /* ── Bookmark modal state ────────────────────────── */
+  const [bookmarkTarget,   setBookmarkTarget]   = useState<Client | null>(null);
+  const [selectedReasonId, setSelectedReasonId] = useState<number | null>(null);
+  const [customReason,     setCustomReason]     = useState('');
+
   /* ── Stats query ─────────────────────────────────── */
   const { data: statsData } = useSkillQuery<StatsData>('client-skill', 'get_stats', {});
   const stats = statsData?.data;
+
+  /* ── Bookmark reasons (fetched once, cached) ─────── */
+  const { data: reasonsData } = useSkillQuery<ReasonsData>(
+    'client-skill', 'get_bookmark_reasons', {},
+    { staleTime: 5 * 60 * 1000 }
+  );
+  const bookmarkReasons = reasonsData?.data?.reasons ?? [];
 
   /* ── Clients query ───────────────────────────────── */
   const skillParams = useMemo(() => ({
@@ -149,25 +170,64 @@ export default function ClientsPage() {
     queryClient.invalidateQueries({ queryKey: ['skill', 'client-skill', 'get_stats'] });
   }, [queryClient]);
 
-  const handleBookmarkToggle = useCallback(async (client: Client, e: React.MouseEvent) => {
+  /* ── Bookmark button handler ─────────────────────
+     Removing → immediate (no modal needed).
+     Adding   → open reason picker modal.
+  ─────────────────────────────────────────────────── */
+  const handleBookmarkClick = useCallback((client: Client, e: React.MouseEvent) => {
     e.stopPropagation();
     if (bookmarkingId === client.id) return;
-    setBookmarkingId(client.id);
+
+    if (client.is_bookmarked) {
+      // Remove immediately — no modal
+      setBookmarkingId(client.id);
+      removeBookmark.mutateAsync({ client_id: client.id })
+        .then(() => {
+          showToast({ message: `${client.name} removed from bookmarks`, type: 'info' });
+          invalidateAfterBookmark();
+        })
+        .catch((err: any) => {
+          showToast({ message: err.message || 'Failed to remove bookmark', type: 'error' });
+        })
+        .finally(() => setBookmarkingId(null));
+    } else {
+      // Open reason picker modal
+      setBookmarkTarget(client);
+      setSelectedReasonId(null);
+      setCustomReason('');
+    }
+  }, [bookmarkingId, removeBookmark, showToast, invalidateAfterBookmark]);
+
+  /* ── Bookmark modal: save ─────────────────────────── */
+  const handleBookmarkSave = useCallback(async () => {
+    if (!bookmarkTarget) return;
+    if (!selectedReasonId && !customReason.trim()) {
+      showToast({ message: 'Please select a reason or enter a custom note', type: 'warning' });
+      return;
+    }
+
+    setBookmarkingId(bookmarkTarget.id);
     try {
-      if (client.is_bookmarked) {
-        await removeBookmark.mutateAsync({ client_id: client.id });
-        showToast({ message: `${client.name} removed from bookmarks`, type: 'info' });
-      } else {
-        await addBookmark.mutateAsync({ client_id: client.id, custom_reason: 'Marked' });
-        showToast({ message: `${client.name} bookmarked`, type: 'success' });
-      }
+      await addBookmark.mutateAsync({
+        client_id:     bookmarkTarget.id,
+        reason_id:     selectedReasonId ?? undefined,
+        custom_reason: !selectedReasonId ? customReason.trim() : undefined,
+      });
+      showToast({ message: `${bookmarkTarget.name} bookmarked`, type: 'success' });
       invalidateAfterBookmark();
+      setBookmarkTarget(null);
     } catch (err: any) {
-      showToast({ message: err.message || 'Bookmark action failed', type: 'error' });
+      showToast({ message: err.message || 'Bookmark failed', type: 'error' });
     } finally {
       setBookmarkingId(null);
     }
-  }, [bookmarkingId, addBookmark, removeBookmark, showToast, invalidateAfterBookmark]);
+  }, [bookmarkTarget, selectedReasonId, customReason, addBookmark, showToast, invalidateAfterBookmark]);
+
+  const handleBookmarkModalClose = useCallback(() => {
+    setBookmarkTarget(null);
+    setSelectedReasonId(null);
+    setCustomReason('');
+  }, []);
 
   /* ── Search handlers ─────────────────────────────── */
   const triggerSearch = useCallback(() => {
@@ -410,7 +470,7 @@ export default function ClientsPage() {
                     <td className={s.tdBm} onClick={(e) => e.stopPropagation()}>
                       <button
                         className={`${s.bmBtn} ${client.is_bookmarked ? s.bmBtnActive : ''}`}
-                        onClick={(e) => handleBookmarkToggle(client, e)}
+                        onClick={(e) => handleBookmarkClick(client, e)}
                         disabled={bookmarkingId === client.id}
                         title={client.is_bookmarked ? 'Remove bookmark' : 'Bookmark'}
                       >
@@ -494,7 +554,7 @@ export default function ClientsPage() {
                   />
                   <button
                     className={`${s.bmBtn} ${client.is_bookmarked ? s.bmBtnActive : ''}`}
-                    onClick={(e) => handleBookmarkToggle(client, e)}
+                    onClick={(e) => handleBookmarkClick(client, e)}
                     disabled={bookmarkingId === client.id}
                     title={client.is_bookmarked ? 'Remove bookmark' : 'Bookmark'}
                   >
@@ -507,6 +567,62 @@ export default function ClientsPage() {
           {pagination}
         </>
       )}
+
+      {/* ── Bookmark reason modal ─────────────────────── */}
+      <VdfModal
+        isOpen={!!bookmarkTarget}
+        onClose={handleBookmarkModalClose}
+        title="Bookmark Client"
+        subtitle={bookmarkTarget ? `Select a reason for bookmarking ${bookmarkTarget.prefix} ${bookmarkTarget.name}` : undefined}
+        width="sm"
+        footer={
+          <>
+            <VdfButton variant="ghost" size="sm" onClick={handleBookmarkModalClose}>
+              Cancel
+            </VdfButton>
+            <VdfButton
+              variant="primary"
+              size="sm"
+              onClick={handleBookmarkSave}
+              disabled={bookmarkingId !== null || (!selectedReasonId && !customReason.trim())}
+            >
+              {bookmarkingId !== null ? 'Saving…' : 'Save Bookmark'}
+            </VdfButton>
+          </>
+        }
+      >
+        <div className={s.reasonGrid}>
+          {bookmarkReasons.map(reason => (
+            <button
+              key={reason.id}
+              className={`${s.reasonPill} ${selectedReasonId === reason.id ? s.reasonPillActive : ''}`}
+              onClick={() => {
+                setSelectedReasonId(reason.id === selectedReasonId ? null : reason.id);
+                setCustomReason('');
+              }}
+            >
+              {reason.reason_label}
+            </button>
+          ))}
+        </div>
+
+        {/* Custom reason — shown when OTHER is selected or no reason chosen */}
+        {(selectedReasonId === null || bookmarkReasons.find(r => r.id === selectedReasonId)?.reason_code === 'OTHER') && (
+          <div className={s.customReasonWrap}>
+            <label className={s.customReasonLabel}>
+              {selectedReasonId ? 'Add a note (optional)' : 'Or enter a custom reason'}
+            </label>
+            <textarea
+              className={s.customReasonInput}
+              value={customReason}
+              onChange={e => setCustomReason(e.target.value)}
+              placeholder="e.g. Referred by branch manager…"
+              rows={2}
+              maxLength={200}
+            />
+          </div>
+        )}
+      </VdfModal>
     </div>
   );
 }
