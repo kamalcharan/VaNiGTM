@@ -87,6 +87,13 @@ export async function convert_to_client(
     );
     const snapshot = snapRes.rows[0] ?? null;
 
+    // Fetch tenant default risk profile for fallback
+    const tenantProfileRes = await tx.query<{ default_risk_profile: string | null }>(
+      `SELECT default_risk_profile FROM vn_tenant_profiles WHERE tenant_id = $tenant_id`,
+      { $tenant_id: ctx.tenant_id }
+    );
+    const tenantDefaultRisk = tenantProfileRes.rows[0]?.default_risk_profile ?? null;
+
     // Fetch goals from new ki_snapshot_goals (or fall back to legacy goals_lite)
     let goalsFromSnapshot: Array<{ name: string; target_amount: number; timeline_years: number; goal_type: string; snapshot_goal_id: number }> = [];
     if (snapshot?.id) {
@@ -158,7 +165,7 @@ export async function convert_to_client(
         $ext_ref_id:      ext_ref_id ?? null,
         $family_id:       resolvedFamilyId,
         $is_family_head:  is_family_head,
-        $risk_profile:    snapshot?.risk_profile ?? null,
+        $risk_profile:    snapshot?.risk_profile ?? tenantDefaultRisk,
         $referred_by_name: referred_by_name ?? null,
         $created_by:      ctx.user_id,
       }

@@ -355,7 +355,17 @@ export function createAuthRouter(pool: Pool): Router {
         preferencesMerge = { ...(preferencesMerge || {}), theme_override: body.theme_override };
       }
 
-      if (Object.keys(updates).length === 0 && !preferencesMerge) {
+      // Tenant-level settings → vn_tenant_profiles
+      const VALID_RISK_PROFILES = ['conservative', 'moderate', 'aggressive'];
+      let tenantProfileUpdates: Record<string, unknown> | null = null;
+      if (body.default_risk_profile !== undefined) {
+        const rp = String(body.default_risk_profile).toLowerCase().trim();
+        if (VALID_RISK_PROFILES.includes(rp)) {
+          tenantProfileUpdates = { ...(tenantProfileUpdates || {}), default_risk_profile: rp };
+        }
+      }
+
+      if (Object.keys(updates).length === 0 && !preferencesMerge && !tenantProfileUpdates) {
         res.status(400).json({ error: { code: 'NO_FIELDS', message: 'No valid fields to update' } });
         return;
       }
@@ -392,6 +402,24 @@ export function createAuthRouter(pool: Pool): Router {
             `UPDATE vn_users SET preferences = COALESCE(preferences, '{}'::jsonb) || $1::jsonb, updated_at = now()
              WHERE id = $2 AND tenant_id = $3`,
             [JSON.stringify(preferencesMerge), user_id, tenant_id],
+          );
+        }
+
+        // Update vn_tenant_profiles for tenant-level settings
+        if (tenantProfileUpdates) {
+          const setClauses: string[] = [];
+          const values: unknown[] = [];
+          let idx = 1;
+          for (const [col, val] of Object.entries(tenantProfileUpdates)) {
+            setClauses.push(`${col} = $${idx}`);
+            values.push(val);
+            idx++;
+          }
+          setClauses.push(`updated_at = now()`);
+          values.push(tenant_id);
+          await client.query(
+            `UPDATE vn_tenant_profiles SET ${setClauses.join(', ')} WHERE tenant_id = $${idx}`,
+            values,
           );
         }
 
@@ -512,7 +540,8 @@ export function createAuthRouter(pool: Pool): Router {
       // Tenant info
       const tenantResult = await pool.query(
         `SELECT t.id, t.slug, t.is_admin, t.ext_ref_type_code,
-                tp.name, tp.display_name, tp.theme_id, tp.logo_url
+                tp.name, tp.display_name, tp.theme_id, tp.logo_url,
+                tp.default_risk_profile
          FROM vn_tenants t
          JOIN vn_tenant_profiles tp ON tp.tenant_id = t.id
          WHERE t.id = $1`,
@@ -554,6 +583,7 @@ export function createAuthRouter(pool: Pool): Router {
           is_live: is_live !== false,  // default true if somehow missing from JWT
           is_admin: tenant.is_admin === true,
           ext_ref_type_code: tenant.ext_ref_type_code ?? null,
+          default_risk_profile: tenant.default_risk_profile ?? null,
         },
       });
     } catch (err: any) {
