@@ -217,7 +217,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
-  const { data: snapData, isLoading: snapLoading } = useSkillQuery<{ snapshot: Record<string, unknown> | null }>(
+  const { data: snapData, isLoading: snapLoading, isError: snapError, error: snapErrorObj } = useSkillQuery<{ snapshot: Record<string, unknown> | null }>(
     'contact-skill', 'get_snapshot_full', { contact_id: contactId }
   );
   const { data: assetTypesData } = useSkillQuery<{ asset_types: AssetType[] }>(
@@ -239,6 +239,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   useEffect(() => {
     if (!snap) return;
     setShowWizard(true);
+    if ((snap.version_number as number)) setSnapshotVersion(snap.version_number as number);
     if ((snap.status as string) === 'active') setShowSnapshot(true);
   }, [snap]);
 
@@ -442,6 +443,21 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   ];
 
   if (snapLoading) return <VdfLoader message="Loading snapshot…" />;
+
+  if (snapError) {
+    return (
+      <div className={s.emptyState}>
+        <div className={s.emptyIcon} style={{ color: 'var(--color-danger)' }}>
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5" width="48" height="48">
+            <circle cx="24" cy="24" r="18" />
+            <path d="M24 16v10M24 32h.01" />
+          </svg>
+        </div>
+        <h3 className={s.emptyTitle}>Could not load snapshot</h3>
+        <p className={s.emptyDesc}>{(snapErrorObj as Error)?.message || 'A database error occurred. Please run pending migrations and try again.'}</p>
+      </div>
+    );
+  }
 
   // ── Empty state — no snapshot yet, user hasn't chosen an action ───────────
 
@@ -770,8 +786,8 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
           <div className={s.snapMetaLeft}>
             <strong>SNAPSHOT v{snapshotVersion}</strong>
             <span className={s.snapSep}>/</span>
-            <span>captured {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-            {mfdFirstName && <><span className={s.snapSep}>/</span><span>by {mfdFirstName}</span></>}
+            <span>captured {snap?.submitted_at ? new Date(snap.submitted_at as string).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            {(snap?.created_by_name || mfdFirstName) && <><span className={s.snapSep}>/</span><span>by {(snap?.created_by_name as string) || mfdFirstName}</span></>}
           </div>
           <div className={s.snapMetaActions}>
             <button className={s.snapActionBtn} onClick={() => setShowSnapshot(false)}>
