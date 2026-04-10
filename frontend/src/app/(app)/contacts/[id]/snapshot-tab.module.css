@@ -2478,7 +2478,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .snapView {
-  padding: 0 24px 48px;
+  padding: 20px 24px 48px;
   animation: snapFadeIn 0.35s ease;
 }
 
@@ -2551,11 +2551,20 @@
 
 /* Net worth hero */
 .nwHero {
-  background: var(--glass, var(--color-surface));
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 16px;
-  padding: 32px 36px;
-  margin-bottom: 20px;
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+.nwMain {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
 }
 .nwLabel {
   font-size: 9px;
@@ -2563,24 +2572,28 @@
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--color-muted);
-  margin-bottom: 8px;
 }
 .nwValue {
   font-family: var(--font-display, 'Playfair Display', Georgia, serif);
-  font-size: clamp(44px, 6vw, 64px);
+  font-size: clamp(28px, 4vw, 40px);
   font-weight: 400;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   line-height: 1;
   color: var(--color-fg);
-  margin-bottom: 28px;
 }
 .nwNeg { color: var(--color-danger); }
+.nwDivider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
 .nwBreakdown {
   display: flex;
-  gap: 40px;
+  flex: 1;
+  justify-content: space-between;
+  gap: 12px;
   flex-wrap: wrap;
-  border-top: 1px solid var(--color-border);
-  padding-top: 20px;
 }
 .bkItem {
   display: flex;
@@ -2593,9 +2606,10 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-muted);
+  white-space: nowrap;
 }
 .bkValue {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--color-fg);
   letter-spacing: -0.01em;

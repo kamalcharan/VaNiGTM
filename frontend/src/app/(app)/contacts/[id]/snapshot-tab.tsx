@@ -823,10 +823,13 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
 
         {/* Net worth hero */}
         <div className={s.nwHero}>
-          <div className={s.nwLabel}>Net Worth</div>
-          <div className={`${s.nwValue} ${metrics.netWorth < 0 ? s.nwNeg : ''}`}>
-            {metrics.netWorth < 0 ? '−' : ''}{fmt(Math.abs(metrics.netWorth))}
+          <div className={s.nwMain}>
+            <div className={s.nwLabel}>Net Worth</div>
+            <div className={`${s.nwValue} ${metrics.netWorth < 0 ? s.nwNeg : ''}`}>
+              {metrics.netWorth < 0 ? '−' : ''}{fmt(Math.abs(metrics.netWorth))}
+            </div>
           </div>
+          <div className={s.nwDivider} />
           <div className={s.nwBreakdown}>
             <div className={s.bkItem}>
               <div className={s.bkLabel}>Total Assets</div>
