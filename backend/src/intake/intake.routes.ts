@@ -4,7 +4,7 @@
  * These endpoints are intentionally unauthenticated — they are accessed
  * by the contact/lead via a signed intake token URL. Auth is the token itself.
  *
- * POST /api/v1/intake/validate  — validate token, return pre-fill + brand data
+ * POST /api/v1/intake/validate  — validate token, return pre-fill + brand data (v2)
  * POST /api/v1/intake/submit    — submit filled snapshot (creates/updates contact)
  *
  * Security model:
@@ -26,9 +26,10 @@ const VALIDATE_SQL = fs.readFileSync(
 );
 
 const ASSET_TYPES_SQL = `
-  SELECT id, code, label, is_liquid_default
+  SELECT id, asset_type_code AS code, asset_type_name AS label, is_liquid_default
   FROM ki_asset_types
-  ORDER BY sort_order, label;
+  WHERE is_active = true
+  ORDER BY display_order, asset_type_name;
 `;
 
 const LIABILITY_TYPES_SQL = `
@@ -50,7 +51,22 @@ export function createIntakeRouter(pool: Pool): Router {
       return;
     }
 
-    const client = await pool.connect();
+    let client;
+    try {
+      client = await pool.connect();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Intake:validate] DB connect failed:', msg);
+      res.status(503).json({
+        error: {
+          code: 'DB_UNAVAILABLE',
+          message: 'Database connection failed',
+          ...(process.env.NODE_ENV !== 'production' && { detail: msg }),
+        },
+      });
+      return;
+    }
+
     try {
       // Look up token
       const { text, values } = translateParams(VALIDATE_SQL, { $token: token });
@@ -91,8 +107,15 @@ export function createIntakeRouter(pool: Pool): Router {
         liability_types: liabRes.rows,
       });
     } catch (err) {
-      console.error('[Intake:validate]', err);
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Validation failed' } });
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Intake:validate]', msg);
+      res.status(500).json({
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Validation failed',
+          ...(process.env.NODE_ENV !== 'production' && { detail: msg }),
+        },
+      });
     } finally {
       client.release();
     }
@@ -150,10 +173,11 @@ export function createIntakeRouter(pool: Pool): Router {
           return;
         }
 
-        // Insert contact
+        // Insert contact — prefix NOT NULL with CHECK; use 'Mr' as default for cold leads
+        // normalized_name is GENERATED ALWAYS AS — must not be in INSERT column list
         const contactInsert = await client.query(
-          `INSERT INTO ki_contacts (tenant_id, name, prefix, normalized_name, is_client, is_active, is_live)
-           VALUES ($1, $2, '', lower(unaccent($2)), false, true, false)
+          `INSERT INTO ki_contacts (tenant_id, name, prefix, is_client, is_active, is_live)
+           VALUES ($1, $2, 'Mr', false, true, false)
            RETURNING id`,
           [tenantId, nameVal]
         );
@@ -162,16 +186,16 @@ export function createIntakeRouter(pool: Pool): Router {
         // Insert channels
         if (mobileVal) {
           await client.query(
-            `INSERT INTO ki_channels (tenant_id, contact_id, channel_type, channel_value, channel_subtype, is_primary, is_active)
+            `INSERT INTO ki_contact_channels (tenant_id, contact_id, channel_type, channel_value, channel_subtype, is_primary, is_active)
              VALUES ($1, $2, 'mobile', $3, 'personal', true, true)`,
             [tenantId, contactId, mobileVal]
           );
         }
         if (emailVal) {
           await client.query(
-            `INSERT INTO ki_channels (tenant_id, contact_id, channel_type, channel_value, channel_subtype, is_primary, is_active)
-             VALUES ($1, $2, 'email', $3, 'personal', !$4, true)`,
-            [tenantId, contactId, emailVal, !!mobileVal]
+            `INSERT INTO ki_contact_channels (tenant_id, contact_id, channel_type, channel_value, channel_subtype, is_primary, is_active)
+             VALUES ($1, $2, 'email', $3, 'personal', $4, true)`,
+            [tenantId, contactId, emailVal, !mobileVal]
           );
         }
 
@@ -291,11 +315,14 @@ export function createIntakeRouter(pool: Pool): Router {
 
       const prot = protection as Record<string, unknown>;
       if (Object.values(prot).some(v => v)) {
+        const healthCoverType = String(prot.health_cover_type || '');
+        const validCoverTypes = ['individual', 'family_floater', 'employer', 'none'];
         await client.query(
           `INSERT INTO ki_snapshot_protection
              (snapshot_id, life_cover_amount, health_cover_amount, ci_cover_amount,
-              life_premium_annual, health_premium_annual, has_term_plan, has_health_cover, protection_ratio_pct)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+              life_premium_annual, health_premium_annual, has_term_plan, has_health_cover,
+              protection_ratio_pct, health_cover_type)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
           [snapshotId,
            Number(prot.life_cover_amount)   || null,
            Number(prot.health_cover_amount) || null,
@@ -304,7 +331,8 @@ export function createIntakeRouter(pool: Pool): Router {
            Number(prot.health_premium_annual) || null,
            Boolean(prot.has_term_plan),
            Boolean(prot.has_health_cover),
-           protectionRatioPct]
+           protectionRatioPct,
+           validCoverTypes.includes(healthCoverType) ? healthCoverType : null]
         );
       }
 
