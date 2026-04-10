@@ -10,10 +10,14 @@ import { SkillContext } from '../../../shared/types';
 const GET_CLIENTS_SQL   = fs.readFileSync(path.join(__dirname, '../queries/get-clients.sql'),   'utf-8');
 const COUNT_CLIENTS_SQL = fs.readFileSync(path.join(__dirname, '../queries/count-clients.sql'), 'utf-8');
 
-interface GetClientsParams {
+interface ClientFilters {
   search?: string;
   risk_profile?: string;
   bookmarked_only?: boolean;
+}
+
+interface GetClientsParams {
+  filters?: ClientFilters;
   limit?: number;
   offset?: number;
 }
@@ -28,6 +32,7 @@ export async function get_clients(
   params: GetClientsParams,
   ctx: SkillContext
 ): Promise<GetClientsResult> {
+  const filters = params.filters ?? {};
   const limit  = Math.min(params.limit  ?? 50, 200);
   const offset = params.offset ?? 0;
 
@@ -35,9 +40,9 @@ export async function get_clients(
     $tenant_id:      ctx.tenant_id,
     $is_live:        ctx.is_live,
     $user_id:        ctx.user_id,
-    $search:         params.search?.trim() || null,
-    $risk_profile:   params.risk_profile || null,
-    $bookmarked_only: params.bookmarked_only ?? null,
+    $search:         filters.search?.trim() ? `%${filters.search.trim()}%` : null,
+    $risk_profile:   filters.risk_profile || null,
+    $bookmarked_only: filters.bookmarked_only ?? null,
     $limit:          limit,
     $offset:         offset,
   };

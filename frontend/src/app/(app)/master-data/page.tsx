@@ -14,7 +14,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/context/auth-provider';
-import { VdfTabs, VdfLoader, VdfErrorScreen } from '@/components/vdf';
+import { VdfTabs, VdfLoader, VdfErrorScreen, VdfStatusBadge } from '@/components/vdf';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -62,6 +62,7 @@ interface AssetType {
   asset_type_name: string;
   category: string;
   default_assumption_rate: string | number;
+  is_liquid_default: boolean;
   display_order: number;
   is_active: boolean;
   description: string | null;
@@ -204,9 +205,11 @@ function TransactionTypesTab() {
                     <td><span className={s.mono}>{t.txn_code}</span></td>
                     <td>{t.txn_name}</td>
                     <td>
-                      <span className={`${s.typeBadge} ${t.txn_type === 'Addition' ? s.addition : s.deduction}`}>
-                        {t.txn_type === 'Addition' ? '+' : '−'} {t.txn_type}
-                      </span>
+                      <VdfStatusBadge
+                        label={`${t.txn_type === 'Addition' ? '+' : '−'} ${t.txn_type}`}
+                        variant={t.txn_type === 'Addition' ? 'success' : 'danger'}
+                        size="sm"
+                      />
                     </td>
                     <td style={{ color: 'var(--color-muted)', fontSize: '0.8rem', maxWidth: 280 }}>
                       {t.description ?? '—'}
@@ -257,6 +260,12 @@ function AssetTypesTab() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['master-data', 'asset-types'] }),
   });
 
+  const toggleLiquidMut = useMutation({
+    mutationFn: ({ id, is_liquid_default }: { id: number; is_liquid_default: boolean }) =>
+      apiFetch(API.masterData.updateAssetType, { pathParams: { id: String(id) }, body: { is_liquid_default } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['master-data', 'asset-types'] }),
+  });
+
   const updateMut = useMutation({
     mutationFn: ({ id, ...body }: { id: number; asset_type_name: string; description: string; default_assumption_rate: number }) =>
       apiFetch(API.masterData.updateAssetType, { pathParams: { id: String(id) }, body }),
@@ -299,6 +308,7 @@ function AssetTypesTab() {
                 <th>Name</th>
                 <th>Category</th>
                 <th>Default Rate</th>
+                <th>Liquid</th>
                 <th>Description</th>
                 <th>Active</th>
                 <th></th>
@@ -308,7 +318,7 @@ function AssetTypesTab() {
               {rows.map((a) => (
                 editId === a.id ? (
                   <tr key={a.id} className={s.editRow}>
-                    <td colSpan={7}>
+                    <td colSpan={8}>
                       <div className={s.editForm}>
                         <input
                           className={s.editInput}
@@ -356,6 +366,16 @@ function AssetTypesTab() {
                     <td>{a.asset_type_name}</td>
                     <td><span className={s.categoryTag}>{a.category?.replace('_', ' ')}</span></td>
                     <td><span className={s.rate}>{Number(a.default_assumption_rate).toFixed(2)}%</span></td>
+                    <td>
+                      <label className={s.toggle}>
+                        <input
+                          type="checkbox"
+                          checked={a.is_liquid_default}
+                          onChange={() => toggleLiquidMut.mutate({ id: a.id, is_liquid_default: !a.is_liquid_default })}
+                        />
+                        <span className={s.toggleSlider} />
+                      </label>
+                    </td>
                     <td style={{ color: 'var(--color-muted)', fontSize: '0.8rem', maxWidth: 240 }}>
                       {a.description ?? '—'}
                     </td>
@@ -706,9 +726,10 @@ function JobSchedulerTab() {
                       )}
                     </td>
                     <td>
-                      <span className={j.is_global ? s.globalBadge : s.mono} style={j.is_global ? {} : { fontSize: '0.75rem' }}>
-                        {j.is_global ? 'Global' : 'Per-Tenant'}
-                      </span>
+                      {j.is_global
+                        ? <VdfStatusBadge label="Global" variant="info" size="sm" />
+                        : <span className={s.mono} style={{ fontSize: '0.75rem' }}>Per-Tenant</span>
+                      }
                     </td>
                     <td>
                       <span className={s.cronBadge}>

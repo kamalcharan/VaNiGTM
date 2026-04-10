@@ -171,7 +171,7 @@ export async function import_investwell(
   const content = fs.readFileSync(file_path, 'utf-8');
   const lines = content.split(/\r?\n/).filter((l) => l.trim().length > 0);
 
-  if (lines.length < 2) {
+  if (lines.length === 0) {
     return {
       imported_count: 0,
       skipped_count: 0,
@@ -190,6 +190,18 @@ export async function import_investwell(
       imported_count: 0,
       skipped_count: 0,
       errors: [{ row: 1, reason: 'Unrecognised InvestWell CSV format — headers do not match any known format' }],
+      client_id: params.client_id ?? 0,
+      holdings_summary: { schemes: 0, total_value: 0 },
+      recipe: 'data-table',
+    };
+  }
+
+  if (lines.length < 2) {
+    // Valid headers but no data rows — empty import is not an error
+    return {
+      imported_count: 0,
+      skipped_count: 0,
+      errors: [],
       client_id: params.client_id ?? 0,
       holdings_summary: { schemes: 0, total_value: 0 },
       recipe: 'data-table',

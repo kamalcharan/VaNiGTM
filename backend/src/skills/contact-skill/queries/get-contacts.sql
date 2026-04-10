@@ -13,7 +13,7 @@ SELECT
 
     -- Snapshot completeness flag (for readiness ring)
     EXISTS(
-        SELECT 1 FROM ki_contact_snapshot s
+        SELECT 1 FROM ki_contact_snapshots s
         WHERE s.contact_id = c.id AND s.is_live = c.is_live
     ) AS has_snapshot,
 

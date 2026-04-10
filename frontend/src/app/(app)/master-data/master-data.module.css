@@ -108,7 +108,7 @@
 }
 
 .table tbody tr:hover {
-  background: rgba(255,255,255,0.03);
+  background: color-mix(in srgb, var(--color-muted) 4%, transparent);
 }
 
 .mono {
@@ -117,26 +117,6 @@
   color: var(--color-muted);
 }
 
-.typeBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-.typeBadge.addition {
-  background: rgba(var(--color-success-rgb, 74,222,128), 0.15);
-  color: var(--color-success);
-}
-
-.typeBadge.deduction {
-  background: rgba(var(--color-danger-rgb, 239,68,68), 0.15);
-  color: var(--color-danger);
-}
 
 .categoryTag {
   font-size: 0.75rem;
@@ -155,7 +135,7 @@
 /* ── Inline edit form ─────────────────────────────────────────────────── */
 
 .editRow td {
-  background: rgba(var(--color-primary-rgb, 111,97,239), 0.05);
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
   padding: 16px;
 }
 
@@ -283,7 +263,7 @@
 }
 
 .rowAction:hover {
-  background: rgba(var(--color-primary-rgb, 111,97,239), 0.1);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
 /* ── Add reason form ─────────────────────────────────────────────────── */
@@ -324,15 +304,6 @@
   display: inline-block;
 }
 
-.globalBadge {
-  font-size: 0.68rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 12px;
-  background: rgba(var(--color-info-rgb, 59,130,246), 0.15);
-  color: var(--color-info, #3b82f6);
-  letter-spacing: 0.04em;
-}
 
 .execStats {
   font-size: 0.75rem;

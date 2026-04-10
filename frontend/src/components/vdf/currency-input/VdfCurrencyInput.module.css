@@ -1,0 +1,137 @@
+/* ═══════════════════════════════════════════════════════
+   VdfCurrencyInput — currency-prefixed number input
+   All sizing via --input-* design tokens from ThemeScript.
+   All colours via --color-* CSS variables.
+   ═══════════════════════════════════════════════════════ */
+
+/* Compose shared form tokens */
+.label {
+  composes: label from '../../../styles/forms.module.css';
+}
+
+.error {
+  composes: error from '../../../styles/forms.module.css';
+}
+
+.group {
+  composes: group from '../../../styles/forms.module.css';
+}
+
+/* ── Input row ───────────────────────────────────────── */
+
+.wrap {
+  display: flex;
+  align-items: center;
+  height: var(--input-height);
+  border: var(--input-border-width) solid var(--color-border);
+  border-radius: var(--input-radius);
+  background: var(--color-bg);
+  transition: border-color 200ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.wrap:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 var(--input-focus-ring-size)
+    color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity), transparent);
+}
+
+.hasError {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 var(--input-focus-ring-size)
+    color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+.hasError:focus-within {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 var(--input-focus-ring-size)
+    color-mix(in srgb, var(--color-danger) var(--input-focus-ring-opacity), transparent);
+}
+
+.isDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Currency symbol ─────────────────────────────────── */
+
+.symbol {
+  flex-shrink: 0;
+  padding: 0 10px 0 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  letter-spacing: -0.01em;
+  user-select: none;
+}
+
+/* ── Number input ────────────────────────────────────── */
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--color-fg);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: var(--input-font-size);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* Hide browser spinners */
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+.input::placeholder {
+  color: var(--color-muted);
+  opacity: var(--input-placeholder-opacity);
+  font-weight: 400;
+}
+
+.input:focus::placeholder {
+  opacity: 0;
+}
+
+.input:disabled {
+  cursor: not-allowed;
+}
+
+/* Compact mode — narrower for dense grid layouts */
+.compact {
+  font-size: 0.85rem;
+}
+
+/* ── Suffix ──────────────────────────────────────────── */
+
+.suffix {
+  flex-shrink: 0;
+  padding: 0 12px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  user-select: none;
+  border-left: 1px solid var(--color-border);
+}
+
+/* ── Hint ────────────────────────────────────────────── */
+
+.hint {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  margin-top: 4px;
+}

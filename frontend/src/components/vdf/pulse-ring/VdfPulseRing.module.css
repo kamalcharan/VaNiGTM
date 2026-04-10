@@ -1,0 +1,48 @@
+/* ═══════════════════════════════════════════════════════
+   VdfPulseRing — SVG arc ring for percentile / score display
+   All colours via --color-* CSS variables (theme-compliant).
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Container ───────────────────────────────────────── */
+
+.ring {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+/* ── SVG circles ─────────────────────────────────────── */
+
+.track {
+  fill: none;
+  stroke: var(--color-border);
+}
+
+.fill {
+  fill: none;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Tone variants ───────────────────────────────────── */
+
+.tone_primary  { stroke: var(--color-primary); }
+.tone_success  { stroke: var(--color-success); }
+.tone_warning  { stroke: var(--color-warning); }
+.tone_danger   { stroke: var(--color-danger); }
+
+/* ── Center label ────────────────────────────────────── */
+
+.label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  pointer-events: none;
+}

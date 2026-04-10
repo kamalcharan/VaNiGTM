@@ -80,7 +80,7 @@ describe('parseSkillMd', () => {
 describe('discoverSkillDirs', () => {
   it('finds all skill directories', () => {
     const dirs = discoverSkillDirs(SKILLS_ROOT);
-    expect(dirs.length).toBe(8);
+    expect(dirs.length).toBe(11);
     const names = dirs.map((d) => path.basename(d));
     expect(names).toContain('portfolio-skill');
     expect(names).toContain('client-skill');
@@ -90,6 +90,9 @@ describe('discoverSkillDirs', () => {
     expect(names).toContain('comms-skill');
     expect(names).toContain('import-skill');
     expect(names).toContain('report-skill');
+    expect(names).toContain('contact-skill');
+    expect(names).toContain('etl-skill');
+    expect(names).toContain('transaction-skill');
   });
 
   it('returns empty array for non-existent directory', () => {
@@ -99,9 +102,9 @@ describe('discoverSkillDirs', () => {
 });
 
 describe('loadAllSkills', () => {
-  it('loads all 8 KI-Prime skills', () => {
+  it('loads all 11 KI-Prime skills', () => {
     const skills = loadAllSkills(SKILLS_ROOT);
-    expect(skills.length).toBe(8);
+    expect(skills.length).toBe(11);
   });
 
   it('every skill has at least one function', () => {

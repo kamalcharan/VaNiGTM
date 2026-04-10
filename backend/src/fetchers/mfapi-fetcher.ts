@@ -73,7 +73,7 @@ export async function fetchMfapiHistory(
         throw new Error(`MFAPI ${res.status}: ${res.statusText}`);
       }
 
-      const json = await res.json();
+      const json = await res.json() as { status: string; data: Array<{ nav: string; date: string }> };
       if (json.status !== 'SUCCESS' || !Array.isArray(json.data)) {
         return [];
       }

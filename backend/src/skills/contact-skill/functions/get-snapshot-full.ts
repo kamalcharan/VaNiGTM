@@ -3,6 +3,7 @@
  *
  * Returns the complete active (or draft) snapshot for a contact,
  * including all child rows from the versioned snapshot system.
+ * [2026-04-10: get-snapshot-header.sql uses u.name not u.full_name]
  *
  * Returns null if no snapshot exists yet for this contact.
  */
@@ -74,7 +75,7 @@ export async function get_snapshot_full(
     ctx.db.query(
       `SELECT life_cover_amount, life_premium_annual, health_cover_amount,
               health_premium_annual, ci_cover_amount, protection_ratio,
-              has_term_plan, has_health_cover, notes
+              has_term_plan, has_health_cover, health_cover_type, notes
        FROM ki_snapshot_protection WHERE snapshot_id = $snapshot_id`,
       snapParam
     ),
