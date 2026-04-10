@@ -800,6 +800,18 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
             {(snap?.created_by_name || mfdFirstName) && <><span className={s.snapSep}>/</span><span>by {(snap?.created_by_name as string) || mfdFirstName}</span></>}
           </div>
           <div className={s.snapMetaActions}>
+            <button className={s.snapMetaBtn} title="Full view">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+              Full view
+            </button>
+            <button className={s.snapMetaBtn} title="Share snapshot">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              Share
+            </button>
+            <button className={s.snapMetaBtnPrimary} onClick={() => setShowSnapshot(false)}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Update
+            </button>
             {!isClient && (
               <button className={s.snapConvertBtn} onClick={() => router.push(`/contacts/${contactId}/convert`)}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -811,16 +823,18 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
 
         {/* Net worth hero */}
         <div className={s.nwHero}>
-          <div className={s.nwLabel}>Net worth</div>
-          <div className={`${s.nwValue} ${metrics.netWorth < 0 ? s.nwNeg : ''}`}>{fmt(Math.abs(metrics.netWorth))}</div>
+          <div className={s.nwLabel}>Net Worth</div>
+          <div className={`${s.nwValue} ${metrics.netWorth < 0 ? s.nwNeg : ''}`}>
+            {metrics.netWorth < 0 ? '−' : ''}{fmt(Math.abs(metrics.netWorth))}
+          </div>
           <div className={s.nwBreakdown}>
             <div className={s.bkItem}>
               <div className={s.bkLabel}>Total Assets</div>
-              <div className={`${s.bkValue} ${s.bkPlus}`}>+ {fmt(metrics.totalAssets)}</div>
+              <div className={`${s.bkValue} ${s.bkPlus}`}>+{fmt(metrics.totalAssets)}</div>
             </div>
             <div className={s.bkItem}>
               <div className={s.bkLabel}>Liabilities</div>
-              <div className={`${s.bkValue} ${s.bkMinus}`}>− {fmt(metrics.totalLiabs)}</div>
+              <div className={`${s.bkValue} ${s.bkMinus}`}>−{fmt(metrics.totalLiabs)}</div>
             </div>
             <div className={s.bkItem}>
               <div className={s.bkLabel}>Monthly Savings</div>
@@ -1060,7 +1074,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
             <div className={s.actionCardsHead}>
               <div className={s.actionHeadAvatar}>V</div>
               <div>
-                <div className={s.actionHeadTitle}>VaNi's talking brief</div>
+                <div className={s.actionHeadTitle}>Vani's talking brief</div>
                 <div className={s.actionHeadSub}>{actionCards.length} action point{actionCards.length > 1 ? 's' : ''} for your next call</div>
               </div>
             </div>
