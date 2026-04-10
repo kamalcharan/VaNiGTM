@@ -8,7 +8,7 @@ import { InlineLoader } from '../loader';
 import l from './step-layout.module.css';
 
 interface Props {
-  onComplete: () => void;
+  onComplete: (data?: Record<string, unknown>) => void;
   onSkip?: () => void;
 }
 
@@ -43,7 +43,12 @@ export default function OnboardPreferences({ onComplete, onSkip }: Props) {
       }
 
       showToast({ message: 'Preferences saved', type: 'success' });
-      onComplete();
+      onComplete({
+        default_risk_profile: riskProfile,
+        preferred_investment_horizon: horizon,
+        sip_default_day: Number(sipDay),
+        default_sip_frequency: sipFrequency,
+      });
     } catch (err) {
       showToast({ message: err instanceof Error ? err.message : 'Save failed', type: 'error' });
     } finally {

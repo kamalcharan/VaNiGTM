@@ -4,7 +4,7 @@ import l from './step-layout.module.css';
 import s from './OnboardImport.module.css';
 
 interface Props {
-  onComplete: () => void;
+  onComplete: (data?: Record<string, unknown>) => void;
   onSkip?: () => void;
 }
 
@@ -48,7 +48,7 @@ export default function OnboardImport({ onComplete, onSkip }: Props) {
             <span className={s.comingSoon}>Coming soon</span>
           </div>
 
-          <div className={s.card} onClick={onComplete}>
+          <div className={s.card} onClick={() => onComplete({ import_method: 'fresh' })}>
             <span className={s.cardIcon}>&#x1F4CA;</span>
             <div className={s.cardTitle}>Start Fresh</div>
             <div className={s.cardDesc}>
@@ -63,7 +63,7 @@ export default function OnboardImport({ onComplete, onSkip }: Props) {
             <button className={l.navSkip} onClick={onSkip}>
               Skip — I&apos;ll import later
             </button>
-            <button className={l.navNext} onClick={onComplete}>
+            <button className={l.navNext} onClick={() => onComplete({ import_method: 'skip' })}>
               FINISH SETUP &rarr;
             </button>
           </div>
