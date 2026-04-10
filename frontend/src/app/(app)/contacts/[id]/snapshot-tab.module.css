@@ -3197,6 +3197,129 @@
   padding: 4px 0;
 }
 
+/* Cash flow savings-rate strip */
+.dataSummaryBar {
+  display: flex;
+  gap: 0;
+  margin-top: 14px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+.dataSummaryItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 6px;
+  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
+}
+.dataSummaryItem + .dataSummaryItem {
+  border-left: 1px solid var(--color-border);
+}
+.dataSummaryLabel {
+  font-size: 8px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.dataSummaryVal {
+  font-size: 13px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Liquid / Illiquid split bar */
+.dataLiqBar {
+  margin-top: 12px;
+  height: 5px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-warning) 22%, transparent);
+  overflow: hidden;
+  position: relative;
+}
+.dataLiqFill {
+  position: absolute;
+  left: 0; top: 0;
+  height: 100%;
+  background: var(--color-success);
+  border-radius: 3px 0 0 3px;
+  transition: width 0.4s ease;
+}
+.dataLiqLabel {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 600;
+}
+
+/* Protection coverage ratio badge */
+.dataProtBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+  border-radius: 8px;
+}
+.dataProtOk {
+  font-size: 20px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  color: var(--color-success);
+  line-height: 1;
+}
+.dataProtWarn {
+  font-size: 20px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  color: var(--color-warning);
+  line-height: 1;
+}
+.dataProtBad {
+  font-size: 20px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  color: var(--color-danger);
+  line-height: 1;
+}
+.dataProtNote {
+  font-size: 10px;
+  color: var(--color-muted);
+  line-height: 1.4;
+  flex: 1;
+}
+
+/* Risk profile coloured tag */
+.dataRiskTag {
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 2px 8px;
+  border-radius: 5px;
+}
+.dataRiskCons {
+  background: color-mix(in srgb, var(--color-info) 15%, transparent);
+  color: var(--color-info);
+}
+.dataRiskMod {
+  background: color-mix(in srgb, var(--color-warning) 15%, transparent);
+  color: var(--color-warning);
+}
+.dataRiskAgg {
+  background: color-mix(in srgb, var(--color-danger) 15%, transparent);
+  color: var(--color-danger);
+}
+
 /* ── Bottom edit bar ─────────────────────────────────────────────────────── */
 .snapEditBar {
   display: flex;

@@ -803,10 +803,6 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
             {(snap?.created_by_name || mfdFirstName) && <><span className={s.snapSep}>/</span><span>by {(snap?.created_by_name as string) || mfdFirstName}</span></>}
           </div>
           <div className={s.snapMetaActions}>
-            <button className={s.snapMetaBtn} title="Full view">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-              Full view
-            </button>
             <button className={s.snapMetaBtn} title="Share snapshot">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
               Share
@@ -961,19 +957,17 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
         </div>
 
         {/* Captured data summary */}
-        <div className={s.snapSectionBlock}>
-          <div className={s.snapSectionHead}>
-            <span className={s.snapSectionLabel}>Captured Data</span>
-            <button className={s.snapSectionEditLink} onClick={() => setShowSnapshot(false)}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              Edit
-            </button>
+        <div className={s.snapCard} style={{ marginBottom: 16 }}>
+          <div className={s.snapCardTitle}>Captured data</div>
+          <div className={s.snapCardSub}>
+            Full financial picture ·{' '}
+            <button className={s.snapInlineEdit} onClick={() => setShowSnapshot(false)}>Edit</button>
           </div>
           <div className={s.dataGrid}>
 
             {/* Cash flow column */}
             <div className={s.dataCol}>
-              <div className={s.dataColHead}>Cash Flow</div>
+              <div className={s.dataColHead}>Income</div>
               {(['salary', 'partner', 'rental_other'] as const).map(src => Number(income[src]) > 0 && (
                 <div key={src} className={s.dataRow}>
                   <span className={s.dataRowLabel}>{src === 'salary' ? 'Salary' : src === 'partner' ? 'Partner' : 'Rental / Other'}</span>
@@ -990,9 +984,33 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
                 </div>
               ))}
               {metrics.monthlyExpenses === 0 && <div className={s.dataEmpty}>No expenses entered</div>}
+
+              {/* Savings rate stat strip */}
+              {metrics.monthlyIncome > 0 && (
+                <div className={s.dataSummaryBar}>
+                  <div className={s.dataSummaryItem}>
+                    <span className={s.dataSummaryLabel}>Income</span>
+                    <span className={s.dataSummaryVal} style={{ color: 'var(--color-success)' }}>{fmt(metrics.monthlyIncome)}</span>
+                  </div>
+                  {metrics.monthlySavings !== 0 && (
+                    <div className={s.dataSummaryItem}>
+                      <span className={s.dataSummaryLabel}>Savings</span>
+                      <span className={s.dataSummaryVal} style={{ color: metrics.savingsRate !== null && metrics.savingsRate >= 20 ? 'var(--color-success)' : metrics.savingsRate !== null && metrics.savingsRate >= 10 ? 'var(--color-warning)' : 'var(--color-danger)' }}>
+                        {metrics.savingsRate !== null ? `${metrics.savingsRate.toFixed(0)}%` : '—'}
+                      </span>
+                    </div>
+                  )}
+                  {metrics.totalEmi > 0 && (
+                    <div className={s.dataSummaryItem}>
+                      <span className={s.dataSummaryLabel}>EMI/mo</span>
+                      <span className={s.dataSummaryVal} style={{ color: 'var(--color-warning)' }}>{fmt(metrics.totalEmi)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Assets column */}
+            {/* Assets + Liabilities column */}
             <div className={s.dataCol}>
               <div className={s.dataColHead}>Assets</div>
               {assets.filter(a => Number(a.current_value) > 0).map((a, i) => {
@@ -1005,6 +1023,20 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
                 );
               })}
               {assets.filter(a => Number(a.current_value) > 0).length === 0 && <div className={s.dataEmpty}>No assets entered</div>}
+
+              {/* Liquid / Illiquid split bar */}
+              {metrics.totalAssets > 0 && (
+                <>
+                  <div className={s.dataLiqBar}>
+                    <div className={s.dataLiqFill} style={{ width: `${Math.min((metrics.liquidAssets / metrics.totalAssets) * 100, 100)}%` }} />
+                  </div>
+                  <div className={s.dataLiqLabel}>
+                    <span style={{ color: 'var(--color-success)' }}>Liquid {((metrics.liquidAssets / metrics.totalAssets) * 100).toFixed(0)}%</span>
+                    <span style={{ color: 'var(--color-muted)' }}>Illiquid {(((metrics.totalAssets - metrics.liquidAssets) / metrics.totalAssets) * 100).toFixed(0)}%</span>
+                  </div>
+                </>
+              )}
+
               <div className={s.dataRowDivider} />
               <div className={s.dataColHead} style={{ marginTop: 8 }}>Liabilities</div>
               {liabs.filter(l => l.liability_type_id && Number(l.outstanding_amount) > 0).map((l, i) => {
@@ -1019,7 +1051,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
               {liabs.filter(l => l.liability_type_id && Number(l.outstanding_amount) > 0).length === 0 && <div className={s.dataEmpty}>No liabilities entered</div>}
             </div>
 
-            {/* Protection column */}
+            {/* Protection + Risk column */}
             <div className={s.dataCol}>
               <div className={s.dataColHead}>Protection</div>
               {Number(protection.life_cover_amount) > 0 && (
@@ -1058,13 +1090,30 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
               {!Number(protection.life_cover_amount) && !Number(protection.health_cover_amount) && !Number(protection.ci_cover_amount) && (
                 <div className={s.dataEmpty}>No protection entered</div>
               )}
+
+              {/* Protection coverage ratio badge */}
+              {protRatio !== null && (
+                <div className={s.dataProtBadge}>
+                  <span className={protRatio >= 10 ? s.dataProtOk : protRatio >= 5 ? s.dataProtWarn : s.dataProtBad}>
+                    {protRatio.toFixed(1)}×
+                  </span>
+                  <span className={s.dataProtNote}>life cover vs annual income</span>
+                </div>
+              )}
+
               {snap?.risk_profile && (
                 <>
                   <div className={s.dataRowDivider} />
                   <div className={s.dataColHead} style={{ marginTop: 8 }}>Risk Profile</div>
                   <div className={s.dataRow}>
                     <span className={s.dataRowLabel}>Appetite</span>
-                    <span className={s.dataRowVal} style={{ textTransform: 'capitalize' }}>{String(snap.risk_profile)}</span>
+                    <span className={`${s.dataRiskTag} ${
+                      String(snap.risk_profile) === 'conservative' ? s.dataRiskCons :
+                      String(snap.risk_profile) === 'moderate'     ? s.dataRiskMod  :
+                      s.dataRiskAgg
+                    }`}>
+                      {String(snap.risk_profile)}
+                    </span>
                   </div>
                 </>
               )}
