@@ -14,7 +14,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/context/auth-provider';
-import { VdfTabs, VdfLoader, VdfErrorScreen } from '@/components/vdf';
+import { VdfTabs, VdfLoader, VdfErrorScreen, VdfStatusBadge } from '@/components/vdf';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -205,9 +205,11 @@ function TransactionTypesTab() {
                     <td><span className={s.mono}>{t.txn_code}</span></td>
                     <td>{t.txn_name}</td>
                     <td>
-                      <span className={`${s.typeBadge} ${t.txn_type === 'Addition' ? s.addition : s.deduction}`}>
-                        {t.txn_type === 'Addition' ? '+' : '−'} {t.txn_type}
-                      </span>
+                      <VdfStatusBadge
+                        label={`${t.txn_type === 'Addition' ? '+' : '−'} ${t.txn_type}`}
+                        variant={t.txn_type === 'Addition' ? 'success' : 'danger'}
+                        size="sm"
+                      />
                     </td>
                     <td style={{ color: 'var(--color-muted)', fontSize: '0.8rem', maxWidth: 280 }}>
                       {t.description ?? '—'}
@@ -724,9 +726,10 @@ function JobSchedulerTab() {
                       )}
                     </td>
                     <td>
-                      <span className={j.is_global ? s.globalBadge : s.mono} style={j.is_global ? {} : { fontSize: '0.75rem' }}>
-                        {j.is_global ? 'Global' : 'Per-Tenant'}
-                      </span>
+                      {j.is_global
+                        ? <VdfStatusBadge label="Global" variant="info" size="sm" />
+                        : <span className={s.mono} style={{ fontSize: '0.75rem' }}>Per-Tenant</span>
+                      }
                     </td>
                     <td>
                       <span className={s.cronBadge}>

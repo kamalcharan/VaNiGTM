@@ -117,7 +117,7 @@
     var(--color-accent),
     color-mix(in srgb, var(--color-accent) 60%, black)
   );
-  color: #fff;
+  color: var(--color-bg);
   display: grid;
   place-items: center;
   font-weight: 500;
@@ -211,7 +211,7 @@
 .inheritedCheckmark {
   width: 18px; height: 18px;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -304,7 +304,7 @@
   font-size: 14px;
   color: var(--color-fg);
   flex-shrink: 0;
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.15);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-border) 60%, transparent);
 }
 
 .vaniContent { flex: 1; }
@@ -323,7 +323,7 @@
   font-family: 'Fraunces', 'Playfair Display', Georgia, serif;
   font-size: 13px;
   font-style: italic;
-  color: rgba(255,255,255,0.92);
+  color: var(--color-fg);
   line-height: 1.45;
 }
 
@@ -370,7 +370,7 @@
   font-size: 13px;
   font-weight: 600;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
   border: none;
   cursor: pointer;
   box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 30%, transparent);
@@ -734,7 +734,7 @@
   width: 16px;
   height: 16px;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -1364,7 +1364,7 @@
   height: 36px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 60%, black));
-  color: #fff;
+  color: var(--color-bg);
   display: grid;
   place-items: center;
   font-size: 13px;
@@ -1455,7 +1455,7 @@
 /* Done state */
 .stepDone .stepBullet {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
 }
 .stepDone .stepLabel {
   color: var(--color-primary);
@@ -1604,7 +1604,7 @@
   padding: 0 22px;
   border-radius: 8px;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
   border: none;
   font-size: 13px;
   font-weight: 700;
@@ -1995,7 +1995,7 @@
 
 .vaniCopilotMarker {
   font-size: 10px;
-  color: #e88b7b; /* coral — fixed, always visible on dark bg */
+  color: var(--color-danger);
   font-weight: 700;
   letter-spacing: 0.1em;
   flex-shrink: 0;
@@ -2007,17 +2007,17 @@
   flex: 1;
   font-size: 11.5px;
   line-height: 1.65;
-  color: rgba(255, 255, 255, 0.88);
+  color: inherit;
   font-weight: 500;
   letter-spacing: 0.01em;
 }
 
 /* Semantic color spans inside VaNi text */
-.vaniHi  { color: #fff; font-weight: 700; }
-.vaniOk  { color: #7bc598; }
-.vaniWarn{ color: #e8b15c; }
-.vaniBad { color: #e88b7b; }
-.vaniSep { color: rgba(255,255,255,0.3); margin: 0 2px; }
+.vaniHi  { color: var(--color-fg); font-weight: 700; }
+.vaniOk  { color: var(--color-success); }
+.vaniWarn{ color: var(--color-warning); }
+.vaniBad { color: var(--color-danger); }
+.vaniSep { color: color-mix(in srgb, var(--color-fg) 30%, transparent); margin: 0 2px; }
 
 @media (max-width: 900px) {
   /* Stack sidebar below form on tablets */
@@ -2470,7 +2470,7 @@
 .submitDone .submitTick {
   background: var(--color-success);
   border-color: var(--color-success);
-  color: #fff;
+  color: var(--color-bg);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2540,7 +2540,7 @@
   border-radius: 6px;
   border: none;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
   font-size: 11px;
   font-family: inherit;
   font-weight: 600;
@@ -2809,7 +2809,7 @@
   height: 36px;
   border-radius: 50%;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-bg);
   display: grid;
   place-items: center;
   font-size: 15px;
@@ -2964,7 +2964,7 @@
   border-radius: 7px;
   border: none;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
   font-size: 12px;
   font-family: inherit;
   font-weight: 600;
@@ -3344,5 +3344,5 @@
 }
 .snapEditBtn:hover {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
 }
