@@ -837,3 +837,287 @@
   transition: all 0.2s;
 }
 .ghostBtn:hover { border-color: var(--color-muted); color: var(--color-fg); }
+
+/* ── Desktop 2-column layout ─────────────────────────────────────────────── */
+
+@media (min-width: 768px) {
+  .page {
+    max-width: none;
+    margin: 0;
+    padding-bottom: 0;
+  }
+
+  .header {
+    padding: 20px 48px 14px;
+    max-width: none;
+  }
+
+  .progressBar {
+    position: static; /* not sticky on desktop — scrolls with page */
+  }
+}
+
+.wizardLayout {
+  display: flex;
+  flex-direction: column; /* mobile: single col */
+}
+
+@media (min-width: 768px) {
+  .wizardLayout {
+    display: grid;
+    grid-template-columns: 1fr 296px;
+    align-items: start;
+    min-height: calc(100dvh - 64px);
+  }
+}
+
+.formCol {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .formCol {
+    padding: 0 52px 48px;
+    min-height: calc(100dvh - 64px);
+  }
+
+  .stepIndicator {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .stepBody {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* navBar: static on desktop (not fixed) */
+  .navBar {
+    position: static;
+    transform: none;
+    left: auto;
+    max-width: none;
+    width: 100%;
+    background: transparent;
+    border-top: 1px solid var(--color-border, rgba(0,0,0,0.08));
+    padding: 20px 0 0;
+    margin-top: auto;
+  }
+}
+
+/* ── Pulse Sidebar ───────────────────────────────────────────────────────── */
+
+.pulseSidebar {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .pulseSidebar {
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--color-border, rgba(0,0,0,0.08));
+    padding: 28px 22px;
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    overflow-y: auto;
+    background: var(--color-surface, #fff);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+}
+
+/* Progress Rail */
+
+.railSection {
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--color-border, rgba(0,0,0,0.08));
+}
+
+.railTitle {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  font-weight: 700;
+  margin-bottom: 14px;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
+
+.railTrack { position: relative; }
+
+.railStep {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 5px 0;
+  position: relative;
+}
+
+/* Connecting line */
+.railStep:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 24px;
+  bottom: -5px;
+  width: 2px;
+  background: var(--color-border, rgba(0,0,0,0.1));
+  transition: background 0.3s ease;
+}
+.railStep.railDone:not(:last-child)::before {
+  background: var(--color-primary);
+}
+
+.railBullet {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border, rgba(0,0,0,0.15));
+  background: var(--color-surface, #fff);
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--color-muted);
+  flex-shrink: 0;
+  z-index: 1;
+  transition: all 0.25s ease;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
+
+.railDone .railBullet {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.railActive .railBullet {
+  background: var(--color-surface, #fff);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent);
+}
+
+.railLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-muted);
+  font-family: 'Inter Tight', system-ui, sans-serif;
+  transition: color 0.2s;
+}
+.railActive .railLabel { color: var(--color-fg); font-weight: 600; }
+.railDone   .railLabel { color: var(--color-muted); }
+
+/* Financial Pulse */
+
+.pulseSection { flex: 1; }
+
+.pulseTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+
+.pulseTitle {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 16px;
+  font-weight: 500;
+  font-style: italic;
+  letter-spacing: -0.01em;
+  color: var(--color-fg);
+}
+
+.pulseTag {
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
+
+.pulseSub {
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-bottom: 16px;
+  line-height: 1.4;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
+
+.pulseMetric {
+  padding: 11px 0;
+  border-bottom: 1px solid var(--color-border, rgba(0,0,0,0.06));
+}
+.pulseMetric:last-child { border-bottom: none; }
+
+.pulseMetricHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.pulseMetricLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-muted);
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
+
+.pulseDot {
+  width: 6px; height: 6px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.pulseValue {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--color-fg);
+}
+
+.pulseValueEmpty {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-muted);
+  opacity: 0.35;
+}
+
+.pulseBar {
+  height: 4px;
+  background: color-mix(in srgb, var(--color-muted) 14%, transparent);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.pulseBarFill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1), background 0.3s ease;
+}
+
+.pulseBarEmpty { background: color-mix(in srgb, var(--color-muted) 25%, transparent); width: 0; }
+.pulseBarLow   { background: var(--color-danger,  #ef4444); }
+.pulseBarMid   { background: var(--color-warning, #f59e0b); }
+.pulseBarGood  { background: var(--color-success, #22c55e); }
+
+.pulseHint {
+  font-size: 9.5px;
+  color: var(--color-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+  font-style: italic;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+  opacity: 0.8;
+}

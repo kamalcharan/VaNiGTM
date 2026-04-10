@@ -109,6 +109,58 @@ function initials(name: string | null): string {
   return name.trim().split(/\s+/).map(w => w[0]?.toUpperCase() ?? '').filter(Boolean).slice(0, 2).join('');
 }
 
+// ── Pulse helpers (module-level) ──────────────────────────────────────────
+
+function pulseBarState(
+  metric: 'savings' | 'debt' | 'protection' | 'liquidity',
+  val: number | null,
+): 'empty' | 'low' | 'mid' | 'good' {
+  if (val === null) return 'empty';
+  if (metric === 'savings')    return val >= 30 ? 'good' : val >= 10 ? 'mid' : 'low';
+  if (metric === 'debt')       return val <= 30 ? 'good' : val <= 50 ? 'mid' : 'low';
+  if (metric === 'protection') return val >= 10 ? 'good' : val >= 5  ? 'mid' : 'low';
+  return                              val >= 6  ? 'good' : val >= 3  ? 'mid' : 'low'; // liquidity
+}
+
+function pulseBarWidth(
+  metric: 'savings' | 'debt' | 'protection' | 'liquidity' | 'future',
+  val: number | null,
+): number {
+  if (val === null) return 0;
+  if (metric === 'savings')    return Math.min(val * 2,    100);
+  if (metric === 'debt')       return Math.max(0, 100 - val * 1.5);
+  if (metric === 'protection') return Math.min(val * 7,    100);
+  if (metric === 'liquidity')  return Math.min(val * 10,   100);
+  return                              Math.min(val,        100); // future
+}
+
+function PulseMetric({ dotColor, label, value, hint, barPct, state }: {
+  dotColor: string; label: string; value: string | null;
+  hint: string; barPct: number; state: 'empty' | 'low' | 'mid' | 'good';
+}) {
+  const fillCls = state === 'good' ? s.pulseBarGood
+                : state === 'mid'  ? s.pulseBarMid
+                : state === 'low'  ? s.pulseBarLow
+                :                   s.pulseBarEmpty;
+  return (
+    <div className={s.pulseMetric}>
+      <div className={s.pulseMetricHead}>
+        <span className={s.pulseMetricLabel}>
+          <span className={s.pulseDot} style={{ background: dotColor }} />
+          {label}
+        </span>
+        {value != null
+          ? <span className={s.pulseValue}>{value}</span>
+          : <span className={s.pulseValueEmpty}>—</span>}
+      </div>
+      <div className={s.pulseBar}>
+        <div className={`${s.pulseBarFill} ${fillCls}`} style={{ width: `${barPct}%` }} />
+      </div>
+      <div className={s.pulseHint}>{hint}</div>
+    </div>
+  );
+}
+
 export default function IntakePage() {
   const { token } = useParams<{ token: string }>();
 
@@ -457,6 +509,19 @@ export default function IntakePage() {
 
   // ── Wizard Steps 01–05 ───────────────────────────────────────────────────
 
+  // Pulse sidebar — derived metrics from current form state
+  const pulseAssets  = assets.reduce((sum, a) => sum + (Number(a.current_value) || 0), 0);
+  const pulseLiquid  = assets.filter(a => a.is_liquid).reduce((sum, a) => sum + (Number(a.current_value) || 0), 0);
+  const pulseEmi     = liabs.reduce((sum, l) => sum + (Number(l.monthly_emi) || 0), 0);
+  const pulseCover   = Number(protection.life_cover_amount) || 0;
+  const pulseGoals   = goals.reduce((sum, g) => sum + (Number(g.target_amount) || 0), 0);
+
+  const savingsRate   = monthlyIncome > 0 ? Math.round((monthlySavings / monthlyIncome) * 100) : null;
+  const debtLoadPct   = monthlyIncome > 0 && pulseEmi > 0 ? Math.round((pulseEmi / monthlyIncome) * 100) : null;
+  const protectionX   = monthlyIncome > 0 && pulseCover > 0 ? parseFloat((pulseCover / (monthlyIncome * 12)).toFixed(1)) : null;
+  const liquidityMths = monthlyExpenses > 0 && pulseLiquid > 0 ? parseFloat((pulseLiquid / monthlyExpenses).toFixed(1)) : null;
+  const futurePct     = pulseAssets > 0 && pulseGoals > 0 ? Math.round((pulseGoals / pulseAssets) * 100) : null;
+
   const STEPS = [
     { num: '01', label: 'Cash Flow' },
     { num: '02', label: 'Assets'    },
@@ -482,6 +547,10 @@ export default function IntakePage() {
       <div className={s.progressBar}>
         <div className={s.progressFill} style={{ width: `${((step + 1) / 5) * 100}%` }} />
       </div>
+
+      {/* ── 2-col layout: form + pulse sidebar ── */}
+      <div className={s.wizardLayout}>
+      <div className={s.formCol}>
 
       {/* ── Step indicator ── */}
       <div className={s.stepIndicator}>
@@ -801,6 +870,71 @@ export default function IntakePage() {
           </button>
         )}
       </div>
+
+      </div>{/* /formCol */}
+
+      {/* ── Pulse Sidebar (desktop only) ── */}
+      <aside className={s.pulseSidebar}>
+
+        {/* Progress Rail */}
+        <div className={s.railSection}>
+          <div className={s.railTitle}>Your Journey</div>
+          <div className={s.railTrack}>
+            {STEPS.map((st, i) => (
+              <div key={i} className={`${s.railStep} ${i < step ? s.railDone : i === step ? s.railActive : ''}`}>
+                <div className={s.railBullet}>
+                  {i < step
+                    ? <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5"><path d="M5 12l5 5L19 7"/></svg>
+                    : <span>{i + 1}</span>}
+                </div>
+                <span className={s.railLabel}>{st.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Financial Pulse */}
+        <div className={s.pulseSection}>
+          <div className={s.pulseTitleRow}>
+            <span className={s.pulseTitle}>Financial Pulse</span>
+            <span className={s.pulseTag}>LIVE</span>
+          </div>
+          <p className={s.pulseSub}>Updates as you fill each section.</p>
+
+          <PulseMetric dotColor="var(--color-primary)" label="Savings Rate"
+            value={savingsRate !== null ? `${savingsRate}%` : null}
+            hint="% of income you keep each month"
+            barPct={pulseBarWidth('savings', savingsRate)}
+            state={pulseBarState('savings', savingsRate)} />
+
+          <PulseMetric dotColor="#4a7a8c" label="Debt Load"
+            value={debtLoadPct !== null ? `${debtLoadPct}%` : null}
+            hint="EMI as % of income · <40% is healthy"
+            barPct={pulseBarWidth('debt', debtLoadPct)}
+            state={pulseBarState('debt', debtLoadPct)} />
+
+          <PulseMetric dotColor="#d97757" label="Protection"
+            value={protectionX !== null ? `${protectionX}×` : null}
+            hint="Life cover as × of annual income"
+            barPct={pulseBarWidth('protection', protectionX)}
+            state={pulseBarState('protection', protectionX)} />
+
+          <PulseMetric dotColor="#c47e1a" label="Liquidity"
+            value={liquidityMths !== null ? `${liquidityMths} mo` : null}
+            hint="Emergency fund in months of expenses"
+            barPct={pulseBarWidth('liquidity', liquidityMths)}
+            state={pulseBarState('liquidity', liquidityMths)} />
+
+          <PulseMetric dotColor="#6b4e8a" label="Future Focus"
+            value={futurePct !== null ? `${futurePct}%` : null}
+            hint="Goal corpus as % of total assets"
+            barPct={pulseBarWidth('future', futurePct)}
+            state="mid" />
+        </div>
+
+      </aside>
+
+      </div>{/* /wizardLayout */}
     </div>
   );
 }
