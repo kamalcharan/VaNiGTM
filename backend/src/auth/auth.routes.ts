@@ -211,10 +211,12 @@ export function createAuthRouter(pool: Pool): Router {
         const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
         const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-        // Look up role UUID
+        // Look up role UUID — check tenant-specific roles first, then global (tenant_id IS NULL)
         const roleResult = await pool.query(
-          'SELECT id FROM vn_roles WHERE tenant_id = $1 AND code = $2 LIMIT 1',
-          [jwt.tenant_id, roleId],
+          `SELECT id FROM vn_roles
+           WHERE code = $1 AND (tenant_id = $2 OR tenant_id IS NULL)
+           ORDER BY tenant_id NULLS LAST LIMIT 1`,
+          [roleId, jwt.tenant_id],
         );
         const roleUuid = roleResult.rows[0] ? (roleResult.rows[0] as any).id : null;
 
@@ -301,7 +303,7 @@ export function createAuthRouter(pool: Pool): Router {
            r.code AS role_code,
            r.name AS role_name
          FROM vn_invitations i
-         LEFT JOIN vn_roles r ON r.id = i.role_id
+         LEFT JOIN vn_roles r ON r.id::text = i.role_id
          WHERE i.tenant_id = $1
            AND i.status = 'pending'
            AND i.expires_at > now()
