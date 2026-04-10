@@ -169,10 +169,12 @@ export async function register(
     const userResult = await client.query<{ id: string }>(
       `INSERT INTO vn_users
          (id, tenant_id, email, password_hash, name, first_name, last_name, country_code, mobile,
-          preferred_theme, preferences, is_active, is_email_verified, failed_login_count, created_at, updated_at)
+          preferred_theme, preferences, is_active, is_email_verified, failed_login_count,
+          intake_code, created_at, updated_at)
        VALUES
          (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8,
-          $9, $10::jsonb, true, false, 0, now(), now())
+          $9, $10::jsonb, true, false, 0,
+          substring(encode(gen_random_bytes(5), 'hex'), 1, 8), now(), now())
        RETURNING id`,
       [tenantId, email, passwordHash, name, firstName, lastName, countryCode, mobile,
        defaultTheme, JSON.stringify({ color_mode: defaultColorMode })],
