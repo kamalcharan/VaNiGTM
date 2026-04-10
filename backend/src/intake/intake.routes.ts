@@ -26,9 +26,10 @@ const VALIDATE_SQL = fs.readFileSync(
 );
 
 const ASSET_TYPES_SQL = `
-  SELECT id, code, label, is_liquid_default
+  SELECT id, asset_type_code AS code, asset_type_name AS label, is_liquid_default
   FROM ki_asset_types
-  ORDER BY sort_order, label;
+  WHERE is_active = true
+  ORDER BY display_order, asset_type_name;
 `;
 
 const LIABILITY_TYPES_SQL = `

@@ -17,6 +17,7 @@
 
 import { useState, useEffect, useCallback, CSSProperties } from 'react';
 import { useParams } from 'next/navigation';
+import { getTheme } from '@/config/theme';
 import s from './intake.module.css';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -47,14 +48,37 @@ interface GoalRow   { goal_type: string; name: string; target_amount: string; ti
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 async function post<T>(path: string, body: Record<string, unknown>): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error('NETWORK_ERROR');
+  }
   const data = await res.json();
-  if (!res.ok) throw new Error(data?.error?.message || 'Request failed');
+  if (!res.ok) throw new Error(data?.error?.code || 'REQUEST_FAILED');
   return data as T;
+}
+
+// Build inline CSS vars from tenant theme_id (light mode — warm client-facing context)
+function buildThemeVars(themeId: string): CSSProperties {
+  const theme = getTheme(themeId);
+  const c = theme.colors; // always light mode for intake
+  return {
+    '--color-primary':   c.brand.primary,
+    '--color-secondary': c.brand.secondary,
+    '--color-fg':        c.utility.primaryText,
+    '--color-muted':     c.utility.secondaryText,
+    '--color-bg':        c.utility.primaryBackground,
+    '--color-surface':   c.utility.secondaryBackground,
+    '--color-success':   c.semantic.success,
+    '--color-danger':    c.semantic.error,
+    '--color-warning':   c.semantic.warning,
+    '--color-border':    c.surface.glassBorder,
+  } as CSSProperties;
 }
 
 function fmt(v: number): string {
@@ -73,7 +97,7 @@ const GOAL_TYPES = ['retirement','education','house','wedding','emergency','vehi
 
 // ── Main Component ─────────────────────────────────────────────────────────
 
-type Stage = 'loading' | 'invalid' | 'step0' | 'wizard' | 'done';
+type Stage = 'loading' | 'server-error' | 'invalid' | 'step0' | 'wizard' | 'done';
 
 export default function IntakePage() {
   const { token } = useParams<{ token: string }>();
@@ -108,18 +132,28 @@ export default function IntakePage() {
         setMeta(data);
         setStage(data.flow === 'cold_lead' ? 'step0' : 'wizard');
       })
-      .catch(() => setStage('invalid'));
+      .catch((err: Error) => {
+        if (err.message === 'NETWORK_ERROR') {
+          setStage('server-error');
+        } else {
+          setStage('invalid');
+        }
+      });
   }, [token]);
 
-  // ── Brand CSS variables ─────────────────────────────────────────────────
+  // ── Brand CSS variables (scoped to page wrapper — does not affect global theme) ──
 
-  const brandStyle: CSSProperties = meta?.tenant.brand_color
-    ? ({
-        '--intake-primary': meta.tenant.brand_color,
-        '--intake-primary-soft': `${meta.tenant.brand_color}18`,
-        '--intake-primary-border': `${meta.tenant.brand_color}40`,
-      } as CSSProperties)
-    : {};
+  const brandStyle: CSSProperties = {
+    // Full theme vars from tenant's chosen theme (light mode)
+    ...(meta?.tenant.theme_id ? buildThemeVars(meta.tenant.theme_id) : {}),
+    // Brand color overrides intake accent — takes priority over theme primary
+    ...(meta?.tenant.brand_color ? {
+      '--intake-primary':        meta.tenant.brand_color,
+      '--intake-primary-soft':   `${meta.tenant.brand_color}18`,
+      '--intake-primary-border': `${meta.tenant.brand_color}40`,
+      '--color-primary':         meta.tenant.brand_color,
+    } : {}),
+  };
 
   // ── Derived metrics ──────────────────────────────────────────────────────
 
@@ -193,6 +227,21 @@ export default function IntakePage() {
       <div className={s.centered}>
         <div className={s.spinner} />
         <p className={s.loadingText}>Loading your form…</p>
+      </div>
+    );
+  }
+
+  if (stage === 'server-error') {
+    return (
+      <div className={s.centered}>
+        <div className={s.invalidIcon}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+            <path d="M8 12h8M12 8v8"/>
+          </svg>
+        </div>
+        <h2 className={s.invalidTitle}>Server unavailable</h2>
+        <p className={s.invalidSub}>We couldn't reach the server. Please try again in a moment, or contact your advisor if the problem persists.</p>
       </div>
     );
   }
