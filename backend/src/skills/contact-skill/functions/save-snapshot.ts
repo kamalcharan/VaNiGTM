@@ -57,6 +57,7 @@ export interface ProtectionData {
   ci_cover_amount?: number;
   has_term_plan?: boolean;
   has_health_cover?: boolean;
+  health_cover_type?: 'individual' | 'family_floater' | 'employer' | 'none';
   notes?: string;
 }
 
@@ -362,13 +363,13 @@ export async function save_snapshot(
             life_cover_amount, life_premium_annual,
             health_cover_amount, health_premium_annual,
             ci_cover_amount, protection_ratio,
-            has_term_plan, has_health_cover, notes)
+            has_term_plan, has_health_cover, health_cover_type, notes)
          VALUES
            ($snapshot_id, $tenant_id,
             $life_cover_amount, $life_premium_annual,
             $health_cover_amount, $health_premium_annual,
             $ci_cover_amount, $protection_ratio,
-            $has_term_plan, $has_health_cover, $notes)`,
+            $has_term_plan, $has_health_cover, $health_cover_type, $notes)`,
         {
           $snapshot_id:         snapshotId,
           $tenant_id:           ctx.tenant_id,
@@ -380,6 +381,7 @@ export async function save_snapshot(
           $protection_ratio:    protectionRatio,
           $has_term_plan:       protection.has_term_plan   ?? false,
           $has_health_cover:    protection.has_health_cover ?? false,
+          $health_cover_type:   protection.health_cover_type ?? null,
           $notes:               protection.notes            ?? null,
         }
       );

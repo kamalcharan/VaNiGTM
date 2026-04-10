@@ -235,9 +235,11 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   const goalTypes  = goalTypesData?.data?.goal_types?.length ? goalTypesData.data.goal_types : GOAL_TYPE_FALLBACK;
   const snap         = snapData?.data?.snapshot as Record<string, unknown> | null;
 
-  // Auto-enter wizard when a snapshot already exists
+  // Auto-enter wizard / snapshot view based on existing snapshot status
   useEffect(() => {
-    if (snap) setShowWizard(true);
+    if (!snap) return;
+    setShowWizard(true);
+    if ((snap.status as string) === 'active') setShowSnapshot(true);
   }, [snap]);
 
   // Populate form from loaded snapshot

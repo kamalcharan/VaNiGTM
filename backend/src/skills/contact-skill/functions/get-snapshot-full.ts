@@ -74,7 +74,7 @@ export async function get_snapshot_full(
     ctx.db.query(
       `SELECT life_cover_amount, life_premium_annual, health_cover_amount,
               health_premium_annual, ci_cover_amount, protection_ratio,
-              has_term_plan, has_health_cover, notes
+              has_term_plan, has_health_cover, health_cover_type, notes
        FROM ki_snapshot_protection WHERE snapshot_id = $snapshot_id`,
       snapParam
     ),
