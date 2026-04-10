@@ -100,6 +100,36 @@ const EXPENSE_LABELS: Record<keyof Expenses, string> = {
 
 const GOAL_TYPES = ['retirement','education','house','wedding','emergency','vehicle','travel','custom'] as const;
 
+const GOAL_ICONS: Record<string, string> = {
+  retirement: '🌿', education: '🎓', house: '🏡', wedding: '💍',
+  emergency: '🛡️', vehicle: '🚗', travel: '✈️', custom: '⭐',
+};
+const GOAL_LABELS: Record<string, string> = {
+  retirement: 'Retirement', education: 'Education', house: 'Home / Property',
+  wedding: 'Wedding', emergency: 'Emergency Fund', vehicle: 'Vehicle',
+  travel: 'Travel', custom: 'Other',
+};
+const HORIZON_PRESETS = [3, 5, 7, 10, 15, 20, 25, 30];
+
+const RISK_BARS: Record<'conservative' | 'moderate' | 'aggressive', number[]> = {
+  conservative: [30, 35, 32, 38, 34],
+  moderate:     [40, 65, 50, 72, 58],
+  aggressive:   [30, 90, 45, 95, 60],
+};
+const RISK_BAR_COLORS: Record<'conservative' | 'moderate' | 'aggressive', string> = {
+  conservative: 'var(--color-info, #4a7a8c)',
+  moderate:     'var(--color-warning)',
+  aggressive:   'var(--color-danger)',
+};
+const RISK_TAGLINES: Record<'conservative' | 'moderate' | 'aggressive', string> = {
+  conservative: 'Sleep well at night. Capital protection first.',
+  moderate:     'Balanced growth. Some bumps are okay.',
+  aggressive:   'Long horizon. Volatility is the price of growth.',
+};
+const RISK_RETURNS: Record<'conservative' | 'moderate' | 'aggressive', string> = {
+  conservative: '7–9%', moderate: '10–13%', aggressive: '14–18%',
+};
+
 // ── Main Component ─────────────────────────────────────────────────────────
 
 type Stage = 'loading' | 'server-error' | 'invalid' | 'welcome' | 'step0' | 'wizard' | 'done';
@@ -529,6 +559,13 @@ export default function IntakePage() {
   const largestAssetPct = largestAsset && pulseAssets > 0
     ? Math.round((Number(largestAsset.current_value) / pulseAssets) * 100) : 0;
 
+  // Liability Vani metrics
+  const totalLiabs   = liabs.reduce((sum, l) => sum + (Number(l.outstanding_amount) || 0), 0);
+  const largestLiab  = liabs.reduce<LiabRow | null>((max, l) =>
+    Number(l.outstanding_amount) > Number(max?.outstanding_amount ?? 0) ? l : max, null);
+  const largestLiabPct = largestLiab && totalLiabs > 0
+    ? Math.round((Number(largestLiab.outstanding_amount) / totalLiabs) * 100) : 0;
+
   const STEPS = [
     { num: '01', label: 'Cash Flow' },
     { num: '02', label: 'Assets'    },
@@ -792,51 +829,108 @@ export default function IntakePage() {
           ════════════════════════════════════════════════════ */}
       {step === 2 && (
         <div className={s.stepBody}>
-          <h2 className={s.stepTitle}>Any loans or debts?</h2>
-          <p className={s.stepSub}>Include home loans, car loans, credit cards, personal loans.</p>
+          <div className={s.sectionHead}>
+            <div className={s.sectionNum}>Section 03 / 05 · Liabilities</div>
+            <h2 className={s.sectionTitle}>Loans &amp; liabilities</h2>
+            <p className={s.sectionSub}>Loans and outstanding debts. No judgement — clarity helps planning.</p>
+          </div>
 
-          {liabs.map((liab, i) => (
-            <div key={i} className={s.itemCard}>
-              <div className={s.itemCardTop}>
-                <select className={s.typeSelect}
-                  value={liab.liability_type_id}
-                  onChange={e => setLiabs(p => p.map((l, j) => j === i ? { ...l, liability_type_id: e.target.value } : l))}>
-                  <option value="">Select loan type</option>
-                  {liabTypes.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                </select>
-                <button className={s.removeBtn} onClick={() => setLiabs(p => p.filter((_, j) => j !== i))}>×</button>
-              </div>
-              <input className={s.descInput} placeholder="Description (optional)"
-                value={liab.description}
-                onChange={e => setLiabs(p => p.map((l, j) => j === i ? { ...l, description: e.target.value } : l))} />
-              <div className={s.loanGrid}>
-                <div className={s.inputGroup}>
-                  <label className={s.miniLabel}>Outstanding</label>
-                  <div className={s.amountRow}>
-                    <span className={s.rupee}>₹</span>
-                    <input className={s.amountInput} type="number" inputMode="numeric" placeholder="0"
-                      value={liab.outstanding_amount}
-                      onChange={e => setLiabs(p => p.map((l, j) => j === i ? { ...l, outstanding_amount: e.target.value } : l))} />
-                  </div>
-                  {Number(liab.outstanding_amount) > 0 && <div className={s.hint}>{fmt(Number(liab.outstanding_amount))}</div>}
-                </div>
-                <div className={s.inputGroup}>
-                  <label className={s.miniLabel}>Monthly EMI</label>
-                  <div className={s.amountRow}>
-                    <span className={s.rupee}>₹</span>
-                    <input className={s.amountInput} type="number" inputMode="numeric" placeholder="0"
-                      value={liab.monthly_emi}
-                      onChange={e => setLiabs(p => p.map((l, j) => j === i ? { ...l, monthly_emi: e.target.value } : l))} />
-                  </div>
-                </div>
-              </div>
+          {liabs.length === 0 ? (
+            <div className={s.itemEmptyState}>
+              Home loan, car loan, personal loan, credit card — list every outstanding debt
             </div>
-          ))}
+          ) : (
+            <div className={s.itemList}>
+              {liabs.map((liab, i) => (
+                <div key={i} className={s.assetCard}>
+                  <div className={s.assetCardHead}>
+                    <span className={s.assetCardNum}>LOAN_{String(i + 1).padStart(2, '0')}</span>
+                    <button className={s.assetCardRemove}
+                      onClick={() => setLiabs(p => p.filter((_, j) => j !== i))}>×</button>
+                  </div>
 
-          <button className={s.addBtn}
+                  {/* Loan Type — full width */}
+                  <div className={s.curField}>
+                    <label className={s.curFieldLabel}>Loan Type</label>
+                    <select className={s.plainSelect} value={liab.liability_type_id}
+                      onChange={e => setLiabs(p => p.map((l, j) => j === i ? { ...l, liability_type_id: e.target.value } : l))}>
+                      <option value="">Select type</option>
+                      {liabTypes.map(t => (
+                        <option key={t.id} value={String(t.id)}>{t.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Description + Outstanding + EMI + Rate */}
+                  <div className={s.loanRow2}>
+                    <div className={s.curField}>
+                      <label className={s.curFieldLabel}>Description</label>
+                      <input className={s.plainInput} type="text"
+                        placeholder="e.g. SBI Home Loan"
+                        value={liab.description}
+                        onChange={e => setLiabs(p => p.map((l, j) => j === i ? { ...l, description: e.target.value } : l))} />
+                    </div>
+                    <div className={s.curField}>
+                      <label className={s.curFieldLabel}>Outstanding</label>
+                      <div className={s.curInputWrap}>
+                        <span className={s.curSym}>₹</span>
+                        <input className={s.curVal} type="number" inputMode="numeric" placeholder="0"
+                          value={liab.outstanding_amount}
+                          onChange={e => setLiabs(p => p.map((l, j) => j === i ? { ...l, outstanding_amount: e.target.value } : l))} />
+                      </div>
+                      {Number(liab.outstanding_amount) > 0 && <span className={s.curHint}>{fmt(Number(liab.outstanding_amount))}</span>}
+                    </div>
+                    <div className={s.curField}>
+                      <label className={s.curFieldLabel}>EMI /mo</label>
+                      <div className={s.curInputWrap}>
+                        <span className={s.curSym}>₹</span>
+                        <input className={s.curVal} type="number" inputMode="numeric" placeholder="0"
+                          value={liab.monthly_emi}
+                          onChange={e => setLiabs(p => p.map((l, j) => j === i ? { ...l, monthly_emi: e.target.value } : l))} />
+                      </div>
+                    </div>
+                    <div className={s.curField}>
+                      <label className={s.curFieldLabel}>Rate %</label>
+                      <input className={s.plainInput} type="number" inputMode="decimal" placeholder="8.5"
+                        value={liab.interest_rate_pct}
+                        onChange={e => setLiabs(p => p.map((l, j) => j === i ? { ...l, interest_rate_pct: e.target.value } : l))} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button className={s.addItemBtn}
             onClick={() => setLiabs(p => [...p, { liability_type_id: '', description: '', outstanding_amount: '', monthly_emi: '', interest_rate_pct: '' }])}>
-            + Add loan
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+              <path d="M10 4v12M4 10h12" />
+            </svg>
+            Add loan
           </button>
+
+          {totalLiabs > 0 && (
+            <div className={s.vaniCopilot}>
+              <span className={s.vaniCopilotMarker}>V ▸</span>
+              <span className={s.vaniCopilotText}>
+                <span className={s.vaniHi}>{fmt(totalLiabs)} total debt</span>
+                {pulseEmi > 0 && <> · <span className={s.vaniHi}>{fmt(pulseEmi)}/mo EMI</span></>}
+                {debtLoadPct !== null && (
+                  <> · DTI{' '}
+                  <span className={debtLoadPct <= 30 ? s.vaniOk : debtLoadPct <= 50 ? s.vaniWarn : s.vaniBad}>
+                    {debtLoadPct}%{debtLoadPct <= 30 ? ' — healthy' : debtLoadPct <= 50 ? ' — elevated' : ' — high'}
+                  </span></>
+                )}
+                {largestLiab && largestLiabPct > 0 && (
+                  <> · <span className={s.vaniHi}>{largestLiab.description || 'Top loan'}</span>{' = '}
+                  <span className={largestLiabPct > 60 ? s.vaniWarn : s.vaniHi}>{largestLiabPct}% of total</span></>
+                )}
+                {debtLoadPct !== null && debtLoadPct > 50 && (
+                  <><br /><span className={s.vaniBad}>DTI above 50% — debt repayment is constraining savings capacity.</span></>
+                )}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -845,36 +939,149 @@ export default function IntakePage() {
           ════════════════════════════════════════════════════ */}
       {step === 3 && (
         <div className={s.stepBody}>
-          <h2 className={s.stepTitle}>Are you covered?</h2>
-          <p className={s.stepSub}>Your insurance protects your family's future. Skip if unsure.</p>
-
-          <div className={s.toggleRow}>
-            <button className={`${s.coverToggle} ${protection.has_term_plan ? s.toggleOn : ''}`}
-              onClick={() => setProtection(p => ({ ...p, has_term_plan: !p.has_term_plan }))}>
-              {protection.has_term_plan ? '✓' : '○'} Term Life Plan
-            </button>
-            <button className={`${s.coverToggle} ${protection.has_health_cover ? s.toggleOn : ''}`}
-              onClick={() => setProtection(p => ({ ...p, has_health_cover: !p.has_health_cover }))}>
-              {protection.has_health_cover ? '✓' : '○'} Health Insurance
-            </button>
+          <div className={s.sectionHead}>
+            <div className={s.sectionNum}>Section 04 / 05 · Protection</div>
+            <h2 className={s.sectionTitle}>Insurance &amp; protection</h2>
+            <p className={s.sectionSub}>Life and health coverage — quantify the safety net.</p>
           </div>
 
-          {([
-            { key: 'life_cover_amount',    label: 'Life cover (sum assured)' },
-            { key: 'health_cover_amount',  label: 'Health cover (sum insured)' },
-            { key: 'ci_cover_amount',      label: 'Critical illness cover'     },
-          ] as const).map(({ key, label }) => (
-            <div key={key} className={s.inputGroup}>
-              <label className={s.label}>{label} <span className={s.opt}>optional</span></label>
-              <div className={s.amountRow}>
-                <span className={s.rupee}>₹</span>
-                <input className={s.amountInput} type="number" inputMode="numeric" placeholder="0"
-                  value={protection[key]}
-                  onChange={e => setProtection(p => ({ ...p, [key]: e.target.value }))} />
+          {/* Life Insurance */}
+          <div className={s.subBlock}>
+            <div className={s.subHead}>Life Insurance</div>
+            <div className={s.protField}>
+              <label className={s.curFieldLabel}>Active term / life policy?</label>
+              <div className={s.optCards2}>
+                <button type="button"
+                  className={`${s.optCard} ${protection.has_term_plan ? s.optCardSelected : ''}`}
+                  onClick={() => setProtection(p => ({ ...p, has_term_plan: true }))}>
+                  <svg className={s.optCardIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2 4 7v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V7l-8-5z"/><path d="m9 12 2 2 4-4"/>
+                  </svg>
+                  <div>
+                    <div className={s.optCardLabel}>Yes</div>
+                    <div className={s.optCardSub}>Has coverage</div>
+                  </div>
+                </button>
+                <button type="button"
+                  className={`${s.optCard} ${!protection.has_term_plan ? s.optCardSelected : ''}`}
+                  onClick={() => setProtection(p => ({ ...p, has_term_plan: false }))}>
+                  <svg className={s.optCardIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>
+                  </svg>
+                  <div>
+                    <div className={s.optCardLabel}>No / unsure</div>
+                    <div className={s.optCardSub}>Gap flagged</div>
+                  </div>
+                </button>
               </div>
-              {Number(protection[key]) > 0 && <div className={s.hint}>{fmt(Number(protection[key]))}</div>}
             </div>
-          ))}
+            <div className={s.protFieldRow2}>
+              <div className={s.curField}>
+                <label className={s.curFieldLabel}>Sum Assured</label>
+                <div className={s.curInputWrap}>
+                  <span className={s.curSym}>₹</span>
+                  <input className={s.curVal} type="number" inputMode="numeric" placeholder="0"
+                    value={protection.life_cover_amount}
+                    onChange={e => setProtection(p => ({ ...p, life_cover_amount: e.target.value }))} />
+                </div>
+                {Number(protection.life_cover_amount) > 0 && (
+                  <span className={s.curHint}>{fmt(Number(protection.life_cover_amount))}</span>
+                )}
+              </div>
+              {protectionX !== null && (
+                <div className={s.curField}>
+                  <label className={s.curFieldLabel}>Cover Ratio</label>
+                  <div className={s.protRatioBadge}>
+                    <span className={protectionX >= 10 ? s.protRatioOk : protectionX >= 5 ? s.protRatioWarn : s.protRatioBad}>
+                      {protectionX.toFixed(1)}×
+                    </span>
+                    <span className={s.protRatioSub}>of annual income</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Health Insurance */}
+          <div className={s.subBlock}>
+            <div className={s.subHead}>Health Insurance</div>
+            <div className={s.protField}>
+              <label className={s.curFieldLabel}>Has health cover?</label>
+              <div className={s.optCards2}>
+                <button type="button"
+                  className={`${s.optCard} ${protection.has_health_cover ? s.optCardSelected : ''}`}
+                  onClick={() => setProtection(p => ({ ...p, has_health_cover: true }))}>
+                  <svg className={s.optCardIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2 4 7v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V7l-8-5z"/><path d="m9 12 2 2 4-4"/>
+                  </svg>
+                  <div>
+                    <div className={s.optCardLabel}>Yes</div>
+                    <div className={s.optCardSub}>Has coverage</div>
+                  </div>
+                </button>
+                <button type="button"
+                  className={`${s.optCard} ${!protection.has_health_cover ? s.optCardSelected : ''}`}
+                  onClick={() => setProtection(p => ({ ...p, has_health_cover: false }))}>
+                  <svg className={s.optCardIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>
+                  </svg>
+                  <div>
+                    <div className={s.optCardLabel}>No / unsure</div>
+                    <div className={s.optCardSub}>Gap flagged</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+            <div className={s.protFieldRow2}>
+              <div className={s.curField}>
+                <label className={s.curFieldLabel}>Sum Insured</label>
+                <div className={s.curInputWrap}>
+                  <span className={s.curSym}>₹</span>
+                  <input className={s.curVal} type="number" inputMode="numeric" placeholder="0"
+                    value={protection.health_cover_amount}
+                    onChange={e => setProtection(p => ({ ...p, health_cover_amount: e.target.value }))} />
+                </div>
+                {Number(protection.health_cover_amount) > 0 && (
+                  <span className={s.curHint}>{fmt(Number(protection.health_cover_amount))}</span>
+                )}
+              </div>
+              <div className={s.curField}>
+                <label className={s.curFieldLabel}>Critical Illness <span className={s.curOptTag}>opt</span></label>
+                <div className={s.curInputWrap}>
+                  <span className={s.curSym}>₹</span>
+                  <input className={s.curVal} type="number" inputMode="numeric" placeholder="0"
+                    value={protection.ci_cover_amount}
+                    onChange={e => setProtection(p => ({ ...p, ci_cover_amount: e.target.value }))} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Vani copilot */}
+          {(Number(protection.life_cover_amount) > 0 || Number(protection.health_cover_amount) > 0
+            || !protection.has_term_plan || !protection.has_health_cover) && (
+            <div className={s.vaniCopilot}>
+              <span className={s.vaniCopilotMarker}>V ▸</span>
+              <span className={s.vaniCopilotText}>
+                {Number(protection.life_cover_amount) > 0 ? (
+                  <>Life cover <span className={s.vaniHi}>{fmt(Number(protection.life_cover_amount))}</span>
+                  {protectionX !== null && (
+                    <> · <span className={protectionX >= 10 ? s.vaniOk : protectionX >= 5 ? s.vaniWarn : s.vaniBad}>
+                      {protectionX.toFixed(1)}× annual income{protectionX >= 10 ? ' — adequate' : protectionX >= 5 ? ' — below 10× benchmark' : ' — critically underinsured'}
+                    </span></>
+                  )}</>
+                ) : !protection.has_term_plan ? (
+                  <span className={s.vaniBad}>No active life policy flagged. Life cover is the #1 protection priority.</span>
+                ) : null}
+                {Number(protection.health_cover_amount) > 0 ? (
+                  <><br />Health cover <span className={s.vaniHi}>{fmt(Number(protection.health_cover_amount))}</span>
+                  {Number(protection.ci_cover_amount) > 0 && <> · CI {fmt(Number(protection.ci_cover_amount))}</>}</>
+                ) : !protection.has_health_cover ? (
+                  <><br /><span className={s.vaniWarn}>No health cover flagged. Medical inflation in India is 14%/yr.</span></>
+                ) : null}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -883,66 +1090,118 @@ export default function IntakePage() {
           ════════════════════════════════════════════════════ */}
       {step === 4 && (
         <div className={s.stepBody}>
-          <h2 className={s.stepTitle}>What are you saving for?</h2>
-          <p className={s.stepSub}>Add your aspirational goals — retirement, education, home, travel.</p>
+          <div className={s.sectionHead}>
+            <div className={s.sectionNum}>Section 05 / 05 · Goals &amp; Risk</div>
+            <h2 className={s.sectionTitle}>Goals &amp; risk profile</h2>
+            <p className={s.sectionSub}>Aspirations and risk appetite — the plan&rsquo;s destination.</p>
+          </div>
 
-          {goals.map((goal, i) => (
-            <div key={i} className={s.itemCard}>
-              <div className={s.itemCardTop}>
-                <select className={s.typeSelect}
-                  value={goal.goal_type}
-                  onChange={e => setGoals(p => p.map((g, j) => j === i ? { ...g, goal_type: e.target.value } : g))}>
-                  {GOAL_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-                </select>
-                <button className={s.removeBtn} onClick={() => setGoals(p => p.filter((_, j) => j !== i))}>×</button>
-              </div>
-              <input className={s.descInput} placeholder="Goal name (e.g. Daughter's college)"
-                value={goal.name}
-                onChange={e => setGoals(p => p.map((g, j) => j === i ? { ...g, name: e.target.value } : g))} />
-              <div className={s.loanGrid}>
-                <div className={s.inputGroup}>
-                  <label className={s.miniLabel}>Target amount</label>
-                  <div className={s.amountRow}>
-                    <span className={s.rupee}>₹</span>
-                    <input className={s.amountInput} type="number" inputMode="numeric" placeholder="0"
-                      value={goal.target_amount}
-                      onChange={e => setGoals(p => p.map((g, j) => j === i ? { ...g, target_amount: e.target.value } : g))} />
+          {/* Risk Profile */}
+          <div className={s.subBlock}>
+            <div className={s.subHead}>Risk Profile</div>
+            <div className={s.riskCards}>
+              {(['conservative', 'moderate', 'aggressive'] as const).map(key => (
+                <button key={key}
+                  className={`${s.riskCard} ${riskProfile === key ? s.riskSelected : ''}`}
+                  onClick={() => setRiskProfile(p => p === key ? '' : key)}>
+                  {riskProfile === key && <span className={s.riskCheck}>✓</span>}
+                  <div className={s.riskViz}>
+                    {RISK_BARS[key].map((h, i) => (
+                      <div key={i} className={s.riskBar}
+                        style={{ height: `${h}%`, background: RISK_BAR_COLORS[key] }} />
+                    ))}
                   </div>
-                  {Number(goal.target_amount) > 0 && <div className={s.hint}>{fmt(Number(goal.target_amount))}</div>}
-                </div>
-                <div className={s.inputGroup}>
-                  <label className={s.miniLabel}>In how many years?</label>
-                  <div className={s.amountRow}>
-                    <input className={s.amountInput} type="number" inputMode="numeric" placeholder="10"
-                      min={1} max={40} value={goal.timeline_years}
-                      onChange={e => setGoals(p => p.map((g, j) => j === i ? { ...g, timeline_years: e.target.value } : g))} />
-                    <span className={s.unit}>yrs</span>
+                  <div className={s.riskName}>{key.charAt(0).toUpperCase() + key.slice(1)}</div>
+                  <div className={s.riskTagline}>{RISK_TAGLINES[key]}</div>
+                  <div className={s.riskStat}>
+                    <span className={s.riskStatLabel}>Expected return</span>
+                    <span className={s.riskStatValue}>{RISK_RETURNS[key]}</span>
                   </div>
-                </div>
-              </div>
+                </button>
+              ))}
             </div>
-          ))}
-
-          <button className={s.addBtn}
-            onClick={() => setGoals(p => [...p, { goal_type: 'custom', name: '', target_amount: '', timeline_years: '' }])}>
-            + Add goal
-          </button>
-
-          {/* Risk appetite */}
-          <div className={s.separator}>
-            <span className={s.separatorLabel}>Your risk appetite</span>
-          </div>
-          <div className={s.riskRow}>
-            {(['conservative', 'moderate', 'aggressive'] as const).map(key => (
-              <button key={key}
-                className={`${s.riskChip} ${riskProfile === key ? s.riskSelected : ''}`}
-                onClick={() => setRiskProfile(p => p === key ? '' : key)}>
-                {key.charAt(0).toUpperCase() + key.slice(1)}
-              </button>
-            ))}
           </div>
 
-          <div className={s.inputGroup} style={{ marginTop: 24 }}>
+          {/* Aspirational Goals */}
+          <div className={s.subBlock}>
+            <div className={s.subHead}>Aspirational Goals</div>
+
+            {goals.length === 0 ? (
+              <div className={s.itemEmptyState}>
+                Retirement, children&rsquo;s education, home, wedding — add every financial milestone
+              </div>
+            ) : (
+              <div className={s.itemList}>
+                {goals.map((goal, i) => (
+                  <div key={i} className={s.assetCard}>
+                    <div className={s.assetCardHead}>
+                      <span className={s.assetCardNum}>
+                        {GOAL_ICONS[goal.goal_type] ?? '⭐'} GOAL_{String(i + 1).padStart(2, '0')}
+                      </span>
+                      <button className={s.assetCardRemove}
+                        onClick={() => setGoals(p => p.filter((_, j) => j !== i))}>×</button>
+                    </div>
+                    {/* Goal Type */}
+                    <div className={s.curField}>
+                      <label className={s.curFieldLabel}>Goal Type</label>
+                      <select className={s.plainSelect} value={goal.goal_type}
+                        onChange={e => setGoals(p => p.map((g, j) => j !== i ? g : { ...g, goal_type: e.target.value }))}>
+                        <option value="">Select type</option>
+                        {GOAL_TYPES.map(t => (
+                          <option key={t} value={t}>{GOAL_ICONS[t]} {GOAL_LABELS[t]}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {/* Name + Target + Horizon */}
+                    <div className={s.goalRow2}>
+                      <div className={s.curField}>
+                        <label className={s.curFieldLabel}>Goal Name</label>
+                        <input className={s.plainInput} type="text"
+                          placeholder="e.g. Retire to Goa, IIT for Aryan"
+                          value={goal.name}
+                          onChange={e => setGoals(p => p.map((g, j) => j !== i ? g : { ...g, name: e.target.value }))} />
+                      </div>
+                      <div className={s.curField}>
+                        <label className={s.curFieldLabel}>Target (₹)</label>
+                        <div className={s.curInputWrap}>
+                          <span className={s.curSym}>₹</span>
+                          <input className={s.curVal} type="number" inputMode="numeric" placeholder="0"
+                            value={goal.target_amount}
+                            onChange={e => setGoals(p => p.map((g, j) => j !== i ? g : { ...g, target_amount: e.target.value }))} />
+                        </div>
+                        {Number(goal.target_amount) > 0 && (
+                          <span className={s.curHint}>{fmt(Number(goal.target_amount))}</span>
+                        )}
+                      </div>
+                      <div className={s.curField}>
+                        <label className={s.curFieldLabel}>Horizon</label>
+                        <div className={s.horizonPills}>
+                          {HORIZON_PRESETS.map(yr => (
+                            <button key={yr} type="button"
+                              className={`${s.horizonPill} ${Number(goal.timeline_years) === yr ? s.horizonPillActive : ''}`}
+                              onClick={() => setGoals(p => p.map((g, j) => j !== i ? g : { ...g, timeline_years: String(yr) }))}>
+                              {yr}y
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button className={s.addItemBtn}
+              onClick={() => setGoals(p => [...p, { goal_type: 'custom', name: '', target_amount: '', timeline_years: '' }])}>
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                <path d="M10 4v12M4 10h12" />
+              </svg>
+              Add goal
+            </button>
+          </div>
+
+          {/* Notes */}
+          <div className={s.inputGroup} style={{ marginTop: 8 }}>
             <label className={s.label}>Anything else for your advisor? <span className={s.opt}>optional</span></label>
             <textarea className={s.textarea} rows={3}
               placeholder="Any specific financial concerns or goals…"

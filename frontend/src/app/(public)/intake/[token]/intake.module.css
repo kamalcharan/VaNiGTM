@@ -1598,13 +1598,13 @@
   color: var(--color-warning);
 }
 
-/* Full-width dashed add button */
+/* Full-width add button */
 .addItemBtn {
   width: 100%;
   padding: 14px;
-  border: 1.5px dashed color-mix(in srgb, var(--color-primary) 50%, transparent);
+  border: 1.5px dashed var(--color-primary);
   border-radius: 10px;
-  background: transparent;
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
   color: var(--color-primary);
   font-size: 12.5px;
   font-weight: 700;
@@ -1618,10 +1618,249 @@
   transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 .addItemBtn:hover {
-  border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 6%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
+
+/* ── Loan card rows ───────────────────────────────────────────────────────── */
+
+.loanRow2 {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1fr 1fr;
+  gap: 10px;
+  align-items: flex-start;
+}
+@media (max-width: 639px) {
+  .loanRow2 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 479px) {
+  .loanRow2 { grid-template-columns: 1fr; }
+}
+
+/* ── Protection opt-cards ────────────────────────────────────────────────── */
+
+.protField { margin-bottom: 14px; }
+
+.optCards2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.optCard {
+  position: relative;
+  background: var(--color-surface, rgba(255,255,255,0.04));
+  border: 1px solid var(--color-border, rgba(0,0,0,0.1));
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+  transition: border-color 0.18s, background 0.18s;
+}
+.optCard:hover {
+  border-color: color-mix(in srgb, var(--color-fg) 35%, transparent);
+}
+.optCardSelected {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 7%, transparent);
+}
+.optCardIcon {
+  width: 15px; height: 15px;
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+.optCardSelected .optCardIcon { color: var(--color-primary); }
+.optCardLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+.optCardSub {
+  font-size: 10px;
+  color: var(--color-muted);
+  margin-top: 1px;
+}
+
+/* Protection 2-col field row */
+.protFieldRow2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: flex-start;
+}
+@media (max-width: 479px) {
+  .protFieldRow2 { grid-template-columns: 1fr; }
+}
+
+/* Cover ratio badge */
+.protRatioBadge {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 38px;
+  padding: 0 12px;
+  background: var(--color-surface, rgba(255,255,255,0.04));
+  border: 1px solid var(--color-border, rgba(0,0,0,0.1));
+  border-radius: 8px;
+}
+.protRatioOk   { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--color-success); }
+.protRatioWarn { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--color-warning); }
+.protRatioBad  { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--color-danger);  }
+.protRatioSub  { font-size: 9px; color: var(--color-muted); margin-top: 1px; }
+
+/* ── Goal card rows ──────────────────────────────────────────────────────── */
+
+/* Row 2: Name (2fr) + Target (1.5fr) + Horizon pills (2fr) */
+.goalRow2 {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 2fr;
+  gap: 10px;
+  align-items: flex-start;
+}
+@media (max-width: 639px) {
+  .goalRow2 { grid-template-columns: 1fr 1fr; }
+  .goalRow2 > *:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 479px) {
+  .goalRow2 { grid-template-columns: 1fr; }
+}
+
+/* ── Horizon preset pills ────────────────────────────────────────────────── */
+
+.horizonPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-top: 2px;
+}
+
+.horizonPill {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, rgba(0,0,0,0.1));
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.horizonPill:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 50%, transparent);
+  color: var(--color-fg);
+}
+.horizonPillActive {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* ── Risk cards ──────────────────────────────────────────────────────────── */
+
+.riskCards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 4px;
+}
+@media (max-width: 479px) {
+  .riskCards { grid-template-columns: 1fr; gap: 8px; }
+}
+
+.riskCard {
+  position: relative;
+  background: var(--color-surface, rgba(255,255,255,0.04));
+  border: 2px solid var(--color-border, rgba(0,0,0,0.1));
+  border-radius: 16px;
+  padding: 22px 16px 18px;
+  cursor: pointer;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  font-family: inherit;
+}
+.riskCard:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--color-fg) 25%, transparent);
+  box-shadow: 0 6px 20px -4px color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+.riskSelected {
+  border-color: var(--color-primary) !important;
+  background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface, rgba(255,255,255,0.04))) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 10px 28px -6px color-mix(in srgb, var(--color-primary) 22%, transparent) !important;
+}
+
+.riskCheck {
+  position: absolute;
+  top: 12px; right: 12px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.riskViz {
+  height: 64px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  margin-bottom: 14px;
+  padding: 0 8px;
+}
+
+.riskBar {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  opacity: 0.75;
+  transition: opacity 0.2s;
+}
+.riskCard:hover .riskBar,
+.riskSelected .riskBar { opacity: 1; }
+
+.riskName {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin-bottom: 5px;
+  color: var(--color-fg);
+}
+
+.riskTagline {
+  font-size: 0.68rem;
+  color: var(--color-muted);
+  line-height: 1.45;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
+
+.riskStat {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border, rgba(0,0,0,0.08));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.65rem;
+}
+.riskStatLabel { color: var(--color-muted); font-family: 'Inter Tight', system-ui, sans-serif; }
+.riskStatValue { font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--color-fg); }
 
 /* ── Vani copilot rich text helpers ──────────────────────────────────────── */
 
