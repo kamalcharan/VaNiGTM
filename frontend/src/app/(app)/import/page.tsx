@@ -46,7 +46,7 @@ interface ProcessResult {
 
 const IMPORT_TYPES: { id: ImportType; label: string; desc: string; icon: string; enabled: boolean }[] = [
   { id: 'scheme', label: 'Scheme Master', desc: 'AMFI scheme database — codes, ISINs, categories, NAV names', icon: '\u{1F4CA}', enabled: true },
-  { id: 'customer', label: 'Customers', desc: 'Client contacts — PAN, mobile, email, addresses', icon: '\u{1F465}', enabled: false },
+  { id: 'customer', label: 'Customers', desc: 'Client contacts — externalid, PAN, mobile, email, addresses', icon: '\u{1F465}', enabled: true },
   { id: 'transaction', label: 'Transactions', desc: 'Purchases, redemptions, SIPs, switches, dividends', icon: '\u{1F4C4}', enabled: false },
   { id: 'bookmark', label: 'Bookmarks', desc: 'Tracked scheme codes and ISINs — bulk add to My NAV', icon: '\u{1F516}', enabled: true },
 ];
@@ -200,34 +200,60 @@ export default function ImportPage() {
   function getVaniInsights(): string[] {
     if (!result || !headerInfo) return [];
     const insights: string[] = [];
-    const isBookmark = importType === 'bookmark';
 
-    if (result.successful > 0 && result.failed === 0) {
-      insights.push(isBookmark
-        ? `${result.successful.toLocaleString()} scheme${result.successful !== 1 ? 's' : ''} added to My NAV.`
-        : `All ${result.successful.toLocaleString()} records processed successfully.`);
-    }
-    if (result.duplicate > 0) {
-      insights.push(isBookmark
-        ? `${result.duplicate.toLocaleString()} scheme${result.duplicate !== 1 ? 's were' : ' was'} already in My NAV — skipped.`
-        : `${result.duplicate.toLocaleString()} existing schemes updated with latest data.`);
-    }
-    if (result.failed > 0) {
-      insights.push(isBookmark
-        ? `${result.failed} row${result.failed !== 1 ? 's' : ''} could not be matched to a scheme — check codes/ISINs.`
-        : `${result.failed} records failed \u2014 check error details below.`);
-    }
-    if (isBookmark && result.successful > 0) {
-      insights.push('Aliases auto-seeded — your imported schemes are now matchable by name during future imports.');
-      insights.push('Go to My NAV to download NAV data and calculate metrics for your new bookmarks.');
-    }
-    if (!isBookmark) {
-      const newSchemes = result.successful - result.duplicate;
-      if (newSchemes > 0) insights.push(`${newSchemes.toLocaleString()} new schemes added to the database.`);
+    if (importType === 'bookmark') {
+      if (result.successful > 0) {
+        insights.push(`${result.successful.toLocaleString()} scheme${result.successful !== 1 ? 's' : ''} added to My NAV.`);
+      }
+      if (result.duplicate > 0) {
+        insights.push(`${result.duplicate.toLocaleString()} scheme${result.duplicate !== 1 ? 's were' : ' was'} already in My NAV — skipped.`);
+      }
+      if (result.failed > 0) {
+        insights.push(`${result.failed} row${result.failed !== 1 ? 's' : ''} could not be matched to a scheme — check codes/ISINs.`);
+      }
+      if (result.successful > 0) {
+        insights.push('Aliases auto-seeded — your imported schemes are now matchable by name during future imports.');
+        insights.push('Go to My NAV to download NAV data and calculate metrics for your new bookmarks.');
+      }
+
+    } else if (importType === 'customer') {
+      if (result.successful > 0 && result.failed === 0) {
+        insights.push(`All ${result.successful.toLocaleString()} clients imported successfully.`);
+      } else if (result.successful > 0) {
+        insights.push(`${result.successful.toLocaleString()} client${result.successful !== 1 ? 's' : ''} imported successfully.`);
+      }
+      if (result.duplicate > 0) {
+        insights.push(`${result.duplicate.toLocaleString()} client${result.duplicate !== 1 ? 's were' : ' was'} already in the system (matched by externalid) — skipped.`);
+      }
+      if (result.failed > 0) {
+        insights.push(`${result.failed} row${result.failed !== 1 ? 's' : ''} failed — check error details below. Common causes: missing name, invalid date format.`);
+      }
+      if (result.successful > 0) {
+        insights.push('Family linkages are stored as raw references. Run "Resolve Families" from the import dashboard to group family members together.');
+        insights.push('Go to Contacts to view your imported clients.');
+      }
+      if (result.duration_ms) {
+        insights.push(`Processed ${result.processed.toLocaleString()} rows in ${(result.duration_ms / 1000).toFixed(1)}s via PostgreSQL RPC.`);
+      }
+
+    } else {
+      // scheme / generic
+      if (result.successful > 0 && result.failed === 0) {
+        insights.push(`All ${result.successful.toLocaleString()} records processed successfully.`);
+      }
+      if (result.duplicate > 0) {
+        insights.push(`${result.duplicate.toLocaleString()} existing records updated with latest data.`);
+      }
+      if (result.failed > 0) {
+        insights.push(`${result.failed} records failed — check error details below.`);
+      }
+      const newRecords = result.successful - result.duplicate;
+      if (newRecords > 0) insights.push(`${newRecords.toLocaleString()} new records added to the database.`);
       if (result.duration_ms) {
         insights.push(`Processed ${result.processed.toLocaleString()} rows in ${(result.duration_ms / 1000).toFixed(1)}s via PostgreSQL RPC.`);
       }
     }
+
     return insights;
   }
 

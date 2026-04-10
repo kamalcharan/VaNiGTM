@@ -22,6 +22,7 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { parseExcelHeaders, parseExcelRows } from './excel-parser';
 import { mapSchemeRow, SCHEME_FIELD_MAP, BOOKMARK_FIELD_MAP } from './scheme-processor';
+import { mapCustomerRow, CUSTOMER_FIELD_MAP } from './customer-processor';
 import { verifyAccessToken, type JwtPayload } from '../auth/token.service';
 
 const UPLOAD_DIR = path.resolve(__dirname, '../../uploads');
@@ -135,8 +136,9 @@ export function createEtlRouter(pool: Pool): Router {
       const { headers, sampleRows, totalRows } = parseExcelHeaders(file.file_path);
 
       // Auto-suggest mapping based on import type
-      const suggestedMapping = file.file_type === 'scheme' ? SCHEME_FIELD_MAP
-        : file.file_type === 'bookmark' ? BOOKMARK_FIELD_MAP
+      const suggestedMapping = file.file_type === 'scheme'   ? SCHEME_FIELD_MAP
+        : file.file_type === 'bookmark'  ? BOOKMARK_FIELD_MAP
+        : file.file_type === 'customer'  ? CUSTOMER_FIELD_MAP
         : {};
 
       res.json({
@@ -214,7 +216,10 @@ export function createEtlRouter(pool: Pool): Router {
       // Always set tenant_id — scheme imports are triggered by a tenant user,
       // so the session belongs to that tenant for dashboard visibility and audit.
       const tenantId = auth.tenant_id;
-      const mappings = field_mappings || (import_type === 'scheme' ? SCHEME_FIELD_MAP : {});
+      const mappings = field_mappings
+        || (import_type === 'scheme'   ? SCHEME_FIELD_MAP
+          : import_type === 'customer' ? CUSTOMER_FIELD_MAP
+          : {});
 
       // Create session
       const sessionResult = await pool.query(
@@ -236,10 +241,12 @@ export function createEtlRouter(pool: Pool): Router {
         batch.forEach((raw, batchIdx) => {
           const rowNum = i + batchIdx + 1;
 
-          // Apply field mapping + pre-processing (ISIN splitting, date formatting)
+          // Apply field mapping + pre-processing
           const mapped = import_type === 'scheme'
             ? mapSchemeRow(raw, mappings)
-            : applyGenericMapping(raw, mappings);
+            : import_type === 'customer'
+              ? mapCustomerRow(raw, mappings)
+              : applyGenericMapping(raw, mappings);
 
           const offset = batchIdx * 4;
           placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}::jsonb, $${offset + 4}::jsonb)`);
@@ -301,8 +308,13 @@ export function createEtlRouter(pool: Pool): Router {
           'SELECT * FROM process_scheme_import_with_timing($1, $2)',
           [sessionId, targetDurationMs],
         );
+      } else if (session.import_type === 'customer') {
+        rpcResult = await pool.query(
+          'SELECT * FROM process_customer_import_with_timing($1, $2)',
+          [sessionId, targetDurationMs],
+        );
       } else {
-        // Future: process_customer_import_with_timing, process_transaction_import_with_timing
+        // transaction import not yet implemented
         res.status(400).json({ error: { code: 'UNSUPPORTED', message: `Import type "${session.import_type}" processing not yet implemented` } });
         return;
       }
@@ -485,6 +497,20 @@ export function createEtlRouter(pool: Pool): Router {
           duplicate: result.duplicate_count,
         });
 
+      } else if (session.import_type === 'customer') {
+        const rpcResult = await pool.query(
+          'SELECT * FROM process_customer_import_with_timing($1, $2)',
+          [sessionId, 30000],
+        );
+        const result = rpcResult.rows[0] as any;
+        res.json({
+          message: `Reprocessed ${resetCount} records`,
+          reprocessed: resetCount,
+          successful: result.success_count,
+          failed: result.failed_count,
+          duplicate: result.duplicate_count,
+        });
+
       } else if (session.import_type === 'bookmark') {
         // Re-process failed bookmark staging rows — same upsert + alias seed logic
         const tenantId = session.tenant_id;
@@ -637,6 +663,49 @@ export function createEtlRouter(pool: Pool): Router {
     } catch (err: any) {
       console.error('[ETL:reprocess]', err);
       res.status(500).json({ error: { code: 'REPROCESS_FAILED', message: err.message || 'Reprocess failed' } });
+    }
+  });
+
+  /* ── POST /sessions/:id/resolve-families — Post-import family linking ── */
+
+  router.post('/sessions/:id/resolve-families', async (req, res) => {
+    try {
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const sessionId = Number(req.params.id);
+
+      // Verify session exists and belongs to this tenant
+      const sessResult = await pool.query(
+        'SELECT * FROM ki_import_sessions WHERE id = $1 AND tenant_id = $2',
+        [sessionId, auth.tenant_id],
+      );
+      if (sessResult.rows.length === 0) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Session not found' } });
+        return;
+      }
+
+      const session = sessResult.rows[0] as any;
+      if (session.import_type !== 'customer') {
+        res.status(400).json({ error: { code: 'INVALID_TYPE', message: 'resolve-families is only valid for customer import sessions' } });
+        return;
+      }
+
+      // Call the PostgreSQL function to resolve family linkages
+      const result = await pool.query(
+        'SELECT * FROM resolve_customer_families($1, $2)',
+        [auth.tenant_id, auth.is_live],
+      );
+
+      const row = result.rows[0] as any;
+      res.json({
+        families_created: row.families_created,
+        members_linked: row.members_linked,
+        heads_not_found: row.heads_not_found,
+      });
+    } catch (err: any) {
+      console.error('[ETL:resolve-families]', err);
+      res.status(500).json({ error: { code: 'RESOLVE_FAILED', message: err.message || 'Family resolution failed' } });
     }
   });
 
