@@ -1156,32 +1156,6 @@ export default function IntakePage() {
             <p className={s.sectionSub}>The reason behind the numbers. Your dreams give your money a job to do.</p>
           </div>
 
-          {/* Risk Profile */}
-          <div className={s.subBlock}>
-            <div className={s.subHead}>Risk Profile</div>
-            <div className={s.riskCards}>
-              {(['conservative', 'moderate', 'aggressive'] as const).map(key => (
-                <button key={key}
-                  className={`${s.riskCard} ${riskProfile === key ? s.riskSelected : ''}`}
-                  onClick={() => setRiskProfile(p => p === key ? '' : key)}>
-                  {riskProfile === key && <span className={s.riskCheck}>✓</span>}
-                  <div className={s.riskViz}>
-                    {RISK_BARS[key].map((h, i) => (
-                      <div key={i} className={s.riskBar}
-                        style={{ height: `${h}%`, background: RISK_BAR_COLORS[key] }} />
-                    ))}
-                  </div>
-                  <div className={s.riskName}>{key.charAt(0).toUpperCase() + key.slice(1)}</div>
-                  <div className={s.riskTagline}>{RISK_TAGLINES[key]}</div>
-                  <div className={s.riskStat}>
-                    <span className={s.riskStatLabel}>Expected return</span>
-                    <span className={s.riskStatValue}>{RISK_RETURNS[key]}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Aspirational Goals */}
           <div className={s.subBlock}>
             <div className={s.subHead}>Aspirational Goals</div>
