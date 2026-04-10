@@ -95,10 +95,11 @@ interface JobType {
 /* ── Tab definitions ─────────────────────────────────────────────────── */
 
 const TABS = [
-  { id: 'txn',      label: 'Transaction Types', icon: '↔' },
-  { id: 'asset',    label: 'Asset Types',        icon: '◆' },
-  { id: 'bookmark', label: 'Bookmark Reasons',   icon: '🏷' },
-  { id: 'jobs',     label: 'Job Scheduler',      icon: '⚙' },
+  { id: 'txn',       label: 'Transaction Types', icon: '↔' },
+  { id: 'asset',     label: 'Asset Types',        icon: '◆' },
+  { id: 'bookmark',  label: 'Bookmark Reasons',   icon: '🏷' },
+  { id: 'jobs',      label: 'Job Scheduler',      icon: '⚙' },
+  { id: 'platforms', label: 'Platforms',           icon: '⬡' },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -780,6 +781,113 @@ function JobSchedulerTab() {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
+   PLATFORMS TAB
+════════════════════════════════════════════════════════════════════════ */
+
+interface ExtRefType {
+  code: string;
+  label: string;
+  description: string | null;
+  sort_order: number;
+}
+
+function PlatformsTab() {
+  const { tenant } = useAuth();
+  const currentCode = tenant?.ext_ref_type_code ?? null;
+
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['master-data', 'ext-ref-types'],
+    queryFn: () => apiFetch<{ ext_ref_types: ExtRefType[] }>(API.masterData.extRefTypes),
+  });
+
+  const platforms = data?.ext_ref_types ?? [];
+
+  if (isLoading) return <VdfLoader message="Loading platforms…" />;
+  if (isError) return <TabError error={error} />;
+
+  return (
+    <div className={s.sectionCard}>
+      <div className={s.sectionHeader}>
+        <div>
+          <div className={s.sectionTitle}>Client Platforms</div>
+          <div className={s.sectionDesc}>
+            External reference code systems used to identify clients across platforms.
+            Each tenant selects one platform during onboarding — it cannot be changed without admin support.
+          </div>
+        </div>
+        {currentCode && (
+          <span style={{
+            fontFamily: 'var(--font-mono, monospace)',
+            fontWeight: 700,
+            fontSize: '0.8rem',
+            color: 'var(--color-primary)',
+            background: 'color-mix(in srgb, var(--color-primary) 10%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--color-primary) 25%, transparent)',
+            padding: '4px 12px',
+            borderRadius: 6,
+            whiteSpace: 'nowrap' as const,
+          }}>
+            Your platform: {currentCode}
+          </span>
+        )}
+      </div>
+
+      <div className={s.tableWrap}>
+        <table className={s.table}>
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Platform Name</th>
+              <th>Description</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {platforms.map(p => {
+              const isCurrent = p.code === currentCode;
+              return (
+                <tr key={p.code} style={isCurrent ? { background: 'color-mix(in srgb, var(--color-primary) 5%, transparent)' } : undefined}>
+                  <td>
+                    <span className={s.mono} style={isCurrent ? { color: 'var(--color-primary)', fontWeight: 700 } : undefined}>
+                      {p.code}
+                    </span>
+                  </td>
+                  <td style={{ fontWeight: isCurrent ? 600 : undefined }}>
+                    {p.label}
+                    {isCurrent && (
+                      <span style={{
+                        marginLeft: 8,
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.08em',
+                        color: 'var(--color-primary)',
+                        background: 'color-mix(in srgb, var(--color-primary) 10%, transparent)',
+                        border: '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)',
+                        padding: '2px 7px',
+                        borderRadius: 4,
+                        textTransform: 'uppercase' as const,
+                      }}>
+                        Your platform
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ color: 'var(--color-muted)', fontSize: '0.82rem' }}>
+                    {p.description ?? '—'}
+                  </td>
+                  <td>
+                    <VdfStatusBadge label="Active" variant="success" size="sm" />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
    PAGE
 ════════════════════════════════════════════════════════════════════════ */
 
@@ -805,7 +913,7 @@ export default function MasterDataPage() {
       <div className={s.header}>
         <div className={s.headerText}>
           <h1 className={s.title}>Master Data</h1>
-          <p className={s.subtitle}>Manage transaction types, asset types, bookmark reasons, and job schedules</p>
+          <p className={s.subtitle}>Manage transaction types, asset types, bookmark reasons, job schedules, and client platforms</p>
         </div>
       </div>
 
@@ -817,10 +925,11 @@ export default function MasterDataPage() {
       />
 
       <div className={s.tabContent}>
-        {activeTab === 'txn'      && <TransactionTypesTab />}
-        {activeTab === 'asset'    && <AssetTypesTab />}
-        {activeTab === 'bookmark' && <BookmarkReasonsTab />}
-        {activeTab === 'jobs'     && <JobSchedulerTab />}
+        {activeTab === 'txn'       && <TransactionTypesTab />}
+        {activeTab === 'asset'     && <AssetTypesTab />}
+        {activeTab === 'bookmark'  && <BookmarkReasonsTab />}
+        {activeTab === 'jobs'      && <JobSchedulerTab />}
+        {activeTab === 'platforms' && <PlatformsTab />}
       </div>
     </div>
   );
