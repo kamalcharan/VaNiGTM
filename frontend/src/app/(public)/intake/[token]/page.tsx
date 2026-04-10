@@ -102,7 +102,12 @@ const GOAL_TYPES = ['retirement','education','house','wedding','emergency','vehi
 
 // ── Main Component ─────────────────────────────────────────────────────────
 
-type Stage = 'loading' | 'server-error' | 'invalid' | 'step0' | 'wizard' | 'done';
+type Stage = 'loading' | 'server-error' | 'invalid' | 'welcome' | 'step0' | 'wizard' | 'done';
+
+function initials(name: string | null): string {
+  if (!name) return '?';
+  return name.trim().split(/\s+/).map(w => w[0]?.toUpperCase() ?? '').filter(Boolean).slice(0, 2).join('');
+}
 
 export default function IntakePage() {
   const { token } = useParams<{ token: string }>();
@@ -136,7 +141,7 @@ export default function IntakePage() {
     post<ValidateResponse>('/api/v1/intake/validate', { token })
       .then(data => {
         setMeta(data);
-        setStage(data.flow === 'cold_lead' ? 'step0' : 'wizard');
+        setStage('welcome');
       })
       .catch((err: Error) => {
         setInitError(err.message);
@@ -278,6 +283,86 @@ export default function IntakePage() {
         </div>
         <h2 className={s.invalidTitle}>This link is no longer valid</h2>
         <p className={s.invalidSub}>It may have expired or already been used. Ask your advisor for a fresh link.</p>
+      </div>
+    );
+  }
+
+  // ── Welcome screen ──────────────────────────────────────────────────────
+
+  if (stage === 'welcome' && meta) {
+    const mfdName = meta.mfd_name || meta.tenant.display_name || 'your advisor';
+    const contactFirstName = meta.contact_prefill?.name?.split(' ')[0] || null;
+    const vaniGreeting = contactFirstName
+      ? `"Hi ${contactFirstName} — I'll walk you through this. No jargon, no judgement. I'll even do some of the math for you along the way. Ready when you are."`
+      : `"Hi — I'll walk you through this. No jargon, no judgement. I'll even do some of the math for you along the way. Ready when you are."`;
+    const nextStage = meta.flow === 'known_contact' ? 'wizard' : 'step0';
+
+    return (
+      <div className={s.welcomeWrap} style={brandStyle}>
+        <div className={s.welcomeCard}>
+
+          {/* MFD sent-by pill */}
+          <div className={s.mfdPill}>
+            <div className={s.mfdInitials}>{initials(meta.mfd_name)}</div>
+            <span className={s.mfdPillText}>Sent to you by <strong>{mfdName}</strong></span>
+          </div>
+
+          {/* Eyebrow */}
+          <div className={s.welcomeEyebrow}>● Financial Snapshot</div>
+
+          {/* Headline */}
+          <h1 className={s.welcomeTitle}>
+            Let&rsquo;s paint<br /><em>your money picture.</em>
+          </h1>
+
+          {/* Subtitle */}
+          <p className={s.welcomeSub}>
+            In about 10 minutes, you&rsquo;ll see your complete financial health in one view —
+            net worth, savings rate, protection, and the gaps worth closing.
+          </p>
+
+          {/* Vani intro card */}
+          <div className={s.vaniCard}>
+            <div className={s.vaniCardHeader}>
+              <div className={s.vaniAvatar}>V</div>
+              <span className={s.vaniLabel}>Vani</span>
+              <span className={s.vaniGuideTag}>Your Guide</span>
+            </div>
+            <p className={s.vaniMessage}>{vaniGreeting}</p>
+          </div>
+
+          {/* Trust signals */}
+          <div className={s.trustList}>
+            <div className={s.trustItem}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 2 4 7v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V7l-8-5z"/>
+                <path d="m9 12 2 2 4-4"/>
+              </svg>
+              <span><strong>Your data is private.</strong> Only {meta.mfd_name || 'your advisor'} sees it — never shared, never sold.</span>
+            </div>
+            <div className={s.trustItem}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+              </svg>
+              <span><strong>Takes ~10 minutes.</strong> Skip anything you&rsquo;re unsure about — fill what you can.</span>
+            </div>
+            <div className={s.trustItem}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 20V10M18 20V4M6 20v-4"/>
+              </svg>
+              <span><strong>You&rsquo;ll walk away with a snapshot.</strong> A clear summary of where you stand financially.</span>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <button className={s.beginBtn} onClick={() => setStage(nextStage)}>
+            Let&rsquo;s Begin
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
+
+        </div>
       </div>
     );
   }
