@@ -110,20 +110,16 @@ export default function BusinessTab() {
       }
     }
     if (editing === 'compliance') {
-      if (draft.pan && !validatePAN(draft.pan)) {
-        showToast({ message: 'Invalid PAN format (e.g. ABCDE1234F)', type: 'error' }); return;
-      }
-      if (draft.gstin && !validateGSTIN(draft.gstin)) {
-        showToast({ message: 'Invalid GSTIN format', type: 'error' }); return;
-      }
-      if (draft.arn && !validateARN(draft.arn)) {
-        showToast({ message: 'Invalid ARN format', type: 'error' }); return;
-      }
+      const panErr = validatePAN(draft.pan);
+      if (panErr) { showToast({ message: panErr, type: 'error' }); return; }
+      const gstinErr = validateGSTIN(draft.gstin, draft.pan);
+      if (gstinErr) { showToast({ message: gstinErr, type: 'error' }); return; }
+      const arnErr = validateARN(draft.arn);
+      if (arnErr) { showToast({ message: arnErr, type: 'error' }); return; }
     }
     if (editing === 'address') {
-      if (draft.postal_code && !validatePIN(draft.postal_code)) {
-        showToast({ message: 'PIN code must be 6 digits', type: 'error' }); return;
-      }
+      const pinErr = validatePIN(draft.postal_code);
+      if (pinErr) { showToast({ message: pinErr, type: 'error' }); return; }
     }
 
     setSaving(true);
