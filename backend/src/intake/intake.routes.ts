@@ -315,11 +315,14 @@ export function createIntakeRouter(pool: Pool): Router {
 
       const prot = protection as Record<string, unknown>;
       if (Object.values(prot).some(v => v)) {
+        const healthCoverType = String(prot.health_cover_type || '');
+        const validCoverTypes = ['individual', 'family_floater', 'employer', 'none'];
         await client.query(
           `INSERT INTO ki_snapshot_protection
              (snapshot_id, life_cover_amount, health_cover_amount, ci_cover_amount,
-              life_premium_annual, health_premium_annual, has_term_plan, has_health_cover, protection_ratio_pct)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+              life_premium_annual, health_premium_annual, has_term_plan, has_health_cover,
+              protection_ratio_pct, health_cover_type)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
           [snapshotId,
            Number(prot.life_cover_amount)   || null,
            Number(prot.health_cover_amount) || null,
@@ -328,7 +331,8 @@ export function createIntakeRouter(pool: Pool): Router {
            Number(prot.health_premium_annual) || null,
            Boolean(prot.has_term_plan),
            Boolean(prot.has_health_cover),
-           protectionRatioPct]
+           protectionRatioPct,
+           validCoverTypes.includes(healthCoverType) ? healthCoverType : null]
         );
       }
 

@@ -117,9 +117,9 @@ const RISK_BARS: Record<'conservative' | 'moderate' | 'aggressive', number[]> = 
   aggressive:   [30, 90, 45, 95, 60],
 };
 const RISK_BAR_COLORS: Record<'conservative' | 'moderate' | 'aggressive', string> = {
-  conservative: 'var(--color-info, #4a7a8c)',
-  moderate:     'var(--color-warning)',
-  aggressive:   'var(--color-danger)',
+  conservative: '#4a7a8c',
+  moderate:     '#c47e1a',
+  aggressive:   '#b54034',
 };
 const RISK_TAGLINES: Record<'conservative' | 'moderate' | 'aggressive', string> = {
   conservative: 'Sleep well at night. Capital protection first.',
@@ -291,6 +291,7 @@ export default function IntakePage() {
       ci_cover_amount:     Number(protection.ci_cover_amount)     || undefined,
       has_term_plan:       protection.has_term_plan,
       has_health_cover:    protection.has_health_cover,
+      health_cover_type:   protection.health_cover_type || undefined,
     },
     goals: goals.filter(g => g.name && Number(g.target_amount) > 0).map((g, i) => ({
       goal_type: g.goal_type || 'custom',
@@ -672,7 +673,7 @@ export default function IntakePage() {
             <div className={s.savingsRow}>
               <span className={s.savingsRowLabel}>Monthly savings</span>
               <span className={s.savingsRowValue}
-                style={{ color: monthlySavings >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                style={{ color: monthlySavings >= 0 ? 'var(--ok, #2e7d4f)' : 'var(--danger-w, #b54034)' }}>
                 {monthlySavings >= 0 ? '+' : ''}{fmt(monthlySavings)}
                 {monthlyIncome > 0 && ` · ${Math.round((monthlySavings / monthlyIncome) * 100)}%`}
               </span>
@@ -682,12 +683,15 @@ export default function IntakePage() {
           {/* Vani copilot */}
           {monthlyIncome > 0 && (
             <div className={s.vaniCopilot}>
-              <span className={s.vaniCopilotMarker}>V ▸</span>
-              <span className={s.vaniCopilotText}>
+              <div className={s.vaniCopilotMarker}>
+                <div className={s.vaniCopilotAvatar}>V</div>
+                <span className={s.vaniCopilotName}>Vani</span>
+              </div>
+              <p className={s.vaniCopilotText}>
                 {monthlyIncome > 0 && monthlyExpenses > 0
                   ? `${fmt(monthlyIncome)}/mo income · ${fmt(monthlyExpenses)}/mo expenses · Savings ${Math.round((monthlySavings / monthlyIncome) * 100)}% of income. ${monthlySavings >= 0 ? `Savings capacity ≈ ${fmt(monthlySavings * 12)}/yr.` : 'Expenses exceed income — review discretionary spending.'}`
                   : `Income at ${fmt(monthlyIncome)}/mo. Add expenses to compute your savings rate.`}
-              </span>
+              </p>
             </div>
           )}
         </div>
@@ -789,8 +793,11 @@ export default function IntakePage() {
           {/* Vani copilot — appears once first asset has a value */}
           {pulseAssets > 0 && (
             <div className={s.vaniCopilot}>
-              <span className={s.vaniCopilotMarker}>V ▸</span>
-              <span className={s.vaniCopilotText}>
+              <div className={s.vaniCopilotMarker}>
+                <div className={s.vaniCopilotAvatar}>V</div>
+                <span className={s.vaniCopilotName}>Vani</span>
+              </div>
+              <p className={s.vaniCopilotText}>
                 <span className={s.vaniHi}>{fmt(pulseAssets)} total</span>
                 {' · '}
                 <span className={assetLiquidPct >= 30 ? s.vaniOk : assetLiquidPct >= 15 ? s.vaniWarn : s.vaniBad}>
@@ -818,7 +825,7 @@ export default function IntakePage() {
                     {liquidityMths < 3 && <> · <span className={s.vaniBad}>Below 3-month threshold.</span></>}
                   </>
                 )}
-              </span>
+              </p>
             </div>
           )}
         </div>
@@ -911,8 +918,11 @@ export default function IntakePage() {
 
           {totalLiabs > 0 && (
             <div className={s.vaniCopilot}>
-              <span className={s.vaniCopilotMarker}>V ▸</span>
-              <span className={s.vaniCopilotText}>
+              <div className={s.vaniCopilotMarker}>
+                <div className={s.vaniCopilotAvatar}>V</div>
+                <span className={s.vaniCopilotName}>Vani</span>
+              </div>
+              <p className={s.vaniCopilotText}>
                 <span className={s.vaniHi}>{fmt(totalLiabs)} total debt</span>
                 {pulseEmi > 0 && <> · <span className={s.vaniHi}>{fmt(pulseEmi)}/mo EMI</span></>}
                 {debtLoadPct !== null && (
@@ -928,7 +938,7 @@ export default function IntakePage() {
                 {debtLoadPct !== null && debtLoadPct > 50 && (
                   <><br /><span className={s.vaniBad}>DTI above 50% — debt repayment is constraining savings capacity.</span></>
                 )}
-              </span>
+              </p>
             </div>
           )}
         </div>
@@ -1084,8 +1094,11 @@ export default function IntakePage() {
           {(Number(protection.life_cover_amount) > 0 || Number(protection.health_cover_amount) > 0
             || !protection.has_term_plan || !protection.has_health_cover) && (
             <div className={s.vaniCopilot}>
-              <span className={s.vaniCopilotMarker}>V ▸</span>
-              <span className={s.vaniCopilotText}>
+              <div className={s.vaniCopilotMarker}>
+                <div className={s.vaniCopilotAvatar}>V</div>
+                <span className={s.vaniCopilotName}>Vani</span>
+              </div>
+              <p className={s.vaniCopilotText}>
                 {Number(protection.life_cover_amount) > 0 ? (
                   <>Life cover <span className={s.vaniHi}>{fmt(Number(protection.life_cover_amount))}</span>
                   {protectionX !== null && (
@@ -1102,7 +1115,7 @@ export default function IntakePage() {
                 ) : !protection.has_health_cover ? (
                   <><br /><span className={s.vaniWarn}>No health cover flagged. Medical inflation in India is 14%/yr.</span></>
                 ) : null}
-              </span>
+              </p>
             </div>
           )}
         </div>
