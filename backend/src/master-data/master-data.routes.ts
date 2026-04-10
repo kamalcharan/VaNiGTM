@@ -501,36 +501,5 @@ export function createMasterDataRouter(pool: Pool): Router {
     }
   });
 
-  /* ══════════════════════════════════════════════════════════════════════
-     SEQUENCES — current counter state per tenant (admin-only)
-  ══════════════════════════════════════════════════════════════════════ */
-
-  router.get('/sequences', async (req, res) => {
-    const jwt = requireAdmin(req, res as any);
-    if (!jwt) return;
-
-    try {
-      const result = await pool.query<{
-        sequence_type: string; prefix: string;
-        last_value: number; pad_width: number; next_value: string;
-      }>(
-        `SELECT
-           sequence_type,
-           prefix,
-           last_value,
-           pad_width,
-           prefix || '-' || LPAD((last_value + 1)::text, pad_width, '0') AS next_value
-         FROM ki_sequences
-         WHERE tenant_id = $1
-         ORDER BY sequence_type ASC`,
-        [jwt.tenant_id],
-      );
-      res.json({ sequences: result.rows });
-    } catch (err) {
-      console.error('[MasterData:sequences]', err);
-      res.status(500).json({ error: { code: 'DB_ERROR', message: 'Failed to load sequences' } });
-    }
-  });
-
   return router;
 }
