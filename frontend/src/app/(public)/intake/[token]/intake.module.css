@@ -417,24 +417,45 @@
   background: var(--line-w, #ebe5d2);
 }
 
-/* ── Grid layouts ────────────────────────────────────────────────────────── */
+/* ── Cash Flow: display sub-section titles ───────────────────────────────── */
 
-.inputGrid3 {
+.cfSubTitle {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-variation-settings: "opsz" 144;
+  color: var(--ink, #1c1a14);
+  margin-bottom: 5px;
+}
+
+.cfSubHint {
+  font-size: 12.5px;
+  color: var(--ink-3, #8b8575);
+  margin-bottom: 18px;
+  line-height: 1.5;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
+
+/* 2-col row for secondary income (partner + other) */
+.incomeRow2 {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
 }
-@media (min-width: 480px) {
-  .inputGrid3 { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media (max-width: 479px) {
+  .incomeRow2 { grid-template-columns: 1fr; }
 }
+
+/* ── Grid layouts ────────────────────────────────────────────────────────── */
 
 .expenseGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
-@media (min-width: 768px) {
-  .expenseGrid { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media (min-width: 600px) {
+  .expenseGrid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
 }
 
 /* ── Card currency fields ────────────────────────────────────────────────── */
@@ -517,6 +538,92 @@
   font-family: 'JetBrains Mono', monospace;
   font-weight: 500;
 }
+
+/* ── Large currency input — salary hero ──────────────────────────────────── */
+
+.curInputWrapLg {
+  display: flex;
+  align-items: baseline;
+  background: var(--surface-w, #fff);
+  border: 1.5px solid var(--line-ws, #dcd4bc);
+  border-radius: 10px;
+  padding: 16px 20px;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.curInputWrapLg:focus-within {
+  border-color: var(--jade, var(--color-primary));
+  box-shadow: 0 0 0 4px var(--jade-soft, #e6efe9);
+}
+
+.curSymLg {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 26px;
+  font-weight: 400;
+  color: var(--ink-3, #8b8575);
+  margin-right: 8px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.curValLg {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 32px;
+  font-weight: 500;
+  font-variation-settings: "opsz" 144;
+  color: var(--ink, #1c1a14);
+  letter-spacing: -0.02em;
+  min-width: 0;
+}
+.curValLg::placeholder { color: var(--ink-4, #c8c2af); }
+.curValLg::-webkit-inner-spin-button, .curValLg::-webkit-outer-spin-button { -webkit-appearance: none; }
+.curValLg[type=number] { -moz-appearance: textfield; }
+
+/* ── Medium currency input — secondary income ────────────────────────────── */
+
+.curInputWrapMd {
+  display: flex;
+  align-items: baseline;
+  background: var(--surface-w, #fff);
+  border: 1.5px solid var(--line-ws, #dcd4bc);
+  border-radius: 10px;
+  padding: 14px 16px;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.curInputWrapMd:focus-within {
+  border-color: var(--jade, var(--color-primary));
+  box-shadow: 0 0 0 4px var(--jade-soft, #e6efe9);
+}
+
+.curSymMd {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--ink-3, #8b8575);
+  margin-right: 7px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.curValMd {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 24px;
+  font-weight: 500;
+  font-variation-settings: "opsz" 144;
+  color: var(--ink, #1c1a14);
+  letter-spacing: -0.02em;
+  min-width: 0;
+}
+.curValMd::placeholder { color: var(--ink-4, #c8c2af); }
+.curValMd::-webkit-inner-spin-button, .curValMd::-webkit-outer-spin-button { -webkit-appearance: none; }
+.curValMd[type=number] { -moz-appearance: textfield; }
 
 /* ── Savings summary row ─────────────────────────────────────────────────── */
 

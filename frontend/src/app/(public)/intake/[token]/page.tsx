@@ -619,39 +619,57 @@ export default function IntakePage() {
         <div className={s.stepBody}>
           <div className={s.sectionHead}>
             <div className={s.sectionNum}>Section 01 / 05 · Cash Flow</div>
-            <h2 className={s.sectionTitle}>Income &amp; monthly expenses</h2>
-            <p className={s.sectionSub}>Monthly cash in, monthly cash out. Savings rate computes automatically.</p>
+            <h2 className={s.sectionTitle}>What comes in,<br /><em>what goes out.</em></h2>
+            <p className={s.sectionSub}>Your monthly rhythm. This is the single most important thing — it tells us how much you can actually save.</p>
           </div>
 
-          {/* Monthly Income — 3-col grid */}
+          {/* Monthly Income */}
           <div className={s.subBlock}>
-            <div className={s.subHead}>Monthly Income</div>
-            <div className={s.inputGrid3}>
-              {([
-                { key: 'salary'       as const, label: 'Salary (take-home)', opt: false },
-                { key: 'partner'      as const, label: 'Partner income',      opt: true  },
-                { key: 'rental_other' as const, label: 'Rental / Other',      opt: true  },
-              ]).map(({ key, label, opt }) => (
-                <div key={key} className={s.curField}>
-                  <label className={s.curFieldLabel}>
-                    {label}{opt && <span className={s.curOptTag}> opt</span>}
-                  </label>
-                  <div className={s.curInputWrap}>
-                    <span className={s.curSym}>₹</span>
-                    <input className={s.curVal} type="number" inputMode="numeric"
-                      placeholder="0" value={income[key]}
-                      onChange={e => setIncome(p => ({ ...p, [key]: e.target.value }))} />
-                    <span className={s.curSuffix}>/mo</span>
-                  </div>
-                  {Number(income[key]) > 0 && <span className={s.curHint}>{fmt(Number(income[key]))}</span>}
+            <div className={s.cfSubTitle}>Money coming in</div>
+            <p className={s.cfSubHint}>Take-home (after tax) monthly income from all sources.</p>
+
+            {/* Salary — hero full-width */}
+            <div className={s.curField} style={{ marginBottom: 14 }}>
+              <label className={s.curFieldLabel}>Your take-home salary</label>
+              <div className={s.curInputWrapLg}>
+                <span className={s.curSymLg}>₹</span>
+                <input className={s.curValLg} type="number" inputMode="numeric"
+                  placeholder="0" value={income.salary}
+                  onChange={e => setIncome(p => ({ ...p, salary: e.target.value }))} />
+                <span className={s.curSuffix}>/ mo</span>
+              </div>
+              {Number(income.salary) > 0 && <span className={s.curHint}>{fmt(Number(income.salary))}</span>}
+            </div>
+
+            {/* Partner + Other — 2-col secondary */}
+            <div className={s.incomeRow2}>
+              <div className={s.curField}>
+                <label className={s.curFieldLabel}>Partner&apos;s income <span className={s.curOptTag}>optional</span></label>
+                <div className={s.curInputWrapMd}>
+                  <span className={s.curSymMd}>₹</span>
+                  <input className={s.curValMd} type="number" inputMode="numeric"
+                    placeholder="0" value={income.partner}
+                    onChange={e => setIncome(p => ({ ...p, partner: e.target.value }))} />
                 </div>
-              ))}
+                {Number(income.partner) > 0 && <span className={s.curHint}>{fmt(Number(income.partner))}</span>}
+              </div>
+              <div className={s.curField}>
+                <label className={s.curFieldLabel}>Other (rent, business) <span className={s.curOptTag}>optional</span></label>
+                <div className={s.curInputWrapMd}>
+                  <span className={s.curSymMd}>₹</span>
+                  <input className={s.curValMd} type="number" inputMode="numeric"
+                    placeholder="0" value={income.rental_other}
+                    onChange={e => setIncome(p => ({ ...p, rental_other: e.target.value }))} />
+                </div>
+                {Number(income.rental_other) > 0 && <span className={s.curHint}>{fmt(Number(income.rental_other))}</span>}
+              </div>
             </div>
           </div>
 
-          {/* Monthly Expenses — 4-col grid (always visible) */}
+          {/* Monthly Expenses — 3-col grid */}
           <div className={s.subBlock}>
-            <div className={s.subHead}>Monthly Expenses · Exclude EMIs</div>
+            <div className={s.cfSubTitle}>Money going out</div>
+            <p className={s.cfSubHint}>Monthly spending — <em>excluding EMIs</em>. We&apos;ll cover loans separately.</p>
             <div className={s.expenseGrid}>
               {(Object.keys(EXPENSE_LABELS) as Array<keyof Expenses>).map(key => (
                 <div key={key} className={s.curField}>
