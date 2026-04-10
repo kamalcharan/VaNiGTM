@@ -2617,36 +2617,36 @@
 .bkPlus { color: var(--color-success) !important; }
 .bkMinus { color: var(--color-danger) !important; }
 
-/* 2-col grid: donut + rings */
+/* 2-col grid: donut + rings — reference ratio ~3:2 */
 .snapGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 3fr 2fr;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 @media (max-width: 640px) {
   .snapGrid { grid-template-columns: 1fr; }
 }
 
 .snapCard {
-  background: var(--glass, var(--color-surface));
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 14px;
+  padding: 22px;
 }
 .snapCardTitle {
-  font-size: 11px;
+  font-size: 9px;
   font-family: var(--font-mono, monospace);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--color-fg);
-  font-weight: 600;
-  margin-bottom: 2px;
+  color: var(--color-muted);
+  font-weight: 700;
+  margin-bottom: 3px;
 }
 .snapCardSub {
   font-size: 11px;
   color: var(--color-muted);
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 .snapEmpty {
   font-size: 12px;
@@ -2658,24 +2658,23 @@
 /* Donut chart */
 .donutWrap {
   display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
 }
 .donutSvg {
-  width: 120px;
-  height: 120px;
+  width: 140px;
+  height: 140px;
   flex-shrink: 0;
 }
 .donutCtLabel {
-  font-size: 6px;
+  font-size: 5.5px;
   font-family: var(--font-mono, monospace);
   letter-spacing: 0.08em;
   fill: var(--color-muted);
   text-transform: uppercase;
 }
 .donutCtVal {
-  font-size: 8px;
+  font-size: 7.5px;
   font-weight: 700;
   fill: var(--color-fg);
   font-family: var(--font-mono, monospace);
@@ -2685,41 +2684,45 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  justify-content: center;
+  gap: 0;
 }
 .legRow {
   display: grid;
-  grid-template-columns: 10px 1fr auto auto;
+  grid-template-columns: 8px 1fr auto auto;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 12px;
 }
+.legRow:first-child { border-top: 1px solid var(--color-border); }
 .legSw {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 2px;
   flex-shrink: 0;
 }
 .legLabel {
   color: var(--color-fg);
+  font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .legAmt {
   font-family: var(--font-mono, monospace);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--color-muted);
   white-space: nowrap;
+  text-align: right;
 }
 .legPct {
   font-family: var(--font-mono, monospace);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--color-fg);
   white-space: nowrap;
-  min-width: 28px;
+  min-width: 36px;
   text-align: right;
 }
 
