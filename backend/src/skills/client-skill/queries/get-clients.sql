@@ -76,7 +76,12 @@ WHERE cl.tenant_id = $tenant_id
   )
   AND (
       $in_family::boolean IS NULL OR $in_family::boolean = false
-      OR cl.is_family_head = true
+      OR EXISTS (
+          SELECT 1 FROM ki_families kf
+          WHERE kf.head_client_id = cl.id
+            AND kf.tenant_id      = cl.tenant_id
+            AND kf.is_live        = cl.is_live
+      )
   )
 ORDER BY c.name ASC
 LIMIT  $limit

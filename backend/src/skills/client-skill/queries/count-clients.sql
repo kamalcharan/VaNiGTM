@@ -21,4 +21,12 @@ WHERE cl.tenant_id = $tenant_id
   AND ($risk_profile::text IS NULL OR cl.risk_profile = $risk_profile::text)
   AND ($bookmarked_only::boolean IS NULL OR $bookmarked_only::boolean = false OR bm.is_active = true)
   AND ($recent_only::boolean IS NULL OR $recent_only::boolean = false OR cl.created_at >= NOW() - INTERVAL '30 days')
-  AND ($in_family::boolean IS NULL OR $in_family::boolean = false OR cl.is_family_head = true);
+  AND (
+      $in_family::boolean IS NULL OR $in_family::boolean = false
+      OR EXISTS (
+          SELECT 1 FROM ki_families kf
+          WHERE kf.head_client_id = cl.id
+            AND kf.tenant_id      = cl.tenant_id
+            AND kf.is_live        = cl.is_live
+      )
+  );
