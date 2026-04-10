@@ -1619,26 +1619,15 @@
   color: var(--danger-w, #b54034);
 }
 
-/* Asset Type (wide) + Liquidity toggle (auto) */
-.assetRow1 {
+/* Current Value (left) + Liquidity toggle (right) — matches reference 2-col layout */
+.assetValueRow {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
-  align-items: end;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
 }
 @media (max-width: 479px) {
-  .assetRow1 { grid-template-columns: 1fr; }
-}
-
-/* Description (wide) + Value */
-.assetRow2 {
-  display: grid;
-  grid-template-columns: 2fr 1.5fr;
-  gap: 10px;
-  align-items: end;
-}
-@media (max-width: 479px) {
-  .assetRow2 { grid-template-columns: 1fr; }
+  .assetValueRow { grid-template-columns: 1fr; }
 }
 
 /* Plain select (matches curInputWrap height) */

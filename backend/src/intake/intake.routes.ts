@@ -295,7 +295,7 @@ export function createIntakeRouter(pool: Pool): Router {
           `INSERT INTO ki_snapshot_assets
              (snapshot_id, asset_type_id, description, current_value, is_liquid, sort_order)
            VALUES ($1, $2, $3, $4, $5, $6)`,
-          [snapshotId, Number(a.asset_type_id), a.description || null, Number(a.current_value), Boolean(a.is_liquid), i + 1]
+          [snapshotId, Number(a.asset_type_id) || null, a.description || null, Number(a.current_value), Boolean(a.is_liquid), i + 1]
         );
       }
 
