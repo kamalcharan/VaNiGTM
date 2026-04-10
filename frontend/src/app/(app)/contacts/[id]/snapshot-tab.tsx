@@ -736,7 +736,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     { label: 'Savings Rate', score: metrics.savingsRate !== null ? Math.min((metrics.savingsRate / 30) * 100, 100) : 0, state: savingsStatus(metrics.savingsRate), detail: metrics.savingsRate !== null ? `${metrics.savingsRate.toFixed(0)}%` : '—', emptyHint: 'add income' },
     { label: 'Debt Load',    score: metrics.dti !== null ? Math.min(((60 - Math.min(metrics.dti, 60)) / 60) * 100, 100) : 0, state: dtiStatus(metrics.dti), detail: metrics.dti !== null ? `DTI ${metrics.dti.toFixed(0)}%` : '—', emptyHint: 'add income' },
     { label: 'Protection',   score: protRatio !== null ? Math.min((protRatio / 15) * 100, 100) : 0, state: protectionStatus(protRatio), detail: protRatio !== null ? `${protRatio.toFixed(1)}×` : '—', emptyHint: 'add cover' },
-    { label: 'Liquidity',    score: metrics.liquidityMonths !== null ? Math.min((metrics.liquidityMonths / 12) * 100, 100) : 0, state: liquidityStatus(metrics.liquidityMonths), detail: metrics.liquidityMonths !== null ? `${metrics.liquidityMonths.toFixed(1)} mo` : '—', emptyHint: 'add expenses' },
+    { label: 'Liquidity',    score: metrics.liquidityMonths !== null ? Math.min((metrics.liquidityMonths / 12) * 100, 100) : 0, state: liquidityStatus(metrics.liquidityMonths), detail: metrics.liquidityMonths !== null ? `${metrics.liquidityMonths.toFixed(1)} mo` : '—', emptyHint: metrics.monthlyExpenses > 0 ? 'tag liquid assets' : 'add expenses' },
     { label: 'Future Focus', score: Math.min((vaniGoalsFilled.length / 3) * 100, 100), state: vaniGoalsFilled.length >= 3 ? 'good' as PulseStatus : vaniGoalsFilled.length >= 1 ? 'warn' as PulseStatus : 'empty' as PulseStatus, detail: `${vaniGoalsFilled.length} goal${vaniGoalsFilled.length !== 1 ? 's' : ''}`, emptyHint: 'add goals' },
   ];
 
@@ -911,7 +911,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
                           transform="rotate(-90 20 20)" strokeLinecap="round"
                         />
                       </svg>
-                      <div className={s.hringTxt}>{ring.score > 0 ? scoreInt : '—'}</div>
+                      <div className={s.hringTxt}>{ring.state === 'empty' ? '—' : scoreInt}</div>
                     </div>
                     <div className={s.hringInfo}>
                       <div className={s.hringLbl}>{ring.label}</div>
