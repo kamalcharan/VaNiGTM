@@ -8,7 +8,7 @@ import { useToast } from '@/components/toast';
 import { InlineLoader } from '@/components/loader';
 import { VdfMobileInput, VdfRichText } from '@/components/vdf';
 import FormInput from '@/components/ui/form-input';
-import { validateMobile, getCountryByCode } from '@/constants/countries';
+import { validateMobile, getCountryByCode, COUNTRIES } from '@/constants/countries';
 import s from './settings-tabs.module.css';
 
 const DESIGNATIONS = [
@@ -46,9 +46,16 @@ export default function ProfileTab() {
       }
       setDesignation(u.designation || '');
       setMobile(u.mobile || '');
-      if (u.preferences && typeof u.preferences === 'object') {
-        const cc = (u as any).country_code;
-        if (cc) setCountryCode(cc);
+      const storedCode = (u as any).country_code as string | undefined;
+      if (storedCode) {
+        // Backward-compat: old onboarding saved dial_code (e.g. '+91').
+        // Reverse-lookup to ISO code. New saves store ISO directly (e.g. 'in').
+        if (storedCode.startsWith('+')) {
+          const found = COUNTRIES.find((c) => c.dial_code === storedCode);
+          if (found) setCountryCode(found.code);
+        } else {
+          setCountryCode(storedCode);
+        }
       }
     }
   }, [me]);
@@ -69,6 +76,15 @@ export default function ProfileTab() {
       setDesignation(u.designation || '');
       setMobile(u.mobile || '');
       setBio('');
+      const storedCode = (u as any).country_code as string | undefined;
+      if (storedCode) {
+        if (storedCode.startsWith('+')) {
+          const found = COUNTRIES.find((c) => c.dial_code === storedCode);
+          if (found) setCountryCode(found.code);
+        } else {
+          setCountryCode(storedCode);
+        }
+      }
     }
   }
 
@@ -153,7 +169,7 @@ export default function ProfileTab() {
       />
 
       <div className={s.selectGroup}>
-        <label className={s.selectLabel}>Designation</label>
+        <label className={s.selectLabel}>Professional Role</label>
         <select
           className={s.select}
           value={designation}

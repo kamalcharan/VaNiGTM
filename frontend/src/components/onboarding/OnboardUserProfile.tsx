@@ -83,7 +83,7 @@ export default function OnboardUserProfile({ onComplete, onBack }: Props) {
           first_name: firstName.trim(),
           last_name: lastName.trim(),
           designation: designation || undefined,
-          country_code: mobile ? getCountryByCode(countryCode)?.dial_code : undefined,
+          country_code: mobile ? countryCode : undefined,
           mobile: mobile || undefined,
           bio: bio || undefined,
         },
@@ -152,7 +152,7 @@ export default function OnboardUserProfile({ onComplete, onBack }: Props) {
               </div>
             </div>
             <div className={s.field}>
-              <label className={s.label}>Designation / Title</label>
+              <label className={s.label}>Professional Role</label>
               <select className={s.select} value={designation} onChange={(e) => setDesignation(e.target.value)} disabled={loading}>
                 {designation === '' && <option value="">Select your role...</option>}
                 {DESIGNATIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
