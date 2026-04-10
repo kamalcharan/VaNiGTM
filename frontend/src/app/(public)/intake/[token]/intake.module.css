@@ -1412,6 +1412,8 @@
   .stepBody {
     padding-left: 0;
     padding-right: 0;
+    max-width: 720px;
+    width: 100%;
   }
 
   /* navBar: static on desktop (not fixed) */
@@ -1445,7 +1447,7 @@
     top: 68px; /* below sticky header (~68px tall) */
     height: calc(100dvh - 68px);
     overflow-y: auto;
-    background: var(--surface-w2, #faf7f0);
+    background: #ffffff;
     scrollbar-width: thin;
     scrollbar-color: var(--line-ws, #dcd4bc) transparent;
   }
