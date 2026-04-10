@@ -30,7 +30,6 @@ export async function get_bookmark_reasons(
 ): Promise<GetBookmarkReasonsResult> {
   const res = await ctx.db.query<BookmarkReason>(GET_BOOKMARK_REASONS_SQL, {
     $tenant_id: ctx.tenant_id,
-    $is_live:   ctx.is_live,
   });
 
   return {

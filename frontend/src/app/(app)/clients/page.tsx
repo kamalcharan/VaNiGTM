@@ -123,6 +123,8 @@ export default function ClientsPage() {
   const [activeSearch,   setActiveSearch]   = useState('');
   const [riskFilter,     setRiskFilter]     = useState<RiskFilter>('all');
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
+  const [recentOnly,     setRecentOnly]     = useState(false);
+  const [inFamily,       setInFamily]       = useState(false);
   const [page,           setPage]           = useState(1);
   const [bookmarkingId,  setBookmarkingId]  = useState<number | null>(null);
 
@@ -148,10 +150,12 @@ export default function ClientsPage() {
       search:          activeSearch || undefined,
       risk_profile:    riskFilter === 'all' ? undefined : riskFilter,
       bookmarked_only: bookmarkedOnly || undefined,
+      recent_only:     recentOnly || undefined,
+      in_family:       inFamily || undefined,
     },
     limit:  PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE,
-  }), [activeSearch, riskFilter, bookmarkedOnly, page]);
+  }), [activeSearch, riskFilter, bookmarkedOnly, recentOnly, inFamily, page]);
 
   const { data, isLoading, isError, error } = useSkillQuery<ClientsData>(
     'client-skill', 'get_clients', skillParams
@@ -264,7 +268,7 @@ export default function ClientsPage() {
   const bookmarkAddon = (
     <button
       className={`${s.bookmarkToggle} ${bookmarkedOnly ? s.active : ''}`}
-      onClick={() => { setBookmarkedOnly(v => !v); setPage(1); }}
+      onClick={() => { setBookmarkedOnly(v => !v); setRecentOnly(false); setInFamily(false); setPage(1); }}
       title="Bookmarked only"
     >
       <BookmarkIcon filled={bookmarkedOnly} />
@@ -341,25 +345,32 @@ export default function ClientsPage() {
               value={stats.total_clients}
               label="Total clients"
               accent="default"
-              onClick={() => { setBookmarkedOnly(false); setRiskFilter('all'); setActiveSearch(''); setSearch(''); setPage(1); }}
-              active={!bookmarkedOnly && riskFilter === 'all' && !activeSearch}
+              onClick={() => {
+                setBookmarkedOnly(false); setRecentOnly(false); setInFamily(false);
+                setRiskFilter('all'); setActiveSearch(''); setSearch(''); setPage(1);
+              }}
+              active={!bookmarkedOnly && !recentOnly && !inFamily && riskFilter === 'all' && !activeSearch}
             />
             <VdfStatCard
               value={stats.bookmarked}
               label="Bookmarked"
               accent="warning"
-              onClick={() => { setBookmarkedOnly(v => !v); setPage(1); }}
+              onClick={() => { setBookmarkedOnly(v => !v); setRecentOnly(false); setInFamily(false); setPage(1); }}
               active={bookmarkedOnly}
             />
             <VdfStatCard
               value={stats.recent_30_days}
               label="New this month"
               accent="success"
+              onClick={() => { setRecentOnly(v => !v); setBookmarkedOnly(false); setInFamily(false); setPage(1); }}
+              active={recentOnly}
             />
             <VdfStatCard
               value={stats.family_count}
               label={`Famil${stats.family_count === 1 ? 'y' : 'ies'} · ${stats.families_members} members`}
               accent="info"
+              onClick={() => { setInFamily(v => !v); setBookmarkedOnly(false); setRecentOnly(false); setPage(1); }}
+              active={inFamily}
             />
           </div>
         )}

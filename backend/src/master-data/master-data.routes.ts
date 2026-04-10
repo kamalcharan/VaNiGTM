@@ -251,15 +251,20 @@ export function createMasterDataRouter(pool: Pool): Router {
     const jwt = requireAdmin(req, res as any);
     if (!jwt) return;
 
-    const isLive = req.query.is_live !== 'false'; // default: live
-
+    // Bookmark reasons are master data — not environment-scoped.
+    // Deduplicate by reason_code (seed creates one row per env; prefer live=true).
     try {
       const result = await pool.query(
         `SELECT id, reason_code, reason_label, display_order, is_active, created_at, updated_at
-         FROM ki_bookmark_reasons
-         WHERE tenant_id = $1 AND is_live = $2
+         FROM (
+           SELECT DISTINCT ON (reason_code)
+             id, reason_code, reason_label, display_order, is_active, created_at, updated_at
+           FROM ki_bookmark_reasons
+           WHERE tenant_id = $1
+           ORDER BY reason_code, is_live DESC
+         ) deduped
          ORDER BY display_order, reason_label`,
-        [jwt.tenant_id, isLive],
+        [jwt.tenant_id],
       );
       res.json({ bookmark_reasons: result.rows });
     } catch (err) {
@@ -286,22 +291,27 @@ export function createMasterDataRouter(pool: Pool): Router {
     }
 
     const code = reason_code.trim().toUpperCase().replace(/\s+/g, '_').slice(0, 60);
-    const live = is_live !== false; // default: live
+    const order = display_order ?? 50;
 
     try {
-      const result = await pool.query(
+      // Insert for BOTH environments — bookmark reasons are master data (configuration),
+      // not environment-scoped. Matches the seed pattern in seedTenantData.
+      await pool.query(
         `INSERT INTO ki_bookmark_reasons
            (tenant_id, is_live, reason_code, reason_label, display_order)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING *`,
-        [jwt.tenant_id, live, code, reason_label.trim(), display_order ?? 50],
+         VALUES ($1, true, $2, $3, $4), ($1, false, $2, $3, $4)
+         ON CONFLICT (tenant_id, is_live, reason_code) DO UPDATE SET
+           reason_label  = EXCLUDED.reason_label,
+           display_order = EXCLUDED.display_order`,
+        [jwt.tenant_id, code, reason_label.trim(), order],
+      );
+      const result = await pool.query(
+        `SELECT * FROM ki_bookmark_reasons
+         WHERE tenant_id = $1 AND reason_code = $2 AND is_live = true`,
+        [jwt.tenant_id, code],
       );
       res.status(201).json({ bookmark_reason: result.rows[0] });
     } catch (err: any) {
-      if (err.code === '23505') {
-        res.status(409).json({ error: { code: 'CONFLICT', message: 'Reason code already exists' } });
-        return;
-      }
       console.error('[MasterData:createBookmarkReason]', err);
       res.status(500).json({ error: { code: 'DB_ERROR', message: 'Failed to create bookmark reason' } });
     }
@@ -322,7 +332,7 @@ export function createMasterDataRouter(pool: Pool): Router {
     };
 
     const updates: string[] = [];
-    const params: unknown[] = [jwt.tenant_id, id];
+    const params: unknown[] = [jwt.tenant_id];
 
     if (reason_label !== undefined) {
       params.push(reason_label.trim());
@@ -345,18 +355,29 @@ export function createMasterDataRouter(pool: Pool): Router {
     updates.push(`updated_at = now()`);
 
     try {
-      const result = await pool.query(
-        `UPDATE ki_bookmark_reasons
-         SET ${updates.join(', ')}
-         WHERE tenant_id = $1 AND id = $2
-         RETURNING *`,
-        params,
+      // Resolve the reason_code from the provided id, then update ALL rows with that
+      // reason_code for this tenant (both environments — master data is env-agnostic).
+      const codeResult = await pool.query(
+        `SELECT reason_code FROM ki_bookmark_reasons WHERE id = $1 AND tenant_id = $2`,
+        [id, jwt.tenant_id],
       );
-      if (result.rows.length === 0) {
+      if (codeResult.rows.length === 0) {
         res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Bookmark reason not found' } });
         return;
       }
-      res.json({ bookmark_reason: result.rows[0] });
+      const reasonCode = (codeResult.rows[0] as any).reason_code;
+
+      params.push(reasonCode);
+      const result = await pool.query(
+        `UPDATE ki_bookmark_reasons
+         SET ${updates.join(', ')}
+         WHERE tenant_id = $1 AND reason_code = $${params.length}
+         RETURNING *`,
+        params,
+      );
+      // Return the live=true representative row
+      const live = result.rows.find((r: any) => r.is_live) ?? result.rows[0];
+      res.json({ bookmark_reason: live });
     } catch (err) {
       console.error('[MasterData:updateBookmarkReason]', err);
       res.status(500).json({ error: { code: 'DB_ERROR', message: 'Failed to update bookmark reason' } });

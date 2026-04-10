@@ -1,6 +1,7 @@
 -- get-clients: paginated client list with contact info and bookmark status
 -- Named params: $tenant_id, $is_live, $search (nullable), $risk_profile (nullable),
---               $user_id, $limit, $offset
+--               $user_id, $bookmarked_only (nullable), $recent_only (nullable),
+--               $in_family (nullable), $limit, $offset
 
 SELECT
     cl.id,
@@ -68,6 +69,14 @@ WHERE cl.tenant_id = $tenant_id
   AND (
       $bookmarked_only::boolean IS NULL OR $bookmarked_only::boolean = false
       OR bm.is_active = true
+  )
+  AND (
+      $recent_only::boolean IS NULL OR $recent_only::boolean = false
+      OR cl.created_at >= NOW() - INTERVAL '30 days'
+  )
+  AND (
+      $in_family::boolean IS NULL OR $in_family::boolean = false
+      OR cl.family_id IS NOT NULL
   )
 ORDER BY c.name ASC
 LIMIT  $limit

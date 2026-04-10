@@ -14,6 +14,8 @@ interface ClientFilters {
   search?: string;
   risk_profile?: string;
   bookmarked_only?: boolean;
+  recent_only?: boolean;
+  in_family?: boolean;
 }
 
 interface GetClientsParams {
@@ -37,23 +39,27 @@ export async function get_clients(
   const offset = params.offset ?? 0;
 
   const queryParams = {
-    $tenant_id:      ctx.tenant_id,
-    $is_live:        ctx.is_live,
-    $user_id:        ctx.user_id,
-    $search:         filters.search?.trim() ? `%${filters.search.trim()}%` : null,
-    $risk_profile:   filters.risk_profile || null,
+    $tenant_id:       ctx.tenant_id,
+    $is_live:         ctx.is_live,
+    $user_id:         ctx.user_id,
+    $search:          filters.search?.trim() || null,
+    $risk_profile:    filters.risk_profile || null,
     $bookmarked_only: filters.bookmarked_only ?? null,
-    $limit:          limit,
-    $offset:         offset,
+    $recent_only:     filters.recent_only ?? null,
+    $in_family:       filters.in_family ?? null,
+    $limit:           limit,
+    $offset:          offset,
   };
 
   const countParams = {
-    $tenant_id:      queryParams.$tenant_id,
-    $is_live:        queryParams.$is_live,
-    $user_id:        queryParams.$user_id,
-    $search:         queryParams.$search,
-    $risk_profile:   queryParams.$risk_profile,
+    $tenant_id:       queryParams.$tenant_id,
+    $is_live:         queryParams.$is_live,
+    $user_id:         queryParams.$user_id,
+    $search:          queryParams.$search,
+    $risk_profile:    queryParams.$risk_profile,
     $bookmarked_only: queryParams.$bookmarked_only,
+    $recent_only:     queryParams.$recent_only,
+    $in_family:       queryParams.$in_family,
   };
 
   const [dataRes, countRes] = await Promise.all([
