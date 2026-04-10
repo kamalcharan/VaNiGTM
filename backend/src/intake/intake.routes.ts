@@ -273,17 +273,17 @@ export function createIntakeRouter(pool: Pool): Router {
       // ── Insert child rows ───────────────────────────────────
       for (const row of incomeArr.filter(r => Number(r.amount_monthly) > 0)) {
         await client.query(
-          `INSERT INTO ki_snapshot_income (snapshot_id, source, amount_monthly, notes)
-           VALUES ($1, $2, $3, $4)`,
-          [snapshotId, row.source, Number(row.amount_monthly), (row as Record<string, unknown>).notes || null]
+          `INSERT INTO ki_snapshot_income (tenant_id, snapshot_id, source, amount_monthly, notes)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [tenantId, snapshotId, row.source, Number(row.amount_monthly), (row as Record<string, unknown>).notes || null]
         );
       }
 
       for (const row of expenseArr.filter(r => Number(r.amount_monthly) > 0)) {
         await client.query(
-          `INSERT INTO ki_snapshot_expenses (snapshot_id, category, amount_monthly)
-           VALUES ($1, $2, $3)`,
-          [snapshotId, row.category, Number(row.amount_monthly)]
+          `INSERT INTO ki_snapshot_expenses (tenant_id, snapshot_id, category, amount_monthly)
+           VALUES ($1, $2, $3, $4)`,
+          [tenantId, snapshotId, row.category, Number(row.amount_monthly)]
         );
       }
 
@@ -293,9 +293,9 @@ export function createIntakeRouter(pool: Pool): Router {
         if (!Number(a.current_value)) continue;
         await client.query(
           `INSERT INTO ki_snapshot_assets
-             (snapshot_id, asset_type_id, description, current_value, is_liquid, years_held, sort_order)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [snapshotId, Number(a.asset_type_id) || null, a.description || null, Number(a.current_value), Boolean(a.is_liquid), Number(a.years_held) || null, i + 1]
+             (tenant_id, snapshot_id, asset_type_id, description, current_value, is_liquid, years_held, sort_order)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [tenantId, snapshotId, Number(a.asset_type_id) || null, a.description || null, Number(a.current_value), Boolean(a.is_liquid), Number(a.years_held) || null, i + 1]
         );
       }
 
@@ -305,9 +305,9 @@ export function createIntakeRouter(pool: Pool): Router {
         if (!Number(l.outstanding_amount)) continue;
         await client.query(
           `INSERT INTO ki_snapshot_liabilities
-             (snapshot_id, liability_type_id, description, outstanding_amount, monthly_emi, interest_rate_pct, sort_order)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [snapshotId, Number(l.liability_type_id), l.description || null,
+             (tenant_id, snapshot_id, liability_type_id, description, outstanding_amount, monthly_emi, interest_rate_pct, sort_order)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [tenantId, snapshotId, Number(l.liability_type_id), l.description || null,
            Number(l.outstanding_amount), Number(l.monthly_emi) || 0,
            Number(l.interest_rate_pct) || null, i + 1]
         );
@@ -319,11 +319,11 @@ export function createIntakeRouter(pool: Pool): Router {
         const validCoverTypes = ['individual', 'family_floater', 'employer', 'none'];
         await client.query(
           `INSERT INTO ki_snapshot_protection
-             (snapshot_id, life_cover_amount, health_cover_amount, ci_cover_amount,
+             (tenant_id, snapshot_id, life_cover_amount, health_cover_amount, ci_cover_amount,
               life_premium_annual, health_premium_annual, has_term_plan, has_health_cover,
               protection_ratio_pct, health_cover_type)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-          [snapshotId,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [tenantId, snapshotId,
            Number(prot.life_cover_amount)   || null,
            Number(prot.health_cover_amount) || null,
            Number(prot.ci_cover_amount)     || null,
@@ -342,9 +342,9 @@ export function createIntakeRouter(pool: Pool): Router {
         if (!g.name || !Number(g.target_amount)) continue;
         await client.query(
           `INSERT INTO ki_snapshot_goals
-             (snapshot_id, goal_type, name, target_amount, timeline_years, priority, sort_order)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [snapshotId, g.goal_type || 'custom', g.name,
+             (tenant_id, snapshot_id, goal_type, name, target_amount, timeline_years, priority, sort_order)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [tenantId, snapshotId, g.goal_type || 'custom', g.name,
            Number(g.target_amount), Number(g.timeline_years) || 10, i + 1, i + 1]
         );
       }
