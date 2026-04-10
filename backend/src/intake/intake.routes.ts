@@ -360,8 +360,15 @@ export function createIntakeRouter(pool: Pool): Router {
       res.json({ success: true, contact_id: contactId, snapshot_id: snapshotId });
     } catch (err) {
       await client.query('ROLLBACK').catch(() => {});
-      console.error('[Intake:submit]', err);
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Submission failed' } });
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Intake:submit]', msg);
+      res.status(500).json({
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Submission failed',
+          ...(process.env.NODE_ENV !== 'production' && { detail: msg }),
+        },
+      });
     } finally {
       client.release();
     }
