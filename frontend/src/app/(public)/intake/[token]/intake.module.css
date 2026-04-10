@@ -1335,8 +1335,8 @@
     border-left: 1px solid var(--line-w, #ebe5d2);
     padding: 28px 22px;
     position: sticky;
-    top: 0;
-    height: 100dvh;
+    top: 68px; /* below sticky header (~68px tall) */
+    height: calc(100dvh - 68px);
     overflow-y: auto;
     background: var(--surface-w2, #faf7f0);
     scrollbar-width: thin;
