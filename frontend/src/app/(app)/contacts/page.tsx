@@ -23,6 +23,10 @@ interface Contact {
   has_snapshot: boolean;
   primary_mobile: string | null;
   primary_email: string | null;
+  age: number | null;
+  city: string | null;
+  marital_status: string | null;
+  dependents_count: number | null;
   created_at: string;
 }
 
@@ -95,8 +99,10 @@ export default function ContactsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [deletingId, setDeletingId]   = useState<number | null>(null);
 
-  // Create drawer
+  // Drawer — shared between create and edit modes
   const [drawerOpen, setDrawerOpen]             = useState(false);
+  const [drawerMode, setDrawerMode]             = useState<'create' | 'edit'>('create');
+  const [editingId, setEditingId]               = useState<number | null>(null);
   const [newPrefix, setNewPrefix]               = useState('Mr');
   const [newName, setNewName]                   = useState('');
   const [newCountryCode, setNewCountryCode]     = useState('in');
@@ -143,23 +149,56 @@ export default function ContactsPage() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['skill', 'contact-skill', 'get_contacts'] });
-        showToast({ message: 'Contact deleted.', type: 'success' });
+        showToast({ message: 'Contact deactivated.', type: 'success' });
         setDeletingId(null);
       },
       onError: (err) => {
-        showToast({ message: err.message || 'Failed to delete contact', type: 'error' });
+        showToast({ message: err.message || 'Failed to deactivate contact', type: 'error' });
         setDeletingId(null);
       },
     }
   );
 
+  const { mutate: updateContact, isPending: updating } = useSkillMutation(
+    'contact-skill', 'update_contact',
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['skill', 'contact-skill', 'get_contacts'] });
+        showToast({ message: 'Contact updated.', type: 'success' });
+        closeDrawer();
+      },
+      onError: (err) => showToast({ message: err.message || 'Failed to update contact', type: 'error' }),
+    }
+  );
+
   function openDrawer() {
+    setDrawerMode('create');
+    setEditingId(null);
     setNewPrefix('Mr'); setNewName(''); setNewCountryCode('in'); setNewMobile(''); setNewEmail('');
     setNewAge(''); setNewCity(''); setNewMarital(''); setNewDependents(null);
     setDrawerOpen(true);
   }
 
-  function closeDrawer() { setDrawerOpen(false); }
+  function openEditDrawer(contact: Contact) {
+    setDrawerMode('edit');
+    setEditingId(contact.id);
+    setNewPrefix(contact.prefix || 'Mr');
+    setNewName(contact.name);
+    setNewCountryCode('in');
+    setNewMobile(contact.primary_mobile || '');
+    setNewEmail(contact.primary_email || '');
+    setNewAge(contact.age !== null && contact.age !== undefined ? String(contact.age) : '');
+    setNewCity(contact.city || '');
+    setNewMarital(contact.marital_status || '');
+    setNewDependents(contact.dependents_count !== null && contact.dependents_count !== undefined ? contact.dependents_count : null);
+    setDrawerOpen(true);
+  }
+
+  function closeDrawer() {
+    setDrawerOpen(false);
+    setDrawerMode('create');
+    setEditingId(null);
+  }
 
   function handleCreate() {
     if (!newName.trim()) { showToast({ message: 'Name is required', type: 'error' }); return; }
@@ -177,6 +216,20 @@ export default function ContactsPage() {
       city:             newCity.trim() || undefined,
       marital_status:   (newMarital as 'single' | 'married' | 'family' | 'other') || undefined,
       dependents_count: newDependents !== null ? newDependents : undefined,
+    });
+  }
+
+  function handleEdit() {
+    if (!newName.trim()) { showToast({ message: 'Name is required', type: 'error' }); return; }
+    if (editingId === null) return;
+    updateContact({
+      contact_id: editingId,
+      prefix: newPrefix,
+      name: newName.trim(),
+      age: newAge ? Number(newAge) : null,
+      city: newCity.trim() || null,
+      marital_status: (newMarital as 'single' | 'married' | 'family' | 'other') || null,
+      dependents_count: newDependents,
     });
   }
 
@@ -319,12 +372,22 @@ export default function ContactsPage() {
 
                   {/* Actions cell */}
                   <div className={s.actionsCell}>
+                    <button
+                      className={s.editBtn}
+                      onClick={(e) => { e.stopPropagation(); openEditDrawer(contact); }}
+                      title="Edit contact"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
+                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </button>
                     {!contact.is_client && (
                       <button
                         className={s.deleteBtn}
                         disabled={deletingId === contact.id}
                         onClick={(e) => handleDelete(e, contact.id)}
-                        title="Delete contact"
+                        title="Deactivate contact"
                       >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
                           <polyline points="3 6 5 6 21 6" />
@@ -349,8 +412,8 @@ export default function ContactsPage() {
           <div className={s.drawer} onClick={e => e.stopPropagation()}>
             <div className={s.drawerHeader}>
               <div>
-                <h2 className={s.drawerTitle}>New Contact</h2>
-                <p className={s.drawerSub}>Add a prospect to your pipeline</p>
+                <h2 className={s.drawerTitle}>{drawerMode === 'edit' ? 'Edit Contact' : 'New Contact'}</h2>
+                <p className={s.drawerSub}>{drawerMode === 'edit' ? 'Update name, prefix, and demographics' : 'Add a prospect to your pipeline'}</p>
               </div>
               <button className={s.drawerClose} onClick={closeDrawer} aria-label="Close">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
@@ -387,22 +450,29 @@ export default function ContactsPage() {
                 autoFocus
               />
 
-              <VdfMobileInput
-                label="Mobile (optional)"
-                countryCode={newCountryCode}
-                mobile={newMobile}
-                onCountryChange={setNewCountryCode}
-                onMobileChange={setNewMobile}
-              />
-
-              <VdfInput
-                label="Email"
-                type="email"
-                placeholder="email@example.com"
-                value={newEmail}
-                onChange={e => setNewEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleCreate()}
-              />
+              {drawerMode === 'create' ? (
+                <>
+                  <VdfMobileInput
+                    label="Mobile (optional)"
+                    countryCode={newCountryCode}
+                    mobile={newMobile}
+                    onCountryChange={setNewCountryCode}
+                    onMobileChange={setNewMobile}
+                  />
+                  <VdfInput
+                    label="Email"
+                    type="email"
+                    placeholder="email@example.com"
+                    value={newEmail}
+                    onChange={e => setNewEmail(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                  />
+                </>
+              ) : (
+                <p className={s.editChannelNote}>
+                  Mobile and email are managed from the contact profile page.
+                </p>
+              )}
 
               {/* Age + City */}
               <div className={s.drawerRow2}>
@@ -467,8 +537,12 @@ export default function ContactsPage() {
             </div>
 
             <div className={s.drawerFooter}>
-              <VdfButton variant="outline" size="sm" onClick={closeDrawer} disabled={creating}>Cancel</VdfButton>
-              <VdfButton variant="primary" size="sm" loading={creating} onClick={handleCreate}>Add Contact</VdfButton>
+              <VdfButton variant="outline" size="sm" onClick={closeDrawer} disabled={creating || updating}>Cancel</VdfButton>
+              {drawerMode === 'edit' ? (
+                <VdfButton variant="primary" size="sm" loading={updating} onClick={handleEdit}>Save Changes</VdfButton>
+              ) : (
+                <VdfButton variant="primary" size="sm" loading={creating} onClick={handleCreate}>Add Contact</VdfButton>
+              )}
             </div>
           </div>
         </div>

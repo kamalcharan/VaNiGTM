@@ -10,6 +10,10 @@ SELECT
     c.normalized_name,
     c.is_client,
     c.is_active,
+    c.age,
+    c.city,
+    c.marital_status,
+    c.dependents_count,
     c.created_at,
 
     -- Snapshot completeness flag (for readiness ring)
