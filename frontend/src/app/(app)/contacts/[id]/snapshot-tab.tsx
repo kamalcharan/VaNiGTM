@@ -1315,7 +1315,9 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
                         >
                           <option value="">Select type</option>
                           {assetTypes.map(t => (
-                            <option key={t.id} value={String(t.id)}>{t.label}</option>
+                            <option key={t.id} value={String(t.id)}>
+                              {t.label} · {t.is_liquid_default ? 'Liquid' : 'Illiquid'}
+                            </option>
                           ))}
                         </select>
                       </div>
