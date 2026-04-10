@@ -119,14 +119,17 @@ export default function ContactsPage() {
   const [newMarital, setNewMarital]             = useState('');
   const [newDependents, setNewDependents]       = useState<number | null>(null);
 
-  const handleSearch = (v: string) => {
+  // Search fires only on Enter or icon click — not per keystroke.
+  // Clearing the input immediately resets the query.
+  function handleSearch(v: string) {
     setSearch(v);
+    if (!v) { setDebouncedSearch(''); setPage(1); }
+  }
+
+  function triggerSearch() {
+    setDebouncedSearch(search);
     setPage(1);
-    clearTimeout((handleSearch as unknown as { timer: ReturnType<typeof setTimeout> }).timer);
-    (handleSearch as unknown as { timer: ReturnType<typeof setTimeout> }).timer = setTimeout(
-      () => setDebouncedSearch(v), 350
-    );
-  };
+  }
 
   const skillParams = useMemo(() => ({
     search:        debouncedSearch || undefined,
@@ -318,7 +321,8 @@ export default function ContactsPage() {
         <VdfSearchBar
           value={search}
           onChange={handleSearch}
-          placeholder="Search by name, mobile, email…"
+          onSearch={triggerSearch}
+          placeholder="Search name, mobile, email — press Enter"
           pills={status === 'active' ? TYPE_PILLS : [{ id: 'all', label: 'All' }]}
           activePill={filter}
           onPillChange={handleFilterChange}
