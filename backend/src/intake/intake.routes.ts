@@ -293,9 +293,9 @@ export function createIntakeRouter(pool: Pool): Router {
         if (!Number(a.current_value)) continue;
         await client.query(
           `INSERT INTO ki_snapshot_assets
-             (snapshot_id, asset_type_id, description, current_value, is_liquid, sort_order)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [snapshotId, Number(a.asset_type_id) || null, a.description || null, Number(a.current_value), Boolean(a.is_liquid), i + 1]
+             (snapshot_id, asset_type_id, description, current_value, is_liquid, years_held, sort_order)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [snapshotId, Number(a.asset_type_id) || null, a.description || null, Number(a.current_value), Boolean(a.is_liquid), Number(a.years_held) || null, i + 1]
         );
       }
 

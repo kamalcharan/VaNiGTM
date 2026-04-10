@@ -38,7 +38,7 @@ interface ValidateResponse {
 
 interface Income    { salary: string; partner: string; rental_other: string; }
 interface Expenses  { housing: string; food: string; utilities: string; transport: string; education: string; lifestyle: string; }
-interface AssetRow  { description: string; current_value: string; is_liquid: boolean; }
+interface AssetRow  { asset_type_id: string; description: string; current_value: string; is_liquid: boolean; years_held: string; }
 interface LiabRow   { liability_type_id: string; description: string; outstanding_amount: string; monthly_emi: string; interest_rate_pct: string; }
 interface Protection { life_cover_amount: string; health_cover_amount: string; ci_cover_amount: string; has_term_plan: boolean; has_health_cover: boolean; health_cover_type: 'individual' | 'family_floater' | 'employer' | 'none' | ''; }
 interface GoalRow   { goal_type: string; name: string; target_amount: string; timeline_years: string; }
@@ -271,9 +271,11 @@ export default function IntakePage() {
       .filter(([, v]) => Number(v) > 0)
       .map(([category, v]) => ({ category, amount_monthly: Number(v) })),
     assets: assets.filter(a => Number(a.current_value) > 0).map((a, i) => ({
+      asset_type_id: Number(a.asset_type_id) || undefined,
       description: a.description || undefined,
       current_value: Number(a.current_value),
       is_liquid: a.is_liquid,
+      years_held: Number(a.years_held) > 0 ? Number(a.years_held) : undefined,
       sort_order: i + 1,
     })),
     liabilities: liabs.filter(l => l.liability_type_id && Number(l.outstanding_amount) > 0).map((l, i) => ({
@@ -735,17 +737,51 @@ export default function IntakePage() {
                     onClick={() => setAssets(p => p.filter((_, j) => j !== i))}>×</button>
                 </div>
 
-                {/* Row 1: What is it? (full width) */}
-                <div className={s.curField}>
-                  <label className={s.curFieldLabel}>What is it?</label>
-                  <input className={s.plainInput} type="text"
-                    placeholder="e.g. Equity Mutual Funds, PPF, 2BHK flat, Gold"
-                    value={asset.description}
-                    onChange={e => setAssets(p => p.map((a, j) => j === i ? { ...a, description: e.target.value } : a))} />
+                {/* Row 1: Asset Type select + Liquidity toggle */}
+                <div className={s.assetTypeRow}>
+                  <div className={s.curField}>
+                    <label className={s.curFieldLabel}>Asset Type</label>
+                    <select className={s.plainSelect} value={asset.asset_type_id}
+                      onChange={e => {
+                        const t = meta.asset_types.find(t => String(t.id) === e.target.value);
+                        setAssets(p => p.map((a, j) => j === i ? {
+                          ...a,
+                          asset_type_id: e.target.value,
+                          is_liquid: t?.is_liquid_default ?? a.is_liquid,
+                        } : a));
+                      }}>
+                      <option value="">Select type</option>
+                      {meta.asset_types.map(t => (
+                        <option key={t.id} value={String(t.id)}>{t.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className={s.curField}>
+                    <label className={s.curFieldLabel}>Liquidity</label>
+                    <div className={s.liqToggle}>
+                      <button type="button"
+                        className={`${s.liqBtn} ${asset.is_liquid ? s.liqBtnActive : ''}`}
+                        onClick={() => setAssets(p => p.map((a, j) => j === i ? { ...a, is_liquid: true } : a))}>
+                        💧 Liquid
+                      </button>
+                      <button type="button"
+                        className={`${s.liqBtn} ${!asset.is_liquid ? s.liqBtnIlliq : ''}`}
+                        onClick={() => setAssets(p => p.map((a, j) => j === i ? { ...a, is_liquid: false } : a))}>
+                        🔒 Illiq
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Row 2: Current Value | Can you sell quickly? */}
-                <div className={s.assetValueRow}>
+                {/* Row 2: Description | Current Value | Yrs Held */}
+                <div className={s.assetRow2}>
+                  <div className={s.curField}>
+                    <label className={s.curFieldLabel}>Description</label>
+                    <input className={s.plainInput} type="text"
+                      placeholder="e.g. SBI Equity Fund, 2BHK Flat, FD"
+                      value={asset.description}
+                      onChange={e => setAssets(p => p.map((a, j) => j === i ? { ...a, description: e.target.value } : a))} />
+                  </div>
                   <div className={s.curField}>
                     <label className={s.curFieldLabel}>Current Value</label>
                     <div className={s.curInputWrap}>
@@ -759,19 +795,11 @@ export default function IntakePage() {
                     )}
                   </div>
                   <div className={s.curField}>
-                    <label className={s.curFieldLabel}>Can you sell quickly?</label>
-                    <div className={s.liqToggle}>
-                      <button type="button"
-                        className={`${s.liqBtn} ${asset.is_liquid ? s.liqBtnActive : ''}`}
-                        onClick={() => setAssets(p => p.map((a, j) => j === i ? { ...a, is_liquid: true } : a))}>
-                        💧 Liquid
-                      </button>
-                      <button type="button"
-                        className={`${s.liqBtn} ${!asset.is_liquid ? s.liqBtnIlliq : ''}`}
-                        onClick={() => setAssets(p => p.map((a, j) => j === i ? { ...a, is_liquid: false } : a))}>
-                        🔒 Illiquid
-                      </button>
-                    </div>
+                    <label className={s.curFieldLabel}>Yrs Held</label>
+                    <input className={s.plainInput} type="number" inputMode="numeric" placeholder="—"
+                      min="0" max="99"
+                      value={asset.years_held}
+                      onChange={e => setAssets(p => p.map((a, j) => j === i ? { ...a, years_held: e.target.value } : a))} />
                   </div>
                 </div>
               </div>
@@ -779,7 +807,7 @@ export default function IntakePage() {
           </div>
 
           <button className={s.addItemBtn}
-            onClick={() => setAssets(p => [...p, { description: '', current_value: '', is_liquid: true }])}>
+            onClick={() => setAssets(p => [...p, { asset_type_id: '', description: '', current_value: '', is_liquid: true, years_held: '' }])}>
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
               <path d="M10 4v12M4 10h12" />
             </svg>

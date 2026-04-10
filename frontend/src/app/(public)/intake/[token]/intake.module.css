@@ -1729,15 +1729,26 @@
   color: var(--danger-w, #b54034);
 }
 
-/* Current Value (left) + Liquidity toggle (right) — matches reference 2-col layout */
-.assetValueRow {
+/* Row 1: Asset Type select (flex:1) + Liquidity toggle */
+.assetTypeRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+.assetTypeRow .curField { flex: 1; }
+
+/* Row 2: Description | Current Value | Yrs Held — 3-col */
+.assetRow2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  grid-template-columns: 2fr 1.5fr 1fr;
+  gap: 10px;
   align-items: start;
 }
+@media (max-width: 599px) {
+  .assetRow2 { grid-template-columns: 1fr 1fr; }
+}
 @media (max-width: 479px) {
-  .assetValueRow { grid-template-columns: 1fr; }
+  .assetRow2 { grid-template-columns: 1fr; }
 }
 
 /* Plain select (matches curInputWrap height) */
