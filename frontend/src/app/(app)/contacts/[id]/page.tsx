@@ -30,15 +30,21 @@ interface SnapshotSummary {
 
 interface Contact {
   id: number;
+  contact_no: string | null;
   prefix: string;
   name: string;
   normalized_name: string;
   is_client: boolean;
   is_active: boolean;
+  age: number | null;
+  city: string | null;
+  marital_status: string | null;
+  dependents_count: number | null;
   channels: Channel[];
   snapshot_summary: SnapshotSummary | null;
   created_at: string;
   client_id: number | null;
+  client_no: string | null;
 }
 
 /* ── Helpers ─────────────────────────────────────────── */
@@ -158,6 +164,12 @@ export default function ContactProfilePage() {
             <div className={s.detailCard}>
               <h3 className={s.cardTitle}>Personal Details</h3>
               <div className={s.detailRows}>
+                {contact.contact_no && (
+                  <div className={s.detailRow}>
+                    <span className={s.detailLabel}>Contact No.</span>
+                    <span className={`${s.detailValue} ${s.detailMono}`}>{contact.contact_no}</span>
+                  </div>
+                )}
                 <div className={s.detailRow}>
                   <span className={s.detailLabel}>Full Name</span>
                   <span className={s.detailValue}>{contact.prefix} {contact.name}</span>
@@ -186,6 +198,30 @@ export default function ContactProfilePage() {
                     <span className={s.detailValue}>{ch.channel_value}</span>
                   </div>
                 ))}
+                {contact.age != null && (
+                  <div className={s.detailRow}>
+                    <span className={s.detailLabel}>Age</span>
+                    <span className={s.detailValue}>{contact.age} yrs</span>
+                  </div>
+                )}
+                {contact.city && (
+                  <div className={s.detailRow}>
+                    <span className={s.detailLabel}>City</span>
+                    <span className={s.detailValue}>{contact.city}</span>
+                  </div>
+                )}
+                {contact.marital_status && (
+                  <div className={s.detailRow}>
+                    <span className={s.detailLabel}>Life Situation</span>
+                    <span className={s.detailValue}>{contact.marital_status.charAt(0).toUpperCase() + contact.marital_status.slice(1)}</span>
+                  </div>
+                )}
+                {contact.dependents_count != null && (
+                  <div className={s.detailRow}>
+                    <span className={s.detailLabel}>Dependents</span>
+                    <span className={s.detailValue}>{contact.dependents_count === 4 ? '4+' : contact.dependents_count}</span>
+                  </div>
+                )}
                 <div className={s.detailRow}>
                   <span className={s.detailLabel}>Added</span>
                   <span className={s.detailValue}>{new Date(contact.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
@@ -310,7 +346,7 @@ export default function ContactProfilePage() {
     {
       id: 'snapshot',
       label: 'Financial Snapshot',
-      content: <SnapshotTab contactId={contactId} isClient={contact.is_client} />,
+      content: <SnapshotTab contactId={contactId} isClient={contact.is_client} contactName={contact.name} />,
     },
   ];
 

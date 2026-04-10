@@ -1,0 +1,116 @@
+/* ═══════════════════════════════════════════════════════
+   VdfActionCard — VaNi observation card
+   ok / warn / bad accent colours via --color-* variables.
+   2 px coloured accent bar at the top via ::before pseudo.
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Base card ───────────────────────────────────────── */
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-fg) 6%, transparent);
+}
+
+/* ── Top accent bar (2 px, inset from edges) ─────────── */
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 14px;
+  right: 14px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+}
+
+.tone_ok::before   { background: var(--color-success); }
+.tone_warn::before { background: var(--color-warning); }
+.tone_bad::before  { background: var(--color-danger); }
+
+/* ── Label pill ──────────────────────────────────────── */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  align-self: flex-start;
+}
+
+.pill_ok {
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  color: var(--color-success);
+}
+
+.pill_warn {
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  color: var(--color-warning);
+}
+
+.pill_bad {
+  background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+  color: var(--color-danger);
+}
+
+/* ── Observation text ────────────────────────────────── */
+
+.title {
+  margin: 0;
+  font-size: 0.88rem;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--color-fg);
+  flex: 1;
+}
+
+/* ── CTA link ────────────────────────────────────────── */
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  background: none;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  padding: 10px 0 0;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.02em;
+  transition: color 0.15s ease;
+  align-self: stretch;
+}
+
+.cta:hover {
+  color: var(--color-primary);
+}
+
+.cta svg {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.cta:hover svg {
+  transform: translateX(2px);
+}

@@ -26,8 +26,9 @@ export interface MeTenant {
   theme_id?: string;
   logo_url?: string;
   onboarding_complete: boolean;
-  is_live: boolean;   // TRUE = live environment, FALSE = sandbox
-  is_admin: boolean;  // TRUE = tenant has admin privileges
+  is_live: boolean;             // TRUE = live environment, FALSE = sandbox
+  is_admin: boolean;            // TRUE = tenant has admin privileges
+  ext_ref_type_code: string | null;  // Platform selected during onboarding (CAMS, KFINTECH, etc.)
 }
 
 export interface MeResponse {

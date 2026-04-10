@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS ki_intake_tokens (
     tenant_id           UUID        NOT NULL,               -- FK to vn_tenants.id (not enforced — cross-schema)
     token               VARCHAR(64) UNIQUE NOT NULL,        -- hex(32 random bytes)
     contact_id          BIGINT,                                -- FK to ki_contacts.id (not enforced — cross-migration)
-    created_by_user_id  INTEGER     NOT NULL,               -- FK to vn_users.id (not enforced — cross-schema)
+    created_by_user_id  UUID        NOT NULL,               -- FK to vn_users.id (not enforced — cross-schema)
     expires_at          TIMESTAMPTZ NOT NULL,               -- created_at + 5 days
     used_at             TIMESTAMPTZ,                        -- null until submitted
     status              VARCHAR(10) NOT NULL DEFAULT 'active'
@@ -202,7 +202,7 @@ CREATE TABLE IF NOT EXISTS ki_contact_snapshots (
                             CHECK (status IN ('draft', 'active', 'archived')),
 
     -- Who filled this snapshot and how
-    created_by_user_id  INTEGER,                           -- FK to vn_users.id (not enforced — cross-schema)
+    created_by_user_id  UUID,                              -- FK to vn_users.id (not enforced — cross-schema)
     intake_token_id     INTEGER     REFERENCES ki_intake_tokens(id) ON DELETE SET NULL,
 
     -- Risk profile (carried forward to ki_clients on conversion)

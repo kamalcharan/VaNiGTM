@@ -4,20 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, getAccessToken, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
+import { useAuth } from '@/context/auth-provider';
 import { InlineLoader } from '@/components/loader';
-import { VdfLoader } from '@/components/vdf';
+import { VdfLoader, VdfColorPicker } from '@/components/vdf';
 import FormInput from '@/components/ui/form-input';
-import { INDIAN_STATES, validatePAN, validateGSTIN, validateARN, validatePIN } from '@/constants/business';
+import { BUSINESS_TYPES, INDIAN_STATES, validatePAN, validateGSTIN, validateARN, validatePIN } from '@/constants/business';
 import s from './settings-tabs.module.css';
-
-const BUSINESS_TYPES = [
-  { value: 'mfd', label: 'Mutual Fund Distributor (MFD)' },
-  { value: 'ria', label: 'Registered Investment Advisor (RIA)' },
-  { value: 'ifa', label: 'Insurance Financial Advisor (IFA)' },
-  { value: 'cfp', label: 'Certified Financial Planner (CFP)' },
-  { value: 'wealthtech', label: 'Wealthtech Firm' },
-  { value: 'other', label: 'Other' },
-];
 
 function getTypeLabel(value: string): string {
   return BUSINESS_TYPES.find((t) => t.value === value)?.label || value || '\u2014';
@@ -45,14 +37,17 @@ const EMPTY: ProfileData = {
   country: 'India', brand_color: '',
 };
 
-type EditSection = null | 'info' | 'compliance' | 'address';
+type EditSection = null | 'info' | 'brand' | 'compliance' | 'address';
 
 export default function BusinessTab() {
   const { showToast } = useToast();
+  const { tenant } = useAuth();
   const [profile, setProfile] = useState<ProfileData>(EMPTY);
   const [fetching, setFetching] = useState(true);
   const [editing, setEditing] = useState<EditSection>(null);
   const [saving, setSaving] = useState(false);
+
+  const extRefTypeCode = tenant?.ext_ref_type_code ?? null;
 
   // Draft state for editing
   const [draft, setDraft] = useState<ProfileData>(EMPTY);
@@ -110,39 +105,27 @@ export default function BusinessTab() {
       }
     }
     if (editing === 'compliance') {
-      if (draft.pan && !validatePAN(draft.pan)) {
-        showToast({ message: 'Invalid PAN format (e.g. ABCDE1234F)', type: 'error' }); return;
-      }
-      if (draft.gstin && !validateGSTIN(draft.gstin)) {
-        showToast({ message: 'Invalid GSTIN format', type: 'error' }); return;
-      }
-      if (draft.arn && !validateARN(draft.arn)) {
-        showToast({ message: 'Invalid ARN format', type: 'error' }); return;
-      }
+      const panErr = validatePAN(draft.pan);
+      if (panErr) { showToast({ message: panErr, type: 'error' }); return; }
+      const gstinErr = validateGSTIN(draft.gstin, draft.pan);
+      if (gstinErr) { showToast({ message: gstinErr, type: 'error' }); return; }
+      const arnErr = validateARN(draft.arn);
+      if (arnErr) { showToast({ message: arnErr, type: 'error' }); return; }
     }
     if (editing === 'address') {
-      if (draft.postal_code && !validatePIN(draft.postal_code)) {
-        showToast({ message: 'PIN code must be 6 digits', type: 'error' }); return;
-      }
+      const pinErr = validatePIN(draft.postal_code);
+      if (pinErr) { showToast({ message: pinErr, type: 'error' }); return; }
     }
 
     setSaving(true);
     try {
-      await apiFetch(API.tenant.profile, {
-        body: {
-          display_name: draft.display_name.trim(),
-          type: draft.type || undefined,
-          arn: draft.arn || undefined,
-          pan: draft.pan.toUpperCase() || undefined,
-          gstin: draft.gstin.toUpperCase() || undefined,
-          address_line1: draft.address_line1 || undefined,
-          address_line2: draft.address_line2 || undefined,
-          state: draft.state || undefined,
-          city: draft.city || undefined,
-          postal_code: draft.postal_code || undefined,
-          country: 'India',
-        },
-      });
+      const body: Record<string, unknown> =
+        editing === 'info'       ? { display_name: draft.display_name.trim(), type: draft.type || undefined } :
+        editing === 'brand'      ? { brand_color: draft.brand_color || undefined } :
+        editing === 'compliance' ? { arn: draft.arn || undefined, pan: draft.pan.toUpperCase() || undefined, gstin: draft.gstin.toUpperCase() || undefined } :
+        /* address */              { address_line1: draft.address_line1 || undefined, address_line2: draft.address_line2 || undefined, state: draft.state || undefined, city: draft.city || undefined, postal_code: draft.postal_code || undefined, country: 'India' };
+
+      await apiFetch(API.tenant.profile, { body });
       showToast({ message: 'Business profile updated', type: 'success' });
       setProfile({ ...draft });
       setEditing(null);
@@ -206,6 +189,39 @@ export default function BusinessTab() {
         )}
       </div>
 
+      {/* ── Brand Color ── */}
+      <div className={s.card}>
+        <div className={s.cardHeader}>
+          <div>
+            <div className={s.cardTitle}>Brand Color</div>
+            <div className={s.cardDescInline}>Used in reports, client portal, and communications</div>
+          </div>
+          {editing !== 'brand' && (
+            <button className={s.btnChange} onClick={() => startEdit('brand')}>
+              ✏ Change
+            </button>
+          )}
+        </div>
+
+        {editing === 'brand' ? (
+          <>
+            <VdfColorPicker
+              value={draft.brand_color}
+              onChange={(color) => setDraft({ ...draft, brand_color: color })}
+              disabled={saving}
+            />
+            <div className={s.actions}>
+              <button className={s.btnCancel} onClick={cancelEdit} disabled={saving}>Cancel</button>
+              <button className={s.btnSave} onClick={saveSection} disabled={saving}>
+                {saving ? <InlineLoader size="sm" message="Saving..." /> : 'Save'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <VdfColorPicker value={profile.brand_color} readOnly />
+        )}
+      </div>
+
       {/* ── Compliance / Registration ── */}
       <div className={s.card}>
         <div className={s.cardHeader}>
@@ -250,6 +266,46 @@ export default function BusinessTab() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* ── Platform / External Reference Type ── */}
+      <div className={s.card}>
+        <div className={s.cardHeader}>
+          <div>
+            <div className={s.cardTitle}>Client Platform</div>
+            <div className={s.cardDescInline}>The platform used for client external reference IDs</div>
+          </div>
+        </div>
+        <div className={s.readGrid}>
+          <div className={s.readItem}>
+            <div className={s.readLabel}>Platform</div>
+            <div className={s.readValue} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {extRefTypeCode ? (
+                <>
+                  <span style={{
+                    fontFamily: 'var(--font-mono, monospace)',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    color: 'var(--color-primary)',
+                    background: 'color-mix(in srgb, var(--color-primary) 10%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)',
+                    padding: '3px 10px',
+                    borderRadius: 5,
+                  }}>
+                    {extRefTypeCode}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-muted)' }}>
+                    Contact admin to change
+                  </span>
+                </>
+              ) : (
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-warning)' }}>
+                  Not set — complete onboarding to select a platform
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ── Business Address ── */}

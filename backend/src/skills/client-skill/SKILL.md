@@ -15,7 +15,7 @@ Manages the MFD's full client database. Clients are contacts that have been onbo
 
 ### get_clients
 Paginated list of clients with optional search and filter.
-- Parameters: search (optional, string), risk_profile (optional, string), bookmarked_only (optional, boolean), limit (optional, number), offset (optional, number)
+- Parameters: filters (optional, object: { search?: string, risk_profile?: string, bookmarked_only?: boolean }), limit (optional, number), offset (optional, number)
 - Returns: { clients: [{ id, client_uid, name, prefix, ext_ref_id, pan, risk_profile, onboarding_status, is_bookmarked, primary_mobile, primary_email }], total, recipe: 'client-list' }
 
 ### get_client
@@ -47,6 +47,11 @@ Remove a bookmark (soft delete).
 Get all clients in the same family group.
 - Parameters: family_id (required, string)
 - Returns: { members: [{ id, client_uid, name, prefix, is_family_head, ext_ref_id }], family_name, recipe: 'data-table' }
+
+### get_bookmark_reasons
+List active bookmark reason master data for the tenant (populates the reason picker modal).
+- Parameters: none
+- Returns: { reasons: [{ id, reason_code, reason_label, display_order }], recipe: 'option-list' }
 
 ### get_stats
 Summary stats for the clients dashboard.

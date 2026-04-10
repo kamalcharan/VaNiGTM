@@ -74,12 +74,51 @@
   padding: 14px 48px;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Active / Inactive status toggle */
+
+.statusToggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: color-mix(in srgb, var(--color-border) 50%, transparent);
+  border-radius: 8px;
+  padding: 3px;
+  flex-shrink: 0;
+}
+
+.statusPill {
+  padding: 5px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  background: transparent;
+  color: var(--color-muted);
+  transition: all 150ms;
+}
+
+.statusPillActive {
+  background: var(--color-success);
+  color: #fff;
+}
+
+.statusPillInactive {
+  background: var(--color-danger);
+  color: #fff;
 }
 
 /* ── List content ────────────────────────────────────── */
 
 .listContent {
-  padding: 24px 48px 80px;
+  padding: 24px 48px 8px;
 }
 
 /* ── Table ───────────────────────────────────────────── */
@@ -161,6 +200,22 @@
   font-size: 0.7rem;
   color: var(--color-muted);
   margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.contactNo {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  padding: 1px 5px;
+  border-radius: 3px;
 }
 
 /* ── Channels cell ───────────────────────────────────── */
@@ -234,13 +289,76 @@
   border-radius: 6px;
   color: var(--color-muted);
   cursor: pointer;
-  opacity: 0;
   transition: all 150ms;
 }
 
-.row:hover .deleteBtn { opacity: 1; }
+.editBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.editBtn:hover { border-color: var(--color-primary); color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
 .deleteBtn:hover { border-color: var(--color-danger); color: var(--color-danger); background: color-mix(in srgb, var(--color-danger) 8%, transparent); }
 .deleteBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.reactivateBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
+  border-radius: 6px;
+  color: var(--color-success);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms;
+  white-space: nowrap;
+}
+
+.reactivateBtn:hover { background: color-mix(in srgb, var(--color-success) 18%, transparent); }
+.reactivateBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Pagination ──────────────────────────────────────── */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px 48px 40px;
+}
+
+.pageBtn {
+  padding: 7px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.pageBtn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
+.pageBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.pageInfo {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
 
 /* ── Create Contact Drawer ───────────────────────────── */
 
@@ -331,6 +449,19 @@
   flex-shrink: 0;
 }
 
+/* Edit mode — channel note */
+
+.editChannelNote {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 15%, transparent);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 0;
+  line-height: 1.5;
+}
+
 /* Prefix pills (in drawer) */
 .fieldGroup {
   display: flex;
@@ -370,6 +501,89 @@
   background: var(--color-fg);
   color: var(--color-bg);
   border-color: var(--color-fg);
+}
+
+/* Age + City side-by-side */
+.drawerRow2 {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+}
+
+/* Life situation tiles */
+.situationTiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.situationTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 12px 6px 10px;
+  background: color-mix(in srgb, var(--color-surface) 60%, var(--color-bg));
+  border: 1px solid var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.situationTile:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+}
+
+.situationTileActive {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+}
+
+.situationLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  line-height: 1;
+}
+
+.situationSub {
+  font-size: 0.65rem;
+  color: var(--color-muted);
+  line-height: 1;
+}
+
+/* Dependents bubbles */
+.dependentBubbles {
+  display: flex;
+  gap: 8px;
+}
+
+.depBubble {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 60%, var(--color-bg));
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: grid;
+  place-items: center;
+}
+
+.depBubble:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.depBubbleActive {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
 }
 
 /* ── Responsive ──────────────────────────────────────── */

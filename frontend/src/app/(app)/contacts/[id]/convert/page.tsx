@@ -4,8 +4,18 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
+import { useAuth } from '@/context/auth-provider';
 import { VdfLoader, VdfButton } from '@/components/vdf';
 import s from './convert.module.css';
+
+/* ── Platform label map ── */
+const PLATFORM_LABELS: Record<string, string> = {
+  CAMS:     'CAMS Code',
+  KFINTECH: 'KFintech Code',
+  IWELL:    'IWell Code',
+  BSE_STAR: 'BSE StarMF Code',
+  CUSTOM:   'Client Code',
+};
 
 /* ── Types ── */
 
@@ -93,6 +103,8 @@ export default function ConvertPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { showToast } = useToast();
+  const { tenant } = useAuth();
+  const platformLabel = PLATFORM_LABELS[tenant?.ext_ref_type_code ?? ''] ?? 'Client Code';
   const contactId = Number(id);
 
   const [pan, setPan]                 = useState('');
@@ -287,7 +299,7 @@ export default function ConvertPage() {
             <div className={s.field} style={{ marginBottom: 24 }}>
               <label className={s.fieldLabel}>External Reference ID</label>
               <div className={s.extRefWrap}>
-                <span className={s.extRefLabel}>CLIENT · CODE</span>
+                <span className={s.extRefLabel}>{platformLabel.toUpperCase()}</span>
                 <input
                   className={s.extRefInput}
                   value={extRef}
@@ -455,7 +467,7 @@ export default function ConvertPage() {
 
               {successData.extRef && (
                 <div className={s.successExtRef}>
-                  <span className={s.successExtRefLabel}>CLIENT · CODE</span>
+                  <span className={s.successExtRefLabel}>{platformLabel.toUpperCase()}</span>
                   <span className={s.successExtRefValue}>{successData.extRef}</span>
                 </div>
               )}

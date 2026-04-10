@@ -12,6 +12,7 @@ SELECT
     t.lead_name,
     t.lead_mobile,
     t.lead_email,
+    t.is_live,
 
     -- Tenant brand for intake page styling
     tp.display_name     AS tenant_display_name,
@@ -20,14 +21,14 @@ SELECT
     tp.theme_id,
 
     -- MFD who generated the link
-    u.full_name         AS mfd_name,
+    u.name              AS mfd_name,
 
     -- Contact pre-fill (Flow 1 only — NULL for Flow 2)
     c.prefix            AS contact_prefix,
     c.name              AS contact_name,
     -- Primary mobile
     (SELECT ch.channel_value
-     FROM ki_channels ch
+     FROM ki_contact_channels ch
      WHERE ch.contact_id = c.id
        AND ch.channel_type = 'mobile'
        AND ch.is_active = true
@@ -35,7 +36,7 @@ SELECT
      LIMIT 1)           AS contact_mobile,
     -- Primary email
     (SELECT ch.channel_value
-     FROM ki_channels ch
+     FROM ki_contact_channels ch
      WHERE ch.contact_id = c.id
        AND ch.channel_type = 'email'
        AND ch.is_active = true

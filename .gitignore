@@ -25,6 +25,7 @@ Thumbs.db
 *.js.map
 *.d.ts
 !jest.config.ts
+!frontend/src/types/*.d.ts
 .next/
 
 # Docker volumes

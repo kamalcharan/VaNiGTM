@@ -1,0 +1,244 @@
+/* ═══════════════════════════════════════════════════════
+   VdfItemCardList — schema-driven dynamic row list
+   Theme-compliant: ALL colors via --color-* CSS variables.
+   Form sizing via --input-*, --label-* design tokens.
+   ═══════════════════════════════════════════════════════ */
+
+/* ── List container ──────────────────────────────────── */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Individual item card ────────────────────────────── */
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  padding: 16px 18px;
+  animation: slideIn 0.25s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Card header ─────────────────────────────────────── */
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.num {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  opacity: 0.85;
+}
+
+.remove {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 5px;
+  border: none;
+  background: none;
+  color: var(--color-muted);
+  font-size: 0.65rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.remove:hover {
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  color: var(--color-danger);
+}
+
+/* ── Field grid ─────────────────────────────────────── */
+
+.fields {
+  display: grid;
+  gap: 14px;
+  align-items: start;
+}
+
+.cols2 { grid-template-columns: 1fr 1fr; }
+.cols3 { grid-template-columns: 1fr 1fr 1fr; }
+.cols4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+/* Override group bottom-margin when VDF components appear in a grid */
+.fields > * {
+  margin-bottom: 0 !important;
+}
+
+/* Used as className override on VdfCurrencyInput to strip group margin */
+.noMargin {
+  margin-bottom: 0 !important;
+}
+
+/* ── Generic field wrapper (non-VDF cells) ──────────── */
+
+.fieldWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabel {
+  display: block;
+  font-size: var(--label-font-size, 0.65rem);
+  font-weight: var(--label-font-weight, 700);
+  letter-spacing: var(--label-letter-spacing, 0.12em);
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* ── Shared input (text, number) ────────────────────── */
+
+.input {
+  width: 100%;
+  height: var(--input-height, 44px);
+  padding: var(--input-padding, 13px 16px);
+  background: var(--color-bg);
+  border: var(--input-border-width, 1px) solid var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  color: var(--color-fg);
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: var(--input-font-size, 0.9rem);
+  outline: none;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+  box-sizing: border-box;
+}
+
+.input::placeholder {
+  color: var(--color-muted);
+  opacity: var(--input-placeholder-opacity, 0.35);
+}
+
+.input:focus::placeholder {
+  opacity: 0;
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 var(--input-focus-ring-size, 3px)
+    color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity, 12%), transparent);
+}
+
+/* ── Native select ──────────────────────────────────── */
+
+.select {
+  width: 100%;
+  height: var(--input-height, 44px);
+  padding: var(--input-padding, 13px 16px);
+  padding-right: 36px;
+  background: var(--color-bg);
+  border: var(--input-border-width, 1px) solid var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  color: var(--color-fg);
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: var(--input-font-size, 0.9rem);
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a8578' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+  box-sizing: border-box;
+}
+
+.select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 var(--input-focus-ring-size, 3px)
+    color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity, 12%), transparent);
+}
+
+.select option {
+  background: var(--color-surface);
+  color: var(--color-fg);
+}
+
+/* ── Pill row ───────────────────────────────────────── */
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.pill {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 100px;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.pill:hover:not(.pillActive) {
+  border-color: var(--color-primary);
+  color: var(--color-fg);
+}
+
+.pillActive {
+  background: var(--color-fg);
+  border-color: var(--color-fg);
+  color: var(--color-bg);
+}
+
+/* ── Add-row button ─────────────────────────────────── */
+
+.addBtn {
+  width: 100%;
+  padding: 12px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+  font-family: inherit;
+}
+
+.addBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+
+/* ── Responsive: collapse to single column on small screens ── */
+
+@media (max-width: 640px) {
+  .cols3,
+  .cols4 {
+    grid-template-columns: 1fr;
+  }
+  .cols2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}

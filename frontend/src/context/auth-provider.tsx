@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useMe, useInvalidateMe, type MeUser, type MeTenant } from '@/hooks';
 import { apiFetch, clearTokens, getAccessToken, getRefreshToken, storeTokens } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: me, isLoading } = useMe();
   const invalidateMe = useInvalidateMe();
+  const queryClient = useQueryClient();
   const { setTheme, themeId } = useTheme();
 
   const user = me?.user || null;
@@ -85,8 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(TOKEN_ACCESS, result.access_token);
       localStorage.setItem('pk-token-expires-at', expiresAt);
     } catch { /* storage unavailable */ }
-    // Invalidate useMe cache so all pages refetch with new environment
+    // Invalidate useMe so the sidebar env pill updates immediately
     invalidateMe();
+    // Flush ALL skill query caches — every data page refetches with the new JWT
+    // (is_live is baked into the JWT, so cached responses from the old env must go)
+    await queryClient.invalidateQueries({ queryKey: ['skill'] });
   }
 
   return (

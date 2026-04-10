@@ -12,6 +12,7 @@ export interface VdfSearchPill {
 export interface VdfSearchBarProps {
   value: string;
   onChange: (value: string) => void;
+  onSearch?: () => void;   /* called on Enter key or icon click — if omitted, searches on every change */
   placeholder?: string;
   pills?: VdfSearchPill[];
   activePill?: string;
@@ -23,6 +24,7 @@ export interface VdfSearchBarProps {
 export function VdfSearchBar({
   value,
   onChange,
+  onSearch,
   placeholder = 'Search…',
   pills,
   activePill,
@@ -34,14 +36,23 @@ export function VdfSearchBar({
     <div className={`${s.bar} ${className || ''}`}>
       {/* Search input */}
       <div className={s.searchWrap}>
-        <svg className={s.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
-          <circle cx="11" cy="11" r="8" />
-          <path d="M21 21l-4.35-4.35" />
-        </svg>
+        <button
+          type="button"
+          className={s.searchIconBtn}
+          onClick={onSearch}
+          tabIndex={onSearch ? 0 : -1}
+          aria-label="Search"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+        </button>
         <input
           className={s.searchInput}
           value={value}
           onChange={e => onChange(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && onSearch?.()}
           placeholder={placeholder}
         />
       </div>

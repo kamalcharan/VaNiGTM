@@ -1,0 +1,151 @@
+/* ═══════════════════════════════════════════════════════
+   VdfColorPicker — theme-compliant colour selector
+   All structural values via CSS variables. No hardcoded colours.
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Display (read-only) ─────────────────────────────── */
+.displayRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.displaySwatch {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+  /* background always set via inline style — it is dynamic user data */
+}
+
+.displayHex {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-fg);
+  letter-spacing: 0.05em;
+}
+
+/* ── Active colour row ───────────────────────────────── */
+.pickerMain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.pickerSwatch {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+  transition: background 200ms;
+  /* background always set via inline style */
+}
+
+.hexInput {
+  width: 130px;
+  height: var(--btn-height, 44px);
+  padding: var(--input-padding, 13px 16px);
+  background: var(--color-bg);
+  border: var(--input-border-width, 1px) solid var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  color: var(--color-fg);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: var(--input-font-size, 0.9rem);
+  outline: none;
+  transition: border-color 200ms;
+}
+.hexInput:focus { border-color: var(--color-primary); box-shadow: 0 0 0 var(--input-focus-ring-size, 3px) color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity, 12%), transparent); }
+.hexInput:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Hidden native <input type="color"> — opened programmatically */
+.nativeHidden {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Browse button that opens the native picker */
+.browseBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--btn-height, 44px);
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--btn-radius, 8px);
+  background: var(--color-bg);
+  color: var(--color-muted);
+  font-size: var(--btn-font-size, 0.85rem);
+  font-weight: var(--btn-font-weight, 700);
+  letter-spacing: var(--btn-letter-spacing, 0.08em);
+  cursor: pointer;
+  transition: all 200ms;
+  white-space: nowrap;
+}
+.browseBtn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+.browseBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Palette grid ────────────────────────────────────── */
+.palette {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.paletteGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.groupLabel {
+  font-size: 0.58rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  width: 96px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.groupRow {
+  display: flex;
+  gap: 6px;
+}
+
+.dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 120ms, outline-color 120ms;
+  /* background always set via inline style */
+}
+.dot:hover:not(:disabled) { transform: scale(1.2); }
+.dot:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.dotActive {
+  outline-color: var(--color-fg);
+  transform: scale(1.15);
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 600px) {
+  .groupLabel { display: none; }
+  .paletteGroup { flex-wrap: wrap; }
+}

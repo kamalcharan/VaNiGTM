@@ -25,7 +25,7 @@ SELECT
     s.submitted_at,
     s.created_at,
     s.updated_at,
-    u.full_name  AS created_by_name
+    u.name  AS created_by_name
 FROM ki_contact_snapshots s
 LEFT JOIN vn_users u ON u.id = s.created_by_user_id
 WHERE s.contact_id = $contact_id

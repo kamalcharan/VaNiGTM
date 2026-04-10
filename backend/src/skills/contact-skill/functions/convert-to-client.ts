@@ -40,6 +40,7 @@ interface ConvertToClientResult {
   client: {
     id: number;
     client_uid: string;
+    client_no: string;
     contact_id: number;
     ext_ref_id: string | null;
     pan: string | null;
@@ -85,6 +86,14 @@ export async function convert_to_client(
       { $contact_id: contact_id, $tenant_id: ctx.tenant_id, $is_live: ctx.is_live }
     );
     const snapshot = snapRes.rows[0] ?? null;
+
+    // Fetch tenant default risk profile from settings JSONB for fallback
+    const tenantProfileRes = await tx.query<{ default_risk_profile: string | null }>(
+      `SELECT settings->>'default_risk_profile' AS default_risk_profile
+       FROM vn_tenant_profiles WHERE tenant_id = $tenant_id`,
+      { $tenant_id: ctx.tenant_id }
+    );
+    const tenantDefaultRisk = tenantProfileRes.rows[0]?.default_risk_profile ?? null;
 
     // Fetch goals from new ki_snapshot_goals (or fall back to legacy goals_lite)
     let goalsFromSnapshot: Array<{ name: string; target_amount: number; timeline_years: number; goal_type: string; snapshot_goal_id: number }> = [];
@@ -133,17 +142,19 @@ export async function convert_to_client(
     // 4. Create ki_clients record
     // name is required (NOT NULL from migration 001) — carry from contact
     const clientRes = await tx.query<{
-      id: number; client_uid: string; contact_id: number;
+      id: number; client_uid: string; client_no: string; contact_id: number;
       ext_ref_id: string | null; pan: string | null;
       risk_profile: string | null; onboarding_status: string;
     }>(
       `INSERT INTO ki_clients
-         (name, contact_id, tenant_id, is_live, pan, dob, anniversary_date, ext_ref_id,
+         (name, contact_id, tenant_id, is_live, client_no, pan, dob, anniversary_date, ext_ref_id,
           family_id, is_family_head, risk_profile, referred_by_name, created_by)
        VALUES
-         ($name, $contact_id, $tenant_id, $is_live, $pan, $dob, $anniversary_date, $ext_ref_id,
+         ($name, $contact_id, $tenant_id, $is_live,
+          ki_next_seq($tenant_id::uuid, 'client'),
+          $pan, $dob, $anniversary_date, $ext_ref_id,
           $family_id, $is_family_head, $risk_profile, $referred_by_name, $created_by)
-       RETURNING id, client_uid, contact_id, ext_ref_id, pan, risk_profile, onboarding_status`,
+       RETURNING id, client_uid, client_no, contact_id, ext_ref_id, pan, risk_profile, onboarding_status`,
       {
         $name:            contact.name,
         $contact_id:      contact_id,
@@ -155,7 +166,7 @@ export async function convert_to_client(
         $ext_ref_id:      ext_ref_id ?? null,
         $family_id:       resolvedFamilyId,
         $is_family_head:  is_family_head,
-        $risk_profile:    snapshot?.risk_profile ?? null,
+        $risk_profile:    snapshot?.risk_profile ?? tenantDefaultRisk,
         $referred_by_name: referred_by_name ?? null,
         $created_by:      ctx.user_id,
       }

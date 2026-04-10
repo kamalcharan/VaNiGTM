@@ -1,0 +1,126 @@
+/* ═══════════════════════════════════════════════════════
+   VdfBenchmarkBar — benchmark metric row for Pulse sidebar
+   All colours via --color-* CSS variables (theme-compliant).
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Metric block ────────────────────────────────────── */
+
+.metric {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.metric:last-child {
+  border-bottom: none;
+}
+
+/* ── Label row ───────────────────────────────────────── */
+
+.row1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+
+.labelWrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* Coloured square accent dot */
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.label {
+  font-size: 0.63rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Current value */
+.value {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-fg);
+}
+
+.valueEmpty {
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
+/* ── Progress bar ────────────────────────────────────── */
+
+.scale {
+  height: 5px;
+  background: color-mix(in srgb, var(--color-border) 80%, transparent);
+  border-radius: 3px;
+  position: relative;
+  overflow: visible;
+  margin-bottom: 5px;
+}
+
+.scaleFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              background 0.3s ease;
+}
+
+/* State variants */
+.state_empty { background: var(--color-border); }
+.state_low   { background: var(--color-danger); }
+.state_mid   { background: var(--color-warning); }
+.state_good  { background: var(--color-success); }
+
+/* Peer-median marker line */
+.marker {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 11px;
+  background: var(--color-muted);
+  opacity: 0.45;
+  transform: translateX(-50%);
+  border-radius: 1px;
+}
+
+/* ── Bottom row: range + percentile ──────────────────── */
+
+.bottom {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.58rem;
+  color: var(--color-muted);
+  letter-spacing: 0.02em;
+}
+
+.percentile {
+  font-weight: 700;
+}
+
+/* Percentile tone colours */
+.pct_ok  { color: var(--color-success); }
+.pct_mid { color: var(--color-warning); }
+.pct_bad { color: var(--color-danger); }
+
+/* ── Note ────────────────────────────────────────────── */
+
+.note {
+  font-size: 0.6rem;
+  color: var(--color-muted);
+  margin-top: 5px;
+  line-height: 1.45;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  letter-spacing: 0.01em;
+}

@@ -19,7 +19,7 @@ import OnboardPreferences from './onboarding/OnboardPreferences';
 import OnboardImport from './onboarding/OnboardImport';
 
 export interface OnboardingStepProps {
-  onComplete: () => void;
+  onComplete: (data?: Record<string, unknown>) => void;
   onSkip?: () => void;
 }
 

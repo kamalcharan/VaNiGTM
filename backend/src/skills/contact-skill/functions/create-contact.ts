@@ -26,6 +26,10 @@ interface CreateContactParams {
   prefix: string;
   name: string;
   channels?: ChannelInput[];
+  age?: number;
+  city?: string;
+  marital_status?: 'single' | 'married' | 'family' | 'other';
+  dependents_count?: number;
 }
 
 interface ChannelItem {
@@ -39,6 +43,7 @@ interface ChannelItem {
 interface CreateContactResult {
   contact: {
     id: number;
+    contact_no: string;
     name: string;
     prefix: string;
     normalized_name: string;
@@ -52,7 +57,9 @@ export async function create_contact(
   params: CreateContactParams,
   ctx: SkillContext
 ): Promise<CreateContactResult> {
-  const { prefix, name, channels = [] } = params;
+  const { prefix, name, channels = [], age, city, marital_status, dependents_count } = params;
+
+  const VALID_MARITAL = ['single', 'married', 'family', 'other'] as const;
 
   if (!VALID_PREFIXES.includes(prefix as typeof VALID_PREFIXES[number])) {
     throw new Error(`Invalid prefix. Must be one of: ${VALID_PREFIXES.join(', ')}`);
@@ -60,16 +67,23 @@ export async function create_contact(
   if (!name?.trim()) {
     throw new Error('Contact name is required');
   }
+  if (marital_status && !VALID_MARITAL.includes(marital_status as typeof VALID_MARITAL[number])) {
+    throw new Error(`Invalid marital_status. Must be one of: ${VALID_MARITAL.join(', ')}`);
+  }
 
   const result = await ctx.db.transaction(async (tx) => {
     const contactRes = await tx.query<{
-      id: number; name: string; prefix: string; normalized_name: string; is_client: boolean;
+      id: number; contact_no: string; name: string; prefix: string; normalized_name: string; is_client: boolean;
     }>(INSERT_CONTACT_SQL, {
-      $tenant_id:  ctx.tenant_id,
-      $is_live:    ctx.is_live,
-      $prefix:     prefix,
-      $name:       name.trim(),
-      $created_by: ctx.user_id,
+      $tenant_id:        ctx.tenant_id,
+      $is_live:          ctx.is_live,
+      $prefix:           prefix,
+      $name:             name.trim(),
+      $created_by:       ctx.user_id,
+      $age:              age ?? null,
+      $city:             city?.trim() || null,
+      $marital_status:   marital_status || null,
+      $dependents_count: dependents_count ?? null,
     });
     const contact = contactRes.rows[0];
 

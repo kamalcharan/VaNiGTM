@@ -211,10 +211,12 @@ export function createAuthRouter(pool: Pool): Router {
         const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
         const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-        // Look up role UUID
+        // Look up role UUID — check tenant-specific roles first, then global (tenant_id IS NULL)
         const roleResult = await pool.query(
-          'SELECT id FROM vn_roles WHERE tenant_id = $1 AND code = $2 LIMIT 1',
-          [jwt.tenant_id, roleId],
+          `SELECT id FROM vn_roles
+           WHERE code = $1 AND (tenant_id = $2 OR tenant_id IS NULL)
+           ORDER BY tenant_id NULLS LAST LIMIT 1`,
+          [roleId, jwt.tenant_id],
         );
         const roleUuid = roleResult.rows[0] ? (roleResult.rows[0] as any).id : null;
 
@@ -237,6 +239,83 @@ export function createAuthRouter(pool: Pool): Router {
       console.error('[Auth:invite]', err);
       res.status(500).json({
         error: { code: 'INVITE_FAILED', message: err.message || 'Failed to send invitations' },
+      });
+    }
+  });
+
+  /* ── GET /api/v1/auth/team ─────────────────────────── */
+
+  router.get('/team', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+
+      const result = await pool.query(
+        `SELECT
+           u.id,
+           u.name,
+           u.email,
+           u.first_name,
+           u.last_name,
+           u.avatar_url,
+           u.is_active,
+           u.last_login_at,
+           u.created_at,
+           r.code  AS role_code,
+           r.name  AS role_name
+         FROM vn_users u
+         LEFT JOIN vn_user_roles ur ON ur.user_id = u.id AND ur.revoked_at IS NULL
+         LEFT JOIN vn_roles r       ON r.id = ur.role_id
+         WHERE u.tenant_id = $1
+         ORDER BY u.created_at ASC`,
+        [jwt.tenant_id],
+      );
+
+      res.json({ members: result.rows });
+    } catch (err: any) {
+      console.error('[Auth:team]', err);
+      res.status(500).json({
+        error: { code: 'FETCH_FAILED', message: 'Failed to fetch team members' },
+      });
+    }
+  });
+
+  /* ── GET /api/v1/auth/invitations ──────────────────── */
+
+  router.get('/invitations', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+
+      const result = await pool.query(
+        `SELECT
+           i.id,
+           i.email,
+           i.status,
+           i.expires_at,
+           i.created_at,
+           r.code AS role_code,
+           r.name AS role_name
+         FROM vn_invitations i
+         LEFT JOIN vn_roles r ON r.id::text = i.role_id
+         WHERE i.tenant_id = $1
+           AND i.status = 'pending'
+           AND i.expires_at > now()
+         ORDER BY i.created_at DESC`,
+        [jwt.tenant_id],
+      );
+
+      res.json({ invitations: result.rows });
+    } catch (err: any) {
+      console.error('[Auth:invitations]', err);
+      res.status(500).json({
+        error: { code: 'FETCH_FAILED', message: 'Failed to fetch invitations' },
       });
     }
   });
@@ -276,7 +355,16 @@ export function createAuthRouter(pool: Pool): Router {
         preferencesMerge = { ...(preferencesMerge || {}), theme_override: body.theme_override };
       }
 
-      if (Object.keys(updates).length === 0 && !preferencesMerge) {
+      // Tenant-level settings → vn_tenant_profiles.settings JSONB
+      let tenantSettingsMerge: Record<string, unknown> | null = null;
+      if (body.default_risk_profile !== undefined) {
+        const rp = String(body.default_risk_profile).toLowerCase().trim();
+        if (['conservative', 'moderate', 'aggressive'].includes(rp)) {
+          tenantSettingsMerge = { ...(tenantSettingsMerge || {}), default_risk_profile: rp };
+        }
+      }
+
+      if (Object.keys(updates).length === 0 && !preferencesMerge && !tenantSettingsMerge) {
         res.status(400).json({ error: { code: 'NO_FIELDS', message: 'No valid fields to update' } });
         return;
       }
@@ -313,6 +401,17 @@ export function createAuthRouter(pool: Pool): Router {
             `UPDATE vn_users SET preferences = COALESCE(preferences, '{}'::jsonb) || $1::jsonb, updated_at = now()
              WHERE id = $2 AND tenant_id = $3`,
             [JSON.stringify(preferencesMerge), user_id, tenant_id],
+          );
+        }
+
+        // Merge tenant-level settings into vn_tenant_profiles.settings JSONB
+        if (tenantSettingsMerge) {
+          await client.query(
+            `UPDATE vn_tenant_profiles
+             SET settings   = COALESCE(settings, '{}'::jsonb) || $1::jsonb,
+                 updated_at = now()
+             WHERE tenant_id = $2`,
+            [JSON.stringify(tenantSettingsMerge), tenant_id],
           );
         }
 
@@ -432,7 +531,9 @@ export function createAuthRouter(pool: Pool): Router {
 
       // Tenant info
       const tenantResult = await pool.query(
-        `SELECT t.id, t.slug, t.is_admin, tp.name, tp.display_name, tp.theme_id, tp.logo_url
+        `SELECT t.id, t.slug, t.is_admin, t.ext_ref_type_code,
+                tp.name, tp.display_name, tp.theme_id, tp.logo_url,
+                tp.settings->>'default_risk_profile' AS default_risk_profile
          FROM vn_tenants t
          JOIN vn_tenant_profiles tp ON tp.tenant_id = t.id
          WHERE t.id = $1`,
@@ -473,6 +574,8 @@ export function createAuthRouter(pool: Pool): Router {
           onboarding_complete: onboardingComplete,
           is_live: is_live !== false,  // default true if somehow missing from JWT
           is_admin: tenant.is_admin === true,
+          ext_ref_type_code: tenant.ext_ref_type_code ?? null,
+          default_risk_profile: tenant.default_risk_profile ?? null,
         },
       });
     } catch (err: any) {
@@ -524,6 +627,7 @@ export function createAuthRouter(pool: Pool): Router {
         email: jwt.email,
         role: jwt.role,
         is_live: requestedLive,
+        is_admin: jwt.is_admin,
       });
 
       res.json({
@@ -1128,6 +1232,74 @@ export function createTenantRouter(pool: Pool): Router {
             : err.message || 'Unknown error',
         },
       });
+    }
+  });
+
+  /* ── PATCH /api/v1/tenant/ext-ref-type ─────────────── */
+  /*
+   * One-time selection of the tenant's external reference type (CAMS, KFINTECH, etc.).
+   * Once set, cannot be changed by the tenant — admin intervention required.
+   * Returns 409 if already set.
+   */
+
+  router.patch('/ext-ref-type', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+
+      const { ext_ref_type_code } = req.body as { ext_ref_type_code?: string };
+      if (!ext_ref_type_code || typeof ext_ref_type_code !== 'string') {
+        res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'ext_ref_type_code is required' } });
+        return;
+      }
+
+      // Verify the code exists in ki_ext_ref_types
+      const typeCheck = await pool.query(
+        `SELECT code FROM ki_ext_ref_types WHERE code = $1 AND is_active = true`,
+        [ext_ref_type_code],
+      );
+      if (typeCheck.rows.length === 0) {
+        res.status(400).json({ error: { code: 'INVALID_CODE', message: 'Unknown or inactive platform type' } });
+        return;
+      }
+
+      // Set only if not already set (one-time lock)
+      const result = await pool.query(
+        `UPDATE vn_tenants
+         SET ext_ref_type_code = $1, updated_at = now()
+         WHERE id = $2 AND ext_ref_type_code IS NULL
+         RETURNING ext_ref_type_code`,
+        [ext_ref_type_code, jwt.tenant_id],
+      );
+
+      if (result.rows.length === 0) {
+        // Check if it's because already set
+        const existing = await pool.query(
+          `SELECT ext_ref_type_code FROM vn_tenants WHERE id = $1`,
+          [jwt.tenant_id],
+        );
+        const current = (existing.rows[0] as any)?.ext_ref_type_code;
+        if (current) {
+          res.status(409).json({
+            error: {
+              code: 'ALREADY_SET',
+              message: `Platform already set to '${current}'. Contact admin to change.`,
+              current_code: current,
+            },
+          });
+        } else {
+          res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Tenant not found' } });
+        }
+        return;
+      }
+
+      res.json({ ext_ref_type_code: (result.rows[0] as any).ext_ref_type_code });
+    } catch (err: any) {
+      console.error('[Tenant:extRefType]', err);
+      res.status(500).json({ error: { code: 'UPDATE_FAILED', message: 'Failed to set platform type' } });
     }
   });
 

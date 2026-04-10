@@ -16,6 +16,9 @@ interface GetStatsResult {
   active_clients: number;
   pending_onboarding: number;
   bookmarked: number;
+  recent_30_days: number;
+  family_count: number;
+  families_members: number;
   recipe: 'stat-summary';
 }
 
@@ -28,6 +31,9 @@ export async function get_stats(
     active_clients: string;
     pending_onboarding: string;
     bookmarked: string;
+    recent_30_days: string;
+    family_count: string;
+    families_members: string;
   }>(GET_STATS_SQL, {
     $tenant_id: ctx.tenant_id,
     $is_live:   ctx.is_live,
@@ -40,6 +46,9 @@ export async function get_stats(
     active_clients:     Number(row?.active_clients     ?? 0),
     pending_onboarding: Number(row?.pending_onboarding ?? 0),
     bookmarked:         Number(row?.bookmarked         ?? 0),
+    recent_30_days:     Number(row?.recent_30_days     ?? 0),
+    family_count:       Number(row?.family_count       ?? 0),
+    families_members:   Number(row?.families_members   ?? 0),
     recipe:             'stat-summary',
   };
 }

@@ -8,7 +8,7 @@ import { InlineLoader } from '../loader';
 import s from './OnboardUserProfile.module.css';
 
 interface Props {
-  onComplete: () => void;
+  onComplete: (data?: Record<string, unknown>) => void;
   onSkip?: () => void;
 }
 
@@ -55,7 +55,13 @@ export default function OnboardUserProfile({ onComplete }: Props) {
       // Step completion is what matters for onboarding flow.
 
       showToast({ message: 'Profile saved', type: 'success' });
-      onComplete();
+      onComplete({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        designation: designation || undefined,
+        phone: phone || undefined,
+        bio: bio || undefined,
+      });
     } catch (err) {
       showToast({ message: err instanceof Error ? err.message : 'Save failed', type: 'error' });
     } finally {

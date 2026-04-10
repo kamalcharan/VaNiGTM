@@ -124,6 +124,12 @@ export const API = {
       auth: true,
       description: 'List pending invitations for current tenant',
     },
+    team: {
+      method: 'GET',
+      path: '/api/v1/auth/team',
+      auth: true,
+      description: 'List all active team members for current tenant with their roles',
+    },
     revoke: {
       method: 'DELETE',
       path: '/api/v1/auth/invitations/:id',
@@ -163,6 +169,12 @@ export const API = {
       path: '/api/v1/tenant/profile',
       auth: true,
       description: 'Update tenant business profile (name, ARN, theme)',
+    },
+    setExtRefType: {
+      method: 'PATCH',
+      path: '/api/v1/tenant/ext-ref-type',
+      auth: true,
+      description: 'Set tenant platform/RTA type (one-time — CAMS, KFINTECH, IWELL, BSE_STAR, CUSTOM)',
     },
   },
 
@@ -548,6 +560,12 @@ export const API = {
       path: '/api/v1/master-data/job-configs/:id',
       auth: true,
       description: 'Update tenant scheduler config for a job (cron, enabled toggle)',
+    },
+    extRefTypes: {
+      method: 'GET',
+      path: '/api/v1/master-data/ext-ref-types',
+      auth: true,
+      description: 'List all external reference types (CAMS, KFINTECH, IWELL, BSE_STAR, CUSTOM)',
     },
   },
 

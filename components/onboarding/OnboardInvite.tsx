@@ -8,7 +8,7 @@ import { InlineLoader } from '../loader';
 import s from './OnboardInvite.module.css';
 
 interface Props {
-  onComplete: () => void;
+  onComplete: (data?: Record<string, unknown>) => void;
   onSkip?: () => void;
 }
 
@@ -159,7 +159,7 @@ export default function OnboardInvite({ onComplete, onSkip }: Props) {
           <div />
           <div className={s.navRight}>
             <button className={s.navSkip} onClick={onSkip}>Skip for now</button>
-            <button className={s.navNext} onClick={onComplete}>CONTINUE &rarr;</button>
+            <button className={s.navNext} onClick={() => onComplete({ invitations_sent: sent.length })}>CONTINUE &rarr;</button>
           </div>
         </div>
       </div>

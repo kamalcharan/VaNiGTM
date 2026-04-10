@@ -7,6 +7,7 @@ import { useToast } from '@/components/toast';
 import { VdfWizard } from '@/components/vdf';
 import OnboardUserProfile from '@/components/onboarding/OnboardUserProfile';
 import OnboardBusiness from '@/components/onboarding/OnboardBusiness';
+import OnboardPlatform from '@/components/onboarding/OnboardPlatform';
 import OnboardTheme from '@/components/onboarding/OnboardTheme';
 import OnboardInvite from '@/components/onboarding/OnboardInvite';
 import OnboardPreferences from '@/components/onboarding/OnboardPreferences';
@@ -16,6 +17,7 @@ import s from './onboarding-page.module.css';
 const STEP_COMPONENTS: Record<string, React.ComponentType<{ onComplete: () => void; onSkip?: () => void; onBack?: () => void }>> = {
   OnboardUserProfile,
   OnboardBusiness,
+  OnboardPlatform,
   OnboardTheme,
   OnboardInvite,
   OnboardPreferences,

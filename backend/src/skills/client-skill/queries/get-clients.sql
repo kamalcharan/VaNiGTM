@@ -1,10 +1,12 @@
 -- get-clients: paginated client list with contact info and bookmark status
 -- Named params: $tenant_id, $is_live, $search (nullable), $risk_profile (nullable),
---               $user_id, $limit, $offset
+--               $user_id, $bookmarked_only (nullable), $recent_only (nullable),
+--               $in_family (nullable), $limit, $offset
 
 SELECT
     cl.id,
     cl.client_uid,
+    cl.client_no,
     cl.ext_ref_id,
     cl.pan,
     cl.dob,
@@ -15,6 +17,7 @@ SELECT
     -- Contact details
     c.prefix,
     c.name,
+    c.contact_no,
 
     -- Bookmark for this user
     COALESCE(bm.is_active, false) AS is_bookmarked,
@@ -56,6 +59,8 @@ WHERE cl.tenant_id = $tenant_id
       OR c.name ILIKE '%' || $search::text || '%'
       OR cl.pan ILIKE '%' || $search::text || '%'
       OR cl.ext_ref_id ILIKE '%' || $search::text || '%'
+      OR cl.client_no ILIKE '%' || $search::text || '%'
+      OR c.contact_no ILIKE '%' || $search::text || '%'
   )
   AND (
       $risk_profile::text IS NULL
@@ -64,6 +69,19 @@ WHERE cl.tenant_id = $tenant_id
   AND (
       $bookmarked_only::boolean IS NULL OR $bookmarked_only::boolean = false
       OR bm.is_active = true
+  )
+  AND (
+      $recent_only::boolean IS NULL OR $recent_only::boolean = false
+      OR cl.created_at >= NOW() - INTERVAL '30 days'
+  )
+  AND (
+      $in_family::boolean IS NULL OR $in_family::boolean = false
+      OR EXISTS (
+          SELECT 1 FROM ki_families kf
+          WHERE kf.head_client_id = cl.id
+            AND kf.tenant_id      = cl.tenant_id
+            AND kf.is_live        = cl.is_live
+      )
   )
 ORDER BY c.name ASC
 LIMIT  $limit
