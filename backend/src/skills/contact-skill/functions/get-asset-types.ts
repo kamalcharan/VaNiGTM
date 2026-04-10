@@ -2,6 +2,7 @@
  * contact-skill: get_asset_types
  * Returns global asset type master data for dropdown population.
  * No tenant filter — shared reference data.
+ * [2026-04-10: query now uses is_liquid_default column (migration 023); FD set liquid by migration 026]
  */
 
 import * as fs from 'fs';
