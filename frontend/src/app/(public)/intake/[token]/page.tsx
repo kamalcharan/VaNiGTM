@@ -681,39 +681,20 @@ export default function IntakePage() {
                       onClick={() => setAssets(p => p.filter((_, j) => j !== i))}>×</button>
                   </div>
 
-                  {/* Row 1: Asset Type + Liquidity toggle */}
-                  <div className={s.assetRow1}>
-                    <div className={s.curField}>
-                      <label className={s.curFieldLabel}>Asset Type</label>
-                      <select className={s.plainSelect} value={asset.asset_type_id}
-                        onChange={e => setAssets(prev => prev.map((a, j) => j === i ? {
-                          ...a,
-                          asset_type_id: e.target.value,
-                          is_liquid: assetTypes.find(t => String(t.id) === e.target.value)?.is_liquid_default ?? false,
-                        } : a))}>
-                        <option value="">Select type</option>
-                        {assetTypes.map(t => (
-                          <option key={t.id} value={String(t.id)}>
-                            {t.label} · {t.is_liquid_default ? 'Liquid' : 'Illiquid'}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className={s.curField}>
-                      <label className={s.curFieldLabel}>Liquidity</label>
-                      <div className={s.liqToggle}>
-                        <button type="button"
-                          className={`${s.liqBtn} ${asset.is_liquid ? s.liqBtnActive : ''}`}
-                          onClick={() => setAssets(p => p.map((a, j) => j === i ? { ...a, is_liquid: true } : a))}>
-                          💧 Liquid
-                        </button>
-                        <button type="button"
-                          className={`${s.liqBtn} ${!asset.is_liquid ? s.liqBtnIlliq : ''}`}
-                          onClick={() => setAssets(p => p.map((a, j) => j === i ? { ...a, is_liquid: false } : a))}>
-                          🔒 Illiq
-                        </button>
-                      </div>
-                    </div>
+                  {/* Asset Type — full width, is_liquid auto-set from DB default */}
+                  <div className={s.curField}>
+                    <label className={s.curFieldLabel}>Asset Type</label>
+                    <select className={s.plainSelect} value={asset.asset_type_id}
+                      onChange={e => setAssets(prev => prev.map((a, j) => j === i ? {
+                        ...a,
+                        asset_type_id: e.target.value,
+                        is_liquid: assetTypes.find(t => String(t.id) === e.target.value)?.is_liquid_default ?? false,
+                      } : a))}>
+                      <option value="">Select type</option>
+                      {assetTypes.map(t => (
+                        <option key={t.id} value={String(t.id)}>{t.label}</option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Row 2: Description + Value */}
