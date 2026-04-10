@@ -1410,3 +1410,223 @@
   font-family: 'Inter Tight', system-ui, sans-serif;
   opacity: 0.8;
 }
+
+/* ── Asset item cards ────────────────────────────────────────────────────── */
+
+.itemList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.itemEmptyState {
+  padding: 14px 0 4px;
+  font-size: 12px;
+  color: var(--color-muted);
+  font-style: italic;
+  line-height: 1.55;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
+
+.assetCard {
+  background: var(--color-surface, rgba(255,255,255,0.05));
+  border: 1px solid var(--color-border, rgba(0,0,0,0.1));
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.2s;
+  animation: slideUp 0.2s ease;
+}
+.assetCard:focus-within {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+.assetCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.assetCardNum {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  opacity: 0.75;
+}
+
+.assetCardRemove {
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--color-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+.assetCardRemove:hover {
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  color: var(--color-danger);
+}
+
+/* Asset Type (wide) + Liquidity toggle (auto) */
+.assetRow1 {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: end;
+}
+@media (max-width: 479px) {
+  .assetRow1 { grid-template-columns: 1fr; }
+}
+
+/* Description (wide) + Value */
+.assetRow2 {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr;
+  gap: 10px;
+  align-items: end;
+}
+@media (max-width: 479px) {
+  .assetRow2 { grid-template-columns: 1fr; }
+}
+
+/* Plain select (matches curInputWrap height) */
+.plainSelect {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--color-surface, rgba(255,255,255,0.04));
+  border: 1px solid var(--color-border, rgba(0,0,0,0.12));
+  border-radius: 8px;
+  padding: 0 28px 0 10px;
+  height: 38px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-fg);
+  font-family: 'Inter Tight', system-ui, sans-serif;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.plainSelect:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+.plainSelect option {
+  background: var(--color-bg, #0f0f15);
+  color: var(--color-fg);
+}
+
+/* Plain text input (same height as curInputWrap) */
+.plainInput {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--color-surface, rgba(255,255,255,0.04));
+  border: 1px solid var(--color-border, rgba(0,0,0,0.12));
+  border-radius: 8px;
+  padding: 0 10px;
+  height: 38px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-fg);
+  font-family: 'Inter Tight', system-ui, sans-serif;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.plainInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+.plainInput::placeholder {
+  color: var(--color-muted);
+  opacity: 0.35;
+}
+
+/* Liquidity toggle pair */
+.liqToggle {
+  display: flex;
+  gap: 4px;
+  height: 38px;
+}
+
+.liqBtn {
+  flex: 1;
+  height: 100%;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border, rgba(0,0,0,0.12));
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+.liqBtn:hover {
+  border-color: color-mix(in srgb, var(--color-fg) 40%, transparent);
+  color: var(--color-fg);
+}
+.liqBtnActive {
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
+  color: var(--color-success);
+}
+.liqBtnIlliq {
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-warning) 40%, transparent);
+  color: var(--color-warning);
+}
+
+/* Full-width dashed add button */
+.addItemBtn {
+  width: 100%;
+  padding: 14px;
+  border: 1.5px dashed color-mix(in srgb, var(--color-primary) 50%, transparent);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  letter-spacing: 0.02em;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.addItemBtn:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+/* ── Vani copilot rich text helpers ──────────────────────────────────────── */
+
+.vaniHi   { font-weight: 700; opacity: 1; }
+.vaniOk   { color: var(--color-success, #22c55e); }
+.vaniWarn { color: var(--color-warning, #f59e0b); }
+.vaniBad  { color: var(--color-danger,  #ef4444); }
+.vaniSep  { opacity: 0.5; }

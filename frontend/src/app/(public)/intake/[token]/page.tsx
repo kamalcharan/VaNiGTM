@@ -522,6 +522,13 @@ export default function IntakePage() {
   const liquidityMths = monthlyExpenses > 0 && pulseLiquid > 0 ? parseFloat((pulseLiquid / monthlyExpenses).toFixed(1)) : null;
   const futurePct     = pulseAssets > 0 && pulseGoals > 0 ? Math.round((pulseGoals / pulseAssets) * 100) : null;
 
+  // Asset Vani metrics
+  const assetLiquidPct  = pulseAssets > 0 ? Math.round((pulseLiquid / pulseAssets) * 100) : 0;
+  const largestAsset    = assets.reduce<AssetRow | null>((max, a) =>
+    Number(a.current_value) > Number(max?.current_value ?? 0) ? a : max, null);
+  const largestAssetPct = largestAsset && pulseAssets > 0
+    ? Math.round((Number(largestAsset.current_value) / pulseAssets) * 100) : 0;
+
   const STEPS = [
     { num: '01', label: 'Cash Flow' },
     { num: '02', label: 'Assets'    },
@@ -654,46 +661,131 @@ export default function IntakePage() {
           ════════════════════════════════════════════════════ */}
       {step === 1 && (
         <div className={s.stepBody}>
-          <h2 className={s.stepTitle}>What do you own?</h2>
-          <p className={s.stepSub}>List your significant assets — property, investments, savings.</p>
+          <div className={s.sectionHead}>
+            <div className={s.sectionNum}>Section 02 / 05 · Assets</div>
+            <h2 className={s.sectionTitle}>Assets &amp; investments</h2>
+            <p className={s.sectionSub}>Investments, property, savings, gold. Tag liquidity to flag concentration risk.</p>
+          </div>
 
-          {assets.map((asset, i) => (
-            <div key={i} className={s.itemCard}>
-              <div className={s.itemCardTop}>
-                <select className={s.typeSelect}
-                  value={asset.asset_type_id}
-                  onChange={e => setAssets(prev => prev.map((a, j) => j === i ? {
-                    ...a,
-                    asset_type_id: e.target.value,
-                    is_liquid: assetTypes.find(t => String(t.id) === e.target.value)?.is_liquid_default ?? false,
-                  } : a))}>
-                  <option value="">Select type</option>
-                  {assetTypes.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                </select>
-                <button className={s.removeBtn} onClick={() => setAssets(p => p.filter((_, j) => j !== i))}>×</button>
-              </div>
-              <input className={s.descInput} placeholder="Description (optional)"
-                value={asset.description}
-                onChange={e => setAssets(p => p.map((a, j) => j === i ? { ...a, description: e.target.value } : a))} />
-              <div className={s.amountRow}>
-                <span className={s.rupee}>₹</span>
-                <input className={s.amountInput} type="number" inputMode="numeric" placeholder="Current value"
-                  value={asset.current_value}
-                  onChange={e => setAssets(p => p.map((a, j) => j === i ? { ...a, current_value: e.target.value } : a))} />
-                <button
-                  className={`${s.liquidChip} ${asset.is_liquid ? s.liquidOn : s.liquidOff}`}
-                  onClick={() => setAssets(p => p.map((a, j) => j === i ? { ...a, is_liquid: !a.is_liquid } : a))}>
-                  {asset.is_liquid ? '💧' : '🔒'}
-                </button>
-              </div>
-              {Number(asset.current_value) > 0 && <div className={s.hint}>{fmt(Number(asset.current_value))}</div>}
+          {assets.length === 0 ? (
+            <div className={s.itemEmptyState}>
+              Equity funds, property, savings, gold — add everything of value
             </div>
-          ))}
+          ) : (
+            <div className={s.itemList}>
+              {assets.map((asset, i) => (
+                <div key={i} className={s.assetCard}>
+                  <div className={s.assetCardHead}>
+                    <span className={s.assetCardNum}>ASSET_{String(i + 1).padStart(2, '0')}</span>
+                    <button className={s.assetCardRemove}
+                      onClick={() => setAssets(p => p.filter((_, j) => j !== i))}>×</button>
+                  </div>
 
-          <button className={s.addBtn}
-            onClick={() => setAssets(p => [...p, { asset_type_id: '', description: '', current_value: '', is_liquid: false }])}>
-            + Add asset
+                  {/* Row 1: Asset Type + Liquidity toggle */}
+                  <div className={s.assetRow1}>
+                    <div className={s.curField}>
+                      <label className={s.curFieldLabel}>Asset Type</label>
+                      <select className={s.plainSelect} value={asset.asset_type_id}
+                        onChange={e => setAssets(prev => prev.map((a, j) => j === i ? {
+                          ...a,
+                          asset_type_id: e.target.value,
+                          is_liquid: assetTypes.find(t => String(t.id) === e.target.value)?.is_liquid_default ?? false,
+                        } : a))}>
+                        <option value="">Select type</option>
+                        {assetTypes.map(t => (
+                          <option key={t.id} value={String(t.id)}>
+                            {t.label} · {t.is_liquid_default ? 'Liquid' : 'Illiquid'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className={s.curField}>
+                      <label className={s.curFieldLabel}>Liquidity</label>
+                      <div className={s.liqToggle}>
+                        <button type="button"
+                          className={`${s.liqBtn} ${asset.is_liquid ? s.liqBtnActive : ''}`}
+                          onClick={() => setAssets(p => p.map((a, j) => j === i ? { ...a, is_liquid: true } : a))}>
+                          💧 Liquid
+                        </button>
+                        <button type="button"
+                          className={`${s.liqBtn} ${!asset.is_liquid ? s.liqBtnIlliq : ''}`}
+                          onClick={() => setAssets(p => p.map((a, j) => j === i ? { ...a, is_liquid: false } : a))}>
+                          🔒 Illiq
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Description + Value */}
+                  <div className={s.assetRow2}>
+                    <div className={s.curField}>
+                      <label className={s.curFieldLabel}>Description</label>
+                      <input className={s.plainInput} type="text"
+                        placeholder="e.g. SBI Equity Fund, 2BHK Flat, FD"
+                        value={asset.description}
+                        onChange={e => setAssets(p => p.map((a, j) => j === i ? { ...a, description: e.target.value } : a))} />
+                    </div>
+                    <div className={s.curField}>
+                      <label className={s.curFieldLabel}>Current Value</label>
+                      <div className={s.curInputWrap}>
+                        <span className={s.curSym}>₹</span>
+                        <input className={s.curVal} type="number" inputMode="numeric" placeholder="0"
+                          value={asset.current_value}
+                          onChange={e => setAssets(p => p.map((a, j) => j === i ? { ...a, current_value: e.target.value } : a))} />
+                      </div>
+                      {Number(asset.current_value) > 0 && (
+                        <span className={s.curHint}>{fmt(Number(asset.current_value))}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button className={s.addItemBtn}
+            onClick={() => setAssets(p => [...p, { asset_type_id: '', description: '', current_value: '', is_liquid: true }])}>
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+              <path d="M10 4v12M4 10h12" />
+            </svg>
+            Add asset
           </button>
+
+          {/* Vani copilot — appears once first asset has a value */}
+          {pulseAssets > 0 && (
+            <div className={s.vaniCopilot}>
+              <span className={s.vaniCopilotMarker}>V ▸</span>
+              <span className={s.vaniCopilotText}>
+                <span className={s.vaniHi}>{fmt(pulseAssets)} total</span>
+                {' · '}
+                <span className={assetLiquidPct >= 30 ? s.vaniOk : assetLiquidPct >= 15 ? s.vaniWarn : s.vaniBad}>
+                  Liquid {assetLiquidPct}%
+                </span>
+                {' · '}
+                <span>Illiquid {100 - assetLiquidPct}%</span>
+                {largestAsset && largestAssetPct > 0 && (
+                  <>
+                    {' · '}
+                    <span className={s.vaniHi}>{largestAsset.description || 'Top asset'}</span>
+                    {' = '}
+                    <span className={largestAssetPct > 50 ? s.vaniBad : largestAssetPct > 35 ? s.vaniWarn : s.vaniOk}>
+                      {largestAssetPct}% of total
+                    </span>
+                    {largestAssetPct > 50 && <> · <span className={s.vaniWarn}>High concentration risk.</span></>}
+                  </>
+                )}
+                {liquidityMths !== null && (
+                  <>
+                    {' · '}
+                    <span className={liquidityMths >= 6 ? s.vaniOk : liquidityMths >= 3 ? s.vaniWarn : s.vaniBad}>
+                      {liquidityMths.toFixed(1)} mo emergency runway
+                    </span>
+                    {liquidityMths < 3 && <> · <span className={s.vaniBad}>Below 3-month threshold.</span></>}
+                  </>
+                )}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
