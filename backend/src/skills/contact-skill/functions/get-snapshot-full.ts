@@ -60,7 +60,7 @@ export async function get_snapshot_full(
               t.asset_type_code AS asset_type_code,
               a.description, a.current_value, a.is_liquid, a.years_held, a.sort_order
        FROM ki_snapshot_assets a
-       JOIN ki_asset_types t ON t.id = a.asset_type_id
+       LEFT JOIN ki_asset_types t ON t.id = a.asset_type_id
        WHERE a.snapshot_id = $snapshot_id ORDER BY a.sort_order, a.id`,
       snapParam
     ),

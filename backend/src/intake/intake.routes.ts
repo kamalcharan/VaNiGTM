@@ -128,6 +128,7 @@ export function createIntakeRouter(pool: Pool): Router {
       token,
       // Flow 2 lead capture
       lead_name, lead_mobile, lead_email,
+      lead_age, lead_city, lead_marital_status, lead_dependents_count,
       // Snapshot sections
       income = [], expenses = [], assets = [], liabilities = [],
       protection = {}, goals = [],
@@ -154,6 +155,7 @@ export function createIntakeRouter(pool: Pool): Router {
       const tokenRow = tokenRes.rows[0];
       const tenantId  = tokenRow.tenant_id as string;
       const tokenId   = tokenRow.token_id  as number;
+      const isLive    = tokenRow.is_live as boolean ?? true;
       const flow      = tokenRow.contact_id ? 'known_contact' : 'cold_lead';
 
       // Set tenant RLS context
@@ -175,11 +177,20 @@ export function createIntakeRouter(pool: Pool): Router {
 
         // Insert contact — prefix NOT NULL with CHECK; use 'Mr' as default for cold leads
         // normalized_name is GENERATED ALWAYS AS — must not be in INSERT column list
+        const VALID_MARITAL = ['single', 'married', 'family', 'other'];
+        const maritalVal = VALID_MARITAL.includes(String(lead_marital_status || ''))
+          ? String(lead_marital_status) : null;
         const contactInsert = await client.query(
-          `INSERT INTO ki_contacts (tenant_id, name, prefix, is_client, is_active, is_live)
-           VALUES ($1, $2, 'Mr', false, true, false)
+          `INSERT INTO ki_contacts
+             (tenant_id, name, prefix, is_client, is_active, is_live,
+              age, city, marital_status, dependents_count)
+           VALUES ($1, $2, 'Mr', false, true, $3, $4, $5, $6, $7)
            RETURNING id`,
-          [tenantId, nameVal]
+          [tenantId, nameVal, isLive,
+           Number(lead_age) || null,
+           String(lead_city || '').trim() || null,
+           maritalVal,
+           Number(lead_dependents_count) >= 0 ? Number(lead_dependents_count) : null]
         );
         contactId = contactInsert.rows[0].id;
 
@@ -221,8 +232,8 @@ export function createIntakeRouter(pool: Pool): Router {
       await client.query(
         `UPDATE ki_contact_snapshots
          SET status = 'archived'
-         WHERE contact_id = $1 AND tenant_id = $2 AND is_live = false AND status = 'active'`,
-        [contactId, tenantId]
+         WHERE contact_id = $1 AND tenant_id = $2 AND is_live = $3 AND status = 'active'`,
+        [contactId, tenantId, isLive]
       );
 
       // ── Compute calc_ metrics ──────────────────────────────
@@ -256,12 +267,12 @@ export function createIntakeRouter(pool: Pool): Router {
             calc_net_worth, calc_total_emi, calc_dti_pct,
             calc_liquid_assets, calc_liquidity_months, calc_protection_ratio_pct)
          VALUES
-           ($1, $2, false, $3, 'active',
-            NULL, $4, $5, $6, now(),
-            $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+           ($1, $2, $3, $4, 'active',
+            NULL, $5, $6, $7, now(),
+            $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
          RETURNING id`,
         [
-          tenantId, contactId, versionNumber, tokenId,
+          tenantId, contactId, isLive, versionNumber, tokenId,
           risk_profile || null, notes || null,
           monthlyIncome, monthlyExpenses, monthlyIncome - monthlyExpenses,
           savingsRatePct, totalAssets, totalLiabs, netWorth,
@@ -273,17 +284,17 @@ export function createIntakeRouter(pool: Pool): Router {
       // ── Insert child rows ───────────────────────────────────
       for (const row of incomeArr.filter(r => Number(r.amount_monthly) > 0)) {
         await client.query(
-          `INSERT INTO ki_snapshot_income (snapshot_id, source, amount_monthly, notes)
-           VALUES ($1, $2, $3, $4)`,
-          [snapshotId, row.source, Number(row.amount_monthly), (row as Record<string, unknown>).notes || null]
+          `INSERT INTO ki_snapshot_income (tenant_id, snapshot_id, source, amount_monthly, notes)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [tenantId, snapshotId, row.source, Number(row.amount_monthly), (row as Record<string, unknown>).notes || null]
         );
       }
 
       for (const row of expenseArr.filter(r => Number(r.amount_monthly) > 0)) {
         await client.query(
-          `INSERT INTO ki_snapshot_expenses (snapshot_id, category, amount_monthly)
-           VALUES ($1, $2, $3)`,
-          [snapshotId, row.category, Number(row.amount_monthly)]
+          `INSERT INTO ki_snapshot_expenses (tenant_id, snapshot_id, category, amount_monthly)
+           VALUES ($1, $2, $3, $4)`,
+          [tenantId, snapshotId, row.category, Number(row.amount_monthly)]
         );
       }
 
@@ -293,9 +304,9 @@ export function createIntakeRouter(pool: Pool): Router {
         if (!Number(a.current_value)) continue;
         await client.query(
           `INSERT INTO ki_snapshot_assets
-             (snapshot_id, asset_type_id, description, current_value, is_liquid, sort_order)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [snapshotId, Number(a.asset_type_id), a.description || null, Number(a.current_value), Boolean(a.is_liquid), i + 1]
+             (tenant_id, snapshot_id, asset_type_id, description, current_value, is_liquid, years_held, sort_order)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [tenantId, snapshotId, Number(a.asset_type_id) || null, a.description || null, Number(a.current_value), Boolean(a.is_liquid), Number(a.years_held) || null, i + 1]
         );
       }
 
@@ -305,9 +316,9 @@ export function createIntakeRouter(pool: Pool): Router {
         if (!Number(l.outstanding_amount)) continue;
         await client.query(
           `INSERT INTO ki_snapshot_liabilities
-             (snapshot_id, liability_type_id, description, outstanding_amount, monthly_emi, interest_rate_pct, sort_order)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [snapshotId, Number(l.liability_type_id), l.description || null,
+             (tenant_id, snapshot_id, liability_type_id, description, outstanding_amount, monthly_emi, interest_rate_pct, sort_order)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [tenantId, snapshotId, Number(l.liability_type_id), l.description || null,
            Number(l.outstanding_amount), Number(l.monthly_emi) || 0,
            Number(l.interest_rate_pct) || null, i + 1]
         );
@@ -319,11 +330,11 @@ export function createIntakeRouter(pool: Pool): Router {
         const validCoverTypes = ['individual', 'family_floater', 'employer', 'none'];
         await client.query(
           `INSERT INTO ki_snapshot_protection
-             (snapshot_id, life_cover_amount, health_cover_amount, ci_cover_amount,
+             (tenant_id, snapshot_id, life_cover_amount, health_cover_amount, ci_cover_amount,
               life_premium_annual, health_premium_annual, has_term_plan, has_health_cover,
-              protection_ratio_pct, health_cover_type)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-          [snapshotId,
+              protection_ratio, health_cover_type)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [tenantId, snapshotId,
            Number(prot.life_cover_amount)   || null,
            Number(prot.health_cover_amount) || null,
            Number(prot.ci_cover_amount)     || null,
@@ -342,9 +353,9 @@ export function createIntakeRouter(pool: Pool): Router {
         if (!g.name || !Number(g.target_amount)) continue;
         await client.query(
           `INSERT INTO ki_snapshot_goals
-             (snapshot_id, goal_type, name, target_amount, timeline_years, priority, sort_order)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [snapshotId, g.goal_type || 'custom', g.name,
+             (tenant_id, snapshot_id, goal_type, name, target_amount, timeline_years, priority, sort_order)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [tenantId, snapshotId, g.goal_type || 'custom', g.name,
            Number(g.target_amount), Number(g.timeline_years) || 10, i + 1, i + 1]
         );
       }
@@ -360,8 +371,278 @@ export function createIntakeRouter(pool: Pool): Router {
       res.json({ success: true, contact_id: contactId, snapshot_id: snapshotId });
     } catch (err) {
       await client.query('ROLLBACK').catch(() => {});
-      console.error('[Intake:submit]', err);
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Submission failed' } });
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Intake:submit]', msg);
+      res.status(500).json({
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Submission failed',
+          ...(process.env.NODE_ENV !== 'production' && { detail: msg }),
+        },
+      });
+    } finally {
+      client.release();
+    }
+  });
+
+  /* ── POST /validate-user ────────────────────────────── */
+  // Permanent per-user intake link: /intake/u/[intake_code]
+
+  router.post('/validate-user', async (req, res) => {
+    const { code } = req.body as { code?: string };
+
+    if (!code || typeof code !== 'string' || code.length < 6) {
+      res.status(400).json({ error: { code: 'INVALID_CODE', message: 'Invalid intake code' } });
+      return;
+    }
+
+    let client;
+    try {
+      client = await pool.connect();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(503).json({ error: { code: 'DB_UNAVAILABLE', message: 'Database connection failed', ...(process.env.NODE_ENV !== 'production' && { detail: msg }) } });
+      return;
+    }
+
+    try {
+      const userRes = await client.query(
+        `SELECT u.id AS user_id, u.name AS mfd_name, u.tenant_id,
+                tp.display_name AS tenant_display_name, tp.name AS tenant_name,
+                tp.brand_color, tp.theme_id, tn.is_live
+         FROM   vn_users u
+         JOIN   vn_tenants tn ON tn.id = u.tenant_id
+         LEFT JOIN vn_tenant_profiles tp ON tp.tenant_id = u.tenant_id
+         WHERE  u.intake_code = $1 AND u.is_active = true`,
+        [code]
+      );
+
+      if (!userRes.rows[0]) {
+        res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'Intake link is invalid' } });
+        return;
+      }
+
+      const row = userRes.rows[0];
+
+      const [assetRes, liabRes] = await Promise.all([
+        client.query(ASSET_TYPES_SQL),
+        client.query(LIABILITY_TYPES_SQL),
+      ]);
+
+      res.json({
+        user_id:    row.user_id,
+        is_live:    row.is_live !== false,
+        flow:       'cold_lead',
+        tenant: {
+          display_name: row.tenant_display_name || row.tenant_name,
+          brand_color:  row.brand_color || null,
+          theme_id:     row.theme_id || null,
+        },
+        mfd_name:        row.mfd_name,
+        contact_prefill: null,
+        asset_types:     assetRes.rows,
+        liability_types: liabRes.rows,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Intake:validate-user]', msg);
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Validation failed', ...(process.env.NODE_ENV !== 'production' && { detail: msg }) } });
+    } finally {
+      client.release();
+    }
+  });
+
+  /* ── POST /submit-user ───────────────────────────────── */
+  // Submit for permanent per-user intake links.
+
+  router.post('/submit-user', async (req, res) => {
+    const {
+      user_id,
+      lead_name, lead_mobile, lead_email,
+      lead_age, lead_city, lead_marital_status, lead_dependents_count,
+      income = [], expenses = [], assets = [], liabilities = [],
+      protection = {}, goals = [],
+      risk_profile, notes,
+    } = req.body as Record<string, unknown> & { user_id?: string };
+
+    if (!user_id || typeof user_id !== 'string') {
+      res.status(400).json({ error: { code: 'INVALID_USER', message: 'user_id is required' } });
+      return;
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Resolve user → tenant + is_live
+      const userRes = await client.query(
+        `SELECT u.tenant_id, tn.is_live
+         FROM   vn_users u
+         JOIN   vn_tenants tn ON tn.id = u.tenant_id
+         WHERE  u.id = $1 AND u.is_active = true`,
+        [user_id]
+      );
+      if (!userRes.rows[0]) {
+        await client.query('ROLLBACK');
+        res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'Invalid user' } });
+        return;
+      }
+
+      const tenantId = userRes.rows[0].tenant_id as string;
+      const isLive   = userRes.rows[0].is_live !== false;
+
+      await client.query(`SELECT set_config('app.current_tenant_id', $1, true)`, [tenantId]);
+
+      // Validate name
+      const nameVal   = String(lead_name   || '').trim();
+      const mobileVal = String(lead_mobile || '').trim();
+      const emailVal  = String(lead_email  || '').trim();
+      if (!nameVal) {
+        await client.query('ROLLBACK');
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Name is required' } });
+        return;
+      }
+
+      // Create contact
+      const VALID_MARITAL = ['single', 'married', 'family', 'other'];
+      const maritalVal = VALID_MARITAL.includes(String(lead_marital_status || '')) ? String(lead_marital_status) : null;
+      const contactInsert = await client.query(
+        `INSERT INTO ki_contacts
+           (tenant_id, name, prefix, is_client, is_active, is_live,
+            age, city, marital_status, dependents_count, created_by)
+         VALUES ($1, $2, 'Mr', false, true, $3, $4, $5, $6, $7, $8)
+         RETURNING id`,
+        [tenantId, nameVal, isLive,
+         Number(lead_age) || null,
+         String(lead_city || '').trim() || null,
+         maritalVal,
+         Number(lead_dependents_count) >= 0 ? Number(lead_dependents_count) : null,
+         user_id]
+      );
+      const contactId = contactInsert.rows[0].id as number;
+
+      if (mobileVal) {
+        await client.query(
+          `INSERT INTO ki_contact_channels (tenant_id, contact_id, channel_type, channel_value, channel_subtype, is_primary, is_active)
+           VALUES ($1, $2, 'mobile', $3, 'personal', true, true)`,
+          [tenantId, contactId, mobileVal]
+        );
+      }
+      if (emailVal) {
+        await client.query(
+          `INSERT INTO ki_contact_channels (tenant_id, contact_id, channel_type, channel_value, channel_subtype, is_primary, is_active)
+           VALUES ($1, $2, 'email', $3, 'personal', $4, true)`,
+          [tenantId, contactId, emailVal, !mobileVal]
+        );
+      }
+
+      // Version number
+      const versionRes = await client.query(
+        `SELECT COALESCE(MAX(version_number), 0) + 1 AS next_version
+         FROM ki_contact_snapshots WHERE contact_id = $1 AND tenant_id = $2`,
+        [contactId, tenantId]
+      );
+      const versionNumber = versionRes.rows[0].next_version as number;
+
+      // Compute metrics (same as /submit)
+      const incomeArr  = income  as Array<{ source: string; amount_monthly: number }>;
+      const expenseArr = expenses as Array<{ category: string; amount_monthly: number }>;
+      const assetArr   = assets  as Array<{ current_value: number; is_liquid: boolean }>;
+      const liabArr    = liabilities as Array<{ outstanding_amount: number; monthly_emi: number }>;
+      const protObj    = protection as Record<string, number | boolean>;
+
+      const monthlyIncome   = incomeArr.reduce((s, r) => s + (Number(r.amount_monthly) || 0), 0);
+      const monthlyExpenses = expenseArr.reduce((s, r) => s + (Number(r.amount_monthly) || 0), 0);
+      const totalAssets     = assetArr.reduce((s, r) => s + (Number(r.current_value)    || 0), 0);
+      const totalLiabs      = liabArr.reduce((s, r) => s + (Number(r.outstanding_amount)|| 0), 0);
+      const netWorth        = totalAssets - totalLiabs;
+      const totalEmi        = liabArr.reduce((s, r) => s + (Number(r.monthly_emi)       || 0), 0);
+      const liquidAssets    = assetArr.filter(a => a.is_liquid).reduce((s, r) => s + (Number(r.current_value) || 0), 0);
+      const savingsRatePct    = monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100 : null;
+      const dtiPct            = monthlyIncome > 0 ? (totalEmi / monthlyIncome) * 100 : null;
+      const liquidityMonths   = monthlyExpenses > 0 ? liquidAssets / monthlyExpenses : null;
+      const lifeCover         = Number(protObj.life_cover_amount) || null;
+      const protectionRatioPct = lifeCover && monthlyIncome > 0 ? (lifeCover / (monthlyIncome * 12)) * 100 : null;
+
+      // Insert snapshot
+      const snapInsert = await client.query(
+        `INSERT INTO ki_contact_snapshots
+           (tenant_id, contact_id, is_live, version_number, status,
+            created_by_user_id, intake_token_id, risk_profile, notes, submitted_at,
+            calc_monthly_income, calc_monthly_expenses, calc_monthly_savings,
+            calc_savings_rate_pct, calc_total_assets, calc_total_liabilities,
+            calc_net_worth, calc_total_emi, calc_dti_pct,
+            calc_liquid_assets, calc_liquidity_months, calc_protection_ratio_pct)
+         VALUES
+           ($1, $2, $3, $4, 'active',
+            $5, NULL, $6, $7, now(),
+            $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+         RETURNING id`,
+        [tenantId, contactId, isLive, versionNumber, user_id,
+         risk_profile || null, notes || null,
+         monthlyIncome, monthlyExpenses, monthlyIncome - monthlyExpenses,
+         savingsRatePct, totalAssets, totalLiabs, netWorth,
+         totalEmi, dtiPct, liquidAssets, liquidityMonths, protectionRatioPct]
+      );
+      const snapshotId = snapInsert.rows[0].id as number;
+
+      // Insert child rows (same pattern as /submit)
+      for (const row of incomeArr.filter(r => Number(r.amount_monthly) > 0)) {
+        await client.query(
+          `INSERT INTO ki_snapshot_income (tenant_id, snapshot_id, source, amount_monthly, notes) VALUES ($1,$2,$3,$4,$5)`,
+          [tenantId, snapshotId, row.source, Number(row.amount_monthly), (row as Record<string,unknown>).notes || null]
+        );
+      }
+      for (const row of expenseArr.filter(r => Number(r.amount_monthly) > 0)) {
+        await client.query(
+          `INSERT INTO ki_snapshot_expenses (tenant_id, snapshot_id, category, amount_monthly) VALUES ($1,$2,$3,$4)`,
+          [tenantId, snapshotId, row.category, Number(row.amount_monthly)]
+        );
+      }
+      const assetArrFull = assets as Array<Record<string, unknown>>;
+      for (let i = 0; i < assetArrFull.length; i++) {
+        const a = assetArrFull[i];
+        if (!Number(a.current_value)) continue;
+        await client.query(
+          `INSERT INTO ki_snapshot_assets (tenant_id, snapshot_id, asset_type_id, description, current_value, is_liquid, years_held, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [tenantId, snapshotId, Number(a.asset_type_id) || null, a.description || null, Number(a.current_value), Boolean(a.is_liquid), Number(a.years_held) || null, i + 1]
+        );
+      }
+      const liabArrFull = liabilities as Array<Record<string, unknown>>;
+      for (let i = 0; i < liabArrFull.length; i++) {
+        const l = liabArrFull[i];
+        if (!Number(l.outstanding_amount)) continue;
+        await client.query(
+          `INSERT INTO ki_snapshot_liabilities (tenant_id, snapshot_id, liability_type_id, description, outstanding_amount, monthly_emi, interest_rate_pct, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [tenantId, snapshotId, Number(l.liability_type_id) || null, l.description || null, Number(l.outstanding_amount), Number(l.monthly_emi) || 0, Number(l.interest_rate_pct) || null, i + 1]
+        );
+      }
+      const prot = protection as Record<string, unknown>;
+      if (Object.values(prot).some(v => v)) {
+        const healthCoverType = String(prot.health_cover_type || '');
+        const validCoverTypes = ['individual', 'family_floater', 'employer', 'none'];
+        await client.query(
+          `INSERT INTO ki_snapshot_protection (tenant_id, snapshot_id, life_cover_amount, health_cover_amount, ci_cover_amount, life_premium_annual, health_premium_annual, has_term_plan, has_health_cover, protection_ratio, health_cover_type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+          [tenantId, snapshotId, Number(prot.life_cover_amount) || null, Number(prot.health_cover_amount) || null, Number(prot.ci_cover_amount) || null, Number(prot.life_premium_annual) || null, Number(prot.health_premium_annual) || null, Boolean(prot.has_term_plan), Boolean(prot.has_health_cover), protectionRatioPct, validCoverTypes.includes(healthCoverType) ? healthCoverType : null]
+        );
+      }
+      const goalsArr = goals as Array<Record<string, unknown>>;
+      for (let i = 0; i < goalsArr.length; i++) {
+        const g = goalsArr[i];
+        if (!g.name || !Number(g.target_amount)) continue;
+        await client.query(
+          `INSERT INTO ki_snapshot_goals (tenant_id, snapshot_id, goal_type, name, target_amount, timeline_years, priority, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [tenantId, snapshotId, g.goal_type || 'custom', g.name, Number(g.target_amount), Number(g.timeline_years) || 10, i + 1, i + 1]
+        );
+      }
+
+      await client.query('COMMIT');
+      res.json({ success: true, contact_id: contactId, snapshot_id: snapshotId });
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Intake:submit-user]', msg);
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Submission failed', ...(process.env.NODE_ENV !== 'production' && { detail: msg }) } });
     } finally {
       client.release();
     }

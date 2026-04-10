@@ -372,6 +372,89 @@
   border-color: var(--color-fg);
 }
 
+/* Age + City side-by-side */
+.drawerRow2 {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+}
+
+/* Life situation tiles */
+.situationTiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.situationTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 12px 6px 10px;
+  background: color-mix(in srgb, var(--color-surface) 60%, var(--color-bg));
+  border: 1px solid var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.situationTile:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+}
+
+.situationTileActive {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+}
+
+.situationLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  line-height: 1;
+}
+
+.situationSub {
+  font-size: 0.65rem;
+  color: var(--color-muted);
+  line-height: 1;
+}
+
+/* Dependents bubbles */
+.dependentBubbles {
+  display: flex;
+  gap: 8px;
+}
+
+.depBubble {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 60%, var(--color-bg));
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: grid;
+  place-items: center;
+}
+
+.depBubble:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.depBubbleActive {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
 /* ── Responsive ──────────────────────────────────────── */
 
 @media (max-width: 768px) {

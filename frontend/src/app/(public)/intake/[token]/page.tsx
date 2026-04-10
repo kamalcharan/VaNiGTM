@@ -15,7 +15,7 @@
  * Tenant brand colors injected via inline CSS vars from validate response.
  */
 
-import { useState, useEffect, useCallback, Fragment, CSSProperties } from 'react';
+import { useState, useEffect, useCallback, Fragment, CSSProperties, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import { getTheme } from '@/config/theme';
 import s from './intake.module.css';
@@ -38,7 +38,7 @@ interface ValidateResponse {
 
 interface Income    { salary: string; partner: string; rental_other: string; }
 interface Expenses  { housing: string; food: string; utilities: string; transport: string; education: string; lifestyle: string; }
-interface AssetRow  { asset_type_id: string; description: string; current_value: string; is_liquid: boolean; }
+interface AssetRow  { asset_type_id: string; description: string; current_value: string; is_liquid: boolean; years_held: string; }
 interface LiabRow   { liability_type_id: string; description: string; outstanding_amount: string; monthly_emi: string; interest_rate_pct: string; }
 interface Protection { life_cover_amount: string; health_cover_amount: string; ci_cover_amount: string; has_term_plan: boolean; has_health_cover: boolean; health_cover_type: 'individual' | 'family_floater' | 'employer' | 'none' | ''; }
 interface GoalRow   { goal_type: string; name: string; target_amount: string; timeline_years: string; }
@@ -270,11 +270,12 @@ export default function IntakePage() {
     expenses: Object.entries(expenses)
       .filter(([, v]) => Number(v) > 0)
       .map(([category, v]) => ({ category, amount_monthly: Number(v) })),
-    assets: assets.filter(a => a.asset_type_id && Number(a.current_value) > 0).map((a, i) => ({
-      asset_type_id: Number(a.asset_type_id),
+    assets: assets.filter(a => Number(a.current_value) > 0).map((a, i) => ({
+      asset_type_id: Number(a.asset_type_id) || undefined,
       description: a.description || undefined,
       current_value: Number(a.current_value),
       is_liquid: a.is_liquid,
+      years_held: Number(a.years_held) > 0 ? Number(a.years_held) : undefined,
       sort_order: i + 1,
     })),
     liabilities: liabs.filter(l => l.liability_type_id && Number(l.outstanding_amount) > 0).map((l, i) => ({
@@ -395,7 +396,10 @@ export default function IntakePage() {
 
           {/* Headline */}
           <h1 className={s.welcomeTitle}>
-            Let&rsquo;s paint<br /><em>your money picture.</em>
+            {contactFirstName
+              ? <>{contactFirstName}, let&rsquo;s see<br /><em>your whole picture.</em></>
+              : <>Let&rsquo;s paint<br /><em>your money picture.</em></>
+            }
           </h1>
 
           {/* Subtitle */}
@@ -451,23 +455,312 @@ export default function IntakePage() {
   }
 
   if (stage === 'done') {
+    const n = (v: unknown) => Number(v) || 0;
+    const firstName = (meta?.contact_prefill?.name || leadName || '').split(' ')[0] || 'You';
+    const advisorName = meta?.mfd_name || meta?.tenant.display_name || 'your advisor';
+
+    // ── Compute metrics ──────────────────────────────────────────────────
+    const monthlyIncome   = n(income.salary) + n(income.partner) + n(income.rental_other);
+    const monthlyExpenses = (Object.values(expenses) as string[]).reduce((s, v) => s + n(v), 0);
+    const monthlySavings  = monthlyIncome - monthlyExpenses;
+    const totalAssets     = assets.reduce((s, a) => s + n(a.current_value), 0);
+    const liquidAssets    = assets.filter(a => a.is_liquid).reduce((s, a) => s + n(a.current_value), 0);
+    const totalLiabs      = liabs.reduce((s, l) => s + n(l.outstanding_amount), 0);
+    const totalEmi        = liabs.reduce((s, l) => s + n(l.monthly_emi), 0);
+    const netWorth        = totalAssets - totalLiabs;
+    const savingsRatePct  = monthlyIncome > 0 ? (monthlySavings / monthlyIncome) * 100 : 0;
+    const dtiPct          = monthlyIncome > 0 ? (totalEmi / monthlyIncome) * 100 : 0;
+    const liquidityMonths = monthlyExpenses > 0 ? liquidAssets / monthlyExpenses : 0;
+    const lifeCover       = n(protection.life_cover_amount);
+    const protTimes       = monthlyIncome > 0 && lifeCover > 0 ? lifeCover / (monthlyIncome * 12) : 0;
+
+    // ── Format helpers ───────────────────────────────────────────────────
+    const fmt = (v: number): string => {
+      const abs = Math.abs(v);
+      const sign = v < 0 ? '−' : '';
+      if (abs >= 1_00_00_000) return `${sign}₹${(abs / 1_00_00_000).toFixed(1)} Cr`;
+      if (abs >= 1_00_000)    return `${sign}₹${(abs / 1_00_000).toFixed(1)} L`;
+      if (abs >= 1_000)       return `${sign}₹${(abs / 1_000).toFixed(1)} K`;
+      return `${sign}₹${abs.toFixed(0)}`;
+    };
+    const today = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+    // ── Health scores (0–100) ────────────────────────────────────────────
+    const savingsScore    = savingsRatePct >= 50 ? 95 : savingsRatePct >= 35 ? 80 : savingsRatePct >= 20 ? 60 : savingsRatePct >= 10 ? 35 : 15;
+    const debtScore       = totalLiabs === 0 ? 92 : dtiPct <= 20 ? 82 : dtiPct <= 30 ? 70 : dtiPct <= 40 ? 55 : dtiPct <= 50 ? 35 : 15;
+    const protScore       = protTimes >= 12 ? 95 : protTimes >= 8 ? 75 : protTimes >= 5 ? 50 : protTimes >= 3 ? 30 : 15;
+    const liquidityScore  = liquidityMonths >= 12 ? 95 : liquidityMonths >= 6 ? 80 : liquidityMonths >= 3 ? 55 : liquidityMonths >= 1 ? 30 : 10;
+    const futureScore     = goals.length >= 4 ? 95 : goals.length === 3 ? 80 : goals.length === 2 ? 60 : goals.length === 1 ? 35 : 10;
+
+    const healthState = (score: number) => {
+      if (score >= 80) return { label: 'Excellent', color: 'var(--ok)' };
+      if (score >= 60) return { label: 'Good', color: 'var(--ok)' };
+      if (score >= 40) return { label: 'Could improve', color: 'var(--warn-w)' };
+      return { label: 'Action needed', color: 'var(--danger-w)' };
+    };
+
+    // SVG mini-ring: r=16, circ≈100.53
+    const CIRC = 100.53;
+    const ringFill = (score: number) => `${((score / 100) * CIRC).toFixed(1)} ${CIRC}`;
+
+    // ── Vani observations ────────────────────────────────────────────────
+    type Obs = { text: ReactNode };
+    const observations: Obs[] = [];
+    if (savingsScore >= 80) {
+      observations.push({ text: <>Your savings rate of <em>{savingsRatePct.toFixed(0)}%</em> is genuinely exceptional. <strong>Whatever you&rsquo;re doing, keep doing it.</strong></> });
+    } else if (savingsScore < 40) {
+      observations.push({ text: <>Your savings rate of <em>{savingsRatePct.toFixed(0)}%</em> has room to grow. <strong>Ask {advisorName} about automating a monthly SIP.</strong></> });
+    } else {
+      observations.push({ text: <>You&rsquo;re saving <em>{savingsRatePct.toFixed(0)}%</em> of your income each month. A solid start — <strong>there&rsquo;s room to push it further.</strong></> });
+    }
+    if (protScore < 50) {
+      observations.push({ text: <>Your life cover at <em>{protTimes > 0 ? `${protTimes.toFixed(1)}× annual income` : 'not captured'}</em> is the biggest gap I see. <strong>With dependents, most advisors recommend 10–15×. This is the single most important conversation to have.</strong></> });
+    } else if (protScore >= 75) {
+      observations.push({ text: <>Your protection cover of <em>{protTimes.toFixed(1)}× annual income</em> is strong. <strong>Your family has a solid safety net.</strong></> });
+    }
+    if (liquidityScore < 55) {
+      observations.push({ text: <>Only <em>{liquidityMonths.toFixed(1)} months</em> of expenses are in liquid assets. <strong>Building a 6-month emergency buffer should be the first goal.</strong></> });
+    } else if (liquidityScore >= 80) {
+      observations.push({ text: <>With <em>{liquidityMonths.toFixed(1)} months</em> of liquid cover, your emergency cushion is healthy. <strong>Excess idle cash beyond 12 months could be put to work.</strong></> });
+    }
+    if (dtiPct > 40) {
+      observations.push({ text: <>Your EMIs eat up <em>{dtiPct.toFixed(0)}%</em> of your income. <strong>That&rsquo;s a heavy load — a debt-reduction plan would free up significant cash flow.</strong></> });
+    }
+    if (goals.filter(g => g.name && n(g.target_amount) > 0).length > 0) {
+      observations.push({ text: <>You&rsquo;ve captured <em>{goals.filter(g => g.name && n(g.target_amount) > 0).length} financial goals</em>. <strong>{advisorName} will now show you exactly how to fund each one.</strong></> });
+    }
+    const topObs = observations.slice(0, 3);
+
+    // ── Asset donut segments ─────────────────────────────────────────────
+    const DONUT_COLORS = ['#6b4e8a', '#0e5240', '#c47e1a', '#d97757', '#2e7d4f', '#4a6fa8', '#b54034', '#8b8575'];
+    const CIRC_D = 238.76; // r=38
+    const assetSegments = assets
+      .filter(a => n(a.current_value) > 0)
+      .map((a, i) => ({ label: a.description || 'Asset', value: n(a.current_value), color: DONUT_COLORS[i % DONUT_COLORS.length] }));
+    let runningOffset = 0;
+    const donutSegments = assetSegments.map(seg => {
+      const pct = totalAssets > 0 ? seg.value / totalAssets : 0;
+      const arc = pct * CIRC_D;
+      const offset = -runningOffset;
+      runningOffset += arc;
+      return { ...seg, arc, offset, pct };
+    });
+
     return (
-      <div className={s.centered} style={brandStyle}>
-        <div className={s.doneIcon}>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
-          </svg>
+      <div className={s.snapshotPage} style={brandStyle}>
+        {/* ── Header ── */}
+        <div className={s.snapshotHeader}>
+          <div className={s.snapshotHeaderBrand}>{meta?.tenant.display_name}</div>
+          {meta?.mfd_name && <div className={s.headerSub}>with {meta.mfd_name}</div>}
         </div>
-        <h2 className={s.doneTitle}>Thank you!</h2>
-        <p className={s.doneSub}>
-          Your financial snapshot has been shared with{' '}
-          <strong>{meta?.mfd_name || meta?.tenant.display_name || 'your advisor'}</strong>.
-          They'll be in touch soon.
-        </p>
-        {meta?.tenant.display_name && (
-          <p className={s.doneBy}>{meta.tenant.display_name}</p>
-        )}
+
+        {/* ── Hero ── */}
+        <div className={s.snapshotHero}>
+          <div className={s.snapshotHeroInner}>
+            <div className={s.snapshotEyebrow}>● Your Financial Snapshot</div>
+            <h1 className={s.snapshotHeadline}>
+              {firstName}, here&rsquo;s<br/><em>your whole picture.</em>
+            </h1>
+            <p className={s.snapshotHeroSub}>
+              Shared with {advisorName}. They&rsquo;ll use this as the starting point for your first real money conversation.
+            </p>
+            <div className={s.snapshotHeroMeta}>
+              <div className={s.heroMetaItem}>Generated<strong>{today}</strong></div>
+              <div className={s.heroMetaItem}>Advisor<strong>{advisorName}</strong></div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Body ── */}
+        <div className={s.snapshotBody}>
+
+          {/* Net worth */}
+          <div className={s.networthCard}>
+            <div className={s.networthLabel}>Your net worth</div>
+            <div className={s.networthValue}>
+              <span className={s.networthCurrency}>₹</span>
+              <span className={s.networthAmount}>{fmt(netWorth).replace('₹', '').replace('−₹', '')}</span>
+              {netWorth < 0 && <span style={{ fontSize: 18, color: 'var(--danger-w)', alignSelf: 'flex-end', marginBottom: 6 }}>deficit</span>}
+            </div>
+            <div className={s.networthBreakdown}>
+              <div className={s.breakdownItem}>
+                <div className={s.breakdownLabel}>Total Assets</div>
+                <div className={`${s.breakdownValue} ${s.plus}`}>+ {fmt(totalAssets)}</div>
+              </div>
+              <div className={s.breakdownItem}>
+                <div className={s.breakdownLabel}>Total Liabilities</div>
+                <div className={`${s.breakdownValue} ${s.minus}`}>− {fmt(totalLiabs)}</div>
+              </div>
+              <div className={s.breakdownItem}>
+                <div className={s.breakdownLabel}>Monthly Savings</div>
+                <div className={`${s.breakdownValue} ${s.savings}`}>{fmt(monthlySavings)}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Vani observations */}
+          {topObs.length > 0 && (
+            <div className={s.vaniObsCard}>
+              <div className={s.vaniObsHeader}>
+                <div className={s.vaniObsAvatar}>V</div>
+                <div>
+                  <div className={s.vaniObsName}>Vani&rsquo;s take</div>
+                  <div className={s.vaniObsTag}>{topObs.length} things worth knowing</div>
+                </div>
+              </div>
+              <div className={s.vaniObsList}>
+                {topObs.map((obs, i) => (
+                  <div key={i} className={s.vaniObsItem}>
+                    <div className={s.vaniObsNum}>{String(i + 1).padStart(2, '0')}</div>
+                    <div className={s.vaniObsText}>{obs.text}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Asset allocation + Health rings */}
+          <div className={s.snapGrid}>
+            <div className={s.snapCard}>
+              <div className={s.snapCardTitle}>Where your money lives</div>
+              <div className={s.snapCardSub}>Asset allocation</div>
+              {totalAssets > 0 ? (
+                <div className={s.donutWrap}>
+                  <svg className={s.donutSvg} viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="var(--line-w)" strokeWidth="14"/>
+                    {donutSegments.map((seg, i) => (
+                      <circle key={i} cx="50" cy="50" r="38" fill="none"
+                        stroke={seg.color} strokeWidth="14"
+                        strokeDasharray={`${seg.arc.toFixed(1)} ${CIRC_D}`}
+                        strokeDashoffset={seg.offset.toFixed(1)}
+                        transform="rotate(-90 50 50)"
+                      />
+                    ))}
+                    <text x="50" y="46" textAnchor="middle" className={s.donutCenterLabel}>Total</text>
+                    <text x="50" y="58" textAnchor="middle" className={s.donutCenterValue}>{fmt(totalAssets)}</text>
+                  </svg>
+                  <div className={s.donutLegend}>
+                    {donutSegments.map((seg, i) => (
+                      <div key={i} className={s.legendRow}>
+                        <div className={s.legendSwatch} style={{ background: seg.color }}/>
+                        <div className={s.legendLabel}>{seg.label.length > 16 ? seg.label.slice(0, 15) + '…' : seg.label}</div>
+                        <div className={s.legendPct}>{(seg.pct * 100).toFixed(0)}%</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className={s.noGoals}>No assets entered.</div>
+              )}
+            </div>
+
+            <div className={s.snapCard}>
+              <div className={s.snapCardTitle}>Health rings</div>
+              <div className={s.snapCardSub}>Your 5 vital signs</div>
+              <div className={s.healthRings}>
+                {([
+                  { label: 'Savings Rate', score: savingsScore },
+                  { label: 'Debt Load',    score: debtScore },
+                  { label: 'Protection',   score: protScore },
+                  { label: 'Liquidity',    score: liquidityScore },
+                  { label: 'Future Focus', score: futureScore },
+                ] as { label: string; score: number }[]).map(({ label, score }) => {
+                  const hs = healthState(score);
+                  return (
+                    <div key={label} className={s.healthRingRow}>
+                      <div className={s.miniRing}>
+                        <svg viewBox="0 0 40 40">
+                          <circle className={s.miniRingBg} cx="20" cy="20" r="16"/>
+                          <circle className={s.miniRingFill} cx="20" cy="20" r="16"
+                            stroke={hs.color}
+                            strokeDasharray={ringFill(score)}
+                            transform="rotate(-90 20 20)"
+                          />
+                        </svg>
+                        <div className={s.miniRingText}>{score}</div>
+                      </div>
+                      <div>
+                        <div className={s.healthRingLabel}>{label}</div>
+                        <div className={s.healthRingState} style={{ color: hs.color }}>● {hs.label}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Cash flow + Goals */}
+          <div className={s.snapGrid}>
+            <div className={s.snapCard}>
+              <div className={s.snapCardTitle}>Your monthly rhythm</div>
+              <div className={s.snapCardSub}>How the money moves</div>
+              {monthlyIncome > 0 ? (
+                <>
+                  <div className={s.cashflowBars}>
+                    {([
+                      { label: 'Income',   value: monthlyIncome,   color: 'var(--jade)',    pct: 100 },
+                      { label: 'Expenses', value: monthlyExpenses,  color: 'var(--warn-w)', pct: monthlyIncome > 0 ? (monthlyExpenses / monthlyIncome) * 100 : 0 },
+                      { label: 'Savings',  value: monthlySavings,   color: 'var(--coral)',  pct: monthlyIncome > 0 ? Math.max(0, (monthlySavings / monthlyIncome) * 100) : 0 },
+                    ] as { label: string; value: number; color: string; pct: number }[]).map(row => (
+                      <div key={row.label} className={s.cfRow}>
+                        <div className={s.cfLabel} style={{ color: row.color }}>{row.label}</div>
+                        <div className={s.cfTrack}>
+                          <div className={s.cfFill} style={{ width: `${row.pct}%`, background: row.color }}/>
+                        </div>
+                        <div className={s.cfAmount}>{fmt(row.value)}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {savingsRatePct > 0 && (
+                    <div className={s.cfNote}>
+                      You&rsquo;re keeping <strong>{savingsRatePct.toFixed(0)}% of every rupee</strong> that comes in.
+                      {savingsRatePct >= 35 ? ' That\'s in the top quartile.' : savingsRatePct >= 20 ? ' A healthy cushion.' : ' There\'s room to grow.'}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className={s.noGoals}>No income data entered.</div>
+              )}
+            </div>
+
+            <div className={s.snapCard}>
+              <div className={s.snapCardTitle}>Your dreams, on a timeline</div>
+              <div className={s.snapCardSub}>What you&rsquo;re saving towards</div>
+              {goals.filter(g => g.name && n(g.target_amount) > 0).length > 0 ? (
+                <div className={s.goalsTimeline}>
+                  {goals.filter(g => g.name && n(g.target_amount) > 0).map((g, i) => {
+                    const yr = n(g.timeline_years) || 10;
+                    const targetYear = new Date().getFullYear() + yr;
+                    return (
+                      <div key={i} className={s.goalItem}>
+                        <div className={s.goalItemHead}>
+                          <div className={s.goalItemName}>{g.name}</div>
+                          <div className={s.goalItemAmount}>{fmt(n(g.target_amount))}</div>
+                        </div>
+                        <div className={s.goalItemMeta}>In {yr} year{yr !== 1 ? 's' : ''} · by {targetYear}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className={s.noGoals}>No goals captured yet. Ask {advisorName} to help you set your first goal.</div>
+              )}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className={s.snapshotActions}>
+            <button className={`${s.snapActionBtn} ${s.snapActionBtnGhost}`} onClick={() => window.print()}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Save / Print
+            </button>
+          </div>
+
+        </div>
       </div>
     );
   }
@@ -620,39 +913,57 @@ export default function IntakePage() {
         <div className={s.stepBody}>
           <div className={s.sectionHead}>
             <div className={s.sectionNum}>Section 01 / 05 · Cash Flow</div>
-            <h2 className={s.sectionTitle}>Income &amp; monthly expenses</h2>
-            <p className={s.sectionSub}>Monthly cash in, monthly cash out. Savings rate computes automatically.</p>
+            <h2 className={s.sectionTitle}>What comes in,<br /><em>what goes out.</em></h2>
+            <p className={s.sectionSub}>Your monthly rhythm. This is the single most important thing — it tells us how much you can actually save.</p>
           </div>
 
-          {/* Monthly Income — 3-col grid */}
+          {/* Monthly Income */}
           <div className={s.subBlock}>
-            <div className={s.subHead}>Monthly Income</div>
-            <div className={s.inputGrid3}>
-              {([
-                { key: 'salary'       as const, label: 'Salary (take-home)', opt: false },
-                { key: 'partner'      as const, label: 'Partner income',      opt: true  },
-                { key: 'rental_other' as const, label: 'Rental / Other',      opt: true  },
-              ]).map(({ key, label, opt }) => (
-                <div key={key} className={s.curField}>
-                  <label className={s.curFieldLabel}>
-                    {label}{opt && <span className={s.curOptTag}> opt</span>}
-                  </label>
-                  <div className={s.curInputWrap}>
-                    <span className={s.curSym}>₹</span>
-                    <input className={s.curVal} type="number" inputMode="numeric"
-                      placeholder="0" value={income[key]}
-                      onChange={e => setIncome(p => ({ ...p, [key]: e.target.value }))} />
-                    <span className={s.curSuffix}>/mo</span>
-                  </div>
-                  {Number(income[key]) > 0 && <span className={s.curHint}>{fmt(Number(income[key]))}</span>}
+            <div className={s.cfSubTitle}>Money coming in</div>
+            <p className={s.cfSubHint}>Take-home (after tax) monthly income from all sources.</p>
+
+            {/* Salary — hero full-width */}
+            <div className={s.curField} style={{ marginBottom: 14 }}>
+              <label className={s.curFieldLabel}>Your take-home salary</label>
+              <div className={s.curInputWrapLg}>
+                <span className={s.curSymLg}>₹</span>
+                <input className={s.curValLg} type="number" inputMode="numeric"
+                  placeholder="0" value={income.salary}
+                  onChange={e => setIncome(p => ({ ...p, salary: e.target.value }))} />
+                <span className={s.curSuffix}>/ mo</span>
+              </div>
+              {Number(income.salary) > 0 && <span className={s.curHint}>{fmt(Number(income.salary))}</span>}
+            </div>
+
+            {/* Partner + Other — 2-col secondary */}
+            <div className={s.incomeRow2}>
+              <div className={s.curField}>
+                <label className={s.curFieldLabel}>Partner&apos;s income <span className={s.curOptTag}>optional</span></label>
+                <div className={s.curInputWrapMd}>
+                  <span className={s.curSymMd}>₹</span>
+                  <input className={s.curValMd} type="number" inputMode="numeric"
+                    placeholder="0" value={income.partner}
+                    onChange={e => setIncome(p => ({ ...p, partner: e.target.value }))} />
                 </div>
-              ))}
+                {Number(income.partner) > 0 && <span className={s.curHint}>{fmt(Number(income.partner))}</span>}
+              </div>
+              <div className={s.curField}>
+                <label className={s.curFieldLabel}>Other (rent, business) <span className={s.curOptTag}>optional</span></label>
+                <div className={s.curInputWrapMd}>
+                  <span className={s.curSymMd}>₹</span>
+                  <input className={s.curValMd} type="number" inputMode="numeric"
+                    placeholder="0" value={income.rental_other}
+                    onChange={e => setIncome(p => ({ ...p, rental_other: e.target.value }))} />
+                </div>
+                {Number(income.rental_other) > 0 && <span className={s.curHint}>{fmt(Number(income.rental_other))}</span>}
+              </div>
             </div>
           </div>
 
-          {/* Monthly Expenses — 4-col grid (always visible) */}
+          {/* Monthly Expenses — 3-col grid */}
           <div className={s.subBlock}>
-            <div className={s.subHead}>Monthly Expenses · Exclude EMIs</div>
+            <div className={s.cfSubTitle}>Money going out</div>
+            <p className={s.cfSubHint}>Monthly spending — <em>excluding EMIs</em>. We&apos;ll cover loans separately.</p>
             <div className={s.expenseGrid}>
               {(Object.keys(EXPENSE_LABELS) as Array<keyof Expenses>).map(key => (
                 <div key={key} className={s.curField}>
@@ -704,86 +1015,91 @@ export default function IntakePage() {
         <div className={s.stepBody}>
           <div className={s.sectionHead}>
             <div className={s.sectionNum}>Section 02 / 05 · Assets</div>
-            <h2 className={s.sectionTitle}>Assets &amp; investments</h2>
-            <p className={s.sectionSub}>Investments, property, savings, gold. Tag liquidity to flag concentration risk.</p>
+            <h2 className={s.sectionTitle}>Your assets,<br /><em>big and small.</em></h2>
+            <p className={s.sectionSub}>Investments, savings, property, gold — anything with value. Rough estimates are fine.</p>
           </div>
 
-          {assets.length === 0 ? (
-            <div className={s.itemEmptyState}>
-              Equity funds, property, savings, gold — add everything of value
-            </div>
-          ) : (
-            <div className={s.itemList}>
-              {assets.map((asset, i) => (
-                <div key={i} className={s.assetCard}>
-                  <div className={s.assetCardHead}>
-                    <span className={s.assetCardNum}>ASSET_{String(i + 1).padStart(2, '0')}</span>
-                    <button className={s.assetCardRemove}
-                      onClick={() => setAssets(p => p.filter((_, j) => j !== i))}>×</button>
-                  </div>
+          <div className={s.itemList}>
+            {assets.map((asset, i) => (
+              <div key={i} className={s.assetCard}>
+                {/* Header */}
+                <div className={s.assetCardHead}>
+                  <span className={s.assetCardNum}>ASSET {String(i + 1).padStart(2, '0')}</span>
+                  <button className={s.assetCardRemove}
+                    onClick={() => setAssets(p => p.filter((_, j) => j !== i))}>×</button>
+                </div>
 
-                  {/* Row 1: Asset Type + Liquidity toggle */}
-                  <div className={s.assetRow1}>
-                    <div className={s.curField}>
-                      <label className={s.curFieldLabel}>Asset Type</label>
-                      <select className={s.plainSelect} value={asset.asset_type_id}
-                        onChange={e => setAssets(prev => prev.map((a, j) => j === i ? {
+                {/* Row 1: Asset Type select + Liquidity toggle */}
+                <div className={s.assetTypeRow}>
+                  <div className={s.curField}>
+                    <label className={s.curFieldLabel}>Asset Type</label>
+                    <select className={s.plainSelect} value={asset.asset_type_id}
+                      onChange={e => {
+                        const t = meta.asset_types.find(t => String(t.id) === e.target.value);
+                        setAssets(p => p.map((a, j) => j === i ? {
                           ...a,
                           asset_type_id: e.target.value,
-                          is_liquid: assetTypes.find(t => String(t.id) === e.target.value)?.is_liquid_default ?? false,
-                        } : a))}>
-                        <option value="">Select type</option>
-                        {assetTypes.map(t => (
-                          <option key={t.id} value={String(t.id)}>{t.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className={s.curField}>
-                      <label className={s.curFieldLabel}>Liquidity</label>
-                      <div className={s.liqToggle}>
-                        <button type="button"
-                          className={`${s.liqBtn} ${asset.is_liquid ? s.liqBtnActive : ''}`}
-                          onClick={() => setAssets(p => p.map((a, j) => j === i ? { ...a, is_liquid: true } : a))}>
-                          💧 Liquid
-                        </button>
-                        <button type="button"
-                          className={`${s.liqBtn} ${!asset.is_liquid ? s.liqBtnIlliq : ''}`}
-                          onClick={() => setAssets(p => p.map((a, j) => j === i ? { ...a, is_liquid: false } : a))}>
-                          🔒 Illiq
-                        </button>
-                      </div>
-                    </div>
+                          is_liquid: t?.is_liquid_default ?? a.is_liquid,
+                        } : a));
+                      }}>
+                      <option value="">Select type</option>
+                      {meta.asset_types.map(t => (
+                        <option key={t.id} value={String(t.id)}>{t.label}</option>
+                      ))}
+                    </select>
                   </div>
-
-                  {/* Row 2: Description + Value */}
-                  <div className={s.assetRow2}>
-                    <div className={s.curField}>
-                      <label className={s.curFieldLabel}>Description</label>
-                      <input className={s.plainInput} type="text"
-                        placeholder="e.g. SBI Equity Fund, 2BHK Flat, FD"
-                        value={asset.description}
-                        onChange={e => setAssets(p => p.map((a, j) => j === i ? { ...a, description: e.target.value } : a))} />
-                    </div>
-                    <div className={s.curField}>
-                      <label className={s.curFieldLabel}>Current Value</label>
-                      <div className={s.curInputWrap}>
-                        <span className={s.curSym}>₹</span>
-                        <input className={s.curVal} type="number" inputMode="numeric" placeholder="0"
-                          value={asset.current_value}
-                          onChange={e => setAssets(p => p.map((a, j) => j === i ? { ...a, current_value: e.target.value } : a))} />
-                      </div>
-                      {Number(asset.current_value) > 0 && (
-                        <span className={s.curHint}>{fmt(Number(asset.current_value))}</span>
-                      )}
+                  <div className={s.curField}>
+                    <label className={s.curFieldLabel}>Liquidity</label>
+                    <div className={s.liqToggle}>
+                      <button type="button"
+                        className={`${s.liqBtn} ${asset.is_liquid ? s.liqBtnActive : ''}`}
+                        onClick={() => setAssets(p => p.map((a, j) => j === i ? { ...a, is_liquid: true } : a))}>
+                        💧 Liquid
+                      </button>
+                      <button type="button"
+                        className={`${s.liqBtn} ${!asset.is_liquid ? s.liqBtnIlliq : ''}`}
+                        onClick={() => setAssets(p => p.map((a, j) => j === i ? { ...a, is_liquid: false } : a))}>
+                        🔒 Illiq
+                      </button>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+
+                {/* Row 2: Description | Current Value | Yrs Held */}
+                <div className={s.assetRow2}>
+                  <div className={s.curField}>
+                    <label className={s.curFieldLabel}>Description</label>
+                    <input className={s.plainInput} type="text"
+                      placeholder="e.g. SBI Equity Fund, 2BHK Flat, FD"
+                      value={asset.description}
+                      onChange={e => setAssets(p => p.map((a, j) => j === i ? { ...a, description: e.target.value } : a))} />
+                  </div>
+                  <div className={s.curField}>
+                    <label className={s.curFieldLabel}>Current Value</label>
+                    <div className={s.curInputWrap}>
+                      <span className={s.curSym}>₹</span>
+                      <input className={s.curVal} type="number" inputMode="numeric" placeholder="0"
+                        value={asset.current_value}
+                        onChange={e => setAssets(p => p.map((a, j) => j === i ? { ...a, current_value: e.target.value } : a))} />
+                    </div>
+                    {Number(asset.current_value) > 0 && (
+                      <span className={s.curHint}>{fmt(Number(asset.current_value))}</span>
+                    )}
+                  </div>
+                  <div className={s.curField}>
+                    <label className={s.curFieldLabel}>Yrs Held</label>
+                    <input className={s.plainInput} type="number" inputMode="numeric" placeholder="—"
+                      min="0" max="99"
+                      value={asset.years_held ?? ''}
+                      onChange={e => setAssets(p => p.map((a, j) => j === i ? { ...a, years_held: e.target.value } : a))} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
 
           <button className={s.addItemBtn}
-            onClick={() => setAssets(p => [...p, { asset_type_id: '', description: '', current_value: '', is_liquid: true }])}>
+            onClick={() => setAssets(p => [...p, { asset_type_id: '', description: '', current_value: '', is_liquid: true, years_held: '' }])}>
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
               <path d="M10 4v12M4 10h12" />
             </svg>
@@ -837,9 +1153,9 @@ export default function IntakePage() {
       {step === 2 && (
         <div className={s.stepBody}>
           <div className={s.sectionHead}>
-            <div className={s.sectionNum}>Section 03 / 05 · Liabilities</div>
-            <h2 className={s.sectionTitle}>Loans &amp; liabilities</h2>
-            <p className={s.sectionSub}>Loans and outstanding debts. No judgement — clarity helps planning.</p>
+            <div className={s.sectionNum}>Section 03 / 05 · What you owe</div>
+            <h2 className={s.sectionTitle}>Loans<br /><em>and liabilities.</em></h2>
+            <p className={s.sectionSub}>Home loan, car loan, personal loan, credit card debt — anything you owe. If you&apos;re debt-free, just skip.</p>
           </div>
 
           {liabs.length === 0 ? (
@@ -951,8 +1267,8 @@ export default function IntakePage() {
         <div className={s.stepBody}>
           <div className={s.sectionHead}>
             <div className={s.sectionNum}>Section 04 / 05 · Protection</div>
-            <h2 className={s.sectionTitle}>Insurance &amp; protection</h2>
-            <p className={s.sectionSub}>Life and health coverage — quantify the safety net.</p>
+            <h2 className={s.sectionTitle}>Safety nets<br /><em>for your family.</em></h2>
+            <p className={s.sectionSub}>Life and health insurance. This is often the most-skipped step — but it&apos;s the difference between a setback and a disaster.</p>
           </div>
 
           {/* Life Insurance */}
@@ -1127,35 +1443,9 @@ export default function IntakePage() {
       {step === 4 && (
         <div className={s.stepBody}>
           <div className={s.sectionHead}>
-            <div className={s.sectionNum}>Section 05 / 05 · Goals &amp; Risk</div>
-            <h2 className={s.sectionTitle}>Goals &amp; risk profile</h2>
-            <p className={s.sectionSub}>Aspirations and risk appetite — the plan&rsquo;s destination.</p>
-          </div>
-
-          {/* Risk Profile */}
-          <div className={s.subBlock}>
-            <div className={s.subHead}>Risk Profile</div>
-            <div className={s.riskCards}>
-              {(['conservative', 'moderate', 'aggressive'] as const).map(key => (
-                <button key={key}
-                  className={`${s.riskCard} ${riskProfile === key ? s.riskSelected : ''}`}
-                  onClick={() => setRiskProfile(p => p === key ? '' : key)}>
-                  {riskProfile === key && <span className={s.riskCheck}>✓</span>}
-                  <div className={s.riskViz}>
-                    {RISK_BARS[key].map((h, i) => (
-                      <div key={i} className={s.riskBar}
-                        style={{ height: `${h}%`, background: RISK_BAR_COLORS[key] }} />
-                    ))}
-                  </div>
-                  <div className={s.riskName}>{key.charAt(0).toUpperCase() + key.slice(1)}</div>
-                  <div className={s.riskTagline}>{RISK_TAGLINES[key]}</div>
-                  <div className={s.riskStat}>
-                    <span className={s.riskStatLabel}>Expected return</span>
-                    <span className={s.riskStatValue}>{RISK_RETURNS[key]}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
+            <div className={s.sectionNum}>Section 05 / 05 · Dreams</div>
+            <h2 className={s.sectionTitle}>What are you<br /><em>saving for?</em></h2>
+            <p className={s.sectionSub}>The reason behind the numbers. Your dreams give your money a job to do.</p>
           </div>
 
           {/* Aspirational Goals */}
