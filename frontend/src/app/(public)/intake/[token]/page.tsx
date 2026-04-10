@@ -15,7 +15,7 @@
  * Tenant brand colors injected via inline CSS vars from validate response.
  */
 
-import { useState, useEffect, useCallback, CSSProperties } from 'react';
+import { useState, useEffect, useCallback, Fragment, CSSProperties } from 'react';
 import { useParams } from 'next/navigation';
 import { getTheme } from '@/config/theme';
 import s from './intake.module.css';
@@ -543,89 +543,107 @@ export default function IntakePage() {
         {meta?.mfd_name && <div className={s.headerSub}>with {meta.mfd_name}</div>}
       </div>
 
-      {/* ── Progress bar ── */}
-      <div className={s.progressBar}>
-        <div className={s.progressFill} style={{ width: `${((step + 1) / 5) * 100}%` }} />
+      {/* ── Stepper nav ── */}
+      <div className={s.stepperNav}>
+        <div className={s.stepper}>
+          {STEPS.map((st, i) => (
+            <Fragment key={i}>
+              {i > 0 && (
+                <div className={`${s.stepConnector} ${i <= step ? s.stepConnectorDone : ''}`} />
+              )}
+              <div className={`${s.stepItem} ${i < step ? s.stepDone : i === step ? s.stepActive : ''}`}>
+                <div className={s.stepBullet}>
+                  {i < step
+                    ? <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5"><path d="M5 12l5 5L19 7"/></svg>
+                    : <span>{i + 1}</span>}
+                </div>
+                <span className={s.stepLabel}>{st.label}</span>
+              </div>
+            </Fragment>
+          ))}
+        </div>
       </div>
 
       {/* ── 2-col layout: form + pulse sidebar ── */}
       <div className={s.wizardLayout}>
       <div className={s.formCol}>
 
-      {/* ── Step indicator ── */}
-      <div className={s.stepIndicator}>
-        <span className={s.stepNum}>{STEPS[step].num} / 05</span>
-        <span className={s.stepName}>{STEPS[step].label}</span>
-      </div>
-
       {/* ════════════════════════════════════════════════════
           01 — Cash Flow
           ════════════════════════════════════════════════════ */}
       {step === 0 && (
         <div className={s.stepBody}>
-          <h2 className={s.stepTitle}>Hi {displayName},<br/>what's your monthly income?</h2>
-          <p className={s.stepSub}>All amounts are monthly. Skip what doesn't apply.</p>
-
-          <div className={s.inputGroup}>
-            <label className={s.label}>Take-home salary</label>
-            <div className={s.amountRow}>
-              <span className={s.rupee}>₹</span>
-              <input className={s.amountInput} type="number" inputMode="numeric"
-                placeholder="0" value={income.salary}
-                onChange={e => setIncome(p => ({ ...p, salary: e.target.value }))} />
-              <span className={s.unit}>/mo</span>
-            </div>
-            {Number(income.salary) > 0 && <div className={s.hint}>{fmt(Number(income.salary))}</div>}
+          <div className={s.sectionHead}>
+            <div className={s.sectionNum}>Section 01 / 05 · Cash Flow</div>
+            <h2 className={s.sectionTitle}>Income &amp; monthly expenses</h2>
+            <p className={s.sectionSub}>Monthly cash in, monthly cash out. Savings rate computes automatically.</p>
           </div>
 
-          <div className={s.inputGroup}>
-            <label className={s.label}>Partner / spouse income <span className={s.opt}>optional</span></label>
-            <div className={s.amountRow}>
-              <span className={s.rupee}>₹</span>
-              <input className={s.amountInput} type="number" inputMode="numeric"
-                placeholder="0" value={income.partner}
-                onChange={e => setIncome(p => ({ ...p, partner: e.target.value }))} />
-              <span className={s.unit}>/mo</span>
+          {/* Monthly Income — 3-col grid */}
+          <div className={s.subBlock}>
+            <div className={s.subHead}>Monthly Income</div>
+            <div className={s.inputGrid3}>
+              {([
+                { key: 'salary'       as const, label: 'Salary (take-home)', opt: false },
+                { key: 'partner'      as const, label: 'Partner income',      opt: true  },
+                { key: 'rental_other' as const, label: 'Rental / Other',      opt: true  },
+              ]).map(({ key, label, opt }) => (
+                <div key={key} className={s.curField}>
+                  <label className={s.curFieldLabel}>
+                    {label}{opt && <span className={s.curOptTag}> opt</span>}
+                  </label>
+                  <div className={s.curInputWrap}>
+                    <span className={s.curSym}>₹</span>
+                    <input className={s.curVal} type="number" inputMode="numeric"
+                      placeholder="0" value={income[key]}
+                      onChange={e => setIncome(p => ({ ...p, [key]: e.target.value }))} />
+                    <span className={s.curSuffix}>/mo</span>
+                  </div>
+                  {Number(income[key]) > 0 && <span className={s.curHint}>{fmt(Number(income[key]))}</span>}
+                </div>
+              ))}
             </div>
-            {Number(income.partner) > 0 && <div className={s.hint}>{fmt(Number(income.partner))}</div>}
           </div>
 
-          <div className={s.inputGroup}>
-            <label className={s.label}>Rental / other income <span className={s.opt}>optional</span></label>
-            <div className={s.amountRow}>
-              <span className={s.rupee}>₹</span>
-              <input className={s.amountInput} type="number" inputMode="numeric"
-                placeholder="0" value={income.rental_other}
-                onChange={e => setIncome(p => ({ ...p, rental_other: e.target.value }))} />
-              <span className={s.unit}>/mo</span>
+          {/* Monthly Expenses — 4-col grid (always visible) */}
+          <div className={s.subBlock}>
+            <div className={s.subHead}>Monthly Expenses · Exclude EMIs</div>
+            <div className={s.expenseGrid}>
+              {(Object.keys(EXPENSE_LABELS) as Array<keyof Expenses>).map(key => (
+                <div key={key} className={s.curField}>
+                  <label className={s.curFieldLabel}>{EXPENSE_LABELS[key]}</label>
+                  <div className={s.curInputWrap}>
+                    <span className={s.curSym}>₹</span>
+                    <input className={s.curVal} type="number" inputMode="numeric"
+                      placeholder="0" value={expenses[key]}
+                      onChange={e => setExpenses(p => ({ ...p, [key]: e.target.value }))} />
+                  </div>
+                </div>
+              ))}
             </div>
-            {Number(income.rental_other) > 0 && <div className={s.hint}>{fmt(Number(income.rental_other))}</div>}
           </div>
 
-          {monthlyIncome > 0 && (
-            <div className={s.separator}>
-              <span className={s.separatorLabel}>Monthly Expenses</span>
+          {/* Savings summary */}
+          {monthlyIncome > 0 && monthlyExpenses > 0 && (
+            <div className={s.savingsRow}>
+              <span className={s.savingsRowLabel}>Monthly savings</span>
+              <span className={s.savingsRowValue}
+                style={{ color: monthlySavings >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                {monthlySavings >= 0 ? '+' : ''}{fmt(monthlySavings)}
+                {monthlyIncome > 0 && ` · ${Math.round((monthlySavings / monthlyIncome) * 100)}%`}
+              </span>
             </div>
           )}
 
-          {monthlyIncome > 0 && (Object.keys(EXPENSE_LABELS) as Array<keyof Expenses>).map(key => (
-            <div key={key} className={s.expenseRow}>
-              <span className={s.expenseLabel}>{EXPENSE_LABELS[key]}</span>
-              <div className={s.expenseRight}>
-                <span className={s.rupee}>₹</span>
-                <input className={s.expenseInput} type="number" inputMode="numeric"
-                  placeholder="0" value={expenses[key]}
-                  onChange={e => setExpenses(p => ({ ...p, [key]: e.target.value }))} />
-              </div>
-            </div>
-          ))}
-
-          {monthlyIncome > 0 && monthlyExpenses > 0 && (
-            <div className={s.savingsPill}>
-              <span>Monthly savings</span>
-              <strong style={{ color: monthlySavings >= 0 ? 'var(--intake-primary, var(--color-success))' : 'var(--color-danger)' }}>
-                {monthlySavings >= 0 ? '+' : ''}{fmt(monthlySavings)}
-              </strong>
+          {/* Vani copilot */}
+          {monthlyIncome > 0 && (
+            <div className={s.vaniCopilot}>
+              <span className={s.vaniCopilotMarker}>V ▸</span>
+              <span className={s.vaniCopilotText}>
+                {monthlyIncome > 0 && monthlyExpenses > 0
+                  ? `${fmt(monthlyIncome)}/mo income · ${fmt(monthlyExpenses)}/mo expenses · Savings ${Math.round((monthlySavings / monthlyIncome) * 100)}% of income. ${monthlySavings >= 0 ? `Savings capacity ≈ ${fmt(monthlySavings * 12)}/yr.` : 'Expenses exceed income — review discretionary spending.'}`
+                  : `Income at ${fmt(monthlyIncome)}/mo. Add expenses to compute your savings rate.`}
+              </span>
             </div>
           )}
         </div>

@@ -264,7 +264,296 @@
 }
 .beginBtn:hover { opacity: 0.9; }
 
-/* ── Centered utility (loading / done / invalid) ──────────────────────────── */
+/* ── Stepper navigation ──────────────────────────────────────────────────── */
+
+.stepperNav {
+  padding: 14px 24px 0;
+  border-bottom: 1px solid var(--color-border, rgba(0,0,0,0.08));
+}
+
+@media (min-width: 768px) {
+  .stepperNav {
+    padding: 16px 52px 0;
+  }
+}
+
+.stepper {
+  display: flex;
+  align-items: flex-start;
+  max-width: 560px;
+}
+
+.stepConnector {
+  flex: 1;
+  height: 1.5px;
+  background: var(--color-border, rgba(0,0,0,0.12));
+  margin-top: 9px;
+  transition: background 0.3s;
+}
+.stepConnectorDone { background: var(--color-primary); }
+
+.stepItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.stepBullet {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--color-border, rgba(0,0,0,0.12));
+  color: var(--color-muted);
+  display: grid;
+  place-items: center;
+  font-size: 8px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  transition: all 0.25s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.stepDone .stepBullet {
+  background: var(--color-primary);
+  color: var(--color-bg, #fff);
+}
+
+.stepActive .stepBullet {
+  background: transparent;
+  border: 2px solid var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
+.stepLabel {
+  font-size: 8.5px;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: center;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+  white-space: nowrap;
+  padding-bottom: 8px;
+}
+
+.stepActive .stepLabel { color: var(--color-primary); font-weight: 700; }
+.stepDone   .stepLabel { color: var(--color-muted); }
+
+/* ── Section header ──────────────────────────────────────────────────────── */
+
+.sectionHead {
+  padding: 24px 0 16px;
+  border-bottom: 1px solid var(--color-border, rgba(0,0,0,0.08));
+  margin-bottom: 24px;
+}
+
+.sectionNum {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  color: var(--color-primary);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.sectionTitle {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--color-fg);
+  margin: 0 0 4px;
+}
+
+.sectionSub {
+  font-size: 12px;
+  color: var(--color-muted);
+  line-height: 1.5;
+  margin: 0;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
+
+/* ── Sub-blocks ──────────────────────────────────────────────────────────── */
+
+.subBlock { margin-top: 22px; }
+.subBlock:first-child { margin-top: 0; }
+
+.subHead {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
+.subHead::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border, rgba(0,0,0,0.08));
+}
+
+/* ── Grid layouts ────────────────────────────────────────────────────────── */
+
+.inputGrid3 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+@media (min-width: 480px) {
+  .inputGrid3 { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+}
+
+.expenseGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+@media (min-width: 768px) {
+  .expenseGrid { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+}
+
+/* ── Card currency fields ────────────────────────────────────────────────── */
+
+.curField {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.curFieldLabel {
+  display: block;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  font-weight: 700;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
+
+.curOptTag {
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: lowercase;
+  opacity: 0.55;
+}
+
+.curInputWrap {
+  display: flex;
+  align-items: center;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, rgba(0,0,0,0.12));
+  border-radius: 8px;
+  padding: 0 10px;
+  min-height: 38px;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.curInputWrap:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.curSym {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--color-muted);
+  font-weight: 600;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.curVal {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-fg);
+  min-width: 0;
+  padding: 8px 0;
+}
+.curVal::placeholder { color: var(--color-muted); opacity: 0.35; font-weight: 500; }
+.curVal::-webkit-inner-spin-button, .curVal::-webkit-outer-spin-button { -webkit-appearance: none; }
+.curVal[type=number] { -moz-appearance: textfield; }
+
+.curSuffix {
+  font-size: 10px;
+  color: var(--color-muted);
+  flex-shrink: 0;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
+
+.curHint {
+  font-size: 9.5px;
+  color: var(--color-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+}
+
+/* ── Savings summary row ─────────────────────────────────────────────────── */
+
+.savingsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  border-radius: 8px;
+  margin-top: 16px;
+}
+
+.savingsRowLabel {
+  font-size: 11px;
+  color: var(--color-muted);
+  font-family: 'Inter Tight', system-ui, sans-serif;
+  font-weight: 600;
+}
+
+.savingsRowValue {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ── Vani copilot card ───────────────────────────────────────────────────── */
+
+.vaniCopilot {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--color-fg);
+  color: var(--color-bg);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-top: 20px;
+  font-size: 12px;
+  line-height: 1.55;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
+
+.vaniCopilotMarker {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-primary);
+  flex-shrink: 0;
+  opacity: 0.8;
+  padding-top: 1px;
+}
+
+.vaniCopilotText { flex: 1; opacity: 0.88; }
 
 .centered {
   min-height: 100dvh;
