@@ -1647,6 +1647,15 @@
   gap: 8px;
   margin-top: 6px;
 }
+.optCards4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 6px;
+}
+@media (max-width: 479px) {
+  .optCards4 { grid-template-columns: repeat(2, 1fr); }
+}
 
 .optCard {
   position: relative;

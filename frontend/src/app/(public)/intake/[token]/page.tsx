@@ -40,7 +40,7 @@ interface Income    { salary: string; partner: string; rental_other: string; }
 interface Expenses  { housing: string; food: string; utilities: string; transport: string; education: string; lifestyle: string; }
 interface AssetRow  { asset_type_id: string; description: string; current_value: string; is_liquid: boolean; }
 interface LiabRow   { liability_type_id: string; description: string; outstanding_amount: string; monthly_emi: string; interest_rate_pct: string; }
-interface Protection { life_cover_amount: string; health_cover_amount: string; ci_cover_amount: string; has_term_plan: boolean; has_health_cover: boolean; }
+interface Protection { life_cover_amount: string; health_cover_amount: string; ci_cover_amount: string; has_term_plan: boolean; has_health_cover: boolean; health_cover_type: 'individual' | 'family_floater' | 'employer' | 'none' | ''; }
 interface GoalRow   { goal_type: string; name: string; target_amount: string; timeline_years: string; }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -210,7 +210,7 @@ export default function IntakePage() {
   const [expenses,   setExpenses]   = useState<Expenses>({ housing: '', food: '', utilities: '', transport: '', education: '', lifestyle: '' });
   const [assets,     setAssets]     = useState<AssetRow[]>([]);
   const [liabs,      setLiabs]      = useState<LiabRow[]>([]);
-  const [protection, setProtection] = useState<Protection>({ life_cover_amount: '', health_cover_amount: '', ci_cover_amount: '', has_term_plan: false, has_health_cover: false });
+  const [protection, setProtection] = useState<Protection>({ life_cover_amount: '', health_cover_amount: '', ci_cover_amount: '', has_term_plan: false, has_health_cover: false, health_cover_type: '' });
   const [goals,      setGoals]      = useState<GoalRow[]>([]);
   const [riskProfile, setRiskProfile] = useState('');
   const [notes,      setNotes]      = useState('');
@@ -1032,6 +1032,29 @@ export default function IntakePage() {
                 </button>
               </div>
             </div>
+
+            {/* Coverage type — 4 opt-cards */}
+            <div className={s.protField}>
+              <label className={s.curFieldLabel}>Coverage type</label>
+              <div className={s.optCards4}>
+                {([
+                  { key: 'individual'    as const, label: 'Individual',     sub: 'Self only'  },
+                  { key: 'family_floater'as const, label: 'Family Floater', sub: 'Household'  },
+                  { key: 'employer'      as const, label: 'Employer',       sub: 'Corp group' },
+                  { key: 'none'          as const, label: 'None',           sub: 'Gap'        },
+                ]).map(({ key, label, sub }) => (
+                  <button key={key} type="button"
+                    className={`${s.optCard} ${protection.health_cover_type === key ? s.optCardSelected : ''}`}
+                    onClick={() => setProtection(p => ({ ...p, health_cover_type: key }))}>
+                    <div>
+                      <div className={s.optCardLabel}>{label}</div>
+                      <div className={s.optCardSub}>{sub}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className={s.protFieldRow2}>
               <div className={s.curField}>
                 <label className={s.curFieldLabel}>Sum Insured</label>
