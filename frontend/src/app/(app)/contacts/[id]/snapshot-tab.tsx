@@ -10,7 +10,7 @@
  *   01 Cash Flow → 02 Assets → 03 Liabilities → 04 Protection → 05 Goals
  */
 
-import { useState, useEffect, useCallback, Fragment } from 'react';
+import React, { useState, useEffect, useCallback, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
@@ -183,6 +183,12 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   const [inheritedOpen, setInheritedOpen] = useState(false);
   const [intakeUrl,     setIntakeUrl]     = useState<string | null>(null);
   const [copied,        setCopied]        = useState(false);
+
+  // Submit overlay + snapshot view state
+  const [submitPhase, setSubmitPhase]   = useState<'idle' | 'saving' | 'done'>('idle');
+  const [tick4Done,   setTick4Done]     = useState(false);
+  const [showSnapshot, setShowSnapshot] = useState(false);
+  const [snapshotVersion, setSnapshotVersion] = useState(1);
 
   const { data: meData } = useMe();
   const mfdFirstName = meData?.user?.first_name || meData?.user?.name?.split(' ')[0] || '';
@@ -363,22 +369,40 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   const { mutate: saveMutation, isPending: isSaving } = useSkillMutation(
     'contact-skill', 'save_snapshot',
     {
-      onSuccess: (_, vars) => {
+      onSuccess: (res, vars) => {
         const status = (vars as Record<string, unknown>).status as string;
         queryClient.invalidateQueries({ queryKey: ['skill', 'contact-skill', 'get_snapshot_full'] });
         queryClient.invalidateQueries({ queryKey: ['skill', 'contact-skill', 'get_contact'] });
         if (status === 'active') {
-          showToast({ message: 'Snapshot submitted', type: 'success' });
+          const version = (res as Record<string, unknown>)?.data
+            ? ((res as Record<string, unknown>).data as Record<string, unknown>)?.snapshot
+              ? (((res as Record<string, unknown>).data as Record<string, unknown>).snapshot as Record<string, unknown>).version_number as number ?? 1
+              : 1
+            : 1;
+          setSnapshotVersion(version || 1);
+          // Tick the 4th progress item then reveal snapshot view
+          setTick4Done(true);
+          setTimeout(() => {
+            setSubmitPhase('idle');
+            setShowSnapshot(true);
+          }, 900);
         } else {
           showToast({ message: 'Draft saved', type: 'success' });
         }
       },
-      onError: (e) => showToast({ message: e.message || 'Save failed', type: 'error' }),
+      onError: (e) => {
+        setSubmitPhase('idle');
+        showToast({ message: e.message || 'Save failed', type: 'error' });
+      },
     }
   );
 
   const handleDraft  = () => saveMutation(buildPayload('draft') as Record<string, unknown>);
-  const handleSubmit = () => saveMutation(buildPayload('active') as Record<string, unknown>);
+  const handleSubmit = () => {
+    setSubmitPhase('saving');
+    setTick4Done(false);
+    saveMutation(buildPayload('active') as Record<string, unknown>);
+  };
 
   const { mutate: genToken, isPending: isGenning } = useSkillMutation<{ intake_url: string }>(
     'contact-skill', 'generate_intake_token',
@@ -650,7 +674,241 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     return s + fv * r / (Math.pow(1 + r, months) - 1);
   }, 0);
 
+  // ── Snapshot view derived data ────────────────────────────────────────────
+
+  const DONUT_COLORS = ['#6b4e8a', 'var(--color-success)', 'var(--color-warning)', 'var(--color-accent)', '#4a7a8c', 'var(--color-muted)'];
+  const donutTotal = metrics.totalAssets;
+  const sortedAssets = assets.filter(a => Number(a.current_value) > 0).sort((a, b) => Number(b.current_value) - Number(a.current_value));
+  const topAssets = sortedAssets.slice(0, 4).map((a, i) => {
+    const label = a.description || assetTypes.find(t => String(t.id) === a.asset_type_id)?.label || 'Asset';
+    const val   = Number(a.current_value);
+    const pct   = donutTotal > 0 ? (val / donutTotal) * 100 : 0;
+    return { label, val, pct, color: DONUT_COLORS[i] };
+  });
+  const othersVal = sortedAssets.slice(4).reduce((s, a) => s + Number(a.current_value), 0);
+  if (othersVal > 0) topAssets.push({ label: 'Others', val: othersVal, pct: donutTotal > 0 ? (othersVal / donutTotal) * 100 : 0, color: DONUT_COLORS[5] });
+
+  const CIRC = 238.76;
+  let cumOffset = 0;
+  const donutSegs = topAssets.map(item => {
+    const arc = (item.pct / 100) * CIRC;
+    const seg = { ...item, arc, dashOffset: -cumOffset };
+    cumOffset += arc;
+    return seg;
+  });
+
+  const RING_CIRC = 100.53;
+  function pulseColor(st: PulseStatus) {
+    if (st === 'good') return 'var(--color-success)';
+    if (st === 'warn') return 'var(--color-warning)';
+    if (st === 'bad')  return 'var(--color-danger)';
+    return 'var(--color-border)';
+  }
+  const pulseRings = [
+    { label: 'Savings Rate', score: metrics.savingsRate !== null ? Math.min((metrics.savingsRate / 30) * 100, 100) : 0, state: savingsStatus(metrics.savingsRate), detail: metrics.savingsRate !== null ? `${metrics.savingsRate.toFixed(0)}%` : '—' },
+    { label: 'Debt Load',    score: metrics.dti !== null ? Math.min(((60 - Math.min(metrics.dti, 60)) / 60) * 100, 100) : 0, state: dtiStatus(metrics.dti), detail: metrics.dti !== null ? `DTI ${metrics.dti.toFixed(0)}%` : '—' },
+    { label: 'Protection',   score: protRatio !== null ? Math.min((protRatio / 15) * 100, 100) : 0, state: protectionStatus(protRatio), detail: protRatio !== null ? `${protRatio.toFixed(1)}×` : '—' },
+    { label: 'Liquidity',    score: metrics.liquidityMonths !== null ? Math.min((metrics.liquidityMonths / 12) * 100, 100) : 0, state: liquidityStatus(metrics.liquidityMonths), detail: metrics.liquidityMonths !== null ? `${metrics.liquidityMonths.toFixed(1)} mo` : '—' },
+    { label: 'Future Focus', score: Math.min((vaniGoalsFilled.length / 3) * 100, 100), state: vaniGoalsFilled.length >= 3 ? 'good' as PulseStatus : vaniGoalsFilled.length >= 1 ? 'warn' as PulseStatus : 'empty' as PulseStatus, detail: `${vaniGoalsFilled.length} goal${vaniGoalsFilled.length !== 1 ? 's' : ''}` },
+  ];
+
+  // VaNi action cards — up to 3 derived from the worst/best metrics
+  const actionCards: Array<{ type: 'ok' | 'warn' | 'bad'; label: string; text: React.ReactNode; ctaLabel: string }> = [];
+  if (metrics.savingsRate !== null && metrics.savingsRate >= 20)
+    actionCards.push({ type: 'ok',  label: '● Strength',      text: <><strong>{metrics.savingsRate.toFixed(0)}%</strong> savings rate — strong cash generation. Lead with this in your next call.</>, ctaLabel: 'Draft opener email' });
+  if (vaniLargestAsset && vaniLargestPct > 50)
+    actionCards.push({ type: 'warn', label: '● Concentration', text: <><strong>{vaniLargestPct.toFixed(0)}%</strong> of wealth in "{vaniLargestAsset.description || 'one asset'}". Diversification worth a dedicated conversation.</>, ctaLabel: 'Schedule follow-up' });
+  if (protRatio !== null && protRatio < 10)
+    actionCards.push({ type: 'bad',  label: '● Critical gap',  text: <>Life cover only <strong>{protRatio.toFixed(1)}×</strong> annual income. Industry benchmark is 10–15×. This is priority #1.</>, ctaLabel: 'Call now' });
+  else if (metrics.dti !== null && metrics.dti > 50)
+    actionCards.push({ type: 'bad',  label: '● Debt risk',     text: <>DTI at <strong>{metrics.dti.toFixed(0)}%</strong> — above the 50% caution threshold. Review repayment capacity.</>, ctaLabel: 'Review loans' });
+  // Fallback card if no bad metric
+  if (actionCards.filter(c => c.type === 'bad').length === 0 && vaniGoalsFilled.length > 0)
+    actionCards.push({ type: 'ok', label: '● Goal-ready',  text: <><strong>{vaniGoalsFilled.length} goal{vaniGoalsFilled.length > 1 ? 's' : ''}</strong> captured. Combined SIP needed ≈ {fmt(Math.round(vaniTotalSIP))}/mo. Start SIP conversation now.</>, ctaLabel: 'Create plan' });
+
   return (
+    <>
+
+    {/* ── Submit animation overlay ──────────────────────────────────────────── */}
+    {submitPhase === 'saving' && (
+      <div className={s.submitOverlay}>
+        <div className={s.submitContent}>
+          <div className={s.submitSpinner} />
+          <h2 className={s.submitTitle}>
+            Saving {contactName ? `${contactName.split(' ')[0]}'s` : 'the'}<br />
+            <em>snapshot…</em>
+          </h2>
+          <p className={s.submitSub}>v{snapshotVersion}</p>
+          <div className={s.submitProgressList}>
+            {[
+              'Persisting cash flow & assets',
+              'Computing pulse metrics',
+              'Running VaNi analysis',
+              'Updating contact record',
+            ].map((label, i) => {
+              const done = i < 3 || tick4Done;
+              return (
+                <div key={i} className={`${s.submitProgressItem} ${done ? s.submitDone : ''}`}>
+                  <div className={s.submitTick}>{done ? '✓' : ''}</div>
+                  {label}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── Snapshot view (post-submit) ───────────────────────────────────────── */}
+    {showSnapshot ? (
+      <div className={s.snapView}>
+
+        {/* Meta bar */}
+        <div className={s.snapMetaBar}>
+          <div className={s.snapMetaLeft}>
+            <strong>SNAPSHOT v{snapshotVersion}</strong>
+            <span className={s.snapSep}>/</span>
+            <span>captured {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            {mfdFirstName && <><span className={s.snapSep}>/</span><span>by {mfdFirstName}</span></>}
+          </div>
+          <div className={s.snapMetaActions}>
+            <button className={s.snapActionBtn} onClick={() => setShowSnapshot(false)}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Edit
+            </button>
+            {!isClient && (
+              <button className={s.snapActionBtnPrimary} onClick={() => router.push(`/contacts/${contactId}/convert`)}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                Convert to Client
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Net worth hero */}
+        <div className={s.nwHero}>
+          <div className={s.nwLabel}>Net worth</div>
+          <div className={`${s.nwValue} ${metrics.netWorth < 0 ? s.nwNeg : ''}`}>{fmt(Math.abs(metrics.netWorth))}</div>
+          <div className={s.nwBreakdown}>
+            <div className={s.bkItem}>
+              <div className={s.bkLabel}>Total Assets</div>
+              <div className={`${s.bkValue} ${s.bkPlus}`}>+ {fmt(metrics.totalAssets)}</div>
+            </div>
+            <div className={s.bkItem}>
+              <div className={s.bkLabel}>Liabilities</div>
+              <div className={`${s.bkValue} ${s.bkMinus}`}>− {fmt(metrics.totalLiabs)}</div>
+            </div>
+            <div className={s.bkItem}>
+              <div className={s.bkLabel}>Monthly Savings</div>
+              <div className={s.bkValue} style={{ color: metrics.monthlySavings >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>{fmt(metrics.monthlySavings)}</div>
+            </div>
+            {metrics.savingsRate !== null && (
+              <div className={s.bkItem}>
+                <div className={s.bkLabel}>Savings Rate</div>
+                <div className={s.bkValue} style={{ color: metrics.savingsRate >= 20 ? 'var(--color-success)' : 'var(--color-warning)' }}>{metrics.savingsRate.toFixed(1)}%</div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Grid: asset donut + pulse rings */}
+        <div className={s.snapGrid}>
+
+          {/* Asset allocation donut */}
+          <div className={s.snapCard}>
+            <div className={s.snapCardTitle}>Asset allocation</div>
+            {donutSegs.length > 0 && vaniLargestAsset && vaniLargestPct > 50 && (
+              <div className={s.snapCardSub}>Concentration: {vaniLargestPct.toFixed(0)}% in {vaniLargestAsset.description || 'top asset'}</div>
+            )}
+            {donutSegs.length === 0 ? (
+              <div className={s.snapEmpty}>No assets captured</div>
+            ) : (
+              <div className={s.donutWrap}>
+                <svg className={s.donutSvg} viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="38" fill="none" stroke="var(--color-border)" strokeWidth="14" />
+                  {donutSegs.map((seg, i) => (
+                    <circle key={i} cx="50" cy="50" r="38" fill="none"
+                      stroke={seg.color} strokeWidth="14"
+                      strokeDasharray={`${seg.arc} ${CIRC}`}
+                      strokeDashoffset={String(seg.dashOffset)}
+                      transform="rotate(-90 50 50)"
+                    />
+                  ))}
+                  <text x="50" y="47" textAnchor="middle" className={s.donutCtLabel}>TOTAL</text>
+                  <text x="50" y="58" textAnchor="middle" className={s.donutCtVal}>{fmt(donutTotal)}</text>
+                </svg>
+                <div className={s.donutLegend}>
+                  {donutSegs.map((seg, i) => (
+                    <div key={i} className={s.legRow}>
+                      <div className={s.legSw} style={{ background: seg.color }} />
+                      <div className={s.legLabel}>{seg.label}</div>
+                      <div className={s.legAmt}>{fmt(seg.val)}</div>
+                      <div className={s.legPct}>{seg.pct.toFixed(0)}%</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Pulse rings */}
+          <div className={s.snapCard}>
+            <div className={s.snapCardTitle}>Pulse rings</div>
+            <div className={s.snapCardSub}>5 vital signs</div>
+            <div className={s.hringList}>
+              {pulseRings.map((ring, i) => {
+                const color = pulseColor(ring.state);
+                const fillOffset = RING_CIRC * (1 - ring.score / 100);
+                const scoreInt = Math.round(ring.score);
+                return (
+                  <div key={i} className={s.hringRow}>
+                    <div className={s.hring}>
+                      <svg viewBox="0 0 40 40">
+                        <circle cx="20" cy="20" r="16" fill="none" stroke="var(--color-border)" strokeWidth="5" />
+                        <circle cx="20" cy="20" r="16" fill="none" stroke={color} strokeWidth="5"
+                          strokeDasharray={String(RING_CIRC)} strokeDashoffset={String(fillOffset)}
+                          transform="rotate(-90 20 20)" strokeLinecap="round"
+                        />
+                      </svg>
+                      <div className={s.hringTxt}>{ring.score > 0 ? scoreInt : '—'}</div>
+                    </div>
+                    <div className={s.hringInfo}>
+                      <div className={s.hringLbl}>{ring.label}</div>
+                      <div className={s.hringState} style={{ color }}>{ring.state !== 'empty' ? `● ${ring.detail}` : '● no data'}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>
+
+        {/* VaNi action cards */}
+        {actionCards.length > 0 && (
+          <div className={s.actionCardsWrap}>
+            <div className={s.actionCardsHead}>
+              <div className={s.actionHeadAvatar}>V</div>
+              <div>
+                <div className={s.actionHeadTitle}>VaNi's talking brief</div>
+                <div className={s.actionHeadSub}>{actionCards.length} action point{actionCards.length > 1 ? 's' : ''} for your next call</div>
+              </div>
+            </div>
+            <div className={s.actionCards}>
+              {actionCards.slice(0, 3).map((card, i) => (
+                <div key={i} className={`${s.actionCard} ${s['actionCard_' + card.type]}`}>
+                  <div className={`${s.actionLabel} ${s['actionLabel_' + card.type]}`}>{card.label}</div>
+                  <div className={s.actionText}>{card.text}</div>
+                  <button className={s.actionCta}>{card.ctaLabel}</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+      </div>
+    ) : (
+
     <div className={s.formLayout}>
 
       {/* ── Pinned sticky header ────────────────────────────────────────────── */}
@@ -1622,5 +1880,8 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
 
       </div>
     </div>
+
+    )} {/* end showSnapshot ternary */}
+    </> /* end Fragment */
   );
 }
