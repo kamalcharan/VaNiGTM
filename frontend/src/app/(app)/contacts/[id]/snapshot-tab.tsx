@@ -218,7 +218,8 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   // ── Data loading ──────────────────────────────────────────────────────────
 
   const { data: snapData, isLoading: snapLoading, isError: snapError, error: snapErrorObj } = useSkillQuery<{ snapshot: Record<string, unknown> | null }>(
-    'contact-skill', 'get_snapshot_full', { contact_id: contactId }
+    'contact-skill', 'get_snapshot_full', { contact_id: contactId },
+    { retry: false, staleTime: 30_000 }
   );
   const { data: assetTypesData } = useSkillQuery<{ asset_types: AssetType[] }>(
     'contact-skill', 'get_asset_types', {}

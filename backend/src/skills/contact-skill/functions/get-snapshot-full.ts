@@ -3,6 +3,7 @@
  *
  * Returns the complete active (or draft) snapshot for a contact,
  * including all child rows from the versioned snapshot system.
+ * [2026-04-10: get-snapshot-header.sql uses u.name not u.full_name]
  *
  * Returns null if no snapshot exists yet for this contact.
  */
