@@ -76,7 +76,7 @@ WHERE cl.tenant_id = $tenant_id
   )
   AND (
       $in_family::boolean IS NULL OR $in_family::boolean = false
-      OR cl.family_id IS NOT NULL
+      OR cl.is_family_head = true
   )
 ORDER BY c.name ASC
 LIMIT  $limit

@@ -21,4 +21,4 @@ WHERE cl.tenant_id = $tenant_id
   AND ($risk_profile::text IS NULL OR cl.risk_profile = $risk_profile::text)
   AND ($bookmarked_only::boolean IS NULL OR $bookmarked_only::boolean = false OR bm.is_active = true)
   AND ($recent_only::boolean IS NULL OR $recent_only::boolean = false OR cl.created_at >= NOW() - INTERVAL '30 days')
-  AND ($in_family::boolean IS NULL OR $in_family::boolean = false OR cl.family_id IS NOT NULL);
+  AND ($in_family::boolean IS NULL OR $in_family::boolean = false OR cl.is_family_head = true);
