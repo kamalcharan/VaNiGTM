@@ -2478,19 +2478,21 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .snapView {
-  padding: 0 0 48px;
+  padding: 0 24px 48px;
   animation: snapFadeIn 0.35s ease;
 }
 
-/* Meta bar */
+/* Meta bar — styled as a card matching detailCard in overview */
 .snapMetaBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 10px 0 18px;
-  border-bottom: 1px solid var(--color-border);
-  margin-bottom: 24px;
+  padding: 16px 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  margin-bottom: 20px;
   flex-wrap: wrap;
 }
 .snapMetaLeft {
