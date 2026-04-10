@@ -15,6 +15,7 @@ import s from './contacts.module.css';
 
 interface Contact {
   id: number;
+  contact_no: string | null;
   prefix: string;
   name: string;
   is_client: boolean;
@@ -265,6 +266,7 @@ export default function ContactsPage() {
                         <span className={s.prefix}>{contact.prefix}</span>{contact.name}
                       </div>
                       <div className={s.contactSub}>
+                        {contact.contact_no && <span className={s.contactNo}>{contact.contact_no}</span>}
                         {contact.primary_mobile ? `${contact.primary_mobile} · ` : ''}Added {new Date(contact.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                       </div>
                     </div>

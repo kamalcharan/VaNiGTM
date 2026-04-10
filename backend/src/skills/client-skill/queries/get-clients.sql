@@ -5,6 +5,7 @@
 SELECT
     cl.id,
     cl.client_uid,
+    cl.client_no,
     cl.ext_ref_id,
     cl.pan,
     cl.dob,
@@ -15,6 +16,7 @@ SELECT
     -- Contact details
     c.prefix,
     c.name,
+    c.contact_no,
 
     -- Bookmark for this user
     COALESCE(bm.is_active, false) AS is_bookmarked,
@@ -56,6 +58,8 @@ WHERE cl.tenant_id = $tenant_id
       OR c.name ILIKE '%' || $search::text || '%'
       OR cl.pan ILIKE '%' || $search::text || '%'
       OR cl.ext_ref_id ILIKE '%' || $search::text || '%'
+      OR cl.client_no ILIKE '%' || $search::text || '%'
+      OR c.contact_no ILIKE '%' || $search::text || '%'
   )
   AND (
       $risk_profile::text IS NULL

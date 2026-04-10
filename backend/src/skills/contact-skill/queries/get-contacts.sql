@@ -4,6 +4,7 @@
 
 SELECT
     c.id,
+    c.contact_no,
     c.prefix,
     c.name,
     c.normalized_name,

@@ -161,6 +161,22 @@
   font-size: 0.7rem;
   color: var(--color-muted);
   margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.contactNo {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  padding: 1px 5px;
+  border-radius: 3px;
 }
 
 /* ── Channels cell ───────────────────────────────────── */

@@ -40,6 +40,7 @@ interface ConvertToClientResult {
   client: {
     id: number;
     client_uid: string;
+    client_no: string;
     contact_id: number;
     ext_ref_id: string | null;
     pan: string | null;
@@ -133,17 +134,19 @@ export async function convert_to_client(
     // 4. Create ki_clients record
     // name is required (NOT NULL from migration 001) — carry from contact
     const clientRes = await tx.query<{
-      id: number; client_uid: string; contact_id: number;
+      id: number; client_uid: string; client_no: string; contact_id: number;
       ext_ref_id: string | null; pan: string | null;
       risk_profile: string | null; onboarding_status: string;
     }>(
       `INSERT INTO ki_clients
-         (name, contact_id, tenant_id, is_live, pan, dob, anniversary_date, ext_ref_id,
+         (name, contact_id, tenant_id, is_live, client_no, pan, dob, anniversary_date, ext_ref_id,
           family_id, is_family_head, risk_profile, referred_by_name, created_by)
        VALUES
-         ($name, $contact_id, $tenant_id, $is_live, $pan, $dob, $anniversary_date, $ext_ref_id,
+         ($name, $contact_id, $tenant_id, $is_live,
+          ki_next_seq($tenant_id::uuid, 'client'),
+          $pan, $dob, $anniversary_date, $ext_ref_id,
           $family_id, $is_family_head, $risk_profile, $referred_by_name, $created_by)
-       RETURNING id, client_uid, contact_id, ext_ref_id, pan, risk_profile, onboarding_status`,
+       RETURNING id, client_uid, client_no, contact_id, ext_ref_id, pan, risk_profile, onboarding_status`,
       {
         $name:            contact.name,
         $contact_id:      contact_id,

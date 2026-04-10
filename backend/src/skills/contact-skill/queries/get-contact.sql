@@ -3,6 +3,7 @@
 
 SELECT
     c.id,
+    c.contact_no,
     c.prefix,
     c.name,
     c.normalized_name,
@@ -11,8 +12,9 @@ SELECT
     c.created_at,
     c.updated_at,
     c.created_by,
-    -- client record id (non-null once converted)
-    kc.id AS client_id,
+    -- client record id + client_no (non-null once converted)
+    kc.id     AS client_id,
+    kc.client_no,
 
     -- Channels as JSON array
     COALESCE(

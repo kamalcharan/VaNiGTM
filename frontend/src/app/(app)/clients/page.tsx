@@ -14,6 +14,8 @@ import s from './clients.module.css';
 interface Client {
   id: number;
   client_uid: string;
+  client_no: string | null;
+  contact_no: string | null;
   ext_ref_id: string | null;
   pan: string | null;
   dob: string | null;
@@ -201,12 +203,17 @@ export default function ClientsPage() {
                 </div>
                 <div className={s.cardHeadText}>
                   <div className={s.cardName}>{client.prefix} {client.name}</div>
-                  {client.ext_ref_id && (
-                    <div className={s.refId}>
-                      <span className={s.refBadge}>ID</span>
-                      <span className={s.refValue}>{client.ext_ref_id}</span>
-                    </div>
-                  )}
+                  <div className={s.refId}>
+                    {client.client_no && (
+                      <span className={s.clientNoBadge}>{client.client_no}</span>
+                    )}
+                    {client.ext_ref_id && (
+                      <>
+                        <span className={s.refBadge}>ID</span>
+                        <span className={s.refValue}>{client.ext_ref_id}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 

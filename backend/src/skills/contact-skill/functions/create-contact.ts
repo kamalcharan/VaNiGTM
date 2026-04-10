@@ -43,6 +43,7 @@ interface ChannelItem {
 interface CreateContactResult {
   contact: {
     id: number;
+    contact_no: string;
     name: string;
     prefix: string;
     normalized_name: string;
@@ -72,7 +73,7 @@ export async function create_contact(
 
   const result = await ctx.db.transaction(async (tx) => {
     const contactRes = await tx.query<{
-      id: number; name: string; prefix: string; normalized_name: string; is_client: boolean;
+      id: number; contact_no: string; name: string; prefix: string; normalized_name: string; is_client: boolean;
     }>(INSERT_CONTACT_SQL, {
       $tenant_id:        ctx.tenant_id,
       $is_live:          ctx.is_live,
