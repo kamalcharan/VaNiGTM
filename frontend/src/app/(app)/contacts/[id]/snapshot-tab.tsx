@@ -743,16 +743,16 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   // VaNi action cards — up to 3 derived from the worst/best metrics
   const actionCards: Array<{ type: 'ok' | 'warn' | 'bad'; label: string; text: React.ReactNode; ctaLabel: string }> = [];
   if (metrics.savingsRate !== null && metrics.savingsRate >= 20)
-    actionCards.push({ type: 'ok',  label: '● Strength',      text: <><strong>{metrics.savingsRate.toFixed(0)}%</strong> savings rate — strong cash generation. Lead with this in your next call.</>, ctaLabel: 'Draft opener email' });
+    actionCards.push({ type: 'ok',  label: 'Strength',      text: <><strong>{metrics.savingsRate.toFixed(0)}%</strong> savings rate — strong cash generation. Lead with this in your next call.</>, ctaLabel: 'Draft opener email →' });
   if (vaniLargestAsset && vaniLargestPct > 50)
-    actionCards.push({ type: 'warn', label: '● Concentration', text: <><strong>{vaniLargestPct.toFixed(0)}%</strong> of wealth in "{vaniLargestAsset.description || 'one asset'}". Diversification worth a dedicated conversation.</>, ctaLabel: 'Schedule follow-up' });
+    actionCards.push({ type: 'warn', label: 'Concentration', text: <><strong>{vaniLargestPct.toFixed(0)}%</strong> of wealth in "{vaniLargestAsset.description || 'one asset'}". Diversification worth a dedicated conversation.</>, ctaLabel: 'Schedule follow-up →' });
   if (protRatio !== null && protRatio < 10)
-    actionCards.push({ type: 'bad',  label: '● Critical gap',  text: <>Life cover only <strong>{protRatio.toFixed(1)}×</strong> annual income. Industry benchmark is 10–15×. This is priority #1.</>, ctaLabel: 'Call now' });
+    actionCards.push({ type: 'bad',  label: 'Critical gap',  text: <>Life cover only <strong>{protRatio.toFixed(1)}×</strong> annual income. Industry benchmark is 10–15×. This is priority #1.</>, ctaLabel: 'Call now →' });
   else if (metrics.dti !== null && metrics.dti > 50)
-    actionCards.push({ type: 'bad',  label: '● Debt risk',     text: <>DTI at <strong>{metrics.dti.toFixed(0)}%</strong> — above the 50% caution threshold. Review repayment capacity.</>, ctaLabel: 'Review loans' });
+    actionCards.push({ type: 'bad',  label: 'Debt risk',     text: <>DTI at <strong>{metrics.dti.toFixed(0)}%</strong> — above the 50% caution threshold. Review repayment capacity.</>, ctaLabel: 'Review loans →' });
   // Fallback card if no bad metric
   if (actionCards.filter(c => c.type === 'bad').length === 0 && vaniGoalsFilled.length > 0)
-    actionCards.push({ type: 'ok', label: '● Goal-ready',  text: <><strong>{vaniGoalsFilled.length} goal{vaniGoalsFilled.length > 1 ? 's' : ''}</strong> captured. Combined SIP needed ≈ {fmt(Math.round(vaniTotalSIP))}/mo. Start SIP conversation now.</>, ctaLabel: 'Create plan' });
+    actionCards.push({ type: 'ok', label: 'Goal-ready',  text: <><strong>{vaniGoalsFilled.length} goal{vaniGoalsFilled.length > 1 ? 's' : ''}</strong> captured. Combined SIP needed ≈ {fmt(Math.round(vaniTotalSIP))}/mo. Start SIP conversation now.</>, ctaLabel: 'Create plan →' });
 
   return (
     <>
