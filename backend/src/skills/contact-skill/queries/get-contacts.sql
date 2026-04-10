@@ -1,6 +1,6 @@
 -- get_contacts: paginated contact list with primary channel info
 -- Filters: tenant_id, is_live, is_active, optional search, optional is_client filter
--- Named params: $tenant_id, $is_live, $search (nullable), $is_client (nullable), $limit, $offset
+-- Named params: $tenant_id, $is_live, $show_inactive (boolean), $search (nullable), $is_client (nullable), $limit, $offset
 
 SELECT
     c.id,
@@ -49,7 +49,7 @@ SELECT
 FROM ki_contacts c
 WHERE c.tenant_id = $tenant_id
   AND c.is_live   = $is_live
-  AND c.is_active = true
+  AND c.is_active = (NOT $show_inactive::boolean)
   AND (
       $search::text IS NULL
       OR c.normalized_name ILIKE '%' || UPPER($search::text) || '%'

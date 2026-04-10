@@ -35,7 +35,10 @@ interface ContactsData {
   total: number;
 }
 
-type FilterMode = 'all' | 'prospects' | 'clients';
+type FilterMode  = 'all' | 'prospects' | 'clients';
+type StatusMode  = 'active' | 'inactive';
+
+const PAGE_SIZE = 25;
 
 /* ── Helpers ─────────────────────────────────────────── */
 
@@ -69,7 +72,7 @@ function readinessPct(c: Contact): number {
   return pct;
 }
 
-const FILTER_PILLS = [
+const TYPE_PILLS = [
   { id: 'all',       label: 'All' },
   { id: 'prospects', label: 'Prospects' },
   { id: 'clients',   label: 'Clients' },
@@ -96,8 +99,11 @@ export default function ContactsPage() {
 
   const [search, setSearch]           = useState('');
   const [filter, setFilter]           = useState<FilterMode>('all');
+  const [status, setStatus]           = useState<StatusMode>('active');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage]               = useState(1);
   const [deletingId, setDeletingId]   = useState<number | null>(null);
+  const [reactivatingId, setReactivatingId] = useState<number | null>(null);
 
   // Drawer — shared between create and edit modes
   const [drawerOpen, setDrawerOpen]             = useState(false);
@@ -115,6 +121,7 @@ export default function ContactsPage() {
 
   const handleSearch = (v: string) => {
     setSearch(v);
+    setPage(1);
     clearTimeout((handleSearch as unknown as { timer: ReturnType<typeof setTimeout> }).timer);
     (handleSearch as unknown as { timer: ReturnType<typeof setTimeout> }).timer = setTimeout(
       () => setDebouncedSearch(v), 350
@@ -122,11 +129,12 @@ export default function ContactsPage() {
   };
 
   const skillParams = useMemo(() => ({
-    search:    debouncedSearch || undefined,
-    is_client: filter === 'all' ? undefined : filter === 'clients',
-    limit: 100,
-    offset: 0,
-  }), [debouncedSearch, filter]);
+    search:        debouncedSearch || undefined,
+    is_client:     filter === 'all' ? undefined : filter === 'clients',
+    show_inactive: status === 'inactive',
+    limit:         PAGE_SIZE,
+    offset:        (page - 1) * PAGE_SIZE,
+  }), [debouncedSearch, filter, status, page]);
 
   const { data, isLoading, isError, error } = useSkillQuery<ContactsData>(
     'contact-skill', 'get_contacts', skillParams
@@ -155,6 +163,21 @@ export default function ContactsPage() {
       onError: (err) => {
         showToast({ message: err.message || 'Failed to deactivate contact', type: 'error' });
         setDeletingId(null);
+      },
+    }
+  );
+
+  const { mutate: reactivateContact } = useSkillMutation(
+    'contact-skill', 'reactivate_contact',
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['skill', 'contact-skill', 'get_contacts'] });
+        showToast({ message: 'Contact reactivated.', type: 'success' });
+        setReactivatingId(null);
+      },
+      onError: (err) => {
+        showToast({ message: err.message || 'Failed to reactivate contact', type: 'error' });
+        setReactivatingId(null);
       },
     }
   );
@@ -239,10 +262,29 @@ export default function ContactsPage() {
     deleteContact({ contact_id: contactId });
   }
 
-  const contacts  = data?.data?.contacts ?? [];
-  const total     = data?.data?.total ?? 0;
-  const prospects = contacts.filter(c => !c.is_client).length;
-  const converted = contacts.filter(c => c.is_client).length;
+  function handleReactivate(e: React.MouseEvent, contactId: number) {
+    e.stopPropagation();
+    setReactivatingId(contactId);
+    reactivateContact({ contact_id: contactId });
+  }
+
+  function handleFilterChange(id: string) {
+    setFilter(id as FilterMode);
+    setPage(1);
+  }
+
+  function handleStatusChange(s: StatusMode) {
+    setStatus(s);
+    setPage(1);
+    // Inactive contacts can't be filtered by prospect/client — reset to all
+    if (s === 'inactive') setFilter('all');
+  }
+
+  const contacts   = data?.data?.contacts ?? [];
+  const total      = data?.data?.total ?? 0;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const prospects  = contacts.filter(c => !c.is_client).length;
+  const converted  = contacts.filter(c => c.is_client).length;
 
   if (isLoading) return <VdfLoader overlay message="Loading contacts…" />;
   if (isError) return (
@@ -277,10 +319,24 @@ export default function ContactsPage() {
           value={search}
           onChange={handleSearch}
           placeholder="Search by name, mobile, email…"
-          pills={FILTER_PILLS}
+          pills={status === 'active' ? TYPE_PILLS : [{ id: 'all', label: 'All' }]}
           activePill={filter}
-          onPillChange={(id) => setFilter(id as FilterMode)}
+          onPillChange={handleFilterChange}
         />
+        <div className={s.statusToggle}>
+          <button
+            className={`${s.statusPill} ${status === 'active' ? s.statusPillActive : ''}`}
+            onClick={() => handleStatusChange('active')}
+          >
+            Active
+          </button>
+          <button
+            className={`${s.statusPill} ${status === 'inactive' ? s.statusPillInactive : ''}`}
+            onClick={() => handleStatusChange('inactive')}
+          >
+            Inactive
+          </button>
+        </div>
       </div>
 
       {/* ── List ── */}
@@ -372,29 +428,46 @@ export default function ContactsPage() {
 
                   {/* Actions cell */}
                   <div className={s.actionsCell}>
-                    <button
-                      className={s.editBtn}
-                      onClick={(e) => { e.stopPropagation(); openEditDrawer(contact); }}
-                      title="Edit contact"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
-                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                      </svg>
-                    </button>
-                    {!contact.is_client && (
+                    {contact.is_active ? (
+                      <>
+                        <button
+                          className={s.editBtn}
+                          onClick={(e) => { e.stopPropagation(); openEditDrawer(contact); }}
+                          title="Edit contact"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
+                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                          </svg>
+                        </button>
+                        {!contact.is_client && (
+                          <button
+                            className={s.deleteBtn}
+                            disabled={deletingId === contact.id}
+                            onClick={(e) => handleDelete(e, contact.id)}
+                            title="Deactivate contact"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                              <path d="M10 11v6M14 11v6" />
+                              <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+                            </svg>
+                          </button>
+                        )}
+                      </>
+                    ) : (
                       <button
-                        className={s.deleteBtn}
-                        disabled={deletingId === contact.id}
-                        onClick={(e) => handleDelete(e, contact.id)}
-                        title="Deactivate contact"
+                        className={s.reactivateBtn}
+                        disabled={reactivatingId === contact.id}
+                        onClick={(e) => handleReactivate(e, contact.id)}
+                        title="Reactivate contact"
                       >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-                          <path d="M10 11v6M14 11v6" />
-                          <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+                          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                          <path d="M3 3v5h5" />
                         </svg>
+                        Reactivate
                       </button>
                     )}
                     <span className={s.rowArrow}>→</span>
@@ -406,7 +479,28 @@ export default function ContactsPage() {
         )}
       </div>
 
-      {/* ── Create drawer ── */}
+      {/* ── Pagination ── */}
+      {totalPages > 1 && (
+        <div className={s.pagination}>
+          <button
+            className={s.pageBtn}
+            disabled={page === 1}
+            onClick={() => setPage(p => p - 1)}
+          >
+            ← Prev
+          </button>
+          <span className={s.pageInfo}>Page {page} of {totalPages} · {total} contacts</span>
+          <button
+            className={s.pageBtn}
+            disabled={page >= totalPages}
+            onClick={() => setPage(p => p + 1)}
+          >
+            Next →
+          </button>
+        </div>
+      )}
+
+      {/* ── Create / Edit drawer ── */}
       {drawerOpen && (
         <div className={s.drawerOverlay} onClick={closeDrawer}>
           <div className={s.drawer} onClick={e => e.stopPropagation()}>

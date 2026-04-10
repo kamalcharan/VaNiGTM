@@ -17,6 +17,7 @@ const COUNT_CONTACTS_SQL = fs.readFileSync(
 interface GetContactsParams {
   search?: string;
   is_client?: boolean;
+  show_inactive?: boolean;
   limit?: number;
   offset?: number;
 }
@@ -47,21 +48,23 @@ export async function get_contacts(
   const offset = params.offset ?? 0;
 
   const queryParams = {
-    $tenant_id: ctx.tenant_id,
-    $is_live:   ctx.is_live,
-    $search:    params.search?.trim() || null,
-    $is_client: params.is_client !== undefined ? params.is_client : null,
-    $limit:     limit,
-    $offset:    offset,
+    $tenant_id:    ctx.tenant_id,
+    $is_live:      ctx.is_live,
+    $show_inactive: params.show_inactive ?? false,
+    $search:       params.search?.trim() || null,
+    $is_client:    params.is_client !== undefined ? params.is_client : null,
+    $limit:        limit,
+    $offset:       offset,
   };
 
   const [dataRes, countRes] = await Promise.all([
     ctx.db.query<ContactListItem>(GET_CONTACTS_SQL, queryParams),
     ctx.db.query<{ total: string }>(COUNT_CONTACTS_SQL, {
-      $tenant_id: queryParams.$tenant_id,
-      $is_live:   queryParams.$is_live,
-      $search:    queryParams.$search,
-      $is_client: queryParams.$is_client,
+      $tenant_id:    queryParams.$tenant_id,
+      $is_live:      queryParams.$is_live,
+      $show_inactive: queryParams.$show_inactive,
+      $search:       queryParams.$search,
+      $is_client:    queryParams.$is_client,
     }),
   ]);
 
