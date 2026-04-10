@@ -95,12 +95,16 @@ export default function ContactsPage() {
   const [deletingId, setDeletingId]   = useState<number | null>(null);
 
   // Create drawer
-  const [drawerOpen, setDrawerOpen]       = useState(false);
-  const [newPrefix, setNewPrefix]         = useState('Mr');
-  const [newName, setNewName]             = useState('');
-  const [newCountryCode, setNewCountryCode] = useState('in');
-  const [newMobile, setNewMobile]         = useState('');
-  const [newEmail, setNewEmail]           = useState('');
+  const [drawerOpen, setDrawerOpen]             = useState(false);
+  const [newPrefix, setNewPrefix]               = useState('Mr');
+  const [newName, setNewName]                   = useState('');
+  const [newCountryCode, setNewCountryCode]     = useState('in');
+  const [newMobile, setNewMobile]               = useState('');
+  const [newEmail, setNewEmail]                 = useState('');
+  const [newAge, setNewAge]                     = useState('');
+  const [newCity, setNewCity]                   = useState('');
+  const [newMarital, setNewMarital]             = useState('');
+  const [newDependents, setNewDependents]       = useState<number | null>(null);
 
   const handleSearch = (v: string) => {
     setSearch(v);
@@ -150,6 +154,7 @@ export default function ContactsPage() {
 
   function openDrawer() {
     setNewPrefix('Mr'); setNewName(''); setNewCountryCode('in'); setNewMobile(''); setNewEmail('');
+    setNewAge(''); setNewCity(''); setNewMarital(''); setNewDependents(null);
     setDrawerOpen(true);
   }
 
@@ -163,7 +168,15 @@ export default function ContactsPage() {
       channels.push({ channel_type: 'mobile', channel_value: `${country?.dial_code ?? '+91'}${newMobile.trim()}`, is_primary: true });
     }
     if (newEmail.trim()) channels.push({ channel_type: 'email', channel_value: newEmail.trim(), is_primary: !newMobile.trim() });
-    createContact({ prefix: newPrefix, name: newName.trim(), channels });
+    createContact({
+      prefix: newPrefix,
+      name: newName.trim(),
+      channels,
+      age:              newAge ? Number(newAge) : undefined,
+      city:             newCity.trim() || undefined,
+      marital_status:   (newMarital as 'single' | 'married' | 'family' | 'other') || undefined,
+      dependents_count: newDependents !== null ? newDependents : undefined,
+    });
   }
 
   function handleDelete(e: React.MouseEvent, contactId: number) {
@@ -388,6 +401,67 @@ export default function ContactsPage() {
                 onChange={e => setNewEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleCreate()}
               />
+
+              {/* Age + City */}
+              <div className={s.drawerRow2}>
+                <VdfInput
+                  label="Age"
+                  type="number"
+                  placeholder="e.g. 38"
+                  value={newAge}
+                  onChange={e => setNewAge(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                />
+                <VdfInput
+                  label="City"
+                  placeholder="e.g. Mumbai"
+                  value={newCity}
+                  onChange={e => setNewCity(e.target.value)}
+                />
+              </div>
+
+              {/* Life situation */}
+              <div className={s.fieldGroup}>
+                <label className={s.fieldLabel}>Life Situation</label>
+                <div className={s.situationTiles}>
+                  {([
+                    { value: 'single',  label: 'Single',  sub: 'No dependents' },
+                    { value: 'married', label: 'Married', sub: 'With partner' },
+                    { value: 'family',  label: 'Family',  sub: 'With kids' },
+                    { value: 'other',   label: 'Other',   sub: 'Will specify' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={`${s.situationTile} ${newMarital === opt.value ? s.situationTileActive : ''}`}
+                      onClick={() => setNewMarital(newMarital === opt.value ? '' : opt.value)}
+                    >
+                      <span className={s.situationLabel}>{opt.label}</span>
+                      <span className={s.situationSub}>{opt.sub}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dependents */}
+              <div className={s.fieldGroup}>
+                <label className={s.fieldLabel}>Dependents</label>
+                <div className={s.dependentBubbles}>
+                  {[0, 1, 2, 3, '4+'].map((v) => {
+                    const num = v === '4+' ? 4 : Number(v);
+                    const active = newDependents === num;
+                    return (
+                      <button
+                        key={v}
+                        type="button"
+                        className={`${s.depBubble} ${active ? s.depBubbleActive : ''}`}
+                        onClick={() => setNewDependents(active ? null : num)}
+                      >
+                        {v}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             <div className={s.drawerFooter}>
