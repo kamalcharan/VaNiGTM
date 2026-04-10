@@ -58,13 +58,14 @@ export async function generate_intake_token(
 
   const res = await ctx.db.query<{
     id: number; token: string; contact_id: number | null;
-    expires_at: string; status: string; created_at: string;
+    expires_at: string; status: string; created_at: string; is_live: boolean;
   }>(GEN_TOKEN_SQL, {
     $tenant_id:          ctx.tenant_id,
     $token:              token,
     $contact_id:         contact_id ?? null,
     $created_by_user_id: ctx.user_id,
     $expires_at:         expiresAt.toISOString(),
+    $is_live:            ctx.is_live,
   });
 
   const row = res.rows[0];

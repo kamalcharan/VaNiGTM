@@ -154,6 +154,7 @@ export function createIntakeRouter(pool: Pool): Router {
       const tokenRow = tokenRes.rows[0];
       const tenantId  = tokenRow.tenant_id as string;
       const tokenId   = tokenRow.token_id  as number;
+      const isLive    = tokenRow.is_live as boolean ?? true;
       const flow      = tokenRow.contact_id ? 'known_contact' : 'cold_lead';
 
       // Set tenant RLS context
@@ -177,9 +178,9 @@ export function createIntakeRouter(pool: Pool): Router {
         // normalized_name is GENERATED ALWAYS AS — must not be in INSERT column list
         const contactInsert = await client.query(
           `INSERT INTO ki_contacts (tenant_id, name, prefix, is_client, is_active, is_live)
-           VALUES ($1, $2, 'Mr', false, true, false)
+           VALUES ($1, $2, 'Mr', false, true, $3)
            RETURNING id`,
-          [tenantId, nameVal]
+          [tenantId, nameVal, isLive]
         );
         contactId = contactInsert.rows[0].id;
 
@@ -221,8 +222,8 @@ export function createIntakeRouter(pool: Pool): Router {
       await client.query(
         `UPDATE ki_contact_snapshots
          SET status = 'archived'
-         WHERE contact_id = $1 AND tenant_id = $2 AND is_live = false AND status = 'active'`,
-        [contactId, tenantId]
+         WHERE contact_id = $1 AND tenant_id = $2 AND is_live = $3 AND status = 'active'`,
+        [contactId, tenantId, isLive]
       );
 
       // ── Compute calc_ metrics ──────────────────────────────
@@ -256,12 +257,12 @@ export function createIntakeRouter(pool: Pool): Router {
             calc_net_worth, calc_total_emi, calc_dti_pct,
             calc_liquid_assets, calc_liquidity_months, calc_protection_ratio_pct)
          VALUES
-           ($1, $2, false, $3, 'active',
-            NULL, $4, $5, $6, now(),
-            $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+           ($1, $2, $3, $4, 'active',
+            NULL, $5, $6, $7, now(),
+            $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
          RETURNING id`,
         [
-          tenantId, contactId, versionNumber, tokenId,
+          tenantId, contactId, isLive, versionNumber, tokenId,
           risk_profile || null, notes || null,
           monthlyIncome, monthlyExpenses, monthlyIncome - monthlyExpenses,
           savingsRatePct, totalAssets, totalLiabs, netWorth,

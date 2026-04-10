@@ -12,6 +12,7 @@ SELECT
     t.lead_name,
     t.lead_mobile,
     t.lead_email,
+    t.is_live,
 
     -- Tenant brand for intake page styling
     tp.display_name     AS tenant_display_name,
