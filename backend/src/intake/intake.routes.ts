@@ -128,6 +128,7 @@ export function createIntakeRouter(pool: Pool): Router {
       token,
       // Flow 2 lead capture
       lead_name, lead_mobile, lead_email,
+      lead_age, lead_city, lead_marital_status, lead_dependents_count,
       // Snapshot sections
       income = [], expenses = [], assets = [], liabilities = [],
       protection = {}, goals = [],
@@ -176,11 +177,20 @@ export function createIntakeRouter(pool: Pool): Router {
 
         // Insert contact — prefix NOT NULL with CHECK; use 'Mr' as default for cold leads
         // normalized_name is GENERATED ALWAYS AS — must not be in INSERT column list
+        const VALID_MARITAL = ['single', 'married', 'family', 'other'];
+        const maritalVal = VALID_MARITAL.includes(String(lead_marital_status || ''))
+          ? String(lead_marital_status) : null;
         const contactInsert = await client.query(
-          `INSERT INTO ki_contacts (tenant_id, name, prefix, is_client, is_active, is_live)
-           VALUES ($1, $2, 'Mr', false, true, $3)
+          `INSERT INTO ki_contacts
+             (tenant_id, name, prefix, is_client, is_active, is_live,
+              age, city, marital_status, dependents_count)
+           VALUES ($1, $2, 'Mr', false, true, $3, $4, $5, $6, $7)
            RETURNING id`,
-          [tenantId, nameVal, isLive]
+          [tenantId, nameVal, isLive,
+           Number(lead_age) || null,
+           String(lead_city || '').trim() || null,
+           maritalVal,
+           Number(lead_dependents_count) >= 0 ? Number(lead_dependents_count) : null]
         );
         contactId = contactInsert.rows[0].id;
 
