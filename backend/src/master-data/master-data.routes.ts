@@ -142,8 +142,8 @@ export function createMasterDataRouter(pool: Pool): Router {
     try {
       const result = await pool.query(
         `SELECT id, asset_type_code, asset_type_name, category,
-                default_assumption_rate, display_order, is_active, description,
-                created_at, updated_at
+                default_assumption_rate, is_liquid_default, display_order,
+                is_active, description, created_at, updated_at
          FROM ki_asset_types
          ORDER BY display_order, asset_type_name`,
       );
@@ -164,9 +164,9 @@ export function createMasterDataRouter(pool: Pool): Router {
       return;
     }
 
-    const { asset_type_name, description, default_assumption_rate, is_active } = req.body as {
+    const { asset_type_name, description, default_assumption_rate, is_liquid_default, is_active } = req.body as {
       asset_type_name?: string; description?: string;
-      default_assumption_rate?: number; is_active?: boolean;
+      default_assumption_rate?: number; is_liquid_default?: boolean; is_active?: boolean;
     };
 
     const updates: string[] = [];
@@ -188,6 +188,10 @@ export function createMasterDataRouter(pool: Pool): Router {
       }
       params.push(rate);
       updates.push(`default_assumption_rate = $${params.length}`);
+    }
+    if (is_liquid_default !== undefined) {
+      params.push(Boolean(is_liquid_default));
+      updates.push(`is_liquid_default = $${params.length}`);
     }
     if (is_active !== undefined) {
       params.push(Boolean(is_active));
