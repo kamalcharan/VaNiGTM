@@ -4,7 +4,7 @@
  * These endpoints are intentionally unauthenticated — they are accessed
  * by the contact/lead via a signed intake token URL. Auth is the token itself.
  *
- * POST /api/v1/intake/validate  — validate token, return pre-fill + brand data
+ * POST /api/v1/intake/validate  — validate token, return pre-fill + brand data (v2)
  * POST /api/v1/intake/submit    — submit filled snapshot (creates/updates contact)
  *
  * Security model:
@@ -173,10 +173,11 @@ export function createIntakeRouter(pool: Pool): Router {
           return;
         }
 
-        // Insert contact
+        // Insert contact — prefix NOT NULL with CHECK; use 'Mr' as default for cold leads
+        // normalized_name is GENERATED ALWAYS AS — must not be in INSERT column list
         const contactInsert = await client.query(
-          `INSERT INTO ki_contacts (tenant_id, name, prefix, normalized_name, is_client, is_active, is_live)
-           VALUES ($1, $2, '', lower(unaccent($2)), false, true, false)
+          `INSERT INTO ki_contacts (tenant_id, name, prefix, is_client, is_active, is_live)
+           VALUES ($1, $2, 'Mr', false, true, false)
            RETURNING id`,
           [tenantId, nameVal]
         );
@@ -185,16 +186,16 @@ export function createIntakeRouter(pool: Pool): Router {
         // Insert channels
         if (mobileVal) {
           await client.query(
-            `INSERT INTO ki_channels (tenant_id, contact_id, channel_type, channel_value, channel_subtype, is_primary, is_active)
+            `INSERT INTO ki_contact_channels (tenant_id, contact_id, channel_type, channel_value, channel_subtype, is_primary, is_active)
              VALUES ($1, $2, 'mobile', $3, 'personal', true, true)`,
             [tenantId, contactId, mobileVal]
           );
         }
         if (emailVal) {
           await client.query(
-            `INSERT INTO ki_channels (tenant_id, contact_id, channel_type, channel_value, channel_subtype, is_primary, is_active)
-             VALUES ($1, $2, 'email', $3, 'personal', !$4, true)`,
-            [tenantId, contactId, emailVal, !!mobileVal]
+            `INSERT INTO ki_contact_channels (tenant_id, contact_id, channel_type, channel_value, channel_subtype, is_primary, is_active)
+             VALUES ($1, $2, 'email', $3, 'personal', $4, true)`,
+            [tenantId, contactId, emailVal, !mobileVal]
           );
         }
 

@@ -27,7 +27,7 @@ SELECT
     c.name              AS contact_name,
     -- Primary mobile
     (SELECT ch.channel_value
-     FROM ki_channels ch
+     FROM ki_contact_channels ch
      WHERE ch.contact_id = c.id
        AND ch.channel_type = 'mobile'
        AND ch.is_active = true
@@ -35,7 +35,7 @@ SELECT
      LIMIT 1)           AS contact_mobile,
     -- Primary email
     (SELECT ch.channel_value
-     FROM ki_channels ch
+     FROM ki_contact_channels ch
      WHERE ch.contact_id = c.id
        AND ch.channel_type = 'email'
        AND ch.is_active = true
