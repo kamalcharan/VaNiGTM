@@ -1,31 +1,78 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
+import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/components/toast';
 import { InlineLoader } from '@/components/loader';
+import { VdfLoader, VdfStatusBadge } from '@/components/vdf';
 import FormInput from '@/components/ui/form-input';
 import s from './settings-tabs.module.css';
 
-interface SentInvite {
+interface Member {
+  id: string;
+  name: string;
   email: string;
-  role: string;
-  status: 'sent' | 'error';
-  message?: string;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+  is_active: boolean;
+  last_login_at: string | null;
+  created_at: string;
+  role_code: string | null;
+  role_name: string | null;
+}
+
+interface PendingInvite {
+  id: string;
+  email: string;
+  status: string;
+  expires_at: string;
+  created_at: string;
+  role_code: string | null;
+  role_name: string | null;
+}
+
+function initials(member: Member): string {
+  const f = member.first_name?.[0] || member.name?.[0] || '';
+  const l = member.last_name?.[0] || member.name?.split(' ')[1]?.[0] || '';
+  return (f + l).toUpperCase() || '?';
 }
 
 export default function TeamTab() {
+  const { user } = useAuth();
   const { showToast } = useToast();
+
+  const [members, setMembers] = useState<Member[]>([]);
+  const [invites, setInvites] = useState<PendingInvite[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [email, setEmail] = useState('');
   const [roleId, setRoleId] = useState('planner');
   const [sending, setSending] = useState(false);
-  const [sentInvites, setSentInvites] = useState<SentInvite[]>([]);
   const [emailError, setEmailError] = useState('');
 
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [membersRes, invitesRes] = await Promise.all([
+        apiFetch<{ members: Member[] }>(API.invite.team),
+        apiFetch<{ invitations: PendingInvite[] }>(API.invite.list),
+      ]);
+      setMembers(membersRes.members || []);
+      setInvites(invitesRes.invitations || []);
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Failed to load team', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { load(); }, [load]);
+
   async function handleSend() {
-    if (sending) return; // Prevent double-send
+    if (sending) return;
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setEmailError('Please enter a valid email address');
@@ -35,19 +82,12 @@ export default function TeamTab() {
     setSending(true);
 
     try {
-      const res = await apiFetch<{ invitations: SentInvite[] }>(API.invite.send, {
+      await apiFetch(API.invite.send, {
         body: { invitations: [{ email: trimmed, role_id: roleId }] },
       });
-      const result = res.invitations?.[0];
-      if (result) {
-        setSentInvites((prev) => [result, ...prev]);
-        if (result.status === 'sent') {
-          showToast({ message: `Invitation sent to ${trimmed}`, type: 'success' });
-          setEmail('');
-        } else {
-          showToast({ message: result.message || 'Failed to send', type: 'error' });
-        }
-      }
+      showToast({ message: `Invitation sent to ${trimmed}`, type: 'success' });
+      setEmail('');
+      load(); // refresh pending invites
     } catch (err) {
       showToast({ message: (err as ApiError).message || 'Failed to send invitation', type: 'error' });
     } finally {
@@ -55,11 +95,67 @@ export default function TeamTab() {
     }
   }
 
+  if (loading) return <VdfLoader message="Loading team" hint="Fetching members and invitations" />;
+
   return (
     <>
+      {/* ── Current Members ── */}
       <div className={s.card}>
-        <div className={s.cardTitle}>Invite Team Members</div>
-        <div className={s.cardDesc}>Add team members to your workspace by email</div>
+        <div className={s.cardTitle}>Team Members ({members.length})</div>
+        <div className={s.cardDesc}>All users with access to this workspace</div>
+
+        {members.map((m) => (
+          <div key={m.id} className={s.sessionCard}>
+            <div className={s.inviteAvatar}>{initials(m)}</div>
+            <div className={s.sessionInfo}>
+              <div className={s.sessionDevice}>
+                {m.name || m.email}
+                {m.id === user?.id && (
+                  <span className={s.sessionBadge} style={{ marginLeft: 8 }}>You</span>
+                )}
+              </div>
+              <div className={s.sessionMeta}>
+                <span>{m.email}</span>
+                {m.role_name && <span>{m.role_name}</span>}
+                {m.last_login_at && (
+                  <span>Last login {new Date(m.last_login_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                )}
+              </div>
+            </div>
+            <VdfStatusBadge
+              label={m.is_active ? 'Active' : 'Inactive'}
+              variant={m.is_active ? 'success' : 'muted'}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* ── Pending Invitations ── */}
+      {invites.length > 0 && (
+        <div className={s.card}>
+          <div className={s.cardTitle}>Pending Invitations ({invites.length})</div>
+          <div className={s.cardDesc}>Invitations awaiting acceptance — expire in 7 days</div>
+
+          {invites.map((inv) => (
+            <div key={inv.id} className={s.sessionCard}>
+              <div className={s.inviteAvatar}>{inv.email[0].toUpperCase()}</div>
+              <div className={s.sessionInfo}>
+                <div className={s.sessionDevice}>{inv.email}</div>
+                <div className={s.sessionMeta}>
+                  {inv.role_name && <span>{inv.role_name}</span>}
+                  <span>Expires {new Date(inv.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                </div>
+              </div>
+              <VdfStatusBadge label="Pending" variant="warning" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Invite Form ── */}
+      <div className={s.card}>
+        <div className={s.cardTitle}>Invite a Team Member</div>
+        <div className={s.cardDesc}>They will receive an email invitation to join this workspace</div>
 
         <div className={s.formRow}>
           <div style={{ flex: 2 }}>
@@ -92,36 +188,6 @@ export default function TeamTab() {
             {sending ? <InlineLoader size="sm" message="Sending..." /> : 'Send Invitation'}
           </button>
         </div>
-      </div>
-
-      {/* Sent Invitations */}
-      {sentInvites.length > 0 && (
-        <div className={s.card}>
-          <div className={s.cardTitle}>Sent Invitations</div>
-          <div className={s.cardDesc}>Invitations expire in 7 days</div>
-
-          {sentInvites.map((inv, i) => (
-            <div key={`${inv.email}-${i}`} className={`${s.sessionCard} ${inv.status === 'error' ? s.inviteError : ''}`}>
-              <div className={s.inviteAvatar}>
-                {inv.email[0].toUpperCase()}
-              </div>
-              <div className={s.sessionInfo}>
-                <div className={s.sessionDevice}>{inv.email}</div>
-                <div className={s.sessionMeta}>
-                  <span>{inv.role}</span>
-                </div>
-              </div>
-              <span className={inv.status === 'sent' ? s.inviteOk : s.inviteFail}>
-                {inv.status === 'sent' ? 'Sent' : inv.message || 'Failed'}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className={s.infoBanner}>
-        {'\u2139\uFE0F'} Team members will receive an email with a link to join your workspace.
-        They can also sign up and use the invitation code.
       </div>
     </>
   );

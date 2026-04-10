@@ -60,3 +60,4 @@ export {
   type PercentileTone,
 } from './benchmark-bar/VdfBenchmarkBar';
 export { VdfActionCard, type VdfActionCardProps, type ActionTone } from './action-card/VdfActionCard';
+export { VdfColorPicker, type VdfColorPickerProps } from './color-picker/VdfColorPicker';

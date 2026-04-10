@@ -241,6 +241,83 @@ export function createAuthRouter(pool: Pool): Router {
     }
   });
 
+  /* ── GET /api/v1/auth/team ─────────────────────────── */
+
+  router.get('/team', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+
+      const result = await pool.query(
+        `SELECT
+           u.id,
+           u.name,
+           u.email,
+           u.first_name,
+           u.last_name,
+           u.avatar_url,
+           u.is_active,
+           u.last_login_at,
+           u.created_at,
+           r.code  AS role_code,
+           r.name  AS role_name
+         FROM vn_users u
+         LEFT JOIN vn_user_roles ur ON ur.user_id = u.id AND ur.revoked_at IS NULL
+         LEFT JOIN vn_roles r       ON r.id = ur.role_id
+         WHERE u.tenant_id = $1
+         ORDER BY u.created_at ASC`,
+        [jwt.tenant_id],
+      );
+
+      res.json({ members: result.rows });
+    } catch (err: any) {
+      console.error('[Auth:team]', err);
+      res.status(500).json({
+        error: { code: 'FETCH_FAILED', message: 'Failed to fetch team members' },
+      });
+    }
+  });
+
+  /* ── GET /api/v1/auth/invitations ──────────────────── */
+
+  router.get('/invitations', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+
+      const result = await pool.query(
+        `SELECT
+           i.id,
+           i.email,
+           i.status,
+           i.expires_at,
+           i.created_at,
+           r.code AS role_code,
+           r.name AS role_name
+         FROM vn_invitations i
+         LEFT JOIN vn_roles r ON r.id = i.role_id
+         WHERE i.tenant_id = $1
+           AND i.status = 'pending'
+           AND i.expires_at > now()
+         ORDER BY i.created_at DESC`,
+        [jwt.tenant_id],
+      );
+
+      res.json({ invitations: result.rows });
+    } catch (err: any) {
+      console.error('[Auth:invitations]', err);
+      res.status(500).json({
+        error: { code: 'FETCH_FAILED', message: 'Failed to fetch invitations' },
+      });
+    }
+  });
+
   /* ── PATCH /api/v1/auth/preferences ───────────────── */
 
   router.patch('/preferences', async (req, res) => {

@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { useToast } from '../toast';
 import { InlineLoader } from '../loader';
-import { VdfRichText } from '@/components/vdf';
+import { VdfRichText, VdfColorPicker } from '@/components/vdf';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import {
@@ -15,11 +15,6 @@ import {
   validatePIN,
 } from '@/constants/business';
 import s from './OnboardBusiness.module.css';
-
-const QUICK_COLORS = [
-  '#C9A84C', '#4A8FD4', '#3BAFA7', '#D47070', '#7A6FD4',
-  '#E8B44C', '#5EAAF0', '#4ECDC4', '#E88B8B', '#9B8FE8',
-];
 
 interface Props {
   onComplete: () => void;
@@ -217,28 +212,17 @@ export default function OnboardBusiness({ onComplete, onBack }: Props) {
           </div>
           <p className={s.cardDesc}>Customize your application to match your firm&apos;s brand identity.</p>
 
-          <div className={s.colorSection}>
-            <div className={s.colorMain}>
-              <div className={s.colorSwatch} style={{ background: brandColor }} />
-              <input type="text" className={`${s.input} ${s.mono} ${s.colorHexInput}`} value={brandColor} onChange={(e) => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setBrandColor(e.target.value); }} maxLength={7} disabled={loading} />
-              <input type="color" className={s.colorNative} value={brandColor} onChange={(e) => setBrandColor(e.target.value)} disabled={loading} title="Pick color" />
-            </div>
+          <VdfColorPicker
+            value={brandColor}
+            onChange={setBrandColor}
+            disabled={loading}
+          />
 
-            <div className={s.quickColors}>
-              <span className={s.quickLabel}>Quick Colors</span>
-              <div className={s.quickRow}>
-                {QUICK_COLORS.map((c) => (
-                  <button key={c} type="button" className={`${s.quickDot} ${brandColor === c ? s.quickDotActive : ''}`} style={{ background: c }} onClick={() => setBrandColor(c)} title={c} />
-                ))}
-              </div>
-            </div>
-
-            <div className={s.colorPreviewBar}>
-              <span className={s.previewLabel}>Preview</span>
-              <div className={s.previewRow}>
-                <div className={s.previewBtn} style={{ background: brandColor }}>Primary Button</div>
-                <div className={s.previewGrad} style={{ background: `linear-gradient(135deg, ${brandColor}, ${brandColor}88)` }} />
-              </div>
+          <div className={s.colorPreviewBar}>
+            <span className={s.previewLabel}>Preview</span>
+            <div className={s.previewRow}>
+              <div className={s.previewBtn} style={{ background: brandColor }}>Primary Button</div>
+              <div className={s.previewGrad} style={{ background: `linear-gradient(135deg, ${brandColor}, ${brandColor}88)` }} />
             </div>
           </div>
         </div>

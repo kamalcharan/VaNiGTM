@@ -124,6 +124,12 @@ export const API = {
       auth: true,
       description: 'List pending invitations for current tenant',
     },
+    team: {
+      method: 'GET',
+      path: '/api/v1/auth/team',
+      auth: true,
+      description: 'List all active team members for current tenant with their roles',
+    },
     revoke: {
       method: 'DELETE',
       path: '/api/v1/auth/invitations/:id',

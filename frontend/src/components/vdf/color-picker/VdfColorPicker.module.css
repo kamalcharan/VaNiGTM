@@ -1,0 +1,103 @@
+/* ═══════════════════════════════════════════════════════
+   VdfColorPicker — theme-compliant color selector
+   All values via CSS variables. No hardcoded colors.
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Display (read-only) mode ────────────────────────── */
+.displayRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.displaySwatch {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+  /* background is always set via inline style — it's dynamic user data */
+}
+
+.displayHex {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-fg);
+  letter-spacing: 0.05em;
+}
+
+/* ── Edit mode ───────────────────────────────────────── */
+.pickerMain {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.pickerSwatch {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+  transition: background 200ms;
+  /* background is always set via inline style — it's dynamic user data */
+}
+
+.hexInput {
+  width: 130px;
+  height: var(--btn-height, 44px);
+  padding: var(--input-padding, 13px 16px);
+  background: var(--color-bg);
+  border: var(--input-border-width, 1px) solid var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  color: var(--color-fg);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: var(--input-font-size, 0.9rem);
+  outline: none;
+  transition: border-color 200ms;
+}
+.hexInput:focus { border-color: var(--color-primary); }
+.hexInput:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.nativePicker {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 2px;
+  background: var(--color-bg);
+}
+.nativePicker::-webkit-color-swatch-wrapper { padding: 2px; }
+.nativePicker::-webkit-color-swatch { border: none; border-radius: 4px; }
+.nativePicker:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.quickColors { margin-bottom: 8px; }
+
+.quickLabel {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 8px;
+}
+
+.quickRow { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.quickDot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 150ms, border-color 150ms;
+  padding: 0;
+  /* background is always set via inline style — it's the color itself */
+}
+.quickDot:hover { transform: scale(1.15); }
+.quickDot:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.quickDotActive { border-color: var(--color-fg); }

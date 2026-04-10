@@ -5,7 +5,7 @@ import { apiFetch, getAccessToken, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { InlineLoader } from '@/components/loader';
-import { VdfLoader } from '@/components/vdf';
+import { VdfLoader, VdfColorPicker } from '@/components/vdf';
 import FormInput from '@/components/ui/form-input';
 import { INDIAN_STATES, validatePAN, validateGSTIN, validateARN, validatePIN } from '@/constants/business';
 import s from './settings-tabs.module.css';
@@ -45,7 +45,7 @@ const EMPTY: ProfileData = {
   country: 'India', brand_color: '',
 };
 
-type EditSection = null | 'info' | 'compliance' | 'address';
+type EditSection = null | 'info' | 'brand' | 'compliance' | 'address';
 
 export default function BusinessTab() {
   const { showToast } = useToast();
@@ -128,21 +128,13 @@ export default function BusinessTab() {
 
     setSaving(true);
     try {
-      await apiFetch(API.tenant.profile, {
-        body: {
-          display_name: draft.display_name.trim(),
-          type: draft.type || undefined,
-          arn: draft.arn || undefined,
-          pan: draft.pan.toUpperCase() || undefined,
-          gstin: draft.gstin.toUpperCase() || undefined,
-          address_line1: draft.address_line1 || undefined,
-          address_line2: draft.address_line2 || undefined,
-          state: draft.state || undefined,
-          city: draft.city || undefined,
-          postal_code: draft.postal_code || undefined,
-          country: 'India',
-        },
-      });
+      const body: Record<string, unknown> =
+        editing === 'info'       ? { display_name: draft.display_name.trim(), type: draft.type || undefined } :
+        editing === 'brand'      ? { brand_color: draft.brand_color || undefined } :
+        editing === 'compliance' ? { arn: draft.arn || undefined, pan: draft.pan.toUpperCase() || undefined, gstin: draft.gstin.toUpperCase() || undefined } :
+        /* address */              { address_line1: draft.address_line1 || undefined, address_line2: draft.address_line2 || undefined, state: draft.state || undefined, city: draft.city || undefined, postal_code: draft.postal_code || undefined, country: 'India' };
+
+      await apiFetch(API.tenant.profile, { body });
       showToast({ message: 'Business profile updated', type: 'success' });
       setProfile({ ...draft });
       setEditing(null);
@@ -203,6 +195,39 @@ export default function BusinessTab() {
               <div className={s.readValue}>{getTypeLabel(profile.type)}</div>
             </div>
           </div>
+        )}
+      </div>
+
+      {/* ── Brand Color ── */}
+      <div className={s.card}>
+        <div className={s.cardHeader}>
+          <div>
+            <div className={s.cardTitle}>Brand Color</div>
+            <div className={s.cardDescInline}>Used in reports, client portal, and communications</div>
+          </div>
+          {editing !== 'brand' && (
+            <button className={s.btnChange} onClick={() => startEdit('brand')}>
+              ✏ Change
+            </button>
+          )}
+        </div>
+
+        {editing === 'brand' ? (
+          <>
+            <VdfColorPicker
+              value={draft.brand_color}
+              onChange={(color) => setDraft({ ...draft, brand_color: color })}
+              disabled={saving}
+            />
+            <div className={s.actions}>
+              <button className={s.btnCancel} onClick={cancelEdit} disabled={saving}>Cancel</button>
+              <button className={s.btnSave} onClick={saveSection} disabled={saving}>
+                {saving ? <InlineLoader size="sm" message="Saving..." /> : 'Save'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <VdfColorPicker value={profile.brand_color} readOnly />
         )}
       </div>
 
