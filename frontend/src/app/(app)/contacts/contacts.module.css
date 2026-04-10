@@ -250,7 +250,6 @@
   border-radius: 6px;
   color: var(--color-muted);
   cursor: pointer;
-  opacity: 0;
   transition: all 150ms;
 }
 
@@ -265,14 +264,10 @@
   border-radius: 6px;
   color: var(--color-muted);
   cursor: pointer;
-  opacity: 0;
   transition: all 150ms;
 }
 
-.row:hover .editBtn { opacity: 1; }
 .editBtn:hover { border-color: var(--color-primary); color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
-
-.row:hover .deleteBtn { opacity: 1; }
 .deleteBtn:hover { border-color: var(--color-danger); color: var(--color-danger); background: color-mix(in srgb, var(--color-danger) 8%, transparent); }
 .deleteBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
