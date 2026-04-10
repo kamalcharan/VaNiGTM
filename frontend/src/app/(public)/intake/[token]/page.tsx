@@ -798,7 +798,7 @@ export default function IntakePage() {
                     <label className={s.curFieldLabel}>Yrs Held</label>
                     <input className={s.plainInput} type="number" inputMode="numeric" placeholder="—"
                       min="0" max="99"
-                      value={asset.years_held}
+                      value={asset.years_held ?? ''}
                       onChange={e => setAssets(p => p.map((a, j) => j === i ? { ...a, years_held: e.target.value } : a))} />
                   </div>
                 </div>
@@ -861,9 +861,9 @@ export default function IntakePage() {
       {step === 2 && (
         <div className={s.stepBody}>
           <div className={s.sectionHead}>
-            <div className={s.sectionNum}>Section 03 / 05 · Liabilities</div>
-            <h2 className={s.sectionTitle}>Loans &amp; liabilities</h2>
-            <p className={s.sectionSub}>Loans and outstanding debts. No judgement — clarity helps planning.</p>
+            <div className={s.sectionNum}>Section 03 / 05 · What you owe</div>
+            <h2 className={s.sectionTitle}>Loans<br /><em>and liabilities.</em></h2>
+            <p className={s.sectionSub}>Home loan, car loan, personal loan, credit card debt — anything you owe. If you&apos;re debt-free, just skip.</p>
           </div>
 
           {liabs.length === 0 ? (
@@ -975,8 +975,8 @@ export default function IntakePage() {
         <div className={s.stepBody}>
           <div className={s.sectionHead}>
             <div className={s.sectionNum}>Section 04 / 05 · Protection</div>
-            <h2 className={s.sectionTitle}>Insurance &amp; protection</h2>
-            <p className={s.sectionSub}>Life and health coverage — quantify the safety net.</p>
+            <h2 className={s.sectionTitle}>Safety nets<br /><em>for your family.</em></h2>
+            <p className={s.sectionSub}>Life and health insurance. This is often the most-skipped step — but it&apos;s the difference between a setback and a disaster.</p>
           </div>
 
           {/* Life Insurance */}
@@ -1151,9 +1151,9 @@ export default function IntakePage() {
       {step === 4 && (
         <div className={s.stepBody}>
           <div className={s.sectionHead}>
-            <div className={s.sectionNum}>Section 05 / 05 · Goals &amp; Risk</div>
-            <h2 className={s.sectionTitle}>Goals &amp; risk profile</h2>
-            <p className={s.sectionSub}>Aspirations and risk appetite — the plan&rsquo;s destination.</p>
+            <div className={s.sectionNum}>Section 05 / 05 · Dreams</div>
+            <h2 className={s.sectionTitle}>What are you<br /><em>saving for?</em></h2>
+            <p className={s.sectionSub}>The reason behind the numbers. Your dreams give your money a job to do.</p>
           </div>
 
           {/* Risk Profile */}
