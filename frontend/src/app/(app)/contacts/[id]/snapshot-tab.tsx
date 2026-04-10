@@ -928,32 +928,31 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
 
         </div>
 
-        {/* Goals section */}
-        <div className={s.snapSectionBlock}>
-          <div className={s.snapSectionHead}>
-            <span className={s.snapSectionLabel}>Goals &amp; Future Focus</span>
-            {vaniGoalsFilled.length > 0 && (
-              <span className={s.snapSectionMeta}>
-                Combined SIP needed ≈ {fmt(Math.round(vaniTotalSIP))}/mo
-              </span>
-            )}
+        {/* Goals card — same snapCard visual as Asset allocation + Pulse rings */}
+        <div className={s.snapCard} style={{ marginBottom: 16 }}>
+          <div className={s.snapCardTitle}>Goals &amp; Future Focus</div>
+          <div className={s.snapCardSub}>
+            {vaniGoalsFilled.length === 0
+              ? 'No goals captured'
+              : `${vaniGoalsFilled.length} goal${vaniGoalsFilled.length !== 1 ? 's' : ''}${vaniTotalSIP > 0 ? ` · Combined SIP needed ≈ ${fmt(Math.round(vaniTotalSIP))}/mo` : ''}`}
           </div>
           {vaniGoalsFilled.length === 0 ? (
-            <div className={s.snapEmpty} style={{ padding: '16px 0' }}>No goals captured — <button className={s.snapInlineEdit} onClick={() => setShowSnapshot(false)}>add goals in edit mode</button></div>
+            <div className={s.snapEmpty}>
+              No goals captured — <button className={s.snapInlineEdit} onClick={() => setShowSnapshot(false)}>add goals in edit mode</button>
+            </div>
           ) : (
-            <div className={s.goalChips}>
+            <div className={s.goalRows}>
               {vaniGoalsFilled.map((g, i) => {
-                const gt   = goalTypes.find(t => t.code === g.goal_type);
-                const sip  = goalSip(Number(g.target_amount), Number(g.timeline_years) || 10);
-                const yrs  = Number(g.timeline_years) || 10;
+                const gt  = goalTypes.find(t => t.code === g.goal_type);
+                const sip = goalSip(Number(g.target_amount), Number(g.timeline_years) || 10);
+                const yrs = Number(g.timeline_years) || 10;
                 return (
-                  <div key={i} className={s.goalChip}>
-                    <div className={s.goalChipIcon}>{gt?.icon || '⭐'}</div>
-                    <div className={s.goalChipBody}>
-                      <div className={s.goalChipName}>{g.name}</div>
-                      <div className={s.goalChipMeta}>{fmt(Number(g.target_amount))} · {yrs}yr</div>
-                      <div className={s.goalChipSip}>SIP ≈ {fmt(sip)}/mo</div>
-                    </div>
+                  <div key={i} className={s.goalLegRow}>
+                    <span className={s.goalLegIcon}>{gt?.icon || '⭐'}</span>
+                    <span className={s.goalLegName}>{g.name}</span>
+                    <span className={s.goalLegTarget}>{fmt(Number(g.target_amount))}</span>
+                    <span className={s.goalLegYrs}>{yrs}yr</span>
+                    <span className={s.goalLegSip}>SIP ≈ {fmt(sip)}/mo</span>
                   </div>
                 );
               })}

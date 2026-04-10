@@ -3069,6 +3069,58 @@
   margin-top: 2px;
 }
 
+/* ── Goal rows (snapshot view — matches donut legRow pattern) ─────────────── */
+.goalRows {
+  display: flex;
+  flex-direction: column;
+}
+.goalLegRow {
+  display: grid;
+  grid-template-columns: 18px 1fr auto auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 12px;
+}
+.goalLegRow:first-child { border-top: 1px solid var(--color-border); }
+.goalLegIcon {
+  font-size: 15px;
+  line-height: 1;
+}
+.goalLegName {
+  font-weight: 600;
+  color: var(--color-fg);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.goalLegTarget {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-fg);
+  white-space: nowrap;
+}
+.goalLegYrs {
+  font-size: 11px;
+  color: var(--color-muted);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  white-space: nowrap;
+}
+.goalLegSip {
+  font-size: 11px;
+  color: var(--color-primary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+@media (max-width: 500px) {
+  .goalLegRow { grid-template-columns: 18px 1fr auto; }
+  .goalLegTarget { display: none; }
+  .goalLegYrs { display: none; }
+}
+
 /* ── Captured data grid ──────────────────────────────────────────────────── */
 .dataGrid {
   display: grid;
