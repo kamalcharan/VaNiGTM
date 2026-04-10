@@ -16,11 +16,32 @@
  *
  * GET    /api/v1/master-data/job-types                — List job types + tenant scheduler configs
  * PATCH  /api/v1/master-data/job-configs/:id         — Update tenant scheduler config
+ *
+ * GET    /api/v1/master-data/ext-ref-types            — List all external reference types (any auth)
  */
 
 import { Router } from 'express';
 import type { Pool } from 'pg';
 import { verifyAccessToken, type JwtPayload } from '../auth/token.service';
+
+/* ── Auth guard helper (any authenticated user) ────────────────────────── */
+
+function requireAuth(
+  req: { headers: { authorization?: string } },
+  res: { status: (n: number) => { json: (o: unknown) => void } },
+): JwtPayload | null {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) {
+    res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+    return null;
+  }
+  try {
+    return verifyAccessToken(auth.slice(7));
+  } catch {
+    res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token' } });
+    return null;
+  }
+}
 
 /* ── Auth + Admin guard helper ─────────────────────────────────────────── */
 
@@ -454,6 +475,29 @@ export function createMasterDataRouter(pool: Pool): Router {
     } catch (err) {
       console.error('[MasterData:updateJobConfig]', err);
       res.status(500).json({ error: { code: 'DB_ERROR', message: 'Failed to update job config' } });
+    }
+  });
+
+  /* ══════════════════════════════════════════════════════════════════════
+     EXT REF TYPES (global — any authenticated user, not admin-only)
+     Used during onboarding + convert-to-client to show platform list.
+  ══════════════════════════════════════════════════════════════════════ */
+
+  router.get('/ext-ref-types', async (req, res) => {
+    const jwt = requireAuth(req, res as any);
+    if (!jwt) return;
+
+    try {
+      const result = await pool.query(
+        `SELECT code, label, description, sort_order
+         FROM ki_ext_ref_types
+         WHERE is_active = true
+         ORDER BY sort_order ASC`,
+      );
+      res.json({ ext_ref_types: result.rows });
+    } catch (err) {
+      console.error('[MasterData:extRefTypes]', err);
+      res.status(500).json({ error: { code: 'DB_ERROR', message: 'Failed to load platform types' } });
     }
   });
 

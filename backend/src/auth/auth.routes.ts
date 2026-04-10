@@ -511,7 +511,8 @@ export function createAuthRouter(pool: Pool): Router {
 
       // Tenant info
       const tenantResult = await pool.query(
-        `SELECT t.id, t.slug, t.is_admin, tp.name, tp.display_name, tp.theme_id, tp.logo_url
+        `SELECT t.id, t.slug, t.is_admin, t.ext_ref_type_code,
+                tp.name, tp.display_name, tp.theme_id, tp.logo_url
          FROM vn_tenants t
          JOIN vn_tenant_profiles tp ON tp.tenant_id = t.id
          WHERE t.id = $1`,
@@ -552,6 +553,7 @@ export function createAuthRouter(pool: Pool): Router {
           onboarding_complete: onboardingComplete,
           is_live: is_live !== false,  // default true if somehow missing from JWT
           is_admin: tenant.is_admin === true,
+          ext_ref_type_code: tenant.ext_ref_type_code ?? null,
         },
       });
     } catch (err: any) {
@@ -1208,6 +1210,74 @@ export function createTenantRouter(pool: Pool): Router {
             : err.message || 'Unknown error',
         },
       });
+    }
+  });
+
+  /* ── PATCH /api/v1/tenant/ext-ref-type ─────────────── */
+  /*
+   * One-time selection of the tenant's external reference type (CAMS, KFINTECH, etc.).
+   * Once set, cannot be changed by the tenant — admin intervention required.
+   * Returns 409 if already set.
+   */
+
+  router.patch('/ext-ref-type', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+
+      const { ext_ref_type_code } = req.body as { ext_ref_type_code?: string };
+      if (!ext_ref_type_code || typeof ext_ref_type_code !== 'string') {
+        res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'ext_ref_type_code is required' } });
+        return;
+      }
+
+      // Verify the code exists in ki_ext_ref_types
+      const typeCheck = await pool.query(
+        `SELECT code FROM ki_ext_ref_types WHERE code = $1 AND is_active = true`,
+        [ext_ref_type_code],
+      );
+      if (typeCheck.rows.length === 0) {
+        res.status(400).json({ error: { code: 'INVALID_CODE', message: 'Unknown or inactive platform type' } });
+        return;
+      }
+
+      // Set only if not already set (one-time lock)
+      const result = await pool.query(
+        `UPDATE vn_tenants
+         SET ext_ref_type_code = $1, updated_at = now()
+         WHERE id = $2 AND ext_ref_type_code IS NULL
+         RETURNING ext_ref_type_code`,
+        [ext_ref_type_code, jwt.tenant_id],
+      );
+
+      if (result.rows.length === 0) {
+        // Check if it's because already set
+        const existing = await pool.query(
+          `SELECT ext_ref_type_code FROM vn_tenants WHERE id = $1`,
+          [jwt.tenant_id],
+        );
+        const current = (existing.rows[0] as any)?.ext_ref_type_code;
+        if (current) {
+          res.status(409).json({
+            error: {
+              code: 'ALREADY_SET',
+              message: `Platform already set to '${current}'. Contact admin to change.`,
+              current_code: current,
+            },
+          });
+        } else {
+          res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Tenant not found' } });
+        }
+        return;
+      }
+
+      res.json({ ext_ref_type_code: (result.rows[0] as any).ext_ref_type_code });
+    } catch (err: any) {
+      console.error('[Tenant:extRefType]', err);
+      res.status(500).json({ error: { code: 'UPDATE_FAILED', message: 'Failed to set platform type' } });
     }
   });
 

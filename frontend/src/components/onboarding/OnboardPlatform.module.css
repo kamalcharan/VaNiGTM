@@ -1,0 +1,206 @@
+/* ═══════════════════════════════════════════════════════
+   ONBOARD PLATFORM — Platform/RTA selection step
+   One-time selection: CAMS, KFintech, InvestWell, BSE StarMF, Custom
+   ═══════════════════════════════════════════════════════ */
+
+.step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 32px 48px 40px;
+  max-width: 700px;
+  margin: 0 auto;
+  width: 100%;
+  min-height: calc(100vh - 60px);
+}
+
+/* ── Header ──────────────────────────────────────────── */
+
+.stepHead {
+  margin-bottom: 32px;
+}
+
+.eyebrow {
+  font-size: 0.6rem;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.title {
+  font-family: var(--font-display, 'Playfair Display', serif);
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  margin: 0 0 8px;
+  line-height: 1.2;
+}
+
+.subtitle {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin: 0 0 14px;
+  line-height: 1.6;
+  max-width: 520px;
+}
+
+.lockNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 20%, transparent);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-weight: 500;
+}
+
+/* ── Platform grid ───────────────────────────────────── */
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.loadingWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Platform card ───────────────────────────────────── */
+
+.card {
+  all: unset;
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  border-radius: 10px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.card:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface));
+}
+
+.cardSelected {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.cardInner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+}
+
+.cardIcon {
+  flex-shrink: 0;
+}
+
+.cardBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.cardLabel {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  margin-bottom: 2px;
+}
+
+.cardDesc {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardCheck {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.cardSelected .cardCheck {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-bg);
+}
+
+/* ── Footer ──────────────────────────────────────────── */
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border);
+}
+
+.backBtn {
+  all: unset;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  padding: var(--btn-padding, 14px) 20px;
+  border-radius: var(--btn-radius, 8px);
+  border: 1px solid var(--color-border);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.backBtn:hover:not(:disabled) {
+  color: var(--color-fg);
+  border-color: var(--color-fg);
+}
+
+.backBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.saveBtn {
+  all: unset;
+  cursor: pointer;
+  font-size: var(--btn-font-size, 0.85rem);
+  font-weight: var(--btn-font-weight, 700);
+  letter-spacing: var(--btn-letter-spacing, 0.08em);
+  color: var(--color-bg);
+  background: var(--color-primary);
+  padding: var(--btn-padding, 14px) 28px;
+  border-radius: var(--btn-radius, 8px);
+  transition: opacity 0.15s;
+}
+
+.saveBtn:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.saveBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

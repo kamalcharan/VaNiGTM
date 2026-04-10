@@ -170,6 +170,12 @@ export const API = {
       auth: true,
       description: 'Update tenant business profile (name, ARN, theme)',
     },
+    setExtRefType: {
+      method: 'PATCH',
+      path: '/api/v1/tenant/ext-ref-type',
+      auth: true,
+      description: 'Set tenant platform/RTA type (one-time — CAMS, KFINTECH, IWELL, BSE_STAR, CUSTOM)',
+    },
   },
 
   /* ── ETL ──────────────────────────────────────────── */
@@ -554,6 +560,12 @@ export const API = {
       path: '/api/v1/master-data/job-configs/:id',
       auth: true,
       description: 'Update tenant scheduler config for a job (cron, enabled toggle)',
+    },
+    extRefTypes: {
+      method: 'GET',
+      path: '/api/v1/master-data/ext-ref-types',
+      auth: true,
+      description: 'List all external reference types (CAMS, KFINTECH, IWELL, BSE_STAR, CUSTOM)',
     },
   },
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, getAccessToken, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
+import { useAuth } from '@/context/auth-provider';
 import { InlineLoader } from '@/components/loader';
 import { VdfLoader, VdfColorPicker } from '@/components/vdf';
 import FormInput from '@/components/ui/form-input';
@@ -40,10 +41,13 @@ type EditSection = null | 'info' | 'brand' | 'compliance' | 'address';
 
 export default function BusinessTab() {
   const { showToast } = useToast();
+  const { tenant } = useAuth();
   const [profile, setProfile] = useState<ProfileData>(EMPTY);
   const [fetching, setFetching] = useState(true);
   const [editing, setEditing] = useState<EditSection>(null);
   const [saving, setSaving] = useState(false);
+
+  const extRefTypeCode = tenant?.ext_ref_type_code ?? null;
 
   // Draft state for editing
   const [draft, setDraft] = useState<ProfileData>(EMPTY);
@@ -262,6 +266,46 @@ export default function BusinessTab() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* ── Platform / External Reference Type ── */}
+      <div className={s.card}>
+        <div className={s.cardHeader}>
+          <div>
+            <div className={s.cardTitle}>Client Platform</div>
+            <div className={s.cardDescInline}>The platform used for client external reference IDs</div>
+          </div>
+        </div>
+        <div className={s.readGrid}>
+          <div className={s.readItem}>
+            <div className={s.readLabel}>Platform</div>
+            <div className={s.readValue} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {extRefTypeCode ? (
+                <>
+                  <span style={{
+                    fontFamily: 'var(--font-mono, monospace)',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    color: 'var(--color-primary)',
+                    background: 'color-mix(in srgb, var(--color-primary) 10%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)',
+                    padding: '3px 10px',
+                    borderRadius: 5,
+                  }}>
+                    {extRefTypeCode}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-muted)' }}>
+                    Contact admin to change
+                  </span>
+                </>
+              ) : (
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-warning)' }}>
+                  Not set — complete onboarding to select a platform
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ── Business Address ── */}
