@@ -7,17 +7,8 @@ import { useToast } from '@/components/toast';
 import { InlineLoader } from '@/components/loader';
 import { VdfLoader, VdfColorPicker } from '@/components/vdf';
 import FormInput from '@/components/ui/form-input';
-import { INDIAN_STATES, validatePAN, validateGSTIN, validateARN, validatePIN } from '@/constants/business';
+import { BUSINESS_TYPES, INDIAN_STATES, validatePAN, validateGSTIN, validateARN, validatePIN } from '@/constants/business';
 import s from './settings-tabs.module.css';
-
-const BUSINESS_TYPES = [
-  { value: 'mfd', label: 'Mutual Fund Distributor (MFD)' },
-  { value: 'ria', label: 'Registered Investment Advisor (RIA)' },
-  { value: 'ifa', label: 'Insurance Financial Advisor (IFA)' },
-  { value: 'cfp', label: 'Certified Financial Planner (CFP)' },
-  { value: 'wealthtech', label: 'Wealthtech Firm' },
-  { value: 'other', label: 'Other' },
-];
 
 function getTypeLabel(value: string): string {
   return BUSINESS_TYPES.find((t) => t.value === value)?.label || value || '\u2014';
