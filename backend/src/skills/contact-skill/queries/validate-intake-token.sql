@@ -20,7 +20,7 @@ SELECT
     tp.theme_id,
 
     -- MFD who generated the link
-    u.full_name         AS mfd_name,
+    u.name              AS mfd_name,
 
     -- Contact pre-fill (Flow 1 only — NULL for Flow 2)
     c.prefix            AS contact_prefix,
