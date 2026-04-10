@@ -59,7 +59,12 @@ async function post<T>(path: string, body: Record<string, unknown>): Promise<T> 
     throw new Error('NETWORK_ERROR');
   }
   const data = await res.json();
-  if (!res.ok) throw new Error(data?.error?.code || 'REQUEST_FAILED');
+  if (!res.ok) {
+    // In dev, expose the backend detail so we can see what's actually failing
+    const detail = data?.error?.detail || '';
+    const code   = data?.error?.code   || 'REQUEST_FAILED';
+    throw new Error(detail ? `${code}: ${detail}` : code);
+  }
   return data as T;
 }
 
@@ -105,6 +110,7 @@ export default function IntakePage() {
   const [stage,      setStage]      = useState<Stage>('loading');
   const [meta,       setMeta]       = useState<ValidateResponse | null>(null);
   const [error,      setError]      = useState('');
+  const [initError,  setInitError]  = useState('');
 
   // Step 0 (Flow 2)
   const [leadName,   setLeadName]   = useState('');
@@ -133,7 +139,8 @@ export default function IntakePage() {
         setStage(data.flow === 'cold_lead' ? 'step0' : 'wizard');
       })
       .catch((err: Error) => {
-        if (err.message === 'NETWORK_ERROR') {
+        setInitError(err.message);
+        if (err.message === 'NETWORK_ERROR' || err.message.startsWith('DB_UNAVAILABLE')) {
           setStage('server-error');
         } else {
           setStage('invalid');
@@ -242,6 +249,21 @@ export default function IntakePage() {
         </div>
         <h2 className={s.invalidTitle}>Server unavailable</h2>
         <p className={s.invalidSub}>We couldn't reach the server. Please try again in a moment, or contact your advisor if the problem persists.</p>
+        {initError && <pre style={{ fontSize: '0.7rem', color: 'var(--color-muted)', maxWidth: 480, textAlign: 'left', whiteSpace: 'pre-wrap', marginTop: 12 }}>{initError}</pre>}
+      </div>
+    );
+  }
+
+  if (stage === 'invalid' && initError && initError !== 'TOKEN_NOT_FOUND') {
+    return (
+      <div className={s.centered}>
+        <div className={s.invalidIcon}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <h2 className={s.invalidTitle}>Something went wrong</h2>
+        <pre style={{ fontSize: '0.7rem', color: 'var(--color-muted)', maxWidth: 480, textAlign: 'left', whiteSpace: 'pre-wrap', marginTop: 8 }}>{initError}</pre>
       </div>
     );
   }

@@ -51,7 +51,22 @@ export function createIntakeRouter(pool: Pool): Router {
       return;
     }
 
-    const client = await pool.connect();
+    let client;
+    try {
+      client = await pool.connect();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Intake:validate] DB connect failed:', msg);
+      res.status(503).json({
+        error: {
+          code: 'DB_UNAVAILABLE',
+          message: 'Database connection failed',
+          ...(process.env.NODE_ENV !== 'production' && { detail: msg }),
+        },
+      });
+      return;
+    }
+
     try {
       // Look up token
       const { text, values } = translateParams(VALIDATE_SQL, { $token: token });
@@ -92,8 +107,15 @@ export function createIntakeRouter(pool: Pool): Router {
         liability_types: liabRes.rows,
       });
     } catch (err) {
-      console.error('[Intake:validate]', err);
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Validation failed' } });
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Intake:validate]', msg);
+      res.status(500).json({
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Validation failed',
+          ...(process.env.NODE_ENV !== 'production' && { detail: msg }),
+        },
+      });
     } finally {
       client.release();
     }
