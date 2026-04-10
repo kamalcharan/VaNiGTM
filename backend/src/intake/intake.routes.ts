@@ -321,7 +321,7 @@ export function createIntakeRouter(pool: Pool): Router {
           `INSERT INTO ki_snapshot_protection
              (tenant_id, snapshot_id, life_cover_amount, health_cover_amount, ci_cover_amount,
               life_premium_annual, health_premium_annual, has_term_plan, has_health_cover,
-              protection_ratio_pct, health_cover_type)
+              protection_ratio, health_cover_type)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
           [tenantId, snapshotId,
            Number(prot.life_cover_amount)   || null,
