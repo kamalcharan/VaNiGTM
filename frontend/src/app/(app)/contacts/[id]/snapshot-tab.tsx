@@ -359,7 +359,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
       has_health_cover:     protection.has_health_cover,
       health_cover_type:    protection.health_cover_type || undefined,
     },
-    goals: goals.filter(g => g.name && Number(g.target_amount) > 0).map((g, i) => ({
+    goals: goals.filter(g => g.name && g.name.trim() !== '').map((g, i) => ({
       goal_type:      g.goal_type || 'custom',
       name:           g.name,
       target_amount:  Number(g.target_amount),
@@ -680,13 +680,16 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     : null;
 
   // ── VaNi Goals pre-computed values ───────────────────────────────────────
-  const vaniGoalsFilled   = goals.filter(g => g.name && Number(g.target_amount) > 0);
-  const vaniTotalCorpus   = vaniGoalsFilled.reduce((s, g) => s + Number(g.target_amount), 0);
-  const vaniTotalFV       = vaniGoalsFilled.reduce((s, g) => {
+  // All named goals (for display + Future Focus ring)
+  const vaniGoalsFilled   = goals.filter(g => g.name && g.name.trim() !== '');
+  // Goals with amounts (for SIP computation)
+  const vaniGoalsWithAmt  = vaniGoalsFilled.filter(g => Number(g.target_amount) > 0);
+  const vaniTotalCorpus   = vaniGoalsWithAmt.reduce((s, g) => s + Number(g.target_amount), 0);
+  const vaniTotalFV       = vaniGoalsWithAmt.reduce((s, g) => {
     const yrs = Number(g.timeline_years) || 10;
     return s + Number(g.target_amount) * Math.pow(1.06, yrs);
   }, 0);
-  const vaniTotalSIP      = vaniGoalsFilled.reduce((s, g) => {
+  const vaniTotalSIP      = vaniGoalsWithAmt.reduce((s, g) => {
     const months = (Number(g.timeline_years) || 10) * 12;
     const r      = 0.12 / 12;
     const fv     = Number(g.target_amount) * Math.pow(1.06, Number(g.timeline_years) || 10);
@@ -752,7 +755,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     actionCards.push({ type: 'bad',  label: 'Debt risk',     text: <>DTI at <strong>{metrics.dti.toFixed(0)}%</strong> — above the 50% caution threshold. Review repayment capacity.</>, ctaLabel: 'Review loans →' });
   // Fallback card if no bad metric
   if (actionCards.filter(c => c.type === 'bad').length === 0 && vaniGoalsFilled.length > 0)
-    actionCards.push({ type: 'ok', label: 'Goal-ready',  text: <><strong>{vaniGoalsFilled.length} goal{vaniGoalsFilled.length > 1 ? 's' : ''}</strong> captured. Combined SIP needed ≈ {fmt(Math.round(vaniTotalSIP))}/mo. Start SIP conversation now.</>, ctaLabel: 'Create plan →' });
+    actionCards.push({ type: 'ok', label: 'Goal-ready',  text: <><strong>{vaniGoalsFilled.length} goal{vaniGoalsFilled.length > 1 ? 's' : ''}</strong> captured{vaniTotalSIP > 0 ? <>. Combined SIP needed ≈ {fmt(Math.round(vaniTotalSIP))}/mo</> : ''}. Start SIP conversation now.</>, ctaLabel: 'Create plan →' });
 
   return (
     <>

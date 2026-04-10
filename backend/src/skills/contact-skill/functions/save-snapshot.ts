@@ -153,6 +153,10 @@ export async function save_snapshot(
           income = [], expenses = [], assets = [],
           liabilities = [], protection, goals = [] } = params;
 
+  // Debug: log what was received
+  console.log(`[save_snapshot] contact=${contact_id} status=${status} goals=${goals.length} expenses=${expenses.length}`);
+  if (goals.length > 0) console.log(`[save_snapshot] goals:`, JSON.stringify(goals));
+
   // 1. Verify contact belongs to this tenant
   const contactCheck = await ctx.db.query<{ id: number }>(
     `SELECT id FROM ki_contacts
