@@ -201,8 +201,13 @@ export default function ClientsPage() {
   /* ── Bookmark modal: save ─────────────────────────── */
   const handleBookmarkSave = useCallback(async () => {
     if (!bookmarkTarget) return;
-    if (!selectedReasonId && !customReason.trim()) {
-      showToast({ message: 'Please select a reason or enter a custom note', type: 'warning' });
+    if (!selectedReasonId) {
+      showToast({ message: 'Please select a reason', type: 'warning' });
+      return;
+    }
+    const isOther = bookmarkReasons.find(r => r.id === selectedReasonId)?.reason_code === 'OTHER';
+    if (isOther && !customReason.trim()) {
+      showToast({ message: 'Please enter a custom note for "Other"', type: 'warning' });
       return;
     }
 
@@ -210,8 +215,8 @@ export default function ClientsPage() {
     try {
       await addBookmark.mutateAsync({
         client_id:     bookmarkTarget.id,
-        reason_id:     selectedReasonId ?? undefined,
-        custom_reason: !selectedReasonId ? customReason.trim() : undefined,
+        reason_id:     !isOther ? selectedReasonId : undefined,
+        custom_reason: isOther ? customReason.trim() : undefined,
       });
       showToast({ message: `${bookmarkTarget.name} bookmarked`, type: 'success' });
       invalidateAfterBookmark();
@@ -221,7 +226,7 @@ export default function ClientsPage() {
     } finally {
       setBookmarkingId(null);
     }
-  }, [bookmarkTarget, selectedReasonId, customReason, addBookmark, showToast, invalidateAfterBookmark]);
+  }, [bookmarkTarget, selectedReasonId, customReason, bookmarkReasons, addBookmark, showToast, invalidateAfterBookmark]);
 
   const handleBookmarkModalClose = useCallback(() => {
     setBookmarkTarget(null);
@@ -584,39 +589,42 @@ export default function ClientsPage() {
               variant="primary"
               size="sm"
               onClick={handleBookmarkSave}
-              disabled={bookmarkingId !== null || (!selectedReasonId && !customReason.trim())}
+              disabled={bookmarkingId !== null || !selectedReasonId}
             >
               {bookmarkingId !== null ? 'Saving…' : 'Save Bookmark'}
             </VdfButton>
           </>
         }
       >
-        <div className={s.reasonGrid}>
-          {bookmarkReasons.map(reason => (
-            <button
-              key={reason.id}
-              className={`${s.reasonPill} ${selectedReasonId === reason.id ? s.reasonPillActive : ''}`}
-              onClick={() => {
-                setSelectedReasonId(reason.id === selectedReasonId ? null : reason.id);
-                setCustomReason('');
-              }}
-            >
-              {reason.reason_label}
-            </button>
-          ))}
+        <div className={s.reasonSelectWrap}>
+          <label className={s.reasonSelectLabel}>Reason</label>
+          <select
+            className={s.reasonSelect}
+            value={selectedReasonId ?? ''}
+            onChange={e => {
+              const val = e.target.value;
+              setSelectedReasonId(val ? Number(val) : null);
+              setCustomReason('');
+            }}
+          >
+            <option value="">— Select a reason —</option>
+            {bookmarkReasons.map(reason => (
+              <option key={reason.id} value={reason.id}>
+                {reason.reason_label}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* Custom reason — shown when OTHER is selected or no reason chosen */}
-        {(selectedReasonId === null || bookmarkReasons.find(r => r.id === selectedReasonId)?.reason_code === 'OTHER') && (
+        {/* Notes / custom reason — shown when OTHER is selected */}
+        {(bookmarkReasons.find(r => r.id === selectedReasonId)?.reason_code === 'OTHER') && (
           <div className={s.customReasonWrap}>
-            <label className={s.customReasonLabel}>
-              {selectedReasonId ? 'Add a note (optional)' : 'Or enter a custom reason'}
-            </label>
+            <label className={s.customReasonLabel}>Custom note</label>
             <textarea
               className={s.customReasonInput}
               value={customReason}
               onChange={e => setCustomReason(e.target.value)}
-              placeholder="e.g. Referred by branch manager…"
+              placeholder="Describe the reason…"
               rows={2}
               maxLength={200}
             />
