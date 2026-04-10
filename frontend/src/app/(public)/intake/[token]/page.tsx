@@ -396,7 +396,10 @@ export default function IntakePage() {
 
           {/* Headline */}
           <h1 className={s.welcomeTitle}>
-            Let&rsquo;s paint<br /><em>your money picture.</em>
+            {contactFirstName
+              ? <>{contactFirstName}, let&rsquo;s see<br /><em>your whole picture.</em></>
+              : <>Let&rsquo;s paint<br /><em>your money picture.</em></>
+            }
           </h1>
 
           {/* Subtitle */}
