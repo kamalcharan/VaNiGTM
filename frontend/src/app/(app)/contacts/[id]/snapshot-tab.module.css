@@ -2727,25 +2727,37 @@
 }
 
 /* Pulse health rings */
+/* Pulse health rings — 2+2+1 grid layout */
 .hringList {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+/* 5th ring (Future Focus) spans full width, centered */
+.hringRow:last-child {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: 50%;
 }
 .hringRow {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  padding: 12px 8px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
 }
 .hring {
   position: relative;
-  width: 40px;
-  height: 40px;
+  width: 56px;
+  height: 56px;
   flex-shrink: 0;
 }
 .hring svg {
-  width: 40px;
-  height: 40px;
+  width: 56px;
+  height: 56px;
 }
 .hringTxt {
   position: absolute;
@@ -2753,25 +2765,30 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   font-family: var(--font-mono, monospace);
   color: var(--color-fg);
 }
 .hringInfo {
-  flex: 1;
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
 }
 .hringLbl {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--color-fg);
   line-height: 1.2;
+  white-space: nowrap;
 }
 .hringState {
-  font-size: 10px;
+  font-size: 9px;
   font-family: var(--font-mono, monospace);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 /* VaNi action cards */
