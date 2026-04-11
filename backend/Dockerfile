@@ -22,8 +22,10 @@ COPY src/ ./src/
 # Compile TypeScript → dist/
 RUN npm run build
 
-# Copy SQL query files alongside compiled JS (tsc skips non-TS files)
-RUN find src -name "*.sql" | while read f; do \
+# Copy static assets alongside compiled JS (tsc only emits .js):
+#   - SKILL.md files: needed by skill-registry to discover and parse skills
+#   - .sql files: needed by readFileSync calls in route/skill handlers
+RUN find src \( -name "SKILL.md" -o -name "*.sql" \) | while read f; do \
       d="dist/${f#src/}"; \
       mkdir -p "$(dirname "$d")"; \
       cp "$f" "$d"; \
