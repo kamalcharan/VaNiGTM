@@ -124,6 +124,78 @@
   flex-shrink: 0;
 }
 
+/* ── Inactive banner ─────────────────────────────────── */
+
+.inactiveBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 32px;
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-warning) 30%, var(--color-border));
+}
+
+.inactiveBannerText {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-warning);
+}
+
+.inactiveBannerDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-warning);
+  flex-shrink: 0;
+  animation: warnPulse 2s ease-in-out infinite;
+}
+
+@keyframes warnPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* Deactivate danger override on top of VdfButton outline */
+.dangerBtn {
+  border-color: var(--color-danger) !important;
+  color: var(--color-danger) !important;
+}
+
+.dangerBtn:hover {
+  background: color-mix(in srgb, var(--color-danger) 8%, transparent) !important;
+}
+
+/* Confirm row (confirm + cancel) */
+.confirmRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cancelConfirmBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 0.85rem;
+  transition: border-color 160ms, color 160ms;
+  flex-shrink: 0;
+}
+
+.cancelConfirmBtn:hover {
+  border-color: var(--color-fg);
+  color: var(--color-fg);
+}
+
 /* License plate ext_ref_id */
 .refId {
   display: inline-flex;

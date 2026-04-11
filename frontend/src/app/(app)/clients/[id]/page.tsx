@@ -48,6 +48,7 @@ interface Client {
   id: number;
   client_uid: string;
   contact_id: number;
+  is_active: boolean;
   prefix: string;
   name: string;
   ext_ref_id: string | null;
@@ -473,8 +474,9 @@ export default function ClientProfilePage() {
   const tabParam = searchParams?.get('tab') ?? null;
   const initialTab = tabParam === 'addresses' ? 'addresses' : 'overview';
 
-  const [activeTab, setActiveTab] = useState(initialTab);
-  const [bookmarked, setBookmarked] = useState(false);
+  const [activeTab, setActiveTab]           = useState(initialTab);
+  const [bookmarked, setBookmarked]         = useState(false);
+  const [confirmDeactivate, setConfirmDea]  = useState(false);
 
   const { data, isLoading, isError } = useSkillQuery<{ client: Client | null }>(
     'client-skill', 'get_client', { client_id: clientId }
@@ -495,6 +497,17 @@ export default function ClientProfilePage() {
     onSuccess: () => { setBookmarked(false); showToast({ message: 'Bookmark removed', type: 'success' }); },
     onError: () => showToast({ message: 'Failed to remove bookmark', type: 'error' }),
   });
+  const { mutate: setClientActive, isPending: isTogglingActive } = useSkillMutation(
+    'client-skill', 'set_client_active',
+    {
+      onSuccess: (_res, vars) => {
+        const activated = (vars as { is_active: boolean }).is_active;
+        showToast({ message: activated ? 'Client reactivated' : 'Client deactivated', type: 'success' });
+        setConfirmDea(false);
+      },
+      onError: (e) => showToast({ message: e.message || 'Failed to update status', type: 'error' }),
+    }
+  );
 
   if (isLoading) return <VdfLoader overlay message="Loading client…" />;
   if (isError || !data?.data?.client) return (
@@ -534,6 +547,42 @@ export default function ClientProfilePage() {
               >
                 Edit Profile
               </VdfButton>
+
+              {/* Deactivate / Activate toggle */}
+              {client.is_active ? (
+                confirmDeactivate ? (
+                  <div className={s.confirmRow}>
+                    <VdfButton
+                      variant="outline"
+                      size="sm"
+                      className={s.dangerBtn}
+                      loading={isTogglingActive}
+                      onClick={() => setClientActive({ client_id: clientId, is_active: false })}
+                    >
+                      Confirm Deactivate
+                    </VdfButton>
+                    <button className={s.cancelConfirmBtn} onClick={() => setConfirmDea(false)} title="Cancel">✕</button>
+                  </div>
+                ) : (
+                  <VdfButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmDea(true)}
+                  >
+                    Deactivate
+                  </VdfButton>
+                )
+              ) : (
+                <VdfButton
+                  variant="primary"
+                  size="sm"
+                  loading={isTogglingActive}
+                  onClick={() => setClientActive({ client_id: clientId, is_active: true })}
+                >
+                  Reactivate
+                </VdfButton>
+              )}
+
               <button
                 className={`${s.bookmarkBtn} ${bookmarked ? s.bookmarked : ''}`}
                 title={bookmarked ? 'Remove bookmark' : 'Bookmark client'}
@@ -568,6 +617,24 @@ export default function ClientProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* ── Inactive banner ── */}
+      {!client.is_active && (
+        <div className={s.inactiveBanner}>
+          <div className={s.inactiveBannerText}>
+            <span className={s.inactiveBannerDot} />
+            This client is inactive. Portfolio, goals, and transactions are read-only.
+          </div>
+          <VdfButton
+            variant="primary"
+            size="sm"
+            loading={isTogglingActive}
+            onClick={() => setClientActive({ client_id: clientId, is_active: true })}
+          >
+            Reactivate Client
+          </VdfButton>
+        </div>
+      )}
 
       {/* ── Tabs ── */}
       <div className={s.tabsBar}>

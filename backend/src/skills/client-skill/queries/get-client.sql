@@ -5,6 +5,7 @@ SELECT
     cl.id,
     cl.client_uid,
     cl.contact_id,
+    cl.is_active,
     cl.ext_ref_id,
     cl.pan,
     cl.dob,
@@ -98,5 +99,4 @@ FROM ki_clients cl
 JOIN ki_contacts c ON c.id = cl.contact_id
 WHERE cl.id        = $client_id
   AND cl.tenant_id = $tenant_id
-  AND cl.is_live   = $is_live
-  AND cl.is_active = true;
+  AND cl.is_live   = $is_live;
