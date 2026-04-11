@@ -24,13 +24,17 @@ COPY next.config.js ./
 COPY src/ ./src/
 COPY public/ ./public/
 
+# Strip U+2500 box-drawing characters (─) from source comments before building.
+# Next.js 16.2.1 Turbopack panics (highlight.rs:1011) when it encounters these
+# multi-byte UTF-8 chars. They exist only in comments — compiled output is identical.
+# Next.js 16 has no CLI flag or env var to opt out of Turbopack, so this is the fix.
+RUN find src -type f \( -name "*.ts" -o -name "*.tsx" \) \
+    -exec sed -i 's/\xe2\x94\x80/-/g' {} +
+
 # Memory cap during Next.js build (SSG/SSR compilation is memory-intensive)
 ENV NODE_OPTIONS="--max-old-space-size=2048"
 
-# Disable Turbopack — use webpack for production builds.
-# Next.js 16 defaults to Turbopack, but 16.2.1 panics on U+2500 box-drawing
-# characters (──) used in source comments. --no-turbo forces the webpack bundler.
-RUN npm run build:webpack
+RUN npm run build
 
 # ── Stage 2: Production image ────────────────────────────────
 FROM node:22-alpine AS runner
