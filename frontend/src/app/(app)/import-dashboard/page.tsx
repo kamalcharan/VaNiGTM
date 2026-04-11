@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { List, Database, Users, ArrowLeftRight, Bookmark } from 'lucide-react';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
@@ -139,14 +140,14 @@ const DRAWER_CONF: Record<string, DrawerConf> = {
 
 const DEFAULT_DRAWER_CONF: DrawerConf = DRAWER_CONF.bookmark;
 
-/* ── Sidebar type filter tabs ───────────────────────── */
+/* ── Sidebar type filter list ───────────────────────── */
 
 const TYPE_FILTERS = [
-  { key: 'all',         label: 'All'          },
-  { key: 'scheme',      label: 'Schemes'      },
-  { key: 'customer',    label: 'Customers'    },
-  { key: 'transaction', label: 'Transactions' },
-  { key: 'bookmark',    label: 'Bookmarks'    },
+  { key: 'all',         label: 'All',          icon: <List          size={14} /> },
+  { key: 'scheme',      label: 'Schemes',      icon: <Database      size={14} /> },
+  { key: 'customer',    label: 'Customers',    icon: <Users         size={14} /> },
+  { key: 'transaction', label: 'Transactions', icon: <ArrowLeftRight size={14} /> },
+  { key: 'bookmark',    label: 'Bookmarks',    icon: <Bookmark      size={14} /> },
 ];
 
 /* ── Component ─────────────────────────────────────── */
@@ -156,7 +157,7 @@ export default function ImportDashboardPage() {
   const { showToast } = useToast();
   const { user } = useAuth();
 
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [records, setRecords] = useState<RecordsResponse | null>(null);
   const [recordFilter, setRecordFilter] = useState<string>('all');
@@ -169,18 +170,34 @@ export default function ImportDashboardPage() {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [sessionsFetched, setSessionsFetched] = useState(false);
 
-  // Fetch sessions
-  const fetchSessions = useCallback(async (type: string = 'all') => {
+  // Derived: filtered session list + per-type counts (client-side — no re-fetch on filter change)
+  const sessions = useMemo(() =>
+    typeFilter === 'all' ? allSessions : allSessions.filter(s => s.import_type === typeFilter),
+    [allSessions, typeFilter]
+  );
+
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: allSessions.length };
+    for (const s of allSessions) counts[s.import_type] = (counts[s.import_type] || 0) + 1;
+    return counts;
+  }, [allSessions]);
+
+  // Fetch sessions — always fetches all; filtering is client-side
+  const fetchSessions = useCallback(async () => {
     setLoadingSessions(true);
     setSessionsFetched(false);
     try {
-      const qs = type !== 'all' ? `?type=${type}` : '';
-      const data = await apiFetch<{ sessions: Session[] }>({ ...API.etl.sessions, path: API.etl.sessions.path + qs });
-      setSessions(data.sessions || []);
-      setSelectedSession(data.sessions?.length > 0 ? data.sessions[0] : null);
+      const data = await apiFetch<{ sessions: Session[] }>(API.etl.sessions);
+      setAllSessions(data.sessions || []);
+      // Keep current selection if still present, else auto-select first
+      setSelectedSession(prev =>
+        prev && data.sessions?.find((s: Session) => s.id === prev.id)
+          ? prev
+          : data.sessions?.length > 0 ? data.sessions[0] : null
+      );
     } catch (err) {
       console.error('[ImportDashboard] Failed to load sessions:', err);
-      setSessions([]);
+      setAllSessions([]);
       showToast({ message: (err as ApiError).message || 'Failed to load import sessions', type: 'error' });
     } finally {
       setLoadingSessions(false);
@@ -188,11 +205,12 @@ export default function ImportDashboardPage() {
     }
   }, []); // eslint-disable-line
 
-  useEffect(() => { fetchSessions(typeFilter); }, [fetchSessions, typeFilter]);
+  useEffect(() => { fetchSessions(); }, [fetchSessions]);
 
   function handleTypeFilter(t: string) {
+    const filtered = t === 'all' ? allSessions : allSessions.filter(s => s.import_type === t);
     setTypeFilter(t);
-    setSelectedSession(null);
+    setSelectedSession(filtered.length > 0 ? filtered[0] : null);
     setRecords(null);
   }
 
@@ -273,12 +291,17 @@ export default function ImportDashboardPage() {
       <div className={s.grid}>
         {/* ═══ SIDEBAR ═══ */}
         <aside className={s.sidebar}>
-          {/* Type filter tabs */}
-          <div className={s.sidebarFilters}>
+          {/* Type filter list */}
+          <div className={s.typeFilterList}>
             {TYPE_FILTERS.map(f => (
-              <button key={f.key} className={typeFilter === f.key ? s.filterTabActive : s.filterTab}
-                onClick={() => handleTypeFilter(f.key)}>
-                {f.label}
+              <button
+                key={f.key}
+                className={`${s.typeFilterItem} ${typeFilter === f.key ? s.typeFilterItemActive : ''}`}
+                onClick={() => handleTypeFilter(f.key)}
+              >
+                <span className={s.typeFilterIcon}>{f.icon}</span>
+                <span className={s.typeFilterLabel}>{f.label}</span>
+                <span className={s.typeFilterCount}>{typeCounts[f.key] ?? 0}</span>
               </button>
             ))}
           </div>
