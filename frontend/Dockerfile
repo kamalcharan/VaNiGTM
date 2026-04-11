@@ -25,11 +25,21 @@ COPY src/ ./src/
 COPY public/ ./public/
 
 # Strip U+2500 box-drawing characters (─) from source comments before building.
-# Next.js 16.2.1 Turbopack panics (highlight.rs:1011) when it encounters these
-# multi-byte UTF-8 chars. They exist only in comments — compiled output is identical.
-# Next.js 16 has no CLI flag or env var to opt out of Turbopack, so this is the fix.
-RUN find src -type f \( -name "*.ts" -o -name "*.tsx" \) \
-    -exec sed -i 's/\xe2\x94\x80/-/g' {} +
+# Next.js 16.2.1 Turbopack panics (highlight.rs:1011) on these multi-byte UTF-8 chars.
+# They exist only in comments — compiled .next/ output is identical.
+# Using Node.js (not sed) because BusyBox sed on Alpine has no \x hex escape support.
+RUN node -e "\
+const fs=require('fs'),pt=require('path');\
+function w(d){fs.readdirSync(d,{withFileTypes:true}).forEach(e=>{\
+  const f=pt.join(d,e.name);\
+  if(e.isDirectory())w(f);\
+  else if(/\.(ts|tsx)$/.test(e.name)){\
+    const c=fs.readFileSync(f,'utf8'),r=c.replace(/\u2500/g,'-');\
+    if(r!==c)fs.writeFileSync(f,r,'utf8');\
+  }\
+})}\
+w('src');console.log('U+2500 stripped from src/');\
+"
 
 # Memory cap during Next.js build (SSG/SSR compilation is memory-intensive)
 ENV NODE_OPTIONS="--max-old-space-size=2048"
