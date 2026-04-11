@@ -7,34 +7,6 @@ import { VdfLoader } from '@/components/vdf';
 import { useToast } from '@/components/toast';
 import s from './login-vault.module.css';
 
-const ROLES = [
-  {
-    id: 'planner' as const,
-    label: 'Planner',
-    desc: 'MFD / RIA / IFA',
-    subtitle: 'Sign in to your advisory dashboard',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 20h20" />
-        <path d="M5 20V10l4-5 4 3 4-6 3 4v14" />
-        <circle cx="9" cy="5" r="1" />
-      </svg>
-    ),
-  },
-  {
-    id: 'investor' as const,
-    label: 'Investor',
-    desc: 'Client Portal',
-    subtitle: 'View your portfolio and goals',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 6v6l4 2" />
-      </svg>
-    ),
-  },
-];
-
 interface SessionLimitData {
   max_sessions: number;
   active_sessions: ActiveSession[];
@@ -52,9 +24,7 @@ export default function LoginVault() {
   const [sessionLimit, setSessionLimit] = useState<SessionLimitData | null>(null);
   const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set());
   const [revokingLoading, setRevokingLoading] = useState(false);
-  const [role, setRole] = useState<'planner' | 'investor'>('planner');
 
-  const activeRole = ROLES.find((r) => r.id === role)!;
   const loading = loginMutation.isPending;
 
   // If already have a token, redirect to dashboard (layout handles onboarding check)
@@ -229,23 +199,52 @@ export default function LoginVault() {
           <div className={s.formHeader}>
             <div className={s.goldLine} />
             <h2 className={s.formTitle}>Welcome back</h2>
-            <p className={s.formSubtitle}>{activeRole.subtitle}</p>
+            <p className={s.formSubtitle}>Sign in to your advisory dashboard</p>
           </div>
 
-          {/* Role selector — 2 roles */}
-          <div className={s.roleSelector}>
-            {ROLES.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                className={`${s.roleOption} ${role === r.id ? s.roleOptionActive : ''}`}
-                onClick={() => setRole(r.id)}
-              >
-                <div className={s.roleIconWrap}>{r.icon}</div>
-                <span className={s.roleName}>{r.label}</span>
-                <span className={s.roleDesc}>{r.desc}</span>
-              </button>
-            ))}
+          {/* Platform feature strip */}
+          <div className={s.featureStrip}>
+            <div className={s.featureItem}>
+              <div className={s.featureIcon}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+              </div>
+              <div className={s.featureText}>
+                <span className={s.featureName}>Portfolio Intelligence</span>
+                <span className={s.featureDesc}>Real-time XIRR &middot; NAV sync &middot; Goal tracking</span>
+              </div>
+              <div className={s.featurePulse} />
+            </div>
+            <div className={s.featureItem}>
+              <div className={s.featureIcon}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </div>
+              <div className={s.featureText}>
+                <span className={s.featureName}>Client Universe</span>
+                <span className={s.featureDesc}>360° profiles &middot; Family groups &middot; KYC records</span>
+              </div>
+              <div className={s.featurePulse} />
+            </div>
+            <div className={s.featureItem}>
+              <div className={s.featureIcon}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2" />
+                  <path d="M8 21h8M12 17v4" />
+                  <path d="M7 8l3 3 2-2 3 3" />
+                </svg>
+              </div>
+              <div className={s.featureText}>
+                <span className={s.featureName}>Market Intelligence</span>
+                <span className={s.featureDesc}>40,000+ schemes &middot; Live NAV &middot; Sector coverage</span>
+              </div>
+              <div className={s.featurePulse} />
+            </div>
           </div>
 
           {/* Error alert */}
