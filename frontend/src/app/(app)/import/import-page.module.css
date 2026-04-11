@@ -7,7 +7,7 @@
   padding: 32px 48px;
   max-width: 1040px;
   margin: 0 auto;
-  min-height: calc(100vh - 64px);
+  min-height: 100%;
 }
 
 /* ── Header ──────────────────────────────────────────── */
@@ -481,4 +481,11 @@
   .stepLabel { display: none; }
   .mappingHeader, .mappingRow { grid-template-columns: 1fr 24px 1fr; }
   .mappingSample { display: none; }
+}
+
+@media (max-width: 480px) {
+  .page { padding: 12px 14px; }
+  .header { flex-direction: column; gap: 10px; }
+  .title { font-size: 1.3rem; }
+  .resultStats { grid-template-columns: repeat(2, 1fr); }
 }

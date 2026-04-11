@@ -8,7 +8,7 @@
   padding: 24px 32px;
   max-width: 1600px;
   margin: 0 auto;
-  min-height: calc(100vh - 64px);
+  min-height: 100%;
 }
 
 /* ── Back navigation ─────────────────────────────────── */
@@ -192,6 +192,18 @@
 
 @media (max-width: 900px) {
   .body { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .page { padding: 16px 20px; }
+  .indexName { font-size: 1.3rem; }
+  .headerStrip { gap: 12px; }
+  .chartControls { gap: 6px; }
+}
+
+@media (max-width: 480px) {
+  .page { padding: 12px 14px; }
+  .indexName { font-size: 1.1rem; }
 }
 
 /* ── Chart column ────────────────────────────────────── */

@@ -3,7 +3,7 @@
    All badges, tables, stats, insights from VDF + data.module.css
    ═══════════════════════════════════════════════════════ */
 
-.page { padding: 20px 32px; min-height: calc(100vh - 40px); display: flex; flex-direction: column; }
+.page { padding: 20px 32px; min-height: 100%; display: flex; flex-direction: column; }
 
 /* ── Header ──────────────────────────────────────────── */
 .header { margin-bottom: 16px; }
@@ -56,4 +56,18 @@
 @media (max-width: 900px) {
   .statsRow { flex-wrap: wrap; }
   .controlBar { flex-direction: column; }
+}
+
+@media (max-width: 768px) {
+  .page { padding: 16px 20px; }
+  .searchInput { width: 100%; }
+  .schemeName { max-width: 180px; }
+  .tdAmc { display: none; }
+}
+
+@media (max-width: 480px) {
+  .page { padding: 12px 14px; }
+  .tabs { overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { white-space: nowrap; }
 }
