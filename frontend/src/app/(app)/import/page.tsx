@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, type ReactNode } from 'react';
+import { Database, Users, ArrowLeftRight, Bookmark } from 'lucide-react';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
@@ -44,11 +45,11 @@ interface ProcessResult {
 
 /* ── Import type cards ─────────────────────────────── */
 
-const IMPORT_TYPES: { id: ImportType; label: string; desc: string; icon: string; enabled: boolean }[] = [
-  { id: 'scheme', label: 'Scheme Master', desc: 'AMFI scheme database — codes, ISINs, categories, NAV names', icon: '\u{1F4CA}', enabled: true },
-  { id: 'customer', label: 'Customers', desc: 'Client contacts — externalid, PAN, mobile, email, addresses', icon: '\u{1F465}', enabled: true },
-  { id: 'transaction', label: 'Transactions', desc: 'Purchases, redemptions, SIPs, switches, dividends', icon: '\u{1F4C4}', enabled: false },
-  { id: 'bookmark', label: 'Bookmarks', desc: 'Tracked scheme codes and ISINs — bulk add to My NAV', icon: '\u{1F516}', enabled: true },
+const IMPORT_TYPES: { id: ImportType; label: string; desc: string; icon: ReactNode; enabled: boolean }[] = [
+  { id: 'scheme',      label: 'Scheme Master', desc: 'AMFI scheme database — codes, ISINs, categories, NAV names',   icon: <Database size={22} />,       enabled: true  },
+  { id: 'customer',    label: 'Customers',     desc: 'Client contacts — externalid, PAN, mobile, email, addresses',  icon: <Users size={22} />,          enabled: true  },
+  { id: 'transaction', label: 'Transactions',  desc: 'Purchases, redemptions, SIPs, switches, dividends',            icon: <ArrowLeftRight size={22} />, enabled: false },
+  { id: 'bookmark',    label: 'Bookmarks',     desc: 'Tracked scheme codes and ISINs — bulk add to My NAV',          icon: <Bookmark size={22} />,       enabled: true  },
 ];
 
 /* ── Main Component ────────────────────────────────── */

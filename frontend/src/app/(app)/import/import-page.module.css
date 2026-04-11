@@ -141,7 +141,24 @@
   cursor: not-allowed;
 }
 
-.typeIcon { font-size: 1.8rem; }
+.typeIcon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
+  margin-bottom: 4px;
+  transition: background 300ms, box-shadow 300ms;
+}
+
+.typeCard:hover:not(:disabled) .typeIcon {
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
 .typeName { font-size: 1rem; font-weight: 700; color: var(--color-fg); }
 .typeDesc { font-size: 0.75rem; color: var(--color-muted); line-height: 1.5; }
 
