@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
-import { VdfLoader, VdfButton } from '@/components/vdf';
+import { VdfLoader, VdfButton, VdfPageHeader } from '@/components/vdf';
 import s from './edit.module.css';
 import f from '@/styles/forms.module.css';
 
@@ -37,44 +37,6 @@ interface ClientSummary {
   channels: { id: number; channel_type: string; is_primary: boolean }[];
   addresses: { id: number; city: string; state: string; is_primary: boolean }[];
   family: { id: string; family_name: string; member_count: number } | null;
-}
-
-/* ── Rail snapshot items ── */
-function makeRailItems(client: ClientSummary) {
-  return [
-    {
-      label: 'PAN',
-      value: client.pan ? `${client.pan.slice(0, 5)}•••${client.pan.slice(-2)}` : null,
-      done: !!client.pan,
-      warn: false,
-    },
-    {
-      label: 'Risk Profile',
-      value: client.risk_profile
-        ? client.risk_profile.charAt(0).toUpperCase() + client.risk_profile.slice(1)
-        : null,
-      done: !!client.risk_profile,
-      warn: false,
-    },
-    {
-      label: 'Onboarding',
-      value: client.onboarding_status.replace('_', ' '),
-      done: client.onboarding_status === 'completed',
-      warn: false,
-    },
-    {
-      label: 'Addresses',
-      value: client.addresses.length > 0 ? `${client.addresses.length} on file` : null,
-      done: client.addresses.length > 0,
-      warn: false,
-    },
-    {
-      label: 'Survival Status',
-      value: client.survival_status === 'deceased' ? '⚠ Deceased' : 'Alive',
-      done: client.survival_status === 'alive',
-      warn: client.survival_status === 'deceased',
-    },
-  ];
 }
 
 /* ── Page ── */
@@ -141,8 +103,6 @@ export default function EditClientPage() {
     );
   }
 
-  const railItems = makeRailItems(client);
-
   const handleSave = () => {
     if (survivalStatus === 'deceased' && !dateOfDeath) {
       showToast({ message: 'Date of death is required when status is Deceased', type: 'error' });
@@ -164,66 +124,23 @@ export default function EditClientPage() {
 
   return (
     <div className={s.page}>
-
-      {/* ── Header ── */}
-      <header className={s.header}>
-        <div className={s.headerLeft}>
-          <button className={s.backBtn} onClick={() => router.push('/clients')}>Clients</button>
-          <span className={s.headerCrumb}>/</span>
-          <button className={s.backBtn} onClick={() => router.push(`/clients/${clientId}`)}>
-            {client.name}
-          </button>
-          <span className={s.headerCrumb}>/</span>
-          <span className={s.headerTitle}>Edit Profile</span>
-        </div>
-        <span className={s.headerNote}>Not auto-saved · submit to apply changes</span>
-      </header>
-
-      {/* ── Body ── */}
+      <VdfPageHeader
+        eyebrow="EDIT CLIENT"
+        title={`${client.prefix ? client.prefix + ' ' : ''}${client.name}`}
+        meta={<>
+          <button
+            style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', padding: 0, fontSize: '0.78rem' }}
+            onClick={() => router.push('/clients')}
+          >Clients</button>
+          {' / '}
+          <button
+            style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', padding: 0, fontSize: '0.78rem' }}
+            onClick={() => router.push(`/clients/${clientId}`)}
+          >{client.name}</button>
+          {' / Edit Profile · Not auto-saved'}
+        </>}
+      />
       <div className={s.body}>
-
-        {/* Left Rail */}
-        <aside className={s.rail}>
-          <div className={s.railEyebrow}>Edit Profile</div>
-          <div className={s.railTitle}>
-            <em>{client.name.split(' ')[0]}</em>&apos;s<br />client record
-          </div>
-          <div className={s.railSub}>
-            Review the current profile snapshot below. Submit to save changes.
-          </div>
-
-          <div className={s.railNote}>
-            To update <strong>name</strong>, <strong>prefix</strong>, or <strong>contact channels</strong>,
-            visit the linked Contact record.
-          </div>
-
-          <div className={s.railKnown}>
-            {railItems.map(item => (
-              <div key={item.label} className={s.railItem}>
-                <div className={`${s.railCheck} ${item.warn ? s.railCheckWarn : item.done ? s.railCheckDone : s.railCheckMiss}`}>
-                  {item.warn ? '!' : item.done ? '✓' : '—'}
-                </div>
-                <div>
-                  <div className={s.railItemLabel}>{item.label}</div>
-                  {item.value
-                    ? <div className={s.railItemValue}>{item.value}</div>
-                    : <div className={s.railItemMissing}>Not set</div>
-                  }
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className={s.railQuote}>
-            <span className={s.railQuoteMark}>&ldquo;</span>
-            <p className={s.railQuoteText}>
-              Accurate data is the foundation of every financial plan you build for your client.
-            </p>
-            <div className={s.railQuoteAuthor}>ProKey · Client Management</div>
-          </div>
-        </aside>
-
-        {/* Right Form */}
         <main className={s.form}>
 
           {/* ── Section 01: Identity Verification ── */}
@@ -415,7 +332,7 @@ export default function EditClientPage() {
 
       {/* ── Footer ── */}
       <footer className={s.footer}>
-        <div className={s.footerLeft}>
+        <div className={s.footerNote}>
           Name and contact channels are managed via the linked Contact record.
         </div>
         <div className={s.footerRight}>

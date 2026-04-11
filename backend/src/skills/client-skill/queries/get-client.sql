@@ -4,6 +4,7 @@
 SELECT
     cl.id,
     cl.client_uid,
+    cl.client_no,
     cl.contact_id,
     cl.is_active,
     cl.ext_ref_id,

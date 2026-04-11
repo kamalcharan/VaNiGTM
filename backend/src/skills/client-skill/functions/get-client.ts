@@ -1,7 +1,7 @@
 /**
  * client-skill: get_client
  * Single client with full profile — channels, addresses, family, bookmark.
- * SQL updated: now selects is_active (previously filtered by is_active = true).
+ * SQL updated: now selects is_active (previously filtered by is_active = true). Added client_no.
  */
 
 import * as fs from 'fs';

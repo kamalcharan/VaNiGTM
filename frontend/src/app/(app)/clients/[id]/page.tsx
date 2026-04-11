@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import {
-  VdfLoader, VdfButton, VdfStatusBadge, VdfTabs, VdfEmptyState,
+  VdfLoader, VdfButton, VdfStatusBadge, VdfTabs, VdfEmptyState, VdfPageHeader,
 } from '@/components/vdf';
 import s from './client-profile.module.css';
 import f from '@/styles/forms.module.css';
@@ -49,6 +49,7 @@ interface Bookmark {
 interface Client {
   id: number;
   client_uid: string;
+  client_no: string | null;
   contact_id: number;
   is_active: boolean;
   prefix: string;
@@ -173,28 +174,28 @@ function OverviewTab({ client, clientId }: { client: Client; clientId: number })
           <div className={s.editForm}>
             <div className={s.editRow}>
               <div className={s.editField}>
-                <label className={s.editLabel}>PAN</label>
-                <input className={s.editInput} value={pan} onChange={e => setPan(e.target.value.toUpperCase())} placeholder="ABCDE1234F" maxLength={10} />
+                <label className={f.label}>PAN</label>
+                <input className={f.input} value={pan} onChange={e => setPan(e.target.value.toUpperCase())} placeholder="ABCDE1234F" maxLength={10} />
               </div>
               <div className={s.editField}>
-                <label className={s.editLabel}>Date of Birth</label>
-                <input className={s.editInput} type="date" value={dob} onChange={e => setDob(e.target.value)} />
-              </div>
-            </div>
-            <div className={s.editRow}>
-              <div className={s.editField}>
-                <label className={s.editLabel}>Anniversary</label>
-                <input className={s.editInput} type="date" value={anniversary} onChange={e => setAnniversary(e.target.value)} />
-              </div>
-              <div className={s.editField}>
-                <label className={s.editLabel}>Reference ID</label>
-                <input className={s.editInput} value={extRefId} onChange={e => setExtRefId(e.target.value)} placeholder="External reference code" />
+                <label className={f.label}>Date of Birth</label>
+                <input className={f.input} type="date" value={dob} onChange={e => setDob(e.target.value)} />
               </div>
             </div>
             <div className={s.editRow}>
               <div className={s.editField}>
-                <label className={s.editLabel}>Risk Profile</label>
-                <select className={s.editInput} value={riskProfile} onChange={e => setRiskProfile(e.target.value)}>
+                <label className={f.label}>Anniversary</label>
+                <input className={f.input} type="date" value={anniversary} onChange={e => setAnniversary(e.target.value)} />
+              </div>
+              <div className={s.editField}>
+                <label className={f.label}>Reference ID</label>
+                <input className={f.input} value={extRefId} onChange={e => setExtRefId(e.target.value)} placeholder="External reference code" />
+              </div>
+            </div>
+            <div className={s.editRow}>
+              <div className={s.editField}>
+                <label className={f.label}>Risk Profile</label>
+                <select className={f.select} value={riskProfile} onChange={e => setRiskProfile(e.target.value)}>
                   <option value="">— Not set —</option>
                   <option value="conservative">Conservative</option>
                   <option value="moderate">Moderate</option>
@@ -202,8 +203,8 @@ function OverviewTab({ client, clientId }: { client: Client; clientId: number })
                 </select>
               </div>
               <div className={s.editField}>
-                <label className={s.editLabel}>Onboarding Status</label>
-                <select className={s.editInput} value={onboardingStatus} onChange={e => setOnboardingStatus(e.target.value)}>
+                <label className={f.label}>Onboarding Status</label>
+                <select className={f.select} value={onboardingStatus} onChange={e => setOnboardingStatus(e.target.value)}>
                   <option value="pending">Pending</option>
                   <option value="in_progress">In Progress</option>
                   <option value="completed">Completed</option>
@@ -213,8 +214,8 @@ function OverviewTab({ client, clientId }: { client: Client; clientId: number })
             </div>
             <div className={s.editRow}>
               <div className={s.editFieldFull}>
-                <label className={s.editLabel}>Referred By</label>
-                <input className={s.editInput} value={referredBy} onChange={e => setReferredBy(e.target.value)} placeholder="Referral source or name" />
+                <label className={f.label}>Referred By</label>
+                <input className={f.input} value={referredBy} onChange={e => setReferredBy(e.target.value)} placeholder="Referral source or name" />
               </div>
             </div>
             <div className={s.editActions}>
@@ -535,96 +536,71 @@ export default function ClientProfilePage() {
 
   return (
     <div className={s.page}>
-      {/* ── Hero ── */}
-      <div className={s.hero}>
-        <button className={s.backBtn} onClick={() => router.push('/clients')}>
-          ← Back to Clients
-        </button>
-
-        <div className={s.heroContent}>
-          <div className={s.heroAvatar} style={{ background: avatarGradient(client.name) }}>
-            {initials(client.name)}
-          </div>
-
-          <div className={s.heroText}>
-            <div className={s.heroNameRow}>
-              <h1 className={s.heroName}>{client.prefix} {client.name}</h1>
-              <VdfButton
-                variant="outline"
-                size="sm"
-                onClick={() => router.push(`/clients/${clientId}/edit`)}
-              >
-                Edit Profile
-              </VdfButton>
-
-              {/* Deactivate / Activate toggle — explicit false check, undefined = active */}
-              {client.is_active !== false ? (
-                confirmDeactivate ? (
-                  <div className={s.confirmRow}>
-                    <VdfButton
-                      variant="danger"
-                      size="sm"
-                      loading={isTogglingActive}
-                      onClick={() => setClientActive({ client_id: clientId, is_active: false })}
-                    >
-                      Confirm Deactivate
-                    </VdfButton>
-                    <button className={s.cancelConfirmBtn} onClick={() => setConfirmDea(false)} title="Cancel">✕</button>
-                  </div>
-                ) : (
-                  <VdfButton
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setConfirmDea(true)}
-                  >
-                    Deactivate
-                  </VdfButton>
-                )
-              ) : (
+      <VdfPageHeader
+        eyebrow={client.client_no ?? 'CLIENT PROFILE'}
+        title={`${client.prefix} ${client.name}`}
+        meta={<>
+          <button
+            style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', padding: 0, fontSize: '0.78rem' }}
+            onClick={() => router.push('/clients')}
+          >← Clients</button>
+          {' · '}
+          <VdfStatusBadge
+            label={client.onboarding_status.replace('_', ' ')}
+            variant={STATUS_VARIANT[client.onboarding_status] ?? 'muted'}
+            size="sm"
+          />
+          {client.risk_profile && (
+            <span style={{ color: RISK_COLORS[client.risk_profile], fontSize: '0.75rem', fontWeight: 600 }}>
+              {' · '}
+              <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 2, background: RISK_COLORS[client.risk_profile], marginRight: 4, verticalAlign: 'middle' }} />
+              {client.risk_profile}
+            </span>
+          )}
+          {client.survival_status === 'deceased' && (
+            <span style={{ color: 'var(--color-danger)', fontSize: '0.75rem' }}>{' · '}Deceased</span>
+          )}
+        </>}
+        actions={<>
+          <VdfButton variant="outline" size="sm" onClick={() => router.push(`/clients/${clientId}/edit`)}>
+            Edit Profile
+          </VdfButton>
+          {client.is_active !== false ? (
+            confirmDeactivate ? (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <VdfButton
-                  variant="primary"
+                  variant="danger"
                   size="sm"
                   loading={isTogglingActive}
-                  onClick={() => setClientActive({ client_id: clientId, is_active: true })}
+                  onClick={() => setClientActive({ client_id: clientId, is_active: false })}
                 >
-                  Reactivate
+                  Confirm Deactivate
                 </VdfButton>
-              )}
-
-              <button
-                className={`${s.bookmarkBtn} ${bookmarked ? s.bookmarked : ''}`}
-                title={bookmarked ? 'Remove bookmark' : 'Bookmark client'}
-                onClick={() => bookmarked
-                  ? removeBookmark({ client_id: clientId })
-                  : addBookmark({ client_id: clientId })}
-              >
-                <svg viewBox="0 0 24 24" fill={bookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" width="18" height="18">
-                  <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
-                </svg>
-              </button>
-            </div>
-
-            <div className={s.heroBadges}>
-              <VdfStatusBadge
-                label={client.onboarding_status.replace('_', ' ')}
-                variant={STATUS_VARIANT[client.onboarding_status] ?? 'muted'}
-              />
-              {client.risk_profile && (
-                <span className={s.riskTag} style={{ color: RISK_COLORS[client.risk_profile] }}>
-                  <span className={s.riskDot} style={{ background: RISK_COLORS[client.risk_profile] }} />
-                  {client.risk_profile}
-                </span>
-              )}
-              {client.ext_ref_id && (
-                <div className={s.refId}>
-                  <span className={s.refBadge}>ID</span>
-                  <span className={s.refValue}>{client.ext_ref_id}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+                <VdfButton variant="ghost" size="xs" iconOnly onClick={() => setConfirmDea(false)} title="Cancel">✕</VdfButton>
+              </div>
+            ) : (
+              <VdfButton variant="ghost" size="sm" onClick={() => setConfirmDea(true)}>Deactivate</VdfButton>
+            )
+          ) : (
+            <VdfButton variant="primary" size="sm" loading={isTogglingActive}
+              onClick={() => setClientActive({ client_id: clientId, is_active: true })}>
+              Reactivate
+            </VdfButton>
+          )}
+          <VdfButton
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={bookmarked ? s.bookmarked : ''}
+            title={bookmarked ? 'Remove bookmark' : 'Bookmark client'}
+            onClick={() => bookmarked ? removeBookmark({ client_id: clientId }) : addBookmark({ client_id: clientId })}
+          >
+            <svg viewBox="0 0 24 24" fill={bookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" width="18" height="18">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+            </svg>
+          </VdfButton>
+        </>}
+      />
 
       {/* ── Inactive banner ── */}
       {client.is_active === false && (
