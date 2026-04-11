@@ -1,5 +1,5 @@
 /**
- * client-skill: get_clients
+ * client-skill: get_clients — now returns anniversary_date, survival_status, referred_by_name
  * Paginated list of clients with optional search, risk_profile filter, and bookmark filter.
  */
 

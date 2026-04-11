@@ -8,10 +8,11 @@ import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfEmptyState, VdfButton, VdfStatusBadge,
   VdfCard, VdfSearchBar, VdfStatCard, VdfModal, VdfPersonRow,
-  VdfPageHeader, VdfToggleGroup,
+  VdfPageHeader, VdfToggleGroup, VdfDrawer, VdfInput,
 } from '@/components/vdf';
 import s from './clients.module.css';
 import d from '@/styles/data.module.css';
+import f from '@/styles/forms.module.css';
 
 /* ── Types ───────────────────────────────────────────── */
 

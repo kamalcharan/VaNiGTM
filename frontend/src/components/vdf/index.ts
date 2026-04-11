@@ -8,6 +8,7 @@ export { VdfNoiseOverlay, type VdfNoiseOverlayProps } from './noise-overlay/VdfN
 export { VdfAtmosphere, type VdfAtmosphereProps } from './atmosphere/VdfAtmosphere';
 export { VdfParticles, type VdfParticlesProps } from './particles/VdfParticles';
 export { VdfModal, type VdfModalProps } from './modal/VdfModal';
+export { VdfDrawer, type VdfDrawerProps } from './drawer/VdfDrawer';
 export { VdfCheckbox, type VdfCheckboxProps } from './checkbox/VdfCheckbox';
 export { VdfTabs, type VdfTabsProps } from './tabs/VdfTabs';
 export { VdfNavRail, type VdfNavRailProps } from './nav-rail/VdfNavRail';
