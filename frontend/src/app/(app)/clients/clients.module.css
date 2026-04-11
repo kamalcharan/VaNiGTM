@@ -1,10 +1,11 @@
-/* /clients — page layout and view-specific decoration only.
-   Toolbar/search/pills → VdfSearchBar
-   Card shell          → VdfCard
-   Status badge        → VdfStatusBadge
-   Empty state         → VdfEmptyState
-   Loader              → VdfLoader
-   Stat cards          → VdfStatCard
+/* /clients — PAGE LAYOUT + GRID VIEW decoration only.
+   Card-row shell  → VdfPersonRow (vdf/person-row)
+   Pagination      → styles/data.module.css
+   Card shell      → VdfCard (grid view)
+   Status badge    → VdfStatusBadge
+   Empty state     → VdfEmptyState
+   Stat cards      → VdfStatCard
+   Loader          → VdfLoader
 */
 
 /* ── Page layout ─────────────────────────────────────── */
@@ -63,8 +64,6 @@
   gap: 8px;
 }
 
-/* ── Bookmark toggle (toolbar addon) ─────────────────── */
-
 .bookmarkToggle {
   width: 38px;
   height: 38px;
@@ -85,8 +84,6 @@
   border-color: var(--color-accent);
   color: var(--color-accent);
 }
-
-/* ── View toggle ──────────────────────────────────────── */
 
 .viewToggle {
   display: flex;
@@ -112,106 +109,31 @@
   transition: all 140ms;
 }
 
-.viewBtn:hover    { color: var(--color-fg); }
-.viewBtnActive    {
-  background: var(--color-primary);
-  color: var(--color-bg) !important;
-}
+.viewBtn:hover { color: var(--color-fg); }
+.viewBtnActive { background: var(--color-primary); color: var(--color-bg) !important; }
 
-/* ── ROW VIEW — table ────────────────────────────────── */
+/* ── ROW VIEW — card list layout ─────────────────────── */
 
-.tableWrap {
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  overflow: hidden;
+/* Gap between VdfPersonRow cards */
+.cardList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin-bottom: 16px;
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-}
+/* ── Slot content: name badges ───────────────────────── */
 
-.table thead th {
-  padding: 10px 16px;
-  text-align: left;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  white-space: nowrap;
-}
-
-.thName    { width: 38%; }
-.thContact { width: 26%; }
-.thRisk    { width: 14%; }
-.thStatus  { width: 15%; }
-.thBm      { width: 7%;  }
-
-.tr {
-  cursor: pointer;
-  transition: background 120ms;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.tr:last-child { border-bottom: none; }
-
-.tr:hover {
-  background: color-mix(in srgb, var(--color-primary) 4%, transparent);
-}
-
-.trBookmarked {
-  background: color-mix(in srgb, var(--color-accent) 5%, transparent);
-}
-
-.trBookmarked:hover {
-  background: color-mix(in srgb, var(--color-accent) 9%, transparent);
-}
-
-/* Name cell */
-
-.tdName {
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.rowAvatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
+.clientNoBadge {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.6rem;
   font-weight: 700;
-  color: var(--color-bg);
-  flex-shrink: 0;
-}
-
-.rowNameText { min-width: 0; }
-
-.rowName {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--color-fg);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-family: var(--font-display, 'Playfair Display', serif);
-}
-
-.rowIds {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 3px;
-  flex-wrap: wrap;
+  letter-spacing: 0.08em;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 .extRefBadge {
@@ -225,132 +147,62 @@
   border-radius: 4px;
 }
 
-/* Contact cell */
-
-.tdContact {
-  padding: 12px 16px;
-  vertical-align: middle;
-}
+/* ── Slot content: subLine ───────────────────────────── */
 
 .contactLine {
-  font-size: 0.8rem;
-  color: var(--color-fg);
+  font-size: 0.78rem;
+  color: var(--color-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
+  max-width: 260px;
 }
 
 .contactLineSub {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--color-muted);
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  margin-top: 2px;
+  opacity: 0.8;
 }
 
-/* Risk cell */
-
-.tdRisk {
-  padding: 12px 16px;
-  vertical-align: middle;
-}
+/* ── Slot content: trailing ──────────────────────────── */
 
 .riskPill {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: capitalize;
   border: 1px solid;
   border-radius: 20px;
-  padding: 2px 9px;
+  padding: 3px 10px;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.noRisk { color: var(--color-muted); }
-
-/* Status cell */
-
-.tdStatus {
-  padding: 12px 16px;
-  vertical-align: middle;
+.noRisk {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  flex-shrink: 0;
 }
-
-/* Bookmark cell */
-
-.tdBm {
-  padding: 8px 12px;
-  vertical-align: middle;
-  text-align: center;
-}
-
-/* ── Bookmark action button (both views) ─────────────── */
 
 .bmBtn {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: 7px;
   color: var(--color-muted);
   cursor: pointer;
   transition: all 150ms;
   flex-shrink: 0;
 }
 
-.bmBtn:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
-.bmBtnActive {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
-}
-
-.bmBtn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-/* ── Pagination ───────────────────────────────────────── */
-
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 16px;
-  margin-bottom: 8px;
-}
-
-.pageBtn {
-  padding: 6px 16px;
-  background: transparent;
-  color: var(--color-primary);
-  border: 1px solid var(--color-primary);
-  border-radius: 8px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 150ms;
-}
-
-.pageBtn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-}
-
-.pageBtn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.pageInfo {
-  font-size: 0.78rem;
-  color: var(--color-muted);
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  white-space: nowrap;
-}
+.bmBtn:hover       { border-color: var(--color-accent); color: var(--color-accent); }
+.bmBtnActive       { border-color: var(--color-accent); color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
+.bmBtn:disabled    { opacity: 0.4; cursor: not-allowed; }
 
 /* ── GRID VIEW ────────────────────────────────────────── */
 
@@ -360,8 +212,6 @@
   gap: 16px;
   margin-bottom: 16px;
 }
-
-/* VdfCard wraps the shell; these styles are for content inside each card */
 
 .riskFold {
   position: absolute;
@@ -390,11 +240,8 @@
   clip-path: polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%);
 }
 
-.cardHead {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
+.cardHead        { display: flex; align-items: center; gap: 14px; }
+.cardHeadText    { flex: 1; min-width: 0; }
 
 .avatar {
   width: 48px;
@@ -409,8 +256,6 @@
   flex-shrink: 0;
 }
 
-.cardHeadText { flex: 1; min-width: 0; }
-
 .cardName {
   font-size: 1rem;
   font-weight: 600;
@@ -421,26 +266,7 @@
   text-overflow: ellipsis;
 }
 
-.clientNoBadge {
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
-  padding: 2px 6px;
-  border-radius: 4px;
-  margin-right: 4px;
-}
-
-.refId {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 5px;
-  flex-wrap: wrap;
-}
+.refId   { display: inline-flex; align-items: center; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
 
 .refBadge {
   background: var(--color-fg);
@@ -460,14 +286,8 @@
   color: var(--color-fg);
 }
 
-.cardMeta {
-  display: flex;
-  gap: 16px;
-  font-size: 0.75rem;
-  color: var(--color-muted);
-}
-
-.metaItem { display: flex; align-items: center; gap: 4px; }
+.cardMeta    { display: flex; gap: 16px; font-size: 0.75rem; color: var(--color-muted); }
+.metaItem    { display: flex; align-items: center; gap: 4px; }
 
 .metaLabel {
   font-size: 0.65rem;
@@ -489,12 +309,7 @@
 
 /* ── Bookmark reason modal ───────────────────────────── */
 
-.reasonSelectWrap {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 16px;
-}
+.reasonSelectWrap  { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
 
 .reasonSelectLabel {
   font-size: 0.68rem;
@@ -507,7 +322,7 @@
 .reasonSelect {
   width: 100%;
   height: var(--input-height, 44px);
-  padding: 0 12px;
+  padding: 0 36px 0 12px;
   font-size: var(--input-font-size, 0.9rem);
   background: var(--color-bg);
   border: var(--input-border-width, 1px) solid var(--color-border);
@@ -521,7 +336,6 @@
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 16px;
-  padding-right: 36px;
 }
 
 .reasonSelect:focus {
@@ -530,11 +344,7 @@
   box-shadow: 0 0 0 var(--input-focus-ring-size, 3px) color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity, 12%), transparent);
 }
 
-.customReasonWrap {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
+.customReasonWrap  { display: flex; flex-direction: column; gap: 6px; }
 
 .customReasonLabel {
   font-size: 0.68rem;
@@ -569,32 +379,28 @@
   opacity: var(--input-placeholder-opacity, 0.35);
 }
 
-/* ── Responsive ──────────────────────────────────────── */
+/* ── Responsive (page layout only) ──────────────────── */
 
 @media (max-width: 900px) {
-  .statsRow {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  .statsRow { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 768px) {
   .page { padding: 20px; }
 
-  .titleRow {
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
-  }
+  .titleRow { flex-direction: column; gap: 12px; align-items: flex-start; }
 
-  .thContact, .tdContact { display: none; }
+  /* On tablet, trim subLine contact info */
+  .contactLine { display: none; }
 }
 
 @media (max-width: 480px) {
-  .page { padding: 14px; }
+  .page  { padding: 14px; }
 
   .statsRow { grid-template-columns: repeat(2, 1fr); }
-  .grid { grid-template-columns: 1fr; }
-  .title { font-size: 1.4rem; }
+  .grid     { grid-template-columns: 1fr; }
+  .title    { font-size: 1.4rem; }
 
-  .thRisk, .tdRisk { display: none; }
+  /* On mobile, hide risk pill — visible info: name, status, bookmark */
+  .riskPill { display: none; }
 }

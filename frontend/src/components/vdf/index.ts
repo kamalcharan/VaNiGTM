@@ -63,3 +63,4 @@ export { VdfActionCard, type VdfActionCardProps, type ActionTone } from './actio
 export { VdfColorPicker, type VdfColorPickerProps } from './color-picker/VdfColorPicker';
 export { VdfMobileHeader, type VdfMobileHeaderProps } from './mobile-header/VdfMobileHeader';
 export { VdfBottomNav, type VdfBottomNavProps } from './bottom-nav/VdfBottomNav';
+export { VdfPersonRow, type VdfPersonRowProps } from './person-row/VdfPersonRow';

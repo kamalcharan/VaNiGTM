@@ -7,9 +7,10 @@ import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfEmptyState, VdfButton, VdfStatusBadge,
-  VdfCard, VdfSearchBar, VdfStatCard, VdfModal,
+  VdfCard, VdfSearchBar, VdfStatCard, VdfModal, VdfPersonRow,
 } from '@/components/vdf';
 import s from './clients.module.css';
+import data from '@/styles/data.module.css';
 
 /* ── Types ───────────────────────────────────────────── */
 
@@ -306,17 +307,17 @@ export default function ClientsPage() {
 
   /* ── Pagination ──────────────────────────────────── */
   const pagination = totalPages > 1 && (
-    <div className={s.pagination}>
+    <div className={data.pagination}>
       <button
-        className={s.pageBtn}
+        className={data.pageBtn}
         onClick={() => setPage(p => p - 1)}
         disabled={page === 1}
       >← Prev</button>
-      <span className={s.pageInfo}>
+      <span className={data.pageInfo}>
         Page {page} of {totalPages} · {total.toLocaleString()} clients
       </span>
       <button
-        className={s.pageBtn}
+        className={data.pageBtn}
         onClick={() => setPage(p => p + 1)}
         disabled={page >= totalPages}
       >Next →</button>
@@ -409,94 +410,51 @@ export default function ClientsPage() {
       {/* ── ROW VIEW ── */}
       {clients.length > 0 && viewMode === 'row' && (
         <>
-          <div className={s.tableWrap}>
-            <table className={s.table}>
-              <thead>
-                <tr>
-                  <th className={s.thName}>Client</th>
-                  <th className={s.thContact}>Contact</th>
-                  <th className={s.thRisk}>Risk</th>
-                  <th className={s.thStatus}>Status</th>
-                  <th className={s.thBm}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {clients.map(client => (
-                  <tr
-                    key={client.id}
-                    className={`${s.tr} ${client.is_bookmarked ? s.trBookmarked : ''}`}
-                    onClick={() => router.push(`/clients/${client.id}`)}
+          <div className={s.cardList}>
+            {clients.map(client => (
+              <VdfPersonRow
+                key={client.id}
+                avatarInitials={initials(client.name)}
+                avatarGradient={avatarGradient(client.name)}
+                name={client.name}
+                prefix={client.prefix}
+                nameBadges={<>
+                  {client.client_no && <span className={s.clientNoBadge}>{client.client_no}</span>}
+                  {client.ext_ref_id && <span className={s.extRefBadge}>{client.ext_ref_id}</span>}
+                </>}
+                subLine={<>
+                  {client.primary_email && <span className={s.contactLine}>{client.primary_email}</span>}
+                  {client.primary_mobile && <span className={s.contactLineSub}>{client.primary_mobile}</span>}
+                </>}
+                trailing={<>
+                  {client.risk_profile ? (
+                    <span
+                      className={s.riskPill}
+                      style={{ color: RISK_COLORS[client.risk_profile], borderColor: RISK_COLORS[client.risk_profile] }}
+                    >
+                      {client.risk_profile}
+                    </span>
+                  ) : (
+                    <span className={s.noRisk}>—</span>
+                  )}
+                  <VdfStatusBadge
+                    label={client.onboarding_status.replace('_', ' ')}
+                    variant={STATUS_VARIANT[client.onboarding_status] ?? 'muted'}
+                    size="sm"
+                  />
+                  <button
+                    className={`${s.bmBtn} ${client.is_bookmarked ? s.bmBtnActive : ''}`}
+                    onClick={(e) => handleBookmarkClick(client, e)}
+                    disabled={bookmarkingId === client.id}
+                    title={client.is_bookmarked ? 'Remove bookmark' : 'Bookmark'}
                   >
-                    {/* Name cell */}
-                    <td className={s.tdName}>
-                      <div
-                        className={s.rowAvatar}
-                        style={{ background: avatarGradient(client.name) }}
-                      >{initials(client.name)}</div>
-                      <div className={s.rowNameText}>
-                        <div className={s.rowName}>{client.prefix} {client.name}</div>
-                        <div className={s.rowIds}>
-                          {client.client_no && (
-                            <span className={s.clientNoBadge}>{client.client_no}</span>
-                          )}
-                          {client.ext_ref_id && (
-                            <span className={s.extRefBadge}>{client.ext_ref_id}</span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Contact cell */}
-                    <td className={s.tdContact}>
-                      {client.primary_email && (
-                        <div className={s.contactLine}>{client.primary_email}</div>
-                      )}
-                      {client.primary_mobile && (
-                        <div className={s.contactLineSub}>{client.primary_mobile}</div>
-                      )}
-                    </td>
-
-                    {/* Risk cell */}
-                    <td className={s.tdRisk}>
-                      {client.risk_profile ? (
-                        <span
-                          className={s.riskPill}
-                          style={{
-                            color: RISK_COLORS[client.risk_profile],
-                            borderColor: RISK_COLORS[client.risk_profile],
-                          }}
-                        >
-                          {client.risk_profile}
-                        </span>
-                      ) : (
-                        <span className={s.noRisk}>—</span>
-                      )}
-                    </td>
-
-                    {/* Status cell */}
-                    <td className={s.tdStatus}>
-                      <VdfStatusBadge
-                        label={client.onboarding_status.replace('_', ' ')}
-                        variant={STATUS_VARIANT[client.onboarding_status] ?? 'muted'}
-                        size="sm"
-                      />
-                    </td>
-
-                    {/* Bookmark cell */}
-                    <td className={s.tdBm} onClick={(e) => e.stopPropagation()}>
-                      <button
-                        className={`${s.bmBtn} ${client.is_bookmarked ? s.bmBtnActive : ''}`}
-                        onClick={(e) => handleBookmarkClick(client, e)}
-                        disabled={bookmarkingId === client.id}
-                        title={client.is_bookmarked ? 'Remove bookmark' : 'Bookmark'}
-                      >
-                        <BookmarkIcon filled={client.is_bookmarked} size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    <BookmarkIcon filled={client.is_bookmarked} size={14} />
+                  </button>
+                </>}
+                highlighted={client.is_bookmarked}
+                onClick={() => router.push(`/clients/${client.id}`)}
+              />
+            ))}
           </div>
           {pagination}
         </>

@@ -1,0 +1,140 @@
+/* VdfPersonRow — card-row shell for person/entity list pages
+   Owns: container, avatar, info block layout, trailing layout, arrow
+   Does NOT own: slot content styles (badges, buttons) — those live in page CSS
+*/
+
+/* ── Row container ────────────────────────────────────── */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 150ms, box-shadow 150ms;
+  position: relative;
+  min-width: 0;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.row:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+.row:hover .arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Highlighted variant (bookmarked, pinned, etc.) */
+.rowHighlighted {
+  background: color-mix(in srgb, var(--color-accent) 4%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-accent) 22%, var(--color-border));
+}
+
+.rowHighlighted:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 50%, var(--color-border));
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+/* ── Avatar ───────────────────────────────────────────── */
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: var(--color-bg);
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+/* ── Info block ───────────────────────────────────────── */
+
+.info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.prefix {
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+
+.name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-fg);
+  font-family: var(--font-display, 'Playfair Display', serif);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Sub-line: phone, email, date, etc. — page controls content */
+.subLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* ── Trailing slot ────────────────────────────────────── */
+
+.trailing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Navigation arrow ─────────────────────────────────── */
+
+.arrow {
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 180ms, transform 180ms;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+/* ── Responsive ───────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .row    { padding: 11px 12px; gap: 10px; }
+  .avatar { width: 36px; height: 36px; font-size: 0.7rem; }
+  .name   { font-size: 0.84rem; }
+}
