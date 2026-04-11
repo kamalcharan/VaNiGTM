@@ -64,6 +64,7 @@ export { VdfColorPicker, type VdfColorPickerProps } from './color-picker/VdfColo
 export { VdfMobileHeader, type VdfMobileHeaderProps } from './mobile-header/VdfMobileHeader';
 export { VdfBottomNav, type VdfBottomNavProps } from './bottom-nav/VdfBottomNav';
 export { VdfPersonRow, type VdfPersonRowProps } from './person-row/VdfPersonRow';
+export { VdfToggleGroup, type VdfToggleGroupProps, type VdfToggleOption, type ToggleColor } from './toggle-group/VdfToggleGroup';
 export { VdfPageHeader, type VdfPageHeaderProps } from './page-header/VdfPageHeader';
 export { VdfSummaryCard, type VdfSummaryCardProps, type SummaryAccent } from './summary-card/VdfSummaryCard';
 export { VdfDashPanel, type VdfDashPanelProps } from './dash-panel/VdfDashPanel';

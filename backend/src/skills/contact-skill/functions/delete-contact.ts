@@ -1,6 +1,7 @@
 /**
  * contact-skill: delete_contact
- * Soft-delete a contact. Cannot delete if already converted to a client.
+ * Soft-delete a contact. Cannot deactivate if the contact has an active client record.
+ * (A contact that was once a client CAN be deactivated once their client record is deactivated.)
  */
 
 import { SkillContext } from '../../../shared/types';
@@ -21,9 +22,9 @@ export async function delete_contact(
 ): Promise<DeleteContactResult> {
   const { contact_id } = params;
 
-  // Check contact exists and is not already a client
-  const check = await ctx.db.query<{ is_client: boolean }>(
-    `SELECT is_client FROM ki_contacts
+  // Check contact exists
+  const check = await ctx.db.query<{ exists: boolean }>(
+    `SELECT 1 AS exists FROM ki_contacts
      WHERE id = $contact_id AND tenant_id = $tenant_id AND is_live = $is_live AND is_active = true`,
     { $contact_id: contact_id, $tenant_id: ctx.tenant_id, $is_live: ctx.is_live }
   );
@@ -31,8 +32,18 @@ export async function delete_contact(
   if (!check.rows[0]) {
     throw new Error(`Contact ${contact_id} not found`);
   }
-  if (check.rows[0].is_client) {
-    throw new Error(`Cannot delete contact ${contact_id} — they have been converted to a client`);
+
+  // Block deactivation if the contact has an ACTIVE client record
+  // (Once the client is deactivated, the contact can be deactivated too)
+  const activeClient = await ctx.db.query<{ id: number }>(
+    `SELECT id FROM ki_clients
+     WHERE contact_id = $contact_id AND tenant_id = $tenant_id AND is_live = $is_live AND is_active = true
+     LIMIT 1`,
+    { $contact_id: contact_id, $tenant_id: ctx.tenant_id, $is_live: ctx.is_live }
+  );
+
+  if (activeClient.rows[0]) {
+    throw new Error(`Cannot deactivate contact ${contact_id} — they have an active client record. Deactivate the client first.`);
   }
 
   await ctx.db.query(

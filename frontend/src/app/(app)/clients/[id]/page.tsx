@@ -553,9 +553,8 @@ export default function ClientProfilePage() {
                 confirmDeactivate ? (
                   <div className={s.confirmRow}>
                     <VdfButton
-                      variant="outline"
+                      variant="danger"
                       size="sm"
-                      className={s.dangerBtn}
                       loading={isTogglingActive}
                       onClick={() => setClientActive({ client_id: clientId, is_active: false })}
                     >

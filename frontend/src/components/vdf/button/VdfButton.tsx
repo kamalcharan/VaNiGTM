@@ -3,12 +3,14 @@
 import s from './VdfButton.module.css';
 
 export interface VdfButtonProps {
-  variant: 'primary' | 'ghost' | 'outline';
-  size?: 'sm' | 'md' | 'lg';
+  variant: 'primary' | 'ghost' | 'outline' | 'danger' | 'success';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
+  /** Square icon-only button — omit text children and pass icon via children */
+  iconOnly?: boolean;
   children: React.ReactNode;
   href?: string;
   icon?: React.ReactNode;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => void;
   className?: string;
   disabled?: boolean;
   loading?: boolean;
@@ -20,6 +22,7 @@ export interface VdfButtonProps {
 export function VdfButton({
   variant,
   size = 'md',
+  iconOnly,
   children,
   href,
   icon,
@@ -31,7 +34,14 @@ export function VdfButton({
   type = 'button',
   title,
 }: VdfButtonProps) {
-  const cls = `${s.btn} ${s[variant]} ${s[size]} ${fullWidth ? s.fullWidth : ''} ${className || ''}`;
+  const cls = [
+    s.btn,
+    s[variant],
+    s[size],
+    iconOnly ? s.iconOnly : '',
+    fullWidth ? s.fullWidth : '',
+    className || '',
+  ].join(' ');
 
   if (href) {
     return (

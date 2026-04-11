@@ -8,7 +8,7 @@ import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfEmptyState, VdfButton, VdfStatusBadge,
   VdfCard, VdfSearchBar, VdfStatCard, VdfModal, VdfPersonRow,
-  VdfPageHeader,
+  VdfPageHeader, VdfToggleGroup,
 } from '@/components/vdf';
 import s from './clients.module.css';
 import d from '@/styles/data.module.css';
@@ -25,6 +25,7 @@ interface Client {
   dob: string | null;
   risk_profile: string | null;
   onboarding_status: string;
+  is_active: boolean;
   is_bookmarked: boolean;
   prefix: string;
   name: string;
@@ -55,6 +56,7 @@ interface StatsData {
 
 type RiskFilter  = 'all' | 'conservative' | 'moderate' | 'aggressive';
 type ViewMode    = 'row' | 'grid';
+type StatusMode  = 'active' | 'inactive';
 
 /* ── Constants ───────────────────────────────────────── */
 
@@ -121,6 +123,7 @@ export default function ClientsPage() {
 
   /* ── View & filter state ─────────────────────────── */
   const [viewMode,       setViewMode]       = useState<ViewMode>('row');
+  const [status,         setStatus]         = useState<StatusMode>('active');
   const [search,         setSearch]         = useState('');
   const [activeSearch,   setActiveSearch]   = useState('');
   const [riskFilter,     setRiskFilter]     = useState<RiskFilter>('all');
@@ -129,6 +132,7 @@ export default function ClientsPage() {
   const [inFamily,       setInFamily]       = useState(false);
   const [page,           setPage]           = useState(1);
   const [bookmarkingId,  setBookmarkingId]  = useState<number | null>(null);
+  const [togglingId,     setTogglingId]     = useState<number | null>(null);
 
   /* ── Bookmark modal state ────────────────────────── */
   const [bookmarkTarget,   setBookmarkTarget]   = useState<Client | null>(null);
@@ -154,10 +158,11 @@ export default function ClientsPage() {
       bookmarked_only: bookmarkedOnly || undefined,
       recent_only:     recentOnly || undefined,
       in_family:       inFamily || undefined,
+      show_inactive:   status === 'inactive' || undefined,
     },
     limit:  PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE,
-  }), [activeSearch, riskFilter, bookmarkedOnly, recentOnly, inFamily, page]);
+  }), [activeSearch, riskFilter, bookmarkedOnly, recentOnly, inFamily, status, page]);
 
   const { data, isLoading, isError, error } = useSkillQuery<ClientsData>(
     'client-skill', 'get_clients', skillParams
@@ -166,6 +171,26 @@ export default function ClientsPage() {
   const clients    = data?.data?.clients ?? [];
   const total      = data?.data?.total   ?? 0;
   const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  /* ── Active/inactive toggle mutation ────────────── */
+  const { mutate: setClientActive } = useSkillMutation(
+    'client-skill', 'set_client_active',
+    {
+      onSuccess: (_data, vars: { client_id: number; is_active: boolean }) => {
+        queryClient.invalidateQueries({ queryKey: ['skill', 'client-skill', 'get_clients'] });
+        queryClient.invalidateQueries({ queryKey: ['skill', 'client-skill', 'get_stats'] });
+        showToast({
+          message: vars.is_active ? 'Client reactivated' : 'Client deactivated',
+          type: vars.is_active ? 'success' : 'info',
+        });
+        setTogglingId(null);
+      },
+      onError: (err) => {
+        showToast({ message: err.message || 'Failed to update client status', type: 'error' });
+        setTogglingId(null);
+      },
+    }
+  );
 
   /* ── Bookmark mutations ──────────────────────────── */
   const addBookmark    = useSkillMutation('client-skill', 'add_bookmark');
@@ -255,6 +280,27 @@ export default function ClientsPage() {
     setRiskFilter(id as RiskFilter);
     setPage(1);
   }, []);
+
+  const handleStatusChange = useCallback((s: StatusMode) => {
+    setStatus(s);
+    setPage(1);
+    // Inactive view: disable bookmark/recent/family filters (they're active-only)
+    if (s === 'inactive') {
+      setBookmarkedOnly(false);
+      setRecentOnly(false);
+      setInFamily(false);
+    }
+  }, []);
+
+  const handleToggleActive = useCallback((
+    e: React.MouseEvent<HTMLButtonElement | HTMLAnchorElement>,
+    client: Client
+  ) => {
+    e.stopPropagation();
+    if (togglingId === client.id) return;
+    setTogglingId(client.id);
+    setClientActive({ client_id: client.id, is_active: !client.is_active });
+  }, [togglingId, setClientActive]);
 
   /* ── Loading / error ─────────────────────────────── */
   if (isLoading) return <VdfLoader overlay message="Loading clients…" />;
@@ -379,10 +425,18 @@ export default function ClientsPage() {
           onChange={handleSearchChange}
           onSearch={triggerSearch}
           placeholder="Search by name, PAN, or reference code…"
-          pills={RISK_PILLS}
+          pills={status === 'active' ? RISK_PILLS : [{ id: 'all', label: 'All' }]}
           activePill={riskFilter}
           onPillChange={handleRiskChange}
-          addon={bookmarkAddon}
+          addon={status === 'active' ? bookmarkAddon : undefined}
+        />
+        <VdfToggleGroup
+          options={[
+            { id: 'active',   label: 'Active',   activeColor: 'success' },
+            { id: 'inactive', label: 'Inactive', activeColor: 'warning' },
+          ]}
+          value={status}
+          onChange={v => handleStatusChange(v as StatusMode)}
         />
         {viewToggle}
       </div>
@@ -439,6 +493,35 @@ export default function ClientsPage() {
                     variant={STATUS_VARIANT[client.onboarding_status] ?? 'muted'}
                     size="sm"
                   />
+                  {client.is_active !== false ? (
+                    <VdfButton
+                      variant="danger"
+                      size="sm"
+                      iconOnly
+                      disabled={togglingId === client.id}
+                      onClick={e => handleToggleActive(e, client)}
+                      title="Deactivate client"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+                        <circle cx="12" cy="12" r="10" /><line x1="8" y1="12" x2="16" y2="12" />
+                      </svg>
+                    </VdfButton>
+                  ) : (
+                    <VdfButton
+                      variant="success"
+                      size="sm"
+                      disabled={togglingId === client.id}
+                      onClick={e => handleToggleActive(e, client)}
+                      icon={
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+                          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                          <path d="M3 3v5h5" />
+                        </svg>
+                      }
+                    >
+                      Reactivate
+                    </VdfButton>
+                  )}
                   <button
                     className={`${s.bmBtn} ${client.is_bookmarked ? s.bmBtnActive : ''}`}
                     onClick={(e) => handleBookmarkClick(client, e)}

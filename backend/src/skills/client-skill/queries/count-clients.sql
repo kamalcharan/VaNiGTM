@@ -1,6 +1,7 @@
 -- count-clients: total for pagination
 -- Named params: $tenant_id, $is_live, $search (nullable), $risk_profile (nullable),
---               $user_id, $bookmarked_only (nullable), $recent_only (nullable), $in_family (nullable)
+--               $user_id, $bookmarked_only (nullable), $recent_only (nullable),
+--               $in_family (nullable), $show_inactive (boolean, default false)
 
 SELECT COUNT(*) AS total
 FROM ki_clients cl
@@ -10,7 +11,7 @@ LEFT JOIN ki_client_bookmarks bm
       AND bm.is_live = cl.is_live AND bm.is_active = true
 WHERE cl.tenant_id = $tenant_id
   AND cl.is_live   = $is_live
-  AND cl.is_active = true
+  AND cl.is_active = (NOT $show_inactive::boolean)
   AND (
       $search::text IS NULL
       OR c.normalized_name ILIKE '%' || UPPER($search::text) || '%'

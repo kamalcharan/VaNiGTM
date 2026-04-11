@@ -159,16 +159,6 @@
   50%       { opacity: 0.4; }
 }
 
-/* Deactivate danger override on top of VdfButton outline */
-.dangerBtn {
-  border-color: var(--color-danger) !important;
-  color: var(--color-danger) !important;
-}
-
-.dangerBtn:hover {
-  background: color-mix(in srgb, var(--color-danger) 8%, transparent) !important;
-}
-
 /* Confirm row (confirm + cancel) */
 .confirmRow {
   display: flex;
