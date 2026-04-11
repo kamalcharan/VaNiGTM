@@ -244,7 +244,9 @@ export const NAV_ITEMS: NavItem[] = [
 /**
  * Resolve the active nav item from the current pathname.
  */
-export function getActiveNavId(pathname: string): string {
+export function getActiveNavId(pathname: string | null): string {
+  if (!pathname) return 'dashboard';
+
   const exact = NAV_ITEMS.find((item) => item.href === pathname);
   if (exact) return exact.id;
 
