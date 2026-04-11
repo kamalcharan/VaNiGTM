@@ -2,16 +2,18 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useShellConfig } from '@/lib/shell-config';
 import { useToast } from '@/components/toast';
 import { VdfWizard } from '@/components/vdf';
+import { useCompleteOnboardingStep } from '@/hooks/useOnboarding';
+import { ME_QUERY_KEY } from '@/hooks/useMe';
 import OnboardUserProfile from '@/components/onboarding/OnboardUserProfile';
 import OnboardBusiness from '@/components/onboarding/OnboardBusiness';
 import OnboardPlatform from '@/components/onboarding/OnboardPlatform';
 import OnboardTheme from '@/components/onboarding/OnboardTheme';
 import OnboardInvite from '@/components/onboarding/OnboardInvite';
 import OnboardPreferences from '@/components/onboarding/OnboardPreferences';
-import OnboardImport from '@/components/onboarding/OnboardImport';
 import s from './onboarding-page.module.css';
 
 const STEP_COMPONENTS: Record<string, React.ComponentType<{ onComplete: () => void; onSkip?: () => void; onBack?: () => void }>> = {
@@ -21,13 +23,14 @@ const STEP_COMPONENTS: Record<string, React.ComponentType<{ onComplete: () => vo
   OnboardTheme,
   OnboardInvite,
   OnboardPreferences,
-  OnboardImport,
 };
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { onboarding, product } = useShellConfig();
   const { showToast } = useToast();
+  const completeStep = useCompleteOnboardingStep();
   const steps = onboarding.steps;
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -36,25 +39,40 @@ export default function OnboardingPage() {
   const currentStep = steps[currentIndex];
   const StepComponent = STEP_COMPONENTS[currentStep.component];
 
-  const handleComplete = useCallback(() => {
+  const handleComplete = useCallback(async () => {
     setCompletedSteps((prev) => {
       const next = new Set(prev);
       next.add(currentStep.id);
       return next;
     });
 
-    if (currentIndex < steps.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      showToast({ message: 'Onboarding complete! Welcome to your dashboard.', type: 'success' });
-      router.push('/dashboard');
+    try {
+      const result = await completeStep.mutateAsync({ step_id: currentStep.id });
+      if (result.onboarding_complete) {
+        // Wait for /me to reflect onboarding_complete: true before navigating
+        // so the layout guard doesn't redirect back to /onboarding
+        await queryClient.refetchQueries({ queryKey: ME_QUERY_KEY });
+        showToast({ message: 'Welcome to ProKey!', type: 'success' });
+        router.push('/dashboard');
+      } else if (currentIndex < steps.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+      }
+    } catch {
+      // API failed — still advance so the user isn't blocked
+      if (currentIndex < steps.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+      } else {
+        router.push('/dashboard');
+      }
     }
-  }, [currentStep, currentIndex, steps.length, router, showToast]);
+  }, [currentStep, currentIndex, steps.length, router, showToast, completeStep, queryClient]);
 
   const handleSkip = useCallback(() => {
     if (currentIndex < steps.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
+      // Optional last step skipped — mandatory steps already marked complete,
+      // onboarding_complete is already true in the DB. Navigate directly.
       showToast({ message: 'Onboarding complete!', type: 'success' });
       router.push('/dashboard');
     }

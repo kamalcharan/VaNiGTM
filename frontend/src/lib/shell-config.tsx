@@ -41,7 +41,6 @@ const defaultConfig: ShellConfig = {
       { id: 'theme_selection',  order: 4, mandatory: false, component: 'OnboardTheme',       title: 'Theme' },
       { id: 'invite_team',      order: 5, mandatory: false, component: 'OnboardInvite',      title: 'Invite Team' },
       { id: 'risk_preferences', order: 6, mandatory: false, component: 'OnboardPreferences', title: 'Preferences' },
-      { id: 'import_data',      order: 7, mandatory: false, component: 'OnboardImport',      title: 'Import Data' },
     ],
   },
 };

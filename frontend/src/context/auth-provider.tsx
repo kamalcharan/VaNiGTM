@@ -39,9 +39,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin: boolean = tenant?.is_admin === true;
 
   // Sync theme from server (user.preferred_theme) → ThemeProvider
-  // This ensures the theme matches what the user saved, even on first load
+  // Skip during onboarding — user hasn't chosen a theme yet, so the DB default
+  // (vikuna-black set at registration) would override the system default incorrectly.
   useEffect(() => {
     if (!user) return;
+    if (!tenant?.onboarding_complete) return;
 
     const serverTheme = (user as any).preferred_theme;
     if (serverTheme && serverTheme !== themeId) {
@@ -60,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch {}
     }
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, tenant?.onboarding_complete]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function logout() {
     // Fire-and-forget: revoke the specific session in DB by sending the refresh token

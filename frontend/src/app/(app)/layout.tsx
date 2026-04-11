@@ -44,8 +44,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Onboarding guard
   useEffect(() => {
-    if (!isLoading && tenant && !tenant.onboarding_complete && !isOnboarding) {
+    if (isLoading || !tenant) return;
+    if (!tenant.onboarding_complete && !isOnboarding) {
       router.replace('/onboarding');
+    } else if (tenant.onboarding_complete && isOnboarding) {
+      // onboarding_complete just became true — push to dashboard
+      router.replace('/dashboard');
     }
   }, [isLoading, tenant, isOnboarding, router]);
 
