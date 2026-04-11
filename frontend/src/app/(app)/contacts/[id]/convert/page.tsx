@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
+import type { ApiError } from '@/lib/api-client';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
 import { VdfLoader, VdfButton } from '@/components/vdf';
@@ -144,7 +145,7 @@ export default function ConvertPage() {
           goalsSeeded: res.data.goals_seeded,
         });
       },
-      onError: (e: Error) => showToast({ message: e.message || 'Conversion failed', type: 'error' }),
+      onError: (e: ApiError) => showToast({ message: e.message || 'Conversion failed', type: 'error' }),
     }
   );
 
