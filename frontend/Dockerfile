@@ -27,13 +27,10 @@ COPY public/ ./public/
 # Memory cap during Next.js build (SSG/SSR compilation is memory-intensive)
 ENV NODE_OPTIONS="--max-old-space-size=2048"
 
-# Disable Turbopack for production builds.
-# Next.js 16 defaults to Turbopack, but 16.2.1 has a panic bug triggered by
-# U+2500 box-drawing characters (──) commonly used in source comments.
-# TURBOPACK=0 forces the webpack bundler instead.
-ENV TURBOPACK=0
-
-RUN npm run build
+# Disable Turbopack — use webpack for production builds.
+# Next.js 16 defaults to Turbopack, but 16.2.1 panics on U+2500 box-drawing
+# characters (──) used in source comments. --no-turbo forces the webpack bundler.
+RUN npm run build:webpack
 
 # ── Stage 2: Production image ────────────────────────────────
 FROM node:22-alpine AS runner

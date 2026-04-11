@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next dev --port 3000",
     "build": "next build",
+    "build:webpack": "next build --no-turbo",
     "start": "cross-env NODE_OPTIONS=--max-old-space-size=2048 next start --port 3000"
   },
   "dependencies": {
