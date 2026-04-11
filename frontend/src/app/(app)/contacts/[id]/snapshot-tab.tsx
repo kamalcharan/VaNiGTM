@@ -429,7 +429,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   // ── Live metrics ──────────────────────────────────────────────────────────
 
   const metrics = computeMetrics(income, expenses, assets, liabs);
-  const protRatio = protection.life_cover_amount && metrics.monthlyIncome > 0
+  const protRatio: number | null = protection.life_cover_amount && metrics.monthlyIncome > 0
     ? Number(protection.life_cover_amount) / (metrics.monthlyIncome * 12)
     : null;
 
