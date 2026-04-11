@@ -152,5 +152,4 @@ echo "Container Status:"
 $COMPOSE_CMD -f docker-compose.yml ps
 echo ""
 echo -e "${YELLOW}Note: No database changes were made.${NC}"
-echo -e "${YELLOW}To run migrations: ./migrate.sh${NC}"
 echo ""
