@@ -1,0 +1,71 @@
+# ============================================================
+# ProKey — Production Docker Compose
+#
+# Services:
+#   backend  — Express API (port 3001, internal only)
+#   frontend — Next.js UI  (port 3000, internal only)
+#   nginx    — Reverse proxy (port APP_PORT, public-facing)
+#
+# Usage:
+#   First time:  ./configure.sh
+#   Update:      ./update.sh
+#   Migrations:  ./migrate.sh
+# ============================================================
+
+services:
+
+  backend:
+    image: vikuna/prokey-backend:${IMAGE_TAG:-latest}
+    container_name: ${INSTANCE_NAME}_backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    networks:
+      - prokey
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  frontend:
+    image: vikuna/prokey-frontend:${IMAGE_TAG:-latest}
+    container_name: ${INSTANCE_NAME}_frontend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    networks:
+      - prokey
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+  nginx:
+    image: nginx:alpine
+    container_name: ${INSTANCE_NAME}_nginx
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-80}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - prokey
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+networks:
+  prokey:
+    driver: bridge
