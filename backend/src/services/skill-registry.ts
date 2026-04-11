@@ -11,7 +11,6 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { pathToFileURL } from 'url';
 import { loadAllSkills, discoverSkillDirs, parseSkillMd } from './skill-loader';
 import type {
   SkillDefinition,
@@ -157,7 +156,9 @@ export async function buildRegistry(skillsRoot: string): Promise<SkillRegistry> 
       const fnPath = path.join(functionsDir, fnFile);
 
       try {
-        const mod = await import(pathToFileURL(fnPath).href);
+        // Use require() — output is CommonJS, file:// URL imports don't work for CJS modules
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const mod = require(fnPath);
         // Handler is the named export matching the function name
         const handler = mod[fnName] || mod.default;
         if (typeof handler === 'function') {
