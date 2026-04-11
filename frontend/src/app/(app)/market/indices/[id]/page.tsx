@@ -219,8 +219,7 @@ function deriveVaNiInsights(m: LatestMetrics): Insight[] {
 
 export default function MarketIndexDetailPage() {
   const router  = useRouter();
-  const params  = useParams();
-  const indexId = params.id as string;
+  const { id: indexId } = useParams() as { id: string };
   const { showToast } = useToast();
 
   /* ── State ───────────────────────────────────────────── */

@@ -89,10 +89,9 @@ function aggregateData(data: { date: string; nav: number }[], gran: Granularity)
 /* ── Component ─────────────────────────────────────── */
 
 export default function SchemeDashboardPage() {
-  const params = useParams();
+  const { code } = useParams() as { code: string };
   const router = useRouter();
   const { showToast } = useToast();
-  const code = params.code as string;
 
   // Core data
   const [detail, setDetail] = useState<SchemeDetail | null>(null);
