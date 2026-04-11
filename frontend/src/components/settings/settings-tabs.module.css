@@ -283,7 +283,24 @@
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width: 768px) {
   .card { padding: 24px; }
+  .dangerCard { padding: 24px; }
   .formRow { flex-direction: column; gap: 0; }
   .themeGrid { grid-template-columns: repeat(2, 1fr); }
+  .optionGrid { grid-template-columns: repeat(2, 1fr); }
+  .readGrid { grid-template-columns: 1fr; }
   .sessionMeta { flex-direction: column; gap: 4px; }
+  .sessionCard { padding: 12px 16px; gap: 12px; }
+  .dangerItem { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .photoUpload { gap: 16px; }
+}
+
+@media (max-width: 480px) {
+  .card { padding: 16px; }
+  .dangerCard { padding: 16px; }
+  .cardHeader { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .optionGrid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .optionCard { padding: 14px 10px; }
+  .actions { flex-direction: column; }
+  .btnSave, .btnCancel { width: 100%; justify-content: center; }
+  .photoUpload { flex-direction: column; align-items: flex-start; gap: 12px; }
 }

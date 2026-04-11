@@ -9,7 +9,7 @@
   padding: 28px 32px;
   max-width: 1600px;
   margin: 0 auto;
-  min-height: calc(100vh - 64px);
+  min-height: 100%;
 }
 
 /* ── Header ──────────────────────────────────────────── */
@@ -174,7 +174,7 @@
 .progressOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: color-mix(in srgb, var(--color-bg) 40%, transparent);
   backdrop-filter: blur(4px);
   z-index: 2000;
   display: flex;
@@ -313,7 +313,7 @@
   display: inline-block;
   width: 12px;
   height: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid color-mix(in srgb, var(--color-bg) 30%, transparent);
   border-top-color: currentColor;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -359,3 +359,32 @@
 }
 
 .indexList { animation: fadeInUp 0.25s ease; }
+
+/* ── Responsive ──────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .page { padding: 20px; }
+
+  .header { margin-bottom: 20px; }
+  .headerLeft h1 { font-size: 1.4rem; }
+
+  .statsStrip { grid-template-columns: repeat(2, 1fr); }
+
+  .filterBar { gap: 8px; }
+  .searchWrap { max-width: 100%; }
+
+  .bulkBar { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .bulkBarRight { flex-wrap: wrap; }
+}
+
+@media (max-width: 480px) {
+  .page { padding: 14px; }
+
+  .headerLeft h1 { font-size: 1.2rem; }
+
+  .statsStrip { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+
+  .dateRow { grid-template-columns: 1fr; }
+
+  .progressCard { padding: 24px 20px; }
+}
