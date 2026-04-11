@@ -307,7 +307,7 @@ export default function IntakePage() {
     setIsSubmitting(true);
     setError('');
     try {
-      await post('/api/v1/intake/submit', buildPayload() as Record<string, unknown>);
+      await post('/api/v1/intake/submit', buildPayload() as unknown as Record<string, unknown>);
       setStage('done');
     } catch (e) {
       setError((e as Error).message || 'Submission failed. Please try again.');

@@ -374,14 +374,14 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     'contact-skill', 'save_snapshot',
     {
       onSuccess: (res, vars) => {
-        const status = (vars as Record<string, unknown>).status as string;
+        const status = (vars as unknown as Record<string, unknown>).status as string;
         queryClient.invalidateQueries({ queryKey: ['skill', 'contact-skill', 'get_snapshot_full'] });
         queryClient.invalidateQueries({ queryKey: ['skill', 'contact-skill', 'get_contact'] });
         if (status === 'active') {
-          const version = (res as Record<string, unknown>)?.data
-            ? ((res as Record<string, unknown>).data as Record<string, unknown>)?.snapshot
-              ? (((res as Record<string, unknown>).data as Record<string, unknown>).snapshot as Record<string, unknown>).version_number as number ?? 1
-              : 1
+          const resAny = res as unknown as Record<string, unknown>;
+          const snapData2 = resAny?.data ? (resAny.data as Record<string, unknown>) : null;
+          const version = snapData2?.snapshot
+            ? ((snapData2.snapshot as Record<string, unknown>).version_number as number ?? 1)
             : 1;
           setSnapshotVersion(version || 1);
           // Tick the 4th progress item then reveal snapshot view
@@ -401,11 +401,11 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     }
   );
 
-  const handleDraft  = () => saveMutation(buildPayload('draft') as Record<string, unknown>);
+  const handleDraft  = () => saveMutation(buildPayload('draft') as unknown as Record<string, unknown>);
   const handleSubmit = () => {
     setSubmitPhase('saving');
     setTick4Done(false);
-    saveMutation(buildPayload('active') as Record<string, unknown>);
+    saveMutation(buildPayload('active') as unknown as Record<string, unknown>);
   };
 
   const { mutate: genToken, isPending: isGenning } = useSkillMutation<{ intake_url: string }>(
@@ -489,7 +489,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
           <button
             className={s.emptySendBtn}
             disabled={isGenning}
-            onClick={() => genToken({ contact_id: contactId } as Record<string, unknown>)}
+            onClick={() => genToken({ contact_id: contactId } as unknown as Record<string, unknown>)}
           >
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
               <path d="M17.5 2.5L9.5 10.5M17.5 2.5L12.5 17.5L9.5 10.5M17.5 2.5L2.5 7.5L9.5 10.5" />
