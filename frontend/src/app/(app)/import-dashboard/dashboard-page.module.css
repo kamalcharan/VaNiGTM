@@ -36,10 +36,11 @@
 /* ── Sidebar ─────────────────────────────────────────── */
 .sidebar { display: flex; flex-direction: column; gap: 8px; }
 
-.sidebarFilters { display: flex; gap: 4px; padding: 2px; background: var(--color-surface); border-radius: 8px; border: 1px solid var(--color-border); }
-.filterTab { flex: 1; padding: 5px 0; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); background: transparent; border: none; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+/* 5-tab layout: wrap to 2 rows so labels fit */
+.sidebarFilters { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: var(--color-surface); border-radius: 8px; border: 1px solid var(--color-border); }
+.filterTab { flex: 1 1 calc(33% - 4px); min-width: 0; padding: 5px 4px; font-size: 0.56rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted); background: transparent; border: none; border-radius: 6px; cursor: pointer; transition: all 0.15s; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .filterTab:hover { color: var(--color-fg); background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
-.filterTabActive { flex: 1; padding: 5px 0; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 14%, transparent); border: none; border-radius: 6px; cursor: pointer; }
+.filterTabActive { flex: 1 1 calc(33% - 4px); min-width: 0; padding: 5px 4px; font-size: 0.56rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 14%, transparent); border: none; border-radius: 6px; cursor: pointer; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .sessionCard {
   padding: 12px 14px;
