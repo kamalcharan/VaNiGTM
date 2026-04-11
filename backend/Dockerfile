@@ -23,8 +23,11 @@ COPY src/ ./src/
 RUN npm run build
 
 # Copy SQL query files alongside compiled JS (tsc skips non-TS files)
-RUN find src -name "*.sql" -exec sh -c \
-    'dst="dist/${1#src/}"; mkdir -p "${dst%/*}"; cp "$1" "$dst"' _ {} \;
+RUN find src -name "*.sql" | while read f; do \
+      d="dist/${f#src/}"; \
+      mkdir -p "$(dirname "$d")"; \
+      cp "$f" "$d"; \
+    done
 
 # ── Stage 2: Production image ────────────────────────────────
 FROM node:22-alpine AS runner
