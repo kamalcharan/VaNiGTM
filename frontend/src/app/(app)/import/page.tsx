@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { VdfInsightsCard, VdfStatCard } from '@/components/vdf';
+import { VdfInsightsCard, VdfStatCard, VdfPageHeader } from '@/components/vdf';
 import { useAuth } from '@/context/auth-provider';
 import s from './import-page.module.css';
 
@@ -261,16 +261,15 @@ export default function ImportPage() {
 
   return (
     <div className={s.page}>
-      {/* Header */}
-      <div className={s.header}>
-        <div className={s.headerLeft}>
-          <h1 className={s.title}>Import Data</h1>
-          <p className={s.subtitle}>Bring your data into ProKey</p>
-        </div>
-        {step !== 'type' && step !== 'results' && (
+      <VdfPageHeader
+        eyebrow="DATA IMPORT"
+        title="Import Data"
+        actions={step !== 'type' && step !== 'results' ? (
           <button className={s.cancelBtn} onClick={handleReset}>Cancel</button>
-        )}
-      </div>
+        ) : undefined}
+      />
+
+      <div className={s.body}>
 
       {/* Step progress */}
       <div className={s.stepper}>
@@ -474,6 +473,8 @@ export default function ImportPage() {
           </div>
         </div>
       )}
+
+      </div>
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
-import { VdfStatusBadge, VdfLoader, VdfProactiveCard, VdfEmptyState, VdfButton, VdfStatCard, type BadgeVariant } from '@/components/vdf';
+import { VdfStatusBadge, VdfLoader, VdfProactiveCard, VdfEmptyState, VdfButton, VdfStatCard, VdfPageHeader, type BadgeVariant } from '@/components/vdf';
 import d from '@/styles/data.module.css';
 import s from './dashboard-page.module.css';
 
@@ -167,29 +167,18 @@ export default function ImportDashboardPage() {
 
   return (
     <div className={s.page}>
-      {/* Breadcrumb */}
-      <div className={s.breadcrumb}>
-        <div className={s.breadcrumbLeft}>
-          <h1 className={d.pageTitle} style={{ fontSize: '1.1rem' }}>Import Dashboard</h1>
-          {selectedSession && (
-            <>
-              <span className={s.breadcrumbSep}>/</span>
-              <span className={s.breadcrumbSession}>
-                Import #{(selectedSession as any).tenant_seq ?? selectedSession.id}
-                <span className={s.breadcrumbSessionId}>· Session {selectedSession.id}</span>
-                {selectedSession.original_filename ? ` · ${selectedSession.original_filename}` : ''}
-              </span>
-            </>
-          )}
-        </div>
-        <div className={s.breadcrumbRight}>
+      <VdfPageHeader
+        eyebrow="DATA IMPORT"
+        title="Import Dashboard"
+        meta={selectedSession ? (
+          <><strong>Import #{(selectedSession as any).tenant_seq ?? selectedSession.id}</strong>
+          {selectedSession.original_filename && ` · ${selectedSession.original_filename}`}</>
+        ) : undefined}
+        actions={<>
           <div className={s.userBadge}>{initials}</div>
-          <button className={d.pageBtn} onClick={() => router.push('/import')}
-            style={{ background: 'var(--color-primary)', color: 'var(--color-primary-fg)', borderColor: 'var(--color-primary)', fontWeight: 700 }}>
-            + New Import
-          </button>
-        </div>
-      </div>
+          <VdfButton variant="primary" size="sm" onClick={() => router.push('/import')}>+ New Import</VdfButton>
+        </>}
+      />
 
       <div className={s.grid}>
         {/* ═══ SIDEBAR ═══ */}

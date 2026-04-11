@@ -4,34 +4,15 @@
    ═══════════════════════════════════════════════════════ */
 
 .page {
-  padding: 32px 48px;
   max-width: 1040px;
   margin: 0 auto;
   min-height: 100%;
 }
 
-/* ── Header ──────────────────────────────────────────── */
-.header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 24px;
-}
+/* ── Body (below sticky header) ─────────────────────── */
 
-.headerLeft { flex: 1; }
-
-.title {
-  font-family: var(--font-display, serif);
-  font-size: 1.6rem;
-  font-weight: 800;
-  color: var(--color-fg);
-  margin: 0 0 4px;
-}
-
-.subtitle {
-  font-size: 0.8rem;
-  color: var(--color-muted);
-  margin: 0;
+.body {
+  padding: 24px 48px 32px;
 }
 
 .cancelBtn {
@@ -54,8 +35,8 @@
   gap: 0;
   margin-bottom: 32px;
   padding: 16px 24px;
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   backdrop-filter: blur(12px);
 }
@@ -240,7 +221,7 @@
   grid-template-columns: 1fr 32px 1fr 1.2fr;
   gap: 8px;
   padding: 12px 20px;
-  background: var(--glass);
+  background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   font-size: 0.6rem;
   font-weight: 600;
@@ -306,7 +287,7 @@
 
 .previewTable th {
   padding: 8px 12px;
-  background: var(--glass);
+  background: var(--color-surface);
   font-weight: 600;
   color: var(--color-muted);
   text-align: left;
@@ -474,7 +455,7 @@
 
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width: 768px) {
-  .page { padding: 20px; }
+  .body { padding: 16px 20px 24px; }
   .typeGrid { grid-template-columns: 1fr; }
   .resultStats { grid-template-columns: repeat(2, 1fr); }
   .stepper { overflow-x: auto; }
@@ -484,8 +465,6 @@
 }
 
 @media (max-width: 480px) {
-  .page { padding: 12px 14px; }
-  .header { flex-direction: column; gap: 10px; }
-  .title { font-size: 1.3rem; }
+  .body { padding: 12px 14px 20px; }
   .resultStats { grid-template-columns: repeat(2, 1fr); }
 }

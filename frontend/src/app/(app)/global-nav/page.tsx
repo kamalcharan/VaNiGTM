@@ -21,12 +21,13 @@ import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
 import {
   VdfStatCard, VdfLoader, VdfEmptyState, VdfButton, VdfModal, VdfStatusBadge,
-  VdfTrackingCard, VdfErrorScreen,
+  VdfTrackingCard, VdfErrorScreen, VdfPageHeader,
   type TrackingBookmark, type TrackingCardAction, type TrackingStatus,
 } from '@/components/vdf';
 import { VdfDownloadNavModal } from '@/components/vdf/download-nav-modal/VdfDownloadNavModal';
 import f from '@/styles/forms.module.css';
 import d from '@/styles/data.module.css';
+import s from './global-nav.module.css';
 
 /* ── Types ─────────────────────────────────────────── */
 
@@ -422,54 +423,20 @@ export default function GlobalNavPage() {
 
   /* ── Render ── */
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '24px', maxWidth: 1100, margin: '0 auto' }}>
+    <div className={s.page}>
+      <VdfPageHeader
+        eyebrow="MY NAV"
+        title="Global NAV"
+        meta="All mutual fund schemes · search, download NAV, manage aliases"
+        actions={<>
+          <VdfButton variant="outline" size="sm" onClick={() => startBulkJob('download')} disabled={!!bulkJobStarting || bulkJob?.status === 'running'} loading={bulkJobStarting === 'download'}>Download All</VdfButton>
+          <VdfButton variant="outline" size="sm" onClick={() => startBulkJob('redownload')} disabled={!!bulkJobStarting || bulkJob?.status === 'running'} loading={bulkJobStarting === 'redownload'}>Redownload All</VdfButton>
+          <VdfButton variant="outline" size="sm" onClick={() => startBulkJob('metrics')} disabled={!!bulkJobStarting || bulkJob?.status === 'running'} loading={bulkJobStarting === 'metrics'}>Calc All Metrics</VdfButton>
+          <VdfButton variant="outline" size="sm" onClick={() => startBulkJob('recalc')} disabled={!!bulkJobStarting || bulkJob?.status === 'running'} loading={bulkJobStarting === 'recalc'}>Recalculate All</VdfButton>
+        </>}
+      />
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
-        <div>
-          <h1 className={d.pageTitle}>Global NAV</h1>
-          <p className={d.pageSubtitle}>All mutual fund schemes · search, download NAV, manage aliases</p>
-        </div>
-
-        {/* Bulk Operations */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-muted)', marginRight: 4 }}>
-            Bulk Ops
-          </span>
-          <VdfButton
-            variant="outline" size="sm"
-            onClick={() => startBulkJob('download')}
-            disabled={!!bulkJobStarting || bulkJob?.status === 'running'}
-            loading={bulkJobStarting === 'download'}
-          >
-            Download All
-          </VdfButton>
-          <VdfButton
-            variant="outline" size="sm"
-            onClick={() => startBulkJob('redownload')}
-            disabled={!!bulkJobStarting || bulkJob?.status === 'running'}
-            loading={bulkJobStarting === 'redownload'}
-          >
-            Redownload All
-          </VdfButton>
-          <VdfButton
-            variant="outline" size="sm"
-            onClick={() => startBulkJob('metrics')}
-            disabled={!!bulkJobStarting || bulkJob?.status === 'running'}
-            loading={bulkJobStarting === 'metrics'}
-          >
-            Calc All Metrics
-          </VdfButton>
-          <VdfButton
-            variant="outline" size="sm"
-            onClick={() => startBulkJob('recalc')}
-            disabled={!!bulkJobStarting || bulkJob?.status === 'running'}
-            loading={bulkJobStarting === 'recalc'}
-          >
-            Recalculate All
-          </VdfButton>
-        </div>
-      </div>
+      <div className={s.body}>
 
       {/* Stat filter cards */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -767,6 +734,7 @@ export default function GlobalNavPage() {
         )}
       </VdfModal>
 
+      </div>
     </div>
   );
 }

@@ -4,7 +4,7 @@
    All badges from VDF, tables from data.module.css
    ═══════════════════════════════════════════════════════ */
 
-.page { min-height: calc(100vh - 40px); display: flex; flex-direction: column; }
+.page { min-height: 100%; display: flex; flex-direction: column; }
 
 /* ── Breadcrumb Nav (sticky) ─────────────────────────── */
 .breadcrumb {
