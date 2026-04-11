@@ -215,7 +215,7 @@ export default function MyNavPage() {
         onDismiss: () => setVaniDismissed(true),
       }
     : {
-        message: `All ${counts.total} tracked scheme${counts.total !== 1 ? 's are' : ' is'} up to date with fresh NAV data${counts.metrics_pending > 0 ? ` — ${counts.metrics_pending} still need metrics calculated` : ''}.`,
+        message: `All ${counts.total} tracked scheme${counts.total !== 1 ? 's are' : ' is'} up to date with fresh NAV data${counts.no_metrics > 0 ? ` — ${counts.no_metrics} still need metrics calculated` : ''}.`,
       };
 
   /* ── Selection helpers ── */
@@ -910,7 +910,7 @@ export default function MyNavPage() {
                   onChange={e => setNewAlias(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleAddAlias(); }}
                 />
-                <VdfButton variant="success" size="sm" onClick={handleAddAlias} disabled={!newAlias.trim() || addingAlias}>
+                <VdfButton variant="primary" size="sm" onClick={handleAddAlias} disabled={!newAlias.trim() || addingAlias}>
                   {addingAlias ? '…' : '+ Add'}
                 </VdfButton>
               </div>

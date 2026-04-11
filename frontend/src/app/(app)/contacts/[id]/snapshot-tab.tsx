@@ -429,9 +429,13 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   // ── Live metrics ──────────────────────────────────────────────────────────
 
   const metrics = computeMetrics(income, expenses, assets, liabs);
-  const protRatio: number | null = protection.life_cover_amount && metrics.monthlyIncome > 0
-    ? Number(protection.life_cover_amount) / (metrics.monthlyIncome * 12)
+  const lifeCoverNum = Number(protection.life_cover_amount);
+  const protRatio: number | null = (lifeCoverNum > 0 && metrics.monthlyIncome > 0)
+    ? lifeCoverNum / (metrics.monthlyIncome * 12)
     : null;
+
+  // Typed helper — snap.created_by_name is unknown (Record<string,unknown>); convert to string for JSX
+  const createdByName  = (snap && snap.created_by_name != null) ? String(snap.created_by_name) : '';
 
   // ── Section completeness for stepper ──────────────────────────────────────
 
@@ -800,7 +804,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
             <strong>SNAPSHOT v{snapshotVersion}</strong>
             <span className={s.snapSep}>/</span>
             <span>captured {snap?.submitted_at ? new Date(snap.submitted_at as string).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-            {(snap?.created_by_name || mfdFirstName) && <><span className={s.snapSep}>/</span><span>by {(snap?.created_by_name as string) || mfdFirstName}</span></>}
+            {(createdByName || mfdFirstName) && <><span className={s.snapSep}>/</span><span>by {createdByName || mfdFirstName}</span></>}
           </div>
           <div className={s.snapMetaActions}>
             <button className={s.snapMetaBtn} title="Share snapshot">
@@ -1092,27 +1096,27 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
               )}
 
               {/* Protection coverage ratio badge */}
-              {protRatio !== null && (
+              {protRatio !== null ? (
                 <div className={s.dataProtBadge}>
                   <span className={protRatio >= 10 ? s.dataProtOk : protRatio >= 5 ? s.dataProtWarn : s.dataProtBad}>
                     {protRatio.toFixed(1)}×
                   </span>
                   <span className={s.dataProtNote}>life cover vs annual income</span>
                 </div>
-              )}
+              ) : null}
 
-              {snap?.risk_profile && (
+              {riskProfile && (
                 <>
                   <div className={s.dataRowDivider} />
                   <div className={s.dataColHead} style={{ marginTop: 8 }}>Risk Profile</div>
                   <div className={s.dataRow}>
                     <span className={s.dataRowLabel}>Appetite</span>
                     <span className={`${s.dataRiskTag} ${
-                      String(snap.risk_profile) === 'conservative' ? s.dataRiskCons :
-                      String(snap.risk_profile) === 'moderate'     ? s.dataRiskMod  :
+                      riskProfile === 'conservative' ? s.dataRiskCons :
+                      riskProfile === 'moderate'     ? s.dataRiskMod  :
                       s.dataRiskAgg
                     }`}>
-                      {String(snap.risk_profile)}
+                      {riskProfile}
                     </span>
                   </div>
                 </>

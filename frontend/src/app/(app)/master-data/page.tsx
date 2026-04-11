@@ -155,7 +155,7 @@ function TransactionTypesTab() {
 
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '32px' }}>
-          <VdfLoader size="md" />
+          <VdfLoader />
         </div>
       ) : isError ? <TabError error={error} /> : (
         <div className={s.tableWrap}>
@@ -298,7 +298,7 @@ function AssetTypesTab() {
 
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '32px' }}>
-          <VdfLoader size="md" />
+          <VdfLoader />
         </div>
       ) : isError ? <TabError error={error} /> : (
         <div className={s.tableWrap}>
@@ -476,7 +476,7 @@ function BookmarkReasonsTab() {
 
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '32px' }}>
-          <VdfLoader size="md" />
+          <VdfLoader />
         </div>
       ) : isError ? <TabError error={error} /> : (
         <>
@@ -661,7 +661,7 @@ function JobSchedulerTab() {
 
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '32px' }}>
-          <VdfLoader size="md" />
+          <VdfLoader />
         </div>
       ) : isError ? <TabError error={error} /> : (
         <div className={s.tableWrap}>

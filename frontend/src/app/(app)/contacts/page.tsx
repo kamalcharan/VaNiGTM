@@ -10,7 +10,7 @@ import {
   VdfSearchBar, VdfMobileInput, VdfInput, VdfPersonRow,
 } from '@/components/vdf';
 import s from './contacts.module.css';
-import data from '@/styles/data.module.css';
+import d from '@/styles/data.module.css';
 
 /* ── Types ───────────────────────────────────────────── */
 
@@ -455,10 +455,10 @@ export default function ContactsPage() {
 
       {/* ── Pagination ── */}
       {totalPages > 1 && (
-        <div className={data.pagination}>
-          <button className={data.pageBtn} disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
-          <span className={data.pageInfo}>Page {page} of {totalPages} · {total} contacts</span>
-          <button className={data.pageBtn} disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+        <div className={d.pagination}>
+          <button className={d.pageBtn} disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
+          <span className={d.pageInfo}>Page {page} of {totalPages} · {total} contacts</span>
+          <button className={d.pageBtn} disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
         </div>
       )}
 

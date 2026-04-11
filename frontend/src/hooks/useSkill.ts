@@ -39,7 +39,7 @@ export function useSkillQuery<T = Record<string, unknown>>(
       if (!result.success) {
         const err: ApiError & Error = Object.assign(
           new Error(result.error ?? `${skill}.${fn} failed`),
-          { code: 'SKILL_ERROR' } satisfies Partial<ApiError>,
+          { code: 'SKILL_ERROR', status: 500 } satisfies Partial<ApiError>,
         );
         throw err;
       }
@@ -75,7 +75,7 @@ export function useSkillMutation<T = Record<string, unknown>>(
       if (!result.success) {
         const err: ApiError & Error = Object.assign(
           new Error(result.error ?? `${skill}.${fn} failed`),
-          { code: 'SKILL_ERROR' } satisfies Partial<ApiError>,
+          { code: 'SKILL_ERROR', status: 500 } satisfies Partial<ApiError>,
         );
         throw err;
       }

@@ -724,7 +724,7 @@ export default function GlobalNavPage() {
                   onChange={e => setNewAlias(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleAddAlias(); }}
                 />
-                <VdfButton variant="success" size="sm" onClick={handleAddAlias} disabled={!newAlias.trim() || addingAlias}>
+                <VdfButton variant="primary" size="sm" onClick={handleAddAlias} disabled={!newAlias.trim() || addingAlias}>
                   {addingAlias ? '…' : '+ Add'}
                 </VdfButton>
               </div>

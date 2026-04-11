@@ -1035,7 +1035,7 @@ export default function IntakePage() {
                     <label className={s.curFieldLabel}>Asset Type</label>
                     <select className={s.plainSelect} value={asset.asset_type_id}
                       onChange={e => {
-                        const t = meta.asset_types.find(t => String(t.id) === e.target.value);
+                        const t = assetTypes.find(t => String(t.id) === e.target.value);
                         setAssets(p => p.map((a, j) => j === i ? {
                           ...a,
                           asset_type_id: e.target.value,
@@ -1043,7 +1043,7 @@ export default function IntakePage() {
                         } : a));
                       }}>
                       <option value="">Select type</option>
-                      {meta.asset_types.map(t => (
+                      {assetTypes.map(t => (
                         <option key={t.id} value={String(t.id)}>{t.label}</option>
                       ))}
                     </select>

@@ -392,12 +392,12 @@ export default function MarketHistoryPage() {
       {/* Stats strip */}
       {stats && (
         <div className={s.statsStrip}>
-          <VdfStatCard label="Total Indices" value={stats.total_indices} accentColor="var(--color-primary)" />
-          <VdfStatCard label="With Data"     value={stats.with_data}      accentColor="var(--color-success)" />
-          <VdfStatCard label="No Data"       value={stats.no_data}        accentColor="var(--color-muted)" />
-          <VdfStatCard label="With Metrics"  value={stats.indices_with_metrics} accentColor="var(--color-accent)" />
-          <VdfStatCard label="Failed"        value={stats.failed_last}    accentColor="var(--color-danger)" />
-          <VdfStatCard label="Total Records" value={stats.total_records ? `${(stats.total_records / 1000).toFixed(0)}k` : '0'} accentColor="var(--color-info)" />
+          <VdfStatCard label="Total Indices" value={stats.total_indices} accent="default" />
+          <VdfStatCard label="With Data"     value={stats.with_data}      accent="success" />
+          <VdfStatCard label="No Data"       value={stats.no_data}        accent="default" />
+          <VdfStatCard label="With Metrics"  value={stats.indices_with_metrics} accent="info" />
+          <VdfStatCard label="Failed"        value={stats.failed_last}    accent="danger" />
+          <VdfStatCard label="Total Records" value={stats.total_records ? `${(stats.total_records / 1000).toFixed(0)}k` : '0'} accent="info" />
         </div>
       )}
 
