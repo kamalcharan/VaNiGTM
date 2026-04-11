@@ -4,34 +4,15 @@
    ═══════════════════════════════════════════════════════ */
 
 .page {
-  padding: 32px 48px;
   max-width: 1040px;
   margin: 0 auto;
-  min-height: calc(100vh - 64px);
+  min-height: 100%;
 }
 
-/* ── Header ──────────────────────────────────────────── */
-.header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 24px;
-}
+/* ── Body (below sticky header) ─────────────────────── */
 
-.headerLeft { flex: 1; }
-
-.title {
-  font-family: var(--font-display, serif);
-  font-size: 1.6rem;
-  font-weight: 800;
-  color: var(--color-fg);
-  margin: 0 0 4px;
-}
-
-.subtitle {
-  font-size: 0.8rem;
-  color: var(--color-muted);
-  margin: 0;
+.body {
+  padding: 24px 48px 32px;
 }
 
 .cancelBtn {
@@ -54,8 +35,8 @@
   gap: 0;
   margin-bottom: 32px;
   padding: 16px 24px;
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   backdrop-filter: blur(12px);
 }
@@ -160,7 +141,24 @@
   cursor: not-allowed;
 }
 
-.typeIcon { font-size: 1.8rem; }
+.typeIcon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
+  margin-bottom: 4px;
+  transition: background 300ms, box-shadow 300ms;
+}
+
+.typeCard:hover:not(:disabled) .typeIcon {
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
 .typeName { font-size: 1rem; font-weight: 700; color: var(--color-fg); }
 .typeDesc { font-size: 0.75rem; color: var(--color-muted); line-height: 1.5; }
 
@@ -240,7 +238,7 @@
   grid-template-columns: 1fr 32px 1fr 1.2fr;
   gap: 8px;
   padding: 12px 20px;
-  background: var(--glass);
+  background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   font-size: 0.6rem;
   font-weight: 600;
@@ -306,7 +304,7 @@
 
 .previewTable th {
   padding: 8px 12px;
-  background: var(--glass);
+  background: var(--color-surface);
   font-weight: 600;
   color: var(--color-muted);
   text-align: left;
@@ -420,38 +418,6 @@
   margin-bottom: 24px;
 }
 
-.statCard {
-  padding: 20px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  text-align: center;
-  transition: transform 200ms;
-}
-
-.statCard:hover { transform: translateY(-2px); }
-
-.statValue {
-  display: block;
-  font-family: var(--font-mono, monospace);
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--color-fg);
-  margin-bottom: 4px;
-}
-
-.statLabel {
-  font-size: 0.65rem;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-}
-
-.statSuccess .statValue { color: var(--color-success); }
-.statDuplicate .statValue { color: var(--color-info); }
-.statFailed .statValue { color: var(--color-danger); }
-
 /* ── Actions ─────────────────────────────────────────── */
 .actions {
   display: flex;
@@ -492,7 +458,7 @@
   content: '';
   position: absolute;
   top: 0; left: -100%; width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, white 15%, transparent), transparent);
   transition: left 0.6s;
 }
 
@@ -506,11 +472,16 @@
 
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width: 768px) {
-  .page { padding: 20px; }
+  .body { padding: 16px 20px 24px; }
   .typeGrid { grid-template-columns: 1fr; }
   .resultStats { grid-template-columns: repeat(2, 1fr); }
   .stepper { overflow-x: auto; }
   .stepLabel { display: none; }
   .mappingHeader, .mappingRow { grid-template-columns: 1fr 24px 1fr; }
   .mappingSample { display: none; }
+}
+
+@media (max-width: 480px) {
+  .body { padding: 12px 14px 20px; }
+  .resultStats { grid-template-columns: repeat(2, 1fr); }
 }

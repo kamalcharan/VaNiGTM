@@ -127,3 +127,14 @@
     margin: 0;
   }
 }
+
+@media (max-width: 480px) {
+  .topbar {
+    padding: 10px 12px;
+    min-height: 52px;
+  }
+
+  .brandName { display: none; }
+
+  .progress { font-size: 0.62rem; }
+}

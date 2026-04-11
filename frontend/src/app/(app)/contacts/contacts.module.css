@@ -1,6 +1,10 @@
-/* /contacts — list layout matching contactnest-ux.html reference
-   Shared patterns → VDF components (VdfSearchBar, VdfStatusBadge, etc.)
-   This file: page layout, table rows, drawer only.
+/* /contacts — PAGE LAYOUT + DRAWER only.
+   Card-row shell  → VdfPersonRow (vdf/person-row)
+   Pagination      → styles/data.module.css
+   Status badge    → VdfStatusBadge
+   Readiness ring  → VdfReadinessRing
+   Search/pills    → VdfSearchBar
+   Empty state     → VdfEmptyState
 */
 
 /* ── Page shell ──────────────────────────────────────── */
@@ -80,8 +84,6 @@
   flex-wrap: wrap;
 }
 
-/* Active / Inactive status toggle */
-
 .statusToggle {
   display: flex;
   align-items: center;
@@ -105,107 +107,25 @@
   transition: all 150ms;
 }
 
-.statusPillActive {
-  background: var(--color-success);
-  color: #fff;
-}
+.statusPillActive   { background: var(--color-success); color: var(--color-primary-fg, var(--color-bg)); }
+.statusPillInactive { background: var(--color-danger);  color: var(--color-primary-fg, var(--color-bg)); }
 
-.statusPillInactive {
-  background: var(--color-danger);
-  color: #fff;
-}
-
-/* ── List content ────────────────────────────────────── */
+/* ── List area ───────────────────────────────────────── */
 
 .listContent {
-  padding: 24px 48px 8px;
+  padding: 20px 48px 8px;
 }
 
-/* ── Table ───────────────────────────────────────────── */
-
-.table {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  overflow: hidden;
-}
-
-.tableHead {
-  display: grid;
-  grid-template-columns: 2.2fr 1.2fr 1.1fr 1fr 96px;
-  padding: 12px 22px;
-  background: color-mix(in srgb, var(--color-surface) 60%, var(--color-bg));
-  border-bottom: 1px solid var(--color-border);
-  font-size: 0.62rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-  font-weight: 600;
-}
-
-.row {
-  display: grid;
-  grid-template-columns: 2.2fr 1.2fr 1.1fr 1fr 96px;
-  padding: 15px 22px;
-  align-items: center;
-  border-bottom: 1px solid var(--color-border);
-  cursor: pointer;
-  transition: background 0.15s ease;
-  position: relative;
-}
-
-.row:last-child { border-bottom: none; }
-
-.row:hover { background: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface)); }
-.row:hover .rowArrow { opacity: 1; transform: translateX(0); }
-
-/* ── Name cell ───────────────────────────────────────── */
-
-.nameCell {
+/* Gap between VdfPersonRow cards */
+.cardList {
   display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-weight: 600;
-  font-size: 0.8rem;
-  color: var(--color-bg);
-  flex-shrink: 0;
-  letter-spacing: 0.02em;
-}
-
-.contactName {
-  font-weight: 600;
-  font-size: 0.88rem;
-  color: var(--color-fg);
-  font-family: var(--font-display, 'Playfair Display', serif);
-  line-height: 1.3;
-}
-
-.prefix {
-  font-family: var(--font-body, 'DM Sans', sans-serif);
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: var(--color-muted);
-  margin-right: 4px;
-}
-
-.contactSub {
-  font-size: 0.7rem;
-  color: var(--color-muted);
-  margin-top: 2px;
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 6px;
-  flex-wrap: wrap;
 }
 
+/* ── Slot content: name line ─────────────────────────── */
+
+/* contact_no chip — inside VdfPersonRow nameBadges slot */
 .contactNo {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 0.6rem;
@@ -218,96 +138,66 @@
   border-radius: 3px;
 }
 
-/* ── Channels cell ───────────────────────────────────── */
+/* ── Slot content: subLine ───────────────────────────── */
 
-.channelsCell {
+/* phone / email with inline icon */
+.channel {
   display: flex;
-  gap: 5px;
   align-items: center;
-}
-
-.channelIcon {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--color-surface) 60%, var(--color-bg));
-  border: 1px solid var(--color-border);
-  display: grid;
-  place-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
   color: var(--color-muted);
 }
 
-.noChannels {
-  font-size: 0.75rem;
+.addedDate {
+  font-size: 0.7rem;
   color: var(--color-muted);
-  opacity: 0.5;
+  opacity: 0.7;
 }
 
-/* ── Readiness cell ──────────────────────────────────── */
+/* ── Slot content: trailing ──────────────────────────── */
 
-.readinessCell {
+/* readiness ring + label wrapper */
+.readiness {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .readinessLabel {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 500;
   color: var(--color-muted);
+  white-space: nowrap;
 }
 
-/* ── Status cell ─────────────────────────────────────── */
-
-.statusCell { display: flex; }
-
-/* ── Actions cell ────────────────────────────────────── */
-
-.actionsCell {
+/* action buttons group */
+.actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
+  gap: 4px;
 }
 
-.rowArrow {
-  opacity: 0;
-  transform: translateX(-4px);
-  transition: all 0.18s ease;
-  color: var(--color-muted);
-  font-size: 0.85rem;
-}
-
+.editBtn,
 .deleteBtn {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 7px;
   color: var(--color-muted);
   cursor: pointer;
   transition: all 150ms;
+  flex-shrink: 0;
 }
 
-.editBtn {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  color: var(--color-muted);
-  cursor: pointer;
-  transition: all 150ms;
-}
-
-.editBtn:hover { border-color: var(--color-primary); color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
-.deleteBtn:hover { border-color: var(--color-danger); color: var(--color-danger); background: color-mix(in srgb, var(--color-danger) 8%, transparent); }
+.editBtn:hover   { border-color: var(--color-primary); color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
+.deleteBtn:hover { border-color: var(--color-danger);  color: var(--color-danger);  background: color-mix(in srgb, var(--color-danger)  8%, transparent); }
 .deleteBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .reactivateBtn {
@@ -326,46 +216,15 @@
   white-space: nowrap;
 }
 
-.reactivateBtn:hover { background: color-mix(in srgb, var(--color-success) 18%, transparent); }
+.reactivateBtn:hover   { background: color-mix(in srgb, var(--color-success) 18%, transparent); }
 .reactivateBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* ── Pagination ──────────────────────────────────────── */
-
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 20px 48px 40px;
-}
-
-.pageBtn {
-  padding: 7px 18px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-  color: var(--color-fg);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 150ms;
-}
-
-.pageBtn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
-.pageBtn:disabled { opacity: 0.35; cursor: not-allowed; }
-
-.pageInfo {
-  font-size: 0.75rem;
-  color: var(--color-muted);
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-}
-
-/* ── Create Contact Drawer ───────────────────────────── */
+/* ── Create / Edit Drawer ────────────────────────────── */
 
 .drawerOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: color-mix(in srgb, black 40%, transparent);
   backdrop-filter: blur(4px);
   z-index: 200;
   display: flex;
@@ -380,7 +239,7 @@
   border-left: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  box-shadow: -24px 0 48px rgba(0, 0, 0, 0.18);
+  box-shadow: -24px 0 48px color-mix(in srgb, black 18%, transparent);
   transform: translateX(100%);
   animation: slideInRight 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
@@ -449,8 +308,6 @@
   flex-shrink: 0;
 }
 
-/* Edit mode — channel note */
-
 .editChannelNote {
   font-size: 0.75rem;
   color: var(--color-muted);
@@ -462,12 +319,7 @@
   line-height: 1.5;
 }
 
-/* Prefix pills (in drawer) */
-.fieldGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+.fieldGroup  { display: flex; flex-direction: column; gap: 8px; }
 
 .fieldLabel {
   font-size: var(--label-font-size, 0.65rem);
@@ -477,11 +329,7 @@
   color: var(--color-muted);
 }
 
-.prefixPills {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
+.prefixPills { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .prefixPill {
   padding: 8px 14px;
@@ -495,27 +343,12 @@
   transition: all 0.15s;
 }
 
-.prefixPill:hover { border-color: var(--color-fg); color: var(--color-fg); }
+.prefixPill:hover     { border-color: var(--color-fg); color: var(--color-fg); }
+.prefixPillActive     { background: var(--color-fg); color: var(--color-bg); border-color: var(--color-fg); }
 
-.prefixPillActive {
-  background: var(--color-fg);
-  color: var(--color-bg);
-  border-color: var(--color-fg);
-}
+.drawerRow2 { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; }
 
-/* Age + City side-by-side */
-.drawerRow2 {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 12px;
-}
-
-/* Life situation tiles */
-.situationTiles {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
+.situationTiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 
 .situationTile {
   display: flex;
@@ -531,34 +364,12 @@
   text-align: center;
 }
 
-.situationTile:hover {
-  border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
-}
+.situationTile:hover      { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface)); }
+.situationTileActive      { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)); }
+.situationLabel           { font-size: 0.78rem; font-weight: 600; color: var(--color-fg); line-height: 1; }
+.situationSub             { font-size: 0.65rem; color: var(--color-muted); line-height: 1; }
 
-.situationTileActive {
-  border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
-}
-
-.situationLabel {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--color-fg);
-  line-height: 1;
-}
-
-.situationSub {
-  font-size: 0.65rem;
-  color: var(--color-muted);
-  line-height: 1;
-}
-
-/* Dependents bubbles */
-.dependentBubbles {
-  display: flex;
-  gap: 8px;
-}
+.dependentBubbles { display: flex; gap: 8px; }
 
 .depBubble {
   width: 44px;
@@ -575,88 +386,28 @@
   place-items: center;
 }
 
-.depBubble:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
+.depBubble:hover  { border-color: var(--color-primary); color: var(--color-primary); }
+.depBubbleActive  { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-fg, var(--color-bg)); }
 
-.depBubbleActive {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: #fff;
-}
-
-/* ── Responsive ──────────────────────────────────────── */
+/* ── Responsive (page layout only) ──────────────────── */
 
 @media (max-width: 768px) {
-  .pageHeader {
-    padding: 20px 20px 14px;
-  }
+  .pageHeader  { padding: 20px 20px 14px; }
+  .pageTitle   { font-size: 1.7rem; }
+  .toolbar     { padding: 12px 20px; }
+  .listContent { padding: 14px 16px 8px; }
 
-  .pageTitle {
-    font-size: 1.7rem;
-  }
-
-  .toolbar {
-    padding: 12px 20px;
-  }
-
-  .listContent {
-    padding: 16px 16px 80px;
-  }
-
-  /* Tablet: hide Channels column */
-  .tableHead,
-  .row {
-    grid-template-columns: 2fr 1.2fr 1fr 44px;
-  }
-
-  .channelsCell { display: none; }
-  .tableHead > *:nth-child(2) { display: none; }
+  /* Hide readiness on tablet */
+  .readiness { display: none; }
 }
 
 @media (max-width: 480px) {
-  .pageHeader {
-    padding: 16px 16px 12px;
-  }
+  .pageHeader    { padding: 16px 16px 12px; }
+  .pageTitle     { font-size: 1.4rem; }
+  .pageMeta      { gap: 12px; flex-wrap: wrap; }
+  .pageHeaderRow { gap: 12px; align-items: center; }
 
-  .pageTitle {
-    font-size: 1.4rem;
-  }
-
-  .pageMeta {
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .pageHeaderRow {
-    gap: 12px;
-    align-items: center;
-  }
-
-  /* Mobile: Contact + Status only, hide Readiness too */
-  .tableHead,
-  .row {
-    grid-template-columns: 1fr 88px 44px;
-    padding: 12px 14px;
-  }
-
-  .channelsCell { display: none; }
-  .readinessCell { display: none; }
-  .tableHead > *:nth-child(2) { display: none; }
-  .tableHead > *:nth-child(3) { display: none; }
-
-  .avatar {
-    width: 34px;
-    height: 34px;
-    font-size: 0.72rem;
-  }
-
-  .contactName {
-    font-size: 0.82rem;
-  }
-
-  /* Drawer: full-width sheet on mobile */
+  /* Drawer: full-width bottom sheet */
   .drawer {
     width: 100vw;
     border-left: none;
@@ -664,20 +415,8 @@
     border-radius: 16px 16px 0 0;
   }
 
-  .drawerOverlay {
-    align-items: flex-end;
-    justify-content: stretch;
-  }
-
-  .drawerHeader {
-    padding: 20px 20px 16px;
-  }
-
-  .drawerBody {
-    padding: 16px 20px;
-  }
-
-  .drawerFooter {
-    padding: 14px 20px;
-  }
+  .drawerOverlay { align-items: flex-end; justify-content: stretch; }
+  .drawerHeader  { padding: 20px 20px 16px; }
+  .drawerBody    { padding: 16px 20px; }
+  .drawerFooter  { padding: 14px 20px; }
 }

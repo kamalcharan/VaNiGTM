@@ -92,7 +92,7 @@
 /* inline spinner for buttons */
 .btnSpinner {
   display: inline-block; width: 10px; height: 10px;
-  border: 2px solid rgba(255,255,255,0.35);
+  border: 2px solid color-mix(in srgb, white 35%, transparent);
   border-top-color: currentColor;
   border-radius: 50%;
   animation: spin 0.65s linear infinite;
@@ -166,7 +166,7 @@
   background: transparent; color: var(--color-muted);
   font-size: 0.65rem; font-weight: 700; cursor: pointer; transition: all 130ms;
 }
-.periodBtnActive { background: var(--color-surface); color: var(--color-fg); box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.periodBtnActive { background: var(--color-surface); color: var(--color-fg); box-shadow: 0 1px 3px color-mix(in srgb, black 20%, transparent); }
 
 /* Segment groups (Granularity, Chart/Table) */
 .segmentGroup {
@@ -179,7 +179,7 @@
   font-size: 0.62rem; font-weight: 700; cursor: pointer; transition: all 130ms;
   white-space: nowrap;
 }
-.segBtnActive { background: var(--color-surface); color: var(--color-fg); box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.segBtnActive { background: var(--color-surface); color: var(--color-fg); box-shadow: 0 1px 3px color-mix(in srgb, black 20%, transparent); }
 
 /* Tool buttons (CSV, PNG) */
 .toolBtn {
@@ -204,7 +204,7 @@
 .colorSwatch {
   width: 14px; height: 14px; border-radius: 3px;
   background: var(--swatch, var(--color-primary));
-  border: 1px solid rgba(255,255,255,0.15);
+  border: 1px solid color-mix(in srgb, white 15%, transparent);
 }
 .colorPopover {
   position: absolute; right: 0; top: calc(100% + 8px); z-index: 50;
@@ -212,7 +212,7 @@
   border: 1px solid var(--color-border);
   border-radius: 12px; padding: 14px;
   min-width: 180px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.25);
+  box-shadow: 0 8px 32px color-mix(in srgb, black 25%, transparent);
 }
 .colorPopoverTitle { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); margin-bottom: 10px; }
 .colorInput { width: 100%; height: 36px; border-radius: 6px; border: 1px solid var(--color-border); cursor: pointer; padding: 2px; }
@@ -232,7 +232,7 @@
 .colorApply {
   flex: 1; padding: 6px; border-radius: 6px;
   background: var(--color-primary); border: none;
-  color: var(--color-primary-fg, #fff); font-size: 0.7rem; font-weight: 700; cursor: pointer;
+  color: var(--color-primary-fg, var(--color-bg)); font-size: 0.7rem; font-weight: 700; cursor: pointer;
 }
 
 /* Custom date range row (below toolbar when period=custom) */
@@ -294,7 +294,7 @@
   display: flex; align-items: center; justify-content: center;
   transition: all 180ms; letter-spacing: 0.02em;
 }
-.actionBtnPrimary { background: var(--color-primary); border: none; color: var(--color-primary-fg, #fff); }
+.actionBtnPrimary { background: var(--color-primary); border: none; color: var(--color-primary-fg, var(--color-bg)); }
 .actionBtnPrimary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px color-mix(in srgb, var(--color-primary) 30%, transparent); }
 .actionBtnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -352,7 +352,7 @@
 .noMetricsDesc  { font-size: 0.72rem; color: var(--color-muted); line-height: 1.5; margin-bottom: 14px; }
 .noMetricsCta {
   width: 100%; padding: 10px; border-radius: 10px;
-  background: var(--color-primary); border: none; color: var(--color-primary-fg, #fff);
+  background: var(--color-primary); border: none; color: var(--color-primary-fg, var(--color-bg));
   font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: opacity 150ms;
 }
 .noMetricsCta:hover:not(:disabled) { opacity: 0.88; }

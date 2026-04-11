@@ -7,9 +7,10 @@ import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfEmptyState, VdfButton, VdfStatusBadge, VdfReadinessRing,
-  VdfSearchBar, VdfMobileInput, VdfInput,
+  VdfSearchBar, VdfMobileInput, VdfInput, VdfPersonRow,
 } from '@/components/vdf';
 import s from './contacts.module.css';
+import data from '@/styles/data.module.css';
 
 /* ── Types ───────────────────────────────────────────── */
 
@@ -352,131 +353,100 @@ export default function ContactsPage() {
             action={<VdfButton variant="outline" size="sm" onClick={openDrawer}>+ Add Contact</VdfButton>}
           />
         ) : (
-          <div className={s.table}>
-            <div className={s.tableHead}>
-              <span>Contact</span>
-              <span>Channels</span>
-              <span>Readiness</span>
-              <span>Status</span>
-              <span />
-            </div>
-
+          <div className={s.cardList}>
             {contacts.map(contact => {
               const pct = readinessPct(contact);
               return (
-                <div
+                <VdfPersonRow
                   key={contact.id}
-                  className={s.row}
-                  onClick={() => router.push(`/contacts/${contact.id}`)}
-                >
-                  {/* Name cell */}
-                  <div className={s.nameCell}>
-                    <div className={s.avatar} style={{ background: avatarGradient(contact.name) }}>
-                      {initials(contact.name)}
-                    </div>
-                    <div>
-                      <div className={s.contactName}>
-                        <span className={s.prefix}>{contact.prefix}</span>{contact.name}
-                      </div>
-                      <div className={s.contactSub}>
-                        {contact.contact_no && <span className={s.contactNo}>{contact.contact_no}</span>}
-                        {contact.primary_mobile ? `${contact.primary_mobile} · ` : ''}Added {new Date(contact.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Channels cell */}
-                  <div className={s.channelsCell}>
+                  avatarInitials={initials(contact.name)}
+                  avatarGradient={avatarGradient(contact.name)}
+                  name={contact.name}
+                  prefix={contact.prefix}
+                  nameBadges={contact.contact_no
+                    ? <span className={s.contactNo}>{contact.contact_no}</span>
+                    : undefined
+                  }
+                  subLine={<>
                     {contact.primary_mobile && (
-                      <span className={s.channelIcon} title={contact.primary_mobile}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="12" height="12">
+                      <span className={s.channel}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="11" height="11">
                           <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8 19.79 19.79 0 01.12 2.2 2 2 0 012.11 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.56-.56a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z" />
                         </svg>
+                        {contact.primary_mobile}
                       </span>
                     )}
-                    {contact.primary_email && (
-                      <span className={s.channelIcon} title={contact.primary_email}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="12" height="12">
+                    {contact.primary_email && !contact.primary_mobile && (
+                      <span className={s.channel}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="11" height="11">
                           <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />
                         </svg>
+                        {contact.primary_email}
                       </span>
                     )}
-                    {contact.has_snapshot && (
-                      <span className={s.channelIcon} title="Snapshot">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="12" height="12">
-                          <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
-                        </svg>
-                      </span>
-                    )}
-                    {!contact.primary_mobile && !contact.primary_email && (
-                      <span className={s.noChannels}>—</span>
-                    )}
-                  </div>
-
-                  {/* Readiness cell */}
-                  <div className={s.readinessCell}>
-                    <VdfReadinessRing pct={pct} size={36} strokeWidth={3} />
-                    <span className={s.readinessLabel}>
-                      {pct === 100 ? 'Client' : pct >= 70 ? 'Ready' : pct >= 35 ? 'In progress' : 'Just added'}
+                    <span className={s.addedDate}>
+                      Added {new Date(contact.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                     </span>
-                  </div>
-
-                  {/* Status cell */}
-                  <div className={s.statusCell}>
+                  </>}
+                  trailing={<>
+                    <div className={s.readiness}>
+                      <VdfReadinessRing pct={pct} size={32} strokeWidth={3} />
+                      <span className={s.readinessLabel}>
+                        {pct === 100 ? 'Client' : pct >= 70 ? 'Ready' : pct >= 35 ? 'In progress' : 'Just added'}
+                      </span>
+                    </div>
                     <VdfStatusBadge
                       label={contact.is_client ? 'Client' : 'Prospect'}
                       variant={contact.is_client ? 'success' : 'warning'}
                       size="sm"
                     />
-                  </div>
-
-                  {/* Actions cell */}
-                  <div className={s.actionsCell}>
-                    {contact.is_active ? (
-                      <>
-                        <button
-                          className={s.editBtn}
-                          onClick={(e) => { e.stopPropagation(); openEditDrawer(contact); }}
-                          title="Edit contact"
-                        >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
-                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                          </svg>
-                        </button>
-                        {!contact.is_client && (
+                    <div className={s.actions}>
+                      {contact.is_active ? (
+                        <>
                           <button
-                            className={s.deleteBtn}
-                            disabled={deletingId === contact.id}
-                            onClick={(e) => handleDelete(e, contact.id)}
-                            title="Deactivate contact"
+                            className={s.editBtn}
+                            onClick={(e) => { e.stopPropagation(); openEditDrawer(contact); }}
+                            title="Edit contact"
                           >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-                              <path d="M10 11v6M14 11v6" />
-                              <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+                              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                             </svg>
                           </button>
-                        )}
-                      </>
-                    ) : (
-                      <button
-                        className={s.reactivateBtn}
-                        disabled={reactivatingId === contact.id}
-                        onClick={(e) => handleReactivate(e, contact.id)}
-                        title="Reactivate contact"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
-                          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                          <path d="M3 3v5h5" />
-                        </svg>
-                        Reactivate
-                      </button>
-                    )}
-                    <span className={s.rowArrow}>→</span>
-                  </div>
-                </div>
+                          {!contact.is_client && (
+                            <button
+                              className={s.deleteBtn}
+                              disabled={deletingId === contact.id}
+                              onClick={(e) => handleDelete(e, contact.id)}
+                              title="Deactivate contact"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                                <path d="M10 11v6M14 11v6" />
+                                <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+                              </svg>
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <button
+                          className={s.reactivateBtn}
+                          disabled={reactivatingId === contact.id}
+                          onClick={(e) => handleReactivate(e, contact.id)}
+                          title="Reactivate contact"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                            <path d="M3 3v5h5" />
+                          </svg>
+                          Reactivate
+                        </button>
+                      )}
+                    </div>
+                  </>}
+                  onClick={() => router.push(`/contacts/${contact.id}`)}
+                />
               );
             })}
           </div>
@@ -485,22 +455,10 @@ export default function ContactsPage() {
 
       {/* ── Pagination ── */}
       {totalPages > 1 && (
-        <div className={s.pagination}>
-          <button
-            className={s.pageBtn}
-            disabled={page === 1}
-            onClick={() => setPage(p => p - 1)}
-          >
-            ← Prev
-          </button>
-          <span className={s.pageInfo}>Page {page} of {totalPages} · {total} contacts</span>
-          <button
-            className={s.pageBtn}
-            disabled={page >= totalPages}
-            onClick={() => setPage(p => p + 1)}
-          >
-            Next →
-          </button>
+        <div className={data.pagination}>
+          <button className={data.pageBtn} disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
+          <span className={data.pageInfo}>Page {page} of {totalPages} · {total} contacts</span>
+          <button className={data.pageBtn} disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
         </div>
       )}
 

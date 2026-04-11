@@ -14,7 +14,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/context/auth-provider';
-import { VdfTabs, VdfLoader, VdfErrorScreen, VdfStatusBadge } from '@/components/vdf';
+import { VdfTabs, VdfLoader, VdfErrorScreen, VdfStatusBadge, VdfPageHeader } from '@/components/vdf';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -910,12 +910,13 @@ export default function MasterDataPage() {
 
   return (
     <div className={s.page}>
-      <div className={s.header}>
-        <div className={s.headerText}>
-          <h1 className={s.title}>Master Data</h1>
-          <p className={s.subtitle}>Manage transaction types, asset types, bookmark reasons, job schedules, and client platforms</p>
-        </div>
-      </div>
+      <VdfPageHeader
+        eyebrow="ADMINISTRATION"
+        title="Master Data"
+        meta="Manage transaction types, asset types, bookmark reasons, job schedules, and client platforms"
+      />
+
+      <div className={s.body}>
 
       <VdfTabs
         tabs={TABS as unknown as Array<{ id: string; label: string; icon?: string }>}
@@ -930,6 +931,8 @@ export default function MasterDataPage() {
         {activeTab === 'bookmark'  && <BookmarkReasonsTab />}
         {activeTab === 'jobs'      && <JobSchedulerTab />}
         {activeTab === 'platforms' && <PlatformsTab />}
+      </div>
+
       </div>
     </div>
   );

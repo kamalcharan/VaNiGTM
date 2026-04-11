@@ -19,7 +19,7 @@ import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
 import {
   VdfStatCard, VdfLoader, VdfEmptyState, VdfButton, VdfModal,
-  VdfTrackingCard, VdfErrorScreen,
+  VdfTrackingCard, VdfErrorScreen, VdfPageHeader,
   type TrackingBookmark, type TrackingCardAction, type TrackingStatus,
 } from '@/components/vdf';
 import f from '@/styles/forms.module.css';
@@ -371,21 +371,23 @@ export default function MarketHistoryPage() {
   return (
     <div className={s.page}>
 
-      {/* Header */}
-      <div className={s.header}>
-        <div className={s.headerLeft}>
-          <h1>Market Data History</h1>
-          <p>Download and manage NSE market indices OHLCV data from Yahoo Finance</p>
-        </div>
-        <button
-          className={s.headerBtn}
-          disabled={spinningId === 'eod-all'}
-          onClick={handleEodAll}
-        >
-          {spinningId === 'eod-all' ? <span className={s.btnSpinner} /> : null}
-          EOD All
-        </button>
-      </div>
+      <VdfPageHeader
+        eyebrow="MARKET DATA"
+        title="Market Data"
+        titleEm="History"
+        actions={
+          <button
+            className={s.headerBtn}
+            disabled={spinningId === 'eod-all'}
+            onClick={handleEodAll}
+          >
+            {spinningId === 'eod-all' ? <span className={s.btnSpinner} /> : null}
+            EOD All
+          </button>
+        }
+      />
+
+      <div className={s.body}>
 
       {/* Stats strip */}
       {stats && (
@@ -594,6 +596,8 @@ export default function MarketHistoryPage() {
           </div>
         </div>
       )}
+
+      </div>
     </div>
   );
 }

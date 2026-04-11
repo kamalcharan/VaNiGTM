@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { List, Database, Users, ArrowLeftRight, Bookmark } from 'lucide-react';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
-import { VdfStatusBadge, VdfLoader, VdfProactiveCard, VdfEmptyState, VdfButton, type BadgeVariant } from '@/components/vdf';
+import { VdfStatusBadge, VdfLoader, VdfProactiveCard, VdfEmptyState, VdfButton, VdfStatCard, VdfPageHeader, type BadgeVariant } from '@/components/vdf';
 import d from '@/styles/data.module.css';
 import s from './dashboard-page.module.css';
 
@@ -53,11 +54,101 @@ function timeAgo(iso: string): string {
   if (h < 1) return 'Just now'; if (h < 24) return `${h}h ago`; return `${Math.floor(h / 24)}d ago`;
 }
 
-const COLS_BY_TYPE: Record<string, string[]> = {
-  scheme:   ['scheme_code', 'scheme_name', 'amc', 'category'],
-  bookmark: ['scheme_code', 'scheme_name', 'amc'],
-  default:  ['scheme_code', 'scheme_name', 'amc'],
+/* ── Column definitions — one entry per import type ─── */
+
+type ColKind = 'row' | 'data' | 'alias' | 'status' | 'action';
+
+interface ColDef {
+  header: string;
+  kind: ColKind;
+  key?: string;   // mapped_data field for kind='data'
+  mono?: boolean;
+  bold?: boolean;
+  muted?: boolean;
+}
+
+const COL_DEFS: Record<string, ColDef[]> = {
+  scheme: [
+    { header: '#',            kind: 'row' },
+    { header: 'Scheme Code',  kind: 'data', key: 'scheme_code',  mono: true },
+    { header: 'Scheme Name',  kind: 'data', key: 'scheme_name',  bold: true },
+    { header: 'AMC',          kind: 'data', key: 'amc',          muted: true },
+    { header: 'Category',     kind: 'data', key: 'category',     muted: true },
+    { header: 'Status',       kind: 'status' },
+    { header: '',             kind: 'action' },
+  ],
+  customer: [
+    { header: '#',            kind: 'row' },
+    { header: 'External ID',  kind: 'data', key: 'external_id',  mono: true },
+    { header: 'PAN',          kind: 'data', key: 'pan',          mono: true },
+    { header: 'Full Name',    kind: 'data', key: 'name',         bold: true },
+    { header: 'Mobile',       kind: 'data', key: 'mobile',       muted: true },
+    { header: 'Email',        kind: 'data', key: 'email',        muted: true },
+    { header: 'Status',       kind: 'status' },
+    { header: '',             kind: 'action' },
+  ],
+  transaction: [
+    { header: '#',            kind: 'row' },
+    { header: 'Scheme Code',  kind: 'data', key: 'scheme_code',        mono: true },
+    { header: 'Type',         kind: 'data', key: 'transaction_type',   bold: true },
+    { header: 'Amount',       kind: 'data', key: 'amount',             mono: true },
+    { header: 'Date',         kind: 'data', key: 'transaction_date',   muted: true },
+    { header: 'Folio',        kind: 'data', key: 'folio_number',       mono: true },
+    { header: 'Status',       kind: 'status' },
+    { header: '',             kind: 'action' },
+  ],
+  bookmark: [
+    { header: '#',            kind: 'row' },
+    { header: 'Scheme Code',  kind: 'data', key: 'scheme_code',  mono: true },
+    { header: 'Scheme Name',  kind: 'data', key: 'scheme_name',  bold: true },
+    { header: 'Alias',        kind: 'alias' },
+    { header: 'Status',       kind: 'status' },
+    { header: '',             kind: 'action' },
+  ],
 };
+
+/* ── Drawer config — per import type ────────────────── */
+
+interface DrawerConf {
+  title: string;
+  getHeading: (md: Record<string, any>) => string;
+  getMeta:    (md: Record<string, any>) => string;
+}
+
+const DRAWER_CONF: Record<string, DrawerConf> = {
+  scheme: {
+    title:      'Scheme Record',
+    getHeading: (md) => md.scheme_name || 'Unknown Scheme',
+    getMeta:    (md) => [md.scheme_code && `Code: ${md.scheme_code}`, md.category && `Category: ${md.category}`].filter(Boolean).join(' · '),
+  },
+  customer: {
+    title:      'Customer Record',
+    getHeading: (md) => md.name || md.full_name || 'Unknown Customer',
+    getMeta:    (md) => [md.pan && `PAN: ${md.pan}`, md.external_id && `Ext. ID: ${md.external_id}`].filter(Boolean).join(' · '),
+  },
+  transaction: {
+    title:      'Transaction Record',
+    getHeading: (md) => md.scheme_name || md.scheme_code || 'Unknown Transaction',
+    getMeta:    (md) => [md.transaction_type, md.amount && `₹${md.amount}`, md.transaction_date].filter(Boolean).join(' · '),
+  },
+  bookmark: {
+    title:      'Bookmark Record',
+    getHeading: (md) => md.scheme_name || md.scheme_code || 'Unknown Scheme',
+    getMeta:    (md) => `Code: ${md.scheme_code || '—'}`,
+  },
+};
+
+const DEFAULT_DRAWER_CONF: DrawerConf = DRAWER_CONF.bookmark;
+
+/* ── Sidebar type filter list ───────────────────────── */
+
+const TYPE_FILTERS = [
+  { key: 'all',         label: 'All',          icon: <List          size={14} /> },
+  { key: 'scheme',      label: 'Schemes',      icon: <Database      size={14} /> },
+  { key: 'customer',    label: 'Customers',    icon: <Users         size={14} /> },
+  { key: 'transaction', label: 'Transactions', icon: <ArrowLeftRight size={14} /> },
+  { key: 'bookmark',    label: 'Bookmarks',    icon: <Bookmark      size={14} /> },
+];
 
 /* ── Component ─────────────────────────────────────── */
 
@@ -66,7 +157,7 @@ export default function ImportDashboardPage() {
   const { showToast } = useToast();
   const { user } = useAuth();
 
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [records, setRecords] = useState<RecordsResponse | null>(null);
   const [recordFilter, setRecordFilter] = useState<string>('all');
@@ -76,21 +167,37 @@ export default function ImportDashboardPage() {
   const [drawerRecord, setDrawerRecord] = useState<StagingRecord | null>(null);
   const [reprocessing, setReprocessing] = useState(false);
   const [deletingStaging, setDeletingStaging] = useState(false);
-  const [typeFilter, setTypeFilter] = useState<'all' | 'bookmark'>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [sessionsFetched, setSessionsFetched] = useState(false);
 
-  // Fetch sessions
-  const fetchSessions = useCallback(async (type: 'all' | 'bookmark' = 'all') => {
+  // Derived: filtered session list + per-type counts (client-side — no re-fetch on filter change)
+  const sessions = useMemo(() =>
+    typeFilter === 'all' ? allSessions : allSessions.filter(s => s.import_type === typeFilter),
+    [allSessions, typeFilter]
+  );
+
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: allSessions.length };
+    for (const s of allSessions) counts[s.import_type] = (counts[s.import_type] || 0) + 1;
+    return counts;
+  }, [allSessions]);
+
+  // Fetch sessions — always fetches all; filtering is client-side
+  const fetchSessions = useCallback(async () => {
     setLoadingSessions(true);
     setSessionsFetched(false);
     try {
-      const qs = type !== 'all' ? `?type=${type}` : '';
-      const data = await apiFetch<{ sessions: Session[] }>({ ...API.etl.sessions, path: API.etl.sessions.path + qs });
-      setSessions(data.sessions || []);
-      setSelectedSession(data.sessions?.length > 0 ? data.sessions[0] : null);
+      const data = await apiFetch<{ sessions: Session[] }>(API.etl.sessions);
+      setAllSessions(data.sessions || []);
+      // Keep current selection if still present, else auto-select first
+      setSelectedSession(prev =>
+        prev && data.sessions?.find((s: Session) => s.id === prev.id)
+          ? prev
+          : data.sessions?.length > 0 ? data.sessions[0] : null
+      );
     } catch (err) {
       console.error('[ImportDashboard] Failed to load sessions:', err);
-      setSessions([]);
+      setAllSessions([]);
       showToast({ message: (err as ApiError).message || 'Failed to load import sessions', type: 'error' });
     } finally {
       setLoadingSessions(false);
@@ -98,11 +205,12 @@ export default function ImportDashboardPage() {
     }
   }, []); // eslint-disable-line
 
-  useEffect(() => { fetchSessions(typeFilter); }, [fetchSessions, typeFilter]);
+  useEffect(() => { fetchSessions(); }, [fetchSessions]);
 
-  function handleTypeFilter(t: 'all' | 'bookmark') {
+  function handleTypeFilter(t: string) {
+    const filtered = t === 'all' ? allSessions : allSessions.filter(s => s.import_type === t);
     setTypeFilter(t);
-    setSelectedSession(null);
+    setSelectedSession(filtered.length > 0 ? filtered[0] : null);
     setRecords(null);
   }
 
@@ -167,39 +275,33 @@ export default function ImportDashboardPage() {
 
   return (
     <div className={s.page}>
-      {/* Breadcrumb */}
-      <div className={s.breadcrumb}>
-        <div className={s.breadcrumbLeft}>
-          <h1 className={d.pageTitle} style={{ fontSize: '1.1rem' }}>Import Dashboard</h1>
-          {selectedSession && (
-            <>
-              <span className={s.breadcrumbSep}>/</span>
-              <span className={s.breadcrumbSession}>
-                Import #{(selectedSession as any).tenant_seq ?? selectedSession.id}
-                <span className={s.breadcrumbSessionId}>· Session {selectedSession.id}</span>
-                {selectedSession.original_filename ? ` · ${selectedSession.original_filename}` : ''}
-              </span>
-            </>
-          )}
-        </div>
-        <div className={s.breadcrumbRight}>
+      <VdfPageHeader
+        eyebrow="DATA IMPORT"
+        title="Import Dashboard"
+        meta={selectedSession ? (
+          <><strong>Import #{(selectedSession as any).tenant_seq ?? selectedSession.id}</strong>
+          {selectedSession.original_filename && ` · ${selectedSession.original_filename}`}</>
+        ) : undefined}
+        actions={<>
           <div className={s.userBadge}>{initials}</div>
-          <button className={d.pageBtn} onClick={() => router.push('/import')}
-            style={{ background: 'var(--color-primary)', color: 'var(--color-primary-fg)', borderColor: 'var(--color-primary)', fontWeight: 700 }}>
-            + New Import
-          </button>
-        </div>
-      </div>
+          <VdfButton variant="primary" size="sm" onClick={() => router.push('/import')}>+ New Import</VdfButton>
+        </>}
+      />
 
       <div className={s.grid}>
         {/* ═══ SIDEBAR ═══ */}
         <aside className={s.sidebar}>
-          {/* Type filter tabs */}
-          <div className={s.sidebarFilters}>
-            {(['all', 'bookmark'] as const).map(t => (
-              <button key={t} className={typeFilter === t ? s.filterTabActive : s.filterTab}
-                onClick={() => handleTypeFilter(t)}>
-                {t === 'all' ? 'All' : 'Bookmark'}
+          {/* Type filter list */}
+          <div className={s.typeFilterList}>
+            {TYPE_FILTERS.map(f => (
+              <button
+                key={f.key}
+                className={`${s.typeFilterItem} ${typeFilter === f.key ? s.typeFilterItemActive : ''}`}
+                onClick={() => handleTypeFilter(f.key)}
+              >
+                <span className={s.typeFilterIcon}>{f.icon}</span>
+                <span className={s.typeFilterLabel}>{f.label}</span>
+                <span className={s.typeFilterCount}>{typeCounts[f.key] ?? 0}</span>
               </button>
             ))}
           </div>
@@ -242,33 +344,26 @@ export default function ImportDashboardPage() {
             />
           ) : (
             <>
-              {/* Stat cards (bottom-border accent) */}
+              {/* Stat cards */}
               <div className={s.statsGrid}>
-                <div className={s.statCardAccent}>
-                  <div className={s.statCardLabel}>Total Records</div>
-                  <div className={s.statCardValue}>{selectedSession.total_records.toLocaleString()}</div>
-                </div>
-                <div className={`${s.statCardAccent} ${s.stSuccess}`}>
-                  <div className={s.statCardLabel}>Successful</div>
-                  <div className={`${s.statCardValue} ${s.statCardValueSuccess}`}>
-                    {selectedSession.successful_records.toLocaleString()}
-                    {selectedSession.total_records > 0 && (
-                      <span className={s.statCardPct}>{Math.round((selectedSession.successful_records / selectedSession.total_records) * 100)}%</span>
-                    )}
-                  </div>
-                </div>
-                <div className={`${s.statCardAccent} ${s.stDanger}`}>
-                  <div className={s.statCardLabel}>Failed</div>
-                  <div className={`${s.statCardValue} ${selectedSession.failed_records === 0 ? s.statCardValueMuted : ''}`}>
-                    {selectedSession.failed_records.toLocaleString()}
-                  </div>
-                </div>
-                <div className={`${s.statCardAccent} ${s.stMuted}`}>
-                  <div className={s.statCardLabel}>Duplicates</div>
-                  <div className={`${s.statCardValue} ${selectedSession.duplicate_records === 0 ? s.statCardValueMuted : ''}`}>
-                    {selectedSession.duplicate_records.toLocaleString()}
-                  </div>
-                </div>
+                <VdfStatCard value={selectedSession.total_records} label="Total Records" />
+                <VdfStatCard
+                  value={selectedSession.successful_records}
+                  label="Successful"
+                  accent="success"
+                  pct={selectedSession.total_records > 0
+                    ? `${Math.round((selectedSession.successful_records / selectedSession.total_records) * 100)}%`
+                    : undefined}
+                />
+                <VdfStatCard
+                  value={selectedSession.failed_records}
+                  label="Failed"
+                  accent={selectedSession.failed_records > 0 ? 'danger' : 'default'}
+                />
+                <VdfStatCard
+                  value={selectedSession.duplicate_records}
+                  label="Duplicates"
+                />
               </div>
 
               {/* VaNi Hero Card */}
@@ -311,58 +406,73 @@ export default function ImportDashboardPage() {
                     <div style={{ padding: 48, textAlign: 'center', color: 'var(--color-muted)' }}>
                       {records?.total === 0 ? 'No records match this filter' : 'Staging data may have been deleted'}
                     </div>
-                  ) : (
-                    <table className={d.table}>
-                      <thead>
-                        <tr>
-                          <th>Row</th>
-                          <th>Scheme Code</th>
-                          <th>Scheme Name</th>
-                          {selectedSession.import_type !== 'bookmark' && <th>AMC</th>}
-                          {selectedSession.import_type === 'bookmark' && <th>Alias</th>}
-                          <th>Status</th>
-                          <th style={{ textAlign: 'center' }}>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {records.records.map(rec => {
-                          const st = STATUS_MAP[rec.processing_status] || STATUS_MAP.pending;
-                          const schemeCode = rec.mapped_data?.scheme_code;
-                          const aliasStatus = rec.mapped_data?._alias_status as string | undefined;
-                          const aliasName = rec.mapped_data?._alias_name as string | undefined;
-                          const aliasBadge = aliasStatus ? (ALIAS_STATUS_MAP[aliasStatus] || ALIAS_STATUS_MAP.exists) : null;
-                          return (
-                            <tr key={rec.id} style={{ cursor: 'pointer' }} onClick={() => setDrawerRecord(rec)}>
-                              <td style={{ color: 'var(--color-muted)', fontWeight: 500 }}>{rec.row_number}</td>
-                              <td className={d.tdMono} style={{ fontSize: '0.72rem' }}>{schemeCode || '\u2014'}</td>
-                              <td style={{ fontWeight: 600 }}>{rec.mapped_data?.scheme_name || '\u2014'}</td>
-                              {selectedSession.import_type !== 'bookmark' && (
-                                <td style={{ fontSize: '0.72rem', color: 'var(--color-muted)' }}>{rec.mapped_data?.amc || '\u2014'}</td>
-                              )}
-                              {selectedSession.import_type === 'bookmark' && (
-                                <td>
-                                  {aliasBadge ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                      <VdfStatusBadge label={aliasBadge.label} variant={aliasBadge.color} size="sm" />
-                                      {aliasName && <span style={{ fontSize: '0.68rem', color: 'var(--color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>{aliasName}</span>}
-                                    </div>
-                                  ) : (
-                                    <span style={{ color: 'var(--color-muted)', fontSize: '0.72rem' }}>—</span>
-                                  )}
-                                </td>
-                              )}
-                              <td><VdfStatusBadge label={st.label} variant={st.color} size="sm" /></td>
-                              <td style={{ textAlign: 'center' }}>
-                                <button className={s.viewBtn} onClick={e => { e.stopPropagation(); setDrawerRecord(rec); }}>
-                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
+                  ) : (() => {
+                    const cols = COL_DEFS[selectedSession.import_type] ?? COL_DEFS.scheme;
+                    return (
+                      <table className={d.table}>
+                        <thead>
+                          <tr>
+                            {cols.map((col, ci) => (
+                              <th key={ci} style={col.kind === 'action' ? { textAlign: 'center' } : undefined}>
+                                {col.header}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {records.records.map(rec => {
+                            const md = rec.mapped_data || {};
+                            const st = STATUS_MAP[rec.processing_status] || STATUS_MAP.pending;
+                            return (
+                              <tr key={rec.id} style={{ cursor: 'pointer' }} onClick={() => setDrawerRecord(rec)}>
+                                {cols.map((col, ci) => {
+                                  if (col.kind === 'row') return (
+                                    <td key={ci} style={{ color: 'var(--color-muted)', fontWeight: 500 }}>{rec.row_number}</td>
+                                  );
+                                  if (col.kind === 'data') {
+                                    const val = col.key ? (md[col.key] ?? '—') : '—';
+                                    return (
+                                      <td key={ci}
+                                        className={col.mono ? d.tdMono : undefined}
+                                        style={{ fontSize: col.mono ? '0.72rem' : undefined, fontWeight: col.bold ? 600 : undefined, color: col.muted ? 'var(--color-muted)' : undefined }}>
+                                        {val === null || val === undefined ? '—' : String(val)}
+                                      </td>
+                                    );
+                                  }
+                                  if (col.kind === 'alias') {
+                                    const aliasStatus = md._alias_status as string | undefined;
+                                    const aliasName   = md._alias_name   as string | undefined;
+                                    const ab = aliasStatus ? (ALIAS_STATUS_MAP[aliasStatus] || ALIAS_STATUS_MAP.exists) : null;
+                                    return (
+                                      <td key={ci}>
+                                        {ab ? (
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <VdfStatusBadge label={ab.label} variant={ab.color} size="sm" />
+                                            {aliasName && <span style={{ fontSize: '0.68rem', color: 'var(--color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>{aliasName}</span>}
+                                          </div>
+                                        ) : <span style={{ color: 'var(--color-muted)', fontSize: '0.72rem' }}>—</span>}
+                                      </td>
+                                    );
+                                  }
+                                  if (col.kind === 'status') return (
+                                    <td key={ci}><VdfStatusBadge label={st.label} variant={st.color} size="sm" /></td>
+                                  );
+                                  if (col.kind === 'action') return (
+                                    <td key={ci} style={{ textAlign: 'center' }}>
+                                      <button className={s.viewBtn} onClick={e => { e.stopPropagation(); setDrawerRecord(rec); }}>
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                                      </button>
+                                    </td>
+                                  );
+                                  return null;
+                                })}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    );
+                  })()}
                 </div>
 
                 {records && records.total_pages > 1 && (
@@ -385,24 +495,27 @@ export default function ImportDashboardPage() {
         <>
           <div className={s.drawerOverlay} onClick={() => setDrawerRecord(null)} />
           <div className={s.drawer}>
-            <div className={s.drawerHeader}>
-              <div className={s.drawerTitle}>Scheme Preview</div>
-              <button className={s.drawerClose} onClick={() => setDrawerRecord(null)}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-              </button>
-            </div>
+            {(() => {
+              const conf = DRAWER_CONF[selectedSession?.import_type ?? ''] ?? DEFAULT_DRAWER_CONF;
+              const md   = drawerRecord.mapped_data || {};
+              return (
+                <>
+                  <div className={s.drawerHeader}>
+                    <div className={s.drawerTitle}>{conf.title}</div>
+                    <button className={s.drawerClose} onClick={() => setDrawerRecord(null)}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </button>
+                  </div>
 
-            {/* Staging data card */}
-            <div className={s.drawerCard}>
-              <div className={s.drawerCardLabel}>Staging Data</div>
-              <div className={s.drawerCardTitle}>{drawerRecord.mapped_data?.scheme_name || 'Unknown Scheme'}</div>
-              <div className={s.drawerCardMeta}>
-                Code: {drawerRecord.mapped_data?.scheme_code || '\u2014'}
-                {drawerRecord.mapped_data?.category && (
-                  <>{' \u00B7 '}Category: {drawerRecord.mapped_data.category}</>
-                )}
-              </div>
-            </div>
+                  {/* Identity card — heading + meta derived from import type */}
+                  <div className={s.drawerCard}>
+                    <div className={s.drawerCardLabel}>Staging Data</div>
+                    <div className={s.drawerCardTitle}>{conf.getHeading(md)}</div>
+                    <div className={s.drawerCardMeta}>{conf.getMeta(md)}</div>
+                  </div>
+                </>
+              );
+            })()}
 
             {/* Status */}
             <div className={s.drawerSection}>

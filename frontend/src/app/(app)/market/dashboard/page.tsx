@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { VdfLoader, VdfEmptyState, VdfKpiCard, VdfButton, VdfInsightsCard, type Insight } from '@/components/vdf';
+import { VdfLoader, VdfEmptyState, VdfKpiCard, VdfButton, VdfInsightsCard, VdfPageHeader, type Insight } from '@/components/vdf';
 import f from '@/styles/forms.module.css';
 import s from './market-dashboard.module.css';
 
@@ -204,25 +204,27 @@ export default function MarketDashboardPage() {
   return (
     <div className={s.page}>
 
-      {/* ── Header ──────────────────────────────────── */}
-      <div className={s.header}>
-        <div className={s.headerLeft}>
-          <h1>Market Dashboard</h1>
-          <p>NSE index performance heatmap &amp; KPIs</p>
-        </div>
-        <div className={s.periodStrip}>
-          {(['1m', '3m', '6m', '1y'] as TimePeriod[]).map(p => (
-            <button
-              key={p}
-              className={period === p ? f.filterPillActive : f.filterPill}
-              onClick={() => handlePeriod(p)}
-              disabled={periodLoading}
-            >
-              {PERIOD_LABELS[p]}
-            </button>
-          ))}
-        </div>
-      </div>
+      <VdfPageHeader
+        eyebrow="MARKET"
+        title="Market Dashboard"
+        meta="NSE index performance heatmap &amp; KPIs"
+        actions={
+          <div className={s.periodStrip}>
+            {(['1m', '3m', '6m', '1y'] as TimePeriod[]).map(p => (
+              <button
+                key={p}
+                className={period === p ? f.filterPillActive : f.filterPill}
+                onClick={() => handlePeriod(p)}
+                disabled={periodLoading}
+              >
+                {PERIOD_LABELS[p]}
+              </button>
+            ))}
+          </div>
+        }
+      />
+
+      <div className={s.body}>
 
       {/* ── KPI cards ─────────────────────────────── */}
       <div className={s.kpiGrid}>
@@ -408,6 +410,8 @@ export default function MarketDashboardPage() {
           <> {stats.total_indices_analyzed} indices &middot; {stats.indices_up} up, {stats.indices_down} down.</>
         )}
         {' '}Data from Yahoo Finance.
+      </div>
+
       </div>
     </div>
   );

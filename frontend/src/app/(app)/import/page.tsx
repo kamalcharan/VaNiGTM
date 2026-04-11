@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, type ReactNode } from 'react';
+import { Database, Users, ArrowLeftRight, Bookmark } from 'lucide-react';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { VdfInsightsCard } from '@/components/vdf';
+import { VdfInsightsCard, VdfStatCard, VdfPageHeader } from '@/components/vdf';
 import { useAuth } from '@/context/auth-provider';
 import s from './import-page.module.css';
 
@@ -44,11 +45,11 @@ interface ProcessResult {
 
 /* ── Import type cards ─────────────────────────────── */
 
-const IMPORT_TYPES: { id: ImportType; label: string; desc: string; icon: string; enabled: boolean }[] = [
-  { id: 'scheme', label: 'Scheme Master', desc: 'AMFI scheme database — codes, ISINs, categories, NAV names', icon: '\u{1F4CA}', enabled: true },
-  { id: 'customer', label: 'Customers', desc: 'Client contacts — externalid, PAN, mobile, email, addresses', icon: '\u{1F465}', enabled: true },
-  { id: 'transaction', label: 'Transactions', desc: 'Purchases, redemptions, SIPs, switches, dividends', icon: '\u{1F4C4}', enabled: false },
-  { id: 'bookmark', label: 'Bookmarks', desc: 'Tracked scheme codes and ISINs — bulk add to My NAV', icon: '\u{1F516}', enabled: true },
+const IMPORT_TYPES: { id: ImportType; label: string; desc: string; icon: ReactNode; enabled: boolean }[] = [
+  { id: 'scheme',      label: 'Scheme Master', desc: 'AMFI scheme database — codes, ISINs, categories, NAV names',   icon: <Database size={22} />,       enabled: true  },
+  { id: 'customer',    label: 'Customers',     desc: 'Client contacts — externalid, PAN, mobile, email, addresses',  icon: <Users size={22} />,          enabled: true  },
+  { id: 'transaction', label: 'Transactions',  desc: 'Purchases, redemptions, SIPs, switches, dividends',            icon: <ArrowLeftRight size={22} />, enabled: false },
+  { id: 'bookmark',    label: 'Bookmarks',     desc: 'Tracked scheme codes and ISINs — bulk add to My NAV',          icon: <Bookmark size={22} />,       enabled: true  },
 ];
 
 /* ── Main Component ────────────────────────────────── */
@@ -261,16 +262,15 @@ export default function ImportPage() {
 
   return (
     <div className={s.page}>
-      {/* Header */}
-      <div className={s.header}>
-        <div className={s.headerLeft}>
-          <h1 className={s.title}>Import Data</h1>
-          <p className={s.subtitle}>Bring your data into ProKey</p>
-        </div>
-        {step !== 'type' && step !== 'results' && (
+      <VdfPageHeader
+        eyebrow="DATA IMPORT"
+        title="Import Data"
+        actions={step !== 'type' && step !== 'results' ? (
           <button className={s.cancelBtn} onClick={handleReset}>Cancel</button>
-        )}
-      </div>
+        ) : undefined}
+      />
+
+      <div className={s.body}>
 
       {/* Step progress */}
       <div className={s.stepper}>
@@ -449,23 +449,11 @@ export default function ImportPage() {
 
           {/* Stats cards */}
           <div className={s.resultStats}>
-            <div className={s.statCard}>
-              <span className={s.statValue}>{result.processed.toLocaleString()}</span>
-              <span className={s.statLabel}>Total Processed</span>
-            </div>
-            <div className={`${s.statCard} ${s.statSuccess}`}>
-              <span className={s.statValue}>{(result.successful - result.duplicate).toLocaleString()}</span>
-              <span className={s.statLabel}>New Records</span>
-            </div>
-            <div className={`${s.statCard} ${s.statDuplicate}`}>
-              <span className={s.statValue}>{result.duplicate.toLocaleString()}</span>
-              <span className={s.statLabel}>Updated (Duplicate)</span>
-            </div>
+            <VdfStatCard value={result.processed} label="Total Processed" />
+            <VdfStatCard value={result.successful - result.duplicate} label="New Records" accent="success" />
+            <VdfStatCard value={result.duplicate} label="Updated (Duplicate)" accent="info" />
             {result.failed > 0 && (
-              <div className={`${s.statCard} ${s.statFailed}`}>
-                <span className={s.statValue}>{result.failed.toLocaleString()}</span>
-                <span className={s.statLabel}>Failed</span>
-              </div>
+              <VdfStatCard value={result.failed} label="Failed" accent="danger" />
             )}
           </div>
 
@@ -486,6 +474,8 @@ export default function ImportPage() {
           </div>
         </div>
       )}
+
+      </div>
     </div>
   );
 }

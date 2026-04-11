@@ -3,10 +3,10 @@
    All badges, tables, stats, insights from VDF + data.module.css
    ═══════════════════════════════════════════════════════ */
 
-.page { padding: 20px 32px; min-height: calc(100vh - 40px); display: flex; flex-direction: column; }
+.page { min-height: 100%; display: flex; flex-direction: column; }
 
-/* ── Header ──────────────────────────────────────────── */
-.header { margin-bottom: 16px; }
+/* ── Body (below sticky header) ─────────────────────── */
+.body { flex: 1; padding: 16px 32px 20px; display: flex; flex-direction: column; }
 
 /* ── Tabs ────────────────────────────────────────────── */
 .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--color-border); padding-bottom: 0; }
@@ -56,4 +56,18 @@
 @media (max-width: 900px) {
   .statsRow { flex-wrap: wrap; }
   .controlBar { flex-direction: column; }
+}
+
+@media (max-width: 768px) {
+  .body { padding: 14px 20px 16px; }
+  .searchInput { width: 100%; }
+  .schemeName { max-width: 180px; }
+  .tdAmc { display: none; }
+}
+
+@media (max-width: 480px) {
+  .body { padding: 12px 14px 14px; }
+  .tabs { overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { white-space: nowrap; }
 }

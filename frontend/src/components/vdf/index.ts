@@ -61,3 +61,7 @@ export {
 } from './benchmark-bar/VdfBenchmarkBar';
 export { VdfActionCard, type VdfActionCardProps, type ActionTone } from './action-card/VdfActionCard';
 export { VdfColorPicker, type VdfColorPickerProps } from './color-picker/VdfColorPicker';
+export { VdfMobileHeader, type VdfMobileHeaderProps } from './mobile-header/VdfMobileHeader';
+export { VdfBottomNav, type VdfBottomNavProps } from './bottom-nav/VdfBottomNav';
+export { VdfPersonRow, type VdfPersonRowProps } from './person-row/VdfPersonRow';
+export { VdfPageHeader, type VdfPageHeaderProps } from './page-header/VdfPageHeader';

@@ -4,7 +4,7 @@
    All badges from VDF, tables from data.module.css
    ═══════════════════════════════════════════════════════ */
 
-.page { min-height: calc(100vh - 40px); display: flex; flex-direction: column; }
+.page { min-height: 100%; display: flex; flex-direction: column; }
 
 /* ── Breadcrumb Nav (sticky) ─────────────────────────── */
 .breadcrumb {
@@ -31,15 +31,99 @@
 }
 
 /* ── Grid: sidebar + main ────────────────────────────── */
-.grid { display: grid; grid-template-columns: 200px 1fr; gap: 24px; padding: 24px 32px; flex: 1; min-height: 0; }
+.grid { display: grid; grid-template-columns: 240px 1fr; gap: 24px; padding: 24px 32px; flex: 1; min-height: 0; }
 
 /* ── Sidebar ─────────────────────────────────────────── */
 .sidebar { display: flex; flex-direction: column; gap: 8px; }
 
-.sidebarFilters { display: flex; gap: 4px; padding: 2px; background: var(--color-surface); border-radius: 8px; border: 1px solid var(--color-border); }
-.filterTab { flex: 1; padding: 5px 0; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); background: transparent; border: none; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
-.filterTab:hover { color: var(--color-fg); background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
-.filterTabActive { flex: 1; padding: 5px 0; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 14%, transparent); border: none; border-radius: 6px; cursor: pointer; }
+/* ── Vertical type filter list ───────────────────────── */
+.typeFilterList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+
+.typeFilterItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+  text-align: left;
+  width: 100%;
+  font-family: inherit;
+  position: relative;
+}
+
+.typeFilterItem:hover {
+  background: color-mix(in srgb, var(--color-primary) 7%, transparent);
+  color: var(--color-fg);
+}
+
+.typeFilterItemActive {
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 28%, transparent);
+}
+
+.typeFilterItemActive::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 14%;
+  height: 72%;
+  width: 3px;
+  background: var(--color-primary);
+  border-radius: 0 3px 3px 0;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 60%, transparent);
+}
+
+.typeFilterIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.typeFilterLabel {
+  flex: 1;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: inherit;
+}
+
+.typeFilterItemActive .typeFilterLabel { font-weight: 600; }
+
+.typeFilterCount {
+  font-size: 0.62rem;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-weight: 700;
+  color: var(--color-muted);
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  border-radius: 4px;
+  padding: 2px 7px;
+  min-width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.typeFilterItemActive .typeFilterCount {
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  color: var(--color-primary);
+  font-weight: 800;
+}
 
 .sessionCard {
   padding: 12px 14px;
@@ -86,27 +170,8 @@
 /* ── Main Content ────────────────────────────────────── */
 .main { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
 
-/* ── Stat Cards (bottom-border accent) ───────────────── */
+/* ── Stat Cards grid container ───────────────────────── */
 .statsGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-
-.statCardAccent {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  padding: 16px 20px;
-  border-bottom: 4px solid var(--color-primary);
-}
-
-.statCardAccent.stSuccess { border-bottom-color: var(--color-success); }
-.statCardAccent.stDanger { border-bottom-color: var(--color-danger); }
-.statCardAccent.stMuted { border-bottom-color: var(--color-muted); }
-
-.statCardLabel { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--color-muted); }
-.statCardValue { font-family: var(--font-mono, monospace); font-size: 1.6rem; font-weight: 900; color: var(--color-fg); margin-top: 4px; }
-.statCardValueSuccess { color: var(--color-success); }
-.statCardValueMuted { color: var(--color-muted); }
-.statCardUnit { font-size: 0.75rem; font-weight: 500; color: var(--color-muted); margin-left: 4px; }
-.statCardPct { font-size: 0.78rem; font-weight: 500; color: var(--color-muted); opacity: 0.6; margin-left: 6px; }
 
 /* ── Table Card ──────────────────────────────────────── */
 .tableCard {
@@ -224,9 +289,9 @@
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* ── Responsive ──────────────────────────────────────── */
-@media (max-width: 900px) {
+@media (max-width: 960px) {
   .grid { grid-template-columns: 1fr; }
-  .sidebar { max-height: 200px; overflow-y: auto; }
+  .sidebar { max-height: 220px; overflow-y: auto; }
   .statsGrid { grid-template-columns: repeat(2, 1fr); }
   .drawer { width: 100%; }
 }

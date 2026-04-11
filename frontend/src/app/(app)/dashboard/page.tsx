@@ -1,6 +1,7 @@
 'use client';
 
 import { useMe } from '@/hooks';
+import { VdfStatCard, type StatAccent } from '@/components/vdf';
 import s from './dashboard-page.module.css';
 
 export default function DashboardPage() {
@@ -20,15 +21,12 @@ export default function DashboardPage() {
 
       <div className={s.grid}>
         {[
-          { label: 'Total AUM', value: '\u20B9 12.4 Cr', accent: 'primary' },
-          { label: 'Active Clients', value: '147', accent: 'success' },
-          { label: 'Avg XIRR', value: '18.4%', accent: 'info' },
-          { label: 'Pending Actions', value: '5', accent: 'warning' },
+          { label: 'Total AUM', value: '₹ 12.4 Cr', accent: 'default' as StatAccent },
+          { label: 'Active Clients', value: '147', accent: 'success' as StatAccent },
+          { label: 'Avg XIRR', value: '18.4%', accent: 'info' as StatAccent },
+          { label: 'Pending Actions', value: '5', accent: 'warning' as StatAccent },
         ].map((card) => (
-          <div key={card.label} className={s.statCard}>
-            <span className={s.statLabel}>{card.label}</span>
-            <span className={`${s.statValue} ${s[card.accent]}`}>{card.value}</span>
-          </div>
+          <VdfStatCard key={card.label} value={card.value} label={card.label} accent={card.accent} />
         ))}
       </div>
 

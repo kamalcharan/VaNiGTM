@@ -143,6 +143,17 @@
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+  /* Tint inactive icons with the theme primary so each theme looks distinct */
+  color: color-mix(in srgb, var(--color-primary) 55%, var(--color-muted));
+  transition: color 150ms;
+}
+
+.navItem:hover .navIcon {
+  color: var(--color-fg);
+}
+
+.navItemActive .navIcon {
+  color: var(--color-primary);
 }
 
 .navLabel {
@@ -417,9 +428,28 @@
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
     z-index: 200;
   }
 
-  .collapsed { width: 0; border-right: none; }
-  .expanded { width: 260px; box-shadow: 8px 0 32px color-mix(in srgb, var(--color-bg) 60%, transparent); }
+  .collapsed { width: 0; border-right: none; overflow: hidden; }
+  .expanded  { width: 280px; box-shadow: 8px 0 48px color-mix(in srgb, var(--color-bg) 50%, transparent); }
+}
+
+/* ── Mobile backdrop ────────────────────────────────── */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 199;
+  animation: backdropIn 200ms ease forwards;
+}
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
