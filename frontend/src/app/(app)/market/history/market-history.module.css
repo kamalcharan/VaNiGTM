@@ -6,35 +6,15 @@
    ================================================================ */
 
 .page {
-  padding: 28px 32px;
   max-width: 1600px;
   margin: 0 auto;
   min-height: 100%;
 }
 
-/* ── Header ──────────────────────────────────────────── */
+/* ── Body (below sticky header) ─────────────────────── */
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 28px;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.headerLeft h1 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--color-fg);
-  margin: 0 0 4px 0;
-  font-family: 'Playfair Display', Georgia, serif;
-}
-
-.headerLeft p {
-  font-size: 0.85rem;
-  color: var(--color-muted);
-  margin: 0;
+.body {
+  padding: 20px 32px 32px;
 }
 
 /* ── Stats strip ─────────────────────────────────────── */
@@ -82,8 +62,8 @@
   justify-content: space-between;
   gap: 16px;
   padding: 12px 16px;
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   margin-bottom: 16px;
   flex-wrap: wrap;
@@ -184,7 +164,7 @@
 
 .progressCard {
   background: var(--color-surface);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
   padding: 36px 40px;
   max-width: 420px;
@@ -243,8 +223,8 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--btn-radius, 8px);
   color: var(--color-fg);
   font-size: 0.82rem;
@@ -268,8 +248,8 @@
   align-items: center;
   gap: 5px;
   padding: 5px 10px;
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
+  background: transparent;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   color: var(--color-muted);
   font-size: 0.75rem;
@@ -324,9 +304,9 @@
 
 .filterPill {
   padding: 5px 12px;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--color-border);
   border-radius: 20px;
-  background: var(--glass);
+  background: transparent;
   color: var(--color-muted);
   font-size: 0.78rem;
   font-weight: 500;
@@ -363,10 +343,7 @@
 /* ── Responsive ──────────────────────────────────────── */
 
 @media (max-width: 768px) {
-  .page { padding: 20px; }
-
-  .header { margin-bottom: 20px; }
-  .headerLeft h1 { font-size: 1.4rem; }
+  .body { padding: 16px 20px 20px; }
 
   .statsStrip { grid-template-columns: repeat(2, 1fr); }
 
@@ -378,9 +355,7 @@
 }
 
 @media (max-width: 480px) {
-  .page { padding: 14px; }
-
-  .headerLeft h1 { font-size: 1.2rem; }
+  .body { padding: 12px 14px 14px; }
 
   .statsStrip { grid-template-columns: repeat(2, 1fr); gap: 8px; }
 

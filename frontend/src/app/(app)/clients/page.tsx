@@ -8,6 +8,7 @@ import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfEmptyState, VdfButton, VdfStatusBadge,
   VdfCard, VdfSearchBar, VdfStatCard, VdfModal, VdfPersonRow,
+  VdfPageHeader,
 } from '@/components/vdf';
 import s from './clients.module.css';
 import data from '@/styles/data.module.css';
@@ -328,69 +329,65 @@ export default function ClientsPage() {
   return (
     <div className={s.page}>
 
-      {/* ── Header ── */}
-      <div className={s.header}>
-        <div className={s.titleRow}>
-          <div>
-            <h1 className={s.title}>Clients</h1>
-            <p className={s.meta}>
-              <strong>{(stats?.total_clients ?? total).toLocaleString()}</strong> total
-            </p>
-          </div>
-        </div>
+      <VdfPageHeader
+        eyebrow="CLIENT REGISTRY"
+        title="Clients"
+        meta={<><strong>{(stats?.total_clients ?? total).toLocaleString()}</strong> total</>}
+      />
 
-        {/* Stats cards */}
-        {stats && (
-          <div className={s.statsRow}>
-            <VdfStatCard
-              value={stats.total_clients}
-              label="Total clients"
-              accent="default"
-              onClick={() => {
-                setBookmarkedOnly(false); setRecentOnly(false); setInFamily(false);
-                setRiskFilter('all'); setActiveSearch(''); setSearch(''); setPage(1);
-              }}
-              active={!bookmarkedOnly && !recentOnly && !inFamily && riskFilter === 'all' && !activeSearch}
-            />
-            <VdfStatCard
-              value={stats.bookmarked}
-              label="Bookmarked"
-              accent="warning"
-              onClick={() => { setBookmarkedOnly(v => !v); setRecentOnly(false); setInFamily(false); setPage(1); }}
-              active={bookmarkedOnly}
-            />
-            <VdfStatCard
-              value={stats.recent_30_days}
-              label="New this month"
-              accent="success"
-              onClick={() => { setRecentOnly(v => !v); setBookmarkedOnly(false); setInFamily(false); setPage(1); }}
-              active={recentOnly}
-            />
-            <VdfStatCard
-              value={stats.family_count}
-              label={`Famil${stats.family_count === 1 ? 'y' : 'ies'} · ${stats.families_members} members`}
-              accent="info"
-              onClick={() => { setInFamily(v => !v); setBookmarkedOnly(false); setRecentOnly(false); setPage(1); }}
-              active={inFamily}
-            />
-          </div>
-        )}
-
-        {/* Toolbar */}
-        <div className={s.toolbar}>
-          <VdfSearchBar
-            value={search}
-            onChange={handleSearchChange}
-            onSearch={triggerSearch}
-            placeholder="Search by name, PAN, or reference code…"
-            pills={RISK_PILLS}
-            activePill={riskFilter}
-            onPillChange={handleRiskChange}
-            addon={bookmarkAddon}
+      {/* Stats */}
+      {stats && (
+        <div className={s.statsRow}>
+          <VdfStatCard
+            value={stats.total_clients}
+            label="Total clients"
+            accent="default"
+            onClick={() => {
+              setBookmarkedOnly(false); setRecentOnly(false); setInFamily(false);
+              setRiskFilter('all'); setActiveSearch(''); setSearch(''); setPage(1);
+            }}
+            active={!bookmarkedOnly && !recentOnly && !inFamily && riskFilter === 'all' && !activeSearch}
           />
-          {viewToggle}
+          <VdfStatCard
+            value={stats.bookmarked}
+            label="Bookmarked"
+            accent="warning"
+            onClick={() => { setBookmarkedOnly(v => !v); setRecentOnly(false); setInFamily(false); setPage(1); }}
+            active={bookmarkedOnly}
+          />
+          <VdfStatCard
+            value={stats.recent_30_days}
+            label="New this month"
+            accent="success"
+            onClick={() => { setRecentOnly(v => !v); setBookmarkedOnly(false); setInFamily(false); setPage(1); }}
+            active={recentOnly}
+          />
+          <VdfStatCard
+            value={stats.family_count}
+            label={`Famil${stats.family_count === 1 ? 'y' : 'ies'} · ${stats.families_members} members`}
+            accent="info"
+            onClick={() => { setInFamily(v => !v); setBookmarkedOnly(false); setRecentOnly(false); setPage(1); }}
+            active={inFamily}
+          />
         </div>
+      )}
+
+      {/* Toolbar */}
+      <div className={s.toolbar}>
+        <VdfSearchBar
+          value={search}
+          onChange={handleSearchChange}
+          onSearch={triggerSearch}
+          placeholder="Search by name, PAN, or reference code…"
+          pills={RISK_PILLS}
+          activePill={riskFilter}
+          onPillChange={handleRiskChange}
+          addon={bookmarkAddon}
+        />
+        {viewToggle}
       </div>
+
+      <div className={s.listContent}>
 
       {/* ── Empty state ── */}
       {clients.length === 0 && (
@@ -541,6 +538,8 @@ export default function ClientsPage() {
           {pagination}
         </>
       )}
+
+      </div>
 
       {/* ── Bookmark reason modal ─────────────────────── */}
       <VdfModal

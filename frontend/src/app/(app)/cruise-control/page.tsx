@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { VdfStatCard, VdfStatusBadge, VdfInsightsCard, VdfEmptyState, type BadgeVariant, type Insight } from '@/components/vdf';
+import { VdfStatCard, VdfStatusBadge, VdfInsightsCard, VdfEmptyState, VdfPageHeader, type BadgeVariant, type Insight } from '@/components/vdf';
 import d from '@/styles/data.module.css';
 import s from './cruise-control.module.css';
 
@@ -235,13 +235,13 @@ export default function CruiseControlPage() {
 
   return (
     <div className={s.page}>
-      {/* Header */}
-      <div className={s.header}>
-        <div>
-          <h1 className={s.title}>Cruise Control</h1>
-          <p className={s.subtitle}>Operational control center for automated data operations</p>
-        </div>
-      </div>
+      <VdfPageHeader
+        eyebrow="OPERATIONS"
+        title="Cruise Control"
+        meta="Operational control center for automated data operations"
+      />
+
+      <div className={s.body}>
 
       {/* Tabs */}
       <div className={s.tabs}>
@@ -406,6 +406,8 @@ export default function CruiseControlPage() {
           </div>
         </div>
       )}
+
+      </div>
     </div>
   );
 }
