@@ -1,4 +1,9 @@
-/* App Shell — sidebar + content */
+/* App Shell — sidebar + content
+   Desktop: flex row (sidebar left rail + main content)
+   Mobile:  flex column (mobile header + main scrollable area)
+            Sidebar and BottomNav are position:fixed overlays
+*/
+
 .shell {
   display: flex;
   min-height: 100vh;
@@ -13,8 +18,14 @@
 }
 
 @media (max-width: 768px) {
-  /* Sidebar becomes position:fixed overlay — main fills full width */
+  /* MobileHeader (56px block) sits above main in the flex column.
+     Sidebar is position:fixed — no flow impact.
+     BottomNav is position:fixed — add bottom padding so content clears it. */
   .shell {
     flex-direction: column;
+  }
+
+  .main {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
   }
 }

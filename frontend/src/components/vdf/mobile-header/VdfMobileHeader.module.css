@@ -1,0 +1,108 @@
+/* VdfMobileHeader — top bar for mobile navigation
+   Desktop (>768px): hidden.
+   Mobile (≤768px): 56px sticky bar with hamburger · logo · page title · env pill
+*/
+
+.header {
+  display: none; /* hidden on desktop */
+  height: 56px;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 0 12px 0 4px;
+  gap: 10px;
+  background: var(--glass, color-mix(in srgb, var(--color-surface) 80%, transparent));
+  border-bottom: 1px solid var(--color-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 140;
+}
+
+@media (max-width: 768px) {
+  .header { display: flex; }
+}
+
+/* ── Hamburger ────────────────────────────────────────── */
+
+.menuBtn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  color: var(--color-fg);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 150ms;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menuBtn:active {
+  background: color-mix(in srgb, var(--color-border) 60%, transparent);
+}
+
+/* ── Logo mark ────────────────────────────────────────── */
+
+.logoMark {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+/* ── Page title ───────────────────────────────────────── */
+
+.title {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  font-family: var(--font-display, 'Playfair Display', serif);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* ── Env pill ─────────────────────────────────────────── */
+
+.envPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 20px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.live {
+  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 22%, transparent);
+}
+
+.test {
+  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 22%, transparent);
+}

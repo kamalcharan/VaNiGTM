@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { NAV_ITEMS, getActiveNavId, type NavItem } from '@/config/nav';
 import { useMe, useLogout } from '@/hooks';
@@ -14,9 +14,13 @@ import s from './VdfSidebar.module.css';
 export interface VdfSidebarProps {
   /** Override which nav item is active (auto-detected from URL if omitted) */
   activeId?: string;
+  /** Whether the sidebar is open on mobile (controlled externally) */
+  mobileOpen?: boolean;
+  /** Called when the mobile sidebar should be closed (tap backdrop or navigate) */
+  onMobileClose?: () => void;
 }
 
-export function VdfSidebar({ activeId }: VdfSidebarProps) {
+export function VdfSidebar({ activeId, mobileOpen = false, onMobileClose }: VdfSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: me } = useMe();
@@ -26,10 +30,38 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
 
   const [expanded, setExpanded] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   /* ── Env switch state ── */
   const [switchTarget, setSwitchTarget] = useState<boolean | null>(null);
   const [switching, setSwitching] = useState(false);
+
+  /* ── Detect mobile viewport ── */
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  /* ── Close sidebar on route change (mobile only) ── */
+  useEffect(() => {
+    if (isMobile) {
+      onMobileClose?.();
+      setUserMenuOpen(false);
+    }
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── Close user menu when mobile sidebar closes ── */
+  useEffect(() => {
+    if (isMobile && !mobileOpen) setUserMenuOpen(false);
+  }, [isMobile, mobileOpen]);
+
+  /* ── Computed expansion state ──
+     Desktop: driven by hover. Mobile: driven by mobileOpen prop.
+  ── */
+  const showExpanded = isMobile ? mobileOpen : expanded;
 
   const currentId = activeId || getActiveNavId(pathname);
   const visible = (item: NavItem) => !item.adminOnly || isAdmin;
@@ -45,6 +77,8 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
   function navigate(item: NavItem) {
     router.push(item.href);
     setUserMenuOpen(false);
+    // On mobile, close immediately for snappier feel (effect also handles this on route change)
+    if (isMobile) onMobileClose?.();
   }
 
   function handleLogout() {
@@ -77,15 +111,20 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
     return <VdfLoader overlay message="Signing out" hint="Ending session securely" />;
   }
 
-  const toTest = switchTarget === false;   // switching to test
-  const toLive = switchTarget === true;    // switching to live
+  const toTest = switchTarget === false;
+  const toLive = switchTarget === true;
 
   return (
     <>
+      {/* ── Mobile backdrop — tap to close ── */}
+      {isMobile && mobileOpen && (
+        <div className={s.backdrop} onClick={onMobileClose} aria-hidden="true" />
+      )}
+
       <aside
-        className={`${s.sidebar} ${expanded ? s.expanded : s.collapsed}`}
-        onMouseEnter={() => setExpanded(true)}
-        onMouseLeave={() => { setExpanded(false); setUserMenuOpen(false); }}
+        className={`${s.sidebar} ${showExpanded ? s.expanded : s.collapsed}`}
+        onMouseEnter={!isMobile ? () => setExpanded(true)  : undefined}
+        onMouseLeave={!isMobile ? () => { setExpanded(false); setUserMenuOpen(false); } : undefined}
       >
         {/* Logo + Env toggle */}
         <div className={s.logoArea} onClick={() => router.push('/dashboard')}>
@@ -96,8 +135,8 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
               <path d="M2 12l10 5 10-5" />
             </svg>
           </div>
-          {expanded && <span className={s.logoText}>ProKey</span>}
-          {expanded && (
+          {showExpanded && <span className={s.logoText}>ProKey</span>}
+          {showExpanded && (
             <button
               className={`${s.envPill} ${isLive ? s.envPillLive : s.envPillTest}`}
               onClick={e => { e.stopPropagation(); setSwitchTarget(!isLive); }}
@@ -109,7 +148,7 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
           )}
         </div>
 
-        {/* Scrollable nav area — all three sections scroll together */}
+        {/* Scrollable nav area */}
         <div className={s.navScroll}>
           {/* Main nav items */}
           <nav className={s.nav}>
@@ -120,12 +159,12 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
                   key={item.id}
                   className={`${s.navItem} ${active ? s.navItemActive : ''}`}
                   onClick={() => navigate(item)}
-                  title={expanded ? undefined : item.label}
+                  title={showExpanded ? undefined : item.label}
                   aria-label={item.label}
                 >
                   {active && <div className={s.activeBar} />}
                   <span className={s.navIcon}>{item.icon}</span>
-                  {expanded && <span className={s.navLabel}>{item.label}</span>}
+                  {showExpanded && <span className={s.navLabel}>{item.label}</span>}
                 </button>
               );
             })}
@@ -133,7 +172,7 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
 
           {/* Data & Operations */}
           <div className={s.separator} />
-          {expanded && <div className={s.sectionLabel}>Data</div>}
+          {showExpanded && <div className={s.sectionLabel}>Data</div>}
           <div className={s.sectionNav}>
             {dataItems.map((item) => {
               const active = currentId === item.id;
@@ -142,12 +181,12 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
                   key={item.id}
                   className={`${s.navItem} ${active ? s.navItemActive : ''}`}
                   onClick={() => navigate(item)}
-                  title={expanded ? undefined : item.label}
+                  title={showExpanded ? undefined : item.label}
                   aria-label={item.label}
                 >
                   {active && <div className={s.activeBar} />}
                   <span className={s.navIcon}>{item.icon}</span>
-                  {expanded && <span className={s.navLabel}>{item.label}</span>}
+                  {showExpanded && <span className={s.navLabel}>{item.label}</span>}
                 </button>
               );
             })}
@@ -155,7 +194,7 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
 
           {/* System */}
           <div className={s.separator} />
-          {expanded && <div className={s.sectionLabel}>System</div>}
+          {showExpanded && <div className={s.sectionLabel}>System</div>}
           <div className={s.sectionNav}>
             {systemItems.map((item) => {
               const active = currentId === item.id;
@@ -164,27 +203,27 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
                   key={item.id}
                   className={`${s.navItem} ${active ? s.navItemActive : ''}`}
                   onClick={() => navigate(item)}
-                  title={expanded ? undefined : item.label}
+                  title={showExpanded ? undefined : item.label}
                   aria-label={item.label}
                 >
                   {active && <div className={s.activeBar} />}
                   <span className={s.navIcon}>{item.icon}</span>
-                  {expanded && <span className={s.navLabel}>{item.label}</span>}
+                  {showExpanded && <span className={s.navLabel}>{item.label}</span>}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Environment badge — collapsed: colored dot; expanded: text label */}
+        {/* Environment badge */}
         <button
           className={`${s.envBadge} ${isLive ? s.envBadgeLive : s.envBadgeTest}`}
           title={isLive ? 'Live mode — click to switch to Test' : 'Test mode — click to switch to Live'}
           onClick={() => setSwitchTarget(!isLive)}
         >
           <span className={s.envDot} />
-          {expanded && <span className={s.envText}>{isLive ? 'Live' : 'Test'}</span>}
-          {expanded && (
+          {showExpanded && <span className={s.envText}>{isLive ? 'Live' : 'Test'}</span>}
+          {showExpanded && (
             <span className={s.envSwitchHint}>
               → {isLive ? 'Test' : 'Live'}
             </span>
@@ -196,16 +235,16 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
           <button
             className={s.userBtn}
             onClick={() => setUserMenuOpen(!userMenuOpen)}
-            title={expanded ? undefined : user?.name || 'Account'}
+            title={showExpanded ? undefined : user?.name || 'Account'}
           >
             <div className={s.userAvatar}>{initials}</div>
-            {expanded && (
+            {showExpanded && (
               <div className={s.userInfo}>
                 <div className={s.userName}>{user?.name || 'User'}</div>
                 <div className={s.userEmail}>{user?.email || ''}</div>
               </div>
             )}
-            {expanded && (
+            {showExpanded && (
               <svg className={`${s.chevron} ${userMenuOpen ? s.chevronOpen : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
                 <polyline points="6 9 12 15 18 9" />
               </svg>
@@ -213,7 +252,7 @@ export function VdfSidebar({ activeId }: VdfSidebarProps) {
           </button>
 
           {/* Dropdown */}
-          {userMenuOpen && expanded && (
+          {userMenuOpen && showExpanded && (
             <div className={s.userMenu}>
               <button className={s.menuItem} onClick={() => { router.push('/settings'); setUserMenuOpen(false); }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4-4v2" /><circle cx="12" cy="7" r="4" /></svg>

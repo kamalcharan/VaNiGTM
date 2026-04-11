@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-provider';
 import { VdfSidebar, VdfLoader } from '@/components/vdf';
+import { VdfMobileHeader } from '@/components/vdf/mobile-header/VdfMobileHeader';
+import { VdfBottomNav } from '@/components/vdf/bottom-nav/VdfBottomNav';
 import { getAccessToken } from '@/lib/api-client';
 import s from './app-shell.module.css';
 
@@ -13,54 +15,67 @@ const FULL_SCREEN_ROUTES = ['/onboarding'];
 /**
  * Authenticated app shell — VdfSidebar + content area.
  *
- * Hydration safety: `clientReady` starts false on both server and initial
- * client render, so they agree and there is no hydration mismatch.
- * After useEffect (post-hydration) we switch to the auth-aware state.
+ * Mobile layout (≤768px):
+ *   - VdfMobileHeader: sticky 56px top bar with hamburger + page title + env pill
+ *   - VdfSidebar: position:fixed overlay, toggled via sidebarOpen state
+ *   - VdfBottomNav: fixed 60px bottom tab bar with 5 key destinations
+ *
+ * Desktop layout (>768px):
+ *   - VdfSidebar: sticky left rail (hover to expand)
+ *   - MobileHeader + BottomNav are display:none via CSS
  */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [clientReady, setClientReady] = useState(false);
+  const [clientReady,  setClientReady]  = useState(false);
+  const [sidebarOpen,  setSidebarOpen]  = useState(false);
   const pathname = usePathname();
-  const router = useRouter();
+  const router   = useRouter();
   const { tenant, isLoading, isAuthenticated } = useAuth();
 
-  const isFullScreen = FULL_SCREEN_ROUTES.some((r) => pathname.startsWith(r));
-  const isOnboarding = pathname.startsWith('/onboarding');
+  const isFullScreen  = FULL_SCREEN_ROUTES.some((r) => pathname.startsWith(r));
+  const isOnboarding  = pathname.startsWith('/onboarding');
 
-  // Mark client as ready after first paint — this fires synchronously after hydration
+  // Hydration safety: both server and initial client render agree on false
   useEffect(() => { setClientReady(true); }, []);
 
-  // Auth guard: no token → login
+  // Auth guard
   useEffect(() => {
-    if (!getAccessToken()) {
-      router.replace('/login');
-    }
+    if (!getAccessToken()) router.replace('/login');
   }, [router]);
 
-  // Onboarding guard: incomplete → redirect to onboarding (unless already there)
+  // Onboarding guard
   useEffect(() => {
     if (!isLoading && tenant && !tenant.onboarding_complete && !isOnboarding) {
       router.replace('/onboarding');
     }
   }, [isLoading, tenant, isOnboarding, router]);
 
-  // Pre-hydration: both server and initial client render nothing.
-  // This prevents a structural mismatch (server=shell, client=VdfLoader).
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
   if (!clientReady) return null;
-
-  // Post-hydration: auth-aware rendering
   if (isLoading) return <VdfLoader overlay message="Loading" />;
-
-  // No token — render nothing while redirect fires
   if (!isAuthenticated && !getAccessToken()) return null;
-
   if (isFullScreen) return <>{children}</>;
 
   return (
     <div className={s.shell}>
-      <VdfSidebar />
+      {/* Mobile-only top bar — hidden on desktop via CSS */}
+      <VdfMobileHeader onMenuOpen={() => setSidebarOpen(true)} />
+
+      {/* Sidebar — hover expand on desktop, prop-driven on mobile */}
+      <VdfSidebar
+        mobileOpen={sidebarOpen}
+        onMobileClose={() => setSidebarOpen(false)}
+      />
+
       <main className={s.main}>
         {children}
       </main>
+
+      {/* Mobile-only bottom tab bar — hidden on desktop via CSS */}
+      <VdfBottomNav onMorePress={() => setSidebarOpen(true)} />
     </div>
   );
 }
