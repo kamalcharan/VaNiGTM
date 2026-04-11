@@ -143,6 +143,17 @@
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+  /* Tint inactive icons with the theme primary so each theme looks distinct */
+  color: color-mix(in srgb, var(--color-primary) 55%, var(--color-muted));
+  transition: color 150ms;
+}
+
+.navItem:hover .navIcon {
+  color: var(--color-fg);
+}
+
+.navItemActive .navIcon {
+  color: var(--color-primary);
 }
 
 .navLabel {
