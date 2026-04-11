@@ -193,7 +193,7 @@ export default function ImportDashboardPage() {
       setSelectedSession(prev =>
         prev && data.sessions?.find((s: Session) => s.id === prev.id)
           ? prev
-          : data.sessions?.length > 0 ? data.sessions[0] : null
+          : (data.sessions?.length ?? 0) > 0 ? data.sessions![0] : null
       );
     } catch (err) {
       console.error('[ImportDashboard] Failed to load sessions:', err);

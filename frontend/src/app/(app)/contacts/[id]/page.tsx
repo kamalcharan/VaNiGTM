@@ -372,8 +372,8 @@ export default function ContactProfilePage() {
               <h1 className={s.heroName}>{contact.prefix} {contact.name}</h1>
               <div className={s.heroBadges}>
                 <VdfStatusBadge label={contact.is_client ? 'Client' : 'Prospect'} variant={contact.is_client ? 'success' : 'warning'} />
-                {contact.snapshot_summary?.goals_lite_count > 0 && (
-                  <span className={s.goalCount}>{contact.snapshot_summary.goals_lite_count} goal{contact.snapshot_summary.goals_lite_count > 1 ? 's' : ''}</span>
+                {(contact.snapshot_summary?.goals_lite_count ?? 0) > 0 && (
+                  <span className={s.goalCount}>{contact.snapshot_summary!.goals_lite_count} goal{contact.snapshot_summary!.goals_lite_count > 1 ? 's' : ''}</span>
                 )}
               </div>
               <div className={s.heroMeta}>
