@@ -11,7 +11,7 @@ import {
   VdfPageHeader,
 } from '@/components/vdf';
 import s from './clients.module.css';
-import data from '@/styles/data.module.css';
+import d from '@/styles/data.module.css';
 
 /* ── Types ───────────────────────────────────────────── */
 
@@ -308,17 +308,17 @@ export default function ClientsPage() {
 
   /* ── Pagination ──────────────────────────────────── */
   const pagination = totalPages > 1 && (
-    <div className={data.pagination}>
+    <div className={d.pagination}>
       <button
-        className={data.pageBtn}
+        className={d.pageBtn}
         onClick={() => setPage(p => p - 1)}
         disabled={page === 1}
       >← Prev</button>
-      <span className={data.pageInfo}>
+      <span className={d.pageInfo}>
         Page {page} of {totalPages} · {total.toLocaleString()} clients
       </span>
       <button
-        className={data.pageBtn}
+        className={d.pageBtn}
         onClick={() => setPage(p => p + 1)}
         disabled={page >= totalPages}
       >Next →</button>
