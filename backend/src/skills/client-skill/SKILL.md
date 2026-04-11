@@ -57,3 +57,8 @@ List active bookmark reason master data for the tenant (populates the reason pic
 Summary stats for the clients dashboard.
 - Parameters: none
 - Returns: { total_clients, active_clients, pending_onboarding, bookmarked, recipe: 'stat-summary' }
+
+### set_client_active
+Activate or deactivate a client (soft toggle on is_active). Deactivating a client does not touch the linked contact — the contact layer enforces its own constraint that a contact with an active client cannot be deactivated until the client is deactivated first.
+- Parameters: client_id (required, number), is_active (required, boolean)
+- Returns: { client: { id, is_active, updated_at }, recipe: 'confirmation' }
