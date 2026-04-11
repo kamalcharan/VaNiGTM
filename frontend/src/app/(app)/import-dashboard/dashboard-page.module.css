@@ -86,27 +86,8 @@
 /* ── Main Content ────────────────────────────────────── */
 .main { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
 
-/* ── Stat Cards (bottom-border accent) ───────────────── */
+/* ── Stat Cards grid container ───────────────────────── */
 .statsGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-
-.statCardAccent {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  padding: 16px 20px;
-  border-bottom: 4px solid var(--color-primary);
-}
-
-.statCardAccent.stSuccess { border-bottom-color: var(--color-success); }
-.statCardAccent.stDanger { border-bottom-color: var(--color-danger); }
-.statCardAccent.stMuted { border-bottom-color: var(--color-muted); }
-
-.statCardLabel { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--color-muted); }
-.statCardValue { font-family: var(--font-mono, monospace); font-size: 1.6rem; font-weight: 900; color: var(--color-fg); margin-top: 4px; }
-.statCardValueSuccess { color: var(--color-success); }
-.statCardValueMuted { color: var(--color-muted); }
-.statCardUnit { font-size: 0.75rem; font-weight: 500; color: var(--color-muted); margin-left: 4px; }
-.statCardPct { font-size: 0.78rem; font-weight: 500; color: var(--color-muted); opacity: 0.6; margin-left: 6px; }
 
 /* ── Table Card ──────────────────────────────────────── */
 .tableCard {

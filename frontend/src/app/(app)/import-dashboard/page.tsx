@@ -6,7 +6,7 @@ import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
-import { VdfStatusBadge, VdfLoader, VdfProactiveCard, VdfEmptyState, VdfButton, type BadgeVariant } from '@/components/vdf';
+import { VdfStatusBadge, VdfLoader, VdfProactiveCard, VdfEmptyState, VdfButton, VdfStatCard, type BadgeVariant } from '@/components/vdf';
 import d from '@/styles/data.module.css';
 import s from './dashboard-page.module.css';
 
@@ -242,33 +242,26 @@ export default function ImportDashboardPage() {
             />
           ) : (
             <>
-              {/* Stat cards (bottom-border accent) */}
+              {/* Stat cards */}
               <div className={s.statsGrid}>
-                <div className={s.statCardAccent}>
-                  <div className={s.statCardLabel}>Total Records</div>
-                  <div className={s.statCardValue}>{selectedSession.total_records.toLocaleString()}</div>
-                </div>
-                <div className={`${s.statCardAccent} ${s.stSuccess}`}>
-                  <div className={s.statCardLabel}>Successful</div>
-                  <div className={`${s.statCardValue} ${s.statCardValueSuccess}`}>
-                    {selectedSession.successful_records.toLocaleString()}
-                    {selectedSession.total_records > 0 && (
-                      <span className={s.statCardPct}>{Math.round((selectedSession.successful_records / selectedSession.total_records) * 100)}%</span>
-                    )}
-                  </div>
-                </div>
-                <div className={`${s.statCardAccent} ${s.stDanger}`}>
-                  <div className={s.statCardLabel}>Failed</div>
-                  <div className={`${s.statCardValue} ${selectedSession.failed_records === 0 ? s.statCardValueMuted : ''}`}>
-                    {selectedSession.failed_records.toLocaleString()}
-                  </div>
-                </div>
-                <div className={`${s.statCardAccent} ${s.stMuted}`}>
-                  <div className={s.statCardLabel}>Duplicates</div>
-                  <div className={`${s.statCardValue} ${selectedSession.duplicate_records === 0 ? s.statCardValueMuted : ''}`}>
-                    {selectedSession.duplicate_records.toLocaleString()}
-                  </div>
-                </div>
+                <VdfStatCard value={selectedSession.total_records} label="Total Records" />
+                <VdfStatCard
+                  value={selectedSession.successful_records}
+                  label="Successful"
+                  accent="success"
+                  pct={selectedSession.total_records > 0
+                    ? `${Math.round((selectedSession.successful_records / selectedSession.total_records) * 100)}%`
+                    : undefined}
+                />
+                <VdfStatCard
+                  value={selectedSession.failed_records}
+                  label="Failed"
+                  accent={selectedSession.failed_records > 0 ? 'danger' : 'default'}
+                />
+                <VdfStatCard
+                  value={selectedSession.duplicate_records}
+                  label="Duplicates"
+                />
               </div>
 
               {/* VaNi Hero Card */}

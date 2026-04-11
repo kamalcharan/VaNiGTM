@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { VdfInsightsCard } from '@/components/vdf';
+import { VdfInsightsCard, VdfStatCard } from '@/components/vdf';
 import { useAuth } from '@/context/auth-provider';
 import s from './import-page.module.css';
 
@@ -449,23 +449,11 @@ export default function ImportPage() {
 
           {/* Stats cards */}
           <div className={s.resultStats}>
-            <div className={s.statCard}>
-              <span className={s.statValue}>{result.processed.toLocaleString()}</span>
-              <span className={s.statLabel}>Total Processed</span>
-            </div>
-            <div className={`${s.statCard} ${s.statSuccess}`}>
-              <span className={s.statValue}>{(result.successful - result.duplicate).toLocaleString()}</span>
-              <span className={s.statLabel}>New Records</span>
-            </div>
-            <div className={`${s.statCard} ${s.statDuplicate}`}>
-              <span className={s.statValue}>{result.duplicate.toLocaleString()}</span>
-              <span className={s.statLabel}>Updated (Duplicate)</span>
-            </div>
+            <VdfStatCard value={result.processed} label="Total Processed" />
+            <VdfStatCard value={result.successful - result.duplicate} label="New Records" accent="success" />
+            <VdfStatCard value={result.duplicate} label="Updated (Duplicate)" accent="info" />
             {result.failed > 0 && (
-              <div className={`${s.statCard} ${s.statFailed}`}>
-                <span className={s.statValue}>{result.failed.toLocaleString()}</span>
-                <span className={s.statLabel}>Failed</span>
-              </div>
+              <VdfStatCard value={result.failed} label="Failed" accent="danger" />
             )}
           </div>
 

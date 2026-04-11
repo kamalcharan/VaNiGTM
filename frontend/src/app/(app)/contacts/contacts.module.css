@@ -107,8 +107,8 @@
   transition: all 150ms;
 }
 
-.statusPillActive   { background: var(--color-success); color: #fff; }
-.statusPillInactive { background: var(--color-danger);  color: #fff; }
+.statusPillActive   { background: var(--color-success); color: var(--color-primary-fg, var(--color-bg)); }
+.statusPillInactive { background: var(--color-danger);  color: var(--color-primary-fg, var(--color-bg)); }
 
 /* ── List area ───────────────────────────────────────── */
 
@@ -224,7 +224,7 @@
 .drawerOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: color-mix(in srgb, black 40%, transparent);
   backdrop-filter: blur(4px);
   z-index: 200;
   display: flex;
@@ -239,7 +239,7 @@
   border-left: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  box-shadow: -24px 0 48px rgba(0, 0, 0, 0.18);
+  box-shadow: -24px 0 48px color-mix(in srgb, black 18%, transparent);
   transform: translateX(100%);
   animation: slideInRight 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
@@ -387,7 +387,7 @@
 }
 
 .depBubble:hover  { border-color: var(--color-primary); color: var(--color-primary); }
-.depBubbleActive  { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.depBubbleActive  { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-fg, var(--color-bg)); }
 
 /* ── Responsive (page layout only) ──────────────────── */
 
