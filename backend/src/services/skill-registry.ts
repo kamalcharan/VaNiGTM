@@ -120,7 +120,7 @@ export class SkillRegistry {
  * Convert a filename like "get-holdings.ts" to a function name like "get_holdings"
  */
 function fileNameToFunctionName(fileName: string): string {
-  return fileName.replace(/\.ts$/, '').replace(/-/g, '_');
+  return fileName.replace(/\.(js|ts)$/, '').replace(/-/g, '_');
 }
 
 /**
@@ -147,7 +147,10 @@ export async function buildRegistry(skillsRoot: string): Promise<SkillRegistry> 
     }
 
     const fnFiles = fs.readdirSync(functionsDir)
-      .filter((f) => f.endsWith('.ts') && !f.endsWith('.d.ts') && !f.endsWith('.test.ts'));
+      .filter((f) => (f.endsWith('.js') || f.endsWith('.ts'))
+        && !f.endsWith('.d.ts')
+        && !f.endsWith('.test.ts')
+        && !f.endsWith('.test.js'));
 
     for (const fnFile of fnFiles) {
       const fnName = fileNameToFunctionName(fnFile);
