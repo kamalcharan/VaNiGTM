@@ -1,0 +1,506 @@
+/* ═══════════════════════════════════════════════════════
+   /clients/[id]/edit — Edit client profile
+   Layout-only. Form controls via forms.module.css.
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Page shell ── */
+.page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.header {
+  padding: 20px 48px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--glass, var(--color-surface));
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0;
+  transition: color 160ms;
+}
+
+.backBtn:hover { color: var(--color-fg); }
+
+.headerCrumb {
+  color: var(--color-border);
+  font-size: 0.82rem;
+}
+
+.headerTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.headerNote {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+}
+
+/* ── Body: 2-column ── */
+.body {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Left Rail ── */
+.rail {
+  padding: 36px 28px;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+  overflow-y: auto;
+  height: 100%;
+}
+
+.railEyebrow {
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.railTitle {
+  font-family: var(--font-display, 'Playfair Display', serif);
+  font-size: 1.35rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--color-fg);
+  margin-bottom: 6px;
+}
+
+.railTitle em {
+  font-style: italic;
+  color: var(--color-primary);
+}
+
+.railSub {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.railNote {
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--color-info) 8%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-info) 22%, var(--color-border));
+  border-radius: 10px;
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  line-height: 1.55;
+  margin-bottom: 22px;
+}
+
+.railNote strong {
+  color: var(--color-fg);
+  font-weight: 600;
+}
+
+.railKnown {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 4px 0;
+  margin-bottom: 22px;
+}
+
+.railItem {
+  display: flex;
+  gap: 12px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--color-border);
+  align-items: center;
+}
+
+.railItem:last-child { border-bottom: none; }
+
+.railCheck {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.6rem;
+  flex-shrink: 0;
+}
+
+.railCheckDone { background: var(--color-success); color: var(--color-bg); }
+.railCheckMiss { background: var(--color-border);  color: var(--color-muted); }
+.railCheckWarn { background: var(--color-warning); color: var(--color-bg); }
+
+.railItemLabel {
+  font-size: 0.62rem;
+  color: var(--color-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 1px;
+}
+
+.railItemValue {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-fg);
+  line-height: 1.3;
+}
+
+.railItemMissing {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.railQuote {
+  background: var(--color-fg);
+  border-radius: 12px;
+  padding: 20px 18px 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.railQuoteMark {
+  position: absolute;
+  top: -4px;
+  left: 12px;
+  font-family: var(--font-display, 'Playfair Display', serif);
+  font-size: 4rem;
+  color: var(--color-primary);
+  line-height: 1;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.railQuoteText {
+  font-family: var(--font-display, 'Playfair Display', serif);
+  font-style: italic;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  position: relative;
+  margin-top: 22px;
+  /* var(--color-bg) against the inverted var(--color-fg) background */
+  color: color-mix(in srgb, var(--color-bg) 88%, transparent);
+}
+
+.railQuoteAuthor {
+  font-size: 0.68rem;
+  color: var(--color-primary);
+  margin-top: 10px;
+  letter-spacing: 0.06em;
+}
+
+/* ── Right Form (scrolls independently) ── */
+.form {
+  padding: 40px 56px;
+  overflow-y: auto;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Form sections ── */
+.formSection {
+  margin-bottom: 48px;
+}
+
+.formSectionHead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.formSectionNum {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.68rem;
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.formSectionTitle {
+  font-family: var(--font-display, 'Playfair Display', serif);
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--color-fg);
+}
+
+.formSectionSub {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  margin-left: auto;
+}
+
+.formGrid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+/* Field wrapper — flex column so label sits above input */
+.fieldWrap {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hint text below an input */
+.fieldHint {
+  font-size: 0.68rem;
+  color: var(--color-muted);
+  margin-top: 5px;
+}
+
+/* "(optional)" suffix on labels */
+.optional {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.6;
+}
+
+/* PAN — monospaced override on top of forms.module.css .input */
+.panInput {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ext_ref_id — license-plate widget */
+.extRefWrap {
+  display: flex;
+  align-items: stretch;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-fg);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 0 var(--color-fg),
+              0 6px 12px color-mix(in srgb, var(--color-fg) 8%, transparent);
+}
+
+.extRefLabel {
+  background: var(--color-fg);
+  color: var(--color-primary);
+  padding: 12px 14px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+.extRefInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 12px 16px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--color-fg);
+}
+
+.extRefInput::placeholder {
+  color: var(--color-muted);
+  opacity: 0.5;
+  font-weight: 400;
+}
+
+/* Toggle cards (alive/deceased) */
+.toggleCards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.toggleCard {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: 12px;
+  padding: 18px;
+  cursor: pointer;
+  transition: border-color 200ms, background 200ms;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+}
+
+.toggleCard:hover {
+  border-color: color-mix(in srgb, var(--color-fg) 30%, transparent);
+}
+
+.toggleCardSelected {
+  border-color: var(--color-primary) !important;
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+}
+
+.toggleCardDanger {
+  border-color: var(--color-danger) !important;
+  background: color-mix(in srgb, var(--color-danger) 6%, var(--color-surface));
+}
+
+.toggleIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  display: grid;
+  place-items: center;
+  color: var(--color-muted);
+  flex-shrink: 0;
+  transition: background 200ms, color 200ms;
+}
+
+.toggleCardSelected .toggleIcon {
+  background: var(--color-primary);
+  color: var(--color-bg);
+}
+
+.toggleCardDanger .toggleIcon {
+  background: var(--color-danger);
+  color: var(--color-bg);
+}
+
+.toggleLabel {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--color-fg);
+}
+
+.toggleSub {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* Deceased sub-panel (date_of_death input) */
+.deceasedFields {
+  margin-top: 16px;
+  padding: 18px 20px;
+  background: color-mix(in srgb, var(--color-danger) 5%, var(--color-bg));
+  border: 1px solid color-mix(in srgb, var(--color-danger) 22%, var(--color-border));
+  border-radius: 10px;
+  animation: fadeIn 180ms ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Footer ── */
+.footer {
+  background: color-mix(in srgb, var(--color-bg) 96%, transparent);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--color-border);
+  padding: 16px 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.footerLeft {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+
+.footerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ── Error ── */
+.errorBanner {
+  margin: 32px;
+  padding: 16px 20px;
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border: 1px solid var(--color-danger);
+  border-radius: 10px;
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .body { grid-template-columns: 280px 1fr; }
+}
+
+@media (max-width: 768px) {
+  .header { padding: 16px 24px; }
+
+  .body {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .rail {
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    height: auto;
+    padding: 24px 20px 20px;
+    overflow-y: visible;
+  }
+
+  .railKnown { display: none; }
+  .railQuote  { display: none; }
+
+  .form { padding: 24px 24px 32px; }
+
+  .footer {
+    padding: 14px 24px;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .footerLeft  { display: none; }
+  .footerRight { justify-content: flex-end; }
+
+  .formGrid2   { grid-template-columns: 1fr; }
+  .toggleCards { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .header { padding: 14px 16px; }
+  .form   { padding: 20px 16px 28px; }
+}

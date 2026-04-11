@@ -55,6 +55,7 @@ interface Client {
   dob: string | null;
   anniversary_date: string | null;
   survival_status: string;
+  date_of_death: string | null;
   risk_profile: string | null;
   onboarding_status: string;
   referred_by_name: string | null;
@@ -526,6 +527,13 @@ export default function ClientProfilePage() {
           <div className={s.heroText}>
             <div className={s.heroNameRow}>
               <h1 className={s.heroName}>{client.prefix} {client.name}</h1>
+              <VdfButton
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/clients/${clientId}/edit`)}
+              >
+                Edit Profile
+              </VdfButton>
               <button
                 className={`${s.bookmarkBtn} ${bookmarked ? s.bookmarked : ''}`}
                 title={bookmarked ? 'Remove bookmark' : 'Bookmark client'}
