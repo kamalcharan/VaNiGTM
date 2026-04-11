@@ -249,6 +249,94 @@ The HTML mockups in `documents/HTML/` define the visual bar for each feature are
 
 ### CSS Architecture — CRITICAL RULES
 
+#### Page Header — VdfPageHeader is MANDATORY on every app page
+
+Every app page (under `(app)/`) MUST use `VdfPageHeader` as the sticky top header. No inline headers, no bespoke `.header` divs, no per-page header CSS.
+
+**Standard page structure (non-negotiable):**
+```tsx
+<div className={s.page}>                       {/* NO padding here */}
+  <VdfPageHeader
+    eyebrow="SECTION LABEL"
+    title="Page Title"
+    titleEm="Optional italic suffix"            {/* optional */}
+    meta={<>count / breadcrumb info</>}         {/* optional */}
+    actions={<>buttons / controls</>}           {/* optional */}
+  />
+  <div className={s.body}>                      {/* ALL page content here */}
+    ...
+  </div>
+</div>
+```
+
+**Page CSS rules:**
+```css
+.page { max-width: Npx; margin: 0 auto; min-height: 100%; }   /* NO padding */
+.body { padding: 20px 32px 32px; }                             /* padding lives here */
+/* flex pages: */ .page { display: flex; flex-direction: column; }
+/* flex pages: */ .body { flex: 1; padding: 16px 32px 20px; display: flex; flex-direction: column; }
+```
+
+**Responsive `.body` padding (standard):**
+```css
+@media (max-width: 768px) { .body { padding: 16px 20px 24px; } }
+@media (max-width: 480px) { .body { padding: 12px 14px 20px; } }
+```
+
+**VdfPageHeader props:**
+| Prop | Type | Purpose |
+|------|------|---------|
+| `eyebrow` | string | Small-caps section label (e.g. "CLIENT REGISTRY") |
+| `title` | string | Main page title (Playfair Display, 2.2rem) |
+| `titleEm` | string | Italic suffix rendered after title (optional) |
+| `meta` | ReactNode | Sub-header info: counts, breadcrumb, description |
+| `actions` | ReactNode | Right-aligned controls: buttons, period pills, env badge |
+| `className` | string | Extra classes if needed |
+
+**`meta` slot usage examples:**
+- Counts: `<><strong>1,234</strong> total clients · <strong>42</strong> active</>` 
+- Description: `"Operational control center for automated data operations"`
+- Breadcrumb: `<><strong>Import #3</strong> · filename.csv</>`
+
+**`actions` slot usage examples:**
+- Primary CTA: `<VdfButton variant="primary" size="sm">+ New Import</VdfButton>`
+- Period pills: `{['1m','3m','6m','1y'].map(p => <button className={period===p ? f.filterPillActive : f.filterPill} ...>)}`
+- Bulk ops: multiple `<VdfButton variant="outline" size="sm">` buttons
+
+**Established eyebrow labels (use exactly — do not invent new labels for these pages):**
+| Page | Eyebrow |
+|------|---------|
+| `/clients` | `CLIENT REGISTRY` |
+| `/contacts` | `CONTACT PIPELINE` |
+| `/global-nav` | `MY NAV` |
+| `/market/dashboard` | `MARKET` |
+| `/market/history` | `MARKET DATA` |
+| `/cruise-control` | `OPERATIONS` |
+| `/master-data` | `ADMINISTRATION` |
+| `/import` | `DATA IMPORT` |
+| `/import-dashboard` | `DATA IMPORT` |
+
+**WRONG — do not do this:**
+```tsx
+// ❌ Bespoke header div
+<div className={s.header}>
+  <h1 className={s.title}>Clients</h1>
+</div>
+
+// ❌ Padding on .page
+.page { padding: 32px 48px; }
+
+// ❌ Inline header styles
+<div style={{ padding: '24px', background: 'var(--glass)' }}>
+
+// ❌ var(--glass) or var(--glass-border) — these are not valid CSS variables
+.card { background: var(--glass); border: 1px solid var(--glass-border); }
+// ✅ Use: var(--color-surface) and var(--color-border)
+
+// ❌ min-height: calc(100vh - 64px) — breaks app-shell bottom nav clearance
+// ✅ Use: min-height: 100%
+```
+
 #### NO per-page CSS for shared patterns
 Pages MUST import shared CSS + VDF components. Page CSS should ONLY contain layout.
 
@@ -257,6 +345,7 @@ Pages MUST import shared CSS + VDF components. Page CSS should ONLY contain layo
 - `styles/data.module.css` — all data display (table, pagination, value colors, section titles)
 
 **VDF components for data display:**
+- `VdfPageHeader` — sticky page header with eyebrow/title/meta/actions (MANDATORY on every page)
 - `VdfStatusBadge` — status pills (success/warning/danger/info/muted)
 - `VdfStatCard` — stat number + label + accent color
 - `VdfEmptyState` — icon + title + description + action
@@ -265,20 +354,22 @@ Pages MUST import shared CSS + VDF components. Page CSS should ONLY contain layo
 - `ThemePicker` — theme selection (shared between onboarding + settings)
 
 **What page CSS SHOULD contain:**
-- Page layout (`.page`, `.layout`, `.sidebar`, `.main`, `.hero`)
+- Page layout (`.page`, `.body`, `.layout`, `.sidebar`, `.main`)
 - Grid structure (column spans, gaps)
 - Page-specific visual effects (gradients, atmosphere)
 - Component positioning within the page
 
 **What page CSS MUST NOT contain:**
-- Status badge styles (use VdfStatusBadge)
-- Stat card styles (use VdfStatCard)
-- Table th/td/hover styles (use data.module.css)
-- Pagination styles (use data.module.css)
-- Empty state styles (use VdfEmptyState)
-- VaNi/insights card styles (use VdfInsightsCard)
-- Button base styles (use forms.module.css or VdfButton)
-- Any hardcoded colors (use CSS variables)
+- Header div styles — use VdfPageHeader
+- Status badge styles — use VdfStatusBadge
+- Stat card styles — use VdfStatCard
+- Table th/td/hover styles — use data.module.css
+- Pagination styles — use data.module.css
+- Empty state styles — use VdfEmptyState
+- VaNi/insights card styles — use VdfInsightsCard
+- Button base styles — use forms.module.css or VdfButton
+- Any hardcoded colors — use CSS variables
+- `var(--glass)` or `var(--glass-border)` — not valid, use `var(--color-surface)` / `var(--color-border)`
 
 ### First Time Right — Production Quality
 - **No rework.** Code written once, correctly. No "build now, refactor later."
@@ -521,11 +612,23 @@ Tokens stored in BOTH sessionStorage and localStorage:
 ## VDF Component Library
 Located in `frontend/src/components/vdf/`. Naming: `Vdf<Name>` (e.g., `VdfButton`, `VdfMobileInput`).
 
-Current components (20):
+Current components (21+):
+- **Page chrome**: VdfPageHeader ⭐ (MANDATORY on every app page — see CSS Architecture above)
 - **Layout**: VdfCard, VdfModal, VdfNavRail, VdfTabs, VdfWizard, VdfSidebar
 - **Form**: VdfButton, VdfCheckbox, VdfMobileInput, VdfRichText
 - **Display**: VdfBadge, VdfAvatar, VdfIcon, ThemePicker
 - **Decorative**: VdfAtmosphere, VdfParticles, VdfNoiseOverlay, VdfGoldThread
+
+### VdfPageHeader — Reference Implementation
+```
+frontend/src/components/vdf/page-header/VdfPageHeader.tsx
+frontend/src/components/vdf/page-header/VdfPageHeader.module.css
+```
+- `position: sticky; top: 0; z-index: 10` — stays visible on scroll
+- `backdrop-filter: blur(10px)` — glass effect over scrolling content
+- `background: var(--color-surface); border-bottom: 1px solid var(--color-border)`
+- Typography: eyebrow (0.65rem uppercase mono), title (2.2rem Playfair Display), meta (0.75rem muted)
+- Responsive: 768px → `padding: 20px 20px 14px; font-size: 1.7rem`; 480px → `16px; 1.4rem`
 
 ### PENDING REVIEW — Future VDF Data Components
 - **VdfDataTable**: Paginated table with sticky headers, status badges, row selection, actions. Currently inline in Import Dashboard, Global NAV, Cruise Control — extract into VDF once pattern stabilizes across 3+ pages.
@@ -603,3 +706,4 @@ Output: "WHERE tenant_id = $1 AND client_id = $2"
 11. **Tenant isolation bug: GET /sessions had no tenant filter.** All tenants were seeing all sessions globally. Every list endpoint MUST have `WHERE tenant_id = $1` (or equivalent). Never assume a query is tenant-isolated — verify the WHERE clause.
 12. **Never show raw DB PKs to users.** Import session IDs are system-wide auto-increment — "Session #1" means nothing to a tenant. Use `ROW_NUMBER() OVER (ORDER BY created_at)` scoped to the tenant's visible rows to generate user-facing sequence numbers.
 13. **Environment isolation (is_live) must be designed in from day one.** Adding it retroactively requires touching every query, every endpoint, every frontend context. Decide the environment model before writing any data schema.
+14. **VdfPageHeader is the standard page chrome — use it, don't reinvent it.** Every app page uses `<VdfPageHeader>` as the sticky top header. `.page` has no padding; `.body` carries all padding. `var(--glass)` and `var(--glass-border)` are not valid CSS variables — use `var(--color-surface)` and `var(--color-border)`. `min-height: calc(100vh - Npx)` is forbidden — use `min-height: 100%` so the app-shell bottom nav clearance works.
