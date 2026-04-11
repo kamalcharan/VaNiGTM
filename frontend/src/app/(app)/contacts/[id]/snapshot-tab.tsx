@@ -253,7 +253,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     const snapIncome = (snap.income as Array<{ source: string; amount_monthly: number }>) ?? [];
     const inc: Income = { salary: '', partner: '', rental_other: '' };
     for (const row of snapIncome) {
-      if (row.source in inc) (inc as Record<string, string>)[row.source] = String(row.amount_monthly);
+      if (row.source in inc) (inc as unknown as Record<string, string>)[row.source] = String(row.amount_monthly);
     }
     setIncome(inc);
 
