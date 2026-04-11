@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfButton, VdfStatusBadge, VdfTabs, VdfEmptyState,
 } from '@/components/vdf';
 import s from './client-profile.module.css';
+import f from '@/styles/forms.module.css';
 
 /* ── Types ───────────────────────────────────────────── */
 
@@ -351,12 +353,13 @@ function ChannelsTab({ channels }: { channels: Channel[] }) {
 
 function AddressesTab({ addresses, clientId }: { addresses: Address[]; clientId: number }) {
   const { showToast } = useToast();
+  const queryClient   = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [addrType, setAddrType]   = useState('residential');
   const [line1, setLine1]         = useState('');
   const [line2, setLine2]         = useState('');
   const [city, setCity]           = useState('');
-  const [state, setState]         = useState('');
+  const [addrState, setAddrState] = useState('');
   const [pincode, setPincode]     = useState('');
   const [isPrimary, setIsPrimary] = useState(addresses.length === 0);
 
@@ -366,19 +369,24 @@ function AddressesTab({ addresses, clientId }: { addresses: Address[]; clientId:
       onSuccess: () => {
         showToast({ message: 'Address saved', type: 'success' });
         setShowForm(false);
-        setLine1(''); setLine2(''); setCity(''); setState(''); setPincode('');
+        setLine1(''); setLine2(''); setCity(''); setAddrState(''); setPincode('');
+        queryClient.invalidateQueries({ queryKey: ['skill', 'client-skill', 'get_client'] });
       },
       onError: (e) => showToast({ message: e.message || 'Failed to save address', type: 'error' }),
     }
   );
 
   const handleAdd = () => {
-    if (!line1 || !city || !state || !pincode) {
+    if (!line1 || !city || !addrState || !pincode) {
       showToast({ message: 'Please fill all required address fields', type: 'error' });
       return;
     }
-    addAddress({ client_id: clientId, address_type: addrType, line1, line2: line2 || undefined, city, state, country: 'IN', pincode, is_primary: isPrimary });
+    addAddress({ client_id: clientId, address_type: addrType, line1, line2: line2 || undefined, city, state: addrState, country: 'India', pincode, is_primary: isPrimary });
   };
+
+  /* upsert hint: add_address upserts by (client_id, address_type) — selecting
+     a type that already has an address will update it, not add a duplicate */
+  const existingTypes = new Set(addresses.map(a => a.address_type));
 
   return (
     <div className={s.addressesWrap}>
@@ -393,35 +401,36 @@ function AddressesTab({ addresses, clientId }: { addresses: Address[]; clientId:
         <div className={s.addrForm}>
           <div className={s.editRow}>
             <div className={s.editField}>
-              <label className={s.editLabel}>Type</label>
-              <select className={s.editInput} value={addrType} onChange={e => setAddrType(e.target.value)}>
-                <option value="residential">Residential</option>
-                <option value="office">Office</option>
-                <option value="mailing">Mailing</option>
-                <option value="other">Other</option>
+              <label className={f.label}>Type</label>
+              <select className={f.select} value={addrType} onChange={e => setAddrType(e.target.value)}>
+                <option value="residential">Residential{existingTypes.has('residential') ? ' (update)' : ''}</option>
+                <option value="office">Office{existingTypes.has('office') ? ' (update)' : ''}</option>
+                <option value="mailing">Mailing{existingTypes.has('mailing') ? ' (update)' : ''}</option>
+                <option value="permanent">Permanent{existingTypes.has('permanent') ? ' (update)' : ''}</option>
+                <option value="other">Other{existingTypes.has('other') ? ' (update)' : ''}</option>
               </select>
             </div>
             <div className={s.editField}>
-              <label className={s.editLabel}>Pincode *</label>
-              <input className={s.editInput} value={pincode} onChange={e => setPincode(e.target.value)} placeholder="400001" maxLength={6} />
+              <label className={f.label}>Pincode *</label>
+              <input className={f.input} value={pincode} onChange={e => setPincode(e.target.value)} placeholder="400001" maxLength={6} />
             </div>
           </div>
           <div className={s.editFieldFull}>
-            <label className={s.editLabel}>Line 1 *</label>
-            <input className={s.editInput} value={line1} onChange={e => setLine1(e.target.value)} placeholder="Street / building / flat number" />
+            <label className={f.label}>Line 1 *</label>
+            <input className={f.input} value={line1} onChange={e => setLine1(e.target.value)} placeholder="Street / building / flat number" />
           </div>
           <div className={s.editFieldFull}>
-            <label className={s.editLabel}>Line 2</label>
-            <input className={s.editInput} value={line2} onChange={e => setLine2(e.target.value)} placeholder="Area / landmark (optional)" />
+            <label className={f.label}>Line 2</label>
+            <input className={f.input} value={line2} onChange={e => setLine2(e.target.value)} placeholder="Area / landmark (optional)" />
           </div>
           <div className={s.editRow}>
             <div className={s.editField}>
-              <label className={s.editLabel}>City *</label>
-              <input className={s.editInput} value={city} onChange={e => setCity(e.target.value)} placeholder="Mumbai" />
+              <label className={f.label}>City *</label>
+              <input className={f.input} value={city} onChange={e => setCity(e.target.value)} placeholder="Mumbai" />
             </div>
             <div className={s.editField}>
-              <label className={s.editLabel}>State *</label>
-              <input className={s.editInput} value={state} onChange={e => setState(e.target.value)} placeholder="Maharashtra" />
+              <label className={f.label}>State *</label>
+              <input className={f.input} value={addrState} onChange={e => setAddrState(e.target.value)} placeholder="Maharashtra" />
             </div>
           </div>
           <div className={s.primaryRow}>
@@ -431,8 +440,8 @@ function AddressesTab({ addresses, clientId }: { addresses: Address[]; clientId:
             </label>
           </div>
           <div className={s.editActions}>
-            <VdfButton variant="primary" size="sm" onClick={handleAdd} disabled={isPending}>
-              {isPending ? 'Saving…' : 'Save Address'}
+            <VdfButton variant="primary" size="sm" loading={isPending} onClick={handleAdd}>
+              {existingTypes.has(addrType) ? 'Update Address' : 'Save Address'}
             </VdfButton>
           </div>
         </div>
