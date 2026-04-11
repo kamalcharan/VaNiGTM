@@ -462,7 +462,7 @@ function AddressesTab({ addresses, clientId }: { addresses: Address[]; clientId:
 /* ── Main Page ───────────────────────────────────────── */
 
 export default function ClientProfilePage() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams() as { id: string };
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();

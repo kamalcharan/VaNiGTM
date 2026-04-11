@@ -192,7 +192,7 @@ function PulseMetric({ dotColor, label, value, hint, barPct, state }: {
 }
 
 export default function IntakePage() {
-  const { token } = useParams<{ token: string }>();
+  const { token } = useParams() as { token: string };
 
   const [stage,      setStage]      = useState<Stage>('loading');
   const [meta,       setMeta]       = useState<ValidateResponse | null>(null);

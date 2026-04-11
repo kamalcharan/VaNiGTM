@@ -98,7 +98,7 @@ function formatAmount(v: number): string {
 /* ── Main Page ───────────────────────────────────────── */
 
 export default function ContactProfilePage() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams() as { id: string };
   const router  = useRouter();
   const contactId = Number(id);
 

@@ -100,7 +100,7 @@ const RAIL_ITEMS = (c: Contact) => {
 /* ── Page ── */
 
 export default function ConvertPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams() as { id: string };
   const router = useRouter();
   const { showToast } = useToast();
   const { tenant } = useAuth();
