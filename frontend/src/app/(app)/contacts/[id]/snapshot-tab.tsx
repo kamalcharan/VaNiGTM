@@ -260,7 +260,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     const snapExp = (snap.expenses as Array<{ category: string; amount_monthly: number }>) ?? [];
     const exp: Expenses = { housing: '', food: '', utilities: '', transport: '', education: '', healthcare: '', lifestyle: '', other: '' };
     for (const row of snapExp) {
-      if (row.category in exp) (exp as Record<string, string>)[row.category] = String(row.amount_monthly);
+      if (row.category in exp) (exp as unknown as Record<string, string>)[row.category] = String(row.amount_monthly);
     }
     setExpenses(exp);
 
