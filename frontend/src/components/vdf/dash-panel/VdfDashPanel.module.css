@@ -1,0 +1,62 @@
+/* ═══════════════════════════════════════════════════════
+   VdfDashPanel — Dashboard panel container
+   Standard chrome for every dashboard section card.
+   All colors via CSS variables. No hardcoded values.
+   ═══════════════════════════════════════════════════════ */
+
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Header row ───────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  letter-spacing: 0.02em;
+}
+
+.viewAll {
+  font-size: 0.65rem;
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  transition: opacity 200ms;
+  flex-shrink: 0;
+}
+
+.viewAll:hover {
+  opacity: 0.7;
+}
+
+/* ── Body ─────────────────────────────────────────────── */
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+/* ── Footer ───────────────────────────────────────────── */
+.footer {
+  font-size: 0.6rem;
+  color: var(--color-muted);
+  opacity: 0.5;
+  margin: 0;
+  flex-shrink: 0;
+}

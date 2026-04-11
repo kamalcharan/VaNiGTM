@@ -1,9 +1,10 @@
 /* ═══════════════════════════════════════════════════════
-   PROKEY — DASHBOARD PAGE (Dummy / Demo Mode)
-   All colors via CSS variables. No hardcoded values.
+   PROKEY — DASHBOARD PAGE
+   Layout only. Card chrome lives in VdfDashPanel &
+   VdfSummaryCard. All colors via CSS variables.
    ═══════════════════════════════════════════════════════ */
 
-/* ── Page Shell ───────────────────────────────────────── */
+/* ── Page shell ───────────────────────────────────────── */
 .page {
   max-width: 1600px;
   margin: 0 auto;
@@ -20,8 +21,8 @@
   gap: 20px;
 }
 
-/* ── Header Actions ───────────────────────────────────── */
-.headerMeta {
+/* ── Header slots ─────────────────────────────────────── */
+.headerDate {
   font-size: 0.75rem;
   color: var(--color-muted);
   opacity: 0.7;
@@ -49,8 +50,8 @@
 }
 
 @keyframes dummyPulse {
-  0%, 100% { opacity: 0.75; }
-  50%       { opacity: 1; }
+  0%, 100% { opacity: 0.7; }
+  50%       { opacity: 1;   }
 }
 
 .refreshBtn {
@@ -65,7 +66,7 @@
   font-family: var(--font-body, 'DM Sans', sans-serif);
   font-size: 0.7rem;
   cursor: pointer;
-  transition: all 200ms;
+  transition: border-color 200ms, color 200ms;
 }
 
 .refreshBtn:hover {
@@ -73,65 +74,14 @@
   color: var(--color-primary);
 }
 
-/* ── Summary Cards (4-col) ────────────────────────────── */
+/* ── Summary cards (4-col) ────────────────────────────── */
 .summaryGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
 }
 
-.summaryCard {
-  padding: 20px 24px;
-  border-radius: 14px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  position: relative;
-  overflow: hidden;
-}
-
-.summaryCard::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 3px;
-}
-
-.accentPrimary::before { background: var(--color-primary); }
-.accentSuccess::before { background: var(--color-success); }
-.accentWarning::before { background: var(--color-warning); }
-.accentInfo::before    { background: var(--color-info); }
-
-.summaryMeta {
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 0.55rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  color: var(--color-muted);
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
-
-.summaryValue {
-  font-family: var(--font-display, 'Playfair Display', serif);
-  font-size: 1.9rem;
-  font-weight: 700;
-  color: var(--color-fg);
-  line-height: 1;
-  margin-bottom: 8px;
-}
-
-.summaryChange {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.72rem;
-}
-
-.changeUp      { color: var(--color-success); font-weight: 600; }
-.changeSub     { color: var(--color-muted); opacity: 0.65; }
-.changeCritical { color: var(--color-danger); font-weight: 600; }
-
-/* ── Main 3-col Grid ──────────────────────────────────── */
+/* ── Main 3-col grid ──────────────────────────────────── */
 .mainGrid {
   display: grid;
   grid-template-columns: 1fr 1fr 380px;
@@ -139,80 +89,13 @@
   gap: 20px;
 }
 
-/* Action Required spans both rows in the 3rd column */
-.panelActions {
+/* Action Required panel spans both rows in column 3 */
+.actionsPanel {
   grid-row: 1 / 3;
 }
 
-/* ── Panel (shared card) ──────────────────────────────── */
-.panel {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.panelHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-}
-
-.panelTitle {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--color-fg);
-  letter-spacing: 0.02em;
-}
-
-.viewAll {
-  font-size: 0.65rem;
-  color: var(--color-primary);
-  text-decoration: none;
-  font-weight: 500;
-  transition: opacity 200ms;
-}
-
-.viewAll:hover { opacity: 0.75; }
-
-.panelFooter {
-  margin-top: auto;
-}
-
-.panelFooterText {
-  font-size: 0.6rem;
-  color: var(--color-muted);
-  opacity: 0.5;
-}
-
-.panelDivider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.panelDivider::before,
-.panelDivider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--color-border);
-}
-
-.panelDividerLabel {
-  font-size: 0.6rem;
-  color: var(--color-muted);
-  opacity: 0.55;
-  white-space: nowrap;
-  letter-spacing: 0.06em;
-}
-
-/* ── Goals Panel ──────────────────────────────────────── */
-.goalsStats {
+/* ── Goals section (inside VdfDashPanel) ──────────────── */
+.goalsGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
@@ -226,48 +109,51 @@
   padding: 10px 6px;
   border: 1px solid var(--color-border);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--color-surface) 60%, var(--color-bg));
 }
 
 .gsSuccess { border-color: color-mix(in srgb, var(--color-success) 30%, var(--color-border)); }
 .gsWarning { border-color: color-mix(in srgb, var(--color-warning) 30%, var(--color-border)); }
 .gsDanger  { border-color: color-mix(in srgb, var(--color-danger)  30%, var(--color-border)); }
 
-.goalsStatNum {
+.goalsNum {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 1.2rem;
   font-weight: 700;
   color: var(--color-fg);
 }
 
-.gsSuccess .goalsStatNum { color: var(--color-success); }
-.gsWarning .goalsStatNum { color: var(--color-warning); }
-.gsDanger  .goalsStatNum { color: var(--color-danger);  }
+.gsSuccess .goalsNum { color: var(--color-success); }
+.gsWarning .goalsNum { color: var(--color-warning); }
+.gsDanger  .goalsNum { color: var(--color-danger);  }
 
-.goalsStatLabel {
+.goalsLabel {
   font-size: 0.55rem;
   color: var(--color-muted);
   opacity: 0.6;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 
-.goalsProgress { display: flex; flex-direction: column; gap: 6px; }
+.progressWrap { display: flex; flex-direction: column; gap: 6px; }
 
-.goalsProgressBar {
+.progressTrack {
   height: 6px;
   border-radius: 3px;
   background: color-mix(in srgb, var(--color-primary) 12%, var(--color-border));
   overflow: hidden;
 }
 
-.goalsProgressFill {
+.progressFill {
   height: 100%;
   border-radius: 3px;
-  background: linear-gradient(90deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 70%, var(--color-success)));
+  background: linear-gradient(
+    90deg,
+    var(--color-primary),
+    color-mix(in srgb, var(--color-primary) 70%, var(--color-success))
+  );
   transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.goalsProgressMeta {
+.progressMeta {
   display: flex;
   justify-content: space-between;
   font-size: 0.65rem;
@@ -275,24 +161,26 @@
   opacity: 0.7;
 }
 
-.goalsTarget { font-weight: 600; }
+.progressTarget { font-weight: 600; }
 
-/* ── Meetings Panel ───────────────────────────────────── */
-.meetingsList { display: flex; flex-direction: column; gap: 6px; }
+/* ── Meetings section ─────────────────────────────────── */
+.meetingList { display: flex; flex-direction: column; gap: 4px; }
 
 .meetingRow {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border-radius: 8px;
-  transition: background 150ms;
   cursor: pointer;
+  transition: background 150ms;
 }
 
-.meetingRow:hover { background: color-mix(in srgb, var(--color-primary) 5%, transparent); }
+.meetingRow:hover {
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
 
-.meetingUpcoming { opacity: 0.7; }
+.meetingDim { opacity: 0.65; }
 
 .meetingIcon { font-size: 0.9rem; flex-shrink: 0; }
 
@@ -301,10 +189,10 @@
   font-size: 0.8rem;
   font-weight: 500;
   color: var(--color-fg);
-  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .meetingTime {
@@ -314,7 +202,7 @@
   flex-shrink: 0;
 }
 
-.meetingUpcomingRight {
+.meetingMeta {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -328,34 +216,59 @@
   opacity: 0.6;
 }
 
-/* ── Action Required Panel ────────────────────────────── */
-.actionsList { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; }
+/* ── Divider with label ───────────────────────────────── */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.dividerLabel {
+  font-size: 0.6rem;
+  color: var(--color-muted);
+  opacity: 0.5;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* ── Action Required section ──────────────────────────── */
+.actionsList { display: flex; flex-direction: column; gap: 8px; }
 
 .actionRow {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 10px;
   padding: 10px 12px;
   border-radius: 10px;
-  border-left: 3px solid transparent;
-  background: color-mix(in srgb, var(--color-surface) 50%, var(--color-bg));
+  border-left: 3px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 60%, var(--color-bg));
   transition: background 150ms;
 }
 
-.actionRow:hover { background: color-mix(in srgb, var(--color-primary) 4%, var(--color-bg)); }
+.actionRow:hover {
+  background: color-mix(in srgb, var(--color-primary) 4%, var(--color-bg));
+}
 
-.apr_critical { border-left-color: var(--color-danger); }
-.apr_high     { border-left-color: var(--color-warning); }
-.apr_medium   { border-left-color: var(--color-info); }
-.apr_low      { border-left-color: var(--color-border); }
+.pr_critical { border-left-color: var(--color-danger);  }
+.pr_high     { border-left-color: var(--color-warning); }
+.pr_medium   { border-left-color: var(--color-info);    }
+.pr_low      { border-left-color: var(--color-border);  }
 
-.actionLeft  { display: flex; align-items: flex-start; gap: 8px; flex: 1; min-width: 0; }
-.actionRight { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.actionIcon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
 
-.actionEmoji  { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
-
-.actionInfo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.actionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
 
 .actionName {
   font-size: 0.78rem;
@@ -372,6 +285,14 @@
   opacity: 0.7;
 }
 
+.actionMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
 .actionAmount {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 0.7rem;
@@ -385,29 +306,29 @@
   opacity: 0.55;
 }
 
-/* ── Withdrawals Panel ────────────────────────────────── */
-.withdrawalSection { display: flex; flex-direction: column; gap: 6px; }
+/* ── Withdrawals section ──────────────────────────────── */
+.withdrawSection { display: flex; flex-direction: column; gap: 6px; }
 
-.withdrawalLabel {
+.withdrawLabel {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 0.6rem;
   font-weight: 700;
-  color: var(--color-muted);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  color: var(--color-muted);
   margin-bottom: 2px;
 }
 
-.wLabelDot {
+.withdrawDot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.withdrawalRow {
+.withdrawRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -417,9 +338,15 @@
   gap: 8px;
 }
 
-.wInfo { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.withdrawInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
 
-.wName {
+.withdrawName {
   font-size: 0.78rem;
   font-weight: 500;
   color: var(--color-fg);
@@ -428,72 +355,35 @@
   white-space: nowrap;
 }
 
-.wGoal {
+.withdrawGoal {
   font-size: 0.6rem;
   color: var(--color-muted);
   opacity: 0.6;
 }
 
-.wRight { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+.withdrawFigures {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
 
-.wAmount {
+.withdrawAmount {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-fg);
 }
 
-.wDays {
+.withdrawDays {
   font-size: 0.6rem;
   color: var(--color-muted);
   opacity: 0.55;
 }
 
-/* ── Coming Soon Panel ────────────────────────────────── */
-.panelComingSoon { justify-content: flex-start; }
-
-.comingSoonBody {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 24px 0;
-}
-
-.comingSoonIcon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-muted);
-  opacity: 0.6;
-}
-
-.comingSoonIcon svg { width: 22px; height: 22px; }
-
-.comingSoonTitle {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--color-muted);
-}
-
-.comingSoonDesc {
-  font-size: 0.7rem;
-  color: var(--color-muted);
-  opacity: 0.5;
-  text-align: center;
-  max-width: 200px;
-  line-height: 1.6;
-}
-
-/* ── Transactions Table ───────────────────────────────── */
-.txnTableWrap { overflow-x: auto; }
+/* ── Transactions table ───────────────────────────────── */
+.txnWrap { overflow-x: auto; }
 
 .txnTable {
   width: 100%;
@@ -527,12 +417,9 @@
   background: color-mix(in srgb, var(--color-primary) 3%, transparent);
 }
 
-.txnRight { text-align: right; }
+.txnR { text-align: right; }
 
-.txnName {
-  font-weight: 500;
-  white-space: nowrap;
-}
+.txnName  { font-weight: 500; white-space: nowrap; }
 
 .txnScheme {
   color: var(--color-muted);
@@ -579,18 +466,17 @@
     grid-template-columns: 1fr 1fr;
     grid-template-rows: auto;
   }
-  .panelActions { grid-row: auto; }
+  .actionsPanel { grid-row: auto; }
 }
 
 @media (max-width: 768px) {
-  .body { padding: 16px 20px 24px; }
-  .summaryGrid { grid-template-columns: repeat(2, 1fr); }
-  .mainGrid { grid-template-columns: 1fr; }
-  .panelActions { grid-row: auto; }
+  .body         { padding: 16px 20px 24px; }
+  .summaryGrid  { grid-template-columns: repeat(2, 1fr); }
+  .mainGrid     { grid-template-columns: 1fr; }
+  .actionsPanel { grid-row: auto; }
 }
 
 @media (max-width: 480px) {
-  .body { padding: 12px 14px 20px; }
-  .summaryGrid { grid-template-columns: 1fr 1fr; }
-  .summaryValue { font-size: 1.5rem; }
+  .body         { padding: 12px 14px 20px; }
+  .summaryGrid  { grid-template-columns: 1fr 1fr; }
 }
