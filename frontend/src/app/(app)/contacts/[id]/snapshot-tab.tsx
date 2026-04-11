@@ -455,7 +455,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
           </svg>
         </div>
         <h3 className={s.emptyTitle}>Could not load snapshot</h3>
-        <p className={s.emptyDesc}>{(snapErrorObj as Error)?.message || 'A database error occurred. Please run pending migrations and try again.'}</p>
+        <p className={s.emptyDesc}>{snapErrorObj?.message || 'A database error occurred. Please run pending migrations and try again.'}</p>
       </div>
     );
   }
