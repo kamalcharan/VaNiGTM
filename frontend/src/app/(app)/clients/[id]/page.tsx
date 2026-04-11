@@ -469,7 +469,7 @@ export default function ClientProfilePage() {
   const clientId = Number(id);
 
   // Support deep-link tab activation via ?tab=addresses or ?tab=kyc
-  const tabParam = searchParams.get('tab');
+  const tabParam = searchParams?.get('tab') ?? null;
   const initialTab = tabParam === 'addresses' ? 'addresses' : 'overview';
 
   const [activeTab, setActiveTab] = useState(initialTab);
