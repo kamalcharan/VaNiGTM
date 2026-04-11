@@ -548,8 +548,8 @@ export default function ClientProfilePage() {
                 Edit Profile
               </VdfButton>
 
-              {/* Deactivate / Activate toggle */}
-              {client.is_active ? (
+              {/* Deactivate / Activate toggle — explicit false check, undefined = active */}
+              {client.is_active !== false ? (
                 confirmDeactivate ? (
                   <div className={s.confirmRow}>
                     <VdfButton
@@ -619,7 +619,7 @@ export default function ClientProfilePage() {
       </div>
 
       {/* ── Inactive banner ── */}
-      {!client.is_active && (
+      {client.is_active === false && (
         <div className={s.inactiveBanner}>
           <div className={s.inactiveBannerText}>
             <span className={s.inactiveBannerDot} />
