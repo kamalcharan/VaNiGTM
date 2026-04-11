@@ -31,8 +31,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router   = useRouter();
   const { tenant, isLoading, isAuthenticated } = useAuth();
 
-  const isFullScreen  = FULL_SCREEN_ROUTES.some((r) => pathname.startsWith(r));
-  const isOnboarding  = pathname.startsWith('/onboarding');
+  const isFullScreen  = FULL_SCREEN_ROUTES.some((r) => pathname?.startsWith(r) ?? false);
+  const isOnboarding  = pathname?.startsWith('/onboarding') ?? false;
 
   // Hydration safety: both server and initial client render agree on false
   useEffect(() => { setClientReady(true); }, []);
