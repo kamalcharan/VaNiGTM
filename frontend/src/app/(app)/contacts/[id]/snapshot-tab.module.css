@@ -2793,7 +2793,7 @@
 
 /* VaNi action cards */
 .actionCardsWrap {
-  background: var(--glass, var(--color-surface));
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 20px;
@@ -2975,7 +2975,7 @@
 
 /* ── Section block (goals, data summary) ────────────────────────────────── */
 .snapSectionBlock {
-  background: var(--glass, var(--color-surface));
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 20px 24px;
@@ -3345,4 +3345,81 @@
 .snapEditBtn:hover {
   background: var(--color-primary);
   color: var(--color-bg);
+}
+
+/* ── Snapshot view — mobile responsive ──────────────────────────────────── */
+
+@media (max-width: 768px) {
+  /* Reduce outer padding so content has room to breathe */
+  .snapView {
+    padding: 14px 16px 32px;
+  }
+
+  /* Net worth hero: stack value above breakdown on small screens */
+  .nwHero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px 18px;
+  }
+  .nwDivider {
+    width: 100%;
+    height: 1px;
+    align-self: auto;
+  }
+  .nwBreakdown {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 20px;
+  }
+
+  /* Reduce card padding so content isn't squeezed */
+  .snapCard {
+    padding: 16px;
+  }
+  .snapSectionBlock {
+    padding: 16px 18px;
+  }
+  .actionCardsWrap {
+    padding: 16px;
+  }
+
+  /* Meta bar: stack actions below info on narrow screens */
+  .snapMetaBar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .snapMetaActions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 500px) {
+  /* Donut: stack SVG above legend so legend has full width */
+  .donutWrap {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .donutSvg {
+    width: 120px;
+    height: 120px;
+    align-self: center;
+  }
+
+  /* Reduce pinnedHeader further on very small screens */
+  .pinnedHeader {
+    padding: 10px 14px;
+    gap: 10px;
+  }
+}
+
+/* ── Wizard capture view — mobile responsive ─────────────────────────────── */
+
+@media (max-width: 720px) {
+  /* inheritedGrid: 2-col → 1-col on mobile */
+  .inheritedGrid {
+    grid-template-columns: 1fr;
+  }
 }

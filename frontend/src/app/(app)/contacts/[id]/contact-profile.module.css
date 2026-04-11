@@ -25,7 +25,7 @@
 .hero {
   padding: 20px 32px 24px;
   border-bottom: 1px solid var(--color-border);
-  background: var(--glass, var(--color-surface));
+  background: var(--color-surface);
   backdrop-filter: blur(8px);
 }
 
@@ -393,6 +393,19 @@
     padding-bottom: 40px;
   }
 
+  /* Hero: reduce padding, stack identity + ring card vertically */
+  .hero {
+    padding: 16px 20px 20px;
+  }
+  .heroContent {
+    flex-direction: column;
+    gap: 16px;
+  }
+  .heroRingCard {
+    min-width: 0;
+    width: 100%;
+  }
+
   .overviewGrid {
     grid-template-columns: 1fr;
     padding: 20px;
@@ -405,6 +418,18 @@
 }
 
 @media (max-width: 480px) {
+  .hero {
+    padding: 12px 14px 16px;
+  }
+  .heroName {
+    font-size: 1.4rem;
+  }
+  .heroAvatar {
+    width: 52px;
+    height: 52px;
+    font-size: 1.1rem;
+  }
+
   .overviewGrid {
     padding: 14px;
   }
