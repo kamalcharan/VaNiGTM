@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSkillQuery } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import {
-  VdfLoader, VdfButton, VdfStatusBadge, VdfTabs, VdfEmptyState, VdfPageHeader,
+  VdfLoader, VdfButton, VdfStatusBadge, VdfTabs, VdfEmptyState, VdfPageHeader, VdfChannelItem,
 } from '@/components/vdf';
 import { SnapshotTab } from '@/app/(app)/contacts/[id]/snapshot-tab';
 import s from './customer-dashboard.module.css';
@@ -43,18 +43,61 @@ interface AllocationItem {
   scheme_count: number;
 }
 
+interface ClientChannel {
+  id: number;
+  channel_type: string;
+  channel_value: string;
+  channel_subtype: string;
+  is_primary: boolean;
+}
+
+interface ClientAddress {
+  id: number;
+  address_type: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string;
+  country: string;
+  pincode: string;
+  is_primary: boolean;
+}
+
+interface ClientFamily {
+  id: string;
+  family_name: string | null;
+  member_count: number;
+}
+
 interface Client {
   id: number;
+  client_uid: string;
   name: string;
   prefix: string;
   pan: string | null;
+  dob: string | null;
+  anniversary_date: string | null;
+  survival_status: string;
+  date_of_death: string | null;
   risk_profile: string | null;
   is_active: boolean;
   onboarding_status: string;
   client_no: string | null;
+  ext_ref_id: string | null;
+  referred_by_name: string | null;
   contact_id: number;
   is_family_head: boolean;
   family_id: string | null;
+  created_at: string;
+  // Contact personal fields
+  age: number | null;
+  city: string | null;
+  marital_status: string | null;
+  dependents_count: number | null;
+  // JSON sub-objects
+  channels: ClientChannel[];
+  addresses: ClientAddress[];
+  family: ClientFamily | null;
 }
 
 interface MemberHolding {
@@ -499,13 +542,275 @@ function GoalsTab({ clientId }: { clientId: number }) {
 
 /* ── CRM Data Tab ────────────────────────────────────── */
 
-function CrmDataTab() {
+function fmtDate(d: string | null): string {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function CrmDataTab({ client }: { client: Client }) {
+  const channels  = client.channels  ?? [];
+  const addresses = client.addresses ?? [];
+
   return (
-    <div className={s.tabContent}>
-      <VdfEmptyState
-        title="CRM Data"
-        description="KYC, channels, addresses, family links and compliance records will appear here."
-      />
+    <div className={s.crmWrap}>
+
+      {/* ── LEFT: Contact card ─────────────────────────── */}
+      <div className={s.crmLeft}>
+
+        {/* Identity */}
+        <div className={s.crmCard}>
+          <div className={s.crmContactHead}>
+            <div className={s.crmAvatar} style={{ background: avatarGradient(client.name) }}>
+              {initials(client.name)}
+            </div>
+            <div className={s.crmAvatarName}>{client.prefix} {client.name}</div>
+            {client.client_no && (
+              <div className={s.crmAvatarSub}>{client.client_no}</div>
+            )}
+          </div>
+
+          {/* Personal details */}
+          <div className={s.crmCardBody}>
+            {client.age != null && (
+              <div className={s.crmRow}>
+                <span className={s.crmLabel}>Age</span>
+                <span className={s.crmValue}>{client.age} yrs</span>
+              </div>
+            )}
+            {client.city && (
+              <div className={s.crmRow}>
+                <span className={s.crmLabel}>City</span>
+                <span className={s.crmValue}>{client.city}</span>
+              </div>
+            )}
+            {client.marital_status && (
+              <div className={s.crmRow}>
+                <span className={s.crmLabel}>Life Situation</span>
+                <span className={s.crmValue}>
+                  {client.marital_status.charAt(0).toUpperCase() + client.marital_status.slice(1)}
+                </span>
+              </div>
+            )}
+            {client.dependents_count != null && (
+              <div className={s.crmRow}>
+                <span className={s.crmLabel}>Dependents</span>
+                <span className={s.crmValue}>{client.dependents_count === 4 ? '4+' : client.dependents_count}</span>
+              </div>
+            )}
+            <div className={s.crmRow}>
+              <span className={s.crmLabel}>Added</span>
+              <span className={s.crmValue}>{fmtDate(client.created_at)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Channels */}
+        {channels.length > 0 && (
+          <div className={s.crmCard}>
+            <div className={s.crmCardHead}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+                <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.63a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
+              </svg>
+              <span className={s.crmCardTitle}>Channels</span>
+            </div>
+            <div className={s.crmChannels}>
+              {channels.map(ch => (
+                <VdfChannelItem
+                  key={ch.id}
+                  channelType={ch.channel_type}
+                  channelValue={ch.channel_value}
+                  isPrimary={ch.is_primary}
+                  subtype={ch.channel_subtype}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Family */}
+        {client.family && (
+          <div className={s.crmCard}>
+            <div className={s.crmCardHead}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+              </svg>
+              <span className={s.crmCardTitle}>Family</span>
+            </div>
+            <div className={s.crmCardBody}>
+              {client.family.family_name && (
+                <div className={s.crmRow}>
+                  <span className={s.crmLabel}>Family Name</span>
+                  <span className={s.crmValue}>{client.family.family_name}</span>
+                </div>
+              )}
+              <div className={s.crmRow}>
+                <span className={s.crmLabel}>Role</span>
+                <span className={s.crmValue}>
+                  {client.is_family_head
+                    ? <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>Family Head</span>
+                    : 'Member'}
+                </span>
+              </div>
+              <div className={s.crmRow}>
+                <span className={s.crmLabel}>Members</span>
+                <span className={s.crmValue}>{client.family.member_count}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      {/* ── RIGHT: Client record ───────────────────────── */}
+      <div className={s.crmRight}>
+
+        {/* KYC & Identity + Client Record side by side */}
+        <div className={s.crmRightTop}>
+
+          {/* KYC card */}
+          <div className={s.crmCard}>
+            <div className={s.crmCardHead}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+                <rect x="2" y="5" width="20" height="14" rx="2" />
+                <line x1="2" y1="10" x2="22" y2="10" />
+              </svg>
+              <span className={s.crmCardTitle}>KYC &amp; Identity</span>
+            </div>
+            <div className={s.crmCardBody}>
+              <div className={s.crmRow}>
+                <span className={s.crmLabel}>PAN</span>
+                <span className={`${s.crmValue} ${s.crmValueMono}`}>
+                  {client.pan
+                    ? <>{client.pan.slice(0, 5)}<span style={{ opacity: 0.4 }}>•••</span>{client.pan.slice(-2)}</>
+                    : <span className={s.crmValueMuted}>Not set</span>}
+                </span>
+              </div>
+              <div className={s.crmRow}>
+                <span className={s.crmLabel}>Date of Birth</span>
+                <span className={s.crmValue}>{fmtDate(client.dob)}</span>
+              </div>
+              <div className={s.crmRow}>
+                <span className={s.crmLabel}>Anniversary</span>
+                <span className={s.crmValue}>{fmtDate(client.anniversary_date)}</span>
+              </div>
+              <div className={s.crmRow}>
+                <span className={s.crmLabel}>Survival</span>
+                <span className={s.crmValue}>
+                  {client.survival_status === 'deceased'
+                    ? <span style={{ color: 'var(--color-danger)' }}>Deceased{client.date_of_death ? ` · ${fmtDate(client.date_of_death)}` : ''}</span>
+                    : 'Alive'}
+                </span>
+              </div>
+              <div className={s.crmRow}>
+                <span className={s.crmLabel}>Risk Profile</span>
+                <span className={s.crmValue}>
+                  {client.risk_profile
+                    ? <span style={{ color: RISK_COLORS[client.risk_profile] ?? 'var(--color-fg)', fontWeight: 600 }}>
+                        {client.risk_profile.charAt(0).toUpperCase() + client.risk_profile.slice(1)}
+                      </span>
+                    : <span className={s.crmValueMuted}>Not set</span>}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Client record card */}
+          <div className={s.crmCard}>
+            <div className={s.crmCardHead}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              <span className={s.crmCardTitle}>Client Record</span>
+            </div>
+            <div className={s.crmCardBody}>
+              <div className={s.crmRow}>
+                <span className={s.crmLabel}>Client No.</span>
+                <span className={`${s.crmValue} ${s.crmValueMono}`}>
+                  {client.client_no ?? <span className={s.crmValueMuted}>—</span>}
+                </span>
+              </div>
+              <div className={s.crmRow}>
+                <span className={s.crmLabel}>Ext Ref ID</span>
+                <span className={`${s.crmValue} ${s.crmValueMono}`}>
+                  {client.ext_ref_id ?? <span className={s.crmValueMuted}>—</span>}
+                </span>
+              </div>
+              <div className={s.crmRow}>
+                <span className={s.crmLabel}>Referred By</span>
+                <span className={s.crmValue}>
+                  {client.referred_by_name ?? <span className={s.crmValueMuted}>—</span>}
+                </span>
+              </div>
+              <div className={s.crmRow}>
+                <span className={s.crmLabel}>Onboarding</span>
+                <span className={s.crmValue}>
+                  <VdfStatusBadge
+                    label={client.onboarding_status.replace('_', ' ')}
+                    variant={
+                      client.onboarding_status === 'completed' ? 'success' :
+                      client.onboarding_status === 'in_progress' ? 'warning' :
+                      client.onboarding_status === 'cancelled' ? 'danger' : 'muted'
+                    }
+                    size="sm"
+                  />
+                </span>
+              </div>
+              <div className={s.crmRow}>
+                <span className={s.crmLabel}>Client Since</span>
+                <span className={s.crmValue}>{fmtDate(client.created_at)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Addresses */}
+        {addresses.length > 0 && (
+          <div className={s.crmCard}>
+            <div className={s.crmCardHead}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" />
+              </svg>
+              <span className={s.crmCardTitle}>Addresses</span>
+            </div>
+            <div className={s.crmCardBody}>
+              {addresses.map(addr => (
+                <div key={addr.id} className={s.crmAddress}>
+                  <div className={s.crmAddressType}>
+                    {addr.address_type.toUpperCase()}
+                    {addr.is_primary && <span className={s.crmAddressPrimaryDot} />}
+                  </div>
+                  <div>
+                    {addr.line1}
+                    {addr.line2 && <>, {addr.line2}</>}
+                  </div>
+                  <div style={{ color: 'var(--color-muted)', fontSize: '0.78rem', marginTop: 2 }}>
+                    {[addr.city, addr.state, addr.pincode].filter(Boolean).join(', ')}
+                    {addr.country && addr.country !== 'India' && ` · ${addr.country}`}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty addresses placeholder */}
+        {addresses.length === 0 && (
+          <div className={s.crmCard}>
+            <div className={s.crmCardHead}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" />
+              </svg>
+              <span className={s.crmCardTitle}>Addresses</span>
+            </div>
+            <div className={s.crmCardBody}>
+              <p className={s.crmEmptyHint}>No addresses on record. Add one during conversion or edit the client.</p>
+            </div>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }
@@ -669,7 +974,7 @@ export default function CustomerDashboardPage() {
             contactName={clientDisplayName}
           />
         )}
-        {activeTab === 'crm'          && <CrmDataTab />}
+        {activeTab === 'crm'          && <CrmDataTab client={client} />}
         {activeTab === 'goals'        && <GoalsTab        clientId={clientId} />}
       </div>
     </div>

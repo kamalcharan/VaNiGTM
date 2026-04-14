@@ -25,6 +25,10 @@ SELECT
     c.prefix,
     c.name,
     c.normalized_name,
+    c.age,
+    c.city,
+    c.marital_status,
+    c.dependents_count,
 
     -- Channels (from contact)
     COALESCE(

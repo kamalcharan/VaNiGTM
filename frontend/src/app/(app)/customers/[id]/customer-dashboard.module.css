@@ -445,6 +445,188 @@
   opacity: 0.85;
 }
 
+/* ── CRM Data tab ────────────────────────────────────── */
+
+.crmWrap {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 20px;
+  padding: 24px 32px 32px;
+  align-items: start;
+}
+
+.crmLeft,
+.crmRight {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Generic card */
+.crmCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.crmCardHead {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-muted) 4%, transparent);
+  color: var(--color-muted);
+}
+
+.crmCardTitle {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.crmCardBody {
+  padding: 12px 14px;
+}
+
+/* Contact card avatar header */
+.crmContactHead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 16px 16px;
+  text-align: center;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.crmAvatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.crmAvatarName {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  line-height: 1.3;
+}
+
+.crmAvatarSub {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.65rem;
+  color: var(--color-muted);
+}
+
+/* Channels inside contact card */
+.crmChannels {
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Field rows */
+.crmRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 45%, transparent);
+}
+
+.crmRow:last-child { border-bottom: none; }
+
+.crmLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.crmValue {
+  font-size: 0.82rem;
+  color: var(--color-fg);
+  text-align: right;
+  word-break: break-word;
+}
+
+.crmValueMono {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.crmValueMuted {
+  color: var(--color-muted);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* Right col: KYC + Record side-by-side */
+.crmRightTop {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* Address entries */
+.crmAddress {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  color: var(--color-fg);
+  line-height: 1.6;
+}
+
+.crmAddress:last-child { margin-bottom: 0; }
+
+.crmAddressType {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  margin-bottom: 5px;
+}
+
+.crmAddressPrimaryDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.crmEmptyHint {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  font-style: italic;
+  margin: 0;
+}
+
 /* ── Transactions tab ────────────────────────────────── */
 
 .txnWrap {
@@ -556,10 +738,16 @@
   .statValue { font-size: 1.2rem; }
 }
 
+@media (max-width: 1100px) {
+  .crmWrap { grid-template-columns: 1fr; }
+  .crmRightTop { grid-template-columns: 1fr 1fr; }
+}
+
 @media (max-width: 768px) {
   .portfolioWrap,
   .txnWrap,
-  .tabContent {
+  .tabContent,
+  .crmWrap {
     padding: 16px 20px 24px;
   }
   .filterBar { gap: 8px; }
@@ -569,6 +757,7 @@
   .statStrip { padding: 0 20px; }
   .noDataBanner,
   .inactiveBanner { padding: 10px 20px; }
+  .crmRightTop { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {

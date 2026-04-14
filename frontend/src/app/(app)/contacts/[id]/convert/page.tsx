@@ -6,7 +6,7 @@ import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import type { ApiError } from '@/lib/api-client';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
-import { VdfLoader, VdfButton } from '@/components/vdf';
+import { VdfLoader, VdfButton, VdfPageHeader } from '@/components/vdf';
 import s from './convert.module.css';
 
 /* ── Platform label map ── */
@@ -190,20 +190,23 @@ export default function ConvertPage() {
   return (
     <div className={s.page}>
       {/* ── Header ── */}
-      <header className={s.header}>
-        <div className={s.headerLeft}>
-          <button className={s.backBtn} onClick={() => router.push('/contacts')}>Contacts</button>
-          <span className={s.headerCrumb}>/</span>
-          <button className={s.backBtn} onClick={() => router.push(`/contacts/${contactId}`)}>{contact.name}</button>
-          <span className={s.headerCrumb}>/</span>
-          <span className={s.headerTitle}>Convert to Client</span>
-        </div>
-        <div className={s.headerStepper}>
-          The final step ·{' '}
-          <span className={s.headerStepperStrong}>5 new fields</span>
-          {' '}· ~2 min
-        </div>
-      </header>
+      <VdfPageHeader
+        eyebrow="CLIENT CONVERSION"
+        title="Convert to Client"
+        meta={
+          <div className={s.breadcrumb}>
+            <button className={s.backBtn} onClick={() => router.push('/contacts')}>Contacts</button>
+            <span className={s.crumbSep}>/</span>
+            <button className={s.backBtn} onClick={() => router.push(`/contacts/${contactId}`)}>{contact.name}</button>
+          </div>
+        }
+        actions={
+          <span className={s.stepHint}>
+            The final step
+            <span className={s.stepHintStrong}> · 5 fields · ~2 min</span>
+          </span>
+        }
+      />
 
       {/* ── Body ── */}
       <div className={s.body}>

@@ -323,27 +323,6 @@ export default function ContactProfilePage() {
       })(),
     },
     {
-      id: 'channels',
-      label: 'Channels',
-      content: (
-        <div className={s.channelsList}>
-          {contact.channels.length === 0 ? (
-            <p className={s.emptyGoals}>No channels added yet.</p>
-          ) : (
-            contact.channels.map(ch => (
-              <VdfChannelItem
-                key={ch.id}
-                channelType={ch.channel_type}
-                channelValue={ch.channel_value}
-                isPrimary={ch.is_primary}
-                subtype={ch.channel_subtype}
-              />
-            ))
-          )}
-        </div>
-      ),
-    },
-    {
       id: 'snapshot',
       label: 'Financial Snapshot',
       content: <SnapshotTab contactId={contactId} isClient={contact.is_client} contactName={contact.name} />,

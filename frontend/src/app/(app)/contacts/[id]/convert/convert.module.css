@@ -11,68 +11,38 @@
   overflow: hidden;  /* form column scrolls internally */
 }
 
-/* ── Header ── */
-.header {
-  padding: 20px 48px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--glass, var(--color-surface));
-  backdrop-filter: blur(8px);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
+/* ── VdfPageHeader meta slot helpers ── */
 
-.headerLeft {
+.breadcrumb {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 6px;
 }
 
 .backBtn {
   background: none;
   border: none;
   color: var(--color-muted);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   cursor: pointer;
   padding: 0;
-  transition: color 160ms;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  font-family: inherit;
+  transition: color 150ms;
 }
 
 .backBtn:hover { color: var(--color-fg); }
 
-.headerCrumb {
+.crumbSep {
   color: var(--color-border);
-  font-size: 0.82rem;
-  padding: 0 2px;
+  font-size: 0.78rem;
 }
 
-.headerDivider {
-  width: 1px;
-  height: 16px;
-  background: var(--color-border);
-}
-
-.headerTitle {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--color-fg);
-}
-
-.headerStepper {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.stepHint {
   font-size: 0.72rem;
   color: var(--color-muted);
 }
 
-.headerStepperStrong {
+.stepHintStrong {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-weight: 700;
   color: var(--color-fg);
