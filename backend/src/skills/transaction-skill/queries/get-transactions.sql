@@ -2,14 +2,23 @@
 -- Named params: $tenant_id, $is_live, $client_id (nullable), $txn_type (nullable),
 --               $date_from (nullable), $date_to (nullable), $search (nullable),
 --               $is_duplicate_only (nullable bool), $limit, $offset
+--
+-- ki_transaction_types columns: id, txn_code, txn_name, txn_type ('Addition'|'Deduction')
+-- ki_transactions.txn_type stores lowercase values ('purchase','sip','redemption','switch_in','switch_out')
 
 SELECT
     t.id,
     t.txn_date,
     t.txn_type,
-    COALESCE(tt.code,  t.txn_type) AS txn_type_code,
-    COALESCE(tt.label, t.txn_type) AS txn_type_label,
-    COALESCE(tt.flow_direction, 'IN') AS flow_direction,
+    COALESCE(tt.txn_code,  UPPER(REPLACE(t.txn_type, '_', ' '))) AS txn_type_code,
+    COALESCE(tt.txn_name,  t.txn_type)                            AS txn_type_label,
+    CASE
+        WHEN tt.txn_type = 'Addition'  THEN 'IN'
+        WHEN tt.txn_type = 'Deduction' THEN 'OUT'
+        -- Fallback for rows where txn_type_id not yet backfilled
+        WHEN t.txn_type IN ('purchase','sip','switch_in','dividend_reinvest','opening_balance') THEN 'IN'
+        ELSE 'OUT'
+    END                                                            AS flow_direction,
     t.amount,
     t.units,
     t.nav,
@@ -47,17 +56,17 @@ WHERE t.tenant_id  = $tenant_id
        OR t.client_id = $client_id::integer)
   AND ($txn_type::text IS NULL
        OR $txn_type::text = 'all'
-       OR t.txn_type = $txn_type::text
-       OR tt.code    = $txn_type::text)
+       OR tt.txn_code = $txn_type::text
+       OR UPPER(REPLACE(t.txn_type, '_', ' ')) = $txn_type::text)
   AND ($date_from::date IS NULL
        OR t.txn_date >= $date_from::date)
   AND ($date_to::date IS NULL
        OR t.txn_date <= $date_to::date)
   AND (
       $search::text IS NULL
-      OR t.fund_name ILIKE '%' || $search::text || '%'
-      OR t.folio_no  ILIKE '%' || $search::text || '%'
-      OR ct.name     ILIKE '%' || $search::text || '%'
+      OR t.fund_name   ILIKE '%' || $search::text || '%'
+      OR t.folio_no    ILIKE '%' || $search::text || '%'
+      OR ct.name       ILIKE '%' || $search::text || '%'
       OR t.scheme_code ILIKE '%' || $search::text || '%'
   )
   AND ($is_duplicate_only::boolean IS NULL
