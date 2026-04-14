@@ -39,6 +39,11 @@ Side-by-side portfolio comparison for family members or model matching.
 - Parameters: client_id_1 (required, number), client_id_2 (required, number)
 - Returns: { client_1: { name, summary }, client_2: { name, summary }, common_schemes: [], unique_to_1: [], unique_to_2: [], recipe: 'comparison' }
 
+### get_family_portfolio
+Returns aggregated holdings for all active members of a family, consolidated by scheme with per-member attribution.
+- Parameters: family_id (required, string)
+- Returns: { family_id, holdings: [{ scheme_code, scheme_name, category, amc, units, avg_nav, nav, nav_date, value, invested, gain_loss, gain_pct, members: [{ client_id, name, prefix, units, invested }] }], summary: { total_value, total_invested, overall_gain_pct, scheme_count, member_count }, recipe: 'portfolio-view' }
+
 ## Constraints
 - All functions are read-only (no mutations)
 - Returns are in INR

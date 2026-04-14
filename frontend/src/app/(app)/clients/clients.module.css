@@ -100,6 +100,19 @@
 
 /* ── Slot content: name badges ───────────────────────── */
 
+.headBadge {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
+  padding: 2px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
 .clientNoBadge {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 0.6rem;

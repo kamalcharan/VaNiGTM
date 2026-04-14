@@ -30,6 +30,8 @@ interface Client {
   onboarding_status: string;
   is_active: boolean;
   is_bookmarked: boolean;
+  is_family_head: boolean;
+  family_id: string | null;
   prefix: string;
   name: string;
   primary_mobile: string | null;
@@ -527,6 +529,7 @@ export default function ClientsPage() {
                 name={client.name}
                 prefix={client.prefix}
                 nameBadges={<>
+                  {client.is_family_head && <span className={s.headBadge}>HEAD</span>}
                   {client.client_no && <span className={s.clientNoBadge}>{client.client_no}</span>}
                   {client.ext_ref_id && <span className={s.extRefBadge}>{client.ext_ref_id}</span>}
                 </>}
@@ -654,6 +657,9 @@ export default function ClientsPage() {
                   <div className={s.cardHeadText}>
                     <div className={s.cardName}>{client.prefix} {client.name}</div>
                     <div className={s.refId}>
+                      {client.is_family_head && (
+                        <span className={s.headBadge}>HEAD</span>
+                      )}
                       {client.client_no && (
                         <span className={s.clientNoBadge}>{client.client_no}</span>
                       )}

@@ -53,6 +53,40 @@ interface Client {
   onboarding_status: string;
   client_no: string | null;
   contact_id: number;
+  is_family_head: boolean;
+  family_id: string | null;
+}
+
+interface MemberHolding {
+  client_id: number;
+  name: string;
+  prefix: string;
+  units: number;
+  invested: number;
+}
+
+interface FamilyHolding {
+  scheme_code: string;
+  scheme_name: string;
+  category: string;
+  amc: string;
+  units: number;
+  avg_nav: number;
+  nav: number;
+  nav_date: string | null;
+  value: number;
+  invested: number;
+  gain_loss: number;
+  gain_pct: number;
+  members: MemberHolding[];
+}
+
+interface FamilyPortfolioSummary {
+  total_value: number;
+  total_invested: number;
+  overall_gain_pct: number;
+  scheme_count: number;
+  member_count: number;
 }
 
 /* ── Helpers ─────────────────────────────────────────── */
@@ -227,6 +261,160 @@ function PortfolioTab({ clientId }: { clientId: number }) {
   );
 }
 
+/* ── Family Portfolio Tab ────────────────────────────── */
+
+function FamilyPortfolioTab({ familyId }: { familyId: string }) {
+  const { data, isLoading, isError } = useSkillQuery<{
+    family_id: string;
+    holdings: FamilyHolding[];
+    summary: FamilyPortfolioSummary;
+  }>('portfolio-skill', 'get_family_portfolio', { family_id: familyId });
+
+  const { data: allocData } = useSkillQuery<{
+    allocation: AllocationItem[];
+    total_value: number;
+  }>('portfolio-skill', 'get_allocation', { family_id: familyId, is_family: true });
+
+  if (isLoading) return <div className={s.tabLoadWrap}><VdfLoader message="Loading family portfolio…" /></div>;
+  if (isError) return (
+    <div className={s.tabContent}>
+      <VdfEmptyState title="Could not load family portfolio" description="There was an error fetching family holdings data." />
+    </div>
+  );
+
+  const holdings  = data?.data?.holdings ?? [];
+  const summary   = data?.data?.summary;
+  const allocation = allocData?.data?.allocation ?? [];
+
+  if (holdings.length === 0) {
+    return (
+      <div className={s.tabContent}>
+        <VdfEmptyState
+          title="No family holdings on record"
+          description="Import statements for family members to see the consolidated family portfolio."
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className={s.portfolioWrap}>
+      {/* Family summary strip */}
+      {summary && (
+        <div className={s.familySummaryStrip}>
+          <div className={s.familySumItem}>
+            <span className={s.familySumLabel}>Members</span>
+            <span className={s.familySumValue}>{summary.member_count}</span>
+          </div>
+          <div className={s.familySumSep} />
+          <div className={s.familySumItem}>
+            <span className={s.familySumLabel}>Family Value</span>
+            <span className={s.familySumValue}>{fmtCurrency(summary.total_value)}</span>
+          </div>
+          <div className={s.familySumSep} />
+          <div className={s.familySumItem}>
+            <span className={s.familySumLabel}>Invested</span>
+            <span className={s.familySumValue}>{fmtCurrency(summary.total_invested)}</span>
+          </div>
+          <div className={s.familySumSep} />
+          <div className={s.familySumItem}>
+            <span className={s.familySumLabel}>Gain</span>
+            <span className={`${s.familySumValue} ${summary.overall_gain_pct >= 0 ? s.statUp : s.statDown}`}>
+              {fmtPct(summary.overall_gain_pct)}
+            </span>
+          </div>
+          <div className={s.familySumSep} />
+          <div className={s.familySumItem}>
+            <span className={s.familySumLabel}>Schemes</span>
+            <span className={s.familySumValue}>{summary.scheme_count}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Allocation strip */}
+      {allocation.length > 0 && (
+        <div className={s.allocStrip}>
+          {allocation.map(a => (
+            <div key={a.category} className={s.allocItem}>
+              <div
+                className={s.allocBar}
+                style={{ width: `${a.percentage}%`, background: categoryColor(a.category) }}
+                title={`${a.category}: ${a.percentage.toFixed(1)}%`}
+              />
+              <span className={s.allocLabel} style={{ color: categoryColor(a.category) }}>
+                {a.category}
+              </span>
+              <span className={s.allocPct}>{a.percentage.toFixed(1)}%</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Holdings table */}
+      <div className={s.holdingsTable}>
+        <table className={s.table}>
+          <thead>
+            <tr>
+              <th className={s.th}>Fund</th>
+              <th className={`${s.th} ${s.thRight}`}>Units</th>
+              <th className={`${s.th} ${s.thRight}`}>NAV</th>
+              <th className={`${s.th} ${s.thRight}`}>Invested</th>
+              <th className={`${s.th} ${s.thRight}`}>Current</th>
+              <th className={`${s.th} ${s.thRight}`}>Gain / Loss</th>
+              <th className={s.th}>Held by</th>
+            </tr>
+          </thead>
+          <tbody>
+            {holdings.map((h) => {
+              const isUp = h.gain_loss >= 0;
+              return (
+                <tr key={h.scheme_code} className={`${s.tr} ${isUp ? s.trUp : s.trDown}`}>
+                  <td className={s.td}>
+                    <div className={s.fundName}>{h.scheme_name}</div>
+                    <div className={s.fundMeta}>
+                      <span className={s.fundAmc}>{h.amc}</span>
+                      <span
+                        className={s.catBadge}
+                        style={{ color: categoryColor(h.category), borderColor: categoryColor(h.category) }}
+                      >
+                        {h.category}
+                      </span>
+                    </div>
+                  </td>
+                  <td className={`${s.td} ${s.tdRight} ${s.monoVal}`}>{fmtUnits(h.units)}</td>
+                  <td className={`${s.td} ${s.tdRight} ${s.monoVal}`}>₹{h.nav.toFixed(4)}</td>
+                  <td className={`${s.td} ${s.tdRight}`}>{fmtCurrency(h.invested)}</td>
+                  <td className={`${s.td} ${s.tdRight} ${s.valStrong}`}>{fmtCurrency(h.value)}</td>
+                  <td className={`${s.td} ${s.tdRight}`}>
+                    <div className={`${s.gainCell} ${isUp ? s.gainUp : s.gainDown}`}>
+                      <span>{fmtCurrency(h.gain_loss)}</span>
+                      <span className={s.gainPct}>{fmtPct(h.gain_pct)}</span>
+                    </div>
+                  </td>
+                  <td className={s.td}>
+                    <div className={s.memberAvatars}>
+                      {h.members.map(m => (
+                        <span
+                          key={m.client_id}
+                          className={s.memberAvatar}
+                          style={{ background: avatarGradient(m.name) }}
+                          title={`${m.prefix} ${m.name} — ${fmtUnits(m.units)} units`}
+                        >
+                          {initials(m.name)}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 /* ── Transactions Tab ────────────────────────────────── */
 
 function TransactionsTab({ clientId }: { clientId: number }) {
@@ -335,7 +523,8 @@ export default function CustomerDashboardPage() {
   const initialTab = ['portfolio', 'transactions', 'snapshot', 'crm', 'goals'].includes(tabParam ?? '')
     ? tabParam!
     : 'portfolio';
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeTab,    setActiveTab]    = useState(initialTab);
+  const [portfolioView, setPortfolioView] = useState<'individual' | 'family'>('individual');
 
   // Client profile (name, risk etc.)
   const { data: clientData, isLoading: clientLoading, isError: clientError } =
@@ -435,6 +624,18 @@ export default function CustomerDashboardPage() {
           </div>
         }
         actions={<>
+          {client.is_family_head && client.family_id && (
+            <div className={s.portfolioViewToggle}>
+              <button
+                className={`${s.portfolioViewBtn} ${portfolioView === 'individual' ? s.portfolioViewBtnActive : ''}`}
+                onClick={() => setPortfolioView('individual')}
+              >Individual</button>
+              <button
+                className={`${s.portfolioViewBtn} ${portfolioView === 'family' ? s.portfolioViewBtnActive : ''}`}
+                onClick={() => setPortfolioView('family')}
+              >Family</button>
+            </div>
+          )}
           <div className={s.avatarSmall} style={avatarStyle}>{initials(client.name)}</div>
           <VdfButton variant="ghost" size="sm" onClick={() => router.push('/import')}>Import Data</VdfButton>
         </>}
@@ -455,7 +656,11 @@ export default function CustomerDashboardPage() {
 
       {/* ── Tab content ── */}
       <div className={s.tabPanel}>
-        {activeTab === 'portfolio'    && <PortfolioTab    clientId={clientId} />}
+        {activeTab === 'portfolio' && (
+          portfolioView === 'family' && client.is_family_head && client.family_id
+            ? <FamilyPortfolioTab familyId={client.family_id} />
+            : <PortfolioTab clientId={clientId} />
+        )}
         {activeTab === 'transactions' && <TransactionsTab clientId={clientId} />}
         {activeTab === 'snapshot'     && (
           <SnapshotTab

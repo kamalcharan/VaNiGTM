@@ -17,6 +17,8 @@ SELECT
     cl.risk_profile,
     cl.onboarding_status,
     cl.created_at,
+    cl.is_family_head,
+    cl.family_id,
 
     -- Contact details
     c.prefix,

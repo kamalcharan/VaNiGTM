@@ -183,10 +183,116 @@
   padding: 40px 32px;
 }
 
+/* ── Individual / Family toggle ─────────────────────── */
+
+.portfolioViewToggle {
+  display: flex;
+  align-items: center;
+  background: color-mix(in srgb, var(--color-muted) 8%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.portfolioViewBtn {
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 4px 12px;
+  border-radius: 6px;
+  transition: background 120ms, color 120ms;
+  line-height: 1;
+}
+
+.portfolioViewBtn:hover { color: var(--color-fg); }
+
+.portfolioViewBtnActive {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.portfolioViewBtnActive:hover { color: #fff; }
+
 /* ── Portfolio tab ───────────────────────────────────── */
 
 .portfolioWrap {
   padding: 24px 32px 32px;
+}
+
+/* Family summary strip (family portfolio mode) */
+.familySummaryStrip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  padding: 14px 20px;
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, var(--color-border));
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.familySumItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 0 20px;
+}
+
+.familySumItem:first-child { padding-left: 0; }
+
+.familySumLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.familySumValue {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-fg);
+}
+
+.familySumSep {
+  width: 1px;
+  height: 28px;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+/* Member avatars (attribution in family holdings table) */
+.memberAvatars {
+  display: flex;
+  align-items: center;
+  gap: -4px;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.memberAvatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+  cursor: default;
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, #000 20%, transparent);
 }
 
 /* Allocation strip */
