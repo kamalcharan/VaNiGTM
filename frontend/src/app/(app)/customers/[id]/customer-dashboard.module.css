@@ -726,6 +726,70 @@
   font-size: 0.75rem;
 }
 
+/* ── Transaction table cell styles ──────────────────── */
+.txnLoadingRow {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+}
+.txnLoadingText {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+.txnRowDupe {
+  background: color-mix(in srgb, var(--color-warning) 5%, transparent) !important;
+}
+.txnDateCell {
+  font-size: 0.72rem !important;
+  white-space: nowrap;
+  color: var(--color-muted) !important;
+}
+.txnFundName {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+.txnFundCat {
+  font-size: 0.62rem;
+  color: var(--color-muted);
+  margin-top: 1px;
+}
+.txnFolio {
+  font-size: 0.7rem !important;
+  color: var(--color-muted) !important;
+}
+.txnAmount {
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+}
+.txnAmountIn  { color: var(--color-success); }
+.txnAmountOut { color: var(--color-danger); }
+.txnTds {
+  font-size: 0.6rem;
+  color: var(--color-muted);
+  font-family: var(--font-mono, monospace);
+  margin-top: 1px;
+}
+.txnUnits {
+  font-size: 0.74rem !important;
+  color: var(--color-fg) !important;
+}
+.txnNav {
+  font-size: 0.62rem;
+  color: var(--color-muted);
+  font-family: var(--font-mono, monospace);
+  margin-top: 1px;
+}
+.txnNa {
+  color: var(--color-muted);
+  font-size: 0.7rem;
+}
+
 /* ── Responsive ──────────────────────────────────────── */
 
 @media (max-width: 900px) {

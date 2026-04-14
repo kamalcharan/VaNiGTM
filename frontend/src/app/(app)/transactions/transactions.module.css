@@ -1,0 +1,397 @@
+/* ═══════════════════════════════════════════════════════
+   TRANSACTIONS PAGE — Page-specific layout + visual styles
+   Data table/pagination lives in @/styles/data.module.css
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Page shell ──────────────────────────────────────── */
+.page {
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.body {
+  flex: 1;
+  padding: 20px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Period pills (in header actions) ────────────────── */
+.periodPills {
+  display: flex;
+  gap: 4px;
+}
+
+.periodPill {
+  padding: 4px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 180ms;
+  font-family: var(--font-mono, monospace);
+}
+
+.periodPill:hover {
+  border-color: var(--color-primary);
+  color: var(--color-fg);
+}
+
+.periodPillActive {
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* ── Duplicate count badge (in header meta) ──────────── */
+.dupeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 35%, transparent);
+  color: var(--color-warning);
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.04em;
+}
+
+/* ── Summary strip ───────────────────────────────────── */
+.summaryStrip {
+  display: flex;
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.summaryCard {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 16px;
+  gap: 3px;
+}
+
+.summarySep {
+  width: 1px;
+  height: 36px;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+.summaryLabel {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  font-family: var(--font-mono, monospace);
+}
+
+.summaryValue {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-fg);
+  font-family: var(--font-mono, monospace);
+  letter-spacing: -0.02em;
+}
+
+.valInvested { color: var(--color-success); }
+.valRedeemed { color: var(--color-danger); }
+.valUp       { color: var(--color-success); }
+.valDown     { color: var(--color-danger); }
+
+/* ── Filter toolbar ──────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Search */
+.searchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 220px;
+  max-width: 340px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  color: var(--color-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 34px;
+  padding: 0 30px 0 32px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font-size: 0.78rem;
+  outline: none;
+  transition: border-color 180ms;
+}
+
+.searchInput::placeholder {
+  color: var(--color-muted);
+  opacity: var(--input-placeholder-opacity, 0.5);
+}
+
+.searchInput:focus {
+  border-color: var(--color-primary);
+}
+
+.searchClear {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  transition: all 150ms;
+}
+
+.searchClear:hover {
+  background: color-mix(in srgb, var(--color-muted) 15%, transparent);
+  color: var(--color-fg);
+}
+
+/* Type filter */
+.filterSelect {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font-size: 0.78rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 180ms;
+}
+
+.filterSelect:focus {
+  border-color: var(--color-primary);
+}
+
+/* Date range */
+.dateRange {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dateInput {
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font-size: 0.75rem;
+  font-family: var(--font-mono, monospace);
+  outline: none;
+  transition: border-color 180ms;
+  cursor: pointer;
+}
+
+.dateInput:focus {
+  border-color: var(--color-primary);
+}
+
+.dateSep {
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  user-select: none;
+}
+
+/* Duplicates toggle */
+.dupeToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 180ms;
+  white-space: nowrap;
+}
+
+.dupeToggle:hover {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+.dupeToggleOn {
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+/* ── Table cell — per-page styles ────────────────────── */
+.rowDupe {
+  background: color-mix(in srgb, var(--color-warning) 5%, transparent) !important;
+}
+
+.rowDupe td {
+  border-bottom-color: color-mix(in srgb, var(--color-warning) 15%, transparent) !important;
+}
+
+.rowNum {
+  font-size: 0.62rem !important;
+  color: var(--color-muted) !important;
+  font-family: var(--font-mono, monospace) !important;
+  padding-right: 4px !important;
+  white-space: nowrap;
+}
+
+.dupeFlag {
+  margin-left: 4px;
+  color: var(--color-warning);
+  font-size: 0.65rem;
+}
+
+.dateCell {
+  font-size: 0.72rem !important;
+  white-space: nowrap;
+  color: var(--color-muted) !important;
+}
+
+/* Client */
+.clientLink {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: left;
+  transition: opacity 150ms;
+}
+
+.clientLink:hover { opacity: 0.75; }
+
+.clientNo {
+  font-size: 0.62rem;
+  color: var(--color-muted);
+  font-family: var(--font-mono, monospace);
+  margin-top: 1px;
+}
+
+/* Fund */
+.fundName {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.fundCat {
+  font-size: 0.62rem;
+  color: var(--color-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+/* Folio */
+.folio {
+  font-size: 0.7rem !important;
+  color: var(--color-muted) !important;
+}
+
+/* Amount */
+.amount {
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  letter-spacing: -0.01em;
+}
+
+.amountIn  { color: var(--color-success); }
+.amountOut { color: var(--color-danger);  }
+
+.tds {
+  font-size: 0.6rem;
+  color: var(--color-muted);
+  font-family: var(--font-mono, monospace);
+  margin-top: 1px;
+}
+
+/* Units / NAV */
+.units {
+  font-size: 0.74rem !important;
+  color: var(--color-fg) !important;
+}
+
+.nav {
+  font-size: 0.62rem;
+  color: var(--color-muted);
+  font-family: var(--font-mono, monospace);
+  margin-top: 1px;
+}
+
+.na {
+  color: var(--color-muted);
+  font-size: 0.7rem;
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 768px) {
+  .body    { padding: 16px 20px 24px; }
+  .toolbar { flex-direction: column; align-items: stretch; }
+  .searchWrap { max-width: 100%; }
+  .summaryCard { padding: 12px 10px; }
+  .summaryValue { font-size: 0.95rem; }
+}
+
+@media (max-width: 480px) {
+  .body        { padding: 12px 14px 20px; }
+  .dateRange   { flex-direction: column; gap: 4px; }
+  .dateSep     { display: none; }
+  .summaryStrip { flex-wrap: wrap; }
+}

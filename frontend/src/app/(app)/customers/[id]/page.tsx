@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSkillQuery } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
@@ -9,6 +9,7 @@ import {
 } from '@/components/vdf';
 import { SnapshotTab } from '@/app/(app)/contacts/[id]/snapshot-tab';
 import s from './customer-dashboard.module.css';
+import d from '@/styles/data.module.css';
 
 /* ── Types ───────────────────────────────────────────── */
 
@@ -460,14 +461,87 @@ function FamilyPortfolioTab({ familyId }: { familyId: string }) {
 
 /* ── Transactions Tab ────────────────────────────────── */
 
+const TXN_TYPE_OPTIONS = [
+  { value: '',                  label: 'All types'         },
+  { value: 'PURCHASE',          label: 'Purchase'          },
+  { value: 'SIP',               label: 'SIP'               },
+  { value: 'REDEMPTION',        label: 'Redemption'        },
+  { value: 'SWITCH IN',         label: 'Switch In'         },
+  { value: 'SWITCH OUT',        label: 'Switch Out'        },
+  { value: 'STP IN',            label: 'STP In'            },
+  { value: 'STP OUT',           label: 'STP Out'           },
+  { value: 'SWP',               label: 'SWP'               },
+  { value: 'DIVIDEND PAYOUT',   label: 'Dividend Payout'   },
+  { value: 'DIVIDEND REINVEST', label: 'Dividend Reinvest' },
+];
+
+const TXN_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'muted'> = {
+  PURCHASE: 'success', SIP: 'success',
+  REDEMPTION: 'danger', SWP: 'danger',
+  'SWITCH IN': 'info', 'STP IN': 'info',
+  'SWITCH OUT': 'warning', 'STP OUT': 'warning',
+  'DIVIDEND PAYOUT': 'muted', 'DIVIDEND REINVEST': 'muted',
+};
+
+const TXN_PAGE_SIZE = 50;
+
+interface TxnTransaction {
+  id:             number;
+  txn_date:       string;
+  txn_type:       string;
+  txn_type_label: string;
+  flow_direction: string;
+  amount:         number;
+  units:          number | null;
+  nav:            number | null;
+  folio_no:       string | null;
+  fund_name:      string | null;
+  category:       string | null;
+  scheme_code:    string;
+  tds:            number;
+  is_potential_duplicate: boolean;
+}
+
+function fmtTxnDate(ds: string): string {
+  return new Date(ds).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
+}
+function fmtTxnAmt(n: number): string {
+  if (Math.abs(n) >= 1_00_00_000) return `₹${(n / 1_00_00_000).toFixed(2)}Cr`;
+  if (Math.abs(n) >= 1_00_000)    return `₹${(n / 1_00_000).toFixed(2)}L`;
+  return `₹${Math.abs(n).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+}
+
 function TransactionsTab({ clientId }: { clientId: number }) {
-  // TODO Phase 4: Wire to transaction-skill.get_client_transactions
-  // For now, show structured empty state with filter chrome in place
+  const { showToast } = useToast();
+  const router = useRouter();
 
   const [search,   setSearch]   = useState('');
   const [txnType,  setTxnType]  = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo,   setDateTo]   = useState('');
+  const [page,     setPage]     = useState(1);
+
+  const params = useMemo(() => ({
+    client_id: clientId,
+    txn_type:  txnType   || undefined,
+    date_from: dateFrom  || undefined,
+    date_to:   dateTo    || undefined,
+    search:    search    || undefined,
+    limit:     TXN_PAGE_SIZE,
+    offset:    (page - 1) * TXN_PAGE_SIZE,
+  }), [clientId, txnType, dateFrom, dateTo, search, page]);
+
+  const { data, isLoading, isError, error } = useSkillQuery<{ transactions: TxnTransaction[]; total: number }>(
+    'transaction-skill', 'get_transactions', params
+  );
+
+  if (isError) showToast({ message: error?.message ?? 'Failed to load transactions', type: 'error' });
+
+  const transactions = data?.data?.transactions ?? [];
+  const total        = data?.data?.total        ?? 0;
+  const totalPages   = Math.ceil(total / TXN_PAGE_SIZE);
+
+  const handleSearch = useCallback((v: string) => { setSearch(v); setPage(1); }, []);
 
   return (
     <div className={s.txnWrap}>
@@ -479,48 +553,109 @@ function TransactionsTab({ clientId }: { clientId: number }) {
           </svg>
           <input
             className={s.filterInput}
-            placeholder="Search by fund or folio…"
+            placeholder="Fund name or folio…"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => handleSearch(e.target.value)}
           />
         </div>
-        <select className={s.filterSelect} value={txnType} onChange={e => setTxnType(e.target.value)}>
-          <option value="">All types</option>
-          <option value="SIP">SIP</option>
-          <option value="PURCHASE">Purchase</option>
-          <option value="REDEMPTION">Redemption</option>
-          <option value="SWITCH IN">Switch In</option>
-          <option value="SWITCH OUT">Switch Out</option>
-          <option value="STP IN">STP In</option>
-          <option value="STP OUT">STP Out</option>
-          <option value="DIVIDEND PAYOUT">Dividend Payout</option>
-          <option value="DIVIDEND REINVEST">Dividend Reinvest</option>
+        <select className={s.filterSelect} value={txnType} onChange={e => { setTxnType(e.target.value); setPage(1); }}>
+          {TXN_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
         <div className={s.filterDateRange}>
-          <input className={s.filterDateInput} type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} placeholder="From" />
+          <input className={s.filterDateInput} type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} />
           <span className={s.filterDateSep}>—</span>
-          <input className={s.filterDateInput} type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} placeholder="To" />
+          <input className={s.filterDateInput} type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }} />
         </div>
-        <VdfButton variant="outline" size="sm">
-          + Manual Entry
+        <VdfButton variant="outline" size="sm" onClick={() => router.push('/import')}>
+          Import
         </VdfButton>
       </div>
 
-      {/* Transaction table — empty state until transaction-skill is wired */}
-      <VdfEmptyState
-        title="No transactions found"
-        description="Import a CAS, InvestWell, or NSE statement to load this client's transaction history. You can also add transactions manually."
-        action={
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <VdfButton variant="primary" size="sm" onClick={() => window.location.href = '/import'}>
+      {/* Loading state */}
+      {isLoading && (
+        <div className={s.txnLoadingRow}>
+          <span className={s.txnLoadingText}>Loading transactions…</span>
+        </div>
+      )}
+
+      {/* Table */}
+      {!isLoading && transactions.length === 0 && (
+        <VdfEmptyState
+          title="No transactions found"
+          description={
+            search || txnType || dateFrom || dateTo
+              ? 'Try clearing your filters.'
+              : 'Import a CAS, InvestWell, or NSE statement to load this client\'s transaction history.'
+          }
+          action={
+            <VdfButton variant="primary" size="sm" onClick={() => router.push('/import')}>
               Import Statement
             </VdfButton>
-            <VdfButton variant="outline" size="sm">
-              + Add Manual Entry
-            </VdfButton>
+          }
+        />
+      )}
+
+      {!isLoading && transactions.length > 0 && (
+        <>
+          <div className={d.tableWrap}>
+            <table className={d.table}>
+              <thead>
+                <tr>
+                  <th style={{ width: 90 }}>Date</th>
+                  <th>Fund</th>
+                  <th style={{ width: 100 }}>Folio</th>
+                  <th style={{ width: 130 }}>Type</th>
+                  <th style={{ textAlign: 'right', width: 110 }}>Amount</th>
+                  <th style={{ textAlign: 'right', width: 90 }}>Units / NAV</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map(txn => (
+                  <tr key={txn.id} className={txn.is_potential_duplicate ? s.txnRowDupe : undefined}>
+                    <td className={`${d.tdMono} ${s.txnDateCell}`}>{fmtTxnDate(txn.txn_date)}</td>
+                    <td>
+                      <div className={s.txnFundName}>{txn.fund_name ?? txn.scheme_code}</div>
+                      {txn.category && <div className={s.txnFundCat}>{txn.category}</div>}
+                    </td>
+                    <td className={`${d.tdMono} ${s.txnFolio}`}>{txn.folio_no ?? '—'}</td>
+                    <td>
+                      <VdfStatusBadge
+                        label={txn.txn_type_label}
+                        variant={TXN_VARIANT[txn.txn_type] ?? 'muted'}
+                        size="sm"
+                      />
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <span className={`${s.txnAmount} ${txn.flow_direction === 'OUT' ? s.txnAmountOut : s.txnAmountIn}`}>
+                        {txn.flow_direction === 'OUT' ? '−' : '+'}{fmtTxnAmt(txn.amount)}
+                      </span>
+                      {txn.tds > 0 && <div className={s.txnTds}>TDS ₹{txn.tds.toFixed(2)}</div>}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      {txn.units != null ? (
+                        <>
+                          <div className={`${d.tdMono} ${s.txnUnits}`}>
+                            {txn.units.toLocaleString('en-IN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+                          </div>
+                          {txn.nav != null && <div className={s.txnNav}>@{txn.nav.toFixed(4)}</div>}
+                        </>
+                      ) : <span className={s.txnNa}>—</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        }
-      />
+
+          {totalPages > 1 && (
+            <div className={d.pagination}>
+              <button className={d.pageBtn} onClick={() => setPage(p => p - 1)} disabled={page === 1}>← Prev</button>
+              <span className={d.pageInfo}>Page {page} of {totalPages} · {total.toLocaleString('en-IN')} transactions</span>
+              <button className={d.pageBtn} onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>Next →</button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
