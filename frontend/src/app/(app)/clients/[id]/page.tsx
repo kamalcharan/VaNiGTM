@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import {
-  VdfLoader, VdfButton, VdfStatusBadge, VdfTabs, VdfEmptyState,
+  VdfLoader, VdfButton, VdfStatusBadge, VdfTabs, VdfEmptyState, VdfPageHeader,
 } from '@/components/vdf';
 import s from './client-profile.module.css';
+import f from '@/styles/forms.module.css';
 
 /* ── Types ───────────────────────────────────────────── */
 
@@ -47,7 +49,9 @@ interface Bookmark {
 interface Client {
   id: number;
   client_uid: string;
+  client_no: string | null;
   contact_id: number;
+  is_active: boolean;
   prefix: string;
   name: string;
   ext_ref_id: string | null;
@@ -55,6 +59,7 @@ interface Client {
   dob: string | null;
   anniversary_date: string | null;
   survival_status: string;
+  date_of_death: string | null;
   risk_profile: string | null;
   onboarding_status: string;
   referred_by_name: string | null;
@@ -169,28 +174,28 @@ function OverviewTab({ client, clientId }: { client: Client; clientId: number })
           <div className={s.editForm}>
             <div className={s.editRow}>
               <div className={s.editField}>
-                <label className={s.editLabel}>PAN</label>
-                <input className={s.editInput} value={pan} onChange={e => setPan(e.target.value.toUpperCase())} placeholder="ABCDE1234F" maxLength={10} />
+                <label className={f.label}>PAN</label>
+                <input className={f.input} value={pan} onChange={e => setPan(e.target.value.toUpperCase())} placeholder="ABCDE1234F" maxLength={10} />
               </div>
               <div className={s.editField}>
-                <label className={s.editLabel}>Date of Birth</label>
-                <input className={s.editInput} type="date" value={dob} onChange={e => setDob(e.target.value)} />
-              </div>
-            </div>
-            <div className={s.editRow}>
-              <div className={s.editField}>
-                <label className={s.editLabel}>Anniversary</label>
-                <input className={s.editInput} type="date" value={anniversary} onChange={e => setAnniversary(e.target.value)} />
-              </div>
-              <div className={s.editField}>
-                <label className={s.editLabel}>Reference ID</label>
-                <input className={s.editInput} value={extRefId} onChange={e => setExtRefId(e.target.value)} placeholder="External reference code" />
+                <label className={f.label}>Date of Birth</label>
+                <input className={f.input} type="date" value={dob} onChange={e => setDob(e.target.value)} />
               </div>
             </div>
             <div className={s.editRow}>
               <div className={s.editField}>
-                <label className={s.editLabel}>Risk Profile</label>
-                <select className={s.editInput} value={riskProfile} onChange={e => setRiskProfile(e.target.value)}>
+                <label className={f.label}>Anniversary</label>
+                <input className={f.input} type="date" value={anniversary} onChange={e => setAnniversary(e.target.value)} />
+              </div>
+              <div className={s.editField}>
+                <label className={f.label}>Reference ID</label>
+                <input className={f.input} value={extRefId} onChange={e => setExtRefId(e.target.value)} placeholder="External reference code" />
+              </div>
+            </div>
+            <div className={s.editRow}>
+              <div className={s.editField}>
+                <label className={f.label}>Risk Profile</label>
+                <select className={f.select} value={riskProfile} onChange={e => setRiskProfile(e.target.value)}>
                   <option value="">— Not set —</option>
                   <option value="conservative">Conservative</option>
                   <option value="moderate">Moderate</option>
@@ -198,8 +203,8 @@ function OverviewTab({ client, clientId }: { client: Client; clientId: number })
                 </select>
               </div>
               <div className={s.editField}>
-                <label className={s.editLabel}>Onboarding Status</label>
-                <select className={s.editInput} value={onboardingStatus} onChange={e => setOnboardingStatus(e.target.value)}>
+                <label className={f.label}>Onboarding Status</label>
+                <select className={f.select} value={onboardingStatus} onChange={e => setOnboardingStatus(e.target.value)}>
                   <option value="pending">Pending</option>
                   <option value="in_progress">In Progress</option>
                   <option value="completed">Completed</option>
@@ -209,8 +214,8 @@ function OverviewTab({ client, clientId }: { client: Client; clientId: number })
             </div>
             <div className={s.editRow}>
               <div className={s.editFieldFull}>
-                <label className={s.editLabel}>Referred By</label>
-                <input className={s.editInput} value={referredBy} onChange={e => setReferredBy(e.target.value)} placeholder="Referral source or name" />
+                <label className={f.label}>Referred By</label>
+                <input className={f.input} value={referredBy} onChange={e => setReferredBy(e.target.value)} placeholder="Referral source or name" />
               </div>
             </div>
             <div className={s.editActions}>
@@ -349,12 +354,13 @@ function ChannelsTab({ channels }: { channels: Channel[] }) {
 
 function AddressesTab({ addresses, clientId }: { addresses: Address[]; clientId: number }) {
   const { showToast } = useToast();
+  const queryClient   = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [addrType, setAddrType]   = useState('residential');
   const [line1, setLine1]         = useState('');
   const [line2, setLine2]         = useState('');
   const [city, setCity]           = useState('');
-  const [state, setState]         = useState('');
+  const [addrState, setAddrState] = useState('');
   const [pincode, setPincode]     = useState('');
   const [isPrimary, setIsPrimary] = useState(addresses.length === 0);
 
@@ -364,19 +370,24 @@ function AddressesTab({ addresses, clientId }: { addresses: Address[]; clientId:
       onSuccess: () => {
         showToast({ message: 'Address saved', type: 'success' });
         setShowForm(false);
-        setLine1(''); setLine2(''); setCity(''); setState(''); setPincode('');
+        setLine1(''); setLine2(''); setCity(''); setAddrState(''); setPincode('');
+        queryClient.invalidateQueries({ queryKey: ['skill', 'client-skill', 'get_client'] });
       },
       onError: (e) => showToast({ message: e.message || 'Failed to save address', type: 'error' }),
     }
   );
 
   const handleAdd = () => {
-    if (!line1 || !city || !state || !pincode) {
+    if (!line1 || !city || !addrState || !pincode) {
       showToast({ message: 'Please fill all required address fields', type: 'error' });
       return;
     }
-    addAddress({ client_id: clientId, address_type: addrType, line1, line2: line2 || undefined, city, state, country: 'IN', pincode, is_primary: isPrimary });
+    addAddress({ client_id: clientId, address_type: addrType, line1, line2: line2 || undefined, city, state: addrState, country: 'India', pincode, is_primary: isPrimary });
   };
+
+  /* upsert hint: add_address upserts by (client_id, address_type) — selecting
+     a type that already has an address will update it, not add a duplicate */
+  const existingTypes = new Set(addresses.map(a => a.address_type));
 
   return (
     <div className={s.addressesWrap}>
@@ -391,35 +402,36 @@ function AddressesTab({ addresses, clientId }: { addresses: Address[]; clientId:
         <div className={s.addrForm}>
           <div className={s.editRow}>
             <div className={s.editField}>
-              <label className={s.editLabel}>Type</label>
-              <select className={s.editInput} value={addrType} onChange={e => setAddrType(e.target.value)}>
-                <option value="residential">Residential</option>
-                <option value="office">Office</option>
-                <option value="mailing">Mailing</option>
-                <option value="other">Other</option>
+              <label className={f.label}>Type</label>
+              <select className={f.select} value={addrType} onChange={e => setAddrType(e.target.value)}>
+                <option value="residential">Residential{existingTypes.has('residential') ? ' (update)' : ''}</option>
+                <option value="office">Office{existingTypes.has('office') ? ' (update)' : ''}</option>
+                <option value="mailing">Mailing{existingTypes.has('mailing') ? ' (update)' : ''}</option>
+                <option value="permanent">Permanent{existingTypes.has('permanent') ? ' (update)' : ''}</option>
+                <option value="other">Other{existingTypes.has('other') ? ' (update)' : ''}</option>
               </select>
             </div>
             <div className={s.editField}>
-              <label className={s.editLabel}>Pincode *</label>
-              <input className={s.editInput} value={pincode} onChange={e => setPincode(e.target.value)} placeholder="400001" maxLength={6} />
+              <label className={f.label}>Pincode *</label>
+              <input className={f.input} value={pincode} onChange={e => setPincode(e.target.value)} placeholder="400001" maxLength={6} />
             </div>
           </div>
           <div className={s.editFieldFull}>
-            <label className={s.editLabel}>Line 1 *</label>
-            <input className={s.editInput} value={line1} onChange={e => setLine1(e.target.value)} placeholder="Street / building / flat number" />
+            <label className={f.label}>Line 1 *</label>
+            <input className={f.input} value={line1} onChange={e => setLine1(e.target.value)} placeholder="Street / building / flat number" />
           </div>
           <div className={s.editFieldFull}>
-            <label className={s.editLabel}>Line 2</label>
-            <input className={s.editInput} value={line2} onChange={e => setLine2(e.target.value)} placeholder="Area / landmark (optional)" />
+            <label className={f.label}>Line 2</label>
+            <input className={f.input} value={line2} onChange={e => setLine2(e.target.value)} placeholder="Area / landmark (optional)" />
           </div>
           <div className={s.editRow}>
             <div className={s.editField}>
-              <label className={s.editLabel}>City *</label>
-              <input className={s.editInput} value={city} onChange={e => setCity(e.target.value)} placeholder="Mumbai" />
+              <label className={f.label}>City *</label>
+              <input className={f.input} value={city} onChange={e => setCity(e.target.value)} placeholder="Mumbai" />
             </div>
             <div className={s.editField}>
-              <label className={s.editLabel}>State *</label>
-              <input className={s.editInput} value={state} onChange={e => setState(e.target.value)} placeholder="Maharashtra" />
+              <label className={f.label}>State *</label>
+              <input className={f.input} value={addrState} onChange={e => setAddrState(e.target.value)} placeholder="Maharashtra" />
             </div>
           </div>
           <div className={s.primaryRow}>
@@ -429,8 +441,8 @@ function AddressesTab({ addresses, clientId }: { addresses: Address[]; clientId:
             </label>
           </div>
           <div className={s.editActions}>
-            <VdfButton variant="primary" size="sm" onClick={handleAdd} disabled={isPending}>
-              {isPending ? 'Saving…' : 'Save Address'}
+            <VdfButton variant="primary" size="sm" loading={isPending} onClick={handleAdd}>
+              {existingTypes.has(addrType) ? 'Update Address' : 'Save Address'}
             </VdfButton>
           </div>
         </div>
@@ -472,8 +484,9 @@ export default function ClientProfilePage() {
   const tabParam = searchParams?.get('tab') ?? null;
   const initialTab = tabParam === 'addresses' ? 'addresses' : 'overview';
 
-  const [activeTab, setActiveTab] = useState(initialTab);
-  const [bookmarked, setBookmarked] = useState(false);
+  const [activeTab, setActiveTab]           = useState(initialTab);
+  const [bookmarked, setBookmarked]         = useState(false);
+  const [confirmDeactivate, setConfirmDea]  = useState(false);
 
   const { data, isLoading, isError } = useSkillQuery<{ client: Client | null }>(
     'client-skill', 'get_client', { client_id: clientId }
@@ -494,6 +507,17 @@ export default function ClientProfilePage() {
     onSuccess: () => { setBookmarked(false); showToast({ message: 'Bookmark removed', type: 'success' }); },
     onError: () => showToast({ message: 'Failed to remove bookmark', type: 'error' }),
   });
+  const { mutate: setClientActive, isPending: isTogglingActive } = useSkillMutation(
+    'client-skill', 'set_client_active',
+    {
+      onSuccess: (_res, vars) => {
+        const activated = (vars as { is_active: boolean }).is_active;
+        showToast({ message: activated ? 'Client reactivated' : 'Client deactivated', type: 'success' });
+        setConfirmDea(false);
+      },
+      onError: (e) => showToast({ message: e.message || 'Failed to update status', type: 'error' }),
+    }
+  );
 
   if (isLoading) return <VdfLoader overlay message="Loading client…" />;
   if (isError || !data?.data?.client) return (
@@ -512,54 +536,89 @@ export default function ClientProfilePage() {
 
   return (
     <div className={s.page}>
-      {/* ── Hero ── */}
-      <div className={s.hero}>
-        <button className={s.backBtn} onClick={() => router.push('/clients')}>
-          ← Back to Clients
-        </button>
+      <VdfPageHeader
+        eyebrow={client.client_no ?? 'CLIENT PROFILE'}
+        title={`${client.prefix} ${client.name}`}
+        meta={<>
+          <button
+            style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', padding: 0, fontSize: '0.78rem' }}
+            onClick={() => router.push('/clients')}
+          >← Clients</button>
+          {' · '}
+          <VdfStatusBadge
+            label={client.onboarding_status.replace('_', ' ')}
+            variant={STATUS_VARIANT[client.onboarding_status] ?? 'muted'}
+            size="sm"
+          />
+          {client.risk_profile && (
+            <span style={{ color: RISK_COLORS[client.risk_profile], fontSize: '0.75rem', fontWeight: 600 }}>
+              {' · '}
+              <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 2, background: RISK_COLORS[client.risk_profile], marginRight: 4, verticalAlign: 'middle' }} />
+              {client.risk_profile}
+            </span>
+          )}
+          {client.survival_status === 'deceased' && (
+            <span style={{ color: 'var(--color-danger)', fontSize: '0.75rem' }}>{' · '}Deceased</span>
+          )}
+        </>}
+        actions={<>
+          <VdfButton variant="outline" size="sm" onClick={() => router.push(`/clients/${clientId}/edit`)}>
+            Edit Profile
+          </VdfButton>
+          {client.is_active !== false ? (
+            confirmDeactivate ? (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <VdfButton
+                  variant="danger"
+                  size="sm"
+                  loading={isTogglingActive}
+                  onClick={() => setClientActive({ client_id: clientId, is_active: false })}
+                >
+                  Confirm Deactivate
+                </VdfButton>
+                <VdfButton variant="ghost" size="xs" iconOnly onClick={() => setConfirmDea(false)} title="Cancel">✕</VdfButton>
+              </div>
+            ) : (
+              <VdfButton variant="ghost" size="sm" onClick={() => setConfirmDea(true)}>Deactivate</VdfButton>
+            )
+          ) : (
+            <VdfButton variant="primary" size="sm" loading={isTogglingActive}
+              onClick={() => setClientActive({ client_id: clientId, is_active: true })}>
+              Reactivate
+            </VdfButton>
+          )}
+          <VdfButton
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className={bookmarked ? s.bookmarked : ''}
+            title={bookmarked ? 'Remove bookmark' : 'Bookmark client'}
+            onClick={() => bookmarked ? removeBookmark({ client_id: clientId }) : addBookmark({ client_id: clientId })}
+          >
+            <svg viewBox="0 0 24 24" fill={bookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" width="18" height="18">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+            </svg>
+          </VdfButton>
+        </>}
+      />
 
-        <div className={s.heroContent}>
-          <div className={s.heroAvatar} style={{ background: avatarGradient(client.name) }}>
-            {initials(client.name)}
+      {/* ── Inactive banner ── */}
+      {client.is_active === false && (
+        <div className={s.inactiveBanner}>
+          <div className={s.inactiveBannerText}>
+            <span className={s.inactiveBannerDot} />
+            This client is inactive. Portfolio, goals, and transactions are read-only.
           </div>
-
-          <div className={s.heroText}>
-            <div className={s.heroNameRow}>
-              <h1 className={s.heroName}>{client.prefix} {client.name}</h1>
-              <button
-                className={`${s.bookmarkBtn} ${bookmarked ? s.bookmarked : ''}`}
-                title={bookmarked ? 'Remove bookmark' : 'Bookmark client'}
-                onClick={() => bookmarked
-                  ? removeBookmark({ client_id: clientId })
-                  : addBookmark({ client_id: clientId })}
-              >
-                <svg viewBox="0 0 24 24" fill={bookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" width="18" height="18">
-                  <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
-                </svg>
-              </button>
-            </div>
-
-            <div className={s.heroBadges}>
-              <VdfStatusBadge
-                label={client.onboarding_status.replace('_', ' ')}
-                variant={STATUS_VARIANT[client.onboarding_status] ?? 'muted'}
-              />
-              {client.risk_profile && (
-                <span className={s.riskTag} style={{ color: RISK_COLORS[client.risk_profile] }}>
-                  <span className={s.riskDot} style={{ background: RISK_COLORS[client.risk_profile] }} />
-                  {client.risk_profile}
-                </span>
-              )}
-              {client.ext_ref_id && (
-                <div className={s.refId}>
-                  <span className={s.refBadge}>ID</span>
-                  <span className={s.refValue}>{client.ext_ref_id}</span>
-                </div>
-              )}
-            </div>
-          </div>
+          <VdfButton
+            variant="primary"
+            size="sm"
+            loading={isTogglingActive}
+            onClick={() => setClientActive({ client_id: clientId, is_active: true })}
+          >
+            Reactivate Client
+          </VdfButton>
         </div>
-      </div>
+      )}
 
       {/* ── Tabs ── */}
       <div className={s.tabsBar}>

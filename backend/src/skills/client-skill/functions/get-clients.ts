@@ -1,5 +1,5 @@
 /**
- * client-skill: get_clients
+ * client-skill: get_clients — now returns anniversary_date, survival_status, referred_by_name
  * Paginated list of clients with optional search, risk_profile filter, and bookmark filter.
  */
 
@@ -16,6 +16,7 @@ interface ClientFilters {
   bookmarked_only?: boolean;
   recent_only?: boolean;
   in_family?: boolean;
+  show_inactive?: boolean;
 }
 
 interface GetClientsParams {
@@ -47,6 +48,7 @@ export async function get_clients(
     $bookmarked_only: filters.bookmarked_only ?? null,
     $recent_only:     filters.recent_only ?? null,
     $in_family:       filters.in_family ?? null,
+    $show_inactive:   filters.show_inactive ?? false,
     $limit:           limit,
     $offset:          offset,
   };
@@ -60,6 +62,7 @@ export async function get_clients(
     $bookmarked_only: queryParams.$bookmarked_only,
     $recent_only:     queryParams.$recent_only,
     $in_family:       queryParams.$in_family,
+    $show_inactive:   queryParams.$show_inactive,
   };
 
   const [dataRes, countRes] = await Promise.all([

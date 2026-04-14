@@ -17,139 +17,39 @@
   font-size: 0.85rem;
 }
 
-/* ── Hero ────────────────────────────────────────────── */
-
-.hero {
-  padding: 28px 32px 24px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--glass, var(--color-surface));
-  backdrop-filter: blur(8px);
+/* Active state for the bookmark VdfButton */
+.bookmarked {
+  border-color: var(--color-accent) !important;
+  color: var(--color-accent) !important;
 }
 
-.backBtn {
-  background: none;
-  border: none;
-  color: var(--color-muted);
-  font-size: 0.8rem;
-  cursor: pointer;
-  padding: 0;
-  margin-bottom: 20px;
-  display: block;
-  transition: color 160ms;
-}
+/* ── Inactive banner ─────────────────────────────────── */
 
-.backBtn:hover { color: var(--color-fg); }
-
-.heroContent {
+.inactiveBanner {
   display: flex;
   align-items: center;
-  gap: 20px;
-}
-
-.heroAvatar {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--color-bg);
-  flex-shrink: 0;
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-primary) 20%, transparent);
-}
-
-.heroText { flex: 1; }
-
-.heroNameRow {
-  display: flex;
-  align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  margin-bottom: 8px;
+  padding: 12px 32px;
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-warning) 30%, var(--color-border));
 }
 
-.heroName {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--color-fg);
-  margin: 0;
-  font-family: var(--font-display, 'Playfair Display', serif);
-  letter-spacing: -0.02em;
-}
-
-.bookmarkBtn {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  color: var(--color-muted);
-  cursor: pointer;
+.inactiveBannerText {
   display: flex;
   align-items: center;
-  justify-content: center;
-  transition: all 160ms;
-  flex-shrink: 0;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-warning);
 }
 
-.bookmarkBtn:hover,
-.bookmarkBtn.bookmarked {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
-.heroBadges {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-/* Risk tag */
-.riskTag {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: capitalize;
-}
-
-.riskDot {
+.inactiveBannerDot {
   width: 7px;
   height: 7px;
-  border-radius: 2px;
+  border-radius: 50%;
+  background: var(--color-warning);
   flex-shrink: 0;
-}
-
-/* License plate ext_ref_id */
-.refId {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid var(--color-border);
-  border-radius: 5px;
-  overflow: hidden;
-  box-shadow: 0 1px 0 var(--color-border);
-}
-
-.refBadge {
-  background: var(--color-fg);
-  color: var(--color-bg);
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  padding: 2px 6px;
-}
-
-.refValue {
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  color: var(--color-fg);
 }
 
 /* ── Tabs bar ────────────────────────────────────────── */
@@ -254,34 +154,6 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.editLabel {
-  font-size: var(--label-font-size, 0.65rem);
-  font-weight: var(--label-font-weight, 600);
-  letter-spacing: var(--label-letter-spacing, 0.12em);
-  text-transform: uppercase;
-  color: var(--color-muted);
-}
-
-.editInput {
-  height: var(--input-height, 44px);
-  padding: var(--input-padding, 13px 16px);
-  background: var(--color-bg);
-  border: var(--input-border-width, 1px) solid var(--color-border);
-  border-radius: var(--input-radius, 8px);
-  color: var(--color-fg);
-  font-size: var(--input-font-size, 0.9rem);
-  outline: none;
-  transition: border-color 200ms, box-shadow 200ms;
-  box-sizing: border-box;
-  width: 100%;
-  font-family: var(--font-body, 'DM Sans', sans-serif);
-}
-
-.editInput:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 var(--input-focus-ring-size, 3px) color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity, 12%), transparent);
 }
 
 .editActions {

@@ -8,6 +8,7 @@ import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfEmptyState, VdfButton, VdfStatusBadge, VdfReadinessRing,
   VdfSearchBar, VdfMobileInput, VdfInput, VdfPersonRow,
+  VdfPageHeader, VdfToggleGroup,
 } from '@/components/vdf';
 import s from './contacts.module.css';
 import d from '@/styles/data.module.css';
@@ -301,21 +302,17 @@ export default function ContactsPage() {
 
   return (
     <div className={s.page}>
-      {/* ── Sticky header ── */}
-      <div className={s.pageHeader}>
-        <div className={s.pageHeaderRow}>
-          <div>
-            <p className={s.eyebrow}>Contact Pipeline</p>
-            <h1 className={s.pageTitle}>Contacts <em>&amp; Prospects</em></h1>
-            <div className={s.pageMeta}>
-              <span><strong>{total}</strong> total</span>
-              <span><strong>{prospects}</strong> prospects</span>
-              <span><strong>{converted}</strong> converted</span>
-            </div>
-          </div>
-          <VdfButton variant="primary" size="sm" onClick={openDrawer}>+ Add Contact</VdfButton>
-        </div>
-      </div>
+      <VdfPageHeader
+        eyebrow="CONTACT PIPELINE"
+        title="Contacts"
+        titleEm="& Prospects"
+        meta={<>
+          <strong>{total}</strong> total ·{' '}
+          <strong>{prospects}</strong> prospects ·{' '}
+          <strong>{converted}</strong> converted
+        </>}
+        actions={<VdfButton variant="primary" size="sm" onClick={openDrawer}>+ Add Contact</VdfButton>}
+      />
 
       {/* ── Toolbar ── */}
       <div className={s.toolbar}>
@@ -328,20 +325,14 @@ export default function ContactsPage() {
           activePill={filter}
           onPillChange={handleFilterChange}
         />
-        <div className={s.statusToggle}>
-          <button
-            className={`${s.statusPill} ${status === 'active' ? s.statusPillActive : ''}`}
-            onClick={() => handleStatusChange('active')}
-          >
-            Active
-          </button>
-          <button
-            className={`${s.statusPill} ${status === 'inactive' ? s.statusPillInactive : ''}`}
-            onClick={() => handleStatusChange('inactive')}
-          >
-            Inactive
-          </button>
-        </div>
+        <VdfToggleGroup
+          options={[
+            { id: 'active',   label: 'Active',   activeColor: 'success' },
+            { id: 'inactive', label: 'Inactive', activeColor: 'warning' },
+          ]}
+          value={status}
+          onChange={v => handleStatusChange(v as StatusMode)}
+        />
       </div>
 
       {/* ── List ── */}
@@ -400,24 +391,28 @@ export default function ContactsPage() {
                       variant={contact.is_client ? 'success' : 'warning'}
                       size="sm"
                     />
-                    <div className={s.actions}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       {contact.is_active ? (
                         <>
-                          <button
-                            className={s.editBtn}
-                            onClick={(e) => { e.stopPropagation(); openEditDrawer(contact); }}
+                          <VdfButton
+                            variant="ghost"
+                            size="xs"
+                            iconOnly
+                            onClick={e => { e.stopPropagation(); openEditDrawer(contact); }}
                             title="Edit contact"
                           >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
                               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                               <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                             </svg>
-                          </button>
+                          </VdfButton>
                           {!contact.is_client && (
-                            <button
-                              className={s.deleteBtn}
+                            <VdfButton
+                              variant="danger"
+                              size="xs"
+                              iconOnly
                               disabled={deletingId === contact.id}
-                              onClick={(e) => handleDelete(e, contact.id)}
+                              onClick={e => handleDelete(e, contact.id)}
                               title="Deactivate contact"
                             >
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
@@ -426,22 +421,24 @@ export default function ContactsPage() {
                                 <path d="M10 11v6M14 11v6" />
                                 <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
                               </svg>
-                            </button>
+                            </VdfButton>
                           )}
                         </>
                       ) : (
-                        <button
-                          className={s.reactivateBtn}
+                        <VdfButton
+                          variant="success"
+                          size="sm"
                           disabled={reactivatingId === contact.id}
-                          onClick={(e) => handleReactivate(e, contact.id)}
-                          title="Reactivate contact"
+                          onClick={e => handleReactivate(e, contact.id)}
+                          icon={
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+                              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                              <path d="M3 3v5h5" />
+                            </svg>
+                          }
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
-                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                            <path d="M3 3v5h5" />
-                          </svg>
                           Reactivate
-                        </button>
+                        </VdfButton>
                       )}
                     </div>
                   </>}

@@ -8,6 +8,7 @@ export { VdfNoiseOverlay, type VdfNoiseOverlayProps } from './noise-overlay/VdfN
 export { VdfAtmosphere, type VdfAtmosphereProps } from './atmosphere/VdfAtmosphere';
 export { VdfParticles, type VdfParticlesProps } from './particles/VdfParticles';
 export { VdfModal, type VdfModalProps } from './modal/VdfModal';
+export { VdfDrawer, type VdfDrawerProps } from './drawer/VdfDrawer';
 export { VdfCheckbox, type VdfCheckboxProps } from './checkbox/VdfCheckbox';
 export { VdfTabs, type VdfTabsProps } from './tabs/VdfTabs';
 export { VdfNavRail, type VdfNavRailProps } from './nav-rail/VdfNavRail';
@@ -64,4 +65,7 @@ export { VdfColorPicker, type VdfColorPickerProps } from './color-picker/VdfColo
 export { VdfMobileHeader, type VdfMobileHeaderProps } from './mobile-header/VdfMobileHeader';
 export { VdfBottomNav, type VdfBottomNavProps } from './bottom-nav/VdfBottomNav';
 export { VdfPersonRow, type VdfPersonRowProps } from './person-row/VdfPersonRow';
+export { VdfToggleGroup, type VdfToggleGroupProps, type VdfToggleOption, type ToggleColor } from './toggle-group/VdfToggleGroup';
 export { VdfPageHeader, type VdfPageHeaderProps } from './page-header/VdfPageHeader';
+export { VdfSummaryCard, type VdfSummaryCardProps, type SummaryAccent } from './summary-card/VdfSummaryCard';
+export { VdfDashPanel, type VdfDashPanelProps } from './dash-panel/VdfDashPanel';

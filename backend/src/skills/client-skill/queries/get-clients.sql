@@ -1,15 +1,19 @@
 -- get-clients: paginated client list with contact info and bookmark status
 -- Named params: $tenant_id, $is_live, $search (nullable), $risk_profile (nullable),
 --               $user_id, $bookmarked_only (nullable), $recent_only (nullable),
---               $in_family (nullable), $limit, $offset
+--               $in_family (nullable), $show_inactive (boolean, default false), $limit, $offset
 
 SELECT
     cl.id,
     cl.client_uid,
     cl.client_no,
+    cl.is_active,
     cl.ext_ref_id,
     cl.pan,
     cl.dob,
+    cl.anniversary_date,
+    cl.survival_status,
+    cl.referred_by_name,
     cl.risk_profile,
     cl.onboarding_status,
     cl.created_at,
@@ -52,7 +56,7 @@ LEFT JOIN ki_client_bookmarks bm
 
 WHERE cl.tenant_id = $tenant_id
   AND cl.is_live   = $is_live
-  AND cl.is_active = true
+  AND cl.is_active = (NOT $show_inactive::boolean)
   AND (
       $search::text IS NULL
       OR c.normalized_name ILIKE '%' || UPPER($search::text) || '%'

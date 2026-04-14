@@ -10,6 +10,8 @@ export interface VdfStatCardProps {
   accent?: StatAccent;
   /** Optional percentage shown top-right */
   pct?: string;
+  /** Optional secondary line shown below the value */
+  sub?: string;
   className?: string;
   /** Makes the card a clickable filter button */
   onClick?: () => void;
@@ -17,7 +19,7 @@ export interface VdfStatCardProps {
   active?: boolean;
 }
 
-export function VdfStatCard({ value, label, accent = 'default', pct, className, onClick, active }: VdfStatCardProps) {
+export function VdfStatCard({ value, label, accent = 'default', pct, sub, className, onClick, active }: VdfStatCardProps) {
   const Tag = onClick ? 'button' : 'div';
   return (
     <Tag
@@ -25,6 +27,7 @@ export function VdfStatCard({ value, label, accent = 'default', pct, className, 
       {...(onClick ? { onClick, type: 'button' as const } : {})}
     >
       <span className={s.value}>{typeof value === 'number' ? value.toLocaleString() : value}</span>
+      {sub && <span className={s.sub}>{sub}</span>}
       <span className={s.label}>{label}</span>
       {pct && <span className={s.pct}>{pct}</span>}
     </Tag>

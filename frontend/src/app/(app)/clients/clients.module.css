@@ -355,6 +355,85 @@
   opacity: var(--input-placeholder-opacity, 0.35);
 }
 
+/* ── Edit drawer — tile selectors ────────────────────── */
+
+.drawerNote {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 15%, transparent);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.drawerFieldLabel {
+  font-size: var(--label-font-size, 0.65rem);
+  font-weight: var(--label-font-weight, 600);
+  letter-spacing: var(--label-letter-spacing, 0.12em);
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.drawerRow2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Risk profile tiles */
+.riskTiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.riskTile {
+  padding: 10px 8px;
+  background: color-mix(in srgb, var(--color-surface) 60%, var(--color-bg));
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+
+.riskTile:hover { border-color: var(--color-fg); color: var(--color-fg); }
+.riskTileActive { border-color: var(--color-primary) !important; color: var(--color-primary) !important; background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)); }
+
+/* Survival toggle */
+.survivalTiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.survivalTile {
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--color-surface) 60%, var(--color-bg));
+  border: 1.5px solid var(--color-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.survivalTile:hover { border-color: color-mix(in srgb, var(--color-fg) 30%, transparent); }
+.survivalTileAlive  { border-color: var(--color-primary) !important; background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface)); }
+.survivalTileDead   { border-color: var(--color-danger) !important; background: color-mix(in srgb, var(--color-danger) 6%, var(--color-surface)); }
+
+.survivalLabel { font-size: 0.82rem; font-weight: 600; color: var(--color-fg); }
+.survivalSub   { font-size: 0.7rem; color: var(--color-muted); margin-top: 1px; }
+
 /* ── Responsive (page layout only) ──────────────────── */
 
 @media (max-width: 900px) {

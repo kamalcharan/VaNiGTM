@@ -1,42 +1,482 @@
-/* Dashboard page — content only (sidebar is in app shell) */
+/* ═══════════════════════════════════════════════════════
+   PROKEY — DASHBOARD PAGE
+   Layout only. Card chrome lives in VdfDashPanel &
+   VdfSummaryCard. All colors via CSS variables.
+   ═══════════════════════════════════════════════════════ */
 
-.content {
-  padding: 40px 48px;
+/* ── Page shell ───────────────────────────────────────── */
+.page {
+  max-width: 1600px;
+  margin: 0 auto;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-/* ── Header ──────────────────────────────────────────── */
-.header { margin-bottom: 40px; }
-
-.title {
-  font-family: var(--font-display, 'Playfair Display', serif);
-  font-size: 1.8rem; font-weight: 900;
-  color: var(--color-fg); margin: 0 0 4px;
+.body {
+  flex: 1;
+  padding: 20px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.subtitle { font-size: 0.85rem; color: var(--color-muted); margin: 0; }
+/* ── Header slots ─────────────────────────────────────── */
+.headerDate {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  opacity: 0.7;
+}
 
-/* ── Stats Grid ──────────────────────────────────────── */
-.grid {
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dummyBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 35%, transparent);
+  border-radius: 20px;
+  color: var(--color-warning);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  animation: dummyPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes dummyPulse {
+  0%, 100% { opacity: 0.7; }
+  50%       { opacity: 1;   }
+}
+
+.refreshBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-muted);
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: border-color 200ms, color 200ms;
+}
+
+.refreshBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* ── Summary cards (4-col) ────────────────────────────── */
+.summaryGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px; margin-bottom: 40px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
 }
 
-/* ── Placeholder ─────────────────────────────────────── */
-.placeholder {
-  padding: 48px; border: 1px dashed var(--color-border);
-  border-radius: 12px; text-align: center;
+/* ── Main 3-col grid ──────────────────────────────────── */
+.mainGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 380px;
+  grid-template-rows: auto auto;
+  gap: 20px;
 }
 
-.placeholderText { color: var(--color-muted); font-size: 0.85rem; margin: 0; }
+/* Action Required panel spans both rows in column 3 */
+.actionsPanel {
+  grid-row: 1 / 3;
+}
 
-/* ── Responsive ──────────────────────────────────────── */
+/* ── Goals section (inside VdfDashPanel) ──────────────── */
+.goalsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.goalsStat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+
+.gsSuccess { border-color: color-mix(in srgb, var(--color-success) 30%, var(--color-border)); }
+.gsWarning { border-color: color-mix(in srgb, var(--color-warning) 30%, var(--color-border)); }
+.gsDanger  { border-color: color-mix(in srgb, var(--color-danger)  30%, var(--color-border)); }
+
+.goalsNum {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-fg);
+}
+
+.gsSuccess .goalsNum { color: var(--color-success); }
+.gsWarning .goalsNum { color: var(--color-warning); }
+.gsDanger  .goalsNum { color: var(--color-danger);  }
+
+.goalsLabel {
+  font-size: 0.55rem;
+  color: var(--color-muted);
+  opacity: 0.6;
+  letter-spacing: 0.04em;
+}
+
+.progressWrap { display: flex; flex-direction: column; gap: 6px; }
+
+.progressTrack {
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-border));
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--color-primary),
+    color-mix(in srgb, var(--color-primary) 70%, var(--color-success))
+  );
+  transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.progressMeta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  color: var(--color-muted);
+  opacity: 0.7;
+}
+
+.progressTarget { font-weight: 600; }
+
+/* ── Meetings section ─────────────────────────────────── */
+.meetingList { display: flex; flex-direction: column; gap: 4px; }
+
+.meetingRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 150ms;
+}
+
+.meetingRow:hover {
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+
+.meetingDim { opacity: 0.65; }
+
+.meetingIcon { font-size: 0.9rem; flex-shrink: 0; }
+
+.meetingName {
+  flex: 1;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.meetingTime {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.65rem;
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+
+.meetingMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.meetingDay {
+  font-size: 0.6rem;
+  color: var(--color-muted);
+  opacity: 0.6;
+}
+
+/* ── Divider with label ───────────────────────────────── */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.dividerLabel {
+  font-size: 0.6rem;
+  color: var(--color-muted);
+  opacity: 0.5;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* ── Action Required section ──────────────────────────── */
+.actionsList { display: flex; flex-direction: column; gap: 8px; }
+
+.actionRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border-left: 3px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 60%, var(--color-bg));
+  transition: background 150ms;
+}
+
+.actionRow:hover {
+  background: color-mix(in srgb, var(--color-primary) 4%, var(--color-bg));
+}
+
+.pr_critical { border-left-color: var(--color-danger);  }
+.pr_high     { border-left-color: var(--color-warning); }
+.pr_medium   { border-left-color: var(--color-info);    }
+.pr_low      { border-left-color: var(--color-border);  }
+
+.actionIcon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+
+.actionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.actionName {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actionDesc {
+  font-size: 0.65rem;
+  color: var(--color-muted);
+  opacity: 0.7;
+}
+
+.actionMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.actionAmount {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.actionDue {
+  font-size: 0.6rem;
+  color: var(--color-muted);
+  opacity: 0.55;
+}
+
+/* ── Withdrawals section ──────────────────────────────── */
+.withdrawSection { display: flex; flex-direction: column; gap: 6px; }
+
+.withdrawLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 2px;
+}
+
+.withdrawDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.withdrawRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface) 50%, var(--color-bg));
+  gap: 8px;
+}
+
+.withdrawInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.withdrawName {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.withdrawGoal {
+  font-size: 0.6rem;
+  color: var(--color-muted);
+  opacity: 0.6;
+}
+
+.withdrawFigures {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.withdrawAmount {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.withdrawDays {
+  font-size: 0.6rem;
+  color: var(--color-muted);
+  opacity: 0.55;
+}
+
+/* ── Transactions table ───────────────────────────────── */
+.txnWrap { overflow-x: auto; }
+
+.txnTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.txnTable th {
+  text-align: left;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  padding: 0 12px 12px;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.txnTable td {
+  padding: 11px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+  color: var(--color-fg);
+  vertical-align: middle;
+}
+
+.txnTable tr:last-child td { border-bottom: none; }
+
+.txnTable tr:hover td {
+  background: color-mix(in srgb, var(--color-primary) 3%, transparent);
+}
+
+.txnR { text-align: right; }
+
+.txnName  { font-weight: 500; white-space: nowrap; }
+
+.txnScheme {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.txnDate {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.txnTypeGreen, .txnTypeRed {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.txnTypeGreen {
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  color: var(--color-success);
+}
+
+.txnTypeRed {
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  color: var(--color-danger);
+}
+
+.txnAmtGreen { color: var(--color-success); font-weight: 600; }
+.txnAmtRed   { color: var(--color-danger);  font-weight: 600; }
+
+/* ── Responsive ───────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .mainGrid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+  }
+  .actionsPanel { grid-row: auto; }
+}
+
 @media (max-width: 768px) {
-  .content { padding: 24px; }
+  .body         { padding: 16px 20px 24px; }
+  .summaryGrid  { grid-template-columns: repeat(2, 1fr); }
+  .mainGrid     { grid-template-columns: 1fr; }
+  .actionsPanel { grid-row: auto; }
 }
 
 @media (max-width: 480px) {
-  .content {
-    padding: 14px;
-  }
+  .body         { padding: 12px 14px 20px; }
+  .summaryGrid  { grid-template-columns: 1fr 1fr; }
 }

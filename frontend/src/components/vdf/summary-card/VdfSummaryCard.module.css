@@ -1,0 +1,78 @@
+/* ═══════════════════════════════════════════════════════
+   VdfSummaryCard — Dashboard top-metric card
+   Left accent bar + eyebrow + display value + sub line
+   All colors via CSS variables. No hardcoded values.
+   ═══════════════════════════════════════════════════════ */
+
+.card {
+  display: block;
+  width: 100%;
+  padding: 20px 20px 20px 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color 200ms, transform 200ms;
+}
+
+/* ── Left accent bar ──────────────────────────────────── */
+.accentBar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 14px 0 0 14px;
+}
+
+.accent_primary .accentBar  { background: var(--color-primary); }
+.accent_success .accentBar  { background: var(--color-success); }
+.accent_warning .accentBar  { background: var(--color-warning); }
+.accent_info    .accentBar  { background: var(--color-info);    }
+.accent_danger  .accentBar  { background: var(--color-danger);  }
+
+/* ── Eyebrow ──────────────────────────────────────────── */
+.eyebrow {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin: 0 0 10px;
+}
+
+/* ── Value ────────────────────────────────────────────── */
+.value {
+  font-family: var(--font-display, 'Playfair Display', serif);
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-fg);
+  margin: 0 0 8px;
+}
+
+/* ── Sub line ─────────────────────────────────────────── */
+.sub {
+  font-size: 0.72rem;
+  margin: 0;
+  color: var(--color-muted);
+  opacity: 0.75;
+}
+
+.sub_up      { color: var(--color-success); opacity: 1; font-weight: 600; }
+.sub_down    { color: var(--color-danger);  opacity: 1; font-weight: 600; }
+.sub_neutral { color: var(--color-muted); }
+
+/* ── Clickable variant ────────────────────────────────── */
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  transform: translateY(-2px);
+}

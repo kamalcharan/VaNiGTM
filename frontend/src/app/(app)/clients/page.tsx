@@ -8,7 +8,7 @@ import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfEmptyState, VdfButton, VdfStatusBadge,
   VdfCard, VdfSearchBar, VdfStatCard, VdfModal, VdfPersonRow,
-  VdfPageHeader,
+  VdfPageHeader, VdfToggleGroup, VdfDrawer, VdfInput,
 } from '@/components/vdf';
 import s from './clients.module.css';
 import d from '@/styles/data.module.css';
@@ -23,8 +23,12 @@ interface Client {
   ext_ref_id: string | null;
   pan: string | null;
   dob: string | null;
+  anniversary_date: string | null;
+  survival_status: string;
+  referred_by_name: string | null;
   risk_profile: string | null;
   onboarding_status: string;
+  is_active: boolean;
   is_bookmarked: boolean;
   prefix: string;
   name: string;
@@ -55,6 +59,7 @@ interface StatsData {
 
 type RiskFilter  = 'all' | 'conservative' | 'moderate' | 'aggressive';
 type ViewMode    = 'row' | 'grid';
+type StatusMode  = 'active' | 'inactive';
 
 /* ── Constants ───────────────────────────────────────── */
 
@@ -121,6 +126,7 @@ export default function ClientsPage() {
 
   /* ── View & filter state ─────────────────────────── */
   const [viewMode,       setViewMode]       = useState<ViewMode>('row');
+  const [status,         setStatus]         = useState<StatusMode>('active');
   const [search,         setSearch]         = useState('');
   const [activeSearch,   setActiveSearch]   = useState('');
   const [riskFilter,     setRiskFilter]     = useState<RiskFilter>('all');
@@ -129,11 +135,23 @@ export default function ClientsPage() {
   const [inFamily,       setInFamily]       = useState(false);
   const [page,           setPage]           = useState(1);
   const [bookmarkingId,  setBookmarkingId]  = useState<number | null>(null);
+  const [togglingId,     setTogglingId]     = useState<number | null>(null);
 
   /* ── Bookmark modal state ────────────────────────── */
   const [bookmarkTarget,   setBookmarkTarget]   = useState<Client | null>(null);
   const [selectedReasonId, setSelectedReasonId] = useState<number | null>(null);
   const [customReason,     setCustomReason]     = useState('');
+
+  /* ── Edit drawer state ───────────────────────────── */
+  const [editTarget,    setEditTarget]    = useState<Client | null>(null);
+  const [editPan,       setEditPan]       = useState('');
+  const [editDob,       setEditDob]       = useState('');
+  const [editAnniv,     setEditAnniv]     = useState('');
+  const [editExtRef,    setEditExtRef]    = useState('');
+  const [editRisk,      setEditRisk]      = useState('');
+  const [editOnboarding,setEditOnboarding]= useState('pending');
+  const [editSurvival,  setEditSurvival]  = useState<'alive' | 'deceased'>('alive');
+  const [editReferredBy,setEditReferredBy]= useState('');
 
   /* ── Stats query ─────────────────────────────────── */
   const { data: statsData } = useSkillQuery<StatsData>('client-skill', 'get_stats', {});
@@ -154,10 +172,11 @@ export default function ClientsPage() {
       bookmarked_only: bookmarkedOnly || undefined,
       recent_only:     recentOnly || undefined,
       in_family:       inFamily || undefined,
+      show_inactive:   status === 'inactive' || undefined,
     },
     limit:  PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE,
-  }), [activeSearch, riskFilter, bookmarkedOnly, recentOnly, inFamily, page]);
+  }), [activeSearch, riskFilter, bookmarkedOnly, recentOnly, inFamily, status, page]);
 
   const { data, isLoading, isError, error } = useSkillQuery<ClientsData>(
     'client-skill', 'get_clients', skillParams
@@ -166,6 +185,26 @@ export default function ClientsPage() {
   const clients    = data?.data?.clients ?? [];
   const total      = data?.data?.total   ?? 0;
   const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  /* ── Active/inactive toggle mutation ────────────── */
+  const { mutate: setClientActive } = useSkillMutation(
+    'client-skill', 'set_client_active',
+    {
+      onSuccess: (_data, vars: { client_id: number; is_active: boolean }) => {
+        queryClient.invalidateQueries({ queryKey: ['skill', 'client-skill', 'get_clients'] });
+        queryClient.invalidateQueries({ queryKey: ['skill', 'client-skill', 'get_stats'] });
+        showToast({
+          message: vars.is_active ? 'Client reactivated' : 'Client deactivated',
+          type: vars.is_active ? 'success' : 'info',
+        });
+        setTogglingId(null);
+      },
+      onError: (err) => {
+        showToast({ message: err.message || 'Failed to update client status', type: 'error' });
+        setTogglingId(null);
+      },
+    }
+  );
 
   /* ── Bookmark mutations ──────────────────────────── */
   const addBookmark    = useSkillMutation('client-skill', 'add_bookmark');
@@ -240,6 +279,49 @@ export default function ClientsPage() {
     setCustomReason('');
   }, []);
 
+  /* ── Edit drawer mutation & handlers ─────────────── */
+  const { mutate: updateClient, isPending: updatingClient } = useSkillMutation(
+    'client-skill', 'update_client',
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['skill', 'client-skill', 'get_clients'] });
+        showToast({ message: 'Client updated.', type: 'success' });
+        setEditTarget(null);
+      },
+      onError: (err) => showToast({ message: err.message || 'Failed to update client', type: 'error' }),
+    }
+  );
+
+  const openEditDrawer = useCallback((client: Client, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditTarget(client);
+    setEditPan(client.pan ?? '');
+    setEditDob(client.dob ? client.dob.slice(0, 10) : '');
+    setEditAnniv(client.anniversary_date ? client.anniversary_date.slice(0, 10) : '');
+    setEditExtRef(client.ext_ref_id ?? '');
+    setEditRisk(client.risk_profile ?? '');
+    setEditOnboarding(client.onboarding_status ?? 'pending');
+    setEditSurvival((client.survival_status === 'deceased' ? 'deceased' : 'alive') as 'alive' | 'deceased');
+    setEditReferredBy(client.referred_by_name ?? '');
+  }, []);
+
+  const closeEditDrawer = useCallback(() => setEditTarget(null), []);
+
+  const handleEditSave = useCallback(() => {
+    if (!editTarget) return;
+    updateClient({
+      client_id:       editTarget.id,
+      pan:             editPan.trim().toUpperCase() || undefined,
+      dob:             editDob || undefined,
+      anniversary_date:editAnniv || undefined,
+      ext_ref_id:      editExtRef.trim() || undefined,
+      risk_profile:    editRisk || undefined,
+      onboarding_status: editOnboarding || undefined,
+      survival_status: editSurvival,
+      referred_by_name: editReferredBy.trim() || undefined,
+    });
+  }, [editTarget, editPan, editDob, editAnniv, editExtRef, editRisk, editOnboarding, editSurvival, editReferredBy, updateClient]);
+
   /* ── Search handlers ─────────────────────────────── */
   const triggerSearch = useCallback(() => {
     setActiveSearch(search);
@@ -255,6 +337,27 @@ export default function ClientsPage() {
     setRiskFilter(id as RiskFilter);
     setPage(1);
   }, []);
+
+  const handleStatusChange = useCallback((s: StatusMode) => {
+    setStatus(s);
+    setPage(1);
+    // Inactive view: disable bookmark/recent/family filters (they're active-only)
+    if (s === 'inactive') {
+      setBookmarkedOnly(false);
+      setRecentOnly(false);
+      setInFamily(false);
+    }
+  }, []);
+
+  const handleToggleActive = useCallback((
+    e: React.MouseEvent<HTMLButtonElement | HTMLAnchorElement>,
+    client: Client
+  ) => {
+    e.stopPropagation();
+    if (togglingId === client.id) return;
+    setTogglingId(client.id);
+    setClientActive({ client_id: client.id, is_active: !client.is_active });
+  }, [togglingId, setClientActive]);
 
   /* ── Loading / error ─────────────────────────────── */
   if (isLoading) return <VdfLoader overlay message="Loading clients…" />;
@@ -379,10 +482,18 @@ export default function ClientsPage() {
           onChange={handleSearchChange}
           onSearch={triggerSearch}
           placeholder="Search by name, PAN, or reference code…"
-          pills={RISK_PILLS}
+          pills={status === 'active' ? RISK_PILLS : [{ id: 'all', label: 'All' }]}
           activePill={riskFilter}
           onPillChange={handleRiskChange}
-          addon={bookmarkAddon}
+          addon={status === 'active' ? bookmarkAddon : undefined}
+        />
+        <VdfToggleGroup
+          options={[
+            { id: 'active',   label: 'Active',   activeColor: 'success' },
+            { id: 'inactive', label: 'Inactive', activeColor: 'warning' },
+          ]}
+          value={status}
+          onChange={v => handleStatusChange(v as StatusMode)}
         />
         {viewToggle}
       </div>
@@ -439,6 +550,49 @@ export default function ClientsPage() {
                     variant={STATUS_VARIANT[client.onboarding_status] ?? 'muted'}
                     size="sm"
                   />
+                  {client.is_active !== false ? (
+                    <>
+                      <VdfButton
+                        variant="ghost"
+                        size="xs"
+                        iconOnly
+                        onClick={e => openEditDrawer(client, e)}
+                        title="Edit client"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
+                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </VdfButton>
+                      <VdfButton
+                        variant="danger"
+                        size="sm"
+                        iconOnly
+                        disabled={togglingId === client.id}
+                        onClick={e => handleToggleActive(e, client)}
+                        title="Deactivate client"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+                          <circle cx="12" cy="12" r="10" /><line x1="8" y1="12" x2="16" y2="12" />
+                        </svg>
+                      </VdfButton>
+                    </>
+                  ) : (
+                    <VdfButton
+                      variant="success"
+                      size="sm"
+                      disabled={togglingId === client.id}
+                      onClick={e => handleToggleActive(e, client)}
+                      icon={
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+                          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                          <path d="M3 3v5h5" />
+                        </svg>
+                      }
+                    >
+                      Reactivate
+                    </VdfButton>
+                  )}
                   <button
                     className={`${s.bmBtn} ${client.is_bookmarked ? s.bmBtnActive : ''}`}
                     onClick={(e) => handleBookmarkClick(client, e)}
@@ -599,6 +753,124 @@ export default function ClientsPage() {
           </div>
         )}
       </VdfModal>
+
+      {/* ── Edit drawer ──────────────────────────────── */}
+      <VdfDrawer
+        isOpen={!!editTarget}
+        onClose={closeEditDrawer}
+        title="Edit Client"
+        subtitle={editTarget ? `${editTarget.prefix} ${editTarget.name}` : undefined}
+        footer={
+          <>
+            <VdfButton variant="outline" size="sm" onClick={closeEditDrawer} disabled={updatingClient}>Cancel</VdfButton>
+            <VdfButton variant="primary" size="sm" loading={updatingClient} onClick={handleEditSave}>Save Changes</VdfButton>
+          </>
+        }
+      >
+        <p className={s.drawerNote}>
+          Name and contact details are managed from the contact profile. Edit KYC and classification fields here.
+        </p>
+
+        {/* PAN + DOB */}
+        <div className={s.drawerRow2}>
+          <VdfInput
+            label="PAN"
+            value={editPan}
+            onChange={e => setEditPan(e.target.value.toUpperCase().slice(0, 10))}
+            placeholder="ABCDE1234F"
+            style={{ fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.1em', fontWeight: 600, textTransform: 'uppercase' }}
+          />
+          <VdfInput
+            label="Date of Birth"
+            type="date"
+            value={editDob}
+            onChange={e => setEditDob(e.target.value)}
+          />
+        </div>
+
+        {/* Anniversary + Referred By */}
+        <div className={s.drawerRow2}>
+          <VdfInput
+            label="Anniversary"
+            type="date"
+            value={editAnniv}
+            onChange={e => setEditAnniv(e.target.value)}
+          />
+          <VdfInput
+            label="Referred By"
+            value={editReferredBy}
+            onChange={e => setEditReferredBy(e.target.value)}
+            placeholder="Referrer name"
+          />
+        </div>
+
+        {/* Ext Ref ID */}
+        <VdfInput
+          label="Client Code / Ext Ref"
+          value={editExtRef}
+          onChange={e => setEditExtRef(e.target.value)}
+          placeholder="e.g. CAMS code, BSE StarMF code"
+        />
+
+        {/* Risk Profile */}
+        <div>
+          <span className={s.drawerFieldLabel}>Risk Profile</span>
+          <div className={s.riskTiles}>
+            {(['conservative', 'moderate', 'aggressive'] as const).map(r => (
+              <button
+                key={r}
+                type="button"
+                className={`${s.riskTile} ${editRisk === r ? s.riskTileActive : ''}`}
+                onClick={() => setEditRisk(editRisk === r ? '' : r)}
+              >
+                {r.charAt(0).toUpperCase() + r.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Onboarding Status */}
+        <div>
+          <label className={s.drawerFieldLabel}>Onboarding Status</label>
+          <select
+            className={s.reasonSelect}
+            value={editOnboarding}
+            onChange={e => setEditOnboarding(e.target.value)}
+          >
+            <option value="pending">Pending</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+
+        {/* Survival Status */}
+        <div>
+          <span className={s.drawerFieldLabel}>Status</span>
+          <div className={s.survivalTiles}>
+            <button
+              type="button"
+              className={`${s.survivalTile} ${editSurvival === 'alive' ? s.survivalTileAlive : ''}`}
+              onClick={() => setEditSurvival('alive')}
+            >
+              <div>
+                <div className={s.survivalLabel}>Alive</div>
+                <div className={s.survivalSub}>Active client</div>
+              </div>
+            </button>
+            <button
+              type="button"
+              className={`${s.survivalTile} ${editSurvival === 'deceased' ? s.survivalTileDead : ''}`}
+              onClick={() => setEditSurvival('deceased')}
+            >
+              <div>
+                <div className={s.survivalLabel}>Deceased</div>
+                <div className={s.survivalSub}>Mark if applicable</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </VdfDrawer>
     </div>
   );
 }
