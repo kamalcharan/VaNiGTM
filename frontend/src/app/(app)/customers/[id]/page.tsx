@@ -7,6 +7,7 @@ import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfButton, VdfStatusBadge, VdfTabs, VdfEmptyState, VdfPageHeader,
 } from '@/components/vdf';
+import { SnapshotTab } from '@/app/(app)/contacts/[id]/snapshot-tab';
 import s from './customer-dashboard.module.css';
 
 /* ── Types ───────────────────────────────────────────── */
@@ -356,6 +357,19 @@ function GoalsTab({ clientId }: { clientId: number }) {
   );
 }
 
+/* ── CRM Data Tab ────────────────────────────────────── */
+
+function CrmDataTab() {
+  return (
+    <div className={s.tabContent}>
+      <VdfEmptyState
+        title="CRM Data"
+        description="KYC, channels, addresses, family links and compliance records will appear here."
+      />
+    </div>
+  );
+}
+
 /* ── Main Page ───────────────────────────────────────── */
 
 export default function CustomerDashboardPage() {
@@ -366,7 +380,7 @@ export default function CustomerDashboardPage() {
   const clientId = Number(id);
 
   const tabParam   = searchParams?.get('tab') ?? null;
-  const initialTab = ['portfolio', 'transactions', 'goals'].includes(tabParam ?? '')
+  const initialTab = ['portfolio', 'transactions', 'snapshot', 'crm', 'goals'].includes(tabParam ?? '')
     ? tabParam!
     : 'portfolio';
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -395,9 +409,11 @@ export default function CustomerDashboardPage() {
   const avatarStyle = { background: avatarGradient(client.name) };
 
   const TABS = [
-    { id: 'portfolio',     label: 'Portfolio' },
-    { id: 'transactions',  label: 'Transactions' },
-    { id: 'goals',         label: 'Goals' },
+    { id: 'portfolio',    label: 'Portfolio' },
+    { id: 'transactions', label: 'Transactions' },
+    { id: 'snapshot',     label: 'Financial Snapshot' },
+    { id: 'crm',          label: 'CRM Data' },
+    { id: 'goals',        label: 'Goals' },
   ];
 
   return (
@@ -412,13 +428,6 @@ export default function CustomerDashboardPage() {
             onClick={() => router.push('/clients')}
           >
             ← Clients
-          </button>
-          {' · '}
-          <button
-            className={s.backBtn}
-            onClick={() => router.push(`/clients/${clientId}`)}
-          >
-            CRM Profile
           </button>
           {client.risk_profile && (
             <span className={s.riskPill} style={{ color: RISK_COLORS[client.risk_profile] ?? 'var(--color-muted)' }}>
@@ -438,9 +447,6 @@ export default function CustomerDashboardPage() {
           <div className={s.avatarSmall} style={avatarStyle}>
             {initials(client.name)}
           </div>
-          <VdfButton variant="outline" size="sm" onClick={() => router.push(`/clients/${clientId}`)}>
-            View CRM Profile
-          </VdfButton>
           <VdfButton variant="ghost" size="sm" onClick={() => router.push('/import')}>
             Import Data
           </VdfButton>
@@ -477,6 +483,14 @@ export default function CustomerDashboardPage() {
       <div className={s.tabPanel}>
         {activeTab === 'portfolio'    && <PortfolioTab    clientId={clientId} />}
         {activeTab === 'transactions' && <TransactionsTab clientId={clientId} />}
+        {activeTab === 'snapshot'     && (
+          <SnapshotTab
+            contactId={client.contact_id}
+            isClient={true}
+            contactName={clientDisplayName}
+          />
+        )}
+        {activeTab === 'crm'          && <CrmDataTab />}
         {activeTab === 'goals'        && <GoalsTab        clientId={clientId} />}
       </div>
     </div>

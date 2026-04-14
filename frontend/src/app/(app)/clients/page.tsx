@@ -614,7 +614,7 @@ export default function ClientsPage() {
                   </button>
                 </>}
                 highlighted={client.is_bookmarked}
-                onClick={() => router.push(`/clients/${client.id}`)}
+                onClick={() => router.push(`/customers/${client.id}`)}
               />
             ))}
           </div>
@@ -631,7 +631,7 @@ export default function ClientsPage() {
                 key={client.id}
                 hoverLift
                 accentColor={client.risk_profile ? RISK_COLORS[client.risk_profile] : undefined}
-                onClick={() => router.push(`/clients/${client.id}`)}
+                onClick={() => router.push(`/customers/${client.id}`)}
               >
                 {client.risk_profile && (
                   <div
