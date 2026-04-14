@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useState, useCallback, type FormEvent } from 'react';
+import { Fragment, useState, useCallback, useEffect, type FormEvent } from 'react';
 import { useSkillQuery, useSkillMutation, type SkillResult } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
 import type { ApiError } from '@/lib/api-client';
@@ -330,10 +330,10 @@ export default function CourseCorrectionPage() {
     refetch();
   }, [refetch]);
 
-  if (isLoading) return <VdfLoader overlay message="Loading corrections…" />;
-  if (isError) {
-    showToast({ message: error?.message ?? 'Failed to load corrections', type: 'error' });
-  }
+  /* ── Error toast (useEffect — never call setState during render) ── */
+  useEffect(() => {
+    if (isError) showToast({ message: error?.message ?? 'Failed to load corrections', type: 'error' });
+  }, [isError]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className={s.page}>
@@ -360,6 +360,8 @@ export default function CourseCorrectionPage() {
       />
 
       <div className={s.body}>
+
+        {isLoading && <VdfLoader overlay message="Loading corrections…" />}
 
         {/* ── Info banner ── */}
         <div className={s.infoBanner}>

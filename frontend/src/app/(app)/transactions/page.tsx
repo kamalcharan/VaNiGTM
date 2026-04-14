@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSkillQuery } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
@@ -127,9 +127,13 @@ export default function TransactionsPage() {
   const [dupeOnly,  setDupeOnly]  = useState(false);
   const [page,      setPage]      = useState(1);
 
-  /* Effective date_from: manual override > period */
-  const activeDateFrom = dateFrom || periodToDateFrom(period);
-  const activeDateTo   = dateTo   || undefined;
+  /* Effective date_from: manual override > period — memoised so the value is
+     referentially stable and doesn't cause a new query key on every render */
+  const activeDateFrom = useMemo(
+    () => dateFrom || periodToDateFrom(period),
+    [dateFrom, period],
+  );
+  const activeDateTo = dateTo || undefined;
 
   /* ── Queries ─────────────────────────────────────── */
   const txnParams = useMemo(() => ({
@@ -176,11 +180,10 @@ export default function TransactionsPage() {
     setSearch(v); setPage(1);
   }, []);
 
-  /* ── Loading / error ─────────────────────────────── */
-  if (isLoading) return <VdfLoader overlay message="Loading transactions…" />;
-  if (isError) {
-    showToast({ message: error?.message ?? 'Failed to load transactions', type: 'error' });
-  }
+  /* ── Error toast (useEffect — never call setState during render) ── */
+  useEffect(() => {
+    if (isError) showToast({ message: error?.message ?? 'Failed to load transactions', type: 'error' });
+  }, [isError]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const netUp = (summary?.net_flow ?? 0) >= 0;
 
@@ -221,6 +224,9 @@ export default function TransactionsPage() {
       />
 
       <div className={s.body}>
+
+        {/* ── Loading overlay ── */}
+        {isLoading && <VdfLoader overlay message="Loading transactions…" />}
 
         {/* ── Summary strip ── */}
         {summary && (

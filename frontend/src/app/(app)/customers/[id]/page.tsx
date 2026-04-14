@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSkillQuery } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
@@ -535,7 +535,9 @@ function TransactionsTab({ clientId }: { clientId: number }) {
     'transaction-skill', 'get_transactions', params
   );
 
-  if (isError) showToast({ message: error?.message ?? 'Failed to load transactions', type: 'error' });
+  useEffect(() => {
+    if (isError) showToast({ message: error?.message ?? 'Failed to load transactions', type: 'error' });
+  }, [isError]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const transactions = data?.data?.transactions ?? [];
   const total        = data?.data?.total        ?? 0;
