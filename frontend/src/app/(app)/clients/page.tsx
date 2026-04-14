@@ -556,6 +556,17 @@ export default function ClientsPage() {
                         variant="ghost"
                         size="xs"
                         iconOnly
+                        onClick={e => { e.stopPropagation(); router.push(`/customers/${client.id}`); }}
+                        title="View portfolio dashboard"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
+                          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                        </svg>
+                      </VdfButton>
+                      <VdfButton
+                        variant="ghost"
+                        size="xs"
+                        iconOnly
                         onClick={e => openEditDrawer(client, e)}
                         title="Edit client"
                       >
@@ -677,14 +688,25 @@ export default function ClientsPage() {
                     variant={STATUS_VARIANT[client.onboarding_status] ?? 'muted'}
                     size="sm"
                   />
-                  <button
-                    className={`${s.bmBtn} ${client.is_bookmarked ? s.bmBtnActive : ''}`}
-                    onClick={(e) => handleBookmarkClick(client, e)}
-                    disabled={bookmarkingId === client.id}
-                    title={client.is_bookmarked ? 'Remove bookmark' : 'Bookmark'}
-                  >
-                    <BookmarkIcon filled={client.is_bookmarked} size={14} />
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button
+                      className={s.bmBtn}
+                      onClick={e => { e.stopPropagation(); router.push(`/customers/${client.id}`); }}
+                      title="View portfolio dashboard"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                      </svg>
+                    </button>
+                    <button
+                      className={`${s.bmBtn} ${client.is_bookmarked ? s.bmBtnActive : ''}`}
+                      onClick={(e) => handleBookmarkClick(client, e)}
+                      disabled={bookmarkingId === client.id}
+                      title={client.is_bookmarked ? 'Remove bookmark' : 'Bookmark'}
+                    >
+                      <BookmarkIcon filled={client.is_bookmarked} size={14} />
+                    </button>
+                  </div>
                 </div>
               </VdfCard>
             ))}
