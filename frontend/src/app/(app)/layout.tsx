@@ -6,7 +6,6 @@ import { useAuth } from '@/context/auth-provider';
 import { VdfSidebar, VdfLoader } from '@/components/vdf';
 import { VdfMobileHeader } from '@/components/vdf/mobile-header/VdfMobileHeader';
 import { VdfBottomNav } from '@/components/vdf/bottom-nav/VdfBottomNav';
-import { getAccessToken } from '@/lib/api-client';
 import s from './app-shell.module.css';
 
 /** Routes that render full-screen without the sidebar */
@@ -37,10 +36,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Hydration safety: both server and initial client render agree on false
   useEffect(() => { setClientReady(true); }, []);
 
-  // Auth guard
+  // Auth guard — wait for bootstrap to complete before redirecting.
+  // getAccessToken() is null during bootstrap (in-memory token not yet restored),
+  // so we must gate on isLoading to avoid a premature redirect to /login.
   useEffect(() => {
-    if (!getAccessToken()) router.replace('/login');
-  }, [router]);
+    if (!isLoading && !isAuthenticated) router.replace('/login');
+  }, [isLoading, isAuthenticated, router]);
 
   // Onboarding guard
   useEffect(() => {

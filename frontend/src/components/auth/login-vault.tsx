@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useLogin, type ActiveSession } from '@/hooks';
-import { storeTokens, getAccessToken, type ApiError } from '@/lib/api-client';
+import { storeTokens, type ApiError } from '@/lib/api-client';
+import { useAuth } from '@/context/auth-provider';
 import { VdfLoader } from '@/components/vdf';
 import { useToast } from '@/components/toast';
 import s from './login-vault.module.css';
@@ -15,6 +16,7 @@ interface SessionLimitData {
 export default function LoginVault() {
   const loginMutation = useLogin();
   const { showToast } = useToast();
+  const { isAuthenticated, isLoading } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,11 +29,14 @@ export default function LoginVault() {
 
   const loading = loginMutation.isPending;
 
-  // If already have a token, redirect to dashboard (layout handles onboarding check)
-  if (typeof window !== 'undefined' && getAccessToken()) {
-    window.location.href = '/dashboard';
-    return null;
-  }
+  // If already authenticated (after bootstrap completes), redirect to dashboard.
+  // Must be in useEffect — render-time checks fire on every re-render and would
+  // trigger during the bootstrap phase before the token is confirmed.
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      window.location.href = '/dashboard';
+    }
+  }, [isLoading, isAuthenticated]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
