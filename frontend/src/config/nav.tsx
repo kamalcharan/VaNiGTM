@@ -254,9 +254,10 @@ export function getActiveNavId(pathname: string | null): string {
   if (pathname.startsWith('/market/dashboard')) return 'market-dashboard';
   if (pathname.startsWith('/market/')) return 'market-history';
 
-  // Contact/client profile pages
-  if (pathname.startsWith('/contacts')) return 'contacts';
-  if (pathname.startsWith('/clients'))  return 'clients';
+  // Contact/client/customer profile pages
+  if (pathname.startsWith('/contacts'))  return 'contacts';
+  if (pathname.startsWith('/clients'))   return 'clients';
+  if (pathname.startsWith('/customers')) return 'clients';
 
   const prefix = NAV_ITEMS.find((item) => item.href !== '/' && pathname.startsWith(item.href));
   if (prefix) return prefix.id;

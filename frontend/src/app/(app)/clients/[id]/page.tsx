@@ -562,6 +562,9 @@ export default function ClientProfilePage() {
           )}
         </>}
         actions={<>
+          <VdfButton variant="primary" size="sm" onClick={() => router.push(`/customers/${clientId}`)}>
+            Portfolio →
+          </VdfButton>
           <VdfButton variant="outline" size="sm" onClick={() => router.push(`/clients/${clientId}/edit`)}>
             Edit Profile
           </VdfButton>

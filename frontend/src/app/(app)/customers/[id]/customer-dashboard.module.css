@@ -1,0 +1,500 @@
+/* ═══════════════════════════════════════════════════════
+   /customers/[id] — Customer financial dashboard
+   ═══════════════════════════════════════════════════════ */
+
+.page {
+  max-width: 1140px;
+  min-height: 100%;
+}
+
+.errorBanner {
+  margin: 32px;
+  padding: 16px 20px;
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border: 1px solid var(--color-danger);
+  border-radius: 10px;
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
+/* ── Header helpers ──────────────────────────────────── */
+
+.backBtn {
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.78rem;
+  font-family: inherit;
+  transition: color 150ms;
+}
+
+.backBtn:hover { color: var(--color-fg); }
+
+.riskPill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.riskDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+}
+
+.inactiveTag {
+  font-size: 0.75rem;
+  color: var(--color-danger);
+}
+
+.avatarSmall {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  letter-spacing: 0.04em;
+}
+
+/* ── Inactive banner ─────────────────────────────────── */
+
+.inactiveBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 32px;
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-warning) 25%, var(--color-border));
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-warning);
+}
+
+.inactiveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-warning);
+  flex-shrink: 0;
+}
+
+/* ── Stat strip ──────────────────────────────────────── */
+
+.statStrip {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 32px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 28px 16px;
+  position: relative;
+}
+
+.statDivider {
+  width: 1px;
+  background: var(--color-border);
+  margin: 14px 0;
+  flex-shrink: 0;
+}
+
+.statLabel {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.statValue {
+  font-family: var(--font-display, 'Playfair Display', serif);
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.statPrimary { color: var(--color-primary); }
+.statUp      { color: var(--color-success); }
+.statDown    { color: var(--color-danger); }
+
+.statSub {
+  font-size: 0.78rem;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+/* Skeleton loading for stat strip */
+.statStripSkeleton {
+  display: flex;
+  gap: 1px;
+  padding: 0 32px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.statSkeletonItem {
+  flex: 1;
+  height: 72px;
+  background: color-mix(in srgb, var(--color-muted) 8%, transparent);
+  border-radius: 4px;
+  margin: 12px 8px;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.8; }
+}
+
+/* No data banner */
+.noDataBanner {
+  padding: 14px 32px;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  font-style: italic;
+}
+
+/* ── Tabs ────────────────────────────────────────────── */
+
+.tabsBar {
+  padding: 0 32px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: var(--page-header-height, 88px);
+  z-index: 8;
+}
+
+.tabPanel {
+  /* Content area */
+}
+
+/* Loading within tab */
+.tabLoadWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+}
+
+.tabContent {
+  padding: 40px 32px;
+}
+
+/* ── Portfolio tab ───────────────────────────────────── */
+
+.portfolioWrap {
+  padding: 24px 32px 32px;
+}
+
+/* Allocation strip */
+.allocStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  margin-bottom: 22px;
+}
+
+.allocItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.allocBar {
+  height: 3px;
+  border-radius: 2px;
+  min-width: 24px;
+  max-width: 80px;
+  opacity: 0.85;
+}
+
+.allocLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.allocPct {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.72rem;
+  color: var(--color-muted);
+}
+
+/* Holdings table */
+.holdingsTable {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.th {
+  padding: 11px 16px;
+  text-align: left;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--color-muted) 4%, transparent);
+}
+
+.thRight { text-align: right; }
+
+.tr {
+  transition: background 120ms;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tr:last-child { border-bottom: none; }
+
+.tr:hover { background: color-mix(in srgb, var(--color-primary) 5%, transparent); }
+
+/* Subtle row tinting by direction */
+.trUp  { background: color-mix(in srgb, var(--color-success) 3%, transparent); }
+.trDown{ background: color-mix(in srgb, var(--color-danger)  3%, transparent); }
+.trUp:hover  { background: color-mix(in srgb, var(--color-success) 8%, transparent); }
+.trDown:hover{ background: color-mix(in srgb, var(--color-danger)  8%, transparent); }
+
+.td {
+  padding: 13px 16px;
+  vertical-align: middle;
+}
+
+.tdRight { text-align: right; }
+
+.fundName {
+  font-size: 0.87rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  margin-bottom: 3px;
+  max-width: 320px;
+}
+
+.fundMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fundAmc {
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.catBadge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+.monoVal {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+
+.valStrong {
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.gainCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.gainUp   { color: var(--color-success); }
+.gainDown { color: var(--color-danger); }
+
+.gainPct {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+/* ── Transactions tab ────────────────────────────────── */
+
+.txnWrap {
+  padding: 24px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Filter bar */
+.filterBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filterSearch {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.filterSearchIcon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-muted);
+  pointer-events: none;
+}
+
+.filterInput {
+  width: 100%;
+  height: var(--input-height, 38px);
+  padding: 0 14px 0 34px;
+  background: var(--color-surface);
+  border: var(--input-border-width, 1px) solid var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  font-size: var(--input-font-size, 0.875rem);
+  color: var(--color-fg);
+  font-family: inherit;
+  transition: border-color 150ms;
+  box-sizing: border-box;
+}
+
+.filterInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.filterSelect {
+  height: var(--input-height, 38px);
+  padding: 0 32px 0 12px;
+  background: var(--color-surface);
+  border: var(--input-border-width, 1px) solid var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  font-size: var(--input-font-size, 0.875rem);
+  color: var(--color-fg);
+  font-family: inherit;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: border-color 150ms;
+}
+
+.filterSelect:focus { outline: none; border-color: var(--color-primary); }
+
+.filterDateRange {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-surface);
+  border: var(--input-border-width, 1px) solid var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  padding: 0 12px;
+  height: var(--input-height, 38px);
+}
+
+.filterDateInput {
+  background: none;
+  border: none;
+  color: var(--color-fg);
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0;
+  max-width: 130px;
+}
+
+.filterDateInput:focus { outline: none; }
+
+.filterDateSep {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .statStrip {
+    flex-wrap: wrap;
+    gap: 0;
+    padding: 0 20px;
+  }
+  .statItem { padding: 14px 18px 12px; }
+  .statValue { font-size: 1.2rem; }
+}
+
+@media (max-width: 768px) {
+  .portfolioWrap,
+  .txnWrap,
+  .tabContent {
+    padding: 16px 20px 24px;
+  }
+  .filterBar { gap: 8px; }
+  .filterSearch { min-width: 160px; }
+  .filterDateRange { display: none; }
+  .tabsBar { padding: 0 20px; }
+  .statStrip { padding: 0 20px; }
+  .noDataBanner,
+  .inactiveBanner { padding: 10px 20px; }
+}
+
+@media (max-width: 480px) {
+  .statValue { font-size: 1.05rem; }
+  .portfolioWrap,
+  .txnWrap,
+  .tabContent {
+    padding: 12px 14px 20px;
+  }
+  .tabsBar,
+  .statStrip { padding: 0 14px; }
+}
