@@ -1,9 +1,16 @@
 'use client';
 
-import { createContext, useContext, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useMe, useInvalidateMe, type MeUser, type MeTenant } from '@/hooks';
-import { apiFetch, clearTokens, getAccessToken, getRefreshToken, storeTokens } from '@/lib/api-client';
+import {
+  apiFetch,
+  clearTokens,
+  getAccessToken,
+  setAccessToken,
+  silentRefresh,
+  storeTokens,
+} from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useTheme } from '@/config/theme';
 
@@ -24,10 +31,30 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-/* ── Provider (real auth via useMe + JWT) ────────────── */
+/* ── Provider ────────────────────────────────────────── */
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { data: me, isLoading } = useMe();
+  // bootstrapping: true while we attempt to restore the session via httpOnly cookie.
+  // useMe is suppressed until bootstrap completes so it doesn't fire with no token.
+  const [bootstrapping, setBootstrapping] = useState(true);
+
+  useEffect(() => {
+    // On every app mount, if there is no in-memory access token, try to restore
+    // the session using the httpOnly refresh cookie (browser sends it automatically).
+    // This handles page reloads, new tabs, and cold starts.
+    async function bootstrap() {
+      if (!getAccessToken()) {
+        await silentRefresh(); // sets _accessToken on success; noop on failure
+      }
+      setBootstrapping(false);
+    }
+    bootstrap();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { data: me, isLoading: meLoading } = useMe({
+    enabled: !bootstrapping && !!getAccessToken(),
+  });
+
   const invalidateMe = useInvalidateMe();
   const queryClient = useQueryClient();
   const { setTheme, themeId } = useTheme();
@@ -37,10 +64,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAuthenticated = !!getAccessToken() && !!user;
   const isLive: boolean = tenant?.is_live !== false;
   const isAdmin: boolean = tenant?.is_admin === true;
+  // isLoading covers the bootstrap phase AND the subsequent useMe fetch
+  const isLoading = bootstrapping || meLoading;
 
   // Sync theme from server (user.preferred_theme) → ThemeProvider
-  // Skip during onboarding — user hasn't chosen a theme yet, so the DB default
-  // (vikuna-black set at registration) would override the system default incorrectly.
+  // Skip during onboarding — user hasn't chosen a theme yet.
   useEffect(() => {
     if (!user) return;
     if (!tenant?.onboarding_complete) return;
@@ -48,7 +76,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const serverTheme = (user as any).preferred_theme;
     if (serverTheme && serverTheme !== themeId) {
       setTheme(serverTheme);
-      // Also persist to localStorage for next SSR-to-client transition
       try { localStorage.setItem('pk-theme-id', serverTheme); } catch {}
     }
 
@@ -65,13 +92,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, tenant?.onboarding_complete]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function logout() {
-    // Fire-and-forget: revoke the specific session in DB by sending the refresh token
-    // Don't await — clear tokens and redirect immediately for instant UX
-    const refreshToken = getRefreshToken();
-    apiFetch(API.auth.logout, {
-      body: refreshToken ? { refresh_token: refreshToken } : {},
-    }).catch(() => {});
+    // Clear in-memory token immediately so no further requests go out
     clearTokens();
+    // Call logout endpoint — backend clears the httpOnly cookie and revokes the DB session.
+    // Fire-and-forget for instant UX; we redirect regardless of outcome.
+    apiFetch(API.auth.logout, { body: {} }).catch(() => {});
     window.location.href = '/login';
   }
 
@@ -80,19 +105,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       API.auth.switchEnv,
       { body: { is_live: live } },
     );
-    // Replace only the access token — refresh token is unchanged
-    const TOKEN_ACCESS = 'pk-access-token';
-    const expiresAt = String(Date.now() + result.expires_in * 1000);
-    try {
-      sessionStorage.setItem(TOKEN_ACCESS, result.access_token);
-      sessionStorage.setItem('pk-token-expires-at', expiresAt);
-      localStorage.setItem(TOKEN_ACCESS, result.access_token);
-      localStorage.setItem('pk-token-expires-at', expiresAt);
-    } catch { /* storage unavailable */ }
+    // Replace the in-memory access token (refresh token/cookie unchanged for env switch)
+    setAccessToken(result.access_token);
     // Invalidate useMe so the sidebar env pill updates immediately
     invalidateMe();
-    // Flush ALL skill query caches — every data page refetches with the new JWT
-    // (is_live is baked into the JWT, so cached responses from the old env must go)
+    // Flush ALL skill query caches — is_live is baked into the JWT, cached data from
+    // the old env must be discarded.
     await queryClient.invalidateQueries({ queryKey: ['skill'] });
   }
 

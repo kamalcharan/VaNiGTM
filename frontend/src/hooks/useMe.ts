@@ -44,14 +44,16 @@ export const ME_QUERY_KEY = ['auth', 'me'] as const;
 
 /**
  * Fetch current user + tenant from /auth/me.
- * Only runs when an access token exists in sessionStorage.
+ * Only runs when an access token is in memory (set after bootstrap or login).
  * Cached for 5 minutes, refetches on window focus.
+ *
+ * Pass enabled:false to suppress the query during auth bootstrap.
  */
-export function useMe() {
+export function useMe(options?: { enabled?: boolean }) {
   return useQuery<MeResponse>({
     queryKey: ME_QUERY_KEY,
     queryFn: () => apiFetch<MeResponse>(API.auth.me),
-    enabled: !!getAccessToken(),
+    enabled: options?.enabled ?? !!getAccessToken(),
     staleTime: 5 * 60 * 1000,
   });
 }

@@ -8,7 +8,7 @@ import FormInput from '@/components/ui/form-input';
 import CountryDropdown, { type Country } from '@/components/ui/country-dropdown';
 import PasswordStrength from '@/components/ui/password-strength';
 import { useRegister } from '@/hooks';
-import { storeTokens, type ApiError } from '@/lib/api-client';
+import { storeTokens, getAccessToken, type ApiError } from '@/lib/api-client';
 import { VdfLoader } from '@/components/vdf';
 import f from '@/styles/forms.module.css';
 import s from './register-page.module.css';
@@ -86,8 +86,8 @@ export default function RegisterPage() {
           // Don't rely on hook-level onSuccess timing (React 19 batching)
           if (data.tokens) {
             storeTokens(data.tokens);
-            // Verify storage worked
-            const stored = sessionStorage.getItem('pk-access-token');
+            // Verify token is in memory
+            const stored = getAccessToken();
             console.log('[Register] Token stored:', stored ? `${stored.slice(0, 20)}...` : 'FAILED');
           } else {
             console.error('[Register] No tokens in response:', JSON.stringify(data));

@@ -15,10 +15,35 @@
  */
 
 import { Router } from 'express';
+import type { Response } from 'express';
 import type { Pool } from 'pg';
 import { register, validateRegisterInput, type RegisterInput } from './auth.service';
 import { login as loginService, type LoginInput } from './login.service';
 import { verifyAccessToken, refreshSession, parseDeviceInfo, type JwtPayload } from './token.service';
+
+/* ── Refresh-cookie helpers ─────────────────────────── */
+
+const REFRESH_COOKIE_NAME = 'pk_refresh_token';
+const REFRESH_TOKEN_TTL_DAYS = 30;
+
+function setRefreshCookie(res: Response, token: string): void {
+  res.cookie(REFRESH_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/api/v1/auth',
+    maxAge: REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
+  });
+}
+
+function clearRefreshCookie(res: Response): void {
+  res.clearCookie(REFRESH_COOKIE_NAME, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/api/v1/auth',
+  });
+}
 
 /* ── JWT extraction helper ──────────────────────────── */
 
@@ -57,6 +82,9 @@ export function createAuthRouter(pool: Pool): Router {
       }
 
       const result = await register(pool, input, req);
+
+      // Set httpOnly refresh cookie (Step 2: frontend will rely on this; Step 1: additive)
+      setRefreshCookie(res, result.tokens.refresh_token);
 
       res.status(201).json({
         tokens: result.tokens,
@@ -109,6 +137,10 @@ export function createAuthRouter(pool: Pool): Router {
 
       // TypeScript narrowing: after the SESSION_LIMIT check above, result is LoginResult
       const loginResult = result as import('./login.service').LoginResult;
+
+      // Set httpOnly refresh cookie (Step 2: frontend will rely on this; Step 1: additive)
+      setRefreshCookie(res, loginResult.tokens.refresh_token);
+
       res.json({
         tokens: loginResult.tokens,
         user: loginResult.user,
@@ -138,11 +170,13 @@ export function createAuthRouter(pool: Pool): Router {
 
   router.post('/refresh', async (req, res) => {
     try {
-      const { refresh_token } = req.body;
+      // Accept refresh token from httpOnly cookie (preferred) or request body (legacy fallback)
+      const refresh_token: string | undefined =
+        (req as any).cookies?.[REFRESH_COOKIE_NAME] || req.body.refresh_token;
 
       if (!refresh_token || typeof refresh_token !== 'string') {
-        res.status(400).json({
-          error: { code: 'VALIDATION_ERROR', message: 'refresh_token is required' },
+        res.status(401).json({
+          error: { code: 'INVALID_REFRESH_TOKEN', message: 'No refresh token provided' },
         });
         return;
       }
@@ -151,11 +185,15 @@ export function createAuthRouter(pool: Pool): Router {
       const tokens = await refreshSession(pool, refresh_token, device);
 
       if (!tokens) {
+        clearRefreshCookie(res);
         res.status(401).json({
           error: { code: 'INVALID_REFRESH_TOKEN', message: 'Invalid, expired, or revoked refresh token' },
         });
         return;
       }
+
+      // Rotate: set new httpOnly cookie with the new refresh token
+      setRefreshCookie(res, tokens.refresh_token);
 
       res.json({ tokens });
     } catch (err: any) {
@@ -455,14 +493,14 @@ export function createAuthRouter(pool: Pool): Router {
         return;
       }
 
-      // Revoke the refresh token for this session
-      // We identify the session by user_id — revoke the most recently active session
-      // A more precise approach would pass the refresh_token, but for MVP we revoke
-      // the latest active session for this user.
-      const refreshToken = req.body.refresh_token;
+      // Always clear the httpOnly cookie first
+      clearRefreshCookie(res);
+
+      // Revoke the specific session if we can identify it (cookie preferred, body fallback)
+      const refreshToken: string | undefined =
+        (req as any).cookies?.[REFRESH_COOKIE_NAME] || req.body.refresh_token;
 
       if (refreshToken) {
-        // If client sends the refresh token, revoke that specific session
         const crypto = await import('crypto');
         const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
         await pool.query(

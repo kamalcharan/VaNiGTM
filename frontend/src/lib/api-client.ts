@@ -2,11 +2,17 @@
  * KI-Prime — API Client (Interceptor)
  *
  * Single fetch wrapper that every hook uses. Handles:
- *   1. JWT injection (reads from sessionStorage)
- *   2. 401 interception → silent token refresh → retry once
+ *   1. JWT injection (reads from in-memory token set by auth-provider)
+ *   2. 401 interception → silent token refresh via httpOnly cookie → retry once
  *   3. Path param substitution (:skill → portfolio-skill)
  *   4. Consistent error shape (always { code, message, details? })
  *   5. Query string params for GET requests
+ *
+ * Token storage model:
+ *   - Access token:  in-memory only (_accessToken module variable). Lost on page reload;
+ *                   auth-provider re-hydrates via silentRefresh() on every app mount.
+ *   - Refresh token: httpOnly cookie (pk_refresh_token), set by the backend.
+ *                   Browser JS cannot read it. Sent automatically on /api/v1/auth/* requests.
  *
  * No .tsx file imports this directly — only hooks do.
  * AuthProvider is the one exception (bootstraps before hooks).
@@ -39,31 +45,19 @@ export interface ApiFetchOptions {
   skipRetry?: boolean;
 }
 
-/* ── Token Storage ──────────────────────────────────── */
+/* ── In-memory Token Store ──────────────────────────── */
+// Access token lives here only. Never written to localStorage/sessionStorage.
+// auth-provider sets it on login, register, and after bootstrap refresh.
+// Lost on page reload — silentRefresh() re-hydrates via httpOnly cookie.
 
-const TOKEN_KEYS = {
-  access: 'pk-access-token',
-  refresh: 'pk-refresh-token',
-  expiresAt: 'pk-token-expires-at',
-} as const;
+let _accessToken: string | null = null;
 
-export function getAccessToken(): string | null {
-  try {
-    // Try sessionStorage first, fallback to localStorage
-    return sessionStorage.getItem(TOKEN_KEYS.access)
-      || localStorage.getItem(TOKEN_KEYS.access);
-  } catch {
-    return null;
-  }
+export function setAccessToken(token: string | null): void {
+  _accessToken = token;
 }
 
-export function getRefreshToken(): string | null {
-  try {
-    return sessionStorage.getItem(TOKEN_KEYS.refresh)
-      || localStorage.getItem(TOKEN_KEYS.refresh);
-  } catch {
-    return null;
-  }
+export function getAccessToken(): string | null {
+  return _accessToken;
 }
 
 export function storeTokens(tokens: {
@@ -71,50 +65,30 @@ export function storeTokens(tokens: {
   refresh_token: string;
   expires_in: number;
 }): void {
-  const expiresAt = String(Date.now() + tokens.expires_in * 1000);
-  try {
-    // Store in BOTH sessionStorage and localStorage for resilience
-    // sessionStorage: cleared on tab close (security)
-    // localStorage: survives full page reloads (reliability)
-    sessionStorage.setItem(TOKEN_KEYS.access, tokens.access_token);
-    sessionStorage.setItem(TOKEN_KEYS.refresh, tokens.refresh_token);
-    sessionStorage.setItem(TOKEN_KEYS.expiresAt, expiresAt);
-    localStorage.setItem(TOKEN_KEYS.access, tokens.access_token);
-    localStorage.setItem(TOKEN_KEYS.refresh, tokens.refresh_token);
-    localStorage.setItem(TOKEN_KEYS.expiresAt, expiresAt);
-  } catch {
-    // Storage unavailable
-  }
+  // Access token → in-memory only.
+  // Refresh token → httpOnly cookie already set by backend response (not handled here).
+  setAccessToken(tokens.access_token);
 }
 
 export function clearTokens(): void {
+  setAccessToken(null);
+  // Clean up any legacy storage keys from before this migration
   try {
-    sessionStorage.removeItem(TOKEN_KEYS.access);
-    sessionStorage.removeItem(TOKEN_KEYS.refresh);
-    sessionStorage.removeItem(TOKEN_KEYS.expiresAt);
-    localStorage.removeItem(TOKEN_KEYS.access);
-    localStorage.removeItem(TOKEN_KEYS.refresh);
-    localStorage.removeItem(TOKEN_KEYS.expiresAt);
+    sessionStorage.removeItem('pk-access-token');
+    sessionStorage.removeItem('pk-refresh-token');
+    sessionStorage.removeItem('pk-token-expires-at');
+    localStorage.removeItem('pk-access-token');
+    localStorage.removeItem('pk-refresh-token');
+    localStorage.removeItem('pk-token-expires-at');
   } catch {}
-}
-
-export function getTokenExpiresAt(): number {
-  try {
-    return Number(sessionStorage.getItem(TOKEN_KEYS.expiresAt)
-      || localStorage.getItem(TOKEN_KEYS.expiresAt)) || 0;
-  } catch {
-    return 0;
-  }
 }
 
 /* ── API Base URL ───────────────────────────────────── */
 
 function getBaseUrl(): string {
   if (typeof window !== 'undefined') {
-    // Client-side: use env var or same origin
     return process.env.NEXT_PUBLIC_API_URL || window.location.origin;
   }
-  // SSR: use env var or default
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 }
 
@@ -134,37 +108,39 @@ function resolvePath(
 }
 
 /* ── Silent Token Refresh ───────────────────────────── */
+// Sends POST /auth/refresh with credentials:include so the browser automatically
+// attaches the httpOnly pk_refresh_token cookie. No token value read from JS.
+// On success: sets _accessToken from the JSON response and returns true.
+// On failure: clears _accessToken and returns false.
 
 let refreshPromise: Promise<boolean> | null = null;
 
-async function silentRefresh(): Promise<boolean> {
+export async function silentRefresh(): Promise<boolean> {
   // Deduplicate concurrent refresh attempts
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = (async () => {
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) return false;
-
     try {
       const baseUrl = getBaseUrl();
       const res = await fetch(`${baseUrl}${API.auth.refresh.path}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        credentials: 'include',  // sends httpOnly cookie automatically
+        // no body — refresh token is in the cookie
       });
 
       if (!res.ok) {
-        clearTokens();
+        setAccessToken(null);
         return false;
       }
 
       const data = await res.json();
-      if (data.tokens) {
-        storeTokens(data.tokens);
+      if (data.tokens?.access_token) {
+        setAccessToken(data.tokens.access_token);
         return true;
       }
 
-      clearTokens();
+      setAccessToken(null);
       return false;
     } catch {
       return false;
@@ -210,7 +186,7 @@ export async function apiFetch<T = Record<string, unknown>>(
     ...extraHeaders,
   };
 
-  // JWT injection
+  // JWT injection (in-memory access token)
   if (endpoint.auth && !skipAuth) {
     const token = getAccessToken();
     if (token) {
@@ -218,10 +194,12 @@ export async function apiFetch<T = Record<string, unknown>>(
     }
   }
 
-  // Execute fetch
+  // Execute fetch — credentials:include ensures the httpOnly refresh cookie
+  // is sent automatically on all requests to the same origin/site.
   const fetchOptions: RequestInit = {
     method: endpoint.method,
     headers,
+    credentials: 'include',
   };
 
   if (body && endpoint.method !== 'GET') {
@@ -239,17 +217,13 @@ export async function apiFetch<T = Record<string, unknown>>(
     } satisfies ApiError;
   }
 
-  // 401 → silent refresh → retry once
+  // 401 → silent refresh via cookie → retry once
   if (res.status === 401 && endpoint.auth && !skipRetry) {
-    // Only attempt refresh if we have a refresh token
-    const hasRefresh = !!getRefreshToken();
-    if (hasRefresh) {
-      const refreshed = await silentRefresh();
-      if (refreshed) {
-        return apiFetch<T>(endpoint, { ...options, skipRetry: true });
-      }
+    const refreshed = await silentRefresh();
+    if (refreshed) {
+      return apiFetch<T>(endpoint, { ...options, skipRetry: true });
     }
-    // Refresh failed or no refresh token — clear and throw
+    // Refresh failed — session is gone
     clearTokens();
     throw {
       code: 'AUTH_EXPIRED',

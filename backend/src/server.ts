@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import { buildRegistry } from './services/skill-registry';
 import { getPool, createTenantDb, closePool, healthCheck } from './db';
@@ -16,7 +17,11 @@ import { verifyAccessToken } from './auth/token.service';
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:3000' }));
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  credentials: true,   // required for httpOnly cookie exchange
+}));
+app.use(cookieParser());
 app.use(express.json());
 
 /* ── Health check (with DB liveness) ────────────────── */

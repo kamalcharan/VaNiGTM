@@ -5,7 +5,7 @@ import { useAuth } from '@/context/auth-provider';
 import { useToast } from '../toast';
 import { InlineLoader } from '../loader';
 import { VdfMobileInput, VdfRichText } from '@/components/vdf';
-import { apiFetch, type ApiError } from '@/lib/api-client';
+import { apiFetch, getAccessToken, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { validateMobile, getCountryByCode } from '@/constants/countries';
 import s from './OnboardUserProfile.module.css';
@@ -67,9 +67,7 @@ export default function OnboardUserProfile({ onComplete, onBack }: Props) {
     setError('');
 
     try {
-      const token = typeof window !== 'undefined'
-        ? (sessionStorage.getItem('pk-access-token') || localStorage.getItem('pk-access-token'))
-        : null;
+      const token = getAccessToken();
       if (!token) {
         setError('Session not found. Please go back and sign in.');
         setLoading(false);
