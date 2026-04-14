@@ -116,54 +116,6 @@ function categoryColor(cat: string): string {
   return 'var(--color-muted)';
 }
 
-/* ── Summary stat strip ──────────────────────────────── */
-
-function StatStrip({ summary }: { summary: PortfolioSummary }) {
-  const gain = summary.current_value - summary.total_invested;
-  const isUp  = gain >= 0;
-
-  return (
-    <div className={s.statStrip}>
-      <div className={s.statItem}>
-        <span className={s.statLabel}>Current Value</span>
-        <span className={`${s.statValue} ${s.statPrimary}`}>{fmtCurrency(summary.current_value)}</span>
-      </div>
-      <div className={s.statDivider} />
-      <div className={s.statItem}>
-        <span className={s.statLabel}>Invested</span>
-        <span className={s.statValue}>{fmtCurrency(summary.total_invested)}</span>
-      </div>
-      <div className={s.statDivider} />
-      <div className={s.statItem}>
-        <span className={s.statLabel}>Gain / Loss</span>
-        <span className={`${s.statValue} ${isUp ? s.statUp : s.statDown}`}>
-          {fmtCurrency(gain)}
-          <span className={s.statSub}>{fmtPct(summary.overall_return_pct)}</span>
-        </span>
-      </div>
-      <div className={s.statDivider} />
-      <div className={s.statItem}>
-        <span className={s.statLabel}>XIRR</span>
-        <span className={`${s.statValue} ${(summary.xirr_pct ?? 0) >= 0 ? s.statUp : s.statDown}`}>
-          {fmtPct(summary.xirr_pct)}
-        </span>
-      </div>
-      {summary.sip_count > 0 && (
-        <>
-          <div className={s.statDivider} />
-          <div className={s.statItem}>
-            <span className={s.statLabel}>Active SIPs</span>
-            <span className={s.statValue}>
-              {summary.sip_count}
-              <span className={s.statSub}>{fmtCurrency(summary.sip_total_monthly)}/mo</span>
-            </span>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 /* ── Portfolio / Holdings Tab ────────────────────────── */
 
 function PortfolioTab({ clientId }: { clientId: number }) {
@@ -416,40 +368,75 @@ export default function CustomerDashboardPage() {
     { id: 'goals',        label: 'Goals' },
   ];
 
+  const gain   = summary ? summary.current_value - summary.total_invested : null;
+  const gainUp = gain != null && gain >= 0;
+
   return (
     <div className={s.page}>
-      {/* ── Page header ── */}
+      {/* ── Compact profile header — stats folded into meta row ── */}
       <VdfPageHeader
-        eyebrow="CUSTOMER DASHBOARD"
+        className={s.heroHeader}
+        eyebrow={client.client_no ?? 'CUSTOMER DASHBOARD'}
         title={clientDisplayName}
-        meta={<>
-          <button
-            className={s.backBtn}
-            onClick={() => router.push('/clients')}
-          >
-            ← Clients
-          </button>
-          {client.risk_profile && (
-            <span className={s.riskPill} style={{ color: RISK_COLORS[client.risk_profile] ?? 'var(--color-muted)' }}>
-              {' · '}
-              <span
-                className={s.riskDot}
-                style={{ background: RISK_COLORS[client.risk_profile] ?? 'var(--color-muted)' }}
-              />
-              {client.risk_profile.charAt(0).toUpperCase() + client.risk_profile.slice(1)}
-            </span>
-          )}
-          {client.is_active === false && (
-            <span className={s.inactiveTag}>{' · '}Inactive</span>
-          )}
-        </>}
-        actions={<>
-          <div className={s.avatarSmall} style={avatarStyle}>
-            {initials(client.name)}
+        meta={
+          <div className={s.heroMeta}>
+            {/* Nav breadcrumb */}
+            <button className={s.backBtn} onClick={() => router.push('/clients')}>← Clients</button>
+            {client.risk_profile && (
+              <>
+                <span className={s.metaSep}>·</span>
+                <span className={s.riskPill} style={{ color: RISK_COLORS[client.risk_profile] }}>
+                  <span className={s.riskDot} style={{ background: RISK_COLORS[client.risk_profile] }} />
+                  {client.risk_profile.charAt(0).toUpperCase() + client.risk_profile.slice(1)}
+                </span>
+              </>
+            )}
+            {client.is_active === false && <><span className={s.metaSep}>·</span><span className={s.inactiveTag}>Inactive</span></>}
+
+            {/* Inline portfolio stats */}
+            {summary && (
+              <>
+                <span className={s.metaSep} aria-hidden>|</span>
+                <span className={s.inlineStat}>
+                  <span className={s.inlineStatLabel}>Value</span>
+                  <span className={s.inlineStatValue}>{fmtCurrency(summary.current_value)}</span>
+                </span>
+                <span className={s.metaSep}>·</span>
+                <span className={s.inlineStat}>
+                  <span className={s.inlineStatLabel}>Invested</span>
+                  <span className={s.inlineStatValue}>{fmtCurrency(summary.total_invested)}</span>
+                </span>
+                <span className={s.metaSep}>·</span>
+                <span className={s.inlineStat}>
+                  <span className={s.inlineStatLabel}>Gain</span>
+                  <span className={`${s.inlineStatValue} ${gainUp ? s.statUp : s.statDown}`}>
+                    {fmtCurrency(gain!)} <span className={s.inlineStatSub}>{fmtPct(summary.overall_return_pct)}</span>
+                  </span>
+                </span>
+                <span className={s.metaSep}>·</span>
+                <span className={s.inlineStat}>
+                  <span className={s.inlineStatLabel}>XIRR</span>
+                  <span className={`${s.inlineStatValue} ${(summary.xirr_pct ?? 0) >= 0 ? s.statUp : s.statDown}`}>
+                    {fmtPct(summary.xirr_pct)}
+                  </span>
+                </span>
+                {summary.sip_count > 0 && (
+                  <>
+                    <span className={s.metaSep}>·</span>
+                    <span className={s.inlineStat}>
+                      <span className={s.inlineStatLabel}>{summary.sip_count} SIP{summary.sip_count !== 1 ? 's' : ''}</span>
+                      <span className={s.inlineStatValue}>{fmtCurrency(summary.sip_total_monthly)}/mo</span>
+                    </span>
+                  </>
+                )}
+              </>
+            )}
+            {summaryLoading && <span className={s.metaLoading}>Loading portfolio…</span>}
           </div>
-          <VdfButton variant="ghost" size="sm" onClick={() => router.push('/import')}>
-            Import Data
-          </VdfButton>
+        }
+        actions={<>
+          <div className={s.avatarSmall} style={avatarStyle}>{initials(client.name)}</div>
+          <VdfButton variant="ghost" size="sm" onClick={() => router.push('/import')}>Import Data</VdfButton>
         </>}
       />
 
@@ -458,19 +445,6 @@ export default function CustomerDashboardPage() {
         <div className={s.inactiveBanner}>
           <span className={s.inactiveDot} />
           This client is inactive — portfolio is read-only.
-        </div>
-      )}
-
-      {/* ── Portfolio stat strip ── */}
-      {summaryLoading ? (
-        <div className={s.statStripSkeleton}>
-          {[1, 2, 3, 4].map(i => <div key={i} className={s.statSkeletonItem} />)}
-        </div>
-      ) : summary ? (
-        <StatStrip summary={summary} />
-      ) : (
-        <div className={s.noDataBanner}>
-          No portfolio data yet — import a statement to get started.
         </div>
       )}
 

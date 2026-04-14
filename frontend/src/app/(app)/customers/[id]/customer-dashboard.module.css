@@ -16,6 +16,70 @@
   font-size: 0.85rem;
 }
 
+/* ── Compact hero header override ────────────────────── */
+
+/* Reduce VdfPageHeader padding + title size for profile pages */
+.heroHeader {
+  padding: 14px 32px 12px !important;
+}
+
+.heroHeader h1 {
+  font-size: 1.55rem;
+  margin-bottom: 4px;
+}
+
+.heroHeader p {
+  margin-bottom: 2px;
+}
+
+/* Meta row: breadcrumb + inline stats, all in one line */
+.heroMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  row-gap: 2px;
+}
+
+.metaSep {
+  color: var(--color-border);
+  margin: 0 8px;
+  font-size: 0.75rem;
+  user-select: none;
+}
+
+.inlineStat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.inlineStatLabel {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.inlineStatValue {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.inlineStatSub {
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+
+.metaLoading {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  font-style: italic;
+}
+
 /* ── Header helpers ──────────────────────────────────── */
 
 .backBtn {
@@ -87,95 +151,9 @@
   flex-shrink: 0;
 }
 
-/* ── Stat strip ──────────────────────────────────────── */
-
-.statStrip {
-  display: flex;
-  align-items: stretch;
-  gap: 0;
-  padding: 0 32px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.statItem {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 18px 28px 16px;
-  position: relative;
-}
-
-.statDivider {
-  width: 1px;
-  background: var(--color-border);
-  margin: 14px 0;
-  flex-shrink: 0;
-}
-
-.statLabel {
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-  white-space: nowrap;
-}
-
-.statValue {
-  font-family: var(--font-display, 'Playfair Display', serif);
-  font-size: 1.45rem;
-  font-weight: 700;
-  color: var(--color-fg);
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.statPrimary { color: var(--color-primary); }
-.statUp      { color: var(--color-success); }
-.statDown    { color: var(--color-danger); }
-
-.statSub {
-  font-size: 0.78rem;
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-weight: 600;
-  opacity: 0.85;
-}
-
-/* Skeleton loading for stat strip */
-.statStripSkeleton {
-  display: flex;
-  gap: 1px;
-  padding: 0 32px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.statSkeletonItem {
-  flex: 1;
-  height: 72px;
-  background: color-mix(in srgb, var(--color-muted) 8%, transparent);
-  border-radius: 4px;
-  margin: 12px 8px;
-  animation: shimmer 1.4s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-  0%, 100% { opacity: 0.4; }
-  50%       { opacity: 0.8; }
-}
-
-/* No data banner */
-.noDataBanner {
-  padding: 14px 32px;
-  font-size: 0.82rem;
-  color: var(--color-muted);
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  font-style: italic;
-}
+/* Stat color helpers (used by inline stats in header meta) */
+.statUp   { color: var(--color-success); }
+.statDown { color: var(--color-danger); }
 
 /* ── Tabs ────────────────────────────────────────────── */
 
