@@ -2,8 +2,10 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useSkillQuery } from '@/hooks/useSkill';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
+import { useAuth } from '@/context/auth-provider';
 import {
   VdfLoader, VdfButton, VdfStatusBadge, VdfTabs, VdfEmptyState, VdfPageHeader, VdfChannelItem,
 } from '@/components/vdf';
@@ -952,6 +954,152 @@ function CrmDataTab({ client }: { client: Client }) {
   );
 }
 
+/* ── Vendor Codes Tab ────────────────────────────────── */
+
+const PLATFORM_LABELS: Record<string, string> = {
+  CAMS:     'CAMS Code',
+  KFINTECH: 'KFintech Code',
+  IWELL:    'IWell Code',
+  BSE_STAR: 'BSE StarMF Code',
+  CUSTOM:   'Custom Code',
+};
+
+const PLATFORM_NAMES: Record<string, string> = {
+  CAMS:     'CAMS',
+  KFINTECH: 'KFintech',
+  IWELL:    'InvestWell',
+  BSE_STAR: 'BSE StarMF',
+  CUSTOM:   'Custom',
+};
+
+function VendorCodesTab({ client, clientId }: { client: Client; clientId: number }) {
+  const { showToast } = useToast();
+  const { tenant } = useAuth();
+  const queryClient = useQueryClient();
+
+  const platformCode  = tenant?.ext_ref_type_code ?? null;
+  const platformLabel = platformCode ? (PLATFORM_LABELS[platformCode] ?? 'Client Code') : 'Client Code';
+  const platformName  = platformCode ? (PLATFORM_NAMES[platformCode] ?? platformCode)   : 'Not configured';
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft]     = useState(client.ext_ref_id ?? '');
+
+  // Sync draft when client data refreshes (e.g. after save)
+  useEffect(() => { setDraft(client.ext_ref_id ?? ''); }, [client.ext_ref_id]);
+
+  const { mutateAsync: updateClient, isPending: saving } =
+    useSkillMutation<{ client: { ext_ref_id: string | null } }>('client-skill', 'update_client');
+
+  const handleSave = async () => {
+    try {
+      await updateClient({ client_id: clientId, ext_ref_id: draft.trim() || null });
+      await queryClient.invalidateQueries({ queryKey: ['skill', 'client-skill', 'get_client'] });
+      showToast({ message: `${platformLabel} updated`, type: 'success' });
+      setEditing(false);
+    } catch (err: any) {
+      showToast({ message: err?.message ?? 'Failed to update vendor code', type: 'error' });
+    }
+  };
+
+  const handleCancel = () => {
+    setDraft(client.ext_ref_id ?? '');
+    setEditing(false);
+  };
+
+  return (
+    <div className={s.vendorWrap}>
+
+      {/* Import platform card */}
+      <div className={s.vendorSection}>
+        <div className={s.vendorSectionHead}>
+          <span className={s.vendorSectionTitle}>Import Platform</span>
+          <span className={s.vendorSectionHint}>Your firm's data source platform — set once during onboarding</span>
+        </div>
+        <div className={s.vendorCard}>
+          <div className={s.vendorPlatformRow}>
+            <div className={`${s.vendorPlatformBadge} ${!platformCode ? s.vendorPlatformBadgeEmpty : ''}`}>
+              {platformCode ?? '—'}
+            </div>
+            <div className={s.vendorPlatformInfo}>
+              <div className={s.vendorPlatformName}>{platformName}</div>
+              <div className={s.vendorPlatformHint}>
+                {platformCode
+                  ? `The ${platformName} platform is used to match import rows to this client via their ${platformLabel}.`
+                  : 'No platform selected. Configure in Settings → Business to enable vendor-code matching.'}
+              </div>
+            </div>
+            {!platformCode && (
+              <a href="/settings?tab=business" className={s.vendorSettingsLink}>Configure →</a>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Client vendor code */}
+      <div className={s.vendorSection}>
+        <div className={s.vendorSectionHead}>
+          <span className={s.vendorSectionTitle}>{platformLabel}</span>
+          <span className={s.vendorSectionHint}>
+            This client's unique code on {platformName}. Used as the primary match during transaction imports.
+          </span>
+        </div>
+        <div className={s.vendorCard}>
+          {!editing ? (
+            <div className={s.vendorCodeRow}>
+              <div className={s.vendorCodeDisplay}>
+                {client.ext_ref_id
+                  ? <span className={s.vendorCodeMono}>{client.ext_ref_id}</span>
+                  : <span className={s.vendorCodeEmpty}>Not set</span>}
+              </div>
+              <VdfButton
+                variant="outline"
+                size="sm"
+                onClick={() => { setDraft(client.ext_ref_id ?? ''); setEditing(true); }}
+              >
+                {client.ext_ref_id ? 'Edit' : 'Set Code'}
+              </VdfButton>
+            </div>
+          ) : (
+            <div className={s.vendorEditRow}>
+              <input
+                className={s.vendorInput}
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                placeholder={`Enter ${platformLabel}…`}
+                autoFocus
+                disabled={saving}
+                onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') handleCancel(); }}
+              />
+              <VdfButton variant="primary" size="sm" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving…' : 'Save'}
+              </VdfButton>
+              <VdfButton variant="ghost" size="sm" onClick={handleCancel} disabled={saving}>
+                Cancel
+              </VdfButton>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Warning when code is missing */}
+      {!client.ext_ref_id && (
+        <div className={s.vendorHintBox}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16" className={s.vendorHintIcon}>
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <div>
+            <strong>Set a {platformLabel} to maximise import accuracy.</strong>
+            {' '}Without it, the system falls back to PAN match, then name match —
+            which may fail for common names or when PAN is not present in the import file.
+            Orphaned rows can be re-processed once the code is set.
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
 /* ── Main Page ───────────────────────────────────────── */
 
 export default function CustomerDashboardPage() {
@@ -962,7 +1110,7 @@ export default function CustomerDashboardPage() {
   const clientId = Number(id);
 
   const tabParam   = searchParams?.get('tab') ?? null;
-  const initialTab = ['portfolio', 'transactions', 'snapshot', 'crm', 'goals'].includes(tabParam ?? '')
+  const initialTab = ['portfolio', 'transactions', 'snapshot', 'crm', 'goals', 'vendor'].includes(tabParam ?? '')
     ? tabParam!
     : 'portfolio';
   const [activeTab,    setActiveTab]    = useState(initialTab);
@@ -997,6 +1145,7 @@ export default function CustomerDashboardPage() {
     { id: 'snapshot',     label: 'Financial Snapshot' },
     { id: 'crm',          label: 'CRM Data' },
     { id: 'goals',        label: 'Goals' },
+    { id: 'vendor',       label: 'Vendor Code' },
   ];
 
   const gain   = summary ? summary.current_value - summary.total_invested : null;
@@ -1112,7 +1261,8 @@ export default function CustomerDashboardPage() {
           />
         )}
         {activeTab === 'crm'          && <CrmDataTab client={client} />}
-        {activeTab === 'goals'        && <GoalsTab        clientId={clientId} />}
+        {activeTab === 'goals'        && <GoalsTab clientId={clientId} />}
+        {activeTab === 'vendor'       && <VendorCodesTab client={client} clientId={clientId} />}
       </div>
     </div>
   );

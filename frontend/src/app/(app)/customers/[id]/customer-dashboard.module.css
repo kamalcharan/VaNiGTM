@@ -790,6 +790,179 @@
   font-size: 0.7rem;
 }
 
+/* ── Vendor Code tab ─────────────────────────────────── */
+
+.vendorWrap {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 680px;
+}
+
+.vendorSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vendorSectionHead {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vendorSectionTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.vendorSectionHint {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+
+.vendorCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+/* Platform row */
+.vendorPlatformRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.vendorPlatformBadge {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+.vendorPlatformBadgeEmpty {
+  background: color-mix(in srgb, var(--color-muted) 8%, transparent);
+  border-color: var(--color-border);
+  color: var(--color-muted);
+}
+
+.vendorPlatformInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.vendorPlatformName {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  margin-bottom: 3px;
+}
+
+.vendorPlatformHint {
+  font-size: 0.76rem;
+  color: var(--color-muted);
+  line-height: 1.4;
+}
+
+.vendorSettingsLink {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.vendorSettingsLink:hover { text-decoration: underline; }
+
+/* Code display row */
+.vendorCodeRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vendorCodeDisplay {
+  flex: 1;
+  min-width: 0;
+}
+
+.vendorCodeMono {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  letter-spacing: 0.06em;
+}
+
+.vendorCodeEmpty {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+/* Inline edit row */
+.vendorEditRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vendorInput {
+  flex: 1;
+  height: var(--input-height, 38px);
+  padding: var(--input-padding, 10px 14px);
+  background: var(--color-bg);
+  border: var(--input-border-width, 1px) solid var(--color-primary);
+  border-radius: var(--input-radius, 8px);
+  font-size: var(--input-font-size, 0.875rem);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  color: var(--color-fg);
+  transition: box-shadow 150ms;
+  box-sizing: border-box;
+}
+
+.vendorInput:focus {
+  outline: none;
+  box-shadow: 0 0 0 var(--input-focus-ring-size, 3px)
+    color-mix(in srgb, var(--color-primary) var(--input-focus-ring-opacity, 12%), transparent);
+}
+
+.vendorInput:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Warning hint box */
+.vendorHintBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--color-warning) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 25%, var(--color-border));
+  border-radius: 10px;
+  font-size: 0.78rem;
+  color: var(--color-fg);
+  line-height: 1.5;
+}
+
+.vendorHintIcon {
+  flex-shrink: 0;
+  color: var(--color-warning);
+  margin-top: 1px;
+}
+
 /* ── Responsive ──────────────────────────────────────── */
 
 @media (max-width: 900px) {
@@ -811,7 +984,8 @@
   .portfolioWrap,
   .txnWrap,
   .tabContent,
-  .crmWrap {
+  .crmWrap,
+  .vendorWrap {
     padding: 16px 20px 24px;
   }
   .filterBar { gap: 8px; }
@@ -828,7 +1002,8 @@
   .statValue { font-size: 1.05rem; }
   .portfolioWrap,
   .txnWrap,
-  .tabContent {
+  .tabContent,
+  .vendorWrap {
     padding: 12px 14px 20px;
   }
   .tabsBar,
