@@ -294,7 +294,8 @@ export default function CourseCorrectionPage() {
 
   const { data, isLoading, isError, error, refetch } = useSkillQuery<CorrectionsData>(
     'etl-skill', 'get_corrections',
-    { status: statusFilter === 'all' ? undefined : statusFilter }
+    { status: statusFilter === 'all' ? undefined : statusFilter },
+    { retry: false }
   );
 
   const { mutate: rollback, isPending: isRollingBack } = useSkillMutation(

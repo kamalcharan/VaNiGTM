@@ -152,11 +152,11 @@ export default function TransactionsPage() {
   }), [activeDateFrom, activeDateTo]);
 
   const { data, isLoading, isError, error } = useSkillQuery<TransactionsData>(
-    'transaction-skill', 'get_transactions', txnParams
+    'transaction-skill', 'get_transactions', txnParams, { retry: false }
   );
 
   const { data: sumData } = useSkillQuery<SummaryData>(
-    'transaction-skill', 'get_transaction_summary', sumParams
+    'transaction-skill', 'get_transaction_summary', sumParams, { retry: false }
   );
 
   const transactions = data?.data?.transactions ?? [];
