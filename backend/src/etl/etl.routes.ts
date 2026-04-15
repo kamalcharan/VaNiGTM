@@ -90,15 +90,14 @@ export function createEtlRouter(pool: Pool): Router {
       const importType = req.body.import_type || 'scheme';
       const fileHash = crypto.createHash('sha256').update(fs.readFileSync(file.path)).digest('hex');
 
-      // Check duplicate by hash — scoped to this tenant
+      // Check duplicate by filename — scoped to this tenant
       const dup = await pool.query(
-        `SELECT id, original_filename FROM ki_file_uploads WHERE file_hash = $1 AND processing_status = 'completed' AND tenant_id = $2`,
-        [fileHash, auth.tenant_id],
+        `SELECT id FROM ki_file_uploads WHERE original_filename = $1 AND processing_status = 'completed' AND tenant_id = $2`,
+        [file.originalname, auth.tenant_id],
       );
       if (dup.rows.length > 0) {
-        const prev = dup.rows[0] as any;
         res.status(409).json({
-          error: { code: 'DUPLICATE_FILE', message: `This file was already imported as "${prev.original_filename}"` },
+          error: { code: 'DUPLICATE_FILE', message: `A file named "${file.originalname}" has already been imported.` },
         });
         return;
       }
