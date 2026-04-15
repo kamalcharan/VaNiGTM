@@ -499,6 +499,8 @@ export function createEtlRouter(pool: Pool): Router {
       const sessResult = await pool.query('SELECT * FROM ki_import_sessions WHERE id = $1', [sessionId]);
       if (sessResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }); return; }
 
+      const session = sessResult.rows[0] as any;
+
       // Reset failed (and orphan, for transaction imports) rows to pending
       const statusesToReset = session.import_type === 'transaction'
         ? ['failed', 'orphan']
@@ -524,8 +526,6 @@ export function createEtlRouter(pool: Pool): Router {
       );
 
       // Re-invoke processing based on import type
-      const session = sessResult.rows[0] as any;
-
       if (session.import_type === 'scheme') {
         const rpcResult = await pool.query(
           'SELECT * FROM process_scheme_import_with_timing($1, $2)',
