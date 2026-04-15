@@ -35,9 +35,19 @@ Full-text search across transaction records (scheme name, client name, folio).
 - Parameters: query (required, string), limit (optional, number, default 20)
 - Returns: { results: [{ id, client_name, scheme_name, txn_date, txn_type, amount }], total, recipe: 'data-table' }
 
+### import_transactions
+Execute the ki_process_txn_import_session() RPC against a staged import session.
+Processes all pending ki_import_staging rows: client lookup (ext_ref_id → PAN → name),
+txn type resolution, scheme alias lookup, dedup check, ki_holdings UPSERT,
+ki_transactions INSERT, ki_alerts for new scheme appearances.
+- Parameters: session_id (required, number) — must be a 'staged' session owned by this tenant/environment
+- Returns: { session_id, total_processed, successful, failed, duplicates, orphans, processing_time_s, status ('completed'|'completed_with_errors'), recipe: 'stat-row' }
+- Throws: session not found, wrong tenant/environment, already processing/completed, not yet staged
+
 ## Constraints
 - All queries filter by tenant_id from SkillContext. Never cross-tenant.
 - Pagination is mandatory for get_transactions — no unbounded result sets.
-- Transaction data is read-only via this skill. Writes happen through import-skill/etl-skill.
+- import_transactions is the only write path in this skill. All other functions are read-only.
+- import_transactions requires migrations 043 + 044 + 045 to be applied.
 - XIRR calculations are NOT in this skill — they live in portfolio-skill.calc_xirr.
 - Date filters use IST (Indian Standard Time) for date boundary calculations.
