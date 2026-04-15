@@ -1,18 +1,21 @@
 -- ============================================================
--- 043_ki_client_codes.sql
+-- 043_ki_txn_import_schema_prep.sql
 --
--- 1. ki_client_codes  — maps tenant clients to vendor-specific codes
---                       (InvestWell, CAMS, KFintech, MFU, NSE, BSE, …)
--- 2. ki_normalize_contact_name()  — mirrors ki_contacts.normalized_name
---                                    generated column; used by import RPC
---                                    for name-based client lookup
--- 3. Backfill ki_client_codes from ki_clients.ext_ref_id (vendor='investwell')
--- 4. Schema prep for transaction import:
---      a) Add 'orphan' to ki_import_staging.processing_status CHECK
---      b) Add 'new_scheme_detected' to ki_alerts.alert_type CHECK
---      c) Update ki_holdings UNIQUE to include is_live (environment isolation)
---      d) Make ki_transactions.txn_type nullable (superseded by txn_type_id)
---      e) Drop ki_transactions.source CHECK (allow 'import' and any vendor string)
+-- Schema fixes needed before ki_process_txn_import_session() can run.
+-- NOTE: Client vendor codes already exist via:
+--   ki_clients.ext_ref_id         — the vendor code per client
+--   vn_tenants.ext_ref_type_code  — which vendor this tenant uses (IWELL/CAMS/etc)
+--   ki_ext_ref_types              — global vendor master (migration 033)
+-- No new vendor-code table needed.
+--
+-- This migration:
+--   1. ki_normalize_contact_name()  — normalize import file name for lookup
+--                                     against ki_contacts.normalized_name
+--   2. ki_import_staging: add 'orphan' to processing_status CHECK
+--   3. ki_alerts: add 'new_scheme_detected' to alert_type CHECK
+--   4. ki_holdings: update UNIQUE to include is_live (environment isolation)
+--   5. ki_transactions: make txn_type nullable (superseded by txn_type_id)
+--   6. ki_transactions: drop source CHECK (allow 'import' and any string)
 --
 -- ADDITIVE — no data loss, no column drops.
 -- ============================================================
@@ -20,59 +23,14 @@
 BEGIN;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- STEP 1: ki_client_codes
--- One client can have codes from multiple vendors (one per vendor per client).
--- UNIQUE (tenant_id, vendor, vendor_code): a given code in a vendor namespace
--- can only belong to ONE client per tenant.
--- ─────────────────────────────────────────────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS ki_client_codes (
-    id          BIGSERIAL    PRIMARY KEY,
-    tenant_id   UUID         NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
-    client_id   INTEGER      NOT NULL REFERENCES ki_clients(id) ON DELETE CASCADE,
-
-    -- Vendor identifier — any string; common values:
-    -- 'investwell' | 'cams' | 'kfintech' | 'mfu' | 'nse' | 'bse' | 'zerodha'
-    vendor      TEXT         NOT NULL,
-
-    -- The client code as it appears in that vendor's files / platform
-    vendor_code TEXT         NOT NULL,
-
-    -- Primary code for this vendor (in case a client has multiple codes at one vendor)
-    is_primary  BOOLEAN      NOT NULL DEFAULT false,
-
-    created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
-
-    -- A given vendor_code in a given vendor namespace belongs to exactly ONE client per tenant
-    CONSTRAINT uq_ki_client_codes_vendor UNIQUE (tenant_id, vendor, vendor_code)
-);
-
-COMMENT ON TABLE  ki_client_codes             IS 'Maps tenant clients to vendor-specific reference codes for import matching';
-COMMENT ON COLUMN ki_client_codes.vendor      IS 'Vendor namespace: investwell, cams, kfintech, mfu, nse, bse, etc.';
-COMMENT ON COLUMN ki_client_codes.vendor_code IS 'The code as it appears in the vendor file (e.g., IWELL CODE = 373824)';
-COMMENT ON COLUMN ki_client_codes.is_primary  IS 'If a client has multiple codes at one vendor, marks the canonical one';
-
-CREATE INDEX IF NOT EXISTS idx_ki_client_codes_lookup
-    ON ki_client_codes(tenant_id, vendor, vendor_code);
-
-CREATE INDEX IF NOT EXISTS idx_ki_client_codes_client
-    ON ki_client_codes(tenant_id, client_id);
-
-ALTER TABLE ki_client_codes ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY ki_client_codes_tenant_isolation ON ki_client_codes
-    USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);
-
-
--- ─────────────────────────────────────────────────────────────────────────────
--- STEP 2: ki_normalize_contact_name()
+-- STEP 1: ki_normalize_contact_name()
 --
 -- Mirrors the GENERATED ALWAYS AS formula in ki_contacts.normalized_name.
--- Called by the import RPC to normalize the customer name from the import
--- file before comparing against stored normalized_name values.
+-- Called by the import RPC to normalize the customer_name field from the
+-- import file before comparing against stored normalized_name values.
 --
--- Formula: uppercase → strip leading title (MR/MRS/MS/DR/PROF/SRI/SMT)
---          → remove non-alphanumeric → collapse whitespace → trim
+-- Formula: strip leading title → remove non-alphanumeric → collapse spaces → uppercase
+-- Must match the generated column exactly for lookups to work.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION ki_normalize_contact_name(p_name TEXT)
@@ -99,35 +57,15 @@ $$;
 
 COMMENT ON FUNCTION ki_normalize_contact_name IS
 'Normalize a contact name for import matching. Mirrors the ki_contacts.normalized_name
- generated column: strip title prefix, uppercase, remove special chars, collapse spaces.
- IMMUTABLE — safe in indexes. Used by ki_process_txn_import_session() for name lookup.';
+ generated column exactly: strip title prefix, uppercase, remove special chars, collapse
+ spaces. IMMUTABLE — safe in indexes. Used by ki_process_txn_import_session() for
+ name-based client lookup.';
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- STEP 3: Backfill ki_client_codes from ki_clients.ext_ref_id
--- ext_ref_id stored InvestWell codes before ki_client_codes existed.
--- Only backfill rows where ext_ref_id is non-null and non-empty.
--- ON CONFLICT DO NOTHING — idempotent.
--- ─────────────────────────────────────────────────────────────────────────────
-
-INSERT INTO ki_client_codes (tenant_id, client_id, vendor, vendor_code, is_primary)
-SELECT
-    tenant_id,
-    id,
-    'investwell',
-    TRIM(ext_ref_id),
-    true   -- mark as primary since it was the only code
-FROM ki_clients
-WHERE ext_ref_id IS NOT NULL
-  AND TRIM(ext_ref_id) != ''
-ON CONFLICT (tenant_id, vendor, vendor_code) DO NOTHING;
-
-
--- ─────────────────────────────────────────────────────────────────────────────
--- STEP 4a: Add 'orphan' status to ki_import_staging.processing_status
--- 'orphan' = staging row was processed but no matching client was found.
--- Different from 'failed' (technical error) — orphans are re-processable
--- once the client is added or the vendor code is mapped.
+-- STEP 2: Add 'orphan' to ki_import_staging.processing_status
+-- orphan = no matching client found (ext_ref_id + PAN + name all failed).
+-- Re-processable once the client record or ext_ref_id is corrected.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 DO $$
@@ -153,17 +91,15 @@ ALTER TABLE ki_import_staging
         'failed',
         'duplicate',
         'skipped',
-        'orphan'    -- no matching client found; re-processable once client is added
+        'orphan'    -- no matching client; re-processable after client/code fix
     ));
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- STEP 4b: Add 'new_scheme_detected' to ki_alerts.alert_type
--- Created automatically by ki_process_txn_import_session() when a client's
--- first transaction for a scheme is imported — signals the advisor to review
--- the investment plan for this client.
--- NOTE: ki_alerts will be renamed to ki_pulses in a future feature (Pulses).
---       See CLAUDE.md Lessons Learned #15.
+-- STEP 3: Add 'new_scheme_detected' to ki_alerts.alert_type
+-- Created by ki_process_txn_import_session() when a client's first transaction
+-- for a scheme is imported — signals advisor to review investment plan.
+-- NOTE: ki_alerts may be renamed ki_pulses in a future release (CLAUDE.md #15).
 -- ─────────────────────────────────────────────────────────────────────────────
 
 DO $$
@@ -192,15 +128,15 @@ ALTER TABLE ki_alerts
         'new_nfo_match',
         'sip_bounced',
         'nav_drop',
-        'new_scheme_detected'   -- auto-created during transaction import (first txn for a scheme)
+        'new_scheme_detected'   -- first transaction for a scheme detected during import
     ));
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- STEP 4c: Update ki_holdings UNIQUE to include is_live
--- The original UNIQUE (tenant_id, client_id, portfolio_id, scheme_code) does
--- not separate live/sandbox holdings. Two imports in different environments
--- would conflict. Adding is_live makes them properly isolated.
+-- STEP 4: Update ki_holdings UNIQUE constraint to include is_live
+-- Original: UNIQUE(tenant_id, client_id, portfolio_id, scheme_code)
+-- Problem:  sandbox and live holdings for the same client+scheme conflict.
+-- Fix:      add is_live so each environment has its own holdings row.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 DO $$
@@ -214,7 +150,7 @@ BEGIN
 
     IF v_cname IS NOT NULL THEN
         EXECUTE 'ALTER TABLE ki_holdings DROP CONSTRAINT ' || quote_ident(v_cname);
-        RAISE NOTICE '[043] Dropped old ki_holdings UNIQUE constraint: %', v_cname;
+        RAISE NOTICE '[043] Dropped old ki_holdings UNIQUE: %', v_cname;
     END IF;
 END $$;
 
@@ -223,30 +159,29 @@ ALTER TABLE ki_holdings
     UNIQUE (tenant_id, is_live, client_id, portfolio_id, scheme_code);
 
 COMMENT ON CONSTRAINT uq_ki_holdings_env ON ki_holdings IS
-'One holdings row per (tenant, environment, client, portfolio, scheme). is_live isolates sandbox from live.';
+'One holdings row per (tenant, environment, client, portfolio, scheme). is_live added in
+ migration 043 to properly isolate sandbox from live holdings.';
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- STEP 4d: Make ki_transactions.txn_type nullable
--- txn_type (TEXT, legacy) is superseded by txn_type_id (FK to ki_transaction_types)
--- added in migration 042. New rows from import will use txn_type_id and leave
--- txn_type NULL. The column will be dropped in a future migration.
--- The CHECK constraint accepts NULL implicitly once NOT NULL is removed.
+-- STEP 5: Make ki_transactions.txn_type nullable
+-- txn_type TEXT was the legacy type column (purchase/redemption/etc).
+-- Superseded by txn_type_id FK (migration 042). New import rows use
+-- txn_type_id and leave txn_type NULL. Will be dropped in a future migration.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 ALTER TABLE ki_transactions ALTER COLUMN txn_type DROP NOT NULL;
 
 COMMENT ON COLUMN ki_transactions.txn_type IS
-'DEPRECATED: Legacy lowercase txn type string (purchase/redemption/etc). Superseded by
- txn_type_id (FK to ki_transaction_types, added migration 042). Will be dropped in a
- future migration once all code switches to txn_type_id.';
+'DEPRECATED: Legacy lowercase type string. Superseded by txn_type_id (migration 042).
+ Made nullable in migration 043. Will be dropped in a future migration.';
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- STEP 4e: Drop ki_transactions.source CHECK constraint
--- Original CHECK allowed: manual | investwell | cas | nse | api
--- Import RPC uses source = 'import' and vendors will grow over time.
--- Dropping the CHECK allows any string. The column value is metadata only.
+-- STEP 6: Drop ki_transactions.source CHECK
+-- Original allowed: manual | investwell | cas | nse | api
+-- Import RPC uses source = 'import'. Vendors grow over time.
+-- Dropping CHECK allows any string — column is metadata only.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 DO $$
@@ -265,7 +200,8 @@ BEGIN
 END $$;
 
 COMMENT ON COLUMN ki_transactions.source IS
-'Origin of the transaction: manual | import | investwell | cas | nse | api | or any vendor string. CHECK removed in migration 043 to allow extensible vendor values.';
+'Origin string: manual | import | investwell | cas | nse | api | (any vendor string).
+ CHECK removed in migration 043 to allow extensible vendor values.';
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -274,13 +210,13 @@ COMMENT ON COLUMN ki_transactions.source IS
 
 DO $$
 BEGIN
-    RAISE NOTICE '[043] ki_client_codes: created (% rows backfilled from ext_ref_id)',
-        (SELECT COUNT(*) FROM ki_client_codes);
     RAISE NOTICE '[043] ki_normalize_contact_name(): created';
-    RAISE NOTICE '[043] ki_import_staging: added orphan status';
-    RAISE NOTICE '[043] ki_alerts: added new_scheme_detected type';
+    RAISE NOTICE '[043] ki_import_staging: added orphan status to CHECK';
+    RAISE NOTICE '[043] ki_alerts: added new_scheme_detected to CHECK';
     RAISE NOTICE '[043] ki_holdings: UNIQUE updated to include is_live';
-    RAISE NOTICE '[043] ki_transactions: txn_type made nullable, source CHECK dropped';
+    RAISE NOTICE '[043] ki_transactions: txn_type made nullable';
+    RAISE NOTICE '[043] ki_transactions: source CHECK dropped';
+    RAISE NOTICE '[043] Client vendor codes: using existing ki_clients.ext_ref_id + vn_tenants.ext_ref_type_code';
 END;
 $$;
 

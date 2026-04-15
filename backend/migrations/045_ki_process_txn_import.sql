@@ -7,11 +7,14 @@
 -- import session. Per-row pipeline:
 --
 --   1. CLIENT LOOKUP
---      vendor_code → ki_client_codes(tenant_id, vendor, code) → client_id
+--      vendor_code → ki_clients.ext_ref_id (tenant's platform code)
 --      └─ fallback: PAN from row        → ki_clients.pan
 --      └─ fallback: customer_name       → ki_normalize_contact_name()
 --                                          → ki_contacts.normalized_name
 --      └─ not found → status = 'orphan', CONTINUE
+--
+--      Vendor platform (IWELL/CAMS/etc) is on vn_tenants.ext_ref_type_code.
+--      No separate ki_client_codes table needed — ext_ref_id is the code.
 --
 --   2. TRANSACTION TYPE LOOKUP
 --      txn_code → ki_transaction_types.txn_code (UPPER match)
@@ -72,7 +75,6 @@ DECLARE
     -- Session info
     v_tenant_id          UUID;
     v_is_live            BOOLEAN;
-    v_vendor             TEXT;
     v_creator_id         UUID;
 
     -- Per-row variables
@@ -98,8 +100,8 @@ BEGIN
     -- ─────────────────────────────────────────────────────────────────────────
     -- Load session info
     -- ─────────────────────────────────────────────────────────────────────────
-    SELECT s.tenant_id, s.is_live, s.vendor, s.created_by
-    INTO   v_tenant_id, v_is_live, v_vendor, v_creator_id
+    SELECT s.tenant_id, s.is_live, s.created_by
+    INTO   v_tenant_id, v_is_live, v_creator_id
     FROM   ki_import_sessions s
     WHERE  s.id = p_session_id;
 
@@ -114,8 +116,8 @@ BEGIN
            updated_at           = NOW()
     WHERE  id = p_session_id;
 
-    RAISE NOTICE '[Session %] Starting. tenant=%, is_live=%, vendor=%',
-        p_session_id, v_tenant_id, v_is_live, v_vendor;
+    RAISE NOTICE '[Session %] Starting. tenant=%, is_live=%',
+        p_session_id, v_tenant_id, v_is_live;
 
     -- ─────────────────────────────────────────────────────────────────────────
     -- Main loop — one iteration per pending staging row
@@ -141,19 +143,24 @@ BEGIN
 
             -- ─────────────────────────────────────────────────────────────────
             -- STEP 1: CLIENT LOOKUP
-            -- Priority: vendor_code → PAN → normalized name
+            -- Priority: ext_ref_id (vendor code) → PAN → normalized name
+            --
+            -- Vendor platform is on vn_tenants.ext_ref_type_code (IWELL/CAMS/etc).
+            -- The actual code per client is ki_clients.ext_ref_id.
+            -- The import file's vendor_code field maps to ext_ref_id.
             -- ─────────────────────────────────────────────────────────────────
 
-            -- 1a. vendor_code via ki_client_codes
+            -- 1a. ext_ref_id match (vendor code from import file)
             IF v_staging.mapped_data->>'vendor_code' IS NOT NULL
                AND TRIM(v_staging.mapped_data->>'vendor_code') <> ''
             THEN
-                SELECT cc.client_id
+                SELECT c.id
                 INTO   v_client_id
-                FROM   ki_client_codes cc
-                WHERE  cc.tenant_id    = v_tenant_id
-                  AND  cc.vendor       = v_vendor
-                  AND  UPPER(TRIM(cc.vendor_code)) = UPPER(TRIM(v_staging.mapped_data->>'vendor_code'))
+                FROM   ki_clients c
+                WHERE  c.tenant_id = v_tenant_id
+                  AND  c.is_live   = v_is_live
+                  AND  c.is_active = true
+                  AND  UPPER(TRIM(c.ext_ref_id)) = UPPER(TRIM(v_staging.mapped_data->>'vendor_code'))
                 LIMIT  1;
             END IF;
 
@@ -541,11 +548,12 @@ $$;
 
 COMMENT ON FUNCTION ki_process_txn_import_session IS
 'Process all pending staging rows for a transaction import session.
- Per-row: client lookup (vendor_code → PAN → name) → txn type → scheme →
+ Per-row: client lookup (ext_ref_id → PAN → name) → txn type → scheme →
  dedup → holdings upsert → transaction insert → new-scheme alert.
- Called by the import_transactions skill function. Session 043 migration
- required: ki_client_codes, ki_normalize_contact_name, schema fixes.
- Session 044 migration required: ki_import_sessions.vendor column.';
+ Called by the import_transactions skill function.
+ Requires migration 043 (schema fixes) and 044 (orphan_records) to be applied first.
+ Client vendor codes use ki_clients.ext_ref_id + vn_tenants.ext_ref_type_code
+ (migration 033) — no separate vendor code table needed.';
 
 -- Verify
 DO $$
