@@ -23,6 +23,7 @@ import crypto from 'crypto';
 import { parseExcelHeaders, parseExcelRows } from './excel-parser';
 import { mapSchemeRow, SCHEME_FIELD_MAP, BOOKMARK_FIELD_MAP } from './scheme-processor';
 import { mapCustomerRow, CUSTOMER_FIELD_MAP } from './customer-processor';
+import { mapTransactionRow, TRANSACTION_FIELD_MAP } from './transaction-processor';
 import { verifyAccessToken, type JwtPayload } from '../auth/token.service';
 
 const UPLOAD_DIR = path.resolve(__dirname, '../../uploads');
@@ -136,9 +137,10 @@ export function createEtlRouter(pool: Pool): Router {
       const { headers, sampleRows, totalRows } = parseExcelHeaders(file.file_path);
 
       // Auto-suggest mapping based on import type
-      const suggestedMapping = file.file_type === 'scheme'   ? SCHEME_FIELD_MAP
-        : file.file_type === 'bookmark'  ? BOOKMARK_FIELD_MAP
-        : file.file_type === 'customer'  ? CUSTOMER_FIELD_MAP
+      const suggestedMapping = file.file_type === 'scheme'      ? SCHEME_FIELD_MAP
+        : file.file_type === 'bookmark'     ? BOOKMARK_FIELD_MAP
+        : file.file_type === 'customer'     ? CUSTOMER_FIELD_MAP
+        : file.file_type === 'transaction'  ? TRANSACTION_FIELD_MAP
         : {};
 
       res.json({
@@ -217,8 +219,9 @@ export function createEtlRouter(pool: Pool): Router {
       // so the session belongs to that tenant for dashboard visibility and audit.
       const tenantId = auth.tenant_id;
       const mappings = field_mappings
-        || (import_type === 'scheme'   ? SCHEME_FIELD_MAP
-          : import_type === 'customer' ? CUSTOMER_FIELD_MAP
+        || (import_type === 'scheme'       ? SCHEME_FIELD_MAP
+          : import_type === 'customer'     ? CUSTOMER_FIELD_MAP
+          : import_type === 'transaction'  ? TRANSACTION_FIELD_MAP
           : {});
 
       // Create session
@@ -246,7 +249,9 @@ export function createEtlRouter(pool: Pool): Router {
             ? mapSchemeRow(raw, mappings)
             : import_type === 'customer'
               ? mapCustomerRow(raw, mappings)
-              : applyGenericMapping(raw, mappings);
+              : import_type === 'transaction'
+                ? mapTransactionRow(raw, mappings)
+                : applyGenericMapping(raw, mappings);
 
           const offset = batchIdx * 4;
           placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}::jsonb, $${offset + 4}::jsonb)`);
@@ -325,13 +330,35 @@ export function createEtlRouter(pool: Pool): Router {
           // Non-fatal — families can be re-resolved via /resolve-families endpoint
           console.warn('[ETL:process] auto resolve_customer_families failed:', familyErr.message);
         }
+      } else if (session.import_type === 'transaction') {
+        // Transaction import: calls ki_process_txn_import_session (migration 045).
+        // The RPC handles client lookup (vendor_code → PAN → name), dedup,
+        // holdings UPSERT, ki_transactions INSERT, and ki_alerts for new schemes.
+        // It also updates ki_import_sessions counters + status internally.
+        rpcResult = await pool.query(
+          'SELECT * FROM ki_process_txn_import_session($1)',
+          [sessionId],
+        );
       } else {
-        // transaction import not yet implemented
         res.status(400).json({ error: { code: 'UNSUPPORTED', message: `Import type "${session.import_type}" processing not yet implemented` } });
         return;
       }
 
-      const result = rpcResult.rows[0] as any;
+      const raw = rpcResult.rows[0] as any;
+
+      // Normalise RPC result to a common shape regardless of which RPC was called.
+      // scheme/customer RPCs: processed_count, success_count, failed_count, duplicate_count, actual_duration_ms
+      // transaction RPC:      total_processed, successful, failed, duplicates, orphans, processing_time_s
+      const processed  = raw.processed_count  ?? Number(raw.total_processed)  ?? 0;
+      const successful = raw.success_count     ?? Number(raw.successful)       ?? 0;
+      const failed     = raw.failed_count      ?? Number(raw.failed)           ?? 0;
+      const duplicate  = raw.duplicate_count   ?? Number(raw.duplicates)       ?? 0;
+      const orphans    = Number(raw.orphans)   ?? 0;
+      const durationMs = raw.actual_duration_ms != null
+        ? Number(raw.actual_duration_ms)
+        : raw.processing_time_s != null
+          ? Math.round(Number(raw.processing_time_s) * 1000)
+          : 0;
 
       // Mark file as completed
       await pool.query(
@@ -341,12 +368,13 @@ export function createEtlRouter(pool: Pool): Router {
 
       res.json({
         session_id: sessionId,
-        status: result.failed_count > 0 ? 'completed_with_errors' : 'completed',
-        processed: result.processed_count,
-        successful: result.success_count,
-        failed: result.failed_count,
-        duplicate: result.duplicate_count,
-        duration_ms: result.actual_duration_ms,
+        status: failed + orphans > 0 ? 'completed_with_errors' : 'completed',
+        processed,
+        successful,
+        failed,
+        duplicate,
+        orphans,
+        duration_ms: durationMs,
       });
     } catch (err: any) {
       console.error('[ETL:process]', err);
@@ -471,13 +499,16 @@ export function createEtlRouter(pool: Pool): Router {
       const sessResult = await pool.query('SELECT * FROM ki_import_sessions WHERE id = $1', [sessionId]);
       if (sessResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }); return; }
 
-      // Reset failed rows to pending
+      // Reset failed (and orphan, for transaction imports) rows to pending
+      const statusesToReset = session.import_type === 'transaction'
+        ? ['failed', 'orphan']
+        : ['failed'];
       const resetResult = await pool.query(
         `UPDATE ki_import_staging
          SET processing_status = 'pending', error_messages = NULL, processed_at = NULL
-         WHERE session_id = $1 AND processing_status = 'failed'
+         WHERE session_id = $1 AND processing_status = ANY($2::text[])
          RETURNING id`,
-        [sessionId],
+        [sessionId, statusesToReset],
       );
       const resetCount = resetResult.rows.length;
 
@@ -521,6 +552,21 @@ export function createEtlRouter(pool: Pool): Router {
           successful: result.success_count,
           failed: result.failed_count,
           duplicate: result.duplicate_count,
+        });
+
+      } else if (session.import_type === 'transaction') {
+        const rpcResult = await pool.query(
+          'SELECT * FROM ki_process_txn_import_session($1)',
+          [sessionId],
+        );
+        const raw = rpcResult.rows[0] as any;
+        res.json({
+          message: `Reprocessed ${resetCount} records`,
+          reprocessed: resetCount,
+          successful: Number(raw.successful) ?? 0,
+          failed:     Number(raw.failed)     ?? 0,
+          duplicate:  Number(raw.duplicates) ?? 0,
+          orphans:    Number(raw.orphans)    ?? 0,
         });
 
       } else if (session.import_type === 'bookmark') {

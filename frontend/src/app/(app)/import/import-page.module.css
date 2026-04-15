@@ -275,6 +275,40 @@
 .mappingUnmapped { color: var(--color-muted); opacity: 0.4; font-style: italic; }
 .mappingSample { color: var(--color-muted); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* Platform tag — shown next to vendor_code in mapping table for transaction imports */
+.mappingPlatformTag {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 7px;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--color-primary);
+  font-family: inherit;
+}
+
+/* Platform hint bar — shown above mapping table for transaction imports */
+.platformHint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  background: color-mix(in srgb, var(--color-info) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-info) 20%, var(--color-border));
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: var(--color-fg);
+  line-height: 1.5;
+}
+
+.platformHint svg { color: var(--color-info); margin-top: 2px; }
+.platformHint code { font-family: var(--font-mono, monospace); font-size: 0.75rem; color: var(--color-primary); }
+
 /* ── Preview Table ───────────────────────────────────── */
 .previewDetails { margin-bottom: 24px; }
 

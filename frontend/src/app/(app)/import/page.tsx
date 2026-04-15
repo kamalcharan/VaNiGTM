@@ -40,6 +40,7 @@ interface ProcessResult {
   successful: number;
   failed: number;
   duplicate: number;
+  orphans: number;
   duration_ms: number;
 }
 
@@ -48,7 +49,7 @@ interface ProcessResult {
 const IMPORT_TYPES: { id: ImportType; label: string; desc: string; icon: ReactNode; enabled: boolean }[] = [
   { id: 'scheme',      label: 'Scheme Master', desc: 'AMFI scheme database — codes, ISINs, categories, NAV names',   icon: <Database size={22} />,       enabled: true  },
   { id: 'customer',    label: 'Customers',     desc: 'Client contacts — externalid, PAN, mobile, email, addresses',  icon: <Users size={22} />,          enabled: true  },
-  { id: 'transaction', label: 'Transactions',  desc: 'Purchases, redemptions, SIPs, switches, dividends',            icon: <ArrowLeftRight size={22} />, enabled: false },
+  { id: 'transaction', label: 'Transactions',  desc: 'Purchases, redemptions, SIPs, switches, dividends',            icon: <ArrowLeftRight size={22} />, enabled: true  },
   { id: 'bookmark',    label: 'Bookmarks',     desc: 'Tracked scheme codes and ISINs — bulk add to My NAV',          icon: <Bookmark size={22} />,       enabled: true  },
 ];
 
@@ -56,7 +57,7 @@ const IMPORT_TYPES: { id: ImportType; label: string; desc: string; icon: ReactNo
 
 export default function ImportPage() {
   const { showToast } = useToast();
-  const { isAdmin } = useAuth();
+  const { isAdmin, tenant } = useAuth();
 
   const [step, setStep] = useState<Step>('type');
   // Default to 'scheme' for admins, 'bookmark' for non-admins
@@ -217,6 +218,30 @@ export default function ImportPage() {
         insights.push('Go to My NAV to download NAV data and calculate metrics for your new bookmarks.');
       }
 
+    } else if (importType === 'transaction') {
+      if (result.successful > 0) {
+        insights.push(`${result.successful.toLocaleString()} transaction${result.successful !== 1 ? 's' : ''} imported successfully.`);
+      }
+      if (result.duplicate > 0) {
+        insights.push(`${result.duplicate.toLocaleString()} duplicate${result.duplicate !== 1 ? 's' : ''} skipped — already present in the transaction ledger.`);
+      }
+      if (result.failed > 0) {
+        insights.push(`${result.failed} row${result.failed !== 1 ? 's' : ''} failed — check error details in the import dashboard. Common causes: unknown scheme name, invalid transaction type code.`);
+      }
+      if (result.orphans > 0) {
+        const platformLabel = tenant?.ext_ref_type_code
+          ? { CAMS: 'CAMS Code', KFINTECH: 'KFintech Code', IWELL: 'IWell Code', BSE_STAR: 'BSE StarMF Code', CUSTOM: 'Custom Code' }[tenant.ext_ref_type_code] ?? 'vendor code'
+          : 'vendor code';
+        insights.push(`${result.orphans} row${result.orphans !== 1 ? 's' : ''} could not be matched to a client — no ${platformLabel}, PAN, or name match. Set the ${platformLabel} on the client's Vendor Code tab, then reprocess from the import dashboard.`);
+      }
+      if (result.successful > 0) {
+        insights.push('Portfolio holdings have been updated. New scheme appearances generated Pulse alerts for your review.');
+        insights.push('Go to any client\'s Transactions tab to verify the imported data.');
+      }
+      if (result.duration_ms) {
+        insights.push(`Processed ${result.processed.toLocaleString()} rows in ${(result.duration_ms / 1000).toFixed(1)}s via PostgreSQL RPC.`);
+      }
+
     } else if (importType === 'customer') {
       if (result.successful > 0 && result.failed === 0) {
         insights.push(`All ${result.successful.toLocaleString()} clients imported successfully.`);
@@ -349,6 +374,22 @@ export default function ImportPage() {
             <VdfInsightsCard insights={[{ icon: '🧠', text: `Detected ${headerInfo.total_rows.toLocaleString()} rows with ${headerInfo.headers.length} columns. Field mapping auto-applied — review and confirm.` }]} />
           </div>
 
+          {/* P3b: Transaction import — show which platform column maps to vendor_code */}
+          {importType === 'transaction' && tenant?.ext_ref_type_code && (
+            <div className={s.platformHint}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <span>
+                <strong>Platform:</strong>{' '}
+                {{ CAMS: 'CAMS', KFINTECH: 'KFintech', IWELL: 'InvestWell', BSE_STAR: 'BSE StarMF', CUSTOM: 'Custom' }[tenant.ext_ref_type_code] ?? tenant.ext_ref_type_code}
+                {' '}— your client code column (e.g.{' '}
+                {{ CAMS: '"CAMS CODE"', KFINTECH: '"KFINTECH CODE"', IWELL: '"IWELL CODE"', BSE_STAR: '"BSE CODE"', CUSTOM: '"CLIENT CODE"' }[tenant.ext_ref_type_code] ?? '"CLIENT CODE"'}
+                ) maps to <code>vendor_code</code> and is used as the primary client identifier during import.
+              </span>
+            </div>
+          )}
+
           {/* Mapping table */}
           <div className={s.mappingCard}>
             <div className={s.mappingHeader}>
@@ -364,6 +405,12 @@ export default function ImportPage() {
                 ? sample.toLocaleDateString()
                 : sample !== undefined && sample !== null ? String(sample) : '\u2014';
 
+              // P3b: annotate the vendor_code field with the tenant's platform label
+              const isPlatformKey = importType === 'transaction' && target === 'vendor_code';
+              const platformLabel = isPlatformKey && tenant?.ext_ref_type_code
+                ? ({ CAMS: 'CAMS Code', KFINTECH: 'KFintech Code', IWELL: 'IWell Code', BSE_STAR: 'BSE StarMF Code', CUSTOM: 'Custom Code' } as Record<string, string>)[tenant.ext_ref_type_code]
+                : null;
+
               return (
                 <div
                   key={header}
@@ -374,6 +421,7 @@ export default function ImportPage() {
                   <span className={s.mappingArrow}>{target ? '\u2192' : '\u00B7'}</span>
                   <span className={`${s.mappingTarget} ${target ? s.mappingMapped : s.mappingUnmapped}`}>
                     {target || 'unmapped'}
+                    {platformLabel && <span className={s.mappingPlatformTag}>{platformLabel}</span>}
                   </span>
                   <span className={s.mappingSample}>{sampleStr.length > 40 ? sampleStr.slice(0, 40) + '...' : sampleStr}</span>
                 </div>
@@ -420,7 +468,12 @@ export default function ImportPage() {
             <div className={s.processingSpinner} />
             <h2 className={s.processingTitle}>Processing via PostgreSQL RPC</h2>
             <p className={s.processingDesc}>
-              {sessionInfo?.total_records.toLocaleString()} rows staged. Running <code>process_scheme_import_with_timing()</code>...
+              {sessionInfo?.total_records.toLocaleString()} rows staged. Running{' '}
+              <code>
+                {importType === 'transaction' ? 'ki_process_txn_import_session()'
+                  : importType === 'customer' ? 'process_customer_import_with_timing()'
+                  : 'process_scheme_import_with_timing()'}
+              </code>...
             </p>
             <div className={s.processingBar}>
               <div className={s.processingFill} />
@@ -450,8 +503,11 @@ export default function ImportPage() {
           {/* Stats cards */}
           <div className={s.resultStats}>
             <VdfStatCard value={result.processed} label="Total Processed" />
-            <VdfStatCard value={result.successful - result.duplicate} label="New Records" accent="success" />
-            <VdfStatCard value={result.duplicate} label="Updated (Duplicate)" accent="info" />
+            <VdfStatCard value={result.successful} label={importType === 'transaction' ? 'Imported' : 'New Records'} accent="success" />
+            <VdfStatCard value={result.duplicate} label="Duplicates Skipped" accent="info" />
+            {result.orphans > 0 && (
+              <VdfStatCard value={result.orphans} label="Unmatched (Orphan)" accent="warning" />
+            )}
             {result.failed > 0 && (
               <VdfStatCard value={result.failed} label="Failed" accent="danger" />
             )}
