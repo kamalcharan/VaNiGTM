@@ -279,9 +279,18 @@ BEGIN
     END IF;
 END $$;
 
-ALTER TABLE ki_holdings
-    ADD CONSTRAINT IF NOT EXISTS uq_ki_holdings_env
-    UNIQUE (tenant_id, is_live, client_id, portfolio_id, scheme_code);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'ki_holdings'::regclass
+          AND conname  = 'uq_ki_holdings_env'
+    ) THEN
+        ALTER TABLE ki_holdings
+            ADD CONSTRAINT uq_ki_holdings_env
+            UNIQUE (tenant_id, is_live, client_id, portfolio_id, scheme_code);
+    END IF;
+END $$;
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
