@@ -90,10 +90,10 @@ export function createEtlRouter(pool: Pool): Router {
       const importType = req.body.import_type || 'scheme';
       const fileHash = crypto.createHash('sha256').update(fs.readFileSync(file.path)).digest('hex');
 
-      // Check duplicate by hash
+      // Check duplicate by hash — scoped to this tenant
       const dup = await pool.query(
-        `SELECT id, original_filename FROM ki_file_uploads WHERE file_hash = $1 AND processing_status = 'completed'`,
-        [fileHash],
+        `SELECT id, original_filename FROM ki_file_uploads WHERE file_hash = $1 AND processing_status = 'completed' AND tenant_id = $2`,
+        [fileHash, auth.tenant_id],
       );
       if (dup.rows.length > 0) {
         const prev = dup.rows[0] as any;
