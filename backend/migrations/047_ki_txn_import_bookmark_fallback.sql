@@ -1,35 +1,149 @@
 -- ============================================================
 -- 047_ki_txn_import_bookmark_fallback.sql
 --
--- Problem: ki_process_txn_import_session() fails with
---   "Scheme not in alias table: UTI Flexi Cap Fund Reg (G)"
---   because the global ki_scheme_aliases table has official
---   AMFI scheme names, but transaction CSVs use abbreviated
---   names (e.g. "UTI Flexi Cap Fund Reg (G)" vs the official
---   "UTI Flexi Cap Fund - Regular Plan - Growth Option").
+-- Root cause: CAS transaction files use AMFI "Scheme NAV Name"
+-- format (e.g. "UTI Flexi Cap Fund Reg (G)"). Migration 011
+-- seeds ki_schemes.nav_name as aliases so these resolve via
+-- lookup_scheme_by_alias(). However, migration 011 was also
+-- skipped by the bootstrap seeding bug, so nav_name aliases
+-- were never created.
 --
--- Fix: Add a second lookup path in STEP 3 of the RPC:
---   1. Try global ki_scheme_aliases (existing — fast, indexed)
---   2. Fallback: match ki_scheme_bookmarks.alias_name for
---      this tenant (stores the exact CSV name from import)
---   3. If found via bookmark, auto-seed into ki_scheme_aliases
---      so the next import is resolved by the fast path.
---
--- Also adds an index on normalize_scheme_name(alias_name) on
--- ki_scheme_bookmarks to keep the fallback lookup efficient.
+-- This migration:
+--   1. Ensures UNIQUE constraint on ki_scheme_aliases is
+--      per-scheme (scheme_code, alias_name_normalized) — not
+--      the global UNIQUE(alias_name_normalized) from 008.
+--      Idempotent: drops old constraint only if 011 didn't run.
+--   2. Reseeds nav_name aliases from ki_schemes.nav_name
+--      (idempotent — ON CONFLICT DO NOTHING).
+--   3. Updates ki_process_txn_import_session() to also fall
+--      back to ki_scheme_bookmarks.alias_name as a safety net.
 -- ============================================================
 
 BEGIN;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- Index: normalised alias_name on ki_scheme_bookmarks
+-- Step 1: Fix UNIQUE constraint on ki_scheme_aliases
+-- If migration 011 was skipped, the constraint is still the GLOBAL
+-- UNIQUE(alias_name_normalized) from 008, which blocks per-scheme nav_name seeding.
+-- Make it per-scheme: (scheme_code, alias_name_normalized).
+-- ─────────────────────────────────────────────────────────────────────────────
+DO $$
+BEGIN
+    -- Drop the old global unique constraint (from 008) if it still exists
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'ki_scheme_aliases'::regclass
+          AND conname  = 'ki_scheme_aliases_unique_normalized'
+    ) THEN
+        ALTER TABLE ki_scheme_aliases
+            DROP CONSTRAINT ki_scheme_aliases_unique_normalized;
+        RAISE NOTICE '[047] Dropped old global UNIQUE constraint ki_scheme_aliases_unique_normalized';
+    END IF;
+
+    -- Add per-scheme constraint if it doesn't exist yet
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'ki_scheme_aliases'::regclass
+          AND conname  = 'ki_scheme_aliases_unique_per_scheme'
+    ) THEN
+        ALTER TABLE ki_scheme_aliases
+            ADD CONSTRAINT ki_scheme_aliases_unique_per_scheme
+            UNIQUE (scheme_code, alias_name_normalized);
+        RAISE NOTICE '[047] Added per-scheme UNIQUE constraint (scheme_code, alias_name_normalized)';
+    ELSE
+        RAISE NOTICE '[047] Per-scheme UNIQUE constraint already exists — skipped';
+    END IF;
+END $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Step 2: Expand source CHECK if needed (add 'csv_upload', 'master_nav')
+-- ─────────────────────────────────────────────────────────────────────────────
+DO $$
+DECLARE v_cname TEXT;
+BEGIN
+    SELECT conname INTO v_cname
+    FROM pg_constraint
+    WHERE conrelid = 'ki_scheme_aliases'::regclass
+      AND contype  = 'c'
+      AND pg_get_constraintdef(oid) LIKE '%source%';
+
+    IF v_cname IS NOT NULL
+       AND pg_get_constraintdef(
+               (SELECT oid FROM pg_constraint
+                WHERE conrelid = 'ki_scheme_aliases'::regclass
+                  AND conname = v_cname)
+           ) NOT LIKE '%csv_upload%'
+    THEN
+        EXECUTE 'ALTER TABLE ki_scheme_aliases DROP CONSTRAINT ' || quote_ident(v_cname);
+        ALTER TABLE ki_scheme_aliases
+            ADD CONSTRAINT ki_scheme_aliases_source_check
+            CHECK (source IN ('auto', 'manual', 'import', 'csv_upload', 'master_nav'));
+        RAISE NOTICE '[047] Expanded source CHECK constraint';
+    ELSE
+        RAISE NOTICE '[047] source CHECK already includes csv_upload — skipped';
+    END IF;
+END $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Step 3: Seed nav_name aliases
+-- This is the actual fix — CAS files use AMFI "Scheme NAV Name" format
+-- (e.g. "UTI Flexi Cap Fund Reg (G)") which is stored in ki_schemes.nav_name.
+-- Seeding it as an alias makes lookup_scheme_by_alias() resolve CAS names.
+-- ─────────────────────────────────────────────────────────────────────────────
+INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+SELECT
+    scheme_code,
+    nav_name,
+    'auto'
+FROM ki_schemes
+WHERE nav_name IS NOT NULL
+  AND TRIM(nav_name) <> ''
+  AND normalize_scheme_name(nav_name)
+          IS DISTINCT FROM
+      normalize_scheme_name(scheme_name)
+ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING;
+
+DO $$
+DECLARE v_count INTEGER;
+BEGIN
+    GET DIAGNOSTICS v_count = ROW_COUNT;
+    RAISE NOTICE '[047] Seeded % nav_name aliases into ki_scheme_aliases', v_count;
+END $$;
+
+-- Also ensure scheme_name aliases exist (idempotent catch-all)
+INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+SELECT scheme_code, scheme_name, 'auto'
+FROM ki_schemes
+WHERE scheme_name IS NOT NULL
+  AND TRIM(scheme_name) <> ''
+ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING;
+
+DO $$
+DECLARE v_count INTEGER;
+BEGIN
+    GET DIAGNOSTICS v_count = ROW_COUNT;
+    RAISE NOTICE '[047] Seeded % scheme_name aliases into ki_scheme_aliases', v_count;
+END $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Step 4: Rebuild lookup index to match per-scheme constraint
+-- ─────────────────────────────────────────────────────────────────────────────
+DROP INDEX IF EXISTS idx_ki_aliases_lookup;
+CREATE INDEX idx_ki_aliases_lookup
+    ON ki_scheme_aliases(alias_name_normalized)
+    WHERE is_active = true;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Step 5: Index on ki_scheme_bookmarks for bookmark-fallback lookup
 -- ─────────────────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_ki_bookmarks_alias_normalized
     ON ki_scheme_bookmarks (tenant_id, normalize_scheme_name(alias_name));
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- Updated RPC: ki_process_txn_import_session
--- Only STEP 3 (scheme lookup) is changed. Everything else is identical to 046.
+-- Step 6: Update ki_process_txn_import_session() — add bookmark fallback
+-- Primary fix is steps 1-3. This is a safety net for any CAS alias variant
+-- that was seeded into ki_scheme_bookmarks.alias_name during scheme import
+-- but is not yet in ki_scheme_aliases.
 -- ─────────────────────────────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION ki_process_txn_import_session(
     p_session_id INTEGER
@@ -198,22 +312,22 @@ BEGIN
 
             -- ── STEP 3: SCHEME LOOKUP ─────────────────────────────────────────
             --
-            -- Resolution chain:
-            --   a) Global ki_scheme_aliases (exact normalized match)
-            --   b) Tenant ki_scheme_bookmarks.alias_name (CSV name from bookmark import)
-            --      → if matched, auto-seed into ki_scheme_aliases for next time
-            --
-            -- Both paths require the scheme to be bookmarked by this tenant.
+            -- Path A: ki_scheme_aliases (global, indexed) — resolves both
+            --         official AMFI names AND CAS nav_names (seeded in step 3
+            --         of this migration).
+            -- Path B: ki_scheme_bookmarks.alias_name (safety net for CSV names
+            --         seeded during scheme/bookmark import but not yet in global
+            --         aliases). Auto-seeds into ki_scheme_aliases if matched.
 
             IF v_staging.mapped_data->>'scheme_name' IS NOT NULL
                AND TRIM(v_staging.mapped_data->>'scheme_name') <> ''
             THEN
-                -- Path a: global alias table
+                -- Path A: global alias lookup
                 SELECT sa.scheme_code, sa.scheme_name
                 INTO   v_scheme_code, v_scheme_name
                 FROM   lookup_scheme_by_alias(v_staging.mapped_data->>'scheme_name') sa;
 
-                -- Path b: tenant bookmark alias_name (fallback for CSV abbreviations)
+                -- Path B: tenant bookmark alias fallback
                 IF v_scheme_code IS NULL THEN
                     SELECT b.scheme_code, s.scheme_name
                     INTO   v_scheme_code, v_scheme_name
@@ -224,7 +338,7 @@ BEGIN
                                = normalize_scheme_name(v_staging.mapped_data->>'scheme_name')
                     LIMIT  1;
 
-                    -- Auto-seed the alias globally so the next import hits path a
+                    -- Auto-seed into global aliases so next import hits Path A
                     IF v_scheme_code IS NOT NULL THEN
                         INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
                         VALUES (v_scheme_code,
@@ -235,7 +349,6 @@ BEGIN
                 END IF;
 
                 IF v_scheme_code IS NOT NULL THEN
-                    -- Verify the scheme is bookmarked by this tenant
                     IF NOT EXISTS (
                         SELECT 1 FROM ki_scheme_bookmarks
                         WHERE  tenant_id   = v_tenant_id
@@ -247,7 +360,7 @@ BEGIN
                         v_scheme_code := NULL;
                     END IF;
                 ELSE
-                    v_error_msg := 'Scheme not found. Import the scheme first, then re-import transactions. Scheme name from CSV: ' ||
+                    v_error_msg := 'Scheme not found — import the scheme first, then re-import transactions. CSV name: ' ||
                                    (v_staging.mapped_data->>'scheme_name');
                 END IF;
             ELSE
@@ -418,7 +531,6 @@ BEGIN
             v_processed := v_processed + 1;
         END;
 
-        -- Batch checkpoint every 500 rows
         IF v_processed % v_batch_size = 0 THEN
             UPDATE ki_import_sessions
             SET    successful_records = v_success,
@@ -455,8 +567,9 @@ $$;
 
 DO $$
 BEGIN
-    RAISE NOTICE '[047] ki_process_txn_import_session(): updated with bookmark alias fallback in STEP 3';
-    RAISE NOTICE '[047] idx_ki_bookmarks_alias_normalized: index created on ki_scheme_bookmarks(tenant_id, normalize_scheme_name(alias_name))';
+    RAISE NOTICE '[047] UNIQUE constraint: ensured per-scheme (scheme_code, alias_name_normalized)';
+    RAISE NOTICE '[047] nav_name aliases: seeded from ki_schemes.nav_name (CAS-format names now resolvable)';
+    RAISE NOTICE '[047] ki_process_txn_import_session(): updated with bookmark alias fallback';
 END $$;
 
 COMMIT;
