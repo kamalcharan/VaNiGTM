@@ -313,7 +313,7 @@ BEGIN
             -- ─────────────────────────────────────────────────────────────────
 
             v_txn_amount := COALESCE(
-                NULLIF(TRIM(v_staging.mapped_data->>'total_amount'), '')::NUMERIC,
+                NULLIF(TRIM(v_staging.mapped_data->>'amount'), '')::NUMERIC,
                 0
             );
 
@@ -427,12 +427,12 @@ BEGIN
                 COALESCE(NULLIF(TRIM(v_staging.mapped_data->>'stt'), '')::NUMERIC, 0),
                 COALESCE(NULLIF(TRIM(v_staging.mapped_data->>'tds'), '')::NUMERIC, 0),
                 NULLIF(TRIM(COALESCE(v_staging.mapped_data->>'euin', '')), ''),
-                NULLIF(TRIM(COALESCE(v_staging.mapped_data->>'arn_no', '')), ''),
-                NULLIF(TRIM(COALESCE(v_staging.mapped_data->>'folio_no', '')), ''),
+                NULLIF(TRIM(COALESCE(v_staging.mapped_data->>'arn_code', '')), ''),
+                NULLIF(TRIM(COALESCE(v_staging.mapped_data->>'folio_number', '')), ''),
                 NULLIF(TRIM(COALESCE(v_staging.mapped_data->>'fund_name', '')), ''),
                 NULLIF(TRIM(COALESCE(v_staging.mapped_data->>'category', '')), ''),
-                NULLIF(TRIM(COALESCE(v_staging.mapped_data->>'sip_regd_date', '')), '')::DATE,
-                NULLIF(TRIM(COALESCE(v_staging.mapped_data->>'txn_description', '')), ''),
+                NULLIF(TRIM(COALESCE(v_staging.mapped_data->>'sip_reg_date', '')), '')::DATE,
+                NULLIF(TRIM(COALESCE(v_staging.mapped_data->>'description', '')), ''),
                 'import',
                 v_staging.id::TEXT,      -- source_ref: links back to staging row
                 false,                   -- is_potential_duplicate (dedup passed above)
