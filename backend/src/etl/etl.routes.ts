@@ -202,7 +202,7 @@ export function createEtlRouter(pool: Pool): Router {
       const auth = extractAuth(req);
       if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
-      const { file_id, import_type, field_mappings } = req.body;
+      const { file_id, import_type, field_mappings, customer_lookup_method } = req.body;
 
       if (!file_id || !import_type) {
         res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'file_id and import_type required' } });
@@ -223,11 +223,18 @@ export function createEtlRouter(pool: Pool): Router {
           : import_type === 'transaction'  ? TRANSACTION_FIELD_MAP
           : {});
 
+      // Validate customer_lookup_method for transaction imports
+      const lookupMethod = customer_lookup_method || 'iwell_code';
+      if (import_type === 'transaction' && !['iwell_code', 'customer_name', 'both'].includes(lookupMethod)) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'customer_lookup_method must be iwell_code, customer_name, or both' } });
+        return;
+      }
+
       // Create session
       const sessionResult = await pool.query(
-        `INSERT INTO ki_import_sessions (tenant_id, file_upload_id, import_type, field_mappings, created_by)
-         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-        [tenantId, file_id, import_type, JSON.stringify(mappings), auth.user_id],
+        `INSERT INTO ki_import_sessions (tenant_id, file_upload_id, import_type, field_mappings, customer_lookup_method, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+        [tenantId, file_id, import_type, JSON.stringify(mappings), lookupMethod, auth.user_id],
       );
       const sessionId = (sessionResult.rows[0] as any).id;
 
@@ -330,13 +337,12 @@ export function createEtlRouter(pool: Pool): Router {
           console.warn('[ETL:process] auto resolve_customer_families failed:', familyErr.message);
         }
       } else if (session.import_type === 'transaction') {
-        // Transaction import: calls ki_process_txn_import_session (migration 045).
-        // The RPC handles client lookup (vendor_code → PAN → name), dedup,
-        // holdings UPSERT, ki_transactions INSERT, and ki_alerts for new schemes.
-        // It also updates ki_import_sessions counters + status internally.
+        // Transaction import: calls ki_process_txn_import_session.
+        // Passes customer_lookup_method from the session so the RPC uses the
+        // correct client matching strategy (iwell_code / customer_name / both).
         rpcResult = await pool.query(
-          'SELECT * FROM ki_process_txn_import_session($1)',
-          [sessionId],
+          'SELECT * FROM ki_process_txn_import_session($1, $2)',
+          [sessionId, session.customer_lookup_method || 'iwell_code'],
         );
       } else {
         res.status(400).json({ error: { code: 'UNSUPPORTED', message: `Import type "${session.import_type}" processing not yet implemented` } });

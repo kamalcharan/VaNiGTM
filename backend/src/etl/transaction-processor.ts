@@ -60,6 +60,10 @@ export const TRANSACTION_FIELD_MAP: Record<string, string> = {
   'SCHEME':             'scheme_name',
   'FUND NAME':          'fund_name',
   'CATEGORY':           'category',
+  'ISIN':               'isin',
+  'ISIN CODE':          'isin',
+  'ISIN Growth':        'isin',
+  'ISIN DIV PAYOUT/ ISIN GROWTH': 'isin',
 
   // ── Transaction core ─────────────────────────────────────────────────────
   'TXN TYPE':           'txn_code',
