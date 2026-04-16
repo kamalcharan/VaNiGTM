@@ -1,34 +1,49 @@
 'use client';
 
 import { useState } from 'react';
-import { VdfStatusBadge } from '@/components/vdf/status-badge/VdfStatusBadge';
 import { VdfButton } from '@/components/vdf/button/VdfButton';
-import { useUpdatePulse, type PulseItem, type ListPulsesParams } from '@/hooks/usePulses';
+import { useUpdatePulse, type PulseItem } from '@/hooks/usePulses';
 import { useToast } from '@/components/toast';
 import s from './PulseListPanel.module.css';
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
 
-const PULSE_TYPE_LABEL: Record<string, string> = {
-  prospect_followup:    'Prospect Follow-up',
-  client_followup:      'Client Follow-up',
-  new_scheme_detected:  'New Scheme',
-  rebalance_needed:     'Rebalance',
-  sip_at_risk:          'SIP at Risk',
-  goal_behind:          'Goal Behind',
-  tax_harvest_opportunity: 'Tax Harvest',
-  review_due:           'Review Due',
-  large_redemption:     'Large Redemption',
-  new_nfo_match:        'NFO Match',
-  sip_bounced:          'SIP Bounced',
-  nav_drop:             'NAV Drop',
+const PULSE_ICONS: Record<string, string> = {
+  prospect_followup:        '👤',
+  client_followup:          '💼',
+  new_scheme_detected:      '📊',
+  rebalance_needed:         '⚖️',
+  sip_at_risk:              '⚠️',
+  goal_behind:              '🎯',
+  tax_harvest_opportunity:  '💡',
+  review_due:               '📋',
+  large_redemption:         '💸',
+  new_nfo_match:            '✨',
+  sip_bounced:              '🔔',
+  nav_drop:                 '📉',
 };
 
-const PRIORITY_COLORS: Record<string, string> = {
-  high:   'var(--color-danger)',
-  medium: 'var(--color-warning)',
-  low:    'var(--color-muted)',
+const PULSE_TYPE_LABEL: Record<string, string> = {
+  prospect_followup:        'Prospect',
+  client_followup:          'Client',
+  new_scheme_detected:      'New Scheme',
+  rebalance_needed:         'Rebalance',
+  sip_at_risk:              'SIP Risk',
+  goal_behind:              'Goal',
+  tax_harvest_opportunity:  'Tax Harvest',
+  review_due:               'Review',
+  large_redemption:         'Redemption',
+  new_nfo_match:            'NFO Match',
+  sip_bounced:              'SIP Bounce',
+  nav_drop:                 'NAV Drop',
 };
+
+function cardVariant(p: PulseItem): 'Urgent' | 'Action' | 'Info' | 'Done' {
+  if (p.status === 'done' || p.status === 'dismissed') return 'Done';
+  if (p.priority === 'high')   return 'Urgent';
+  if (p.priority === 'medium') return 'Action';
+  return 'Info';
+}
 
 function formatDue(dateStr: string | null): { label: string; urgent: boolean } {
   if (!dateStr) return { label: '', urgent: false };
@@ -36,25 +51,22 @@ function formatDue(dateStr: string | null): { label: string; urgent: boolean } {
   const now  = new Date();
   const diff = Math.ceil((due.getTime() - now.getTime()) / 86400000);
   if (diff < 0)   return { label: `${Math.abs(diff)}d overdue`, urgent: true };
-  if (diff === 0) return { label: 'Due today', urgent: true };
-  if (diff === 1) return { label: 'Due tomorrow', urgent: false };
-  if (diff <= 7)  return { label: `Due in ${diff}d`, urgent: false };
+  if (diff === 0) return { label: 'today', urgent: true };
+  if (diff === 1) return { label: 'tomorrow', urgent: false };
+  if (diff <= 7)  return { label: `in ${diff}d`, urgent: false };
   return { label: due.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), urgent: false };
 }
 
 /* ── Props ────────────────────────────────────────────────────────────────── */
 
 interface Props {
-  pulses:      PulseItem[];
-  isLoading:   boolean;
-  /** Tab filter state lifted from parent so page can sync filters */
-  activeStatus: 'open' | 'done' | 'all';
+  pulses:         PulseItem[];
+  isLoading:      boolean;
+  activeStatus:   'open' | 'done' | 'all';
   onStatusChange: (s: 'open' | 'done' | 'all') => void;
-  /** Show subject name column (on full page, hide on profile where it's implied) */
-  showSubject?: boolean;
-  /** CTA to add a new pulse — rendered top-right */
-  onAdd?: () => void;
-  emptyMessage?: string;
+  showSubject?:   boolean;
+  onAdd?:         () => void;
+  emptyMessage?:  string;
 }
 
 /* ── Component ────────────────────────────────────────────────────────────── */
@@ -74,21 +86,14 @@ export function PulseListPanel({
     (msg) => showToast({ message: msg, type: 'error' }),
   );
 
-  function markDone(pulse: PulseItem) {
-    updatePulse({ id: pulse.id, status: 'done' });
-  }
-
-  function dismiss(pulse: PulseItem) {
-    updatePulse({ id: pulse.id, status: 'dismissed' });
-  }
-
-  function reopen(pulse: PulseItem) {
-    updatePulse({ id: pulse.id, status: 'open' });
-  }
+  function markDone(p: PulseItem) { updatePulse({ id: p.id, status: 'done' } as Record<string, unknown>); }
+  function dismiss(p: PulseItem)  { updatePulse({ id: p.id, status: 'dismissed' } as Record<string, unknown>); }
+  function reopen(p: PulseItem)   { updatePulse({ id: p.id, status: 'open' } as Record<string, unknown>); }
 
   return (
     <div className={s.panel}>
-      {/* Header row */}
+
+      {/* Header */}
       <div className={s.panelHead}>
         <div className={s.filterTabs}>
           {(['open', 'done', 'all'] as const).map(tab => (
@@ -108,11 +113,12 @@ export function PulseListPanel({
         )}
       </div>
 
-      {/* List */}
+      {/* Body */}
       {isLoading ? (
         <div className={s.loadingRows}>
           {[1, 2, 3].map(i => <div key={i} className={s.skeletonRow} />)}
         </div>
+
       ) : pulses.length === 0 ? (
         <div className={s.empty}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" width="32" height="32">
@@ -122,111 +128,112 @@ export function PulseListPanel({
           </svg>
           <p>{emptyMessage}</p>
         </div>
+
       ) : (
         <div className={s.list}>
           {pulses.map(p => {
-            const due      = formatDue(p.due_date);
-            const expanded = expandedId === p.id;
-            const isDone   = p.status === 'done' || p.status === 'dismissed';
+            const variant   = cardVariant(p);
+            const due       = formatDue(p.due_date);
+            const expanded  = expandedId === p.id;
+            const isDone    = p.status === 'done' || p.status === 'dismissed';
+            const icon      = PULSE_ICONS[p.pulse_type] ?? '📌';
+            const typeLabel = PULSE_TYPE_LABEL[p.pulse_type] ?? p.pulse_type;
 
             return (
-              <div
-                key={p.id}
-                className={`${s.row} ${isDone ? s.rowDone : ''} ${expanded ? s.rowExpanded : ''}`}
-              >
-                {/* Priority stripe */}
-                <div className={s.priorityStripe} style={{ background: PRIORITY_COLORS[p.priority] }} />
+              <div key={p.id} className={`${s.card} ${s[`card${variant}`]}`}>
 
-                {/* Main content */}
-                <div className={s.rowMain} onClick={() => setExpandedId(expanded ? null : p.id)}>
-                  <div className={s.rowTop}>
-                    <span className={s.rowTitle}>{p.title}</span>
-                    <div className={s.rowMeta}>
-                      {due.label && (
-                        <span className={`${s.dueLabel} ${due.urgent ? s.dueLabelUrgent : ''}`}>
-                          {due.label}
-                        </span>
+                {/* Main row — click to expand */}
+                <div className={s.row} onClick={() => setExpandedId(expanded ? null : p.id)}>
+
+                  <div className={s.icon}>{icon}</div>
+
+                  <div className={s.body}>
+                    <div className={s.title}>{p.title}</div>
+                    <div className={s.meta}>
+                      <span className={s.typeChip}>{typeLabel}</span>
+                      {showSubject && p.subject_name && (
+                        <>
+                          <span className={s.metaSep}>·</span>
+                          <span>{p.subject_prefix} {p.subject_name}</span>
+                        </>
                       )}
-                      <VdfStatusBadge
-                        label={PULSE_TYPE_LABEL[p.pulse_type] ?? p.pulse_type}
-                        variant={p.origin === 'system' ? 'info' : 'muted'}
-                        size="sm"
-                      />
+                      {due.label && (
+                        <>
+                          <span className={s.metaSep}>·</span>
+                          <span className={due.urgent ? s.metaDueUrgent : s.metaDue}>
+                            due {due.label}
+                          </span>
+                        </>
+                      )}
+                      {p.status === 'dismissed' && (
+                        <>
+                          <span className={s.metaSep}>·</span>
+                          <span>dismissed</span>
+                        </>
+                      )}
                     </div>
                   </div>
 
-                  {showSubject && p.subject_name && (
-                    <div className={s.rowSubject}>
-                      {p.subject_prefix} {p.subject_name}
-                    </div>
-                  )}
+                  {/* Action pills — stop click from toggling expand */}
+                  <div className={s.actions} onClick={e => e.stopPropagation()}>
+                    {!isDone ? (
+                      <>
+                        <button
+                          className={`${s.pill} ${s.pillDone}`}
+                          disabled={isUpdating}
+                          onClick={() => markDone(p)}
+                          title="Mark done"
+                        >
+                          ✓ Done
+                        </button>
+                        <button
+                          className={`${s.pill} ${s.pillDismiss}`}
+                          disabled={isUpdating}
+                          onClick={() => dismiss(p)}
+                          title="Dismiss"
+                        >
+                          × Skip
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        className={`${s.pill} ${s.pillReopen}`}
+                        disabled={isUpdating}
+                        onClick={() => reopen(p)}
+                        title="Reopen"
+                      >
+                        ↺ Reopen
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-                  {expanded && (
-                    <div className={s.rowDetail}>
-                      {p.body  && (
+                {/* Expanded detail */}
+                {expanded && (
+                  <div className={s.detail}>
+                    {p.body && (
+                      <div
+                        className={s.detailBody}
+                        dangerouslySetInnerHTML={{ __html: p.body }}
+                      />
+                    )}
+                    {p.notes && (
+                      <div className={s.notesBlock}>
+                        <span className={s.notesLabel}>Notes</span>
                         <div
-                          className={s.rowBody}
-                          dangerouslySetInnerHTML={{ __html: p.body }}
+                          className={s.notesText}
+                          dangerouslySetInnerHTML={{ __html: p.notes }}
                         />
-                      )}
-                      {p.notes && (
-                        <div className={s.notesBlock}>
-                          <span className={s.notesLabel}>Notes</span>
-                          <div
-                            className={s.notesText}
-                            dangerouslySetInnerHTML={{ __html: p.notes }}
-                          />
-                        </div>
-                      )}
-                      <div className={s.rowDetailMeta}>
-                        <span>Created {new Date(p.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                        {p.completed_at && (
-                          <span> · Done {new Date(p.completed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
-                        )}
                       </div>
+                    )}
+                    <div className={s.detailMeta}>
+                      Created {new Date(p.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {p.completed_at && (
+                        <> · Done {new Date(p.completed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</>
+                      )}
                     </div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className={s.rowActions}>
-                  {!isDone && (
-                    <>
-                      <button
-                        className={s.actionBtn}
-                        title="Mark done"
-                        disabled={isUpdating}
-                        onClick={(e) => { e.stopPropagation(); markDone(p); }}
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      </button>
-                      <button
-                        className={`${s.actionBtn} ${s.actionBtnMuted}`}
-                        title="Dismiss"
-                        disabled={isUpdating}
-                        onClick={(e) => { e.stopPropagation(); dismiss(p); }}
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-                          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                      </button>
-                    </>
-                  )}
-                  {isDone && (
-                    <button
-                      className={`${s.actionBtn} ${s.actionBtnMuted}`}
-                      title="Reopen"
-                      disabled={isUpdating}
-                      onClick={(e) => { e.stopPropagation(); reopen(p); }}
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-                        <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
-                      </svg>
-                    </button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             );
           })}
