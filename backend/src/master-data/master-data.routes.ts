@@ -157,7 +157,7 @@ export function createMasterDataRouter(pool: Pool): Router {
   ══════════════════════════════════════════════════════════════════════ */
 
   router.get('/asset-types', async (req, res) => {
-    const jwt = requireAdmin(req, res as any);
+    const jwt = requireAuth(req, res as any);
     if (!jwt) return;
 
     try {

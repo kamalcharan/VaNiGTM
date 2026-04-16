@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { VdfModal, VdfButton } from '@/components/vdf';
-import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
+import { useSkillMutation } from '@/hooks/useSkill';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/toast';
+import { apiFetch } from '@/lib/api-client';
+import { API } from '@/lib/serviceURLs';
 import f from '@/styles/forms.module.css';
 import s from './AddInvestmentModal.module.css';
 
@@ -85,12 +88,14 @@ export function AddInvestmentModal({ isOpen, onClose, clientId, editData }: Prop
   const queryClient  = useQueryClient();
   const isEdit       = !!editData;
 
-  /* ── Load asset types ─────────────────────── */
-  const { data: typesData, isLoading: typesLoading } = useSkillQuery<{
-    asset_types: AssetTypeItem[];
-  }>('portfolio-skill', 'get_asset_types', {}, { staleTime: 10 * 60_000 });
+  /* ── Load asset types (global master data — no tenant filter) ── */
+  const { data: typesData, isLoading: typesLoading } = useQuery<{ asset_types: AssetTypeItem[] }>({
+    queryKey: ['master-data', 'asset-types'],
+    queryFn: () => apiFetch<{ asset_types: AssetTypeItem[] }>(API.masterData.assetTypes),
+    staleTime: 10 * 60_000,
+  });
 
-  const assetTypes = typesData?.data?.asset_types ?? [];
+  const assetTypes = typesData?.asset_types ?? [];
 
   /* ── Form state ───────────────────────────── */
   const [form, setForm]   = useState<FormState>(EMPTY);
