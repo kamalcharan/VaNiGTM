@@ -16,7 +16,7 @@
  *   dedup check
  *   ki_holdings UPSERT (portfolio entry marker)
  *   ki_transactions INSERT
- *   ki_alerts for new scheme appearances
+ *   ki_pulses for new scheme appearances (renamed from ki_alerts in migration 057)
  */
 
 import { SkillContext } from '../../../shared/types';
