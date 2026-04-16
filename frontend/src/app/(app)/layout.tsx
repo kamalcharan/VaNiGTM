@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-provider';
+import { getAccessToken } from '@/lib/api-client';
 import { VdfSidebar, VdfLoader } from '@/components/vdf';
 import { VdfMobileHeader } from '@/components/vdf/mobile-header/VdfMobileHeader';
 import { VdfBottomNav } from '@/components/vdf/bottom-nav/VdfBottomNav';
