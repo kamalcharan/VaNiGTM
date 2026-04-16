@@ -38,18 +38,6 @@ export async function create_pulse(
   if (!params.title?.trim()) {
     throw Object.assign(new Error('title is required'), { code: 'VALIDATION_ERROR' });
   }
-  if (params.pulse_type === 'prospect_followup' && !params.contact_id) {
-    throw Object.assign(
-      new Error('contact_id is required for prospect_followup'),
-      { code: 'VALIDATION_ERROR' }
-    );
-  }
-  if (params.pulse_type === 'client_followup' && !params.client_id) {
-    throw Object.assign(
-      new Error('client_id is required for client_followup'),
-      { code: 'VALIDATION_ERROR' }
-    );
-  }
 
   const result = await ctx.db.transaction(async (client) => {
     const res = await client.query<PulseItem>(CREATE_SQL, {

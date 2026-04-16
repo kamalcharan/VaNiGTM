@@ -18,27 +18,19 @@ export function PulsesTab({ contactId, contactName, isClient, clientId }: Props)
 
   const queryStatus = activeStatus === 'all' ? undefined : activeStatus;
 
-  // Query by contact_id (prospects) OR client_id (clients) depending on is_client
-  const contactQuery = usePulses({
-    contact_id: !isClient ? contactId : undefined,
-    status:     queryStatus,
-    limit:      100,
-  });
+  const { data, isLoading } = usePulses(
+    isClient && clientId
+      ? { client_id: clientId,   status: queryStatus, limit: 100 }
+      : { contact_id: contactId, status: queryStatus, limit: 100 },
+  );
 
-  const clientQuery = usePulses({
-    client_id: isClient && clientId ? clientId : undefined,
-    status:    queryStatus,
-    limit:     100,
-  });
-
-  const activeQuery = isClient && clientId ? clientQuery : contactQuery;
-  const pulses: PulseItem[] = activeQuery.data?.data?.pulses ?? [];
+  const pulses: PulseItem[] = data?.data?.pulses ?? [];
 
   return (
     <>
       <PulseListPanel
         pulses={pulses}
-        isLoading={activeQuery.isLoading}
+        isLoading={isLoading}
         activeStatus={activeStatus}
         onStatusChange={setActiveStatus}
         showSubject={false}

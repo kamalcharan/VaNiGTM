@@ -89,16 +89,21 @@ export function useCreatePulse(
   onError?: (msg: string) => void,
 ) {
   const qc = useQueryClient();
-  return useSkillMutation<{ pulse: PulseItem }>(
-    'pulse-skill', 'create_pulse',
-    {
-      onSuccess: (res: { data: { pulse: PulseItem } }) => {
-        qc.invalidateQueries({ queryKey: ['skill', 'pulse-skill'] });
+  const m = useSkillMutation<{ pulse: PulseItem }>('pulse-skill', 'create_pulse');
+
+  function mutate(params: Record<string, unknown>) {
+    m.mutate(params, {
+      onSuccess(res) {
+        void qc.invalidateQueries({ queryKey: ['skill', 'pulse-skill'] });
         onSuccess?.(res.data.pulse);
       },
-      onError: (err: { message?: string }) => onError?.(err.message || 'Failed to create follow-up'),
-    },
-  );
+      onError(err) {
+        onError?.(err.message || 'Failed to create follow-up');
+      },
+    });
+  }
+
+  return { ...m, mutate };
 }
 
 export function useUpdatePulse(
@@ -106,14 +111,19 @@ export function useUpdatePulse(
   onError?: (msg: string) => void,
 ) {
   const qc = useQueryClient();
-  return useSkillMutation<{ pulse: PulseItem }>(
-    'pulse-skill', 'update_pulse',
-    {
-      onSuccess: (res: { data: { pulse: PulseItem } }) => {
-        qc.invalidateQueries({ queryKey: ['skill', 'pulse-skill'] });
+  const m = useSkillMutation<{ pulse: PulseItem }>('pulse-skill', 'update_pulse');
+
+  function mutate(params: Record<string, unknown>) {
+    m.mutate(params, {
+      onSuccess(res) {
+        void qc.invalidateQueries({ queryKey: ['skill', 'pulse-skill'] });
         onSuccess?.(res.data.pulse);
       },
-      onError: (err: { message?: string }) => onError?.(err.message || 'Failed to update follow-up'),
-    },
-  );
+      onError(err) {
+        onError?.(err.message || 'Failed to update follow-up');
+      },
+    });
+  }
+
+  return { ...m, mutate };
 }
