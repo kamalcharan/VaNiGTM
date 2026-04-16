@@ -1,0 +1,2991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ContactNest — MFD Snapshot Capture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   THEME — Denser pro variant of client palette
+   Cooler cream bg, more gridlines, more mono
+   ============================================ */
+:root {
+  --bg:           #f7f5ed;
+  --bg-deep:      #efece0;
+  --surface:      #ffffff;
+  --surface-2:    #fbf9f2;
+  --surface-3:    #f4f0e2;
+  --surface-sunk: #eee9d7;
+
+  --ink:          #1a1a14;
+  --ink-2:        #3d3a30;
+  --ink-3:        #807a68;
+  --ink-4:        #b8b2a0;
+  --line:         #e5e0cb;
+  --line-strong:  #d4ceb4;
+  --grid:         #ece7cf;
+
+  --jade:         #0e5240;
+  --jade-2:       #1b7358;
+  --jade-soft:    #e4ede8;
+  --jade-deep:    #083527;
+
+  --coral:        #d97757;
+  --coral-2:      #e88b6e;
+  --coral-soft:   #fae6da;
+
+  --ok:           #2e7d4f;
+  --ok-soft:      #e0efe4;
+  --warn:         #c47e1a;
+  --warn-soft:    #f9ecd0;
+  --danger:       #b54034;
+  --danger-soft:  #fae1de;
+
+  --pulse-1:      #0e5240;
+  --pulse-2:      #4a7a8c;
+  --pulse-3:      #d97757;
+  --pulse-4:      #c47e1a;
+  --pulse-5:      #6b4e8a;
+
+  --shadow-sm:    0 1px 2px rgba(26,26,20,0.04), 0 1px 1px rgba(26,26,20,0.03);
+  --shadow-md:    0 4px 12px rgba(26,26,20,0.06), 0 2px 4px rgba(26,26,20,0.04);
+  --shadow-lg:    0 24px 48px -12px rgba(26,26,20,0.14), 0 8px 16px -8px rgba(26,26,20,0.06);
+
+  --radius-sm:    6px;
+  --radius:       10px;
+  --radius-lg:    16px;
+  --radius-xl:    24px;
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body:    'Inter Tight', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ============================================ RESET ============================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea, select { font-family: inherit; color: inherit; }
+a { color: inherit; text-decoration: none; }
+::selection { background: var(--jade); color: #fff; }
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(14,82,64,0.02) 0%, transparent 50%),
+    radial-gradient(circle at 90% 80%, rgba(217,119,87,0.025) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ============================================ APP ============================================ */
+.app {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+}
+
+/* ============================================ SIDEBAR (ContactNest shell) ============================================ */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  padding: 22px 14px;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 26px;
+}
+.brand-mark {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: var(--jade);
+  position: relative;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,0.15);
+}
+.brand-mark::after {
+  content: '';
+  width: 13px; height: 13px;
+  border: 2px solid var(--coral);
+  border-radius: 50%;
+  border-top-color: transparent;
+  border-left-color: transparent;
+  transform: rotate(-30deg);
+}
+.brand-name {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 17px;
+  letter-spacing: -0.015em;
+  font-variation-settings: "opsz" 144;
+}
+.brand-sub {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: -2px;
+}
+.nav-section {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 12px 12px 6px;
+  font-weight: 700;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  border-radius: var(--radius);
+  font-weight: 500;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  transition: all 0.18s ease;
+}
+.nav-item:hover { background: var(--surface-sunk); color: var(--ink); }
+.nav-item.active {
+  background: var(--ink);
+  color: var(--bg);
+}
+.nav-item.active .nav-count {
+  background: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.9);
+}
+.nav-icon { width: 15px; height: 15px; flex-shrink: 0; }
+.nav-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--surface-sunk);
+  color: var(--ink-3);
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.sidebar-footer {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+}
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px;
+}
+.user-chip .avatar {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--jade), var(--jade-2));
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.user-name { font-size: 12px; font-weight: 600; line-height: 1.2; }
+.user-role { font-size: 10px; color: var(--ink-3); font-family: var(--font-mono); }
+
+/* ============================================ MAIN ============================================ */
+.main {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.screen { display: none; flex: 1; }
+.screen.active { display: flex; flex-direction: column; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================ BUTTONS ============================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 12px;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+  justify-content: center;
+}
+.btn-primary {
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 2px 6px rgba(0,0,0,0.1);
+}
+.btn-primary:hover { background: #000; transform: translateY(-1px); }
+.btn-jade {
+  background: var(--jade);
+  color: #fff;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.1) inset, 0 2px 8px rgba(14,82,64,0.22);
+}
+.btn-jade:hover { background: var(--jade-2); transform: translateY(-1px); }
+.btn-ghost {
+  color: var(--ink-2);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+}
+.btn-ghost:hover { border-color: var(--ink-3); color: var(--ink); }
+.btn-coral {
+  background: var(--coral);
+  color: var(--ink);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset, 0 2px 8px rgba(217,119,87,0.25);
+}
+.btn-coral:hover { background: var(--coral-2); transform: translateY(-1px); }
+.btn-lg { padding: 11px 18px; font-size: 13px; }
+.btn-xl { padding: 14px 24px; font-size: 14px; border-radius: 10px; }
+
+/* ============================================ CONTACT PROFILE (entry + return) ============================================ */
+.profile-hero {
+  padding: 28px 40px 0;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-bottom: 18px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+.breadcrumb a:hover { color: var(--ink); }
+.breadcrumb-sep { color: var(--ink-4); }
+
+.profile-hero-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 32px;
+  align-items: center;
+  padding-bottom: 24px;
+}
+.profile-identity {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.profile-avatar {
+  width: 68px; height: 68px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--coral), #a85a3c);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 500;
+  font-size: 24px;
+  font-family: var(--font-display);
+  box-shadow: 0 8px 20px rgba(217,119,87,0.2);
+}
+.profile-name {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  font-variation-settings: "opsz" 144;
+  line-height: 1.05;
+}
+.profile-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+.profile-meta-row .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--ink-4); }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.badge-prospect { background: var(--coral-soft); color: #8a3e1f; border: 1px solid #f0c9b0; }
+.badge-client { background: var(--jade-soft); color: var(--jade); border: 1px solid #c5d9cd; }
+.badge-draft { background: var(--warn-soft); color: var(--warn); border: 1px solid #eed69a; }
+.badge-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+/* Readiness ring for the profile */
+.readiness-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+  min-width: 280px;
+}
+.ring-lg { width: 58px; height: 58px; position: relative; flex-shrink: 0; }
+.ring-lg svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring-bg { fill: none; stroke: var(--line-strong); stroke-width: 3; }
+.ring-fill { fill: none; stroke: var(--jade); stroke-width: 3; stroke-linecap: round; transition: stroke-dashoffset 0.8s ease; }
+.ring-fill.mid { stroke: var(--coral); }
+.ring-text { position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; font-weight: 700; font-family: var(--font-mono); }
+.readiness-card-text { font-size: 11px; color: var(--ink-3); }
+.readiness-card-text strong { display: block; font-size: 12.5px; color: var(--ink); font-weight: 600; margin-bottom: 2px; }
+
+/* Profile tabs */
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 40px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+.tab {
+  padding: 12px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition: all 0.18s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tab:hover { color: var(--ink-2); }
+.tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+.tab-indicator {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+.tab-indicator.filled { background: var(--ok); }
+.tab-indicator.empty { background: var(--line-strong); }
+
+.profile-body {
+  padding: 28px 40px 60px;
+}
+
+/* ============================================ EMPTY SNAPSHOT STATE ============================================ */
+.snapshot-empty {
+  background: var(--surface);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-xl);
+  padding: 56px 48px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.snapshot-empty::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(14,82,64,0.04), transparent 50%);
+}
+.empty-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 20px;
+  border-radius: 16px;
+  background: var(--jade-soft);
+  color: var(--jade);
+  display: grid;
+  place-items: center;
+  position: relative;
+  z-index: 1;
+}
+.empty-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+  position: relative;
+}
+.empty-title em { font-style: italic; color: var(--ink-2); font-weight: 300; }
+.empty-sub {
+  font-size: 13px;
+  color: var(--ink-3);
+  max-width: 440px;
+  margin: 0 auto 28px;
+  line-height: 1.55;
+  position: relative;
+}
+.empty-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  position: relative;
+}
+.inherited-preview {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+}
+.inherited-label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 700;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.inherited-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.inherited-item {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  text-align: center;
+}
+.inherited-k { font-size: 9px; color: var(--ink-3); letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; margin-bottom: 3px; }
+.inherited-v { font-size: 11px; font-weight: 600; color: var(--ink); }
+
+/* ============================================ CAPTURE CONFIRMATION SCREEN ============================================ */
+.capture-screen {
+  background: var(--bg);
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 40px 24px;
+  position: relative;
+}
+.capture-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 30% 20%, rgba(14,82,64,0.04), transparent 50%),
+    radial-gradient(circle at 70% 80%, rgba(217,119,87,0.03), transparent 50%);
+}
+.capture-card {
+  max-width: 640px;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+.capture-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 24px; right: 24px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--coral), var(--jade), transparent);
+}
+.capture-header {
+  padding: 32px 36px 24px;
+}
+.capture-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--jade);
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.capture-eyebrow::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--jade);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--jade-soft);
+}
+.capture-title {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  font-variation-settings: "opsz" 144;
+  margin-bottom: 6px;
+}
+.capture-title em { font-style: italic; color: var(--ink-2); font-weight: 300; }
+.capture-sub {
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+
+/* Client target chip */
+.target-chip {
+  margin: 20px 36px 0;
+  padding: 18px 20px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.target-avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--coral), #a85a3c);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 500;
+  font-size: 16px;
+  font-family: var(--font-display);
+  flex-shrink: 0;
+}
+.target-info { flex: 1; }
+.target-name { font-size: 15px; font-weight: 600; line-height: 1.2; }
+.target-meta { font-size: 11px; color: var(--ink-3); margin-top: 2px; display: flex; gap: 10px; }
+.target-meta span { display: flex; align-items: center; gap: 5px; }
+.target-meta svg { width: 10px; height: 10px; }
+
+/* Inherited accordion */
+.inherited-block {
+  margin: 20px 36px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.inherited-head {
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+.inherited-head:hover { background: var(--surface-3); }
+.inherited-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.inherited-checkmark {
+  width: 18px; height: 18px;
+  background: var(--jade);
+  color: #fff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+}
+.inherited-head-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.inherited-head-sub {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 1px;
+}
+.inherited-chevron {
+  color: var(--ink-3);
+  transition: transform 0.2s;
+}
+.inherited-block.open .inherited-chevron { transform: rotate(180deg); }
+.inherited-body {
+  display: none;
+  padding: 0 18px 18px;
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+}
+.inherited-block.open .inherited-body { display: block; }
+.inherited-body-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding-top: 16px;
+}
+.inherited-field { }
+.inherited-field-label {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+.inherited-field-value {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Vani preview (compact) */
+.vani-preview {
+  margin: 20px 36px 0;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, var(--jade), var(--jade-deep));
+  border-radius: var(--radius);
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  color: #fff;
+}
+.vani-preview-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--coral), var(--coral-2));
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--ink);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
+}
+.vani-preview-content { flex: 1; }
+.vani-preview-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--coral);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.vani-preview-text {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-style: italic;
+  color: rgba(255,255,255,0.92);
+  line-height: 1.45;
+}
+.vani-preview-text strong { color: var(--coral); font-style: normal; font-weight: 600; }
+
+.capture-footer {
+  padding: 24px 36px 32px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ============================================ MFD FORM — dense layout ============================================ */
+.form-screen {
+  background: var(--bg);
+}
+
+/* Pinned client header — persistent during entire form */
+.pinned-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 14px 40px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(10px);
+}
+.pinned-client {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pinned-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--coral), #a85a3c);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 500;
+  font-size: 13px;
+  font-family: var(--font-display);
+  flex-shrink: 0;
+}
+.pinned-name { font-size: 13px; font-weight: 700; line-height: 1.2; }
+.pinned-meta {
+  font-size: 10px;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+}
+
+/* Horizontal stepper */
+.stepper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.step-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+}
+.step-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.step-bullet {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1.5px solid var(--line-strong);
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+.step-connector {
+  flex: 1;
+  height: 1.5px;
+  background: var(--line-strong);
+  transition: background 0.3s ease;
+}
+.step-connector:last-child { display: none; }
+.step-item.done .step-bullet { background: var(--jade); border-color: var(--jade); color: #fff; }
+.step-item.done .step-connector { background: var(--jade); }
+.step-item.active .step-bullet {
+  background: var(--surface);
+  border-color: var(--jade);
+  color: var(--jade);
+  box-shadow: 0 0 0 3px var(--jade-soft);
+}
+.step-label {
+  font-size: 10px;
+  color: var(--ink-3);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding-left: 2px;
+}
+.step-item.active .step-label { color: var(--ink); }
+.step-item.done .step-label { color: var(--ink-2); }
+
+.pinned-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.save-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+}
+.save-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+
+/* Form body layout */
+.form-body {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  min-height: calc(100vh - 61px);
+}
+.form-work {
+  padding: 32px 48px 100px;
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
+  position: relative;
+}
+
+/* Section header */
+.section-head {
+  margin-bottom: 24px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.section-num {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--jade);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.section-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variation-settings: "opsz" 144;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+.section-sub {
+  font-size: 12px;
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+
+/* Sub-section within a form step */
+.sub-block {
+  margin-top: 28px;
+}
+.sub-block:first-of-type { margin-top: 0; }
+.sub-head {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.sub-head::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* Dense fields */
+.field { margin-bottom: 16px; }
+.field-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.field-row-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+.label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.label-optional { color: var(--ink-4); font-weight: 500; text-transform: none; letter-spacing: 0; margin-left: 5px; font-size: 10px; }
+
+.input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  transition: all 0.18s ease;
+}
+.input:focus {
+  border-color: var(--jade);
+  box-shadow: 0 0 0 3px var(--jade-soft);
+}
+.input::placeholder { color: var(--ink-4); }
+
+/* Currency input — compact version for MFD */
+.cur-input {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 0 12px;
+  transition: all 0.18s ease;
+  min-height: 36px;
+}
+.cur-input:focus-within {
+  border-color: var(--jade);
+  box-shadow: 0 0 0 3px var(--jade-soft);
+}
+.cur-sym {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  font-weight: 600;
+  margin-right: 6px;
+}
+.cur-val {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 0;
+  padding: 8px 0;
+}
+.cur-val::placeholder { color: var(--ink-4); font-weight: 500; }
+.cur-suffix {
+  font-size: 10px;
+  color: var(--ink-3);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  margin-left: 8px;
+  font-family: var(--font-mono);
+}
+
+/* Pills */
+.pills { display: flex; flex-wrap: wrap; gap: 5px; }
+.pill {
+  padding: 7px 13px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 100px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  transition: all 0.15s;
+}
+.pill:hover { border-color: var(--ink-3); }
+.pill.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+/* Option cards — dense */
+.opt-cards {
+  display: grid;
+  gap: 8px;
+}
+.opt-cards.c2 { grid-template-columns: 1fr 1fr; }
+.opt-cards.c3 { grid-template-columns: 1fr 1fr 1fr; }
+.opt-cards.c4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.opt-card {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all 0.18s;
+  text-align: left;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.opt-card:hover { border-color: var(--ink-3); }
+.opt-card.selected { border-color: var(--jade); background: var(--jade-soft); }
+.opt-card.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  width: 16px; height: 16px;
+  background: var(--jade);
+  color: #fff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 700;
+}
+.opt-card svg {
+  width: 14px; height: 14px;
+  color: var(--ink-3);
+  flex-shrink: 0;
+}
+.opt-card.selected svg { color: var(--jade); }
+.opt-card-label { font-size: 12px; font-weight: 600; }
+.opt-card-sub { font-size: 10px; color: var(--ink-3); }
+
+/* Item cards — dense version */
+.item-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.item-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  position: relative;
+  animation: slideIn 0.3s ease;
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.item-num {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--jade);
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.item-remove {
+  width: 22px; height: 22px;
+  border-radius: 5px;
+  color: var(--ink-4);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+}
+.item-remove:hover { background: var(--danger-soft); color: var(--danger); }
+
+.add-item-btn {
+  width: 100%;
+  padding: 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--ink-3);
+  font-weight: 600;
+  font-size: 11.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: all 0.18s;
+  background: transparent;
+}
+.add-item-btn:hover {
+  border-color: var(--jade);
+  color: var(--jade);
+  background: var(--jade-soft);
+}
+
+/* Liquid toggle — dense */
+.liq-toggle { display: flex; gap: 4px; }
+.liq-btn {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  transition: all 0.15s;
+}
+.liq-btn.active-liq { border-color: var(--jade); background: var(--jade-soft); color: var(--jade); }
+.liq-btn.active-illiq { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+
+/* Vani copilot nudge — terse terminal style */
+.vani-copilot {
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin: 20px 0;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-family: var(--font-mono);
+  animation: slideInLeft 0.3s ease;
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.vani-copilot-marker {
+  font-size: 10px;
+  color: var(--coral);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+.vani-copilot-text {
+  flex: 1;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.9);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.vani-copilot-text .hi { color: #fff; font-weight: 700; }
+.vani-copilot-text .ok { color: #7bc598; }
+.vani-copilot-text .warn { color: #e8b15c; }
+.vani-copilot-text .bad { color: #e88b7b; }
+.vani-copilot-text .sep { color: var(--ink-3); margin: 0 4px; }
+
+/* Form footer (dense) */
+.form-footer {
+  position: fixed;
+  bottom: 0;
+  left: 220px;
+  right: 300px;
+  background: rgba(247,245,237,0.94);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+  padding: 14px 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 40;
+}
+.form-footer-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-3);
+  letter-spacing: 0.02em;
+}
+.form-footer-meta strong { color: var(--ink); }
+
+/* ============================================ PULSE SIDEBAR — benchmark mode ============================================ */
+.pulse-rail {
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  padding: 24px 22px;
+  position: sticky;
+  top: 61px;
+  align-self: start;
+  height: calc(100vh - 61px);
+  overflow-y: auto;
+}
+.pulse-rail::-webkit-scrollbar { width: 5px; }
+.pulse-rail::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 3px; }
+
+.pulse-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.pulse-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.pulse-live-tag {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--jade);
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.pulse-live-tag::before {
+  content: '●';
+  color: var(--jade);
+  margin-right: 3px;
+  animation: pulseLive 2s ease-in-out infinite;
+}
+@keyframes pulseLive {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.pulse-hint-top {
+  font-size: 10.5px;
+  color: var(--ink-3);
+  margin-bottom: 18px;
+  line-height: 1.45;
+  font-family: var(--font-mono);
+  letter-spacing: 0.01em;
+}
+
+/* Benchmark metric card */
+.bench-metric {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.bench-metric:last-of-type { border-bottom: none; }
+.bench-row1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.bench-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.bench-dot {
+  width: 6px; height: 6px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.bench-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.bench-value.empty { color: var(--ink-4); font-weight: 500; }
+.bench-scale {
+  height: 5px;
+  background: var(--surface-sunk);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 5px;
+}
+.bench-scale-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 2px;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1), background 0.3s ease;
+}
+.bench-scale-fill.state-empty { background: var(--line-strong); }
+.bench-scale-fill.state-low { background: var(--danger); }
+.bench-scale-fill.state-mid { background: var(--warn); }
+.bench-scale-fill.state-good { background: var(--ok); }
+.bench-scale-marker {
+  position: absolute;
+  top: -2px;
+  width: 2px;
+  height: 9px;
+  background: var(--ink-3);
+  opacity: 0.4;
+}
+.bench-bottom {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--ink-3);
+  letter-spacing: 0.01em;
+}
+.bench-bottom .percentile {
+  font-weight: 700;
+}
+.bench-bottom .percentile.ok { color: var(--ok); }
+.bench-bottom .percentile.mid { color: var(--warn); }
+.bench-bottom .percentile.bad { color: var(--danger); }
+.bench-note {
+  font-size: 9.5px;
+  color: var(--ink-3);
+  margin-top: 5px;
+  line-height: 1.4;
+  font-family: var(--font-mono);
+  letter-spacing: 0.01em;
+}
+
+/* Summary footer */
+.pulse-summary {
+  margin-top: 24px;
+  padding: 16px 14px;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+}
+.pulse-summary-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--coral);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.pulse-summary-text {
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: rgba(255,255,255,0.85);
+}
+.pulse-summary-text .ok { color: #7bc598; }
+.pulse-summary-text .bad { color: #e88b7b; }
+
+/* ============================================ POPULATED SNAPSHOT TAB ============================================ */
+.snap-meta-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.snap-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+.snap-meta-left strong { color: var(--ink); }
+.snap-meta-left .sep { color: var(--ink-4); }
+.snap-meta-actions { display: flex; gap: 8px; }
+
+/* Networth hero — compressed */
+.nw-hero {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+.nw-hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 28px; right: 28px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--coral), var(--jade), transparent);
+}
+.nw-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.nw-value {
+  font-family: var(--font-display);
+  font-size: 48px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  font-variation-settings: "opsz" 144;
+  margin-bottom: 14px;
+}
+.nw-value .cur {
+  font-size: 22px;
+  color: var(--ink-3);
+  margin-right: 4px;
+  vertical-align: top;
+  line-height: 1.6;
+}
+.nw-breakdown {
+  display: flex;
+  gap: 24px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.bk-item { flex: 1; }
+.bk-label {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.bk-value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.bk-item.plus .bk-value { color: var(--ok); }
+.bk-item.minus .bk-value { color: var(--danger); }
+
+/* Snapshot grid — two columns */
+.snap-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.snap-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  box-shadow: var(--shadow-sm);
+}
+.snap-card-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin-bottom: 2px;
+}
+.snap-card-sub {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-bottom: 18px;
+}
+
+/* Donut */
+.donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.donut-svg { width: 140px; height: 140px; flex-shrink: 0; }
+.donut-ct-label { font-size: 8px; letter-spacing: 0.1em; fill: var(--ink-3); font-weight: 700; }
+.donut-ct-val { font-family: var(--font-display); font-size: 16px; font-weight: 500; fill: var(--ink); }
+.donut-legend { flex: 1; }
+.leg-row {
+  display: flex;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.leg-row:last-child { border-bottom: none; }
+.leg-sw { width: 8px; height: 8px; border-radius: 2px; margin-right: 10px; flex-shrink: 0; }
+.leg-label { flex: 1; font-size: 11px; font-weight: 500; }
+.leg-amt { font-family: var(--font-mono); font-size: 10px; color: var(--ink-3); margin-right: 10px; }
+.leg-pct { font-family: var(--font-mono); font-size: 10px; font-weight: 700; min-width: 34px; text-align: right; }
+
+/* Health rings — compressed */
+.hring-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.hring-row:last-child { border-bottom: none; }
+.hring {
+  width: 36px; height: 36px;
+  position: relative;
+  flex-shrink: 0;
+}
+.hring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.hring-bg { fill: none; stroke: var(--line); stroke-width: 4; }
+.hring-fill { fill: none; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 0.8s ease; }
+.hring-txt {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.hring-info { flex: 1; }
+.hring-lbl { font-size: 11px; font-weight: 600; }
+.hring-state {
+  font-size: 9px;
+  color: var(--ink-3);
+  margin-top: 1px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+/* Action cards — Vani observations on profile */
+.action-cards-wrap {
+  margin-top: 20px;
+}
+.action-cards-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.action-head-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--coral), var(--coral-2));
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--ink);
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 4px var(--coral-soft);
+}
+.action-head-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  font-style: italic;
+  letter-spacing: -0.01em;
+}
+.action-head-sub {
+  font-size: 10px;
+  color: var(--ink-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+.action-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.action-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+.action-card:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.action-card.ok::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 16px; right: 16px;
+  height: 2px;
+  background: var(--ok);
+  border-radius: 0 0 2px 2px;
+}
+.action-card.warn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 16px; right: 16px;
+  height: 2px;
+  background: var(--warn);
+  border-radius: 0 0 2px 2px;
+}
+.action-card.bad::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 16px; right: 16px;
+  height: 2px;
+  background: var(--danger);
+  border-radius: 0 0 2px 2px;
+}
+.action-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+.action-label.ok { background: var(--ok-soft); color: var(--ok); }
+.action-label.warn { background: var(--warn-soft); color: var(--warn); }
+.action-label.bad { background: var(--danger-soft); color: var(--danger); }
+.action-text {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--ink);
+  margin-bottom: 14px;
+}
+.action-text strong { font-style: normal; font-weight: 600; color: var(--jade); }
+.action-cta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-2);
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.action-cta:hover { color: var(--jade); }
+.action-cta svg { width: 11px; height: 11px; }
+
+/* ============================================ SUBMIT TRANSITION ============================================ */
+.submit-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--ink);
+  z-index: 200;
+  display: none;
+  place-items: center;
+}
+.submit-screen.active { display: grid; animation: fadeIn 0.3s; }
+.submit-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 40% 40%, rgba(14,82,64,0.35) 0%, transparent 50%),
+    radial-gradient(circle at 60% 60%, rgba(217,119,87,0.15) 0%, transparent 50%);
+}
+.submit-content {
+  position: relative;
+  text-align: center;
+  max-width: 480px;
+  padding: 40px;
+}
+.submit-spinner {
+  width: 56px; height: 56px;
+  margin: 0 auto 28px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.1);
+  border-top-color: var(--coral);
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.submit-title {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 300;
+  color: #fff;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 10px;
+  font-variation-settings: "opsz" 144;
+}
+.submit-title em { font-style: italic; color: var(--coral); }
+.submit-sub {
+  color: rgba(255,255,255,0.6);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+.submit-progress-list {
+  margin-top: 28px;
+  text-align: left;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.submit-progress-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  font-family: var(--font-mono);
+  letter-spacing: 0.01em;
+}
+.submit-progress-item.done { color: rgba(255,255,255,0.9); }
+.submit-progress-item .tick {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.2);
+  display: grid;
+  place-items: center;
+  font-size: 8px;
+  flex-shrink: 0;
+}
+.submit-progress-item.done .tick {
+  background: var(--ok);
+  color: #fff;
+  border-color: var(--ok);
+}
+
+/* ============================================ RESPONSIVE ============================================ */
+@media (max-width: 1100px) {
+  .form-body { grid-template-columns: 1fr; }
+  .pulse-rail { position: static; height: auto; border-left: none; border-top: 1px solid var(--line); }
+  .form-footer { right: 0; }
+  .action-cards { grid-template-columns: 1fr; }
+  .snap-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .form-footer { left: 0; }
+  .field-row-2, .field-row-3, .field-row-4 { grid-template-columns: 1fr; }
+  .stepper { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- =========== SIDEBAR =========== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">ContactNest</div>
+        <div class="brand-sub">MFD Workspace</div>
+      </div>
+    </div>
+
+    <div class="nav-section">Pipeline</div>
+    <div class="nav-item active">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Contacts
+      <span class="nav-count">128</span>
+    </div>
+    <div class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Clients
+      <span class="nav-count">47</span>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="avatar">RK</div>
+        <div>
+          <div class="user-name">Rajiv Khanna</div>
+          <div class="user-role">ARN-12345</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ============================================ SCREEN 1: CONTACT PROFILE (EMPTY STATE) ============================================ -->
+    <section class="screen active" id="screen-profile-empty">
+      <div class="profile-hero">
+        <div class="breadcrumb">
+          <a href="#">contacts</a>
+          <span class="breadcrumb-sep">/</span>
+          <span>priya_mehta</span>
+        </div>
+        <div class="profile-hero-grid">
+          <div class="profile-identity">
+            <div class="profile-avatar">PM</div>
+            <div>
+              <h1 class="profile-name">Priya Mehta</h1>
+              <div class="profile-meta-row">
+                <span class="badge badge-prospect"><span class="badge-dot"></span>Prospect</span>
+                <span class="dot"></span>
+                <span>+91 98765 43210</span>
+                <span class="dot"></span>
+                <span>Added Mar 14, 2026</span>
+                <span class="dot"></span>
+                <span>Mumbai</span>
+              </div>
+            </div>
+          </div>
+          <div class="readiness-card">
+            <div class="ring-lg">
+              <svg viewBox="0 0 36 36">
+                <circle class="ring-bg" cx="18" cy="18" r="15"/>
+                <circle class="ring-fill mid" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="56.5"/>
+              </svg>
+              <div class="ring-text">40</div>
+            </div>
+            <div class="readiness-card-text">
+              <strong>Snapshot pending</strong>
+              Capture financial details to unlock the full profile.
+            </div>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <div class="tab"><span class="tab-indicator filled"></span>Overview</div>
+          <div class="tab"><span class="tab-indicator filled"></span>Channels</div>
+          <div class="tab active"><span class="tab-indicator empty"></span>Financial Snapshot</div>
+        </div>
+      </div>
+
+      <div class="profile-body">
+        <div class="snapshot-empty">
+          <div class="empty-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 6-6"/></svg>
+          </div>
+          <h2 class="empty-title">Capture Priya's<br/><em>financial picture.</em></h2>
+          <p class="empty-sub">A guided 10-minute flow. Vani will help you identify gaps and build a talking brief you can use on your next call.</p>
+
+          <div class="empty-actions">
+            <button class="btn btn-jade btn-xl" id="btn-capture-start">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              Capture Snapshot
+            </button>
+            <button class="btn btn-ghost btn-xl">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+              Send link to client
+            </button>
+          </div>
+
+          <div class="inherited-preview">
+            <div class="inherited-label">● Will inherit from contact record</div>
+            <div class="inherited-grid">
+              <div class="inherited-item">
+                <div class="inherited-k">Name</div>
+                <div class="inherited-v">Priya Mehta</div>
+              </div>
+              <div class="inherited-item">
+                <div class="inherited-k">Age</div>
+                <div class="inherited-v">38</div>
+              </div>
+              <div class="inherited-item">
+                <div class="inherited-k">City</div>
+                <div class="inherited-v">Mumbai</div>
+              </div>
+              <div class="inherited-item">
+                <div class="inherited-k">Mobile</div>
+                <div class="inherited-v">+91 98765…</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ SCREEN 2: CAPTURE CONFIRMATION ============================================ -->
+    <section class="screen" id="screen-capture">
+      <div class="capture-screen">
+        <div class="capture-card">
+          <div class="capture-header">
+            <div class="capture-eyebrow">Snapshot Capture · MFD Mode</div>
+            <h2 class="capture-title">Ready when<br/><em>you are, Rajiv.</em></h2>
+            <p class="capture-sub">You'll capture Priya's cash flow, assets, loans, protection, and goals. About 10 minutes if you know the numbers.</p>
+          </div>
+
+          <div class="target-chip">
+            <div class="target-avatar">PM</div>
+            <div class="target-info">
+              <div class="target-name">Priya Mehta</div>
+              <div class="target-meta">
+                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>+91 98765 43210</span>
+                <span>●</span>
+                <span>Prospect · Mumbai</span>
+              </div>
+            </div>
+            <span class="badge badge-prospect"><span class="badge-dot"></span>Prospect</span>
+          </div>
+
+          <div class="inherited-block" id="inherited-block">
+            <div class="inherited-head" id="inherited-head">
+              <div class="inherited-head-left">
+                <div class="inherited-checkmark">✓</div>
+                <div>
+                  <div class="inherited-head-title">Inheriting 5 fields from contact</div>
+                  <div class="inherited-head-sub">Click to review or edit basic details</div>
+                </div>
+              </div>
+              <svg class="inherited-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+            <div class="inherited-body">
+              <div class="inherited-body-grid">
+                <div class="inherited-field">
+                  <div class="inherited-field-label">Full Name</div>
+                  <div class="inherited-field-value">Mrs. Priya Mehta</div>
+                </div>
+                <div class="inherited-field">
+                  <div class="inherited-field-label">Age</div>
+                  <div class="inherited-field-value">38 years</div>
+                </div>
+                <div class="inherited-field">
+                  <div class="inherited-field-label">City</div>
+                  <div class="inherited-field-value">Mumbai, Maharashtra</div>
+                </div>
+                <div class="inherited-field">
+                  <div class="inherited-field-label">Situation</div>
+                  <div class="inherited-field-value">Family with 2 dependents</div>
+                </div>
+                <div class="inherited-field">
+                  <div class="inherited-field-label">Mobile</div>
+                  <div class="inherited-field-value">+91 98765 43210</div>
+                </div>
+                <div class="inherited-field">
+                  <div class="inherited-field-label">Email</div>
+                  <div class="inherited-field-value">priya.mehta@gmail.com</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="vani-preview">
+            <div class="vani-preview-avatar">V</div>
+            <div class="vani-preview-content">
+              <div class="vani-preview-label">Vani · Copilot Mode</div>
+              <div class="vani-preview-text">Running pro mode. I'll flag benchmarks, gaps, and <strong>talking points</strong> as you type. Keyboard shortcuts enabled.</div>
+            </div>
+          </div>
+
+          <div class="capture-footer">
+            <button class="btn btn-ghost btn-lg" id="btn-capture-cancel">← Back to profile</button>
+            <button class="btn btn-jade btn-lg" id="btn-capture-start-form">
+              Start capture
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ SCREEN 3: MFD FORM ============================================ -->
+    <section class="screen form-screen" id="screen-form">
+      <!-- Pinned header -->
+      <div class="pinned-header">
+        <div class="pinned-client">
+          <div class="pinned-avatar">PM</div>
+          <div>
+            <div class="pinned-name">Priya Mehta</div>
+            <div class="pinned-meta">+91 98765 43210 · PROSPECT</div>
+          </div>
+        </div>
+
+        <!-- Horizontal stepper -->
+        <div class="stepper" id="stepper">
+          <div class="step-item active" data-step="0">
+            <div class="step-top"><div class="step-bullet">1</div><div class="step-connector"></div></div>
+            <div class="step-label">Cash Flow</div>
+          </div>
+          <div class="step-item" data-step="1">
+            <div class="step-top"><div class="step-bullet">2</div><div class="step-connector"></div></div>
+            <div class="step-label">Assets</div>
+          </div>
+          <div class="step-item" data-step="2">
+            <div class="step-top"><div class="step-bullet">3</div><div class="step-connector"></div></div>
+            <div class="step-label">Loans</div>
+          </div>
+          <div class="step-item" data-step="3">
+            <div class="step-top"><div class="step-bullet">4</div><div class="step-connector"></div></div>
+            <div class="step-label">Protection</div>
+          </div>
+          <div class="step-item" data-step="4">
+            <div class="step-top"><div class="step-bullet">5</div><div class="step-connector"></div></div>
+            <div class="step-label">Goals</div>
+          </div>
+        </div>
+
+        <div class="pinned-actions">
+          <div class="save-indicator">
+            <div class="save-dot"></div>
+            <span id="save-text">Saved · draft</span>
+          </div>
+          <button class="btn btn-ghost" id="btn-exit-draft">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            Exit & save
+          </button>
+        </div>
+      </div>
+
+      <div class="form-body">
+        <div class="form-work">
+
+          <!-- ========== STEP 1: CASH FLOW ========== -->
+          <div class="form-step" id="form-step-0">
+            <div class="section-head">
+              <div class="section-num">Section 01 / 05 · Cash Flow</div>
+              <h2 class="section-title">Income & monthly expenses</h2>
+              <p class="section-sub">Monthly cash in, monthly cash out. Savings rate computes automatically.</p>
+            </div>
+
+            <div class="sub-block">
+              <div class="sub-head">Monthly Income</div>
+              <div class="field-row-3">
+                <div class="field">
+                  <label class="label">Salary (take-home)</label>
+                  <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="1,80,000" /><span class="cur-suffix">/mo</span></div>
+                </div>
+                <div class="field">
+                  <label class="label">Partner income</label>
+                  <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="90,000" /><span class="cur-suffix">/mo</span></div>
+                </div>
+                <div class="field">
+                  <label class="label">Rental / Other <span class="label-optional">opt</span></label>
+                  <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" placeholder="0" /><span class="cur-suffix">/mo</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="sub-block">
+              <div class="sub-head">Monthly Expenses · Exclude EMIs</div>
+              <div class="field-row-4">
+                <div class="field">
+                  <label class="label">Housing</label>
+                  <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="45,000" /></div>
+                </div>
+                <div class="field">
+                  <label class="label">Groceries</label>
+                  <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="22,000" /></div>
+                </div>
+                <div class="field">
+                  <label class="label">Utilities</label>
+                  <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="6,500" /></div>
+                </div>
+                <div class="field">
+                  <label class="label">Transport</label>
+                  <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="9,000" /></div>
+                </div>
+              </div>
+              <div class="field-row-4">
+                <div class="field">
+                  <label class="label">Education/Kids</label>
+                  <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="28,000" /></div>
+                </div>
+                <div class="field">
+                  <label class="label">Healthcare</label>
+                  <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="4,000" /></div>
+                </div>
+                <div class="field">
+                  <label class="label">Lifestyle</label>
+                  <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="18,000" /></div>
+                </div>
+                <div class="field">
+                  <label class="label">Other</label>
+                  <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="3,000" /></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="vani-copilot">
+              <div class="vani-copilot-marker">V ▸</div>
+              <div class="vani-copilot-text">
+                <span class="hi">Income ₹2,70,000/mo</span><span class="sep">·</span><span class="hi">Expenses ₹1,35,500/mo</span><span class="sep">·</span><span class="ok">Savings 52% ▸ p95 bracket</span><br/>
+                Strong cash flow. Savings capacity ≈ <span class="hi">₹16.2L/yr</span>. Watch for lifestyle creep — housing share at 25% is near upper band for Mumbai.
+              </div>
+            </div>
+          </div>
+
+          <!-- ========== STEP 2: ASSETS ========== -->
+          <div class="form-step" id="form-step-1" style="display:none;">
+            <div class="section-head">
+              <div class="section-num">Section 02 / 05 · Assets</div>
+              <h2 class="section-title">What Priya owns</h2>
+              <p class="section-sub">Investments, property, savings, gold. Tag liquidity to flag concentration risk.</p>
+            </div>
+
+            <div class="item-list">
+              <div class="item-card">
+                <div class="item-head"><div class="item-num">ASSET_01</div><button class="item-remove">✕</button></div>
+                <div class="field-row-3">
+                  <div class="field">
+                    <label class="label">Description</label>
+                    <input class="input" value="Equity Mutual Funds" />
+                  </div>
+                  <div class="field">
+                    <label class="label">Current Value</label>
+                    <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="24,00,000" /></div>
+                  </div>
+                  <div>
+                    <label class="label">Liquidity</label>
+                    <div class="liq-toggle"><button class="liq-btn active-liq">💧 Liquid</button><button class="liq-btn">🔒 Illiq</button></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="item-card">
+                <div class="item-head"><div class="item-num">ASSET_02</div><button class="item-remove">✕</button></div>
+                <div class="field-row-3">
+                  <div class="field">
+                    <label class="label">Description</label>
+                    <input class="input" value="PPF" />
+                  </div>
+                  <div class="field">
+                    <label class="label">Current Value</label>
+                    <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="9,00,000" /></div>
+                  </div>
+                  <div>
+                    <label class="label">Liquidity</label>
+                    <div class="liq-toggle"><button class="liq-btn">💧 Liquid</button><button class="liq-btn active-illiq">🔒 Illiq</button></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="item-card">
+                <div class="item-head"><div class="item-num">ASSET_03</div><button class="item-remove">✕</button></div>
+                <div class="field-row-3">
+                  <div class="field">
+                    <label class="label">Description</label>
+                    <input class="input" value="Apartment (Bandra West)" />
+                  </div>
+                  <div class="field">
+                    <label class="label">Current Value</label>
+                    <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="1,40,00,000" /></div>
+                  </div>
+                  <div>
+                    <label class="label">Liquidity</label>
+                    <div class="liq-toggle"><button class="liq-btn">💧 Liquid</button><button class="liq-btn active-illiq">🔒 Illiq</button></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="item-card">
+                <div class="item-head"><div class="item-num">ASSET_04</div><button class="item-remove">✕</button></div>
+                <div class="field-row-3">
+                  <div class="field">
+                    <label class="label">Description</label>
+                    <input class="input" value="Savings Account" />
+                  </div>
+                  <div class="field">
+                    <label class="label">Current Value</label>
+                    <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="4,50,000" /></div>
+                  </div>
+                  <div>
+                    <label class="label">Liquidity</label>
+                    <div class="liq-toggle"><button class="liq-btn active-liq">💧 Liquid</button><button class="liq-btn">🔒 Illiq</button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button class="add-item-btn">+ Add asset</button>
+
+            <div class="vani-copilot">
+              <div class="vani-copilot-marker">V ▸</div>
+              <div class="vani-copilot-text">
+                <span class="hi">Total ₹1,77,50,000</span><span class="sep">·</span><span class="bad">Liquid 16% · Illiquid 84%</span><span class="sep">·</span><span class="warn">Concentration: apartment = 79% of total</span><br/>
+                <span class="bad">Flag: High real-estate concentration</span>. Emergency liquidity limited to ₹28.5L (FY-equivalent). Talking point: building liquid buffer.
+              </div>
+            </div>
+          </div>
+
+          <!-- ========== STEP 3: LOANS ========== -->
+          <div class="form-step" id="form-step-2" style="display:none;">
+            <div class="section-head">
+              <div class="section-num">Section 03 / 05 · Liabilities</div>
+              <h2 class="section-title">What Priya owes</h2>
+              <p class="section-sub">Outstanding loans with EMI and interest rate. DTI computes automatically.</p>
+            </div>
+
+            <div class="item-list">
+              <div class="item-card">
+                <div class="item-head"><div class="item-num">LOAN_01</div><button class="item-remove">✕</button></div>
+                <div class="field-row-4">
+                  <div class="field">
+                    <label class="label">Type</label>
+                    <input class="input" value="Home Loan" />
+                  </div>
+                  <div class="field">
+                    <label class="label">Outstanding</label>
+                    <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="62,00,000" /></div>
+                  </div>
+                  <div class="field">
+                    <label class="label">EMI</label>
+                    <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="54,000" /></div>
+                  </div>
+                  <div class="field">
+                    <label class="label">Rate (p.a.)</label>
+                    <input class="input" value="8.6%" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="item-card">
+                <div class="item-head"><div class="item-num">LOAN_02</div><button class="item-remove">✕</button></div>
+                <div class="field-row-4">
+                  <div class="field">
+                    <label class="label">Type</label>
+                    <input class="input" value="Car Loan" />
+                  </div>
+                  <div class="field">
+                    <label class="label">Outstanding</label>
+                    <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="4,20,000" /></div>
+                  </div>
+                  <div class="field">
+                    <label class="label">EMI</label>
+                    <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="12,500" /></div>
+                  </div>
+                  <div class="field">
+                    <label class="label">Rate (p.a.)</label>
+                    <input class="input" value="9.2%" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button class="add-item-btn">+ Add loan</button>
+
+            <div class="vani-copilot">
+              <div class="vani-copilot-marker">V ▸</div>
+              <div class="vani-copilot-text">
+                <span class="hi">Total debt ₹66.2L</span><span class="sep">·</span><span class="hi">EMI ₹66,500/mo</span><span class="sep">·</span><span class="ok">DTI 24.6% ▸ healthy (&lt;40%)</span><br/>
+                Home loan at 8.6% is market rate. If score permits, refinancing to 8.2% would save ~<span class="hi">₹2.1L over tenure</span>. Check with Priya.
+              </div>
+            </div>
+          </div>
+
+          <!-- ========== STEP 4: PROTECTION ========== -->
+          <div class="form-step" id="form-step-3" style="display:none;">
+            <div class="section-head">
+              <div class="section-num">Section 04 / 05 · Protection</div>
+              <h2 class="section-title">Life & health coverage</h2>
+              <p class="section-sub">Existing policies. Coverage adequacy benchmarks against income and dependents.</p>
+            </div>
+
+            <div class="sub-block">
+              <div class="sub-head">Life Insurance</div>
+              <div class="field">
+                <label class="label">Has active policy?</label>
+                <div class="opt-cards c2">
+                  <button class="opt-card selected">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 7v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V7l-8-5z"/><path d="m9 12 2 2 4-4"/></svg>
+                    <div>
+                      <div class="opt-card-label">Yes</div>
+                      <div class="opt-card-sub">Has coverage</div>
+                    </div>
+                  </button>
+                  <button class="opt-card">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+                    <div>
+                      <div class="opt-card-label">No / unsure</div>
+                      <div class="opt-card-sub">Gap flagged</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <div class="field-row-3">
+                <div class="field">
+                  <label class="label">Policy type</label>
+                  <input class="input" value="Term Plan" />
+                </div>
+                <div class="field">
+                  <label class="label">Sum assured</label>
+                  <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="75,00,000" /></div>
+                </div>
+                <div class="field">
+                  <label class="label">Annual premium</label>
+                  <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="18,000" /></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="sub-block">
+              <div class="sub-head">Health Insurance</div>
+              <div class="field">
+                <label class="label">Coverage type</label>
+                <div class="opt-cards c4">
+                  <button class="opt-card">
+                    <div>
+                      <div class="opt-card-label">Individual</div>
+                      <div class="opt-card-sub">Self only</div>
+                    </div>
+                  </button>
+                  <button class="opt-card selected">
+                    <div>
+                      <div class="opt-card-label">Family Floater</div>
+                      <div class="opt-card-sub">Household</div>
+                    </div>
+                  </button>
+                  <button class="opt-card">
+                    <div>
+                      <div class="opt-card-label">Employer</div>
+                      <div class="opt-card-sub">Corp group</div>
+                    </div>
+                  </button>
+                  <button class="opt-card">
+                    <div>
+                      <div class="opt-card-label">None</div>
+                      <div class="opt-card-sub">Gap</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <div class="field-row-3">
+                <div class="field">
+                  <label class="label">Sum insured</label>
+                  <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="10,00,000" /></div>
+                </div>
+                <div class="field">
+                  <label class="label">Annual premium</label>
+                  <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="24,000" /></div>
+                </div>
+                <div class="field">
+                  <label class="label">Critical illness <span class="label-optional">opt</span></label>
+                  <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" placeholder="0" /></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="vani-copilot">
+              <div class="vani-copilot-marker">V ▸</div>
+              <div class="vani-copilot-text">
+                <span class="hi">Life cover ₹75L</span><span class="sep">·</span><span class="bad">2.3× annual income ▸ p15 &lt;median</span><span class="sep">·</span><span class="bad">Gap vs 10× benchmark: ₹2.5 Cr</span><br/>
+                <span class="bad">CRITICAL GAP</span>: 2 dependents at 38yrs warrants 10–15× coverage. Health cover at ₹10L is acceptable but lean for Mumbai. <span class="hi">Top talking point for next call.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ========== STEP 5: GOALS ========== -->
+          <div class="form-step" id="form-step-4" style="display:none;">
+            <div class="section-head">
+              <div class="section-num">Section 05 / 05 · Goals</div>
+              <h2 class="section-title">Aspirational goals & retirement</h2>
+              <p class="section-sub">Target amounts in today's rupees. System computes inflation-adjusted SIP requirements.</p>
+            </div>
+
+            <div class="item-list">
+              <div class="item-card">
+                <div class="item-head"><div class="item-num">GOAL_01</div><button class="item-remove">✕</button></div>
+                <div class="field-row-3">
+                  <div class="field">
+                    <label class="label">Goal</label>
+                    <input class="input" value="Children's higher education" />
+                  </div>
+                  <div class="field">
+                    <label class="label">Target (today's ₹)</label>
+                    <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="80,00,000" /></div>
+                  </div>
+                  <div>
+                    <label class="label">Horizon</label>
+                    <div class="pills"><button class="pill">3y</button><button class="pill">5y</button><button class="pill active">12y</button><button class="pill">20y</button></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="item-card">
+                <div class="item-head"><div class="item-num">GOAL_02</div><button class="item-remove">✕</button></div>
+                <div class="field-row-3">
+                  <div class="field">
+                    <label class="label">Goal</label>
+                    <input class="input" value="Retirement corpus" />
+                  </div>
+                  <div class="field">
+                    <label class="label">Target (today's ₹)</label>
+                    <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="6,00,00,000" /></div>
+                  </div>
+                  <div>
+                    <label class="label">Horizon</label>
+                    <div class="pills"><button class="pill">5y</button><button class="pill">10y</button><button class="pill">20y</button><button class="pill active">22y</button></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="item-card">
+                <div class="item-head"><div class="item-num">GOAL_03</div><button class="item-remove">✕</button></div>
+                <div class="field-row-3">
+                  <div class="field">
+                    <label class="label">Goal</label>
+                    <input class="input" value="Beach house in Goa" />
+                  </div>
+                  <div class="field">
+                    <label class="label">Target (today's ₹)</label>
+                    <div class="cur-input"><span class="cur-sym">₹</span><input class="cur-val" value="2,50,00,000" /></div>
+                  </div>
+                  <div>
+                    <label class="label">Horizon</label>
+                    <div class="pills"><button class="pill">3y</button><button class="pill active">8y</button><button class="pill">15y</button><button class="pill">20y</button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button class="add-item-btn">+ Add goal</button>
+
+            <div class="vani-copilot">
+              <div class="vani-copilot-marker">V ▸</div>
+              <div class="vani-copilot-text">
+                <span class="hi">3 goals · ₹9.3 Cr today</span><span class="sep">·</span><span class="hi">FV @ 6% inflation ≈ ₹18.4 Cr</span><span class="sep">·</span><span class="ok">Feasibility: 2/3 achievable</span><br/>
+                Retirement (22y) and education (12y) are well within reach at current savings rate. <span class="warn">Goa house (8y) is tight</span> — needs ~₹2.8L/mo SIP. Discuss prioritization.
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="form-footer">
+            <button class="btn btn-ghost" id="btn-form-back">← Back</button>
+            <div class="form-footer-meta">Step <strong id="step-num">1</strong> of <strong>5</strong> · <span id="step-label-footer">Cash Flow</span></div>
+            <button class="btn btn-jade" id="btn-form-next">
+              Continue
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- ========== BENCHMARK PULSE SIDEBAR ========== -->
+        <aside class="pulse-rail">
+          <div class="pulse-head">
+            <div class="pulse-title">Benchmark Pulse</div>
+            <div class="pulse-live-tag">Live</div>
+          </div>
+          <div class="pulse-hint-top">Percentile-based benchmarks<br/>vs ₹25-30L income bracket · Mumbai</div>
+
+          <div class="bench-metric" data-metric="savings">
+            <div class="bench-row1">
+              <div class="bench-label"><span class="bench-dot" style="background: var(--pulse-1);"></span>Savings Rate</div>
+              <div class="bench-value empty">—</div>
+            </div>
+            <div class="bench-scale">
+              <div class="bench-scale-fill state-empty"></div>
+              <div class="bench-scale-marker" style="left: 50%"></div>
+            </div>
+            <div class="bench-bottom">
+              <span>p0</span><span class="percentile" data-pct>—</span><span>p100</span>
+            </div>
+            <div class="bench-note" data-note>— awaiting data</div>
+          </div>
+
+          <div class="bench-metric" data-metric="debt">
+            <div class="bench-row1">
+              <div class="bench-label"><span class="bench-dot" style="background: var(--pulse-2);"></span>Debt Load (DTI)</div>
+              <div class="bench-value empty">—</div>
+            </div>
+            <div class="bench-scale">
+              <div class="bench-scale-fill state-empty"></div>
+              <div class="bench-scale-marker" style="left: 40%"></div>
+            </div>
+            <div class="bench-bottom">
+              <span>0%</span><span class="percentile" data-pct>—</span><span>60%+</span>
+            </div>
+            <div class="bench-note" data-note>— awaiting data</div>
+          </div>
+
+          <div class="bench-metric" data-metric="protection">
+            <div class="bench-row1">
+              <div class="bench-label"><span class="bench-dot" style="background: var(--pulse-3);"></span>Protection</div>
+              <div class="bench-value empty">—</div>
+            </div>
+            <div class="bench-scale">
+              <div class="bench-scale-fill state-empty"></div>
+              <div class="bench-scale-marker" style="left: 67%"></div>
+            </div>
+            <div class="bench-bottom">
+              <span>0×</span><span class="percentile" data-pct>—</span><span>15×+</span>
+            </div>
+            <div class="bench-note" data-note>— awaiting data</div>
+          </div>
+
+          <div class="bench-metric" data-metric="liquidity">
+            <div class="bench-row1">
+              <div class="bench-label"><span class="bench-dot" style="background: var(--pulse-4);"></span>Liquidity</div>
+              <div class="bench-value empty">—</div>
+            </div>
+            <div class="bench-scale">
+              <div class="bench-scale-fill state-empty"></div>
+              <div class="bench-scale-marker" style="left: 50%"></div>
+            </div>
+            <div class="bench-bottom">
+              <span>0mo</span><span class="percentile" data-pct>—</span><span>12mo+</span>
+            </div>
+            <div class="bench-note" data-note>— awaiting data</div>
+          </div>
+
+          <div class="bench-metric" data-metric="future">
+            <div class="bench-row1">
+              <div class="bench-label"><span class="bench-dot" style="background: var(--pulse-5);"></span>Future Focus</div>
+              <div class="bench-value empty">—</div>
+            </div>
+            <div class="bench-scale">
+              <div class="bench-scale-fill state-empty"></div>
+              <div class="bench-scale-marker" style="left: 60%"></div>
+            </div>
+            <div class="bench-bottom">
+              <span>0%</span><span class="percentile" data-pct>—</span><span>100%</span>
+            </div>
+            <div class="bench-note" data-note>— awaiting data</div>
+          </div>
+
+          <div class="pulse-summary" id="pulse-summary">
+            <div class="pulse-summary-label">▸ Talking Brief</div>
+            <div class="pulse-summary-text" id="pulse-summary-text">Pulse will populate as you capture data. Final brief auto-generates on submit.</div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============================================ SUBMIT TRANSITION ============================================ -->
+    <div class="submit-screen" id="submit-screen">
+      <div class="submit-content">
+        <div class="submit-spinner"></div>
+        <h2 class="submit-title">Saving Priya's<br/><em>snapshot…</em></h2>
+        <p class="submit-sub">PMT-2026-0047 · v1</p>
+        <div class="submit-progress-list">
+          <div class="submit-progress-item done"><div class="tick">✓</div>Persisting cash flow & assets</div>
+          <div class="submit-progress-item done"><div class="tick">✓</div>Computing pulse metrics</div>
+          <div class="submit-progress-item done"><div class="tick">✓</div>Running Vani analysis</div>
+          <div class="submit-progress-item"><div class="tick"></div>Updating contact record</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ SCREEN 4: CONTACT PROFILE (POPULATED) ============================================ -->
+    <section class="screen" id="screen-profile-filled">
+      <div class="profile-hero">
+        <div class="breadcrumb">
+          <a href="#">contacts</a>
+          <span class="breadcrumb-sep">/</span>
+          <span>priya_mehta</span>
+        </div>
+        <div class="profile-hero-grid">
+          <div class="profile-identity">
+            <div class="profile-avatar">PM</div>
+            <div>
+              <h1 class="profile-name">Priya Mehta</h1>
+              <div class="profile-meta-row">
+                <span class="badge badge-prospect"><span class="badge-dot"></span>Prospect</span>
+                <span class="dot"></span>
+                <span>+91 98765 43210</span>
+                <span class="dot"></span>
+                <span>Added Mar 14, 2026</span>
+                <span class="dot"></span>
+                <span>Mumbai</span>
+              </div>
+            </div>
+          </div>
+          <div class="readiness-card">
+            <div class="ring-lg">
+              <svg viewBox="0 0 36 36">
+                <circle class="ring-bg" cx="18" cy="18" r="15"/>
+                <circle class="ring-fill" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="9.4"/>
+              </svg>
+              <div class="ring-text">90</div>
+            </div>
+            <div class="readiness-card-text">
+              <strong>Ready to convert</strong>
+              Snapshot complete · unlock client conversion.
+            </div>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <div class="tab"><span class="tab-indicator filled"></span>Overview</div>
+          <div class="tab"><span class="tab-indicator filled"></span>Channels</div>
+          <div class="tab active"><span class="tab-indicator filled"></span>Financial Snapshot</div>
+        </div>
+      </div>
+
+      <div class="profile-body">
+        <!-- Meta bar -->
+        <div class="snap-meta-bar">
+          <div class="snap-meta-left">
+            <strong>SNAPSHOT v1</strong>
+            <span class="sep">/</span>
+            <span>captured apr 08, 2026 · 10m 23s</span>
+            <span class="sep">/</span>
+            <span>by rajiv khanna</span>
+          </div>
+          <div class="snap-meta-actions">
+            <button class="btn btn-ghost">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+              Full view
+            </button>
+            <button class="btn btn-ghost">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+              Share
+            </button>
+            <button class="btn btn-jade">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
+              Update
+            </button>
+          </div>
+        </div>
+
+        <!-- Net worth hero -->
+        <div class="nw-hero">
+          <div class="nw-label">Net worth</div>
+          <div class="nw-value"><span class="cur">₹</span>1,11,10,000</div>
+          <div class="nw-breakdown">
+            <div class="bk-item plus">
+              <div class="bk-label">Total Assets</div>
+              <div class="bk-value">+ ₹1,77,50,000</div>
+            </div>
+            <div class="bk-item minus">
+              <div class="bk-label">Liabilities</div>
+              <div class="bk-value">− ₹66,20,000</div>
+            </div>
+            <div class="bk-item">
+              <div class="bk-label">Monthly Savings</div>
+              <div class="bk-value" style="color: var(--jade);">₹1,41,500</div>
+            </div>
+            <div class="bk-item">
+              <div class="bk-label">Savings Rate</div>
+              <div class="bk-value" style="color: var(--jade);">52.4%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid: donut + health rings -->
+        <div class="snap-grid">
+          <div class="snap-card">
+            <div class="snap-card-title">Asset allocation</div>
+            <div class="snap-card-sub">Concentration flagged — 79% in real estate</div>
+            <div class="donut-wrap">
+              <svg class="donut-svg" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="38" fill="none" stroke="var(--line)" stroke-width="14"/>
+                <circle cx="50" cy="50" r="38" fill="none" stroke="#6b4e8a" stroke-width="14" stroke-dasharray="188.5 238.8" stroke-dashoffset="0" transform="rotate(-90 50 50)"/>
+                <circle cx="50" cy="50" r="38" fill="none" stroke="var(--jade)" stroke-width="14" stroke-dasharray="32.2 238.8" stroke-dashoffset="-188.5" transform="rotate(-90 50 50)"/>
+                <circle cx="50" cy="50" r="38" fill="none" stroke="var(--warn)" stroke-width="14" stroke-dasharray="12 238.8" stroke-dashoffset="-220.7" transform="rotate(-90 50 50)"/>
+                <circle cx="50" cy="50" r="38" fill="none" stroke="var(--coral)" stroke-width="14" stroke-dasharray="6 238.8" stroke-dashoffset="-232.7" transform="rotate(-90 50 50)"/>
+                <text x="50" y="47" text-anchor="middle" class="donut-ct-label">TOTAL</text>
+                <text x="50" y="58" text-anchor="middle" class="donut-ct-val">₹1.77Cr</text>
+              </svg>
+              <div class="donut-legend">
+                <div class="leg-row">
+                  <div class="leg-sw" style="background: #6b4e8a;"></div>
+                  <div class="leg-label">Apartment</div>
+                  <div class="leg-amt">₹1.40 Cr</div>
+                  <div class="leg-pct">79%</div>
+                </div>
+                <div class="leg-row">
+                  <div class="leg-sw" style="background: var(--jade);"></div>
+                  <div class="leg-label">Equity MF</div>
+                  <div class="leg-amt">₹24.0 L</div>
+                  <div class="leg-pct">13.5%</div>
+                </div>
+                <div class="leg-row">
+                  <div class="leg-sw" style="background: var(--warn);"></div>
+                  <div class="leg-label">PPF</div>
+                  <div class="leg-amt">₹9.0 L</div>
+                  <div class="leg-pct">5.1%</div>
+                </div>
+                <div class="leg-row">
+                  <div class="leg-sw" style="background: var(--coral);"></div>
+                  <div class="leg-label">Savings</div>
+                  <div class="leg-amt">₹4.5 L</div>
+                  <div class="leg-pct">2.5%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="snap-card">
+            <div class="snap-card-title">Pulse rings</div>
+            <div class="snap-card-sub">5 vital signs</div>
+            <div>
+              <div class="hring-row">
+                <div class="hring"><svg viewBox="0 0 40 40"><circle class="hring-bg" cx="20" cy="20" r="16"/><circle class="hring-fill" cx="20" cy="20" r="16" stroke="var(--ok)" stroke-dasharray="100.5" stroke-dashoffset="4"/></svg><div class="hring-txt">96</div></div>
+                <div class="hring-info">
+                  <div class="hring-lbl">Savings Rate</div>
+                  <div class="hring-state" style="color: var(--ok);">● p95</div>
+                </div>
+              </div>
+              <div class="hring-row">
+                <div class="hring"><svg viewBox="0 0 40 40"><circle class="hring-bg" cx="20" cy="20" r="16"/><circle class="hring-fill" cx="20" cy="20" r="16" stroke="var(--ok)" stroke-dasharray="100.5" stroke-dashoffset="22"/></svg><div class="hring-txt">78</div></div>
+                <div class="hring-info">
+                  <div class="hring-lbl">Debt Load</div>
+                  <div class="hring-state" style="color: var(--ok);">● p72</div>
+                </div>
+              </div>
+              <div class="hring-row">
+                <div class="hring"><svg viewBox="0 0 40 40"><circle class="hring-bg" cx="20" cy="20" r="16"/><circle class="hring-fill" cx="20" cy="20" r="16" stroke="var(--danger)" stroke-dasharray="100.5" stroke-dashoffset="78"/></svg><div class="hring-txt">22</div></div>
+                <div class="hring-info">
+                  <div class="hring-lbl">Protection</div>
+                  <div class="hring-state" style="color: var(--danger);">● p15</div>
+                </div>
+              </div>
+              <div class="hring-row">
+                <div class="hring"><svg viewBox="0 0 40 40"><circle class="hring-bg" cx="20" cy="20" r="16"/><circle class="hring-fill" cx="20" cy="20" r="16" stroke="var(--warn)" stroke-dasharray="100.5" stroke-dashoffset="55"/></svg><div class="hring-txt">45</div></div>
+                <div class="hring-info">
+                  <div class="hring-lbl">Liquidity</div>
+                  <div class="hring-state" style="color: var(--warn);">● p42</div>
+                </div>
+              </div>
+              <div class="hring-row">
+                <div class="hring"><svg viewBox="0 0 40 40"><circle class="hring-bg" cx="20" cy="20" r="16"/><circle class="hring-fill" cx="20" cy="20" r="16" stroke="var(--ok)" stroke-dasharray="100.5" stroke-dashoffset="18"/></svg><div class="hring-txt">82</div></div>
+                <div class="hring-info">
+                  <div class="hring-lbl">Future Focus</div>
+                  <div class="hring-state" style="color: var(--ok);">● p80</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vani action cards -->
+        <div class="action-cards-wrap">
+          <div class="action-cards-head">
+            <div class="action-head-avatar">V</div>
+            <div>
+              <div class="action-head-title">Vani's talking brief</div>
+              <div class="action-head-sub">3 action points for your next call</div>
+            </div>
+          </div>
+          <div class="action-cards">
+            <div class="action-card ok">
+              <div class="action-label ok">● Strength</div>
+              <div class="action-text">Savings rate of <strong>52%</strong> is genuinely exceptional — top 5% for her income bracket. Lead with this.</div>
+              <button class="action-cta">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="m22 6-10 7L2 6"/></svg>
+                Draft opener email
+              </button>
+            </div>
+
+            <div class="action-card warn">
+              <div class="action-label warn">● Concentration</div>
+              <div class="action-text"><strong>79%</strong> of wealth locked in one apartment. Emergency liquidity is thin. Worth a dedicated liquidity-building conversation.</div>
+              <button class="action-cta">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Schedule follow-up
+              </button>
+            </div>
+
+            <div class="action-card bad">
+              <div class="action-label bad">● Critical gap</div>
+              <div class="action-text">Life cover <strong>only 2.3×</strong> annual income. With 2 dependents, 10–15× is industry benchmark. This is the #1 priority.</div>
+              <button class="action-cta">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                Call Priya now
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// ============================================
+// STATE + NAVIGATION
+// ============================================
+const STEPS = ['Cash Flow', 'Assets', 'Loans', 'Protection', 'Goals'];
+let currentStep = 0;
+
+// Benchmark data — percentiles, not emotional labels
+const BENCH_BY_STEP = {
+  0: {
+    savings: { value: '52% ▸ p95', pct: 95, state: 'good', pctLabel: 'p95', pctClass: 'ok', note: 'p95 vs bracket · exceptional', summary: '<span class="ok">Savings 52% p95</span> · strong cash flow' }
+  },
+  1: {
+    savings: { value: '52% ▸ p95', pct: 95, state: 'good', pctLabel: 'p95', pctClass: 'ok', note: 'p95 vs bracket · exceptional' },
+    liquidity: { value: '3.5mo ▸ p42', pct: 45, state: 'mid', pctLabel: 'p42', pctClass: 'mid', note: 'Emergency cover thin · build buffer' },
+    future: { value: '19% ▸ p55', pct: 55, state: 'good', pctLabel: 'p55', pctClass: 'ok', note: 'Goal-linked assets · adequate' },
+    summary: '<span class="ok">Savings p95</span> · <span class="bad">79% locked in RE</span> · liquidity thin'
+  },
+  2: {
+    savings: { value: '52% ▸ p95', pct: 95, state: 'good', pctLabel: 'p95', pctClass: 'ok', note: 'p95 vs bracket · exceptional' },
+    debt: { value: '24.6% ▸ p72', pct: 78, state: 'good', pctLabel: 'p72', pctClass: 'ok', note: 'DTI healthy · below 40% ceiling' },
+    liquidity: { value: '3.5mo ▸ p42', pct: 45, state: 'mid', pctLabel: 'p42', pctClass: 'mid', note: 'Emergency cover thin · build buffer' },
+    future: { value: '19% ▸ p55', pct: 55, state: 'good', pctLabel: 'p55', pctClass: 'ok', note: 'Goal-linked assets · adequate' },
+    summary: '<span class="ok">Savings p95</span> · <span class="ok">DTI p72</span> · debt healthy'
+  },
+  3: {
+    savings: { value: '52% ▸ p95', pct: 95, state: 'good', pctLabel: 'p95', pctClass: 'ok', note: 'p95 vs bracket · exceptional' },
+    debt: { value: '24.6% ▸ p72', pct: 78, state: 'good', pctLabel: 'p72', pctClass: 'ok', note: 'DTI healthy · below 40% ceiling' },
+    protection: { value: '2.3× ▸ p15', pct: 22, state: 'low', pctLabel: 'p15', pctClass: 'bad', note: '<<median · <strong style="color:#e88b7b">CRITICAL GAP</strong>' },
+    liquidity: { value: '3.5mo ▸ p42', pct: 45, state: 'mid', pctLabel: 'p42', pctClass: 'mid', note: 'Emergency cover thin · build buffer' },
+    future: { value: '19% ▸ p55', pct: 55, state: 'good', pctLabel: 'p55', pctClass: 'ok', note: 'Goal-linked assets · adequate' },
+    summary: '<span class="bad">Protection p15 CRITICAL</span> · lead with this on next call'
+  },
+  4: {
+    savings: { value: '52% ▸ p95', pct: 95, state: 'good', pctLabel: 'p95', pctClass: 'ok', note: 'p95 vs bracket · exceptional' },
+    debt: { value: '24.6% ▸ p72', pct: 78, state: 'good', pctLabel: 'p72', pctClass: 'ok', note: 'DTI healthy · below 40% ceiling' },
+    protection: { value: '2.3× ▸ p15', pct: 22, state: 'low', pctLabel: 'p15', pctClass: 'bad', note: '<<median · <strong style="color:#e88b7b">CRITICAL GAP</strong>' },
+    liquidity: { value: '3.5mo ▸ p42', pct: 45, state: 'mid', pctLabel: 'p42', pctClass: 'mid', note: 'Emergency cover thin · build buffer' },
+    future: { value: '82% ▸ p80', pct: 82, state: 'good', pctLabel: 'p80', pctClass: 'ok', note: 'Strong goal alignment · on track' },
+    summary: '<span class="ok">5/5 metrics captured</span> · <span class="bad">protection gap is #1</span> · ready to submit'
+  }
+};
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showFormStep(idx) {
+  document.querySelectorAll('.form-step').forEach(s => s.style.display = 'none');
+  document.getElementById('form-step-' + idx).style.display = 'block';
+  currentStep = idx;
+
+  // Update stepper
+  document.querySelectorAll('.step-item').forEach((el, i) => {
+    el.classList.remove('active', 'done');
+    if (i < idx) el.classList.add('done');
+    else if (i === idx) el.classList.add('active');
+  });
+
+  // Update footer
+  document.getElementById('step-num').textContent = idx + 1;
+  document.getElementById('step-label-footer').textContent = STEPS[idx];
+
+  // Update back button visibility
+  document.getElementById('btn-form-back').style.visibility = idx === 0 ? 'hidden' : 'visible';
+
+  // Update next button text on last step
+  const nextBtn = document.getElementById('btn-form-next');
+  if (idx === STEPS.length - 1) {
+    nextBtn.innerHTML = 'Save snapshot <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>';
+  } else {
+    nextBtn.innerHTML = 'Continue <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+  }
+
+  // Update pulse
+  updatePulse(idx);
+
+  // Flash save
+  flashSave();
+
+  // Scroll form body to top
+  document.querySelector('.form-work').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function flashSave() {
+  const el = document.getElementById('save-text');
+  el.textContent = 'Saving…';
+  setTimeout(() => { el.textContent = 'Saved · draft'; }, 500);
+}
+
+function updatePulse(stepIdx) {
+  const data = BENCH_BY_STEP[stepIdx] || {};
+  const metrics = ['savings', 'debt', 'protection', 'liquidity', 'future'];
+
+  metrics.forEach(metric => {
+    const row = document.querySelector(`[data-metric="${metric}"]`);
+    if (!row) return;
+    const valueEl = row.querySelector('.bench-value');
+    const scaleFill = row.querySelector('.bench-scale-fill');
+    const pctEl = row.querySelector('[data-pct]');
+    const noteEl = row.querySelector('[data-note]');
+
+    const m = data[metric];
+    if (m) {
+      valueEl.textContent = m.value;
+      valueEl.classList.remove('empty');
+      scaleFill.style.width = m.pct + '%';
+      scaleFill.className = 'bench-scale-fill state-' + m.state;
+      pctEl.textContent = m.pctLabel;
+      pctEl.className = 'percentile ' + m.pctClass;
+      noteEl.innerHTML = m.note;
+    } else {
+      valueEl.textContent = '—';
+      valueEl.classList.add('empty');
+      scaleFill.style.width = '0%';
+      scaleFill.className = 'bench-scale-fill state-empty';
+      pctEl.textContent = '—';
+      pctEl.className = 'percentile';
+      noteEl.innerHTML = '— awaiting data';
+    }
+  });
+
+  // Summary text
+  if (data.summary) {
+    document.getElementById('pulse-summary-text').innerHTML = data.summary;
+  }
+}
+
+// ============================================
+// EVENT WIRING
+// ============================================
+
+// Empty profile → capture screen
+document.getElementById('btn-capture-start').addEventListener('click', () => {
+  showScreen('screen-capture');
+});
+
+// Capture cancel → back to empty profile
+document.getElementById('btn-capture-cancel').addEventListener('click', () => {
+  showScreen('screen-profile-empty');
+});
+
+// Capture start → form
+document.getElementById('btn-capture-start-form').addEventListener('click', () => {
+  showScreen('screen-form');
+  showFormStep(0);
+});
+
+// Inherited accordion toggle
+document.getElementById('inherited-head').addEventListener('click', () => {
+  document.getElementById('inherited-block').classList.toggle('open');
+});
+
+// Form navigation
+document.getElementById('btn-form-next').addEventListener('click', () => {
+  if (currentStep < STEPS.length - 1) {
+    showFormStep(currentStep + 1);
+  } else {
+    // Submit → transition → filled profile
+    submitSnapshot();
+  }
+});
+
+document.getElementById('btn-form-back').addEventListener('click', () => {
+  if (currentStep > 0) showFormStep(currentStep - 1);
+});
+
+// Stepper clicks — jump
+document.querySelectorAll('.step-item').forEach((el, i) => {
+  el.addEventListener('click', () => showFormStep(i));
+});
+
+// Exit & save → back to empty profile with draft badge
+document.getElementById('btn-exit-draft').addEventListener('click', () => {
+  showScreen('screen-profile-empty');
+});
+
+// Option card selection
+document.querySelectorAll('.opt-cards').forEach(group => {
+  group.querySelectorAll('.opt-card').forEach(card => {
+    card.addEventListener('click', () => {
+      group.querySelectorAll('.opt-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+    });
+  });
+});
+
+// Pill selection
+document.querySelectorAll('.pills').forEach(group => {
+  group.querySelectorAll('.pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      group.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+    });
+  });
+});
+
+// Liquid toggle
+document.querySelectorAll('.liq-toggle').forEach(group => {
+  group.querySelectorAll('.liq-btn').forEach((btn, idx) => {
+    btn.addEventListener('click', () => {
+      group.querySelectorAll('.liq-btn').forEach(b => { b.classList.remove('active-liq', 'active-illiq'); });
+      btn.classList.add(idx === 0 ? 'active-liq' : 'active-illiq');
+    });
+  });
+});
+
+// Tab clicks (stub)
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    this.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// Submit flow
+function submitSnapshot() {
+  const submitEl = document.getElementById('submit-screen');
+  submitEl.classList.add('active');
+
+  // Animate the progress items
+  const items = submitEl.querySelectorAll('.submit-progress-item');
+  setTimeout(() => { items[3].classList.add('done'); }, 800);
+
+  // Transition to filled profile after a moment
+  setTimeout(() => {
+    submitEl.classList.remove('active');
+    showScreen('screen-profile-filled');
+  }, 1800);
+}
+
+// Initialize
+showFormStep(0);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProessionalKey — Client Story</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.min.js"></script>
+<style>
+:root {
+  --g950:#0e1014;--g900:#161820;--g850:#1c1f28;--g800:#22252f;
+  --g700:#2d3140;--g600:#3d4255;--g400:#6b7195;--g200:#a9aec8;
+  --jade:#22b48e;--jade2:#1a9475;--jade3:#147a62;--jadel:#6fd4b8;
+  --jadex:rgba(34,180,142,0.12);
+  --coral:#f05a47;--corall:#f47b6b;--coralx:rgba(240,90,71,0.12);
+  --amber:#f59e0b;--amberl:#fbbf24;--amberx:rgba(245,158,11,0.12);
+  --sky:#38bdf8;--skyx:rgba(56,189,248,0.12);
+  --violet:#a78bfa;--violetx:rgba(167,139,250,0.12);
+  --text:#f0f2fa;--text2:#a9aec8;--text3:#6b7195;--text4:#3d4255;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --ff-d:'Fraunces',serif;--ff-b:'Inter Tight',sans-serif;--ff-m:'JetBrains Mono',monospace;
+  --sw:220px;--th:48px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px;scroll-behavior:smooth}
+body{font-family:var(--ff-b);background:var(--g950);color:var(--text);line-height:1.5;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--g700);border-radius:4px}
+
+/* ── Shell ── */
+.shell{display:flex;min-height:100vh}
+
+/* ── Sidebar ── */
+.sidebar{width:var(--sw);flex-shrink:0;background:var(--g900);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto}
+.sb-logo{padding:14px 16px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px}
+.sb-mark{width:28px;height:28px;background:linear-gradient(135deg,var(--jade2),var(--jade3));border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-mark svg{width:14px;height:14px;color:white}
+.sb-name{font-family:var(--ff-d);font-size:14px;font-weight:600;color:var(--text);letter-spacing:-.2px}
+.sb-sub{font-size:9px;color:var(--text3);font-family:var(--ff-m);text-transform:uppercase;letter-spacing:.06em}
+.sb-sec{padding:12px 8px 4px}
+.sb-lbl{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text4);padding:0 8px;margin-bottom:4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:6px;cursor:pointer;color:var(--text3);font-size:12px;transition:all .15s;text-decoration:none;position:relative}
+.nav-item:hover{background:var(--g800);color:var(--text2)}
+.nav-item.active{background:var(--jadex);color:var(--jade)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:4px;bottom:4px;width:3px;background:var(--jade);border-radius:0 2px 2px 0}
+.nav-item svg{width:14px;height:14px;flex-shrink:0;opacity:.8}
+.nb{margin-left:auto;background:var(--coral);color:white;font-size:9px;font-weight:600;padding:1px 5px;border-radius:10px;font-family:var(--ff-m)}
+.nb.j{background:var(--jade2)}
+.sb-footer{margin-top:auto;padding:10px;border-top:1px solid var(--border)}
+.user-pill{display:flex;align-items:center;gap:8px;padding:7px;border-radius:6px;cursor:pointer;transition:background .15s}
+.user-pill:hover{background:var(--g800)}
+.ua{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--jade2),var(--jade3));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:white;flex-shrink:0}
+.un{font-size:11px;font-weight:500;color:var(--text2)}
+.ur{font-size:9px;color:var(--text4);font-family:var(--ff-m)}
+
+/* ── Main ── */
+.main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column}
+
+/* ── Topbar ── */
+.topbar{height:var(--th);background:var(--g900);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:10px;position:sticky;top:0;z-index:90}
+.tb-back{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);cursor:pointer;padding:4px 8px;border-radius:6px;transition:all .15s}
+.tb-back:hover{background:var(--g800);color:var(--text2)}
+.tb-sep{color:var(--text4);font-size:12px}
+.tb-title{font-family:var(--ff-d);font-size:15px;font-weight:500;color:var(--text);letter-spacing:-.2px}
+.tb-r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.btn{padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11px;font-family:var(--ff-b);font-weight:500;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px}
+.btn:hover{background:var(--g800);color:var(--text)}
+.btn.jade{background:var(--jade2);border-color:var(--jade2);color:white}
+.btn.jade:hover{background:var(--jade3)}
+
+/* ── Story Nav (sticky left scroll) ── */
+.story-layout{display:grid;grid-template-columns:140px 1fr;min-height:calc(100vh - var(--th))}
+.story-nav{position:sticky;top:var(--th);height:calc(100vh - var(--th));background:var(--g900);border-right:1px solid var(--border);padding:20px 0;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.snav-item{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;transition:all .15s;border-left:2px solid transparent;font-size:11px;color:var(--text4)}
+.snav-item:hover{color:var(--text2);background:var(--g850)}
+.snav-item.active{color:var(--text);border-left-color:var(--jade);background:var(--jadex)}
+.snav-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;background:currentColor}
+.snav-num{font-family:var(--ff-m);font-size:9px;color:var(--text4);padding:0 14px;margin-top:8px;margin-bottom:2px;text-transform:uppercase;letter-spacing:.08em}
+
+/* ── Story Content ── */
+.story-content{padding:0;overflow-y:auto}
+
+/* ── Story Chapter ── */
+.chapter{padding:32px 28px 0;border-bottom:1px solid var(--border);position:relative}
+.chapter:last-child{border-bottom:none;padding-bottom:40px}
+
+/* Chapter header */
+.chapter-header{margin-bottom:20px}
+.chapter-num{font-family:var(--ff-m);font-size:10px;color:var(--text4);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+.chapter-title{font-family:var(--ff-d);font-size:22px;font-weight:600;color:var(--text);letter-spacing:-.4px;line-height:1.2}
+.chapter-sub{font-size:12px;color:var(--text3);margin-top:4px;line-height:1.5}
+
+/* ── Chart Stage ── */
+.chart-stage{position:relative;background:var(--g900);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px}
+.chart-stage-header{padding:14px 18px 0;display:flex;align-items:center;justify-content:space-between}
+.csh-title{font-family:var(--ff-d);font-size:13px;font-weight:500;color:var(--text2)}
+.csh-legend{display:flex;gap:12px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text3)}
+.legend-dot{width:8px;height:3px;border-radius:2px}
+.chart-area{padding:12px 14px 14px;position:relative}
+
+/* ── VaNi Annotation (on-chart callout) ── */
+.vani-annotation{position:absolute;z-index:10;pointer-events:none}
+.va-bubble{background:rgba(22,24,32,0.94);border:1px solid rgba(34,180,142,0.35);border-radius:8px;padding:8px 11px;max-width:200px;box-shadow:0 4px 20px rgba(0,0,0,0.5);pointer-events:all}
+.va-bubble::before{content:'';position:absolute;width:8px;height:8px;background:rgba(34,180,142,0.6);border-radius:50%;top:-4px;left:12px}
+.va-bubble.right::before{left:auto;right:12px}
+.va-bubble.bottom::before{top:auto;bottom:-4px}
+.va-mark{font-size:9px;color:var(--jadel);font-family:var(--ff-m);font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px;display:flex;align-items:center;gap:4px}
+.va-text{font-size:11px;color:var(--text2);line-height:1.4}
+.va-text strong{color:var(--text)}
+.va-actions{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.va-btn{padding:2px 7px;border-radius:100px;font-size:9px;font-family:var(--ff-b);font-weight:600;cursor:pointer;transition:all .15s;border:1px solid transparent;pointer-events:all}
+.va-btn.confirm{background:var(--jadex);border-color:rgba(34,180,142,.3);color:var(--jade)}
+.va-btn.ask{background:var(--violetx);border-color:rgba(167,139,250,.2);color:var(--violet)}
+.va-btn.dismiss{background:transparent;border-color:var(--border);color:var(--text4)}
+
+/* Highlight zone overlay on chart */
+.chart-highlight-zone{position:absolute;pointer-events:none;border-radius:4px}
+
+/* ── Risk band on chart ── */
+.risk-band-label{position:absolute;font-size:9px;font-family:var(--ff-m);font-weight:600;text-transform:uppercase;letter-spacing:.06em;writing-mode:horizontal-tb}
+
+/* ── Inline stat row (below chart) ── */
+.stat-row{display:flex;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
+.stat-cell{flex:1;padding:12px 16px;border-right:1px solid var(--border);position:relative;overflow:hidden}
+.stat-cell:last-child{border-right:none}
+.stat-cell-accent{position:absolute;top:0;left:0;width:100%;height:2px}
+.stat-val{font-family:var(--ff-m);font-size:18px;font-weight:600;color:var(--text);line-height:1;margin-bottom:3px}
+.stat-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.stat-delta{font-size:10px;font-family:var(--ff-m);font-weight:600;margin-top:3px}
+.up{color:var(--jade)}.dn{color:var(--corall)}.nt{color:var(--text3)}
+
+/* ── Narrative block ── */
+.narrative{background:var(--g900);border-left:3px solid var(--jade);border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:16px;font-size:12px;color:var(--text2);line-height:1.7}
+.narrative strong{color:var(--text)}
+.narrative.coral{border-left-color:var(--coral)}
+.narrative.amber{border-left-color:var(--amber)}
+
+/* ── Horizon toggle ── */
+.horizon-row{display:flex;gap:6px;margin-bottom:14px}
+.h-btn{padding:4px 12px;border-radius:100px;border:1px solid var(--border);background:transparent;font-size:11px;font-weight:500;color:var(--text3);cursor:pointer;font-family:var(--ff-b);transition:all .15s}
+.h-btn:hover{background:var(--g800);color:var(--text2)}
+.h-btn.on{background:var(--jadex);border-color:rgba(34,180,142,.3);color:var(--jade)}
+
+/* ── Radar chart wrapper ── */
+.radar-wrap{display:flex;align-items:center;gap:20px}
+.radar-legend{flex:1;display:flex;flex-direction:column;gap:8px}
+.rl-item{display:flex;align-items:center;gap:8px}
+.rl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.rl-name{font-size:11px;color:var(--text2);flex:1}
+.rl-score{font-family:var(--ff-m);font-size:12px;font-weight:600}
+
+/* ── Risk flag inline ── */
+.risk-flag{border-radius:10px;padding:12px 14px;margin-bottom:8px;border:1px solid}
+.rf-row{display:flex;align-items:flex-start;gap:10px}
+.rf-sev{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.rf-content{flex:1}
+.rf-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px}
+.rf-body{font-size:11px;color:var(--text2);line-height:1.5}
+.rf-meta{display:flex;gap:6px;margin-top:6px;align-items:center;flex-wrap:wrap}
+.rf-tag{font-size:9px;font-family:var(--ff-m);padding:1px 6px;border-radius:100px}
+.rf-collaborate{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
+.rf-btn{padding:3px 8px;border-radius:100px;font-size:9px;font-family:var(--ff-b);font-weight:600;cursor:pointer;transition:all .15s;border:1px solid}
+.rf-btn.confirm{background:var(--jadex);border-color:rgba(34,180,142,.3);color:var(--jade)}
+.rf-btn.add{background:var(--skyx);border-color:rgba(56,189,248,.2);color:var(--sky)}
+.rf-btn.ask{background:var(--violetx);border-color:rgba(167,139,250,.2);color:var(--violet)}
+.rf-btn.dismiss{background:transparent;border-color:var(--border);color:var(--text4)}
+.rf-confirmed{font-size:10px;color:var(--jade);font-family:var(--ff-m);margin-top:6px;display:flex;align-items:center;gap:5px}
+.rf-confirmed svg{width:11px;height:11px}
+
+/* ── Goal visual bars ── */
+.goal-visual{margin-bottom:10px}
+.gv-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.gv-name{font-size:12px;font-weight:600;color:var(--text)}
+.gv-prob{font-size:12px;font-weight:600;font-family:var(--ff-m)}
+.gv-track{height:10px;background:var(--g700);border-radius:100px;overflow:hidden;position:relative;margin-bottom:4px}
+.gv-fill{height:100%;border-radius:100px;position:relative}
+.gv-fill::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent 60%,rgba(255,255,255,.12));border-radius:100px}
+.gv-meta{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);font-family:var(--ff-m)}
+
+/* ── Asset perf row ── */
+.ap-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.ap-row:last-child{border-bottom:none}
+.ap-name{font-size:11px;color:var(--text2);width:130px;flex-shrink:0}
+.ap-bar-wrap{flex:1;height:7px;background:var(--g700);border-radius:10px;overflow:hidden;position:relative}
+.ap-bar{height:100%;border-radius:10px;transition:width .8s ease}
+.ap-bar-bench{position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,.25)}
+.ap-val{font-size:12px;font-weight:600;font-family:var(--ff-m);width:48px;text-align:right;flex-shrink:0}
+.ap-vs{font-size:10px;font-family:var(--ff-m);width:70px;text-align:right;flex-shrink:0}
+
+/* ── Chips ── */
+.chip{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:100px;font-size:10px;font-weight:600;font-family:var(--ff-m)}
+.cj{background:var(--jadex);color:var(--jade)}
+.cc{background:var(--coralx);color:var(--corall)}
+.ca{background:var(--amberx);color:var(--amberl)}
+.cs{background:var(--skyx);color:var(--sky)}
+.cg{background:var(--g800);color:var(--text3)}
+
+/* ── Client identity strip ── */
+.client-strip{background:var(--g900);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:14px}
+.cs-av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#c93d2a,#e04633);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:white;flex-shrink:0}
+.cs-name{font-family:var(--ff-d);font-size:16px;font-weight:600;color:var(--text);letter-spacing:-.2px}
+.cs-meta{font-size:11px;color:var(--text3);margin-top:1px}
+.cs-tags{display:flex;gap:5px;margin-left:auto;flex-wrap:wrap}
+
+/* ── Mode toggle ── */
+.mode-toggle{display:flex;background:var(--g800);border:1px solid var(--border);border-radius:8px;padding:2px;gap:1px}
+.mt-btn{padding:4px 14px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;transition:all .2s;border:none;background:transparent;color:var(--text3);font-family:var(--ff-b)}
+.mt-btn.on{background:var(--g700);color:var(--text)}
+.mt-btn.on.jade{background:var(--jadex);color:var(--jade)}
+
+/* ── Donut in context ── */
+.donut-context{display:flex;align-items:center;gap:20px}
+.dc-legend{flex:1}
+.dc-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)}
+.dc-row:last-child{border-bottom:none}
+.dc-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.dc-name{font-size:11px;color:var(--text2);flex:1}
+.dc-pct{font-size:12px;font-weight:600;font-family:var(--ff-m);color:var(--text)}
+.dc-val{font-size:10px;color:var(--text3);font-family:var(--ff-m);margin-left:6px}
+.dc-bar-mini{width:50px;height:4px;background:var(--g700);border-radius:10px;overflow:hidden}
+.dc-bar-fill{height:100%;border-radius:10px}
+
+/* ── divider ── */
+.divider{height:1px;background:var(--border);margin:16px 0}
+
+/* ── Transition zones on chart ── */
+.zone-overlay{position:absolute;top:0;bottom:0;pointer-events:none;border-radius:0}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ══ SIDEBAR ════════════════════════════════════════ -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+    <div><div class="sb-name">ProessionalKey</div><div class="sb-sub">MFD Suite</div></div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">Workspace</div>
+    <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+    <a class="nav-item active" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Contacts<span class="nb j">147</span></a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Snapshots</a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Pulses<span class="nb">5</span></a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Pipeline</a>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">Intelligence</div>
+    <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>VaNi Insights</a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Practice Analytics</a>
+  </div>
+  <div class="sb-footer">
+    <div class="user-pill"><div class="ua">RC</div><div><div class="un">Rajesh Chandra</div><div class="ur">ARN · 0094712</div></div></div>
+  </div>
+</aside>
+
+<!-- ══ MAIN ═══════════════════════════════════════════ -->
+<div class="main">
+
+  <header class="topbar">
+    <div class="tb-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Contacts</div>
+    <span class="tb-sep">›</span>
+    <div class="tb-title">Meera Reddy — Client Story</div>
+    <div class="tb-r">
+      <div class="mode-toggle">
+        <button class="mt-btn on jade" onclick="setMode('individual',this)">Individual</button>
+        <button class="mt-btn" onclick="setMode('family',this)">Family</button>
+      </div>
+      <button class="btn">Generate Report</button>
+      <button class="btn jade">Prepare Pulse</button>
+    </div>
+  </header>
+
+  <!-- Client Strip -->
+  <div class="client-strip">
+    <div class="cs-av">MR</div>
+    <div>
+      <div class="cs-name" id="clientName">Meera Reddy</div>
+      <div class="cs-meta">Age 36 · Hyderabad · Software Engineer, TCS · Client since Sep 2024 · Last pulse <span style="color:var(--jade)">12 Apr 2025</span></div>
+    </div>
+    <div class="cs-tags">
+      <span class="chip cj">Active</span>
+      <span class="chip ca">Monthly Pulse</span>
+      <span class="chip cs">Head of Family</span>
+      <span class="chip cc">2 Critical Gaps</span>
+    </div>
+  </div>
+
+  <!-- Story Layout -->
+  <div class="story-layout">
+
+    <!-- Story Nav -->
+    <nav class="story-nav">
+      <div class="snav-num">Story</div>
+      <div class="snav-item active" onclick="scrollTo('ch1',this)"><div class="snav-dot"></div>Net Worth</div>
+      <div class="snav-item" onclick="scrollTo('ch2',this)"><div class="snav-dot"></div>Asset Mix</div>
+      <div class="snav-item" onclick="scrollTo('ch3',this)"><div class="snav-dot"></div>Protection</div>
+      <div class="snav-item" onclick="scrollTo('ch4',this)"><div class="snav-dot"></div>Goals</div>
+      <div class="snav-item" onclick="scrollTo('ch5',this)"><div class="snav-dot"></div>Future</div>
+      <div class="snav-item" onclick="scrollTo('ch6',this)"><div class="snav-dot"></div>Performance</div>
+      <div class="snav-item" onclick="scrollTo('ch7',this)"><div class="snav-dot"></div>Risk</div>
+      <div class="snav-item" onclick="scrollTo('ch8',this)"><div class="snav-dot"></div>Transactions</div>
+    </nav>
+
+    <!-- Story Content -->
+    <div class="story-content" id="storyContent">
+
+      <!-- ═══════════════════════════════════════════
+           CH1 — NET WORTH STORY
+           ═══════════════════════════════════════════ -->
+      <div class="chapter" id="ch1">
+        <div class="chapter-header">
+          <div class="chapter-num">01 · Current State</div>
+          <div class="chapter-title" id="nwTitle">Net Worth Journey</div>
+          <div class="chapter-sub">16 months of wealth building — two inflection points visible</div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-cell"><div class="stat-cell-accent" style="background:var(--jade)"></div><div class="stat-val" id="nwVal">₹28.4L</div><div class="stat-lbl">Net Worth Today</div><div class="stat-delta up">↑ ₹6.8L YoY (+31.5%)</div></div>
+          <div class="stat-cell"><div class="stat-cell-accent" style="background:var(--jade)"></div><div class="stat-val">₹37.6L</div><div class="stat-lbl">Total Assets</div><div class="stat-delta up">↑ ₹8.2L YoY</div></div>
+          <div class="stat-cell"><div class="stat-cell-accent" style="background:var(--coral)"></div><div class="stat-val" style="color:var(--corall)">₹9.2L</div><div class="stat-lbl">Total Liabilities</div><div class="stat-delta dn">↑ ₹3.1L (new loans)</div></div>
+          <div class="stat-cell"><div class="stat-cell-accent" style="background:var(--amber)"></div><div class="stat-val" style="color:var(--amberl)">₹1.1L</div><div class="stat-lbl">MoM Gain</div><div class="stat-delta nt">Steady growth</div></div>
+        </div>
+
+        <div class="chart-stage">
+          <div class="chart-stage-header">
+            <div class="csh-title">Net Worth · 16 Month History</div>
+            <div class="csh-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--jade)"></div>Net Worth</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--coral)"></div>Liabilities</div>
+              <div class="legend-item"><div class="legend-dot" style="background:rgba(107,113,149,.5);height:1px;width:14px;margin-top:1px"></div>Inflation baseline</div>
+            </div>
+          </div>
+          <div class="chart-area" style="position:relative">
+            <canvas id="nwChart" height="220"></canvas>
+
+            <!-- VaNi annotation — loan inflection -->
+            <div class="vani-annotation" style="left:62%;top:18%">
+              <div class="va-bubble right">
+                <div class="va-mark">✦ VaNi</div>
+                <div class="va-text"><strong>2 new loans</strong> in Feb added ₹3.1L liabilities — net worth growth slowed here</div>
+                <div class="va-actions">
+                  <button class="va-btn confirm" onclick="this.closest('.va-bubble').innerHTML='<div style=\'font-size:10px;color:var(--jade);font-family:var(--ff-m)\'>✓ RC + VaNi · Confirmed</div>'">✓ Confirm</button>
+                  <button class="va-btn ask">Dig deeper</button>
+                  <button class="va-btn dismiss" onclick="this.closest('.vani-annotation').style.display='none'">✕</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- VaNi annotation — staleness warning -->
+            <div class="vani-annotation" style="right:4%;top:8%">
+              <div class="va-bubble right">
+                <div class="va-mark" style="color:var(--amberl)">⚠ VaNi</div>
+                <div class="va-text"><strong>Villa value</strong> last updated 11 months ago — net worth may be understated</div>
+                <div class="va-actions">
+                  <button class="va-btn ask">Add current value</button>
+                  <button class="va-btn dismiss" onclick="this.closest('.vani-annotation').style.display='none'">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="narrative">
+          Meera's net worth has grown <strong>31.5% year-on-year</strong> — strong for her income bracket. The growth is driven primarily by SIP compounding and gold appreciation. The February 2025 liability addition is visible as a slope change — manageable now, but worth monitoring if another loan is considered.
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════
+           CH2 — ASSET MIX
+           ═══════════════════════════════════════════ -->
+      <div class="chapter" id="ch2">
+        <div class="chapter-header">
+          <div class="chapter-num">02 · Asset Mix</div>
+          <div class="chapter-title">Where the Wealth Sits</div>
+          <div class="chapter-sub">Allocation across 5 categories — and what each is doing</div>
+        </div>
+
+        <div class="chart-stage">
+          <div class="chart-stage-header">
+            <div class="csh-title">Asset Allocation · ₹37.6L</div>
+            <div class="csh-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--coral)"></div>Concentration risk zone</div>
+            </div>
+          </div>
+          <div class="chart-area" style="position:relative">
+            <canvas id="allocBar" height="160"></canvas>
+
+            <!-- Annotation: RE concentration -->
+            <div class="vani-annotation" style="left:28%;bottom:14%">
+              <div class="va-bubble">
+                <div class="va-mark">✦ VaNi</div>
+                <div class="va-text">Real estate at <strong>28%</strong> — above 20% ceiling for illiquid assets</div>
+                <div class="va-actions">
+                  <button class="va-btn confirm">✓ Flag it</button>
+                  <button class="va-btn dismiss" onclick="this.closest('.vani-annotation').style.display='none'">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Donut + legend -->
+        <div class="chart-stage" style="padding:16px 18px">
+          <div class="donut-context">
+            <canvas id="allocDonut" width="130" height="130"></canvas>
+            <div class="dc-legend">
+              <div class="dc-row"><div class="dc-dot" style="background:#22b48e"></div><div class="dc-name">Mutual Funds</div><div class="dc-bar-mini"><div class="dc-bar-fill" style="width:85%;background:#22b48e"></div></div><div class="dc-pct">34%</div><div class="dc-val">₹12.8L</div></div>
+              <div class="dc-row"><div class="dc-dot" style="background:#e89c45"></div><div class="dc-name">Real Estate</div><div class="dc-bar-mini"><div class="dc-bar-fill" style="width:70%;background:var(--coral)"></div></div><div class="dc-pct" style="color:var(--corall)">28%</div><div class="dc-val">₹10.5L</div></div>
+              <div class="dc-row"><div class="dc-dot" style="background:#38bdf8"></div><div class="dc-name">Insurance</div><div class="dc-bar-mini"><div class="dc-bar-fill" style="width:45%;background:#38bdf8"></div></div><div class="dc-pct">18%</div><div class="dc-val">₹6.8L</div></div>
+              <div class="dc-row"><div class="dc-dot" style="background:#a78bfa"></div><div class="dc-name">Gold</div><div class="dc-bar-mini"><div class="dc-bar-fill" style="width:30%;background:#a78bfa"></div></div><div class="dc-pct">12%</div><div class="dc-val">₹4.5L</div></div>
+              <div class="dc-row"><div class="dc-dot" style="background:#6b7195"></div><div class="dc-name">Cash / FD</div><div class="dc-bar-mini"><div class="dc-bar-fill" style="width:20%;background:#6b7195"></div></div><div class="dc-pct">8%</div><div class="dc-val">₹3.0L</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="narrative amber">
+          <strong>38% of assets</strong> (Real Estate + Cash/FD) are generating sub-inflation returns. Only mutual funds (34%) are working hard for growth. The allocation is reasonably diversified but has a <strong>yield gap</strong> — much of the wealth is sitting, not compounding.
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════
+           CH3 — PROTECTION STORY
+           ═══════════════════════════════════════════ -->
+      <div class="chapter" id="ch3">
+        <div class="chapter-header">
+          <div class="chapter-num">03 · Protection</div>
+          <div class="chapter-title">The Shield — And Its Gaps</div>
+          <div class="chapter-sub">How well protected is Meera's financial life against shocks</div>
+        </div>
+
+        <div class="chart-stage">
+          <div class="chart-stage-header">
+            <div class="csh-title">Protection Coverage vs Recommended</div>
+            <div class="csh-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--jade)"></div>Current</div>
+              <div class="legend-item"><div class="legend-dot" style="background:rgba(107,113,149,.4)"></div>Recommended</div>
+            </div>
+          </div>
+          <div class="chart-area" style="position:relative">
+            <canvas id="protectionChart" height="180"></canvas>
+
+            <!-- Annotation: term gap -->
+            <div class="vani-annotation" style="right:5%;top:12%">
+              <div class="va-bubble right">
+                <div class="va-mark" style="color:var(--corall)">⚠ VaNi · Critical</div>
+                <div class="va-text"><strong>₹14.2L gap</strong> in term cover. Employer cover lapses in <strong>90 days</strong>.</div>
+                <div class="va-actions">
+                  <button class="va-btn confirm">✓ Confirmed</button>
+                  <button class="va-btn ask">Model options</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-cell"><div class="stat-cell-accent" style="background:var(--coral)"></div><div class="stat-val" style="color:var(--corall)">38%</div><div class="stat-lbl">Protection Ratio</div><div class="stat-delta dn">↓ 12pp · new liabilities</div></div>
+          <div class="stat-cell"><div class="stat-cell-accent" style="background:var(--coral)"></div><div class="stat-val" style="color:var(--corall)">₹14.2L</div><div class="stat-lbl">Term Cover Gap</div><div class="stat-delta dn">HLV ₹39.2L · Cover ₹25L</div></div>
+          <div class="stat-cell"><div class="stat-cell-accent" style="background:var(--amber)"></div><div class="stat-val" style="color:var(--amberl)">₹3L</div><div class="stat-lbl">Health Cover</div><div class="stat-delta dn">Recommended ₹7L</div></div>
+          <div class="stat-cell"><div class="stat-cell-accent" style="background:var(--coral)"></div><div class="stat-val" style="color:var(--corall)">1.2×</div><div class="stat-lbl">Emergency Fund</div><div class="stat-delta dn">Recommended 6×</div></div>
+        </div>
+
+        <div class="narrative coral">
+          <strong>Critical window:</strong> Employer group cover lapses in 90 days. Meera has 2 dependents, ₹9.2L in liabilities, and a term gap of ₹14.2L. This is the most time-sensitive item in her financial plan. <strong>Action required before June 2025.</strong>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════
+           CH4 — GOALS STORY
+           ═══════════════════════════════════════════ -->
+      <div class="chapter" id="ch4">
+        <div class="chapter-header">
+          <div class="chapter-num">04 · Goals</div>
+          <div class="chapter-title">The Destinations</div>
+          <div class="chapter-sub">3 active goals — 2 on track, 1 needs attention</div>
+        </div>
+
+        <div class="chart-stage">
+          <div class="chart-stage-header">
+            <div class="csh-title">Goal Corpus Progress</div>
+            <div class="csh-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--jade)"></div>Saved</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--g600)"></div>Remaining</div>
+            </div>
+          </div>
+          <div class="chart-area" style="position:relative">
+            <canvas id="goalsChart" height="180"></canvas>
+
+            <!-- Annotation: education at risk -->
+            <div class="vani-annotation" style="left:3%;top:8%">
+              <div class="va-bubble">
+                <div class="va-mark" style="color:var(--amberl)">⚠ VaNi</div>
+                <div class="va-text">Education goal at <strong>61% probability</strong>. +₹4K/mo SIP raises it to 91%.</div>
+                <div class="va-actions">
+                  <button class="va-btn ask">Model SIP increase</button>
+                  <button class="va-btn dismiss" onclick="this.closest('.vani-annotation').style.display='none'">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Goal visual bars -->
+        <div class="chart-stage" style="padding:16px 18px">
+          <div class="goal-visual">
+            <div class="gv-header"><span class="gv-name">Child Education (Kavya) · 2033</span><span class="gv-prob" style="color:var(--amberl)">61% probability</span></div>
+            <div class="gv-track"><div class="gv-fill" style="width:22%;background:var(--amberl)"></div></div>
+            <div class="gv-meta"><span>₹3.3L saved of ₹15L</span><span>8 years · ₹11.7L remaining</span></div>
+          </div>
+          <div class="goal-visual">
+            <div class="gv-header"><span class="gv-name">Retirement Corpus · 2054</span><span class="gv-prob" style="color:var(--jade)">88% probability</span></div>
+            <div class="gv-track"><div class="gv-fill" style="width:18%;background:var(--jade)"></div></div>
+            <div class="gv-meta"><span>₹4.5L saved of ₹2.5Cr</span><span>29 years · Time is your ally</span></div>
+          </div>
+          <div class="goal-visual">
+            <div class="gv-header"><span class="gv-name">Home Renovation · 2027</span><span class="gv-prob" style="color:var(--jade)">97% probability</span></div>
+            <div class="gv-track"><div class="gv-fill" style="width:55%;background:var(--jade)"></div></div>
+            <div class="gv-meta"><span>₹4.4L saved of ₹8L</span><span>2 years · Near completion</span></div>
+          </div>
+        </div>
+
+        <div class="narrative">
+          Retirement and renovation are comfortably on track. The <strong>child education goal needs attention</strong> — the SIP rate was set before the new loans were added, which reduced surplus. A modest SIP increase of ₹4,000/month is the single most impactful action Meera can take right now.
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════
+           CH5 — FUTURE STATE
+           ═══════════════════════════════════════════ -->
+      <div class="chapter" id="ch5">
+        <div class="chapter-header">
+          <div class="chapter-num">05 · Future State</div>
+          <div class="chapter-title">Where Is This Heading?</div>
+          <div class="chapter-sub">Projected wealth trajectory — 4 horizons</div>
+        </div>
+
+        <div class="horizon-row">
+          <button class="h-btn on" onclick="setHorizon(this,5)">5 Years</button>
+          <button class="h-btn" onclick="setHorizon(this,10)">10 Years</button>
+          <button class="h-btn" onclick="setHorizon(this,15)">15 Years</button>
+          <button class="h-btn" onclick="setHorizon(this,20)">20 Years</button>
+        </div>
+
+        <div class="stat-row" id="horizonStats">
+          <div class="stat-cell"><div class="stat-cell-accent" style="background:var(--jade)"></div><div class="stat-val" id="hzNW">₹58.2L</div><div class="stat-lbl">Projected Net Worth</div><div class="stat-delta up" id="hzCAGR">CAGR 15.4%</div></div>
+          <div class="stat-cell"><div class="stat-cell-accent" style="background:var(--sky)"></div><div class="stat-val" id="hzReal">₹38.4L</div><div class="stat-lbl">Real (Inflation-adj.)</div><div class="stat-delta nt">At 6% inflation</div></div>
+          <div class="stat-cell"><div class="stat-cell-accent" style="background:var(--jade)"></div><div class="stat-val" id="hzGain">₹29.8L</div><div class="stat-lbl">Wealth Created</div><div class="stat-delta up" id="hzX">2.05× today</div></div>
+          <div class="stat-cell"><div class="stat-cell-accent" style="background:var(--amber)"></div><div class="stat-val" id="hzRetire">₹6.8L</div><div class="stat-lbl">Retirement Corpus</div><div class="stat-delta nt">of ₹2.5Cr needed</div></div>
+        </div>
+
+        <div class="chart-stage">
+          <div class="chart-stage-header">
+            <div class="csh-title">Wealth Trajectory · 20 Year Horizon</div>
+            <div class="csh-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--jade)"></div>Portfolio</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>Inflation baseline</div>
+              <div class="legend-item"><div class="legend-dot" style="background:rgba(107,113,149,.4)"></div>Nifty benchmark</div>
+            </div>
+          </div>
+          <div class="chart-area" style="position:relative">
+            <canvas id="trajectoryChart" height="240"></canvas>
+
+            <!-- Annotation: compounding inflection -->
+            <div class="vani-annotation" style="left:52%;top:10%">
+              <div class="va-bubble">
+                <div class="va-mark">✦ VaNi</div>
+                <div class="va-text">Compounding <strong>inflection point</strong> around 2034 — portfolio starts pulling away strongly</div>
+                <div class="va-actions">
+                  <button class="va-btn confirm" onclick="this.closest('.va-bubble').innerHTML='<div style=\'font-size:10px;color:var(--jade);font-family:var(--ff-m)\'>✓ RC + VaNi confirmed</div>'">✓ Confirm</button>
+                  <button class="va-btn dismiss" onclick="this.closest('.vani-annotation').style.display='none'">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="narrative">
+          At current trajectory, Meera crosses <strong>₹1 crore in net worth around 2033</strong> — her daughter's education year. The compounding accelerates sharply after 2034. The single biggest lever: <strong>keep the EMI/income ratio below 35%</strong> so surplus keeps flowing into SIPs.
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════
+           CH6 — PERFORMANCE
+           ═══════════════════════════════════════════ -->
+      <div class="chapter" id="ch6">
+        <div class="chapter-header">
+          <div class="chapter-num">06 · Performance</div>
+          <div class="chapter-title">Is the Money Working?</div>
+          <div class="chapter-sub">Returns vs market, vs inflation — and which assets are pulling weight</div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-cell"><div class="stat-cell-accent" style="background:var(--jade)"></div><div class="stat-val" style="color:var(--jade)">14.2%</div><div class="stat-lbl">Portfolio XIRR</div><div class="stat-delta up">+1.4pp vs Nifty</div></div>
+          <div class="stat-cell"><div class="stat-cell-accent" style="background:var(--jade)"></div><div class="stat-val" style="color:var(--jade)">+8.1%</div><div class="stat-lbl">Real Return</div><div class="stat-delta up">After 6% inflation</div></div>
+          <div class="stat-cell"><div class="stat-cell-accent" style="background:var(--amber)"></div><div class="stat-val" style="color:var(--amberl)">0.74</div><div class="stat-lbl">Nifty Correlation</div><div class="stat-delta nt">Moderate dependency</div></div>
+          <div class="stat-cell"><div class="stat-cell-accent" style="background:var(--jade)"></div><div class="stat-val">₹6.8L</div><div class="stat-lbl">Wealth Created YoY</div><div class="stat-delta up">vs ₹4.1L prior year</div></div>
+        </div>
+
+        <div class="chart-stage">
+          <div class="chart-stage-header">
+            <div class="csh-title">Portfolio vs Nifty 50 · 12 Months (Indexed to 100)</div>
+            <div class="csh-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--jade)"></div>Meera's Portfolio</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--sky)"></div>Nifty 50</div>
+              <div class="legend-item"><div class="legend-dot" style="background:rgba(107,113,149,.4)"></div>Inflation</div>
+            </div>
+          </div>
+          <div class="chart-area" style="position:relative">
+            <canvas id="niftyChart" height="200"></canvas>
+
+            <!-- Annotation: outperformance gap -->
+            <div class="vani-annotation" style="right:5%;top:10%">
+              <div class="va-bubble right">
+                <div class="va-mark">✦ VaNi</div>
+                <div class="va-text">Portfolio outperforming Nifty by <strong>8pp cumulatively</strong> this year — strong fund selection</div>
+                <div class="va-actions">
+                  <button class="va-btn confirm" onclick="this.closest('.va-bubble').innerHTML='<div style=\'font-size:10px;color:var(--jade);font-family:var(--ff-m)\'>✓ Confirmed</div>'">✓ Confirm</button>
+                  <button class="va-btn dismiss" onclick="this.closest('.vani-annotation').style.display='none'">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Asset class performance -->
+        <div class="chart-stage" style="padding:16px 18px">
+          <div class="csh-title" style="margin-bottom:12px">Asset Class XIRR vs Nifty Benchmark (12.8%)</div>
+          <div class="ap-row">
+            <div class="ap-name">Mutual Funds</div>
+            <div class="ap-bar-wrap"><div class="ap-bar" style="width:85%;background:var(--jade)"></div><div class="ap-bar-bench" style="left:65%"></div></div>
+            <div class="ap-val" style="color:var(--jade)">17.4%</div>
+            <div class="ap-vs" style="color:var(--jade)">+4.6% α</div>
+          </div>
+          <div class="ap-row">
+            <div class="ap-name">Gold</div>
+            <div class="ap-bar-wrap"><div class="ap-bar" style="width:58%;background:var(--amberl)"></div><div class="ap-bar-bench" style="left:65%"></div></div>
+            <div class="ap-val" style="color:var(--amberl)">12.1%</div>
+            <div class="ap-vs" style="color:var(--text4)">–0.7%</div>
+          </div>
+          <div class="ap-row">
+            <div class="ap-name">Real Estate</div>
+            <div class="ap-bar-wrap"><div class="ap-bar" style="width:38%;background:var(--g600)"></div><div class="ap-bar-bench" style="left:65%"></div></div>
+            <div class="ap-val" style="color:var(--text3)">8.0%</div>
+            <div class="ap-vs" style="color:var(--corall)">–4.8%</div>
+          </div>
+          <div class="ap-row">
+            <div class="ap-name">FD / Cash</div>
+            <div class="ap-bar-wrap"><div class="ap-bar" style="width:32%;background:var(--g600)"></div><div class="ap-bar-bench" style="left:65%"></div></div>
+            <div class="ap-val" style="color:var(--text3)">7.1%</div>
+            <div class="ap-vs" style="color:var(--corall)">–5.7%</div>
+          </div>
+        </div>
+
+        <div class="narrative">
+          The mutual fund book is <strong>earning its keep</strong> — 17.4% XIRR vs 12.8% Nifty. Real estate and FD are effectively earning below inflation in real terms. The <strong>portfolio alpha comes entirely from the 34% in MFs</strong> — an argument for gradually tilting further toward the asset class that's working.
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════
+           CH7 — RISK LANDSCAPE
+           ═══════════════════════════════════════════ -->
+      <div class="chapter" id="ch7">
+        <div class="chapter-header">
+          <div class="chapter-num">07 · Risk Landscape</div>
+          <div class="chapter-title">What Could Go Wrong</div>
+          <div class="chapter-sub">Portfolio risk score + active flags — VaNi signals awaiting collaboration</div>
+        </div>
+
+        <div class="chart-stage">
+          <div class="chart-stage-header">
+            <div class="csh-title">Risk Dimensions · Radar</div>
+            <div class="csh-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--corall)"></div>Current</div>
+              <div class="legend-item"><div class="legend-dot" style="background:rgba(34,180,142,.4)"></div>Target</div>
+            </div>
+          </div>
+          <div class="chart-area" style="position:relative">
+            <div class="radar-wrap">
+              <canvas id="riskRadar" width="220" height="220"></canvas>
+              <div class="radar-legend">
+                <div class="rl-item"><div class="rl-dot" style="background:var(--coral)"></div><div class="rl-name">Concentration Risk</div><div class="rl-score" style="color:var(--corall)">High</div></div>
+                <div class="rl-item"><div class="rl-dot" style="background:var(--amber)"></div><div class="rl-name">Liquidity Risk</div><div class="rl-score" style="color:var(--amberl)">Medium</div></div>
+                <div class="rl-item"><div class="rl-dot" style="background:var(--jade)"></div><div class="rl-name">Market Risk</div><div class="rl-score" style="color:var(--jade)">Low</div></div>
+                <div class="rl-item"><div class="rl-dot" style="background:var(--coral)"></div><div class="rl-name">Protection Gap</div><div class="rl-score" style="color:var(--corall)">High</div></div>
+                <div class="rl-item"><div class="rl-dot" style="background:var(--coral)"></div><div class="rl-name">Life Event Risk</div><div class="rl-score" style="color:var(--corall)">High</div></div>
+                <div class="rl-item"><div class="rl-dot" style="background:var(--amber)"></div><div class="rl-name">Debt Serviceability</div><div class="rl-score" style="color:var(--amberl)">Medium</div></div>
+                <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+                  <div style="font-size:10px;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Overall Score</div>
+                  <div style="font-family:var(--ff-m);font-size:24px;font-weight:600;color:var(--amberl)">62 <span style="font-size:12px;color:var(--text3)">/ 100</span></div>
+                  <div style="font-size:10px;color:var(--text3);margin-top:2px">Moderate · Trending ↑ (+8 in 90 days)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Risk flags -->
+        <div style="display:flex;flex-direction:column;gap:8px">
+
+          <div class="risk-flag" style="background:rgba(240,90,71,0.05);border-color:rgba(240,90,71,0.2)">
+            <div class="rf-row">
+              <div class="rf-sev" style="background:var(--coral)"></div>
+              <div class="rf-content">
+                <div class="rf-title">Real Estate Concentration — Geopolitical Signal</div>
+                <div class="rf-body">Hyderabad IT corridor property has <strong>0.62 correlation to FPI inflows</strong>. Escalating Middle East tension historically reduces FPI, dampening demand. Villa at 28% of NW — above 20% ceiling.</div>
+                <div class="rf-meta">
+                  <span class="rf-tag" style="background:var(--coralx);color:var(--corall)">Macro</span>
+                  <span class="rf-tag" style="background:var(--coralx);color:var(--corall)">Illiquidity</span>
+                  <span class="rf-tag" style="background:var(--amberx);color:var(--amberl)">Monitor</span>
+                  <span style="font-size:10px;color:var(--text4);margin-left:auto;font-family:var(--ff-m)">VaNi · Draft</span>
+                </div>
+                <div class="rf-collaborate">
+                  <button class="rf-btn confirm" onclick="confirmFlag(this)">✓ Confirm Flag</button>
+                  <button class="rf-btn add">+ Add Context</button>
+                  <button class="rf-btn ask">Ask VaNi: exit window?</button>
+                  <button class="rf-btn dismiss" onclick="dismissFlag(this)">Dismiss</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="risk-flag" style="background:rgba(240,90,71,0.05);border-color:rgba(240,90,71,0.2)">
+            <div class="rf-row">
+              <div class="rf-sev" style="background:var(--coral)"></div>
+              <div class="rf-content">
+                <div class="rf-title">Term Cover Gap — Employer Policy Lapsing</div>
+                <div class="rf-body">New liabilities raised HLV gap to <strong>₹14.2L</strong>. Employer group cover expires in <strong>90 days</strong>. 2 dependents, single-income household. Uninsured window is significant.</div>
+                <div class="rf-meta">
+                  <span class="rf-tag" style="background:var(--coralx);color:var(--corall)">Critical</span>
+                  <span class="rf-tag" style="background:var(--coralx);color:var(--corall)">Time-Sensitive</span>
+                </div>
+                <div class="rf-confirmed">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  Confirmed by RC + VaNi · 12 Apr 2025
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="risk-flag" style="background:rgba(245,158,11,0.04);border-color:rgba(245,158,11,0.18)">
+            <div class="rf-row">
+              <div class="rf-sev" style="background:var(--amber)"></div>
+              <div class="rf-content">
+                <div class="rf-title">EMI / Income Ratio — Approaching Threshold</div>
+                <div class="rf-body">Currently at <strong>34%</strong>. Two new EMIs added in 90 days. One more loan crosses the 40% caution zone — reducing goal funding capacity materially.</div>
+                <div class="rf-meta">
+                  <span class="rf-tag" style="background:var(--amberx);color:var(--amberl)">Monitor</span>
+                  <span style="font-size:10px;color:var(--text4);margin-left:auto;font-family:var(--ff-m)">VaNi · Draft</span>
+                </div>
+                <div class="rf-collaborate">
+                  <button class="rf-btn confirm" onclick="confirmFlag(this)">✓ Confirm</button>
+                  <button class="rf-btn dismiss" onclick="dismissFlag(this)">Dismiss</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════
+           CH8 — TRANSACTIONS
+           ═══════════════════════════════════════════ -->
+      <div class="chapter" id="ch8">
+        <div class="chapter-header">
+          <div class="chapter-num">08 · Transactions</div>
+          <div class="chapter-title">Money in Motion</div>
+          <div class="chapter-sub">Unified ledger — SIPs, EMIs, premiums, goal contributions</div>
+        </div>
+
+        <div class="chart-stage">
+          <div class="chart-stage-header">
+            <div class="csh-title">Monthly Cash Flow · Apr 2025</div>
+            <div class="csh-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--jade)"></div>Inflows / Savings</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--coral)"></div>Outflows / Obligations</div>
+            </div>
+          </div>
+          <div class="chart-area">
+            <canvas id="cashflowChart" height="160"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-stage" style="padding:0">
+          <div class="chart-stage-header" style="padding:12px 16px 10px;border-bottom:1px solid var(--border)">
+            <div class="csh-title">Recent Transactions</div>
+            <div style="display:flex;gap:5px">
+              <button class="rf-btn confirm" style="font-size:10px" onclick="filterTx(this,'all')">All</button>
+              <button class="rf-btn" style="font-size:10px;border-color:var(--border);color:var(--text4)" onclick="filterTx(this,'sip')">SIP</button>
+              <button class="rf-btn" style="font-size:10px;border-color:var(--border);color:var(--text4)" onclick="filterTx(this,'emi')">EMI</button>
+              <button class="rf-btn" style="font-size:10px;border-color:var(--border);color:var(--text4)" onclick="filterTx(this,'premium')">Premiums</button>
+            </div>
+          </div>
+          <div style="padding:0 16px" id="txList">
+            <div class="ap-row" style="gap:12px;padding:10px 0">
+              <div style="width:28px;height:28px;border-radius:6px;background:var(--jadex);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">📈</div>
+              <div style="flex:1"><div style="font-size:12px;font-weight:500;color:var(--text)">SIP — Axis Bluechip Fund</div><div style="font-size:10px;color:var(--text3);font-family:var(--ff-m)">MONTHLY · Auto</div></div>
+              <div style="text-align:right"><div style="font-family:var(--ff-m);font-size:13px;font-weight:600;color:var(--jade)">+₹5,000</div><div style="font-size:10px;color:var(--text4);font-family:var(--ff-m)">12 Apr</div></div>
+            </div>
+            <div class="ap-row" style="gap:12px;padding:10px 0">
+              <div style="width:28px;height:28px;border-radius:6px;background:var(--coralx);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">🏦</div>
+              <div style="flex:1"><div style="font-size:12px;font-weight:500;color:var(--text)">Personal Loan EMI — HDFC</div><div style="font-size:10px;color:var(--text3);font-family:var(--ff-m)">MONTHLY · 34 months left</div></div>
+              <div style="text-align:right"><div style="font-family:var(--ff-m);font-size:13px;font-weight:600;color:var(--corall)">–₹8,200</div><div style="font-size:10px;color:var(--text4);font-family:var(--ff-m)">10 Apr</div></div>
+            </div>
+            <div class="ap-row" style="gap:12px;padding:10px 0">
+              <div style="width:28px;height:28px;border-radius:6px;background:var(--jadex);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">📈</div>
+              <div style="flex:1"><div style="font-size:12px;font-weight:500;color:var(--text)">SIP — Mirae Asset Emerging</div><div style="font-size:10px;color:var(--text3);font-family:var(--ff-m)">MONTHLY · Auto</div></div>
+              <div style="text-align:right"><div style="font-family:var(--ff-m);font-size:13px;font-weight:600;color:var(--jade)">+₹7,000</div><div style="font-size:10px;color:var(--text4);font-family:var(--ff-m)">8 Apr</div></div>
+            </div>
+            <div class="ap-row" style="gap:12px;padding:10px 0">
+              <div style="width:28px;height:28px;border-radius:6px;background:var(--skyx);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">🛡️</div>
+              <div style="flex:1"><div style="font-size:12px;font-weight:500;color:var(--text)">Health Insurance — Star Health</div><div style="font-size:10px;color:var(--text3);font-family:var(--ff-m)">ANNUAL · Renewal due</div></div>
+              <div style="text-align:right"><div style="font-family:var(--ff-m);font-size:13px;font-weight:600;color:var(--corall)">–₹14,200</div><div style="font-size:10px;color:var(--text4);font-family:var(--ff-m)">5 Apr</div></div>
+            </div>
+            <div class="ap-row" style="gap:12px;padding:10px 0">
+              <div style="width:28px;height:28px;border-radius:6px;background:var(--violetx);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">🎯</div>
+              <div style="flex:1"><div style="font-size:12px;font-weight:500;color:var(--text)">Goal — Home Renovation (RD)</div><div style="font-size:10px;color:var(--text3);font-family:var(--ff-m)">MONTHLY · Goal contribution</div></div>
+              <div style="text-align:right"><div style="font-family:var(--ff-m);font-size:13px;font-weight:600;color:var(--jade)">+₹10,000</div><div style="font-size:10px;color:var(--text4);font-family:var(--ff-m)">1 Apr</div></div>
+            </div>
+            <div class="ap-row" style="gap:12px;padding:10px 0">
+              <div style="width:28px;height:28px;border-radius:6px;background:var(--coralx);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">🏦</div>
+              <div style="flex:1"><div style="font-size:12px;font-weight:500;color:var(--text)">Personal Loan EMI — Bajaj</div><div style="font-size:10px;color:var(--text3);font-family:var(--ff-m)">NEW · ₹4,800 · 48 months</div></div>
+              <div style="text-align:right"><div style="font-family:var(--ff-m);font-size:13px;font-weight:600;color:var(--corall)">–₹4,800</div><div style="font-size:10px;color:var(--text4);font-family:var(--ff-m)">28 Mar</div></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /ch8 -->
+
+    </div><!-- /story-content -->
+  </div><!-- /story-layout -->
+</div><!-- /main -->
+</div><!-- /shell -->
+
+<script>
+// ── Chart defaults ──────────────────────────────────────
+Chart.defaults.color = 'rgba(169,174,200,0.65)';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+Chart.defaults.font.family = "'Inter Tight', sans-serif";
+Chart.defaults.font.size = 11;
+
+const tooltip = { backgroundColor:'rgba(14,16,20,0.96)', borderColor:'rgba(255,255,255,0.1)', borderWidth:1, titleColor:'#f0f2fa', bodyColor:'#a9aec8', padding:10 };
+
+// ── Story nav scroll ────────────────────────────────────
+function scrollTo(id, btn) {
+  document.getElementById(id).scrollIntoView({ behavior:'smooth', block:'start' });
+  document.querySelectorAll('.snav-item').forEach(i => i.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// Active nav on scroll
+const storyContent = document.getElementById('storyContent');
+const chapters = ['ch1','ch2','ch3','ch4','ch5','ch6','ch7','ch8'];
+storyContent && storyContent.addEventListener('scroll', () => {
+  const scrollTop = storyContent.scrollTop;
+  chapters.forEach((id, idx) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const top = el.offsetTop - 40;
+    if (scrollTop >= top) {
+      document.querySelectorAll('.snav-item').forEach((n, i) => n.classList.toggle('active', i === idx));
+    }
+  });
+});
+
+// ── Mode toggle ─────────────────────────────────────────
+function setMode(mode, btn) {
+  document.querySelectorAll('.mt-btn').forEach(b => { b.classList.remove('on','jade'); });
+  btn.classList.add('on','jade');
+  const isFamily = mode === 'family';
+  document.getElementById('clientName').textContent = isFamily ? 'Reddy Family' : 'Meera Reddy';
+  document.getElementById('nwTitle').textContent = isFamily ? 'Family Net Worth Journey' : 'Net Worth Journey';
+  document.getElementById('nwVal').innerHTML = isFamily ? '₹54.8L' : '₹28.4L';
+}
+
+// ── Horizon switching ───────────────────────────────────
+const hData = {
+  5:  { nw:'₹58.2L', cagr:'CAGR 15.4%', real:'₹38.4L', gain:'₹29.8L', x:'2.05× today', ret:'₹6.8L' },
+  10: { nw:'₹1.18Cr', cagr:'CAGR 14.8%', real:'₹66.1L', gain:'₹89.6L', x:'4.2× today', ret:'₹18.4L' },
+  15: { nw:'₹2.32Cr', cagr:'CAGR 14.2%', real:'₹1.04Cr', gain:'₹2.04Cr', x:'8.2× today', ret:'₹42.1L' },
+  20: { nw:'₹4.41Cr', cagr:'CAGR 13.8%', real:'₹1.68Cr', gain:'₹4.13Cr', x:'15.5× today', ret:'₹98.6L' },
+};
+function setHorizon(btn, y) {
+  document.querySelectorAll('.h-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  const d = hData[y];
+  document.getElementById('hzNW').textContent = d.nw;
+  document.getElementById('hzCAGR').textContent = d.cagr;
+  document.getElementById('hzReal').textContent = d.real;
+  document.getElementById('hzGain').textContent = d.gain;
+  document.getElementById('hzX').textContent = d.x;
+  document.getElementById('hzRetire').textContent = d.ret;
+}
+
+// ── Risk flag actions ───────────────────────────────────
+function confirmFlag(btn) {
+  const collab = btn.closest('.rf-collaborate');
+  collab.remove();
+  const content = btn.closest('.rf-content');
+  const conf = document.createElement('div');
+  conf.className = 'rf-confirmed';
+  conf.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Confirmed by RC + VaNi · ${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}`;
+  content.appendChild(conf);
+}
+function dismissFlag(btn) {
+  const flag = btn.closest('.risk-flag');
+  flag.style.opacity = '0'; flag.style.transition = 'opacity .3s';
+  setTimeout(() => flag.style.display = 'none', 300);
+}
+
+// ── Charts ──────────────────────────────────────────────
+
+// NW Chart
+const months16 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'];
+const nwPlugin = {
+  id: 'nwZone',
+  afterDraw(chart) {
+    const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+    // Shade the liability spike zone (Feb 2025 = index 13)
+    if (!x) return;
+    try {
+      const x1 = x.getPixelForValue(12.5);
+      const x2 = x.getPixelForValue(14.5);
+      ctx.save();
+      ctx.fillStyle = 'rgba(240,90,71,0.06)';
+      ctx.fillRect(x1, top, x2 - x1, bottom - top);
+      ctx.strokeStyle = 'rgba(240,90,71,0.2)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(x1, top); ctx.lineTo(x1, bottom); ctx.stroke();
+      ctx.restore();
+    } catch(e) {}
+  }
+};
+new Chart(document.getElementById('nwChart'), {
+  type: 'line',
+  plugins: [nwPlugin],
+  data: {
+    labels: months16,
+    datasets: [
+      { label: 'Net Worth', data: [21.6,22.1,22.8,23.5,24.2,24.0,24.8,25.4,26.1,26.8,27.2,27.6,27.9,25.3,26.8,28.4], borderColor:'rgba(34,180,142,0.9)', backgroundColor:'rgba(34,180,142,0.07)', borderWidth:2.5, fill:true, tension:0.4, pointRadius:0, pointHoverRadius:5 },
+      { label: 'Liabilities', data: [6.1,6.1,6.1,6.1,6.1,6.1,6.1,6.1,6.1,6.1,6.1,6.1,6.1,9.2,9.2,9.2], borderColor:'rgba(240,90,71,0.7)', backgroundColor:'rgba(240,90,71,0.04)', borderWidth:1.5, borderDash:[4,3], fill:true, tension:0.1, pointRadius:0 },
+      { label: 'Inflation baseline', data: [21.6,21.7,21.8,21.9,22.0,22.1,22.2,22.3,22.4,22.5,22.7,22.8,22.9,23.0,23.1,23.2], borderColor:'rgba(107,113,149,0.3)', backgroundColor:'transparent', borderWidth:1, borderDash:[2,4], fill:false, tension:0.4, pointRadius:0 },
+    ]
+  },
+  options: {
+    responsive:true,
+    plugins: { legend:{display:false}, tooltip },
+    scales: {
+      x: { grid:{color:'rgba(255,255,255,0.03)'} },
+      y: { grid:{color:'rgba(255,255,255,0.03)'}, ticks:{ callback:v=>'₹'+v+'L' } }
+    }
+  }
+});
+
+// Alloc bar chart
+new Chart(document.getElementById('allocBar'), {
+  type: 'bar',
+  data: {
+    labels: ['Mutual Funds', 'Real Estate', 'Insurance', 'Gold', 'Cash / FD'],
+    datasets: [
+      { label: 'Allocation %', data: [34, 28, 18, 12, 8], backgroundColor: ['rgba(34,180,142,0.75)','rgba(240,90,71,0.75)','rgba(56,189,248,0.65)','rgba(167,139,250,0.65)','rgba(107,113,149,0.55)'], borderRadius:5, borderWidth:0 },
+      { label: 'Recommended max', data: [50, 20, 25, 15, 15], backgroundColor:'transparent', borderColor:'rgba(255,255,255,0.15)', borderWidth:1, type:'bar', borderRadius:5 }
+    ]
+  },
+  options: {
+    responsive:true,
+    plugins: { legend:{display:false}, tooltip },
+    scales: {
+      x: { grid:{display:false} },
+      y: { grid:{color:'rgba(255,255,255,0.03)'}, ticks:{callback:v=>v+'%'} }
+    }
+  }
+});
+
+// Alloc donut
+new Chart(document.getElementById('allocDonut'), {
+  type: 'doughnut',
+  data: { datasets: [{ data:[34,28,18,12,8], backgroundColor:['#22b48e','#e04633','#38bdf8','#a78bfa','#6b7195'], borderWidth:0, hoverOffset:6 }] },
+  options: { responsive:false, cutout:'70%', plugins:{legend:{display:false},tooltip:{...tooltip,callbacks:{label:ctx=>['MF','RE','Ins','Gold','Cash'][ctx.dataIndex]+': '+ctx.raw+'%'}}} }
+});
+
+// Protection Chart
+new Chart(document.getElementById('protectionChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Term Cover', 'Health Cover', 'Emergency Fund'],
+    datasets: [
+      { label: 'Current', data: [25, 3, 1.2], backgroundColor:['rgba(240,90,71,0.75)','rgba(245,158,11,0.75)','rgba(240,90,71,0.75)'], borderRadius:5 },
+      { label: 'Recommended', data: [39.2, 7, 6.6], backgroundColor:'rgba(107,113,149,0.25)', borderColor:'rgba(107,113,149,0.5)', borderWidth:1, borderRadius:5 },
+    ]
+  },
+  options: {
+    responsive:true,
+    plugins:{ legend:{labels:{boxWidth:10,padding:12}}, tooltip:{...tooltip,callbacks:{label:ctx=>ctx.dataset.label+': ₹'+ctx.raw+'L'}} },
+    scales: {
+      x:{grid:{display:false}},
+      y:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{callback:v=>'₹'+v+'L'}}
+    }
+  }
+});
+
+// Goals chart
+new Chart(document.getElementById('goalsChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Child Education\n₹15L · 2033', 'Retirement\n₹250L · 2054', 'Home Reno\n₹8L · 2027'],
+    datasets: [
+      { label: 'Saved', data: [3.3, 4.5, 4.4], backgroundColor:['rgba(245,158,11,0.75)','rgba(34,180,142,0.75)','rgba(34,180,142,0.75)'], borderRadius:4 },
+      { label: 'Remaining', data: [11.7, 245.5, 3.6], backgroundColor:['rgba(245,158,11,0.15)','rgba(34,180,142,0.1)','rgba(34,180,142,0.1)'], borderRadius:4 },
+    ]
+  },
+  options: {
+    indexAxis:'y', responsive:true,
+    plugins:{ legend:{labels:{boxWidth:10,padding:12}}, tooltip },
+    scales: {
+      x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{callback:v=>'₹'+v+'L'},stacked:true},
+      y:{grid:{display:false},stacked:true}
+    }
+  }
+});
+
+// Trajectory
+const futureYears = ['2025','2026','2027','2028','2029','2030','2031','2032','2033','2034','2035','2036','2037','2038','2039','2040','2041','2042','2043','2044','2045'];
+const portfolioData = [28.4,32.6,37.5,43.2,50.1,58.2,67.8,78.8,91.8,107,125,146,170,198,231,269,314,366,427,498,580];
+const inflationData = portfolioData.map((v,i) => +(28.4 * Math.pow(1.06, i)).toFixed(1));
+const niftyData = portfolioData.map((v,i) => +(28.4 * Math.pow(1.128, i)).toFixed(1));
+
+const trajectoryPlugin = {
+  id: 'compoundAnnotation',
+  afterDraw(chart) {
+    const { ctx, chartArea, scales: { x, y } } = chart;
+    if (!x) return;
+    try {
+      const xi = x.getPixelForValue(9);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(34,180,142,0.25)'; ctx.lineWidth = 1; ctx.setLineDash([4,3]);
+      ctx.beginPath(); ctx.moveTo(xi, chartArea.top); ctx.lineTo(xi, chartArea.bottom); ctx.stroke();
+      ctx.fillStyle = 'rgba(34,180,142,0.6)'; ctx.font = '10px Inter Tight'; ctx.fillText('Inflection 2034', xi + 5, chartArea.top + 14);
+      ctx.restore();
+    } catch(e) {}
+  }
+};
+new Chart(document.getElementById('trajectoryChart'), {
+  type: 'line',
+  plugins: [trajectoryPlugin],
+  data: {
+    labels: futureYears,
+    datasets: [
+      { label:"Portfolio", data:portfolioData, borderColor:'rgba(34,180,142,0.9)', backgroundColor:'rgba(34,180,142,0.07)', borderWidth:2.5, fill:true, tension:0.4, pointRadius:0 },
+      { label:"Inflation", data:inflationData, borderColor:'rgba(245,158,11,0.6)', backgroundColor:'transparent', borderWidth:1.5, borderDash:[3,3], fill:false, tension:0.4, pointRadius:0 },
+      { label:"Nifty benchmark", data:niftyData, borderColor:'rgba(107,113,149,0.4)', backgroundColor:'transparent', borderWidth:1, borderDash:[2,4], fill:false, tension:0.4, pointRadius:0 },
+    ]
+  },
+  options: {
+    responsive:true,
+    plugins:{ legend:{labels:{boxWidth:10,padding:12}}, tooltip:{...tooltip,callbacks:{label:ctx=>ctx.dataset.label+': ₹'+ctx.raw+'L'}} },
+    scales: {
+      x:{grid:{color:'rgba(255,255,255,0.03)'}},
+      y:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{callback:v=>v>=100?'₹'+(v/100).toFixed(1)+'Cr':'₹'+v+'L'}}
+    }
+  }
+});
+
+// Nifty comparison
+const months12 = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'];
+new Chart(document.getElementById('niftyChart'), {
+  type: 'line',
+  data: {
+    labels: months12,
+    datasets: [
+      { label:"Meera's Portfolio", data:[100,103,106,110,108,113,117,120,123,127,130,134,138], borderColor:'rgba(34,180,142,0.9)', backgroundColor:'rgba(34,180,142,0.07)', borderWidth:2.5, fill:true, tension:0.4, pointRadius:0 },
+      { label:"Nifty 50", data:[100,102,104,107,105,108,111,113,116,119,121,124,127], borderColor:'rgba(56,189,248,0.6)', backgroundColor:'transparent', borderWidth:1.5, borderDash:[3,3], fill:false, tension:0.4, pointRadius:0 },
+      { label:"Inflation", data:[100,100.5,101,101.5,102,102.5,103,103.5,104,104.5,105,105.5,106], borderColor:'rgba(107,113,149,0.3)', backgroundColor:'transparent', borderWidth:1, borderDash:[2,4], fill:false, tension:0.4, pointRadius:0 },
+    ]
+  },
+  options: {
+    responsive:true,
+    plugins:{ legend:{labels:{boxWidth:10,padding:12}}, tooltip },
+    scales: {
+      x:{grid:{color:'rgba(255,255,255,0.03)'}},
+      y:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{callback:v=>v}}
+    }
+  }
+});
+
+// Risk Radar
+new Chart(document.getElementById('riskRadar'), {
+  type: 'radar',
+  data: {
+    labels: ['Concentration','Liquidity','Market','Protection','Life Event','Debt'],
+    datasets: [
+      { label:'Current Risk', data:[80,55,30,75,78,55], borderColor:'rgba(240,90,71,0.8)', backgroundColor:'rgba(240,90,71,0.12)', borderWidth:2, pointBackgroundColor:'rgba(240,90,71,0.8)', pointRadius:3 },
+      { label:'Target', data:[40,35,40,25,30,35], borderColor:'rgba(34,180,142,0.5)', backgroundColor:'rgba(34,180,142,0.06)', borderWidth:1.5, borderDash:[3,3], pointBackgroundColor:'rgba(34,180,142,0.5)', pointRadius:2 },
+    ]
+  },
+  options: {
+    responsive:false,
+    plugins:{ legend:{display:false}, tooltip },
+    scales: { r: { min:0, max:100, ticks:{display:false,stepSize:25}, grid:{color:'rgba(255,255,255,0.06)'}, angleLines:{color:'rgba(255,255,255,0.06)'}, pointLabels:{font:{size:10},color:'rgba(169,174,200,0.7)'} } }
+  }
+});
+
+// Cashflow chart
+new Chart(document.getElementById('cashflowChart'), {
+  type: 'bar',
+  data: {
+    labels: ['SIP (MF)', 'Goal (RD)', 'Term Ins', 'Health Ins', 'EMI HDFC', 'EMI Bajaj'],
+    datasets: [
+      { label:'Amount', data:[15000, 10000, -0, -14200, -8200, -4800],
+        backgroundColor: ctx => ctx.raw >= 0 ? 'rgba(34,180,142,0.7)' : 'rgba(240,90,71,0.65)',
+        borderRadius:5
+      }
+    ]
+  },
+  options: {
+    responsive:true,
+    plugins:{ legend:{display:false}, tooltip:{...tooltip,callbacks:{label:ctx=>'₹'+Math.abs(ctx.raw).toLocaleString()}} },
+    scales: {
+      x:{grid:{display:false}},
+      y:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{callback:v=>v===0?'₹0':'₹'+Math.abs(v/1000)+'K'}}
+    }
+  }
+});
+</script>
+</body>
+</html>

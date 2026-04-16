@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProessionalKey — MFD Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.min.js"></script>
+<style>
+/* ── CSS Variables ───────────────────────────────────── */
+:root {
+  /* Core palette */
+  --graphite-950: #0e1014;
+  --graphite-900: #161820;
+  --graphite-850: #1c1f28;
+  --graphite-800: #22252f;
+  --graphite-700: #2d3140;
+  --graphite-600: #3d4255;
+  --graphite-400: #6b7195;
+  --graphite-200: #a9aec8;
+  --graphite-100: #d4d7e8;
+  --graphite-50:  #eceef5;
+
+  --jade-600:  #0f6b56;
+  --jade-500:  #147a62;
+  --jade-400:  #1a9475;
+  --jade-300:  #22b48e;
+  --jade-200:  #6fd4b8;
+  --jade-100:  #b8ede3;
+  --jade-50:   #e8f9f5;
+
+  --coral-600: #c93d2a;
+  --coral-500: #e04633;
+  --coral-400: #f05a47;
+  --coral-300: #f47b6b;
+  --coral-200: #f8a89f;
+  --coral-100: #fcd9d5;
+  --coral-50:  #fef2f0;
+
+  --amber-500: #d97706;
+  --amber-400: #f59e0b;
+  --amber-100: #fef3c7;
+  --amber-50:  #fffbeb;
+
+  --sky-500:   #0284c7;
+  --sky-100:   #e0f2fe;
+
+  /* Semantic */
+  --bg:         var(--graphite-950);
+  --surface-1:  var(--graphite-900);
+  --surface-2:  var(--graphite-850);
+  --surface-3:  var(--graphite-800);
+  --border:     rgba(255,255,255,0.07);
+  --border-md:  rgba(255,255,255,0.12);
+  --text-primary:   #f0f2fa;
+  --text-secondary: var(--graphite-200);
+  --text-muted:     var(--graphite-400);
+  --text-ghost:     var(--graphite-600);
+
+  --jade:  var(--jade-300);
+  --coral: var(--coral-400);
+  --gold:  var(--amber-400);
+
+  /* Typography */
+  --ff-display: 'Fraunces', serif;
+  --ff-body:    'Inter Tight', sans-serif;
+  --ff-mono:    'JetBrains Mono', monospace;
+
+  /* Spacing */
+  --sidebar-w: 224px;
+  --topbar-h:  48px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.35);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+/* ── Reset ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  font-family: var(--ff-body);
+  background: var(--bg);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Scrollbar ───────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--graphite-700); border-radius: 4px; }
+
+/* ── Shell Layout ────────────────────────────────────── */
+.shell { display: flex; min-height: 100vh; }
+
+/* ── Sidebar ─────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  background: var(--surface-1);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0;
+  height: 100vh;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.sidebar-logo {
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.sidebar-logo-mark {
+  width: 30px; height: 30px;
+  background: linear-gradient(135deg, var(--jade-400), var(--jade-600));
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.sidebar-logo-mark svg { width: 16px; height: 16px; color: white; }
+.sidebar-logo-text { font-family: var(--ff-display); font-size: 15px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.2px; }
+.sidebar-logo-sub { font-size: 10px; color: var(--text-muted); font-family: var(--ff-mono); letter-spacing: 0.04em; text-transform: uppercase; }
+
+.sidebar-section { padding: 14px 10px 6px; }
+.sidebar-section-label {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text-ghost);
+  padding: 0 8px; margin-bottom: 4px;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13px; font-weight: 400;
+  transition: all 0.15s;
+  text-decoration: none;
+  position: relative;
+}
+.nav-item:hover { background: var(--surface-3); color: var(--text-secondary); }
+.nav-item.active {
+  background: rgba(34, 180, 142, 0.12);
+  color: var(--jade);
+}
+.nav-item.active::before {
+  content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+  width: 3px; background: var(--jade);
+  border-radius: 0 2px 2px 0;
+}
+.nav-item svg { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.8; }
+.nav-item.active svg { opacity: 1; }
+.nav-badge {
+  margin-left: auto; background: var(--coral-400); color: white;
+  font-size: 10px; font-weight: 600; padding: 1px 5px;
+  border-radius: 10px; font-family: var(--ff-mono);
+}
+.nav-badge.jade { background: var(--jade-400); }
+
+.sidebar-footer {
+  margin-top: auto; padding: 12px;
+  border-top: 1px solid var(--border);
+}
+.user-pill {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.user-pill:hover { background: var(--surface-3); }
+.user-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--jade-500), var(--jade-700, #0a5244));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; color: white;
+  flex-shrink: 0;
+}
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-size: 12px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-role { font-size: 10px; color: var(--text-ghost); font-family: var(--ff-mono); }
+
+/* ── Main Area ───────────────────────────────────────── */
+.main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Top Bar ─────────────────────────────────────────── */
+.topbar {
+  height: var(--topbar-h);
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 24px;
+  gap: 12px;
+  position: sticky; top: 0; z-index: 90;
+}
+.topbar-title {
+  font-family: var(--ff-display); font-size: 15px;
+  font-weight: 500; color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+.topbar-date {
+  font-size: 11px; color: var(--text-muted); font-family: var(--ff-mono);
+}
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.topbar-btn {
+  padding: 5px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-md);
+  background: transparent; color: var(--text-secondary);
+  font-size: 12px; font-family: var(--ff-body); font-weight: 500;
+  cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; gap: 5px;
+}
+.topbar-btn:hover { background: var(--surface-3); color: var(--text-primary); }
+.topbar-btn.primary {
+  background: var(--jade-400); border-color: var(--jade-400);
+  color: white;
+}
+.topbar-btn.primary:hover { background: var(--jade-500); }
+.icon-btn {
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  background: transparent; border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text-muted); transition: all 0.15s;
+}
+.icon-btn:hover { background: var(--surface-3); color: var(--text-secondary); }
+.icon-btn svg { width: 14px; height: 14px; }
+.notif-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--coral); position: absolute; top: 6px; right: 6px;
+}
+
+/* ── Content ─────────────────────────────────────────── */
+.content { padding: 20px 24px 40px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+
+/* ── Cards ───────────────────────────────────────────── */
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.card-dark {
+  background: var(--graphite-900);
+  border-color: var(--border);
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px 0;
+}
+.card-title {
+  font-family: var(--ff-display); font-size: 13px; font-weight: 500;
+  color: var(--text-secondary); letter-spacing: -0.1px;
+}
+.card-body { padding: 14px 18px 16px; }
+.card-action {
+  font-size: 11px; color: var(--jade); cursor: pointer;
+  font-weight: 500; display: flex; align-items: center; gap: 3px;
+}
+.card-action:hover { color: var(--jade-200); }
+
+/* ── Section Headers ─────────────────────────────────── */
+.section-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--text-ghost);
+  margin-bottom: 10px;
+}
+
+/* ── Chips / Tags ────────────────────────────────────── */
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 100px;
+  font-size: 10px; font-weight: 600; font-family: var(--ff-mono);
+}
+.chip-jade   { background: rgba(34,180,142,0.14); color: var(--jade-300); }
+.chip-coral  { background: rgba(240,90,71,0.14);  color: var(--coral-300); }
+.chip-amber  { background: rgba(245,158,11,0.14); color: var(--amber-400); }
+.chip-ghost  { background: var(--surface-3); color: var(--text-muted); }
+.chip-sky    { background: rgba(2,132,199,0.14); color: #38bdf8; }
+
+/* ─────────────────────────────────────────────────────── */
+/* 1. VANI'S DAILY BRIEF                                  */
+/* ─────────────────────────────────────────────────────── */
+.brief-card {
+  background: var(--graphite-900);
+  border: 1px solid rgba(34,180,142,0.2);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+}
+.brief-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--jade-300), transparent);
+  opacity: 0.5;
+}
+.brief-header {
+  padding: 14px 18px 10px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.brief-vani-mark {
+  width: 26px; height: 26px;
+  background: linear-gradient(135deg, var(--jade-400), var(--jade-600));
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+}
+.brief-title {
+  font-family: var(--ff-display); font-size: 13px; font-weight: 500;
+  color: var(--jade-200); letter-spacing: -0.1px;
+}
+.brief-subtitle { font-size: 10px; color: var(--text-ghost); font-family: var(--ff-mono); }
+.brief-time { margin-left: auto; font-size: 10px; color: var(--text-ghost); font-family: var(--ff-mono); }
+
+.brief-observations { padding: 0 18px 14px; display: flex; flex-direction: column; gap: 0; }
+.observation {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  display: flex; gap: 12px; align-items: flex-start;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.observation:last-child { border-bottom: none; }
+.observation:hover { opacity: 0.85; }
+.obs-index {
+  font-family: var(--ff-mono); font-size: 10px; font-weight: 500;
+  color: var(--jade-400); width: 16px; flex-shrink: 0; margin-top: 1px;
+}
+.obs-content { flex: 1; }
+.obs-line {
+  font-size: 13px; color: var(--text-primary); line-height: 1.45;
+  font-weight: 400;
+}
+.obs-line strong { color: var(--jade-200); font-weight: 600; }
+.obs-line .coral { color: var(--coral-300); font-weight: 600; }
+.obs-line .amber { color: var(--amber-400); font-weight: 600; }
+.obs-meta {
+  font-size: 10px; color: var(--text-ghost); font-family: var(--ff-mono);
+  margin-top: 3px; display: flex; gap: 10px;
+}
+.obs-tag { color: var(--jade-400); }
+.obs-action { cursor: pointer; color: var(--jade-300); text-decoration: underline; }
+.obs-action:hover { color: var(--jade-200); }
+
+.brief-footer {
+  padding: 10px 18px;
+  background: rgba(0,0,0,0.2);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.brief-footer-cmd {
+  font-size: 11px; color: var(--text-ghost); font-family: var(--ff-mono);
+}
+.brief-footer-cmd span { color: var(--jade-400); }
+
+/* ─────────────────────────────────────────────────────── */
+/* 2. KPI STRIP                                           */
+/* ─────────────────────────────────────────────────────── */
+.kpi-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+
+.kpi-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px 12px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.kpi-card:hover { border-color: var(--border-md); transform: translateY(-1px); }
+.kpi-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
+}
+.kpi-value {
+  font-family: var(--ff-mono); font-size: 22px; font-weight: 600;
+  color: var(--text-primary); line-height: 1; margin-bottom: 6px;
+  letter-spacing: -0.5px;
+}
+.kpi-value .unit { font-size: 13px; font-weight: 400; color: var(--text-muted); margin-right: 1px; }
+.kpi-meta { display: flex; align-items: center; gap: 6px; }
+.kpi-delta {
+  font-size: 10px; font-weight: 600; font-family: var(--ff-mono);
+  display: flex; align-items: center; gap: 2px;
+}
+.kpi-delta.up   { color: var(--jade-300); }
+.kpi-delta.down { color: var(--coral-300); }
+.kpi-period { font-size: 10px; color: var(--text-ghost); }
+.kpi-spark { margin-left: auto; }
+.kpi-spark canvas { display: block; }
+.kpi-accent { position: absolute; top: 0; left: 0; width: 3px; height: 100%; }
+
+/* ─────────────────────────────────────────────────────── */
+/* 3. TWO-COLUMN HERO                                     */
+/* ─────────────────────────────────────────────────────── */
+.hero-grid {
+  display: grid;
+  grid-template-columns: 60fr 40fr;
+  gap: 16px;
+  align-items: start;
+}
+
+/* Action Queue */
+.action-queue { display: flex; flex-direction: column; gap: 0; }
+.queue-group { margin-bottom: 4px; }
+.queue-group-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 18px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.queue-group-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.queue-group-title {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; flex: 1;
+}
+.queue-group-count {
+  font-size: 10px; font-family: var(--ff-mono); font-weight: 600;
+  padding: 1px 6px; border-radius: 10px;
+}
+.queue-items { }
+.queue-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 18px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.queue-item:hover { background: var(--surface-2); }
+.queue-item:last-child { border-bottom: none; }
+.qi-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; color: white;
+  flex-shrink: 0;
+}
+.qi-info { flex: 1; min-width: 0; }
+.qi-name { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.qi-detail { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qi-right { text-align: right; flex-shrink: 0; }
+.qi-action {
+  font-size: 11px; font-weight: 600;
+  padding: 3px 8px; border-radius: var(--radius-sm);
+  cursor: pointer; transition: opacity 0.15s; white-space: nowrap;
+}
+.qi-action:hover { opacity: 0.8; }
+.qi-time { font-size: 10px; color: var(--text-ghost); font-family: var(--ff-mono); margin-top: 2px; }
+
+/* Group colour variants */
+.group-convert .queue-group-dot { background: var(--jade); }
+.group-convert .queue-group-title { color: var(--jade-200); }
+.group-convert .queue-group-count { background: rgba(34,180,142,0.12); color: var(--jade-300); }
+
+.group-snapshot .queue-group-dot { background: #38bdf8; }
+.group-snapshot .queue-group-title { color: #7dd3fc; }
+.group-snapshot .queue-group-count { background: rgba(56,189,248,0.12); color: #38bdf8; }
+
+.group-gaps .queue-group-dot { background: var(--coral); }
+.group-gaps .queue-group-title { color: var(--coral-300); }
+.group-gaps .queue-group-count { background: rgba(240,90,71,0.12); color: var(--coral-300); }
+
+.group-overdue .queue-group-dot { background: var(--amber-400); }
+.group-overdue .queue-group-title { color: var(--amber-400); }
+.group-overdue .queue-group-count { background: rgba(245,158,11,0.12); color: var(--amber-400); }
+
+/* Right column */
+.right-col { display: flex; flex-direction: column; gap: 14px; }
+
+/* Capture Link Card */
+.capture-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.capture-hero {
+  background: linear-gradient(135deg, rgba(34,180,142,0.08), rgba(34,180,142,0.03));
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.capture-url-row {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-md);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  margin: 10px 0;
+}
+.capture-url {
+  flex: 1; font-size: 11px; font-family: var(--ff-mono);
+  color: var(--jade-200); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.copy-btn {
+  flex-shrink: 0; font-size: 10px; font-weight: 600;
+  padding: 3px 8px; border-radius: 4px;
+  background: var(--jade-400); color: white;
+  border: none; cursor: pointer; font-family: var(--ff-body);
+  transition: background 0.15s;
+}
+.copy-btn:hover { background: var(--jade-500); }
+.copy-btn.copied { background: var(--jade-600); }
+
+.capture-share { display: flex; gap: 8px; }
+.share-btn {
+  flex: 1; padding: 7px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-md);
+  background: var(--surface-3); color: var(--text-secondary);
+  font-size: 11px; font-weight: 500; font-family: var(--ff-body);
+  cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.share-btn:hover { border-color: var(--border-md); background: var(--surface-2); }
+.share-btn.whatsapp { color: #4ade80; }
+.share-btn.email    { color: #60a5fa; }
+
+.capture-qr-toggle {
+  padding: 10px 18px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.toggle-label { font-size: 11px; color: var(--text-muted); }
+.toggle {
+  width: 34px; height: 18px; background: var(--graphite-700);
+  border-radius: 10px; position: relative; cursor: pointer;
+  transition: background 0.2s;
+}
+.toggle.on { background: var(--jade-400); }
+.toggle-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: white; transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.toggle.on .toggle-thumb { transform: translateX(16px); }
+.qr-preview {
+  padding: 12px 18px;
+  display: none;
+  border-top: 1px solid var(--border);
+  flex-direction: column; align-items: center; gap: 6px;
+}
+.qr-preview.visible { display: flex; }
+.qr-box {
+  width: 96px; height: 96px;
+  background: white; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 6px;
+}
+.qr-box svg { width: 84px; height: 84px; }
+.qr-label { font-size: 10px; color: var(--text-ghost); font-family: var(--ff-mono); }
+
+.capture-stats {
+  padding: 10px 18px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 16px;
+}
+.cstat { text-align: center; flex: 1; }
+.cstat-val { font-family: var(--ff-mono); font-size: 18px; font-weight: 600; color: var(--text-primary); }
+.cstat-label { font-size: 10px; color: var(--text-ghost); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Recent Activity */
+.activity-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.activity-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s; cursor: pointer;
+}
+.activity-item:hover { background: var(--surface-2); }
+.activity-item:last-child { border-bottom: none; }
+.activity-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  margin-top: 5px; flex-shrink: 0;
+}
+.activity-text { flex: 1; font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+.activity-text strong { color: var(--text-primary); font-weight: 600; }
+.activity-time { font-size: 10px; color: var(--text-ghost); font-family: var(--ff-mono); flex-shrink: 0; }
+
+/* ─────────────────────────────────────────────────────── */
+/* 4. PRACTICE PULSE                                      */
+/* ─────────────────────────────────────────────────────── */
+.pulse-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.pulse-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.pulse-card-header { padding: 12px 14px 8px; }
+.pulse-card-title { font-family: var(--ff-display); font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+.pulse-card-meta { font-size: 10px; color: var(--text-ghost); font-family: var(--ff-mono); margin-top: 2px; }
+.pulse-chart-area { padding: 4px 10px 12px; }
+
+/* ─────────────────────────────────────────────────────── */
+/* 5. AMBASSADOR CARD                                     */
+/* ─────────────────────────────────────────────────────── */
+.ambassador-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+}
+.ambassador-header {
+  padding: 16px 20px 14px;
+  background: linear-gradient(135deg, rgba(34,180,142,0.06), rgba(34,180,142,0.02));
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 14px;
+}
+.amb-icon {
+  width: 38px; height: 38px;
+  background: linear-gradient(135deg, rgba(34,180,142,0.2), rgba(34,180,142,0.08));
+  border: 1px solid rgba(34,180,142,0.2);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.amb-title { font-family: var(--ff-display); font-size: 16px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.3px; }
+.amb-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.amb-progress-area { margin-left: auto; text-align: right; }
+.amb-progress-label { font-size: 10px; color: var(--text-muted); font-family: var(--ff-mono); }
+.amb-progress-bar {
+  width: 120px; height: 6px;
+  background: var(--surface-3);
+  border-radius: 10px; overflow: hidden;
+  margin-top: 4px;
+}
+.amb-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--jade-400), var(--jade-300));
+  border-radius: 10px;
+  transition: width 0.6s ease;
+}
+.amb-progress-subtext { font-size: 10px; color: var(--text-ghost); font-family: var(--ff-mono); margin-top: 3px; }
+
+.ambassador-tiers {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+}
+.tier {
+  padding: 16px 18px;
+  border-right: 1px solid var(--border);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.tier:hover { background: var(--surface-2); }
+.tier:last-child { border-right: none; }
+.tier.active { background: rgba(34,180,142,0.06); }
+.tier.active::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+}
+.tier.bronze.active::before  { background: #cd7f32; }
+.tier.silver.active::before  { background: #a8a9ad; }
+.tier.gold.active::before    { background: #f59e0b; }
+
+.tier-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; margin-bottom: 6px;
+}
+.tier.bronze .tier-badge { color: #cd7f32; }
+.tier.silver .tier-badge { color: #a8a9ad; }
+.tier.gold   .tier-badge { color: #f59e0b; }
+
+.tier-icon { font-size: 16px; }
+.tier-threshold { font-size: 10px; color: var(--text-muted); margin-bottom: 8px; font-family: var(--ff-mono); }
+.tier-rewards { display: flex; flex-direction: column; gap: 4px; }
+.tier-reward {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--text-secondary);
+}
+.tier-reward svg { width: 11px; height: 11px; color: var(--jade-300); flex-shrink: 0; opacity: 0.8; }
+.tier-current-badge {
+  display: inline-flex; align-items: center;
+  margin-top: 8px; padding: 2px 7px;
+  background: rgba(34,180,142,0.1); color: var(--jade-300);
+  border-radius: 100px; font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  font-family: var(--ff-mono);
+}
+
+.ambassador-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(0,0,0,0.15);
+}
+.amb-referral-count {
+  font-size: 11px; color: var(--text-muted);
+}
+.amb-referral-count strong { font-family: var(--ff-mono); font-size: 14px; color: var(--jade-300); font-weight: 600; }
+.amb-cta {
+  padding: 6px 14px; border-radius: var(--radius-sm);
+  background: rgba(34,180,142,0.1);
+  border: 1px solid rgba(34,180,142,0.2);
+  color: var(--jade-300); font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; font-family: var(--ff-body);
+}
+.amb-cta:hover { background: rgba(34,180,142,0.18); }
+
+/* ── Utilities ───────────────────────────────────────── */
+.flex-center { display: flex; align-items: center; }
+.gap-6  { gap: 6px; }
+.gap-8  { gap: 8px; }
+.gap-10 { gap: 10px; }
+.ml-auto { margin-left: auto; }
+
+/* ── Avatars for queue ───────────────────────────────── */
+.av-jade   { background: linear-gradient(135deg, #0f6b56, #147a62); }
+.av-coral  { background: linear-gradient(135deg, #c93d2a, #e04633); }
+.av-amber  { background: linear-gradient(135deg, #b45309, #d97706); }
+.av-sky    { background: linear-gradient(135deg, #0369a1, #0284c7); }
+.av-violet { background: linear-gradient(135deg, #5b21b6, #7c3aed); }
+.av-rose   { background: linear-gradient(135deg, #9f1239, #be185d); }
+
+/* ── Divider ─────────────────────────────────────────── */
+.divider { height: 1px; background: var(--border); margin: 2px 0; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ════════════════════════════════════════════════════ -->
+<!-- SIDEBAR                                             -->
+<!-- ════════════════════════════════════════════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+      </svg>
+    </div>
+    <div>
+      <div class="sidebar-logo-text">ProessionalKey</div>
+      <div class="sidebar-logo-sub">MFD Suite</div>
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Workspace</div>
+    <a class="nav-item active" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Contacts
+      <span class="nav-badge jade">147</span>
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      Snapshots
+      <span class="nav-badge">3</span>
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+      Pulses
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Pipeline
+    </a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Intelligence</div>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      VaNi Insights
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Practice Pulse
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Activity Log
+    </a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Settings</div>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M21 12h-2M19.07 19.07l-1.41-1.41M12 21v-2M4.93 19.07l1.41-1.41M3 12h2M4.93 4.93l1.41 1.41"/></svg>
+      Settings
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+      Integrations
+    </a>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="user-pill">
+      <div class="user-avatar">RC</div>
+      <div class="user-info">
+        <div class="user-name">Rajesh Chandra</div>
+        <div class="user-role">ARN · 0094712</div>
+      </div>
+      <svg style="width:12px;height:12px;color:var(--text-ghost)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+    </div>
+  </div>
+</aside>
+
+<!-- ════════════════════════════════════════════════════ -->
+<!-- MAIN                                                -->
+<!-- ════════════════════════════════════════════════════ -->
+<div class="main">
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div>
+      <div class="topbar-title">Good morning, Rajesh</div>
+    </div>
+    <div class="topbar-date" id="topbarDate">Saturday · 12 Apr 2025</div>
+    <div class="topbar-right">
+      <button class="topbar-btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search
+      </button>
+      <div style="position:relative;">
+        <div class="icon-btn" title="Notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </div>
+        <div class="notif-dot"></div>
+      </div>
+      <button class="topbar-btn primary">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Contact
+      </button>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- 1. VANI'S DAILY BRIEF                         -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="brief-card">
+      <div class="brief-header">
+        <div class="brief-vani-mark">✦</div>
+        <div>
+          <div class="brief-title">VaNi's Daily Brief</div>
+          <div class="brief-subtitle">3 cross-book observations · updated 06:15</div>
+        </div>
+        <div class="brief-time" id="briefTime">—</div>
+        <div class="card-action" style="margin-left:8px;">
+          Full brief
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+      <div class="brief-observations">
+        <div class="observation">
+          <div class="obs-index">01</div>
+          <div class="obs-content">
+            <div class="obs-line"><strong>Priya Mehta</strong> submitted a full snapshot last night — <strong class="coral">₹18.4L gap</strong> in term cover visible. Her employer policy lapses in 3 months. Recommend a gap-fill call <strong>today</strong>.</div>
+            <div class="obs-meta">
+              <span class="obs-tag">#coverage-gap</span>
+              <span class="obs-tag">#high-urgency</span>
+              <span class="obs-action">→ Open snapshot</span>
+            </div>
+          </div>
+        </div>
+        <div class="observation">
+          <div class="obs-index">02</div>
+          <div class="obs-content">
+            <div class="obs-line"><strong>4 contacts</strong> in the 35–42 age band have <span class="amber">no health floater above ₹5L</span> despite household income &gt; ₹1.8L/mo. Post-hospitalisation OOP risk is concentrated here.</div>
+            <div class="obs-meta">
+              <span class="obs-tag">#health-underinsured</span>
+              <span class="obs-tag">#segment</span>
+              <span class="obs-action">→ View segment</span>
+            </div>
+          </div>
+        </div>
+        <div class="observation">
+          <div class="obs-index">03</div>
+          <div class="obs-content">
+            <div class="obs-line"><strong>Pipeline conversion</strong> is running <strong>11% above</strong> your 90-day baseline — driven by snapshot-first approach. Contacts who received a snapshot link converted in <strong class="jade-200" style="color:var(--jade-200)">avg 6.2 days</strong> vs 14.8 days without.</div>
+            <div class="obs-meta">
+              <span class="obs-tag">#pipeline</span>
+              <span class="obs-tag">#positive</span>
+              <span class="obs-action">→ See funnel data</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="brief-footer">
+        <div class="brief-footer-cmd"><span>vani</span> ask "which contacts haven't heard from me in 30 days?"</div>
+        <div class="card-action">Ask VaNi →</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- 2. KPI STRIP                                  -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="kpi-strip" id="kpiStrip">
+      <!-- KPIs injected by JS -->
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- 3. TWO-COLUMN HERO                            -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="hero-grid">
+      <!-- Left 60% — Action Queue -->
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div class="card-header" style="padding:12px 18px 10px; border-bottom: 1px solid var(--border);">
+          <div class="card-title">Today's Action Queue</div>
+          <div class="flex-center gap-6">
+            <span class="chip chip-coral">8 items</span>
+            <span class="card-action">View all →</span>
+          </div>
+        </div>
+        <div class="action-queue">
+
+          <!-- Group: Ready to Convert -->
+          <div class="queue-group group-convert">
+            <div class="queue-group-header">
+              <div class="queue-group-dot"></div>
+              <div class="queue-group-title">Ready to Convert</div>
+              <div class="queue-group-count">2</div>
+            </div>
+            <div class="queue-items">
+              <div class="queue-item">
+                <div class="qi-avatar av-jade">PM</div>
+                <div class="qi-info">
+                  <div class="qi-name">Priya Mehta</div>
+                  <div class="qi-detail">Snapshot complete · ₹18.4L gap · Engaged 3x this week</div>
+                </div>
+                <div class="qi-right">
+                  <div class="qi-action" style="background:rgba(34,180,142,0.12);color:var(--jade-300)">Schedule Call</div>
+                  <div class="qi-time">High confidence</div>
+                </div>
+              </div>
+              <div class="queue-item">
+                <div class="qi-avatar av-violet">AK</div>
+                <div class="qi-info">
+                  <div class="qi-name">Arun Kumar</div>
+                  <div class="qi-detail">Prospect · Goals filled · Income confirmed ₹2.1L/mo</div>
+                </div>
+                <div class="qi-right">
+                  <div class="qi-action" style="background:rgba(34,180,142,0.12);color:var(--jade-300)">Propose Plan</div>
+                  <div class="qi-time">Warm lead</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Group: Snapshots Just In -->
+          <div class="queue-group group-snapshot">
+            <div class="queue-group-header">
+              <div class="queue-group-dot"></div>
+              <div class="queue-group-title">Snapshots Just In</div>
+              <div class="queue-group-count">3</div>
+            </div>
+            <div class="queue-items">
+              <div class="queue-item">
+                <div class="qi-avatar av-sky">SR</div>
+                <div class="qi-info">
+                  <div class="qi-name">Sunita Rao</div>
+                  <div class="qi-detail">New submission · Protection 42% · 2h ago</div>
+                </div>
+                <div class="qi-right">
+                  <div class="qi-action" style="background:rgba(56,189,248,0.12);color:#38bdf8">Review</div>
+                  <div class="qi-time">2h ago</div>
+                </div>
+              </div>
+              <div class="queue-item">
+                <div class="qi-avatar av-amber">VN</div>
+                <div class="qi-info">
+                  <div class="qi-name">Vijay Nair</div>
+                  <div class="qi-detail">Updated snapshot · Added 2 loans · 5h ago</div>
+                </div>
+                <div class="qi-right">
+                  <div class="qi-action" style="background:rgba(56,189,248,0.12);color:#38bdf8">Review</div>
+                  <div class="qi-time">5h ago</div>
+                </div>
+              </div>
+              <div class="queue-item">
+                <div class="qi-avatar av-rose">DM</div>
+                <div class="qi-info">
+                  <div class="qi-name">Deepa Mohan</div>
+                  <div class="qi-detail">First snapshot · Referred by Arun · Yesterday</div>
+                </div>
+                <div class="qi-right">
+                  <div class="qi-action" style="background:rgba(56,189,248,0.12);color:#38bdf8">Review</div>
+                  <div class="qi-time">Yesterday</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Group: Critical Gaps -->
+          <div class="queue-group group-gaps">
+            <div class="queue-group-header">
+              <div class="queue-group-dot"></div>
+              <div class="queue-group-title">Critical Gaps</div>
+              <div class="queue-group-count">2</div>
+            </div>
+            <div class="queue-items">
+              <div class="queue-item">
+                <div class="qi-avatar av-coral">RK</div>
+                <div class="qi-info">
+                  <div class="qi-name">Rohit Kapoor</div>
+                  <div class="qi-detail">No term cover · 2 dependents · HI below threshold</div>
+                </div>
+                <div class="qi-right">
+                  <div class="qi-action" style="background:rgba(240,90,71,0.12);color:var(--coral-300)">Address Gap</div>
+                  <div class="qi-time">Urgent</div>
+                </div>
+              </div>
+              <div class="queue-item">
+                <div class="qi-avatar av-amber">LP</div>
+                <div class="qi-info">
+                  <div class="qi-name">Lakshmi Prasad</div>
+                  <div class="qi-detail">Employer cover lapsing · 90 days · No personal policy</div>
+                </div>
+                <div class="qi-right">
+                  <div class="qi-action" style="background:rgba(240,90,71,0.12);color:var(--coral-300)">Address Gap</div>
+                  <div class="qi-time">90d left</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Group: Pulses Overdue -->
+          <div class="queue-group group-overdue">
+            <div class="queue-group-header">
+              <div class="queue-group-dot"></div>
+              <div class="queue-group-title">Pulses Overdue</div>
+              <div class="queue-group-count">1</div>
+            </div>
+            <div class="queue-items">
+              <div class="queue-item">
+                <div class="qi-avatar av-violet">MR</div>
+                <div class="qi-info">
+                  <div class="qi-name">Meera Reddy</div>
+                  <div class="qi-detail">Quarterly pulse due 8 Apr · Not sent yet</div>
+                </div>
+                <div class="qi-right">
+                  <div class="qi-action" style="background:rgba(245,158,11,0.12);color:var(--amber-400)">Send Pulse</div>
+                  <div class="qi-time">4d late</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Right 40% -->
+      <div class="right-col">
+
+        <!-- Capture Link Card -->
+        <div class="capture-card">
+          <div class="card-header" style="padding:12px 18px 10px; border-bottom:1px solid var(--border);">
+            <div class="card-title">Your Capture Link</div>
+            <span class="chip chip-jade">Live</span>
+          </div>
+          <div class="capture-hero">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Share with prospects to collect their financial snapshot</div>
+            <div class="capture-url-row">
+              <div class="capture-url">pk.app/intake/rajesh-chandra-a7x2</div>
+              <button class="copy-btn" id="copyBtn" onclick="copyUrl(this)">Copy</button>
+            </div>
+            <div class="capture-share">
+              <button class="share-btn whatsapp">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.117 1.532 5.849L0 24l6.306-1.504A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.856 0-3.587-.504-5.073-1.379l-.362-.214-3.742.892.908-3.659-.236-.374A9.952 9.952 0 0 1 2 12c0-5.514 4.486-10 10-10s10 4.486 10 10-4.486 10-10 10z"/></svg>
+                WhatsApp
+              </button>
+              <button class="share-btn email">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                Email
+              </button>
+            </div>
+          </div>
+          <div class="capture-qr-toggle">
+            <span class="toggle-label">Show QR code</span>
+            <div class="toggle" id="qrToggle" onclick="toggleQR()">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <div class="qr-preview" id="qrPreview">
+            <div class="qr-box">
+              <!-- Simple QR pattern SVG -->
+              <svg viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg">
+                <rect width="84" height="84" fill="white"/>
+                <!-- TL finder -->
+                <rect x="4" y="4" width="26" height="26" fill="black"/>
+                <rect x="8" y="8" width="18" height="18" fill="white"/>
+                <rect x="12" y="12" width="10" height="10" fill="black"/>
+                <!-- TR finder -->
+                <rect x="54" y="4" width="26" height="26" fill="black"/>
+                <rect x="58" y="8" width="18" height="18" fill="white"/>
+                <rect x="62" y="12" width="10" height="10" fill="black"/>
+                <!-- BL finder -->
+                <rect x="4" y="54" width="26" height="26" fill="black"/>
+                <rect x="8" y="58" width="18" height="18" fill="white"/>
+                <rect x="12" y="62" width="10" height="10" fill="black"/>
+                <!-- Data modules (stylized) -->
+                <rect x="36" y="4" width="4" height="4" fill="black"/>
+                <rect x="44" y="4" width="4" height="4" fill="black"/>
+                <rect x="36" y="12" width="4" height="4" fill="black"/>
+                <rect x="44" y="12" width="4" height="4" fill="black"/>
+                <rect x="36" y="20" width="4" height="4" fill="black"/>
+                <rect x="4" y="36" width="4" height="4" fill="black"/>
+                <rect x="12" y="36" width="4" height="4" fill="black"/>
+                <rect x="20" y="36" width="4" height="4" fill="black"/>
+                <rect x="28" y="36" width="4" height="4" fill="black"/>
+                <rect x="36" y="36" width="4" height="4" fill="black"/>
+                <rect x="44" y="36" width="4" height="4" fill="black"/>
+                <rect x="52" y="36" width="4" height="4" fill="black"/>
+                <rect x="60" y="36" width="4" height="4" fill="black"/>
+                <rect x="68" y="36" width="4" height="4" fill="black"/>
+                <rect x="76" y="36" width="4" height="4" fill="black"/>
+                <rect x="36" y="44" width="4" height="4" fill="black"/>
+                <rect x="52" y="44" width="4" height="4" fill="black"/>
+                <rect x="60" y="52" width="4" height="4" fill="black"/>
+                <rect x="36" y="52" width="4" height="4" fill="black"/>
+                <rect x="44" y="52" width="4" height="4" fill="black"/>
+                <rect x="68" y="52" width="4" height="4" fill="black"/>
+                <rect x="76" y="52" width="4" height="4" fill="black"/>
+                <rect x="44" y="60" width="4" height="4" fill="black"/>
+                <rect x="60" y="60" width="4" height="4" fill="black"/>
+                <rect x="76" y="60" width="4" height="4" fill="black"/>
+                <rect x="36" y="68" width="4" height="4" fill="black"/>
+                <rect x="52" y="68" width="4" height="4" fill="black"/>
+                <rect x="60" y="68" width="4" height="4" fill="black"/>
+                <rect x="68" y="68" width="4" height="4" fill="black"/>
+                <rect x="44" y="76" width="4" height="4" fill="black"/>
+                <rect x="52" y="76" width="4" height="4" fill="black"/>
+                <rect x="68" y="76" width="4" height="4" fill="black"/>
+                <rect x="76" y="76" width="4" height="4" fill="black"/>
+              </svg>
+            </div>
+            <div class="qr-label">pk.app/intake/rajesh-chandra-a7x2</div>
+          </div>
+          <div class="capture-stats">
+            <div class="cstat">
+              <div class="cstat-val">34</div>
+              <div class="cstat-label">Link Visits</div>
+            </div>
+            <div class="cstat">
+              <div class="cstat-val">18</div>
+              <div class="cstat-label">Started</div>
+            </div>
+            <div class="cstat">
+              <div class="cstat-val">11</div>
+              <div class="cstat-label">Completed</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="activity-card">
+          <div class="card-header" style="padding:12px 14px 10px; border-bottom:1px solid var(--border);">
+            <div class="card-title">Recent Activity</div>
+            <span class="card-action">All →</span>
+          </div>
+          <div class="activity-item">
+            <div class="activity-dot" style="background:var(--jade)"></div>
+            <div class="activity-text"><strong>Priya Mehta</strong> completed financial snapshot</div>
+            <div class="activity-time">2h ago</div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-dot" style="background:#38bdf8"></div>
+            <div class="activity-text"><strong>Arun Kumar</strong> viewed your capture link</div>
+            <div class="activity-time">3h ago</div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-dot" style="background:var(--coral)"></div>
+            <div class="activity-text">VaNi flagged coverage gap for <strong>Rohit Kapoor</strong></div>
+            <div class="activity-time">5h ago</div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-dot" style="background:var(--amber-400)"></div>
+            <div class="activity-text"><strong>Sunita Rao</strong> added via WhatsApp share</div>
+            <div class="activity-time">Yesterday</div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-dot" style="background:var(--jade)"></div>
+            <div class="activity-text"><strong>Vijay Nair</strong> updated loan information in snapshot</div>
+            <div class="activity-time">Yesterday</div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-dot" style="background:var(--graphite-600)"></div>
+            <div class="activity-text">Monthly practice report generated</div>
+            <div class="activity-time">2d ago</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- 4. PRACTICE PULSE                             -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div>
+      <div class="section-label">Practice Pulse</div>
+      <div class="pulse-grid">
+        <div class="pulse-card">
+          <div class="pulse-card-header">
+            <div class="pulse-card-title">Pipeline Funnel</div>
+            <div class="pulse-card-meta">147 contacts · This quarter</div>
+          </div>
+          <div class="pulse-chart-area">
+            <canvas id="funnelChart" height="160"></canvas>
+          </div>
+        </div>
+        <div class="pulse-card">
+          <div class="pulse-card-header">
+            <div class="pulse-card-title">Conversion Trend</div>
+            <div class="pulse-card-meta">12-week rolling · Snapshot-first</div>
+          </div>
+          <div class="pulse-chart-area">
+            <canvas id="conversionChart" height="160"></canvas>
+          </div>
+        </div>
+        <div class="pulse-card">
+          <div class="pulse-card-header">
+            <div class="pulse-card-title">AUM Growth</div>
+            <div class="pulse-card-meta">₹ Crore · Financial year</div>
+          </div>
+          <div class="pulse-chart-area">
+            <canvas id="aumChart" height="160"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- 5. AMBASSADOR CARD                            -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div>
+      <div class="section-label">Practice Builder Program</div>
+      <div class="ambassador-card">
+        <div class="ambassador-header">
+          <div class="amb-icon">🏆</div>
+          <div>
+            <div class="amb-title">Practice Builder</div>
+            <div class="amb-sub">Grow your practice · Earn recognition · Unlock platform benefits</div>
+          </div>
+          <div class="amb-progress-area">
+            <div class="amb-progress-label">Silver · 3 referrals to Gold</div>
+            <div class="amb-progress-bar">
+              <div class="amb-progress-fill" style="width:62%"></div>
+            </div>
+            <div class="amb-progress-subtext">7 of 10 referrals active</div>
+          </div>
+        </div>
+
+        <div class="ambassador-tiers">
+          <div class="tier bronze">
+            <div class="tier-badge">
+              <span class="tier-icon">🥉</span>
+              Bronze
+            </div>
+            <div class="tier-threshold">3+ active referrals</div>
+            <div class="tier-rewards">
+              <div class="tier-reward">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                1 month ProessionalKey free
+              </div>
+              <div class="tier-reward">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                50 VaNi analysis credits
+              </div>
+              <div class="tier-reward">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                Practice Builder badge
+              </div>
+            </div>
+          </div>
+          <div class="tier silver active">
+            <div class="tier-badge">
+              <span class="tier-icon">🥈</span>
+              Silver
+            </div>
+            <div class="tier-threshold">7+ active referrals</div>
+            <div class="tier-rewards">
+              <div class="tier-reward">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                3 months free (cumulative)
+              </div>
+              <div class="tier-reward">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                200 VaNi analysis credits
+              </div>
+              <div class="tier-reward">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                Priority feature access
+              </div>
+            </div>
+            <div class="tier-current-badge">Your tier</div>
+          </div>
+          <div class="tier gold">
+            <div class="tier-badge">
+              <span class="tier-icon">🥇</span>
+              Gold
+            </div>
+            <div class="tier-threshold">10+ active referrals</div>
+            <div class="tier-rewards">
+              <div class="tier-reward">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                6 months free annually
+              </div>
+              <div class="tier-reward">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                500 VaNi credits/year
+              </div>
+              <div class="tier-reward">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                Co-marketing opportunities
+              </div>
+              <div class="tier-reward">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                Advisory board nomination
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ambassador-footer">
+          <div class="amb-referral-count">
+            <strong>7</strong> active referrals · <strong>2</strong> pending · <strong>3</strong> more to Gold
+          </div>
+          <button class="amb-cta">Share Referral Link →</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /shell -->
+
+<script>
+// ── Date / Time ────────────────────────────────────────
+(function() {
+  const now = new Date();
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const d = document.getElementById('topbarDate');
+  if (d) d.textContent = `${days[now.getDay()]} · ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  const bt = document.getElementById('briefTime');
+  if (bt) bt.textContent = now.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
+})();
+
+// ── Copy URL ───────────────────────────────────────────
+function copyUrl(btn) {
+  navigator.clipboard && navigator.clipboard.writeText('https://pk.app/intake/rajesh-chandra-a7x2');
+  btn.textContent = '✓ Copied';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+}
+
+// ── QR Toggle ──────────────────────────────────────────
+function toggleQR() {
+  const t = document.getElementById('qrToggle');
+  const p = document.getElementById('qrPreview');
+  t.classList.toggle('on');
+  p.classList.toggle('visible');
+}
+
+// ── KPI Strip ──────────────────────────────────────────
+const kpis = [
+  { label: 'AUM Under Advice', value: '₹8.4', unit: '', suffix: 'Cr', delta: '+6.2%', dir: 'up', period: 'MoM', color: 'var(--jade-300)', sparkData: [72,74,71,76,78,80,82,84] },
+  { label: 'Active Clients',   value: '147',  unit: '', suffix: '',   delta: '+9',    dir: 'up', period: 'MoM', color: '#38bdf8',          sparkData: [120,124,128,132,135,138,142,147] },
+  { label: 'Prospects',        value: '38',   unit: '', suffix: '',   delta: '+4',    dir: 'up', period: 'MoM', color: 'var(--amber-400)', sparkData: [28,30,29,32,33,35,36,38] },
+  { label: 'Conversion Rate',  value: '34',   unit: '', suffix: '%',  delta: '+3.1%', dir: 'up', period: 'MoM', color: 'var(--jade-300)', sparkData: [26,28,27,29,30,31,33,34] },
+  { label: 'Weekly Activity',  value: '22',   unit: '', suffix: ' pts', delta: '-3',   dir: 'down', period: 'vs last wk', color: 'var(--coral-300)', sparkData: [30,28,25,28,26,28,25,22] },
+];
+
+const strip = document.getElementById('kpiStrip');
+kpis.forEach((k, i) => {
+  const card = document.createElement('div');
+  card.className = 'kpi-card';
+  card.innerHTML = `
+    <div class="kpi-accent" style="background:${k.color}"></div>
+    <div class="kpi-label">${k.label}</div>
+    <div class="kpi-value">${k.unit}${k.value}<span class="unit">${k.suffix}</span></div>
+    <div class="kpi-meta">
+      <div class="kpi-delta ${k.dir}">${k.dir==='up'?'↑':'↓'} ${k.delta}</div>
+      <div class="kpi-period">${k.period}</div>
+      <div class="kpi-spark"><canvas id="spark${i}" width="52" height="24"></canvas></div>
+    </div>
+  `;
+  strip.appendChild(card);
+});
+
+// Render sparklines after DOM insertion
+requestAnimationFrame(() => {
+  kpis.forEach((k, i) => {
+    const ctx = document.getElementById(`spark${i}`);
+    if (!ctx) return;
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: k.sparkData.map((_,j) => j),
+        datasets: [{
+          data: k.sparkData,
+          borderColor: k.color,
+          borderWidth: 1.5,
+          fill: true,
+          backgroundColor: k.color.replace('var(','').replace(')','') + '22',
+          tension: 0.4,
+          pointRadius: 0,
+        }]
+      },
+      options: {
+        responsive: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: { x: { display: false }, y: { display: false } },
+        animation: false,
+      }
+    });
+  });
+});
+
+// ── Chart.js defaults ──────────────────────────────────
+Chart.defaults.color = 'rgba(169,174,200,0.6)';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.font.family = "'Inter Tight', sans-serif";
+Chart.defaults.font.size = 11;
+
+// ── Funnel Chart ───────────────────────────────────────
+new Chart(document.getElementById('funnelChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Contacts', 'Snapshots', 'Reviewed', 'Proposed', 'Converted'],
+    datasets: [{
+      data: [147, 89, 62, 44, 38],
+      backgroundColor: [
+        'rgba(34,180,142,0.25)',
+        'rgba(34,180,142,0.35)',
+        'rgba(34,180,142,0.5)',
+        'rgba(34,180,142,0.65)',
+        'rgba(34,180,142,0.85)',
+      ],
+      borderColor: 'rgba(34,180,142,0.6)',
+      borderWidth: 1,
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: { legend: { display: false }, tooltip: {
+      backgroundColor: 'rgba(22,24,32,0.95)',
+      borderColor: 'rgba(255,255,255,0.1)',
+      borderWidth: 1,
+      titleColor: '#f0f2fa',
+      bodyColor: '#a9aec8',
+    }},
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { size: 10 } } },
+      y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+
+// ── Conversion Trend ───────────────────────────────────
+const weeks = ['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12'];
+new Chart(document.getElementById('conversionChart'), {
+  type: 'line',
+  data: {
+    labels: weeks,
+    datasets: [
+      {
+        label: 'With Snapshot',
+        data: [28,30,29,32,33,35,36,38,37,40,42,44],
+        borderColor: 'rgba(34,180,142,0.9)',
+        backgroundColor: 'rgba(34,180,142,0.06)',
+        borderWidth: 2, fill: true, tension: 0.4, pointRadius: 0,
+        pointHoverRadius: 4,
+      },
+      {
+        label: 'Without',
+        data: [18,17,20,19,21,20,22,21,20,23,22,24],
+        borderColor: 'rgba(107,113,149,0.6)',
+        backgroundColor: 'transparent',
+        borderWidth: 1.5, fill: false, tension: 0.4, pointRadius: 0,
+        borderDash: [4,3],
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: true, labels: { boxWidth: 10, font: { size: 10 }, color: '#a9aec8', padding: 10 } },
+      tooltip: {
+        backgroundColor: 'rgba(22,24,32,0.95)',
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
+      }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { size: 9 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { size: 9 } } }
+    }
+  }
+});
+
+// ── AUM Growth ─────────────────────────────────────────
+const aumMonths = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+new Chart(document.getElementById('aumChart'), {
+  type: 'bar',
+  data: {
+    labels: aumMonths,
+    datasets: [{
+      label: 'AUM (₹Cr)',
+      data: [5.1, 5.4, 5.6, 5.9, 6.1, 6.4, 6.8, 7.0, 7.2, 7.6, 8.0, 8.4],
+      backgroundColor: aumMonths.map((_, i) =>
+        i === 11 ? 'rgba(34,180,142,0.85)' : 'rgba(34,180,142,0.25)'
+      ),
+      borderColor: 'rgba(34,180,142,0.5)',
+      borderWidth: 1,
+      borderRadius: 3,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(22,24,32,0.95)',
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
+        callbacks: {
+          label: ctx => ` ₹${ctx.raw}Cr`
+        }
+      }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { size: 9 }, callback: v => `₹${v}` } }
+    }
+  }
+});
+</script>
+</body>
+</html>
