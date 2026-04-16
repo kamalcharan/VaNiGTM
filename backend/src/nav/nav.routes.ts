@@ -232,7 +232,7 @@ export function createNavRouter(pool: Pool): Router {
 
           // Verify scheme exists (same as single add)
           const schemeResult = await pool.query(
-            'SELECT scheme_code, scheme_name, amc, active, closure_date FROM ki_schemes WHERE scheme_code = $1',
+            'SELECT scheme_code, scheme_name, nav_name, amc, active, closure_date FROM ki_schemes WHERE scheme_code = $1',
             [schemeCode],
           );
           if (schemeResult.rows.length === 0) {
@@ -274,11 +274,11 @@ export function createNavRouter(pool: Pool): Router {
             [isNew ? 'success' : 'duplicate', scheme.scheme_code, rowId],
           );
 
-          // Seed two aliases per new bookmark (kewalinvest parity):
+          // Seed two aliases per bookmark (kewalinvest parity):
           //   Alias 1: raw CSV name (source='csv_upload') — what the tenant calls this scheme
-          //   Alias 2: master scheme_name (source='auto')  — canonical name from ki_schemes
-          // Track alias result and write back to mapped_data so the import dashboard can display it.
-          if (isNew) {
+          //   Alias 2: ki_schemes.nav_name (source='master_nav') — equivalent of scheme_nav_name
+          // Always seed regardless of isNew — re-imports must refresh aliases too.
+          {
             let aliasStatus: 'created' | 'exists' | 'failed' = 'exists';
             const aliasLabel = mapped.scheme_name || scheme.scheme_name;
             try {
@@ -292,12 +292,14 @@ export function createNavRouter(pool: Pool): Router {
                 );
                 aliasStatus = ar.rows.length > 0 ? 'created' : 'exists';
               }
-              await pool.query(
-                `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
-                 VALUES ($1, $2, 'auto')
-                 ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING`,
-                [scheme.scheme_code, scheme.scheme_name],
-              );
+              if (scheme.nav_name && scheme.nav_name.trim()) {
+                await pool.query(
+                  `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
+                   VALUES ($1, $2, 'master_nav')
+                   ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING`,
+                  [scheme.scheme_code, scheme.nav_name],
+                );
+              }
             } catch {
               aliasStatus = 'failed';
             }

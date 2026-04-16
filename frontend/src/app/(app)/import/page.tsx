@@ -70,6 +70,7 @@ export default function ImportPage() {
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [mappingAnimated, setMappingAnimated] = useState(false);
+  const [lookupMethod, setLookupMethod] = useState<'iwell_code' | 'customer_name' | 'both'>('iwell_code');
 
   /* ── Step 1: Type Selection ──────────────────────── */
 
@@ -155,7 +156,12 @@ export default function ImportPage() {
       } else {
         // Standard ETL pipeline (scheme master, customer, transaction)
         const session = await apiFetch<SessionInfo>(API.etl.createSession, {
-          body: { file_id: fileInfo.file_id, import_type: importType, field_mappings: mapping },
+          body: {
+            file_id: fileInfo.file_id,
+            import_type: importType,
+            field_mappings: mapping,
+            ...(importType === 'transaction' ? { customer_lookup_method: lookupMethod } : {}),
+          },
         });
         setSessionInfo(session);
         setStep('processing');
@@ -195,6 +201,7 @@ export default function ImportPage() {
     setSessionInfo(null);
     setResult(null);
     setMappingAnimated(false);
+    setLookupMethod('iwell_code');
   }
 
   /* ── VaNi insights for results ───────────────────── */
@@ -389,6 +396,44 @@ export default function ImportPage() {
               </span>
             </div>
           )}
+
+          {/* Customer Lookup Method — transaction imports only */}
+          {importType === 'transaction' && (() => {
+            const vendorLabel = tenant?.ext_ref_type_code
+              ? ({ CAMS: 'CAMS Code', KFINTECH: 'KFintech Code', IWELL: 'InvestWell Code', BSE_STAR: 'BSE StarMF Code', CUSTOM: 'Client Code' } as Record<string, string>)[tenant.ext_ref_type_code] ?? 'Client Code'
+              : 'Client Code';
+            const opts: { value: 'iwell_code' | 'customer_name' | 'both'; label: string; desc: string }[] = [
+              { value: 'iwell_code',     label: `${vendorLabel} Only`,          desc: `Match using ${vendorLabel} from the CSV — fastest, most precise` },
+              { value: 'customer_name', label: 'Customer Name',                desc: 'Match by name; use PAN as tiebreaker for duplicates' },
+              { value: 'both',          label: `${vendorLabel} + Name Fallback`, desc: `Try ${vendorLabel} first, fall back to name if not found` },
+            ];
+            return (
+              <div className={s.lookupSection}>
+                <div className={s.lookupTitle}>Customer Lookup Method</div>
+                <div className={s.lookupDesc}>Choose how transaction records are matched to customers</div>
+                <div className={s.lookupGrid}>
+                  {opts.map((opt) => (
+                    <button
+                      key={opt.value}
+                      className={`${s.lookupOption} ${lookupMethod === opt.value ? s.lookupOptionSelected : ''}`}
+                      onClick={() => setLookupMethod(opt.value)}
+                    >
+                      {lookupMethod === opt.value && <span className={s.lookupOptionCheck}>✓</span>}
+                      <span className={s.lookupOptionLabel}>{opt.label}</span>
+                      <span className={s.lookupOptionDesc}>{opt.desc}</span>
+                    </button>
+                  ))}
+                </div>
+                {lookupMethod === 'customer_name' && (
+                  <div className={s.lookupNote}>
+                    Name matching requires an exact match after removing salutations (Mr, Mrs, Dr, etc.).
+                    If multiple customers share the same name, PAN is used as a tiebreaker.
+                    Records without PAN will fail if duplicates are found.
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Mapping table */}
           <div className={s.mappingCard}>
