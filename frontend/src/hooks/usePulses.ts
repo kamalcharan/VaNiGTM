@@ -189,6 +189,47 @@ export interface PulseQueueStats {
   total_configs:       number;
 }
 
+/* ── Queue types & hook ──────────────────────────────────────────────────────── */
+
+export interface PulseQueueItem {
+  config_id:         number;
+  client_id:         number;
+  frequency:         'monthly' | 'bimonthly' | 'quarterly' | 'custom';
+  template:          string;
+  medium:            string;
+  jtd_auto_schedule: boolean;
+  vani_auto_brief:   boolean;
+  assigned_to:       string | null;
+  client_name:       string;
+  client_prefix:     string;
+  initials:          string;
+  session_id:        number | null;
+  scheduled_at:      string | null;
+  session_status:    string | null;
+  started_at:        string | null;
+  ended_at:          string | null;
+  duration_minutes:  number | null;
+  session_medium:    string | null;
+  vani_brief:        string | null;
+  urgency:           'overdue' | 'due_soon' | 'upcoming' | 'completed' | 'no_session';
+  days_from_now:     number | null;
+  last_completed_at: string | null;
+  completed_ytd:     number;
+}
+
+export interface ListPulseQueueParams {
+  urgency?:   'overdue' | 'due_soon' | 'upcoming' | 'completed' | 'no_session';
+  frequency?: 'monthly' | 'bimonthly' | 'quarterly' | 'custom';
+  limit?:     number;
+  offset?:    number;
+}
+
+export function usePulseQueue(params: ListPulseQueueParams = {}) {
+  return useSkillQuery<{ items: PulseQueueItem[]; stats: PulseQueueStats; total: number }>(
+    'pulse-skill', 'list_pulse_queue', params as Record<string, unknown>,
+  );
+}
+
 /* ── Session hooks ───────────────────────────────────────────────────────────── */
 
 export function usePulseConfig(clientId: number | null | undefined) {
