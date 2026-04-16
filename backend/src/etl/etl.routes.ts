@@ -584,6 +584,8 @@ export function createEtlRouter(pool: Pool): Router {
 
       } else if (session.import_type === 'transaction') {
         await pool.query('SELECT * FROM ki_process_txn_import_session($1, $2)', [sessionId, session.customer_lookup_method || 'iwell_code']);
+        // Rebuild holdings after reprocessing orphan/failed rows
+        await pool.query('SELECT * FROM ki_rebuild_holdings_from_txn($1, $2, NULL)', [session.tenant_id, session.is_live]);
         await reconcileSessionCounters(sessionId);
         const sess = await pool.query('SELECT successful_records,failed_records,duplicate_records,orphan_records FROM ki_import_sessions WHERE id=$1',[sessionId]);
         const c = sess.rows[0] as any;
@@ -927,6 +929,29 @@ export function createEtlRouter(pool: Pool): Router {
     } catch (err: any) {
       console.error('[ETL:delete-staging]', err);
       res.status(500).json({ error: { code: 'DELETE_FAILED', message: 'Failed to delete staging data' } });
+    }
+  });
+
+  /* ── POST /rebuild-holdings — Recompute all holdings from transactions ── */
+
+  router.post('/rebuild-holdings', async (req, res) => {
+    try {
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const result = await pool.query(
+        'SELECT * FROM ki_rebuild_holdings_from_txn($1, $2, NULL)',
+        [auth.tenant_id, auth.is_live],
+      );
+      const row = result.rows[0] as any;
+      res.json({
+        message: 'Holdings rebuilt from transactions',
+        updated: Number(row.updated_count),
+        zeroed: Number(row.zeroed_count),
+      });
+    } catch (err: any) {
+      console.error('[ETL:rebuild-holdings]', err);
+      res.status(500).json({ error: { code: 'REBUILD_FAILED', message: err.message || 'Holdings rebuild failed' } });
     }
   });
 

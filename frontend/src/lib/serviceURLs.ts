@@ -247,6 +247,12 @@ export const API = {
       auth: true,
       description: 'Reconcile session counters (successful/failed/duplicate/orphan) from actual staging row statuses',
     },
+    rebuildHoldings: {
+      method: 'POST',
+      path: '/api/v1/etl/rebuild-holdings',
+      auth: true,
+      description: 'Recompute ki_holdings units and invested amounts from all transactions for this tenant/environment',
+    },
   },
 
   /* ── NAV ──────────────────────────────────────────── */

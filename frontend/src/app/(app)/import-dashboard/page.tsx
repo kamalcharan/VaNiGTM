@@ -214,6 +214,7 @@ export default function ImportDashboardPage() {
   const [reprocessingId, setReprocessingId] = useState<number | null>(null);
   const [recordsVersion, setRecordsVersion] = useState(0);
   const [syncingStats, setSyncingStats] = useState(false);
+  const [rebuildingHoldings, setRebuildingHoldings] = useState(false);
 
   // Derived: filtered session list + per-type counts (client-side — no re-fetch on filter change)
   const sessions = useMemo(() =>
@@ -315,6 +316,19 @@ export default function ImportDashboardPage() {
     }
   }
 
+  async function handleRebuildHoldings() {
+    if (rebuildingHoldings) return;
+    setRebuildingHoldings(true);
+    try {
+      const data = await apiFetch<{ updated: number; zeroed: number }>(API.etl.rebuildHoldings);
+      showToast({ message: `Holdings rebuilt — ${data.updated} schemes updated`, type: 'success' });
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Rebuild failed', type: 'error' });
+    } finally {
+      setRebuildingHoldings(false);
+    }
+  }
+
   async function handlePatchRecord() {
     if (!selectedSession || !drawerRecord || patchingRecord) return;
     setPatchingRecord(true);
@@ -374,6 +388,9 @@ export default function ImportDashboardPage() {
           </>
         ) : undefined}
         actions={<>
+          <VdfButton variant="outline" size="sm" onClick={handleRebuildHoldings} disabled={rebuildingHoldings}>
+            {rebuildingHoldings ? 'Rebuilding…' : '⟳ Rebuild Holdings'}
+          </VdfButton>
           <div className={s.userBadge}>{initials}</div>
           <VdfButton variant="primary" size="sm" onClick={() => router.push('/import')}>+ New Import</VdfButton>
         </>}

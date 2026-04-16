@@ -188,6 +188,7 @@ LEFT JOIN LATERAL (
 ) latest_nav ON true
 
 WHERE h.tenant_id = $tenant_id
+  AND h.is_live   = $is_live
   AND h.client_id = $client_id
   AND h.units     > 0
   -- Exclude schemes that already have an explicit assignment in Part 1
