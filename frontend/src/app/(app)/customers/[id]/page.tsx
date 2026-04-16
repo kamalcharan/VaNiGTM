@@ -902,7 +902,8 @@ function CrmDataTab({ client }: { client: Client }) {
 /* ── Assets Tab ──────────────────────────────────────── */
 
 interface AssetAssignmentItem {
-  assignment_id:           number;
+  assignment_id:           number | null;
+  has_assignment:          boolean;
   asset_type_id:           number;
   asset_type_code:         string;
   asset_type_name:         string;
@@ -983,6 +984,7 @@ function AssetsTab({ clientId }: { clientId: number }) {
   }
 
   function openEdit(a: AssetAssignmentItem) {
+    if (!a.assignment_id) return;
     setEditingAssignment({
       assignment_id:          a.assignment_id,
       asset_type_id:          a.asset_type_id,
@@ -1142,8 +1144,8 @@ function AssetsTab({ clientId }: { clientId: number }) {
                         </span>
                       )}
 
-                      {/* Edit / Delete buttons */}
-                      <div className={s.assetCardActions}>
+                      {/* Edit / Delete buttons — only for explicit assignments */}
+                      {a.has_assignment && <div className={s.assetCardActions}>
                         <button
                           className={s.assetActionBtn}
                           title="Edit investment"
@@ -1158,7 +1160,7 @@ function AssetsTab({ clientId }: { clientId: number }) {
                           <button
                             className={`${s.assetActionBtn} ${s.assetActionBtnDanger}`}
                             title="Confirm delete"
-                            onClick={() => handleDelete(a.assignment_id)}
+                            onClick={() => a.assignment_id && handleDelete(a.assignment_id)}
                             disabled={isDeleting}
                           >
                             {isDeleting ? '…' : '✓'}
@@ -1186,7 +1188,7 @@ function AssetsTab({ clientId }: { clientId: number }) {
                             ✕
                           </button>
                         )}
-                      </div>
+                      </div>}
                     </div>
 
                     {/* Values row */}

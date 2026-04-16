@@ -16,7 +16,8 @@ import * as path from 'path';
 /* ── Raw DB row ──────────────────────────────────────────────────────────── */
 
 interface AssignmentRow {
-  assignment_id:            number;
+  assignment_id:            number | null;
+  has_assignment:           boolean;
   scheme_code:              string | null;
   investment_type:          string | null;
   principal_amount:         string | null;
@@ -52,7 +53,8 @@ interface AssignmentRow {
 /* ── Exported shapes ────────────────────────────────────────────────────── */
 
 export interface AssetAssignmentItem {
-  assignment_id:          number;
+  assignment_id:          number | null;
+  has_assignment:         boolean;
   asset_type_code:        string;
   asset_type_name:        string;
   category:               string;
@@ -137,6 +139,7 @@ export async function get_asset_assignments(
   /* ── Map rows to typed items ── */
   const assignments: AssetAssignmentItem[] = result.rows.map((r) => ({
     assignment_id:           r.assignment_id,
+    has_assignment:          r.has_assignment,
     asset_type_code:         r.asset_type_code,
     asset_type_name:         r.asset_type_name,
     category:                r.category,
