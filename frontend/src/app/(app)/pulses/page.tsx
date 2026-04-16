@@ -1,25 +1,33 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { VdfPageHeader } from '@/components/vdf/page-header/VdfPageHeader';
 import { usePulses, type PulseItem } from '@/hooks/usePulses';
 import { PulseListPanel } from '@/components/pulses/PulseListPanel';
 import { CreatePulseModal } from '@/components/pulses/CreatePulseModal';
+import { useToast } from '@/components/toast';
 import s from './pulses-page.module.css';
 
 export default function PulsesPage() {
   const [activeStatus, setActiveStatus] = useState<'open' | 'done' | 'all'>('open');
   const [showCreate, setShowCreate]     = useState(false);
   const [originFilter, setOriginFilter] = useState<'all' | 'manual' | 'system'>('all');
+  const { showToast } = useToast();
 
   const queryStatus = activeStatus === 'all' ? undefined : activeStatus;
   const queryOrigin = originFilter === 'all'  ? undefined : originFilter;
 
-  const { data, isLoading } = usePulses({
+  const { data, isLoading, isError, error } = usePulses({
     status:     queryStatus,
     origin:     queryOrigin as 'system' | 'manual' | undefined,
     limit:      100,
   });
+
+  useEffect(() => {
+    if (isError) {
+      showToast({ message: (error as Error)?.message || 'Failed to load follow-ups', type: 'error' });
+    }
+  }, [isError, error, showToast]);
 
   const pulses: PulseItem[] = data?.data?.pulses ?? [];
   const total:  number      = data?.data?.total  ?? 0;

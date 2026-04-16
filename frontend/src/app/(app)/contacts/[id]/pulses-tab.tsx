@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePulses, type PulseItem } from '@/hooks/usePulses';
 import { PulseListPanel } from '@/components/pulses/PulseListPanel';
 import { CreatePulseModal } from '@/components/pulses/CreatePulseModal';
+import { useToast } from '@/components/toast';
 
 interface Props {
   contactId:   number;
@@ -15,14 +16,21 @@ interface Props {
 export function PulsesTab({ contactId, contactName, isClient, clientId }: Props) {
   const [activeStatus, setActiveStatus] = useState<'open' | 'done' | 'all'>('open');
   const [showCreate,   setShowCreate]   = useState(false);
+  const { showToast } = useToast();
 
   const queryStatus = activeStatus === 'all' ? undefined : activeStatus;
 
-  const { data, isLoading } = usePulses(
+  const { data, isLoading, isError, error } = usePulses(
     isClient && clientId
       ? { client_id: clientId,   status: queryStatus, limit: 100 }
       : { contact_id: contactId, status: queryStatus, limit: 100 },
   );
+
+  useEffect(() => {
+    if (isError) {
+      showToast({ message: (error as Error)?.message || 'Failed to load follow-ups', type: 'error' });
+    }
+  }, [isError, error, showToast]);
 
   const pulses: PulseItem[] = data?.data?.pulses ?? [];
 
