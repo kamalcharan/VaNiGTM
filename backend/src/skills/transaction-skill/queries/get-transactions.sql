@@ -82,9 +82,7 @@ WHERE t.tenant_id  = $tenant_id
        OR t.portfolio_flag = false)
   AND ($ext_ref_id_search::text IS NULL
        OR cl.ext_ref_id ILIKE '%' || $ext_ref_id_search::text || '%')
-  -- import_session_id filter: uncomment after running migration 049
-  -- AND ($import_session_id::integer IS NULL
-  --      OR t.import_session_id = $import_session_id::integer)
+  -- TODO(migration-049): add import_session_id filter here once column exists
 
 /* ORDER_BY_PLACEHOLDER */
 LIMIT  $limit
