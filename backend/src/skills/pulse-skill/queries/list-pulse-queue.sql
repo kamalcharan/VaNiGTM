@@ -14,14 +14,14 @@ SELECT
     pc.assigned_to,
 
     -- Client display
-    c.name                          AS client_name,
-    c.prefix                        AS client_prefix,
+    ct.name                         AS client_name,
+    ct.prefix                       AS client_prefix,
     UPPER(
-        LEFT(TRIM(c.name), 1) ||
+        LEFT(TRIM(ct.name), 1) ||
         COALESCE(
             NULLIF(
-                LEFT(SPLIT_PART(TRIM(c.name), ' ', -1), 1),
-                LEFT(TRIM(c.name), 1)
+                LEFT(SPLIT_PART(TRIM(ct.name), ' ', -1), 1),
+                LEFT(TRIM(ct.name), 1)
             ),
             ''
         )
@@ -73,7 +73,10 @@ SELECT
 
 FROM  ki_pulse_config pc
 JOIN  ki_clients c
-  ON  c.id = pc.client_id
+  ON  c.id        = pc.client_id
+  AND c.tenant_id = pc.tenant_id
+JOIN  ki_contacts ct
+  ON  ct.id = c.contact_id
 
 -- Latest session per config (any status)
 LEFT JOIN LATERAL (
