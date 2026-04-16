@@ -8,6 +8,11 @@ import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfButton, VdfStatusBadge, VdfTabs, VdfEmptyState, VdfPageHeader,
 } from '@/components/vdf';
+import { PulseConfigCard }      from '@/components/pulses/PulseConfigCard';
+import { PulseHistoryTimeline } from '@/components/pulses/PulseHistoryTimeline';
+import { PulseListPanel }       from '@/components/pulses/PulseListPanel';
+import { CreatePulseModal }     from '@/components/pulses/CreatePulseModal';
+import { usePulses, useClientPulseHistory } from '@/hooks/usePulses';
 import s from './client-profile.module.css';
 import f from '@/styles/forms.module.css';
 
@@ -471,6 +476,62 @@ function AddressesTab({ addresses, clientId }: { addresses: Address[]; clientId:
   );
 }
 
+/* ── Pulses Tab ──────────────────────────────────────── */
+
+function ClientPulsesTab({ clientId, clientName }: { clientId: number; clientName: string }) {
+  const [activeStatus, setActiveStatus] = useState<'open' | 'done' | 'all'>('open');
+  const [showCreate, setShowCreate]     = useState(false);
+  const { showToast } = useToast();
+
+  const queryStatus = activeStatus === 'all' ? undefined : activeStatus;
+  const { data, isLoading: taskLoading, isError, error } = usePulses(
+    { client_id: clientId, status: queryStatus, limit: 100 },
+  );
+  const { data: historyData, isLoading: historyLoading } = useClientPulseHistory(clientId);
+
+  useEffect(() => {
+    if (isError) showToast({ message: (error as Error)?.message || 'Failed to load follow-ups', type: 'error' });
+  }, [isError, error, showToast]);
+
+  const pulses   = data?.data?.pulses   ?? [];
+  const sessions = historyData?.data?.sessions ?? [];
+
+  return (
+    <div className={s.pulsesPanel}>
+      <div className={s.pulseSection}>
+        <div className={s.pulseSectionLabel}>Pulse Setup</div>
+        <PulseConfigCard clientId={clientId} />
+      </div>
+      <div className={s.pulseSection}>
+        <div className={s.pulseSectionLabel}>Session History</div>
+        <PulseHistoryTimeline sessions={sessions} isLoading={historyLoading} />
+      </div>
+      <div className={s.pulseSection}>
+        <div className={s.pulseSectionLabel}>Follow-up Tasks</div>
+        <PulseListPanel
+          pulses={pulses}
+          isLoading={taskLoading}
+          activeStatus={activeStatus}
+          onStatusChange={setActiveStatus}
+          showSubject={false}
+          onAdd={() => setShowCreate(true)}
+          emptyMessage={
+            activeStatus === 'open'  ? 'No open follow-ups.' :
+            activeStatus === 'done'  ? 'No completed follow-ups yet.' :
+                                       'No follow-ups yet.'
+          }
+        />
+      </div>
+      <CreatePulseModal
+        isOpen={showCreate}
+        onClose={() => setShowCreate(false)}
+        clientId={clientId}
+        clientName={clientName}
+      />
+    </div>
+  );
+}
+
 /* ── Main Page ───────────────────────────────────────── */
 
 export default function ClientProfilePage() {
@@ -530,8 +591,9 @@ export default function ClientProfilePage() {
 
   const TABS = [
     { id: 'overview',   label: 'Overview' },
-    { id: 'channels',   label: 'Channels',   badge: client.channels.length > 0 ? client.channels.length : undefined },
-    { id: 'addresses',  label: 'Addresses',  badge: client.addresses.length > 0 ? client.addresses.length : undefined },
+    { id: 'channels',   label: 'Channels',  badge: client.channels.length > 0 ? client.channels.length : undefined },
+    { id: 'addresses',  label: 'Addresses', badge: client.addresses.length > 0 ? client.addresses.length : undefined },
+    { id: 'pulses',     label: 'Pulses' },
   ];
 
   return (
@@ -633,6 +695,7 @@ export default function ClientProfilePage() {
         {activeTab === 'overview'  && <OverviewTab client={client} clientId={clientId} />}
         {activeTab === 'channels'  && <ChannelsTab channels={client.channels} />}
         {activeTab === 'addresses' && <AddressesTab addresses={client.addresses} clientId={clientId} />}
+        {activeTab === 'pulses'    && <ClientPulsesTab clientId={clientId} clientName={`${client.prefix} ${client.name}`} />}
       </div>
     </div>
   );

@@ -127,3 +127,151 @@ export function useUpdatePulse(
 
   return { ...m, mutate };
 }
+
+/* ── Session types ───────────────────────────────────────────────────────────── */
+
+export interface PulseConfig {
+  id:                number;
+  client_id:         number;
+  contact_id:        number | null;
+  frequency:         'monthly' | 'bimonthly' | 'quarterly' | 'custom';
+  custom_days:       number | null;
+  template:          string;
+  medium:            string;
+  preferred_day:     string | null;
+  preferred_time:    string | null;
+  jtd_auto_schedule: boolean;
+  vani_auto_brief:   boolean;
+  vani_include_gaps: boolean;
+  client_reminder:   boolean;
+  assigned_to:       string | null;
+  is_active:         boolean;
+  created_at:        string;
+  updated_at:        string;
+}
+
+export interface PulseSessionAction {
+  id:           number;
+  text:         string;
+  owner_type:   'mfd' | 'client' | 'auto';
+  due_date:     string | null;
+  status:       'open' | 'done' | 'cancelled';
+  completed_at: string | null;
+}
+
+export interface PulseHistoryItem {
+  id:                number;
+  config_id:         number | null;
+  client_id:         number;
+  scheduled_at:      string;
+  started_at:        string | null;
+  ended_at:          string | null;
+  duration_minutes:  number | null;
+  status:            'scheduled' | 'prep_ready' | 'in_progress' | 'completed' | 'missed' | 'cancelled';
+  template:          string;
+  medium:            string;
+  meeting_notes:     string | null;
+  vani_summary:      string | null;
+  summary_confirmed: boolean;
+  report_generated:  boolean;
+  next_session_id:   number | null;
+  assigned_to:       string | null;
+  created_at:        string;
+  actions:           PulseSessionAction[];
+  gap_count:         number;
+}
+
+export interface PulseQueueStats {
+  overdue_count:       number;
+  due_this_week_count: number;
+  upcoming_count:      number;
+  completed_ytd:       number;
+  total_configs:       number;
+}
+
+/* ── Session hooks ───────────────────────────────────────────────────────────── */
+
+export function usePulseConfig(clientId: number | null | undefined) {
+  return useSkillQuery<{ config: PulseConfig | null }>(
+    'pulse-skill', 'get_pulse_config',
+    { client_id: clientId } as Record<string, unknown>,
+    { enabled: !!clientId },
+  );
+}
+
+export function useClientPulseHistory(
+  clientId: number | null | undefined,
+  params: { limit?: number; offset?: number } = {},
+) {
+  return useSkillQuery<{ sessions: PulseHistoryItem[]; total: number }>(
+    'pulse-skill', 'get_client_pulse_history',
+    { client_id: clientId, ...params } as Record<string, unknown>,
+    { enabled: !!clientId },
+  );
+}
+
+export function useUpsertPulseConfig(
+  onSuccess?: (config: PulseConfig) => void,
+  onError?: (msg: string) => void,
+) {
+  const qc = useQueryClient();
+  const m = useSkillMutation<{ config: PulseConfig }>('pulse-skill', 'upsert_pulse_config');
+
+  function mutate(params: Record<string, unknown>) {
+    m.mutate(params, {
+      onSuccess(res) {
+        void qc.invalidateQueries({ queryKey: ['skill', 'pulse-skill'] });
+        onSuccess?.(res.data.config);
+      },
+      onError(err) {
+        onError?.(err.message || 'Failed to save pulse config');
+      },
+    });
+  }
+
+  return { ...m, mutate };
+}
+
+export function useCreatePulseSession(
+  onSuccess?: () => void,
+  onError?: (msg: string) => void,
+) {
+  const qc = useQueryClient();
+  const m = useSkillMutation<{ session: PulseHistoryItem }>('pulse-skill', 'create_pulse_session');
+
+  function mutate(params: Record<string, unknown>) {
+    m.mutate(params, {
+      onSuccess() {
+        void qc.invalidateQueries({ queryKey: ['skill', 'pulse-skill'] });
+        onSuccess?.();
+      },
+      onError(err) {
+        onError?.(err.message || 'Failed to create session');
+      },
+    });
+  }
+
+  return { ...m, mutate };
+}
+
+export function useUpdatePulseSession(
+  onSuccess?: () => void,
+  onError?: (msg: string) => void,
+) {
+  const qc = useQueryClient();
+  const m = useSkillMutation<{ session: PulseHistoryItem }>('pulse-skill', 'update_pulse_session');
+
+  function mutate(params: Record<string, unknown>) {
+    m.mutate(params, {
+      onSuccess() {
+        void qc.invalidateQueries({ queryKey: ['skill', 'pulse-skill'] });
+        onSuccess?.();
+      },
+      onError(err) {
+        onError?.(err.message || 'Failed to update session');
+      },
+    });
+  }
+
+  return { ...m, mutate };
+}

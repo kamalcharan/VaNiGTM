@@ -1,0 +1,229 @@
+.timeline {
+  position: relative;
+}
+
+.item {
+  position: relative;
+  padding-left: 28px;
+  padding-bottom: 14px;
+}
+
+.item::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 16px;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-border);
+}
+
+.itemLast::before {
+  display: none;
+}
+
+.dot {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  z-index: 1;
+}
+
+.dotDone      { background: var(--color-success); border-color: var(--color-success); }
+.dotMissed    { background: var(--color-warning); border-color: var(--color-warning); }
+.dotCancelled { background: var(--color-muted);   border-color: var(--color-muted); }
+.dotActive    { background: var(--color-info);    border-color: var(--color-info); }
+.dotUpcoming  { background: var(--color-surface); border-color: var(--color-border); }
+
+/* Card */
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  overflow: hidden;
+}
+
+.card:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 60%, var(--color-border));
+}
+
+.cardExpanded {
+  border-color: var(--color-primary);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  flex-wrap: wrap;
+}
+
+.date {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  min-width: 88px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.type {
+  font-size: 0.73rem;
+  color: var(--color-muted);
+  flex: 1;
+}
+
+.medium {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+}
+
+.chip {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.chipDone      { background: color-mix(in srgb, var(--color-success) 14%, transparent); color: var(--color-success); }
+.chipMissed    { background: color-mix(in srgb, var(--color-warning) 14%, transparent); color: var(--color-warning); }
+.chipCancelled { background: color-mix(in srgb, var(--color-muted)   14%, transparent); color: var(--color-muted); }
+.chipActive    { background: color-mix(in srgb, var(--color-info)    14%, transparent); color: var(--color-info); }
+.chipPrep      { background: color-mix(in srgb, var(--color-primary) 14%, transparent); color: var(--color-primary); }
+.chipScheduled { background: color-mix(in srgb, var(--color-border)  60%, transparent); color: var(--color-muted); }
+
+.chevron {
+  font-size: 0.58rem;
+  color: var(--color-muted);
+  margin-left: auto;
+}
+
+/* Expanded body */
+
+.cardBody {
+  border-top: 1px solid var(--color-border);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.summaryLabel {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.vaniMark {
+  color: var(--color-primary);
+}
+
+.summaryText {
+  font-size: 0.79rem;
+  color: var(--color-fg);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.actionsLabel {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 6px;
+}
+
+.actionPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.actionPill {
+  font-size: 0.71rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--color-border) 50%, transparent);
+  color: var(--color-fg);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.actionPillDone {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.tick {
+  color: var(--color-success);
+  font-size: 0.62rem;
+  text-decoration: none !important;
+}
+
+.actionDue {
+  color: var(--color-muted);
+  font-size: 0.65rem;
+  text-decoration: none !important;
+}
+
+.gapNote {
+  font-size: 0.72rem;
+  color: var(--color-warning);
+  font-weight: 500;
+}
+
+/* Loading */
+
+.skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeletonRow {
+  height: 50px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-surface) 80%, var(--color-border));
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+/* Empty */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 44px 20px;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.empty p {
+  font-size: 0.8rem;
+  margin: 0;
+}
