@@ -498,9 +498,10 @@ export default function ImportDashboardPage() {
                     ))}
                   </div>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    {/* Show Sync when session is completed but counters look wrong */}
-                    {selectedSession.total_records > 0 &&
-                      selectedSession.successful_records + selectedSession.failed_records + selectedSession.duplicate_records + (selectedSession.orphan_records ?? 0) === 0 && (
+                    {/* Show Sync when session is complete but counters don't add up to total */}
+                    {['completed', 'completed_with_errors'].includes(selectedSession.status) &&
+                      selectedSession.total_records > 0 &&
+                      (selectedSession.successful_records + selectedSession.failed_records + selectedSession.duplicate_records + (selectedSession.orphan_records ?? 0)) < selectedSession.total_records && (
                       <button style={{ color: 'var(--color-warning)', fontSize: '0.72rem', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
                         onClick={handleSyncStats} disabled={syncingStats} title="Session counters are out of sync — click to recount from staging">
                         ⚠ {syncingStats ? 'Syncing...' : 'Sync Stats'}
