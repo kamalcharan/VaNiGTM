@@ -17,10 +17,13 @@ interface Session {
   id: number; import_type: string; status: string;
   total_records: number; processed_records: number;
   successful_records: number; failed_records: number; duplicate_records: number;
+  orphan_records: number;
   original_filename: string | null; created_at: string;
   staging_completed_at: string | null;
   processing_started_at: string | null;
   processing_completed_at: string | null;
+  txn_date_min: string | null;
+  txn_date_max: string | null;
 }
 
 interface StagingRecord {
@@ -39,6 +42,7 @@ const STATUS_MAP: Record<string, { label: string; color: BadgeVariant }> = {
   staged: { label: 'Staged', color: 'info' },
   pending: { label: 'Pending', color: 'muted' },
   failed: { label: 'Failed', color: 'danger' },
+  orphan:   { label: 'Orphan',    color: 'warning' },
   success: { label: 'Added', color: 'success' },
   duplicate: { label: 'Duplicate', color: 'muted' },  // already tracked — rejected, no action
 };
@@ -52,6 +56,12 @@ const ALIAS_STATUS_MAP: Record<string, { label: string; color: BadgeVariant }> =
 function timeAgo(iso: string): string {
   const h = Math.floor((Date.now() - new Date(iso).getTime()) / 3600000);
   if (h < 1) return 'Just now'; if (h < 24) return `${h}h ago`; return `${Math.floor(h / 24)}d ago`;
+}
+
+function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 /* ── Column definitions — one entry per import type ─── */
@@ -89,11 +99,12 @@ const COL_DEFS: Record<string, ColDef[]> = {
   ],
   transaction: [
     { header: '#',            kind: 'row' },
-    { header: 'Scheme Code',  kind: 'data', key: 'scheme_code',        mono: true },
-    { header: 'Type',         kind: 'data', key: 'transaction_type',   bold: true },
-    { header: 'Amount',       kind: 'data', key: 'amount',             mono: true },
-    { header: 'Date',         kind: 'data', key: 'transaction_date',   muted: true },
-    { header: 'Folio',        kind: 'data', key: 'folio_number',       mono: true },
+    { header: 'Customer',     kind: 'data', key: 'customer_name',  bold: true },
+    { header: 'Scheme',       kind: 'data', key: 'scheme_name',    muted: true },
+    { header: 'Type',         kind: 'data', key: 'txn_code',       mono: true },
+    { header: 'Amount',       kind: 'data', key: 'amount',         mono: true },
+    { header: 'Date',         kind: 'data', key: 'txn_date',       muted: true },
+    { header: 'Folio',        kind: 'data', key: 'folio_no',       mono: true },
     { header: 'Status',       kind: 'status' },
     { header: '',             kind: 'action' },
   ],
@@ -128,8 +139,8 @@ const DRAWER_CONF: Record<string, DrawerConf> = {
   },
   transaction: {
     title:      'Transaction Record',
-    getHeading: (md) => md.scheme_name || md.scheme_code || 'Unknown Transaction',
-    getMeta:    (md) => [md.transaction_type, md.amount && `₹${md.amount}`, md.transaction_date].filter(Boolean).join(' · '),
+    getHeading: (md) => md.customer_name || md.scheme_name || md.scheme_code || 'Unknown Transaction',
+    getMeta:    (md) => [md.txn_code, md.amount && `₹${md.amount}`, md.txn_date].filter(Boolean).join(' · '),
   },
   bookmark: {
     title:      'Bookmark Record',
@@ -257,15 +268,18 @@ export default function ImportDashboardPage() {
 
   // VaNi analysis
   const isFinished = selectedSession ? ['completed', 'completed_with_errors'].includes(selectedSession.status) : false;
+  const orphanCount = selectedSession?.orphan_records ?? 0;
   const vaniMsg = selectedSession
     ? !isFinished
       ? 'Processing import...'
       : selectedSession.failed_records > 0
       ? `Import completed with ${selectedSession.failed_records} failure${selectedSession.failed_records > 1 ? 's' : ''}. Review failed records and reprocess, or check field mappings.`
+      : orphanCount > 0
+      ? `Import complete with ${orphanCount} orphan record${orphanCount > 1 ? 's' : ''}. These transactions could not be matched to any client — verify your client list and reprocess.`
       : selectedSession.duplicate_records > 0 && selectedSession.successful_records > 0
-      ? `Import complete. ${selectedSession.successful_records.toLocaleString()} new bookmarks added, ${selectedSession.duplicate_records.toLocaleString()} already in your watchlist.`
+      ? `Import complete. ${selectedSession.successful_records.toLocaleString()} records added, ${selectedSession.duplicate_records.toLocaleString()} already present.`
       : selectedSession.duplicate_records > 0 && selectedSession.successful_records === 0
-      ? `All ${selectedSession.duplicate_records.toLocaleString()} bookmarks are already in your watchlist — no new additions.`
+      ? `All ${selectedSession.duplicate_records.toLocaleString()} records already present — no new additions.`
       : `Import perfect. All ${selectedSession.total_records.toLocaleString()} records processed successfully.`
     : null;
 
@@ -279,8 +293,13 @@ export default function ImportDashboardPage() {
         eyebrow="DATA IMPORT"
         title="Import Dashboard"
         meta={selectedSession ? (
-          <><strong>Import #{(selectedSession as any).tenant_seq ?? selectedSession.id}</strong>
-          {selectedSession.original_filename && ` · ${selectedSession.original_filename}`}</>
+          <>
+            <strong>Import #{(selectedSession as any).tenant_seq ?? selectedSession.id}</strong>
+            {selectedSession.original_filename && ` · ${selectedSession.original_filename}`}
+            {selectedSession.import_type === 'transaction' && selectedSession.txn_date_max && (
+              <> · Txn range: <strong>{fmtDate(selectedSession.txn_date_min)}</strong> – <strong>{fmtDate(selectedSession.txn_date_max)}</strong></>
+            )}
+          </>
         ) : undefined}
         actions={<>
           <div className={s.userBadge}>{initials}</div>
@@ -364,6 +383,13 @@ export default function ImportDashboardPage() {
                   value={selectedSession.duplicate_records}
                   label="Duplicates"
                 />
+                {selectedSession.import_type === 'transaction' && (
+                  <VdfStatCard
+                    value={selectedSession.orphan_records ?? 0}
+                    label="Orphans"
+                    accent={(selectedSession.orphan_records ?? 0) > 0 ? 'warning' : 'default'}
+                  />
+                )}
               </div>
 
               {/* VaNi Hero Card */}
@@ -371,8 +397,10 @@ export default function ImportDashboardPage() {
                 <VdfProactiveCard
                   label="VaNi Post-Import Analysis"
                   message={vaniMsg}
-                  ctaLabel={selectedSession.failed_records > 0 ? `Reprocess ${selectedSession.failed_records} Failed` : undefined}
-                  onCta={selectedSession.failed_records > 0 ? handleReprocess : undefined}
+                  ctaLabel={selectedSession.failed_records > 0 || orphanCount > 0
+                    ? `Reprocess ${selectedSession.failed_records + orphanCount} Record${selectedSession.failed_records + orphanCount > 1 ? 's' : ''}`
+                    : undefined}
+                  onCta={selectedSession.failed_records > 0 || orphanCount > 0 ? handleReprocess : undefined}
                   ctaLoading={reprocessing}
                 />
               )}
@@ -382,10 +410,14 @@ export default function ImportDashboardPage() {
                 <div className={s.tableToolbar}>
                   <div className={s.filterTabs}>
                     {[
-                      { key: 'all', label: 'All' },
-                      { key: 'success', label: `New (${selectedSession.successful_records - selectedSession.duplicate_records})` },
+                      { key: 'all',       label: 'All' },
+                      { key: 'pending',   label: 'Pending', show: true },
+                      { key: 'success',   label: `New (${selectedSession.successful_records - selectedSession.duplicate_records})` },
                       { key: 'duplicate', label: `Duplicate (${selectedSession.duplicate_records})` },
-                      { key: 'failed', label: `Failed (${selectedSession.failed_records})` },
+                      { key: 'failed',    label: `Failed (${selectedSession.failed_records})` },
+                      ...(selectedSession.import_type === 'transaction'
+                        ? [{ key: 'orphan', label: `Orphan (${selectedSession.orphan_records ?? 0})` }]
+                        : []),
                     ].map(f => (
                       <button key={f.key} className={`${s.filterTab} ${recordFilter === f.key ? s.filterTabActive : ''}`}
                         onClick={() => { setRecordFilter(f.key); setRecordPage(1); }}>
@@ -531,6 +563,11 @@ export default function ImportDashboardPage() {
                 <div className={`${s.drawerDiagnostic} ${s.diagWarning}`}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
                   <span>{drawerRecord.error_messages[0]}</span>
+                </div>
+              ) : drawerRecord.processing_status === 'orphan' ? (
+                <div className={`${s.drawerDiagnostic} ${s.diagWarning}`} style={{ color: 'var(--color-warning)', background: 'color-mix(in srgb, var(--color-warning) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-warning) 12%, transparent)' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                  <span>No matching client found — client may not be imported yet. Import clients first, then reprocess.</span>
                 </div>
               ) : drawerRecord.processing_status === 'duplicate' ? (
                 <div className={`${s.drawerDiagnostic} ${s.diagInfo}`}>

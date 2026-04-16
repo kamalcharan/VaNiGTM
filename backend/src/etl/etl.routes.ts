@@ -175,10 +175,24 @@ export function createEtlRouter(pool: Pool): Router {
       const result = await pool.query(
         `SELECT s.id, s.import_type, s.status, s.total_records, s.processed_records,
                 s.successful_records, s.failed_records, s.duplicate_records,
+                s.orphan_records,
                 f.original_filename, s.created_at, s.staging_completed_at,
                 s.processing_started_at, s.processing_completed_at,
                 -- Strictly per-tenant: all rows here belong to this tenant, so numbers are clean
-                ROW_NUMBER() OVER (ORDER BY s.created_at) AS tenant_seq
+                ROW_NUMBER() OVER (ORDER BY s.created_at) AS tenant_seq,
+                -- For transaction sessions: compute txn date range from staging data
+                CASE WHEN s.import_type = 'transaction' THEN (
+                  SELECT MIN(st.mapped_data->>'txn_date')
+                  FROM ki_import_staging st
+                  WHERE st.session_id = s.id
+                    AND st.mapped_data->>'txn_date' IS NOT NULL
+                ) ELSE NULL END AS txn_date_min,
+                CASE WHEN s.import_type = 'transaction' THEN (
+                  SELECT MAX(st.mapped_data->>'txn_date')
+                  FROM ki_import_staging st
+                  WHERE st.session_id = s.id
+                    AND st.mapped_data->>'txn_date' IS NOT NULL
+                ) ELSE NULL END AS txn_date_max
          FROM ki_import_sessions s
          LEFT JOIN ki_file_uploads f ON f.id = s.file_upload_id
          WHERE s.tenant_id = $1
@@ -561,8 +575,8 @@ export function createEtlRouter(pool: Pool): Router {
 
       } else if (session.import_type === 'transaction') {
         const rpcResult = await pool.query(
-          'SELECT * FROM ki_process_txn_import_session($1)',
-          [sessionId],
+          'SELECT * FROM ki_process_txn_import_session($1, $2)',
+          [sessionId, session.customer_lookup_method || 'iwell_code'],
         );
         const raw = rpcResult.rows[0] as any;
         res.json({

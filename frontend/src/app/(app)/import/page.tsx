@@ -246,7 +246,7 @@ export default function ImportPage() {
         insights.push('Go to any client\'s Transactions tab to verify the imported data.');
       }
       if (result.duration_ms) {
-        insights.push(`Processed ${result.processed.toLocaleString()} rows in ${(result.duration_ms / 1000).toFixed(1)}s via PostgreSQL RPC.`);
+        insights.push(`Processed ${result.processed.toLocaleString()} rows in ${(result.duration_ms / 1000).toFixed(1)}s via VaNi.`);
       }
 
     } else if (importType === 'customer') {
@@ -266,7 +266,7 @@ export default function ImportPage() {
         insights.push('Go to Contacts to view your imported clients.');
       }
       if (result.duration_ms) {
-        insights.push(`Processed ${result.processed.toLocaleString()} rows in ${(result.duration_ms / 1000).toFixed(1)}s via PostgreSQL RPC.`);
+        insights.push(`Processed ${result.processed.toLocaleString()} rows in ${(result.duration_ms / 1000).toFixed(1)}s via VaNi.`);
       }
 
     } else {
@@ -283,7 +283,7 @@ export default function ImportPage() {
       const newRecords = result.successful - result.duplicate;
       if (newRecords > 0) insights.push(`${newRecords.toLocaleString()} new records added to the database.`);
       if (result.duration_ms) {
-        insights.push(`Processed ${result.processed.toLocaleString()} rows in ${(result.duration_ms / 1000).toFixed(1)}s via PostgreSQL RPC.`);
+        insights.push(`Processed ${result.processed.toLocaleString()} rows in ${(result.duration_ms / 1000).toFixed(1)}s via VaNi.`);
       }
     }
 
@@ -511,7 +511,7 @@ export default function ImportPage() {
         <div className={s.stepContent}>
           <div className={s.processingCard}>
             <div className={s.processingSpinner} />
-            <h2 className={s.processingTitle}>Processing via PostgreSQL RPC</h2>
+            <h2 className={s.processingTitle}>VaNi is processing your import</h2>
             <p className={s.processingDesc}>
               {sessionInfo?.total_records.toLocaleString()} rows staged. Running{' '}
               <code>
@@ -570,7 +570,7 @@ export default function ImportPage() {
           <div className={s.actions}>
             <button className={s.backBtn} onClick={handleReset}>Import Another File</button>
             <button className={s.confirmBtn} onClick={() => window.location.href = '/import-dashboard'}>
-              View Import Dashboard \u2192
+              View Import Dashboard →
             </button>
           </div>
         </div>
