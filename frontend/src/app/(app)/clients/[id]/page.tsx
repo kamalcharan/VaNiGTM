@@ -8,11 +8,10 @@ import { useToast } from '@/components/toast';
 import {
   VdfLoader, VdfButton, VdfStatusBadge, VdfTabs, VdfEmptyState, VdfPageHeader,
 } from '@/components/vdf';
-import { PulseConfigCard }      from '@/components/pulses/PulseConfigCard';
-import { PulseHistoryTimeline } from '@/components/pulses/PulseHistoryTimeline';
-import { PulseListPanel }       from '@/components/pulses/PulseListPanel';
-import { CreatePulseModal }     from '@/components/pulses/CreatePulseModal';
-import { usePulses, useClientPulseHistory } from '@/hooks/usePulses';
+import { PulseZone }        from '@/components/pulses/PulseZone';
+import { PulseListPanel }   from '@/components/pulses/PulseListPanel';
+import { CreatePulseModal } from '@/components/pulses/CreatePulseModal';
+import { usePulses }        from '@/hooks/usePulses';
 import s from './client-profile.module.css';
 import f from '@/styles/forms.module.css';
 
@@ -487,25 +486,19 @@ function ClientPulsesTab({ clientId, clientName }: { clientId: number; clientNam
   const { data, isLoading: taskLoading, isError, error } = usePulses(
     { client_id: clientId, status: queryStatus, limit: 100 },
   );
-  const { data: historyData, isLoading: historyLoading } = useClientPulseHistory(clientId);
 
   useEffect(() => {
     if (isError) showToast({ message: (error as Error)?.message || 'Failed to load follow-ups', type: 'error' });
   }, [isError, error, showToast]);
 
-  const pulses   = data?.data?.pulses   ?? [];
-  const sessions = historyData?.data?.sessions ?? [];
+  const pulses = data?.data?.pulses ?? [];
 
   return (
     <div className={s.pulsesPanel}>
-      <div className={s.pulseSection}>
-        <div className={s.pulseSectionLabel}>Pulse Setup</div>
-        <PulseConfigCard clientId={clientId} />
-      </div>
-      <div className={s.pulseSection}>
-        <div className={s.pulseSectionLabel}>Session History</div>
-        <PulseHistoryTimeline sessions={sessions} isLoading={historyLoading} />
-      </div>
+      {/* Main Pulse Zone: config + active session + session history */}
+      <PulseZone clientId={clientId} clientName={clientName} />
+
+      {/* Follow-up Tasks */}
       <div className={s.pulseSection}>
         <div className={s.pulseSectionLabel}>Follow-up Tasks</div>
         <PulseListPanel
@@ -522,6 +515,7 @@ function ClientPulsesTab({ clientId, clientName }: { clientId: number; clientNam
           }
         />
       </div>
+
       <CreatePulseModal
         isOpen={showCreate}
         onClose={() => setShowCreate(false)}

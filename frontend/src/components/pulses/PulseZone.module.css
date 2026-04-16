@@ -1,0 +1,191 @@
+/* ═══════════════════════════════════════════════════════
+   PulseZone — 2-column layout container
+   ═══════════════════════════════════════════════════════ */
+
+.zone {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+.mainCol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sideCol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* ── Section eyebrow ────────────────────────────────── */
+
+.sectionEyebrow {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--color-muted);
+  padding-left: 2px;
+}
+
+/* ── Config edit panel ──────────────────────────────── */
+
+.editPanel {
+  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+  border-radius: 14px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.editPanelTitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-fg);
+}
+
+.editGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.editField {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.editLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+}
+
+.editSelect,
+.editInput {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  padding: 7px 10px;
+  font-size: 0.8rem;
+  color: var(--color-fg);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.editSelect:focus,
+.editInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+/* ── Toggles ────────────────────────────────────────── */
+
+.editToggles {
+  border-top: 1px solid var(--color-border);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+}
+
+.toggleInfo { flex: 1; }
+
+.toggleTitle {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.toggleSub {
+  font-size: 0.65rem;
+  color: var(--color-muted);
+  margin-top: 1px;
+}
+
+.toggle {
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--color-border);
+  position: relative;
+  transition: background 0.2s;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.toggleOn { background: var(--color-primary); }
+
+.toggleThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.toggleOn .toggleThumb { transform: translateX(16px); }
+
+.editActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ── Skeletons ──────────────────────────────────────── */
+
+.skeletonMain {
+  height: 260px;
+  background: color-mix(in srgb, var(--color-surface) 80%, var(--color-border));
+  border-radius: 14px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeletonSide {
+  height: 180px;
+  background: color-mix(in srgb, var(--color-surface) 80%, var(--color-border));
+  border-radius: 14px;
+  animation: shimmer 1.5s ease-in-out infinite;
+  animation-delay: 0.1s;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+/* ── Responsive ─────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .zone {
+    grid-template-columns: 1fr;
+  }
+
+  .sideCol {
+    border-top: 1px solid var(--color-border);
+    padding-top: 20px;
+  }
+}

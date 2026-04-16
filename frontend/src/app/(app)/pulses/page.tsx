@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { VdfPageHeader, VdfButton, VdfEmptyState } from '@/components/vdf';
+import { VdfPageHeader, VdfButton, VdfEmptyState, VdfDrawer } from '@/components/vdf';
 import {
   usePulseQueue,
   type PulseQueueItem,
   type PulseQueueStats,
 } from '@/hooks/usePulses';
+import { PulseZone } from '@/components/pulses/PulseZone';
 import { useToast } from '@/components/toast';
 import s from './pulses-page.module.css';
 
@@ -89,7 +90,7 @@ function detailLine(item: PulseQueueItem): string {
 
 interface RowProps {
   item:   PulseQueueItem;
-  onOpen: (clientId: number) => void;
+  onOpen: () => void;
 }
 
 function QueueRow({ item, onOpen }: RowProps) {
@@ -98,28 +99,28 @@ function QueueRow({ item, onOpen }: RowProps) {
   function ActionBtn() {
     if (item.urgency === 'overdue') {
       return (
-        <VdfButton variant="danger" size="xs" onClick={e => { e.stopPropagation(); onOpen(item.client_id); }}>
+        <VdfButton variant="danger" size="xs" onClick={e => { e.stopPropagation(); onOpen(); }}>
           Prepare
         </VdfButton>
       );
     }
     if (item.urgency === 'due_soon') {
       return (
-        <VdfButton variant="outline" size="xs" onClick={e => { e.stopPropagation(); onOpen(item.client_id); }}>
+        <VdfButton variant="outline" size="xs" onClick={e => { e.stopPropagation(); onOpen(); }}>
           Schedule
         </VdfButton>
       );
     }
     if (item.urgency === 'no_session') {
       return (
-        <VdfButton variant="outline" size="xs" onClick={e => { e.stopPropagation(); onOpen(item.client_id); }}>
+        <VdfButton variant="outline" size="xs" onClick={e => { e.stopPropagation(); onOpen(); }}>
           Set Up
         </VdfButton>
       );
     }
     if (item.urgency === 'completed') {
       return (
-        <VdfButton variant="ghost" size="xs" onClick={e => { e.stopPropagation(); onOpen(item.client_id); }}>
+        <VdfButton variant="ghost" size="xs" onClick={e => { e.stopPropagation(); onOpen(); }}>
           History
         </VdfButton>
       );
@@ -130,10 +131,10 @@ function QueueRow({ item, onOpen }: RowProps) {
   return (
     <div
       className={`${s.queueItem} ${itemBorderClass(item.urgency)}`}
-      onClick={() => onOpen(item.client_id)}
+      onClick={onOpen}
       role="button"
       tabIndex={0}
-      onKeyDown={e => e.key === 'Enter' && onOpen(item.client_id)}
+      onKeyDown={e => e.key === 'Enter' && onOpen()}
     >
       <div className={`${s.avatar} ${avatarClass(item.urgency)}`}>
         {item.initials}
@@ -231,11 +232,12 @@ const EMPTY_STATS: PulseQueueStats = {
 };
 
 export default function PulsesPage() {
-  const router = useRouter();
   const { showToast } = useToast();
 
   const [urgency,  setUrgency]  = useState<UrgencyFilter>('');
   const [freq,     setFreq]     = useState<FreqFilter>('');
+  const [drawerClientId,   setDrawerClientId]   = useState<number | null>(null);
+  const [drawerClientName, setDrawerClientName] = useState<string>('');
 
   const { data, isLoading, isError, error } = usePulseQueue({
     ...(urgency  ? { urgency  } : {}),
@@ -259,8 +261,9 @@ export default function PulsesPage() {
     setUrgency('');
   }
 
-  function openClient(clientId: number) {
-    router.push(`/clients/${clientId}?tab=pulses`);
+  function openClient(item: PulseQueueItem) {
+    setDrawerClientId(item.client_id);
+    setDrawerClientName(`${item.client_prefix} ${item.client_name}`);
   }
 
   const activeFilter = urgency || freq || 'all';
@@ -279,11 +282,6 @@ export default function PulsesPage() {
               </span>
             )}
           </>
-        }
-        actions={
-          <VdfButton variant="primary" size="sm" onClick={() => router.push('/clients')}>
-            + Set Up Pulse
-          </VdfButton>
         }
       />
 
@@ -374,12 +372,26 @@ export default function PulsesPage() {
         ) : (
           <div className={s.queueList}>
             {items.map(item => (
-              <QueueRow key={item.config_id} item={item} onOpen={openClient} />
+              <QueueRow key={item.config_id} item={item} onOpen={() => openClient(item)} />
             ))}
           </div>
         )}
 
       </div>
+
+      {/* ── Pulse Zone Drawer ── */}
+      <VdfDrawer
+        isOpen={drawerClientId !== null}
+        onClose={() => setDrawerClientId(null)}
+        title={drawerClientName}
+        subtitle="Pulse session"
+        width={560}
+      >
+        {drawerClientId !== null && (
+          <PulseZone clientId={drawerClientId} clientName={drawerClientName} />
+        )}
+      </VdfDrawer>
+
     </div>
   );
 }
