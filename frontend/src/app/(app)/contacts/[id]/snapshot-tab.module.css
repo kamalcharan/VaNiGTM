@@ -3423,3 +3423,71 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CASH FLOW — sub-block head with mode toggle (Simple / Breakdown)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Replaces plain .subHead when a mode toggle is needed — same typographic
+   style but laid out as flex row so the toggle pills sit at the right. */
+.subBlockHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 10px;
+}
+.subBlockHead::after {
+  /* no extending line — the flex layout handles spacing */
+  display: none;
+}
+.subBlockLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+/* Mode toggle pill group */
+.modeToggle {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.modeBtn {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 3px 11px;
+  border-radius: 20px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  line-height: 1.5;
+}
+.modeBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.modeBtnActive {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+/* Single-total input — full-width currency field in simple mode */
+.totalField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.totalFieldLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-muted);
+  letter-spacing: 0.04em;
+}

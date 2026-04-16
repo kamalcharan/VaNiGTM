@@ -200,6 +200,12 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   const [riskProfile,   setRiskProfile]   = useState('');
   const [notes,         setNotes]         = useState('');
 
+  // Cash Flow mode — 'simple' stores a single total value; 'detailed' shows itemised fields
+  const [incomeMode,         setIncomeMode]         = useState<'simple' | 'detailed'>('detailed');
+  const [expenseMode,        setExpenseMode]         = useState<'simple' | 'detailed'>('detailed');
+  const [totalIncomeAmount,  setTotalIncomeAmount]  = useState('');
+  const [totalExpenseAmount, setTotalExpenseAmount] = useState('');
+
   const [income, setIncome] = useState<Income>({
     salary: '', partner: '', rental_other: '',
   });
@@ -251,18 +257,32 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     setNotes((snap.notes as string) ?? '');
 
     const snapIncome = (snap.income as Array<{ source: string; amount_monthly: number }>) ?? [];
-    const inc: Income = { salary: '', partner: '', rental_other: '' };
-    for (const row of snapIncome) {
-      if (row.source in inc) (inc as unknown as Record<string, string>)[row.source] = String(row.amount_monthly);
+    const totalIncRow = snapIncome.find(r => r.source === 'total');
+    if (totalIncRow) {
+      setIncomeMode('simple');
+      setTotalIncomeAmount(String(totalIncRow.amount_monthly));
+    } else {
+      setIncomeMode('detailed');
+      const inc: Income = { salary: '', partner: '', rental_other: '' };
+      for (const row of snapIncome) {
+        if (row.source in inc) (inc as unknown as Record<string, string>)[row.source] = String(row.amount_monthly);
+      }
+      setIncome(inc);
     }
-    setIncome(inc);
 
     const snapExp = (snap.expenses as Array<{ category: string; amount_monthly: number }>) ?? [];
-    const exp: Expenses = { housing: '', food: '', utilities: '', transport: '', education: '', healthcare: '', lifestyle: '', other: '' };
-    for (const row of snapExp) {
-      if (row.category in exp) (exp as unknown as Record<string, string>)[row.category] = String(row.amount_monthly);
+    const totalExpRow = snapExp.find(r => r.category === 'total');
+    if (totalExpRow) {
+      setExpenseMode('simple');
+      setTotalExpenseAmount(String(totalExpRow.amount_monthly));
+    } else {
+      setExpenseMode('detailed');
+      const exp: Expenses = { housing: '', food: '', utilities: '', transport: '', education: '', healthcare: '', lifestyle: '', other: '' };
+      for (const row of snapExp) {
+        if (row.category in exp) (exp as unknown as Record<string, string>)[row.category] = String(row.amount_monthly);
+      }
+      setExpenses(exp);
     }
-    setExpenses(exp);
 
     const snapAssets = (snap.assets as Array<Record<string, unknown>>) ?? [];
     setAssets(snapAssets.map(a => ({
@@ -327,12 +347,12 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
     status,
     risk_profile: riskProfile || undefined,
     notes: notes || undefined,
-    income: Object.entries(income)
-      .filter(([, v]) => Number(v) > 0)
-      .map(([source, v]) => ({ source, amount_monthly: Number(v) })),
-    expenses: Object.entries(expenses)
-      .filter(([, v]) => Number(v) > 0)
-      .map(([category, v]) => ({ category, amount_monthly: Number(v) })),
+    income: incomeMode === 'simple'
+      ? (Number(totalIncomeAmount) > 0 ? [{ source: 'total', amount_monthly: Number(totalIncomeAmount) }] : [])
+      : Object.entries(income).filter(([, v]) => Number(v) > 0).map(([source, v]) => ({ source, amount_monthly: Number(v) })),
+    expenses: expenseMode === 'simple'
+      ? (Number(totalExpenseAmount) > 0 ? [{ category: 'total', amount_monthly: Number(totalExpenseAmount) }] : [])
+      : Object.entries(expenses).filter(([, v]) => Number(v) > 0).map(([category, v]) => ({ category, amount_monthly: Number(v) })),
     assets: assets.filter(a => Number(a.current_value) > 0).map((a, i) => ({
       asset_type_id: Number(a.asset_type_id) || undefined,
       description:   a.description || undefined,
@@ -366,7 +386,7 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
       timeline_years: Number(g.timeline_years) || 10,
       sort_order:     i + 1,
     })),
-  }), [contactId, riskProfile, notes, income, expenses, assets, liabs, protection, goals]);
+  }), [contactId, riskProfile, notes, incomeMode, expenseMode, totalIncomeAmount, totalExpenseAmount, income, expenses, assets, liabs, protection, goals]);
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
@@ -428,7 +448,14 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
 
   // ── Live metrics ──────────────────────────────────────────────────────────
 
-  const metrics = computeMetrics(income, expenses, assets, liabs);
+  // In simple mode, route the single total through salary/housing slots so computeMetrics works unchanged
+  const effectiveIncome: Income = incomeMode === 'simple'
+    ? { salary: totalIncomeAmount, partner: '', rental_other: '' }
+    : income;
+  const effectiveExpenses: Expenses = expenseMode === 'simple'
+    ? { housing: totalExpenseAmount, food: '', utilities: '', transport: '', education: '', healthcare: '', lifestyle: '', other: '' }
+    : expenses;
+  const metrics = computeMetrics(effectiveIncome, effectiveExpenses, assets, liabs);
   const lifeCoverNum = Number(protection.life_cover_amount);
   const protRatio: number | null = (lifeCoverNum > 0 && metrics.monthlyIncome > 0)
     ? lifeCoverNum / (metrics.monthlyIncome * 12)
@@ -650,7 +677,8 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
   const vaniSr         = metrics.savingsRate ?? 0;
   const vaniBracket    = vaniSr >= 50 ? 'p95' : vaniSr >= 35 ? 'p80' : vaniSr >= 25 ? 'p65' : vaniSr >= 18 ? 'p50' : vaniSr >= 10 ? 'p35' : 'p15';
   const vaniSrClass    = vaniSr >= 20 ? s.vaniOk : vaniSr >= 10 ? s.vaniWarn : s.vaniBad;
-  const vaniHousingPct = metrics.monthlyIncome > 0 ? (Number(expenses.housing) / metrics.monthlyIncome) * 100 : 0;
+  // In simple mode expenses.housing is empty — use effectiveExpenses which routes total into housing slot
+  const vaniHousingPct = metrics.monthlyIncome > 0 ? (Number(effectiveExpenses.housing) / metrics.monthlyIncome) * 100 : 0;
   const vaniAnnual     = metrics.monthlySavings * 12;
   const vaniSrLabel    = vaniSr >= 30 ? 'Strong cash flow.' : vaniSr >= 15 ? 'Moderate cash flow.' : vaniSr >= 0 ? 'Tight margins.' : null;
 
@@ -1237,53 +1265,109 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
 
             {/* Monthly Income */}
             <div className={s.subBlock}>
-              <div className={s.subHead}>Monthly Income</div>
-              <div className={s.inputGrid3}>
-                {([
-                  { key: 'salary'       as const, label: 'Salary (take-home)', opt: false },
-                  { key: 'partner'      as const, label: 'Partner income',      opt: true  },
-                  { key: 'rental_other' as const, label: 'Rental / Other',      opt: true  },
-                ]).map(({ key, label, opt }) => (
-                  <div key={key} className={s.curField}>
-                    <label className={s.curFieldLabel}>
-                      {label}{opt && <span className={s.optionalTag}> opt</span>}
-                    </label>
-                    <div className={s.curInputWrap}>
-                      <span className={s.curSym}>₹</span>
-                      <input
-                        className={s.curVal}
-                        type="number"
-                        value={income[key]}
-                        onChange={e => setIncome(prev => ({ ...prev, [key]: e.target.value }))}
-                        placeholder="0"
-                      />
-                      <span className={s.curSuffix}>/mo</span>
-                    </div>
-                  </div>
-                ))}
+              <div className={s.subBlockHead}>
+                <span className={s.subBlockLabel}>Monthly Income</span>
+                <div className={s.modeToggle}>
+                  <button type="button"
+                    className={`${s.modeBtn} ${incomeMode === 'simple' ? s.modeBtnActive : ''}`}
+                    onClick={() => setIncomeMode('simple')}>Single total</button>
+                  <button type="button"
+                    className={`${s.modeBtn} ${incomeMode === 'detailed' ? s.modeBtnActive : ''}`}
+                    onClick={() => setIncomeMode('detailed')}>Breakdown</button>
+                </div>
               </div>
+
+              {incomeMode === 'simple' ? (
+                <div className={s.totalField}>
+                  <label className={s.totalFieldLabel}>Total monthly income</label>
+                  <div className={s.curInputWrap}>
+                    <span className={s.curSym}>₹</span>
+                    <input
+                      className={s.curVal}
+                      type="number"
+                      value={totalIncomeAmount}
+                      onChange={e => setTotalIncomeAmount(e.target.value)}
+                      placeholder="0"
+                    />
+                    <span className={s.curSuffix}>/mo</span>
+                  </div>
+                </div>
+              ) : (
+                <div className={s.inputGrid3}>
+                  {([
+                    { key: 'salary'       as const, label: 'Salary (take-home)', opt: false },
+                    { key: 'partner'      as const, label: 'Partner income',      opt: true  },
+                    { key: 'rental_other' as const, label: 'Rental / Other',      opt: true  },
+                  ]).map(({ key, label, opt }) => (
+                    <div key={key} className={s.curField}>
+                      <label className={s.curFieldLabel}>
+                        {label}{opt && <span className={s.optionalTag}> opt</span>}
+                      </label>
+                      <div className={s.curInputWrap}>
+                        <span className={s.curSym}>₹</span>
+                        <input
+                          className={s.curVal}
+                          type="number"
+                          value={income[key]}
+                          onChange={e => setIncome(prev => ({ ...prev, [key]: e.target.value }))}
+                          placeholder="0"
+                        />
+                        <span className={s.curSuffix}>/mo</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Monthly Expenses — 4-column grid, 8 fields */}
+            {/* Monthly Expenses */}
             <div className={s.subBlock}>
-              <div className={s.subHead}>Monthly Expenses · Exclude EMIs</div>
-              <div className={s.expenseGrid4}>
-                {(['housing', 'food', 'utilities', 'transport', 'education', 'healthcare', 'lifestyle', 'other'] as const).map(key => (
-                  <div key={key} className={s.curField}>
-                    <label className={s.curFieldLabel}>{EXPENSE_LABELS[key]}</label>
-                    <div className={s.curInputWrap}>
-                      <span className={s.curSym}>₹</span>
-                      <input
-                        className={s.curVal}
-                        type="number"
-                        value={expenses[key]}
-                        onChange={e => setExpenses(prev => ({ ...prev, [key]: e.target.value }))}
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-                ))}
+              <div className={s.subBlockHead}>
+                <span className={s.subBlockLabel}>Monthly Expenses · Exclude EMIs</span>
+                <div className={s.modeToggle}>
+                  <button type="button"
+                    className={`${s.modeBtn} ${expenseMode === 'simple' ? s.modeBtnActive : ''}`}
+                    onClick={() => setExpenseMode('simple')}>Single total</button>
+                  <button type="button"
+                    className={`${s.modeBtn} ${expenseMode === 'detailed' ? s.modeBtnActive : ''}`}
+                    onClick={() => setExpenseMode('detailed')}>Breakdown</button>
+                </div>
               </div>
+
+              {expenseMode === 'simple' ? (
+                <div className={s.totalField}>
+                  <label className={s.totalFieldLabel}>Total monthly expenses</label>
+                  <div className={s.curInputWrap}>
+                    <span className={s.curSym}>₹</span>
+                    <input
+                      className={s.curVal}
+                      type="number"
+                      value={totalExpenseAmount}
+                      onChange={e => setTotalExpenseAmount(e.target.value)}
+                      placeholder="0"
+                    />
+                    <span className={s.curSuffix}>/mo</span>
+                  </div>
+                </div>
+              ) : (
+                <div className={s.expenseGrid4}>
+                  {(['housing', 'food', 'utilities', 'transport', 'education', 'healthcare', 'lifestyle', 'other'] as const).map(key => (
+                    <div key={key} className={s.curField}>
+                      <label className={s.curFieldLabel}>{EXPENSE_LABELS[key]}</label>
+                      <div className={s.curInputWrap}>
+                        <span className={s.curSym}>₹</span>
+                        <input
+                          className={s.curVal}
+                          type="number"
+                          value={expenses[key]}
+                          onChange={e => setExpenses(prev => ({ ...prev, [key]: e.target.value }))}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* VaNi copilot — activates live as user types */}
@@ -1653,7 +1737,12 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
                   <button
                     type="button"
                     className={`${s.optCard} ${!protection.has_term_plan ? s.optCardSelected : ''}`}
-                    onClick={() => setProtection(p => ({ ...p, has_term_plan: false }))}
+                    onClick={() => setProtection(p => ({
+                      ...p,
+                      has_term_plan: false,
+                      life_cover_amount: '',
+                      life_premium_annual: '',
+                    }))}
                   >
                     <svg className={s.optCardIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>
@@ -1665,38 +1754,42 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
                   </button>
                 </div>
               </div>
-              <div className={s.protFieldRow3}>
-                <div className={s.curField}>
-                  <label className={s.curFieldLabel}>Sum Assured</label>
-                  <div className={s.curInputWrap}>
-                    <span className={s.curSym}>₹</span>
-                    <input className={s.curVal} type="number" placeholder="0"
-                      value={protection.life_cover_amount}
-                      onChange={e => setProtection(p => ({ ...p, life_cover_amount: e.target.value }))} />
-                  </div>
-                </div>
-                <div className={s.curField}>
-                  <label className={s.curFieldLabel}>Annual Premium</label>
-                  <div className={s.curInputWrap}>
-                    <span className={s.curSym}>₹</span>
-                    <input className={s.curVal} type="number" placeholder="0"
-                      value={protection.life_premium_annual}
-                      onChange={e => setProtection(p => ({ ...p, life_premium_annual: e.target.value }))} />
-                    <span className={s.curSuffix}>/yr</span>
-                  </div>
-                </div>
-                {protRatio !== null && (
+
+              {/* Detail fields — only when has_term_plan is true */}
+              {protection.has_term_plan && (
+                <div className={s.protFieldRow3}>
                   <div className={s.curField}>
-                    <label className={s.curFieldLabel}>Cover Ratio</label>
-                    <div className={s.protRatioBadge}>
-                      <span className={protRatio >= 10 ? s.protRatioOk : protRatio >= 5 ? s.protRatioWarn : s.protRatioBad}>
-                        {protRatio.toFixed(1)}×
-                      </span>
-                      <span className={s.protRatioSub}>of annual income</span>
+                    <label className={s.curFieldLabel}>Sum Assured</label>
+                    <div className={s.curInputWrap}>
+                      <span className={s.curSym}>₹</span>
+                      <input className={s.curVal} type="number" placeholder="0"
+                        value={protection.life_cover_amount}
+                        onChange={e => setProtection(p => ({ ...p, life_cover_amount: e.target.value }))} />
                     </div>
                   </div>
-                )}
-              </div>
+                  <div className={s.curField}>
+                    <label className={s.curFieldLabel}>Annual Premium</label>
+                    <div className={s.curInputWrap}>
+                      <span className={s.curSym}>₹</span>
+                      <input className={s.curVal} type="number" placeholder="0"
+                        value={protection.life_premium_annual}
+                        onChange={e => setProtection(p => ({ ...p, life_premium_annual: e.target.value }))} />
+                      <span className={s.curSuffix}>/yr</span>
+                    </div>
+                  </div>
+                  {protRatio !== null && (
+                    <div className={s.curField}>
+                      <label className={s.curFieldLabel}>Cover Ratio</label>
+                      <div className={s.protRatioBadge}>
+                        <span className={protRatio >= 10 ? s.protRatioOk : protRatio >= 5 ? s.protRatioWarn : s.protRatioBad}>
+                          {protRatio.toFixed(1)}×
+                        </span>
+                        <span className={s.protRatioSub}>of annual income</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Health Insurance sub-block */}
@@ -1721,7 +1814,14 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
                   <button
                     type="button"
                     className={`${s.optCard} ${!protection.has_health_cover ? s.optCardSelected : ''}`}
-                    onClick={() => setProtection(p => ({ ...p, has_health_cover: false }))}
+                    onClick={() => setProtection(p => ({
+                      ...p,
+                      has_health_cover: false,
+                      health_cover_type: '',
+                      health_cover_amount: '',
+                      health_premium_annual: '',
+                      ci_cover_amount: '',
+                    }))}
                   >
                     <svg className={s.optCardIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>
@@ -1734,61 +1834,66 @@ export function SnapshotTab({ contactId, isClient, contactName }: { contactId: n
                 </div>
               </div>
 
-              {/* Coverage type — 4 opt-cards */}
-              <div className={s.protField}>
-                <label className={s.curFieldLabel}>Coverage type</label>
-                <div className={s.optCards4}>
-                  {([
-                    { key: 'individual'    as const, label: 'Individual',      sub: 'Self only'   },
-                    { key: 'family_floater'as const, label: 'Family Floater',  sub: 'Household'   },
-                    { key: 'employer'      as const, label: 'Employer',        sub: 'Corp group'  },
-                    { key: 'none'          as const, label: 'None',            sub: 'Gap'         },
-                  ]).map(({ key, label, sub }) => (
-                    <button
-                      key={key}
-                      type="button"
-                      className={`${s.optCard} ${protection.health_cover_type === key ? s.optCardSelected : ''}`}
-                      onClick={() => setProtection(p => ({ ...p, health_cover_type: key }))}
-                    >
-                      <div>
-                        <div className={s.optCardLabel}>{label}</div>
-                        <div className={s.optCardSub}>{sub}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {/* Detail fields — only when has_health_cover is true */}
+              {protection.has_health_cover && (
+                <>
+                  {/* Coverage type — 4 opt-cards */}
+                  <div className={s.protField}>
+                    <label className={s.curFieldLabel}>Coverage type</label>
+                    <div className={s.optCards4}>
+                      {([
+                        { key: 'individual'     as const, label: 'Individual',     sub: 'Self only'  },
+                        { key: 'family_floater' as const, label: 'Family Floater', sub: 'Household'  },
+                        { key: 'employer'       as const, label: 'Employer',       sub: 'Corp group' },
+                        { key: 'none'           as const, label: 'None',           sub: 'Gap'        },
+                      ]).map(({ key, label, sub }) => (
+                        <button
+                          key={key}
+                          type="button"
+                          className={`${s.optCard} ${protection.health_cover_type === key ? s.optCardSelected : ''}`}
+                          onClick={() => setProtection(p => ({ ...p, health_cover_type: key }))}
+                        >
+                          <div>
+                            <div className={s.optCardLabel}>{label}</div>
+                            <div className={s.optCardSub}>{sub}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-              <div className={s.protFieldRow3}>
-                <div className={s.curField}>
-                  <label className={s.curFieldLabel}>Sum Insured</label>
-                  <div className={s.curInputWrap}>
-                    <span className={s.curSym}>₹</span>
-                    <input className={s.curVal} type="number" placeholder="0"
-                      value={protection.health_cover_amount}
-                      onChange={e => setProtection(p => ({ ...p, health_cover_amount: e.target.value }))} />
+                  <div className={s.protFieldRow3}>
+                    <div className={s.curField}>
+                      <label className={s.curFieldLabel}>Sum Insured</label>
+                      <div className={s.curInputWrap}>
+                        <span className={s.curSym}>₹</span>
+                        <input className={s.curVal} type="number" placeholder="0"
+                          value={protection.health_cover_amount}
+                          onChange={e => setProtection(p => ({ ...p, health_cover_amount: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div className={s.curField}>
+                      <label className={s.curFieldLabel}>Annual Premium</label>
+                      <div className={s.curInputWrap}>
+                        <span className={s.curSym}>₹</span>
+                        <input className={s.curVal} type="number" placeholder="0"
+                          value={protection.health_premium_annual}
+                          onChange={e => setProtection(p => ({ ...p, health_premium_annual: e.target.value }))} />
+                        <span className={s.curSuffix}>/yr</span>
+                      </div>
+                    </div>
+                    <div className={s.curField}>
+                      <label className={s.curFieldLabel}>Critical Illness <span className={s.optionalTag}>opt</span></label>
+                      <div className={s.curInputWrap}>
+                        <span className={s.curSym}>₹</span>
+                        <input className={s.curVal} type="number" placeholder="0"
+                          value={protection.ci_cover_amount}
+                          onChange={e => setProtection(p => ({ ...p, ci_cover_amount: e.target.value }))} />
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className={s.curField}>
-                  <label className={s.curFieldLabel}>Annual Premium</label>
-                  <div className={s.curInputWrap}>
-                    <span className={s.curSym}>₹</span>
-                    <input className={s.curVal} type="number" placeholder="0"
-                      value={protection.health_premium_annual}
-                      onChange={e => setProtection(p => ({ ...p, health_premium_annual: e.target.value }))} />
-                    <span className={s.curSuffix}>/yr</span>
-                  </div>
-                </div>
-                <div className={s.curField}>
-                  <label className={s.curFieldLabel}>Critical Illness <span className={s.optionalTag}>opt</span></label>
-                  <div className={s.curInputWrap}>
-                    <span className={s.curSym}>₹</span>
-                    <input className={s.curVal} type="number" placeholder="0"
-                      value={protection.ci_cover_amount}
-                      onChange={e => setProtection(p => ({ ...p, ci_cover_amount: e.target.value }))} />
-                  </div>
-                </div>
-              </div>
+                </>
+              )}
             </div>
 
             {/* VaNi copilot */}
