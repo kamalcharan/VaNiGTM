@@ -535,9 +535,10 @@ export default function ClientProfilePage() {
   const { showToast } = useToast();
   const clientId = Number(id);
 
-  // Support deep-link tab activation via ?tab=addresses or ?tab=kyc
+  // Support deep-link tab activation via ?tab=overview|channels|addresses|pulses
   const tabParam = searchParams?.get('tab') ?? null;
-  const initialTab = tabParam === 'addresses' ? 'addresses' : 'overview';
+  const VALID_TABS = ['overview', 'channels', 'addresses', 'pulses'];
+  const initialTab = VALID_TABS.includes(tabParam ?? '') ? (tabParam as string) : 'overview';
 
   const [activeTab, setActiveTab]           = useState(initialTab);
   const [bookmarked, setBookmarked]         = useState(false);
