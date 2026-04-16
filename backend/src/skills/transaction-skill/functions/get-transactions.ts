@@ -128,7 +128,7 @@ export async function get_transactions(
     $is_duplicate_only:       params.is_duplicate_only      ?? null,
     $portfolio_flag_excluded: params.portfolio_flag_excluded ?? null,
     $ext_ref_id_search:       params.ext_ref_id_search      ?? null,
-    $import_session_id:       params.import_session_id      ?? null,
+    // $import_session_id: not passed until migration 049 is applied
     $limit:                   limit,
     $offset:                  offset,
   });

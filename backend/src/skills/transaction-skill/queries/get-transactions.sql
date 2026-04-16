@@ -2,8 +2,11 @@
 -- Named params: $tenant_id, $is_live, $client_id (nullable), $txn_type (nullable),
 --               $date_from (nullable), $date_to (nullable), $search (nullable),
 --               $is_duplicate_only (nullable bool), $portfolio_flag_excluded (nullable bool),
---               $ext_ref_id_search (nullable text — exact iwell/ext_ref match),
---               $import_session_id (nullable int), $limit, $offset
+--               $ext_ref_id_search (nullable text — iwell/ext_ref ILIKE match),
+--               $limit, $offset
+--
+-- NOTE: import_session_id filter added by migration 049 — enabled in get-transactions.ts
+--       after that migration is applied (column check at boot).
 --
 -- ORDER BY is injected dynamically in get-transactions.ts (safe whitelist).
 
@@ -37,7 +40,7 @@ SELECT
     t.description,
     t.is_potential_duplicate,
     t.portfolio_flag,
-    t.import_session_id,
+    NULL::integer AS import_session_id,  -- populated after migration 049 is applied
     t.client_id,
     ct.name                        AS client_name,
     ct.prefix                      AS client_prefix,
@@ -79,8 +82,9 @@ WHERE t.tenant_id  = $tenant_id
        OR t.portfolio_flag = false)
   AND ($ext_ref_id_search::text IS NULL
        OR cl.ext_ref_id ILIKE '%' || $ext_ref_id_search::text || '%')
-  AND ($import_session_id::integer IS NULL
-       OR t.import_session_id = $import_session_id::integer)
+  -- import_session_id filter: uncomment after running migration 049
+  -- AND ($import_session_id::integer IS NULL
+  --      OR t.import_session_id = $import_session_id::integer)
 
 /* ORDER_BY_PLACEHOLDER */
 LIMIT  $limit
