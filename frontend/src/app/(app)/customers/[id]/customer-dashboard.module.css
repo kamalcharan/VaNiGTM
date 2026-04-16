@@ -1079,7 +1079,7 @@
   gap: 10px;
 }
 
-/* ── Pinstripe rows ──────────────────────────────────── */
+/* ── Pinstripe cards ─────────────────────────────────── */
 
 .assetStripes {
   display: flex;
@@ -1089,80 +1089,48 @@
   overflow: hidden;
 }
 
-/* shared column layout: name (flex) | invested | value | gain | units | actions */
-.assetStripeHeader,
+/* Each stripe is a flex card — NOT a table row */
 .assetStripeRow {
-  display: grid;
-  grid-template-columns: 1fr 100px 110px 100px 90px 72px;
+  display: flex;
   align-items: center;
-  gap: 0 12px;
-  padding: 0 14px;
-}
-
-.assetStripeHeader {
-  padding-top: 7px;
-  padding-bottom: 7px;
-  border-bottom: 1px solid var(--color-border);
-  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
-}
-
-.assetStripeRow {
-  min-height: 48px;
-  padding-top: 8px;
-  padding-bottom: 8px;
+  gap: 12px;
+  padding: 11px 14px 11px 0;
   transition: background 120ms;
+  position: relative;
 }
 
 .assetStripeRowAlt {
-  background: color-mix(in srgb, var(--color-fg) 2.5%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 2%, transparent);
 }
 
 .assetStripeRow:hover {
   background: color-mix(in srgb, var(--color-primary) 5%, transparent);
 }
 
-.assetStripeRow:hover .assetCardActions {
+.assetStripeRow:hover .assetStripeActions {
   opacity: 1;
 }
 
-/* Column label */
-.assetStripeColName,
-.assetStripeCol,
-.assetStripeColUnits,
-.assetStripeColAct {
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-}
-
-.assetStripeColAct { text-align: right; }
-
-/* Name cell */
-.assetStripeNameCell {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
-}
-
-.assetStripeDot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+/* Coloured left accent bar (replaces dot) */
+.assetStripeAccent {
+  width: 3px;
+  align-self: stretch;
   flex-shrink: 0;
+  border-radius: 0 2px 2px 0;
+  margin-right: 2px;
 }
 
+/* Name block */
 .assetStripeNameWrap {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  min-width: 0;
+  gap: 2px;
 }
 
 .assetStripeName {
-  font-size: 0.8rem;
+  font-size: 0.81rem;
   font-weight: 600;
   color: var(--color-fg);
   white-space: nowrap;
@@ -1178,22 +1146,56 @@
   text-overflow: ellipsis;
 }
 
-/* Data cells */
-.assetStripeVal {
+/* Metric chips — flex row, each chip is label + value stacked */
+.assetStripeMetrics {
+  display: flex;
+  gap: 20px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.assetStripeMetric {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 64px;
+}
+
+.assetStripeMetricLabel {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.assetStripeMetricVal {
   font-family: var(--font-mono, monospace);
-  font-size: 0.76rem;
-  font-weight: 500;
+  font-size: 0.78rem;
+  font-weight: 600;
   color: var(--color-fg);
   white-space: nowrap;
 }
 
-.assetStripeValBold {
+.assetStripeMetricValBold {
   font-weight: 700;
+  font-size: 0.82rem;
 }
 
 .assetStripeRate {
   color: var(--color-info);
-  font-weight: 600;
+}
+
+/* Actions — hidden until row hover */
+.assetStripeActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 150ms;
+  min-width: 60px;
+  justify-content: flex-end;
 }
 
 .assetGroupHead {
@@ -1303,34 +1305,20 @@
 
 /* ── Responsive ──────────────────────────────────────── */
 
-@media (max-width: 900px) {
-  /* hide units column on narrow viewports */
-  .assetStripeHeader,
-  .assetStripeRow {
-    grid-template-columns: 1fr 90px 100px 90px 56px;
-  }
-  .assetStripeColUnits { display: none; }
-}
-
 @media (max-width: 768px) {
   .assetsWrap { padding: 16px 20px 24px; }
   .assetsSummaryStrip { flex-wrap: wrap; }
-  .assetStripeHeader,
-  .assetStripeRow {
-    grid-template-columns: 1fr 90px 100px 80px 48px;
-    gap: 0 8px;
-    padding: 0 10px;
-  }
+  /* hide units chip on tablet */
+  .assetStripeMetricHideMobile { display: none; }
+  .assetStripeMetrics { gap: 14px; }
+  .assetStripeMetric { min-width: 52px; }
 }
 
 @media (max-width: 480px) {
   .assetsWrap { padding: 12px 14px 20px; }
-  .assetStripeHeader,
-  .assetStripeRow {
-    grid-template-columns: 1fr 90px 90px 48px;
-    gap: 0 6px;
-  }
-  /* hide gain column too on very small screens */
-  .assetStripeHeader > :nth-child(4),
-  .assetStripeRow > :nth-child(4) { display: none; }
+  /* On mobile: metrics wrap below the name */
+  .assetStripeRow { flex-wrap: wrap; gap: 8px; padding: 10px 12px 10px 0; }
+  .assetStripeNameWrap { flex-basis: 100%; }
+  .assetStripeMetrics { gap: 12px; padding-left: 5px; }
+  .assetStripeActions { margin-left: auto; opacity: 1; } /* always visible on touch */
 }

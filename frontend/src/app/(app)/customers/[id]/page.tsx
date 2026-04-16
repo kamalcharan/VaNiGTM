@@ -1101,18 +1101,8 @@ function AssetsTab({ clientId }: { clientId: number }) {
                 <span className={s.assetGroupTotal}>{fmtCurrency(group.total_value)}</span>
               </div>
 
-              {/* Pinstripe rows */}
+              {/* Pinstripe cards */}
               <div className={s.assetStripes}>
-                {/* Column header */}
-                <div className={s.assetStripeHeader}>
-                  <span className={s.assetStripeColName}>Investment</span>
-                  <span className={s.assetStripeCol}>Invested</span>
-                  <span className={s.assetStripeCol}>Current Value</span>
-                  <span className={s.assetStripeCol}>Gain / Rate</span>
-                  <span className={s.assetStripeColUnits}>Units</span>
-                  <span className={s.assetStripeColAct} />
-                </div>
-
                 {group.assignments.map((a, idx) => {
                   const isMF       = a.scheme_code != null;
                   const isUp       = a.gain_loss != null && a.gain_loss >= 0;
@@ -1129,49 +1119,61 @@ function AssetsTab({ clientId }: { clientId: number }) {
                       key={rowKey}
                       className={`${s.assetStripeRow} ${idx % 2 === 1 ? s.assetStripeRowAlt : ''}`}
                     >
-                      {/* Category accent + name */}
-                      <div className={s.assetStripeNameCell}>
-                        <span className={s.assetStripeDot} style={{ background: dotColor }} />
-                        <div className={s.assetStripeNameWrap}>
-                          <span className={s.assetStripeName}>
-                            {isMF ? (a.scheme_name ?? a.scheme_code) : (a.notes ?? a.asset_type_name)}
+                      {/* Left accent bar */}
+                      <span className={s.assetStripeAccent} style={{ background: dotColor }} />
+
+                      {/* Name block — takes all remaining space */}
+                      <div className={s.assetStripeNameWrap}>
+                        <span className={s.assetStripeName}>
+                          {isMF ? (a.scheme_name ?? a.scheme_code) : (a.notes ?? a.asset_type_name)}
+                        </span>
+                        <span className={s.assetStripeSub}>
+                          {isMF
+                            ? [a.amc, a.fund_category].filter(Boolean).join(' · ')
+                            : [a.notes ? a.asset_type_name : null, a.start_date
+                                ? `Since ${new Date(a.start_date).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`
+                                : null].filter(Boolean).join(' · ')
+                          }
+                        </span>
+                      </div>
+
+                      {/* Metric chips */}
+                      <div className={s.assetStripeMetrics}>
+                        <div className={s.assetStripeMetric}>
+                          <span className={s.assetStripeMetricLabel}>Invested</span>
+                          <span className={s.assetStripeMetricVal}>{fmtCurrency(invested)}</span>
+                        </div>
+                        <div className={s.assetStripeMetric}>
+                          <span className={s.assetStripeMetricLabel}>Current</span>
+                          <span className={`${s.assetStripeMetricVal} ${s.assetStripeMetricValBold}`}>
+                            {value != null ? fmtCurrency(value) : <span className={s.assetValNumMuted}>—</span>}
                           </span>
-                          <span className={s.assetStripeSub}>
+                        </div>
+                        <div className={s.assetStripeMetric}>
+                          <span className={s.assetStripeMetricLabel}>{isMF ? 'Gain' : 'Rate'}</span>
+                          <span className={`${s.assetStripeMetricVal} ${
+                            isMF
+                              ? (gainPct == null ? s.assetValNumMuted : isUp ? s.assetValNumUp : s.assetValNumDown)
+                              : s.assetStripeRate
+                          }`}>
                             {isMF
-                              ? [a.amc, a.fund_category].filter(Boolean).join(' · ')
-                              : [a.notes ? a.asset_type_name : null, a.start_date ? `Since ${new Date(a.start_date).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}` : null].filter(Boolean).join(' · ')
+                              ? (gainPct != null ? fmtPct(gainPct) : '—')
+                              : `${a.effective_rate.toFixed(1)}%`
                             }
                           </span>
                         </div>
+                        {isMF && (
+                          <div className={`${s.assetStripeMetric} ${s.assetStripeMetricHideMobile}`}>
+                            <span className={s.assetStripeMetricLabel}>Units</span>
+                            <span className={`${s.assetStripeMetricVal} ${s.assetValNumMuted}`}>
+                              {a.units != null ? fmtUnits(a.units) : '—'}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Invested */}
-                      <span className={s.assetStripeVal}>{fmtCurrency(invested)}</span>
-
-                      {/* Current value */}
-                      <span className={`${s.assetStripeVal} ${s.assetStripeValBold}`}>
-                        {value != null ? fmtCurrency(value) : <span className={s.assetValNumMuted}>—</span>}
-                      </span>
-
-                      {/* Gain % or Rate */}
-                      <span className={`${s.assetStripeVal} ${
-                        isMF
-                          ? (gainPct == null ? s.assetValNumMuted : isUp ? s.assetValNumUp : s.assetValNumDown)
-                          : s.assetStripeRate
-                      }`}>
-                        {isMF
-                          ? (gainPct != null ? fmtPct(gainPct) : '—')
-                          : `${a.effective_rate.toFixed(1)}% p.a.`
-                        }
-                      </span>
-
-                      {/* Units (MF only) */}
-                      <span className={`${s.assetStripeVal} ${s.assetStripeColUnits} ${s.assetValNumMuted}`}>
-                        {isMF && a.units != null ? fmtUnits(a.units) : ''}
-                      </span>
-
-                      {/* Actions */}
-                      <div className={`${s.assetStripeColAct} ${s.assetCardActions}`}>
+                      {/* Actions — fade in on hover */}
+                      <div className={s.assetStripeActions}>
                         {a.has_assignment && (<>
                           <button className={s.assetActionBtn} title="Edit" onClick={() => openEdit(a)}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="12" height="12">
