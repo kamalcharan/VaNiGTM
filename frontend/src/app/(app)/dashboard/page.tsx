@@ -10,6 +10,7 @@ import {
   VdfDashPanel,
   VdfProactiveCard,
 } from '@/components/vdf';
+import { PulseWidget } from '@/components/pulses/PulseWidget';
 import s from './dashboard-page.module.css';
 
 // ── Dummy data ────────────────────────────────────────────────────────────────
@@ -291,6 +292,9 @@ export default function DashboardPage() {
               ))}
             </div>
           </VdfDashPanel>
+
+          {/* Follow-ups (Pulses) */}
+          <PulseWidget />
 
           {/* Portfolio Reports — coming soon */}
           <VdfDashPanel title="Portfolio Reports">

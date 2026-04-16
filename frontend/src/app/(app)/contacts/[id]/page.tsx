@@ -9,6 +9,7 @@ import {
 } from '@/components/vdf';
 import s from './contact-profile.module.css';
 import { SnapshotTab } from './snapshot-tab';
+import { PulsesTab } from './pulses-tab';
 
 /* ── Types ───────────────────────────────────────────── */
 
@@ -326,6 +327,18 @@ export default function ContactProfilePage() {
       id: 'snapshot',
       label: 'Financial Snapshot',
       content: <SnapshotTab contactId={contactId} isClient={contact.is_client} contactName={contact.name} />,
+    },
+    {
+      id: 'pulses',
+      label: 'Follow-ups',
+      content: (
+        <PulsesTab
+          contactId={contactId}
+          contactName={contact.name}
+          isClient={contact.is_client}
+          clientId={contact.client_id}
+        />
+      ),
     },
   ];
 

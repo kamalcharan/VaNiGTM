@@ -1,0 +1,53 @@
+.page {
+  max-width: 860px;
+  margin: 0 auto;
+  min-height: 100%;
+}
+
+.body {
+  padding: 20px 32px 32px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.originPills {
+  display: flex;
+  gap: 4px;
+  background: var(--color-surface);
+  border-radius: 8px;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+}
+
+.originPill {
+  padding: 5px 12px;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.originPill:hover { color: var(--color-fg); }
+
+.originPillActive {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+@media (max-width: 768px) {
+  .body { padding: 16px 20px 24px; }
+}
+
+@media (max-width: 480px) {
+  .body { padding: 12px 14px 20px; }
+  .headerActions { flex-wrap: wrap; }
+}
