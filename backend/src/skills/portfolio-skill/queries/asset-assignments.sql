@@ -131,7 +131,7 @@ SELECT
     CASE WHEN h.is_sip THEN 'monthly' ELSE NULL END     AS investment_frequency,
     NULL::NUMERIC                                       AS custom_assumption_rate,
     NULL::TEXT                                          AS notes,
-    h.created_at,
+    h.updated_at                                        AS created_at,
 
     mf.id                                               AS asset_type_id,
     mf.asset_type_code,
