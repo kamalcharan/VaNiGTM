@@ -44,6 +44,11 @@ Returns aggregated holdings for all active members of a family, consolidated by 
 - Parameters: family_id (required, string)
 - Returns: { family_id, holdings: [{ scheme_code, scheme_name, category, amc, units, avg_nav, nav, nav_date, value, invested, gain_loss, gain_pct, members: [{ client_id, name, prefix, units, invested }] }], summary: { total_value, total_invested, overall_gain_pct, scheme_count, member_count }, recipe: 'portfolio-view' }
 
+### get_asset_assignments
+Returns all asset assignments for a client (MF auto-created on import + non-MF manually added by advisor). Results are grouped by asset category.
+- Parameters: client_id (required, number)
+- Returns: { assignments: [{ assignment_id, asset_type_code, asset_type_name, category, scheme_code, scheme_name, amc, fund_category, units, current_nav, nav_date, mf_invested, principal_amount, estimated_current_value, gain_loss, gain_pct, investment_type, effective_rate, start_date }], by_category: [{ category, label, total_value, total_invested, assignments: [] }], summary: { total_value, total_invested, asset_count, mf_count, non_mf_count }, recipe: 'asset-assignments' }
+
 ## Constraints
 - All functions are read-only (no mutations)
 - Returns are in INR

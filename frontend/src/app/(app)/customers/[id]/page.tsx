@@ -898,6 +898,230 @@ function CrmDataTab({ client }: { client: Client }) {
 
 /* ── Vendor Codes Tab ────────────────────────────────── */
 
+/* ── Assets Tab ──────────────────────────────────────── */
+
+interface AssetAssignmentItem {
+  assignment_id:           number;
+  asset_type_code:         string;
+  asset_type_name:         string;
+  category:                string;
+  display_order:           number;
+  investment_type:         string | null;
+  start_date:              string | null;
+  duration_months:         number | null;
+  recurring_amount:        number | null;
+  investment_frequency:    string | null;
+  effective_rate:          number;
+  notes:                   string | null;
+  created_at:              string;
+  scheme_code:             string | null;
+  scheme_name:             string | null;
+  amc:                     string | null;
+  fund_category:           string | null;
+  units:                   number | null;
+  avg_nav:                 number | null;
+  current_nav:             number | null;
+  nav_date:                string | null;
+  mf_invested:             number | null;
+  principal_amount:        number | null;
+  estimated_current_value: number | null;
+  gain_loss:               number | null;
+  gain_pct:                number | null;
+}
+
+interface AssetCategoryGroup {
+  category:        string;
+  label:           string;
+  total_value:     number;
+  total_invested:  number;
+  assignments:     AssetAssignmentItem[];
+}
+
+const ASSET_CATEGORY_COLORS: Record<string, string> = {
+  equity:       'var(--color-danger)',
+  fixed_income: 'var(--color-info)',
+  commodity:    'var(--color-accent)',
+  real_estate:  'var(--color-warning)',
+  insurance:    'var(--color-success)',
+};
+
+function AssetsTab({ clientId }: { clientId: number }) {
+  const { data, isLoading, isError } = useSkillQuery<{
+    by_category: AssetCategoryGroup[];
+    summary: {
+      total_value:    number;
+      total_invested: number;
+      asset_count:    number;
+      mf_count:       number;
+      non_mf_count:   number;
+    };
+  }>('portfolio-skill', 'get_asset_assignments', { client_id: clientId });
+
+  if (isLoading) return <div className={s.tabLoadWrap}><VdfLoader message="Loading assets…" /></div>;
+  if (isError) return (
+    <div className={s.tabContent}>
+      <VdfEmptyState title="Could not load assets" description="There was an error fetching asset assignments." />
+    </div>
+  );
+
+  const byCategory = data?.data?.by_category ?? [];
+  const summary    = data?.data?.summary;
+
+  if (byCategory.length === 0) {
+    return (
+      <div className={s.tabContent}>
+        <VdfEmptyState
+          title="No assets on record"
+          description="Import a transaction statement to auto-create MF asset records. Non-MF assets (Gold, FD, Real Estate) can be added manually."
+          action={<VdfButton variant="primary" size="sm" onClick={() => window.location.href = '/import'}>Import Data</VdfButton>}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className={s.assetsWrap}>
+
+      {/* Summary strip */}
+      {summary && (
+        <div className={s.assetsSummaryStrip}>
+          <div className={s.assetsSumItem}>
+            <span className={s.assetsSumLabel}>Total Value</span>
+            <span className={s.assetsSumValue}>{fmtCurrency(summary.total_value)}</span>
+          </div>
+          <div className={s.assetsSumSep} />
+          <div className={s.assetsSumItem}>
+            <span className={s.assetsSumLabel}>Invested</span>
+            <span className={s.assetsSumValue}>{fmtCurrency(summary.total_invested)}</span>
+          </div>
+          <div className={s.assetsSumSep} />
+          <div className={s.assetsSumItem}>
+            <span className={s.assetsSumLabel}>Assets</span>
+            <span className={s.assetsSumValue}>{summary.asset_count}</span>
+          </div>
+          <div className={s.assetsSumSep} />
+          <div className={s.assetsSumItem}>
+            <span className={s.assetsSumLabel}>MF Funds</span>
+            <span className={s.assetsSumValue}>{summary.mf_count}</span>
+          </div>
+          <div className={s.assetsSumSep} />
+          <div className={s.assetsSumItem}>
+            <span className={s.assetsSumLabel}>Other Assets</span>
+            <span className={s.assetsSumValue}>{summary.non_mf_count}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Category groups */}
+      {byCategory.map(group => {
+        const dotColor = ASSET_CATEGORY_COLORS[group.category] ?? 'var(--color-muted)';
+        return (
+          <div key={group.category} className={s.assetGroup}>
+
+            {/* Group header */}
+            <div className={s.assetGroupHead}>
+              <span className={s.assetGroupLabel}>
+                <span className={s.assetGroupLabelLine} />
+                {group.label}
+              </span>
+              <span className={s.assetGroupTotal}>{fmtCurrency(group.total_value)}</span>
+            </div>
+
+            {/* Assignment cards */}
+            {group.assignments.map(a => {
+              const isMF      = a.scheme_code != null;
+              const isUp      = a.gain_loss != null && a.gain_loss >= 0;
+              const invested  = isMF ? (a.mf_invested ?? 0) : (a.principal_amount ?? 0);
+              const value     = a.estimated_current_value;
+              const gainLoss  = a.gain_loss;
+              const gainPct   = a.gain_pct;
+
+              return (
+                <div key={a.assignment_id} className={s.assetCard}>
+
+                  {/* Card header */}
+                  <div className={s.assetCardHead}>
+                    <span className={s.assetTypeDot} style={{ background: dotColor }} />
+                    <div className={s.assetCardName}>
+                      {isMF ? (
+                        <>
+                          <div className={s.assetFundName}>{a.scheme_name ?? a.scheme_code}</div>
+                          <div className={s.assetSubMeta}>
+                            {a.amc && <span>{a.amc}</span>}
+                            {a.fund_category && <span> · {a.fund_category}</span>}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className={s.assetTypeName}>{a.asset_type_name}</div>
+                          {a.start_date && (
+                            <div className={s.assetSubMeta}>Since {new Date(a.start_date).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    {/* Assumption rate badge */}
+                    {!isMF && (
+                      <span className={s.assetRateBadge}>
+                        {a.effective_rate.toFixed(1)}% p.a.
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Values row */}
+                  <div className={s.assetCardValues}>
+                    <div className={s.assetValItem}>
+                      <span className={s.assetValLabel}>Invested</span>
+                      <span className={s.assetValNum}>{fmtCurrency(invested)}</span>
+                    </div>
+                    <div className={s.assetValItem}>
+                      <span className={s.assetValLabel}>Current Value</span>
+                      <span className={`${s.assetValNum} ${value == null ? s.assetValNumMuted : ''}`}>
+                        {value != null ? fmtCurrency(value) : '—'}
+                      </span>
+                    </div>
+                    {isMF ? (
+                      <>
+                        <div className={s.assetValItem}>
+                          <span className={s.assetValLabel}>Units</span>
+                          <span className={s.assetValNum}>{a.units != null ? fmtUnits(a.units) : '—'}</span>
+                        </div>
+                        <div className={s.assetValItem}>
+                          <span className={s.assetValLabel}>Gain / Loss</span>
+                          <span className={`${s.assetValNum} ${gainLoss == null ? s.assetValNumMuted : isUp ? s.assetValNumUp : s.assetValNumDown}`}>
+                            {gainLoss != null ? `${fmtCurrency(gainLoss)} (${fmtPct(gainPct)})` : '—'}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className={s.assetValItem}>
+                          <span className={s.assetValLabel}>Rate</span>
+                          <span className={s.assetValNum}>{a.effective_rate.toFixed(1)}%</span>
+                        </div>
+                        <div className={s.assetValItem}>
+                          <span className={s.assetValLabel}>Est. Gain</span>
+                          <span className={`${s.assetValNum} ${value != null && value > (a.principal_amount ?? 0) ? s.assetValNumUp : s.assetValNumMuted}`}>
+                            {value != null && a.principal_amount != null
+                              ? fmtCurrency(value - a.principal_amount)
+                              : '—'}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+
+    </div>
+  );
+}
+
 const PLATFORM_LABELS: Record<string, string> = {
   CAMS:     'CAMS Code',
   KFINTECH: 'KFintech Code',
@@ -1052,7 +1276,7 @@ export default function CustomerDashboardPage() {
   const clientId = Number(id);
 
   const tabParam   = searchParams?.get('tab') ?? null;
-  const initialTab = ['portfolio', 'transactions', 'snapshot', 'crm', 'goals', 'vendor'].includes(tabParam ?? '')
+  const initialTab = ['portfolio', 'assets', 'transactions', 'snapshot', 'crm', 'goals', 'vendor'].includes(tabParam ?? '')
     ? tabParam!
     : 'portfolio';
   const [activeTab,    setActiveTab]    = useState(initialTab);
@@ -1083,6 +1307,7 @@ export default function CustomerDashboardPage() {
 
   const TABS = [
     { id: 'portfolio',    label: 'Portfolio' },
+    { id: 'assets',       label: 'Assets' },
     { id: 'transactions', label: 'Transactions' },
     { id: 'snapshot',     label: 'Financial Snapshot' },
     { id: 'crm',          label: 'CRM Data' },
@@ -1194,6 +1419,7 @@ export default function CustomerDashboardPage() {
             ? <FamilyPortfolioTab familyId={client.family_id} />
             : <PortfolioTab clientId={clientId} />
         )}
+        {activeTab === 'assets'       && <AssetsTab clientId={clientId} />}
         {activeTab === 'transactions' && <TransactionsTab clientId={clientId} />}
         {activeTab === 'snapshot'     && (
           <SnapshotTab
