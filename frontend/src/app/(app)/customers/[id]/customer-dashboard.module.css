@@ -1079,89 +1079,73 @@
   gap: 10px;
 }
 
-/* ── Pinstripe cards ─────────────────────────────────── */
+/* ── Pinterest / masonry card grid ───────────────────── */
 
-.assetStripes {
-  display: flex;
-  flex-direction: column;
+.assetMasonry {
+  column-count: 3;
+  column-gap: 12px;
+}
+
+/* Each card breaks cleanly between columns */
+.assetMasonryCard {
+  break-inside: avoid;
+  margin-bottom: 12px;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
+  cursor: default;
+  transition: transform 120ms ease, box-shadow 120ms ease;
 }
 
-/* Each stripe is a flex card — NOT a table row */
-.assetStripeRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 11px 14px 11px 0;
-  transition: background 120ms;
-  position: relative;
+.assetMasonryCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-fg) 7%, transparent);
 }
 
-.assetStripeRowAlt {
-  background: color-mix(in srgb, var(--color-fg) 2%, transparent);
+/* Top category accent bar */
+.assetMasonryAccent {
+  height: 4px;
+  width: 100%;
 }
 
-.assetStripeRow:hover {
-  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
-}
-
-.assetStripeRow:hover .assetStripeActions {
-  opacity: 1;
-}
-
-/* Coloured left accent bar (replaces dot) */
-.assetStripeAccent {
-  width: 3px;
-  align-self: stretch;
-  flex-shrink: 0;
-  border-radius: 0 2px 2px 0;
-  margin-right: 2px;
-}
-
-/* Name block */
-.assetStripeNameWrap {
-  flex: 1;
-  min-width: 0;
+/* Card content */
+.assetMasonryBody {
+  padding: 12px 14px 10px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 
-.assetStripeName {
-  font-size: 0.81rem;
-  font-weight: 600;
+.assetMasonryName {
+  font-size: 0.83rem;
+  font-weight: 700;
   color: var(--color-fg);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
+  margin-bottom: 3px;
 }
 
-.assetStripeSub {
+.assetMasonrySub {
   font-size: 0.62rem;
   color: var(--color-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
+  margin-bottom: 12px;
 }
 
-/* Metric chips — flex row, each chip is label + value stacked */
-.assetStripeMetrics {
-  display: flex;
-  gap: 20px;
-  flex-shrink: 0;
-  align-items: center;
+/* 2-column metrics grid — fills card width naturally */
+.assetMasonryMetrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  margin-bottom: 6px;
 }
 
-.assetStripeMetric {
+.assetMasonryMetric {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  min-width: 64px;
 }
 
-.assetStripeMetricLabel {
+.assetMasonryMetricLabel {
   font-size: 0.55rem;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -1169,33 +1153,38 @@
   color: var(--color-muted);
 }
 
-.assetStripeMetricVal {
+.assetMasonryMetricVal {
   font-family: var(--font-mono, monospace);
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--color-fg);
   white-space: nowrap;
 }
 
-.assetStripeMetricValBold {
+.assetMasonryMetricValLg {
+  font-size: 0.88rem;
   font-weight: 700;
-  font-size: 0.82rem;
 }
 
-.assetStripeRate {
+.assetMasonryRate {
   color: var(--color-info);
 }
 
-/* Actions — hidden until row hover */
-.assetStripeActions {
+/* Actions footer — hidden until card hover */
+.assetMasonryActions {
   display: flex;
   align-items: center;
   gap: 4px;
-  flex-shrink: 0;
+  justify-content: flex-end;
+  padding-top: 8px;
+  margin-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
   opacity: 0;
   transition: opacity 150ms;
-  min-width: 60px;
-  justify-content: flex-end;
+}
+
+.assetMasonryCard:hover .assetMasonryActions {
+  opacity: 1;
 }
 
 .assetGroupHead {
@@ -1305,20 +1294,15 @@
 
 /* ── Responsive ──────────────────────────────────────── */
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .assetsWrap { padding: 16px 20px 24px; }
   .assetsSummaryStrip { flex-wrap: wrap; }
-  /* hide units chip on tablet */
-  .assetStripeMetricHideMobile { display: none; }
-  .assetStripeMetrics { gap: 14px; }
-  .assetStripeMetric { min-width: 52px; }
+  .assetMasonry { column-count: 2; }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 540px) {
   .assetsWrap { padding: 12px 14px 20px; }
-  /* On mobile: metrics wrap below the name */
-  .assetStripeRow { flex-wrap: wrap; gap: 8px; padding: 10px 12px 10px 0; }
-  .assetStripeNameWrap { flex-basis: 100%; }
-  .assetStripeMetrics { gap: 12px; padding-left: 5px; }
-  .assetStripeActions { margin-left: auto; opacity: 1; } /* always visible on touch */
+  .assetMasonry { column-count: 1; }
+  /* Always show actions on touch — no hover */
+  .assetMasonryActions { opacity: 1; }
 }

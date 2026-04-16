@@ -1101,8 +1101,8 @@ function AssetsTab({ clientId }: { clientId: number }) {
                 <span className={s.assetGroupTotal}>{fmtCurrency(group.total_value)}</span>
               </div>
 
-              {/* Pinstripe cards */}
-              <div className={s.assetStripes}>
+              {/* Pinterest/masonry card grid */}
+              <div className={s.assetMasonry}>
                 {group.assignments.map((a, idx) => {
                   const isMF       = a.scheme_code != null;
                   const isUp       = a.gain_loss != null && a.gain_loss >= 0;
@@ -1115,90 +1115,88 @@ function AssetsTab({ clientId }: { clientId: number }) {
                     : `holding-${a.scheme_code ?? a.asset_type_code}-${idx}`;
 
                   return (
-                    <div
-                      key={rowKey}
-                      className={`${s.assetStripeRow} ${idx % 2 === 1 ? s.assetStripeRowAlt : ''}`}
-                    >
-                      {/* Left accent bar */}
-                      <span className={s.assetStripeAccent} style={{ background: dotColor }} />
+                    <div key={rowKey} className={s.assetMasonryCard}>
+                      {/* Top accent bar */}
+                      <div className={s.assetMasonryAccent} style={{ background: dotColor }} />
 
-                      {/* Name block — takes all remaining space */}
-                      <div className={s.assetStripeNameWrap}>
-                        <span className={s.assetStripeName}>
+                      {/* Card body */}
+                      <div className={s.assetMasonryBody}>
+                        {/* Name + subtitle */}
+                        <div className={s.assetMasonryName}>
                           {isMF ? (a.scheme_name ?? a.scheme_code) : (a.notes ?? a.asset_type_name)}
-                        </span>
-                        <span className={s.assetStripeSub}>
+                        </div>
+                        <div className={s.assetMasonrySub}>
                           {isMF
                             ? [a.amc, a.fund_category].filter(Boolean).join(' · ')
                             : [a.notes ? a.asset_type_name : null, a.start_date
                                 ? `Since ${new Date(a.start_date).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`
                                 : null].filter(Boolean).join(' · ')
                           }
-                        </span>
-                      </div>
+                        </div>
 
-                      {/* Metric chips */}
-                      <div className={s.assetStripeMetrics}>
-                        <div className={s.assetStripeMetric}>
-                          <span className={s.assetStripeMetricLabel}>Invested</span>
-                          <span className={s.assetStripeMetricVal}>{fmtCurrency(invested)}</span>
-                        </div>
-                        <div className={s.assetStripeMetric}>
-                          <span className={s.assetStripeMetricLabel}>Current</span>
-                          <span className={`${s.assetStripeMetricVal} ${s.assetStripeMetricValBold}`}>
-                            {value != null ? fmtCurrency(value) : <span className={s.assetValNumMuted}>—</span>}
-                          </span>
-                        </div>
-                        <div className={s.assetStripeMetric}>
-                          <span className={s.assetStripeMetricLabel}>{isMF ? 'Gain' : 'Rate'}</span>
-                          <span className={`${s.assetStripeMetricVal} ${
-                            isMF
-                              ? (gainPct == null ? s.assetValNumMuted : isUp ? s.assetValNumUp : s.assetValNumDown)
-                              : s.assetStripeRate
-                          }`}>
-                            {isMF
-                              ? (gainPct != null ? fmtPct(gainPct) : '—')
-                              : `${a.effective_rate.toFixed(1)}%`
-                            }
-                          </span>
-                        </div>
-                        {isMF && (
-                          <div className={`${s.assetStripeMetric} ${s.assetStripeMetricHideMobile}`}>
-                            <span className={s.assetStripeMetricLabel}>Units</span>
-                            <span className={`${s.assetStripeMetricVal} ${s.assetValNumMuted}`}>
-                              {a.units != null ? fmtUnits(a.units) : '—'}
+                        {/* 2-col metrics grid */}
+                        <div className={s.assetMasonryMetrics}>
+                          <div className={s.assetMasonryMetric}>
+                            <span className={s.assetMasonryMetricLabel}>Invested</span>
+                            <span className={s.assetMasonryMetricVal}>{fmtCurrency(invested)}</span>
+                          </div>
+                          <div className={s.assetMasonryMetric}>
+                            <span className={s.assetMasonryMetricLabel}>Current</span>
+                            <span className={`${s.assetMasonryMetricVal} ${s.assetMasonryMetricValLg}`}>
+                              {value != null ? fmtCurrency(value) : <span className={s.assetValNumMuted}>—</span>}
                             </span>
                           </div>
-                        )}
-                      </div>
+                          <div className={s.assetMasonryMetric}>
+                            <span className={s.assetMasonryMetricLabel}>{isMF ? 'Gain / Loss' : 'Return Rate'}</span>
+                            <span className={`${s.assetMasonryMetricVal} ${
+                              isMF
+                                ? (gainPct == null ? s.assetValNumMuted : isUp ? s.assetValNumUp : s.assetValNumDown)
+                                : s.assetMasonryRate
+                            }`}>
+                              {isMF
+                                ? (gainPct != null ? fmtPct(gainPct) : '—')
+                                : `${a.effective_rate.toFixed(1)}%`
+                              }
+                            </span>
+                          </div>
+                          {isMF && (
+                            <div className={s.assetMasonryMetric}>
+                              <span className={s.assetMasonryMetricLabel}>Units</span>
+                              <span className={`${s.assetMasonryMetricVal} ${s.assetValNumMuted}`}>
+                                {a.units != null ? fmtUnits(a.units) : '—'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
 
-                      {/* Actions — fade in on hover */}
-                      <div className={s.assetStripeActions}>
-                        {a.has_assignment && (<>
-                          <button className={s.assetActionBtn} title="Edit" onClick={() => openEdit(a)}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="12" height="12">
-                              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                            </svg>
-                          </button>
-                          {deletingId === a.assignment_id ? (
-                            <>
-                              <button className={`${s.assetActionBtn} ${s.assetActionBtnDanger}`} title="Confirm" onClick={() => a.assignment_id && handleDelete(a.assignment_id)} disabled={isDeleting}>
-                                {isDeleting ? '…' : '✓'}
-                              </button>
-                              <button className={s.assetActionBtn} title="Cancel" onClick={() => setDeletingId(null)}>✕</button>
-                            </>
-                          ) : (
-                            <button className={`${s.assetActionBtn} ${s.assetActionBtnDelete}`} title="Remove" onClick={() => setDeletingId(a.assignment_id)}>
+                        {/* Actions — fade in on hover (always visible on mobile) */}
+                        {a.has_assignment && (
+                          <div className={s.assetMasonryActions}>
+                            <button className={s.assetActionBtn} title="Edit" onClick={() => openEdit(a)}>
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="12" height="12">
-                                <polyline points="3 6 5 6 21 6" />
-                                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-                                <path d="M10 11v6M14 11v6" />
-                                <path d="M9 6V4h6v2" />
+                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                               </svg>
                             </button>
-                          )}
-                        </>)}
+                            {deletingId === a.assignment_id ? (
+                              <>
+                                <button className={`${s.assetActionBtn} ${s.assetActionBtnDanger}`} title="Confirm delete" onClick={() => a.assignment_id && handleDelete(a.assignment_id)} disabled={isDeleting}>
+                                  {isDeleting ? '…' : '✓'}
+                                </button>
+                                <button className={s.assetActionBtn} title="Cancel" onClick={() => setDeletingId(null)}>✕</button>
+                              </>
+                            ) : (
+                              <button className={`${s.assetActionBtn} ${s.assetActionBtnDelete}`} title="Remove" onClick={() => setDeletingId(a.assignment_id)}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="12" height="12">
+                                  <polyline points="3 6 5 6 21 6" />
+                                  <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                                  <path d="M10 11v6M14 11v6" />
+                                  <path d="M9 6V4h6v2" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
