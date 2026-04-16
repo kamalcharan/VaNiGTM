@@ -121,6 +121,16 @@ export const NAV_ITEMS: NavItem[] = [
     fn: 'get_bookmarks',
     recipe: 'my-nav',
   },
+  {
+    id: 'pulses',
+    label: 'Pulses',
+    icon: <Icon><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></Icon>,
+    href: '/pulses',
+    section: 'main',
+    skill: 'pulse-skill',
+    fn: 'list_pulses',
+    recipe: 'pulse-list',
+  },
 
   /* ── DATA (import, ETL, operations) ────────────────── */
 
@@ -208,16 +218,6 @@ export const NAV_ITEMS: NavItem[] = [
   /* ── SYSTEM (alerts, reports, settings) ─────────────── */
 
   {
-    id: 'alerts',
-    label: 'Alerts',
-    icon: <Icon><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" /></Icon>,
-    href: '/alerts',
-    section: 'system',
-    skill: 'alert-skill',
-    fn: 'get_alerts',
-    recipe: 'briefing-panel',
-  },
-  {
     id: 'reports',
     label: 'Reports',
     icon: <Icon><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></Icon>,
@@ -258,6 +258,7 @@ export function getActiveNavId(pathname: string | null): string {
   if (pathname.startsWith('/contacts'))  return 'contacts';
   if (pathname.startsWith('/clients'))   return 'clients';
   if (pathname.startsWith('/customers')) return 'clients';
+  if (pathname.startsWith('/pulses'))    return 'pulses';
 
   const prefix = NAV_ITEMS.find((item) => item.href !== '/' && pathname.startsWith(item.href));
   if (prefix) return prefix.id;
