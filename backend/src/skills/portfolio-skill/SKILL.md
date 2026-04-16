@@ -49,8 +49,29 @@ Returns all asset assignments for a client (MF auto-created on import + non-MF m
 - Parameters: client_id (required, number)
 - Returns: { assignments: [{ assignment_id, asset_type_code, asset_type_name, category, scheme_code, scheme_name, amc, fund_category, units, current_nav, nav_date, mf_invested, principal_amount, estimated_current_value, gain_loss, gain_pct, investment_type, effective_rate, start_date }], by_category: [{ category, label, total_value, total_invested, assignments: [] }], summary: { total_value, total_invested, asset_count, mf_count, non_mf_count }, recipe: 'asset-assignments' }
 
+### get_asset_types
+Returns all active asset types (global, not tenant-scoped) for use in the Add Investment form dropdown.
+- Parameters: none
+- Returns: { asset_types: [{ id, asset_type_code, asset_type_name, category, default_assumption_rate, display_order, description }], recipe: 'asset-types' }
+
+### create_asset_assignment
+Creates a new manual investment plan for a client (non-MF or MF). Wrapped in a transaction.
+- Parameters: client_id (required, number), asset_type_id (required, number), investment_type (required, one_time|sip|recurring), principal_amount (required, number), scheme_code (optional, string), start_date (optional, ISO date), duration_months (optional, number), recurring_amount (optional, number), investment_frequency (optional, monthly|quarterly|yearly), custom_assumption_rate (optional, number), notes (optional, string)
+- Returns: { assignment_id, created_at, recipe: 'asset-assignment-created' }
+
+### update_asset_assignment
+Partial update of an existing asset assignment. Only supplied non-null fields are changed. Wrapped in a transaction.
+- Parameters: assignment_id (required, number), client_id (required, number), investment_type (optional), principal_amount (optional), start_date (optional), duration_months (optional), recurring_amount (optional), investment_frequency (optional), custom_assumption_rate (optional), notes (optional)
+- Returns: { assignment_id, updated_at, recipe: 'asset-assignment-updated' }
+
+### delete_asset_assignment
+Soft-deletes an asset assignment (sets is_active = false). Record is retained for historical tracking.
+- Parameters: assignment_id (required, number), client_id (required, number)
+- Returns: { assignment_id, recipe: 'asset-assignment-deleted' }
+
 ## Constraints
-- All functions are read-only (no mutations)
+- get_holdings, get_allocation, calc_xirr, get_portfolio_summary, compare_holdings, get_family_portfolio, get_asset_assignments, get_asset_types are read-only
+- create_asset_assignment, update_asset_assignment, delete_asset_assignment are write operations — all wrapped in transactions
 - Returns are in INR
 - NAV data may be up to 1 business day old
 - XIRR calculation uses the Newton-Raphson method, same as existing KewalInvest MVP

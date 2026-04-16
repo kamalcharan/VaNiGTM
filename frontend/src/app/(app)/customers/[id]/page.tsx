@@ -12,6 +12,7 @@ import {
 import { TransactionCard, type TransactionCardItem } from '@/components/transactions/TransactionCard';
 import { TransactionDetailDrawer } from '@/components/transactions/TransactionDetailDrawer';
 import { SnapshotTab } from '@/app/(app)/contacts/[id]/snapshot-tab';
+import { AddInvestmentModal, type AssetAssignmentForEdit } from '@/components/assets/AddInvestmentModal';
 import s from './customer-dashboard.module.css';
 import d from '@/styles/data.module.css';
 
@@ -902,6 +903,7 @@ function CrmDataTab({ client }: { client: Client }) {
 
 interface AssetAssignmentItem {
   assignment_id:           number;
+  asset_type_id:           number;
   asset_type_code:         string;
   asset_type_name:         string;
   category:                string;
@@ -911,6 +913,7 @@ interface AssetAssignmentItem {
   duration_months:         number | null;
   recurring_amount:        number | null;
   investment_frequency:    string | null;
+  custom_assumption_rate:  number | null;
   effective_rate:          number;
   notes:                   string | null;
   created_at:              string;
@@ -946,6 +949,13 @@ const ASSET_CATEGORY_COLORS: Record<string, string> = {
 };
 
 function AssetsTab({ clientId }: { clientId: number }) {
+  const { showToast } = useToast();
+  const queryClient   = useQueryClient();
+
+  const [modalOpen,        setModalOpen]        = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState<AssetAssignmentForEdit | null>(null);
+  const [deletingId,        setDeletingId]       = useState<number | null>(null);
+
   const { data, isLoading, isError } = useSkillQuery<{
     by_category: AssetCategoryGroup[];
     summary: {
@@ -956,6 +966,50 @@ function AssetsTab({ clientId }: { clientId: number }) {
       non_mf_count:   number;
     };
   }>('portfolio-skill', 'get_asset_assignments', { client_id: clientId });
+
+  const { mutateAsync: deleteAssignment, isPending: deleting } =
+    useSkillMutation('portfolio-skill', 'delete_asset_assignment');
+
+  async function handleDelete(assignmentId: number) {
+    try {
+      await deleteAssignment({ assignment_id: assignmentId, client_id: clientId });
+      await queryClient.invalidateQueries({ queryKey: ['skill', 'portfolio-skill', 'get_asset_assignments'] });
+      showToast({ message: 'Investment removed', type: 'success' });
+    } catch (err: any) {
+      showToast({ message: err?.message ?? 'Failed to remove investment', type: 'error' });
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  function openEdit(a: AssetAssignmentItem) {
+    setEditingAssignment({
+      assignment_id:          a.assignment_id,
+      asset_type_id:          a.asset_type_id,
+      asset_type_code:        a.asset_type_code,
+      scheme_code:            a.scheme_code,
+      notes:                  a.notes,
+      investment_type:        a.investment_type,
+      principal_amount:       a.principal_amount,
+      start_date:             a.start_date,
+      duration_months:        a.duration_months,
+      recurring_amount:       a.recurring_amount,
+      investment_frequency:   a.investment_frequency,
+      custom_assumption_rate: a.custom_assumption_rate,
+      effective_rate:         a.effective_rate,
+    });
+    setModalOpen(true);
+  }
+
+  function openAdd() {
+    setEditingAssignment(null);
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditingAssignment(null);
+  }
 
   if (isLoading) return <div className={s.tabLoadWrap}><VdfLoader message="Loading assets…" /></div>;
   if (isError) return (
@@ -969,156 +1023,231 @@ function AssetsTab({ clientId }: { clientId: number }) {
 
   if (byCategory.length === 0) {
     return (
-      <div className={s.tabContent}>
-        <VdfEmptyState
-          title="No assets on record"
-          description="Import a transaction statement to auto-create MF asset records. Non-MF assets (Gold, FD, Real Estate) can be added manually."
-          action={<VdfButton variant="primary" size="sm" onClick={() => window.location.href = '/import'}>Import Data</VdfButton>}
+      <>
+        <div className={s.tabContent}>
+          <VdfEmptyState
+            title="No assets on record"
+            description="Import a transaction statement to auto-create MF asset records. Non-MF assets (Gold, FD, Real Estate) can be added manually."
+            action={
+              <div style={{ display: 'flex', gap: 8 }}>
+                <VdfButton variant="primary" size="sm" onClick={openAdd}>+ Add Investment</VdfButton>
+                <VdfButton variant="outline" size="sm" onClick={() => window.location.href = '/import'}>Import Data</VdfButton>
+              </div>
+            }
+          />
+        </div>
+        <AddInvestmentModal
+          isOpen={modalOpen}
+          onClose={closeModal}
+          clientId={clientId}
+          editData={editingAssignment}
         />
-      </div>
+      </>
     );
   }
 
   return (
-    <div className={s.assetsWrap}>
+    <>
+      <div className={s.assetsWrap}>
 
-      {/* Summary strip */}
-      {summary && (
-        <div className={s.assetsSummaryStrip}>
-          <div className={s.assetsSumItem}>
-            <span className={s.assetsSumLabel}>Total Value</span>
-            <span className={s.assetsSumValue}>{fmtCurrency(summary.total_value)}</span>
-          </div>
-          <div className={s.assetsSumSep} />
-          <div className={s.assetsSumItem}>
-            <span className={s.assetsSumLabel}>Invested</span>
-            <span className={s.assetsSumValue}>{fmtCurrency(summary.total_invested)}</span>
-          </div>
-          <div className={s.assetsSumSep} />
-          <div className={s.assetsSumItem}>
-            <span className={s.assetsSumLabel}>Assets</span>
-            <span className={s.assetsSumValue}>{summary.asset_count}</span>
-          </div>
-          <div className={s.assetsSumSep} />
-          <div className={s.assetsSumItem}>
-            <span className={s.assetsSumLabel}>MF Funds</span>
-            <span className={s.assetsSumValue}>{summary.mf_count}</span>
-          </div>
-          <div className={s.assetsSumSep} />
-          <div className={s.assetsSumItem}>
-            <span className={s.assetsSumLabel}>Other Assets</span>
-            <span className={s.assetsSumValue}>{summary.non_mf_count}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Category groups */}
-      {byCategory.map(group => {
-        const dotColor = ASSET_CATEGORY_COLORS[group.category] ?? 'var(--color-muted)';
-        return (
-          <div key={group.category} className={s.assetGroup}>
-
-            {/* Group header */}
-            <div className={s.assetGroupHead}>
-              <span className={s.assetGroupLabel}>
-                <span className={s.assetGroupLabelLine} />
-                {group.label}
-              </span>
-              <span className={s.assetGroupTotal}>{fmtCurrency(group.total_value)}</span>
+        {/* Summary strip + Add button */}
+        {summary && (
+          <div className={s.assetsSummaryStrip}>
+            <div className={s.assetsSumItem}>
+              <span className={s.assetsSumLabel}>Total Value</span>
+              <span className={s.assetsSumValue}>{fmtCurrency(summary.total_value)}</span>
             </div>
+            <div className={s.assetsSumSep} />
+            <div className={s.assetsSumItem}>
+              <span className={s.assetsSumLabel}>Invested</span>
+              <span className={s.assetsSumValue}>{fmtCurrency(summary.total_invested)}</span>
+            </div>
+            <div className={s.assetsSumSep} />
+            <div className={s.assetsSumItem}>
+              <span className={s.assetsSumLabel}>Assets</span>
+              <span className={s.assetsSumValue}>{summary.asset_count}</span>
+            </div>
+            <div className={s.assetsSumSep} />
+            <div className={s.assetsSumItem}>
+              <span className={s.assetsSumLabel}>MF Funds</span>
+              <span className={s.assetsSumValue}>{summary.mf_count}</span>
+            </div>
+            <div className={s.assetsSumSep} />
+            <div className={s.assetsSumItem}>
+              <span className={s.assetsSumLabel}>Other Assets</span>
+              <span className={s.assetsSumValue}>{summary.non_mf_count}</span>
+            </div>
+            <div className={s.assetsSumSep} />
+            <div className={s.assetsSumItem}>
+              <VdfButton variant="primary" size="sm" onClick={openAdd}>+ Add Investment</VdfButton>
+            </div>
+          </div>
+        )}
 
-            {/* Assignment cards */}
-            {group.assignments.map(a => {
-              const isMF      = a.scheme_code != null;
-              const isUp      = a.gain_loss != null && a.gain_loss >= 0;
-              const invested  = isMF ? (a.mf_invested ?? 0) : (a.principal_amount ?? 0);
-              const value     = a.estimated_current_value;
-              const gainLoss  = a.gain_loss;
-              const gainPct   = a.gain_pct;
+        {/* Category groups */}
+        {byCategory.map(group => {
+          const dotColor = ASSET_CATEGORY_COLORS[group.category] ?? 'var(--color-muted)';
+          return (
+            <div key={group.category} className={s.assetGroup}>
 
-              return (
-                <div key={a.assignment_id} className={s.assetCard}>
+              {/* Group header */}
+              <div className={s.assetGroupHead}>
+                <span className={s.assetGroupLabel}>
+                  <span className={s.assetGroupLabelLine} />
+                  {group.label}
+                </span>
+                <span className={s.assetGroupTotal}>{fmtCurrency(group.total_value)}</span>
+              </div>
 
-                  {/* Card header */}
-                  <div className={s.assetCardHead}>
-                    <span className={s.assetTypeDot} style={{ background: dotColor }} />
-                    <div className={s.assetCardName}>
+              {/* Assignment cards */}
+              {group.assignments.map(a => {
+                const isMF      = a.scheme_code != null;
+                const isUp      = a.gain_loss != null && a.gain_loss >= 0;
+                const invested  = isMF ? (a.mf_invested ?? 0) : (a.principal_amount ?? 0);
+                const value     = a.estimated_current_value;
+                const gainLoss  = a.gain_loss;
+                const gainPct   = a.gain_pct;
+                const isDeleting = deletingId === a.assignment_id && deleting;
+
+                return (
+                  <div key={a.assignment_id} className={s.assetCard}>
+
+                    {/* Card header */}
+                    <div className={s.assetCardHead}>
+                      <span className={s.assetTypeDot} style={{ background: dotColor }} />
+                      <div className={s.assetCardName}>
+                        {isMF ? (
+                          <>
+                            <div className={s.assetFundName}>{a.scheme_name ?? a.scheme_code}</div>
+                            <div className={s.assetSubMeta}>
+                              {a.amc && <span>{a.amc}</span>}
+                              {a.fund_category && <span> · {a.fund_category}</span>}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className={s.assetTypeName}>{a.notes ?? a.asset_type_name}</div>
+                            {a.notes && <div className={s.assetSubMeta}>{a.asset_type_name}</div>}
+                            {a.start_date && (
+                              <div className={s.assetSubMeta}>Since {new Date(a.start_date).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      {/* Assumption rate badge (non-MF) */}
+                      {!isMF && (
+                        <span className={s.assetRateBadge}>
+                          {a.effective_rate.toFixed(1)}% p.a.
+                        </span>
+                      )}
+
+                      {/* Edit / Delete buttons */}
+                      <div className={s.assetCardActions}>
+                        <button
+                          className={s.assetActionBtn}
+                          title="Edit investment"
+                          onClick={() => openEdit(a)}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                          </svg>
+                        </button>
+                        {deletingId === a.assignment_id ? (
+                          <button
+                            className={`${s.assetActionBtn} ${s.assetActionBtnDanger}`}
+                            title="Confirm delete"
+                            onClick={() => handleDelete(a.assignment_id)}
+                            disabled={isDeleting}
+                          >
+                            {isDeleting ? '…' : '✓'}
+                          </button>
+                        ) : (
+                          <button
+                            className={`${s.assetActionBtn} ${s.assetActionBtnDelete}`}
+                            title="Remove investment"
+                            onClick={() => setDeletingId(a.assignment_id)}
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                              <path d="M10 11v6M14 11v6" />
+                              <path d="M9 6V4h6v2" />
+                            </svg>
+                          </button>
+                        )}
+                        {deletingId === a.assignment_id && (
+                          <button
+                            className={s.assetActionBtn}
+                            title="Cancel"
+                            onClick={() => setDeletingId(null)}
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Values row */}
+                    <div className={s.assetCardValues}>
+                      <div className={s.assetValItem}>
+                        <span className={s.assetValLabel}>Invested</span>
+                        <span className={s.assetValNum}>{fmtCurrency(invested)}</span>
+                      </div>
+                      <div className={s.assetValItem}>
+                        <span className={s.assetValLabel}>Current Value</span>
+                        <span className={`${s.assetValNum} ${value == null ? s.assetValNumMuted : ''}`}>
+                          {value != null ? fmtCurrency(value) : '—'}
+                        </span>
+                      </div>
                       {isMF ? (
                         <>
-                          <div className={s.assetFundName}>{a.scheme_name ?? a.scheme_code}</div>
-                          <div className={s.assetSubMeta}>
-                            {a.amc && <span>{a.amc}</span>}
-                            {a.fund_category && <span> · {a.fund_category}</span>}
+                          <div className={s.assetValItem}>
+                            <span className={s.assetValLabel}>Units</span>
+                            <span className={s.assetValNum}>{a.units != null ? fmtUnits(a.units) : '—'}</span>
+                          </div>
+                          <div className={s.assetValItem}>
+                            <span className={s.assetValLabel}>Gain / Loss</span>
+                            <span className={`${s.assetValNum} ${gainLoss == null ? s.assetValNumMuted : isUp ? s.assetValNumUp : s.assetValNumDown}`}>
+                              {gainLoss != null ? `${fmtCurrency(gainLoss)} (${fmtPct(gainPct)})` : '—'}
+                            </span>
                           </div>
                         </>
                       ) : (
                         <>
-                          <div className={s.assetTypeName}>{a.asset_type_name}</div>
-                          {a.start_date && (
-                            <div className={s.assetSubMeta}>Since {new Date(a.start_date).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</div>
-                          )}
+                          <div className={s.assetValItem}>
+                            <span className={s.assetValLabel}>Rate</span>
+                            <span className={s.assetValNum}>{a.effective_rate.toFixed(1)}%</span>
+                          </div>
+                          <div className={s.assetValItem}>
+                            <span className={s.assetValLabel}>Est. Gain</span>
+                            <span className={`${s.assetValNum} ${value != null && value > (a.principal_amount ?? 0) ? s.assetValNumUp : s.assetValNumMuted}`}>
+                              {value != null && a.principal_amount != null
+                                ? fmtCurrency(value - a.principal_amount)
+                                : '—'}
+                            </span>
+                          </div>
                         </>
                       )}
                     </div>
-                    {/* Assumption rate badge */}
-                    {!isMF && (
-                      <span className={s.assetRateBadge}>
-                        {a.effective_rate.toFixed(1)}% p.a.
-                      </span>
-                    )}
+
                   </div>
+                );
+              })}
+            </div>
+          );
+        })}
 
-                  {/* Values row */}
-                  <div className={s.assetCardValues}>
-                    <div className={s.assetValItem}>
-                      <span className={s.assetValLabel}>Invested</span>
-                      <span className={s.assetValNum}>{fmtCurrency(invested)}</span>
-                    </div>
-                    <div className={s.assetValItem}>
-                      <span className={s.assetValLabel}>Current Value</span>
-                      <span className={`${s.assetValNum} ${value == null ? s.assetValNumMuted : ''}`}>
-                        {value != null ? fmtCurrency(value) : '—'}
-                      </span>
-                    </div>
-                    {isMF ? (
-                      <>
-                        <div className={s.assetValItem}>
-                          <span className={s.assetValLabel}>Units</span>
-                          <span className={s.assetValNum}>{a.units != null ? fmtUnits(a.units) : '—'}</span>
-                        </div>
-                        <div className={s.assetValItem}>
-                          <span className={s.assetValLabel}>Gain / Loss</span>
-                          <span className={`${s.assetValNum} ${gainLoss == null ? s.assetValNumMuted : isUp ? s.assetValNumUp : s.assetValNumDown}`}>
-                            {gainLoss != null ? `${fmtCurrency(gainLoss)} (${fmtPct(gainPct)})` : '—'}
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className={s.assetValItem}>
-                          <span className={s.assetValLabel}>Rate</span>
-                          <span className={s.assetValNum}>{a.effective_rate.toFixed(1)}%</span>
-                        </div>
-                        <div className={s.assetValItem}>
-                          <span className={s.assetValLabel}>Est. Gain</span>
-                          <span className={`${s.assetValNum} ${value != null && value > (a.principal_amount ?? 0) ? s.assetValNumUp : s.assetValNumMuted}`}>
-                            {value != null && a.principal_amount != null
-                              ? fmtCurrency(value - a.principal_amount)
-                              : '—'}
-                          </span>
-                        </div>
-                      </>
-                    )}
-                  </div>
+      </div>
 
-                </div>
-              );
-            })}
-          </div>
-        );
-      })}
-
-    </div>
+      <AddInvestmentModal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        clientId={clientId}
+        editData={editingAssignment}
+      />
+    </>
   );
 }
 
