@@ -269,8 +269,7 @@ export default function PulsesPage() {
     <div className={s.page}>
       <VdfPageHeader
         eyebrow="PULSE QUEUE"
-        title="Pulse Queue"
-        titleEm="relationship reviews"
+        title="Pulses"
         meta={
           <>
             <strong>{stats.total_configs}</strong> client{stats.total_configs !== 1 ? 's' : ''} configured
