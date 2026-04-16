@@ -1,0 +1,252 @@
+/* ════════════════════════════════════════════════
+   TransactionCard — premium card layout for a single transaction.
+   Used in global /transactions view and per-client Transactions tab.
+   ════════════════════════════════════════════════ */
+
+/* ── Card shell ─────────────────────────────────── */
+.card {
+  background:    var(--color-surface);
+  border:        1px solid var(--color-border);
+  border-radius: 12px;
+  overflow:      hidden;
+  transition:    border-color 180ms, box-shadow 180ms;
+}
+
+.card:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+  box-shadow:   0 2px 14px color-mix(in srgb, var(--color-primary) 7%, transparent);
+}
+
+/* Duplicate state — amber tint */
+.cardDupe {
+  background:   color-mix(in srgb, var(--color-warning) 4%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-warning) 28%, var(--color-border));
+}
+
+.cardDupe:hover {
+  border-color: color-mix(in srgb, var(--color-warning) 50%, var(--color-border));
+}
+
+/* Excluded from portfolio — dimmed */
+.cardExcluded {
+  opacity: 0.65;
+}
+
+/* ── Header row ─────────────────────────────────── */
+.header {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  padding:     10px 14px 10px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.date {
+  font-size:   0.75rem;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  color:       var(--color-fg);
+  flex-shrink: 0;
+  min-width:   80px;
+}
+
+/* Flag chips */
+.flagDupe {
+  display:     inline-flex;
+  align-items: center;
+  gap:         3px;
+  padding:     2px 7px;
+  border-radius: 6px;
+  background:  color-mix(in srgb, var(--color-warning) 14%, transparent);
+  border:      1px solid color-mix(in srgb, var(--color-warning) 35%, transparent);
+  color:       var(--color-warning);
+  font-size:   0.6rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.flagExcluded {
+  display:     inline-flex;
+  align-items: center;
+  gap:         3px;
+  padding:     2px 7px;
+  border-radius: 6px;
+  background:  color-mix(in srgb, var(--color-muted) 10%, transparent);
+  border:      1px solid color-mix(in srgb, var(--color-muted) 25%, transparent);
+  color:       var(--color-muted);
+  font-size:   0.6rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* View button — right-aligned */
+.viewBtn {
+  margin-left: auto;
+  display:     inline-flex;
+  align-items: center;
+  gap:         5px;
+  height:      28px;
+  padding:     0 11px;
+  border:      1px solid var(--color-border);
+  border-radius: 7px;
+  background:  transparent;
+  color:       var(--color-muted);
+  font-size:   0.72rem;
+  font-weight: 600;
+  cursor:      pointer;
+  transition:  all 160ms;
+  flex-shrink: 0;
+}
+
+.viewBtn:hover {
+  border-color: var(--color-primary);
+  color:        var(--color-primary);
+  background:   color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+/* ── Body grid ──────────────────────────────────── */
+
+/* With client column: client | scheme | amount | units | nav */
+.bodyWithClient {
+  display:               grid;
+  grid-template-columns: 160px 1fr 120px 100px 100px;
+  gap:                   0;
+  padding:               12px 16px 14px;
+}
+
+/* Without client column: scheme | amount | units | nav */
+.bodyNoClient {
+  display:               grid;
+  grid-template-columns: 1fr 120px 100px 100px;
+  gap:                   0;
+  padding:               12px 16px 14px;
+}
+
+/* Each column */
+.col {
+  padding:      0 14px 0 0;
+  border-right: 1px solid var(--color-border);
+  margin-right: 14px;
+}
+
+.col:last-child {
+  border-right: none;
+  padding-right: 0;
+  margin-right: 0;
+}
+
+.colLabel {
+  font-size:       0.57rem;
+  font-weight:     700;
+  letter-spacing:  0.1em;
+  text-transform:  uppercase;
+  color:           var(--color-muted);
+  margin-bottom:   4px;
+}
+
+/* ── Client col ──────────────────────────────────── */
+.clientName {
+  background:  transparent;
+  border:      none;
+  padding:     0;
+  cursor:      pointer;
+  font-size:   0.8rem;
+  font-weight: 600;
+  color:       var(--color-primary);
+  text-align:  left;
+  transition:  opacity 150ms;
+  max-width:   100%;
+  overflow:    hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display:     block;
+}
+
+.clientName:hover { opacity: 0.75; }
+
+.clientSub {
+  font-size:   0.62rem;
+  color:       var(--color-muted);
+  font-family: var(--font-mono, monospace);
+  margin-top:  2px;
+}
+
+/* ── Scheme col ──────────────────────────────────── */
+.fundName {
+  font-size:     0.8rem;
+  font-weight:   500;
+  color:         var(--color-fg);
+  overflow:      hidden;
+  text-overflow: ellipsis;
+  white-space:   nowrap;
+}
+
+.fundSub {
+  font-size:   0.62rem;
+  color:       var(--color-muted);
+  margin-top:  2px;
+  overflow:    hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Amount col ──────────────────────────────────── */
+.amount {
+  font-size:   0.85rem;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+}
+
+.amountIn  { color: var(--color-success); }
+.amountOut { color: var(--color-danger);  }
+
+/* ── Units / NAV cols ─────────────────────────────── */
+.mono {
+  font-size:   0.78rem;
+  font-family: var(--font-mono, monospace);
+  color:       var(--color-fg);
+}
+
+/* ── Shared sub-text (TDS etc.) ─────────────────── */
+.sub {
+  font-size:   0.6rem;
+  color:       var(--color-muted);
+  font-family: var(--font-mono, monospace);
+  margin-top:  2px;
+}
+
+.na {
+  color:     var(--color-muted);
+  font-size: 0.7rem;
+}
+
+/* ── Responsive ─────────────────────────────────── */
+@media (max-width: 900px) {
+  .bodyWithClient {
+    grid-template-columns: 140px 1fr 110px 90px 90px;
+  }
+}
+
+@media (max-width: 768px) {
+  /* On mobile: stack into 2-column grid */
+  .bodyWithClient,
+  .bodyNoClient {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 0;
+  }
+
+  .col {
+    border-right: none;
+    margin-right: 0;
+    padding-right: 0;
+  }
+
+  /* Re-add divider between every pair */
+  .bodyWithClient .col:nth-child(odd),
+  .bodyNoClient .col:nth-child(odd) {
+    border-right: 1px solid var(--color-border);
+    padding-right: 12px;
+    margin-right: 12px;
+  }
+}

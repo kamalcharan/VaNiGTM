@@ -7,37 +7,18 @@ import { useToast } from '@/components/toast';
 import { apiFetch } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import {
-  VdfLoader, VdfEmptyState, VdfButton, VdfStatusBadge,
+  VdfLoader, VdfEmptyState, VdfButton,
   VdfPageHeader, VdfStatCard, VdfSearchBar,
 } from '@/components/vdf';
+import { TransactionCard, type TransactionCardItem } from '@/components/transactions/TransactionCard';
+import { TransactionDetailDrawer } from '@/components/transactions/TransactionDetailDrawer';
 import s from './transactions.module.css';
 import d from '@/styles/data.module.css';
 
 /* ── Types ───────────────────────────────────────────── */
 
-interface Transaction {
-  id:                     number;
-  txn_date:               string;
-  txn_type:               string;
-  txn_type_label:         string;
-  flow_direction:         string;
-  amount:                 number;
-  units:                  number | null;
-  nav:                    number | null;
-  folio_no:               string | null;
-  fund_name:              string | null;
-  category:               string | null;
-  scheme_code:            string;
-  tds:                    number;
-  is_potential_duplicate: boolean;
-  portfolio_flag:         boolean;
-  import_session_id:      number | null;
-  client_id:              number;
-  client_name:            string;
-  client_prefix:          string;
-  client_no:              string | null;
-  ext_ref_id:             string | null;
-}
+// Use the shared type from TransactionCard component
+type Transaction = TransactionCardItem;
 
 interface TransactionsData {
   transactions: Transaction[];
@@ -78,19 +59,6 @@ const TYPE_OPTIONS = [
   { value: 'DIVIDEND PAYOUT',   label: 'Dividend Payout'   },
   { value: 'DIVIDEND REINVEST', label: 'Dividend Reinvest' },
 ];
-
-const TYPE_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'muted'> = {
-  PURCHASE:           'success',
-  SIP:                'success',
-  REDEMPTION:         'danger',
-  SWP:                'danger',
-  'SWITCH IN':        'info',
-  'STP IN':           'info',
-  'SWITCH OUT':       'warning',
-  'STP OUT':          'warning',
-  'DIVIDEND PAYOUT':  'muted',
-  'DIVIDEND REINVEST':'muted',
-};
 
 const QUICK_DATES = [
   { label: '7 days',   value: '7d'  },
@@ -133,6 +101,7 @@ export default function TransactionsPage() {
   const [sortOrder,             setSortOrder]             = useState<'asc' | 'desc'>('desc');
   const [filterOpen,            setFilterOpen]            = useState(false);
   const [page,                  setPage]                  = useState(1);
+  const [selectedTxn,           setSelectedTxn]           = useState<Transaction | null>(null);
 
   /* ── Import sessions (for filter dropdown) ─────────── */
   const [importSessions, setImportSessions] = useState<ImportSession[]>([]);
@@ -476,7 +445,7 @@ export default function TransactionsPage() {
           </div>
         )}
 
-        {/* ── Table or empty state ── */}
+        {/* ── Card list or empty state ── */}
         {transactions.length === 0 ? (
           <VdfEmptyState
             title="No transactions found"
@@ -495,112 +464,16 @@ export default function TransactionsPage() {
           />
         ) : (
           <>
-            <div className={d.tableWrap}>
-              <table className={d.table}>
-                <thead>
-                  <tr>
-                    <th className={d.thSticky} style={{ width: 40 }}>#</th>
-                    <th style={{ width: 100 }}>Date</th>
-                    <th>Client</th>
-                    <th>Fund</th>
-                    <th style={{ width: 110 }}>Folio</th>
-                    <th style={{ width: 130 }}>Type</th>
-                    <th style={{ textAlign: 'right', width: 110 }}>Amount</th>
-                    <th style={{ textAlign: 'right', width: 90 }}>Units / NAV</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map((txn, i) => (
-                    <tr
-                      key={txn.id}
-                      className={
-                        txn.is_potential_duplicate
-                          ? s.rowDupe
-                          : !txn.portfolio_flag
-                          ? s.rowExcluded
-                          : undefined
-                      }
-                    >
-                      {/* Row # */}
-                      <td className={`${d.tdSticky} ${s.rowNum}`}>
-                        {rangeStart + i}
-                        {txn.is_potential_duplicate && (
-                          <span className={s.dupeFlag} title="Potential duplicate">⚠</span>
-                        )}
-                        {!txn.portfolio_flag && (
-                          <span className={s.excludedFlag} title="Excluded from portfolio">⊘</span>
-                        )}
-                      </td>
-
-                      {/* Date */}
-                      <td className={`${d.tdMono} ${s.dateCell}`}>
-                        {fmtDate(txn.txn_date)}
-                      </td>
-
-                      {/* Client */}
-                      <td>
-                        <button
-                          className={s.clientLink}
-                          onClick={() => router.push(`/customers/${txn.client_id}`)}
-                        >
-                          {txn.client_prefix} {txn.client_name}
-                        </button>
-                        {(txn.ext_ref_id || txn.client_no) && (
-                          <div className={s.clientNo}>{txn.ext_ref_id ?? txn.client_no}</div>
-                        )}
-                      </td>
-
-                      {/* Fund */}
-                      <td>
-                        <div className={s.fundName}>{txn.fund_name ?? txn.scheme_code}</div>
-                        {txn.category && (
-                          <div className={s.fundCat}>{txn.category}</div>
-                        )}
-                      </td>
-
-                      {/* Folio */}
-                      <td className={`${d.tdMono} ${s.folio}`}>
-                        {txn.folio_no ?? '—'}
-                      </td>
-
-                      {/* Type */}
-                      <td>
-                        <VdfStatusBadge
-                          label={txn.txn_type_label}
-                          variant={TYPE_VARIANT[txn.txn_type] ?? 'muted'}
-                          size="sm"
-                        />
-                      </td>
-
-                      {/* Amount */}
-                      <td style={{ textAlign: 'right' }}>
-                        <span className={`${s.amount} ${txn.flow_direction === 'OUT' ? s.amountOut : s.amountIn}`}>
-                          {txn.flow_direction === 'OUT' ? '−' : '+'}{fmtCurrency(txn.amount)}
-                        </span>
-                        {txn.tds > 0 && (
-                          <div className={s.tds}>TDS ₹{txn.tds.toFixed(2)}</div>
-                        )}
-                      </td>
-
-                      {/* Units / NAV */}
-                      <td style={{ textAlign: 'right' }}>
-                        {txn.units != null ? (
-                          <>
-                            <div className={`${d.tdMono} ${s.units}`}>
-                              {txn.units.toLocaleString('en-IN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
-                            </div>
-                            {txn.nav != null && (
-                              <div className={s.nav}>@{txn.nav.toFixed(4)}</div>
-                            )}
-                          </>
-                        ) : (
-                          <span className={s.na}>—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className={s.cardList}>
+              {transactions.map(txn => (
+                <TransactionCard
+                  key={txn.id}
+                  txn={txn}
+                  showClient
+                  onView={t => setSelectedTxn(t)}
+                  onClientClick={id => router.push(`/customers/${id}`)}
+                />
+              ))}
             </div>
 
             {/* Pagination */}
@@ -617,6 +490,13 @@ export default function TransactionsPage() {
         )}
 
       </div>
+
+      {/* ── Transaction detail drawer ── */}
+      <TransactionDetailDrawer
+        txn={selectedTxn}
+        onClose={() => setSelectedTxn(null)}
+      />
+
     </div>
   );
 }

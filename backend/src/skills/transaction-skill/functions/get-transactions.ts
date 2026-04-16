@@ -73,6 +73,13 @@ export interface TransactionItem {
   category:         string | null;
   scheme_code:      string;
   tds:              number;
+  stamp_duty:       number | null;
+  stt:              number | null;
+  euin:             string | null;
+  arn:              string | null;
+  sip_reg_date:     string | null;
+  source:           string | null;
+  description:      string | null;
   is_potential_duplicate: boolean;
   portfolio_flag:   boolean;
   import_session_id: number | null;
@@ -148,7 +155,14 @@ export async function get_transactions(
     fund_name:        r.fund_name  ?? null,
     category:         r.category   ?? null,
     scheme_code:      r.scheme_code,
-    tds:              r.tds != null ? Number(r.tds) : 0,
+    tds:              r.tds        != null ? Number(r.tds)        : 0,
+    stamp_duty:       r.stamp_duty != null ? Number(r.stamp_duty) : null,
+    stt:              r.stt        != null ? Number(r.stt)        : null,
+    euin:             r.euin       ?? null,
+    arn:              r.arn        ?? null,
+    sip_reg_date:     r.sip_reg_date ?? null,
+    source:           r.source     ?? null,
+    description:      r.description ?? null,
     is_potential_duplicate: r.is_potential_duplicate,
     portfolio_flag:   r.portfolio_flag,
     import_session_id: r.import_session_id ?? null,

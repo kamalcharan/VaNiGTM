@@ -9,6 +9,8 @@ import { useAuth } from '@/context/auth-provider';
 import {
   VdfLoader, VdfButton, VdfStatusBadge, VdfTabs, VdfEmptyState, VdfPageHeader, VdfChannelItem,
 } from '@/components/vdf';
+import { TransactionCard, type TransactionCardItem } from '@/components/transactions/TransactionCard';
+import { TransactionDetailDrawer } from '@/components/transactions/TransactionDetailDrawer';
 import { SnapshotTab } from '@/app/(app)/contacts/[id]/snapshot-tab';
 import s from './customer-dashboard.module.css';
 import d from '@/styles/data.module.css';
@@ -477,51 +479,18 @@ const TXN_TYPE_OPTIONS = [
   { value: 'DIVIDEND REINVEST', label: 'Dividend Reinvest' },
 ];
 
-const TXN_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'muted'> = {
-  PURCHASE: 'success', SIP: 'success',
-  REDEMPTION: 'danger', SWP: 'danger',
-  'SWITCH IN': 'info', 'STP IN': 'info',
-  'SWITCH OUT': 'warning', 'STP OUT': 'warning',
-  'DIVIDEND PAYOUT': 'muted', 'DIVIDEND REINVEST': 'muted',
-};
-
 const TXN_PAGE_SIZE = 50;
-
-interface TxnTransaction {
-  id:             number;
-  txn_date:       string;
-  txn_type:       string;
-  txn_type_label: string;
-  flow_direction: string;
-  amount:         number;
-  units:          number | null;
-  nav:            number | null;
-  folio_no:       string | null;
-  fund_name:      string | null;
-  category:       string | null;
-  scheme_code:    string;
-  tds:            number;
-  is_potential_duplicate: boolean;
-}
-
-function fmtTxnDate(ds: string): string {
-  return new Date(ds).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
-}
-function fmtTxnAmt(n: number): string {
-  if (Math.abs(n) >= 1_00_00_000) return `₹${(n / 1_00_00_000).toFixed(2)}Cr`;
-  if (Math.abs(n) >= 1_00_000)    return `₹${(n / 1_00_000).toFixed(2)}L`;
-  return `₹${Math.abs(n).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
-}
 
 function TransactionsTab({ clientId }: { clientId: number }) {
   const { showToast } = useToast();
   const router = useRouter();
 
-  const [search,   setSearch]   = useState('');
-  const [txnType,  setTxnType]  = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo,   setDateTo]   = useState('');
-  const [page,     setPage]     = useState(1);
+  const [search,      setSearch]      = useState('');
+  const [txnType,     setTxnType]     = useState('');
+  const [dateFrom,    setDateFrom]    = useState('');
+  const [dateTo,      setDateTo]      = useState('');
+  const [page,        setPage]        = useState(1);
+  const [selectedTxn, setSelectedTxn] = useState<TransactionCardItem | null>(null);
 
   const params = useMemo(() => ({
     client_id: clientId,
@@ -533,7 +502,7 @@ function TransactionsTab({ clientId }: { clientId: number }) {
     offset:    (page - 1) * TXN_PAGE_SIZE,
   }), [clientId, txnType, dateFrom, dateTo, search, page]);
 
-  const { data, isLoading, isError, error } = useSkillQuery<{ transactions: TxnTransaction[]; total: number }>(
+  const { data, isLoading, isError, error } = useSkillQuery<{ transactions: TransactionCardItem[]; total: number }>(
     'transaction-skill', 'get_transactions', params
   );
 
@@ -546,10 +515,12 @@ function TransactionsTab({ clientId }: { clientId: number }) {
   const totalPages   = Math.ceil(total / TXN_PAGE_SIZE);
 
   const handleSearch = useCallback((v: string) => { setSearch(v); setPage(1); }, []);
+  const hasFilters   = !!(search || txnType || dateFrom || dateTo);
 
   return (
     <div className={s.txnWrap}>
-      {/* Filter bar */}
+
+      {/* ── Filter bar ── */}
       <div className={s.filterBar}>
         <div className={s.filterSearch}>
           <svg className={s.filterSearchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
@@ -557,7 +528,7 @@ function TransactionsTab({ clientId }: { clientId: number }) {
           </svg>
           <input
             className={s.filterInput}
-            placeholder="Fund name or folio…"
+            placeholder="Fund name, folio, scheme…"
             value={search}
             onChange={e => handleSearch(e.target.value)}
           />
@@ -575,21 +546,21 @@ function TransactionsTab({ clientId }: { clientId: number }) {
         </VdfButton>
       </div>
 
-      {/* Loading state */}
+      {/* ── Loading ── */}
       {isLoading && (
         <div className={s.txnLoadingRow}>
           <span className={s.txnLoadingText}>Loading transactions…</span>
         </div>
       )}
 
-      {/* Table */}
+      {/* ── Empty state ── */}
       {!isLoading && transactions.length === 0 && (
         <VdfEmptyState
           title="No transactions found"
           description={
-            search || txnType || dateFrom || dateTo
+            hasFilters
               ? 'Try clearing your filters.'
-              : 'Import a CAS, InvestWell, or NSE statement to load this client\'s transaction history.'
+              : "Import a CAS, InvestWell, or NSE statement to load this client's transaction history."
           }
           action={
             <VdfButton variant="primary" size="sm" onClick={() => router.push('/import')}>
@@ -599,67 +570,38 @@ function TransactionsTab({ clientId }: { clientId: number }) {
         />
       )}
 
+      {/* ── Card list ── */}
       {!isLoading && transactions.length > 0 && (
         <>
-          <div className={d.tableWrap}>
-            <table className={d.table}>
-              <thead>
-                <tr>
-                  <th style={{ width: 90 }}>Date</th>
-                  <th>Fund</th>
-                  <th style={{ width: 100 }}>Folio</th>
-                  <th style={{ width: 130 }}>Type</th>
-                  <th style={{ textAlign: 'right', width: 110 }}>Amount</th>
-                  <th style={{ textAlign: 'right', width: 90 }}>Units / NAV</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map(txn => (
-                  <tr key={txn.id} className={txn.is_potential_duplicate ? s.txnRowDupe : undefined}>
-                    <td className={`${d.tdMono} ${s.txnDateCell}`}>{fmtTxnDate(txn.txn_date)}</td>
-                    <td>
-                      <div className={s.txnFundName}>{txn.fund_name ?? txn.scheme_code}</div>
-                      {txn.category && <div className={s.txnFundCat}>{txn.category}</div>}
-                    </td>
-                    <td className={`${d.tdMono} ${s.txnFolio}`}>{txn.folio_no ?? '—'}</td>
-                    <td>
-                      <VdfStatusBadge
-                        label={txn.txn_type_label}
-                        variant={TXN_VARIANT[txn.txn_type] ?? 'muted'}
-                        size="sm"
-                      />
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <span className={`${s.txnAmount} ${txn.flow_direction === 'OUT' ? s.txnAmountOut : s.txnAmountIn}`}>
-                        {txn.flow_direction === 'OUT' ? '−' : '+'}{fmtTxnAmt(txn.amount)}
-                      </span>
-                      {txn.tds > 0 && <div className={s.txnTds}>TDS ₹{txn.tds.toFixed(2)}</div>}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      {txn.units != null ? (
-                        <>
-                          <div className={`${d.tdMono} ${s.txnUnits}`}>
-                            {txn.units.toLocaleString('en-IN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
-                          </div>
-                          {txn.nav != null && <div className={s.txnNav}>@{txn.nav.toFixed(4)}</div>}
-                        </>
-                      ) : <span className={s.txnNa}>—</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className={s.txnCardList}>
+            {transactions.map(txn => (
+              <TransactionCard
+                key={txn.id}
+                txn={txn}
+                showClient={false}
+                onView={t => setSelectedTxn(t)}
+              />
+            ))}
           </div>
 
           {totalPages > 1 && (
             <div className={d.pagination}>
               <button className={d.pageBtn} onClick={() => setPage(p => p - 1)} disabled={page === 1}>← Prev</button>
-              <span className={d.pageInfo}>Page {page} of {totalPages} · {total.toLocaleString('en-IN')} transactions</span>
+              <span className={d.pageInfo}>
+                Page {page} of {totalPages} · {total.toLocaleString('en-IN')} transactions
+              </span>
               <button className={d.pageBtn} onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>Next →</button>
             </div>
           )}
         </>
       )}
+
+      {/* ── Detail drawer ── */}
+      <TransactionDetailDrawer
+        txn={selectedTxn}
+        onClose={() => setSelectedTxn(null)}
+      />
+
     </div>
   );
 }

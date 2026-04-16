@@ -726,7 +726,14 @@
   font-size: 0.75rem;
 }
 
-/* ── Transaction table cell styles ──────────────────── */
+/* ── Transaction card list ───────────────────────────── */
+.txnCardList {
+  display:        flex;
+  flex-direction: column;
+  gap:            8px;
+}
+
+/* ── Transaction loading / legacy row styles ─────────── */
 .txnLoadingRow {
   display: flex;
   justify-content: center;

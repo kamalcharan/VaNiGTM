@@ -343,6 +343,13 @@
   background: color-mix(in srgb, var(--color-danger) 16%, transparent);
 }
 
+/* ── Card list ───────────────────────────────────────── */
+.cardList {
+  display:        flex;
+  flex-direction: column;
+  gap:            8px;
+}
+
 /* ── Results bar (Showing X-Y of Z + sort) ───────────── */
 .resultsBar {
   display: flex;
