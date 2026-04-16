@@ -163,11 +163,19 @@ export function PulseListPanel({
 
                   {expanded && (
                     <div className={s.rowDetail}>
-                      {p.body  && <p className={s.rowBody}>{p.body}</p>}
+                      {p.body  && (
+                        <div
+                          className={s.rowBody}
+                          dangerouslySetInnerHTML={{ __html: p.body }}
+                        />
+                      )}
                       {p.notes && (
                         <div className={s.notesBlock}>
                           <span className={s.notesLabel}>Notes</span>
-                          <p className={s.notesText}>{p.notes}</p>
+                          <div
+                            className={s.notesText}
+                            dangerouslySetInnerHTML={{ __html: p.notes }}
+                          />
                         </div>
                       )}
                       <div className={s.rowDetailMeta}>

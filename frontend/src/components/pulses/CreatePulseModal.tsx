@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { VdfModal } from '@/components/vdf/modal/VdfModal';
 import { VdfButton } from '@/components/vdf/button/VdfButton';
+import { VdfRichText } from '@/components/vdf';
 import { useCreatePulse, type CreatePulseParams, type PulseItem } from '@/hooks/usePulses';
 import { useToast } from '@/components/toast';
 import s from './CreatePulseModal.module.css';
@@ -60,6 +61,11 @@ export function CreatePulseModal({
     onClose();
   }
 
+  /** Strip HTML tags to get plain text length for empty-check */
+  function htmlIsEmpty(html: string): boolean {
+    return !html || (html.replace(/<[^>]*>/g, '').trim() === '');
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
@@ -67,10 +73,10 @@ export function CreatePulseModal({
     const params: CreatePulseParams = {
       pulse_type:  pulseType,
       title:       title.trim(),
-      body:        body.trim() || undefined,
+      body:        htmlIsEmpty(body) ? undefined : body,
       priority,
       due_date:    dueDate || undefined,
-      notes:       notes.trim() || undefined,
+      notes:       htmlIsEmpty(notes) ? undefined : notes,
       contact_id:  pulseType === 'prospect_followup' ? contactId : undefined,
       client_id:   pulseType === 'client_followup'   ? clientId  : undefined,
       snapshot_id: snapshotId,
@@ -138,14 +144,14 @@ export function CreatePulseModal({
 
         {/* Body — optional extra context */}
         <div className={s.field}>
-          <label className={s.label}>Details <span className={s.optional}>(optional)</span></label>
-          <textarea
-            className={s.textarea}
-            rows={2}
+          <VdfRichText
+            label="Details"
             value={body}
-            onChange={e => setBody(e.target.value)}
+            onChange={setBody}
             placeholder="Any context for this follow-up…"
             disabled={isPending}
+            minHeight={72}
+            maxHeight={180}
           />
         </div>
 
@@ -178,14 +184,14 @@ export function CreatePulseModal({
 
         {/* Notes */}
         <div className={s.field}>
-          <label className={s.label}>Notes <span className={s.optional}>(optional)</span></label>
-          <textarea
-            className={s.textarea}
-            rows={2}
+          <VdfRichText
+            label="Notes"
             value={notes}
-            onChange={e => setNotes(e.target.value)}
+            onChange={setNotes}
             placeholder="Private notes for your reference…"
             disabled={isPending}
+            minHeight={72}
+            maxHeight={160}
           />
         </div>
 

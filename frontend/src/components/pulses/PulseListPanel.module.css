@@ -185,6 +185,22 @@
   margin: 0;
 }
 
+.rowBody p,
+.rowBody ul,
+.rowBody ol {
+  margin: 0 0 4px;
+  padding-left: 0;
+}
+
+.rowBody ul,
+.rowBody ol {
+  padding-left: 18px;
+}
+
+.rowBody b, .rowBody strong { font-weight: 600; }
+.rowBody i, .rowBody em     { font-style: italic; }
+.rowBody u                  { text-decoration: underline; }
+
 .notesBlock {
   display: flex;
   flex-direction: column;
@@ -209,6 +225,17 @@
   border-radius: 6px;
   border-left: 2px solid var(--color-primary);
 }
+
+.notesText p,
+.notesText ul,
+.notesText ol { margin: 0 0 4px; }
+
+.notesText ul,
+.notesText ol { padding-left: 16px; }
+
+.notesText b, .notesText strong { font-weight: 600; }
+.notesText i, .notesText em     { font-style: italic; }
+.notesText u                    { text-decoration: underline; }
 
 .rowDetailMeta {
   font-size: 0.72rem;
