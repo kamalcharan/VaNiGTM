@@ -1076,7 +1076,14 @@
 .assetGroup {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+}
+
+/* 3-column square card grid */
+.assetCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
 .assetGroupHead {
@@ -1111,27 +1118,31 @@
   color: var(--color-fg);
 }
 
-/* ── Asset card ──────────────────────────────────────── */
+/* ── Asset card (square) ─────────────────────────────── */
 
 .assetCard {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: 14px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  transition: border-color 180ms;
+  justify-content: space-between;
+  aspect-ratio: 1;
+  overflow: hidden;
+  transition: border-color 180ms, box-shadow 180ms;
+  position: relative;
 }
 
 .assetCard:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
 .assetCardHead {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
 }
 
 .assetTypeDot {
@@ -1171,10 +1182,40 @@
   text-overflow: ellipsis;
 }
 
+/* ── Card bottom section ─────────────────────────────── */
+
+.assetCardBottom {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.assetValueHero {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.assetValueHeroNum {
+  font-family: var(--font-mono, monospace);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  line-height: 1.2;
+}
+
+.assetValueHeroLabel {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
 .assetCardValues {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px 12px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px 8px;
 }
 
 .assetValItem {
@@ -1193,9 +1234,12 @@
 
 .assetValNum {
   font-family: var(--font-mono, monospace);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--color-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .assetValNumUp   { color: var(--color-success); }
@@ -1273,12 +1317,18 @@
 
 /* ── Responsive ──────────────────────────────────────── */
 
+@media (max-width: 1024px) {
+  .assetCardsGrid { grid-template-columns: repeat(2, 1fr); }
+}
+
 @media (max-width: 768px) {
   .assetsWrap { padding: 16px 20px 24px; }
-  .assetCardValues { grid-template-columns: repeat(2, 1fr); }
+  .assetCardsGrid { grid-template-columns: repeat(2, 1fr); }
   .assetsSummaryStrip { flex-wrap: wrap; }
 }
 
 @media (max-width: 480px) {
   .assetsWrap { padding: 12px 14px 20px; }
+  .assetCardsGrid { grid-template-columns: 1fr; }
+  .assetCard { aspect-ratio: unset; min-height: 160px; }
 }
