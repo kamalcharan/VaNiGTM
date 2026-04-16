@@ -235,6 +235,12 @@ export const API = {
       auth: true,
       description: 'Delete staging data for a completed session',
     },
+    patchRecord: {
+      method: 'PATCH',
+      path: '/api/v1/etl/sessions/:id/records/:recordId',
+      auth: true,
+      description: 'Edit mapped_data for one staging record and reprocess it immediately',
+    },
   },
 
   /* ── NAV ──────────────────────────────────────────── */

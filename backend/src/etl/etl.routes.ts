@@ -746,6 +746,77 @@ export function createEtlRouter(pool: Pool): Router {
     }
   });
 
+  /* ── PATCH /sessions/:id/records/:recordId — Edit + reprocess one row ── */
+
+  router.patch('/sessions/:id/records/:recordId', async (req, res) => {
+    try {
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const sessionId = Number(req.params.id);
+      const recordId  = Number(req.params.recordId);
+      const { mapped_data } = req.body;
+
+      if (!mapped_data || typeof mapped_data !== 'object') {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'mapped_data object required' } });
+        return;
+      }
+
+      // Verify session belongs to this tenant
+      const sessResult = await pool.query(
+        'SELECT * FROM ki_import_sessions WHERE id = $1 AND tenant_id = $2',
+        [sessionId, auth.tenant_id],
+      );
+      if (sessResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }); return; }
+      const session = sessResult.rows[0] as any;
+
+      // Verify record belongs to session
+      const recCheck = await pool.query(
+        'SELECT id FROM ki_import_staging WHERE id = $1 AND session_id = $2',
+        [recordId, sessionId],
+      );
+      if (recCheck.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Record not found' } }); return; }
+
+      // Update mapped_data and reset this row to pending
+      await pool.query(
+        `UPDATE ki_import_staging
+         SET mapped_data = $1, processing_status = 'pending', error_messages = NULL, processed_at = NULL
+         WHERE id = $2`,
+        [JSON.stringify(mapped_data), recordId],
+      );
+
+      // Allow RPC to run by marking session as staged (RPC only processes pending rows)
+      await pool.query(
+        `UPDATE ki_import_sessions SET status = 'staged' WHERE id = $1`,
+        [sessionId],
+      );
+
+      // Re-invoke RPC — processes only the one pending row
+      if (session.import_type === 'scheme') {
+        await pool.query('SELECT * FROM process_scheme_import_with_timing($1, $2)', [sessionId, 30000]);
+      } else if (session.import_type === 'customer') {
+        await pool.query('SELECT * FROM process_customer_import_with_timing($1, $2)', [sessionId, 30000]);
+      } else if (session.import_type === 'transaction') {
+        await pool.query('SELECT * FROM ki_process_txn_import_session($1, $2)', [sessionId, session.customer_lookup_method || 'iwell_code']);
+      } else if (session.import_type === 'bookmark') {
+        res.status(400).json({ error: { code: 'UNSUPPORTED', message: 'Row-level reprocess not supported for bookmark imports' } });
+        return;
+      }
+
+      // Return updated record
+      const updated = await pool.query(
+        'SELECT id, row_number, processing_status, mapped_data, raw_data, error_messages, warnings, created_record_id, processed_at FROM ki_import_staging WHERE id = $1',
+        [recordId],
+      );
+
+      res.json({ record: updated.rows[0] });
+
+    } catch (err: any) {
+      console.error('[ETL:patchRecord]', err);
+      res.status(500).json({ error: { code: 'PATCH_FAILED', message: err.message || 'Failed to patch record' } });
+    }
+  });
+
   /* ── POST /sessions/:id/resolve-families — Post-import family linking ── */
 
   router.post('/sessions/:id/resolve-families', async (req, res) => {

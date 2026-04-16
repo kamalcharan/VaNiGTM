@@ -602,6 +602,7 @@
 @media (max-width: 768px) {
   .body { padding: 16px 20px 24px; }
   .typeGrid { grid-template-columns: 1fr; }
+  .lookupGrid { grid-template-columns: 1fr; }
   .resultStats { grid-template-columns: repeat(2, 1fr); }
   .stepper { overflow-x: auto; }
   .stepLabel { display: none; }

@@ -104,7 +104,7 @@ const COL_DEFS: Record<string, ColDef[]> = {
     { header: 'Type',         kind: 'data', key: 'txn_code',       mono: true },
     { header: 'Amount',       kind: 'data', key: 'amount',         mono: true },
     { header: 'Date',         kind: 'data', key: 'txn_date',       muted: true },
-    { header: 'Folio',        kind: 'data', key: 'folio_no',       mono: true },
+    { header: 'Folio',        kind: 'data', key: 'folio_number',   mono: true },
     { header: 'Status',       kind: 'status' },
     { header: '',             kind: 'action' },
   ],
@@ -151,6 +151,34 @@ const DRAWER_CONF: Record<string, DrawerConf> = {
 
 const DEFAULT_DRAWER_CONF: DrawerConf = DRAWER_CONF.bookmark;
 
+/* ── Editable fields per import type ───────────────── */
+
+const EDIT_FIELDS: Record<string, Array<{ key: string; label: string; type?: 'text' | 'date' }>> = {
+  transaction: [
+    { key: 'customer_name', label: 'Customer Name' },
+    { key: 'vendor_code',   label: 'Vendor Code' },
+    { key: 'scheme_name',   label: 'Scheme Name' },
+    { key: 'txn_code',      label: 'Txn Type' },
+    { key: 'txn_date',      label: 'Txn Date', type: 'date' },
+    { key: 'amount',        label: 'Amount' },
+  ],
+  customer: [
+    { key: 'name',        label: 'Full Name' },
+    { key: 'pan',         label: 'PAN' },
+    { key: 'external_id', label: 'External ID' },
+    { key: 'mobile',      label: 'Mobile' },
+    { key: 'email',       label: 'Email' },
+  ],
+  scheme: [
+    { key: 'scheme_code', label: 'Scheme Code' },
+    { key: 'scheme_name', label: 'Scheme Name' },
+  ],
+  bookmark: [
+    { key: 'scheme_code', label: 'Scheme Code' },
+    { key: 'scheme_name', label: 'Scheme Name' },
+  ],
+};
+
 /* ── Sidebar type filter list ───────────────────────── */
 
 const TYPE_FILTERS = [
@@ -180,6 +208,11 @@ export default function ImportDashboardPage() {
   const [deletingStaging, setDeletingStaging] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [sessionsFetched, setSessionsFetched] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editedData, setEditedData] = useState<Record<string, any>>({});
+  const [patchingRecord, setPatchingRecord] = useState(false);
+  const [reprocessingId, setReprocessingId] = useState<number | null>(null);
+  const [recordsVersion, setRecordsVersion] = useState(0);
 
   // Derived: filtered session list + per-type counts (client-side — no re-fetch on filter change)
   const sessions = useMemo(() =>
@@ -225,22 +258,21 @@ export default function ImportDashboardPage() {
     setRecords(null);
   }
 
-  // Fetch records
-  const fetchRecords = useCallback(async () => {
-    if (!selectedSession) { setRecords(null); return; }
-    setLoadingRecords(true);
-    try {
-      const qs = `?status=${recordFilter}&page=${recordPage}&limit=50`;
-      const data = await apiFetch<RecordsResponse>({ ...API.etl.records, path: API.etl.records.path.replace(':id', String(selectedSession.id)) + qs });
-      setRecords(data);
-    } catch (err) {
-      setRecords(null);
-      showToast({ message: (err as ApiError).message || 'Failed to load records', type: 'error' });
-    }
-    finally { setLoadingRecords(false); }
-  }, [selectedSession, recordFilter, recordPage]);
+  // Fetch records — cancelled-flag pattern prevents stale responses on rapid selection changes
+  const refreshRecords = useCallback(() => setRecordsVersion(v => v + 1), []);
 
-  useEffect(() => { fetchRecords(); }, [fetchRecords]);
+  useEffect(() => {
+    if (!selectedSession) { setRecords(null); return; }
+    let cancelled = false;
+    setLoadingRecords(true);
+    const path = API.etl.records.path.replace(':id', String(selectedSession.id))
+      + `?status=${recordFilter}&page=${recordPage}&limit=50`;
+    apiFetch<RecordsResponse>({ ...API.etl.records, path })
+      .then(data  => { if (!cancelled) setRecords(data); })
+      .catch(err  => { if (!cancelled) { setRecords(null); showToast({ message: (err as ApiError).message || 'Failed to load records', type: 'error' }); } })
+      .finally(() => { if (!cancelled) setLoadingRecords(false); });
+    return () => { cancelled = true; };
+  }, [selectedSession?.id, recordFilter, recordPage, recordsVersion]); // eslint-disable-line
 
   function handleSelectSession(sess: Session) { setSelectedSession(sess); setRecordFilter('all'); setRecordPage(1); }
 
@@ -249,7 +281,7 @@ export default function ImportDashboardPage() {
     try {
       const data = await apiFetch<any>({ ...API.etl.reprocess, path: API.etl.reprocess.path.replace(':id', String(selectedSession.id)) });
       showToast({ message: `Reprocessed: ${data.successful || 0} passed, ${data.failed || 0} failed`, type: data.failed > 0 ? 'warning' : 'success' });
-      fetchSessions(); fetchRecords();
+      fetchSessions(); refreshRecords();
     } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
     finally { setReprocessing(false); }
   }
@@ -261,9 +293,32 @@ export default function ImportDashboardPage() {
     try {
       await apiFetch<any>({ ...API.etl.deleteStaging, path: API.etl.deleteStaging.path.replace(':id', String(selectedSession.id)) });
       showToast({ message: 'Staging deleted', type: 'success' });
-      setRecords(null); fetchSessions();
+      setRecords(null); setRecordsVersion(0); fetchSessions();
     } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
     finally { setDeletingStaging(false); }
+  }
+
+  async function handlePatchRecord() {
+    if (!selectedSession || !drawerRecord || patchingRecord) return;
+    setPatchingRecord(true);
+    setReprocessingId(drawerRecord.id);
+    try {
+      const path = API.etl.patchRecord.path
+        .replace(':id', String(selectedSession.id))
+        .replace(':recordId', String(drawerRecord.id));
+      const data = await apiFetch<{ record: StagingRecord }>({ ...API.etl.patchRecord, path }, { body: { mapped_data: editedData } });
+      setDrawerRecord(data.record);
+      setEditMode(false);
+      const st = data.record.processing_status;
+      showToast({ message: st === 'success' ? 'Record reprocessed successfully' : `Reprocessed — status: ${st}`, type: st === 'success' ? 'success' : 'warning' });
+      refreshRecords();
+      fetchSessions();
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Failed to reprocess record', type: 'error' });
+    } finally {
+      setPatchingRecord(false);
+      setReprocessingId(null);
+    }
   }
 
   // VaNi analysis
@@ -456,7 +511,9 @@ export default function ImportDashboardPage() {
                             const md = rec.mapped_data || {};
                             const st = STATUS_MAP[rec.processing_status] || STATUS_MAP.pending;
                             return (
-                              <tr key={rec.id} style={{ cursor: 'pointer' }} onClick={() => setDrawerRecord(rec)}>
+                              <tr key={rec.id}
+                                style={{ cursor: 'pointer', ...(rec.id === reprocessingId ? { background: 'color-mix(in srgb, var(--color-info) 8%, transparent)' } : {}) }}
+                                onClick={() => { setDrawerRecord(rec); setEditMode(false); setEditedData(rec.mapped_data || {}); }}>
                                 {cols.map((col, ci) => {
                                   if (col.kind === 'row') return (
                                     <td key={ci} style={{ color: 'var(--color-muted)', fontWeight: 500 }}>{rec.row_number}</td>
@@ -523,31 +580,64 @@ export default function ImportDashboardPage() {
       </div>
 
       {/* ═══ RECORD DRAWER ═══ */}
-      {drawerRecord && (
+      {drawerRecord && (() => {
+        const conf = DRAWER_CONF[selectedSession?.import_type ?? ''] ?? DEFAULT_DRAWER_CONF;
+        const md   = drawerRecord.mapped_data || {};
+        const canEdit = ['failed', 'orphan', 'pending'].includes(drawerRecord.processing_status);
+        const editFields = EDIT_FIELDS[selectedSession?.import_type ?? ''] || [];
+        return (
         <>
-          <div className={s.drawerOverlay} onClick={() => setDrawerRecord(null)} />
+          <div className={s.drawerOverlay} onClick={() => { setDrawerRecord(null); setEditMode(false); }} />
           <div className={s.drawer}>
-            {(() => {
-              const conf = DRAWER_CONF[selectedSession?.import_type ?? ''] ?? DEFAULT_DRAWER_CONF;
-              const md   = drawerRecord.mapped_data || {};
-              return (
-                <>
-                  <div className={s.drawerHeader}>
-                    <div className={s.drawerTitle}>{conf.title}</div>
-                    <button className={s.drawerClose} onClick={() => setDrawerRecord(null)}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                    </button>
-                  </div>
 
-                  {/* Identity card — heading + meta derived from import type */}
-                  <div className={s.drawerCard}>
-                    <div className={s.drawerCardLabel}>Staging Data</div>
-                    <div className={s.drawerCardTitle}>{conf.getHeading(md)}</div>
-                    <div className={s.drawerCardMeta}>{conf.getMeta(md)}</div>
+            {/* Header with optional Edit toggle */}
+            <div className={s.drawerHeader}>
+              <div className={s.drawerTitle}>{conf.title} <span style={{ fontSize: '0.65rem', fontWeight: 500, color: 'var(--color-muted)', marginLeft: 6 }}>Row {drawerRecord.row_number}</span></div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {canEdit && (
+                  <button
+                    onClick={() => { setEditMode(e => !e); if (!editMode) setEditedData({ ...md }); }}
+                    style={{ padding: '4px 12px', fontSize: '0.72rem', fontWeight: 700, borderRadius: 6, border: '1px solid var(--color-border)', background: editMode ? 'var(--color-primary)' : 'transparent', color: editMode ? 'var(--color-primary-fg)' : 'var(--color-muted)', cursor: 'pointer', transition: 'all 200ms' }}
+                  >
+                    {editMode ? 'View' : 'Edit'}
+                  </button>
+                )}
+                <button className={s.drawerClose} onClick={() => { setDrawerRecord(null); setEditMode(false); }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Identity card — view mode OR edit form */}
+            {editMode && editFields.length > 0 ? (
+              <div className={s.drawerCard}>
+                <div className={s.drawerCardLabel}>Edit Mapped Data</div>
+                {editFields.map(f => (
+                  <div key={f.key} style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-muted)', marginBottom: 4 }}>{f.label}</div>
+                    <input
+                      type={f.type || 'text'}
+                      value={editedData[f.key] ?? ''}
+                      onChange={e => setEditedData(prev => ({ ...prev, [f.key]: e.target.value }))}
+                      style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-fg)', fontSize: '0.8rem', fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
+                    />
                   </div>
-                </>
-              );
-            })()}
+                ))}
+                <button
+                  onClick={handlePatchRecord}
+                  disabled={patchingRecord}
+                  style={{ width: '100%', marginTop: 8, padding: '10px', background: 'var(--color-primary)', color: 'var(--color-primary-fg)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: '0.82rem', cursor: patchingRecord ? 'not-allowed' : 'pointer', opacity: patchingRecord ? 0.6 : 1, transition: 'opacity 200ms' }}
+                >
+                  {patchingRecord ? 'Processing...' : 'Save & Reprocess'}
+                </button>
+              </div>
+            ) : (
+              <div className={s.drawerCard}>
+                <div className={s.drawerCardLabel}>Staging Data</div>
+                <div className={s.drawerCardTitle}>{conf.getHeading(md)}</div>
+                <div className={s.drawerCardMeta}>{conf.getMeta(md)}</div>
+              </div>
+            )}
 
             {/* Status */}
             <div className={s.drawerSection}>
@@ -624,7 +714,8 @@ export default function ImportDashboardPage() {
             </div>
           </div>
         </>
-      )}
+      );
+      })()}
     </div>
   );
 }

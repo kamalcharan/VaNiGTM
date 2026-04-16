@@ -190,7 +190,7 @@
   flex-shrink: 0;
 }
 
-.filterTabs { display: flex; gap: 6px; }
+.filterTabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .filterTab {
   padding: 5px 14px; border-radius: 8px;
   font-size: 0.72rem; font-weight: 700;
