@@ -26,6 +26,7 @@ export default function LoginVault() {
   const [sessionLimit, setSessionLimit] = useState<SessionLimitData | null>(null);
   const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set());
   const [revokingLoading, setRevokingLoading] = useState(false);
+  const [navigating, setNavigating] = useState(false);
 
   const loading = loginMutation.isPending;
 
@@ -61,14 +62,14 @@ export default function LoginVault() {
             if (prefs?.color_mode) localStorage.setItem('pk-color-mode', String(prefs.color_mode));
           } catch {}
 
+          // Keep overlay visible during transition — prevents login form flashing
+          // between isPending going false and window.location.href firing.
+          setNavigating(true);
           showToast({ message: 'Welcome back!', type: 'success' });
 
-          // Navigate based on onboarding status
-          if (tenant?.onboarding_complete === true) {
-            window.location.href = '/dashboard';
-          } else {
-            window.location.href = '/onboarding';
-          }
+          // Brief pause so the toast renders before full-page navigation replaces the document.
+          const dest = tenant?.onboarding_complete === true ? '/dashboard' : '/onboarding';
+          setTimeout(() => { window.location.href = dest; }, 800);
         },
         onError: (err: ApiError) => {
           // Session limit → show dialog
@@ -106,8 +107,14 @@ export default function LoginVault() {
 
   return (
     <>
-      {/* ProKey loader during login */}
-      {loading && <VdfLoader overlay message="Signing in" hint="Verifying credentials & creating session" />}
+      {/* ProKey loader during login and during navigation transition */}
+      {(loading || navigating) && (
+        <VdfLoader
+          overlay
+          message={navigating ? 'Welcome back!' : 'Signing in'}
+          hint={navigating ? 'Loading your dashboard…' : 'Verifying credentials & creating session'}
+        />
+      )}
 
       <div className={s.vault}>
         {/* Atmospheric background */}
