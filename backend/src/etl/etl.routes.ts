@@ -77,6 +77,29 @@ function extractAuth(req: { headers: Record<string, any> }): AuthInfo | null {
 export function createEtlRouter(pool: Pool): Router {
   const router = Router();
 
+  /* ── Helper: reconcile session counters from staging ── */
+  // The RPCs update counters for only the rows they process in a given run.
+  // After any reprocess operation we must recount from ki_import_staging so
+  // previous runs' results are not overwritten.
+  async function reconcileSessionCounters(sessionId: number): Promise<void> {
+    await pool.query(
+      `UPDATE ki_import_sessions
+       SET
+         successful_records = (SELECT COUNT(*) FROM ki_import_staging WHERE session_id = $1 AND processing_status = 'success'),
+         failed_records     = (SELECT COUNT(*) FROM ki_import_staging WHERE session_id = $1 AND processing_status = 'failed'),
+         duplicate_records  = (SELECT COUNT(*) FROM ki_import_staging WHERE session_id = $1 AND processing_status = 'duplicate'),
+         orphan_records     = (SELECT COUNT(*) FROM ki_import_staging WHERE session_id = $1 AND processing_status = 'orphan'),
+         processed_records  = (SELECT COUNT(*) FROM ki_import_staging WHERE session_id = $1 AND processing_status != 'pending'),
+         status = CASE
+           WHEN (SELECT COUNT(*) FROM ki_import_staging WHERE session_id = $1 AND processing_status IN ('failed','orphan')) > 0
+           THEN 'completed_with_errors'
+           ELSE 'completed'
+         END
+       WHERE id = $1`,
+      [sessionId],
+    );
+  }
+
   /* ── POST /upload ───────────────────────────────── */
 
   router.post('/upload', upload.single('file'), async (req, res) => {
@@ -546,47 +569,25 @@ export function createEtlRouter(pool: Pool): Router {
 
       // Re-invoke processing based on import type
       if (session.import_type === 'scheme') {
-        const rpcResult = await pool.query(
-          'SELECT * FROM process_scheme_import_with_timing($1, $2)',
-          [sessionId, 30000],
-        );
-        const result = rpcResult.rows[0] as any;
-        res.json({
-          message: `Reprocessed ${resetCount} records`,
-          reprocessed: resetCount,
-          successful: result.success_count,
-          failed: result.failed_count,
-          duplicate: result.duplicate_count,
-        });
+        await pool.query('SELECT * FROM process_scheme_import_with_timing($1, $2)', [sessionId, 30000]);
+        await reconcileSessionCounters(sessionId);
+        const sess = await pool.query('SELECT successful_records,failed_records,duplicate_records FROM ki_import_sessions WHERE id=$1',[sessionId]);
+        const c = sess.rows[0] as any;
+        res.json({ message: `Reprocessed ${resetCount} records`, reprocessed: resetCount, successful: Number(c.successful_records), failed: Number(c.failed_records), duplicate: Number(c.duplicate_records) });
 
       } else if (session.import_type === 'customer') {
-        const rpcResult = await pool.query(
-          'SELECT * FROM process_customer_import_with_timing($1, $2)',
-          [sessionId, 30000],
-        );
-        const result = rpcResult.rows[0] as any;
-        res.json({
-          message: `Reprocessed ${resetCount} records`,
-          reprocessed: resetCount,
-          successful: result.success_count,
-          failed: result.failed_count,
-          duplicate: result.duplicate_count,
-        });
+        await pool.query('SELECT * FROM process_customer_import_with_timing($1, $2)', [sessionId, 30000]);
+        await reconcileSessionCounters(sessionId);
+        const sess = await pool.query('SELECT successful_records,failed_records,duplicate_records FROM ki_import_sessions WHERE id=$1',[sessionId]);
+        const c = sess.rows[0] as any;
+        res.json({ message: `Reprocessed ${resetCount} records`, reprocessed: resetCount, successful: Number(c.successful_records), failed: Number(c.failed_records), duplicate: Number(c.duplicate_records) });
 
       } else if (session.import_type === 'transaction') {
-        const rpcResult = await pool.query(
-          'SELECT * FROM ki_process_txn_import_session($1, $2)',
-          [sessionId, session.customer_lookup_method || 'iwell_code'],
-        );
-        const raw = rpcResult.rows[0] as any;
-        res.json({
-          message: `Reprocessed ${resetCount} records`,
-          reprocessed: resetCount,
-          successful: Number(raw.successful) ?? 0,
-          failed:     Number(raw.failed)     ?? 0,
-          duplicate:  Number(raw.duplicates) ?? 0,
-          orphans:    Number(raw.orphans)    ?? 0,
-        });
+        await pool.query('SELECT * FROM ki_process_txn_import_session($1, $2)', [sessionId, session.customer_lookup_method || 'iwell_code']);
+        await reconcileSessionCounters(sessionId);
+        const sess = await pool.query('SELECT successful_records,failed_records,duplicate_records,orphan_records FROM ki_import_sessions WHERE id=$1',[sessionId]);
+        const c = sess.rows[0] as any;
+        res.json({ message: `Reprocessed ${resetCount} records`, reprocessed: resetCount, successful: Number(c.successful_records), failed: Number(c.failed_records), duplicate: Number(c.duplicate_records), orphans: Number(c.orphan_records) });
 
       } else if (session.import_type === 'bookmark') {
         // Re-process failed bookmark staging rows — same upsert + alias seed logic
@@ -803,6 +804,9 @@ export function createEtlRouter(pool: Pool): Router {
         return;
       }
 
+      // Reconcile session counters from staging (RPC only counts its own run)
+      await reconcileSessionCounters(sessionId);
+
       // Return updated record
       const updated = await pool.query(
         'SELECT id, row_number, processing_status, mapped_data, raw_data, error_messages, warnings, created_record_id, processed_at FROM ki_import_staging WHERE id = $1',
@@ -814,6 +818,37 @@ export function createEtlRouter(pool: Pool): Router {
     } catch (err: any) {
       console.error('[ETL:patchRecord]', err);
       res.status(500).json({ error: { code: 'PATCH_FAILED', message: err.message || 'Failed to patch record' } });
+    }
+  });
+
+  /* ── POST /sessions/:id/sync-stats — Reconcile session counters from staging ── */
+
+  router.post('/sessions/:id/sync-stats', async (req, res) => {
+    try {
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const sessionId = Number(req.params.id);
+
+      const sessCheck = await pool.query(
+        'SELECT id FROM ki_import_sessions WHERE id = $1 AND tenant_id = $2',
+        [sessionId, auth.tenant_id],
+      );
+      if (sessCheck.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }); return; }
+
+      await reconcileSessionCounters(sessionId);
+
+      const updated = await pool.query(
+        `SELECT id, status, total_records, processed_records,
+                successful_records, failed_records, duplicate_records, orphan_records
+         FROM ki_import_sessions WHERE id = $1`,
+        [sessionId],
+      );
+
+      res.json({ session: updated.rows[0] });
+    } catch (err: any) {
+      console.error('[ETL:sync-stats]', err);
+      res.status(500).json({ error: { code: 'SYNC_FAILED', message: err.message || 'Stats sync failed' } });
     }
   });
 

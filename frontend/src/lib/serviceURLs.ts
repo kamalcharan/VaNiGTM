@@ -241,6 +241,12 @@ export const API = {
       auth: true,
       description: 'Edit mapped_data for one staging record and reprocess it immediately',
     },
+    syncStats: {
+      method: 'POST',
+      path: '/api/v1/etl/sessions/:id/sync-stats',
+      auth: true,
+      description: 'Reconcile session counters (successful/failed/duplicate/orphan) from actual staging row statuses',
+    },
   },
 
   /* ── NAV ──────────────────────────────────────────── */

@@ -213,6 +213,7 @@ export default function ImportDashboardPage() {
   const [patchingRecord, setPatchingRecord] = useState(false);
   const [reprocessingId, setReprocessingId] = useState<number | null>(null);
   const [recordsVersion, setRecordsVersion] = useState(0);
+  const [syncingStats, setSyncingStats] = useState(false);
 
   // Derived: filtered session list + per-type counts (client-side — no re-fetch on filter change)
   const sessions = useMemo(() =>
@@ -296,6 +297,22 @@ export default function ImportDashboardPage() {
       setRecords(null); setRecordsVersion(0); fetchSessions();
     } catch (err) { showToast({ message: (err as ApiError).message || 'Failed', type: 'error' }); }
     finally { setDeletingStaging(false); }
+  }
+
+  async function handleSyncStats() {
+    if (!selectedSession || syncingStats) return;
+    setSyncingStats(true);
+    try {
+      const data = await apiFetch<{ session: Partial<Session> }>({ ...API.etl.syncStats, path: API.etl.syncStats.path.replace(':id', String(selectedSession.id)) });
+      // Patch the selected session in-place with corrected counters
+      setSelectedSession(prev => prev ? { ...prev, ...data.session } : prev);
+      setAllSessions(prev => prev.map(s => s.id === selectedSession.id ? { ...s, ...data.session } : s));
+      showToast({ message: 'Session stats synced from staging data', type: 'success' });
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Sync failed', type: 'error' });
+    } finally {
+      setSyncingStats(false);
+    }
   }
 
   async function handlePatchRecord() {
@@ -480,10 +497,20 @@ export default function ImportDashboardPage() {
                       </button>
                     ))}
                   </div>
-                  <button style={{ color: 'var(--color-danger)', fontSize: '0.72rem', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-                    onClick={handleDeleteStaging} disabled={deletingStaging}>
-                    {'\u{1F5D1}'} {deletingStaging ? 'Deleting...' : 'Delete Staging'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    {/* Show Sync when session is completed but counters look wrong */}
+                    {selectedSession.total_records > 0 &&
+                      selectedSession.successful_records + selectedSession.failed_records + selectedSession.duplicate_records + (selectedSession.orphan_records ?? 0) === 0 && (
+                      <button style={{ color: 'var(--color-warning)', fontSize: '0.72rem', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                        onClick={handleSyncStats} disabled={syncingStats} title="Session counters are out of sync — click to recount from staging">
+                        ⚠ {syncingStats ? 'Syncing...' : 'Sync Stats'}
+                      </button>
+                    )}
+                    <button style={{ color: 'var(--color-danger)', fontSize: '0.72rem', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                      onClick={handleDeleteStaging} disabled={deletingStaging}>
+                      {'\u{1F5D1}'} {deletingStaging ? 'Deleting...' : 'Delete Staging'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className={s.tableScrollArea}>
