@@ -43,6 +43,8 @@ export interface ApiFetchOptions {
   skipAuth?: boolean;
   /** Skip 401 refresh retry (used internally to prevent loops) */
   skipRetry?: boolean;
+  /** AbortSignal — pass React Query's signal to cancel in-flight requests on unmount */
+  signal?: AbortSignal;
 }
 
 /* ── In-memory Token Store ──────────────────────────── */
@@ -169,7 +171,7 @@ export async function apiFetch<T = Record<string, unknown>>(
   endpoint: ServiceEndpoint,
   options: ApiFetchOptions = {},
 ): Promise<T> {
-  const { body, pathParams, queryParams, headers: extraHeaders, skipAuth, skipRetry } = options;
+  const { body, pathParams, queryParams, headers: extraHeaders, skipAuth, skipRetry, signal } = options;
 
   // Build URL
   const baseUrl = getBaseUrl();
@@ -200,6 +202,7 @@ export async function apiFetch<T = Record<string, unknown>>(
     method: endpoint.method,
     headers,
     credentials: 'include',
+    signal,
   };
 
   if (body && endpoint.method !== 'GET') {
@@ -210,6 +213,8 @@ export async function apiFetch<T = Record<string, unknown>>(
   try {
     res = await fetch(url, fetchOptions);
   } catch (err) {
+    // Re-throw AbortError as-is so React Query treats it as a cancellation (not an error state)
+    if (err instanceof DOMException && err.name === 'AbortError') throw err;
     throw {
       code: 'NETWORK_ERROR',
       message: 'Network error — please check your connection and try again',

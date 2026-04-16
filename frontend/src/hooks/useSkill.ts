@@ -31,10 +31,11 @@ export function useSkillQuery<T = Record<string, unknown>>(
 ) {
   return useQuery<SkillResult<T>, ApiError>({
     queryKey: ['skill', skill, fn, params],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const result = await apiFetch<SkillResult<T>>(API.skills.execute, {
         pathParams: { skill, fn },
         body: { params },
+        signal,
       });
       if (!result.success) {
         const err: ApiError & Error = Object.assign(
