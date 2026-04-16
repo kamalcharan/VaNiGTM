@@ -1,7 +1,8 @@
 /**
  * transaction-skill: get_transactions
  * Paginated, filterable transaction list. Cross-client (global view) or
- * single-client. Supports type filter, date range, full-text search.
+ * single-client. Supports type filter, date range, full-text search,
+ * sort, portfolio flag filter, ext_ref_id search, import session filter.
  */
 
 import * as fs from 'fs';
@@ -9,15 +10,20 @@ import * as path from 'path';
 import { SkillContext } from '../../../shared/types';
 
 interface GetTransactionsParams {
-  client_id?:         number;
-  scheme_code?:       string;
-  txn_type?:          string;
-  date_from?:         string;
-  date_to?:           string;
-  search?:            string;
-  is_duplicate_only?: boolean;
-  limit?:             number;
-  offset?:            number;
+  client_id?:               number;
+  scheme_code?:             string;
+  txn_type?:                string;
+  date_from?:               string;
+  date_to?:                 string;
+  search?:                  string;
+  is_duplicate_only?:       boolean;
+  portfolio_flag_excluded?: boolean;  // true = show only excluded-from-portfolio rows
+  ext_ref_id_search?:       string;   // IWELL / ext_ref search (ILIKE)
+  import_session_id?:       number;   // filter by import session
+  sort_by?:                 string;   // txn_date | amount | fund_name | client_name
+  sort_order?:              'asc' | 'desc';
+  limit?:                   number;
+  offset?:                  number;
 }
 
 interface TransactionRow {
@@ -44,6 +50,7 @@ interface TransactionRow {
   description:          string | null;
   is_potential_duplicate: boolean;
   portfolio_flag:       boolean;
+  import_session_id:    number | null;
   client_id:            number;
   client_name:          string;
   client_prefix:        string;
@@ -68,10 +75,12 @@ export interface TransactionItem {
   tds:              number;
   is_potential_duplicate: boolean;
   portfolio_flag:   boolean;
+  import_session_id: number | null;
   client_id:        number;
   client_name:      string;
   client_prefix:    string;
   client_no:        string | null;
+  ext_ref_id:       string | null;
 }
 
 interface GetTransactionsResult {
@@ -80,7 +89,15 @@ interface GetTransactionsResult {
   recipe:       'data-table';
 }
 
-const QUERY = fs.readFileSync(
+/** Safe whitelist: maps sort_by param → SQL expression */
+const SORT_COL_MAP: Record<string, string> = {
+  txn_date:    't.txn_date',
+  amount:      't.amount',
+  fund_name:   'COALESCE(t.fund_name, t.scheme_code)',
+  client_name: 'ct.name',
+};
+
+const QUERY_TEMPLATE = fs.readFileSync(
   path.join(__dirname, '../queries/get-transactions.sql'),
   'utf-8'
 );
@@ -94,17 +111,26 @@ export async function get_transactions(
   const limit  = Math.min(params.limit  ?? 50, PAGE_SIZE_MAX);
   const offset = params.offset ?? 0;
 
+  // Build safe ORDER BY clause
+  const sortCol = SORT_COL_MAP[params.sort_by ?? 'txn_date'] ?? 't.txn_date';
+  const sortDir = params.sort_order === 'asc' ? 'ASC' : 'DESC';
+  const orderBy = `ORDER BY ${sortCol} ${sortDir}, t.id ${sortDir}`;
+  const QUERY   = QUERY_TEMPLATE.replace('/* ORDER_BY_PLACEHOLDER */', orderBy);
+
   const result = await ctx.db.query<TransactionRow>(QUERY, {
-    $tenant_id:          ctx.tenant_id,
-    $is_live:            ctx.is_live,
-    $client_id:          params.client_id          ?? null,
-    $txn_type:           params.txn_type            ?? null,
-    $date_from:          params.date_from           ?? null,
-    $date_to:            params.date_to             ?? null,
-    $search:             params.search              ?? null,
-    $is_duplicate_only:  params.is_duplicate_only   ?? null,
-    $limit:              limit,
-    $offset:             offset,
+    $tenant_id:               ctx.tenant_id,
+    $is_live:                 ctx.is_live,
+    $client_id:               params.client_id              ?? null,
+    $txn_type:                params.txn_type               ?? null,
+    $date_from:               params.date_from              ?? null,
+    $date_to:                 params.date_to                ?? null,
+    $search:                  params.search                 ?? null,
+    $is_duplicate_only:       params.is_duplicate_only      ?? null,
+    $portfolio_flag_excluded: params.portfolio_flag_excluded ?? null,
+    $ext_ref_id_search:       params.ext_ref_id_search      ?? null,
+    $import_session_id:       params.import_session_id      ?? null,
+    $limit:                   limit,
+    $offset:                  offset,
   });
 
   const total = result.rows.length > 0 ? Number(result.rows[0].total_count) : 0;
@@ -125,10 +151,12 @@ export async function get_transactions(
     tds:              r.tds != null ? Number(r.tds) : 0,
     is_potential_duplicate: r.is_potential_duplicate,
     portfolio_flag:   r.portfolio_flag,
+    import_session_id: r.import_session_id ?? null,
     client_id:        r.client_id,
     client_name:      r.client_name,
     client_prefix:    r.client_prefix,
-    client_no:        r.client_no ?? null,
+    client_no:        r.client_no  ?? null,
+    ext_ref_id:       r.ext_ref_id ?? null,
   }));
 
   return { transactions, total, recipe: 'data-table' };

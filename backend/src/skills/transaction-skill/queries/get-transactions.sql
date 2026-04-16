@@ -1,10 +1,11 @@
 -- get-transactions: paginated transaction list, cross-client or single-client
 -- Named params: $tenant_id, $is_live, $client_id (nullable), $txn_type (nullable),
 --               $date_from (nullable), $date_to (nullable), $search (nullable),
---               $is_duplicate_only (nullable bool), $limit, $offset
+--               $is_duplicate_only (nullable bool), $portfolio_flag_excluded (nullable bool),
+--               $ext_ref_id_search (nullable text — exact iwell/ext_ref match),
+--               $import_session_id (nullable int), $limit, $offset
 --
--- ki_transaction_types columns: id, txn_code, txn_name, txn_type ('Addition'|'Deduction')
--- ki_transactions.txn_type stores lowercase values ('purchase','sip','redemption','switch_in','switch_out')
+-- ORDER BY is injected dynamically in get-transactions.ts (safe whitelist).
 
 SELECT
     t.id,
@@ -36,6 +37,7 @@ SELECT
     t.description,
     t.is_potential_duplicate,
     t.portfolio_flag,
+    t.import_session_id,
     t.client_id,
     ct.name                        AS client_name,
     ct.prefix                      AS client_prefix,
@@ -72,7 +74,14 @@ WHERE t.tenant_id  = $tenant_id
   AND ($is_duplicate_only::boolean IS NULL
        OR $is_duplicate_only::boolean = false
        OR t.is_potential_duplicate = true)
+  AND ($portfolio_flag_excluded::boolean IS NULL
+       OR $portfolio_flag_excluded::boolean = false
+       OR t.portfolio_flag = false)
+  AND ($ext_ref_id_search::text IS NULL
+       OR cl.ext_ref_id ILIKE '%' || $ext_ref_id_search::text || '%')
+  AND ($import_session_id::integer IS NULL
+       OR t.import_session_id = $import_session_id::integer)
 
-ORDER BY t.txn_date DESC, t.id DESC
+/* ORDER_BY_PLACEHOLDER */
 LIMIT  $limit
 OFFSET $offset;

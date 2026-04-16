@@ -21,37 +21,6 @@
   gap: 16px;
 }
 
-/* ── Period pills (in header actions) ────────────────── */
-.periodPills {
-  display: flex;
-  gap: 4px;
-}
-
-.periodPill {
-  padding: 4px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 20px;
-  background: transparent;
-  color: var(--color-muted);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-  transition: all 180ms;
-  font-family: var(--font-mono, monospace);
-}
-
-.periodPill:hover {
-  border-color: var(--color-primary);
-  color: var(--color-fg);
-}
-
-.periodPillActive {
-  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
 /* ── Duplicate count badge (in header meta) ──────────── */
 .dupeBadge {
   display: inline-flex;
@@ -69,133 +38,139 @@
   letter-spacing: 0.04em;
 }
 
-/* ── Summary strip ───────────────────────────────────── */
-.summaryStrip {
-  display: flex;
-  align-items: center;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 0;
-  overflow: hidden;
+/* ── Stats cards grid ────────────────────────────────── */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
 }
 
-.summaryCard {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 14px 16px;
-  gap: 3px;
-}
-
-.summarySep {
-  width: 1px;
-  height: 36px;
-  background: var(--color-border);
-  flex-shrink: 0;
-}
-
-.summaryLabel {
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-  font-family: var(--font-mono, monospace);
-}
-
-.summaryValue {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--color-fg);
-  font-family: var(--font-mono, monospace);
-  letter-spacing: -0.02em;
-}
-
-.valInvested { color: var(--color-success); }
-.valRedeemed { color: var(--color-danger); }
-.valUp       { color: var(--color-success); }
-.valDown     { color: var(--color-danger); }
-
-/* ── Filter toolbar ──────────────────────────────────── */
+/* ── Toolbar ─────────────────────────────────────────── */
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
-/* Search */
-.searchWrap {
-  position: relative;
-  display: flex;
-  align-items: center;
+.searchBar {
   flex: 1;
-  min-width: 220px;
-  max-width: 340px;
+  min-width: 200px;
 }
 
-.searchIcon {
-  position: absolute;
-  left: 10px;
-  color: var(--color-muted);
-  pointer-events: none;
-}
-
-.searchInput {
-  width: 100%;
-  height: 34px;
-  padding: 0 30px 0 32px;
+/* Filters toggle button */
+.filterBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface);
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 180ms;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.filterBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-fg);
+}
+
+.filterBtnActive {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary) 60%, var(--color-border));
+  color: var(--color-primary);
+}
+
+/* Active filter count badge on Filters button */
+.filterCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--color-primary);
+  color: var(--color-bg);
+  font-size: 0.6rem;
+  font-weight: 800;
+  font-family: var(--font-mono, monospace);
+  line-height: 1;
+}
+
+/* ── Collapsible filter panel ────────────────────────── */
+.filterPanel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: panelIn 180ms ease;
+}
+
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Filter field grid */
+.filterGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.filterLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.filterInput {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
   color: var(--color-fg);
   font-size: 0.78rem;
   outline: none;
   transition: border-color 180ms;
+  font-family: inherit;
 }
 
-.searchInput::placeholder {
+.filterInput::placeholder {
   color: var(--color-muted);
   opacity: var(--input-placeholder-opacity, 0.5);
 }
 
-.searchInput:focus {
+.filterInput:focus {
   border-color: var(--color-primary);
 }
 
-.searchClear {
-  position: absolute;
-  right: 8px;
-  background: transparent;
-  border: none;
-  color: var(--color-muted);
-  font-size: 0.9rem;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  transition: all 150ms;
-}
-
-.searchClear:hover {
-  background: color-mix(in srgb, var(--color-muted) 15%, transparent);
-  color: var(--color-fg);
-}
-
-/* Type filter */
 .filterSelect {
   height: 34px;
   padding: 0 10px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: var(--color-surface);
+  background: var(--color-bg);
   color: var(--color-fg);
   font-size: 0.78rem;
   outline: none;
@@ -207,11 +182,53 @@
   border-color: var(--color-primary);
 }
 
-/* Date range */
+/* Date section */
+.filterDateSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quickDates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.quickLabel {
+  font-size: 0.62rem;
+  color: var(--color-muted);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.quickDateBtn {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.quickDateBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+/* Date range inputs row */
 .dateRange {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .dateInput {
@@ -219,7 +236,7 @@
   padding: 0 8px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: var(--color-surface);
+  background: var(--color-bg);
   color: var(--color-fg);
   font-size: 0.75rem;
   font-family: var(--font-mono, monospace);
@@ -238,33 +255,143 @@
   user-select: none;
 }
 
-/* Duplicates toggle */
-.dupeToggle {
+.clearDateBtn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 150ms;
+  line-height: 1;
+  padding: 0;
+}
+
+.clearDateBtn:hover {
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+/* Toggle + clear row */
+.filterToggles {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+  border-top: 1px solid var(--color-border);
+}
+
+.toggleBtn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 34px;
+  height: 30px;
   padding: 0 12px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: transparent;
   color: var(--color-muted);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 180ms;
   white-space: nowrap;
 }
 
-.dupeToggle:hover {
+.toggleBtn:hover {
+  color: var(--color-fg);
+  border-color: var(--color-fg);
+}
+
+.toggleBtnWarning {
+  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
   border-color: var(--color-warning);
   color: var(--color-warning);
 }
 
-.dupeToggleOn {
-  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
-  border-color: var(--color-warning);
-  color: var(--color-warning);
+.toggleBtnDanger {
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.clearAllBtn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+  color: var(--color-danger);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 180ms;
+}
+
+.clearAllBtn:hover {
+  background: color-mix(in srgb, var(--color-danger) 16%, transparent);
+}
+
+/* ── Results bar (Showing X-Y of Z + sort) ───────────── */
+.resultsBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 2px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.resultsCount {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+}
+
+.resultsCount strong {
+  color: var(--color-fg);
+  font-weight: 700;
+}
+
+.sortWrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.sortLabel {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sortSelect {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font-size: 0.72rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 180ms;
+}
+
+.sortSelect:focus {
+  border-color: var(--color-primary);
 }
 
 /* ── Table cell — per-page styles ────────────────────── */
@@ -274,6 +401,10 @@
 
 .rowDupe td {
   border-bottom-color: color-mix(in srgb, var(--color-warning) 15%, transparent) !important;
+}
+
+.rowExcluded {
+  opacity: 0.6;
 }
 
 .rowNum {
@@ -288,6 +419,12 @@
   margin-left: 4px;
   color: var(--color-warning);
   font-size: 0.65rem;
+}
+
+.excludedFlag {
+  margin-left: 3px;
+  color: var(--color-muted);
+  font-size: 0.62rem;
 }
 
 .dateCell {
@@ -382,17 +519,23 @@
 }
 
 /* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 960px) {
+  .statsGrid { grid-template-columns: repeat(2, 1fr); }
+  .filterGrid { grid-template-columns: repeat(2, 1fr); }
+}
+
 @media (max-width: 768px) {
-  .body    { padding: 16px 20px 24px; }
-  .toolbar { flex-direction: column; align-items: stretch; }
-  .searchWrap { max-width: 100%; }
-  .summaryCard { padding: 12px 10px; }
-  .summaryValue { font-size: 0.95rem; }
+  .body        { padding: 16px 20px 24px; }
+  .toolbar     { flex-direction: row; flex-wrap: wrap; }
+  .searchBar   { min-width: 0; }
+  .statsGrid   { grid-template-columns: repeat(2, 1fr); }
+  .filterGrid  { grid-template-columns: 1fr; }
+  .dateRange   { flex-wrap: wrap; }
+  .resultsBar  { flex-direction: column; align-items: flex-start; }
 }
 
 @media (max-width: 480px) {
-  .body        { padding: 12px 14px 20px; }
-  .dateRange   { flex-direction: column; gap: 4px; }
-  .dateSep     { display: none; }
-  .summaryStrip { flex-wrap: wrap; }
+  .body       { padding: 12px 14px 20px; }
+  .statsGrid  { grid-template-columns: 1fr; }
+  .quickDates { gap: 4px; }
 }

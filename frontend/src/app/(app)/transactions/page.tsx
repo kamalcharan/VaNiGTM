@@ -4,8 +4,11 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSkillQuery } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
+import { apiFetch } from '@/lib/api-client';
+import { API } from '@/lib/serviceURLs';
 import {
-  VdfLoader, VdfEmptyState, VdfButton, VdfStatusBadge, VdfPageHeader,
+  VdfLoader, VdfEmptyState, VdfButton, VdfStatusBadge,
+  VdfPageHeader, VdfStatCard, VdfSearchBar,
 } from '@/components/vdf';
 import s from './transactions.module.css';
 import d from '@/styles/data.module.css';
@@ -13,24 +16,27 @@ import d from '@/styles/data.module.css';
 /* ── Types ───────────────────────────────────────────── */
 
 interface Transaction {
-  id:               number;
-  txn_date:         string;
-  txn_type:         string;
-  txn_type_label:   string;
-  flow_direction:   string;
-  amount:           number;
-  units:            number | null;
-  nav:              number | null;
-  folio_no:         string | null;
-  fund_name:        string | null;
-  category:         string | null;
-  scheme_code:      string;
-  tds:              number;
+  id:                     number;
+  txn_date:               string;
+  txn_type:               string;
+  txn_type_label:         string;
+  flow_direction:         string;
+  amount:                 number;
+  units:                  number | null;
+  nav:                    number | null;
+  folio_no:               string | null;
+  fund_name:              string | null;
+  category:               string | null;
+  scheme_code:            string;
+  tds:                    number;
   is_potential_duplicate: boolean;
-  client_id:        number;
-  client_name:      string;
-  client_prefix:    string;
-  client_no:        string | null;
+  portfolio_flag:         boolean;
+  import_session_id:      number | null;
+  client_id:              number;
+  client_name:            string;
+  client_prefix:          string;
+  client_no:              string | null;
+  ext_ref_id:             string | null;
 }
 
 interface TransactionsData {
@@ -48,30 +54,29 @@ interface SummaryData {
   duplicate_count: number;
 }
 
+interface ImportSession {
+  id:          number;
+  import_type: string;
+  status:      string;
+  created_at:  string;
+}
+
 /* ── Constants ───────────────────────────────────────── */
 
 const PAGE_SIZE = 50;
 
-const PERIOD_OPTIONS = [
-  { id: '1m',  label: '1M'  },
-  { id: '3m',  label: '3M'  },
-  { id: '6m',  label: '6M'  },
-  { id: '1y',  label: '1Y'  },
-  { id: 'all', label: 'All' },
-];
-
 const TYPE_OPTIONS = [
-  { value: '',                  label: 'All types'        },
-  { value: 'PURCHASE',          label: 'Purchase'         },
-  { value: 'SIP',               label: 'SIP'              },
-  { value: 'REDEMPTION',        label: 'Redemption'       },
-  { value: 'SWITCH IN',         label: 'Switch In'        },
-  { value: 'SWITCH OUT',        label: 'Switch Out'       },
-  { value: 'STP IN',            label: 'STP In'           },
-  { value: 'STP OUT',           label: 'STP Out'          },
-  { value: 'SWP',               label: 'SWP'              },
-  { value: 'DIVIDEND PAYOUT',   label: 'Dividend Payout'  },
-  { value: 'DIVIDEND REINVEST', label: 'Dividend Reinvest'},
+  { value: '',                  label: 'All types'         },
+  { value: 'PURCHASE',          label: 'Purchase'          },
+  { value: 'SIP',               label: 'SIP'               },
+  { value: 'REDEMPTION',        label: 'Redemption'        },
+  { value: 'SWITCH IN',         label: 'Switch In'         },
+  { value: 'SWITCH OUT',        label: 'Switch Out'        },
+  { value: 'STP IN',            label: 'STP In'            },
+  { value: 'STP OUT',           label: 'STP Out'           },
+  { value: 'SWP',               label: 'SWP'               },
+  { value: 'DIVIDEND PAYOUT',   label: 'Dividend Payout'   },
+  { value: 'DIVIDEND REINVEST', label: 'Dividend Reinvest' },
 ];
 
 const TYPE_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'muted'> = {
@@ -87,6 +92,14 @@ const TYPE_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' | '
   'DIVIDEND REINVEST':'muted',
 };
 
+const QUICK_DATES = [
+  { label: '7 days',   value: '7d'  },
+  { label: '30 days',  value: '30d' },
+  { label: '3 months', value: '3m'  },
+  { label: '1 year',   value: '1y'  },
+  { label: 'All time', value: 'all' },
+];
+
 /* ── Helpers ─────────────────────────────────────────── */
 
 function fmtCurrency(n: number): string {
@@ -101,60 +114,113 @@ function fmtDate(d: string): string {
   });
 }
 
-function periodToDateFrom(period: string): string | undefined {
-  const now = new Date();
-  switch (period) {
-    case '1m': { const d = new Date(now); d.setMonth(d.getMonth() - 1);      return d.toISOString().slice(0, 10); }
-    case '3m': { const d = new Date(now); d.setMonth(d.getMonth() - 3);      return d.toISOString().slice(0, 10); }
-    case '6m': { const d = new Date(now); d.setMonth(d.getMonth() - 6);      return d.toISOString().slice(0, 10); }
-    case '1y': { const d = new Date(now); d.setFullYear(d.getFullYear() - 1); return d.toISOString().slice(0, 10); }
-    default:   return undefined;
-  }
-}
-
 /* ── Page ────────────────────────────────────────────── */
 
 export default function TransactionsPage() {
   const router        = useRouter();
   const { showToast } = useToast();
 
-  /* ── Filter state ────────────────────────────────── */
-  const [period,    setPeriod]    = useState('1y');
-  const [txnType,   setTxnType]   = useState('');
-  const [search,    setSearch]    = useState('');
-  const [dateFrom,  setDateFrom]  = useState('');
-  const [dateTo,    setDateTo]    = useState('');
-  const [dupeOnly,  setDupeOnly]  = useState(false);
-  const [page,      setPage]      = useState(1);
+  /* ── Filter state ─────────────────────────────────── */
+  const [search,                setSearch]                = useState('');
+  const [txnType,               setTxnType]               = useState('');
+  const [dateFrom,              setDateFrom]              = useState('');
+  const [dateTo,                setDateTo]                = useState('');
+  const [dupeOnly,              setDupeOnly]              = useState(false);
+  const [portfolioFlagExcluded, setPortfolioFlagExcluded] = useState(false);
+  const [extRefSearch,          setExtRefSearch]          = useState('');
+  const [importSessionId,       setImportSessionId]       = useState<number | null>(null);
+  const [sortBy,                setSortBy]                = useState('txn_date');
+  const [sortOrder,             setSortOrder]             = useState<'asc' | 'desc'>('desc');
+  const [filterOpen,            setFilterOpen]            = useState(false);
+  const [page,                  setPage]                  = useState(1);
 
-  /* Effective date_from: manual override > period — memoised so the value is
-     referentially stable and doesn't cause a new query key on every render */
-  const activeDateFrom = useMemo(
-    () => dateFrom || periodToDateFrom(period),
-    [dateFrom, period],
-  );
-  const activeDateTo = dateTo || undefined;
+  /* ── Import sessions (for filter dropdown) ─────────── */
+  const [importSessions, setImportSessions] = useState<ImportSession[]>([]);
 
-  /* ── Queries ─────────────────────────────────────── */
+  useEffect(() => {
+    apiFetch<{ sessions?: ImportSession[] }>(API.etl.sessions)
+      .then(data => {
+        const sessions = (data.sessions ?? []).filter(
+          (s: ImportSession) =>
+            s.import_type === 'transaction' &&
+            ['completed', 'completed_with_errors'].includes(s.status)
+        );
+        setImportSessions(sessions);
+      })
+      .catch(() => {}); // non-critical — silently ignore if endpoint unavailable
+  }, []);
+
+  /* ── Active filter count ───────────────────────────── */
+  const activeFilterCount = useMemo(() => {
+    let n = 0;
+    if (txnType)                 n++;
+    if (dateFrom || dateTo)      n++;
+    if (dupeOnly)                n++;
+    if (portfolioFlagExcluded)   n++;
+    if (extRefSearch)            n++;
+    if (importSessionId != null) n++;
+    return n;
+  }, [txnType, dateFrom, dateTo, dupeOnly, portfolioFlagExcluded, extRefSearch, importSessionId]);
+
+  /* ── Handlers ──────────────────────────────────────── */
+  const applyQuickDate = useCallback((range: string) => {
+    const now = new Date();
+    if (range === 'all') {
+      setDateFrom(''); setDateTo(''); setPage(1); return;
+    }
+    const start = new Date(now);
+    if (range === '7d')  start.setDate(now.getDate() - 7);
+    if (range === '30d') start.setDate(now.getDate() - 30);
+    if (range === '3m')  start.setMonth(now.getMonth() - 3);
+    if (range === '1y')  start.setFullYear(now.getFullYear() - 1);
+    setDateFrom(start.toISOString().slice(0, 10));
+    setDateTo(now.toISOString().slice(0, 10));
+    setPage(1);
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setTxnType('');
+    setDateFrom(''); setDateTo('');
+    setDupeOnly(false);
+    setPortfolioFlagExcluded(false);
+    setExtRefSearch('');
+    setImportSessionId(null);
+    setPage(1);
+  }, []);
+
+  const handleSortChange = useCallback((v: string) => {
+    const [col, dir] = v.split('-');
+    setSortBy(col);
+    setSortOrder(dir as 'asc' | 'desc');
+    setPage(1);
+  }, []);
+
+  /* ── Query params ──────────────────────────────────── */
   const txnParams = useMemo(() => ({
-    txn_type:          txnType   || undefined,
-    date_from:         activeDateFrom,
-    date_to:           activeDateTo,
-    search:            search    || undefined,
-    is_duplicate_only: dupeOnly  || undefined,
-    limit:             PAGE_SIZE,
-    offset:            (page - 1) * PAGE_SIZE,
-  }), [txnType, activeDateFrom, activeDateTo, search, dupeOnly, page]);
+    txn_type:                txnType || undefined,
+    date_from:               dateFrom || undefined,
+    date_to:                 dateTo || undefined,
+    search:                  search || undefined,
+    is_duplicate_only:       dupeOnly || undefined,
+    portfolio_flag_excluded: portfolioFlagExcluded || undefined,
+    ext_ref_id_search:       extRefSearch || undefined,
+    import_session_id:       importSessionId ?? undefined,
+    sort_by:                 sortBy,
+    sort_order:              sortOrder,
+    limit:                   PAGE_SIZE,
+    offset:                  (page - 1) * PAGE_SIZE,
+  }), [txnType, dateFrom, dateTo, search, dupeOnly, portfolioFlagExcluded,
+       extRefSearch, importSessionId, sortBy, sortOrder, page]);
 
   const sumParams = useMemo(() => ({
-    date_from: activeDateFrom,
-    date_to:   activeDateTo,
-  }), [activeDateFrom, activeDateTo]);
+    date_from: dateFrom || undefined,
+    date_to:   dateTo   || undefined,
+  }), [dateFrom, dateTo]);
 
+  /* ── Queries ───────────────────────────────────────── */
   const { data, isLoading, isError, error } = useSkillQuery<TransactionsData>(
     'transaction-skill', 'get_transactions', txnParams, { retry: false }
   );
-
   const { data: sumData } = useSkillQuery<SummaryData>(
     'transaction-skill', 'get_transaction_summary', sumParams, { retry: false }
   );
@@ -164,29 +230,18 @@ export default function TransactionsPage() {
   const totalPages   = Math.ceil(total / PAGE_SIZE);
   const summary      = sumData?.data;
 
-  /* ── Handlers ────────────────────────────────────── */
-  const handlePeriod = useCallback((p: string) => {
-    setPeriod(p);
-    setDateFrom('');
-    setDateTo('');
-    setPage(1);
-  }, []);
-
-  const handleTypeChange = useCallback((v: string) => {
-    setTxnType(v); setPage(1);
-  }, []);
-
-  const handleSearch = useCallback((v: string) => {
-    setSearch(v); setPage(1);
-  }, []);
-
-  /* ── Error toast (useEffect — never call setState during render) ── */
+  /* ── Error toast ───────────────────────────────────── */
   useEffect(() => {
     if (isError) showToast({ message: error?.message ?? 'Failed to load transactions', type: 'error' });
   }, [isError]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const netUp = (summary?.net_flow ?? 0) >= 0;
+  /* ── Results range ─────────────────────────────────── */
+  const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const rangeEnd   = Math.min(page * PAGE_SIZE, total);
+  const netUp      = (summary?.net_flow ?? 0) >= 0;
+  const hasFilters = !!(search || txnType || dateFrom || dateTo || dupeOnly || portfolioFlagExcluded || extRefSearch || importSessionId);
 
+  /* ── Render ────────────────────────────────────────── */
   return (
     <div className={s.page}>
 
@@ -208,128 +263,234 @@ export default function TransactionsPage() {
             </>
           ) : undefined
         }
-        actions={
-          <div className={s.periodPills}>
-            {PERIOD_OPTIONS.map(p => (
-              <button
-                key={p.id}
-                className={`${s.periodPill} ${period === p.id && !dateFrom ? s.periodPillActive : ''}`}
-                onClick={() => handlePeriod(p.id)}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        }
       />
 
       <div className={s.body}>
 
-        {/* ── Loading overlay ── */}
         {isLoading && <VdfLoader overlay message="Loading transactions…" />}
 
-        {/* ── Summary strip ── */}
+        {/* ── Stats cards ── */}
         {summary && (
-          <div className={s.summaryStrip}>
-            <div className={s.summaryCard}>
-              <span className={s.summaryLabel}>Invested</span>
-              <span className={`${s.summaryValue} ${s.valInvested}`}>{fmtCurrency(summary.total_invested)}</span>
+          <div className={s.statsGrid}>
+            <VdfStatCard
+              value={fmtCurrency(summary.total_invested)}
+              label="Invested"
+              accent="success"
+            />
+            <VdfStatCard
+              value={fmtCurrency(summary.total_redeemed)}
+              label="Redeemed"
+              accent="danger"
+            />
+            <VdfStatCard
+              value={(netUp ? '+' : '') + fmtCurrency(summary.net_flow)}
+              label="Net Flow"
+              accent={netUp ? 'success' : 'danger'}
+            />
+            <VdfStatCard
+              value={total.toLocaleString('en-IN')}
+              label="Transactions"
+              accent="default"
+            />
+          </div>
+        )}
+
+        {/* ── Toolbar ── */}
+        <div className={s.toolbar}>
+          <VdfSearchBar
+            value={search}
+            onChange={v => { setSearch(v); setPage(1); }}
+            placeholder="Fund, folio, client, scheme…"
+            className={s.searchBar}
+          />
+          <button
+            className={`${s.filterBtn} ${activeFilterCount > 0 ? s.filterBtnActive : ''}`}
+            onClick={() => setFilterOpen(v => !v)}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+              <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
+            </svg>
+            Filters
+            {activeFilterCount > 0 && (
+              <span className={s.filterCount}>{activeFilterCount}</span>
+            )}
+            <svg
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              width="11" height="11"
+              style={{ transform: filterOpen ? 'rotate(180deg)' : undefined, transition: 'transform 200ms' }}
+            >
+              <polyline points="6,9 12,15 18,9" />
+            </svg>
+          </button>
+        </div>
+
+        {/* ── Collapsible filter panel ── */}
+        {filterOpen && (
+          <div className={s.filterPanel}>
+
+            {/* Row 1: filter fields */}
+            <div className={s.filterGrid}>
+
+              {/* IWELL / ext_ref_id */}
+              <div className={s.filterField}>
+                <label className={s.filterLabel}>IWELL Code</label>
+                <input
+                  className={s.filterInput}
+                  placeholder="Partial or exact…"
+                  value={extRefSearch}
+                  onChange={e => { setExtRefSearch(e.target.value); setPage(1); }}
+                />
+              </div>
+
+              {/* Transaction type */}
+              <div className={s.filterField}>
+                <label className={s.filterLabel}>Transaction Type</label>
+                <select
+                  className={s.filterSelect}
+                  value={txnType}
+                  onChange={e => { setTxnType(e.target.value); setPage(1); }}
+                >
+                  {TYPE_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Import session */}
+              <div className={s.filterField}>
+                <label className={s.filterLabel}>Import Session</label>
+                <select
+                  className={s.filterSelect}
+                  value={importSessionId ?? ''}
+                  onChange={e => {
+                    setImportSessionId(e.target.value ? Number(e.target.value) : null);
+                    setPage(1);
+                  }}
+                >
+                  <option value="">All Sessions</option>
+                  {importSessions.map(sess => (
+                    <option key={sess.id} value={sess.id}>
+                      Session #{sess.id} · {fmtDate(sess.created_at)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
             </div>
-            <div className={s.summarySep} />
-            <div className={s.summaryCard}>
-              <span className={s.summaryLabel}>Redeemed</span>
-              <span className={`${s.summaryValue} ${s.valRedeemed}`}>{fmtCurrency(summary.total_redeemed)}</span>
+
+            {/* Row 2: date range */}
+            <div className={s.filterDateSection}>
+              <label className={s.filterLabel}>Date Range</label>
+              <div className={s.quickDates}>
+                <span className={s.quickLabel}>Quick:</span>
+                {QUICK_DATES.map(q => (
+                  <button key={q.value} className={s.quickDateBtn} onClick={() => applyQuickDate(q.value)}>
+                    {q.label}
+                  </button>
+                ))}
+              </div>
+              <div className={s.dateRange}>
+                <input
+                  className={s.dateInput}
+                  type="date"
+                  value={dateFrom}
+                  onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+                  title="From date"
+                />
+                <span className={s.dateSep}>—</span>
+                <input
+                  className={s.dateInput}
+                  type="date"
+                  value={dateTo}
+                  onChange={e => { setDateTo(e.target.value); setPage(1); }}
+                  title="To date"
+                />
+                {(dateFrom || dateTo) && (
+                  <button
+                    className={s.clearDateBtn}
+                    onClick={() => { setDateFrom(''); setDateTo(''); setPage(1); }}
+                    title="Clear date range"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             </div>
-            <div className={s.summarySep} />
-            <div className={s.summaryCard}>
-              <span className={s.summaryLabel}>Net Flow</span>
-              <span className={`${s.summaryValue} ${netUp ? s.valUp : s.valDown}`}>
-                {netUp ? '+' : ''}{fmtCurrency(summary.net_flow)}
-              </span>
+
+            {/* Row 3: toggles + clear all */}
+            <div className={s.filterToggles}>
+              <button
+                className={`${s.toggleBtn} ${dupeOnly ? s.toggleBtnWarning : ''}`}
+                onClick={() => { setDupeOnly(v => !v); setPage(1); }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="12" height="12">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+                Duplicates only
+              </button>
+              <button
+                className={`${s.toggleBtn} ${portfolioFlagExcluded ? s.toggleBtnDanger : ''}`}
+                onClick={() => { setPortfolioFlagExcluded(v => !v); setPage(1); }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="12" height="12">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                </svg>
+                Excluded from portfolio
+              </button>
+              {activeFilterCount > 0 && (
+                <button className={s.clearAllBtn} onClick={clearFilters}>
+                  ×&nbsp;Clear all
+                </button>
+              )}
             </div>
-            <div className={s.summarySep} />
-            <div className={s.summaryCard}>
-              <span className={s.summaryLabel}>Transactions</span>
-              <span className={s.summaryValue}>{total.toLocaleString('en-IN')}</span>
+
+          </div>
+        )}
+
+        {/* ── Results bar + sort ── */}
+        {total > 0 && (
+          <div className={s.resultsBar}>
+            <span className={s.resultsCount}>
+              Showing{' '}
+              <strong>{rangeStart.toLocaleString('en-IN')}</strong>–<strong>{rangeEnd.toLocaleString('en-IN')}</strong>
+              {' '}of <strong>{total.toLocaleString('en-IN')}</strong> transactions
+            </span>
+            <div className={s.sortWrap}>
+              <span className={s.sortLabel}>Sort by</span>
+              <select
+                className={s.sortSelect}
+                value={`${sortBy}-${sortOrder}`}
+                onChange={e => handleSortChange(e.target.value)}
+              >
+                <option value="txn_date-desc">Date (Newest)</option>
+                <option value="txn_date-asc">Date (Oldest)</option>
+                <option value="amount-desc">Amount (High → Low)</option>
+                <option value="amount-asc">Amount (Low → High)</option>
+                <option value="fund_name-asc">Fund (A → Z)</option>
+                <option value="fund_name-desc">Fund (Z → A)</option>
+                <option value="client_name-asc">Client (A → Z)</option>
+              </select>
             </div>
           </div>
         )}
 
-        {/* ── Filter toolbar ── */}
-        <div className={s.toolbar}>
-          {/* Search */}
-          <div className={s.searchWrap}>
-            <svg className={s.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
-              <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-            </svg>
-            <input
-              className={s.searchInput}
-              placeholder="Fund name, folio, client…"
-              value={search}
-              onChange={e => handleSearch(e.target.value)}
-            />
-            {search && (
-              <button className={s.searchClear} onClick={() => handleSearch('')}>×</button>
-            )}
-          </div>
-
-          {/* Type */}
-          <select
-            className={s.filterSelect}
-            value={txnType}
-            onChange={e => handleTypeChange(e.target.value)}
-          >
-            {TYPE_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-
-          {/* Date range */}
-          <div className={s.dateRange}>
-            <input
-              className={s.dateInput}
-              type="date"
-              value={dateFrom}
-              onChange={e => { setDateFrom(e.target.value); setPeriod(''); setPage(1); }}
-              title="From date"
-            />
-            <span className={s.dateSep}>—</span>
-            <input
-              className={s.dateInput}
-              type="date"
-              value={dateTo}
-              onChange={e => { setDateTo(e.target.value); setPeriod(''); setPage(1); }}
-              title="To date"
-            />
-          </div>
-
-          {/* Duplicate flag */}
-          <button
-            className={`${s.dupeToggle} ${dupeOnly ? s.dupeToggleOn : ''}`}
-            onClick={() => { setDupeOnly(v => !v); setPage(1); }}
-            title="Show potential duplicates only"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
-              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-              <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-            Duplicates
-          </button>
-        </div>
-
-        {/* ── Table ── */}
+        {/* ── Table or empty state ── */}
         {transactions.length === 0 ? (
           <VdfEmptyState
             title="No transactions found"
             description={
-              search || txnType || dateFrom || dateTo || dupeOnly
+              hasFilters
                 ? 'Try clearing your filters.'
                 : 'Import a CAS, InvestWell, or NSE statement to load transactions.'
             }
             action={
-              <VdfButton variant="primary" size="sm" onClick={() => router.push('/import')}>
-                Import Statement
-              </VdfButton>
+              !hasFilters ? (
+                <VdfButton variant="primary" size="sm" onClick={() => router.push('/import')}>
+                  Import Statement
+                </VdfButton>
+              ) : undefined
             }
           />
         ) : (
@@ -338,7 +499,7 @@ export default function TransactionsPage() {
               <table className={d.table}>
                 <thead>
                   <tr>
-                    <th className={`${d.thSticky}`} style={{ width: 40 }}>#</th>
+                    <th className={d.thSticky} style={{ width: 40 }}>#</th>
                     <th style={{ width: 100 }}>Date</th>
                     <th>Client</th>
                     <th>Fund</th>
@@ -352,13 +513,22 @@ export default function TransactionsPage() {
                   {transactions.map((txn, i) => (
                     <tr
                       key={txn.id}
-                      className={txn.is_potential_duplicate ? s.rowDupe : undefined}
+                      className={
+                        txn.is_potential_duplicate
+                          ? s.rowDupe
+                          : !txn.portfolio_flag
+                          ? s.rowExcluded
+                          : undefined
+                      }
                     >
-                      {/* Row number */}
+                      {/* Row # */}
                       <td className={`${d.tdSticky} ${s.rowNum}`}>
-                        {(page - 1) * PAGE_SIZE + i + 1}
+                        {rangeStart + i}
                         {txn.is_potential_duplicate && (
                           <span className={s.dupeFlag} title="Potential duplicate">⚠</span>
+                        )}
+                        {!txn.portfolio_flag && (
+                          <span className={s.excludedFlag} title="Excluded from portfolio">⊘</span>
                         )}
                       </td>
 
@@ -375,8 +545,8 @@ export default function TransactionsPage() {
                         >
                           {txn.client_prefix} {txn.client_name}
                         </button>
-                        {txn.client_no && (
-                          <div className={s.clientNo}>{txn.client_no}</div>
+                        {(txn.ext_ref_id || txn.client_no) && (
+                          <div className={s.clientNo}>{txn.ext_ref_id ?? txn.client_no}</div>
                         )}
                       </td>
 
@@ -393,7 +563,7 @@ export default function TransactionsPage() {
                         {txn.folio_no ?? '—'}
                       </td>
 
-                      {/* Type badge */}
+                      {/* Type */}
                       <td>
                         <VdfStatusBadge
                           label={txn.txn_type_label}
