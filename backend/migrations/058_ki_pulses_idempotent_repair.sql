@@ -219,6 +219,20 @@ COMMENT ON COLUMN ki_pulses.snapshot_id IS 'Optional link to ki_contact_snapshot
 COMMENT ON COLUMN ki_pulses.assigned_to IS 'UUID of the vn_users row responsible for actioning this pulse.';
 
 -- ── 10. RECREATE ki_process_txn_import_session referencing ki_pulses ─────────
+-- Drop ALL overloaded versions first so CREATE OR REPLACE is unambiguous.
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN
+        SELECT oid::regprocedure::text AS sig
+        FROM   pg_proc
+        WHERE  proname = 'ki_process_txn_import_session'
+          AND  pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+    LOOP
+        EXECUTE 'DROP FUNCTION IF EXISTS ' || r.sig || ' CASCADE';
+    END LOOP;
+END $$;
 
 CREATE OR REPLACE FUNCTION ki_process_txn_import_session(
     p_session_id             INTEGER,
