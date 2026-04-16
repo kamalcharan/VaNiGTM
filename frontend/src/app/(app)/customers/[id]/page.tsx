@@ -13,6 +13,7 @@ import { TransactionCard, type TransactionCardItem } from '@/components/transact
 import { TransactionDetailDrawer } from '@/components/transactions/TransactionDetailDrawer';
 import { SnapshotTab } from '@/app/(app)/contacts/[id]/snapshot-tab';
 import { AddInvestmentModal, type AssetAssignmentForEdit } from '@/components/assets/AddInvestmentModal';
+import { PulseZone } from '@/components/pulses/PulseZone';
 import s from './customer-dashboard.module.css';
 import d from '@/styles/data.module.css';
 
@@ -1372,7 +1373,7 @@ export default function CustomerDashboardPage() {
   const clientId = Number(id);
 
   const tabParam   = searchParams?.get('tab') ?? null;
-  const initialTab = ['portfolio', 'assets', 'transactions', 'snapshot', 'crm', 'goals', 'vendor'].includes(tabParam ?? '')
+  const initialTab = ['portfolio', 'assets', 'transactions', 'snapshot', 'crm', 'goals', 'vendor', 'pulses'].includes(tabParam ?? '')
     ? tabParam!
     : 'portfolio';
   const [activeTab,    setActiveTab]    = useState(initialTab);
@@ -1409,6 +1410,7 @@ export default function CustomerDashboardPage() {
     { id: 'crm',          label: 'CRM Data' },
     { id: 'goals',        label: 'Goals' },
     { id: 'vendor',       label: 'Vendor Code' },
+    { id: 'pulses',       label: 'Pulses' },
   ];
 
   const gain   = summary ? summary.current_value - summary.total_invested : null;
@@ -1527,6 +1529,7 @@ export default function CustomerDashboardPage() {
         {activeTab === 'crm'          && <CrmDataTab client={client} />}
         {activeTab === 'goals'        && <GoalsTab clientId={clientId} />}
         {activeTab === 'vendor'       && <VendorCodesTab client={client} clientId={clientId} />}
+        {activeTab === 'pulses'       && <PulseZone clientId={clientId} clientName={clientDisplayName} />}
       </div>
     </div>
   );
