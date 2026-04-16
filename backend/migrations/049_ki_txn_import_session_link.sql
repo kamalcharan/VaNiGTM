@@ -556,7 +556,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION ki_process_txn_import_session IS
+COMMENT ON FUNCTION ki_process_txn_import_session(INTEGER, TEXT) IS
     'Processes all pending rows in ki_import_staging for a given transaction import session. '
     'Performs client lookup (iwell_code/customer_name/both), scheme lookup, duplicate check, '
     'portfolio/holdings upsert, and transaction insert. Stamps import_session_id on each inserted '
