@@ -269,7 +269,7 @@ function ScheduledState({ session, config, onStartPrep, onReschedule, onEditConf
   );
 
   function handleStartPrep() {
-    updateSession({ session_id: session.id, status: 'prep_ready' } as Record<string, unknown>);
+    updateSession({ id: session.id, status: 'prep_ready' } as Record<string, unknown>);
   }
 
   return (
@@ -322,7 +322,7 @@ function PrepReadyState({ session, config, onStartMeeting, onEditConfig }: PrepR
   );
 
   function handleStartMeeting() {
-    updateSession({ session_id: session.id, status: 'in_progress', started_at: new Date().toISOString() } as Record<string, unknown>);
+    updateSession({ id: session.id, status: 'in_progress', started_at: new Date().toISOString() } as Record<string, unknown>);
   }
 
   return (
@@ -396,7 +396,7 @@ function InProgressState({ session, config, onEndMeeting, onEditConfig }: InProg
 
   function handleEndMeeting() {
     updateSession({
-      session_id:   session.id,
+      id:           session.id,
       status:       'completed',
       ended_at:     new Date().toISOString(),
       meeting_notes: notes,
@@ -635,7 +635,7 @@ function MissedState({ session, config, clientId, onRescheduled, onEditConfig }:
       </div>
       <div className={s.stateActions} style={{ marginTop: '8px' }}>
         <VdfButton variant="ghost" size="sm" loading={isCancelling}
-          onClick={() => updateSession({ session_id: session.id, status: 'cancelled' } as Record<string, unknown>)}>
+          onClick={() => updateSession({ id: session.id, status: 'cancelled' } as Record<string, unknown>)}>
           Mark Cancelled
         </VdfButton>
       </div>

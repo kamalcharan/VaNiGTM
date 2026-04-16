@@ -171,6 +171,7 @@ export interface PulseHistoryItem {
   template:          string;
   medium:            string;
   meeting_notes:     string | null;
+  vani_brief:        string | null;
   vani_summary:      string | null;
   summary_confirmed: boolean;
   report_generated:  boolean;
