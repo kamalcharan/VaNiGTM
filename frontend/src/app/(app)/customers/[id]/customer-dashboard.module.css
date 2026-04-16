@@ -1079,11 +1079,121 @@
   gap: 10px;
 }
 
-/* 3-column square card grid */
-.assetCardsGrid {
+/* ── Pinstripe rows ──────────────────────────────────── */
+
+.assetStripes {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* shared column layout: name (flex) | invested | value | gain | units | actions */
+.assetStripeHeader,
+.assetStripeRow {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: 1fr 100px 110px 100px 90px 72px;
+  align-items: center;
+  gap: 0 12px;
+  padding: 0 14px;
+}
+
+.assetStripeHeader {
+  padding-top: 7px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
+}
+
+.assetStripeRow {
+  min-height: 48px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  transition: background 120ms;
+}
+
+.assetStripeRowAlt {
+  background: color-mix(in srgb, var(--color-fg) 2.5%, transparent);
+}
+
+.assetStripeRow:hover {
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+
+.assetStripeRow:hover .assetCardActions {
+  opacity: 1;
+}
+
+/* Column label */
+.assetStripeColName,
+.assetStripeCol,
+.assetStripeColUnits,
+.assetStripeColAct {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.assetStripeColAct { text-align: right; }
+
+/* Name cell */
+.assetStripeNameCell {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.assetStripeDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.assetStripeNameWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.assetStripeName {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.assetStripeSub {
+  font-size: 0.62rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Data cells */
+.assetStripeVal {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--color-fg);
+  white-space: nowrap;
+}
+
+.assetStripeValBold {
+  font-weight: 700;
+}
+
+.assetStripeRate {
+  color: var(--color-info);
+  font-weight: 600;
 }
 
 .assetGroupHead {
@@ -1118,132 +1228,8 @@
   color: var(--color-fg);
 }
 
-/* ── Asset card (square) ─────────────────────────────── */
-
-.assetCard {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  aspect-ratio: 1;
-  overflow: hidden;
-  transition: border-color 180ms, box-shadow 180ms;
-  position: relative;
-}
-
-.assetCard:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-primary) 8%, transparent);
-}
-
-.assetCardHead {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.assetTypeDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  margin-top: 5px;
-}
-
-.assetCardName {
-  flex: 1;
-  min-width: 0;
-}
-
-.assetFundName {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--color-fg);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.assetTypeName {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--color-fg);
-}
-
-.assetSubMeta {
-  font-size: 0.62rem;
-  color: var(--color-muted);
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ── Card bottom section ─────────────────────────────── */
-
-.assetCardBottom {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.assetValueHero {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.assetValueHeroNum {
-  font-family: var(--font-mono, monospace);
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--color-fg);
-  line-height: 1.2;
-}
-
-.assetValueHeroLabel {
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-}
-
-.assetCardValues {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 5px 8px;
-}
-
-.assetValItem {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.assetValLabel {
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-}
-
-.assetValNum {
-  font-family: var(--font-mono, monospace);
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--color-fg);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.assetValNumUp   { color: var(--color-success); }
-.assetValNumDown { color: var(--color-danger); }
+.assetValNumUp    { color: var(--color-success); }
+.assetValNumDown  { color: var(--color-danger); }
 .assetValNumMuted { color: var(--color-muted); font-weight: 400; }
 
 /* ── Asset card — action buttons (edit / delete) ──────── */
@@ -1317,18 +1303,34 @@
 
 /* ── Responsive ──────────────────────────────────────── */
 
-@media (max-width: 1024px) {
-  .assetCardsGrid { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 900px) {
+  /* hide units column on narrow viewports */
+  .assetStripeHeader,
+  .assetStripeRow {
+    grid-template-columns: 1fr 90px 100px 90px 56px;
+  }
+  .assetStripeColUnits { display: none; }
 }
 
 @media (max-width: 768px) {
   .assetsWrap { padding: 16px 20px 24px; }
-  .assetCardsGrid { grid-template-columns: repeat(2, 1fr); }
   .assetsSummaryStrip { flex-wrap: wrap; }
+  .assetStripeHeader,
+  .assetStripeRow {
+    grid-template-columns: 1fr 90px 100px 80px 48px;
+    gap: 0 8px;
+    padding: 0 10px;
+  }
 }
 
 @media (max-width: 480px) {
   .assetsWrap { padding: 12px 14px 20px; }
-  .assetCardsGrid { grid-template-columns: 1fr; }
-  .assetCard { aspect-ratio: unset; min-height: 160px; }
+  .assetStripeHeader,
+  .assetStripeRow {
+    grid-template-columns: 1fr 90px 90px 48px;
+    gap: 0 6px;
+  }
+  /* hide gain column too on very small screens */
+  .assetStripeHeader > :nth-child(4),
+  .assetStripeRow > :nth-child(4) { display: none; }
 }
