@@ -124,12 +124,13 @@ export function AddInvestmentModal({ isOpen, onClose, clientId, editData }: Prop
   }, [isOpen, isEdit, editData]);
 
   /* ── Derived values ───────────────────────── */
-  const selectedType = assetTypes.find(t => t.id === Number(form.asset_type_id));
-  const isMF         = selectedType?.asset_type_code === 'MF';
-  const isSIP        = form.investment_type === 'sip' || form.investment_type === 'recurring';
-  const effectiveRate = form.custom_assumption_rate !== ''
+  const selectedType    = assetTypes.find(t => t.id === Number(form.asset_type_id));
+  const defaultRate     = Number(selectedType?.default_assumption_rate ?? 0);
+  const isMF            = selectedType?.asset_type_code === 'MF';
+  const isSIP           = form.investment_type === 'sip' || form.investment_type === 'recurring';
+  const effectiveRate   = form.custom_assumption_rate !== ''
     ? Number(form.custom_assumption_rate)
-    : (selectedType?.default_assumption_rate ?? 0);
+    : defaultRate;
 
   /* ── Skill mutations ──────────────────────── */
   const { mutateAsync: createAssignment, isPending: creating } =
@@ -244,7 +245,7 @@ export function AddInvestmentModal({ isOpen, onClose, clientId, editData }: Prop
                     {types.map(t => (
                       <option key={t.id} value={t.id}>
                         {t.asset_type_name}
-                        {t.default_assumption_rate > 0 ? ` (${t.default_assumption_rate}% p.a.)` : ''}
+                        {Number(t.default_assumption_rate) > 0 ? ` (${Number(t.default_assumption_rate)}% p.a.)` : ''}
                       </option>
                     ))}
                   </optgroup>
@@ -382,7 +383,7 @@ export function AddInvestmentModal({ isOpen, onClose, clientId, editData }: Prop
                 Custom Growth Rate (% p.a.)
                 {selectedType && (
                   <span className={s.defaultRate}>
-                    {' '}default: {selectedType.default_assumption_rate}%
+                    {' '}default: {defaultRate}%
                   </span>
                 )}
               </label>
@@ -392,7 +393,7 @@ export function AddInvestmentModal({ isOpen, onClose, clientId, editData }: Prop
                 max="50"
                 step="0.1"
                 className={f.input}
-                placeholder={String(selectedType?.default_assumption_rate ?? 0)}
+                placeholder={String(defaultRate)}
                 value={form.custom_assumption_rate}
                 onChange={set('custom_assumption_rate')}
               />
