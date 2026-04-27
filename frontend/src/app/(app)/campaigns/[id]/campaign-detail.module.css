@@ -1,0 +1,647 @@
+/* /campaigns/[id] — CAMPAIGN DETAIL + ICP CONFIG layout */
+
+/* ── Page shell ──────────────────────────────────────── */
+
+.page {
+  min-height: 100%;
+  background: var(--color-bg);
+}
+
+/* ── Campaign header card ────────────────────────────── */
+
+.headerCard {
+  margin: 20px 48px 0;
+  padding: 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.headerTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.headerTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-fg);
+}
+
+.headerDesc {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.headerMeta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.metaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metaLabel {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+.metaValue {
+  font-size: 0.82rem;
+  color: var(--color-fg);
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Tabs area ───────────────────────────────────────── */
+
+.tabContent {
+  padding: 20px 48px;
+}
+
+/* ── Persona grid ────────────────────────────────────── */
+
+.personaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+/* ── Persona card ────────────────────────────────────── */
+
+.personaCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  position: relative;
+}
+
+.personaCard:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.personaEmoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.personaTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.personaDesc {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  line-height: 1.4;
+}
+
+.personaTags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.personaTag {
+  font-size: 0.6rem;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.personaMeta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+.personaMetaChip {
+  font-size: 0.65rem;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  color: var(--color-muted);
+}
+
+.personaActions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.personaCard:hover .personaActions {
+  opacity: 1;
+}
+
+/* ── Add persona card (dashed) ───────────────────────── */
+
+.addPersonaCard {
+  background: transparent;
+  border: 2px dashed var(--color-border);
+  border-radius: 10px;
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  min-height: 200px;
+}
+
+.addPersonaCard:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 4%, transparent);
+}
+
+.addIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  font-weight: 300;
+}
+
+.addLabel {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+/* ── Seniority chip ──────────────────────────────────── */
+
+.seniorityChip {
+  font-size: 0.6rem;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  color: var(--color-warning);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 20%, transparent);
+}
+
+/* ── Drawer reuse from parent ────────────────────────── */
+
+.drawerBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.drawerFooter {
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldRow {
+  display: flex;
+  gap: 12px;
+}
+
+.fieldRow > * {
+  flex: 1;
+}
+
+/* ── Tag input ───────────────────────────────────────── */
+
+.tagInput {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--input-radius, 8px);
+  background: var(--color-bg);
+  min-height: var(--input-height, 44px);
+  align-items: center;
+  cursor: text;
+}
+
+.tagInput:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
+.tagChip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.tagChipRemove {
+  cursor: pointer;
+  font-size: 0.8rem;
+  opacity: 0.7;
+  background: none;
+  border: none;
+  color: inherit;
+  padding: 0;
+  line-height: 1;
+}
+
+.tagChipRemove:hover {
+  opacity: 1;
+}
+
+.tagInputField {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--color-fg);
+  font-size: 0.8rem;
+  flex: 1;
+  min-width: 80px;
+}
+
+/* ── Channel grid ────────────────────────────────────── */
+
+.channelGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.channelCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: 3px solid var(--color-primary);
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.channelCard:hover {
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.channelCardHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.channelCardTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.channelCardType {
+  font-size: 0.7rem;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.channelStats {
+  display: flex;
+  gap: 16px;
+}
+
+.channelStat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.channelStatValue {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-fg);
+}
+
+.channelStatLabel {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+.channelCardActions {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+}
+
+/* ── Sequence list ───────────────────────────────────── */
+
+.sequenceList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sequenceCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.sequenceCard:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.sequenceInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.sequenceName {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.sequenceDesc {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sequenceStats {
+  display: flex;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+/* ── Step timeline (sequence detail) ─────────────────── */
+
+.stepTimeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 8px 0;
+  position: relative;
+}
+
+.stepCard {
+  display: flex;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  position: relative;
+  margin-bottom: 8px;
+  transition: border-color 0.15s;
+}
+
+.stepCard:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+}
+
+.stepConnector {
+  width: 2px;
+  height: 20px;
+  background: var(--color-border);
+  margin: 0 0 0 28px;
+}
+
+.stepIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.stepIconEmail     { background: color-mix(in srgb, var(--color-info) 12%, transparent); }
+.stepIconWhatsapp  { background: color-mix(in srgb, var(--color-success) 12%, transparent); }
+.stepIconLinkedin  { background: color-mix(in srgb, var(--color-primary) 12%, transparent); }
+.stepIconWait      { background: color-mix(in srgb, var(--color-muted) 12%, transparent); }
+.stepIconCondition { background: color-mix(in srgb, var(--color-warning) 12%, transparent); }
+
+.stepBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.stepTitle {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.stepMeta {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.stepDay {
+  font-size: 0.65rem;
+  font-weight: 600;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.stepActions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.stepCard:hover .stepActions {
+  opacity: 1;
+}
+
+.variantPills {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.variantPill {
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-info) 10%, transparent);
+  color: var(--color-info);
+  border: 1px solid color-mix(in srgb, var(--color-info) 20%, transparent);
+}
+
+/* ── Pipeline funnel ─────────────────────────────────── */
+
+.funnelRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.funnelStage {
+  flex: 1;
+  min-width: 90px;
+  padding: 12px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.funnelStage:hover {
+  border-color: var(--color-primary);
+}
+
+.funnelStageActive {
+  composes: funnelStage;
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.funnelCount {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  display: block;
+}
+
+.funnelLabel {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+/* ── Pipeline contact list ───────────────────────────── */
+
+.pipelineList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pipelineRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  transition: border-color 0.15s;
+}
+
+.pipelineRow:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+}
+
+.pipelineContact {
+  flex: 1;
+  min-width: 0;
+}
+
+.pipelineContactName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.pipelineContactMeta {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+.pipelineScore {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  min-width: 32px;
+  text-align: center;
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .headerCard   { margin: 14px 20px 0; }
+  .tabContent   { padding: 14px 20px; }
+  .personaGrid  { grid-template-columns: 1fr; }
+  .channelGrid  { grid-template-columns: 1fr; }
+  .funnelRow    { flex-direction: column; }
+}

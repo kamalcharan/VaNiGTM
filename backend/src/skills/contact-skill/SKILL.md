@@ -97,3 +97,18 @@ Global master list of liability types for the snapshot liabilities form.
 Generate a signed intake link. Flow 1: pass contact_id for a known contact. Flow 2: omit contact_id for a generic tenant-level link.
 - Parameters: contact_id (optional, number)
 - Returns: { token_id, token, intake_url, expires_at, recipe: 'intake-link' }
+
+### assign_to_campaign
+Assign one or more contacts to a GTM campaign. Idempotent — skips already assigned contacts.
+- Parameters: campaign_id (required, number), contact_ids (required, array of numbers)
+- Returns: { assigned_count, contact_ids, recipe: 'confirmation' }
+
+### update_stage
+Update the pipeline stage for a contact-campaign assignment. Logs the transition in gt_stage_log.
+- Parameters: assignment_id (required, number), stage (required, string: identified|contacted|engaged|interested|qualified|converted|lost), trigger_detail (optional, string)
+- Returns: { assignment: { id, stage, score, last_activity_at }, recipe: 'pipeline-card' }
+
+### get_pipeline
+Paginated contacts assigned to a campaign with pipeline stage, score, and contact info.
+- Parameters: campaign_id (required, number), stage (optional, string), search (optional, string), limit (optional, number), offset (optional, number)
+- Returns: { contacts: [...], stats: { total, identified, contacted, engaged, interested, qualified, converted, lost }, recipe: 'pipeline-view' }

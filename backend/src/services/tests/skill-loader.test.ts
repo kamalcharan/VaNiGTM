@@ -102,9 +102,9 @@ describe('discoverSkillDirs', () => {
 });
 
 describe('loadAllSkills', () => {
-  it('loads all 11 KI-Prime skills', () => {
+  it('loads all KI-Prime skills', () => {
     const skills = loadAllSkills(SKILLS_ROOT);
-    expect(skills.length).toBe(11);
+    expect(skills.length).toBe(17);
   });
 
   it('every skill has at least one function', () => {

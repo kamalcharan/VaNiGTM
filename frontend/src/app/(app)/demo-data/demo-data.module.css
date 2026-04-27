@@ -1,0 +1,172 @@
+/* /demo-data — DEMO DATA SEEDER page layout */
+
+.page {
+  min-height: 100%;
+  background: var(--color-bg);
+}
+
+.body {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Env warning ─────────────────────────────────────── */
+
+.envBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  border: 1px solid;
+}
+
+.envBannerTest {
+  composes: envBanner;
+  background: color-mix(in srgb, var(--color-success) 6%, transparent);
+  border-color: color-mix(in srgb, var(--color-success) 20%, transparent);
+}
+
+.envBannerLive {
+  composes: envBanner;
+  background: color-mix(in srgb, var(--color-danger) 6%, transparent);
+  border-color: color-mix(in srgb, var(--color-danger) 20%, transparent);
+}
+
+.envIcon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.envText {
+  flex: 1;
+}
+
+.envTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.envDesc {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+/* ── Data preview cards ──────────────────────────────── */
+
+.previewGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.previewCard {
+  padding: 14px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.previewValue {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  font-family: var(--font-display, 'Outfit', sans-serif);
+}
+
+.previewLabel {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  margin-top: 2px;
+}
+
+/* ── Action section ──────────────────────────────────── */
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── Result message ──────────────────────────────────── */
+
+.resultCard {
+  padding: 16px 20px;
+  border-radius: 10px;
+  border: 1px solid;
+}
+
+.resultSuccess {
+  composes: resultCard;
+  background: color-mix(in srgb, var(--color-success) 6%, transparent);
+  border-color: color-mix(in srgb, var(--color-success) 20%, transparent);
+  color: var(--color-success);
+}
+
+.resultError {
+  composes: resultCard;
+  background: color-mix(in srgb, var(--color-danger) 6%, transparent);
+  border-color: color-mix(in srgb, var(--color-danger) 20%, transparent);
+  color: var(--color-danger);
+}
+
+.resultTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.resultMessage {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--color-fg);
+}
+
+/* ── What gets created list ──────────────────────────── */
+
+.dataList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dataItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: var(--color-fg);
+}
+
+.dataItemIcon {
+  font-size: 1rem;
+  width: 24px;
+  text-align: center;
+}
+
+.dataItemCount {
+  font-weight: 700;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  color: var(--color-primary);
+  min-width: 24px;
+}
+
+@media (max-width: 768px) {
+  .body { padding: 20px; }
+  .previewGrid { grid-template-columns: repeat(2, 1fr); }
+}

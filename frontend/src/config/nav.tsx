@@ -122,6 +122,26 @@ export const NAV_ITEMS: NavItem[] = [
     recipe: 'my-nav',
   },
   {
+    id: 'campaigns',
+    label: 'Campaigns',
+    icon: <Icon><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></Icon>,
+    href: '/campaigns',
+    section: 'main',
+    skill: 'campaign-skill',
+    fn: 'get_campaigns',
+    recipe: 'campaign-list',
+  },
+  {
+    id: 'war-room',
+    label: 'War Room',
+    icon: <Icon><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 10l3 3 3-3 4 4" /></Icon>,
+    href: '/war-room',
+    section: 'main',
+    skill: 'gtm-analytics-skill',
+    fn: 'get_dashboard_stats',
+    recipe: 'war-room',
+  },
+  {
     id: 'pulses',
     label: 'Pulses',
     icon: <Icon><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></Icon>,
@@ -228,6 +248,15 @@ export const NAV_ITEMS: NavItem[] = [
     recipe: 'data-table',
   },
   {
+    id: 'demo-data',
+    label: 'Demo Data',
+    icon: <Icon><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></Icon>,
+    href: '/demo-data',
+    section: 'system',
+    skill: 'campaign-skill',
+    fn: 'seed_demo_data',
+  },
+  {
     id: 'settings',
     label: 'Settings',
     icon: (
@@ -258,6 +287,9 @@ export function getActiveNavId(pathname: string | null): string {
   if (pathname.startsWith('/contacts'))  return 'contacts';
   if (pathname.startsWith('/clients'))   return 'clients';
   if (pathname.startsWith('/customers')) return 'clients';
+  if (pathname.startsWith('/campaigns')) return 'campaigns';
+  if (pathname.startsWith('/war-room'))   return 'war-room';
+  if (pathname.startsWith('/demo-data')) return 'demo-data';
   if (pathname.startsWith('/pulses'))    return 'pulses';
 
   const prefix = NAV_ITEMS.find((item) => item.href !== '/' && pathname.startsWith(item.href));

@@ -6,7 +6,7 @@
  *
  * What is seeded per tenant:
  *   - 8 bookmark reasons × 2 environments (live + sandbox) = 16 rows
- *   - 2 sequence counters: 'contact' (CONT-XXXX) and 'client' (CLT-XXXX)
+ *   - 3 sequence counters: 'contact' (CONT-XXXX), 'client' (CLT-XXXX), 'campaign' (GTM-XXXX)
  *   - 1 job scheduler config per non-global job type × 2 environments = 2 rows
  *     (PORTFOLIO_SNAPSHOT is the only per-tenant job at MVP)
  *
@@ -74,8 +74,9 @@ export async function seedTenantData(
   await client.query(
     `INSERT INTO ki_sequences (tenant_id, sequence_type, prefix, last_value, pad_width)
      VALUES
-       ($1, 'contact', 'CONT', 0, 4),
-       ($1, 'client',  'CLT',  0, 4)
+       ($1, 'contact',  'CONT', 0, 4),
+       ($1, 'client',   'CLT',  0, 4),
+       ($1, 'campaign', 'GTM',  0, 4)
      ON CONFLICT (tenant_id, sequence_type) DO NOTHING`,
     [tenantId],
   );
