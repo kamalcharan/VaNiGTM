@@ -9,8 +9,8 @@ const DEFAULT_MODE = (process.env.NEXT_PUBLIC_DEFAULT_COLOR_MODE || 'dark') as '
 const THEME_MAP = buildThemeMap();
 
 export const metadata = {
-  title: 'ProKey',
-  description: 'Financial Advisory Platform for MFDs',
+  title: 'VaNi-GTM',
+  description: 'Go-to-Market platform',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

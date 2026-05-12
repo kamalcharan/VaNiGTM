@@ -1,8 +1,8 @@
 {
-  "name": "prokey",
+  "name": "vanigtm",
   "version": "2.0.0",
   "private": true,
-  "description": "ProKey — Financial Advisory Platform for MFDs",
+  "description": "VaNi-GTM — Go-to-Market platform",
   "scripts": {
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
     "dev": "cd frontend && npm run dev",

@@ -54,10 +54,10 @@ async function main() {
   // Verify database connectivity at startup
   try {
     const check = await healthCheck();
-    console.log(`[ProKey] Database connected (${check.latency_ms}ms)`);
+    console.log(`[VaNi-GTM] Database connected (${check.latency_ms}ms)`);
   } catch (err) {
-    console.error('[ProKey] Database connection failed:', err instanceof Error ? err.message : err);
-    console.error('[ProKey] Continuing without DB — skill calls will fail.');
+    console.error('[VaNi-GTM] Database connection failed:', err instanceof Error ? err.message : err);
+    console.error('[VaNi-GTM] Continuing without DB — skill calls will fail.');
   }
 
   // Mount auth + onboarding + tenant routes
@@ -70,13 +70,13 @@ async function main() {
   app.use('/api/v1/market', createMarketRouter(pool));
   app.use('/api/v1/market-analysis', createMarketAnalysisRouter(pool));
   app.use('/api/v1/master-data', createMasterDataRouter(pool));
-  console.log('[ProKey] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /nav, /market, /market-analysis, /master-data');
+  console.log('[VaNi-GTM] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /nav, /market, /market-analysis, /master-data');
 
   // Build skill registry
   const skillsDir = path.resolve(__dirname, 'skills');
   const registry = await buildRegistry(skillsDir);
   const summary = registry.summary();
-  console.log(`[ProKey] Loaded ${summary.skills} skills, ${summary.handlers} handlers`);
+  console.log(`[VaNi-GTM] Loaded ${summary.skills} skills, ${summary.handlers} handlers`);
 
   /* ── Skill execution route ──────────────────────────── */
 
@@ -134,17 +134,17 @@ async function main() {
   /* ── Start server ───────────────────────────────────── */
 
   const server = app.listen(PORT, () => {
-    console.log(`[ProKey] API running on port ${PORT}`);
+    console.log(`[VaNi-GTM] API running on port ${PORT}`);
   });
 
   /* ── Graceful shutdown ──────────────────────────────── */
 
   async function shutdown(signal: string) {
-    console.log(`\n[ProKey] ${signal} received — shutting down gracefully...`);
+    console.log(`\n[VaNi-GTM] ${signal} received — shutting down gracefully...`);
 
     // Stop accepting new connections
     server.close(() => {
-      console.log('[ProKey] HTTP server closed.');
+      console.log('[VaNi-GTM] HTTP server closed.');
     });
 
     // Drain DB pool
@@ -158,6 +158,6 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error('[ProKey] Failed to start:', err);
+  console.error('[VaNi-GTM] Failed to start:', err);
   process.exit(1);
 });
