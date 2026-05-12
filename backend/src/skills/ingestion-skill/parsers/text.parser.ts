@@ -1,20 +1,20 @@
+/**
+ * Plain-text / markdown parser. Also the fallback parser — canHandle
+ * returns true for anything, so this must be registered LAST in the
+ * parser array (after pdf/docx/pptx). Any source the specialised
+ * parsers reject ends up here.
+ *
+ * toString never throws; no error handling needed.
+ */
+
 import type { Parser } from './parser.interface';
 
-/**
- * Plain-text / markdown parser — fallback when no other parser matches.
- * Stage 2: stub only.
- */
 export class TextParser implements Parser {
-  canHandle(mimeType: string, extension: string): boolean {
-    return (
-      mimeType === 'text/plain'
-      || mimeType === 'text/markdown'
-      || extension === 'txt'
-      || extension === 'md'
-    );
+  canHandle(_mimeType: string, _extension: string): boolean {
+    return true;
   }
 
-  async extract(_buffer: Buffer, _filename: string): Promise<string> {
-    throw new Error('NOT_IMPLEMENTED');
+  async extract(buffer: Buffer, _filename: string): Promise<string> {
+    return buffer.toString('utf-8');
   }
 }
