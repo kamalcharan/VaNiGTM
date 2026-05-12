@@ -700,7 +700,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION ki_process_txn_import_session IS
+COMMENT ON FUNCTION ki_process_txn_import_session(INTEGER, TEXT) IS
     'Process all pending rows in ki_import_staging for a given session. '
     'Handles client lookup, dedup, portfolio/holdings/transaction inserts, '
     'and ki_pulses (new_scheme_detected) creation. '

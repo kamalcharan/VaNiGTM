@@ -608,5 +608,5 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION ki_process_txn_import_session IS
-    'Process pending rows in ki_import_staging. Updated in migration 058 to reference ki_pulses.';
+COMMENT ON FUNCTION ki_process_txn_import_session(INTEGER, TEXT) IS
+    'Process pending rows in ki_import_staging. Updated in migration 158 to reference ki_pulses.';
