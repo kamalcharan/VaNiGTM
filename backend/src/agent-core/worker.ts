@@ -21,6 +21,7 @@ import { Pool } from 'pg';
 import { emitEvent, type GTEvent } from './event.store';
 import { createRun, setStatus, appendStep } from './agent.runner';
 import { VaniAgent } from '../skills/vani-skill/vani.agent';
+import { IngestionAgent } from '../skills/ingestion-skill/ingestion.agent';
 
 /* ── Event Queue interface ──────────────────────────────────────────────── */
 
@@ -82,10 +83,26 @@ const AGENT_REGISTRY: Record<string, AgentHandler> = {
   HUMAN_APPROVED: (pool, tenantId, payload, runId) =>
     VaniAgent.handleHumanApproved(pool, tenantId, payload, runId),
 
+  // Ingestion pipeline (Phase 1 / Addendum 02)
+  FILE_UPLOADED: (pool, tenantId, payload, runId) =>
+    IngestionAgent.run(pool, tenantId, payload, runId),
+  URL_SUBMITTED: (pool, tenantId, payload, runId) =>
+    IngestionAgent.run(pool, tenantId, payload, runId),
+
+  // FOLDER_CONNECTED triggers a folder sync. The sync itself emits
+  // FILE_UPLOADED events per new/changed file — those create their own
+  // gt_agent_runs. This coordination run just records that the sync
+  // was triggered.
+  FOLDER_CONNECTED: async (pool, tenantId, _payload, runId) => {
+    const result = await IngestionAgent.syncFolder(pool, tenantId);
+    await setStatus(pool, runId, 'completed', {
+      output: { message: 'Folder sync triggered on connect', ...result },
+    });
+  },
+
   // Future agents — add here, nothing else changes:
   // PROFILE_COMPLETE: (pool, tenantId, payload, runId) => ICPAgent.run(...)
   // ICP_APPROVED:     (pool, tenantId, payload, runId) => LeadAgent.run(...)
-  // FILE_UPLOADED:    (pool, tenantId, payload, runId) => IngestionAgent.run(...)
 };
 
 /* ── Process one event ──────────────────────────────────────────────────── */
