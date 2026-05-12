@@ -18,6 +18,7 @@
 
 import 'dotenv/config';
 import { Pool } from 'pg';
+import { createTenantDb } from '../db';
 import { emitEvent, type GTEvent } from './event.store';
 import { createRun, setStatus, appendStep } from './agent.runner';
 import { VaniAgent } from '../skills/vani-skill/vani.agent';
@@ -89,14 +90,28 @@ const AGENT_REGISTRY: Record<string, AgentHandler> = {
   URL_SUBMITTED: (pool, tenantId, payload, runId) =>
     IngestionAgent.run(pool, tenantId, payload, runId),
 
-  // FOLDER_CONNECTED triggers a folder sync. The sync itself emits
-  // FILE_UPLOADED events per new/changed file — those create their own
-  // gt_agent_runs. This coordination run just records that the sync
-  // was triggered.
+  // FOLDER_CONNECTED fires immediately after OAuth — folder_id may still
+  // be null (tenant hasn't picked a folder yet). Guard the sync call so
+  // the coordination run completes cleanly in either case. Once the
+  // tenant PATCHes a folder and triggers POST /sync, the real ingestion
+  // FILE_UPLOADED events flow as expected.
   FOLDER_CONNECTED: async (pool, tenantId, _payload, runId) => {
-    const result = await IngestionAgent.syncFolder(pool, tenantId);
+    const db = createTenantDb(pool, tenantId);
+    const result = await db.query<{ folder_id: string | null }>(
+      `SELECT folder_id FROM gt_tenant_integrations
+        WHERE tenant_id = $tenant_id AND provider = 'gdrive'`,
+      { tenant_id: tenantId },
+    );
+    const folderSet = !!result.rows[0]?.folder_id;
+    if (folderSet) {
+      await IngestionAgent.syncFolder(pool, tenantId);
+    }
     await setStatus(pool, runId, 'completed', {
-      output: { message: 'Folder sync triggered on connect', ...result },
+      output: {
+        message: folderSet
+          ? 'GDrive connected and folder sync triggered'
+          : 'GDrive connected — folder not set yet',
+      },
     });
   },
 
