@@ -88,6 +88,7 @@ export function createAuthRouter(pool: Pool): Router {
       // Failure here must not break registration — log and move on; the event
       // can be replayed by an admin if needed.
       try {
+        console.log('[Auth] Emitting TENANT_REGISTERED for tenant:', result.tenant.id);
         await emitEvent(
           pool,
           result.tenant.id,
@@ -96,7 +97,7 @@ export function createAuthRouter(pool: Pool): Router {
           { source: 'registration' },
         );
       } catch (emitErr) {
-        console.error('[Auth:register] Failed to emit TENANT_REGISTERED:', emitErr);
+        console.error('[Auth] FAILED to emit TENANT_REGISTERED:', emitErr);
       }
 
       // Set httpOnly refresh cookie (Step 2: frontend will rely on this; Step 1: additive)
