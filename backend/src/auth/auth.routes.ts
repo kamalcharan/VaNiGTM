@@ -20,6 +20,7 @@ import type { Pool } from 'pg';
 import { register, validateRegisterInput, type RegisterInput } from './auth.service';
 import { login as loginService, type LoginInput } from './login.service';
 import { verifyAccessToken, refreshSession, parseDeviceInfo, type JwtPayload } from './token.service';
+import { emitEvent } from '../agent-core/event.store';
 
 /* ── Refresh-cookie helpers ─────────────────────────── */
 
@@ -82,6 +83,21 @@ export function createAuthRouter(pool: Pool): Router {
       }
 
       const result = await register(pool, input, req);
+
+      // Wake the VaNi Profile Agent for the new tenant.
+      // Failure here must not break registration — log and move on; the event
+      // can be replayed by an admin if needed.
+      try {
+        await emitEvent(
+          pool,
+          result.tenant.id,
+          'TENANT_REGISTERED',
+          'system',
+          { source: 'registration' },
+        );
+      } catch (emitErr) {
+        console.error('[Auth:register] Failed to emit TENANT_REGISTERED:', emitErr);
+      }
 
       // Set httpOnly refresh cookie (Step 2: frontend will rely on this; Step 1: additive)
       setRefreshCookie(res, result.tokens.refresh_token);
