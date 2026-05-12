@@ -135,7 +135,7 @@ export function VdfSidebar({ activeId, mobileOpen = false, onMobileClose }: VdfS
               <path d="M2 12l10 5 10-5" />
             </svg>
           </div>
-          {showExpanded && <span className={s.logoText}>ProKey</span>}
+          {showExpanded && <span className={s.logoText}>VaNi-GTM</span>}
           {showExpanded && (
             <button
               className={`${s.envPill} ${isLive ? s.envPillLive : s.envPillTest}`}

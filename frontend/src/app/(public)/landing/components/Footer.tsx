@@ -34,9 +34,9 @@ export default function Footer() {
     <footer className={s.footer}>
       <div className={s.footerContent}>
         <div className={s.footerBrand}>
-          <div className={s.footerBrandName}>ProKey</div>
+          <div className={s.footerBrandName}>VaNi-GTM</div>
           <div className={s.footerBrandTagline}>
-            AI-powered portfolio intelligence for Indian Mutual Fund Distributors.
+            AI-powered go-to-market intelligence.
             Built by practitioners, for practitioners.
           </div>
           <div className={s.footerBrandCompany}>A Vikuna Technologies Product</div>

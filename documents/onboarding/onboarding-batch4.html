@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractNest Onboarding — Batch 4 · Pricing · Equipment · Done</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f5f2;
+  --white: #ffffff;
+  --surface: #faf9f7;
+  --border: #e5e1db;
+  --border-lt: #edeae4;
+  --text: #1a1816;
+  --text-mid: #4a4540;
+  --text-dim: #8a847a;
+  --text-muted: #bab4a8;
+  --vani: #ff6b2b;
+  --vani-glow: rgba(255,107,43,.08);
+  --vani-border: rgba(255,107,43,.2);
+  --vani-soft: #fff8f4;
+  --green: #16a34a;
+  --green-bg: #f0fdf4;
+  --green-border: #bbf7d0;
+  --amber: #d97706;
+  --amber-bg: #fffbeb;
+  --blue: #2563eb;
+  --blue-bg: #eff6ff;
+  --shadow: 0 2px 12px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.04);
+  --shadow-md: 0 4px 24px rgba(0,0,0,.08);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,.12);
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-lg: 22px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Outfit', sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
+
+/* ═══ SHARED HEADER ═══ */
+.onb-header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: var(--white); border-bottom: 1px solid var(--border);
+  padding: 0 48px; height: 64px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-mark {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--vani), #ff8f5a);
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 14px; color: #fff;
+  box-shadow: 0 2px 8px rgba(255,107,43,.28);
+}
+.logo-name { font-weight: 800; font-size: 17px; letter-spacing: -.4px; }
+.logo-sub { font-size: 11px; color: var(--text-muted); font-family: 'IBM Plex Mono', monospace; margin-left: 2px; }
+.progress-steps { display: flex; align-items: center; gap: 6px; }
+.step-pill { display: flex; align-items: center; gap: 7px; padding: 6px 14px 6px 8px; border-radius: 100px; font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.step-pill .sn { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; background: var(--border-lt); color: var(--text-muted); flex-shrink: 0; }
+.step-pill.done { color: var(--green); }
+.step-pill.done .sn { background: var(--green-bg); color: var(--green); }
+.step-pill.active { color: var(--vani); background: var(--vani-soft); }
+.step-pill.active .sn { background: var(--vani); color: #fff; box-shadow: 0 2px 6px rgba(255,107,43,.3); }
+.step-divider { width: 20px; height: 1px; background: var(--border); }
+.header-right { font-size: 11px; font-weight: 600; color: var(--text-muted); font-family: 'IBM Plex Mono', monospace; }
+
+/* ═══ SCREENS ═══ */
+.screen { display: none; min-height: 100vh; padding-top: 64px; background: var(--bg); }
+.screen.active { display: flex; flex-direction: column; animation: screenIn .4s cubic-bezier(.22,1,.36,1) both; }
+@keyframes screenIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ═══ SHARED LAYOUT ═══ */
+.two-col-layout {
+  flex: 1; display: grid;
+  grid-template-columns: 1fr 300px;
+  max-width: 1100px; margin: 0 auto;
+  padding: 40px 24px 140px;
+  width: 100%; gap: 0; align-items: start;
+}
+
+/* ═══ VANI BUBBLE ═══ */
+.vani-bubble {
+  display: flex; gap: 12px; margin-bottom: 24px;
+  animation: bIn .5s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes bIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.vani-av {
+  width: 36px; height: 36px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--vani), #ff8f5a);
+  border-radius: 9px; display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 14px; color: #fff;
+  box-shadow: 0 3px 8px rgba(255,107,43,.25); margin-top: 2px;
+}
+.vani-msg {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 3px 14px 14px 14px;
+  padding: 14px 18px; box-shadow: var(--shadow);
+  font-size: 14px; color: var(--text-mid); line-height: 1.6;
+}
+.vani-msg strong { color: var(--text); font-weight: 700; }
+.vani-msg .hl { color: var(--vani); font-weight: 700; }
+
+/* ═══ RIGHT PANEL ═══ */
+.side-panel { position: sticky; top: 84px; padding-left: 24px; }
+
+.panel-card {
+  border-radius: var(--radius); overflow: hidden; margin-bottom: 12px;
+}
+.panel-dark {
+  background: linear-gradient(145deg, #1a1816, #2a2520);
+  border: 1px solid rgba(255,107,43,.12);
+}
+.panel-light { background: var(--white); border: 1px solid var(--border); box-shadow: var(--shadow); }
+
+.panel-hdr { padding: 13px 18px 10px; }
+.panel-dark .panel-hdr { border-bottom: 1px solid rgba(255,255,255,.06); }
+.panel-light .panel-hdr { border-bottom: 1px solid var(--border-lt); }
+
+.panel-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; font-family: 'IBM Plex Mono', monospace; }
+.panel-dark .panel-lbl { color: rgba(255,255,255,.3); }
+.panel-light .panel-lbl { color: var(--text-muted); }
+
+.panel-bdy { padding: 14px 18px; }
+.panel-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.05); font-size: 12px; }
+.panel-light .panel-row { border-bottom-color: var(--border-lt); }
+.panel-row:last-child { border-bottom: none; }
+.pk { font-size: 11px; }
+.panel-dark .pk { color: rgba(255,255,255,.35); }
+.panel-light .pk { color: var(--text-dim); }
+.pv { font-weight: 700; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+.panel-dark .pv { color: #f0ece6; }
+.panel-light .pv { color: var(--text); }
+.pv.accent { color: var(--vani); }
+.pv.green { color: var(--green); }
+.pv.pending { color: rgba(255,255,255,.25); font-style: italic; font-family: 'Outfit', sans-serif; font-size: 11px; }
+.panel-light .pv.pending { color: var(--text-muted); }
+
+/* Progress donut replacement — progress bar */
+.progress-track {
+  height: 6px; background: rgba(255,255,255,.08);
+  border-radius: 100px; overflow: hidden; margin: 12px 0 6px;
+}
+.panel-light .progress-track { background: var(--border-lt); }
+.progress-fill-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--vani), #ff8f5a);
+  border-radius: 100px;
+  transition: width .5s ease;
+}
+.progress-fill-bar.green { background: linear-gradient(90deg, var(--green), #22c55e); }
+
+.progress-label {
+  display: flex; justify-content: space-between;
+  font-size: 10px; font-family: 'IBM Plex Mono', monospace;
+}
+.panel-dark .progress-label { color: rgba(255,255,255,.3); }
+.panel-light .progress-label { color: var(--text-muted); }
+
+/* ═══════════════════════════════════════
+   SCREEN 8A — PRICING REVIEW (SELLER)
+════════════════════════════════════════ */
+
+/* Step indicator inside screen */
+.step-tabs {
+  display: flex; gap: 8px; margin-bottom: 28px;
+}
+.step-tab {
+  padding: 6px 16px; border-radius: 100px;
+  font-size: 12px; font-weight: 700;
+  background: var(--white); border: 1.5px solid var(--border);
+  color: var(--text-muted); cursor: default;
+  display: flex; align-items: center; gap: 6px;
+}
+.step-tab.active { border-color: var(--vani); color: var(--vani); background: var(--vani-soft); }
+.step-tab.done { border-color: var(--green-border); color: var(--green); background: var(--green-bg); }
+.step-tab .st-num { width: 18px; height: 18px; border-radius: 50%; background: currentColor; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; }
+.step-tab.done .st-num::after { content: '✓'; }
+
+/* Anchor input card */
+.anchor-card {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 28px 32px;
+  box-shadow: var(--shadow-md); margin-bottom: 20px;
+}
+
+.anchor-label {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .8px;
+  color: var(--text-muted); font-family: 'IBM Plex Mono', monospace;
+  margin-bottom: 8px;
+}
+
+.anchor-service {
+  font-size: 18px; font-weight: 800;
+  letter-spacing: -.4px; margin-bottom: 24px;
+}
+
+.price-input-wrap {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+}
+
+.currency-select {
+  padding: 14px 16px; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px; font-weight: 700;
+  color: var(--text); background: var(--surface);
+  cursor: pointer; outline: none;
+  appearance: none; min-width: 80px;
+  transition: border-color .2s;
+}
+.currency-select:focus { border-color: var(--vani); }
+
+.price-input {
+  flex: 1; padding: 14px 20px;
+  border: 2px solid var(--vani);
+  border-radius: var(--radius-sm);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 24px; font-weight: 800;
+  color: var(--text); background: var(--white);
+  outline: none; text-align: right;
+  box-shadow: 0 0 0 4px var(--vani-glow);
+}
+
+.price-unit {
+  font-size: 14px; font-weight: 600;
+  color: var(--text-dim); white-space: nowrap;
+}
+
+/* Benchmark bar */
+.benchmark {
+  background: var(--surface); border: 1px solid var(--border-lt);
+  border-radius: var(--radius-sm); padding: 16px 18px;
+  margin-bottom: 20px;
+}
+
+.benchmark-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 10px;
+}
+
+.benchmark-title {
+  font-size: 11px; font-weight: 700;
+  color: var(--text-dim); text-transform: uppercase; letter-spacing: .6px;
+}
+
+.benchmark-conf {
+  font-size: 10px; font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 2px 8px; border-radius: 4px;
+  background: var(--amber-bg); color: var(--amber);
+  border: 1px solid rgba(217,119,6,.2);
+}
+
+.benchmark-range {
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: var(--text-muted);
+  font-family: 'IBM Plex Mono', monospace;
+  margin-bottom: 6px;
+}
+
+.benchmark-bar {
+  height: 8px; background: var(--border);
+  border-radius: 100px; position: relative; overflow: visible;
+}
+
+.benchmark-fill {
+  position: absolute; left: 15%; width: 55%;
+  height: 100%; background: rgba(217,119,6,.2);
+  border-radius: 100px;
+}
+
+.benchmark-marker {
+  position: absolute; left: 42%; top: -3px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--amber); border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,.15);
+  transform: translateX(-50%);
+}
+
+.benchmark-marker-label {
+  position: absolute; left: 42%; top: 16px;
+  transform: translateX(-50%);
+  font-size: 10px; font-weight: 700;
+  color: var(--amber); font-family: 'IBM Plex Mono', monospace;
+  white-space: nowrap;
+}
+
+.user-marker {
+  position: absolute; left: 50%; top: -3px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--vani); border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(255,107,43,.3);
+  transform: translateX(-50%);
+  transition: left .4s ease;
+}
+
+.user-marker-label {
+  position: absolute; top: 16px;
+  transform: translateX(-50%);
+  font-size: 10px; font-weight: 700;
+  color: var(--vani); font-family: 'IBM Plex Mono', monospace;
+  white-space: nowrap;
+  transition: left .4s ease;
+}
+
+.benchmark-sub {
+  font-size: 11px; color: var(--text-muted);
+  margin-top: 12px; line-height: 1.5;
+}
+
+/* Apply button */
+.btn-apply {
+  padding: 13px 28px;
+  background: linear-gradient(135deg, var(--vani), #ff8f5a);
+  border: none; border-radius: var(--radius-sm);
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px; font-weight: 700; color: #fff;
+  cursor: pointer; box-shadow: 0 3px 10px rgba(255,107,43,.28);
+  transition: all .2s; display: flex; align-items: center; gap: 8px;
+}
+.btn-apply:hover { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(255,107,43,.36); }
+
+/* Rate card */
+.rate-card {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  box-shadow: var(--shadow); margin-bottom: 14px;
+}
+
+.rate-card-hdr {
+  padding: 14px 20px; background: var(--surface);
+  border-bottom: 1px solid var(--border-lt);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.rate-card-title {
+  font-size: 13px; font-weight: 800; letter-spacing: -.2px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+.rate-card-icon { font-size: 16px; }
+
+.rate-rows { padding: 4px 0; }
+
+.rate-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  padding: 11px 20px;
+  border-bottom: 1px solid var(--border-lt);
+  gap: 16px;
+  transition: background .15s;
+}
+.rate-row:last-child { border-bottom: none; }
+.rate-row:hover { background: var(--surface); }
+
+.rr-name { font-size: 13px; font-weight: 600; }
+.rr-tier {
+  font-size: 10px; font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 2px 8px; border-radius: 4px;
+  text-transform: uppercase; letter-spacing: .4px;
+}
+.tier-basic { background: var(--surface); color: var(--text-dim); border: 1px solid var(--border-lt); }
+.tier-comp { background: var(--blue-bg); color: var(--blue); border: 1px solid rgba(37,99,235,.15); }
+.tier-cmc { background: var(--vani-soft); color: var(--vani); border: 1px solid var(--vani-border); }
+
+.rr-price-wrap {
+  display: flex; align-items: center; gap: 8px;
+}
+
+.rr-price {
+  font-size: 14px; font-weight: 800;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--text);
+}
+
+.rr-edit {
+  padding: 4px 10px; border-radius: 5px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  color: var(--text-dim); cursor: pointer;
+  transition: all .15s;
+}
+.rr-edit:hover { border-color: var(--vani); color: var(--vani); background: var(--vani-soft); }
+
+.rr-check { font-size: 14px; color: var(--green); }
+
+/* Currency add row */
+.currency-row {
+  display: flex; gap: 8px; padding: 14px 20px;
+  border-top: 1px solid var(--border-lt);
+}
+.currency-chip {
+  padding: 6px 14px; border-radius: 100px;
+  border: 1.5px dashed var(--border);
+  font-size: 11px; font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--text-muted); cursor: pointer;
+  transition: all .15s; background: transparent;
+}
+.currency-chip:hover { border-color: var(--vani); color: var(--vani); background: var(--vani-soft); border-style: solid; }
+
+/* Skip link */
+.skip-link {
+  font-size: 12px; color: var(--text-muted);
+  text-decoration: underline; cursor: pointer;
+  text-align: center; display: block; margin-top: 10px;
+}
+.skip-link:hover { color: var(--text-dim); }
+
+/* ═══════════════════════════════════════
+   SCREEN 8B — EQUIPMENT CONFIRM (BUYER)
+════════════════════════════════════════ */
+.equipment-list {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  box-shadow: var(--shadow); margin-bottom: 14px;
+}
+
+.eq-list-hdr {
+  padding: 14px 20px; background: var(--surface);
+  border-bottom: 1px solid var(--border-lt);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.eq-list-title {
+  font-size: 13px; font-weight: 800; letter-spacing: -.2px;
+}
+
+.eq-count-badge {
+  font-size: 10px; font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 3px 10px; border-radius: 100px;
+  background: var(--vani-soft); color: var(--vani);
+  border: 1px solid var(--vani-border);
+}
+
+.eq-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto auto;
+  align-items: center;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-lt);
+  gap: 14px;
+  transition: background .15s;
+}
+.eq-row:last-child { border-bottom: none; }
+.eq-row:hover { background: var(--surface); }
+
+.eq-checkbox {
+  width: 20px; height: 20px; border-radius: 5px;
+  border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .15s; flex-shrink: 0;
+}
+.eq-checkbox.checked { background: var(--vani); border-color: var(--vani); }
+.eq-checkbox.checked::after { content: '✓'; font-size: 11px; font-weight: 800; color: #fff; }
+
+.eq-info {}
+.eq-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.eq-meta { font-size: 11px; color: var(--text-muted); }
+
+.eq-edit-btn {
+  padding: 5px 12px; border-radius: 5px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px; font-weight: 600;
+  color: var(--text-dim); cursor: pointer;
+  transition: all .15s;
+}
+.eq-edit-btn:hover { border-color: var(--vani); color: var(--vani); background: var(--vani-soft); }
+
+.eq-status { font-size: 11px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+.eq-status.confirmed { color: var(--green); }
+.eq-status.pending { color: var(--text-muted); }
+
+/* Add/remove row */
+.eq-actions-row {
+  display: flex; gap: 10px; padding: 14px 20px;
+  border-top: 1px solid var(--border-lt);
+}
+.eq-action-btn {
+  padding: 7px 16px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: transparent; font-family: 'Outfit', sans-serif;
+  font-size: 12px; font-weight: 700; color: var(--text-dim);
+  cursor: pointer; transition: all .15s;
+  display: flex; align-items: center; gap: 6px;
+}
+.eq-action-btn:hover { border-color: var(--text-mid); color: var(--text); background: var(--surface); }
+.eq-action-btn.add { border-color: var(--vani-border); color: var(--vani); background: var(--vani-soft); }
+.eq-action-btn.add:hover { background: var(--vani-glow); }
+
+/* ═══════════════════════════════════════
+   SCREEN 9 — DONE
+════════════════════════════════════════ */
+#screen9a, #screen9b, #screen9c {
+  background: linear-gradient(145deg, #0c0b09 0%, #1a1410 100%);
+  align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+}
+
+/* Background glow */
+#screen9a::before, #screen9b::before, #screen9c::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 50% 40% at 50% 60%, rgba(22,163,74,.06) 0%, transparent 70%),
+    radial-gradient(ellipse 30% 30% at 20% 30%, rgba(255,107,43,.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* Success orb */
+.success-orb {
+  width: 80px; height: 80px;
+  background: linear-gradient(135deg, var(--green), #22c55e);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px;
+  margin: 0 auto 32px;
+  box-shadow: 0 0 40px rgba(22,163,74,.3), 0 0 80px rgba(22,163,74,.1);
+  animation: successPop .6s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes successPop {
+  from { transform: scale(.4); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* Done card */
+.done-card {
+  position: relative; z-index: 10;
+  background: rgba(26,22,18,.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--radius-lg);
+  padding: 48px 52px;
+  width: 540px;
+  box-shadow: 0 32px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05);
+  animation: cardRise .6s cubic-bezier(.22,1,.36,1) .2s both;
+  text-align: center;
+}
+@keyframes cardRise { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+.done-title {
+  font-size: 32px; font-weight: 800;
+  letter-spacing: -1px; color: #f0ece6; margin-bottom: 6px;
+}
+
+.done-sub {
+  font-size: 14px; color: rgba(255,255,255,.4);
+  margin-bottom: 32px; line-height: 1.6;
+}
+
+/* Summary checklist */
+.done-summary {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--radius-sm);
+  padding: 6px 0; margin-bottom: 28px;
+  text-align: left;
+}
+
+.done-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 18px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  animation: itemIn .4s ease both;
+}
+.done-item:last-child { border-bottom: none; }
+@keyframes itemIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+
+.done-check {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--green); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800; color: #fff;
+}
+
+.done-item-text { flex: 1; }
+.done-item-name { font-size: 13px; font-weight: 700; color: #f0ece6; }
+.done-item-val { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 1px; font-family: 'IBM Plex Mono', monospace; }
+
+/* VaNi sign-off */
+.vani-signoff {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: rgba(255,107,43,.08);
+  border: 1px solid rgba(255,107,43,.15);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px; margin-bottom: 24px;
+  text-align: left;
+}
+.signoff-av {
+  width: 30px; height: 30px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--vani), #ff8f5a);
+  border-radius: 7px; display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 12px; color: #fff;
+}
+.signoff-text { font-size: 13px; color: rgba(255,255,255,.6); line-height: 1.6; }
+.signoff-text strong { color: rgba(255,255,255,.85); }
+
+/* Primary CTA */
+.done-cta {
+  width: 100%; padding: 15px 24px;
+  border-radius: var(--radius-sm); border: none;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px; font-weight: 800;
+  cursor: pointer; transition: all .25s;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin-bottom: 12px;
+}
+.done-cta-primary {
+  background: rgba(255,255,255,.1);
+  border: 1.5px solid rgba(255,255,255,.15);
+  color: rgba(255,255,255,.5);
+  cursor: not-allowed;
+}
+.done-cta-primary .cta-badge {
+  font-size: 10px; font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 2px 8px; border-radius: 4px;
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.35);
+  letter-spacing: .4px;
+}
+.done-cta-active {
+  background: linear-gradient(135deg, var(--vani), #ff8f5a);
+  border: none; color: #fff;
+  box-shadow: 0 6px 20px rgba(255,107,43,.35);
+  cursor: pointer;
+}
+.done-cta-active:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(255,107,43,.45);
+}
+.done-test-note {
+  font-size: 11px; color: rgba(255,255,255,.35);
+  text-align: center; margin-top: -6px; margin-bottom: 16px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.done-cta-secondary {
+  background: transparent;
+  border: 1.5px solid rgba(255,255,255,.1);
+  color: rgba(255,255,255,.4);
+  font-size: 13px; font-weight: 600; padding: 11px 24px;
+}
+.done-cta-secondary:hover {
+  border-color: rgba(255,255,255,.2);
+  color: rgba(255,255,255,.6);
+  background: rgba(255,255,255,.04);
+}
+
+/* Workspace code */
+.workspace-code {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--radius-sm);
+  padding: 16px 20px; margin-bottom: 16px;
+  text-align: left;
+}
+.wc-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: rgba(255,255,255,.3); font-family: 'IBM Plex Mono', monospace; margin-bottom: 8px; }
+.wc-code {
+  font-size: 22px; font-weight: 800;
+  font-family: 'IBM Plex Mono', monospace;
+  color: #f0ece6; letter-spacing: 2px; margin-bottom: 12px;
+}
+.wc-actions { display: flex; gap: 8px; }
+.wc-btn {
+  padding: 7px 16px; border-radius: var(--radius-sm);
+  border: 1.5px solid rgba(255,255,255,.12);
+  background: transparent; font-family: 'Outfit', sans-serif;
+  font-size: 12px; font-weight: 700; color: rgba(255,255,255,.5);
+  cursor: pointer; transition: all .15s;
+}
+.wc-btn:hover { border-color: rgba(255,255,255,.25); color: rgba(255,255,255,.8); background: rgba(255,255,255,.05); }
+.wc-btn.primary { background: rgba(255,107,43,.15); border-color: rgba(255,107,43,.25); color: var(--vani); }
+.wc-btn.primary:hover { background: rgba(255,107,43,.22); }
+
+/* Divider */
+.done-divider {
+  display: flex; align-items: center; gap: 14px;
+  margin: 20px 0; color: rgba(255,255,255,.2); font-size: 11px; font-weight: 600;
+}
+.done-divider::before, .done-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.08); }
+
+/* ETL entry */
+.etl-entry {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,.03);
+  border: 1.5px dashed rgba(255,255,255,.1);
+  border-radius: var(--radius-sm);
+  cursor: pointer; transition: all .2s;
+  text-align: left;
+}
+.etl-entry:hover { border-color: rgba(255,255,255,.2); background: rgba(255,255,255,.05); }
+.etl-icon { font-size: 20px; flex-shrink: 0; }
+.etl-text .et-main { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.55); margin-bottom: 2px; }
+.etl-text .et-sub { font-size: 11px; color: rgba(255,255,255,.25); }
+.etl-badge { font-size: 9px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; padding: 2px 6px; border-radius: 3px; background: rgba(255,255,255,.06); color: rgba(255,255,255,.3); margin-left: auto; flex-shrink: 0; letter-spacing: .4px; }
+
+/* Screen 9C — Both persona tabs */
+.persona-tabs {
+  display: flex; gap: 0;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--radius-sm); overflow: hidden;
+  margin-bottom: 20px;
+}
+.ptab {
+  flex: 1; padding: 10px 16px;
+  font-size: 12px; font-weight: 700;
+  color: rgba(255,255,255,.35); cursor: pointer;
+  text-align: center; transition: all .2s;
+  border-right: 1px solid rgba(255,255,255,.06);
+}
+.ptab:last-child { border-right: none; }
+.ptab.active { background: rgba(255,107,43,.1); color: var(--vani); }
+.ptab:hover:not(.active) { background: rgba(255,255,255,.04); color: rgba(255,255,255,.5); }
+
+/* ═══ ACTION ISLAND ═══ */
+.action-island {
+  position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+  background: rgba(26,24,22,.94); backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 10px 10px 10px 24px; border-radius: 100px;
+  display: flex; align-items: center; gap: 24px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.06);
+  z-index: 200; white-space: nowrap;
+}
+.island-label { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.65); }
+.island-divider { width: 1px; height: 22px; background: rgba(255,255,255,.12); }
+.island-btn { padding: 10px 24px; border-radius: 100px; border: none; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all .2s; }
+.island-btn-primary { background: var(--white); color: var(--text); }
+.island-btn-primary:hover { background: #f0ece6; transform: scale(1.02); }
+.island-btn-ghost { background: rgba(255,255,255,.08); color: rgba(255,255,255,.6); }
+.island-btn-ghost:hover { background: rgba(255,255,255,.14); color: rgba(255,255,255,.85); }
+.island-btn-green { background: linear-gradient(135deg, var(--green), #22c55e); color: #fff; box-shadow: 0 3px 10px rgba(22,163,74,.3); }
+.island-btn-green:hover { transform: scale(1.03); }
+
+/* ═══ DEV NAV ═══ */
+.dev-nav { position: fixed; top: 16px; right: 16px; background: rgba(26,24,22,.92); backdrop-filter: blur(12px); padding: 10px 14px; border-radius: 10px; display: flex; flex-direction: column; gap: 5px; z-index: 400; }
+.dev-nav span { color: rgba(255,255,255,.4); font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 4px; display: block; }
+.dev-btn { padding: 5px 12px; border-radius: 6px; border: none; font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; cursor: pointer; transition: all .15s; background: rgba(255,255,255,.08); color: rgba(255,255,255,.7); text-align: left; }
+.dev-btn:hover { background: rgba(255,107,43,.2); color: var(--vani); }
+.dev-btn.active { background: rgba(255,107,43,.15); color: var(--vani); }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+   SCREEN 8A — PRICING REVIEW (SELLER)
+════════════════════════════════════════ -->
+<section class="screen active" id="screen8a">
+
+  <header class="onb-header">
+    <div class="logo">
+      <div class="logo-mark">C</div>
+      <div><span class="logo-name">ContractNest</span><span class="logo-sub">by Vikuna</span></div>
+    </div>
+    <div class="progress-steps">
+      <div class="step-pill done"><div class="sn">✓</div>Register</div>
+      <div class="step-divider"></div>
+      <div class="step-pill done"><div class="sn">✓</div>Industry</div>
+      <div class="step-divider"></div>
+      <div class="step-pill done"><div class="sn">✓</div>VaNi Setup</div>
+      <div class="step-divider"></div>
+      <div class="step-pill active"><div class="sn">8</div>Pricing</div>
+      <div class="step-divider"></div>
+      <div class="step-pill"><div class="sn">9</div>Done</div>
+    </div>
+    <div class="header-right">Step 8 of 9</div>
+  </header>
+
+  <div class="two-col-layout">
+    <div>
+      <!-- VaNi bubble -->
+      <div class="vani-bubble">
+        <div class="vani-av">V</div>
+        <div class="vani-msg">
+          One thing left — <strong>your prices</strong>.
+          Start with your most common service and I'll calculate the rest.
+        </div>
+      </div>
+
+      <!-- Step tabs -->
+      <div class="step-tabs" id="pricing-step-tabs">
+        <div class="step-tab active" id="tab-anchor">
+          <div class="st-num">1</div>
+          Set anchor price
+        </div>
+        <div class="step-tab" id="tab-card">
+          <div class="st-num">2</div>
+          Review rate card
+        </div>
+      </div>
+
+      <!-- STEP 1: Anchor input -->
+      <div id="anchor-step">
+        <div class="anchor-card">
+          <div class="anchor-label">Your most common service</div>
+          <div class="anchor-service">Basic AMC — Hydraulic Lift</div>
+
+          <div class="price-input-wrap">
+            <select class="currency-select" id="currency-sel">
+              <option>INR</option>
+              <option>USD</option>
+              <option>AED</option>
+            </select>
+            <input class="price-input" type="number" id="anchor-price" value="18000" min="0" oninput="updateMarker(this.value)">
+            <span class="price-unit">/ year</span>
+          </div>
+
+          <!-- Benchmark -->
+          <div class="benchmark">
+            <div class="benchmark-header">
+              <div class="benchmark-title">Market rate · Hyderabad</div>
+              <div class="benchmark-conf">Low confidence</div>
+            </div>
+            <div class="benchmark-range">
+              <span>₹15,000</span>
+              <span>median ₹18,000</span>
+              <span>₹22,000</span>
+            </div>
+            <div class="benchmark-bar" style="margin-bottom:24px">
+              <div class="benchmark-fill"></div>
+              <div class="benchmark-marker"></div>
+              <div class="benchmark-marker-label">median</div>
+              <div class="user-marker" id="user-marker" style="left:50%"></div>
+              <div class="user-marker-label" id="user-marker-label" style="left:50%">you</div>
+            </div>
+            <div class="benchmark-sub">
+              Based on industry seed data for Hyderabad · Low confidence means fewer data points.
+              VaNi will improve benchmarks as more sellers join.
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;align-items:center">
+            <button class="btn-apply" onclick="showRateCard()">
+              Apply & calculate all rates →
+            </button>
+            <span style="font-size:12px;color:var(--text-muted)">VaNi will extrapolate 11 more prices</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: Rate card (hidden initially) -->
+      <div id="rate-card-step" style="display:none">
+
+        <div class="vani-bubble" style="animation-delay:.1s">
+          <div class="vani-av">V</div>
+          <div class="vani-msg">
+            Based on <span class="hl">₹18,000</span> anchor + market data.
+            <strong>Adjust anything that looks off</strong> — these are your prices.
+          </div>
+        </div>
+
+        <!-- Hydraulic Lift -->
+        <div class="rate-card">
+          <div class="rate-card-hdr">
+            <div class="rate-card-title">
+              <span class="rate-card-icon">🛗</span>
+              Hydraulic Lift
+            </div>
+          </div>
+          <div class="rate-rows">
+            <div class="rate-row">
+              <div class="rr-name">Basic AMC<span class="rr-tier tier-basic" style="margin-left:8px">Basic</span></div>
+              <div class="rr-price-wrap">
+                <div class="rr-price">₹18,000</div>
+                <div class="rr-check">✓</div>
+              </div>
+            </div>
+            <div class="rate-row">
+              <div class="rr-name">Comprehensive AMC<span class="rr-tier tier-comp" style="margin-left:8px">Comp</span></div>
+              <div class="rr-price-wrap">
+                <div class="rr-price">₹27,000</div>
+                <button class="rr-edit">edit</button>
+              </div>
+            </div>
+            <div class="rate-row">
+              <div class="rr-name">Premium CMC<span class="rr-tier tier-cmc" style="margin-left:8px">CMC</span></div>
+              <div class="rr-price-wrap">
+                <div class="rr-price">₹42,000</div>
+                <button class="rr-edit">edit</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MRL Traction -->
+        <div class="rate-card">
+          <div class="rate-card-hdr">
+            <div class="rate-card-title">
+              <span class="rate-card-icon">⚙️</span>
+              MRL Traction Lift
+            </div>
+          </div>
+          <div class="rate-rows">
+            <div class="rate-row">
+              <div class="rr-name">Basic AMC<span class="rr-tier tier-basic" style="margin-left:8px">Basic</span></div>
+              <div class="rr-price-wrap">
+                <div class="rr-price">₹22,000</div>
+                <button class="rr-edit">edit</button>
+              </div>
+            </div>
+            <div class="rate-row">
+              <div class="rr-name">Comprehensive AMC<span class="rr-tier tier-comp" style="margin-left:8px">Comp</span></div>
+              <div class="rr-price-wrap">
+                <div class="rr-price">₹33,000</div>
+                <button class="rr-edit">edit</button>
+              </div>
+            </div>
+            <div class="rate-row">
+              <div class="rr-name">Premium CMC<span class="rr-tier tier-cmc" style="margin-left:8px">CMC</span></div>
+              <div class="rr-price-wrap">
+                <div class="rr-price">₹50,000</div>
+                <button class="rr-edit">edit</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Escalator -->
+        <div class="rate-card">
+          <div class="rate-card-hdr">
+            <div class="rate-card-title">
+              <span class="rate-card-icon">🏗️</span>
+              Escalator
+            </div>
+          </div>
+          <div class="rate-rows">
+            <div class="rate-row">
+              <div class="rr-name">Basic AMC<span class="rr-tier tier-basic" style="margin-left:8px">Basic</span></div>
+              <div class="rr-price-wrap"><div class="rr-price">₹35,000</div><button class="rr-edit">edit</button></div>
+            </div>
+            <div class="rate-row">
+              <div class="rr-name">Comprehensive AMC<span class="rr-tier tier-comp" style="margin-left:8px">Comp</span></div>
+              <div class="rr-price-wrap"><div class="rr-price">₹52,000</div><button class="rr-edit">edit</button></div>
+            </div>
+            <div class="rate-row">
+              <div class="rr-name">Premium CMC<span class="rr-tier tier-cmc" style="margin-left:8px">CMC</span></div>
+              <div class="rr-price-wrap"><div class="rr-price">₹80,000</div><button class="rr-edit">edit</button></div>
+            </div>
+          </div>
+          <div class="currency-row">
+            <button class="currency-chip">+ USD</button>
+            <button class="currency-chip">+ AED</button>
+            <button class="currency-chip">+ GBP</button>
+          </div>
+        </div>
+
+        <div class="skip-link" onclick="goTo('9a')">Skip for now — I'll set prices later</div>
+      </div>
+    </div>
+
+    <!-- Right panel -->
+    <div class="side-panel">
+      <div class="panel-card panel-dark">
+        <div class="panel-hdr"><div class="panel-lbl">Pricing Progress</div></div>
+        <div class="panel-bdy">
+          <div class="panel-row"><span class="pk">Prices set</span><span class="pv accent" id="prices-set">1</span></div>
+          <div class="panel-row"><span class="pk">Pending</span><span class="pv pending" id="prices-pending">11 remaining</span></div>
+          <div class="panel-row"><span class="pk">Currency</span><span class="pv">INR</span></div>
+          <div class="panel-row"><span class="pk">Anchor</span><span class="pv accent">₹18,000</span></div>
+          <div class="progress-track">
+            <div class="progress-fill-bar" id="pricing-bar" style="width:8%"></div>
+          </div>
+          <div class="progress-label">
+            <span id="pricing-pct-label">8%</span>
+            <span>of 12 prices</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-card panel-light">
+        <div class="panel-hdr"><div class="panel-lbl">Catalog Summary</div></div>
+        <div class="panel-bdy">
+          <div class="panel-row"><span class="pk">Blocks</span><span class="pv">12 total</span></div>
+          <div class="panel-row"><span class="pk">Templates</span><span class="pv">3 ready</span></div>
+          <div class="panel-row"><span class="pk">Equipment</span><span class="pv">4 types</span></div>
+          <div class="panel-row"><span class="pk">Compliance</span><span class="pv green">BIS · NBC</span></div>
+        </div>
+      </div>
+
+      <div class="panel-card panel-light" id="multiplier-card">
+        <div class="panel-hdr"><div class="panel-lbl">VaNi Multipliers</div></div>
+        <div class="panel-bdy">
+          <div class="panel-row"><span class="pk">Comp AMC</span><span class="pv">1.5× Basic</span></div>
+          <div class="panel-row"><span class="pk">Premium CMC</span><span class="pv">2.3× Basic</span></div>
+          <div class="panel-row"><span class="pk">MRL vs Hydraulic</span><span class="pv">+22%</span></div>
+          <div class="panel-row"><span class="pk">Escalator</span><span class="pv">+95%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="action-island" id="island-8a">
+    <span class="island-label" id="island-8a-label">Set anchor price to continue</span>
+    <div class="island-divider"></div>
+    <button class="island-btn island-btn-ghost" onclick="goTo('7')">← Back</button>
+    <button class="island-btn island-btn-primary" id="pricing-next-btn" onclick="goTo('9a')">
+      Confirm pricing →
+    </button>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+   SCREEN 8B — EQUIPMENT CONFIRM (BUYER)
+════════════════════════════════════════ -->
+<section class="screen" id="screen8b">
+
+  <header class="onb-header">
+    <div class="logo">
+      <div class="logo-mark">C</div>
+      <div><span class="logo-name">ContractNest</span><span class="logo-sub">by Vikuna</span></div>
+    </div>
+    <div class="progress-steps">
+      <div class="step-pill done"><div class="sn">✓</div>Register</div>
+      <div class="step-divider"></div>
+      <div class="step-pill done"><div class="sn">✓</div>Industry</div>
+      <div class="step-divider"></div>
+      <div class="step-pill done"><div class="sn">✓</div>VaNi Setup</div>
+      <div class="step-divider"></div>
+      <div class="step-pill active"><div class="sn">8</div>Equipment</div>
+      <div class="step-divider"></div>
+      <div class="step-pill"><div class="sn">9</div>Done</div>
+    </div>
+    <div class="header-right">Step 8 of 9</div>
+  </header>
+
+  <div class="two-col-layout">
+    <div>
+      <div class="vani-bubble">
+        <div class="vani-av">V</div>
+        <div class="vani-msg">
+          I've created placeholders for common <strong>healthcare equipment</strong>.
+          Edit names to match what City General Hospital actually has.
+        </div>
+      </div>
+
+      <div class="equipment-list">
+        <div class="eq-list-hdr">
+          <div class="eq-list-title">Equipment Registry</div>
+          <div class="eq-count-badge" id="eq-count-badge">0 of 8 confirmed</div>
+        </div>
+
+        <div id="eq-rows">
+          <!-- rows injected by JS -->
+        </div>
+
+        <div class="eq-actions-row">
+          <button class="eq-action-btn add">+ Add equipment</button>
+          <button class="eq-action-btn">− Remove selected</button>
+        </div>
+      </div>
+
+      <div class="skip-link" onclick="goTo('9b')">Skip for now — I'll confirm equipment later</div>
+    </div>
+
+    <!-- Right panel -->
+    <div class="side-panel">
+      <div class="panel-card panel-dark">
+        <div class="panel-hdr"><div class="panel-lbl">Registry Progress</div></div>
+        <div class="panel-bdy">
+          <div class="panel-row"><span class="pk">Confirmed</span><span class="pv accent" id="eq-confirmed-count">0</span></div>
+          <div class="panel-row"><span class="pk">Pending</span><span class="pv pending" id="eq-pending-count">8 remaining</span></div>
+          <div class="panel-row"><span class="pk">Industry</span><span class="pv accent">Healthcare</span></div>
+          <div class="progress-track">
+            <div class="progress-fill-bar green" id="eq-bar" style="width:0%"></div>
+          </div>
+          <div class="progress-label">
+            <span id="eq-pct">0%</span>
+            <span>of 8 assets</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-card panel-light">
+        <div class="panel-hdr"><div class="panel-lbl">Facility Hierarchy</div></div>
+        <div class="panel-bdy">
+          <div class="panel-row"><span class="pk">Campus</span><span class="pv">L1</span></div>
+          <div class="panel-row"><span class="pk">Building</span><span class="pv">L2</span></div>
+          <div class="panel-row"><span class="pk">Floor</span><span class="pv">L3</span></div>
+          <div class="panel-row"><span class="pk">Ward</span><span class="pv">L4</span></div>
+          <div class="panel-row"><span class="pk">Bed / Station</span><span class="pv">L5</span></div>
+        </div>
+      </div>
+
+      <div class="panel-card panel-light">
+        <div class="panel-hdr"><div class="panel-lbl">Compliance Active</div></div>
+        <div class="panel-bdy">
+          <div class="panel-row"><span class="pk">NABH</span><span class="pv green">Active</span></div>
+          <div class="panel-row"><span class="pk">AERB</span><span class="pv green">Active</span></div>
+          <div class="panel-row"><span class="pk">IEC 60601</span><span class="pv green">Active</span></div>
+          <div class="panel-row"><span class="pk">NABL</span><span class="pv green">Active</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="action-island">
+    <span class="island-label" id="eq-island-label">Confirm your equipment list</span>
+    <div class="island-divider"></div>
+    <button class="island-btn island-btn-ghost" onclick="goTo('7')">← Back</button>
+    <button class="island-btn island-btn-primary" onclick="goTo('9b')">Confirm & continue →</button>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+   SCREEN 9A — DONE (SELLER)
+════════════════════════════════════════ -->
+<section class="screen" id="screen9a">
+  <div class="done-card">
+    <div class="success-orb">✓</div>
+    <div class="done-title">You're ready.</div>
+    <div class="done-sub">Sharma Elevators is fully set up on ContractNest.</div>
+
+    <div class="done-summary">
+      <div class="done-item" style="animation-delay:.1s">
+        <div class="done-check">✓</div>
+        <div class="done-item-text">
+          <div class="done-item-name">Service catalog</div>
+          <div class="done-item-val">12 blocks · Basic AMC, Comp AMC, Premium CMC</div>
+        </div>
+      </div>
+      <div class="done-item" style="animation-delay:.2s">
+        <div class="done-check">✓</div>
+        <div class="done-item-text">
+          <div class="done-item-name">Contract templates</div>
+          <div class="done-item-val">3 ready · All L&E variants covered</div>
+        </div>
+      </div>
+      <div class="done-item" style="animation-delay:.3s">
+        <div class="done-check">✓</div>
+        <div class="done-item-text">
+          <div class="done-item-name">Equipment types</div>
+          <div class="done-item-val">4 active · Hydraulic · MRL · Escalator · Dumbwaiter</div>
+        </div>
+      </div>
+      <div class="done-item" style="animation-delay:.4s">
+        <div class="done-check">✓</div>
+        <div class="done-item-text">
+          <div class="done-item-name">Pricing</div>
+          <div class="done-item-val">12 of 12 set · INR · Hyderabad rates</div>
+        </div>
+      </div>
+      <div class="done-item" style="animation-delay:.5s">
+        <div class="done-check">✓</div>
+        <div class="done-item-text">
+          <div class="done-item-name">Compliance</div>
+          <div class="done-item-val">BIS IS 14665 · NBC India · Active</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="vani-signoff">
+      <div class="signoff-av">V</div>
+      <div class="signoff-text">
+        Try it in test mode — <strong>5 sample clients</strong> are ready to go.
+        Switch to live anytime from the header.
+      </div>
+    </div>
+
+    <button class="done-cta done-cta-active" onclick="alert('Contract creation — TEST environment')">
+      Try it in test mode →
+    </button>
+    <div class="done-test-note">5 sample clients ready · switch to live anytime from the header</div>
+
+    <div class="done-divider">already have existing data?</div>
+
+    <div class="etl-entry" onclick="alert('ETL skill — V2 feature')">
+      <div class="etl-icon">↑</div>
+      <div class="etl-text">
+        <div class="et-main">Upload rate card or client list</div>
+        <div class="et-sub">Excel, CSV or PDF · VaNi will map it automatically</div>
+      </div>
+      <div class="etl-badge">V2</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+   SCREEN 9B — DONE (BUYER)
+════════════════════════════════════════ -->
+<section class="screen" id="screen9b">
+  <div class="done-card">
+    <div class="success-orb">✓</div>
+    <div class="done-title">You're ready.</div>
+    <div class="done-sub">City General Hospital is set up and ready to receive contracts.</div>
+
+    <div class="done-summary">
+      <div class="done-item" style="animation-delay:.1s">
+        <div class="done-check">✓</div>
+        <div class="done-item-text">
+          <div class="done-item-name">Equipment registry</div>
+          <div class="done-item-val">8 assets confirmed · Healthcare assets</div>
+        </div>
+      </div>
+      <div class="done-item" style="animation-delay:.2s">
+        <div class="done-check">✓</div>
+        <div class="done-item-text">
+          <div class="done-item-name">Facility hierarchy</div>
+          <div class="done-item-val">Campus → Building → Floor → Ward → Bed</div>
+        </div>
+      </div>
+      <div class="done-item" style="animation-delay:.3s">
+        <div class="done-check">✓</div>
+        <div class="done-item-text">
+          <div class="done-item-name">Compliance standards</div>
+          <div class="done-item-val">NABH · AERB · IEC 60601 · NABL · Active</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="workspace-code">
+      <div class="wc-label">Your workspace code</div>
+      <div class="wc-code">CN-HOSP-4821</div>
+      <div class="wc-actions">
+        <button class="wc-btn primary">Share via WhatsApp</button>
+        <button class="wc-btn">Copy code</button>
+        <button class="wc-btn">Copy link</button>
+      </div>
+    </div>
+
+    <div class="vani-signoff">
+      <div class="signoff-av">V</div>
+      <div class="signoff-text">
+        5 sample vendors are ready in test mode.
+        Try receiving a contract — <strong>no real vendor needed</strong>.
+      </div>
+    </div>
+
+    <button class="done-cta done-cta-active" onclick="alert('Contract flow — TEST env')">
+      Try it in test mode →
+    </button>
+    <div class="done-test-note">5 sample vendor contacts ready · switch to live anytime</div>
+
+    <button class="done-cta done-cta-secondary" onclick="alert('CNAK claim flow — next PRD')">
+      I have a contract code (CNAK) →
+    </button>
+
+    <div class="done-divider">already have existing assets?</div>
+
+    <div class="etl-entry" onclick="alert('ETL skill — V2 feature')">
+      <div class="etl-icon">↑</div>
+      <div class="etl-text">
+        <div class="et-main">Upload equipment register</div>
+        <div class="et-sub">Excel or CSV · VaNi will match to registry automatically</div>
+      </div>
+      <div class="etl-badge">V2</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+   SCREEN 9C — DONE (BOTH)
+════════════════════════════════════════ -->
+<section class="screen" id="screen9c">
+  <div class="done-card" style="width:580px">
+    <div class="success-orb">✓</div>
+    <div class="done-title">Fully set up.</div>
+    <div class="done-sub">Apollo Medical Services is ready on both sides of ContractNest.</div>
+
+    <div class="persona-tabs">
+      <div class="ptab active" onclick="switchTab('seller',this)">📤 As Provider</div>
+      <div class="ptab" onclick="switchTab('buyer',this)">📥 As Asset Owner</div>
+    </div>
+
+    <!-- Seller tab -->
+    <div id="tab-seller">
+      <div class="done-summary">
+        <div class="done-item" style="animation-delay:.1s">
+          <div class="done-check">✓</div>
+          <div class="done-item-text">
+            <div class="done-item-name">Service catalog</div>
+            <div class="done-item-val">18 blocks · Healthcare AMC/CMC packages</div>
+          </div>
+        </div>
+        <div class="done-item" style="animation-delay:.2s">
+          <div class="done-check">✓</div>
+          <div class="done-item-text">
+            <div class="done-item-name">Contract templates</div>
+            <div class="done-item-val">5 ready · Annual health checkup, equipment AMC</div>
+          </div>
+        </div>
+        <div class="done-item" style="animation-delay:.3s">
+          <div class="done-check">✓</div>
+          <div class="done-item-text">
+            <div class="done-item-name">Pricing</div>
+            <div class="done-item-val">18 of 18 set · INR</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Buyer tab -->
+    <div id="tab-buyer" style="display:none">
+      <div class="done-summary">
+        <div class="done-item" style="animation-delay:.1s">
+          <div class="done-check">✓</div>
+          <div class="done-item-text">
+            <div class="done-item-name">Equipment registry</div>
+            <div class="done-item-val">12 assets · MRI, CT, Ventilators, Monitors...</div>
+          </div>
+        </div>
+        <div class="done-item" style="animation-delay:.2s">
+          <div class="done-check">✓</div>
+          <div class="done-item-text">
+            <div class="done-item-name">Facility hierarchy</div>
+            <div class="done-item-val">Campus → Building → Floor → Ward → Bed</div>
+          </div>
+        </div>
+        <div class="done-item" style="animation-delay:.3s">
+          <div class="done-check">✓</div>
+          <div class="done-item-text">
+            <div class="done-item-name">Compliance standards</div>
+            <div class="done-item-val">NABH · AERB · IEC 60601 · NABL</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="vani-signoff">
+      <div class="signoff-av">V</div>
+      <div class="signoff-text">
+        Apollo is live on both sides. Use the <strong>Revenue</strong> view to send contracts,
+        <strong>Expense</strong> view to receive them.
+      </div>
+    </div>
+
+    <button class="done-cta done-cta-primary">
+      Go to dashboard
+      <span class="cta-badge">COMING SOON</span>
+    </button>
+  </div>
+</section>
+
+<!-- DEV NAV -->
+<div class="dev-nav">
+  <span>Batch 4</span>
+  <button class="dev-btn active" id="nav-8a" onclick="goTo('8a')">S8A Pricing (Seller)</button>
+  <button class="dev-btn" id="nav-8b" onclick="goTo('8b')">S8B Equipment (Buyer)</button>
+  <button class="dev-btn" id="nav-9a" onclick="goTo('9a')">S9A Done (Seller)</button>
+  <button class="dev-btn" id="nav-9b" onclick="goTo('9b')">S9B Done (Buyer)</button>
+  <button class="dev-btn" id="nav-9c" onclick="goTo('9c')">S9C Done (Both)</button>
+  <button class="dev-btn" id="nav-next" onclick="alert('Batch 5 → Getting Started')">S0 → Batch 5</button>
+</div>
+
+<script>
+/* ── NAV ── */
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.dev-btn').forEach(b => b.classList.remove('active'));
+  const s = document.getElementById('screen' + id);
+  if (s) s.classList.add('active');
+  const nb = document.getElementById('nav-' + id);
+  if (nb) nb.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+/* ── PRICING ── */
+function updateMarker(val) {
+  const min = 15000, max = 22000;
+  const pct = Math.min(100, Math.max(0, ((val - min) / (max - min)) * 70 + 15));
+  document.getElementById('user-marker').style.left = pct + '%';
+  document.getElementById('user-marker-label').style.left = pct + '%';
+}
+
+function showRateCard() {
+  document.getElementById('anchor-step').style.display = 'none';
+  document.getElementById('rate-card-step').style.display = 'block';
+  document.getElementById('tab-anchor').classList.remove('active');
+  document.getElementById('tab-anchor').classList.add('done');
+  document.getElementById('tab-card').classList.add('active');
+  document.getElementById('pricing-bar').style.width = '100%';
+  document.getElementById('pricing-pct-label').textContent = '100%';
+  document.getElementById('prices-set').textContent = '12';
+  document.getElementById('prices-pending').textContent = 'all set ✓';
+  document.getElementById('island-8a-label').textContent = '12 of 12 prices confirmed';
+  document.getElementById('pricing-next-btn').textContent = 'Confirm pricing →';
+}
+
+/* ── EQUIPMENT ── */
+const equipment = [
+  { id: 1, name: 'MRI Scanner', meta: 'Diagnostic Imaging · AERB regulated', confirmed: false },
+  { id: 2, name: 'CT Scanner', meta: 'Diagnostic Imaging · AERB regulated', confirmed: false },
+  { id: 3, name: 'X-Ray System', meta: 'Diagnostic Imaging · Annual calibration', confirmed: false },
+  { id: 4, name: 'Ventilator', meta: 'Life Support · IEC 60601 · Critical', confirmed: false },
+  { id: 5, name: 'Patient Monitor', meta: 'Monitoring · IEC 60601 · Quarterly service', confirmed: false },
+  { id: 6, name: 'Defibrillator', meta: 'Life Support · Monthly function test', confirmed: false },
+  { id: 7, name: 'Infusion Pump', meta: 'Life Support · NABL calibration', confirmed: false },
+  { id: 8, name: 'Autoclave', meta: 'Sterilisation · Monthly validation', confirmed: false },
+];
+
+function renderEquipment() {
+  const container = document.getElementById('eq-rows');
+  container.innerHTML = equipment.map(eq => `
+    <div class="eq-row" id="eq-row-${eq.id}">
+      <div class="eq-checkbox ${eq.confirmed ? 'checked' : ''}" onclick="toggleEq(${eq.id})"></div>
+      <div class="eq-info">
+        <div class="eq-name">${eq.name}</div>
+        <div class="eq-meta">${eq.meta}</div>
+      </div>
+      <button class="eq-edit-btn" onclick="editEq(${eq.id})">edit name</button>
+      <div class="eq-status ${eq.confirmed ? 'confirmed' : 'pending'}">${eq.confirmed ? '✓' : '—'}</div>
+    </div>
+  `).join('');
+  updateEqPanel();
+}
+
+function toggleEq(id) {
+  const eq = equipment.find(e => e.id === id);
+  if (eq) { eq.confirmed = !eq.confirmed; renderEquipment(); }
+}
+
+function editEq(id) {
+  const eq = equipment.find(e => e.id === id);
+  if (!eq) return;
+  const name = prompt('Edit equipment name:', eq.name);
+  if (name && name.trim()) { eq.name = name.trim(); renderEquipment(); }
+}
+
+function updateEqPanel() {
+  const confirmed = equipment.filter(e => e.confirmed).length;
+  const total = equipment.length;
+  const pct = Math.round((confirmed / total) * 100);
+  document.getElementById('eq-confirmed-count').textContent = confirmed;
+  document.getElementById('eq-pending-count').textContent = confirmed === total ? 'all confirmed ✓' : (total - confirmed) + ' remaining';
+  document.getElementById('eq-bar').style.width = pct + '%';
+  document.getElementById('eq-pct').textContent = pct + '%';
+  document.getElementById('eq-count-badge').textContent = confirmed + ' of ' + total + ' confirmed';
+  document.getElementById('eq-island-label').textContent = confirmed === 0 ? 'Confirm your equipment list' : confirmed + ' of ' + total + ' confirmed';
+}
+
+/* ── DONE 9C TABS ── */
+function switchTab(tab, el) {
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-seller').style.display = tab === 'seller' ? 'block' : 'none';
+  document.getElementById('tab-buyer').style.display = tab === 'buyer' ? 'block' : 'none';
+}
+
+// Init
+renderEquipment();
+</script>
+</body>
+</html>

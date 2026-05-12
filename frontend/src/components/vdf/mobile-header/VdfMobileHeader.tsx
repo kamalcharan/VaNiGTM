@@ -14,7 +14,7 @@ export function VdfMobileHeader({ onMenuOpen }: VdfMobileHeaderProps) {
   const { isLive } = useAuth();
 
   const activeId  = getActiveNavId(pathname);
-  const pageTitle = NAV_ITEMS.find(item => item.id === activeId)?.label ?? 'ProKey';
+  const pageTitle = NAV_ITEMS.find(item => item.id === activeId)?.label ?? 'VaNi-GTM';
 
   return (
     <header className={s.header}>

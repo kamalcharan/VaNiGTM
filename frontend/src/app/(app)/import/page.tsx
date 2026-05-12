@@ -11,6 +11,8 @@ import s from './import-page.module.css';
 
 /* ── Types ─────────────────────────────────────────── */
 
+// Only 'customer' is exposed in IMPORT_TYPES below; the rest remain in the
+// type union so dead branches in this file still type-check.
 type ImportType = 'scheme' | 'customer' | 'transaction' | 'bookmark';
 type Step = 'type' | 'upload' | 'mapping' | 'processing' | 'results';
 
@@ -47,21 +49,17 @@ interface ProcessResult {
 /* ── Import type cards ─────────────────────────────── */
 
 const IMPORT_TYPES: { id: ImportType; label: string; desc: string; icon: ReactNode; enabled: boolean }[] = [
-  { id: 'scheme',      label: 'Scheme Master', desc: 'AMFI scheme database — codes, ISINs, categories, NAV names',   icon: <Database size={22} />,       enabled: true  },
   { id: 'customer',    label: 'Customers',     desc: 'Client contacts — externalid, PAN, mobile, email, addresses',  icon: <Users size={22} />,          enabled: true  },
-  { id: 'transaction', label: 'Transactions',  desc: 'Purchases, redemptions, SIPs, switches, dividends',            icon: <ArrowLeftRight size={22} />, enabled: true  },
-  { id: 'bookmark',    label: 'Bookmarks',     desc: 'Tracked scheme codes and ISINs — bulk add to My NAV',          icon: <Bookmark size={22} />,       enabled: true  },
 ];
 
 /* ── Main Component ────────────────────────────────── */
 
 export default function ImportPage() {
   const { showToast } = useToast();
-  const { isAdmin, tenant } = useAuth();
+  const { tenant } = useAuth();
 
   const [step, setStep] = useState<Step>('type');
-  // Default to 'scheme' for admins, 'bookmark' for non-admins
-  const [importType, setImportType] = useState<ImportType>(() => isAdmin ? 'scheme' : 'bookmark');
+  const [importType, setImportType] = useState<ImportType>('customer');
   const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
   const [headerInfo, setHeaderInfo] = useState<HeaderInfo | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
@@ -324,7 +322,7 @@ export default function ImportPage() {
             <VdfInsightsCard insights={[{ icon: '✨', text: 'Choose the data type you want to import. Scheme Master is the foundation — import it first.' }]} />
           </div>
           <div className={s.typeGrid}>
-            {IMPORT_TYPES.filter((t) => t.id !== 'scheme' || isAdmin).map((t) => (
+            {IMPORT_TYPES.map((t) => (
               <button
                 key={t.id}
                 className={`${s.typeCard} ${!t.enabled ? s.typeDisabled : ''}`}

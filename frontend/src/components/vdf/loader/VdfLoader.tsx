@@ -39,7 +39,7 @@ export function VdfLoader({ message = 'Loading', hint, overlay = false, classNam
           <svg className={s.mark} viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
             <path className={s.markPath} d="M25 5 L10 12 V25 C10 35, 25 45, 25 45 C25 45, 40 35, 40 25 V12 L25 5 Z M25 18 A4 4 0 1 1 25 26 A4 4 0 1 1 25 18 M25 26 V34" />
           </svg>
-          <div className={s.text}>ProKey</div>
+          <div className={s.text}>VaNi-GTM</div>
         </div>
 
         {/* Status */}

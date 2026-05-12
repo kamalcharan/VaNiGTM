@@ -8,7 +8,7 @@ export const tiers = {
     name: 'Starter',
     price_inr: 499,
     price_display: '₹499/mo',
-    skills: ['portfolio-skill', 'market-skill', 'client-skill', 'import-skill'],
+    skills: ['contact-skill', 'client-skill', 'campaign-skill'],
     maxClients: 100,
     vaniInteractionsPerDay: 50,
     claudeEscalationsPerDay: 0,

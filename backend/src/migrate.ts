@@ -122,7 +122,7 @@ async function applyMigration(pool: Pool, migration: MigrationFile): Promise<num
       [
         migration.filename,
         migration.checksum,
-        'ki-prime-migrate',
+        'vanigtm-migrate',
         Date.now() - start,
         `Applied by migration runner`,
       ],
@@ -195,7 +195,7 @@ async function seedAppliedMigrations(pool: Pool, files: MigrationFile[]): Promis
         `INSERT INTO vn_migrations (filename, checksum, applied_by, execution_ms, notes)
          VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (filename) DO NOTHING`,
-        [f.filename, f.checksum, 'ki-prime-seed', 0, 'Seeded — schema pre-existed before migration runner'],
+        [f.filename, f.checksum, 'vanigtm-seed', 0, 'Seeded — schema pre-existed before migration runner'],
       );
     }
   } finally {

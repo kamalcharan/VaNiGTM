@@ -52,7 +52,7 @@ export default function OnboardingPage() {
         // Wait for /me to reflect onboarding_complete: true before navigating
         // so the layout guard doesn't redirect back to /onboarding
         await queryClient.refetchQueries({ queryKey: ME_QUERY_KEY });
-        showToast({ message: 'Welcome to ProKey!', type: 'success' });
+        showToast({ message: 'Welcome to VaNi-GTM!', type: 'success' });
         router.push('/dashboard');
       } else if (currentIndex < steps.length - 1) {
         setCurrentIndex(currentIndex + 1);
