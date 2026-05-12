@@ -31,7 +31,8 @@ export type EventType =
   // Phase 1 — ingestion pipeline (Addendum 02)
   | 'FILE_UPLOADED'
   | 'URL_SUBMITTED'
-  | 'KNOWLEDGE_UPDATED';
+  | 'KNOWLEDGE_UPDATED'
+  | 'FOLDER_CONNECTED';
 
 export type SourceType = 'human' | 'agent' | 'cron' | 'system' | 'webhook';
 export type EventStatus = 'pending' | 'processing' | 'done' | 'failed';
