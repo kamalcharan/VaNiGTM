@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractNest — Batch 5 · Getting Started</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=IBM+Plex Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f5f2;
+  --white: #ffffff;
+  --surface: #faf9f7;
+  --border: #e5e1db;
+  --border-lt: #edeae4;
+  --text: #1a1816;
+  --text-mid: #4a4540;
+  --text-dim: #8a847a;
+  --text-muted: #bab4a8;
+  --vani: #ff6b2b;
+  --vani-glow: rgba(255,107,43,.08);
+  --vani-border: rgba(255,107,43,.2);
+  --vani-soft: #fff8f4;
+  --green: #16a34a;
+  --green-bg: #f0fdf4;
+  --green-border: #bbf7d0;
+  --amber: #d97706;
+  --amber-bg: #fffbeb;
+  --amber-border: rgba(217,119,6,.2);
+  --gray-bg: #f1f0ee;
+  --shadow: 0 2px 12px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.04);
+  --shadow-md: 0 4px 24px rgba(0,0,0,.08);
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-lg: 22px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Outfit', sans-serif; color: var(--text); background: var(--bg); -webkit-font-smoothing: antialiased; min-height: 100vh; }
+
+/* ═══ HEADER ═══ */
+.onb-header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: var(--white); border-bottom: 1px solid var(--border);
+  padding: 0 48px; height: 64px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-mark {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--vani), #ff8f5a);
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 14px; color: #fff;
+  box-shadow: 0 2px 8px rgba(255,107,43,.28);
+}
+.logo-name { font-weight: 800; font-size: 17px; letter-spacing: -.4px; }
+.logo-sub { font-size: 11px; color: var(--text-muted); font-family: 'IBM Plex Mono', monospace; margin-left: 2px; }
+
+/* Nav items */
+.nav-items { display: flex; align-items: center; gap: 4px; }
+.nav-item {
+  padding: 7px 14px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 600; color: var(--text-dim);
+  cursor: pointer; transition: all .15s; text-decoration: none;
+}
+.nav-item:hover { background: var(--surface); color: var(--text); }
+.nav-item.active { background: var(--vani-soft); color: var(--vani); }
+
+/* Env switch */
+.env-switch {
+  display: flex; align-items: center; gap: 3px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 100px; padding: 4px;
+}
+.env-btn {
+  padding: 5px 14px; border-radius: 100px; border: none;
+  font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 700;
+  cursor: pointer; transition: all .2s; color: var(--text-muted);
+  background: transparent; letter-spacing: .2px;
+}
+.env-btn.active-test {
+  background: var(--amber-bg); color: var(--amber);
+  border: 1px solid var(--amber-border);
+  box-shadow: var(--shadow);
+}
+.env-btn.active-live {
+  background: var(--green-bg); color: var(--green);
+  border: 1px solid var(--green-border);
+  box-shadow: var(--shadow);
+}
+
+/* ═══ MAIN LAYOUT ═══ */
+.main-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+  padding-top: 64px;
+}
+
+/* ═══ LEFT SIDEBAR ═══ */
+.sidebar {
+  background: var(--white);
+  border-right: 1px solid var(--border);
+  padding: 32px 20px;
+  position: sticky; top: 64px;
+  height: calc(100vh - 64px);
+  overflow-y: auto;
+}
+
+.sidebar-section { margin-bottom: 28px; }
+
+.sidebar-label {
+  font-size: 10px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .8px;
+  color: var(--text-muted); font-family: 'IBM Plex Mono', monospace;
+  padding: 0 12px; margin-bottom: 6px; display: block;
+}
+
+.sidebar-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 600; color: var(--text-dim);
+  cursor: pointer; transition: all .15s; position: relative;
+}
+.sidebar-item:hover { background: var(--surface); color: var(--text); }
+.sidebar-item.active { background: var(--vani-soft); color: var(--vani); }
+
+.sidebar-item .si-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+.sidebar-item .si-badge {
+  margin-left: auto; font-size: 9px; font-weight: 800;
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 2px 7px; border-radius: 10px;
+  background: var(--amber-bg); color: var(--amber);
+  border: 1px solid var(--amber-border);
+}
+.sidebar-item .si-badge.green { background: var(--green-bg); color: var(--green); border-color: var(--green-border); }
+.sidebar-item .si-badge.new { background: var(--vani-soft); color: var(--vani); border-color: var(--vani-border); }
+
+/* ═══ CONTENT AREA ═══ */
+.content-area { padding: 40px 48px 120px; }
+
+/* ═══ GETTING STARTED HEADER ═══ */
+.gs-header { margin-bottom: 32px; }
+
+.gs-eyebrow {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px;
+  color: var(--vani); font-family: 'IBM Plex Mono', monospace;
+  margin-bottom: 8px;
+}
+
+.gs-title {
+  font-size: 28px; font-weight: 800;
+  letter-spacing: -.8px; margin-bottom: 6px;
+}
+
+.gs-sub { font-size: 14px; color: var(--text-dim); line-height: 1.55; }
+
+/* ═══ VANI BUBBLE ═══ */
+.vani-bubble {
+  display: flex; gap: 12px; margin-bottom: 28px;
+  animation: bIn .4s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes bIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.vani-av {
+  width: 36px; height: 36px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--vani), #ff8f5a);
+  border-radius: 9px; display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 14px; color: #fff;
+  box-shadow: 0 3px 8px rgba(255,107,43,.25); margin-top: 2px;
+}
+.vani-msg {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 3px 14px 14px 14px;
+  padding: 14px 18px; box-shadow: var(--shadow);
+  font-size: 14px; color: var(--text-mid); line-height: 1.6;
+}
+.vani-msg strong { color: var(--text); font-weight: 700; }
+.vani-msg .hl { color: var(--vani); font-weight: 700; }
+
+/* ═══ SETUP PROGRESS CARD ═══ */
+.setup-card {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  box-shadow: var(--shadow); margin-bottom: 20px;
+}
+
+.setup-card-hdr {
+  padding: 16px 24px; background: var(--surface);
+  border-bottom: 1px solid var(--border-lt);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.setup-card-title {
+  font-size: 13px; font-weight: 800; letter-spacing: -.2px;
+}
+
+.setup-progress-pill {
+  font-size: 11px; font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 4px 12px; border-radius: 100px;
+}
+.spp-complete { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.spp-partial { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+.spp-empty { background: var(--gray-bg); color: var(--text-muted); border: 1px solid var(--border); }
+
+/* Setup items */
+.setup-items { padding: 4px 0; }
+
+.setup-item {
+  display: grid;
+  grid-template-columns: 28px 1fr auto auto;
+  align-items: center;
+  padding: 13px 24px; gap: 14px;
+  border-bottom: 1px solid var(--border-lt);
+  transition: background .15s;
+}
+.setup-item:last-child { border-bottom: none; }
+.setup-item:hover { background: var(--surface); }
+
+.si-state {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; flex-shrink: 0;
+}
+.si-state.done { background: var(--green); color: #fff; font-weight: 800; }
+.si-state.warn { background: var(--amber-bg); color: var(--amber); border: 2px solid var(--amber); font-size: 13px; }
+.si-state.empty { background: var(--gray-bg); color: var(--text-muted); border: 2px solid var(--border); font-size: 12px; }
+
+.si-content {}
+.si-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.si-detail { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+.si-detail.warn { color: var(--amber); }
+.si-detail.done { color: var(--green); }
+
+.si-value {
+  font-size: 11px; font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--text-muted); text-align: right;
+}
+.si-value.done { color: var(--green); }
+.si-value.warn { color: var(--amber); }
+
+.si-action {}
+.btn-resume {
+  padding: 7px 16px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--vani-border);
+  background: var(--vani-soft); color: var(--vani);
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.btn-resume:hover { background: var(--vani-glow); border-color: var(--vani); }
+
+.btn-add {
+  padding: 7px 16px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: transparent; color: var(--text-dim);
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.btn-add:hover { border-color: var(--vani-border); color: var(--vani); background: var(--vani-soft); }
+
+/* ═══ SCENARIO TABS (demo switcher) ═══ */
+.scenario-bar {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 24px; flex-wrap: wrap;
+}
+
+.scenario-label {
+  font-size: 11px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .6px;
+  font-family: 'IBM Plex Mono', monospace; margin-right: 4px;
+}
+
+.scenario-btn {
+  padding: 6px 14px; border-radius: 100px;
+  border: 1.5px solid var(--border);
+  background: var(--white); color: var(--text-dim);
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px; font-weight: 700;
+  cursor: pointer; transition: all .15s;
+}
+.scenario-btn:hover { border-color: var(--vani-border); color: var(--vani); background: var(--vani-soft); }
+.scenario-btn.active { border-color: var(--vani); color: var(--vani); background: var(--vani-soft); }
+
+/* ═══ QUICK ACTIONS ═══ */
+.quick-actions {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 12px; margin-bottom: 20px;
+}
+
+.qa-card {
+  background: var(--white); border: 1.5px solid var(--border);
+  border-radius: var(--radius); padding: 20px 22px;
+  cursor: pointer; transition: all .2s;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.qa-card:hover { border-color: var(--vani-border); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.qa-card.primary { border-color: var(--vani); background: var(--vani-soft); }
+
+.qa-icon { font-size: 22px; }
+.qa-title { font-size: 14px; font-weight: 800; letter-spacing: -.2px; }
+.qa-desc { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+.qa-card.primary .qa-desc { color: rgba(255,107,43,.7); }
+.qa-arrow { font-size: 16px; color: var(--text-muted); margin-top: auto; }
+.qa-card.primary .qa-arrow { color: var(--vani); }
+
+/* ═══ TEST ENV BANNER ═══ */
+.test-banner {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 20px;
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 20px;
+}
+.tb-icon { font-size: 18px; flex-shrink: 0; }
+.tb-content {}
+.tb-title { font-size: 13px; font-weight: 800; color: var(--amber); margin-bottom: 2px; }
+.tb-sub { font-size: 12px; color: rgba(217,119,6,.8); line-height: 1.5; }
+.tb-action {
+  margin-left: auto; padding: 7px 16px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--amber-border); background: transparent;
+  color: var(--amber); font-family: 'Outfit', sans-serif;
+  font-size: 12px; font-weight: 700; cursor: pointer; flex-shrink: 0;
+  transition: all .15s;
+}
+.tb-action:hover { background: rgba(217,119,6,.08); }
+
+/* ═══ COMPLETION SUMMARY (all done state) ═══ */
+.all-done-card {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 32px;
+  box-shadow: var(--shadow); text-align: center;
+  display: none;
+}
+
+.all-done-orb {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--green-bg); border: 2px solid var(--green-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; margin: 0 auto 20px;
+}
+
+.all-done-title { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+.all-done-sub { font-size: 14px; color: var(--text-dim); margin-bottom: 24px; line-height: 1.55; }
+
+.summary-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; margin-bottom: 24px; text-align: left;
+}
+
+.summary-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface); border: 1px solid var(--border-lt);
+  border-radius: var(--radius-sm);
+}
+.summary-check { color: var(--green); font-size: 14px; font-weight: 800; flex-shrink: 0; }
+.summary-text .st-name { font-size: 12px; font-weight: 700; }
+.summary-text .st-val { font-size: 11px; color: var(--text-muted); font-family: 'IBM Plex Mono', monospace; }
+
+/* ═══ DEV NAV ═══ */
+.dev-nav { position: fixed; top: 72px; right: 16px; background: rgba(26,24,22,.92); backdrop-filter: blur(12px); padding: 10px 14px; border-radius: 10px; display: flex; flex-direction: column; gap: 5px; z-index: 400; }
+.dev-nav-label { color: rgba(255,255,255,.4); font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 4px; display: block; }
+.dev-btn { padding: 5px 12px; border-radius: 6px; border: none; font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; cursor: pointer; transition: all .15s; background: rgba(255,255,255,.08); color: rgba(255,255,255,.7); text-align: left; }
+.dev-btn:hover { background: rgba(255,107,43,.2); color: var(--vani); }
+.dev-btn.active { background: rgba(255,107,43,.15); color: var(--vani); }
+</style>
+</head>
+<body>
+
+<!-- HEADER (simulated product shell) -->
+<header class="onb-header">
+  <div class="logo">
+    <div class="logo-mark">C</div>
+    <div><span class="logo-name">ContractNest</span><span class="logo-sub">by Vikuna</span></div>
+  </div>
+
+  <div class="nav-items">
+    <div class="nav-item">Dashboard</div>
+    <div class="nav-item">Contracts</div>
+    <div class="nav-item">Contacts</div>
+    <div class="nav-item active">Getting Started</div>
+    <div class="nav-item">Settings</div>
+  </div>
+
+  <!-- Existing TEST/LIVE switch -->
+  <div class="env-switch" id="env-switch">
+    <button class="env-btn active-test" id="btn-test" onclick="setEnv('test')">TEST</button>
+    <button class="env-btn" id="btn-live" onclick="setEnv('live')">LIVE</button>
+  </div>
+</header>
+
+<!-- MAIN LAYOUT -->
+<div class="main-layout">
+
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <span class="sidebar-label">Setup</span>
+      <div class="sidebar-item active">
+        <span class="si-icon">🚀</span>
+        Getting Started
+      </div>
+      <div class="sidebar-item">
+        <span class="si-icon">🏢</span>
+        Business Profile
+      </div>
+      <div class="sidebar-item">
+        <span class="si-icon">🎨</span>
+        Theme
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <span class="sidebar-label">Catalog</span>
+      <div class="sidebar-item">
+        <span class="si-icon">📋</span>
+        Service Catalog
+        <span class="si-badge green">12</span>
+      </div>
+      <div class="sidebar-item">
+        <span class="si-icon">📄</span>
+        Contract Templates
+        <span class="si-badge green">3</span>
+      </div>
+      <div class="sidebar-item">
+        <span class="si-icon">💰</span>
+        Pricing
+        <span class="si-badge" id="pricing-badge">4 pending</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <span class="sidebar-label">Registry</span>
+      <div class="sidebar-item">
+        <span class="si-icon">🔧</span>
+        Equipment Registry
+      </div>
+      <div class="sidebar-item">
+        <span class="si-icon">🏗️</span>
+        Facility Hierarchy
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <span class="sidebar-label">Test Data</span>
+      <div class="sidebar-item">
+        <span class="si-icon">👥</span>
+        Sample Contacts
+        <span class="si-badge new">5 ready</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <main class="content-area">
+
+    <!-- Scenario switcher (prototype only) -->
+    <div class="scenario-bar">
+      <span class="scenario-label">Preview scenario:</span>
+      <button class="scenario-btn active" onclick="setScenario('partial', this)">Pricing incomplete</button>
+      <button class="scenario-btn" onclick="setScenario('buyer', this)">Add buyer capability</button>
+      <button class="scenario-btn" onclick="setScenario('served', this)">New industry served</button>
+      <button class="scenario-btn" onclick="setScenario('done', this)">All complete</button>
+    </div>
+
+    <!-- TEST env banner -->
+    <div class="test-banner" id="test-banner">
+      <div class="tb-icon">🧪</div>
+      <div class="tb-content">
+        <div class="tb-title">You're in Test Mode</div>
+        <div class="tb-sub">5 sample clients are ready. Everything you do here is practice — no real client affected.</div>
+      </div>
+      <button class="tb-action" onclick="setEnv('live')">Switch to Live →</button>
+    </div>
+
+    <!-- GS header -->
+    <div class="gs-header">
+      <div class="gs-eyebrow">Getting Started</div>
+      <h1 class="gs-title" id="gs-title">Almost there, Rajesh.</h1>
+      <p class="gs-sub" id="gs-sub">Sharma Elevators is set up — a few things left before you're fully live.</p>
+    </div>
+
+    <!-- VaNi bubble -->
+    <div class="vani-bubble" id="vani-gs-bubble">
+      <div class="vani-av">V</div>
+      <div class="vani-msg" id="vani-gs-msg">
+        Your catalog is ready and test environment is live.
+        <strong>Set your remaining prices</strong> and you're good to go.
+      </div>
+    </div>
+
+    <!-- SCENARIO: Pricing incomplete -->
+    <div id="scenario-partial">
+
+      <!-- Setup progress -->
+      <div class="setup-card">
+        <div class="setup-card-hdr">
+          <div class="setup-card-title">Setup Progress — Sharma Elevators</div>
+          <div class="setup-progress-pill spp-partial">3 of 5 complete</div>
+        </div>
+        <div class="setup-items">
+
+          <div class="setup-item">
+            <div class="si-state done">✓</div>
+            <div class="si-content">
+              <div class="si-name">Business details</div>
+              <div class="si-detail done">Sharma Elevators Pvt Ltd · Hyderabad · GST verified</div>
+            </div>
+            <div class="si-value done">Done</div>
+            <div class="si-action"></div>
+          </div>
+
+          <div class="setup-item">
+            <div class="si-state done">✓</div>
+            <div class="si-content">
+              <div class="si-name">Industry & catalog</div>
+              <div class="si-detail done">Lifts & Elevators · 12 blocks · 3 templates</div>
+            </div>
+            <div class="si-value done">Done</div>
+            <div class="si-action"></div>
+          </div>
+
+          <div class="setup-item">
+            <div class="si-state done">✓</div>
+            <div class="si-content">
+              <div class="si-name">Test environment</div>
+              <div class="si-detail done">5 sample clients ready · catalog mirrored</div>
+            </div>
+            <div class="si-value done">Done</div>
+            <div class="si-action"></div>
+          </div>
+
+          <div class="setup-item" style="background: var(--amber-bg);">
+            <div class="si-state warn">!</div>
+            <div class="si-content">
+              <div class="si-name">Pricing</div>
+              <div class="si-detail warn">4 of 12 prices set · 8 blocks missing prices</div>
+            </div>
+            <div class="si-value warn">8 pending</div>
+            <div class="si-action">
+              <button class="btn-resume" onclick="alert('→ Screen 8A pricing review')">Resume →</button>
+            </div>
+          </div>
+
+          <div class="setup-item">
+            <div class="si-state empty">○</div>
+            <div class="si-content">
+              <div class="si-name">Buyer capability</div>
+              <div class="si-detail">Not set up · Add asset registry to receive services too</div>
+            </div>
+            <div class="si-value">Not started</div>
+            <div class="si-action">
+              <button class="btn-add" onclick="setScenario('buyer', document.querySelector(\'.scenario-btn:nth-child(3)\'))">Add →</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="quick-actions">
+        <div class="qa-card primary" onclick="alert('→ Screen 8A pricing review')">
+          <div class="qa-icon">💰</div>
+          <div class="qa-title">Complete your pricing</div>
+          <div class="qa-desc">8 blocks still need prices. Takes about 3 minutes.</div>
+          <div class="qa-arrow">→</div>
+        </div>
+        <div class="qa-card" onclick="alert('→ TEST env · contract creation')">
+          <div class="qa-icon">🧪</div>
+          <div class="qa-title">Try a test contract</div>
+          <div class="qa-desc">5 sample clients are ready in test mode. Practice the full flow.</div>
+          <div class="qa-arrow">→</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SCENARIO: Add buyer -->
+    <div id="scenario-buyer" style="display:none">
+
+      <div class="setup-card">
+        <div class="setup-card-hdr">
+          <div class="setup-card-title">Adding Buyer Capability</div>
+          <div class="setup-progress-pill spp-empty">Not started</div>
+        </div>
+        <div class="setup-items">
+
+          <div class="setup-item">
+            <div class="si-state done">✓</div>
+            <div class="si-content">
+              <div class="si-name">Seller setup</div>
+              <div class="si-detail done">Complete · 12 blocks · pricing set</div>
+            </div>
+            <div class="si-value done">Done</div>
+            <div class="si-action"></div>
+          </div>
+
+          <div class="setup-item" style="background:var(--vani-soft);">
+            <div class="si-state empty" style="border-color:var(--vani);color:var(--vani)">+</div>
+            <div class="si-content">
+              <div class="si-name">Asset registry</div>
+              <div class="si-detail">VaNi will seed your equipment registry from your industry</div>
+            </div>
+            <div class="si-value">Ready to add</div>
+            <div class="si-action">
+              <button class="btn-resume" onclick="alert('→ VaNi consent screen (buyer side)')">Set up →</button>
+            </div>
+          </div>
+
+          <div class="setup-item">
+            <div class="si-state empty">○</div>
+            <div class="si-content">
+              <div class="si-name">Facility hierarchy</div>
+              <div class="si-detail">Added automatically with asset registry</div>
+            </div>
+            <div class="si-value">Pending</div>
+            <div class="si-action"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="quick-actions">
+        <div class="qa-card primary" onclick="alert('→ Buyer VaNi consent')">
+          <div class="qa-icon">🏢</div>
+          <div class="qa-title">Set up buyer side</div>
+          <div class="qa-desc">VaNi will configure your asset registry in about 60 seconds.</div>
+          <div class="qa-arrow">→</div>
+        </div>
+        <div class="qa-card" onclick="alert('→ TEST env')">
+          <div class="qa-icon">🧪</div>
+          <div class="qa-title">Try a test contract first</div>
+          <div class="qa-desc">You can set up buyer later. Practice sending a contract now.</div>
+          <div class="qa-arrow">→</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SCENARIO: New industry served -->
+    <div id="scenario-served" style="display:none">
+
+      <div class="setup-card">
+        <div class="setup-card-hdr">
+          <div class="setup-card-title">New Industry Detected</div>
+          <div class="setup-progress-pill spp-partial">Needs seeding</div>
+        </div>
+        <div class="setup-items">
+
+          <div class="setup-item" style="background:var(--vani-soft);">
+            <div class="si-state warn" style="background:var(--vani-soft);border-color:var(--vani);color:var(--vani)">!</div>
+            <div class="si-content">
+              <div class="si-name">Healthcare added to served industries</div>
+              <div class="si-detail">You added Healthcare to your served industries in settings. VaNi can seed hospital-specific blocks now.</div>
+            </div>
+            <div class="si-value" style="color:var(--vani)">New</div>
+            <div class="si-action">
+              <button class="btn-resume" onclick="alert('→ Incremental seed for Healthcare')">Seed now →</button>
+            </div>
+          </div>
+
+          <div class="setup-item">
+            <div class="si-state done">✓</div>
+            <div class="si-content">
+              <div class="si-name">Existing L&E catalog</div>
+              <div class="si-detail done">12 blocks intact · not affected</div>
+            </div>
+            <div class="si-value done">Safe</div>
+            <div class="si-action"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="vani-bubble" style="margin-bottom:0">
+        <div class="vani-av">V</div>
+        <div class="vani-msg">
+          You added <strong>Healthcare</strong> to your served industries.
+          I can add <span class="hl">6 hospital-specific blocks</span> to your catalog.
+          Your existing L&E blocks are not affected.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SCENARIO: All done -->
+    <div id="scenario-done" style="display:none">
+
+      <div class="all-done-card" style="display:block">
+        <div class="all-done-orb">✓</div>
+        <div class="all-done-title">Sharma Elevators is fully set up.</div>
+        <div class="all-done-sub">Everything is configured and your test environment is ready.</div>
+
+        <div class="summary-grid">
+          <div class="summary-item">
+            <div class="summary-check">✓</div>
+            <div class="summary-text">
+              <div class="st-name">Service catalog</div>
+              <div class="st-val">12 blocks · INR</div>
+            </div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-check">✓</div>
+            <div class="summary-text">
+              <div class="st-name">Contract templates</div>
+              <div class="st-val">3 ready</div>
+            </div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-check">✓</div>
+            <div class="summary-text">
+              <div class="st-name">Pricing</div>
+              <div class="st-val">12 of 12 set</div>
+            </div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-check">✓</div>
+            <div class="summary-text">
+              <div class="st-name">Test environment</div>
+              <div class="st-val">5 sample clients</div>
+            </div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-check">✓</div>
+            <div class="summary-text">
+              <div class="st-name">Equipment types</div>
+              <div class="st-val">4 types active</div>
+            </div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-check">✓</div>
+            <div class="summary-text">
+              <div class="st-name">Compliance</div>
+              <div class="st-val">BIS · NBC active</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="vani-bubble" style="text-align:left;margin-bottom:0">
+          <div class="vani-av">V</div>
+          <div class="vani-msg">
+            All done. <strong>Try a test contract</strong> to see the full flow —
+            or switch to live when you're ready.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- DEV NAV -->
+<div class="dev-nav">
+  <span class="dev-nav-label">Batch 5 · Screen 0</span>
+  <button class="dev-btn active" id="nav-partial" onclick="setScenario('partial', this)">Pricing incomplete</button>
+  <button class="dev-btn" id="nav-buyer" onclick="setScenario('buyer', this)">Add buyer</button>
+  <button class="dev-btn" id="nav-served" onclick="setScenario('served', this)">New industry</button>
+  <button class="dev-btn" id="nav-done" onclick="setScenario('done', this)">All complete</button>
+  <div style="height:1px;background:rgba(255,255,255,.08);margin:4px 0"></div>
+  <button class="dev-btn" onclick="alert('All batches complete →\nReady for Claude Code brief')">→ Claude Code Brief</button>
+</div>
+
+<script>
+const scenarios = {
+  partial: {
+    title: 'Almost there, Rajesh.',
+    sub: 'Sharma Elevators is set up — finish your pricing and you\'re ready for your first contract.',
+    vani: 'Your catalog is ready and test environment is live. <strong>Set your remaining 8 prices</strong> and you\'re good to go.',
+  },
+  buyer: {
+    title: 'Add buyer capability.',
+    sub: 'Sharma Elevators can also receive contracts. Set up your asset registry in about 60 seconds.',
+    vani: 'You\'re set up as a <strong>seller</strong>. Want to also <strong>receive contracts</strong> from your suppliers? I\'ll configure your asset registry.',
+  },
+  served: {
+    title: 'New industry detected.',
+    sub: 'You added Healthcare to your served industries. VaNi can seed hospital-specific blocks to your catalog.',
+    vani: 'You added <strong>Healthcare</strong> to your served industries. I\'ll add 6 hospital-specific catalog blocks — your existing L&E blocks are not affected.',
+  },
+  done: {
+    title: 'Everything\'s set up.',
+    sub: 'Sharma Elevators is fully configured on ContractNest.',
+    vani: 'All done. <strong>Try a test contract</strong> to see the full flow — or switch to live when you\'re ready.',
+  },
+};
+
+function setScenario(key, el) {
+  // Update scenario display
+  ['partial','buyer','served','done'].forEach(s => {
+    const el = document.getElementById('scenario-' + s);
+    if (el) el.style.display = 'none';
+  });
+  const target = document.getElementById('scenario-' + key);
+  if (target) target.style.display = 'block';
+
+  // Update header text
+  const data = scenarios[key];
+  document.getElementById('gs-title').textContent = data.title;
+  document.getElementById('gs-sub').textContent = data.sub;
+  document.getElementById('vani-gs-msg').innerHTML = data.vani;
+
+  // Update buttons
+  document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.dev-btn').forEach(b => b.classList.remove('active'));
+
+  if (el) el.classList.add('active');
+  const navBtn = document.getElementById('nav-' + key);
+  if (navBtn) navBtn.classList.add('active');
+
+  // Show/hide test banner based on scenario
+  document.getElementById('test-banner').style.display = key === 'done' ? 'none' : 'flex';
+}
+
+function setEnv(env) {
+  const testBtn = document.getElementById('btn-test');
+  const liveBtn = document.getElementById('btn-live');
+  const banner = document.getElementById('test-banner');
+
+  testBtn.className = 'env-btn' + (env === 'test' ? ' active-test' : '');
+  liveBtn.className = 'env-btn' + (env === 'live' ? ' active-live' : '');
+  banner.style.display = env === 'test' ? 'flex' : 'none';
+}
+</script>
+</body>
+</html>
