@@ -30,6 +30,6 @@ ON CONFLICT (tenant_id, step_id) DO NOTHING;
 
 -- 3. Record migration
 INSERT INTO VN_migrations (filename, checksum, applied_by, notes)
-VALUES ('003_ki_set_tenant_context.sql', md5('003_ki_set_tenant_context_v1.0.0'), 'manual',
+VALUES ('103_ki_set_tenant_context.sql', md5('003_ki_set_tenant_context_v1.0.0'), 'manual',
         'KI-Prime: Create set_tenant_context() + seed missing onboarding steps')
 ON CONFLICT (filename) DO NOTHING;

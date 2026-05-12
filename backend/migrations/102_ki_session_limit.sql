@@ -24,6 +24,6 @@ CREATE TRIGGER ki_subscription_session_limit
 
 -- Record migration
 INSERT INTO VN_migrations (filename, checksum, applied_by, notes)
-VALUES ('002_ki_session_limit.sql', md5('002_ki_session_limit_v1.0.0'), 'manual',
+VALUES ('102_ki_session_limit.sql', md5('002_ki_session_limit_v1.0.0'), 'manual',
         'KI-Prime: Override free plan max_sessions from 1 to 5')
 ON CONFLICT DO NOTHING;
