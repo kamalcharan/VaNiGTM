@@ -1,5 +1,5 @@
 /**
- * KI-Prime — Centralized Navigation Config
+ * VaNi-GTM — Centralized Navigation Config
  *
  * Single source of truth for all sidebar navigation items.
  * Each item maps to a skill + function + recipe.
@@ -39,7 +39,7 @@ function Icon({ children, ...props }: { children: ReactNode } & React.SVGProps<S
 
 export const NAV_ITEMS: NavItem[] = [
 
-  /* ── MAIN (core advisory workflow) ─────────────────── */
+  /* ── MAIN (GTM workflow) ───────────────────────────── */
 
   {
     id: 'dashboard',
@@ -72,56 +72,6 @@ export const NAV_ITEMS: NavItem[] = [
     recipe: 'client-list',
   },
   {
-    id: 'portfolio',
-    label: 'Portfolio',
-    icon: <Icon><path d="M21 12V7H5a2 2 0 010-4h14v4" /><path d="M3 5v14a2 2 0 002 2h16v-5" /><circle cx="18" cy="14" r="2" /></Icon>,
-    href: '/portfolio',
-    section: 'main',
-    skill: 'portfolio-skill',
-    fn: 'get_holdings',
-    recipe: 'portfolio-view',
-  },
-  {
-    id: 'transactions',
-    label: 'Transactions',
-    icon: <Icon><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></Icon>,
-    href: '/transactions',
-    section: 'main',
-    skill: 'transaction-skill',
-    fn: 'get_transactions',
-    recipe: 'data-table',
-  },
-  {
-    id: 'goals',
-    label: 'Goals',
-    icon: <Icon><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></Icon>,
-    href: '/goals',
-    section: 'main',
-    skill: 'planning-skill',
-    fn: 'get_goals',
-    recipe: 'goal-dashboard',
-  },
-  {
-    id: 'planning',
-    label: 'Planning',
-    icon: <Icon><path d="M2 20h20" /><path d="M5 20V10l4-5 4 3 4-6 3 4v14" /></Icon>,
-    href: '/planning',
-    section: 'main',
-    skill: 'planning-skill',
-    fn: 'run_projection',
-    recipe: 'planning-playground',
-  },
-  {
-    id: 'my-nav',
-    label: 'My NAV',
-    icon: <Icon><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></Icon>,
-    href: '/my-nav',
-    section: 'main',
-    skill: 'market-skill',
-    fn: 'get_bookmarks',
-    recipe: 'my-nav',
-  },
-  {
     id: 'campaigns',
     label: 'Campaigns',
     icon: <Icon><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></Icon>,
@@ -152,40 +102,8 @@ export const NAV_ITEMS: NavItem[] = [
     recipe: 'pulse-list',
   },
 
-  /* ── DATA (import, ETL, operations) ────────────────── */
+  /* ── DATA (import, operations) ─────────────────────── */
 
-  {
-    id: 'market-dashboard',
-    label: 'Market',
-    icon: <Icon><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 10l3 3 3-3 4 4" /></Icon>,
-    href: '/market/dashboard',
-    section: 'data',
-    skill: 'market-skill',
-    fn: 'get_market_stats',
-    recipe: 'market-dashboard',
-  },
-  {
-    id: 'market-history',
-    label: 'Market Data',
-    icon: <Icon><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></Icon>,
-    href: '/market/history',
-    section: 'data',
-    adminOnly: true,
-    skill: 'market-skill',
-    fn: 'get_market_indices',
-    recipe: 'market-history',
-  },
-  {
-    id: 'global-nav',
-    label: 'Global NAV',
-    icon: <Icon><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></Icon>,
-    href: '/global-nav',
-    section: 'data',
-    adminOnly: true,
-    skill: 'market-skill',
-    fn: 'search_schemes',
-    recipe: 'scheme-explorer',
-  },
   {
     id: 'import-dashboard',
     label: 'Import Dashboard',
@@ -207,26 +125,6 @@ export const NAV_ITEMS: NavItem[] = [
     recipe: 'import-wizard',
   },
   {
-    id: 'cruise-control',
-    label: 'Cruise Control',
-    icon: <Icon><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></Icon>,
-    href: '/cruise-control',
-    section: 'data',
-    skill: 'etl-skill',
-    fn: 'get_system_status',
-    recipe: 'cruise-control',
-  },
-  {
-    id: 'course-correction',
-    label: 'Course Correction',
-    icon: <Icon><line x1="6" y1="3" x2="6" y2="15" /><circle cx="18" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="M18 9a9 9 0 01-9 9" /></Icon>,
-    href: '/course-correction',
-    section: 'data',
-    skill: 'etl-skill',
-    fn: 'get_corrections',
-    recipe: 'course-correction',
-  },
-  {
     id: 'master-data',
     label: 'Master Data',
     icon: <Icon><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /></Icon>,
@@ -235,7 +133,7 @@ export const NAV_ITEMS: NavItem[] = [
     adminOnly: true,
   },
 
-  /* ── SYSTEM (alerts, reports, settings) ─────────────── */
+  /* ── SYSTEM (reports, demo, settings) ──────────────── */
 
   {
     id: 'reports',
@@ -279,16 +177,12 @@ export function getActiveNavId(pathname: string | null): string {
   const exact = NAV_ITEMS.find((item) => item.href === pathname);
   if (exact) return exact.id;
 
-  // Market sub-routes: /market/dashboard → market-dashboard, /market/history|indices → market-history
-  if (pathname.startsWith('/market/dashboard')) return 'market-dashboard';
-  if (pathname.startsWith('/market/')) return 'market-history';
-
   // Contact/client/customer profile pages
   if (pathname.startsWith('/contacts'))  return 'contacts';
   if (pathname.startsWith('/clients'))   return 'clients';
   if (pathname.startsWith('/customers')) return 'clients';
   if (pathname.startsWith('/campaigns')) return 'campaigns';
-  if (pathname.startsWith('/war-room'))   return 'war-room';
+  if (pathname.startsWith('/war-room'))  return 'war-room';
   if (pathname.startsWith('/demo-data')) return 'demo-data';
   if (pathname.startsWith('/pulses'))    return 'pulses';
 

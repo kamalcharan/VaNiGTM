@@ -8,9 +8,6 @@ import { getPool, createTenantDb, closePool, healthCheck } from './db';
 import { createAuthRouter, createOnboardingRouter, createTenantRouter } from './auth/auth.routes';
 import { createEtlRouter } from './etl/etl.routes';
 import { createIntakeRouter } from './intake/intake.routes';
-import { createNavRouter } from './nav/nav.routes';
-import { createMarketRouter } from './market/market.routes';
-import { createMarketAnalysisRouter } from './market/market-analysis.routes';
 import { createMasterDataRouter } from './master-data/master-data.routes';
 import { verifyAccessToken } from './auth/token.service';
 
@@ -66,11 +63,8 @@ async function main() {
   app.use('/api/v1/tenant', createTenantRouter(pool));
   app.use('/api/v1/intake', createIntakeRouter(pool));  // public — no JWT
   app.use('/api/v1/etl', createEtlRouter(pool));
-  app.use('/api/v1/nav', createNavRouter(pool));
-  app.use('/api/v1/market', createMarketRouter(pool));
-  app.use('/api/v1/market-analysis', createMarketAnalysisRouter(pool));
   app.use('/api/v1/master-data', createMasterDataRouter(pool));
-  console.log('[VaNi-GTM] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /nav, /market, /market-analysis, /master-data');
+  console.log('[VaNi-GTM] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /master-data');
 
   // Build skill registry
   const skillsDir = path.resolve(__dirname, 'skills');
