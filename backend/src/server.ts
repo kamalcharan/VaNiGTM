@@ -11,6 +11,7 @@ import { createIntakeRouter } from './intake/intake.routes';
 import { createMasterDataRouter } from './master-data/master-data.routes';
 import { createVaniRouter } from './skills/vani-skill/vani.routes';
 import { createIngestionRouter } from './skills/ingestion-skill/ingestion.routes';
+import { createProfileRouter } from './skills/profile-skill/profile.routes';
 import { verifyAccessToken } from './auth/token.service';
 
 const app = express();
@@ -68,7 +69,8 @@ async function main() {
   app.use('/api/v1/master-data', createMasterDataRouter(pool));
   app.use('/api/v1/vani', createVaniRouter(pool));
   app.use('/api/v1/ingest', createIngestionRouter(pool));
-  console.log('[VaNi-GTM] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /master-data, /vani, /ingest');
+  app.use('/api/v1/profile', createProfileRouter(pool));
+  console.log('[VaNi-GTM] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /master-data, /vani, /ingest, /profile');
 
   // Build skill registry
   const skillsDir = path.resolve(__dirname, 'skills');
