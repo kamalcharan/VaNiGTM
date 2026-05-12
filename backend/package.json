@@ -8,7 +8,9 @@
     "test": "jest --config jest.config.ts",
     "lint": "tsc --noEmit",
     "db:migrate": "tsx src/migrate.ts",
-    "db:seed": "tsx src/seed.ts"
+    "db:seed": "tsx src/seed.ts",
+    "worker": "tsx watch src/agent-core/worker.ts",
+    "worker:prod": "node dist/agent-core/worker.js"
   },
   "dependencies": {
     "@types/cookie-parser": "^1.4.10",
@@ -21,7 +23,8 @@
     "multer": "^2.1.1",
     "pdf-parse": "^1.1.1",
     "pg": "^8.13.1",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

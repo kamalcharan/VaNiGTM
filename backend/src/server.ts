@@ -9,6 +9,7 @@ import { createAuthRouter, createOnboardingRouter, createTenantRouter } from './
 import { createEtlRouter } from './etl/etl.routes';
 import { createIntakeRouter } from './intake/intake.routes';
 import { createMasterDataRouter } from './master-data/master-data.routes';
+import { createVaniRouter } from './skills/vani-skill/vani.routes';
 import { verifyAccessToken } from './auth/token.service';
 
 const app = express();
@@ -64,7 +65,8 @@ async function main() {
   app.use('/api/v1/intake', createIntakeRouter(pool));  // public — no JWT
   app.use('/api/v1/etl', createEtlRouter(pool));
   app.use('/api/v1/master-data', createMasterDataRouter(pool));
-  console.log('[VaNi-GTM] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /master-data');
+  app.use('/api/v1/vani', createVaniRouter(pool));
+  console.log('[VaNi-GTM] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /master-data, /vani');
 
   // Build skill registry
   const skillsDir = path.resolve(__dirname, 'skills');
