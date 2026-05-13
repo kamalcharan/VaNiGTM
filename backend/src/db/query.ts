@@ -87,7 +87,19 @@ export function translateParams(
 export function createTenantDb(pool: Pool, tenantId: string): SkillDb {
   /**
    * Execute a single query with named params.
-   * Acquires a client, sets tenant context, runs query, releases.
+   * Acquires a client, opens a transaction, sets tenant context, runs the
+   * query, commits, then releases.
+   *
+   * Why the transaction wrapper:
+   *   set_tenant_context() calls set_config(..., is_local := true), so the
+   *   GUC only survives until the current transaction ends. Without an
+   *   explicit BEGIN, each statement runs in its own autocommit transaction
+   *   — so the set_tenant_context call would set the GUC, COMMIT, and the
+   *   value would be reset BEFORE the user query runs. RLS policies that
+   *   cast current_setting('app.current_tenant_id', true)::uuid would then
+   *   blow up on the empty-string default ('' → invalid UUID).
+   *   Wrapping both statements in the same transaction keeps the GUC alive
+   *   for the user query.
    */
   async function query<T = Record<string, unknown>>(
     sql: string,
@@ -95,12 +107,21 @@ export function createTenantDb(pool: Pool, tenantId: string): SkillDb {
   ): Promise<QueryResult<T>> {
     const client = await pool.connect();
     try {
-      // RLS safety net: set tenant context on this connection
+      await client.query('BEGIN');
+      // RLS safety net: set tenant context AFTER BEGIN so the is_local=true
+      // setting persists for the user query below.
       await client.query('SELECT set_tenant_context($1)', [tenantId]);
 
       const { text, values } = translateParams(sql, params);
       const result = await client.query<T>(text, values);
+
+      await client.query('COMMIT');
       return { rows: result.rows };
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {
+        // ROLLBACK failed — connection may be broken, pool will discard it
+      });
+      throw err;
     } finally {
       client.release();
     }
@@ -125,9 +146,10 @@ export function createTenantDb(pool: Pool, tenantId: string): SkillDb {
   ): Promise<T> {
     const client = await pool.connect();
     try {
-      // Set tenant context BEFORE transaction begins
-      await client.query('SELECT set_tenant_context($1)', [tenantId]);
       await client.query('BEGIN');
+      // RLS safety net: set tenant context AFTER BEGIN so the is_local=true
+      // setting persists for every statement inside this transaction.
+      await client.query('SELECT set_tenant_context($1)', [tenantId]);
 
       // Create a transaction-scoped SkillDb that reuses this client
       const txDb: SkillDb = {
