@@ -105,7 +105,7 @@ async function recordTokenUsage(
                 daily_token_usage -> $date_key,
                 '{"vps":0,"escalation":0}'::jsonb
               ) || jsonb_build_object(
-                $source_key,
+                $source_key::text,
                 COALESCE(
                   ((daily_token_usage -> $date_key) ->> $source_key)::int,
                   0
