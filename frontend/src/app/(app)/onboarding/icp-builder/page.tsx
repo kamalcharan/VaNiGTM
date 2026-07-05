@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
@@ -12,8 +12,12 @@ import {
   VdfKpiCard,
   VdfLoader,
   VdfErrorScreen,
+  VdfInput,
 } from '@/components/vdf';
+import { SaveStatusIndicator, type SaveState } from './save-status';
+import { ArrayFieldEditor } from './array-field-editor';
 import s from './icp-builder-page.module.css';
+import f from '@/styles/forms.module.css';
 
 /* ── Types (mirrors backend/src/skills/profile-skill/profile.service.ts) ── */
 
@@ -53,6 +57,8 @@ interface TenantProfile {
   completion_detail: CompletionDetail;
 }
 
+type ProfileKey = keyof TenantProfile;
+
 const EMPTY_PROFILE: TenantProfile = {
   product_name: null, product_tagline: null, product_category: null, product_description: null,
   core_problem: null, key_differentiators: null, pricing_model: null, pricing_range: null,
@@ -71,9 +77,9 @@ const EMPTY_PROFILE: TenantProfile = {
 type SectionId = keyof CompletionDetail;
 
 interface FieldDef {
-  key: keyof TenantProfile;
+  key: ProfileKey;
   label: string;
-  type: 'text' | 'array';
+  type: 'text' | 'textarea' | 'number' | 'array';
 }
 
 interface SectionDef {
@@ -90,8 +96,8 @@ const SECTIONS: SectionDef[] = [
       { key: 'product_name', label: 'Product Name', type: 'text' },
       { key: 'product_tagline', label: 'Tagline', type: 'text' },
       { key: 'product_category', label: 'Category', type: 'text' },
-      { key: 'product_description', label: 'Description', type: 'text' },
-      { key: 'core_problem', label: 'Core Problem', type: 'text' },
+      { key: 'product_description', label: 'Description', type: 'textarea' },
+      { key: 'core_problem', label: 'Core Problem', type: 'textarea' },
       { key: 'key_differentiators', label: 'Key Differentiators', type: 'array' },
       { key: 'pricing_model', label: 'Pricing Model', type: 'text' },
       { key: 'pricing_range', label: 'Pricing Range', type: 'text' },
@@ -114,19 +120,25 @@ const SECTIONS: SectionDef[] = [
       { key: 'gtm_stage', label: 'GTM Stage', type: 'text' },
       { key: 'active_channels', label: 'Active Channels', type: 'array' },
       { key: 'current_mrr', label: 'Current MRR', type: 'text' },
-      { key: 'team_size', label: 'Team Size', type: 'text' },
+      { key: 'team_size', label: 'Team Size', type: 'number' },
     ],
   },
   {
     id: 'vision', label: 'Vision', max: 10,
     fields: [
-      { key: 'vision_statement', label: 'Vision Statement', type: 'text' },
+      { key: 'vision_statement', label: 'Vision Statement', type: 'textarea' },
       { key: 'target_market_size', label: 'Target Market Size', type: 'text' },
     ],
   },
 ];
 
 const WIZARD_STEPS = SECTIONS.map((sec) => ({ id: sec.id, label: sec.label }));
+
+const FIELD_LABEL_BY_KEY: Partial<Record<ProfileKey, string>> = Object.fromEntries(
+  SECTIONS.flatMap((sec) => sec.fields.map((field) => [field.key, field.label])),
+);
+
+const ARRAY_DEBOUNCE_MS = 450;
 
 function isNotFound(err: unknown): boolean {
   const e = err as Partial<ApiError> | undefined;
@@ -138,36 +150,24 @@ function sectionPct(sec: SectionDef, profile: TenantProfile): number {
   return Math.round((raw / sec.max) * 100);
 }
 
-function fieldValue(profile: TenantProfile, field: FieldDef): ReactNode {
-  const raw = profile[field.key];
-
-  if (field.type === 'array') {
-    const arr = (raw as string[] | null) ?? [];
-    if (arr.length === 0) return <span className={s.emptyValue}>{'—'}</span>;
-    return (
-      <ul className={s.bulletList}>
-        {arr.map((item, i) => <li key={i}>{item}</li>)}
-      </ul>
-    );
-  }
-
-  if (raw === null || raw === undefined || raw === '') {
-    return <span className={s.emptyValue}>{'—'}</span>;
-  }
-  return String(raw);
-}
-
 export default function IcpBuilderPage() {
   const { showToast } = useToast();
   const [profile, setProfile] = useState<TenantProfile | null>(null);
+  const [draft, setDraft] = useState<TenantProfile | null>(null);
+  const [draftInitialized, setDraftInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [pickedDefault, setPickedDefault] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<Partial<Record<ProfileKey, SaveState>>>({});
+
+  const lastAttempt = useRef<Partial<Record<ProfileKey, unknown>>>({});
+  const debounceTimers = useRef<Partial<Record<ProfileKey, ReturnType<typeof setTimeout>>>>({});
   const sectionRefs = useRef<Record<SectionId, HTMLDivElement | null>>({
     product: null, icp: null, gtm: null, vision: null,
   });
 
+  /* ── Initial fetch ── */
   useEffect(() => {
     let cancelled = false;
 
@@ -193,8 +193,18 @@ export default function IcpBuilderPage() {
     return () => { cancelled = true; };
   }, [showToast]);
 
-  // Default focus: the lowest-scoring section, so the user's attention goes
-  // to the biggest gap first. Only picked once, after the initial load.
+  /* ── Initialize the editable draft once, from the first loaded profile.
+     Never re-synced wholesale afterward — that would clobber in-progress
+     edits in other fields whenever any single field's save resolves. ── */
+  useEffect(() => {
+    if (profile && !draftInitialized) {
+      setDraft(profile);
+      setDraftInitialized(true);
+    }
+  }, [profile, draftInitialized]);
+
+  /* ── Default focus: the lowest-scoring section, so attention goes to the
+     biggest gap first. Only picked once, after the initial load. ── */
   useEffect(() => {
     if (!profile || pickedDefault) return;
     const pcts = SECTIONS.map((sec) => sectionPct(sec, profile));
@@ -203,17 +213,85 @@ export default function IcpBuilderPage() {
     setPickedDefault(true);
   }, [profile, pickedDefault]);
 
+  /* ── Clear any pending array-field debounce timers on unmount ── */
+  useEffect(() => {
+    const timers = debounceTimers.current;
+    return () => {
+      Object.values(timers).forEach((t) => t && clearTimeout(t));
+    };
+  }, []);
+
+  async function persistField(key: ProfileKey, value: unknown) {
+    setSaveStatus((prev) => ({ ...prev, [key]: 'saving' }));
+    lastAttempt.current[key] = value;
+
+    try {
+      const res = await apiFetch<{ profile: TenantProfile }>(API.gtmProfile.update, {
+        body: { [key]: value } as Record<string, unknown>,
+      });
+
+      // Full replace — response is the canonical row with recomputed
+      // completion_score/completion_detail, which drives the KPI card,
+      // per-section rings, and wizard completedSteps.
+      setProfile(res.profile);
+
+      // Scalar/number fields: sync the confirmed value back into draft too.
+      // Arrays are skipped here — the user may still be mid-edit (e.g. a
+      // freshly-added blank row) and a wholesale sync would erase that.
+      if (!Array.isArray(value)) {
+        setDraft((prev) => (prev ? { ...prev, [key]: res.profile[key] } : prev));
+      }
+
+      setSaveStatus((prev) => ({ ...prev, [key]: 'saved' }));
+      window.setTimeout(() => {
+        setSaveStatus((prev) => (prev[key] === 'saved' ? { ...prev, [key]: 'idle' } : prev));
+      }, 2000);
+    } catch (err) {
+      setSaveStatus((prev) => ({ ...prev, [key]: 'error' }));
+      const label = FIELD_LABEL_BY_KEY[key] ?? key;
+      showToast({ message: (err as ApiError).message || `Failed to save ${label}`, type: 'error' });
+    }
+  }
+
+  function retryField(key: ProfileKey) {
+    if (!(key in lastAttempt.current)) return;
+    persistField(key, lastAttempt.current[key]);
+  }
+
+  function updateDraft(key: ProfileKey, value: unknown) {
+    setDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
+  }
+
+  function handleScalarBlur(key: ProfileKey) {
+    if (!draft || !profile) return;
+    const raw = draft[key];
+    const current = profile[key];
+    const normalized = typeof raw === 'string' && raw.trim() === '' ? null : raw;
+    if (normalized === current) return; // unchanged — skip the save call
+    persistField(key, normalized);
+  }
+
+  function handleArrayChange(key: ProfileKey, next: string[]) {
+    updateDraft(key, next);
+    const timers = debounceTimers.current;
+    if (timers[key]) clearTimeout(timers[key]);
+    timers[key] = setTimeout(() => {
+      const clean = next.map((v) => v.trim()).filter((v) => v.length > 0);
+      persistField(key, clean);
+    }, ARRAY_DEBOUNCE_MS);
+  }
+
   function handleStepClick(index: number) {
     setCurrentIndex(index);
     const sec = SECTIONS[index];
     sectionRefs.current[sec.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  if (loading) {
+  if (loading || !draft || !profile) {
     return <VdfLoader message="Loading your ICP profile" hint="Fetching product, ICP, GTM, and vision data" />;
   }
 
-  if (loadError || !profile) {
+  if (loadError) {
     return (
       <VdfErrorScreen
         code={500}
@@ -227,6 +305,73 @@ export default function IcpBuilderPage() {
   const completedSteps = new Set(
     SECTIONS.filter((sec) => sectionPct(sec, profile) >= 60).map((sec) => sec.id),
   );
+
+  function renderField(field: FieldDef) {
+    const status = saveStatus[field.key] ?? 'idle';
+    const retry = () => retryField(field.key);
+
+    if (field.type === 'text') {
+      return (
+        <VdfInput
+          label={field.label}
+          value={(draft![field.key] as string) ?? ''}
+          onChange={(e) => updateDraft(field.key, e.target.value)}
+          onBlur={() => handleScalarBlur(field.key)}
+          rightElement={<SaveStatusIndicator state={status} onRetry={retry} />}
+        />
+      );
+    }
+
+    if (field.type === 'number') {
+      const raw = draft![field.key] as number | null;
+      return (
+        <VdfInput
+          label={field.label}
+          type="number"
+          value={raw != null ? String(raw) : ''}
+          onChange={(e) => {
+            const digits = e.target.value.replace(/[^\d]/g, '');
+            updateDraft(field.key, digits === '' ? null : Number(digits));
+          }}
+          onBlur={() => handleScalarBlur(field.key)}
+          rightElement={<SaveStatusIndicator state={status} onRetry={retry} />}
+        />
+      );
+    }
+
+    if (field.type === 'textarea') {
+      return (
+        <div className={s.fieldGroup}>
+          <div className={s.fieldLabelRow}>
+            <label className={`${f.label} ${s.fieldLabelText}`}>{field.label}</label>
+            <SaveStatusIndicator state={status} onRetry={retry} />
+          </div>
+          <textarea
+            className={f.textarea}
+            rows={3}
+            value={(draft![field.key] as string) ?? ''}
+            onChange={(e) => updateDraft(field.key, e.target.value)}
+            onBlur={() => handleScalarBlur(field.key)}
+          />
+        </div>
+      );
+    }
+
+    // array
+    return (
+      <div className={s.fieldGroup}>
+        <div className={s.fieldLabelRow}>
+          <label className={`${f.label} ${s.fieldLabelText}`}>{field.label}</label>
+          <SaveStatusIndicator state={status} onRetry={retry} />
+        </div>
+        <ArrayFieldEditor
+          values={(draft![field.key] as string[] | null) ?? []}
+          onChange={(next) => handleArrayChange(field.key, next)}
+          placeholder="Add an item…"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={s.page}>
@@ -269,11 +414,10 @@ export default function IcpBuilderPage() {
                   <div className={s.sectionTitle}>{sec.label}</div>
                   <VdfReadinessRing pct={pct} size={40} strokeWidth={3} />
                 </div>
-                <div className={s.readGrid}>
+                <div className={s.fieldGrid}>
                   {sec.fields.map((field) => (
-                    <div key={field.key} className={s.readItem}>
-                      <div className={s.readLabel}>{field.label}</div>
-                      <div className={s.readValue}>{fieldValue(profile, field)}</div>
+                    <div key={field.key} className={field.type === 'textarea' || field.type === 'array' ? s.fieldFull : undefined}>
+                      {renderField(field)}
                     </div>
                   ))}
                 </div>

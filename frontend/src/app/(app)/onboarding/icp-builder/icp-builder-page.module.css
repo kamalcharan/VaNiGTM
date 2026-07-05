@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   ICP BUILDER — page layout (read-only skeleton stage)
+   ICP BUILDER — page layout (editable, auto-save-on-blur stage)
    ═══════════════════════════════════════════════════════ */
 
 .page {
@@ -65,64 +65,124 @@
   color: var(--color-fg);
 }
 
-/* ── Read Mode Grid (mirrors business-tab.tsx pattern) ── */
-.readGrid {
+/* ── Field Grid ───────────────────────────────────────
+   Editable fields laid out 2-up; textarea/array fields span
+   full width (mirrors business-tab.tsx's address-block pattern). ── */
+.fieldGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0;
+  gap: 20px 24px;
 }
 
-.readItem {
-  padding: 16px 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
-}
-.readItem:nth-last-child(-n+2) { border-bottom: none; }
-
-.readLabel {
-  font-size: 0.6rem;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-  margin-bottom: 4px;
+.fieldFull {
+  grid-column: 1 / -1;
 }
 
-.readValue {
-  font-size: 0.95rem;
-  color: var(--color-fg);
-  font-weight: 500;
-}
-
-.emptyValue {
-  color: var(--color-muted);
-  font-weight: 400;
-}
-
-.bulletList {
-  margin: 0;
-  padding-left: 18px;
+.fieldGroup {
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 
-.bulletList li {
-  font-size: 0.95rem;
-  color: var(--color-fg);
-  font-weight: 500;
+.fieldLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: var(--label-margin-bottom, 6px);
+}
+
+.fieldLabelText {
+  margin-bottom: 0;
 }
 
 @media (max-width: 768px) {
   .body { padding: 16px 20px 24px; }
-  .readGrid { grid-template-columns: 1fr; }
-
-  /* Grid collapses to 1 column here, so the desktop -n+2 last-row rule would
-     strip the border from the second-to-last item too. Restore it, then
-     remove the border only from the true last item. */
-  .readItem:nth-last-child(-n+2) { border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent); }
-  .readItem:last-child { border-bottom: none; }
+  .fieldGrid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {
   .body { padding: 12px 14px 20px; }
+}
+
+/* ── Array Field Editor ──────────────────────────────── */
+.arrayList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.arrayRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.arrayInput {
+  composes: input from '../../../../styles/forms.module.css';
+  flex: 1;
+}
+
+.arrayRemove {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.arrayRemove:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.arrayAdd {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px dashed var(--color-border);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.arrayAdd:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+/* ── Save Status Indicator ────────────────────────────── */
+.saveStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+.saveStatusSaving {
+  color: var(--color-muted);
+}
+
+.saveStatusSaved {
+  color: var(--color-success);
+}
+
+.saveStatusError {
+  color: var(--color-danger);
+  cursor: pointer;
+}
+.saveStatusError:hover {
+  text-decoration: underline;
 }
