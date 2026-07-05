@@ -1,0 +1,68 @@
+/* ═══════════════════════════════════════════════════════
+   STORYTELLER — deck list page
+   ═══════════════════════════════════════════════════════ */
+
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  min-height: 100%;
+}
+
+.body {
+  padding: 20px 32px 32px;
+}
+
+.deckList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.deckRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  transition: all 150ms;
+}
+
+.deckRowLink {
+  cursor: pointer;
+}
+.deckRowLink:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+.deckRowInert {
+  opacity: 0.65;
+}
+
+.deckMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.deckTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.deckDate {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+@media (max-width: 768px) {
+  .body { padding: 16px 20px 24px; }
+}
+
+@media (max-width: 480px) {
+  .body { padding: 12px 14px 20px; }
+}

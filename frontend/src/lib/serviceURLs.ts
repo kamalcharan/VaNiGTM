@@ -207,6 +207,41 @@ export const API = {
     },
   },
 
+  /* ── Storyteller ──────────────────────────────────── */
+
+  storyteller: {
+    list: {
+      method: 'GET',
+      path: '/api/v1/storyteller',
+      auth: true,
+      description: 'List all decks for the current tenant',
+    },
+    build: {
+      method: 'POST',
+      path: '/api/v1/storyteller/build',
+      auth: true,
+      description: 'Build a new deck from the tenant profile and knowledge graph',
+    },
+    get: {
+      method: 'GET',
+      path: '/api/v1/storyteller/:id',
+      auth: true,
+      description: 'Get a single deck by id',
+    },
+    approve: {
+      method: 'PATCH',
+      path: '/api/v1/storyteller/:id/approve',
+      auth: true,
+      description: 'Approve a deck and mint its share token',
+    },
+    qa: {
+      method: 'POST',
+      path: '/api/v1/storyteller/:id/qa',
+      auth: true,
+      description: 'Ask a grounded question about a deck',
+    },
+  },
+
   /* ── ETL ──────────────────────────────────────────── */
 
   etl: {
