@@ -23,6 +23,7 @@ import { emitEvent, type GTEvent } from './event.store';
 import { createRun, setStatus, appendStep } from './agent.runner';
 import { VaniAgent } from '../skills/vani-skill/vani.agent';
 import { IngestionAgent } from '../skills/ingestion-skill/ingestion.agent';
+import { recalculateProfileFromNodes } from '../skills/profile-skill/profile.service';
 
 /* ── Event Queue interface ──────────────────────────────────────────────── */
 
@@ -111,6 +112,29 @@ const AGENT_REGISTRY: Record<string, AgentHandler> = {
         message: folderSet
           ? 'GDrive connected and folder sync triggered'
           : 'GDrive connected — folder not set yet',
+      },
+    });
+  },
+
+  // Fires after IngestionAgent.run() writes nodes from any source (Drive
+  // file today; direct upload / URL once those entry points exist).
+  // Recomputes the typed profile from current gt_kg_nodes state — same
+  // shared function VaniAgent.handleHumanApproved() calls — and emits
+  // PROFILE_COMPLETE if this crosses the threshold.
+  KNOWLEDGE_UPDATED: async (pool, tenantId, _payload, runId) => {
+    const result = await recalculateProfileFromNodes(
+      pool,
+      tenantId,
+      'ingestion-skill',
+      'Recalculated from ingested knowledge nodes',
+      runId,
+    );
+    await setStatus(pool, runId, 'completed', {
+      output: {
+        profile_id:          result.profile.id,
+        completion_score:    result.profile.completion_score,
+        crossed_threshold:   result.crossedCompletionThreshold,
+        missing_fields:      result.missingFields,
       },
     });
   },
