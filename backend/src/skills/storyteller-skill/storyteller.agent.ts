@@ -10,12 +10,14 @@
  * context for RLS). The public share route uses the raw pool.
  */
 
+import { randomBytes } from 'crypto';
 import type { Pool } from 'pg';
 import { createTenantDb } from '../../db';
 import { getProfile, type TenantProfile } from '../profile-skill/profile.service';
 import { getNodes, type KGNode } from '../../agent-core/kg.store';
 import { loadPrompt } from '../../agent-core/prompt.store';
-import { callLLMValidated } from '../../agent-core/llm.client';
+import { callLLM, callLLMValidated } from '../../agent-core/llm.client';
+import { emitEvent } from '../../agent-core/event.store';
 import { DeckSchema, type Deck } from './deck.schema';
 
 // Seeded prompt, reused as-is (namespace is vani-skill.*, not re-keyed).
@@ -97,8 +99,36 @@ export class StorytellerAgent {
     tenantId: string,
     presentationId: string,
   ): Promise<{ shareToken: string }> {
-    void pool; void tenantId; void presentationId;
-    throw new Error('NOT_IMPLEMENTED: approveDeck');
+    // URL-safe token, no padding — generated before the write.
+    const shareToken = randomBytes(24).toString('base64url');
+
+    const db = createTenantDb(pool, tenantId);
+    const result = await db.query<{ share_token: string }>(
+      `UPDATE gt_presentations
+          SET status = 'approved', share_token = $share_token, approved_at = NOW()
+        WHERE id = $id AND tenant_id = $tenant_id AND status = 'awaiting'
+        RETURNING share_token`,
+      { share_token: shareToken, id: presentationId, tenant_id: tenantId },
+    );
+
+    if (!result.rows[0]) {
+      throw new Error('DECK_NOT_APPROVABLE: not found, not yours, or already approved');
+    }
+
+    // Wake downstream — mirror how vani.agent emits PROFILE_COMPLETE.
+    await emitEvent(
+      pool,
+      tenantId,
+      'PRESENTATION_READY',
+      'agent',
+      {
+        presentation_id: presentationId,
+        tenant_id:       tenantId,
+        share_token:     shareToken,
+      },
+    );
+
+    return { shareToken };
   }
 
   /**
@@ -111,8 +141,48 @@ export class StorytellerAgent {
     presentationId: string,
     question: string,
   ): Promise<{ answer: string }> {
-    void pool; void tenantId; void presentationId; void question;
-    throw new Error('NOT_IMPLEMENTED: answerQuestion');
+    const db = createTenantDb(pool, tenantId);
+
+    // Load the deck (tenant-scoped).
+    const deckRow = await db.query<{ slides: unknown }>(
+      `SELECT slides FROM gt_presentations
+        WHERE id = $id AND tenant_id = $tenant_id`,
+      { id: presentationId, tenant_id: tenantId },
+    );
+    if (!deckRow.rows[0]) {
+      throw new Error('PRESENTATION_NOT_FOUND: deck not found');
+    }
+    const slides = deckRow.rows[0].slides;
+
+    // Grounded answer — free text, so callLLM (not callLLMValidated).
+    const system = await loadPrompt(pool, 'vani-skill.answer_question', tenantId);
+    const result = await callLLM({
+      tenantId,
+      pool,
+      runId: 0,   // required by LLMCallOptions; unused by callLLM
+      system,
+      messages: [{
+        role: 'user',
+        content: `DECK:\n${JSON.stringify(slides)}\n\nQUESTION: ${question}`,
+      }],
+      maxTokens: 400,
+      temperature: 0.3,
+    });
+    const answer = result.text;
+
+    // Log the exchange (tenant-scoped).
+    await db.query(
+      `INSERT INTO gt_qa_log (tenant_id, presentation_id, question, answer)
+       VALUES ($tenant_id, $presentation_id, $question, $answer)`,
+      {
+        tenant_id:       tenantId,
+        presentation_id: presentationId,
+        question,
+        answer,
+      },
+    );
+
+    return { answer };
   }
 }
 

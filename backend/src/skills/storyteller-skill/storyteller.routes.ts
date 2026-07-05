@@ -114,8 +114,13 @@ export function createStorytellerRouter(pool: Pool): Router {
       const result = await StorytellerAgent.approveDeck(pool, jwt.tenant_id, id);
       res.json(result);
     } catch (err) {
-      console.error('[Storyteller:/:id/approve]', err);
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });
+      const msg = messageOf(err);
+      if (msg.startsWith('DECK_NOT_APPROVABLE')) {
+        res.status(409).json({ error: { code: 'DECK_NOT_APPROVABLE', message: msg } });
+        return;
+      }
+      console.error('[Storyteller:/:id/approve]', msg);
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: msg } });
     }
   });
 
@@ -142,8 +147,28 @@ export function createStorytellerRouter(pool: Pool): Router {
 
   // ── GET /share/:token  (PUBLIC — no JWT) ─────────────────────────────────
   router.get('/share/:token', async (req: Request, res: Response) => {
-    // Stage 4: raw pool (no tenant context), scoped by share_token + approved.
-    res.status(501).json({ error: { code: 'NOT_IMPLEMENTED', message: 'GET /share/:token not implemented yet' } });
+    try {
+      const token = String(req.params.token);
+      // Raw pool, NO tenant context — intentionally cross-tenant, scoped by the
+      // unguessable share_token AND status='approved'. Returns ONLY the public
+      // fields; never id, tenant_id, status, or share_token.
+      const result = await pool.query<{ title: string | null; slides: unknown }>(
+        `SELECT title, slides
+           FROM gt_presentations
+          WHERE share_token = $1 AND status = 'approved'`,
+        [token],
+      );
+
+      const deck = result.rows[0];
+      if (!deck) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Presentation not found' } });
+        return;
+      }
+      res.json({ title: deck.title, slides: deck.slides });
+    } catch (err) {
+      console.error('[Storyteller:/share/:token]', err);
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });
+    }
   });
 
   return router;
