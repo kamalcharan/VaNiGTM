@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VaNi GTM Engine — Agent Runs</title>
+  <link rel="stylesheet" href="shared/styles.css">
+  <style>
+    .runs-shell { display: grid; grid-template-columns: 72px 1fr; min-height: 100vh; position: relative; z-index: 1; }
+
+    /* Sidebar - reuse */
+    .sidebar { background: var(--surface-0); border-right: 1px solid var(--border-subtle); display: flex; flex-direction: column; align-items: center; padding: 16px 0; gap: 4px; position: sticky; top: 0; height: 100vh; z-index: 100; }
+    .sidebar-logo { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; position: relative; }
+    .sidebar-logo .logo-mark { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--signal)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 14px; color: var(--void); }
+    .sidebar-logo::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); width: 24px; height: 1px; background: var(--border-default); }
+    .nav-item { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 10px; color: var(--text-tertiary); cursor: pointer; transition: all 0.3s; position: relative; text-decoration: none; }
+    .nav-item:hover { color: var(--text-secondary); background: var(--surface-2); }
+    .nav-item.active { color: var(--accent); background: var(--accent-pulse); }
+    .nav-item.active::before { content: ''; position: absolute; left: -12px; top: 50%; transform: translateY(-50%); width: 3px; height: 20px; background: var(--accent); border-radius: 0 2px 2px 0; }
+    .nav-item svg { width: 20px; height: 20px; }
+    .nav-tooltip { display: none; position: absolute; left: 64px; top: 50%; transform: translateY(-50%); background: var(--surface-3); color: var(--text-primary); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; white-space: nowrap; border: 1px solid var(--border-default); box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 200; }
+    .nav-item:hover .nav-tooltip { display: block; }
+    .nav-spacer { flex: 1; }
+
+    .runs-main { display: flex; flex-direction: column; overflow: hidden; }
+
+    .cmd-bar { display: flex; align-items: center; justify-content: space-between; padding: 16px 32px; border-bottom: 1px solid var(--border-subtle); flex-shrink: 0; }
+    .cmd-left { display: flex; align-items: center; gap: 16px; }
+    .cmd-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; }
+    .cmd-right { display: flex; align-items: center; gap: 12px; }
+
+    .runs-content { flex: 1; padding: 24px 32px; overflow-y: auto; }
+
+    /* ── Filter Bar ── */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 4px;
+    }
+
+    .f-chip {
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--surface-2);
+      color: var(--text-tertiary);
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .f-chip:hover { border-color: var(--border-default); color: var(--text-secondary); }
+    .f-chip.active { background: var(--accent-pulse); color: var(--accent); border-color: rgba(0,229,255,0.15); }
+
+    .filter-search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      padding: 6px 14px;
+      margin-left: auto;
+    }
+
+    .filter-search svg { color: var(--text-tertiary); flex-shrink: 0; width: 14px; height: 14px; }
+    .filter-search input { border: none; background: transparent; font-family: var(--font-body); font-size: 13px; color: var(--text-primary); outline: none; width: 200px; }
+    .filter-search input::placeholder { color: var(--text-ghost); }
+
+    /* ── Stats Summary ── */
+    .run-stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .run-stat-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .run-stat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .run-stat-val { font-family: var(--font-display); font-size: 24px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; }
+    .run-stat-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-tertiary); margin-top: 4px; }
+
+    /* ── Run Log Table ── */
+    .log-table { width: 100%; border-collapse: collapse; }
+
+    .log-table th {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      text-align: left;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-default);
+      background: var(--surface-0);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .log-table td {
+      padding: 12px 14px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: top;
+    }
+
+    .log-table tr:hover td { background: rgba(0,229,255,0.02); }
+
+    .log-table tr.expandable { cursor: pointer; }
+
+    /* Agent name badges */
+    .agent-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .agent-badge.orchestrator { background: rgba(136,153,176,0.08); color: var(--text-primary); }
+    .agent-badge.outreach { background: var(--accent-pulse); color: var(--accent); }
+    .agent-badge.prospecting { background: var(--signal-glow); color: var(--signal); }
+    .agent-badge.conversion { background: rgba(179,136,255,0.1); color: #b388ff; }
+    .agent-badge.aeo { background: var(--warn-glow); color: var(--warn); }
+    .agent-badge.feedback { background: rgba(255,138,101,0.1); color: #ff8a65; }
+
+    .run-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .run-status.success { color: var(--signal); }
+    .run-status.partial { color: var(--warn); }
+    .run-status.error { color: var(--danger); }
+
+    .run-status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .run-status.success .run-status-dot { background: var(--signal); }
+    .run-status.partial .run-status-dot { background: var(--warn); }
+    .run-status.error .run-status-dot { background: var(--danger); }
+
+    .run-duration {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    .run-time {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+
+    /* ── Expandable Detail Row ── */
+    .detail-row { display: none; }
+    .detail-row.open { display: table-row; }
+
+    .detail-cell {
+      padding: 0 14px 16px 14px;
+      background: var(--surface-0);
+    }
+
+    .detail-inner {
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .detail-section-title {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      margin-bottom: 10px;
+    }
+
+    .detail-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .detail-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .detail-item-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .detail-item-icon.skill { background: var(--accent-pulse); color: var(--accent); }
+    .detail-item-icon.decision { background: var(--signal-glow); color: var(--signal); }
+    .detail-item-icon.error { background: var(--danger-glow); color: var(--danger); }
+
+    .detail-item strong { color: var(--text-primary); }
+
+    /* JSON viewer */
+    .json-block {
+      background: var(--surface-0);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--accent-dim);
+      line-height: 1.6;
+      overflow-x: auto;
+      white-space: pre;
+      max-height: 200px;
+      overflow-y: auto;
+      grid-column: 1 / -1;
+    }
+
+    .expand-icon {
+      display: inline-block;
+      transition: transform 0.2s;
+      color: var(--text-tertiary);
+      font-size: 12px;
+    }
+
+    .expand-icon.open { transform: rotate(90deg); }
+  </style>
+</head>
+<body>
+  <div class="runs-shell">
+    <!-- ═══ SIDEBAR ═══ -->
+    <nav class="sidebar">
+      <div class="sidebar-logo"><a href="index.html" style="text-decoration:none"><div class="logo-mark">V</div></a></div>
+      <a class="nav-item" href="war-room.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span class="nav-tooltip">War Room</span></a>
+      <a class="nav-item" href="contacts.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-tooltip">Contacts</span></a>
+      <a class="nav-item" href="sequences.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="nav-tooltip">Sequences</span></a>
+      <a class="nav-item" href="aeo-content.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span class="nav-tooltip">AEO</span></a>
+      <a class="nav-item" href="channels.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><span class="nav-tooltip">Channels</span></a>
+      <a class="nav-item active" href="agent-runs.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span class="nav-tooltip">Agent Logs</span></a>
+      <a class="nav-item" href="analytics.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="nav-tooltip">Analytics</span></a>
+      <div class="nav-spacer"></div>
+      <a class="nav-item" href="icp-config.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="nav-tooltip">Settings</span></a>
+    </nav>
+
+    <!-- ═══ MAIN ═══ -->
+    <div class="runs-main">
+      <div class="cmd-bar">
+        <div class="cmd-left">
+          <span class="cmd-title">Agent Decision Logs</span>
+          <span class="tag tag-accent">ContractNest</span>
+        </div>
+        <div class="cmd-right">
+          <button class="btn btn-ghost" style="font-size:12px;">Export CSV</button>
+          <button class="btn btn-ghost" style="font-size:12px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <div class="runs-content">
+        <!-- Stats -->
+        <div class="run-stats animate-in">
+          <div class="run-stat-card">
+            <div class="run-stat-icon" style="background:var(--signal-glow);">✓</div>
+            <div><div class="run-stat-val text-signal">847</div><div class="run-stat-label">Successful Runs (24h)</div></div>
+          </div>
+          <div class="run-stat-card">
+            <div class="run-stat-icon" style="background:var(--warn-glow);">⚠</div>
+            <div><div class="run-stat-val" style="color:var(--warn);">3</div><div class="run-stat-label">Partial Failures</div></div>
+          </div>
+          <div class="run-stat-card">
+            <div class="run-stat-icon" style="background:var(--danger-glow);">✕</div>
+            <div><div class="run-stat-val text-danger">0</div><div class="run-stat-label">Errors</div></div>
+          </div>
+          <div class="run-stat-card">
+            <div class="run-stat-icon" style="background:var(--accent-pulse);">⚡</div>
+            <div><div class="run-stat-val text-accent">1.2s</div><div class="run-stat-label">Avg Duration</div></div>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-bar animate-in animate-in-delay-1">
+          <div class="filter-group">
+            <span class="f-chip active">All Agents</span>
+            <span class="f-chip" onclick="this.parentElement.querySelector('.active').classList.remove('active');this.classList.add('active')">Orchestrator</span>
+            <span class="f-chip" onclick="this.parentElement.querySelector('.active').classList.remove('active');this.classList.add('active')">Outreach</span>
+            <span class="f-chip" onclick="this.parentElement.querySelector('.active').classList.remove('active');this.classList.add('active')">Prospecting</span>
+            <span class="f-chip" onclick="this.parentElement.querySelector('.active').classList.remove('active');this.classList.add('active')">Conversion</span>
+            <span class="f-chip" onclick="this.parentElement.querySelector('.active').classList.remove('active');this.classList.add('active')">AEO</span>
+            <span class="f-chip" onclick="this.parentElement.querySelector('.active').classList.remove('active');this.classList.add('active')">Feedback</span>
+          </div>
+          <div class="filter-search">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search decisions...">
+          </div>
+        </div>
+
+        <!-- Log Table -->
+        <table class="log-table animate-in animate-in-delay-2">
+          <thead>
+            <tr>
+              <th style="width:30px;"></th>
+              <th>Agent</th>
+              <th>Status</th>
+              <th>Contacts</th>
+              <th>Skills Invoked</th>
+              <th>Duration</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Row 1 -->
+            <tr class="expandable" onclick="toggleDetail('d1',this)">
+              <td><span class="expand-icon" id="e1">▶</span></td>
+              <td><span class="agent-badge orchestrator">⚙ Orchestrator</span></td>
+              <td><span class="run-status success"><span class="run-status-dot"></span> Success</span></td>
+              <td>18</td>
+              <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);">3 skills</td>
+              <td><span class="run-duration">0.8s</span></td>
+              <td><span class="run-time">11:42:15 AM</span></td>
+            </tr>
+            <tr class="detail-row" id="d1">
+              <td colspan="7" class="detail-cell">
+                <div class="detail-inner">
+                  <div>
+                    <div class="detail-section-title">Decisions Made</div>
+                    <div class="detail-list">
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> Routed <strong>12 contacts</strong> to Outreach Agent (next_action_at reached)</div>
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> Resolved conflict: <strong>Rajesh Kumar</strong> targeted by both Outreach & Conversion → Conversion wins (higher priority)</div>
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> Enforced rate limit: 5 emails deferred to next cycle (daily cap approaching)</div>
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> Skipped weekend sends for <strong>3 contacts</strong> — queued for Monday</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="detail-section-title">Skills Invoked</div>
+                    <div class="detail-list">
+                      <div class="detail-item"><div class="detail-item-icon skill">⚡</div> <strong>score_contact</strong> × 18 contacts</div>
+                      <div class="detail-item"><div class="detail-item-icon skill">⚡</div> <strong>send_on_channel</strong> × 12 (email: 9, whatsapp: 3)</div>
+                      <div class="detail-item"><div class="detail-item-icon skill">⚡</div> <strong>personalize_message</strong> × 12</div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 2 -->
+            <tr class="expandable" onclick="toggleDetail('d2',this)">
+              <td><span class="expand-icon" id="e2">▶</span></td>
+              <td><span class="agent-badge outreach">📧 Outreach</span></td>
+              <td><span class="run-status success"><span class="run-status-dot"></span> Success</span></td>
+              <td>12</td>
+              <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);">2 skills</td>
+              <td><span class="run-duration">2.1s</span></td>
+              <td><span class="run-time">11:42:16 AM</span></td>
+            </tr>
+            <tr class="detail-row" id="d2">
+              <td colspan="7" class="detail-cell">
+                <div class="detail-inner">
+                  <div>
+                    <div class="detail-section-title">Decisions Made</div>
+                    <div class="detail-list">
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> <strong>Sneha Kulkarni</strong> (CBRE) — Day 0, Step 1: Email introduction. Channel: email (cold outreach rule)</div>
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> <strong>3 contacts</strong> — Day 3, Step 2: Follow-up. Condition: email opened ✓ → send value-add</div>
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> <strong>Amit Desai</strong> (Wipro) — Day 12, Step 4: WhatsApp nudge. Reason: LinkedIn accepted, opt-in present</div>
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> <strong>2 contacts</strong> — Paused: replied to earlier step. Marked for manual follow-up.</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="detail-section-title">Skills Invoked</div>
+                    <div class="detail-list">
+                      <div class="detail-item"><div class="detail-item-icon skill">⚡</div> <strong>personalize_message</strong> × 10 — Claude API (Sonnet), avg 340ms</div>
+                      <div class="detail-item"><div class="detail-item-icon skill">⚡</div> <strong>send_on_channel</strong> × 10 — email: 7, whatsapp: 3</div>
+                    </div>
+                  </div>
+                  <div class="json-block">{
+  "agent": "outreach",
+  "run_id": "run_otr_20260311_114216",
+  "contacts_processed": 12,
+  "channels_used": { "email": 7, "whatsapp": 3, "linkedin": 0 },
+  "ai_calls": 10,
+  "avg_personalization_ms": 340,
+  "errors": []
+}</div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 3 -->
+            <tr class="expandable" onclick="toggleDetail('d3',this)">
+              <td><span class="expand-icon" id="e3">▶</span></td>
+              <td><span class="agent-badge conversion">🎯 Conversion</span></td>
+              <td><span class="run-status success"><span class="run-status-dot"></span> Success</span></td>
+              <td>8</td>
+              <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);">2 skills</td>
+              <td><span class="run-duration">0.6s</span></td>
+              <td><span class="run-time">11:12:00 AM</span></td>
+            </tr>
+            <tr class="detail-row" id="d3">
+              <td colspan="7" class="detail-cell">
+                <div class="detail-inner">
+                  <div>
+                    <div class="detail-section-title">Decisions Made</div>
+                    <div class="detail-list">
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> <strong>Vikram Bhat</strong> (ISS India) — score 90, pricing page 3x → Triggered multi-channel conversion push</div>
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> <strong>Ravi Shankar</strong> (Sodexo) — score 92, 4 emails opened → Created manual follow-up alert</div>
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> 6 contacts below conversion threshold — no action, continue monitoring</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="detail-section-title">Skills Invoked</div>
+                    <div class="detail-list">
+                      <div class="detail-item"><div class="detail-item-icon skill">⚡</div> <strong>score_contact</strong> × 8 (re-evaluation)</div>
+                      <div class="detail-item"><div class="detail-item-icon skill">⚡</div> <strong>send_on_channel</strong> × 3 (multi-channel push for Vikram)</div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 4 -->
+            <tr class="expandable" onclick="toggleDetail('d4',this)">
+              <td><span class="expand-icon" id="e4">▶</span></td>
+              <td><span class="agent-badge prospecting">🔍 Prospecting</span></td>
+              <td><span class="run-status success"><span class="run-status-dot"></span> Success</span></td>
+              <td>23</td>
+              <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);">3 skills</td>
+              <td><span class="run-duration">4.2s</span></td>
+              <td><span class="run-time">6:00:00 AM</span></td>
+            </tr>
+            <tr class="detail-row" id="d4">
+              <td colspan="7" class="detail-cell">
+                <div class="detail-inner">
+                  <div>
+                    <div class="detail-section-title">Decisions Made</div>
+                    <div class="detail-list">
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> Pipeline thin in IT Services vertical (< 50 ICP-fit) → Prioritized IT Services signal scan</div>
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> Found <strong>23 new prospects</strong> — 15 from job posting signals, 8 from LinkedIn pain signals</div>
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> Auto-enrolled <strong>8 contacts</strong> with score > 75 into FM Outbound v2</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="detail-section-title">Skills Invoked</div>
+                    <div class="detail-list">
+                      <div class="detail-item"><div class="detail-item-icon skill">⚡</div> <strong>enrich_contact</strong> × 23</div>
+                      <div class="detail-item"><div class="detail-item-icon skill">⚡</div> <strong>score_contact</strong> × 23</div>
+                      <div class="detail-item"><div class="detail-item-icon skill">⚡</div> <strong>send_on_channel</strong> × 0 (enrollment only, no immediate outreach)</div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 5 -->
+            <tr class="expandable" onclick="toggleDetail('d5',this)">
+              <td><span class="expand-icon" id="e5">▶</span></td>
+              <td><span class="agent-badge aeo">🔍 AEO</span></td>
+              <td><span class="run-status partial"><span class="run-status-dot"></span> Partial</span></td>
+              <td>—</td>
+              <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);">2 skills</td>
+              <td><span class="run-duration">12.4s</span></td>
+              <td><span class="run-time">Sun 2:00 AM</span></td>
+            </tr>
+            <tr class="detail-row" id="d5">
+              <td colspan="7" class="detail-cell">
+                <div class="detail-inner">
+                  <div>
+                    <div class="detail-section-title">Decisions Made</div>
+                    <div class="detail-list">
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> Scanned 8 target queries across 5 platforms (40 checks total)</div>
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> <strong class="text-signal">New mention detected:</strong> Perplexity now cites ContractNest for "SLA tracking software India"</div>
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> Recommended: Create landing page for "affordable CLM software SMBs India" (0/5 visibility)</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="detail-section-title">Issues</div>
+                    <div class="detail-list">
+                      <div class="detail-item"><div class="detail-item-icon error">!</div> Bing Chat API timeout on 2 queries — will retry next cycle</div>
+                      <div class="detail-item"><div class="detail-item-icon skill">⚡</div> <strong>check_aeo_visibility</strong> × 40 (38 success, 2 timeout)</div>
+                      <div class="detail-item"><div class="detail-item-icon skill">⚡</div> <strong>generate_content</strong> × 0 (recommendation only, not auto-generated)</div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 6 -->
+            <tr class="expandable" onclick="toggleDetail('d6',this)">
+              <td><span class="expand-icon" id="e6">▶</span></td>
+              <td><span class="agent-badge feedback">📊 Feedback</span></td>
+              <td><span class="run-status success"><span class="run-status-dot"></span> Success</span></td>
+              <td>—</td>
+              <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);">1 skill</td>
+              <td><span class="run-duration">1.8s</span></td>
+              <td><span class="run-time">6:00 AM</span></td>
+            </tr>
+            <tr class="detail-row" id="d6">
+              <td colspan="7" class="detail-cell">
+                <div class="detail-inner">
+                  <div>
+                    <div class="detail-section-title">Recommendations</div>
+                    <div class="detail-list">
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> WhatsApp reply rate <strong class="text-signal">3x higher</strong> than email for FM vertical → Suggest increasing WhatsApp weight</div>
+                      <div class="detail-item"><div class="detail-item-icon decision">→</div> Breakup email (Step 5) outperforming Step 2 follow-up → Consider A/B test on Step 2 copy</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="detail-section-title">Skills Invoked</div>
+                    <div class="detail-list">
+                      <div class="detail-item"><div class="detail-item-icon skill">⚡</div> <strong>score_contact</strong> × 0 (analysis only, no re-scoring)</div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleDetail(id, row) {
+      const detail = document.getElementById(id);
+      const icon = row.querySelector('.expand-icon');
+      detail.classList.toggle('open');
+      icon.classList.toggle('open');
+    }
+  </script>
+</body>
+</html>
