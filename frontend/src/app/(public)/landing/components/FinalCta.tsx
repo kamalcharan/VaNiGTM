@@ -16,11 +16,11 @@ export default function FinalCta() {
     <section className={s.finalCta} id="start">
       <div ref={ref} className={`${s.finalCtaContent} ${s.animateOnScroll}`}>
         <h2 className={s.sectionTitle}>
-          Your Clients Deserve<br />
-          <span className={s.goldText}>Smarter Advice</span>
+          Your Pipeline Deserves<br />
+          <span className={s.goldText}>Better Than Guesswork</span>
         </h2>
         <p className={s.finalCtaDesc}>
-          Join the early access program and transform your MFD practice with AI-powered intelligence.
+          Join the early access program and put your go-to-market on autopilot with AI agents.
           Limited spots for founding members.
         </p>
         <div className={s.finalCtaActions}>

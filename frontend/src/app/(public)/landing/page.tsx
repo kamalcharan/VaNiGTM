@@ -28,9 +28,9 @@ export default function LandingPage() {
 
         {/* Social Proof */}
         <section className={s.socialProof}>
-          <div className={s.socialProofLabel}>Trusted by forward-thinking MFDs across India</div>
+          <div className={s.socialProofLabel}>Built for modern B2B go-to-market teams</div>
           <div className={s.proofLogos}>
-            {['Meridian Wealth', 'PrimeVest Advisors', 'FinBridge Partners', 'TrustArc Capital', 'NorthStar MFD'].map((name) => (
+            {['Northwind', 'Vertex Labs', 'Harbor', 'Loop', 'Cobalt'].map((name) => (
               <span key={name} className={s.proofLogo}>{name}</span>
             ))}
           </div>
