@@ -1,0 +1,122 @@
+/* ═══════════════════════════════════════════════════════
+   ICP BUILDER — page layout (read-only skeleton stage)
+   ═══════════════════════════════════════════════════════ */
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  min-height: 100%;
+}
+
+.body {
+  padding: 20px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Completion KPI ──────────────────────────────────── */
+.kpiRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.kpiScore {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  font-family: var(--font-mono, monospace);
+}
+
+.kpiHint {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  margin-top: 2px;
+}
+
+/* ── Wizard ──────────────────────────────────────────── */
+.wizardWrap {
+  padding: 8px 0 4px;
+}
+
+/* ── Section Card ────────────────────────────────────── */
+.sectionCard {
+  scroll-margin-top: 90px;
+  border-radius: 20px;
+  transition: box-shadow 200ms;
+}
+
+.sectionActive {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-fg);
+}
+
+/* ── Read Mode Grid (mirrors business-tab.tsx pattern) ── */
+.readGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.readItem {
+  padding: 16px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+.readItem:nth-last-child(-n+2) { border-bottom: none; }
+
+.readLabel {
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 4px;
+}
+
+.readValue {
+  font-size: 0.95rem;
+  color: var(--color-fg);
+  font-weight: 500;
+}
+
+.emptyValue {
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
+.bulletList {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bulletList li {
+  font-size: 0.95rem;
+  color: var(--color-fg);
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .body { padding: 16px 20px 24px; }
+  .readGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .body { padding: 12px 14px 20px; }
+}
