@@ -6,6 +6,7 @@ import { storeTokens, type ApiError } from '@/lib/api-client';
 import { useAuth } from '@/context/auth-provider';
 import { VdfLoader } from '@/components/vdf';
 import { useToast } from '@/components/toast';
+import { BRAND } from '@/constants/brand';
 import s from './login-vault.module.css';
 
 interface SessionLimitData {
@@ -158,7 +159,7 @@ export default function LoginVault() {
             </div>
 
             <div className={s.brandText}>
-              <div className={s.brandName}>KI-PRIME</div>
+              <div className={s.brandName}>{BRAND.name}</div>
               <div className={s.brandSub}>by Vikuna Technologies</div>
             </div>
 

@@ -10,6 +10,7 @@ import PasswordStrength from '@/components/ui/password-strength';
 import { useRegister } from '@/hooks';
 import { storeTokens, getAccessToken, type ApiError } from '@/lib/api-client';
 import { VdfLoader } from '@/components/vdf';
+import { BRAND } from '@/constants/brand';
 import f from '@/styles/forms.module.css';
 import s from './register-page.module.css';
 
@@ -172,7 +173,7 @@ export default function RegisterPage() {
           </div>
 
           <div className={s.brandText}>
-            <div className={s.brandName}>KI-PRIME</div>
+            <div className={s.brandName}>{BRAND.name}</div>
             <div className={s.brandSub}>by Vikuna Technologies</div>
           </div>
 

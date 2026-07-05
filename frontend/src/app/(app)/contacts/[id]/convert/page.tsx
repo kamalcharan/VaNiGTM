@@ -7,6 +7,7 @@ import type { ApiError } from '@/lib/api-client';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
 import { VdfLoader, VdfButton, VdfPageHeader } from '@/components/vdf';
+import { BRAND } from '@/constants/brand';
 import s from './convert.module.css';
 
 /* ── Platform label map ── */
@@ -243,7 +244,7 @@ export default function ConvertPage() {
             <p className={s.railQuoteText}>
               A conversion isn&apos;t paperwork — it&apos;s the moment a stranger trusts you with their future.
             </p>
-            <div className={s.railQuoteAuthor}>ProKey · Client Management</div>
+            <div className={s.railQuoteAuthor}>{BRAND.name} · Client Management</div>
           </div>
         </aside>
 
@@ -466,7 +467,7 @@ export default function ConvertPage() {
 
             {/* Card — flips in */}
             <div className={s.successCard}>
-              <div className={s.successCardEyebrow}>ProKey · Active Client</div>
+              <div className={s.successCardEyebrow}>{BRAND.name} · Active Client</div>
               <div className={s.successCardTitle}>{contact.name}</div>
 
               {successData.extRef && (

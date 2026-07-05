@@ -1,5 +1,6 @@
 'use client';
 
+import { BRAND } from '@/constants/brand';
 import s from './OnboardImport.module.css';
 
 interface Props {
@@ -66,7 +67,7 @@ export default function OnboardImport({ onComplete, onSkip, onBack }: Props) {
         </div>
         <h1 className={s.pageTitle}>Import Client Data</h1>
         <p className={s.pageSubtitle}>
-          Bring your existing clients into KI-Prime, or start fresh and add them manually.
+          Bring your existing clients into {BRAND.name}, or start fresh and add them manually.
         </p>
       </div>
 

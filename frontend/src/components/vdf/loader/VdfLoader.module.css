@@ -86,7 +86,8 @@
 }
 
 .text::after {
-  content: 'ProKey';
+  /* Must match BRAND.name (CSS cannot import the constant). */
+  content: 'Vikuna GTM';
   position: absolute; left: 0; top: 0;
   color: var(--color-primary);
   width: 0%; overflow: hidden;

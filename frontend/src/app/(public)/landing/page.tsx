@@ -8,6 +8,7 @@ import PricingSection from './components/PricingSection';
 import TestimonialsSection from './components/TestimonialsSection';
 import FinalCta from './components/FinalCta';
 import Footer from './components/Footer';
+import { BRAND } from '@/constants/brand';
 import s from './page.module.css';
 
 const navLinks = [
@@ -21,7 +22,7 @@ const navLinks = [
 export default function LandingPage() {
   return (
     <>
-      <Navbar brandName="ProKey" links={navLinks} />
+      <Navbar brandName={BRAND.name} links={navLinks} />
       <main>
         <HeroSection />
 
