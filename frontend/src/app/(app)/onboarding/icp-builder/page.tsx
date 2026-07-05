@@ -348,7 +348,7 @@ export default function IcpBuilderPage() {
           </div>
           <textarea
             className={f.textarea}
-            rows={3}
+            rows={6}
             value={(draft![field.key] as string) ?? ''}
             onChange={(e) => updateDraft(field.key, e.target.value)}
             onBlur={() => handleScalarBlur(field.key)}
