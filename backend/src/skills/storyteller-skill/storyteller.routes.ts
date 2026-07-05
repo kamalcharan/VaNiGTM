@@ -1,6 +1,7 @@
 /**
- * Storyteller REST routes — mounted at /api/v1/storyteller (at Stage 6)
+ * Storyteller REST routes — mounted at /api/v1/storyteller
  *
+ *   GET   /                 → list all decks for the tenant (lightweight, no slides)
  *   POST  /build            → build a deck from the tenant's profile + KG
  *   GET   /:id              → fetch a deck (tenant-scoped)
  *   PATCH /:id/approve      → approve a deck, mint share_token
@@ -10,8 +11,7 @@
  * Auth: every route except /share/:token requires a valid JWT; tenant_id is
  * read from the token, never from the body. Mirrors vani.routes.ts.
  *
- * SKELETON — Stage 3. Handlers delegate to StorytellerAgent (stubs that throw).
- * Not mounted in server.ts yet.
+ * Mounted in server.ts at /api/v1/storyteller (see server.ts:74).
  */
 
 import { Router, type Request, type Response } from 'express';
@@ -40,6 +40,36 @@ function requireAuth(req: Request, res: Response): JwtPayload | null {
 
 export function createStorytellerRouter(pool: Pool): Router {
   const router = Router();
+
+  // ── GET / ────────────────────────────────────────────────────────────────
+  // List all decks for the tenant — lightweight summaries, no slide content
+  // (GET /:id is for that). Newest first.
+  router.get('/', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    try {
+      const db = createTenantDb(pool, jwt.tenant_id);
+      const result = await db.query<{
+        id: string;
+        title: string | null;
+        status: string;
+        share_token: string | null;
+        created_at: Date;
+      }>(
+        `SELECT id, title, status, share_token, created_at
+           FROM gt_presentations
+          WHERE tenant_id = $tenant_id
+          ORDER BY created_at DESC`,
+        { tenant_id: jwt.tenant_id },
+      );
+
+      res.json({ decks: result.rows, total: result.rows.length });
+    } catch (err) {
+      console.error('[Storyteller:GET /]', err);
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });
+    }
+  });
 
   // ── POST /build ──────────────────────────────────────────────────────────
   router.post('/build', async (req: Request, res: Response) => {
