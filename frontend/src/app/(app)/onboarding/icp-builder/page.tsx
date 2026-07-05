@@ -1,9 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
+import { ME_QUERY_KEY } from '@/hooks/useMe';
+import type { OnboardingStatus, OnboardingStep } from '@/hooks/useOnboarding';
 import {
   VdfPageHeader,
   VdfWizard,
@@ -13,6 +17,7 @@ import {
   VdfLoader,
   VdfErrorScreen,
   VdfInput,
+  VdfButton,
 } from '@/components/vdf';
 import { SaveStatusIndicator, type SaveState } from './save-status';
 import { ArrayFieldEditor } from './array-field-editor';
@@ -138,7 +143,15 @@ const FIELD_LABEL_BY_KEY: Partial<Record<ProfileKey, string>> = Object.fromEntri
   SECTIONS.flatMap((sec) => sec.fields.map((field) => [field.key, field.label])),
 );
 
+// Maps a profile field key back to its section id — used to highlight which
+// section card(s) contain the fields POST /profile/approve reports missing.
+const FIELD_TO_SECTION: Partial<Record<ProfileKey, SectionId>> = Object.fromEntries(
+  SECTIONS.flatMap((sec) => sec.fields.map((field) => [field.key, sec.id])),
+);
+
 const ARRAY_DEBOUNCE_MS = 450;
+
+type ConfirmPhase = 'idle' | 'running' | 'error';
 
 function isNotFound(err: unknown): boolean {
   const e = err as Partial<ApiError> | undefined;
@@ -152,6 +165,8 @@ function sectionPct(sec: SectionDef, profile: TenantProfile): number {
 
 export default function IcpBuilderPage() {
   const { showToast } = useToast();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [profile, setProfile] = useState<TenantProfile | null>(null);
   const [draft, setDraft] = useState<TenantProfile | null>(null);
   const [draftInitialized, setDraftInitialized] = useState(false);
@@ -160,6 +175,9 @@ export default function IcpBuilderPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [pickedDefault, setPickedDefault] = useState(false);
   const [saveStatus, setSaveStatus] = useState<Partial<Record<ProfileKey, SaveState>>>({});
+  const [confirmPhase, setConfirmPhase] = useState<ConfirmPhase>('idle');
+  const [confirmErrorMessage, setConfirmErrorMessage] = useState<string | null>(null);
+  const [missingSections, setMissingSections] = useState<Set<SectionId>>(new Set());
 
   const lastAttempt = useRef<Partial<Record<ProfileKey, unknown>>>({});
   const debounceTimers = useRef<Partial<Record<ProfileKey, ReturnType<typeof setTimeout>>>>({});
@@ -287,6 +305,86 @@ export default function IcpBuilderPage() {
     sectionRefs.current[sec.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  /* ── Confirm ICP — one atomic 3-call sequence:
+     1. POST gtmProfile.approve (400 PROFILE_INCOMPLETE lists every missing field)
+     2. Complete every still-pending onboarding step (GET status → PATCH each)
+     3. Refetch /auth/me so the layout guard sees onboarding_complete before
+        navigating — otherwise it bounces straight back to /onboarding. ── */
+  async function handleConfirmIcp() {
+    setConfirmPhase('running');
+    setConfirmErrorMessage(null);
+    setMissingSections(new Set());
+
+    // 1. Approve the profile
+    try {
+      await apiFetch(API.gtmProfile.approve);
+    } catch (err) {
+      const apiErr = err as ApiError;
+      const missing = (apiErr.details?.missing as string[] | undefined) ?? [];
+
+      if (missing.length > 0) {
+        const sections = new Set<SectionId>();
+        for (const key of missing) {
+          const sec = FIELD_TO_SECTION[key as ProfileKey];
+          if (sec) sections.add(sec);
+        }
+        setMissingSections(sections);
+        showToast({
+          message: `Profile incomplete — missing: ${missing.map((k) => FIELD_LABEL_BY_KEY[k as ProfileKey] ?? k).join(', ')}`,
+          type: 'error',
+        });
+      } else {
+        showToast({ message: apiErr.message || 'Failed to approve profile', type: 'error' });
+      }
+
+      setConfirmErrorMessage('Approval failed — see the highlighted section(s) above.');
+      setConfirmPhase('error');
+      return;
+    }
+
+    // 2. Complete every still-pending onboarding step (dynamic — discovered
+    // via GET /onboarding/status, not hardcoded step ids).
+    let finalOnboardingComplete = false;
+    try {
+      const status = await apiFetch<OnboardingStatus>(API.onboarding.status);
+      finalOnboardingComplete = status.complete;
+
+      const pending = status.steps.filter((step) => step.status !== 'completed');
+      for (const step of pending) {
+        const result = await apiFetch<{ step: OnboardingStep; next_step: string | null; onboarding_complete: boolean }>(
+          API.onboarding.completeStep,
+          { body: { step_id: step.step_id, status: 'completed' } },
+        );
+        finalOnboardingComplete = result.onboarding_complete;
+      }
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Failed to complete onboarding steps', type: 'error' });
+      setConfirmErrorMessage('Profile approved, but completing onboarding steps failed. Try again.');
+      setConfirmPhase('error');
+      return;
+    }
+
+    // 3. Verify + navigate
+    if (!finalOnboardingComplete) {
+      showToast({ message: 'Onboarding did not complete — please retry', type: 'error' });
+      setConfirmErrorMessage('Onboarding steps completed, but the server still reports it incomplete. Please retry.');
+      setConfirmPhase('error');
+      return;
+    }
+
+    try {
+      // Refresh the cached tenant so app/(app)/layout.tsx's guard sees
+      // onboarding_complete: true before we navigate — otherwise it redirects
+      // straight back to /onboarding on stale state.
+      await queryClient.refetchQueries({ queryKey: ME_QUERY_KEY });
+    } catch {
+      // Non-fatal — navigate anyway; the guard re-checks on every render.
+    }
+
+    showToast({ message: 'ICP confirmed — welcome to your dashboard!', type: 'success' });
+    router.push('/dashboard');
+  }
+
   if (loading || !draft || !profile) {
     return <VdfLoader message="Loading your ICP profile" hint="Fetching product, ICP, GTM, and vision data" />;
   }
@@ -409,7 +507,13 @@ export default function IcpBuilderPage() {
               ref={(el) => { sectionRefs.current[sec.id] = el; }}
               className={s.sectionCard}
             >
-              <VdfCard hoverLift={false} className={currentIndex === i ? s.sectionActive : ''}>
+              <VdfCard
+                hoverLift={false}
+                className={[
+                  currentIndex === i ? s.sectionActive : '',
+                  missingSections.has(sec.id) ? s.sectionMissing : '',
+                ].filter(Boolean).join(' ')}
+              >
                 <div className={s.sectionHeader}>
                   <div className={s.sectionTitle}>{sec.label}</div>
                   <VdfReadinessRing pct={pct} size={40} strokeWidth={3} />
@@ -425,6 +529,23 @@ export default function IcpBuilderPage() {
             </div>
           );
         })}
+
+        <div className={s.confirmBar}>
+          {profile.completion_score < 60 && (
+            <div className={s.confirmHint}>Reach 60% overall completion to confirm your ICP.</div>
+          )}
+          <VdfButton
+            variant="primary"
+            disabled={profile.completion_score < 60}
+            loading={confirmPhase === 'running'}
+            onClick={handleConfirmIcp}
+          >
+            Confirm ICP
+          </VdfButton>
+          {confirmPhase === 'error' && confirmErrorMessage && (
+            <div className={s.confirmErrorText}>{confirmErrorMessage}</div>
+          )}
+        </div>
       </div>
     </div>
   );
