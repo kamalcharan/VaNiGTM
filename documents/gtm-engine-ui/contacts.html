@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VaNi GTM Engine — Contacts & Launch</title>
+  <link rel="stylesheet" href="shared/styles.css">
+  <style>
+    .contacts-shell { min-height: 100vh; display: flex; flex-direction: column; }
+
+    .topbar { display: flex; align-items: center; justify-content: space-between; padding: 20px 40px; border-bottom: 1px solid var(--border-subtle); }
+    .topbar-brand { display: flex; align-items: center; gap: 12px; }
+    .topbar-logo { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), var(--signal)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 13px; color: var(--void); }
+    .topbar-title { font-family: var(--font-display); font-weight: 600; font-size: 16px; color: var(--text-primary); letter-spacing: -0.3px; }
+    .topbar-subtitle { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); letter-spacing: 1px; text-transform: uppercase; }
+    .topbar-meta { display: flex; align-items: center; gap: 16px; }
+    .topbar-tenant { display: flex; align-items: center; gap: 8px; background: var(--surface-2); padding: 6px 14px; border-radius: var(--radius-md); font-size: 13px; font-weight: 600; color: var(--accent); }
+
+    .contacts-main { flex: 1; padding: 40px 48px; max-width: 1300px; margin: 0 auto; width: 100%; overflow-y: auto; }
+    .section-header { margin-bottom: 32px; }
+    .section-sep { height: 1px; background: linear-gradient(90deg, transparent, var(--border-default) 20%, var(--border-default) 80%, transparent); margin: 8px 0 36px; }
+
+    /* ── View Toggle ── */
+    .view-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .view-toggle {
+      display: flex;
+      background: var(--surface-2);
+      border-radius: var(--radius-md);
+      padding: 3px;
+    }
+
+    .vt-btn {
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: all var(--duration-fast);
+    }
+
+    .vt-btn.active { background: var(--surface-4); color: var(--text-primary); }
+    .vt-btn:hover:not(.active) { color: var(--text-secondary); }
+
+    .view-actions { display: flex; gap: 8px; }
+
+    /* ── Import Zone ── */
+    .import-section { margin-bottom: 48px; }
+
+    .import-zone {
+      border: 2px dashed var(--border-default);
+      border-radius: var(--radius-xl);
+      padding: 48px 40px;
+      text-align: center;
+      transition: all var(--duration-normal) var(--ease-out);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .import-zone:hover {
+      border-color: var(--accent);
+      background: var(--accent-pulse);
+    }
+
+    .import-zone.dragover {
+      border-color: var(--signal);
+      background: var(--signal-glow);
+      box-shadow: 0 0 40px var(--signal-glow);
+    }
+
+    .import-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 20px;
+      background: var(--surface-2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin: 0 auto 20px;
+    }
+
+    .import-title {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .import-desc {
+      font-size: 14px;
+      color: var(--text-tertiary);
+      max-width: 400px;
+      margin: 0 auto 20px;
+      line-height: 1.6;
+    }
+
+    .import-formats {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .import-fmt {
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      background: var(--surface-3);
+      color: var(--text-tertiary);
+      border: 1px solid var(--border-subtle);
+    }
+
+    /* ── Import Progress (hidden by default) ── */
+    .import-progress {
+      display: none;
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-top: 16px;
+    }
+
+    .import-progress.show { display: block; animation: slideUp 0.4s var(--ease-out); }
+
+    .progress-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .progress-bar-wrap {
+      flex: 1;
+      height: 8px;
+      background: var(--surface-3);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--accent), var(--signal));
+      transition: width 0.5s var(--ease-out);
+      width: 0%;
+    }
+
+    .progress-pct {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 48px;
+      text-align: right;
+    }
+
+    .progress-stats {
+      display: flex;
+      gap: 24px;
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    .progress-stats strong { color: var(--text-primary); }
+
+    /* ── Pipeline Stats ── */
+    .pipeline-stats {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .pipe-stat {
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      text-align: center;
+      transition: all var(--duration-normal);
+    }
+
+    .pipe-stat:hover { border-color: var(--border-default); }
+
+    .pipe-stat-val {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -1px;
+    }
+
+    .pipe-stat-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      margin-top: 6px;
+    }
+
+    /* ── Contact Table ── */
+    .contacts-table-wrap {
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 32px;
+    }
+
+    .table-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--surface-0);
+    }
+
+    .table-search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      padding: 8px 14px;
+      width: 300px;
+    }
+
+    .table-search svg { color: var(--text-tertiary); flex-shrink: 0; }
+
+    .table-search input {
+      border: none;
+      background: transparent;
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: var(--text-primary);
+      outline: none;
+      width: 100%;
+    }
+
+    .table-search input::placeholder { color: var(--text-ghost); }
+
+    .table-filters {
+      display: flex;
+      gap: 6px;
+    }
+
+    .filter-chip {
+      padding: 6px 12px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--surface-2);
+      color: var(--text-tertiary);
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: all var(--duration-fast);
+    }
+
+    .filter-chip:hover { border-color: var(--border-default); color: var(--text-secondary); }
+    .filter-chip.active { background: var(--accent-pulse); color: var(--accent); border-color: rgba(0,229,255,0.15); }
+
+    .ct-table { width: 100%; border-collapse: collapse; }
+
+    .ct-table th {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-default);
+      background: var(--surface-0);
+    }
+
+    .ct-table td {
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: middle;
+    }
+
+    .ct-table tr:hover td { background: rgba(0,229,255,0.02); }
+
+    .ct-table .check-col { width: 40px; }
+
+    .ct-check {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 2px solid var(--border-default);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--duration-fast);
+    }
+
+    .ct-check.checked {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .ct-check.checked::after { content: '✓'; color: var(--void); font-size: 11px; font-weight: 700; }
+
+    .ct-name {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .ct-company { color: var(--text-secondary); }
+
+    .ct-score-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .score-mini-bar {
+      width: 60px;
+      height: 6px;
+      background: var(--surface-3);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .score-mini-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+
+    .score-mini-fill.high { background: var(--signal); }
+    .score-mini-fill.medium { background: var(--accent); }
+    .score-mini-fill.low { background: var(--warn); }
+
+    .score-num {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      min-width: 28px;
+    }
+
+    .score-num.high { color: var(--signal); }
+    .score-num.medium { color: var(--accent); }
+    .score-num.low { color: var(--warn); }
+
+    .ct-status-badge {
+      padding: 3px 8px;
+      border-radius: 100px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-new { background: var(--accent-pulse); color: var(--accent); border: 1px solid rgba(0,229,255,0.15); }
+    .badge-enrolled { background: var(--signal-glow); color: var(--signal); border: 1px solid rgba(0,230,118,0.15); }
+    .badge-replied { background: rgba(179,136,255,0.1); color: #b388ff; border: 1px solid rgba(179,136,255,0.15); }
+    .badge-converted { background: rgba(255,215,64,0.1); color: var(--warn); border: 1px solid rgba(255,215,64,0.15); }
+
+    /* ── Bulk Actions Bar ── */
+    .bulk-bar {
+      display: none;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 20px;
+      background: var(--accent-pulse);
+      border-bottom: 1px solid rgba(0,229,255,0.12);
+    }
+
+    .bulk-bar.show { display: flex; animation: slideUp 0.3s var(--ease-out); }
+
+    .bulk-count {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .bulk-actions { display: flex; gap: 8px; }
+
+    .bulk-btn {
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border-default);
+      background: var(--surface-1);
+      color: var(--text-secondary);
+      transition: all var(--duration-fast);
+    }
+
+    .bulk-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--surface-2); }
+    .bulk-btn.primary { background: var(--accent); color: var(--void); border-color: var(--accent); }
+    .bulk-btn.primary:hover { box-shadow: 0 0 16px var(--accent-glow); }
+
+    /* ═══ LAUNCH SECTION ═══ */
+    .launch-section { margin-bottom: 48px; }
+
+    .launch-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 48px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .launch-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 50% 50%, var(--accent-glow), transparent 50%);
+      opacity: 0;
+      transition: opacity 0.6s var(--ease-out);
+      pointer-events: none;
+    }
+
+    .launch-card:hover::before { opacity: 1; }
+
+    .launch-readiness {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 36px;
+    }
+
+    .readiness-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .readiness-item.ready {
+      background: var(--signal-glow);
+      color: var(--signal);
+      border: 1px solid rgba(0,230,118,0.15);
+    }
+
+    .readiness-item.pending {
+      background: var(--warn-glow);
+      color: var(--warn);
+      border: 1px solid rgba(255,215,64,0.15);
+    }
+
+    .readiness-icon { font-size: 16px; }
+
+    .launch-title {
+      font-family: var(--font-display);
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+
+    .launch-desc {
+      font-size: 16px;
+      color: var(--text-secondary);
+      max-width: 500px;
+      margin: 0 auto 36px;
+      line-height: 1.6;
+    }
+
+    .launch-btn {
+      padding: 20px 56px;
+      font-size: 18px;
+      font-family: var(--font-display);
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--accent), var(--signal));
+      color: var(--void);
+      border: none;
+      cursor: pointer;
+      transition: all var(--duration-normal) var(--ease-out);
+      box-shadow: 0 0 30px var(--accent-glow), 0 8px 32px rgba(0,0,0,0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .launch-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 60px rgba(0,229,255,0.3), 0 12px 48px rgba(0,0,0,0.4);
+    }
+
+    .launch-btn:active { transform: translateY(0); }
+
+    .launch-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent 60%);
+      pointer-events: none;
+    }
+
+    .launch-summary {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-top: 36px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .launch-sum-item {
+      text-align: center;
+    }
+
+    .launch-sum-val {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+
+    .launch-sum-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      margin-top: 4px;
+    }
+
+    /* ── Launch Animation Overlay ── */
+    .launch-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--void);
+      z-index: 9999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+    }
+
+    .launch-overlay.show {
+      display: flex;
+      animation: fadeIn 0.4s var(--ease-out);
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .launch-anim-ring {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 3px solid var(--surface-3);
+      border-top-color: var(--accent);
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .launch-anim-text {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .launch-anim-sub {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-tertiary);
+      letter-spacing: 1px;
+    }
+
+    .launch-anim-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      text-align: left;
+    }
+
+    .anim-step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--text-tertiary);
+      opacity: 0;
+      transform: translateX(-10px);
+      transition: all 0.4s var(--ease-out);
+    }
+
+    .anim-step.active {
+      color: var(--text-primary);
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .anim-step.done { color: var(--signal); opacity: 1; transform: translateX(0); }
+
+    .anim-step-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      border: 2px solid var(--border-default);
+      flex-shrink: 0;
+    }
+
+    .anim-step.active .anim-step-icon {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .anim-step.done .anim-step-icon {
+      background: var(--signal);
+      border-color: var(--signal);
+      color: var(--void);
+    }
+
+    /* ── Footer ── */
+    .contacts-footer {
+      padding: 20px 40px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface-0);
+    }
+
+    .footer-steps { display: flex; align-items: center; gap: 8px; }
+    .footer-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--surface-4); }
+    .footer-dot.completed { background: var(--signal); }
+    .footer-dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); width: 24px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="contacts-shell">
+    <!-- ═══ TOP BAR ═══ -->
+    <header class="topbar animate-in">
+      <div class="topbar-brand">
+        <a href="index.html" style="text-decoration:none"><div class="topbar-logo">V</div></a>
+        <div>
+          <div class="topbar-title">Contacts & Launch</div>
+          <div class="topbar-subtitle">Step 06 of 06 — Import Prospects & Go Live</div>
+        </div>
+      </div>
+      <div class="topbar-meta">
+        <div class="topbar-tenant"><span style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block;"></span> ContractNest</div>
+      </div>
+    </header>
+
+    <!-- ═══ MAIN ═══ -->
+    <main class="contacts-main">
+      <!-- Import Section -->
+      <div class="import-section animate-in animate-in-delay-1">
+        <div class="section-header">
+          <div class="label label-accent mb-sm">Import Contacts</div>
+          <div class="display-md">Bring in your first prospects</div>
+          <p class="text-body mt-sm">Upload a CSV of contacts. The Scoring Agent will automatically evaluate ICP fit and the Prospecting Agent will enrich company data.</p>
+        </div>
+
+        <div class="import-zone" id="importZone" onclick="simulateImport()"
+          ondragover="event.preventDefault(); this.classList.add('dragover')"
+          ondragleave="this.classList.remove('dragover')"
+          ondrop="event.preventDefault(); this.classList.remove('dragover'); simulateImport()">
+          <div class="import-icon">📁</div>
+          <div class="import-title">Drop your CSV here</div>
+          <div class="import-desc">Or click to browse. We'll match columns automatically — email, name, company, designation, phone.</div>
+          <div class="import-formats">
+            <span class="import-fmt">.CSV</span>
+            <span class="import-fmt">.XLSX</span>
+            <span class="import-fmt">.TSV</span>
+          </div>
+        </div>
+
+        <div class="import-progress" id="importProgress">
+          <div class="progress-row">
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-fill" id="progressFill"></div>
+            </div>
+            <span class="progress-pct" id="progressPct">0%</span>
+          </div>
+          <div class="progress-stats" id="progressStats">
+            <span>Parsed: <strong>0</strong></span>
+            <span>Matched ICP: <strong>0</strong></span>
+            <span>Enriched: <strong>0</strong></span>
+            <span>Scored: <strong>0</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-sep"></div>
+
+      <!-- Pipeline Stats -->
+      <div class="pipeline-stats animate-in animate-in-delay-2">
+        <div class="pipe-stat">
+          <div class="pipe-stat-val text-accent">847</div>
+          <div class="pipe-stat-label">Total Contacts</div>
+        </div>
+        <div class="pipe-stat">
+          <div class="pipe-stat-val text-signal">612</div>
+          <div class="pipe-stat-label">ICP Match</div>
+        </div>
+        <div class="pipe-stat">
+          <div class="pipe-stat-val" style="color:var(--text-primary);">284</div>
+          <div class="pipe-stat-label">Enrolled</div>
+        </div>
+        <div class="pipe-stat">
+          <div class="pipe-stat-val" style="color:#b388ff;">64</div>
+          <div class="pipe-stat-label">Replied</div>
+        </div>
+        <div class="pipe-stat">
+          <div class="pipe-stat-val" style="color:var(--warn);">12</div>
+          <div class="pipe-stat-label">Converted</div>
+        </div>
+      </div>
+
+      <!-- View Toggle + Actions -->
+      <div class="view-bar animate-in animate-in-delay-2">
+        <div class="view-toggle">
+          <button class="vt-btn active">Table</button>
+          <button class="vt-btn">Kanban</button>
+        </div>
+        <div class="view-actions">
+          <div class="table-search">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" placeholder="Search contacts...">
+          </div>
+          <div class="table-filters">
+            <span class="filter-chip active">All</span>
+            <span class="filter-chip" onclick="this.classList.toggle('active')">ICP Match</span>
+            <span class="filter-chip" onclick="this.classList.toggle('active')">Not Enrolled</span>
+            <span class="filter-chip" onclick="this.classList.toggle('active')">High Score</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contact Table -->
+      <div class="contacts-table-wrap animate-in animate-in-delay-3">
+        <div class="bulk-bar" id="bulkBar">
+          <span class="bulk-count"><span id="bulkCount">0</span> selected</span>
+          <div class="bulk-actions">
+            <button class="bulk-btn primary">Enroll in Sequence</button>
+            <button class="bulk-btn">Add Tag</button>
+            <button class="bulk-btn">Export</button>
+            <button class="bulk-btn" style="color:var(--danger);" onclick="document.getElementById('bulkBar').classList.remove('show')">Clear</button>
+          </div>
+        </div>
+
+        <table class="ct-table">
+          <thead>
+            <tr>
+              <th class="check-col">
+                <div class="ct-check" onclick="toggleAll(this)"></div>
+              </th>
+              <th>Name</th>
+              <th>Company</th>
+              <th>Industry</th>
+              <th>Score</th>
+              <th>Status</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="ct-check" onclick="toggleCheck(this)"></div></td>
+              <td><span class="ct-name">Ravi Shankar</span></td>
+              <td><span class="ct-company">Sodexo India</span></td>
+              <td>Facility Mgmt</td>
+              <td>
+                <div class="ct-score-bar">
+                  <div class="score-mini-bar"><div class="score-mini-fill high" style="width:92%;"></div></div>
+                  <span class="score-num high">92</span>
+                </div>
+              </td>
+              <td><span class="ct-status-badge badge-enrolled">Enrolled</span></td>
+              <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);">Import</td>
+            </tr>
+            <tr>
+              <td><div class="ct-check" onclick="toggleCheck(this)"></div></td>
+              <td><span class="ct-name">Priya Menon</span></td>
+              <td><span class="ct-company">JLL India</span></td>
+              <td>Facility Mgmt</td>
+              <td>
+                <div class="ct-score-bar">
+                  <div class="score-mini-bar"><div class="score-mini-fill high" style="width:88%;"></div></div>
+                  <span class="score-num high">88</span>
+                </div>
+              </td>
+              <td><span class="ct-status-badge badge-replied">Replied</span></td>
+              <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);">Import</td>
+            </tr>
+            <tr>
+              <td><div class="ct-check" onclick="toggleCheck(this)"></div></td>
+              <td><span class="ct-name">Amit Desai</span></td>
+              <td><span class="ct-company">Wipro</span></td>
+              <td>IT Services</td>
+              <td>
+                <div class="ct-score-bar">
+                  <div class="score-mini-bar"><div class="score-mini-fill medium" style="width:76%;"></div></div>
+                  <span class="score-num medium">76</span>
+                </div>
+              </td>
+              <td><span class="ct-status-badge badge-enrolled">Enrolled</span></td>
+              <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);">LinkedIn</td>
+            </tr>
+            <tr>
+              <td><div class="ct-check" onclick="toggleCheck(this)"></div></td>
+              <td><span class="ct-name">Sneha Kulkarni</span></td>
+              <td><span class="ct-company">CBRE India</span></td>
+              <td>Facility Mgmt</td>
+              <td>
+                <div class="ct-score-bar">
+                  <div class="score-mini-bar"><div class="score-mini-fill high" style="width:85%;"></div></div>
+                  <span class="score-num high">85</span>
+                </div>
+              </td>
+              <td><span class="ct-status-badge badge-new">New</span></td>
+              <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);">Import</td>
+            </tr>
+            <tr>
+              <td><div class="ct-check" onclick="toggleCheck(this)"></div></td>
+              <td><span class="ct-name">Rajesh Kumar</span></td>
+              <td><span class="ct-company">HCL Technologies</span></td>
+              <td>IT Services</td>
+              <td>
+                <div class="ct-score-bar">
+                  <div class="score-mini-bar"><div class="score-mini-fill medium" style="width:71%;"></div></div>
+                  <span class="score-num medium">71</span>
+                </div>
+              </td>
+              <td><span class="ct-status-badge badge-enrolled">Enrolled</span></td>
+              <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);">Prospecting</td>
+            </tr>
+            <tr>
+              <td><div class="ct-check" onclick="toggleCheck(this)"></div></td>
+              <td><span class="ct-name">Ananya Iyer</span></td>
+              <td><span class="ct-company">Apollo Hospitals</span></td>
+              <td>Healthcare</td>
+              <td>
+                <div class="ct-score-bar">
+                  <div class="score-mini-bar"><div class="score-mini-fill low" style="width:58%;"></div></div>
+                  <span class="score-num low">58</span>
+                </div>
+              </td>
+              <td><span class="ct-status-badge badge-new">New</span></td>
+              <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);">AEO</td>
+            </tr>
+            <tr>
+              <td><div class="ct-check" onclick="toggleCheck(this)"></div></td>
+              <td><span class="ct-name">Vikram Bhat</span></td>
+              <td><span class="ct-company">ISS India</span></td>
+              <td>Facility Mgmt</td>
+              <td>
+                <div class="ct-score-bar">
+                  <div class="score-mini-bar"><div class="score-mini-fill high" style="width:90%;"></div></div>
+                  <span class="score-num high">90</span>
+                </div>
+              </td>
+              <td><span class="ct-status-badge badge-converted">Converted</span></td>
+              <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);">Import</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-sep"></div>
+
+      <!-- ═══ LAUNCH ═══ -->
+      <div class="launch-section animate-in animate-in-delay-4">
+        <div class="section-header">
+          <div class="label label-signal mb-sm">Mission Launch</div>
+          <div class="display-md">Everything is configured. Ready?</div>
+        </div>
+
+        <div class="launch-card">
+          <div class="launch-readiness">
+            <div class="readiness-item ready"><span class="readiness-icon">✓</span> Identity</div>
+            <div class="readiness-item ready"><span class="readiness-icon">✓</span> ICP Rules</div>
+            <div class="readiness-item ready"><span class="readiness-icon">✓</span> Email Channel</div>
+            <div class="readiness-item pending"><span class="readiness-icon">⚠</span> WhatsApp</div>
+            <div class="readiness-item ready"><span class="readiness-icon">✓</span> AEO Targets</div>
+            <div class="readiness-item ready"><span class="readiness-icon">✓</span> Sequences</div>
+            <div class="readiness-item ready"><span class="readiness-icon">✓</span> Contacts</div>
+          </div>
+
+          <div class="launch-title">Launch ContractNest Mission</div>
+          <div class="launch-desc">Agents will begin executing sequences, scoring contacts, and optimizing channels. The Orchestrator takes over from here.</div>
+
+          <button class="launch-btn" onclick="launchMission()">
+            🚀 Activate Agents
+          </button>
+
+          <div class="launch-summary">
+            <div class="launch-sum-item">
+              <div class="launch-sum-val text-accent">847</div>
+              <div class="launch-sum-label">Contacts</div>
+            </div>
+            <div class="launch-sum-item">
+              <div class="launch-sum-val text-signal">3</div>
+              <div class="launch-sum-label">Sequences</div>
+            </div>
+            <div class="launch-sum-item">
+              <div class="launch-sum-val" style="color:#b388ff;">5</div>
+              <div class="launch-sum-label">Agents</div>
+            </div>
+            <div class="launch-sum-item">
+              <div class="launch-sum-val" style="color:var(--warn);">3</div>
+              <div class="launch-sum-label">Channels</div>
+            </div>
+            <div class="launch-sum-item">
+              <div class="launch-sum-val gradient-text">8</div>
+              <div class="launch-sum-label">AEO Queries</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ═══ FOOTER ═══ -->
+    <footer class="contacts-footer animate-in animate-in-delay-6">
+      <a href="sequences.html" class="btn btn-ghost">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Back to Sequences
+      </a>
+      <div class="footer-steps">
+        <div class="footer-dot completed"></div>
+        <div class="footer-dot completed"></div>
+        <div class="footer-dot completed"></div>
+        <div class="footer-dot completed"></div>
+        <div class="footer-dot completed"></div>
+        <div class="footer-dot active"></div>
+      </div>
+      <a href="war-room.html" class="btn btn-primary">
+        Enter War Room →
+      </a>
+    </footer>
+  </div>
+
+  <!-- ═══ LAUNCH OVERLAY ═══ -->
+  <div class="launch-overlay" id="launchOverlay">
+    <div class="launch-anim-ring" id="launchRing"></div>
+    <div class="launch-anim-text" id="launchText">Initializing Mission...</div>
+    <div class="launch-anim-sub" id="launchSub">Deploying agents for ContractNest</div>
+    <div class="launch-anim-steps" id="launchSteps">
+      <div class="anim-step" data-step="1"><div class="anim-step-icon">1</div> Provisioning tenant environment</div>
+      <div class="anim-step" data-step="2"><div class="anim-step-icon">2</div> Loading ICP rules & scoring models</div>
+      <div class="anim-step" data-step="3"><div class="anim-step-icon">3</div> Connecting outreach channels</div>
+      <div class="anim-step" data-step="4"><div class="anim-step-icon">4</div> Activating Orchestrator Agent</div>
+      <div class="anim-step" data-step="5"><div class="anim-step-icon">5</div> Deploying Prospecting, Outreach, AEO, Conversion, Feedback agents</div>
+      <div class="anim-step" data-step="6"><div class="anim-step-icon">✓</div> Mission is LIVE</div>
+    </div>
+  </div>
+
+  <script>
+    // ═══ Checkbox Logic ═══
+    function toggleCheck(el) {
+      el.classList.toggle('checked');
+      updateBulkBar();
+    }
+
+    function toggleAll(el) {
+      const checked = el.classList.toggle('checked');
+      document.querySelectorAll('.ct-table tbody .ct-check').forEach(c => {
+        if (checked) c.classList.add('checked');
+        else c.classList.remove('checked');
+      });
+      updateBulkBar();
+    }
+
+    function updateBulkBar() {
+      const count = document.querySelectorAll('.ct-table tbody .ct-check.checked').length;
+      const bar = document.getElementById('bulkBar');
+      document.getElementById('bulkCount').textContent = count;
+      if (count > 0) bar.classList.add('show');
+      else bar.classList.remove('show');
+    }
+
+    // ═══ Import Simulation ═══
+    function simulateImport() {
+      const prog = document.getElementById('importProgress');
+      const fill = document.getElementById('progressFill');
+      const pct = document.getElementById('progressPct');
+      const stats = document.getElementById('progressStats');
+
+      prog.classList.add('show');
+      document.getElementById('importZone').style.display = 'none';
+
+      let p = 0;
+      const steps = [
+        { pct: 25, stats: 'Parsed: <strong>847</strong> | Matched ICP: <strong>0</strong> | Enriched: <strong>0</strong> | Scored: <strong>0</strong>' },
+        { pct: 50, stats: 'Parsed: <strong>847</strong> | Matched ICP: <strong>612</strong> | Enriched: <strong>0</strong> | Scored: <strong>0</strong>' },
+        { pct: 75, stats: 'Parsed: <strong>847</strong> | Matched ICP: <strong>612</strong> | Enriched: <strong>612</strong> | Scored: <strong>0</strong>' },
+        { pct: 100, stats: 'Parsed: <strong>847</strong> | Matched ICP: <strong>612</strong> | Enriched: <strong>612</strong> | Scored: <strong>612</strong>' },
+      ];
+
+      steps.forEach((step, i) => {
+        setTimeout(() => {
+          fill.style.width = step.pct + '%';
+          pct.textContent = step.pct + '%';
+          stats.innerHTML = step.stats;
+          if (step.pct === 100) {
+            pct.style.color = 'var(--signal)';
+            pct.textContent = '✓ Done';
+          }
+        }, (i + 1) * 800);
+      });
+    }
+
+    // ═══ Launch Mission ═══
+    function launchMission() {
+      const overlay = document.getElementById('launchOverlay');
+      overlay.classList.add('show');
+
+      const steps = overlay.querySelectorAll('.anim-step');
+      steps.forEach((step, i) => {
+        setTimeout(() => {
+          if (i > 0) steps[i - 1].classList.remove('active');
+          if (i > 0) steps[i - 1].classList.add('done');
+          step.classList.add('active');
+
+          if (i === steps.length - 1) {
+            step.classList.add('done');
+            document.getElementById('launchRing').style.display = 'none';
+            document.getElementById('launchText').textContent = '🚀 Mission Active!';
+            document.getElementById('launchText').style.fontSize = '36px';
+            document.getElementById('launchSub').textContent = 'Redirecting to War Room...';
+
+            setTimeout(() => {
+              window.location.href = 'war-room.html';
+            }, 2000);
+          }
+        }, (i + 1) * 1000);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -6,10 +6,10 @@ interface StatItem {
 }
 
 const stats: StatItem[] = [
-  { value: '21', label: 'AI-Powered Functions' },
-  { value: '8', label: 'Skill Modules' },
-  { value: '<2s', label: 'Avg. Response Time' },
-  { value: '12', label: 'Premium Themes' },
+  { value: '6', label: 'GTM Agents' },
+  { value: '3', label: 'Outreach Channels' },
+  { value: '24/7', label: 'Always-On Ops' },
+  { value: '1', label: 'Mission Control' },
 ];
 
 export default function StatsRibbon() {

@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, type ReactNode } from 'react';
+import { BRAND } from '@/constants/brand';
 
 /* ── Types ───────────────────────────────────────────── */
 
@@ -30,8 +31,8 @@ const defaultConfig: ShellConfig = {
     ? window.location.origin
     : 'http://localhost:3000',
   product: {
-    name: 'KI-PRIME',
-    tagline: 'by Vikuna Technologies',
+    name: BRAND.name,
+    tagline: BRAND.tagline,
   },
   onboarding: {
     steps: [

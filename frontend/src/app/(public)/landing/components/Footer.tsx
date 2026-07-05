@@ -1,3 +1,4 @@
+import { BRAND } from '@/constants/brand';
 import s from '../page.module.css';
 
 const linkGroups = [
@@ -24,7 +25,7 @@ const linkGroups = [
     links: [
       { label: 'Privacy Policy', href: '#' },
       { label: 'Terms of Service', href: '#' },
-      { label: 'SEBI Compliance', href: '#' },
+      { label: 'Security', href: '#' },
     ],
   },
 ];
@@ -34,10 +35,10 @@ export default function Footer() {
     <footer className={s.footer}>
       <div className={s.footerContent}>
         <div className={s.footerBrand}>
-          <div className={s.footerBrandName}>VaNi-GTM</div>
+          <div className={s.footerBrandName}>{BRAND.name}</div>
           <div className={s.footerBrandTagline}>
-            AI-powered go-to-market intelligence.
-            Built by practitioners, for practitioners.
+            AI agents that run your go-to-market.
+            Built by operators, for operators.
           </div>
           <div className={s.footerBrandCompany}>A Vikuna Technologies Product</div>
         </div>

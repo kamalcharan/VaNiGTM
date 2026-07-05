@@ -7,23 +7,23 @@ import s from '../page.module.css';
 const painPoints = [
   {
     icon: '\uD83D\uDCCA',
-    title: 'Scattered Data, Zero Visibility',
-    desc: 'Client portfolios in CAMS, KFintech, InvestWell \u2014 none of them talk to each other. You spend hours just getting a consolidated view.',
+    title: 'Your GTM Lives in Ten Tabs',
+    desc: 'ICP in a doc, leads in a spreadsheet, sequences in one tool, analytics in another \u2014 nothing talks to each other, and no one has the whole picture.',
   },
   {
     icon: '\u23F0',
-    title: 'Manual Reporting Kills Weekends',
-    desc: 'Every quarter, you\u2019re copy-pasting NAVs, computing XIRR in Excel, and formatting reports that clients barely read.',
+    title: 'Outreach Is a Copy-Paste Grind',
+    desc: 'Personalizing every email and message by hand, then chasing replies across email, WhatsApp, and LinkedIn. It doesn\u2019t scale, and it burns the team out.',
   },
   {
     icon: '\uD83C\uDFAF',
-    title: 'Goal Planning is Guesswork',
-    desc: 'SIP calculators tell you nothing about goal gaps, tax harvesting opportunities, or when to rebalance. Clients deserve better.',
+    title: 'Targeting Is a Guess',
+    desc: 'You spray a generic list and hope. No real ICP, no buying signals, no idea who is actually in-market right now.',
   },
   {
     icon: '\uD83D\uDD15',
-    title: 'SIP Bounces Go Unnoticed',
-    desc: 'A bounced SIP means lost AUM and a disappointed client. Without alerts, you find out weeks later \u2014 if at all.',
+    title: 'You Can\u2019t See What\u2019s Working',
+    desc: 'Which message, which channel, which segment is converting? Without live observability, every decision is a shot in the dark.',
   },
 ];
 
@@ -49,7 +49,7 @@ export default function PainSection() {
       <div ref={ref} className={s.animateOnScroll}>
         <div className={s.sectionEyebrow}>The problem</div>
         <h2 className={s.sectionTitle}>
-          You Became an MFD to Build Wealth.<br />Not to Drown in Spreadsheets.
+          You Built a Product to Win Customers.<br />Not to Wrestle a GTM Stack.
         </h2>
       </div>
       <div className={s.painGrid}>

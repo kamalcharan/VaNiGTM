@@ -10,6 +10,7 @@ import PasswordStrength from '@/components/ui/password-strength';
 import { useRegister } from '@/hooks';
 import { storeTokens, getAccessToken, type ApiError } from '@/lib/api-client';
 import { VdfLoader } from '@/components/vdf';
+import { BRAND } from '@/constants/brand';
 import f from '@/styles/forms.module.css';
 import s from './register-page.module.css';
 
@@ -172,19 +173,18 @@ export default function RegisterPage() {
           </div>
 
           <div className={s.brandText}>
-            <div className={s.brandName}>KI-PRIME</div>
+            <div className={s.brandName}>{BRAND.name}</div>
             <div className={s.brandSub}>by Vikuna Technologies</div>
           </div>
 
           <h1 className={s.headline}>
-            Begin your<br />
-            <span className={s.glowWord}>legacy</span>.<br />
-            One client at a time.
+            From your docs to a<br />
+            <span className={s.glowWord}>ready-to-send pitch.</span>
           </h1>
 
           <p className={s.storyText}>
-            You&apos;re not just signing up for software — you&apos;re unlocking
-            the intelligence that turns good advisors into unforgettable ones.
+            VaNi learns your product, builds your ideal-customer profile, and turns it
+            into a pitch you can share with customers, partners, or investors.
           </p>
 
           {/* Trust signals */}
@@ -194,20 +194,20 @@ export default function RegisterPage() {
                 <rect x="3" y="11" width="18" height="11" rx="2" />
                 <path d="M7 11V7a5 5 0 0110 0v4" />
               </svg>
-              <span>Bank-grade<br />encryption</span>
+              <span>Private,<br />self-hosted AI</span>
             </div>
             <div className={s.trustItem}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
-              <span>Setup in<br />under 5 min</span>
+              <span>Setup in<br />~5 min</span>
             </div>
             <div className={s.trustItem}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
                 <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z" />
               </svg>
-              <span>Free starter<br />tier included</span>
+              <span>Free in<br />early access</span>
             </div>
           </div>
         </div>
@@ -220,12 +220,12 @@ export default function RegisterPage() {
           <div className={s.breadcrumbSteps}>
             <div className={`${s.breadcrumbStep} ${s.breadcrumbActive}`}>
               <span className={s.breadcrumbDot} />
-              <span>Create Account</span>
+              <span>Create account</span>
             </div>
             <div className={s.breadcrumbLine} />
             <div className={s.breadcrumbStep}>
               <span className={s.breadcrumbDot} />
-              <span>Setup Workspace</span>
+              <span>Workspace</span>
             </div>
             <div className={s.breadcrumbLine} />
             <div className={s.breadcrumbStep}>
@@ -242,7 +242,7 @@ export default function RegisterPage() {
           <div className={s.accentLine} />
           <h2 className={s.formTitle}>Create your account</h2>
           <p className={s.formSubtitle}>
-            Start your free journey — no card required
+            Start building your pitch in minutes
           </p>
         </div>
 
