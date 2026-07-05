@@ -149,6 +149,7 @@ export function createStorytellerRouter(pool: Pool): Router {
   router.get('/share/:token', async (req: Request, res: Response) => {
     try {
       const token = String(req.params.token);
+      console.log('[share] token=%j len=%d', token, token.length);
       // Raw pool, NO tenant context — intentionally cross-tenant, scoped by the
       // unguessable share_token AND status='approved'. Returns ONLY the public
       // fields; never id, tenant_id, status, or share_token.
@@ -158,6 +159,7 @@ export function createStorytellerRouter(pool: Pool): Router {
           WHERE share_token = $1 AND status = 'approved'`,
         [token],
       );
+      console.log('[share] rows=%d', result.rows.length);
 
       const deck = result.rows[0];
       if (!deck) {
