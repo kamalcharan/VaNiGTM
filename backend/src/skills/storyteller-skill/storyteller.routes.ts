@@ -17,6 +17,7 @@
 import { Router, type Request, type Response } from 'express';
 import type { Pool } from 'pg';
 import { verifyAccessToken, type JwtPayload } from '../../auth/token.service';
+import { createTenantDb } from '../../db';
 import { StorytellerAgent } from './storyteller.agent';
 
 /* ── Auth guard (same pattern as vani.routes.ts) ────────────────────────── */
@@ -46,11 +47,24 @@ export function createStorytellerRouter(pool: Pool): Router {
     if (!jwt) return;
 
     try {
-      const result = await StorytellerAgent.buildDeck(pool, jwt.tenant_id);
-      res.json(result);
+      const { presentationId } = await StorytellerAgent.buildDeck(pool, jwt.tenant_id);
+      res.json({ presentationId });
     } catch (err) {
-      console.error('[Storyteller:/build]', err);
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });
+      const msg = messageOf(err);
+      if (msg.startsWith('LLM_VALIDATION_FAILED')) {
+        res.status(422).json({
+          error: { code: 'DECK_GENERATION_FAILED', message: 'Model did not return a valid deck. Try again.' },
+        });
+        return;
+      }
+      if (msg.startsWith('PROFILE_NOT_FOUND')) {
+        res.status(400).json({
+          error: { code: 'NO_PROFILE', message: 'Build a tenant profile first.' },
+        });
+        return;
+      }
+      console.error('[Storyteller:/build]', msg);
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: msg } });
     }
   });
 
@@ -59,8 +73,35 @@ export function createStorytellerRouter(pool: Pool): Router {
     const jwt = requireAuth(req, res);
     if (!jwt) return;
 
-    // Stage 4: fetch the deck for jwt.tenant_id via createTenantDb.
-    res.status(501).json({ error: { code: 'NOT_IMPLEMENTED', message: 'GET /:id not implemented yet' } });
+    try {
+      const id = String(req.params.id);
+      const db = createTenantDb(pool, jwt.tenant_id);
+      // RLS context is set; the explicit tenant_id filter is the required
+      // second layer (CLAUDE.md: every query filters by tenant_id).
+      const result = await db.query<{
+        id: string;
+        title: string | null;
+        slides: unknown;
+        status: string;
+        share_token: string | null;
+        created_at: Date;
+      }>(
+        `SELECT id, title, slides, status, share_token, created_at
+           FROM gt_presentations
+          WHERE id = $id AND tenant_id = $tenant_id`,
+        { id, tenant_id: jwt.tenant_id },
+      );
+
+      const deck = result.rows[0];
+      if (!deck) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Deck not found' } });
+        return;
+      }
+      res.json(deck);
+    } catch (err) {
+      console.error('[Storyteller:/:id]', err);
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });
+    }
   });
 
   // ── PATCH /:id/approve ───────────────────────────────────────────────────
