@@ -164,32 +164,28 @@ export default function LoginVault() {
             </div>
 
             <h1 className={s.storyHeadline}>
-              Every fortune<br />
-              has a <span className={s.glowWord}>story</span>.<br />
-              Help them write it.
+              Your pitch is<br />
+              <span className={s.glowWord}>where you left it.</span>
             </h1>
 
             <p className={s.storyText}>
-              You don&apos;t just manage portfolios — you architect futures.
-              The intelligence to see what others miss.
+              Sign back in to refine your ICP, regenerate your deck, or share it
+              with your next prospect.
             </p>
           </div>
 
           {/* Bottom ticker */}
           <div className={s.storyTicker}>
             <div className={s.tickerItem}>
-              <span className={s.tickerValue}>&#8377;500Cr+</span>
-              <span className={s.tickerLabel}>AUM Managed</span>
+              <span className={s.tickerLabel}>ICP builder</span>
             </div>
             <div className={s.tickerDot} />
             <div className={s.tickerItem}>
-              <span className={s.tickerValue}>2,000+</span>
-              <span className={s.tickerLabel}>Families Served</span>
+              <span className={s.tickerLabel}>Pitch generator</span>
             </div>
             <div className={s.tickerDot} />
             <div className={s.tickerItem}>
-              <span className={`${s.tickerValue} ${s.textUp}`}>18.4%</span>
-              <span className={s.tickerLabel}>Avg XIRR</span>
+              <span className={s.tickerLabel}>Live Q&amp;A</span>
             </div>
           </div>
         </div>
@@ -212,7 +208,7 @@ export default function LoginVault() {
           <div className={s.formHeader}>
             <div className={s.goldLine} />
             <h2 className={s.formTitle}>Welcome back</h2>
-            <p className={s.formSubtitle}>Sign in to your advisory dashboard</p>
+            <p className={s.formSubtitle}>Sign in to your GTM workspace</p>
           </div>
 
           {/* Platform feature strip */}
@@ -224,8 +220,8 @@ export default function LoginVault() {
                 </svg>
               </div>
               <div className={s.featureText}>
-                <span className={s.featureName}>Portfolio Intelligence</span>
-                <span className={s.featureDesc}>Real-time XIRR &middot; NAV sync &middot; Goal tracking</span>
+                <span className={s.featureName}>ICP builder</span>
+                <span className={s.featureDesc}>A clear picture of who you&rsquo;re selling to, from your own docs.</span>
               </div>
               <div className={s.featurePulse} />
             </div>
@@ -239,8 +235,8 @@ export default function LoginVault() {
                 </svg>
               </div>
               <div className={s.featureText}>
-                <span className={s.featureName}>Client Universe</span>
-                <span className={s.featureDesc}>360° profiles &middot; Family groups &middot; KYC records</span>
+                <span className={s.featureName}>Pitch generator</span>
+                <span className={s.featureDesc}>A seven-slide deck, on demand.</span>
               </div>
               <div className={s.featurePulse} />
             </div>
@@ -253,8 +249,8 @@ export default function LoginVault() {
                 </svg>
               </div>
               <div className={s.featureText}>
-                <span className={s.featureName}>Market Intelligence</span>
-                <span className={s.featureDesc}>40,000+ schemes &middot; Live NAV &middot; Sector coverage</span>
+                <span className={s.featureName}>Live Q&amp;A</span>
+                <span className={s.featureDesc}>A shareable deck that answers questions in your voice.</span>
               </div>
               <div className={s.featurePulse} />
             </div>
@@ -318,7 +314,7 @@ export default function LoginVault() {
               disabled={!email || !password || loading}
             >
               <span className={s.submitText}>
-                {loading ? 'SIGNING IN...' : 'ENTER THE ATLAS \u2192'}
+                {loading ? 'SIGNING IN...' : 'Sign in \u2192'}
               </span>
             </button>
           </form>
@@ -330,14 +326,14 @@ export default function LoginVault() {
                 <rect x="3" y="11" width="18" height="11" rx="2" />
                 <path d="M7 11V7a5 5 0 0110 0v4" />
               </svg>
-              <span>256-bit encrypted</span>
+              <span>Encrypted</span>
             </div>
             <div className={s.trustDot} />
             <div className={s.trustItem}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
-              <span>SOC 2 compliant</span>
+              <span>Your data stays yours</span>
             </div>
           </div>
 
