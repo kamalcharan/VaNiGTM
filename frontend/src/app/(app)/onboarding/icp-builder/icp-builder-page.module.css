@@ -115,6 +115,12 @@
 @media (max-width: 768px) {
   .body { padding: 16px 20px 24px; }
   .readGrid { grid-template-columns: 1fr; }
+
+  /* Grid collapses to 1 column here, so the desktop -n+2 last-row rule would
+     strip the border from the second-to-last item too. Restore it, then
+     remove the border only from the true last item. */
+  .readItem:nth-last-child(-n+2) { border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent); }
+  .readItem:last-child { border-bottom: none; }
 }
 
 @media (max-width: 480px) {
