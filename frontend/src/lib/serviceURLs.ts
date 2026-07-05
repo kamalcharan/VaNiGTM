@@ -178,6 +178,35 @@ export const API = {
     },
   },
 
+  /* ── GTM Profile ──────────────────────────────────── */
+
+  gtmProfile: {
+    get: {
+      method: 'GET',
+      path: '/api/v1/profile/',
+      auth: true,
+      description: 'Get the current GTM profile',
+    },
+    update: {
+      method: 'PUT',
+      path: '/api/v1/profile/',
+      auth: true,
+      description: 'Update the GTM profile',
+    },
+    approve: {
+      method: 'POST',
+      path: '/api/v1/profile/approve',
+      auth: true,
+      description: 'Approve the current GTM profile',
+    },
+    history: {
+      method: 'GET',
+      path: '/api/v1/profile/history',
+      auth: true,
+      description: 'Get the GTM profile revision history',
+    },
+  },
+
   /* ── ETL ──────────────────────────────────────────── */
 
   etl: {
