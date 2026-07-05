@@ -157,6 +157,10 @@ export function createStorytellerRouter(pool: Pool): Router {
          FROM gt_presentations`
       );
       console.log('[share] db=%s approved=%s latest=%j', dbg.rows[0].db, dbg.rows[0].approved, dbg.rows[0].latest);
+      const who = await pool.query(
+        `SELECT inet_server_addr() AS host, inet_server_port() AS port, current_user AS usr`
+      );
+      console.log('[share] host=%s port=%s user=%s', who.rows[0].host, who.rows[0].port, who.rows[0].usr);
       // Raw pool, NO tenant context — intentionally cross-tenant, scoped by the
       // unguessable share_token AND status='approved'. Returns ONLY the public
       // fields; never id, tenant_id, status, or share_token.
