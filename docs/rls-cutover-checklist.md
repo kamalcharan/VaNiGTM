@@ -32,6 +32,34 @@
 
 ---
 
+## REQUIRED pre-cutover fixes (code paths that break under `vanigtm_app`)
+
+These are raw-pool, cross-tenant reads that work today only because
+`vikuna_admin` bypasses RLS. Under `vanigtm_app` the policy filters all rows
+(no `app.current_tenant_id` set). Each must be fixed **before** cutover or the
+feature silently returns nothing.
+
+- [ ] **`gt_presentations` public share route breaks under `vanigtm_app`.**
+      `GET /share/:token` (storyteller.routes.ts) uses the raw pool with no
+      tenant context; once RLS enforces, the policy filters all rows (no
+      `app.current_tenant_id` set), so the route returns 404 for every valid
+      token.
+
+      Fix options (pick one before cutover):
+      - **(a) `SECURITY DEFINER` function** `get_shared_deck(token)` that
+        bypasses RLS and returns only approved decks — **preferred**, narrowest
+        surface.
+      - **(b)** an RLS policy permitting anonymous `SELECT` of `status='approved'`
+        rows.
+      - **(c)** route share reads through a bypass connection.
+
+      **Recommend (a):** a definer function scoped to
+      `WHERE share_token = $1 AND status = 'approved'` is the least-privilege
+      option and can't leak `awaiting` decks. After adding it, change the route
+      to call the function instead of the inline `SELECT`.
+
+---
+
 ## Cutover
 
 - [ ] Edit `backend/.env`: point `DB_PRIMARY` at **`vanigtm_app`**
