@@ -6,6 +6,10 @@
 
 ---
 
+> **Strategic context:** the agreed Phase 4–8 build order, prospect-sourcing
+> decision, model strategy (Hermes), and creative-gen direction live in
+> `documents/GTM-AGENT-ROADMAP.md`. Read it after this file.
+
 ## TL;DR — exact next step
 
 1. Merge PR #3 to `main` (no remaining code changes).
