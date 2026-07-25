@@ -33,6 +33,12 @@ export interface ThemeColors {
   };
 }
 
+export interface ThemeFonts {
+  display: string;
+  body: string;
+  mono: string;
+}
+
 export interface ThemeConfig {
   id: string;
   name: string;
@@ -40,6 +46,8 @@ export interface ThemeConfig {
   darkMode: {
     colors: ThemeColors;
   };
+  /** Optional font stack override — themes without one use the app defaults. */
+  fonts?: ThemeFonts;
 }
 
 export interface ThemeContextType {

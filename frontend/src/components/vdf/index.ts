@@ -5,6 +5,7 @@ export { VdfAvatar, type VdfAvatarProps } from './avatar/VdfAvatar';
 export { VdfIcon, type VdfIconProps } from './icon/VdfIcon';
 export { VdfGoldThread, type VdfGoldThreadProps } from './gold-thread/VdfGoldThread';
 export { VdfNoiseOverlay, type VdfNoiseOverlayProps } from './noise-overlay/VdfNoiseOverlay';
+export { VdfGridOverlay, type VdfGridOverlayProps } from './grid-overlay/VdfGridOverlay';
 export { VdfAtmosphere, type VdfAtmosphereProps } from './atmosphere/VdfAtmosphere';
 export { VdfParticles, type VdfParticlesProps } from './particles/VdfParticles';
 export { VdfModal, type VdfModalProps } from './modal/VdfModal';

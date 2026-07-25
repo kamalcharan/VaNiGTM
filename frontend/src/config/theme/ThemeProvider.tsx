@@ -21,9 +21,22 @@ const ENV_DEFAULT_MODE = (
     : 'dark'
 ) as 'light' | 'dark';
 
+// App default font stack — themes without a fonts override fall back to these
+// (must match the inline defaults in app/layout.tsx).
+const DEFAULT_FONTS = {
+  display: "'Playfair Display', Georgia, serif",
+  body: "'DM Sans', system-ui, sans-serif",
+  mono: "'JetBrains Mono', monospace",
+};
+
 function themeToCSS(theme: ThemeConfig, isDark: boolean): Record<string, string> {
   const colors = isDark ? theme.darkMode.colors : theme.colors;
+  const fonts = theme.fonts ?? DEFAULT_FONTS;
   return {
+    // Fonts (theme override or app default)
+    '--font-display': fonts.display,
+    '--font-body': fonts.body,
+    '--font-mono': fonts.mono,
     // Brand
     '--color-primary': colors.brand.primary,
     '--color-secondary': colors.brand.secondary,

@@ -1,0 +1,126 @@
+/* ═══════════════════════════════════════════════════════════════════
+   VDF utilities — motion / glow / typography patterns
+   (POA Phase 1.1: the Neural Ops mockup patterns, generalized)
+
+   Global, theme-token driven. Every color derives from the active theme
+   via CSS variables + color-mix — these classes look right under ANY
+   theme, not just neural-ops. Imported once in app/layout.tsx.
+
+   Grid overlay lives in <VdfGridOverlay/> (a component, since it is a
+   DOM element, not a class you add to one).
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Motion: staggered entrance ─────────────────────────────────────
+   Usage: <div className="vdf-animate-in vdf-delay-2">…
+   Matches the mockups' .animate-in / .animate-in-delay-N cascade. */
+
+@keyframes vdf-slide-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.vdf-animate-in {
+  animation: vdf-slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.vdf-delay-1 { animation-delay: 0.1s; }
+.vdf-delay-2 { animation-delay: 0.2s; }
+.vdf-delay-3 { animation-delay: 0.3s; }
+.vdf-delay-4 { animation-delay: 0.4s; }
+.vdf-delay-5 { animation-delay: 0.5s; }
+.vdf-delay-6 { animation-delay: 0.6s; }
+
+/* ── Motion: ambient pulse (status dots, live indicators) ─────────── */
+
+@keyframes vdf-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+.vdf-pulse {
+  animation: vdf-pulse 2s ease-in-out infinite;
+}
+
+/* ── Glow: ambient box-shadow halos ─────────────────────────────────
+   Primary glow for focus/active elements, success glow for live/positive
+   signals — the mockups' cyan/green halo language, theme-relative. */
+
+.vdf-glow-primary {
+  box-shadow: 0 0 20px var(--color-primary-glow);
+}
+
+.vdf-glow-primary-strong {
+  box-shadow:
+    0 0 40px color-mix(in srgb, var(--color-primary) 25%, transparent),
+    0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.vdf-glow-success {
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-success) 20%, transparent);
+}
+
+/* Border-glow card accent: hover reveals a gradient halo behind the card.
+   Element needs position:relative and a background (its own surface). */
+
+.vdf-glow-card {
+  position: relative;
+}
+
+.vdf-glow-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-glow),
+    transparent 40%,
+    transparent 60%,
+    color-mix(in srgb, var(--color-success) 15%, transparent)
+  );
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.vdf-glow-card:hover::before {
+  opacity: 1;
+}
+
+/* ── Typography: gradient display text ──────────────────────────────
+   The mockups' cyan→green .gradient-text, generalized to
+   primary→success so it follows the theme. */
+
+.vdf-gradient-text {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-success));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--color-primary); /* fallback if background-clip unsupported */
+}
+
+/* ── Typography: mono ops label ─────────────────────────────────────
+   The mockups' uppercase JetBrains-Mono .label — mission-control
+   section eyebrows and table headers. */
+
+.vdf-ops-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.vdf-ops-label-primary {
+  color: var(--color-primary);
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .vdf-animate-in,
+  .vdf-pulse {
+    animation: none;
+  }
+}

@@ -29,12 +29,29 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
    verify once against a live backend with deck
    `E0cZmJMe2Ju6qZZasiC5iTRJ6vDH1FtE` (tenant `c829c707`).
 2. **Phase 1 — UX wow pass** (POA Phase 1, `documents/POA-VaNi-GTM.md`):
-   Neural Ops as a VDF theme → pixel-final screens (onboarding = the
-   agent-led wizard: agent produces → human confirms, accumulating left
-   rail, enrichment waterfall — patterns distilled in
-   `documents/ux-references/README.md`, source PDF alongside, layout
-   blueprints in `documents/gtm-engine-ui/`) → VDF component gap build →
-   8–10s synthetic-data landing explainer video.
+   - ✅ **1.1 DONE (2026-07-25):** Neural Ops is a first-class theme
+     (`config/theme/themes/neuralOps.ts`, id `neural-ops`, registered;
+     dark = void/cyan/signal canonical, light = counterpart). Theme
+     pipeline now supports per-theme fonts (`ThemeConfig.fonts`,
+     emitted by ThemeProvider + ThemeScript; defaults preserved for the
+     other 14 themes) — neural-ops uses Outfit / Instrument Sans /
+     JetBrains Mono, loaded in the root layout font link. Mockup
+     motion/glow/grid patterns are VDF utilities:
+     `components/vdf/vdf-utilities.css` (`.vdf-animate-in` + delays,
+     `.vdf-pulse`, `.vdf-glow-*`, `.vdf-glow-card`, `.vdf-gradient-text`,
+     `.vdf-ops-label`, reduced-motion safe; imported in root layout) +
+     `<VdfGridOverlay/>` (blueprint grid, pairs with VdfAtmosphere).
+     All theme-token driven (color-mix over --color-*) — works under
+     every theme. Verified via Playwright: /login + /landing render in
+     neural-ops; vikuna-black unchanged. **Default theme stays
+     vikuna-black** — flipping the product to neural-ops is a one-line
+     env/default change the user makes when ready.
+   - Next: **1.2 pixel-final screens** (onboarding = the agent-led
+     wizard: agent produces → human confirms, accumulating left rail,
+     enrichment waterfall — patterns distilled in
+     `documents/ux-references/README.md`, source PDF alongside, layout
+     blueprints in `documents/gtm-engine-ui/`) → 1.3 VDF component gap
+     build → 1.4 8–10s synthetic-data landing explainer video.
 3. UI smoke state: contact CONT-0001 created through the UI post-Phase-0.
 
 ## What this product is (scope — LOCKED)
