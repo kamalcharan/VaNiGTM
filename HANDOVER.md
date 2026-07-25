@@ -6,9 +6,11 @@
 
 ---
 
-> **Strategic context:** the agreed Phase 4–8 build order, prospect-sourcing
-> decision, model strategy (Hermes), and creative-gen direction live in
-> `documents/GTM-AGENT-ROADMAP.md`. Read it after this file.
+> **Strategic context — read in this order after this file:**
+> 1. `documents/PRD-VaNi-GTM.md` — canonical product definition (v1.0)
+> 2. `documents/POA-VaNi-GTM.md` — execution plan (UX → data → skills → stitch,
+>    with Phase 0 = KI-Prime/kewalinvest legacy removal)
+> 3. `documents/GTM-AGENT-ROADMAP.md` — phase history + standing decisions
 
 ## TL;DR — exact next step
 
