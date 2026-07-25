@@ -16,6 +16,15 @@ and the mockups in `documents/gtm-engine-ui/`).
 **Nothing works without an ICP — the ICP (tenant profile) is the foundation/gate**
 for every downstream agent.
 
+> **Strategic docs (long-range, beyond the locked scope) — read after this file:**
+> 1. `documents/PRD-VaNi-GTM.md` — full product definition (v1.0)
+> 2. `documents/POA-VaNi-GTM.md` — execution plan (UX → data → skills → stitch,
+>    with Phase 0 = KI-Prime/kewalinvest legacy removal)
+> 3. `documents/GTM-AGENT-ROADMAP.md` — phase history + standing decisions
+>
+> These are the roadmap BEYOND the locked scope; the locked scope above wins
+> for what gets built next.
+
 ---
 
 ## ✅ Verified working end-to-end this session
