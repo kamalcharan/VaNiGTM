@@ -1,7 +1,7 @@
 -- pulse-skill: list_pulses
 -- Returns pulses for the tenant, optionally filtered by contact, client, status, type.
--- Joins ki_contacts (for prospect pulses) and ki_clients+ki_contacts (for client pulses)
--- to resolve display names in one query.
+-- Joins gt_contacts to resolve display names. client_id is legacy (nullable)
+-- and no longer resolvable — client rows surface with subject from contact_id only.
 
 SELECT
     p.id,
@@ -26,32 +26,22 @@ SELECT
     ct_direct.name        AS contact_name,
     ct_direct.prefix      AS contact_prefix,
 
-    -- Client (client path)
+    -- Legacy client reference (no longer resolvable post-MFD-cleanup)
     p.client_id,
-    ct_client.name        AS client_name,
-    ct_client.prefix      AS client_prefix,
+    NULL::text            AS client_name,
+    NULL::text            AS client_prefix,
 
-    -- Resolved display name (whichever is set)
-    COALESCE(ct_direct.name, ct_client.name) AS subject_name,
-    COALESCE(ct_direct.prefix, ct_client.prefix) AS subject_prefix
+    -- Resolved display name
+    ct_direct.name        AS subject_name,
+    ct_direct.prefix      AS subject_prefix
 
 FROM ki_pulses p
 
--- Prospect contact join
-LEFT JOIN ki_contacts ct_direct
+-- Contact join
+LEFT JOIN gt_contacts ct_direct
        ON ct_direct.id        = p.contact_id
       AND ct_direct.tenant_id = p.tenant_id
       AND ct_direct.is_active = true
-
--- Client → contact join
-LEFT JOIN ki_clients cl
-       ON cl.id        = p.client_id
-      AND cl.tenant_id = p.tenant_id
-      AND cl.is_active = true
-LEFT JOIN ki_contacts ct_client
-       ON ct_client.id        = cl.contact_id
-      AND ct_client.tenant_id = p.tenant_id
-      AND ct_client.is_active = true
 
 WHERE p.tenant_id = $tenant_id
   AND p.is_live   = $is_live

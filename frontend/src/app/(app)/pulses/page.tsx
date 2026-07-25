@@ -200,10 +200,10 @@ function QueueEmpty() {
   return (
     <div className={s.emptyWrap}>
       <VdfEmptyState
-        title="No clients in queue"
+        title="No contacts in queue"
         description="Set up pulse schedules on client profiles to see them here."
         action={
-          <VdfButton variant="outline" size="sm" onClick={() => router.push('/clients')}>
+          <VdfButton variant="outline" size="sm" onClick={() => router.push('/contacts')}>
             Go to Clients →
           </VdfButton>
         }

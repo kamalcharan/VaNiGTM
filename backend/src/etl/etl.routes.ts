@@ -21,9 +21,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { parseExcelHeaders, parseExcelRows } from './excel-parser';
-import { mapSchemeRow, SCHEME_FIELD_MAP, BOOKMARK_FIELD_MAP } from './scheme-processor';
 import { mapCustomerRow, CUSTOMER_FIELD_MAP } from './customer-processor';
-import { mapTransactionRow, TRANSACTION_FIELD_MAP } from './transaction-processor';
 import { verifyAccessToken, type JwtPayload } from '../auth/token.service';
 
 const UPLOAD_DIR = path.resolve(__dirname, '../../uploads');
@@ -110,7 +108,11 @@ export function createEtlRouter(pool: Pool): Router {
       const file = req.file;
       if (!file) { res.status(400).json({ error: { code: 'NO_FILE', message: 'No file uploaded' } }); return; }
 
-      const importType = req.body.import_type || 'scheme';
+      const importType = req.body.import_type || 'customer';
+      if (importType !== 'customer') {
+        res.status(400).json({ error: { code: 'UNSUPPORTED_TYPE', message: `Import type "${importType}" was removed with the MFD cleanup. Only contact/prospect imports are supported.` } });
+        return;
+      }
       const fileHash = crypto.createHash('sha256').update(fs.readFileSync(file.path)).digest('hex');
 
       // Check duplicate by filename — scoped to this tenant
@@ -158,12 +160,8 @@ export function createEtlRouter(pool: Pool): Router {
       const file = fileResult.rows[0] as any;
       const { headers, sampleRows, totalRows } = parseExcelHeaders(file.file_path);
 
-      // Auto-suggest mapping based on import type
-      const suggestedMapping = file.file_type === 'scheme'      ? SCHEME_FIELD_MAP
-        : file.file_type === 'bookmark'     ? BOOKMARK_FIELD_MAP
-        : file.file_type === 'customer'     ? CUSTOMER_FIELD_MAP
-        : file.file_type === 'transaction'  ? TRANSACTION_FIELD_MAP
-        : {};
+      // Contact/prospect import is the only supported type post-MFD-cleanup
+      const suggestedMapping = CUSTOMER_FIELD_MAP;
 
       res.json({
         file_id: file.id,
@@ -250,22 +248,15 @@ export function createEtlRouter(pool: Pool): Router {
       const fileResult = await pool.query('SELECT * FROM ki_file_uploads WHERE id = $1', [file_id]);
       if (fileResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found' } }); return; }
 
-      const file = fileResult.rows[0] as any;
-      // Always set tenant_id — scheme imports are triggered by a tenant user,
-      // so the session belongs to that tenant for dashboard visibility and audit.
-      const tenantId = auth.tenant_id;
-      const mappings = field_mappings
-        || (import_type === 'scheme'       ? SCHEME_FIELD_MAP
-          : import_type === 'customer'     ? CUSTOMER_FIELD_MAP
-          : import_type === 'transaction'  ? TRANSACTION_FIELD_MAP
-          : {});
-
-      // Validate customer_lookup_method for transaction imports
-      const lookupMethod = customer_lookup_method || 'iwell_code';
-      if (import_type === 'transaction' && !['iwell_code', 'customer_name', 'both'].includes(lookupMethod)) {
-        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'customer_lookup_method must be iwell_code, customer_name, or both' } });
+      if (import_type !== 'customer') {
+        res.status(400).json({ error: { code: 'UNSUPPORTED_TYPE', message: `Import type "${import_type}" was removed with the MFD cleanup. Only contact/prospect imports are supported.` } });
         return;
       }
+
+      const file = fileResult.rows[0] as any;
+      const tenantId = auth.tenant_id;
+      const mappings = field_mappings || CUSTOMER_FIELD_MAP;
+      const lookupMethod = customer_lookup_method || 'iwell_code';
 
       // Create session
       const sessionResult = await pool.query(
@@ -288,13 +279,7 @@ export function createEtlRouter(pool: Pool): Router {
           const rowNum = i + batchIdx + 1;
 
           // Apply field mapping + pre-processing
-          const mapped = import_type === 'scheme'
-            ? mapSchemeRow(raw, mappings)
-            : import_type === 'customer'
-              ? mapCustomerRow(raw, mappings)
-              : import_type === 'transaction'
-                ? mapTransactionRow(raw, mappings)
-                : applyGenericMapping(raw, mappings);
+          const mapped = mapCustomerRow(raw, mappings);
 
           const offset = batchIdx * 4;
           placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}::jsonb, $${offset + 4}::jsonb)`);
@@ -347,76 +332,14 @@ export function createEtlRouter(pool: Pool): Router {
         return;
       }
 
-      // Invoke the PostgreSQL RPC function — all processing happens in DB
-      const targetDurationMs = Number(req.body.target_duration_ms) || 30000;
-      let rpcResult: any;
-
-      if (session.import_type === 'scheme') {
-        rpcResult = await pool.query(
-          'SELECT * FROM process_scheme_import_with_timing($1, $2)',
-          [sessionId, targetDurationMs],
-        );
-      } else if (session.import_type === 'customer') {
-        rpcResult = await pool.query(
-          'SELECT * FROM process_customer_import_with_timing($1, $2)',
-          [sessionId, targetDurationMs],
-        );
-
-        // Auto-resolve family linkages immediately after customer import completes.
-        // resolve_customer_families is idempotent — safe to call unconditionally.
-        try {
-          await pool.query(
-            'SELECT * FROM resolve_customer_families($1, $2)',
-            [auth.tenant_id, auth.is_live],
-          );
-        } catch (familyErr: any) {
-          // Non-fatal — families can be re-resolved via /resolve-families endpoint
-          console.warn('[ETL:process] auto resolve_customer_families failed:', familyErr.message);
-        }
-      } else if (session.import_type === 'transaction') {
-        // Transaction import: calls ki_process_txn_import_session.
-        // Passes customer_lookup_method from the session so the RPC uses the
-        // correct client matching strategy (iwell_code / customer_name / both).
-        rpcResult = await pool.query(
-          'SELECT * FROM ki_process_txn_import_session($1, $2)',
-          [sessionId, session.customer_lookup_method || 'iwell_code'],
-        );
-      } else {
-        res.status(400).json({ error: { code: 'UNSUPPORTED', message: `Import type "${session.import_type}" processing not yet implemented` } });
-        return;
-      }
-
-      const raw = rpcResult.rows[0] as any;
-
-      // Normalise RPC result to a common shape regardless of which RPC was called.
-      // scheme/customer RPCs: processed_count, success_count, failed_count, duplicate_count, actual_duration_ms
-      // transaction RPC:      total_processed, successful, failed, duplicates, orphans, processing_time_s
-      const processed  = raw.processed_count  ?? Number(raw.total_processed)  ?? 0;
-      const successful = raw.success_count     ?? Number(raw.successful)       ?? 0;
-      const failed     = raw.failed_count      ?? Number(raw.failed)           ?? 0;
-      const duplicate  = raw.duplicate_count   ?? Number(raw.duplicates)       ?? 0;
-      const orphans    = Number(raw.orphans)   ?? 0;
-      const durationMs = raw.actual_duration_ms != null
-        ? Number(raw.actual_duration_ms)
-        : raw.processing_time_s != null
-          ? Math.round(Number(raw.processing_time_s) * 1000)
-          : 0;
-
-      // Mark file as completed
-      await pool.query(
-        `UPDATE ki_file_uploads SET processing_status = 'completed' WHERE id = $1`,
-        [session.file_upload_id],
-      );
-
-      res.json({
-        session_id: sessionId,
-        status: failed + orphans > 0 ? 'completed_with_errors' : 'completed',
-        processed,
-        successful,
-        failed,
-        duplicate,
-        orphans,
-        duration_ms: durationMs,
+      // Processing engine removed with the MFD cleanup. The prospect
+      // processor (staged rows -> gt_contacts with dedup + scoring) lands
+      // with prospect-skill (POA Phase 3.4).
+      res.status(501).json({
+        error: {
+          code: 'PROSPECT_PROCESSING_PENDING',
+          message: 'Import processing is being rebuilt for prospect imports (staged rows -> gt_contacts). Staging and mapping work; processing lands with prospect-skill.',
+        },
       });
     } catch (err: any) {
       console.error('[ETL:process]', err);
@@ -567,182 +490,10 @@ export function createEtlRouter(pool: Pool): Router {
         [sessionId],
       );
 
-      // Re-invoke processing based on import type
-      if (session.import_type === 'scheme') {
-        await pool.query('SELECT * FROM process_scheme_import_with_timing($1, $2)', [sessionId, 30000]);
-        await reconcileSessionCounters(sessionId);
-        const sess = await pool.query('SELECT successful_records,failed_records,duplicate_records FROM ki_import_sessions WHERE id=$1',[sessionId]);
-        const c = sess.rows[0] as any;
-        res.json({ message: `Reprocessed ${resetCount} records`, reprocessed: resetCount, successful: Number(c.successful_records), failed: Number(c.failed_records), duplicate: Number(c.duplicate_records) });
-
-      } else if (session.import_type === 'customer') {
-        await pool.query('SELECT * FROM process_customer_import_with_timing($1, $2)', [sessionId, 30000]);
-        await reconcileSessionCounters(sessionId);
-        const sess = await pool.query('SELECT successful_records,failed_records,duplicate_records FROM ki_import_sessions WHERE id=$1',[sessionId]);
-        const c = sess.rows[0] as any;
-        res.json({ message: `Reprocessed ${resetCount} records`, reprocessed: resetCount, successful: Number(c.successful_records), failed: Number(c.failed_records), duplicate: Number(c.duplicate_records) });
-
-      } else if (session.import_type === 'transaction') {
-        await pool.query('SELECT * FROM ki_process_txn_import_session($1, $2)', [sessionId, session.customer_lookup_method || 'iwell_code']);
-        // Rebuild holdings after reprocessing orphan/failed rows
-        await pool.query('SELECT * FROM ki_rebuild_holdings_from_txn($1, $2, NULL)', [session.tenant_id, session.is_live]);
-        await reconcileSessionCounters(sessionId);
-        const sess = await pool.query('SELECT successful_records,failed_records,duplicate_records,orphan_records FROM ki_import_sessions WHERE id=$1',[sessionId]);
-        const c = sess.rows[0] as any;
-        res.json({ message: `Reprocessed ${resetCount} records`, reprocessed: resetCount, successful: Number(c.successful_records), failed: Number(c.failed_records), duplicate: Number(c.duplicate_records), orphans: Number(c.orphan_records) });
-
-      } else if (session.import_type === 'bookmark') {
-        // Re-process failed bookmark staging rows — same upsert + alias seed logic
-        const tenantId = session.tenant_id;
-        const userId = session.created_by;
-
-        const pendingRows = await pool.query(
-          `SELECT id, mapped_data FROM ki_import_staging
-           WHERE session_id = $1 AND processing_status = 'pending' ORDER BY row_number`,
-          [sessionId],
-        );
-
-        let added = 0, already_tracked = 0, failed = 0;
-
-        for (const stagedRow of pendingRows.rows as any[]) {
-          const mapped = stagedRow.mapped_data as Record<string, string>;
-          const rowId = stagedRow.id;
-
-          try {
-            // Resolution chain: scheme_code → ISIN → alias name (matches nav.routes.ts)
-            let schemeCode = mapped.scheme_code;
-
-            if (!schemeCode && mapped.isin) {
-              const isinResult = await pool.query(
-                `SELECT scheme_code FROM ki_schemes WHERE isin_growth = $1 OR isin_dividend = $1 LIMIT 1`,
-                [mapped.isin],
-              );
-              if (isinResult.rows.length > 0) schemeCode = (isinResult.rows[0] as any).scheme_code;
-            }
-
-            if (!schemeCode && mapped.scheme_name) {
-              const aliasResult = await pool.query(
-                `SELECT scheme_code FROM lookup_scheme_by_alias($1)`,
-                [mapped.scheme_name],
-              );
-              if (aliasResult.rows.length > 0) schemeCode = (aliasResult.rows[0] as any).scheme_code;
-            }
-
-            if (!schemeCode) {
-              failed++;
-              await pool.query(
-                `UPDATE ki_import_staging SET processing_status = 'failed',
-                 error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
-                [JSON.stringify([`Scheme not resolved — no match by scheme_code, ISIN (${mapped.isin || 'none'}), or alias (${mapped.scheme_name || 'none'})`]), rowId],
-              );
-              continue;
-            }
-
-            const schemeResult = await pool.query(
-              'SELECT scheme_code, scheme_name, nav_name, amc, active, closure_date FROM ki_schemes WHERE scheme_code = $1',
-              [schemeCode],
-            );
-            if (schemeResult.rows.length === 0) {
-              failed++;
-              await pool.query(
-                `UPDATE ki_import_staging SET processing_status = 'failed',
-                 error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
-                [JSON.stringify([`Scheme ${schemeCode} not found`]), rowId],
-              );
-              continue;
-            }
-
-            const scheme = schemeResult.rows[0] as any;
-            const isEnded = scheme.closure_date && new Date(scheme.closure_date) < new Date();
-            const csvAlias = mapped.scheme_name || scheme.scheme_name;
-
-            const upsertResult = await pool.query(
-              `INSERT INTO ki_scheme_bookmarks
-                 (tenant_id, user_id, scheme_code, scheme_name, amc, alias_name, daily_download_enabled)
-               VALUES ($1, $2, $3, $4, $5, $6, $7)
-               ON CONFLICT (tenant_id, scheme_code) DO UPDATE SET
-                 daily_download_enabled = EXCLUDED.daily_download_enabled, updated_at = now()
-               RETURNING (xmax = 0) AS is_new`,
-              [tenantId, userId, scheme.scheme_code, scheme.scheme_name, scheme.amc, csvAlias, scheme.active && !isEnded],
-            );
-
-            const isNew = (upsertResult.rows[0] as any).is_new;
-            if (isNew) added++; else already_tracked++;
-
-            await pool.query(
-              `UPDATE ki_import_staging SET processing_status = $1, created_record_id = $2, processed_at = now() WHERE id = $3`,
-              [isNew ? 'success' : 'duplicate', scheme.scheme_code, rowId],
-            );
-
-            // Seed two aliases + track status back to staged row (kewalinvest parity).
-            // Always runs regardless of isNew — re-imports must refresh aliases too.
-            {
-              let aliasStatus: 'created' | 'exists' | 'failed' = 'exists';
-              const aliasLabel = mapped.scheme_name || scheme.scheme_name;
-              try {
-                if (mapped.scheme_name) {
-                  const ar = await pool.query(
-                    `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
-                     VALUES ($1, $2, 'csv_upload')
-                     ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING
-                     RETURNING id`,
-                    [scheme.scheme_code, mapped.scheme_name],
-                  );
-                  aliasStatus = ar.rows.length > 0 ? 'created' : 'exists';
-                }
-                if (scheme.nav_name && scheme.nav_name.trim()) {
-                  await pool.query(
-                    `INSERT INTO ki_scheme_aliases (scheme_code, alias_name, source)
-                     VALUES ($1, $2, 'master_nav')
-                     ON CONFLICT (scheme_code, alias_name_normalized) DO NOTHING`,
-                    [scheme.scheme_code, scheme.nav_name],
-                  );
-                }
-              } catch {
-                aliasStatus = 'failed';
-              }
-              try {
-                await pool.query(
-                  `UPDATE ki_import_staging
-                   SET mapped_data = mapped_data || $1::jsonb
-                   WHERE id = $2`,
-                  [JSON.stringify({ _alias_name: aliasLabel, _alias_status: aliasStatus }), rowId],
-                );
-              } catch { /* non-fatal */ }
-            }
-
-          } catch (err: any) {
-            failed++;
-            await pool.query(
-              `UPDATE ki_import_staging SET processing_status = 'failed',
-               error_messages = $1::jsonb, processed_at = now() WHERE id = $2`,
-              [JSON.stringify([err.message]), rowId],
-            );
-          }
-        }
-
-        // Update session counts
-        await pool.query(
-          `UPDATE ki_import_sessions SET
-             failed_records = failed_records - $1 + $2,
-             successful_records = successful_records + $3,
-             duplicate_records = duplicate_records + $4,
-             status = CASE WHEN (failed_records - $1 + $2) > 0 THEN 'completed_with_errors' ELSE 'completed' END
-           WHERE id = $5`,
-          [resetCount, failed, added, already_tracked, sessionId],
-        );
-
-        res.json({
-          message: `Reprocessed ${resetCount} records`,
-          reprocessed: resetCount,
-          successful: added,
-          failed,
-          duplicate: already_tracked,
-        });
-
-      } else {
-        res.status(400).json({ error: { code: 'UNSUPPORTED', message: `Reprocess not yet supported for ${session.import_type}` } });
-      }
+      res.json({
+        message: `Reset ${resetCount} failed record(s) to pending. Processing lands with prospect-skill.`,
+        reprocessed: resetCount,
+      });
     } catch (err: any) {
       console.error('[ETL:reprocess]', err);
       res.status(500).json({ error: { code: 'REPROCESS_FAILED', message: err.message || 'Reprocess failed' } });
@@ -794,19 +545,7 @@ export function createEtlRouter(pool: Pool): Router {
         [sessionId],
       );
 
-      // Re-invoke RPC — processes only the one pending row
-      if (session.import_type === 'scheme') {
-        await pool.query('SELECT * FROM process_scheme_import_with_timing($1, $2)', [sessionId, 30000]);
-      } else if (session.import_type === 'customer') {
-        await pool.query('SELECT * FROM process_customer_import_with_timing($1, $2)', [sessionId, 30000]);
-      } else if (session.import_type === 'transaction') {
-        await pool.query('SELECT * FROM ki_process_txn_import_session($1, $2)', [sessionId, session.customer_lookup_method || 'iwell_code']);
-      } else if (session.import_type === 'bookmark') {
-        res.status(400).json({ error: { code: 'UNSUPPORTED', message: 'Row-level reprocess not supported for bookmark imports' } });
-        return;
-      }
-
-      // Reconcile session counters from staging (RPC only counts its own run)
+      // Row reset to pending — actual processing lands with prospect-skill.
       await reconcileSessionCounters(sessionId);
 
       // Return updated record
@@ -854,48 +593,6 @@ export function createEtlRouter(pool: Pool): Router {
     }
   });
 
-  /* ── POST /sessions/:id/resolve-families — Post-import family linking ── */
-
-  router.post('/sessions/:id/resolve-families', async (req, res) => {
-    try {
-      const auth = extractAuth(req);
-      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
-
-      const sessionId = Number(req.params.id);
-
-      // Verify session exists and belongs to this tenant
-      const sessResult = await pool.query(
-        'SELECT * FROM ki_import_sessions WHERE id = $1 AND tenant_id = $2',
-        [sessionId, auth.tenant_id],
-      );
-      if (sessResult.rows.length === 0) {
-        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Session not found' } });
-        return;
-      }
-
-      const session = sessResult.rows[0] as any;
-      if (session.import_type !== 'customer') {
-        res.status(400).json({ error: { code: 'INVALID_TYPE', message: 'resolve-families is only valid for customer import sessions' } });
-        return;
-      }
-
-      // Call the PostgreSQL function to resolve family linkages
-      const result = await pool.query(
-        'SELECT * FROM resolve_customer_families($1, $2)',
-        [auth.tenant_id, auth.is_live],
-      );
-
-      const row = result.rows[0] as any;
-      res.json({
-        families_created: row.families_created,
-        members_linked: row.members_linked,
-        heads_not_found: row.heads_not_found,
-      });
-    } catch (err: any) {
-      console.error('[ETL:resolve-families]', err);
-      res.status(500).json({ error: { code: 'RESOLVE_FAILED', message: err.message || 'Family resolution failed' } });
-    }
-  });
 
   /* ── DELETE /sessions/:id/staging — Delete staging data ── */
 
@@ -932,40 +629,8 @@ export function createEtlRouter(pool: Pool): Router {
     }
   });
 
-  /* ── POST /rebuild-holdings — Recompute all holdings from transactions ── */
-
-  router.post('/rebuild-holdings', async (req, res) => {
-    try {
-      const auth = extractAuth(req);
-      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
-
-      const result = await pool.query(
-        'SELECT * FROM ki_rebuild_holdings_from_txn($1, $2, NULL)',
-        [auth.tenant_id, auth.is_live],
-      );
-      const row = result.rows[0] as any;
-      res.json({
-        message: 'Holdings rebuilt from transactions',
-        updated: Number(row.updated_count),
-        zeroed: Number(row.zeroed_count),
-      });
-    } catch (err: any) {
-      console.error('[ETL:rebuild-holdings]', err);
-      res.status(500).json({ error: { code: 'REBUILD_FAILED', message: err.message || 'Holdings rebuild failed' } });
-    }
-  });
-
   return router;
 }
 
 /* ── Generic field mapping (non-scheme types) ─────── */
 
-function applyGenericMapping(raw: Record<string, any>, mappings: Record<string, string>): Record<string, any> {
-  const mapped: Record<string, any> = {};
-  for (const [excelCol, dbField] of Object.entries(mappings)) {
-    if (raw[excelCol] !== undefined && raw[excelCol] !== null) {
-      mapped[dbField] = raw[excelCol];
-    }
-  }
-  return mapped;
-}

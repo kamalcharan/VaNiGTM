@@ -62,16 +62,6 @@ export const NAV_ITEMS: NavItem[] = [
     recipe: 'contact-list',
   },
   {
-    id: 'clients',
-    label: 'Clients',
-    icon: <Icon><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></Icon>,
-    href: '/clients',
-    section: 'main',
-    skill: 'client-skill',
-    fn: 'get_clients',
-    recipe: 'client-list',
-  },
-  {
     id: 'campaigns',
     label: 'Campaigns',
     icon: <Icon><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></Icon>,
@@ -124,14 +114,6 @@ export const NAV_ITEMS: NavItem[] = [
     fn: 'start_import',
     recipe: 'import-wizard',
   },
-  {
-    id: 'master-data',
-    label: 'Master Data',
-    icon: <Icon><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /></Icon>,
-    href: '/master-data',
-    section: 'data',
-    adminOnly: true,
-  },
 
   /* ── SYSTEM (reports, demo, settings) ──────────────── */
 
@@ -179,8 +161,6 @@ export function getActiveNavId(pathname: string | null): string {
 
   // Contact/client/customer profile pages
   if (pathname.startsWith('/contacts'))  return 'contacts';
-  if (pathname.startsWith('/clients'))   return 'clients';
-  if (pathname.startsWith('/customers')) return 'clients';
   if (pathname.startsWith('/campaigns')) return 'campaigns';
   if (pathname.startsWith('/war-room'))  return 'war-room';
   if (pathname.startsWith('/demo-data')) return 'demo-data';

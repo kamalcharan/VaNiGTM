@@ -166,7 +166,7 @@ async function showStatus(pool: Pool): Promise<void> {
   console.log(`\n  ${applied.length} applied, ${pending.length} pending\n`);
 }
 
-/* ── Check if KI schema already exists ──────────────── */
+/* ── Check if the schema already exists ─────────────── */
 // Checks both the table AND its first index — the index creation is what
 // fails on re-run because 001_ki_prime.sql uses CREATE TABLE IF NOT EXISTS
 // but plain CREATE INDEX (not idempotent).
@@ -174,10 +174,10 @@ async function showStatus(pool: Pool): Promise<void> {
 async function schemaAlreadyExists(pool: Pool): Promise<boolean> {
   const result = await pool.query(
     `SELECT 1 FROM information_schema.tables
-      WHERE table_name = 'ki_schemes' AND table_schema = 'public'
+      WHERE table_name = 'vn_tenants' AND table_schema = 'public'
      UNION ALL
      SELECT 1 FROM pg_indexes
-      WHERE indexname = 'idx_ki_schemes_category'
+      WHERE indexname = 'idx_gt_events_polling'
      LIMIT 1`,
   );
   return result.rows.length > 0;

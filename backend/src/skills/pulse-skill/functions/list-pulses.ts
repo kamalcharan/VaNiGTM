@@ -3,7 +3,7 @@
  *
  * Returns a paginated list of pulses for the tenant, optionally filtered
  * by contact_id, client_id, status, origin, or pulse_type.
- * Joins ki_contacts to resolve subject display names in-query.
+ * Joins gt_contacts to resolve subject display names in-query.
  */
 
 import * as fs from 'fs';

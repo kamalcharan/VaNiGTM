@@ -10,7 +10,6 @@ import { useCompleteOnboardingStep } from '@/hooks/useOnboarding';
 import { ME_QUERY_KEY } from '@/hooks/useMe';
 import OnboardUserProfile from '@/components/onboarding/OnboardUserProfile';
 import OnboardBusiness from '@/components/onboarding/OnboardBusiness';
-import OnboardPlatform from '@/components/onboarding/OnboardPlatform';
 import OnboardTheme from '@/components/onboarding/OnboardTheme';
 import OnboardInvite from '@/components/onboarding/OnboardInvite';
 import OnboardPreferences from '@/components/onboarding/OnboardPreferences';
@@ -19,7 +18,6 @@ import s from './onboarding-page.module.css';
 const STEP_COMPONENTS: Record<string, React.ComponentType<{ onComplete: () => void; onSkip?: () => void; onBack?: () => void }>> = {
   OnboardUserProfile,
   OnboardBusiness,
-  OnboardPlatform,
   OnboardTheme,
   OnboardInvite,
   OnboardPreferences,
