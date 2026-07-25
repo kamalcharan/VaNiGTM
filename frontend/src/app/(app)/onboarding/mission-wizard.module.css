@@ -1,0 +1,335 @@
+/* /onboarding — live agent-led mission wizard. Theme tokens only. */
+
+.bootWrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-lg) var(--space-xl) var(--space-2xl);
+  max-width: 1240px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── Top: mission identity + step rail ── */
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xl);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.mission {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.missionLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.missionName {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-fg);
+}
+
+.railWrap {
+  flex: 1;
+  min-width: 320px;
+}
+
+/* ── Layout ── */
+
+.layout {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: var(--space-2xl);
+  padding-top: var(--space-xl);
+  flex: 1;
+  align-items: start;
+}
+
+.left {
+  position: sticky;
+  top: var(--space-lg);
+}
+
+.main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* ── Step 1: domain input + progress ── */
+
+.domainRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.domainInput {
+  flex: 1;
+  min-width: 0;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--color-fg);
+  outline: none;
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.domainInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-glow);
+}
+
+.domainInput::placeholder {
+  color: var(--color-muted);
+  opacity: 0.5;
+}
+
+.progressNote {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  margin-top: 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+  background: var(--color-primary-subtle);
+  font-size: 0.85rem;
+  color: var(--color-fg);
+}
+
+.progressDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 0 10px var(--color-primary-glow);
+  animation: wiz-pulse 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes wiz-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+.errorNote {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  margin-top: 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 35%, transparent);
+  background: color-mix(in srgb, var(--color-danger) 7%, transparent);
+  font-size: 0.83rem;
+  color: var(--color-fg);
+}
+
+.errorNote p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.errorActions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Research summary / step 3 shared field styles ── */
+
+.researchSummary,
+.deckReady {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.summaryField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.fieldLabelMissing {
+  color: var(--color-danger);
+}
+
+.fieldValue {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--color-fg);
+}
+
+.fieldEmpty {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--color-muted);
+  opacity: 0.8;
+}
+
+/* ── Step 2: ICP fields ── */
+
+.icpFields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.icpField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--color-fg);
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-glow);
+}
+
+/* ── Step 3: deck ── */
+
+.deckStart {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.deckActions {
+  display: flex;
+  gap: 10px;
+}
+
+.shareBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.shareLinkRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--color-success) 35%, transparent);
+  background: color-mix(in srgb, var(--color-success) 7%, transparent);
+  border-radius: 12px;
+  flex-wrap: wrap;
+}
+
+.shareLink {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--color-fg);
+  flex: 1;
+  min-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finishRow {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── Locked agents ── */
+
+.lockedRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.lockedCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+  opacity: 0.65;
+}
+
+.lockedName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.lockedTag {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .left {
+    position: static;
+    order: 2;
+  }
+  .domainRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progressDot { animation: none; }
+}

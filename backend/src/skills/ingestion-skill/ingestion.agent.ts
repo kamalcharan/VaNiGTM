@@ -137,23 +137,28 @@ export class IngestionAgent {
         status:    'ok',
       });
 
-      if (!source.gdrive_file_id) {
+      let rawText: string;
+
+      if (source.source_type === 'url' && source.url) {
+        // URL source — fetch the page server-side and strip to text.
+        rawText = await IngestionAgent.fetchUrlText(source.url);
+      } else if (source.gdrive_file_id) {
+        const buffer = await IngestionAgent.downloadFromGDrive(
+          pool,
+          tenantId,
+          source.gdrive_file_id,
+        );
+
+        const mimeType  = mimeTypeFromSourceType(source.source_type);
+        const extension = extensionOf(source.display_name);
+        const parser    = selectParser(mimeType, extension);
+
+        rawText = await parser.extract(buffer, source.display_name);
+      } else {
         throw new Error(
-          `UNSUPPORTED_SOURCE: only Drive-backed sources are supported in this stage (no gdrive_file_id on source ${sourceId})`,
+          `UNSUPPORTED_SOURCE: source ${sourceId} has neither a url (source_type='url') nor a gdrive_file_id`,
         );
       }
-
-      const buffer = await IngestionAgent.downloadFromGDrive(
-        pool,
-        tenantId,
-        source.gdrive_file_id,
-      );
-
-      const mimeType  = mimeTypeFromSourceType(source.source_type);
-      const extension = extensionOf(source.display_name);
-      const parser    = selectParser(mimeType, extension);
-
-      const rawText = await parser.extract(buffer, source.display_name);
 
       await db.query(
         `UPDATE gt_kb_sources SET raw_text = $raw_text, updated_at = now() WHERE id = $source_id`,
@@ -461,6 +466,65 @@ export class IngestionAgent {
     );
 
     return newAccessToken;
+  }
+
+  // ── Private: URL fetch → plain text ────────────────────────────────────
+  // v1 scope: the submitted page only (typically the homepage). Strips
+  // scripts/styles/tags and collapses whitespace; caps the result so a
+  // pathological page can't flood the chunker.
+
+  private static async fetchUrlText(url: string): Promise<string> {
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        headers: {
+          'User-Agent': 'VaNiGTM-Ingestion/1.0 (+https://vikuna.in)',
+          Accept: 'text/html,text/plain;q=0.9,*/*;q=0.5',
+        },
+        redirect: 'follow',
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`URL_FETCH_FAILED: ${url} — ${msg}`);
+    }
+
+    if (!response.ok) {
+      throw new Error(`URL_FETCH_FAILED: ${url} — HTTP ${response.status} ${response.statusText}`);
+    }
+
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!/text\/html|text\/plain|application\/xhtml/.test(contentType)) {
+      throw new Error(`URL_UNSUPPORTED_CONTENT: ${url} returned '${contentType}' — only HTML/text pages are ingestible`);
+    }
+
+    const html = await response.text();
+
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
+      .replace(/<!--[\s\S]*?-->/g, ' ')
+      // Block-level closers become newlines so headings/paragraphs keep separation
+      .replace(/<\/(p|div|section|article|li|h[1-6]|tr|br)>/gi, '\n')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&#39;|&apos;/gi, "'")
+      .replace(/&quot;/gi, '"')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n\s*\n+/g, '\n\n')
+      .trim();
+
+    if (text.length < 50) {
+      throw new Error(`URL_EMPTY_CONTENT: ${url} yielded ${text.length} chars of text — page may be JS-rendered`);
+    }
+
+    const MAX_CHARS = 200_000;
+    return text.length > MAX_CHARS ? text.slice(0, MAX_CHARS) : text;
   }
 
   // ── Private: Google Drive REST calls ───────────────────────────────────

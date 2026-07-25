@@ -201,6 +201,23 @@ export const API = {
     },
   },
 
+  /* ── Ingestion ────────────────────────────────────── */
+
+  ingest: {
+    submitUrl: {
+      method: 'POST',
+      path: '/api/v1/ingest/url',
+      auth: true,
+      description: 'Submit a website URL for ingestion into the knowledge graph',
+    },
+    getSource: {
+      method: 'GET',
+      path: '/api/v1/ingest/sources/:id',
+      auth: true,
+      description: 'Get a single ingestion source with its processing status',
+    },
+  },
+
   /* ── Storyteller ──────────────────────────────────── */
 
   storyteller: {

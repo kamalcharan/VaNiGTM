@@ -291,6 +291,73 @@ export function createIngestionRouter(pool: Pool): Router {
     }
   });
 
+  // ── POST /url ──────────────────────────────────────────────────────────
+  // Submit a website URL for ingestion (the wizard's "research my company"
+  // entry point). Creates a gt_kb_sources row and emits URL_SUBMITTED —
+  // the worker runs IngestionAgent.run → KG → KNOWLEDGE_UPDATED → profile
+  // recalc. Returns { source_id } for the client to poll via GET /sources/:id.
+  router.post('/url', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    try {
+      const rawUrl = String((req.body as { url?: unknown } | undefined)?.url ?? '').trim();
+      if (!rawUrl) {
+        res.status(400).json({ error: { code: 'MISSING_FIELDS', message: 'url is required' } });
+        return;
+      }
+
+      // Normalize: bare domains become https://
+      const candidate = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+      let parsed: URL;
+      try {
+        parsed = new URL(candidate);
+      } catch {
+        res.status(400).json({ error: { code: 'INVALID_URL', message: `Not a valid URL: ${rawUrl}` } });
+        return;
+      }
+      if (!/^https?:$/.test(parsed.protocol) || !parsed.hostname.includes('.')) {
+        res.status(400).json({ error: { code: 'INVALID_URL', message: 'Only public http(s) URLs are supported' } });
+        return;
+      }
+
+      const db = createTenantDb(pool, jwt.tenant_id);
+      const sourceId = await db.transaction(async (tx) => {
+        // Re-submitting the same URL re-ingests it (fresh crawl) instead of
+        // stacking duplicate source rows.
+        const existing = await tx.query<{ id: string }>(
+          `SELECT id FROM gt_kb_sources
+            WHERE tenant_id = $tenant_id AND source_type = 'url' AND url = $url`,
+          { tenant_id: jwt.tenant_id, url: parsed.href },
+        );
+        if (existing.rows[0]) {
+          await tx.query(
+            `UPDATE gt_kb_sources
+                SET status = 'pending', error_msg = NULL, updated_at = now()
+              WHERE id = $id AND tenant_id = $tenant_id`,
+            { id: existing.rows[0].id, tenant_id: jwt.tenant_id },
+          );
+          return existing.rows[0].id;
+        }
+
+        const inserted = await tx.query<{ id: string }>(
+          `INSERT INTO gt_kb_sources (tenant_id, source_type, display_name, url, status)
+           VALUES ($tenant_id, 'url', $display_name, $url, 'pending')
+           RETURNING id`,
+          { tenant_id: jwt.tenant_id, display_name: parsed.hostname, url: parsed.href },
+        );
+        return inserted.rows[0].id;
+      });
+
+      await emitEvent(pool, jwt.tenant_id, 'URL_SUBMITTED', 'human', { source_id: sourceId, url: parsed.href });
+
+      res.json({ source_id: sourceId, url: parsed.href });
+    } catch (err) {
+      console.error('[Ingest:/url]', err);
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });
+    }
+  });
+
   // ── GET /sources ───────────────────────────────────────────────────────
   router.get('/sources', async (req: Request, res: Response) => {
     const jwt = requireAuth(req, res);

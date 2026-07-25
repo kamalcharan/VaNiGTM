@@ -699,3 +699,45 @@
 @media (prefers-reduced-motion: reduce) {
   .heroVideoWrap { animation: none; }
 }
+
+/* ── Hero domain hook (PLG entry) ── */
+
+.heroDomainRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  width: min(620px, 100%);
+  margin: 0 auto var(--space-md);
+}
+
+.heroDomainInput {
+  flex: 1;
+  min-width: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  color: var(--color-fg);
+  outline: none;
+  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+
+.heroDomainInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-glow);
+}
+
+.heroDomainInput::placeholder {
+  color: var(--color-muted);
+  opacity: 0.5;
+}
+
+@media (max-width: 640px) {
+  .heroDomainRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

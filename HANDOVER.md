@@ -69,14 +69,35 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      ruling for the user: make neural-ops the product default theme
      (one line: NEXT_PUBLIC_DEFAULT_THEME or provider default).
 
-## ▶ NEXT after Phase 1 (PLG direction APPROVED by user 2026-07-25)
-1. **Wire the wizard to the live backend** — it becomes the real
-   `/onboarding` (wizard REPLACES form-first onboarding; the ICP
-   builder becomes the refine surface). Steps 1–3 wire to existing
-   APIs: URL_SUBMITTED ingestion → profile (GET/PUT/approve) →
-   storyteller build/approve/share. Steps 4–6 visible but locked
-   ("agents coming soon"). Final confirm PATCHes every pending
-   onboarding step. Landing gets a domain-input hook as primary CTA.
+## ▶ NEXT (PLG direction APPROVED by user 2026-07-25)
+1. ✅ **Wizard wired to the live backend (2026-07-25)** — `/onboarding`
+   IS now the agent-led mission wizard (old form-first page replaced;
+   `/onboarding/icp-builder` kept as the refine surface; the old
+   Onboard* components remain in components/onboarding for reuse).
+   - **Backend added:** `POST /api/v1/ingest/url` (validates/normalizes,
+     upserts gt_kb_sources url row — resubmit re-ingests, no dup rows —
+     emits URL_SUBMITTED) and **URL support in IngestionAgent.run**
+     (fetchUrlText: 30s-timeout fetch, HTML→text strip, 200k-char cap,
+     JS-rendered pages fail with URL_EMPTY_CONTENT). Previously
+     URL_SUBMITTED was registered but unimplemented (gdrive-only).
+   - **Wizard flow:** step 1 domain → submit → poll source status →
+     poll profile (KNOWLEDGE_UPDATED recalc) → researched card;
+     error path offers retry OR "fill manually". Step 2 editable ICP
+     fields (blur-save PUT, highlights `missing` fields from 400
+     PROFILE_INCOMPLETE) → POST approve. Step 3 build deck →
+     approve → share link (copy/open) → "Enter mission control"
+     PATCHes ALL pending vn_tenant_onboarding steps → layout guard
+     routes to /dashboard. Steps 4–6 locked ("agent coming soon").
+     Boot resumes mid-mission (existing profile/approval/deck
+     detected). serviceURLs: added `ingest.submitUrl` + `ingest.getSource`.
+   - **Landing PLG hook:** hero domain input ("Watch VaNi learn your
+     business") stores `gtm-domain-hint` in sessionStorage → /register;
+     wizard step 1 prefills it.
+   - ⚠️ **NOT E2E-tested** — this container has no DB/LLM/worker.
+     Typecheck + route-compile verified only. First live test: register
+     fresh tenant → type a real domain → watch worker logs
+     (URL_SUBMITTED → ingestion run → KNOWLEDGE_UPDATED → profile).
+     Ollama must be pre-warmed (extractor + storyteller both hit LLM).
 2. **Phase 2 — data modelling** (screens now dictate schema; rename
    kept ki_ tables to gt_).
 3. UI smoke state: contact CONT-0001 created through the UI post-Phase-0.
