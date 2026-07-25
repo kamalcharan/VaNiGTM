@@ -91,11 +91,16 @@ Three sources, ONE intake pipeline. Ship in order **1 → 3 → 2**.
 1. **User uploads (CSV/XLSX) — first.** Tenants already have lists (events,
    LinkedIn exports, old CRMs). Zero vendor cost, tenant owns the data.
    Reuse import-dashboard UX (upload → map columns → validate → commit) +
-   contact-skill.
-2. **BYO API key — second.** Connector per provider (Apollo, Lusha, Clay, …)
-   with tenant-stored credentials in `gt_tenant_integrations` (same pattern as
-   GDrive OAuth today). Usage bills to the tenant's account; data licensing is
-   between tenant and provider. Wrap with rate limits + access audit trail.
+   contact-skill. (Confirmed by the gtm-engine-ui `contacts.html` mockup:
+   CSV import zone → Scoring Agent evaluates against ICP → pipeline.)
+2. **BYO API key — second, as a UNIVERSAL CONNECTOR.** Not per-provider
+   integrations: one generic connector model the tenant configures for
+   whatever provider they use (Apollo, Lusha, Clay, anything with an API) —
+   provider name, base URL, auth method, credentials, field-mapping template.
+   Stored in `gt_tenant_integrations` (same pattern as GDrive OAuth today).
+   Usage bills to the tenant's account; data licensing is between tenant and
+   provider. Wrap with rate limits + access audit trail. Ship 1-2 mapping
+   presets (Apollo first) but keep the model provider-agnostic.
 3. **Platform-owned API — last.** Best UX, but Vikuna becomes data controller:
    vendor bill, per-tenant metering/quotas (extend PG rate limiter), abuse
    control, resale-terms compliance. Also a pricing-tier lever ("N platform
@@ -145,10 +150,52 @@ Vikuna the controller (one more reason it ships last).
 - Constraint to budget for: VPS GPU capacity — same class of problem as the
   qwen3-on-laptop issue, but bigger.
 
+## UI blueprints — documents/gtm-engine-ui/ (audited 2026-05-13)
+
+Nine "Neural Ops" static mockups on `main` (commit 201c555). They are the
+design blueprint for the GTM engine — and a large part is ALREADY implemented:
+
+| Mockup | React implementation |
+|---|---|
+| war-room.html | ✅ /war-room |
+| agent-runs.html | ✅ /war-room/agent-runs |
+| analytics.html | ✅ /war-room/analytics (gtm-analytics-skill fns match 1:1) |
+| channels.html / sequences.html / contacts.html | ✅ tabs in /campaigns/[id] |
+| index.html (mission setup) | ⚠️ generic onboarding exists; no mission flow |
+| icp-config.html | ⚠️ icp-skill backend exists; no config UI |
+| aeo-content.html | ❌ not built — new capability (see Phase 9) |
+
+**Agent fleet (canonical names, from war-room.html):** Orchestrator,
+Prospecting Agent, Scoring Agent, Outreach Agent, Conversion Agent, AEO Agent,
+Feedback Agent. Roadmap phases map onto this fleet:
+- Phase 5 research agent → feeds profile/competitors (pre-fleet intelligence)
+- Phase 6 Storyteller → content brain used by Outreach
+- Phase 7 prospecting → Prospecting Agent + Scoring Agent
+- Phase 8 executor → Outreach Agent (+ Orchestrator conflict resolution)
+- Conversion Agent + Feedback Agent → post-Phase-8 (watch high-intent
+  contacts; weekly recommendations digest)
+
+**Design-system note:** mockups use "Neural Ops" (dark cinematic, Electric
+Cyan #00e5ff, Outfit/Instrument Sans). The app mandates VDF + 12 themes + CSS
+variables (CLAUDE.md). Decision: treat mockups as CONTENT/LAYOUT blueprints;
+if the look is wanted, add Neural Ops as a 13th theme via the existing CSS
+variable system — do NOT build a parallel design system. Mockup README's
+"Connect to Supabase" note is stale (stack is VPS PG).
+
+### Phase 9 — AEO Agent (from aeo-content.html; not in original 11 points)
+- Track tenant brand visibility across ChatGPT, Perplexity, Google AI, Claude,
+  Bing for tenant-defined target queries ("best X tool?").
+- Weekly scans → visibility score per platform per query → trend.
+- Recommend content to fill gaps, three tracks: Be the Source (FAQ/answer-first
+  content), Be in Context (directories, G2/Capterra, community mentions),
+  Be Retrievable (schema markup, SSR, crawlability).
+- Storyteller (Phase 6) generates the recommended content drafts.
+
 ## Open questions (carry into next session)
 
 - [ ] Search API choice for Phase 5 (SearXNG self-host vs Tavily vs Brave).
-- [ ] First BYO provider to support (Apollo assumed — confirm).
+- [x] BYO provider strategy: UNIVERSAL connector (provider-agnostic model,
+      tenant brings any provider); Apollo as first mapping preset.
 - [ ] Does sequence-skill have ANY executor today, or definitions only? (Audit
       at Phase 8 start; suspected definitions-only.)
 - [ ] icp-skill personas are campaign-scoped; the smart profile ICP is
