@@ -83,8 +83,16 @@ The product's look is decided once, here, through the VDF system.
   base, research & competitors, digital audit report, campaigns suite,
   prospects pipeline + import + connector setup, sequence builder + story
   approval, war room, agent logs, analytics, settings.
+  **Onboarding model:** the agent-led wizard in
+  `documents/ux-references/agent-wizard-flow.pdf` (internal reference —
+  patterns only, synthetic data, see its README). Agent produces → human
+  confirms; accumulating left-rail mission memory; enrichment waterfall UI.
 - 1.3 VDF gap build: components the screens need (flow canvas, approval
-  cards, audit score rings, visibility matrix, pipeline kanban, live feed).
+  cards, audit score rings, visibility matrix, pipeline kanban, live feed,
+  wizard step rail, enrichment waterfall chips).
+- 1.4 Landing explainer video: 8–10s muted autoplay loop of the wizard flow
+  with synthetic data (spec in `documents/ux-references/README.md`) —
+  recorded from the rebuilt wizard against a seeded synthetic tenant.
 - DoD: every screen exists as an approved design (static or Storybook-style
   page) using only VDF + theme tokens; user sign-off = "wow".
 
