@@ -1,0 +1,102 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-x: auto;
+}
+
+.matrix {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.matrix th {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  padding: 8px 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.matrix td {
+  padding: 6px 10px;
+  text-align: center;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
+}
+
+.rowHead {
+  text-align: left !important;
+  text-transform: none !important;
+  letter-spacing: 0.02em !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.82rem !important;
+  font-weight: 500 !important;
+  color: var(--color-fg) !important;
+  max-width: 280px;
+}
+
+.cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  cursor: default;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cell:hover {
+  transform: scale(1.15);
+}
+
+.strong {
+  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+}
+
+.partial {
+  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+}
+
+.absent {
+  color: var(--color-muted);
+  background: color-mix(in srgb, var(--color-muted) 8%, transparent);
+  opacity: 0.75;
+}
+
+.legend {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--color-muted);
+}
+
+.legendCell {
+  width: 20px;
+  height: 20px;
+  font-size: 0.6rem;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -46,26 +46,39 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      neural-ops; vikuna-black unchanged. **Default theme stays
      vikuna-black** — flipping the product to neural-ops is a one-line
      env/default change the user makes when ready.
-   - 🔨 **1.2 IN PROGRESS:** first pixel-final screen shipped — the
-     agent-led onboarding wizard at **`/design/wizard`**
-     (`frontend/src/app/(public)/design/wizard/`, internal review page,
-     synthetic data "Solstice Metrics", in-page Neural Ops ⇄ Vikuna
-     Black theme flip). All six ux-references patterns implemented and
-     interactive: agent-produces→human-confirms cards, accumulating
-     mission-memory left rail (inspectable digests), numbered step rail
-     (reused existing VdfWizard), substantive campaign cards,
-     per-contact enrichment waterfall, operational-column prospect
-     table. Three 1.3 gap components built for it and exported from
-     VDF: **VdfMissionRail**, **VdfApprovalCard**,
-     **VdfEnrichmentWaterfall** (all theme-token driven, reduced-motion
-     safe). Screens still to design (POA 1.2 list): knowledge base,
-     research & competitors (full), digital audit report, campaigns
-     suite, prospects pipeline + import + connector setup, sequence
-     builder + story approval, war room refresh, agent logs, analytics,
-     settings. Remaining 1.3 gaps: flow canvas, audit score rings,
-     visibility matrix, pipeline kanban, live feed.
-   - Then: 1.4 8–10s synthetic-data landing explainer video (record
-     from the rebuilt wizard once it's a real screen, not the mockup).
+   - ✅ **1.2 DONE (2026-07-25):** all 12 screens exist as pixel-final
+     interactive designs under **`/design`** (index page links them;
+     shared `DesignShell` chrome with Neural Ops ⇄ Vikuna Black flip;
+     synthetic "Solstice Metrics" data throughout): wizard (also in
+     the sidebar as "Mission Wizard"), icp (+VaNi chat surface),
+     knowledge, research, audit, campaigns, prospects, sequences,
+     war-room, agent-logs, analytics, settings.
+   - ✅ **1.3 DONE:** all 8 gap components in VDF — VdfMissionRail,
+     VdfApprovalCard, VdfEnrichmentWaterfall, VdfScoreRing,
+     VdfVisibilityMatrix, VdfLiveFeed, VdfPipelineKanban,
+     VdfFlowCanvas (+ reused VdfWizard as the step rail). All
+     theme-token driven, reduced-motion safe, exported from the index.
+   - ✅ **1.4 DONE:** 9.8s muted-loop explainer recorded from the
+     design wizard (Playwright walkthrough, review chrome hidden,
+     wordmark close: "Your AI GTM team."). Files:
+     `frontend/public/media/wizard-loop.webm` (0.45MB) + `.mp4`
+     (0.52MB), embedded in the landing HeroSection (autoplay muted
+     loop, playsInline). Re-record from the REAL wizard once it's
+     wired to the backend.
+   - **Phase 1 DoD met pending user sign-off ("wow").** Remaining
+     ruling for the user: make neural-ops the product default theme
+     (one line: NEXT_PUBLIC_DEFAULT_THEME or provider default).
+
+## ▶ NEXT after Phase 1 (PLG direction APPROVED by user 2026-07-25)
+1. **Wire the wizard to the live backend** — it becomes the real
+   `/onboarding` (wizard REPLACES form-first onboarding; the ICP
+   builder becomes the refine surface). Steps 1–3 wire to existing
+   APIs: URL_SUBMITTED ingestion → profile (GET/PUT/approve) →
+   storyteller build/approve/share. Steps 4–6 visible but locked
+   ("agents coming soon"). Final confirm PATCHes every pending
+   onboarding step. Landing gets a domain-input hook as primary CTA.
+2. **Phase 2 — data modelling** (screens now dictate schema; rename
+   kept ki_ tables to gt_).
 3. UI smoke state: contact CONT-0001 created through the UI post-Phase-0.
 
 ## What this product is (scope — LOCKED)

@@ -31,6 +31,21 @@ export default function HeroSection() {
           See What&apos;s Inside
         </VdfButton>
       </div>
+      {/* 10s muted loop of the agent-led wizard — synthetic data (POA 1.4) */}
+      <div className={s.heroVideoWrap}>
+        <video
+          className={s.heroVideo}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          aria-label="Ten-second loop of the agent-led onboarding: type a domain, the agent researches your company, drafts campaigns, finds prospects and writes a personalized email"
+        >
+          <source src="/media/wizard-loop.webm" type="video/webm" />
+          <source src="/media/wizard-loop.mp4" type="video/mp4" />
+        </video>
+      </div>
       <StatsRibbon />
     </section>
   );

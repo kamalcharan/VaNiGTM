@@ -1,0 +1,80 @@
+.grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+.status {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.fresh { color: var(--color-success); }
+.stale { color: var(--color-warning); }
+
+.coverage {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.covRow {
+  display: grid;
+  grid-template-columns: 150px 1fr 42px;
+  gap: 12px;
+  align-items: center;
+}
+
+.covLabel {
+  font-size: 0.8rem;
+  color: var(--color-fg);
+}
+
+.covTrack {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.covFill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--color-primary);
+  animation: cov-grow 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: left;
+}
+
+@keyframes cov-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+.covPct {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.covHint {
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--color-muted);
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .covFill { animation: none; }
+}

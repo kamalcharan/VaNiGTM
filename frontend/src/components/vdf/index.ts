@@ -9,6 +9,11 @@ export { VdfGridOverlay, type VdfGridOverlayProps } from './grid-overlay/VdfGrid
 export { VdfMissionRail, type VdfMissionRailProps, type VdfMissionRailItem } from './mission-rail/VdfMissionRail';
 export { VdfApprovalCard, type VdfApprovalCardProps } from './approval-card/VdfApprovalCard';
 export { VdfEnrichmentWaterfall, type VdfEnrichmentWaterfallProps, type VdfEnrichmentProvider } from './enrichment-waterfall/VdfEnrichmentWaterfall';
+export { VdfScoreRing, type VdfScoreRingProps } from './score-ring/VdfScoreRing';
+export { VdfVisibilityMatrix, type VdfVisibilityMatrixProps, type VdfVisibilityRow, type VdfVisibilityCell } from './visibility-matrix/VdfVisibilityMatrix';
+export { VdfLiveFeed, type VdfLiveFeedProps, type VdfLiveFeedItem, type VdfLiveFeedKind } from './live-feed/VdfLiveFeed';
+export { VdfPipelineKanban, type VdfPipelineKanbanProps, type VdfKanbanColumn, type VdfKanbanCard } from './pipeline-kanban/VdfPipelineKanban';
+export { VdfFlowCanvas, type VdfFlowCanvasProps, type VdfFlowNode, type VdfFlowNodeKind } from './flow-canvas/VdfFlowCanvas';
 export { VdfAtmosphere, type VdfAtmosphereProps } from './atmosphere/VdfAtmosphere';
 export { VdfParticles, type VdfParticlesProps } from './particles/VdfParticles';
 export { VdfModal, type VdfModalProps } from './modal/VdfModal';
