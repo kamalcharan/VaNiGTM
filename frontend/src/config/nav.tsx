@@ -52,6 +52,13 @@ export const NAV_ITEMS: NavItem[] = [
     recipe: 'daily-briefing',
   },
   {
+    id: 'mission-wizard',
+    label: 'Mission Wizard',
+    icon: <Icon><circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /></Icon>,
+    href: '/design/wizard',
+    section: 'main',
+  },
+  {
     id: 'contacts',
     label: 'Contacts',
     icon: <Icon><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></Icon>,
