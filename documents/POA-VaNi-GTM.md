@@ -73,11 +73,15 @@ follow-ups + discovery/demo meeting workflow feeding the Conversion Agent).
 - DoD: `grep -r "ki_" backend/src` hits only the intentionally-kept import +
   pulse tables; tsc clean; all remaining pages load; nav has no dead links.
 
-### Stage 0.5 — Schema sweep
-- Migration dropping unused ki_ tables (after row-count + backup checks).
-- Migration 185 (`gt_events` RLS disable) already codified on main — verify applied.
-- DoD: information_schema shows vn_ + gt_ only (plus intentional keeps);
-  app + worker run clean against swept DB.
+### Stage 0.5 — Schema sweep (RESOLVED 2026-07-25: nothing to sweep)
+DB inventory of vani_gtm_db confirmed: the only ki_ tables that exist are
+the intentionally-kept set — ki_file_uploads, ki_import_sessions,
+ki_import_staging, ki_pulses, ki_pulse_config, ki_pulse_sessions +
+session child tables. The fresh GTM bootstrap never created the MFD
+tables (clients/schemes/snapshots/corrections/lookups), so migration 188
+was deleted as obsolete. Remaining work here: rename kept ki_ tables to
+gt_ during Phase 2 data modelling.
+- DoD: met by inventory (vn_ + gt_ + the 9 kept ki_ tables only).
 
 ## Phase 1 — UX Foundation (the wow pass)
 
