@@ -90,9 +90,9 @@ DROP TABLE IF EXISTS ki_market_jobs             CASCADE;
 
 DROP TABLE IF EXISTS ki_correction_steps        CASCADE;
 DROP TABLE IF EXISTS ki_corrections             CASCADE;
-DROP TABLE IF EXISTS ki_import_staging          CASCADE;
-DROP TABLE IF EXISTS ki_import_sessions         CASCADE;
-DROP TABLE IF EXISTS ki_file_uploads            CASCADE;
+-- KEEP: ki_import_staging / ki_import_sessions / ki_file_uploads —
+-- generic import pipeline retargeted for prospect CSV upload (M6).
+-- Rename to gt_ in Phase 2 data modelling.
 DROP TABLE IF EXISTS ki_job_scheduler_configs   CASCADE;
 DROP TABLE IF EXISTS ki_job_types               CASCADE;
 DROP TABLE IF EXISTS ki_scheduler_configs       CASCADE;
@@ -102,11 +102,11 @@ DROP TABLE IF EXISTS ki_scheduler_executions    CASCADE;
 -- 5. Pulse (MFD JTBD nudges) + alerts + misc
 -- ────────────────────────────────────────────────────────────────────────────
 
-DROP TABLE IF EXISTS ki_pulse_session_actions      CASCADE;
-DROP TABLE IF EXISTS ki_pulse_session_gaps         CASCADE;
-DROP TABLE IF EXISTS ki_pulse_session_observations CASCADE;
-DROP TABLE IF EXISTS ki_pulse_sessions             CASCADE;
-DROP TABLE IF EXISTS ki_pulse_config               CASCADE;
+-- KEEP: ki_pulses / ki_pulse_config / ki_pulse_sessions (+ session child
+-- tables) — follow-up tasks + meeting workflow retargeted to GTM funnel
+-- (prospect follow-ups, discovery/demo calls). client_id references must be
+-- re-pointed to contacts BEFORE ki_clients drops (Stage 0.4).
+-- Rename to gt_ in Phase 2 data modelling.
 DROP TABLE IF EXISTS ki_alerts                     CASCADE;
 DROP TABLE IF EXISTS ki_sequences                  CASCADE;  -- counter table; replaced by gt_seq_counters (mig 189)
 DROP FUNCTION IF EXISTS ki_next_seq(UUID, TEXT);              -- replaced by gt_next_seq (mig 189)
