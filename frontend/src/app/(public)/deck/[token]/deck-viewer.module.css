@@ -1,0 +1,246 @@
+/* Public deck viewer — full-viewport slide stage, theme-variable driven. */
+
+.stagePage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-lg) var(--space-xl);
+  gap: var(--space-md);
+}
+
+/* ── Top bar ── */
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.deckTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.counter {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-fg);
+  flex-shrink: 0;
+}
+
+.counterSep {
+  color: var(--color-muted);
+  margin: 0 2px;
+}
+
+/* ── Slide stage ── */
+
+.stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.slide {
+  width: 100%;
+  max-width: 960px;
+  padding: var(--space-2xl) var(--space-2xl);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  animation: slideIn 0.45s var(--ease-out) both;
+}
+
+.slideHero {
+  text-align: center;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  margin-bottom: var(--space-md);
+}
+
+.slideTitle {
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--color-fg);
+  margin: 0 0 var(--space-sm);
+}
+
+.slideSubtitle {
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  line-height: 1.5;
+  color: var(--color-muted);
+  margin: 0 0 var(--space-xl);
+  max-width: 46em;
+}
+
+.slideHero .slideSubtitle {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ── Bullets ── */
+
+.bullets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-md);
+}
+
+.bulletsHero {
+  text-align: left;
+}
+
+.bullet {
+  display: flex;
+  gap: var(--space-md);
+  align-items: flex-start;
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  animation: slideIn 0.45s var(--ease-out) both;
+}
+
+.bulletIcon {
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.bulletText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.bulletHead {
+  font-weight: 600;
+  color: var(--color-fg);
+  line-height: 1.3;
+}
+
+.bulletBody {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+/* ── Navigation ── */
+
+.navBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+}
+
+.navBtn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease-out), color 0.2s var(--ease-out);
+}
+
+.navBtn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.navBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.dots {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-border);
+  cursor: pointer;
+  transition: background 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+}
+
+.dot:hover {
+  background: var(--color-muted);
+}
+
+.dotActive {
+  background: var(--color-primary);
+  transform: scale(1.3);
+}
+
+/* ── Footer ── */
+
+.poweredBy {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  padding-bottom: var(--space-xs);
+}
+
+.poweredByLink {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.poweredByLink:hover {
+  text-decoration: underline;
+}
+
+/* ── Small screens ── */
+
+@media (max-width: 640px) {
+  .page {
+    padding: var(--space-md);
+  }
+
+  .slide {
+    padding: var(--space-xl) var(--space-lg);
+  }
+
+  .bullets {
+    grid-template-columns: 1fr;
+  }
+}

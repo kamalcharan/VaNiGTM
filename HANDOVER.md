@@ -19,9 +19,15 @@ Read-only DB MCP connector prepared (.mcp.json + docs/mcp-db-setup.md) —
 VPS-side setup pending (user runs VPS steps + claude.ai env settings).
 
 ## ▶ NEXT SESSION — start here
-1. **Deck-viewer gap:** verify `frontend/src/app/(public)/deck/[token]/page.tsx`
-   exists on main (see "Continuity gap" below). Build it if missing — that
-   closes the locked scope (ICP + pitch generation).
+1. ~~**Deck-viewer gap**~~ ✅ CLOSED (2026-07-25): the public deck viewer was
+   confirmed missing from main and rebuilt —
+   `frontend/src/app/(public)/deck/[token]/page.tsx` + module CSS, plus
+   `API.storyteller.share` registered in `serviceURLs.ts` (auth: false).
+   Stage machine (loading/error/ready), keyboard + dot navigation, VDF
+   loader/error-screen, theme variables only. This closes the locked scope
+   (ICP + pitch generation). Smoke: route compiles and serves 200 in dev;
+   verify once against a live backend with deck
+   `E0cZmJMe2Ju6qZZasiC5iTRJ6vDH1FtE` (tenant `c829c707`).
 2. **Phase 1 — UX wow pass** (POA Phase 1, `documents/POA-VaNi-GTM.md`):
    Neural Ops as a VDF theme → pixel-final screens (onboarding = the
    agent-led wizard: agent produces → human confirms, accumulating left
@@ -64,14 +70,15 @@ for every downstream agent.
     upserts if absent, writes history snapshot.
   - `PATCH /api/v1/onboarding/step` → completes a step, returns `onboarding_complete`.
 
-### ⚠️ Continuity gap — verify on next session
-- **`frontend/src/app/(public)/deck/[token]/page.tsx` (public deck viewer) is NOT
-  on the branch as of `85796b5`.** It was reported built locally but never
-  committed/pushed. **A fresh clone will not have it.** First action next
-  session: confirm whether it exists locally and push it, or rebuild it.
-  (Pattern to mirror: `(public)/intake/[token]/page.tsx` — `'use client'`,
-  `useParams()`, direct `fetch` to `NEXT_PUBLIC_API_URL` (no api-client/JWT),
-  a Stage machine. Endpoint: `GET /api/v1/storyteller/share/:token` → `{ title, slides }`.)
+### ✅ Continuity gap — RESOLVED (2026-07-25)
+- The public deck viewer was rebuilt and pushed:
+  `frontend/src/app/(public)/deck/[token]/page.tsx` (+ `deck-viewer.module.css`).
+  It goes through `apiFetch` + `API.storyteller.share` (auth: false) rather
+  than a raw fetch — the old `(public)/intake/[token]` pattern was removed in
+  Phase 0, and serviceURLs/api-client is the house convention. Endpoint:
+  `GET /api/v1/storyteller/share/:token` → `{ title, slides }` (Slide =
+  `{ id, type, title, subtitle, bullets[{icon,head,body}], narration }`;
+  narration is intentionally NOT rendered — speaker notes).
 
 ---
 
@@ -157,7 +164,8 @@ serviceURLs all landed via PR #8. The spec below is kept for reference.
 - **Debug console.logs in the storyteller share handler: already removed**
   (commit `9bed127`) — verified clean at `85796b5`. Nothing to do unless they
   reappear.
-- **`deck/[token]/page.tsx` not on the branch** (see Continuity gap above).
+- ~~`deck/[token]/page.tsx` not on the branch~~ — rebuilt and pushed
+  (see resolved Continuity gap above).
 
 ---
 

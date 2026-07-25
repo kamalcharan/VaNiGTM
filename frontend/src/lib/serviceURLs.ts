@@ -234,6 +234,12 @@ export const API = {
       auth: true,
       description: 'Ask a grounded question about a deck',
     },
+    share: {
+      method: 'GET',
+      path: '/api/v1/storyteller/share/:token',
+      auth: false,
+      description: 'Public: fetch an approved deck by its share token',
+    },
   },
 
   /* ── ETL ──────────────────────────────────────────── */
