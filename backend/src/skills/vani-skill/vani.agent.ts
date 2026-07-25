@@ -18,14 +18,13 @@ import { createTenantDb } from '../../db';
 import { appendStep, setStatus, getRuns } from '../../agent-core/agent.runner';
 import { loadPrompt } from '../../agent-core/prompt.store';
 import { callLLM } from '../../agent-core/llm.client';
-import { emitEvent } from '../../agent-core/event.store';
 import {
   ensureTenantContext,
   mergeAgentKnowledge,
   mergeProfile,
 } from '../../agent-core/context.store';
 import { upsertNode, countNodes, getNodes, type ExtractedNode } from '../../agent-core/kg.store';
-import { upsertProfile, type TenantProfile } from '../profile-skill/profile.service';
+import { recalculateProfileFromNodes } from '../profile-skill/profile.service';
 
 const PROMPT_KEY = 'vani-skill.gather';
 
@@ -229,107 +228,20 @@ export class VaniAgent {
     }, 'vani-skill');
 
     // ── MAP KG NODES → TENANT PROFILE ─────────
-    // Walk the KG and project nodes into the typed gt_tenant_profile row.
-    // The mapping is intentionally conservative — first node wins per field
-    // so we don't overwrite a richer value with a thinner one. Arrays
-    // (pain points, differentiators) accumulate.
-
-    const profileFields: Partial<TenantProfile> = {};
-    const painPoints:       string[] = [];
-    const differentiators:  string[] = [];
-
-    for (const node of nodes) {
-      switch (node.label) {
-
-        case 'Product':
-          if (!profileFields.product_name) {
-            profileFields.product_name = node.name;
-          }
-          if (!profileFields.product_description && node.description) {
-            profileFields.product_description = node.description;
-          }
-          if (!profileFields.core_problem && node.properties?.core_problem) {
-            profileFields.core_problem = String(node.properties.core_problem);
-          }
-          break;
-
-        case 'PainPoint':
-          painPoints.push(node.name);
-          break;
-
-        case 'ICP':
-          if (!profileFields.icp_role) {
-            profileFields.icp_role = node.name;
-          }
-          if (!profileFields.icp_company_type && node.description) {
-            profileFields.icp_company_type = node.description;
-          }
-          if (node.properties?.industry) {
-            profileFields.icp_industry = String(node.properties.industry);
-          }
-          break;
-
-        case 'Differentiator':
-          differentiators.push(node.name);
-          break;
-
-        case 'Team':
-          if (node.properties?.headcount) {
-            const n = parseInt(String(node.properties.headcount), 10);
-            if (!isNaN(n)) profileFields.team_size = n;
-          }
-          break;
-
-        case 'UseCase':
-          if (!profileFields.product_description && node.description) {
-            profileFields.product_description = node.description;
-          }
-          break;
-      }
-    }
-
-    if (painPoints.length > 0) {
-      profileFields.primary_pain_points = painPoints;
-    }
-    if (differentiators.length > 0) {
-      profileFields.key_differentiators = differentiators;
-    }
-
-    // Upsert into the typed profile table (also records a history snapshot).
-    const savedProfile = await upsertProfile(
-      pool,
-      tenantId,
-      profileFields,
-      'vani-skill',
-      'Mapped from VaNi conversation KG nodes',
-    );
-
-    // Check minimum requirements for downstream agents to take over.
-    const REQUIRED_FIELDS: (keyof TenantProfile)[] = [
-      'product_name',
-      'product_description',
-      'core_problem',
-      'icp_role',
-    ];
-    const missingFields = REQUIRED_FIELDS.filter((f) => !savedProfile[f]);
-    const hasPainPoints = (savedProfile.primary_pain_points?.length ?? 0) >= 1;
-    if (!hasPainPoints) missingFields.push('primary_pain_points');
-
-    if (missingFields.length === 0 && savedProfile.is_complete) {
-      // Profile complete — wake downstream agents and finalise the run.
-      await emitEvent(
+    // Recompute the typed profile from current gt_kg_nodes state (shared
+    // with the ingestion pipeline's KNOWLEDGE_UPDATED handler — see
+    // profile.service.ts's recalculateProfileFromNodes). Also emits
+    // PROFILE_COMPLETE if this crosses the completion threshold.
+    const { profile: savedProfile, missingFields, crossedCompletionThreshold } =
+      await recalculateProfileFromNodes(
         pool,
         tenantId,
-        'PROFILE_COMPLETE',
-        'agent',
-        {
-          profile_id:       savedProfile.id,
-          completion_score: savedProfile.completion_score,
-          source:           'vani-skill',
-        },
+        'vani-skill',
+        'Mapped from VaNi conversation KG nodes',
         runId,
       );
 
+    if (crossedCompletionThreshold) {
       await setStatus(pool, runId, 'completed', {
         output: {
           profile_id:       savedProfile.id,

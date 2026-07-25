@@ -14,6 +14,8 @@ import { readFileSync } from 'fs';
 import path from 'path';
 import type { Pool } from 'pg';
 import { createTenantDb } from '../../db';
+import { getNodes } from '../../agent-core/kg.store';
+import { emitEvent } from '../../agent-core/event.store';
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
@@ -202,4 +204,126 @@ export async function upsertProfile(
 
     return saved;
   });
+}
+
+/* ── 4. recalculateProfileFromNodes ─────────────────────────────────────── */
+// Shared tail for anything that mutates gt_kg_nodes and needs the typed
+// profile recomputed from current graph state — VaNi's conversation flow
+// (handleHumanApproved) and the ingestion pipeline's KNOWLEDGE_UPDATED
+// handler both call this. The graph is source-agnostic (conversation, PDF,
+// DOCX, PPTX, GDrive sync all write the same gt_kg_nodes rows), so this
+// function re-reads whatever is currently there rather than trusting the
+// caller to know which nodes changed.
+
+export interface RecalculateProfileResult {
+  profile: TenantProfile;
+  missingFields: (keyof TenantProfile)[];
+  crossedCompletionThreshold: boolean;
+}
+
+const REQUIRED_FOR_COMPLETION: (keyof TenantProfile)[] = [
+  'product_name',
+  'product_description',
+  'core_problem',
+  'icp_role',
+];
+
+export async function recalculateProfileFromNodes(
+  pool: Pool,
+  tenantId: string,
+  source: string,
+  changeNote: string,
+  runId?: string,
+): Promise<RecalculateProfileResult> {
+  const nodes = await getNodes(pool, tenantId);
+
+  // Conservative node → field mapping — first node wins per scalar field so
+  // a thinner later node can't overwrite a richer earlier one. Arrays
+  // (pain points, differentiators) accumulate across all nodes.
+  const profileFields: Partial<TenantProfile> = {};
+  const painPoints:      string[] = [];
+  const differentiators: string[] = [];
+
+  for (const node of nodes) {
+    switch (node.label) {
+
+      case 'Product':
+        if (!profileFields.product_name) {
+          profileFields.product_name = node.name;
+        }
+        if (!profileFields.product_description && node.description) {
+          profileFields.product_description = node.description;
+        }
+        if (!profileFields.core_problem && node.properties?.core_problem) {
+          profileFields.core_problem = String(node.properties.core_problem);
+        }
+        break;
+
+      case 'PainPoint':
+        painPoints.push(node.name);
+        break;
+
+      case 'ICP':
+        if (!profileFields.icp_role) {
+          profileFields.icp_role = node.name;
+        }
+        if (!profileFields.icp_company_type && node.description) {
+          profileFields.icp_company_type = node.description;
+        }
+        if (node.properties?.industry) {
+          profileFields.icp_industry = String(node.properties.industry);
+        }
+        break;
+
+      case 'Differentiator':
+        differentiators.push(node.name);
+        break;
+
+      case 'Team':
+        if (node.properties?.headcount) {
+          const n = parseInt(String(node.properties.headcount), 10);
+          if (!isNaN(n)) profileFields.team_size = n;
+        }
+        break;
+
+      case 'UseCase':
+        if (!profileFields.product_description && node.description) {
+          profileFields.product_description = node.description;
+        }
+        break;
+    }
+  }
+
+  if (painPoints.length > 0) {
+    profileFields.primary_pain_points = painPoints;
+  }
+  if (differentiators.length > 0) {
+    profileFields.key_differentiators = differentiators;
+  }
+
+  const savedProfile = await upsertProfile(pool, tenantId, profileFields, source, changeNote);
+
+  // Check minimum requirements for downstream agents to take over.
+  const missingFields = REQUIRED_FOR_COMPLETION.filter((f) => !savedProfile[f]);
+  const hasPainPoints = (savedProfile.primary_pain_points?.length ?? 0) >= 1;
+  if (!hasPainPoints) missingFields.push('primary_pain_points');
+
+  const crossedCompletionThreshold = missingFields.length === 0 && savedProfile.is_complete;
+
+  if (crossedCompletionThreshold) {
+    await emitEvent(
+      pool,
+      tenantId,
+      'PROFILE_COMPLETE',
+      'agent',
+      {
+        profile_id:       savedProfile.id,
+        completion_score: savedProfile.completion_score,
+        source,
+      },
+      runId,
+    );
+  }
+
+  return { profile: savedProfile, missingFields, crossedCompletionThreshold };
 }
