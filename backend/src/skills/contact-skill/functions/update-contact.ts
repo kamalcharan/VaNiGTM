@@ -6,17 +6,16 @@
 
 import { SkillContext } from '../../../shared/types';
 
-const VALID_PREFIXES   = ['Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Sri', 'Smt'] as const;
-const VALID_MARITAL    = ['single', 'married', 'family', 'other'] as const;
 
 interface UpdateContactParams {
   contact_id:       number;
   prefix?:          string;
   name?:            string;
-  age?:             number | null;
-  city?:            string | null;
-  marital_status?:  string | null;
-  dependents_count?: number | null;
+  job_title?:       string | null;
+  company_name?:    string | null;
+  company_domain?:  string | null;
+  linkedin_url?:    string | null;
+  location?:        string | null;
 }
 
 interface UpdateContactResult {
@@ -25,10 +24,11 @@ interface UpdateContactResult {
     name:            string;
     prefix:          string;
     normalized_name: string;
-    age:             number | null;
-    city:            string | null;
-    marital_status:  string | null;
-    dependents_count: number | null;
+    job_title:       string | null;
+    company_name:    string | null;
+    company_domain:  string | null;
+    linkedin_url:    string | null;
+    location:        string | null;
     updated_at:      string;
   };
   recipe: 'contact-card';
@@ -38,21 +38,15 @@ export async function update_contact(
   params: UpdateContactParams,
   ctx: SkillContext
 ): Promise<UpdateContactResult> {
-  const { contact_id, prefix, name, age, city, marital_status, dependents_count } = params;
+  const { contact_id, prefix, name, job_title, company_name, company_domain, linkedin_url, location } = params;
 
   const hasUpdate = prefix !== undefined || name !== undefined ||
-    age !== undefined || city !== undefined ||
-    marital_status !== undefined || dependents_count !== undefined;
+    job_title !== undefined || company_name !== undefined ||
+    company_domain !== undefined || linkedin_url !== undefined ||
+    location !== undefined;
 
   if (!hasUpdate) {
     throw new Error('At least one field is required to update');
-  }
-  if (prefix && !VALID_PREFIXES.includes(prefix as typeof VALID_PREFIXES[number])) {
-    throw new Error(`Invalid prefix. Must be one of: ${VALID_PREFIXES.join(', ')}`);
-  }
-  if (marital_status && marital_status !== null &&
-      !VALID_MARITAL.includes(marital_status as typeof VALID_MARITAL[number])) {
-    throw new Error(`Invalid marital_status. Must be one of: ${VALID_MARITAL.join(', ')}`);
   }
 
   // Dynamic SET clause — only include fields that were explicitly provided
@@ -71,35 +65,39 @@ export async function update_contact(
     setClauses.push('name = $name');
     queryParams.$name = name.trim();
   }
-  if (age !== undefined) {
-    setClauses.push('age = $age');
-    queryParams.$age = age;
+  if (job_title !== undefined) {
+    setClauses.push('job_title = $job_title');
+    queryParams.$job_title = job_title?.trim() || null;
   }
-  if (city !== undefined) {
-    setClauses.push('city = $city');
-    queryParams.$city = city?.trim() || null;
+  if (company_name !== undefined) {
+    setClauses.push('company_name = $company_name');
+    queryParams.$company_name = company_name?.trim() || null;
   }
-  if (marital_status !== undefined) {
-    setClauses.push('marital_status = $marital_status');
-    queryParams.$marital_status = marital_status;
+  if (company_domain !== undefined) {
+    setClauses.push('company_domain = $company_domain');
+    queryParams.$company_domain = company_domain?.trim()?.toLowerCase() || null;
   }
-  if (dependents_count !== undefined) {
-    setClauses.push('dependents_count = $dependents_count');
-    queryParams.$dependents_count = dependents_count;
+  if (linkedin_url !== undefined) {
+    setClauses.push('linkedin_url = $linkedin_url');
+    queryParams.$linkedin_url = linkedin_url?.trim() || null;
+  }
+  if (location !== undefined) {
+    setClauses.push('location = $location');
+    queryParams.$location = location?.trim() || null;
   }
 
   const res = await ctx.db.query<{
     id: number; name: string; prefix: string; normalized_name: string;
-    age: number | null; city: string | null; marital_status: string | null;
-    dependents_count: number | null; updated_at: string;
+    job_title: string | null; company_name: string | null; company_domain: string | null;
+    linkedin_url: string | null; location: string | null; updated_at: string;
   }>(
-    `UPDATE ki_contacts
+    `UPDATE gt_contacts
      SET ${setClauses.join(', ')}
      WHERE id         = $contact_id
        AND tenant_id  = $tenant_id
        AND is_live    = $is_live
        AND is_active  = true
-     RETURNING id, name, prefix, normalized_name, age, city, marital_status, dependents_count, updated_at`,
+     RETURNING id, name, prefix, normalized_name, job_title, company_name, company_domain, linkedin_url, location, updated_at`,
     queryParams
   );
 

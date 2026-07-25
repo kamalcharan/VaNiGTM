@@ -1,4 +1,4 @@
-UPDATE ki_contact_channels
+UPDATE gt_contact_channels
 SET is_active = false
 WHERE id        = $channel_id
   AND tenant_id = $tenant_id

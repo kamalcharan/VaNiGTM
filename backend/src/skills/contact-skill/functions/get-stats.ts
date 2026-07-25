@@ -13,9 +13,8 @@ const GET_STATS_SQL = fs.readFileSync(
 
 interface GetStatsResult {
   total_contacts: number;
-  total_clients: number;
-  total_prospects: number;
-  has_snapshot: number;
+  high_fit_contacts: number;
+  distinct_companies: number;
   recipe: 'stat-summary';
 }
 
@@ -25,9 +24,8 @@ export async function get_stats(
 ): Promise<GetStatsResult> {
   const res = await ctx.db.query<{
     total_contacts: string;
-    total_clients: string;
-    total_prospects: string;
-    has_snapshot: string;
+    high_fit_contacts: string;
+    distinct_companies: string;
   }>(GET_STATS_SQL, {
     $tenant_id: ctx.tenant_id,
     $is_live:   ctx.is_live,
@@ -35,10 +33,9 @@ export async function get_stats(
 
   const row = res.rows[0];
   return {
-    total_contacts:  Number(row?.total_contacts  ?? 0),
-    total_clients:   Number(row?.total_clients   ?? 0),
-    total_prospects: Number(row?.total_prospects ?? 0),
-    has_snapshot:    Number(row?.has_snapshot    ?? 0),
-    recipe:          'stat-summary',
+    total_contacts:     Number(row?.total_contacts     ?? 0),
+    high_fit_contacts:  Number(row?.high_fit_contacts  ?? 0),
+    distinct_companies: Number(row?.distinct_companies ?? 0),
+    recipe:             'stat-summary',
   };
 }

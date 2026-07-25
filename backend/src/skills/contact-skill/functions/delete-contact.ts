@@ -24,7 +24,7 @@ export async function delete_contact(
 
   // Check contact exists
   const check = await ctx.db.query<{ exists: boolean }>(
-    `SELECT 1 AS exists FROM ki_contacts
+    `SELECT 1 AS exists FROM gt_contacts
      WHERE id = $contact_id AND tenant_id = $tenant_id AND is_live = $is_live AND is_active = true`,
     { $contact_id: contact_id, $tenant_id: ctx.tenant_id, $is_live: ctx.is_live }
   );
@@ -35,19 +35,9 @@ export async function delete_contact(
 
   // Block deactivation if the contact has an ACTIVE client record
   // (Once the client is deactivated, the contact can be deactivated too)
-  const activeClient = await ctx.db.query<{ id: number }>(
-    `SELECT id FROM ki_clients
-     WHERE contact_id = $contact_id AND tenant_id = $tenant_id AND is_live = $is_live AND is_active = true
-     LIMIT 1`,
-    { $contact_id: contact_id, $tenant_id: ctx.tenant_id, $is_live: ctx.is_live }
-  );
-
-  if (activeClient.rows[0]) {
-    throw new Error(`Cannot deactivate contact ${contact_id} — they have an active client record. Deactivate the client first.`);
-  }
 
   await ctx.db.query(
-    `UPDATE ki_contacts
+    `UPDATE gt_contacts
      SET is_active = false, updated_at = now()
      WHERE id = $contact_id AND tenant_id = $tenant_id AND is_live = $is_live`,
     { $contact_id: contact_id, $tenant_id: ctx.tenant_id, $is_live: ctx.is_live }

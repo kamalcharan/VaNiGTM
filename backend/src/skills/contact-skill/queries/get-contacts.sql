@@ -1,10 +1,8 @@
 -- get_contacts: paginated contact list with primary channel info
--- PERFORMANCE: CTE paginates first (LIMIT/OFFSET on ki_contacts), then
--- LATERAL joins fetch channels only for the returned page rows — not for
--- all matching rows. Previously, correlated subqueries ran for every
--- matching row before LIMIT was applied (O(N) sub-executions).
+-- PERFORMANCE: CTE paginates first (LIMIT/OFFSET on gt_contacts), then
+-- LATERAL joins fetch channels only for the returned page rows.
 -- Named params: $tenant_id, $is_live, $show_inactive (boolean),
---               $search (nullable), $is_client (nullable), $limit, $offset
+--               $search (nullable), $limit, $offset
 
 WITH paged AS (
     SELECT
@@ -13,14 +11,15 @@ WITH paged AS (
         c.prefix,
         c.name,
         c.normalized_name,
-        c.is_client,
         c.is_active,
-        c.age,
-        c.city,
-        c.marital_status,
-        c.dependents_count,
+        c.job_title,
+        c.company_name,
+        c.company_domain,
+        c.location,
+        c.source,
+        c.score,
         c.created_at
-    FROM ki_contacts c
+    FROM gt_contacts c
     WHERE c.tenant_id = $tenant_id
       AND c.is_live   = $is_live
       AND c.is_active = (NOT $show_inactive::boolean)
@@ -28,17 +27,14 @@ WITH paged AS (
           $search::text IS NULL
           OR c.normalized_name ILIKE '%' || UPPER($search::text) || '%'
           OR c.name ILIKE '%' || $search::text || '%'
+          OR c.company_name ILIKE '%' || $search::text || '%'
           OR EXISTS (
-              SELECT 1 FROM ki_contact_channels ch
+              SELECT 1 FROM gt_contact_channels ch
               WHERE ch.contact_id   = c.id
                 AND ch.is_live      = c.is_live
                 AND ch.is_active    = true
                 AND ch.channel_value ILIKE '%' || $search::text || '%'
           )
-      )
-      AND (
-          $is_client::boolean IS NULL
-          OR c.is_client = $is_client::boolean
       )
     ORDER BY c.name ASC
     LIMIT  $limit
@@ -46,15 +42,14 @@ WITH paged AS (
 )
 SELECT
     p.*,
-    mob.channel_value                AS primary_mobile,
-    em.channel_value                 AS primary_email,
-    (snap.contact_id IS NOT NULL)    AS has_snapshot
+    mob.channel_value AS primary_mobile,
+    em.channel_value  AS primary_email
 FROM paged p
 
 -- Primary mobile — index seek on (contact_id, is_live, channel_type)
 LEFT JOIN LATERAL (
     SELECT channel_value
-    FROM ki_contact_channels
+    FROM gt_contact_channels
     WHERE contact_id   = p.id
       AND is_live      = $is_live
       AND is_active    = true
@@ -66,7 +61,7 @@ LEFT JOIN LATERAL (
 -- Primary email — same index
 LEFT JOIN LATERAL (
     SELECT channel_value
-    FROM ki_contact_channels
+    FROM gt_contact_channels
     WHERE contact_id   = p.id
       AND is_live      = $is_live
       AND is_active    = true
@@ -74,14 +69,5 @@ LEFT JOIN LATERAL (
     ORDER BY is_primary DESC, created_at ASC
     LIMIT 1
 ) em ON true
-
--- Snapshot existence — idx_ki_snapshots_contact
-LEFT JOIN LATERAL (
-    SELECT contact_id
-    FROM ki_contact_snapshots
-    WHERE contact_id = p.id
-      AND is_live    = $is_live
-    LIMIT 1
-) snap ON true
 
 ORDER BY p.name ASC;

@@ -108,7 +108,8 @@ DROP TABLE IF EXISTS ki_pulse_session_observations CASCADE;
 DROP TABLE IF EXISTS ki_pulse_sessions             CASCADE;
 DROP TABLE IF EXISTS ki_pulse_config               CASCADE;
 DROP TABLE IF EXISTS ki_alerts                     CASCADE;
-DROP TABLE IF EXISTS ki_sequences                  CASCADE;  -- MFD-era; GTM uses gt_sequences
+DROP TABLE IF EXISTS ki_sequences                  CASCADE;  -- counter table; replaced by gt_seq_counters (mig 189)
+DROP FUNCTION IF EXISTS ki_next_seq(UUID, TEXT);              -- replaced by gt_next_seq (mig 189)
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- 6. Lookup/code tables — VERIFY before this section runs:

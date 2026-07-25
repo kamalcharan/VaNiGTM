@@ -2,7 +2,7 @@
  * campaign-skill: clear_demo_data
  * Removes ALL GTM data from the TEST environment for this tenant.
  * ONLY works when is_live = false. Throws in live mode.
- * Does NOT touch ki_contacts — only gt_* tables.
+ * Does NOT touch gt_contacts — only campaign/pipeline gt_* tables.
  */
 
 import { SkillContext } from '../../../shared/types';
