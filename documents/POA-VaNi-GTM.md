@@ -27,8 +27,12 @@
 
 ## Phase 0 — Close-out + Legacy removal (KI-Prime / kewalinvest)
 
-Prereq: finish Phase 3 E2E verification (HANDOVER.md TL;DR) so the core loop
-is proven before surgery.
+Prereqs before surgery:
+- Core loop is proven (Storyteller E2E verified per HANDOVER; ICP builder +
+  dashboard launchpad are in flight on `claude/phase-4-merge-main-d9tqnw` —
+  land that branch first so cleanup doesn't collide with it).
+- The locked scope (ICP + pitch generation, per HANDOVER) ships before this
+  phase begins.
 
 ### Stage 0.1 — Baseline safety
 - Merge open PR (#4). Tag `pre-cleanup` on main. Full DB backup of
@@ -63,7 +67,7 @@ is proven before surgery.
 
 ### Stage 0.5 — Schema sweep
 - Migration dropping unused ki_ tables (after row-count + backup checks).
-- Codify `185_gt_events_disable_rls.sql` (pending from Phase 3).
+- Migration 185 (`gt_events` RLS disable) already codified on main — verify applied.
 - DoD: information_schema shows vn_ + gt_ only (plus intentional keeps);
   app + worker run clean against swept DB.
 
@@ -96,7 +100,8 @@ One coherent modelling pass over every module (screens now dictate needs):
 - creative assets · orchestrator locks (one active agent per prospect)
 - Review pass: every table tenant-scoped, RLS where tenant-data,
   environment-scoped where transactional, sequence numbers tenant-scoped.
-- DoD: full ERD documented; migrations 186+ written, reviewed, applied to
+- DoD: full ERD documented; migrations 187+ (186 = gt_storyteller, taken)
+  written, reviewed, applied to
   dev DB; 3-check tests for every new table's access layer.
 
 ## Phase 3 — Skill building (per-module, in dependency order)
@@ -111,7 +116,8 @@ Each skill: SKILL.md contract → queries/ SQL → functions → DoD API checks.
    weekly AEO cron
 4. prospect-skill — staging intake (CSV first), universal connector, scoring
    agent vs personas
-5. story-skill — Storyteller artifacts + approval flow + template population
+5. story-skill v2 — extend built storyteller (deck v1 exists: build/approve/
+   share/Q&A) to campaign×persona×stage artifacts + template population
 6. outreach executor — worker step scheduler, render+send via channels,
    reply hooks, Orchestrator locks, sender hygiene
 7. feedback-skill — weekly digest from analytics + audits
@@ -139,6 +145,11 @@ Module by module, in user-journey order:
 
 ## Phase 5 — Hardening & polish
 
+- **RLS cutover (REQUIRED pre-production):** switch runtime role from
+  `vikuna_admin` (BYPASSRLS — RLS currently dormant) to least-privilege
+  `vanigtm_app` per `scripts/grant-vanigtm-app.sql` +
+  `docs/rls-cutover-checklist.md`, incl. the SECURITY DEFINER
+  `get_shared_deck(token)` fix for the public deck share route.
 - Per-agent model tiers tuned (fast vs quality); prompt A/B on gt_prompts.
 - Rate limits, quotas, connector abuse guards, sender warm-up schedules.
 - Observability pass: agent-runs UX, error surfacing, AGENT_FAILED alerting.
