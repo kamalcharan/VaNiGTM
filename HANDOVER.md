@@ -2,8 +2,8 @@
 
 > **This doc is the sole continuity between sessions.** The next session starts
 > with zero memory — read this first.
-> **Branch:** `claude/project-status-check-le8eyn` · **Tip at handover:** `85796b5`
-> (`feat(auth): rebrand auth copy to Vikuna GTM`)
+> **Current state (2026-07-25):** everything is merged to `main` (tip = PR #9
+> merge). Work on a fresh branch off main.
 > **Supersedes** the earlier Phase 3 handover (that content is in git history).
 
 ---
@@ -16,7 +16,20 @@ pipeline + pulse-skill KEPT and retargeted to contacts (etl processing = 501
 until prospect-skill); CLAUDE.md fully rewritten GTM-only. DB inventory =
 vn_ + gt_ + 9 kept ki_ import/pulse tables (rename in POA Phase 2).
 Read-only DB MCP connector prepared (.mcp.json + docs/mcp-db-setup.md) —
-VPS-side setup pending.
+VPS-side setup pending (user runs VPS steps + claude.ai env settings).
+
+## ▶ NEXT SESSION — start here
+1. **Deck-viewer gap:** verify `frontend/src/app/(public)/deck/[token]/page.tsx`
+   exists on main (see "Continuity gap" below). Build it if missing — that
+   closes the locked scope (ICP + pitch generation).
+2. **Phase 1 — UX wow pass** (POA Phase 1, `documents/POA-VaNi-GTM.md`):
+   Neural Ops as a VDF theme → pixel-final screens (onboarding = the
+   agent-led wizard: agent produces → human confirms, accumulating left
+   rail, enrichment waterfall — patterns distilled in
+   `documents/ux-references/README.md`, source PDF alongside, layout
+   blueprints in `documents/gtm-engine-ui/`) → VDF component gap build →
+   8–10s synthetic-data landing explainer video.
+3. UI smoke state: contact CONT-0001 created through the UI post-Phase-0.
 
 ## What this product is (scope — LOCKED)
 Vikuna GTM = an **agent-powered go-to-market engine**. Scope is locked to
@@ -93,7 +106,13 @@ for every downstream agent.
 
 ---
 
-## 🔨 Designed & LOCKED, not yet built — THE NEXT BUILD
+## ✅ SHIPPED via PR #8 (2026-07-25) — dashboard + ICP builder below are BUILT
+The dashboard (ICP foundation card + agent launchpad), the /onboarding
+icp-builder (editable, blur-save, Confirm ICP flow), the storyteller deck
+list page, KNOWLEDGE_UPDATED→profile recalc wiring, and the gtmProfile
+serviceURLs all landed via PR #8. The spec below is kept for reference.
+
+## 🔨 Designed & LOCKED — shipped in PR #8 (spec kept for reference)
 ### Dashboard (`frontend/src/app/(app)/dashboard/page.tsx` — currently MFD dummy data)
 - **ICP foundation card**: completion % from `completion_score`.
 - **Agent launchpad**: Storytelling **live**; other agents **"coming soon"**.
