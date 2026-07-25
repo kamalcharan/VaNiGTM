@@ -46,12 +46,26 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      neural-ops; vikuna-black unchanged. **Default theme stays
      vikuna-black** — flipping the product to neural-ops is a one-line
      env/default change the user makes when ready.
-   - Next: **1.2 pixel-final screens** (onboarding = the agent-led
-     wizard: agent produces → human confirms, accumulating left rail,
-     enrichment waterfall — patterns distilled in
-     `documents/ux-references/README.md`, source PDF alongside, layout
-     blueprints in `documents/gtm-engine-ui/`) → 1.3 VDF component gap
-     build → 1.4 8–10s synthetic-data landing explainer video.
+   - 🔨 **1.2 IN PROGRESS:** first pixel-final screen shipped — the
+     agent-led onboarding wizard at **`/design/wizard`**
+     (`frontend/src/app/(public)/design/wizard/`, internal review page,
+     synthetic data "Solstice Metrics", in-page Neural Ops ⇄ Vikuna
+     Black theme flip). All six ux-references patterns implemented and
+     interactive: agent-produces→human-confirms cards, accumulating
+     mission-memory left rail (inspectable digests), numbered step rail
+     (reused existing VdfWizard), substantive campaign cards,
+     per-contact enrichment waterfall, operational-column prospect
+     table. Three 1.3 gap components built for it and exported from
+     VDF: **VdfMissionRail**, **VdfApprovalCard**,
+     **VdfEnrichmentWaterfall** (all theme-token driven, reduced-motion
+     safe). Screens still to design (POA 1.2 list): knowledge base,
+     research & competitors (full), digital audit report, campaigns
+     suite, prospects pipeline + import + connector setup, sequence
+     builder + story approval, war room refresh, agent logs, analytics,
+     settings. Remaining 1.3 gaps: flow canvas, audit score rings,
+     visibility matrix, pipeline kanban, live feed.
+   - Then: 1.4 8–10s synthetic-data landing explainer video (record
+     from the rebuilt wizard once it's a real screen, not the mockup).
 3. UI smoke state: contact CONT-0001 created through the UI post-Phase-0.
 
 ## What this product is (scope — LOCKED)

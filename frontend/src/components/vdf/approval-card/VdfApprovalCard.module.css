@@ -1,0 +1,132 @@
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: var(--color-surface);
+  animation: approval-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Ambient agent halo behind the draft card */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-glow),
+    transparent 40%,
+    transparent 60%,
+    color-mix(in srgb, var(--color-success) 12%, transparent)
+  );
+  z-index: -1;
+  opacity: 0.6;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.confirmed {
+  border-color: color-mix(in srgb, var(--color-success) 35%, transparent);
+}
+
+.confirmed::before {
+  opacity: 0;
+}
+
+@keyframes approval-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.eyebrowRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.agentDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 0 8px var(--color-primary-glow);
+  animation: agent-pulse 2s ease-in-out infinite;
+}
+
+.agentDotDone {
+  background: var(--color-success);
+  box-shadow: none;
+  animation: none;
+}
+
+@keyframes agent-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.sealed {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-success);
+  padding: 3px 10px;
+  border-radius: 100px;
+  border: 1px solid color-mix(in srgb, var(--color-success) 35%, transparent);
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--color-fg);
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--color-muted);
+  margin: 0;
+  max-width: 56em;
+}
+
+.body {
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card { animation: none; }
+  .agentDot { animation: none; }
+}
