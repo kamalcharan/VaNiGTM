@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VaNi GTM Engine — Analytics</title>
+  <link rel="stylesheet" href="shared/styles.css">
+  <style>
+    .analytics-shell { display: grid; grid-template-columns: 72px 1fr; min-height: 100vh; position: relative; z-index: 1; }
+
+    .sidebar { background: var(--surface-0); border-right: 1px solid var(--border-subtle); display: flex; flex-direction: column; align-items: center; padding: 16px 0; gap: 4px; position: sticky; top: 0; height: 100vh; z-index: 100; }
+    .sidebar-logo { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; position: relative; }
+    .sidebar-logo .logo-mark { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--signal)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 14px; color: var(--void); }
+    .sidebar-logo::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); width: 24px; height: 1px; background: var(--border-default); }
+    .nav-item { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 10px; color: var(--text-tertiary); cursor: pointer; transition: all 0.3s; position: relative; text-decoration: none; }
+    .nav-item:hover { color: var(--text-secondary); background: var(--surface-2); }
+    .nav-item.active { color: var(--accent); background: var(--accent-pulse); }
+    .nav-item.active::before { content: ''; position: absolute; left: -12px; top: 50%; transform: translateY(-50%); width: 3px; height: 20px; background: var(--accent); border-radius: 0 2px 2px 0; }
+    .nav-item svg { width: 20px; height: 20px; }
+    .nav-tooltip { display: none; position: absolute; left: 64px; top: 50%; transform: translateY(-50%); background: var(--surface-3); color: var(--text-primary); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; white-space: nowrap; border: 1px solid var(--border-default); box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 200; }
+    .nav-item:hover .nav-tooltip { display: block; }
+    .nav-spacer { flex: 1; }
+
+    .analytics-main { display: flex; flex-direction: column; overflow-y: auto; }
+
+    .cmd-bar { display: flex; align-items: center; justify-content: space-between; padding: 16px 32px; border-bottom: 1px solid var(--border-subtle); flex-shrink: 0; }
+    .cmd-left { display: flex; align-items: center; gap: 16px; }
+    .cmd-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; }
+    .cmd-right { display: flex; align-items: center; gap: 8px; }
+
+    .time-pills { display: flex; gap: 4px; background: var(--surface-2); border-radius: var(--radius-md); padding: 3px; }
+    .time-pill { padding: 6px 14px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; color: var(--text-tertiary); background: transparent; border: none; cursor: pointer; transition: all 0.15s; }
+    .time-pill.active { background: var(--surface-4); color: var(--text-primary); }
+    .time-pill:hover:not(.active) { color: var(--text-secondary); }
+
+    .analytics-content { padding: 24px 32px; }
+
+    /* ── Big Number Cards ── */
+    .big-numbers {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .big-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .big-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+    }
+
+    .big-card:nth-child(1)::before { background: var(--accent); }
+    .big-card:nth-child(2)::before { background: var(--signal); }
+    .big-card:nth-child(3)::before { background: #b388ff; }
+    .big-card:nth-child(4)::before { background: var(--warn); }
+
+    .big-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 8px; }
+    .big-val { font-family: var(--font-display); font-size: 40px; font-weight: 800; letter-spacing: -2px; line-height: 1; }
+    .big-sub { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; }
+    .big-trend { font-family: var(--font-mono); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+    .big-trend.up { background: var(--signal-glow); color: var(--signal); }
+    .big-trend.down { background: var(--danger-glow); color: var(--danger); }
+    .big-sub span { color: var(--text-tertiary); font-size: 12px; }
+
+    /* Sparkline */
+    .sparkline { margin-top: 16px; }
+    .sparkline svg { width: 100%; height: 40px; }
+    .spark-line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .spark-area { opacity: 0.1; }
+
+    /* ── Two-column grid ── */
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .analytics-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+    }
+
+    .card-title {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      margin-bottom: 20px;
+    }
+
+    /* ── Channel Comparison Bars ── */
+    .ch-compare {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .ch-row { display: flex; align-items: center; gap: 12px; }
+    .ch-name { width: 90px; font-size: 13px; font-weight: 600; color: var(--text-primary); flex-shrink: 0; }
+    .ch-bars { flex: 1; display: flex; gap: 4px; }
+
+    .ch-bar-item { flex: 1; }
+    .ch-bar-track { height: 24px; background: var(--surface-3); border-radius: 4px; overflow: hidden; position: relative; }
+    .ch-bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; transition: width 1s var(--ease-out); }
+    .ch-bar-val { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--void); white-space: nowrap; }
+    .ch-bar-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.5px; color: var(--text-tertiary); margin-top: 3px; text-align: center; }
+
+    /* ── Sequence Performance ── */
+    .seq-perf-table { width: 100%; border-collapse: collapse; }
+    .seq-perf-table th { font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-tertiary); text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border-default); }
+    .seq-perf-table td { padding: 10px; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle); }
+    .seq-perf-table tr:hover td { background: rgba(0,229,255,0.02); }
+
+    .seq-name { font-weight: 600; color: var(--text-primary); }
+
+    .mini-funnel { display: flex; gap: 2px; align-items: end; height: 28px; }
+    .mini-funnel-bar { width: 16px; border-radius: 3px 3px 0 0; transition: height 0.6s var(--ease-out); }
+
+    /* ── Conversion Funnel Visual ── */
+    .funnel-visual {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .funnel-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .funnel-bar-outer {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+    }
+
+    .funnel-bar-inner {
+      height: 36px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: width 1s var(--ease-out);
+      position: relative;
+    }
+
+    .funnel-label { font-size: 12px; font-weight: 600; color: var(--void); }
+    .funnel-num { width: 60px; text-align: right; font-family: var(--font-mono); font-size: 14px; font-weight: 700; }
+    .funnel-pct { width: 50px; font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); }
+
+    .funnel-conv {
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-tertiary);
+      padding: 2px 0;
+    }
+
+    /* ── Feedback Agent Recommendations ── */
+    .full-width { grid-column: 1 / -1; }
+
+    .reco-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .reco-card {
+      display: flex;
+      gap: 16px;
+      padding: 18px 20px;
+      background: var(--surface-0);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      transition: all 0.3s;
+    }
+
+    .reco-card:hover { border-color: var(--border-default); }
+
+    .reco-priority {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .reco-priority.high { background: var(--accent-pulse); }
+    .reco-priority.medium { background: var(--warn-glow); }
+    .reco-priority.low { background: var(--surface-3); }
+
+    .reco-content { flex: 1; }
+    .reco-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+    .reco-desc { font-size: 13px; color: var(--text-tertiary); line-height: 1.5; }
+    .reco-impact { font-family: var(--font-mono); font-size: 11px; color: var(--signal); margin-top: 6px; }
+
+    .reco-action {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .reco-btn {
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border-default);
+      background: var(--surface-1);
+      color: var(--text-secondary);
+      transition: all 0.15s;
+    }
+
+    .reco-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-pulse); }
+
+    /* ── Top Contacts ── */
+    .top-contacts { display: flex; flex-direction: column; gap: 8px; }
+
+    .tc-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--surface-0);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+
+    .tc-rank {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .tc-rank.gold { background: var(--warn-glow); color: var(--warn); }
+    .tc-rank.silver { background: var(--surface-3); color: var(--text-secondary); }
+    .tc-rank.bronze { background: rgba(255,138,101,0.1); color: #ff8a65; }
+
+    .tc-info { flex: 1; }
+    .tc-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .tc-company { font-size: 11px; color: var(--text-tertiary); }
+    .tc-score { font-family: var(--font-display); font-size: 20px; font-weight: 800; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+  <div class="analytics-shell">
+    <!-- ═══ SIDEBAR ═══ -->
+    <nav class="sidebar">
+      <div class="sidebar-logo"><a href="index.html" style="text-decoration:none"><div class="logo-mark">V</div></a></div>
+      <a class="nav-item" href="war-room.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span class="nav-tooltip">War Room</span></a>
+      <a class="nav-item" href="contacts.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-tooltip">Contacts</span></a>
+      <a class="nav-item" href="sequences.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="nav-tooltip">Sequences</span></a>
+      <a class="nav-item" href="aeo-content.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span class="nav-tooltip">AEO</span></a>
+      <a class="nav-item" href="channels.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><span class="nav-tooltip">Channels</span></a>
+      <a class="nav-item" href="agent-runs.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span class="nav-tooltip">Agent Logs</span></a>
+      <a class="nav-item active" href="analytics.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="nav-tooltip">Analytics</span></a>
+      <div class="nav-spacer"></div>
+      <a class="nav-item" href="icp-config.html"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="nav-tooltip">Settings</span></a>
+    </nav>
+
+    <!-- ═══ MAIN ═══ -->
+    <div class="analytics-main">
+      <div class="cmd-bar">
+        <div class="cmd-left">
+          <span class="cmd-title">Performance Analytics</span>
+          <span class="tag tag-accent">ContractNest</span>
+        </div>
+        <div class="cmd-right">
+          <div class="time-pills">
+            <button class="time-pill">24h</button>
+            <button class="time-pill active">7d</button>
+            <button class="time-pill">30d</button>
+            <button class="time-pill">90d</button>
+          </div>
+          <button class="btn btn-ghost" style="font-size:12px;">Export</button>
+        </div>
+      </div>
+
+      <div class="analytics-content">
+        <!-- ── Big Numbers ── -->
+        <div class="big-numbers animate-in">
+          <div class="big-card">
+            <div class="big-label">Total Outreach</div>
+            <div class="big-val text-accent">1,247</div>
+            <div class="big-sub"><span class="big-trend up">▲ 18%</span> <span>vs last week</span></div>
+            <div class="sparkline">
+              <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+                <path class="spark-area" d="M0,35 L28,30 L57,28 L85,25 L114,20 L142,15 L171,10 L200,5 L200,40 L0,40Z" fill="var(--accent)"/>
+                <path class="spark-line" d="M0,35 L28,30 L57,28 L85,25 L114,20 L142,15 L171,10 L200,5" stroke="var(--accent)"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="big-card">
+            <div class="big-label">Reply Rate</div>
+            <div class="big-val text-signal">7.1%</div>
+            <div class="big-sub"><span class="big-trend up">▲ 2.3%</span> <span>vs last week</span></div>
+            <div class="sparkline">
+              <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+                <path class="spark-area" d="M0,30 L28,28 L57,32 L85,25 L114,22 L142,18 L171,15 L200,10 L200,40 L0,40Z" fill="var(--signal)"/>
+                <path class="spark-line" d="M0,30 L28,28 L57,32 L85,25 L114,22 L142,18 L171,15 L200,10" stroke="var(--signal)"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="big-card">
+            <div class="big-label">Demos Booked</div>
+            <div class="big-val" style="color:#b388ff;">12</div>
+            <div class="big-sub"><span class="big-trend up">▲ 4</span> <span>this week</span></div>
+            <div class="sparkline">
+              <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+                <path class="spark-area" d="M0,38 L28,35 L57,36 L85,30 L114,32 L142,25 L171,18 L200,12 L200,40 L0,40Z" fill="#b388ff"/>
+                <path class="spark-line" d="M0,38 L28,35 L57,36 L85,30 L114,32 L142,25 L171,18 L200,12" stroke="#b388ff"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="big-card">
+            <div class="big-label">AEO Visibility</div>
+            <div class="big-val" style="color:var(--warn);">62.5%</div>
+            <div class="big-sub"><span class="big-trend up">▲ +2 queries</span> <span>this week</span></div>
+            <div class="sparkline">
+              <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+                <path class="spark-area" d="M0,35 L28,33 L57,32 L85,30 L114,28 L142,22 L171,18 L200,15 L200,40 L0,40Z" fill="var(--warn)"/>
+                <path class="spark-line" d="M0,35 L28,33 L57,32 L85,30 L114,28 L142,22 L171,18 L200,15" stroke="var(--warn)"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="analytics-grid">
+          <!-- ── Channel Comparison ── -->
+          <div class="analytics-card animate-in animate-in-delay-1">
+            <div class="card-title">Channel Performance Comparison</div>
+            <div class="ch-compare">
+              <div class="ch-row">
+                <div class="ch-name">📧 Email</div>
+                <div class="ch-bars">
+                  <div class="ch-bar-item">
+                    <div class="ch-bar-track"><div class="ch-bar-fill" style="width:48%;background:var(--accent);"><span class="ch-bar-val">48%</span></div></div>
+                    <div class="ch-bar-label">Open</div>
+                  </div>
+                  <div class="ch-bar-item">
+                    <div class="ch-bar-track"><div class="ch-bar-fill" style="width:12%;background:var(--accent);"><span class="ch-bar-val">12%</span></div></div>
+                    <div class="ch-bar-label">Click</div>
+                  </div>
+                  <div class="ch-bar-item">
+                    <div class="ch-bar-track"><div class="ch-bar-fill" style="width:7%;background:var(--accent);"></div></div>
+                    <div class="ch-bar-label">Reply 7%</div>
+                  </div>
+                </div>
+              </div>
+              <div class="ch-row">
+                <div class="ch-name">💬 WhatsApp</div>
+                <div class="ch-bars">
+                  <div class="ch-bar-item">
+                    <div class="ch-bar-track"><div class="ch-bar-fill" style="width:85%;background:var(--signal);"><span class="ch-bar-val">85%</span></div></div>
+                    <div class="ch-bar-label">Read</div>
+                  </div>
+                  <div class="ch-bar-item">
+                    <div class="ch-bar-track"><div class="ch-bar-fill" style="width:29%;background:var(--signal);"><span class="ch-bar-val">29%</span></div></div>
+                    <div class="ch-bar-label">Reply</div>
+                  </div>
+                  <div class="ch-bar-item">
+                    <div class="ch-bar-track"><div class="ch-bar-fill" style="width:8%;background:var(--signal);"></div></div>
+                    <div class="ch-bar-label">Convert 8%</div>
+                  </div>
+                </div>
+              </div>
+              <div class="ch-row">
+                <div class="ch-name">🔗 LinkedIn</div>
+                <div class="ch-bars">
+                  <div class="ch-bar-item">
+                    <div class="ch-bar-track"><div class="ch-bar-fill" style="width:48%;background:#6495ed;"><span class="ch-bar-val">48%</span></div></div>
+                    <div class="ch-bar-label">Accept</div>
+                  </div>
+                  <div class="ch-bar-item">
+                    <div class="ch-bar-track"><div class="ch-bar-fill" style="width:15%;background:#6495ed;"><span class="ch-bar-val">15%</span></div></div>
+                    <div class="ch-bar-label">DM Reply</div>
+                  </div>
+                  <div class="ch-bar-item">
+                    <div class="ch-bar-track"><div class="ch-bar-fill" style="width:4%;background:#6495ed;"></div></div>
+                    <div class="ch-bar-label">Convert 4%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Conversion Funnel ── -->
+          <div class="analytics-card animate-in animate-in-delay-1">
+            <div class="card-title">Conversion Funnel</div>
+            <div class="funnel-visual">
+              <div class="funnel-row">
+                <div class="funnel-num text-accent">847</div>
+                <div class="funnel-bar-outer"><div class="funnel-bar-inner" style="width:100%;background:linear-gradient(90deg,rgba(0,229,255,0.3),rgba(0,229,255,0.1));"><span class="funnel-label" style="color:var(--accent);">Total Contacts</span></div></div>
+                <div class="funnel-pct">100%</div>
+              </div>
+              <div class="funnel-conv">▼ 72% match rate</div>
+              <div class="funnel-row">
+                <div class="funnel-num text-signal">612</div>
+                <div class="funnel-bar-outer"><div class="funnel-bar-inner" style="width:72%;background:linear-gradient(90deg,rgba(0,230,118,0.3),rgba(0,230,118,0.1));"><span class="funnel-label" style="color:var(--signal);">ICP Match</span></div></div>
+                <div class="funnel-pct">72%</div>
+              </div>
+              <div class="funnel-conv">▼ 46% enrollment</div>
+              <div class="funnel-row">
+                <div class="funnel-num">284</div>
+                <div class="funnel-bar-outer"><div class="funnel-bar-inner" style="width:34%;background:linear-gradient(90deg,rgba(136,153,176,0.2),rgba(136,153,176,0.05));"><span class="funnel-label" style="color:var(--text-secondary);">Enrolled</span></div></div>
+                <div class="funnel-pct">34%</div>
+              </div>
+              <div class="funnel-conv">▼ 31% reply</div>
+              <div class="funnel-row">
+                <div class="funnel-num" style="color:#b388ff;">89</div>
+                <div class="funnel-bar-outer"><div class="funnel-bar-inner" style="width:11%;background:linear-gradient(90deg,rgba(179,136,255,0.3),rgba(179,136,255,0.08));"><span class="funnel-label" style="color:#b388ff;">Replied</span></div></div>
+                <div class="funnel-pct">11%</div>
+              </div>
+              <div class="funnel-conv">▼ 13% convert</div>
+              <div class="funnel-row">
+                <div class="funnel-num" style="color:var(--warn);">12</div>
+                <div class="funnel-bar-outer"><div class="funnel-bar-inner" style="width:1.4%;min-width:80px;background:linear-gradient(90deg,rgba(255,215,64,0.35),rgba(255,215,64,0.08));"><span class="funnel-label" style="color:var(--warn);">Converted</span></div></div>
+                <div class="funnel-pct">1.4%</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Sequence Performance ── -->
+          <div class="analytics-card animate-in animate-in-delay-2">
+            <div class="card-title">Sequence Performance</div>
+            <table class="seq-perf-table">
+              <thead>
+                <tr><th>Sequence</th><th>Enrolled</th><th>Reply %</th><th>Convert %</th><th>Status</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="seq-name">FM Outbound v2</span></td>
+                  <td>284</td>
+                  <td><span class="text-signal" style="font-weight:700;">23%</span></td>
+                  <td>4.2%</td>
+                  <td><span class="tag tag-signal" style="font-size:9px;">LIVE</span></td>
+                </tr>
+                <tr>
+                  <td><span class="seq-name">IT Services Cold</span></td>
+                  <td>0</td>
+                  <td>—</td>
+                  <td>—</td>
+                  <td><span class="tag tag-neutral" style="font-size:9px;">DRAFT</span></td>
+                </tr>
+                <tr>
+                  <td><span class="seq-name">Healthcare Nurture</span></td>
+                  <td>0</td>
+                  <td>—</td>
+                  <td>—</td>
+                  <td><span class="tag tag-warn" style="font-size:9px;">PAUSED</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ── Top Contacts ── -->
+          <div class="analytics-card animate-in animate-in-delay-2">
+            <div class="card-title">Highest Engagement Contacts</div>
+            <div class="top-contacts">
+              <div class="tc-row">
+                <div class="tc-rank gold">1</div>
+                <div class="tc-info"><div class="tc-name">Ravi Shankar</div><div class="tc-company">Sodexo India · FM</div></div>
+                <div class="tc-score text-signal">92</div>
+              </div>
+              <div class="tc-row">
+                <div class="tc-rank gold">2</div>
+                <div class="tc-info"><div class="tc-name">Vikram Bhat</div><div class="tc-company">ISS India · FM</div></div>
+                <div class="tc-score text-signal">90</div>
+              </div>
+              <div class="tc-row">
+                <div class="tc-rank silver">3</div>
+                <div class="tc-info"><div class="tc-name">Priya Menon</div><div class="tc-company">JLL India · FM</div></div>
+                <div class="tc-score text-accent">88</div>
+              </div>
+              <div class="tc-row">
+                <div class="tc-rank silver">4</div>
+                <div class="tc-info"><div class="tc-name">Sneha Kulkarni</div><div class="tc-company">CBRE India · FM</div></div>
+                <div class="tc-score text-accent">85</div>
+              </div>
+              <div class="tc-row">
+                <div class="tc-rank bronze">5</div>
+                <div class="tc-info"><div class="tc-name">Amit Desai</div><div class="tc-company">Wipro · IT</div></div>
+                <div class="tc-score" style="color:var(--warn);">76</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Feedback Agent Recommendations ── -->
+          <div class="analytics-card full-width animate-in animate-in-delay-3">
+            <div class="card-title">🤖 Feedback Agent Recommendations</div>
+            <div class="reco-list">
+              <div class="reco-card">
+                <div class="reco-priority high">🔥</div>
+                <div class="reco-content">
+                  <div class="reco-title">Increase WhatsApp weight for FM vertical</div>
+                  <div class="reco-desc">WhatsApp achieves 29% reply rate vs 7% for email in the Facility Management segment. Suggest moving WhatsApp earlier in sequence (Step 2 instead of Step 4).</div>
+                  <div class="reco-impact">Estimated impact: +35% overall reply rate for FM sequences</div>
+                </div>
+                <div class="reco-action"><button class="reco-btn">Apply</button></div>
+              </div>
+
+              <div class="reco-card">
+                <div class="reco-priority high">📝</div>
+                <div class="reco-content">
+                  <div class="reco-title">Create content for "affordable CLM software SMBs India"</div>
+                  <div class="reco-desc">This high-priority AEO query has zero visibility across all 5 platforms. No competitor owns this query either — uncontested opportunity.</div>
+                  <div class="reco-impact">Estimated impact: Capture entirely new query cluster, ~200 monthly searches</div>
+                </div>
+                <div class="reco-action"><button class="reco-btn">Generate</button></div>
+              </div>
+
+              <div class="reco-card">
+                <div class="reco-priority medium">🔄</div>
+                <div class="reco-content">
+                  <div class="reco-title">A/B test Step 2 email copy</div>
+                  <div class="reco-desc">The breakup email (Step 5) gets 18% reply rate vs Step 2's 11%. Suggests the value-add angle in Step 2 isn't landing. Try a more direct "ROI in 60 seconds" approach.</div>
+                  <div class="reco-impact">Estimated impact: +4-7% reply rate at Step 2</div>
+                </div>
+                <div class="reco-action"><button class="reco-btn">Create Variant</button></div>
+              </div>
+
+              <div class="reco-card">
+                <div class="reco-priority low">📊</div>
+                <div class="reco-content">
+                  <div class="reco-title">IT Services pipeline below threshold</div>
+                  <div class="reco-desc">Only 38 ICP-fit IT Services contacts in pipeline (target: 100). Prospecting Agent should increase signal scan frequency for this vertical.</div>
+                  <div class="reco-impact">Estimated impact: Fill pipeline gap within 2 weeks</div>
+                </div>
+                <div class="reco-action"><button class="reco-btn">Boost Prospecting</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

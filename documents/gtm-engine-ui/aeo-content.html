@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VaNi GTM Engine — AEO & Content Strategy</title>
+  <link rel="stylesheet" href="shared/styles.css">
+  <style>
+    .aeo-shell { min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── Top Bar ── */
+    .topbar { display: flex; align-items: center; justify-content: space-between; padding: 20px 40px; border-bottom: 1px solid var(--border-subtle); }
+    .topbar-brand { display: flex; align-items: center; gap: 12px; }
+    .topbar-logo { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), var(--signal)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 13px; color: var(--void); }
+    .topbar-title { font-family: var(--font-display); font-weight: 600; font-size: 16px; color: var(--text-primary); letter-spacing: -0.3px; }
+    .topbar-subtitle { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); letter-spacing: 1px; text-transform: uppercase; }
+    .topbar-meta { display: flex; align-items: center; gap: 16px; }
+    .topbar-tenant { display: flex; align-items: center; gap: 8px; background: var(--surface-2); padding: 6px 14px; border-radius: var(--radius-md); font-size: 13px; font-weight: 600; color: var(--accent); }
+
+    .aeo-main { flex: 1; padding: 40px 48px; max-width: 1200px; margin: 0 auto; width: 100%; overflow-y: auto; }
+    .section-header { margin-bottom: 36px; }
+    .section-sep { height: 1px; background: linear-gradient(90deg, transparent, var(--border-default) 20%, var(--border-default) 80%, transparent); margin: 8px 0 36px; }
+
+    /* ── Three Pillars ── */
+    .pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+
+    .pillar-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+      transition: all var(--duration-normal) var(--ease-out);
+    }
+
+    .pillar-card:hover {
+      border-color: var(--border-default);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+
+    .pillar-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+
+    .pillar-card:nth-child(1)::before { background: var(--accent); }
+    .pillar-card:nth-child(2)::before { background: var(--signal); }
+    .pillar-card:nth-child(3)::before { background: var(--warn); }
+
+    .pillar-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin-bottom: 16px;
+    }
+
+    .pillar-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.3px;
+      margin-bottom: 8px;
+    }
+
+    .pillar-desc {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      line-height: 1.6;
+    }
+
+    .pillar-check-list {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .pillar-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .check-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 10px;
+    }
+
+    .check-icon.done { background: var(--signal-glow); color: var(--signal); }
+    .check-icon.todo { background: var(--surface-3); color: var(--text-tertiary); }
+
+    /* ── AI Visibility Tracker ── */
+    .visibility-section { margin-bottom: 48px; }
+
+    .visibility-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .platform-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      text-align: center;
+      transition: all var(--duration-normal) var(--ease-out);
+    }
+
+    .platform-card:hover {
+      border-color: var(--border-default);
+    }
+
+    .platform-name {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      margin-bottom: 10px;
+    }
+
+    .platform-score {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .platform-trend {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .trend-up { color: var(--signal); }
+    .trend-down { color: var(--danger); }
+    .trend-flat { color: var(--text-tertiary); }
+
+    .platform-bar {
+      width: 100%;
+      height: 4px;
+      background: var(--surface-3);
+      border-radius: 2px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .platform-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 1s var(--ease-out);
+    }
+
+    /* ── Target Queries Table ── */
+    .queries-section { margin-bottom: 48px; }
+
+    .query-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .query-table th {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-default);
+    }
+
+    .query-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: middle;
+    }
+
+    .query-table tr:hover td {
+      background: var(--surface-1);
+    }
+
+    .query-text {
+      font-size: 14px;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .query-platforms {
+      display: flex;
+      gap: 4px;
+    }
+
+    .qp-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .qp-dot.mentioned { background: var(--signal-glow); border-color: rgba(0,230,118,0.2); }
+    .qp-dot.absent { background: var(--surface-2); }
+    .qp-dot.competitor { background: var(--danger-glow); border-color: rgba(255,82,82,0.15); }
+
+    .query-priority {
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .priority-high { background: var(--accent-pulse); color: var(--accent); border: 1px solid rgba(0,229,255,0.15); }
+    .priority-medium { background: var(--warn-glow); color: var(--warn); border: 1px solid rgba(255,215,64,0.15); }
+    .priority-low { background: var(--surface-3); color: var(--text-tertiary); border: 1px solid var(--border-subtle); }
+
+    .query-action-btn {
+      background: transparent;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      padding: 4px 10px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-tertiary);
+      cursor: pointer;
+      transition: all var(--duration-fast);
+    }
+
+    .query-action-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-pulse);
+    }
+
+    .add-query-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .add-query-input {
+      flex: 1;
+      background: var(--surface-0);
+      border: 1px dashed var(--border-default);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text-primary);
+      outline: none;
+      transition: all var(--duration-normal);
+    }
+
+    .add-query-input:focus {
+      border-style: solid;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .add-query-input::placeholder { color: var(--text-ghost); }
+
+    /* ── Content Cluster Planner ── */
+    .cluster-section { margin-bottom: 48px; }
+
+    .cluster-map {
+      position: relative;
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      min-height: 420px;
+      overflow: hidden;
+    }
+
+    /* Radial lines from center */
+    .cluster-map::before {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 300px; height: 300px;
+      margin: -150px 0 0 -150px;
+      border: 1px dashed var(--border-subtle);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .cluster-map::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 500px; height: 500px;
+      margin: -250px 0 0 -250px;
+      border: 1px dashed rgba(136,153,176,0.04);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .cluster-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+    }
+
+    .cluster-hub {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-pulse), rgba(0,230,118,0.04));
+      border: 2px solid var(--border-accent);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      box-shadow: 0 0 40px var(--accent-glow);
+    }
+
+    .cluster-hub-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--accent-dim);
+      margin-bottom: 4px;
+    }
+
+    .cluster-hub-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .cluster-node {
+      position: absolute;
+      z-index: 2;
+      background: var(--surface-2);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: all var(--duration-normal) var(--ease-out);
+      max-width: 180px;
+    }
+
+    .cluster-node:hover {
+      border-color: var(--accent);
+      transform: scale(1.05);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      z-index: 3;
+    }
+
+    .cluster-node-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+
+    .cluster-node-type {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .type-blog { color: var(--accent-dim); }
+    .type-landing { color: var(--signal-dim); }
+    .type-faq { color: var(--warn); }
+    .type-comparison { color: #b388ff; }
+    .type-guide { color: #ff8a65; }
+
+    .cluster-line {
+      position: absolute;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* ── Schema Markup Config ── */
+    .schema-section { margin-bottom: 48px; }
+
+    .schema-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .schema-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      transition: all var(--duration-normal) var(--ease-out);
+    }
+
+    .schema-card:hover { border-color: var(--border-default); }
+
+    .schema-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .schema-name {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .schema-toggle {
+      width: 40px; height: 22px;
+      border-radius: 11px;
+      background: var(--surface-3);
+      cursor: pointer;
+      position: relative;
+      transition: background var(--duration-normal);
+    }
+
+    .schema-toggle.on { background: var(--accent); }
+    .schema-toggle::after { content: ''; width: 18px; height: 18px; border-radius: 50%; background: white; position: absolute; top: 2px; left: 2px; transition: transform var(--duration-normal) var(--ease-spring); }
+    .schema-toggle.on::after { transform: translateX(18px); }
+
+    .schema-desc {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .schema-code {
+      background: var(--surface-0);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--accent-dim);
+      line-height: 1.6;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    /* ── Footer ── */
+    .aeo-footer {
+      padding: 20px 40px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface-0);
+    }
+
+    .footer-steps { display: flex; align-items: center; gap: 8px; }
+    .footer-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--surface-4); }
+    .footer-dot.completed { background: var(--signal); }
+    .footer-dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); width: 24px; border-radius: 4px; }
+
+    /* ── AI Suggestion ── */
+    .ai-bar {
+      background: linear-gradient(135deg, rgba(0,229,255,0.04), rgba(0,230,118,0.04));
+      border: 1px solid rgba(0,229,255,0.1);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 48px;
+    }
+
+    .ai-icon { width: 24px; height: 24px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--signal)); display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; margin-top: 2px; }
+    .ai-bar-content { flex: 1; }
+    .ai-bar-title { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--accent-dim); margin-bottom: 6px; }
+    .ai-bar-text { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+    .ai-bar-text strong { color: var(--text-primary); }
+  </style>
+</head>
+<body>
+  <div class="aeo-shell">
+    <!-- ═══ TOP BAR ═══ -->
+    <header class="topbar animate-in">
+      <div class="topbar-brand">
+        <a href="index.html" style="text-decoration:none"><div class="topbar-logo">V</div></a>
+        <div>
+          <div class="topbar-title">AEO & Content Strategy</div>
+          <div class="topbar-subtitle">Step 04 of 06 — Own the AI Search Landscape</div>
+        </div>
+      </div>
+      <div class="topbar-meta">
+        <div class="topbar-tenant"><span style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block;"></span> ContractNest</div>
+      </div>
+    </header>
+
+    <!-- ═══ MAIN ═══ -->
+    <main class="aeo-main">
+      <div class="section-header animate-in animate-in-delay-1">
+        <div class="label label-accent mb-sm">Answer Engine Optimization</div>
+        <div class="display-md">Make AI recommend you</div>
+        <p class="text-body mt-sm">When prospects ask ChatGPT, Perplexity, or Google AI "what's the best contract management tool?" — ContractNest should be the answer. Configure your AEO strategy here.</p>
+      </div>
+
+      <!-- ── Three Pillars ── -->
+      <div class="pillars-grid animate-in animate-in-delay-2">
+        <div class="pillar-card">
+          <div class="pillar-icon" style="background: var(--accent-pulse);">📝</div>
+          <div class="pillar-title">Be the Source</div>
+          <div class="pillar-desc">Create authoritative content that AI models cite. FAQ pages, how-to guides, comparison pages with clear answer-first structure.</div>
+          <div class="pillar-check-list">
+            <div class="pillar-check"><span class="check-icon done">✓</span> FAQ schema markup</div>
+            <div class="pillar-check"><span class="check-icon done">✓</span> Answer-first paragraphs</div>
+            <div class="pillar-check"><span class="check-icon todo">○</span> Data-backed claims</div>
+          </div>
+        </div>
+
+        <div class="pillar-card">
+          <div class="pillar-icon" style="background: var(--signal-glow);">🌐</div>
+          <div class="pillar-title">Be in Context</div>
+          <div class="pillar-desc">Get brand mentioned in directories, comparison articles, and community discussions that feed LLM training and RAG retrieval.</div>
+          <div class="pillar-check-list">
+            <div class="pillar-check"><span class="check-icon done">✓</span> G2 profile created</div>
+            <div class="pillar-check"><span class="check-icon todo">○</span> Capterra listing</div>
+            <div class="pillar-check"><span class="check-icon todo">○</span> Industry blog mentions</div>
+          </div>
+        </div>
+
+        <div class="pillar-card">
+          <div class="pillar-icon" style="background: var(--warn-glow);">🔍</div>
+          <div class="pillar-title">Be Retrievable</div>
+          <div class="pillar-desc">Ensure your site is crawlable, fast, and structured with schema markup. SSR pages for AI crawler accessibility.</div>
+          <div class="pillar-check-list">
+            <div class="pillar-check"><span class="check-icon done">✓</span> SSR enabled</div>
+            <div class="pillar-check"><span class="check-icon done">✓</span> Sitemap submitted</div>
+            <div class="pillar-check"><span class="check-icon todo">○</span> Core Web Vitals passing</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-sep"></div>
+
+      <!-- ── AI Visibility Tracker ── -->
+      <div class="visibility-section animate-in animate-in-delay-3">
+        <div class="label label-signal mb-sm">AI Platform Visibility</div>
+        <div class="display-sm">Where does ContractNest appear today?</div>
+        <p class="text-body mt-sm" style="margin-bottom: 20px;">The AEO Agent checks these platforms weekly. Scores reflect how often ContractNest appears in responses to your target queries.</p>
+
+        <div class="visibility-grid">
+          <div class="platform-card">
+            <div class="platform-name">ChatGPT</div>
+            <div class="platform-score text-signal">3<span style="font-size:16px;color:var(--text-tertiary);">/8</span></div>
+            <div class="platform-trend trend-up">▲ +1 <span style="color:var(--text-tertiary);">this week</span></div>
+            <div class="platform-bar"><div class="platform-bar-fill" style="width:37.5%;background:var(--signal);"></div></div>
+          </div>
+
+          <div class="platform-card">
+            <div class="platform-name">Perplexity</div>
+            <div class="platform-score text-accent">5<span style="font-size:16px;color:var(--text-tertiary);">/8</span></div>
+            <div class="platform-trend trend-up">▲ +2 <span style="color:var(--text-tertiary);">this week</span></div>
+            <div class="platform-bar"><div class="platform-bar-fill" style="width:62.5%;background:var(--accent);"></div></div>
+          </div>
+
+          <div class="platform-card">
+            <div class="platform-name">Google AI</div>
+            <div class="platform-score" style="color:var(--warn);">1<span style="font-size:16px;color:var(--text-tertiary);">/8</span></div>
+            <div class="platform-trend trend-flat">— <span style="color:var(--text-tertiary);">no change</span></div>
+            <div class="platform-bar"><div class="platform-bar-fill" style="width:12.5%;background:var(--warn);"></div></div>
+          </div>
+
+          <div class="platform-card">
+            <div class="platform-name">Claude</div>
+            <div class="platform-score text-accent">4<span style="font-size:16px;color:var(--text-tertiary);">/8</span></div>
+            <div class="platform-trend trend-up">▲ +1 <span style="color:var(--text-tertiary);">this week</span></div>
+            <div class="platform-bar"><div class="platform-bar-fill" style="width:50%;background:var(--accent);"></div></div>
+          </div>
+
+          <div class="platform-card">
+            <div class="platform-name">Bing Chat</div>
+            <div class="platform-score" style="color:var(--text-tertiary);">0<span style="font-size:16px;color:var(--text-tertiary);">/8</span></div>
+            <div class="platform-trend trend-down">▼ -1 <span style="color:var(--text-tertiary);">this week</span></div>
+            <div class="platform-bar"><div class="platform-bar-fill" style="width:0%;background:var(--danger);"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-sep"></div>
+
+      <!-- ── Target Queries ── -->
+      <div class="queries-section animate-in animate-in-delay-3">
+        <div class="label label-accent mb-sm">Target Queries</div>
+        <div class="display-sm">Which AI searches should mention ContractNest?</div>
+        <p class="text-body mt-sm" style="margin-bottom: 20px;">Define the queries your AEO Agent monitors. The agent tracks visibility weekly and recommends content to fill gaps.</p>
+
+        <table class="query-table">
+          <thead>
+            <tr>
+              <th>Query</th>
+              <th>Priority</th>
+              <th style="text-align:center;" title="ChatGPT / Perplexity / Google AI / Claude / Bing">Visibility</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="query-text">best contract management software for facility management</span></td>
+              <td><span class="query-priority priority-high">HIGH</span></td>
+              <td>
+                <div class="query-platforms" style="justify-content:center;">
+                  <div class="qp-dot mentioned" title="ChatGPT: Mentioned">✓</div>
+                  <div class="qp-dot mentioned" title="Perplexity: Mentioned">✓</div>
+                  <div class="qp-dot absent" title="Google AI: Not found">—</div>
+                  <div class="qp-dot mentioned" title="Claude: Mentioned">✓</div>
+                  <div class="qp-dot absent" title="Bing: Not found">—</div>
+                </div>
+              </td>
+              <td><button class="query-action-btn">Generate Content</button></td>
+            </tr>
+            <tr>
+              <td><span class="query-text">SLA tracking software India</span></td>
+              <td><span class="query-priority priority-high">HIGH</span></td>
+              <td>
+                <div class="query-platforms" style="justify-content:center;">
+                  <div class="qp-dot absent" title="ChatGPT: Not found">—</div>
+                  <div class="qp-dot mentioned" title="Perplexity: Mentioned">✓</div>
+                  <div class="qp-dot absent" title="Google AI: Not found">—</div>
+                  <div class="qp-dot mentioned" title="Claude: Mentioned">✓</div>
+                  <div class="qp-dot absent" title="Bing: Not found">—</div>
+                </div>
+              </td>
+              <td><button class="query-action-btn">Generate Content</button></td>
+            </tr>
+            <tr>
+              <td><span class="query-text">how to automate contract renewal tracking</span></td>
+              <td><span class="query-priority priority-medium">MEDIUM</span></td>
+              <td>
+                <div class="query-platforms" style="justify-content:center;">
+                  <div class="qp-dot absent">—</div>
+                  <div class="qp-dot mentioned">✓</div>
+                  <div class="qp-dot absent">—</div>
+                  <div class="qp-dot absent">—</div>
+                  <div class="qp-dot absent">—</div>
+                </div>
+              </td>
+              <td><button class="query-action-btn">Generate Content</button></td>
+            </tr>
+            <tr>
+              <td><span class="query-text">vendor compliance management software</span></td>
+              <td><span class="query-priority priority-medium">MEDIUM</span></td>
+              <td>
+                <div class="query-platforms" style="justify-content:center;">
+                  <div class="qp-dot mentioned">✓</div>
+                  <div class="qp-dot mentioned">✓</div>
+                  <div class="qp-dot mentioned">✓</div>
+                  <div class="qp-dot mentioned">✓</div>
+                  <div class="qp-dot absent">—</div>
+                </div>
+              </td>
+              <td><button class="query-action-btn" style="border-color:var(--signal);color:var(--signal);">Optimize</button></td>
+            </tr>
+            <tr>
+              <td><span class="query-text">affordable CLM software for SMBs India</span></td>
+              <td><span class="query-priority priority-high">HIGH</span></td>
+              <td>
+                <div class="query-platforms" style="justify-content:center;">
+                  <div class="qp-dot absent">—</div>
+                  <div class="qp-dot absent">—</div>
+                  <div class="qp-dot absent">—</div>
+                  <div class="qp-dot absent">—</div>
+                  <div class="qp-dot absent">—</div>
+                </div>
+              </td>
+              <td><button class="query-action-btn" style="border-color:var(--danger);color:var(--danger);">Urgent: Create</button></td>
+            </tr>
+            <tr>
+              <td><span class="query-text">ContractNest vs Agiloft</span></td>
+              <td><span class="query-priority priority-low">LOW</span></td>
+              <td>
+                <div class="query-platforms" style="justify-content:center;">
+                  <div class="qp-dot competitor" title="Competitor mentioned instead">✕</div>
+                  <div class="qp-dot mentioned">✓</div>
+                  <div class="qp-dot absent">—</div>
+                  <div class="qp-dot absent">—</div>
+                  <div class="qp-dot absent">—</div>
+                </div>
+              </td>
+              <td><button class="query-action-btn">Comparison Page</button></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="add-query-row">
+          <input type="text" class="add-query-input" placeholder="Add a target query... e.g., 'contract lifecycle management for IT services'" onkeydown="if(event.key==='Enter'){alert('Query added: '+this.value);this.value='';}">
+          <button class="btn btn-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Add
+          </button>
+        </div>
+      </div>
+
+      <!-- ── VaNi Suggestion ── -->
+      <div class="ai-bar animate-in animate-in-delay-4">
+        <div class="ai-icon">✦</div>
+        <div class="ai-bar-content">
+          <div class="ai-bar-title">VaNi AEO Insight</div>
+          <div class="ai-bar-text">
+            <strong>"affordable CLM software for SMBs India"</strong> has zero visibility across all platforms — but high search intent from your ICP. The AEO Agent recommends creating a dedicated landing page with pricing comparison table, customer testimonials, and FAQ schema. Estimated effort: 1 content piece + schema markup. This could capture a completely uncontested query.
+          </div>
+        </div>
+      </div>
+
+      <div class="section-sep"></div>
+
+      <!-- ── Content Cluster Map ── -->
+      <div class="cluster-section animate-in animate-in-delay-4">
+        <div class="label label-accent mb-sm">Content Cluster</div>
+        <div class="display-sm">Your content architecture</div>
+        <p class="text-body mt-sm" style="margin-bottom: 24px;">The pillar topic at the center, supporting content pieces orbiting around it. Each piece targets specific AEO queries and strengthens the pillar's authority.</p>
+
+        <div class="cluster-map">
+          <!-- SVG Lines connecting nodes to center -->
+          <svg class="cluster-line" style="position:absolute;inset:0;width:100%;height:100%;z-index:1;">
+            <line x1="50%" y1="50%" x2="12%" y2="18%" stroke="rgba(0,229,255,0.08)" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="50%" y1="50%" x2="82%" y2="15%" stroke="rgba(0,230,118,0.08)" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="50%" y1="50%" x2="8%" y2="60%" stroke="rgba(255,215,64,0.08)" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="50%" y1="50%" x2="85%" y2="55%" stroke="rgba(179,136,255,0.08)" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="50%" y1="50%" x2="18%" y2="88%" stroke="rgba(255,138,101,0.08)" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="50%" y1="50%" x2="78%" y2="85%" stroke="rgba(0,229,255,0.08)" stroke-width="1" stroke-dasharray="4,4"/>
+          </svg>
+
+          <!-- Center Hub -->
+          <div class="cluster-center">
+            <div class="cluster-hub">
+              <div class="cluster-hub-label">Pillar</div>
+              <div class="cluster-hub-title">Service Contract<br>Management</div>
+            </div>
+          </div>
+
+          <!-- Nodes -->
+          <div class="cluster-node" style="top:10%;left:5%;">
+            <div class="cluster-node-title">SLA Tracking Best Practices</div>
+            <div class="cluster-node-type type-blog">Blog Post</div>
+          </div>
+
+          <div class="cluster-node" style="top:8%;right:8%;">
+            <div class="cluster-node-title">ContractNest for Facility Management</div>
+            <div class="cluster-node-type type-landing">Landing Page</div>
+          </div>
+
+          <div class="cluster-node" style="top:48%;left:2%;">
+            <div class="cluster-node-title">Contract Management FAQ</div>
+            <div class="cluster-node-type type-faq">FAQ Page</div>
+          </div>
+
+          <div class="cluster-node" style="top:45%;right:2%;">
+            <div class="cluster-node-title">ContractNest vs Agiloft</div>
+            <div class="cluster-node-type type-comparison">Comparison</div>
+          </div>
+
+          <div class="cluster-node" style="bottom:5%;left:10%;">
+            <div class="cluster-node-title">How to Automate Contract Renewals</div>
+            <div class="cluster-node-type type-guide">Guide</div>
+          </div>
+
+          <div class="cluster-node" style="bottom:8%;right:12%;">
+            <div class="cluster-node-title">ContractNest for IT Services</div>
+            <div class="cluster-node-type type-landing">Landing Page</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-sep"></div>
+
+      <!-- ── Schema Markup ── -->
+      <div class="schema-section animate-in animate-in-delay-5">
+        <div class="label label-accent mb-sm">Schema Markup</div>
+        <div class="display-sm">Structured data for AI retrieval</div>
+        <p class="text-body mt-sm" style="margin-bottom: 20px;">Schema markup helps AI systems understand and surface your content accurately. Toggle which schemas to auto-generate across your content.</p>
+
+        <div class="schema-grid">
+          <div class="schema-card">
+            <div class="schema-top">
+              <span class="schema-name">FAQ Schema</span>
+              <div class="schema-toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="schema-desc">Question-answer pairs that AI systems can extract directly. Essential for feature and pricing queries.</div>
+            <div class="schema-code">@type: "FAQPage"
+mainEntity: [{
+  @type: "Question",
+  name: "What is...?",
+  acceptedAnswer: {...}
+}]</div>
+          </div>
+
+          <div class="schema-card">
+            <div class="schema-top">
+              <span class="schema-name">HowTo Schema</span>
+              <div class="schema-toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="schema-desc">Step-by-step instructions for process-oriented queries. Great for "how to automate..." content.</div>
+            <div class="schema-code">@type: "HowTo"
+name: "How to..."
+step: [{
+  @type: "HowToStep",
+  text: "Step 1..."
+}]</div>
+          </div>
+
+          <div class="schema-card">
+            <div class="schema-top">
+              <span class="schema-name">SoftwareApp</span>
+              <div class="schema-toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="schema-desc">Product details that help AI understand ContractNest's features, pricing, and category.</div>
+            <div class="schema-code">@type: "SoftwareApplication"
+name: "ContractNest"
+category: "BusinessApplication"
+offers: { price: "..." }</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ═══ FOOTER ═══ -->
+    <footer class="aeo-footer animate-in animate-in-delay-6">
+      <a href="channels.html" class="btn btn-ghost">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Back to Channels
+      </a>
+      <div class="footer-steps">
+        <div class="footer-dot completed"></div>
+        <div class="footer-dot completed"></div>
+        <div class="footer-dot completed"></div>
+        <div class="footer-dot active"></div>
+        <div class="footer-dot"></div>
+        <div class="footer-dot"></div>
+      </div>
+      <a href="sequences.html" class="btn btn-primary">
+        Continue to Sequences
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+      </a>
+    </footer>
+  </div>
+</body>
+</html>

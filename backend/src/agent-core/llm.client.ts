@@ -27,6 +27,7 @@ import { createTenantDb } from '../db';
 const VPS_URL   = process.env.LLM_PRIMARY_URL   ?? 'http://localhost:11434';
 const VPS_MODEL = process.env.LLM_PRIMARY_MODEL ?? 'qwen2.5';
 const VPS_TIMEOUT_MS = parseInt(process.env.LLM_PRIMARY_TIMEOUT_MS ?? '60000', 10);
+const VPS_KEY   = process.env.LLM_PRIMARY_KEY   || '';
 
 /* ── Types ───────────────────────────────────────────────────────────────── */
 
@@ -138,22 +139,30 @@ export async function callLLM(options: LLMCallOptions): Promise<LLMResult> {
 
   await checkTokenBudget(pool, tenantId, maxTokens);
 
+  // Qwen3 thinking suppression: append /no_think unless already present.
+  const systemContent = system.includes('/no_think')
+    ? system
+    : `${system.trim()} /no_think`;
+
   const body = {
     model:       VPS_MODEL,
     max_tokens:  maxTokens,
     temperature,
     stream:      false,
     messages: [
-      { role: 'system', content: system },
+      { role: 'system', content: systemContent },
       ...messages,
     ],
   };
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (VPS_KEY) headers['Authorization'] = `Bearer ${VPS_KEY}`;
 
   let response: Response;
   try {
     response = await fetch(`${VPS_URL}/v1/chat/completions`, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body:    JSON.stringify(body),
       signal:  AbortSignal.timeout(VPS_TIMEOUT_MS),
     });

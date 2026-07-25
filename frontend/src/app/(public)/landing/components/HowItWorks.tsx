@@ -11,7 +11,7 @@ export default function HowItWorks() {
       <div ref={ref} className={`${s.howItWorksHeader} ${s.animateOnScroll}`}>
         <div className={s.sectionEyebrow}>Getting started</div>
         <h2 className={s.sectionTitle}>
-          From Signup to Intelligence<br />in Under 10 Minutes
+          From Signup to Live Mission<br />in Under 10 Minutes
         </h2>
       </div>
       <Stepper />

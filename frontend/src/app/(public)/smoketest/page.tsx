@@ -1,6 +1,7 @@
 'use client';
 
 import { useTheme } from '@/config/theme';
+import { BRAND } from '@/constants/brand';
 
 export default function SmokeTest() {
   const { themeId, theme, colorMode, setTheme, toggleColorMode, themes } = useTheme();
@@ -27,7 +28,7 @@ export default function SmokeTest() {
           fontFamily: 'var(--font-display, serif)',
           margin: 0,
         }}>
-          ProKey
+          {BRAND.name}
         </h1>
         <p style={{ color: 'var(--color-muted)', margin: '8px 0 0' }}>
           Smoke Test — Theme System Working

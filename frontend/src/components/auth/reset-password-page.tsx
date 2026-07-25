@@ -8,6 +8,7 @@ import FormInput from '@/components/ui/form-input';
 import PasswordStrength from '@/components/ui/password-strength';
 import { useResetPassword } from '@/hooks';
 import type { ApiError } from '@/lib/api-client';
+import { BRAND } from '@/constants/brand';
 import f from '@/styles/forms.module.css';
 import s from './reset-password-page.module.css';
 
@@ -93,7 +94,7 @@ export default function ResetPasswordPage() {
           </div>
 
           <div className={s.brandText}>
-            <div className={s.brandName}>KI-PRIME</div>
+            <div className={s.brandName}>{BRAND.name}</div>
             <div className={s.brandSub}>by Vikuna Technologies</div>
           </div>
 

@@ -11,23 +11,23 @@ interface StepItem {
 
 const steps: StepItem[] = [
   {
-    title: 'Create Your Firm Account',
-    description: 'Register your MFD practice. Set up your brand identity, team roles, and client segments. Multi-tenant from day one \u2014 your data is yours alone.',
+    title: 'Initialize Your Mission',
+    description: 'Name your mission and describe your product in one line. It becomes your tenant \u2014 an isolated, intelligent growth operation that is yours alone.',
     meta: '~ 2 minutes',
   },
   {
-    title: 'Import Your Client Data',
-    description: 'Upload CAS statements, InvestWell exports, or connect via MFAPI. Our parser auto-detects formats, matches schemes, and reconciles holdings.',
+    title: 'Define Your ICP & Channels',
+    description: 'Set your personas, buying signals, company size, and geography. Connect email, WhatsApp, and LinkedIn with orchestration rules.',
     meta: '~ 5 minutes',
   },
   {
-    title: 'See the Full Picture',
-    description: 'Your dashboard lights up \u2014 consolidated portfolios, goal gaps, market movements, and actionable insights across every client, every scheme.',
+    title: 'Build Your Sequences',
+    description: 'Design multi-step outreach in the visual flow builder. Agents draft and personalize every step, grounded in your ICP.',
     meta: 'instant',
   },
   {
-    title: 'Advise with Confidence',
-    description: 'Run goal plans, compare funds, spot rebalancing opportunities, and generate client-ready reports \u2014 all backed by real-time data.',
+    title: 'Launch & Watch the War Room',
+    description: 'Import your contacts, launch the mission, and monitor every agent run, pipeline stage, and signal live.',
     meta: 'ongoing',
   },
 ];

@@ -8,6 +8,7 @@ import PricingSection from './components/PricingSection';
 import TestimonialsSection from './components/TestimonialsSection';
 import FinalCta from './components/FinalCta';
 import Footer from './components/Footer';
+import { BRAND } from '@/constants/brand';
 import s from './page.module.css';
 
 const navLinks = [
@@ -21,15 +22,15 @@ const navLinks = [
 export default function LandingPage() {
   return (
     <>
-      <Navbar brandName="ProKey" links={navLinks} />
+      <Navbar brandName={BRAND.name} links={navLinks} />
       <main>
         <HeroSection />
 
         {/* Social Proof */}
         <section className={s.socialProof}>
-          <div className={s.socialProofLabel}>Trusted by forward-thinking MFDs across India</div>
+          <div className={s.socialProofLabel}>Built for modern B2B go-to-market teams</div>
           <div className={s.proofLogos}>
-            {['Meridian Wealth', 'PrimeVest Advisors', 'FinBridge Partners', 'TrustArc Capital', 'NorthStar MFD'].map((name) => (
+            {['Northwind', 'Vertex Labs', 'Harbor', 'Loop', 'Cobalt'].map((name) => (
               <span key={name} className={s.proofLogo}>{name}</span>
             ))}
           </div>

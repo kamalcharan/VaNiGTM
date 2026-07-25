@@ -4,24 +4,25 @@ import { useScrollReveal } from '@/hooks/useScrollReveal';
 import TestimonialCard from './TestimonialCard';
 import s from '../page.module.css';
 
+// NOTE: placeholder testimonials \u2014 replace with real, attributed quotes before public launch.
 const testimonials = [
   {
-    quote: 'I was spending 3 hours every Saturday building client reports in Excel. Now it\u2019s one click. My weekends are mine again.',
-    authorName: 'Rajesh Kumar',
-    authorRole: 'Independent MFD, Pune \u00B7 180 clients',
-    authorInitials: 'RK',
+    quote: 'We went from a messy prospect spreadsheet to a live outbound motion in an afternoon. VaNi built our ICP and drafted the first sequence before I finished my coffee.',
+    authorName: 'Early access member',
+    authorRole: 'Founder \u00B7 Seed-stage SaaS',
+    authorInitials: 'EA',
   },
   {
-    quote: 'The goal-gap visualization changed how I have conversations with clients. They see the math, they trust the plan. My SIP book grew 40% in 6 months.',
-    authorName: 'Priya Sharma',
-    authorRole: 'Wealth Planner, Bangalore \u00B7 320 clients',
-    authorInitials: 'PS',
+    quote: 'The agents run outreach across email and LinkedIn while we sleep. The War Room shows exactly what is landing \u2014 no more guessing which message works.',
+    authorName: 'Design partner',
+    authorRole: 'Head of Growth \u00B7 Series A',
+    authorInitials: 'DP',
   },
   {
-    quote: 'We onboarded our entire firm in one afternoon. CAS import parsed 12,000 transactions without a single mismatch. That\u2019s never happened before.',
-    authorName: 'Anil Mehta',
-    authorRole: 'Director, Finwise Distributors \u00B7 1,200 clients',
-    authorInitials: 'AM',
+    quote: 'One share link and VaNi fielded the prospect questions live during the pitch. It felt like having a GTM team of ten.',
+    authorName: 'Founding user',
+    authorRole: 'Solo founder \u00B7 B2B',
+    authorInitials: 'FU',
   },
 ];
 
@@ -30,8 +31,8 @@ export default function TestimonialsSection() {
   return (
     <section className={s.testimonials}>
       <div ref={ref} className={`${s.testimonialsHeader} ${s.animateOnScroll}`}>
-        <div className={s.sectionEyebrow}>What MFDs are saying</div>
-        <h2 className={s.sectionTitle}>Built With Distributors, For Distributors</h2>
+        <div className={s.sectionEyebrow}>Early access</div>
+        <h2 className={s.sectionTitle}>Built for Modern GTM Teams</h2>
       </div>
       <div className={s.testimonialsGrid}>
         {testimonials.map((t) => (

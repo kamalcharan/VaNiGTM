@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VaNi GTM Engine — Initialize Mission</title>
+  <link rel="stylesheet" href="shared/styles.css">
+  <style>
+    /* ═══ PAGE-SPECIFIC: MISSION INITIALIZATION ═══ */
+    .init-shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Top Bar ── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 40px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .topbar-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--signal));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 13px;
+      color: var(--void);
+    }
+
+    .topbar-title {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 16px;
+      color: var(--text-primary);
+      letter-spacing: -0.3px;
+    }
+
+    .topbar-subtitle {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-tertiary);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .topbar-meta {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .topbar-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+
+    /* ── Hero Section ── */
+    .hero {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 40px;
+      text-align: center;
+      position: relative;
+    }
+
+    /* Animated orbital rings */
+    .orbital-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 700px;
+      height: 700px;
+      pointer-events: none;
+      opacity: 0.3;
+    }
+
+    .orbital-ring {
+      position: absolute;
+      border: 1px solid var(--border-subtle);
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+    }
+
+    .orbital-ring:nth-child(1) {
+      width: 300px; height: 300px;
+      margin: -150px 0 0 -150px;
+      animation: orbit-spin 30s linear infinite;
+    }
+    .orbital-ring:nth-child(2) {
+      width: 450px; height: 450px;
+      margin: -225px 0 0 -225px;
+      animation: orbit-spin 45s linear infinite reverse;
+      border-style: dashed;
+      border-color: rgba(0, 229, 255, 0.06);
+    }
+    .orbital-ring:nth-child(3) {
+      width: 600px; height: 600px;
+      margin: -300px 0 0 -300px;
+      animation: orbit-spin 60s linear infinite;
+      border-color: rgba(0, 230, 118, 0.04);
+    }
+
+    /* Orbital dots */
+    .orbital-ring::before {
+      content: '';
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      top: -3px;
+      left: 50%;
+      margin-left: -3px;
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .orbital-ring:nth-child(2)::before {
+      background: var(--signal);
+      box-shadow: 0 0 12px var(--signal-glow);
+      top: auto;
+      bottom: -3px;
+    }
+
+    .orbital-ring:nth-child(3)::before {
+      background: var(--warn);
+      box-shadow: 0 0 12px var(--warn-glow);
+      left: -3px;
+      top: 50%;
+      margin-top: -3px;
+      margin-left: 0;
+    }
+
+    @keyframes orbit-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 680px;
+    }
+
+    .hero-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent-dim);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .hero-eyebrow::before,
+    .hero-eyebrow::after {
+      content: '';
+      width: 40px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent-dim));
+    }
+
+    .hero-eyebrow::after {
+      background: linear-gradient(90deg, var(--accent-dim), transparent);
+    }
+
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: 64px;
+      font-weight: 800;
+      line-height: 1.0;
+      letter-spacing: -3px;
+      color: var(--text-primary);
+      margin-bottom: 20px;
+    }
+
+    .hero h1 .line-accent {
+      background: linear-gradient(135deg, var(--accent), var(--signal));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-desc {
+      font-family: var(--font-body);
+      font-size: 18px;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      margin-bottom: 48px;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .btn-init {
+      padding: 18px 40px;
+      font-size: 16px;
+      font-weight: 700;
+      border-radius: 14px;
+      font-family: var(--font-display);
+      letter-spacing: -0.3px;
+    }
+
+    .btn-init.btn-primary::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+      pointer-events: none;
+    }
+
+    /* ── Step rail at bottom ── */
+    .onboarding-rail {
+      padding: 32px 40px;
+      border-top: 1px solid var(--border-subtle);
+      background: var(--surface-0);
+    }
+
+    .onboarding-rail .step-rail {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* ── Already registered / existing tenants panel ── */
+    .existing-tenants {
+      display: none;
+      padding: 40px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .existing-tenants.show {
+      display: block;
+    }
+
+    .tenant-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      cursor: pointer;
+      transition: all var(--duration-normal) var(--ease-out);
+      margin-bottom: 12px;
+    }
+
+    .tenant-card:hover {
+      border-color: var(--border-accent);
+      background: linear-gradient(135deg, var(--accent-pulse), var(--surface-1) 30%);
+      transform: translateX(4px);
+    }
+
+    .tenant-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .tenant-icon.cn { background: linear-gradient(135deg, #7c4dff22, #651fff11); color: #b388ff; border: 1px solid #7c4dff22; }
+    .tenant-icon.ki { background: linear-gradient(135deg, #00e67622, #00c85311); color: #69f0ae; border: 1px solid #00e67622; }
+    .tenant-icon.fk { background: linear-gradient(135deg, #ff6e4022, #ff572211); color: #ff8a65; border: 1px solid #ff6e4022; }
+
+    .tenant-info { flex: 1; }
+    .tenant-name { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.3px; }
+    .tenant-meta { font-size: 13px; color: var(--text-tertiary); margin-top: 4px; display: flex; align-items: center; gap: 16px; }
+
+    .tenant-stats {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .tenant-stat {
+      text-align: center;
+    }
+
+    .tenant-stat-val {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .tenant-stat-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+    }
+
+    .tenant-arrow {
+      color: var(--text-ghost);
+      transition: all var(--duration-normal) var(--ease-out);
+    }
+
+    .tenant-card:hover .tenant-arrow {
+      color: var(--accent);
+      transform: translateX(4px);
+    }
+
+    /* ── Init Form (Step 1 expanded) ── */
+    .init-form-panel {
+      display: none;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 40px;
+    }
+
+    .init-form-panel.show {
+      display: block;
+    }
+
+    .form-header {
+      margin-bottom: 40px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .form-grid .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .form-footer {
+      margin-top: 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* ── Industry selector cards ── */
+    .industry-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .industry-option {
+      background: var(--surface-0);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      cursor: pointer;
+      transition: all var(--duration-normal) var(--ease-out);
+      text-align: center;
+    }
+
+    .industry-option:hover {
+      border-color: var(--border-strong);
+      background: var(--surface-2);
+    }
+
+    .industry-option.selected {
+      border-color: var(--accent);
+      background: var(--accent-pulse);
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .industry-option .ind-icon {
+      font-size: 28px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .industry-option .ind-name {
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .industry-option.selected .ind-name {
+      color: var(--accent);
+    }
+
+    /* ── Particle canvas ── */
+    #particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── View toggle ── */
+    .view-toggle {
+      display: flex;
+      background: var(--surface-2);
+      border-radius: var(--radius-md);
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .view-toggle-btn {
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--ease-out);
+    }
+
+    .view-toggle-btn.active {
+      background: var(--surface-4);
+      color: var(--text-primary);
+    }
+
+    .view-toggle-btn:hover:not(.active) {
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="particles"></canvas>
+
+  <div class="init-shell">
+    <!-- ═══ TOP BAR ═══ -->
+    <header class="topbar animate-in">
+      <div class="topbar-brand">
+        <div class="topbar-logo">V</div>
+        <div>
+          <div class="topbar-title">VaNi GTM Engine</div>
+          <div class="topbar-subtitle">Vikuna Technologies</div>
+        </div>
+      </div>
+      <div class="topbar-meta">
+        <div class="topbar-status">
+          <span class="status-dot live"></span>
+          <span>System Online</span>
+        </div>
+        <div class="view-toggle" id="viewToggle">
+          <button class="view-toggle-btn active" data-view="hero" onclick="showView('hero')">New Mission</button>
+          <button class="view-toggle-btn" data-view="tenants" onclick="showView('tenants')">Active Tenants</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ═══ HERO: NEW TENANT ═══ -->
+    <section class="hero" id="heroView">
+      <div class="orbital-container">
+        <div class="orbital-ring"></div>
+        <div class="orbital-ring"></div>
+        <div class="orbital-ring"></div>
+      </div>
+
+      <div class="hero-content">
+        <div class="hero-eyebrow animate-in animate-in-delay-1">Agent-Powered GTM</div>
+        <h1 class="animate-in animate-in-delay-2">
+          Initialize a<br>
+          <span class="line-accent">New Mission</span>
+        </h1>
+        <p class="hero-desc animate-in animate-in-delay-3">
+          Deploy intelligent agents to find, engage, and convert your ideal customers. 
+          Each mission is a product — your agents run autonomously, learning and optimizing with every interaction.
+        </p>
+        <div class="hero-actions animate-in animate-in-delay-4">
+          <button class="btn btn-primary btn-init" onclick="showInitForm()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+            Launch New Tenant
+          </button>
+          <button class="btn btn-secondary btn-init" onclick="showView('tenants')">
+            View Active Missions
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ EXISTING TENANTS ═══ -->
+    <section class="existing-tenants" id="tenantsView">
+      <div class="flex justify-between items-center mb-lg animate-in">
+        <div>
+          <div class="display-md">Active Missions</div>
+          <div class="text-body mt-sm">3 tenants deployed, 2 agents running</div>
+        </div>
+        <button class="btn btn-primary" onclick="showInitForm()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          New Tenant
+        </button>
+      </div>
+
+      <!-- ContractNest -->
+      <a href="war-room.html" style="text-decoration:none">
+        <div class="tenant-card animate-in animate-in-delay-1">
+          <div class="tenant-icon cn">CN</div>
+          <div class="tenant-info">
+            <div class="tenant-name">ContractNest</div>
+            <div class="tenant-meta">
+              <span class="flex items-center gap-xs"><span class="status-dot live"></span> Live</span>
+              <span>Launched 14 days ago</span>
+              <span class="tag tag-accent">Reference Tenant</span>
+            </div>
+          </div>
+          <div class="tenant-stats">
+            <div class="tenant-stat">
+              <div class="tenant-stat-val">847</div>
+              <div class="tenant-stat-label">Contacts</div>
+            </div>
+            <div class="tenant-stat">
+              <div class="tenant-stat-val">12</div>
+              <div class="tenant-stat-label">Sequences</div>
+            </div>
+            <div class="tenant-stat">
+              <div class="tenant-stat-val">23%</div>
+              <div class="tenant-stat-label">Reply Rate</div>
+            </div>
+          </div>
+          <div class="tenant-arrow">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+        </div>
+      </a>
+
+      <!-- KewalInvest -->
+      <div class="tenant-card animate-in animate-in-delay-2" style="cursor: default; opacity: 0.6;">
+        <div class="tenant-icon ki">KI</div>
+        <div class="tenant-info">
+          <div class="tenant-name">KewalInvest</div>
+          <div class="tenant-meta">
+            <span class="flex items-center gap-xs"><span class="status-dot idle"></span> Onboarding</span>
+            <span>ICP configured, channels pending</span>
+          </div>
+        </div>
+        <div class="tenant-stats">
+          <div class="tenant-stat">
+            <div class="tenant-stat-val">—</div>
+            <div class="tenant-stat-label">Contacts</div>
+          </div>
+          <div class="tenant-stat">
+            <div class="tenant-stat-val">0</div>
+            <div class="tenant-stat-label">Sequences</div>
+          </div>
+          <div class="tenant-stat">
+            <div class="tenant-stat-val">—</div>
+            <div class="tenant-stat-label">Reply Rate</div>
+          </div>
+        </div>
+        <div class="tenant-arrow">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </div>
+      </div>
+
+      <!-- FamilyKnows -->
+      <div class="tenant-card animate-in animate-in-delay-3" style="cursor: default; opacity: 0.6;">
+        <div class="tenant-icon fk">FK</div>
+        <div class="tenant-info">
+          <div class="tenant-name">FamilyKnows</div>
+          <div class="tenant-meta">
+            <span class="flex items-center gap-xs"><span class="status-dot idle"></span> Queued</span>
+            <span>Pending initialization</span>
+          </div>
+        </div>
+        <div class="tenant-stats">
+          <div class="tenant-stat">
+            <div class="tenant-stat-val">—</div>
+            <div class="tenant-stat-label">Contacts</div>
+          </div>
+          <div class="tenant-stat">
+            <div class="tenant-stat-val">0</div>
+            <div class="tenant-stat-label">Sequences</div>
+          </div>
+          <div class="tenant-stat">
+            <div class="tenant-stat-val">—</div>
+            <div class="tenant-stat-label">Reply Rate</div>
+          </div>
+        </div>
+        <div class="tenant-arrow">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ INIT FORM ═══ -->
+    <section class="init-form-panel" id="initForm">
+      <div class="form-header animate-in">
+        <div class="label label-accent mb-sm">Step 01 / 06</div>
+        <div class="display-lg">Mission Identity</div>
+        <p class="text-body mt-md">Name your mission and define the product this GTM engine will power. This becomes your tenant — an isolated, intelligent growth operation.</p>
+      </div>
+
+      <div class="form-grid">
+        <div class="input-group animate-in animate-in-delay-1">
+          <label class="input-label">Mission Name</label>
+          <input type="text" class="input" placeholder="e.g., ContractNest" value="ContractNest">
+        </div>
+
+        <div class="input-group animate-in animate-in-delay-1">
+          <label class="input-label">Product URL</label>
+          <input type="text" class="input" placeholder="e.g., contractnest.com" value="contractnest.com">
+        </div>
+
+        <div class="input-group full-width animate-in animate-in-delay-2">
+          <label class="input-label">One-Line Product Description</label>
+          <input type="text" class="input" placeholder="What does this product do?" value="AI-powered contract management for service-based businesses">
+        </div>
+
+        <div class="input-group full-width animate-in animate-in-delay-3">
+          <label class="input-label">Target Industries</label>
+          <div class="industry-grid">
+            <div class="industry-option selected" onclick="this.classList.toggle('selected')">
+              <span class="ind-icon">🏗️</span>
+              <span class="ind-name">Facility Mgmt</span>
+            </div>
+            <div class="industry-option selected" onclick="this.classList.toggle('selected')">
+              <span class="ind-icon">💻</span>
+              <span class="ind-name">IT Services</span>
+            </div>
+            <div class="industry-option" onclick="this.classList.toggle('selected')">
+              <span class="ind-icon">👥</span>
+              <span class="ind-name">Staffing</span>
+            </div>
+            <div class="industry-option selected" onclick="this.classList.toggle('selected')">
+              <span class="ind-icon">🏥</span>
+              <span class="ind-name">Healthcare</span>
+            </div>
+            <div class="industry-option" onclick="this.classList.toggle('selected')">
+              <span class="ind-icon">📦</span>
+              <span class="ind-name">Logistics</span>
+            </div>
+            <div class="industry-option" onclick="this.classList.toggle('selected')">
+              <span class="ind-icon">⚡</span>
+              <span class="ind-name">Energy</span>
+            </div>
+            <div class="industry-option" onclick="this.classList.toggle('selected')">
+              <span class="ind-icon">🏦</span>
+              <span class="ind-name">Financial</span>
+            </div>
+            <div class="industry-option" onclick="this.classList.toggle('selected')">
+              <span class="ind-icon">🎓</span>
+              <span class="ind-name">Education</span>
+            </div>
+            <div class="industry-option" onclick="this.classList.toggle('selected')">
+              <span class="ind-icon">✨</span>
+              <span class="ind-name">Custom...</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="input-group animate-in animate-in-delay-4">
+          <label class="input-label">Sender Name</label>
+          <input type="text" class="input" placeholder="Outreach sender name" value="Charan from ContractNest">
+        </div>
+
+        <div class="input-group animate-in animate-in-delay-4">
+          <label class="input-label">Sender Email</label>
+          <input type="email" class="input" placeholder="sender@yourdomain.com" value="charan@contractnest.com">
+        </div>
+      </div>
+
+      <div class="form-footer animate-in animate-in-delay-5">
+        <button class="btn btn-ghost" onclick="hideInitForm()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          Back
+        </button>
+        <a href="icp-config.html" class="btn btn-primary">
+          Continue to ICP Setup
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </a>
+      </div>
+    </section>
+
+    <!-- ═══ ONBOARDING STEP RAIL ═══ -->
+    <footer class="onboarding-rail animate-in animate-in-delay-6">
+      <div class="step-rail">
+        <div class="step-node active">
+          <div class="step-circle">01</div>
+          <span class="step-label">Identity</span>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-node">
+          <div class="step-circle">02</div>
+          <span class="step-label">ICP</span>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-node">
+          <div class="step-circle">03</div>
+          <span class="step-label">Channels</span>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-node">
+          <div class="step-circle">04</div>
+          <span class="step-label">AEO & Content</span>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-node">
+          <div class="step-circle">05</div>
+          <span class="step-label">Sequences</span>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-node">
+          <div class="step-circle">06</div>
+          <span class="step-label">Launch</span>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // ═══ VIEW SWITCHING ═══
+    function showView(view) {
+      const heroView = document.getElementById('heroView');
+      const tenantsView = document.getElementById('tenantsView');
+      const initForm = document.getElementById('initForm');
+      const toggleBtns = document.querySelectorAll('.view-toggle-btn');
+
+      heroView.style.display = view === 'hero' ? 'flex' : 'none';
+      tenantsView.classList.toggle('show', view === 'tenants');
+      initForm.classList.remove('show');
+
+      toggleBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === view);
+      });
+    }
+
+    function showInitForm() {
+      document.getElementById('heroView').style.display = 'none';
+      document.getElementById('tenantsView').classList.remove('show');
+      document.getElementById('initForm').classList.add('show');
+    }
+
+    function hideInitForm() {
+      document.getElementById('initForm').classList.remove('show');
+      document.getElementById('heroView').style.display = 'flex';
+      showView('hero');
+    }
+
+    // ═══ PARTICLE BACKGROUND ═══
+    const canvas = document.getElementById('particles');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let mouse = { x: 0, y: 0 };
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    function createParticles() {
+      particles = [];
+      const count = Math.floor((canvas.width * canvas.height) / 25000);
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 0.3,
+          vy: (Math.random() - 0.5) * 0.3,
+          size: Math.random() * 1.5 + 0.5,
+          opacity: Math.random() * 0.3 + 0.05,
+          color: Math.random() > 0.7 ? '0, 229, 255' : Math.random() > 0.5 ? '0, 230, 118' : '136, 153, 176',
+        });
+      }
+    }
+
+    function drawParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      particles.forEach((p, i) => {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0) p.x = canvas.width;
+        if (p.x > canvas.width) p.x = 0;
+        if (p.y < 0) p.y = canvas.height;
+        if (p.y > canvas.height) p.y = 0;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${p.color}, ${p.opacity})`;
+        ctx.fill();
+
+        // Connect nearby particles
+        for (let j = i + 1; j < particles.length; j++) {
+          const p2 = particles[j];
+          const dx = p.x - p2.x;
+          const dy = p.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          if (dist < 120) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = `rgba(${p.color}, ${0.04 * (1 - dist / 120)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      });
+
+      requestAnimationFrame(drawParticles);
+    }
+
+    window.addEventListener('resize', () => { resize(); createParticles(); });
+    resize();
+    createParticles();
+    drawParticles();
+
+    // ═══ KEYBOARD SHORTCUT ═══
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'n' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        showInitForm();
+      }
+    });
+  </script>
+</body>
+</html>

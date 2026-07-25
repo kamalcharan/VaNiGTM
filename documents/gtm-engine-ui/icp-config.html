@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VaNi GTM Engine — ICP Configuration</title>
+  <link rel="stylesheet" href="shared/styles.css">
+  <style>
+    .icp-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    /* ── Top Bar spans full width ── */
+    .topbar {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 40px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 12px; }
+    .topbar-logo { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), var(--signal)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 13px; color: var(--void); }
+    .topbar-title { font-family: var(--font-display); font-weight: 600; font-size: 16px; color: var(--text-primary); letter-spacing: -0.3px; }
+    .topbar-subtitle { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); letter-spacing: 1px; text-transform: uppercase; }
+    .topbar-meta { display: flex; align-items: center; gap: 16px; }
+    .topbar-tenant { display: flex; align-items: center; gap: 8px; background: var(--surface-2); padding: 6px 14px; border-radius: var(--radius-md); font-size: 13px; font-weight: 600; color: var(--accent); }
+    .topbar-tenant .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+    /* ── Main form area ── */
+    .icp-main {
+      padding: 40px 48px;
+      overflow-y: auto;
+      max-height: calc(100vh - 72px - 80px);
+    }
+
+    .section-header {
+      margin-bottom: 32px;
+    }
+
+    /* ── Persona Builder ── */
+    .persona-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .persona-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      cursor: pointer;
+      transition: all var(--duration-normal) var(--ease-out);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .persona-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: transparent;
+      transition: background var(--duration-normal) var(--ease-out);
+    }
+
+    .persona-card:hover {
+      border-color: var(--border-default);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .persona-card.selected {
+      border-color: var(--border-accent);
+      background: linear-gradient(180deg, var(--accent-pulse), var(--surface-1) 40%);
+    }
+
+    .persona-card.selected::before {
+      background: linear-gradient(90deg, var(--accent), var(--signal));
+    }
+
+    .persona-check {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid var(--border-default);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--duration-normal) var(--ease-out);
+    }
+
+    .persona-card.selected .persona-check {
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+
+    .persona-check svg { opacity: 0; transition: opacity var(--duration-fast); }
+    .persona-card.selected .persona-check svg { opacity: 1; }
+
+    .persona-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin-bottom: 14px;
+    }
+
+    .persona-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+      letter-spacing: -0.3px;
+    }
+
+    .persona-desc {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      line-height: 1.5;
+    }
+
+    .persona-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .persona-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: var(--surface-3);
+      color: var(--text-tertiary);
+      letter-spacing: 0.5px;
+    }
+
+    .persona-card.selected .persona-tag {
+      background: var(--accent-pulse);
+      color: var(--accent-dim);
+    }
+
+    .add-persona-card {
+      background: transparent;
+      border: 2px dashed var(--border-default);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 180px;
+      transition: all var(--duration-normal) var(--ease-out);
+    }
+
+    .add-persona-card:hover {
+      border-color: var(--accent);
+      background: var(--accent-pulse);
+    }
+
+    .add-persona-card svg { color: var(--text-tertiary); transition: color var(--duration-normal); }
+    .add-persona-card:hover svg { color: var(--accent); }
+    .add-persona-card span { font-size: 13px; color: var(--text-tertiary); font-weight: 500; }
+    .add-persona-card:hover span { color: var(--accent); }
+
+    /* ── Company Size Range ── */
+    .range-section {
+      margin-bottom: 40px;
+    }
+
+    .range-display {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .range-bar-container {
+      flex: 1;
+      position: relative;
+      height: 48px;
+      display: flex;
+      align-items: center;
+    }
+
+    .range-bar-track {
+      width: 100%;
+      height: 6px;
+      background: var(--surface-3);
+      border-radius: 3px;
+      position: relative;
+    }
+
+    .range-bar-fill {
+      position: absolute;
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--signal));
+      border-radius: 3px;
+      left: 10%;
+      right: 60%;
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .range-bar-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+    }
+
+    .range-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-tertiary);
+      letter-spacing: 0.5px;
+    }
+
+    .range-values {
+      display: flex;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .range-input-mini {
+      width: 80px;
+      background: var(--surface-0);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--accent);
+      text-align: center;
+      outline: none;
+      font-weight: 600;
+    }
+
+    .range-input-mini:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .range-separator {
+      color: var(--text-tertiary);
+      font-size: 18px;
+      line-height: 36px;
+    }
+
+    /* ── Signal Builder ── */
+    .signals-section {
+      margin-bottom: 40px;
+    }
+
+    .signal-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .signal-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      transition: all var(--duration-normal) var(--ease-out);
+    }
+
+    .signal-item:hover {
+      border-color: var(--border-default);
+    }
+
+    .signal-toggle {
+      width: 40px;
+      height: 22px;
+      border-radius: 11px;
+      background: var(--surface-3);
+      cursor: pointer;
+      position: relative;
+      transition: background var(--duration-normal) var(--ease-out);
+      flex-shrink: 0;
+    }
+
+    .signal-toggle.on {
+      background: var(--accent);
+    }
+
+    .signal-toggle::after {
+      content: '';
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: white;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: transform var(--duration-normal) var(--ease-spring);
+    }
+
+    .signal-toggle.on::after {
+      transform: translateX(18px);
+    }
+
+    .signal-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .signal-icon.positive { background: var(--signal-glow); }
+    .signal-icon.negative { background: var(--danger-glow); }
+
+    .signal-info { flex: 1; }
+    .signal-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .signal-desc { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+
+    .signal-weight {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .weight-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--surface-4);
+      transition: background var(--duration-fast);
+    }
+
+    .weight-dot.filled { background: var(--accent); }
+    .weight-dot.filled.high { background: var(--signal); }
+
+    /* ── Geo Targets ── */
+    .geo-section { margin-bottom: 40px; }
+
+    .geo-tags-input {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px;
+      background: var(--surface-0);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      min-height: 52px;
+      align-items: center;
+      cursor: text;
+    }
+
+    .geo-tags-input:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .geo-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface-3);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .geo-tag-remove {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      transition: all var(--duration-fast);
+    }
+
+    .geo-tag-remove:hover {
+      background: var(--danger-glow);
+      color: var(--danger);
+    }
+
+    .geo-input-inline {
+      border: none;
+      background: transparent;
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text-primary);
+      outline: none;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .geo-input-inline::placeholder { color: var(--text-ghost); }
+
+    /* ── Negative Signals ── */
+    .neg-section { margin-bottom: 40px; }
+
+    /* ── Right Panel: Live ICP Preview ── */
+    .icp-preview {
+      background: var(--surface-0);
+      border-left: 1px solid var(--border-subtle);
+      padding: 32px 28px;
+      overflow-y: auto;
+      max-height: calc(100vh - 72px - 80px);
+      position: relative;
+    }
+
+    .icp-preview::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 120px;
+      background: linear-gradient(180deg, var(--accent-pulse), transparent);
+      pointer-events: none;
+    }
+
+    .preview-header {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 28px;
+    }
+
+    .preview-score-ring {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 20px;
+      position: relative;
+    }
+
+    .preview-score-ring svg {
+      width: 100px;
+      height: 100px;
+      transform: rotate(-90deg);
+    }
+
+    .score-track { fill: none; stroke: var(--surface-3); stroke-width: 6; }
+    .score-fill { fill: none; stroke: url(#scoreGradient); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 283; stroke-dashoffset: 85; transition: stroke-dashoffset 1s var(--ease-out); }
+
+    .score-value {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text-primary);
+    }
+
+    .score-label {
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+    }
+
+    .preview-divider {
+      height: 1px;
+      background: var(--border-subtle);
+      margin: 24px 0;
+    }
+
+    .preview-section {
+      margin-bottom: 20px;
+    }
+
+    .preview-section-title {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      margin-bottom: 10px;
+    }
+
+    .preview-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .preview-pill {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--surface-2);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .preview-pill.accent { background: var(--accent-pulse); color: var(--accent); border-color: rgba(0,229,255,0.1); }
+
+    .preview-stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+    }
+
+    .preview-stat-name {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .preview-stat-val {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* AI suggestion box */
+    .ai-suggestion {
+      background: linear-gradient(135deg, rgba(0,229,255,0.04), rgba(0,230,118,0.04));
+      border: 1px solid rgba(0,229,255,0.1);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-top: 20px;
+    }
+
+    .ai-suggestion-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .ai-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, var(--accent), var(--signal));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+    }
+
+    .ai-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--accent-dim);
+    }
+
+    .ai-suggestion p {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+    }
+
+    /* ── Footer nav ── */
+    .icp-footer {
+      grid-column: 1 / -1;
+      padding: 20px 40px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface-0);
+    }
+
+    .footer-steps {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .footer-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--surface-4);
+      transition: all var(--duration-normal);
+    }
+
+    .footer-dot.completed { background: var(--signal); }
+    .footer-dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); width: 24px; border-radius: 4px; }
+    .footer-dot.upcoming { background: var(--surface-4); }
+
+    /* ── Section separator ── */
+    .section-sep {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-default) 20%, var(--border-default) 80%, transparent);
+      margin: 8px 0 32px;
+    }
+
+    /* ── Negative signals ── */
+    .neg-items {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .neg-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .neg-item .neg-x {
+      color: var(--danger);
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .add-neg-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      padding: 10px 14px;
+      background: transparent;
+      border: 1px dashed var(--border-default);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: var(--text-tertiary);
+      cursor: pointer;
+      transition: all var(--duration-normal) var(--ease-out);
+      width: 100%;
+    }
+
+    .add-neg-btn:hover {
+      border-color: var(--danger);
+      color: var(--danger);
+      background: var(--danger-glow);
+    }
+  </style>
+</head>
+<body>
+  <div class="icp-shell">
+    <!-- ═══ TOP BAR ═══ -->
+    <header class="topbar animate-in">
+      <div class="topbar-brand">
+        <a href="index.html" style="text-decoration:none"><div class="topbar-logo">V</div></a>
+        <div>
+          <div class="topbar-title">ICP Configuration</div>
+          <div class="topbar-subtitle">Step 02 of 06 — Define Your Ideal Customer</div>
+        </div>
+      </div>
+      <div class="topbar-meta">
+        <div class="topbar-tenant">
+          <span class="dot"></span>
+          ContractNest
+        </div>
+        <button class="btn btn-ghost" title="Save draft">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+          Save Draft
+        </button>
+      </div>
+    </header>
+
+    <!-- ═══ MAIN FORM ═══ -->
+    <main class="icp-main">
+      <!-- Personas -->
+      <div class="section-header animate-in animate-in-delay-1">
+        <div class="label label-accent mb-sm">Target Personas</div>
+        <div class="display-md">Who are you selling to?</div>
+        <p class="text-body mt-sm">Select the decision-maker profiles that match your ideal customer. The Prospecting Agent will use these to find and prioritize leads.</p>
+      </div>
+
+      <div class="persona-grid">
+        <div class="persona-card selected animate-in animate-in-delay-2" onclick="this.classList.toggle('selected'); updatePreview()">
+          <div class="persona-check">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--void)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <div class="persona-avatar" style="background: rgba(124,77,255,0.1);">🎯</div>
+          <div class="persona-title">VP Operations</div>
+          <div class="persona-desc">Owns vendor relationships, contract compliance, and operational efficiency. Key budget holder.</div>
+          <div class="persona-tags">
+            <span class="persona-tag">DECISION MAKER</span>
+            <span class="persona-tag">BUDGET AUTHORITY</span>
+          </div>
+        </div>
+
+        <div class="persona-card selected animate-in animate-in-delay-2" onclick="this.classList.toggle('selected'); updatePreview()">
+          <div class="persona-check">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--void)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <div class="persona-avatar" style="background: rgba(0,229,255,0.1);">📋</div>
+          <div class="persona-title">Contract Manager</div>
+          <div class="persona-desc">Day-to-day contract administration. Feels the pain of manual tracking most acutely.</div>
+          <div class="persona-tags">
+            <span class="persona-tag">END USER</span>
+            <span class="persona-tag">CHAMPION</span>
+          </div>
+        </div>
+
+        <div class="persona-card animate-in animate-in-delay-3" onclick="this.classList.toggle('selected'); updatePreview()">
+          <div class="persona-check">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--void)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <div class="persona-avatar" style="background: rgba(0,230,118,0.1);">🏢</div>
+          <div class="persona-title">Procurement Head</div>
+          <div class="persona-desc">Oversees vendor selection and purchasing. Evaluates tools for cost savings and compliance.</div>
+          <div class="persona-tags">
+            <span class="persona-tag">EVALUATOR</span>
+            <span class="persona-tag">INFLUENCER</span>
+          </div>
+        </div>
+
+        <div class="persona-card selected animate-in animate-in-delay-3" onclick="this.classList.toggle('selected'); updatePreview()">
+          <div class="persona-check">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--void)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <div class="persona-avatar" style="background: rgba(255,215,64,0.1);">⚙️</div>
+          <div class="persona-title">COO</div>
+          <div class="persona-desc">Strategic oversight of operations. Cares about scalability, reporting, and risk mitigation.</div>
+          <div class="persona-tags">
+            <span class="persona-tag">EXECUTIVE SPONSOR</span>
+          </div>
+        </div>
+
+        <div class="add-persona-card animate-in animate-in-delay-4" onclick="alert('Custom persona builder coming soon!')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+          <span>Add Custom Persona</span>
+        </div>
+      </div>
+
+      <div class="section-sep"></div>
+
+      <!-- Company Size -->
+      <div class="range-section animate-in animate-in-delay-3">
+        <div class="label label-accent mb-sm">Company Size</div>
+        <div class="display-sm">How big are your ideal customers?</div>
+        <p class="text-body mt-sm" style="margin-bottom: 16px;">Employee count range. The Scoring Agent uses this to calculate ICP fit.</p>
+
+        <div class="range-display">
+          <div style="flex:1">
+            <div class="range-bar-container">
+              <div class="range-bar-track">
+                <div class="range-bar-fill" id="rangeFill"></div>
+              </div>
+            </div>
+            <div class="range-bar-labels">
+              <span class="range-label">1</span>
+              <span class="range-label">50</span>
+              <span class="range-label">200</span>
+              <span class="range-label">500</span>
+              <span class="range-label">1K</span>
+              <span class="range-label">5K+</span>
+            </div>
+          </div>
+          <div class="range-values">
+            <input type="text" class="range-input-mini" value="50" id="rangeMin">
+            <span class="range-separator">—</span>
+            <input type="text" class="range-input-mini" value="1000" id="rangeMax">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-sep"></div>
+
+      <!-- Positive Signals -->
+      <div class="signals-section animate-in animate-in-delay-4">
+        <div class="label label-signal mb-sm">Buying Signals</div>
+        <div class="display-sm">What signals indicate a prospect is ready?</div>
+        <p class="text-body mt-sm" style="margin-bottom: 16px;">The Prospecting Agent watches for these signals to identify and score leads.</p>
+
+        <div class="signal-list">
+          <div class="signal-item">
+            <div class="signal-toggle on" onclick="this.classList.toggle('on')"></div>
+            <div class="signal-icon positive">💼</div>
+            <div class="signal-info">
+              <div class="signal-name">Hiring for contract roles</div>
+              <div class="signal-desc">Job postings for "contract manager", "vendor management" — signals scaling</div>
+            </div>
+            <div class="signal-weight" title="Signal strength: High">
+              <div class="weight-dot filled high"></div>
+              <div class="weight-dot filled high"></div>
+              <div class="weight-dot filled high"></div>
+            </div>
+          </div>
+
+          <div class="signal-item">
+            <div class="signal-toggle on" onclick="this.classList.toggle('on')"></div>
+            <div class="signal-icon positive">📢</div>
+            <div class="signal-info">
+              <div class="signal-name">LinkedIn pain signals</div>
+              <div class="signal-desc">Posts or comments about contract management challenges, vendor issues</div>
+            </div>
+            <div class="signal-weight" title="Signal strength: High">
+              <div class="weight-dot filled high"></div>
+              <div class="weight-dot filled high"></div>
+              <div class="weight-dot filled high"></div>
+            </div>
+          </div>
+
+          <div class="signal-item">
+            <div class="signal-toggle on" onclick="this.classList.toggle('on')"></div>
+            <div class="signal-icon positive">📊</div>
+            <div class="signal-info">
+              <div class="signal-name">Using spreadsheets for contracts</div>
+              <div class="signal-desc">Tech stack signals showing no CLM tool — still on Excel/Sheets</div>
+            </div>
+            <div class="signal-weight" title="Signal strength: Medium">
+              <div class="weight-dot filled"></div>
+              <div class="weight-dot filled"></div>
+              <div class="weight-dot"></div>
+            </div>
+          </div>
+
+          <div class="signal-item">
+            <div class="signal-toggle on" onclick="this.classList.toggle('on')"></div>
+            <div class="signal-icon positive">🚀</div>
+            <div class="signal-info">
+              <div class="signal-name">Recent funding or expansion</div>
+              <div class="signal-desc">Growth signals — more contracts, more vendors, more complexity</div>
+            </div>
+            <div class="signal-weight" title="Signal strength: Medium">
+              <div class="weight-dot filled"></div>
+              <div class="weight-dot filled"></div>
+              <div class="weight-dot"></div>
+            </div>
+          </div>
+
+          <div class="signal-item">
+            <div class="signal-toggle" onclick="this.classList.toggle('on')"></div>
+            <div class="signal-icon positive">🔍</div>
+            <div class="signal-info">
+              <div class="signal-name">Searching for CLM solutions</div>
+              <div class="signal-desc">Intent data from G2, Capterra, or direct search queries</div>
+            </div>
+            <div class="signal-weight" title="Signal strength: Low">
+              <div class="weight-dot filled"></div>
+              <div class="weight-dot"></div>
+              <div class="weight-dot"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-sep"></div>
+
+      <!-- Geographic Targets -->
+      <div class="geo-section animate-in animate-in-delay-5">
+        <div class="label label-accent mb-sm">Geographic Focus</div>
+        <div class="display-sm">Where are your customers?</div>
+        <p class="text-body mt-sm" style="margin-bottom: 16px;">Add regions, countries, or cities. The Outreach Agent adapts timezone and messaging per geography.</p>
+
+        <div class="geo-tags-input" onclick="this.querySelector('input').focus()">
+          <div class="geo-tag">
+            🇮🇳 India
+            <span class="geo-tag-remove" onclick="event.stopPropagation(); this.parentElement.remove();">✕</span>
+          </div>
+          <div class="geo-tag">
+            🇦🇪 Middle East
+            <span class="geo-tag-remove" onclick="event.stopPropagation(); this.parentElement.remove();">✕</span>
+          </div>
+          <div class="geo-tag">
+            🇸🇬 Southeast Asia
+            <span class="geo-tag-remove" onclick="event.stopPropagation(); this.parentElement.remove();">✕</span>
+          </div>
+          <input type="text" class="geo-input-inline" placeholder="Add region..." onkeydown="handleGeoAdd(event)">
+        </div>
+      </div>
+
+      <div class="section-sep"></div>
+
+      <!-- Negative Signals / Exclusions -->
+      <div class="neg-section animate-in animate-in-delay-5">
+        <div class="label text-danger mb-sm" style="color: var(--danger);">Exclusions</div>
+        <div class="display-sm">Who should agents avoid?</div>
+        <p class="text-body mt-sm" style="margin-bottom: 16px;">Define negative signals. Contacts matching these are automatically deprioritized or excluded.</p>
+
+        <div class="neg-items">
+          <div class="neg-item">
+            <span class="neg-x">✕</span>
+            <span>Already using enterprise CLM (Agiloft, Icertis, ContractWorks)</span>
+          </div>
+          <div class="neg-item">
+            <span class="neg-x">✕</span>
+            <span>Company size under 20 employees</span>
+          </div>
+          <div class="neg-item">
+            <span class="neg-x">✕</span>
+            <span>Product companies (no service contracts)</span>
+          </div>
+        </div>
+        <button class="add-neg-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Add exclusion rule
+        </button>
+      </div>
+    </main>
+
+    <!-- ═══ LIVE ICP PREVIEW PANEL ═══ -->
+    <aside class="icp-preview animate-in animate-in-delay-3">
+      <div class="preview-header">
+        <div class="label label-accent mb-md" style="text-align: center;">Live ICP Profile</div>
+        
+        <div class="preview-score-ring">
+          <svg viewBox="0 0 100 100">
+            <defs>
+              <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="var(--accent)" />
+                <stop offset="100%" stop-color="var(--signal)" />
+              </linearGradient>
+            </defs>
+            <circle class="score-track" cx="50" cy="50" r="45" />
+            <circle class="score-fill" cx="50" cy="50" r="45" />
+          </svg>
+          <div class="score-value" id="previewScore">70</div>
+        </div>
+        <div class="score-label">ICP Completeness</div>
+      </div>
+
+      <div class="preview-divider"></div>
+
+      <div class="preview-section">
+        <div class="preview-section-title">Personas Selected</div>
+        <div class="preview-pills" id="previewPersonas">
+          <span class="preview-pill accent">VP Operations</span>
+          <span class="preview-pill accent">Contract Manager</span>
+          <span class="preview-pill accent">COO</span>
+        </div>
+      </div>
+
+      <div class="preview-section">
+        <div class="preview-section-title">Industries</div>
+        <div class="preview-pills">
+          <span class="preview-pill">Facility Mgmt</span>
+          <span class="preview-pill">IT Services</span>
+          <span class="preview-pill">Healthcare</span>
+        </div>
+      </div>
+
+      <div class="preview-section">
+        <div class="preview-section-title">Parameters</div>
+        <div class="preview-stat-row">
+          <span class="preview-stat-name">Company Size</span>
+          <span class="preview-stat-val">50 — 1,000</span>
+        </div>
+        <div class="preview-stat-row">
+          <span class="preview-stat-name">Geographies</span>
+          <span class="preview-stat-val">3 regions</span>
+        </div>
+        <div class="preview-stat-row">
+          <span class="preview-stat-name">Buying Signals</span>
+          <span class="preview-stat-val">4 active</span>
+        </div>
+        <div class="preview-stat-row">
+          <span class="preview-stat-name">Exclusions</span>
+          <span class="preview-stat-val">3 rules</span>
+        </div>
+      </div>
+
+      <div class="preview-divider"></div>
+
+      <div class="preview-section">
+        <div class="preview-section-title">Estimated Reach</div>
+        <div style="text-align: center; padding: 12px 0;">
+          <div style="font-family: var(--font-display); font-size: 44px; font-weight: 800; letter-spacing: -2px;" class="gradient-text">~12K</div>
+          <div style="font-size: 13px; color: var(--text-tertiary); margin-top: 4px;">companies match this ICP in India</div>
+        </div>
+      </div>
+
+      <div class="ai-suggestion">
+        <div class="ai-suggestion-header">
+          <div class="ai-icon">✦</div>
+          <span class="ai-label">VaNi Insight</span>
+        </div>
+        <p>Based on your ICP, <strong style="color: var(--text-primary);">Facility Management</strong> companies in the 200-500 employee range show the highest conversion potential. Consider prioritizing this segment in your initial sequences.</p>
+      </div>
+    </aside>
+
+    <!-- ═══ FOOTER ═══ -->
+    <footer class="icp-footer animate-in animate-in-delay-6">
+      <a href="index.html" class="btn btn-ghost">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Back to Identity
+      </a>
+
+      <div class="footer-steps">
+        <div class="footer-dot completed"></div>
+        <div class="footer-dot active"></div>
+        <div class="footer-dot upcoming"></div>
+        <div class="footer-dot upcoming"></div>
+        <div class="footer-dot upcoming"></div>
+        <div class="footer-dot upcoming"></div>
+      </div>
+
+      <a href="channels.html" class="btn btn-primary">
+        Continue to Channels
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+      </a>
+    </footer>
+  </div>
+
+  <script>
+    // ═══ Geo Tag Add ═══
+    function handleGeoAdd(e) {
+      if (e.key === 'Enter' && e.target.value.trim()) {
+        const container = e.target.parentElement;
+        const tag = document.createElement('div');
+        tag.className = 'geo-tag';
+        tag.innerHTML = `${e.target.value.trim()} <span class="geo-tag-remove" onclick="event.stopPropagation(); this.parentElement.remove();">✕</span>`;
+        container.insertBefore(tag, e.target);
+        e.target.value = '';
+      }
+    }
+
+    // ═══ Preview Update (simplified) ═══
+    function updatePreview() {
+      const selected = document.querySelectorAll('.persona-card.selected');
+      const container = document.getElementById('previewPersonas');
+      container.innerHTML = '';
+      selected.forEach(card => {
+        const name = card.querySelector('.persona-title').textContent;
+        const pill = document.createElement('span');
+        pill.className = 'preview-pill accent';
+        pill.textContent = name;
+        container.appendChild(pill);
+      });
+
+      // Update score
+      const signals = document.querySelectorAll('.signal-toggle.on').length;
+      const personas = selected.length;
+      const geos = document.querySelectorAll('.geo-tag').length;
+      const score = Math.min(100, Math.round((personas * 15) + (signals * 10) + (geos * 5) + 10));
+      document.getElementById('previewScore').textContent = score;
+
+      // Update score ring
+      const offset = 283 - (283 * score / 100);
+      document.querySelector('.score-fill').style.strokeDashoffset = offset;
+    }
+
+    // Initial update
+    updatePreview();
+  </script>
+</body>
+</html>

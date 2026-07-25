@@ -6,6 +6,7 @@ import { InlineLoader } from '@/components/loader';
 import FormInput from '@/components/ui/form-input';
 import { useForgotPassword } from '@/hooks';
 import type { ApiError } from '@/lib/api-client';
+import { BRAND } from '@/constants/brand';
 import s from './forgot-password-page.module.css';
 
 export default function ForgotPasswordPage() {
@@ -67,7 +68,7 @@ export default function ForgotPasswordPage() {
           </div>
 
           <div className={s.brandText}>
-            <div className={s.brandName}>KI-PRIME</div>
+            <div className={s.brandName}>{BRAND.name}</div>
             <div className={s.brandSub}>by Vikuna Technologies</div>
           </div>
 

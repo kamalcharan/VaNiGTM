@@ -15,12 +15,13 @@ export default function HeroSection() {
         <VdfBadge variant="success" dot>Now in Early Access</VdfBadge>
       </div>
       <h1 className={s.heroStagger1}>
-        Your MFD Practice,<br />
-        <span className={s.goldText}>Powered by Intelligence</span>
+        Your Go-To-Market,<br />
+        <span className={s.goldText}>Run by Agents</span>
       </h1>
       <p className={s.heroSub}>
-        Portfolio analytics, goal-based planning, market intelligence, and automated client
-        reporting — all in one platform built exclusively for Indian Mutual Fund Distributors.
+        Vikuna GTM turns your product into an intelligent growth operation — define your ICP,
+        connect your channels, and deploy AI agents that find, engage, and convert your ideal
+        customers. From positioning to pipeline, on autopilot.
       </p>
       <div className={s.heroActions}>
         <VdfButton variant="primary" href="/register" icon={<ArrowIcon />}>
