@@ -4,7 +4,6 @@
 ProKey — multi-tenant SaaS financial planning platform for Mutual Fund Distributors (MFDs) in India. Built on a lightweight Skills.md convention — no framework dependency.
 
 ## Architecture
-- **kewalinvest/** is a git submodule (kamalcharan/kewalinvest). READ-ONLY reference for business logic patterns (XIRR, MFAPI, InvestWell parser). DO NOT modify.
 - **Single process:** Express custom server wrapping Next.js. Express handles `/api/v1/*`. Next.js handles all pages.
 - **Stack:** React + TypeScript (Next.js App Router) frontend, Node.js + Express + TypeScript backend, PostgreSQL on VPS.
 - **Deploy:** Docker → Railway or DigitalOcean. DB stays on own VPS (remote connection).
@@ -12,7 +11,6 @@ ProKey — multi-tenant SaaS financial planning platform for Mutual Fund Distrib
 
 ## Repo structure
 ```
-kewalinvest/        — git submodule → kamalcharan/kewalinvest (READ-ONLY, never modify)
 server.ts           — Express custom server wrapping Next.js (single entry point)
 src/
   api/
@@ -402,22 +400,20 @@ Pages MUST import shared CSS + VDF components. Page CSS should ONLY contain layo
 
 ## Rules for Claude Code
 
-1. **NEVER modify files inside kewalinvest/.** Read-only submodule.
-2. **Port MVP logic into skills — don't reinvent.** Check kewalinvest/ first.
-3. **Every SQL query MUST filter by tenant_id.** No exceptions (except global tables like ki_schemes, ki_nav_history).
-4. **Every write operation MUST be in a transaction.** Use `ctx.db.transaction()`.
-5. **Every API endpoint and skill handler MUST have error handling.** try/catch, structured error response, logging.
-6. **Every frontend page MUST use VdfLoader for loading states and Toast for errors.**
-7. **Every UI element MUST come from VDF.** No one-off styled components. No hardcoded colors. No per-page CSS for shared patterns.
-8. **Every VDF component MUST use CSS variables** from the theme system.
-9. **Table prefix: KI_** for all tables.
-10. **SQL files in queries/ or sql/ subdirectory** — not inline in TypeScript.
-11. **Tests: 3-check pattern** — (a) valid data, (b) empty/not-found, (c) wrong tenant → zero rows.
-12. **No VaNi. No VaNiBase. No framework imports.** This is plain Express + Next.js.
-13. **UX: glassmorphic default, innovative, premium.** No generic/safe design. Match HTML reference designs in documents/HTML/.
-14. **Tenant isolation is MANDATORY on every query, every endpoint, every feature.** No data from one tenant may ever be visible to another. Backend filter: `WHERE tenant_id = $tenant_id`. Frontend never receives cross-tenant data.
-15. **Environment isolation is MANDATORY.** Every tenant has `is_live` flag (boolean). Live (`is_live = true`) and sandbox (`is_live = false`) data are fully isolated. The `is_live` flag is resolved from the JWT/auth context — never from the request body. API endpoints and queries must filter by `is_live` where applicable. Frontend state must reflect the active environment and switch all data views accordingly.
-16. **Tenant-scoped sequence numbers.** Import sessions, transactions, and any user-facing IDs must use tenant-scoped sequential numbers (e.g., `ROW_NUMBER() OVER (PARTITION BY tenant_id ORDER BY created_at)`), NOT raw database PKs. Users must never see system-wide auto-increment IDs.
+1. **Every SQL query MUST filter by tenant_id.** No exceptions (except global tables like ki_schemes, ki_nav_history).
+2. **Every write operation MUST be in a transaction.** Use `ctx.db.transaction()`.
+3. **Every API endpoint and skill handler MUST have error handling.** try/catch, structured error response, logging.
+4. **Every frontend page MUST use VdfLoader for loading states and Toast for errors.**
+5. **Every UI element MUST come from VDF.** No one-off styled components. No hardcoded colors. No per-page CSS for shared patterns.
+6. **Every VDF component MUST use CSS variables** from the theme system.
+7. **Table prefix: KI_** for all tables.
+8. **SQL files in queries/ or sql/ subdirectory** — not inline in TypeScript.
+9. **Tests: 3-check pattern** — (a) valid data, (b) empty/not-found, (c) wrong tenant → zero rows.
+10. **No VaNi. No VaNiBase. No framework imports.** This is plain Express + Next.js.
+11. **UX: glassmorphic default, innovative, premium.** No generic/safe design. Match HTML reference designs in documents/HTML/.
+12. **Tenant isolation is MANDATORY on every query, every endpoint, every feature.** No data from one tenant may ever be visible to another. Backend filter: `WHERE tenant_id = $tenant_id`. Frontend never receives cross-tenant data.
+13. **Environment isolation is MANDATORY.** Every tenant has `is_live` flag (boolean). Live (`is_live = true`) and sandbox (`is_live = false`) data are fully isolated. The `is_live` flag is resolved from the JWT/auth context — never from the request body. API endpoints and queries must filter by `is_live` where applicable. Frontend state must reflect the active environment and switch all data views accordingly.
+14. **Tenant-scoped sequence numbers.** Import sessions, transactions, and any user-facing IDs must use tenant-scoped sequential numbers (e.g., `ROW_NUMBER() OVER (PARTITION BY tenant_id ORDER BY created_at)`), NOT raw database PKs. Users must never see system-wide auto-increment IDs.
 
 ## Environment Isolation
 
@@ -434,41 +430,6 @@ Pages MUST import shared CSS + VDF components. Page CSS should ONLY contain layo
 
 ### What is NOT environment-scoped (global reference data)
 - ki_schemes, ki_nav_history, ki_scheme_aliases, ki_scheme_bookmarks (bookmarks are per-tenant but not per-environment — bookmarks are configuration, not transactional data)
-
-## kewalinvest Submodule — Mandatory Audit Rules
-
-ProKey is the **production upgrade** of kewalinvest (the MVP). When building any feature:
-
-### 1. ASK: Does this feature exist in kewalinvest?
-Before writing any code, **ask the user** if the kewalinvest submodule should be audited for the feature being built. If the user says yes:
-
-### 2. AUDIT: Full parity is mandatory
-- Run `git submodule update --init` if kewalinvest/ is empty
-- Read the kewalinvest implementation **completely** — every file, every function, every edge case
-- List every feature the kewalinvest version has
-- **100% of kewalinvest's working features must be implemented in ProKey** — no shortcuts, no "we'll add it later", no eliminating features
-- If unsure whether a feature is needed, **ask the user** — never skip silently
-- ProKey can ADD features beyond kewalinvest, but never have LESS
-
-### 3. USE: kewalinvest's proven patterns
-- **Database functions (RPC):** kewalinvest uses PostgreSQL functions for data processing (process_single_scheme_record, process_scheme_import_with_timing, etc.). ProKey MUST use the same RPC pattern — adapt table names but keep the logic in PL/pgSQL, not Node.js
-- **Database structures:** kewalinvest's table schemas are tested and production-proven. Ask the user before deviating from kewalinvest's column names, types, or constraints
-- **Take user confirmation** on any DB function or table structure before creating — these are the foundation and changing them later is expensive
-
-### 4. NEVER assume — ASK
-- "Should I match kewalinvest's X exactly, or is there a ProKey-specific change?"
-- "kewalinvest has Y — do we need this in ProKey?"
-- "kewalinvest uses Z pattern for this — should I follow the same?"
-
-## Reference: MVP → ProKey Mapping
-
-| MVP (kewalinvest)                    | ProKey                              |
-|--------------------------------------|---------------------------------------------|
-| `backend/src/services/portfolio.*`   | `skills/portfolio-skill/functions/`         |
-| `backend/src/services/transaction.*` | `skills/import-skill/functions/`            |
-| `backend/src/controllers/*`          | Replaced by skill-executor (no controllers) |
-| `backend/src/routes/*`               | Single skill.routes.ts + auth.routes.ts     |
-| `backend/src/utils/xirr.*`           | `skills/portfolio-skill/functions/calc-xirr.ts` |
 
 ## Running locally
 ```bash
@@ -493,10 +454,6 @@ Body: { "params": { ... } }
 
 ## Git workflow
 - Product changes: commit and push to main
-- KewalInvest reference updates:
-  ```
-  cd kewalinvest && git pull origin main && cd .. && git add kewalinvest && git commit -m "Update kewalinvest ref"
-  ```
 - Use scripts/push-main.ps1 for release workflow
 - Use scripts/pull-safe.ps1 for safe pulls
 - Use scripts/create-bookmark.ps1 before risky changes
