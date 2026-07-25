@@ -145,27 +145,42 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_gt_contact_primary_channel
 -- 3. COPY data from ki_contacts / ki_contact_channels (ids preserved)
 -- ────────────────────────────────────────────────────────────────────────────
 
-INSERT INTO gt_contacts
-    (id, tenant_id, is_live, is_active, prefix, name,
-     source, raw, created_by, created_at, updated_at)
-SELECT
-    c.id, c.tenant_id, c.is_live, c.is_active, c.prefix, c.name,
-    'manual',
-    jsonb_build_object('ki_is_client', c.is_client),   -- preserve legacy flag for audit
-    c.created_by, c.created_at, c.updated_at
-FROM ki_contacts c
-WHERE EXISTS (SELECT 1 FROM vn_tenants t WHERE t.id = c.tenant_id)   -- skip orphans (old table had no FK)
-ON CONFLICT (id) DO NOTHING;
+-- Guarded: vani_gtm_db was bootstrapped fresh for the GTM pivot and may not
+-- have the legacy ki_ tables at all. Copy only when the source exists.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables
+               WHERE table_schema = 'public' AND table_name = 'ki_contacts') THEN
+        INSERT INTO gt_contacts
+            (id, tenant_id, is_live, is_active, prefix, name,
+             source, raw, created_by, created_at, updated_at)
+        SELECT
+            c.id, c.tenant_id, c.is_live, c.is_active, c.prefix, c.name,
+            'manual',
+            jsonb_build_object('ki_is_client', c.is_client),
+            c.created_by, c.created_at, c.updated_at
+        FROM ki_contacts c
+        WHERE EXISTS (SELECT 1 FROM vn_tenants t WHERE t.id = c.tenant_id)
+        ON CONFLICT (id) DO NOTHING;
+        RAISE NOTICE '[187] Copied % rows from ki_contacts',
+            (SELECT COUNT(*) FROM gt_contacts);
+    ELSE
+        RAISE NOTICE '[187] ki_contacts does not exist — nothing to copy.';
+    END IF;
 
-INSERT INTO gt_contact_channels
-    (id, contact_id, tenant_id, is_live, is_active,
-     channel_type, channel_value, channel_subtype, is_primary, created_at)
-SELECT
-    ch.id, ch.contact_id, ch.tenant_id, ch.is_live, ch.is_active,
-    ch.channel_type, ch.channel_value, ch.channel_subtype, ch.is_primary, ch.created_at
-FROM ki_contact_channels ch
-WHERE EXISTS (SELECT 1 FROM gt_contacts gc WHERE gc.id = ch.contact_id)
-ON CONFLICT (id) DO NOTHING;
+    IF EXISTS (SELECT 1 FROM information_schema.tables
+               WHERE table_schema = 'public' AND table_name = 'ki_contact_channels') THEN
+        INSERT INTO gt_contact_channels
+            (id, contact_id, tenant_id, is_live, is_active,
+             channel_type, channel_value, channel_subtype, is_primary, created_at)
+        SELECT
+            ch.id, ch.contact_id, ch.tenant_id, ch.is_live, ch.is_active,
+            ch.channel_type, ch.channel_value, ch.channel_subtype, ch.is_primary, ch.created_at
+        FROM ki_contact_channels ch
+        WHERE EXISTS (SELECT 1 FROM gt_contacts gc WHERE gc.id = ch.contact_id)
+        ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;
 
 -- Advance sequences past copied ids
 SELECT setval('gt_contacts_id_seq',         COALESCE((SELECT MAX(id) FROM gt_contacts), 0) + 1, false);
@@ -175,12 +190,22 @@ SELECT setval('gt_contact_channels_id_seq', COALESCE((SELECT MAX(id) FROM gt_con
 -- 4. Re-point gt_contact_assignments.contact_id FK → gt_contacts(id)
 -- ────────────────────────────────────────────────────────────────────────────
 
-ALTER TABLE gt_contact_assignments
-    DROP CONSTRAINT IF EXISTS gt_contact_assignments_contact_id_fkey;
-
-ALTER TABLE gt_contact_assignments
-    ADD CONSTRAINT gt_contact_assignments_contact_id_fkey
-    FOREIGN KEY (contact_id) REFERENCES gt_contacts(id) ON DELETE CASCADE;
+-- Guarded: gt_contact_assignments may not exist (or may have already lost
+-- its ki_contacts FK when legacy tables were dropped CASCADE).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables
+               WHERE table_schema = 'public' AND table_name = 'gt_contact_assignments') THEN
+        ALTER TABLE gt_contact_assignments
+            DROP CONSTRAINT IF EXISTS gt_contact_assignments_contact_id_fkey;
+        ALTER TABLE gt_contact_assignments
+            ADD CONSTRAINT gt_contact_assignments_contact_id_fkey
+            FOREIGN KEY (contact_id) REFERENCES gt_contacts(id) ON DELETE CASCADE;
+        RAISE NOTICE '[187] gt_contact_assignments.contact_id FK re-pointed to gt_contacts.';
+    ELSE
+        RAISE NOTICE '[187] gt_contact_assignments does not exist — FK re-point skipped.';
+    END IF;
+END $$;
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- 5. RLS (house pattern) + updated_at trigger
