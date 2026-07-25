@@ -1,4 +1,4 @@
-INSERT INTO ki_contact_channels
+INSERT INTO gt_contact_channels
   (contact_id, tenant_id, is_live, channel_type, channel_value, channel_subtype, is_primary)
 VALUES
   ($contact_id, $tenant_id, $is_live, $channel_type, $channel_value, $channel_subtype, $is_primary)

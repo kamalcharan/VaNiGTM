@@ -1,7 +1,7 @@
 /**
  * KI-Prime — PostgreSQL Connection Pool
  *
- * Single pool for the ki_prime_db database (VN_ framework + KI_ product tables).
+ * Single pool for the vani_gtm_db database (VN_ framework + GT_ product tables).
  * Every connection checkout calls set_tenant_context() for RLS enforcement.
  *
  * Config via environment:

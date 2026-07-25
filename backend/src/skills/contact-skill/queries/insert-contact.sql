@@ -1,7 +1,12 @@
-INSERT INTO ki_contacts
-  (tenant_id, is_live, prefix, name, contact_no, created_by, age, city, marital_status, dependents_count)
+INSERT INTO gt_contacts
+  (tenant_id, is_live, prefix, name, contact_no,
+   job_title, company_name, company_domain, linkedin_url, location,
+   source, created_by)
 VALUES
   ($tenant_id, $is_live, $prefix, $name,
-   ki_next_seq($tenant_id::uuid, 'contact'),
-   $created_by, $age, $city, $marital_status, $dependents_count)
-RETURNING id, prefix, name, normalized_name, contact_no, is_client, age, city, marital_status, dependents_count
+   gt_next_seq($tenant_id::uuid, 'contact'),
+   $job_title, $company_name, $company_domain, $linkedin_url, $location,
+   $source, $created_by)
+RETURNING id, contact_no, prefix, name, normalized_name,
+          job_title, company_name, company_domain, linkedin_url, location,
+          source, score, created_at

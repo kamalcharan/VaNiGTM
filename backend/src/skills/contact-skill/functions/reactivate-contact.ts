@@ -22,7 +22,7 @@ export async function reactivate_contact(
   const { contact_id } = params;
 
   const res = await ctx.db.query<{ id: number }>(
-    `UPDATE ki_contacts
+    `UPDATE gt_contacts
      SET is_active = true, updated_at = now()
      WHERE id        = $contact_id
        AND tenant_id = $tenant_id

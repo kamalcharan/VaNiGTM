@@ -18,17 +18,17 @@ import d from '@/styles/data.module.css';
 interface Contact {
   id: number;
   contact_no: string | null;
-  prefix: string;
+  prefix: string | null;
   name: string;
-  is_client: boolean;
   is_active: boolean;
-  has_snapshot: boolean;
+  job_title: string | null;
+  company_name: string | null;
+  company_domain: string | null;
+  location: string | null;
+  source: string;
+  score: number;
   primary_mobile: string | null;
   primary_email: string | null;
-  age: number | null;
-  city: string | null;
-  marital_status: string | null;
-  dependents_count: number | null;
   created_at: string;
 }
 
@@ -37,8 +37,7 @@ interface ContactsData {
   total: number;
 }
 
-type FilterMode  = 'all' | 'prospects' | 'clients';
-type StatusMode  = 'active' | 'inactive';
+type StatusMode = 'active' | 'inactive';
 
 const PAGE_SIZE = 25;
 
@@ -65,30 +64,21 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+/** Profile completeness: reachability + firmographics. */
 function readinessPct(c: Contact): number {
-  if (c.is_client) return 100;
   let pct = 20;
-  if (c.primary_mobile) pct += 25;
+  if (c.primary_mobile) pct += 20;
   if (c.primary_email)  pct += 25;
-  if (c.has_snapshot)   pct += 30;
+  if (c.company_name)   pct += 20;
+  if (c.job_title)      pct += 15;
   return pct;
 }
 
-const TYPE_PILLS = [
-  { id: 'all',       label: 'All' },
-  { id: 'prospects', label: 'Prospects' },
-  { id: 'clients',   label: 'Clients' },
-];
-
-const PREFIX_OPTIONS = [
-  { value: 'Mr',   label: 'Mr.'   },
-  { value: 'Mrs',  label: 'Mrs.'  },
-  { value: 'Ms',   label: 'Ms.'   },
-  { value: 'Dr',   label: 'Dr.'   },
-  { value: 'Prof', label: 'Prof.' },
-  { value: 'Sri',  label: 'Sri.'  },
-  { value: 'Smt',  label: 'Smt.'  },
-];
+function sourceLabel(source: string): string {
+  if (source.startsWith('byo:'))      return source.slice(4);
+  if (source.startsWith('platform:')) return source.slice(9);
+  return source;
+}
 
 import { getCountryByCode } from '@/constants/countries';
 
@@ -100,7 +90,6 @@ export default function ContactsPage() {
   const queryClient = useQueryClient();
 
   const [search, setSearch]           = useState('');
-  const [filter, setFilter]           = useState<FilterMode>('all');
   const [status, setStatus]           = useState<StatusMode>('active');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage]               = useState(1);
@@ -108,21 +97,18 @@ export default function ContactsPage() {
   const [reactivatingId, setReactivatingId] = useState<number | null>(null);
 
   // Drawer — shared between create and edit modes
-  const [drawerOpen, setDrawerOpen]             = useState(false);
-  const [drawerMode, setDrawerMode]             = useState<'create' | 'edit'>('create');
-  const [editingId, setEditingId]               = useState<number | null>(null);
-  const [newPrefix, setNewPrefix]               = useState('Mr');
-  const [newName, setNewName]                   = useState('');
-  const [newCountryCode, setNewCountryCode]     = useState('in');
-  const [newMobile, setNewMobile]               = useState('');
-  const [newEmail, setNewEmail]                 = useState('');
-  const [newAge, setNewAge]                     = useState('');
-  const [newCity, setNewCity]                   = useState('');
-  const [newMarital, setNewMarital]             = useState('');
-  const [newDependents, setNewDependents]       = useState<number | null>(null);
+  const [drawerOpen, setDrawerOpen]         = useState(false);
+  const [drawerMode, setDrawerMode]         = useState<'create' | 'edit'>('create');
+  const [editingId, setEditingId]           = useState<number | null>(null);
+  const [newName, setNewName]               = useState('');
+  const [newCountryCode, setNewCountryCode] = useState('in');
+  const [newMobile, setNewMobile]           = useState('');
+  const [newEmail, setNewEmail]             = useState('');
+  const [newJobTitle, setNewJobTitle]       = useState('');
+  const [newCompany, setNewCompany]         = useState('');
+  const [newLocation, setNewLocation]       = useState('');
 
   // Search fires only on Enter or icon click — not per keystroke.
-  // Clearing the input immediately resets the query.
   function handleSearch(v: string) {
     setSearch(v);
     if (!v) { setDebouncedSearch(''); setPage(1); }
@@ -135,11 +121,10 @@ export default function ContactsPage() {
 
   const skillParams = useMemo(() => ({
     search:        debouncedSearch || undefined,
-    is_client:     filter === 'all' ? undefined : filter === 'clients',
     show_inactive: status === 'inactive',
     limit:         PAGE_SIZE,
     offset:        (page - 1) * PAGE_SIZE,
-  }), [debouncedSearch, filter, status, page]);
+  }), [debouncedSearch, status, page]);
 
   const { data, isLoading, isError, error } = useSkillQuery<ContactsData>(
     'contact-skill', 'get_contacts', skillParams
@@ -202,23 +187,21 @@ export default function ContactsPage() {
   function openDrawer() {
     setDrawerMode('create');
     setEditingId(null);
-    setNewPrefix('Mr'); setNewName(''); setNewCountryCode('in'); setNewMobile(''); setNewEmail('');
-    setNewAge(''); setNewCity(''); setNewMarital(''); setNewDependents(null);
+    setNewName(''); setNewCountryCode('in'); setNewMobile(''); setNewEmail('');
+    setNewJobTitle(''); setNewCompany(''); setNewLocation('');
     setDrawerOpen(true);
   }
 
   function openEditDrawer(contact: Contact) {
     setDrawerMode('edit');
     setEditingId(contact.id);
-    setNewPrefix(contact.prefix || 'Mr');
     setNewName(contact.name);
     setNewCountryCode('in');
     setNewMobile(contact.primary_mobile || '');
     setNewEmail(contact.primary_email || '');
-    setNewAge(contact.age !== null && contact.age !== undefined ? String(contact.age) : '');
-    setNewCity(contact.city || '');
-    setNewMarital(contact.marital_status || '');
-    setNewDependents(contact.dependents_count !== null && contact.dependents_count !== undefined ? contact.dependents_count : null);
+    setNewJobTitle(contact.job_title || '');
+    setNewCompany(contact.company_name || '');
+    setNewLocation(contact.location || '');
     setDrawerOpen(true);
   }
 
@@ -237,13 +220,11 @@ export default function ContactsPage() {
     }
     if (newEmail.trim()) channels.push({ channel_type: 'email', channel_value: newEmail.trim(), is_primary: !newMobile.trim() });
     createContact({
-      prefix: newPrefix,
       name: newName.trim(),
       channels,
-      age:              newAge ? Number(newAge) : undefined,
-      city:             newCity.trim() || undefined,
-      marital_status:   (newMarital as 'single' | 'married' | 'family' | 'other') || undefined,
-      dependents_count: newDependents !== null ? newDependents : undefined,
+      job_title:    newJobTitle.trim() || undefined,
+      company_name: newCompany.trim() || undefined,
+      location:     newLocation.trim() || undefined,
     });
   }
 
@@ -251,13 +232,11 @@ export default function ContactsPage() {
     if (!newName.trim()) { showToast({ message: 'Name is required', type: 'error' }); return; }
     if (editingId === null) return;
     updateContact({
-      contact_id: editingId,
-      prefix: newPrefix,
-      name: newName.trim(),
-      age: newAge ? Number(newAge) : null,
-      city: newCity.trim() || null,
-      marital_status: (newMarital as 'single' | 'married' | 'family' | 'other') || null,
-      dependents_count: newDependents,
+      contact_id:   editingId,
+      name:         newName.trim(),
+      job_title:    newJobTitle.trim() || null,
+      company_name: newCompany.trim() || null,
+      location:     newLocation.trim() || null,
     });
   }
 
@@ -273,23 +252,15 @@ export default function ContactsPage() {
     reactivateContact({ contact_id: contactId });
   }
 
-  function handleFilterChange(id: string) {
-    setFilter(id as FilterMode);
+  function handleStatusChange(v: StatusMode) {
+    setStatus(v);
     setPage(1);
-  }
-
-  function handleStatusChange(s: StatusMode) {
-    setStatus(s);
-    setPage(1);
-    // Inactive contacts can't be filtered by prospect/client — reset to all
-    if (s === 'inactive') setFilter('all');
   }
 
   const contacts   = data?.data?.contacts ?? [];
   const total      = data?.data?.total ?? 0;
   const totalPages = Math.ceil(total / PAGE_SIZE);
-  const prospects  = contacts.filter(c => !c.is_client).length;
-  const converted  = contacts.filter(c => c.is_client).length;
+  const ready      = contacts.filter(c => readinessPct(c) >= 80).length;
 
   if (isLoading) return <VdfLoader overlay message="Loading contacts…" />;
   if (isError) return (
@@ -308,8 +279,7 @@ export default function ContactsPage() {
         titleEm="& Prospects"
         meta={<>
           <strong>{total}</strong> total ·{' '}
-          <strong>{prospects}</strong> prospects ·{' '}
-          <strong>{converted}</strong> converted
+          <strong>{ready}</strong> outreach-ready on this page
         </>}
         actions={<VdfButton variant="primary" size="sm" onClick={openDrawer}>+ Add Contact</VdfButton>}
       />
@@ -320,10 +290,7 @@ export default function ContactsPage() {
           value={search}
           onChange={handleSearch}
           onSearch={triggerSearch}
-          placeholder="Search name, mobile, email — press Enter"
-          pills={status === 'active' ? TYPE_PILLS : [{ id: 'all', label: 'All' }]}
-          activePill={filter}
-          onPillChange={handleFilterChange}
+          placeholder="Search name, company, email — press Enter"
         />
         <VdfToggleGroup
           options={[
@@ -340,7 +307,7 @@ export default function ContactsPage() {
         {contacts.length === 0 ? (
           <VdfEmptyState
             title="No contacts yet"
-            description="Add your first prospect to start building your client pipeline."
+            description="Add your first prospect to start building your pipeline."
             action={<VdfButton variant="outline" size="sm" onClick={openDrawer}>+ Add Contact</VdfButton>}
           />
         ) : (
@@ -353,21 +320,18 @@ export default function ContactsPage() {
                   avatarInitials={initials(contact.name)}
                   avatarGradient={avatarGradient(contact.name)}
                   name={contact.name}
-                  prefix={contact.prefix}
+                  prefix={contact.prefix ?? undefined}
                   nameBadges={contact.contact_no
                     ? <span className={s.contactNo}>{contact.contact_no}</span>
                     : undefined
                   }
                   subLine={<>
-                    {contact.primary_mobile && (
+                    {(contact.job_title || contact.company_name) && (
                       <span className={s.channel}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="11" height="11">
-                          <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8 19.79 19.79 0 01.12 2.2 2 2 0 012.11 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.56-.56a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z" />
-                        </svg>
-                        {contact.primary_mobile}
+                        {[contact.job_title, contact.company_name].filter(Boolean).join(' · ')}
                       </span>
                     )}
-                    {contact.primary_email && !contact.primary_mobile && (
+                    {contact.primary_email && (
                       <span className={s.channel}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="11" height="11">
                           <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />
@@ -383,12 +347,12 @@ export default function ContactsPage() {
                     <div className={s.readiness}>
                       <VdfReadinessRing pct={pct} size={32} strokeWidth={3} />
                       <span className={s.readinessLabel}>
-                        {pct === 100 ? 'Client' : pct >= 70 ? 'Ready' : pct >= 35 ? 'In progress' : 'Just added'}
+                        {pct >= 80 ? 'Ready' : pct >= 45 ? 'In progress' : 'Just added'}
                       </span>
                     </div>
                     <VdfStatusBadge
-                      label={contact.is_client ? 'Client' : 'Prospect'}
-                      variant={contact.is_client ? 'success' : 'warning'}
+                      label={contact.score > 0 ? `Score ${contact.score}` : sourceLabel(contact.source)}
+                      variant={contact.score >= 60 ? 'success' : contact.score > 0 ? 'warning' : 'muted'}
                       size="sm"
                     />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -406,23 +370,21 @@ export default function ContactsPage() {
                               <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                             </svg>
                           </VdfButton>
-                          {!contact.is_client && (
-                            <VdfButton
-                              variant="danger"
-                              size="xs"
-                              iconOnly
-                              disabled={deletingId === contact.id}
-                              onClick={e => handleDelete(e, contact.id)}
-                              title="Deactivate contact"
-                            >
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
-                                <polyline points="3 6 5 6 21 6" />
-                                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-                                <path d="M10 11v6M14 11v6" />
-                                <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
-                              </svg>
-                            </VdfButton>
-                          )}
+                          <VdfButton
+                            variant="danger"
+                            size="xs"
+                            iconOnly
+                            disabled={deletingId === contact.id}
+                            onClick={e => handleDelete(e, contact.id)}
+                            title="Deactivate contact"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                              <path d="M10 11v6M14 11v6" />
+                              <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+                            </svg>
+                          </VdfButton>
                         </>
                       ) : (
                         <VdfButton
@@ -466,7 +428,7 @@ export default function ContactsPage() {
             <div className={s.drawerHeader}>
               <div>
                 <h2 className={s.drawerTitle}>{drawerMode === 'edit' ? 'Edit Contact' : 'New Contact'}</h2>
-                <p className={s.drawerSub}>{drawerMode === 'edit' ? 'Update name, prefix, and demographics' : 'Add a prospect to your pipeline'}</p>
+                <p className={s.drawerSub}>{drawerMode === 'edit' ? 'Update identity and company details' : 'Add a prospect to your pipeline'}</p>
               </div>
               <button className={s.drawerClose} onClick={closeDrawer} aria-label="Close">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
@@ -476,23 +438,6 @@ export default function ContactsPage() {
             </div>
 
             <div className={s.drawerBody}>
-              {/* Prefix pills */}
-              <div className={s.fieldGroup}>
-                <label className={s.fieldLabel}>Prefix</label>
-                <div className={s.prefixPills}>
-                  {PREFIX_OPTIONS.map(p => (
-                    <button
-                      key={p.value}
-                      className={`${s.prefixPill} ${newPrefix === p.value ? s.prefixPillActive : ''}`}
-                      onClick={() => setNewPrefix(p.value)}
-                      type="button"
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               <VdfInput
                 label="Full Name"
                 required
@@ -501,6 +446,28 @@ export default function ContactsPage() {
                 onChange={e => setNewName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleCreate()}
                 autoFocus
+              />
+
+              <div className={s.drawerRow2}>
+                <VdfInput
+                  label="Job Title"
+                  placeholder="e.g. Head of Operations"
+                  value={newJobTitle}
+                  onChange={e => setNewJobTitle(e.target.value)}
+                />
+                <VdfInput
+                  label="Company"
+                  placeholder="e.g. Acme Corp"
+                  value={newCompany}
+                  onChange={e => setNewCompany(e.target.value)}
+                />
+              </div>
+
+              <VdfInput
+                label="Location"
+                placeholder="e.g. Mumbai, India"
+                value={newLocation}
+                onChange={e => setNewLocation(e.target.value)}
               />
 
               {drawerMode === 'create' ? (
@@ -526,67 +493,6 @@ export default function ContactsPage() {
                   Mobile and email are managed from the contact profile page.
                 </p>
               )}
-
-              {/* Age + City */}
-              <div className={s.drawerRow2}>
-                <VdfInput
-                  label="Age"
-                  type="number"
-                  placeholder="e.g. 38"
-                  value={newAge}
-                  onChange={e => setNewAge(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                />
-                <VdfInput
-                  label="City"
-                  placeholder="e.g. Mumbai"
-                  value={newCity}
-                  onChange={e => setNewCity(e.target.value)}
-                />
-              </div>
-
-              {/* Life situation */}
-              <div className={s.fieldGroup}>
-                <label className={s.fieldLabel}>Life Situation</label>
-                <div className={s.situationTiles}>
-                  {([
-                    { value: 'single',  label: 'Single',  sub: 'No dependents' },
-                    { value: 'married', label: 'Married', sub: 'With partner' },
-                    { value: 'family',  label: 'Family',  sub: 'With kids' },
-                    { value: 'other',   label: 'Other',   sub: 'Will specify' },
-                  ] as const).map(opt => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      className={`${s.situationTile} ${newMarital === opt.value ? s.situationTileActive : ''}`}
-                      onClick={() => setNewMarital(newMarital === opt.value ? '' : opt.value)}
-                    >
-                      <span className={s.situationLabel}>{opt.label}</span>
-                      <span className={s.situationSub}>{opt.sub}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Dependents */}
-              <div className={s.fieldGroup}>
-                <label className={s.fieldLabel}>Dependents</label>
-                <div className={s.dependentBubbles}>
-                  {[0, 1, 2, 3, '4+'].map((v) => {
-                    const num = v === '4+' ? 4 : Number(v);
-                    const active = newDependents === num;
-                    return (
-                      <button
-                        key={v}
-                        type="button"
-                        className={`${s.depBubble} ${active ? s.depBubbleActive : ''}`}
-                        onClick={() => setNewDependents(active ? null : num)}
-                      >
-                        {v}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
 
             <div className={s.drawerFooter}>

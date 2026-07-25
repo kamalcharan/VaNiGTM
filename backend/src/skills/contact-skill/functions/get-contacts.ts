@@ -1,6 +1,6 @@
 /**
  * contact-skill: get_contacts
- * Paginated list of contacts with optional search and is_client filter.
+ * Paginated list of contacts with optional search.
  */
 
 import * as fs from 'fs';
@@ -16,7 +16,6 @@ const COUNT_CONTACTS_SQL = fs.readFileSync(
 
 interface GetContactsParams {
   search?: string;
-  is_client?: boolean;
   show_inactive?: boolean;
   limit?: number;
   offset?: number;
@@ -27,7 +26,9 @@ interface ContactListItem {
   prefix: string;
   name: string;
   normalized_name: string;
-  is_client: boolean;
+  job_title: string | null;
+  company_name: string | null;
+  score: number;
   is_active: boolean;
   primary_mobile: string | null;
   primary_email: string | null;
@@ -52,7 +53,6 @@ export async function get_contacts(
     $is_live:      ctx.is_live,
     $show_inactive: params.show_inactive ?? false,
     $search:       params.search?.trim() || null,
-    $is_client:    params.is_client !== undefined ? params.is_client : null,
     $limit:        limit,
     $offset:       offset,
   };
@@ -64,7 +64,6 @@ export async function get_contacts(
       $is_live:      queryParams.$is_live,
       $show_inactive: queryParams.$show_inactive,
       $search:       queryParams.$search,
-      $is_client:    queryParams.$is_client,
     }),
   ]);
 

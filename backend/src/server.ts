@@ -7,8 +7,6 @@ import { buildRegistry } from './services/skill-registry';
 import { getPool, createTenantDb, closePool, healthCheck } from './db';
 import { createAuthRouter, createOnboardingRouter, createTenantRouter } from './auth/auth.routes';
 import { createEtlRouter } from './etl/etl.routes';
-import { createIntakeRouter } from './intake/intake.routes';
-import { createMasterDataRouter } from './master-data/master-data.routes';
 import { createVaniRouter } from './skills/vani-skill/vani.routes';
 import { createIngestionRouter } from './skills/ingestion-skill/ingestion.routes';
 import { createProfileRouter } from './skills/profile-skill/profile.routes';
@@ -65,14 +63,12 @@ async function main() {
   app.use('/api/v1/auth', createAuthRouter(pool));
   app.use('/api/v1/onboarding', createOnboardingRouter(pool));
   app.use('/api/v1/tenant', createTenantRouter(pool));
-  app.use('/api/v1/intake', createIntakeRouter(pool));  // public — no JWT
   app.use('/api/v1/etl', createEtlRouter(pool));
-  app.use('/api/v1/master-data', createMasterDataRouter(pool));
   app.use('/api/v1/vani', createVaniRouter(pool));
   app.use('/api/v1/ingest', createIngestionRouter(pool));
   app.use('/api/v1/profile', createProfileRouter(pool));
   app.use('/api/v1/storyteller', createStorytellerRouter(pool));
-  console.log('[VaNi-GTM] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /master-data, /vani, /ingest, /profile, /storyteller');
+  console.log('[VaNi-GTM] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /vani, /ingest, /profile, /storyteller');
 
   // Build skill registry
   const skillsDir = path.resolve(__dirname, 'skills');

@@ -14,7 +14,7 @@ WITH paged AS (
         c.prefix,
         c.contact_no
     FROM gt_contact_assignments a
-    JOIN ki_contacts c ON c.id = a.contact_id AND c.is_live = $is_live
+    JOIN gt_contacts c ON c.id = a.contact_id AND c.is_live = $is_live
     WHERE a.tenant_id   = $tenant_id
       AND a.is_live     = $is_live
       AND a.campaign_id = $campaign_id
@@ -36,12 +36,12 @@ SELECT
     em.channel_value  AS primary_email
 FROM paged p
 LEFT JOIN LATERAL (
-    SELECT channel_value FROM ki_contact_channels
+    SELECT channel_value FROM gt_contact_channels
     WHERE contact_id = p.contact_id AND is_live = $is_live AND is_active = true AND channel_type = 'mobile'
     ORDER BY is_primary DESC LIMIT 1
 ) mob ON true
 LEFT JOIN LATERAL (
-    SELECT channel_value FROM ki_contact_channels
+    SELECT channel_value FROM gt_contact_channels
     WHERE contact_id = p.contact_id AND is_live = $is_live AND is_active = true AND channel_type = 'email'
     ORDER BY is_primary DESC LIMIT 1
 ) em ON true

@@ -8,6 +8,16 @@
 
 ---
 
+## ✅ Phase 0 (legacy removal) COMPLETE — 2026-07-25
+kewalinvest submodule gone; contact layer is gt_contacts/gt_contact_channels
+(migrations 187/189/190 applied + verified: gt_next_seq → CONT-0001, pulse
+client_id nullable); MFD skills/pages/routers removed (~27k lines); etl
+pipeline + pulse-skill KEPT and retargeted to contacts (etl processing = 501
+until prospect-skill); CLAUDE.md fully rewritten GTM-only. DB inventory =
+vn_ + gt_ + 9 kept ki_ import/pulse tables (rename in POA Phase 2).
+Read-only DB MCP connector prepared (.mcp.json + docs/mcp-db-setup.md) —
+VPS-side setup pending.
+
 ## What this product is (scope — LOCKED)
 Vikuna GTM = an **agent-powered go-to-market engine**. Scope is locked to
 **ICP + pitch generation** right now. **Storytelling is ONE agent; more agents

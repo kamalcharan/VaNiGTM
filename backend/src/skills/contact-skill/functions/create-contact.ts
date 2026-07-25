@@ -8,7 +8,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { SkillContext } from '../../../shared/types';
 
-const VALID_PREFIXES      = ['Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Sri', 'Smt'] as const;
 const VALID_CHANNEL_TYPES = ['email', 'mobile', 'whatsapp', 'instagram', 'twitter', 'linkedin', 'other'] as const;
 const VALID_SUBTYPES      = ['personal', 'work', 'other'] as const;
 
@@ -23,13 +22,15 @@ interface ChannelInput {
 }
 
 interface CreateContactParams {
-  prefix: string;
   name: string;
+  prefix?: string;
   channels?: ChannelInput[];
-  age?: number;
-  city?: string;
-  marital_status?: 'single' | 'married' | 'family' | 'other';
-  dependents_count?: number;
+  job_title?: string;
+  company_name?: string;
+  company_domain?: string;
+  linkedin_url?: string;
+  location?: string;
+  source?: string;   // 'manual' | 'upload' | 'byo:<provider>' | 'platform:<provider>'
 }
 
 interface ChannelItem {
@@ -45,9 +46,11 @@ interface CreateContactResult {
     id: number;
     contact_no: string;
     name: string;
-    prefix: string;
+    prefix: string | null;
     normalized_name: string;
-    is_client: boolean;
+    job_title: string | null;
+    company_name: string | null;
+    score: number;
     channels: ChannelItem[];
   };
   recipe: 'contact-card';
@@ -57,33 +60,28 @@ export async function create_contact(
   params: CreateContactParams,
   ctx: SkillContext
 ): Promise<CreateContactResult> {
-  const { prefix, name, channels = [], age, city, marital_status, dependents_count } = params;
+  const { name, prefix, channels = [], job_title, company_name, company_domain, linkedin_url, location, source } = params;
 
-  const VALID_MARITAL = ['single', 'married', 'family', 'other'] as const;
-
-  if (!VALID_PREFIXES.includes(prefix as typeof VALID_PREFIXES[number])) {
-    throw new Error(`Invalid prefix. Must be one of: ${VALID_PREFIXES.join(', ')}`);
-  }
   if (!name?.trim()) {
     throw new Error('Contact name is required');
-  }
-  if (marital_status && !VALID_MARITAL.includes(marital_status as typeof VALID_MARITAL[number])) {
-    throw new Error(`Invalid marital_status. Must be one of: ${VALID_MARITAL.join(', ')}`);
   }
 
   const result = await ctx.db.transaction(async (tx) => {
     const contactRes = await tx.query<{
-      id: number; contact_no: string; name: string; prefix: string; normalized_name: string; is_client: boolean;
+      id: number; contact_no: string; name: string; prefix: string | null; normalized_name: string;
+      job_title: string | null; company_name: string | null; score: number;
     }>(INSERT_CONTACT_SQL, {
-      $tenant_id:        ctx.tenant_id,
-      $is_live:          ctx.is_live,
-      $prefix:           prefix,
-      $name:             name.trim(),
-      $created_by:       ctx.user_id,
-      $age:              age ?? null,
-      $city:             city?.trim() || null,
-      $marital_status:   marital_status || null,
-      $dependents_count: dependents_count ?? null,
+      $tenant_id:      ctx.tenant_id,
+      $is_live:        ctx.is_live,
+      $prefix:         prefix?.trim() || null,
+      $name:           name.trim(),
+      $job_title:      job_title?.trim() || null,
+      $company_name:   company_name?.trim() || null,
+      $company_domain: company_domain?.trim()?.toLowerCase() || null,
+      $linkedin_url:   linkedin_url?.trim() || null,
+      $location:       location?.trim() || null,
+      $source:         source?.trim() || 'manual',
+      $created_by:     ctx.user_id,
     });
     const contact = contactRes.rows[0];
 

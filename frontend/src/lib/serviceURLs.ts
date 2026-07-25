@@ -170,12 +170,6 @@ export const API = {
       auth: true,
       description: 'Update tenant business profile (name, ARN, theme)',
     },
-    setExtRefType: {
-      method: 'PATCH',
-      path: '/api/v1/tenant/ext-ref-type',
-      auth: true,
-      description: 'Set tenant platform/RTA type (one-time — CAMS, KFINTECH, IWELL, BSE_STAR, CUSTOM)',
-    },
   },
 
   /* ── GTM Profile ──────────────────────────────────── */
@@ -583,88 +577,6 @@ export const API = {
       path: '/api/v1/market-analysis/dashboard-statistics',
       auth: true,
       description: 'Market dashboard KPIs: best/worst/most volatile + performance heatmap per index',
-    },
-  },
-
-  /* ── Master Data (admin only) ────────────────────── */
-
-  masterData: {
-    transactionTypes: {
-      method: 'GET',
-      path: '/api/v1/master-data/transaction-types',
-      auth: true,
-      description: 'List all transaction types',
-    },
-    updateTransactionType: {
-      method: 'PATCH',
-      path: '/api/v1/master-data/transaction-types/:id',
-      auth: true,
-      description: 'Update a transaction type (name, description, active toggle)',
-    },
-    assetTypes: {
-      method: 'GET',
-      path: '/api/v1/master-data/asset-types',
-      auth: true,
-      description: 'List all asset types',
-    },
-    updateAssetType: {
-      method: 'PATCH',
-      path: '/api/v1/master-data/asset-types/:id',
-      auth: true,
-      description: 'Update an asset type (name, assumption rate, active toggle)',
-    },
-    bookmarkReasons: {
-      method: 'GET',
-      path: '/api/v1/master-data/bookmark-reasons',
-      auth: true,
-      description: 'List bookmark reasons for current tenant + environment',
-    },
-    createBookmarkReason: {
-      method: 'POST',
-      path: '/api/v1/master-data/bookmark-reasons',
-      auth: true,
-      description: 'Create a new bookmark reason for current tenant',
-    },
-    updateBookmarkReason: {
-      method: 'PATCH',
-      path: '/api/v1/master-data/bookmark-reasons/:id',
-      auth: true,
-      description: 'Update a bookmark reason (label, order, active toggle)',
-    },
-    jobTypes: {
-      method: 'GET',
-      path: '/api/v1/master-data/job-types',
-      auth: true,
-      description: 'List all job types with current tenant scheduler config',
-    },
-    updateJobConfig: {
-      method: 'PATCH',
-      path: '/api/v1/master-data/job-configs/:id',
-      auth: true,
-      description: 'Update tenant scheduler config for a job (cron, enabled toggle)',
-    },
-    extRefTypes: {
-      method: 'GET',
-      path: '/api/v1/master-data/ext-ref-types',
-      auth: true,
-      description: 'List all external reference types (CAMS, KFINTECH, IWELL, BSE_STAR, CUSTOM)',
-    },
-  },
-
-  /* ── Public Intake (no auth — token-based) ────────── */
-
-  intake: {
-    validate: {
-      method: 'POST',
-      path: '/api/v1/intake/validate',
-      auth: false,
-      description: 'Validate an intake token, return tenant brand + contact pre-fill',
-    },
-    submit: {
-      method: 'POST',
-      path: '/api/v1/intake/submit',
-      auth: false,
-      description: 'Submit a filled financial snapshot via intake token',
     },
   },
 

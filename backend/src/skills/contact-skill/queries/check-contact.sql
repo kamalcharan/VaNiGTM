@@ -1,5 +1,5 @@
 SELECT id
-FROM ki_contacts
+FROM gt_contacts
 WHERE id = $contact_id
   AND tenant_id = $tenant_id
   AND is_live   = $is_live

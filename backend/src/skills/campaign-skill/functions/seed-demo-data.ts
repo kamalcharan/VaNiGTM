@@ -199,7 +199,7 @@ export async function seed_demo_data(
 
     // ── 2. Seed contacts (if not enough exist) ────────
     const existingContacts = await tx.query<{ id: number }>(
-      `SELECT id FROM ki_contacts WHERE tenant_id = $tenant_id AND is_live = false AND is_active = true ORDER BY id LIMIT 25`,
+      `SELECT id FROM gt_contacts WHERE tenant_id = $tenant_id AND is_live = false AND is_active = true ORDER BY id LIMIT 25`,
       { $tenant_id: ctx.tenant_id }
     );
 
@@ -209,11 +209,11 @@ export async function seed_demo_data(
       for (let i = contactIds.length; i < CONTACTS.length; i++) {
         const c = CONTACTS[i];
         const res = await tx.query<{ id: number }>(
-          `INSERT INTO ki_contacts (tenant_id, is_live, prefix, name, contact_no, created_by, age, city, marital_status)
-           VALUES ($tenant_id, false, $prefix, $name, ki_next_seq($tenant_id::uuid, 'contact'), $created_by, $age, $city, $marital_status)
+          `INSERT INTO gt_contacts (tenant_id, is_live, prefix, name, contact_no, created_by, location, source)
+           VALUES ($tenant_id, false, $prefix, $name, gt_next_seq($tenant_id::uuid, 'contact'), $created_by, $location, 'manual')
            RETURNING id`,
           { $tenant_id: ctx.tenant_id, $prefix: c.prefix, $name: c.name, $created_by: ctx.user_id,
-            $age: c.age, $city: c.city, $marital_status: c.marital_status }
+            $location: c.city }
         );
         contactIds.push(res.rows[0].id);
         counts.contacts++;
@@ -221,7 +221,7 @@ export async function seed_demo_data(
         // Add channels for each contact
         if (i % 2 === 0 || i < 15) {
           await tx.query(
-            `INSERT INTO ki_contact_channels (contact_id, tenant_id, is_live, channel_type, channel_value, is_primary)
+            `INSERT INTO gt_contact_channels (contact_id, tenant_id, is_live, channel_type, channel_value, is_primary)
              VALUES ($cid, $tenant_id, false, 'mobile', $val, true)
              ON CONFLICT DO NOTHING`,
             { $cid: res.rows[0].id, $tenant_id: ctx.tenant_id, $val: `+91${9800000000 + i * 111}` }
@@ -229,7 +229,7 @@ export async function seed_demo_data(
         }
         if (i % 3 === 0 || i < 10) {
           await tx.query(
-            `INSERT INTO ki_contact_channels (contact_id, tenant_id, is_live, channel_type, channel_value, is_primary)
+            `INSERT INTO gt_contact_channels (contact_id, tenant_id, is_live, channel_type, channel_value, is_primary)
              VALUES ($cid, $tenant_id, false, 'email', $val, $primary)
              ON CONFLICT DO NOTHING`,
             { $cid: res.rows[0].id, $tenant_id: ctx.tenant_id, $val: `${c.name.toLowerCase().replace(/\s+/g, '.')}@example.com`, $primary: i >= 15 }
@@ -243,7 +243,7 @@ export async function seed_demo_data(
     for (const camp of CAMPAIGNS) {
       const res = await tx.query<{ id: number }>(
         `INSERT INTO gt_campaigns (tenant_id, is_live, campaign_no, name, description, product_name, product_url, target_industries, sender_name, sender_email, status, created_by, launched_at)
-         VALUES ($tenant_id, false, ki_next_seq($tenant_id::uuid, 'campaign'), $name, $desc, $product, $url, $industries::jsonb, $sender_name, $sender_email, $status, $user_id,
+         VALUES ($tenant_id, false, gt_next_seq($tenant_id::uuid, 'campaign'), $name, $desc, $product, $url, $industries::jsonb, $sender_name, $sender_email, $status, $user_id,
                  CASE WHEN $status = 'active' THEN now() - interval '14 days' ELSE NULL END)
          RETURNING id`,
         { $tenant_id: ctx.tenant_id, $name: camp.name, $desc: camp.description, $product: camp.product_name,

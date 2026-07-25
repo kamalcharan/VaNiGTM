@@ -58,18 +58,30 @@ Prereqs before surgery:
 - DoD: zero `ki_contact*` references in src; 3-check tests pass; campaign
   contact flows verified.
 
-### Stage 0.4 — MFD skill + page removal
-- Remove: client-skill, etl-skill, alert/report/comms stubs, MFD paths in
-  pulse-skill; frontend pages clients, customers, import, import-dashboard,
-  master-data, MFD demo-data seeds; their nav entries.
-- DoD: `grep -r "ki_" backend/src` returns only intentionally-kept tables
-  (target: zero); tsc clean; all remaining pages load; nav has no dead links.
+### Stage 0.4 — MFD skill + page removal (scope revised 2026-07-25)
+Decision: etl-skill's generic import pipeline and pulse-skill are KEPT and
+retargeted for GTM (prospect CSV import = M6 source 1; pulses = funnel
+follow-ups + discovery/demo meeting workflow feeding the Conversion Agent).
+- Remove: client-skill; etl-skill's MFD parts ONLY (scheme/NAV cruise
+  control, corrections, customer→client import targets); alert/report/comms
+  stubs; intake router; master-data MFD routes; frontend clients page
+  (+ customers, done in 0.3); their nav entries.
+- Retarget: etl-skill import types → 'prospect' (target gt_contacts);
+  pulse-skill client_id references → contacts (BEFORE ki_clients drops).
+- Keep tables: ki_import_sessions/staging/file_uploads + ki_pulse* — off the
+  188 drop list; rename to gt_ in Phase 2 data modelling.
+- DoD: `grep -r "ki_" backend/src` hits only the intentionally-kept import +
+  pulse tables; tsc clean; all remaining pages load; nav has no dead links.
 
-### Stage 0.5 — Schema sweep
-- Migration dropping unused ki_ tables (after row-count + backup checks).
-- Migration 185 (`gt_events` RLS disable) already codified on main — verify applied.
-- DoD: information_schema shows vn_ + gt_ only (plus intentional keeps);
-  app + worker run clean against swept DB.
+### Stage 0.5 — Schema sweep (RESOLVED 2026-07-25: nothing to sweep)
+DB inventory of vani_gtm_db confirmed: the only ki_ tables that exist are
+the intentionally-kept set — ki_file_uploads, ki_import_sessions,
+ki_import_staging, ki_pulses, ki_pulse_config, ki_pulse_sessions +
+session child tables. The fresh GTM bootstrap never created the MFD
+tables (clients/schemes/snapshots/corrections/lookups), so migration 188
+was deleted as obsolete. Remaining work here: rename kept ki_ tables to
+gt_ during Phase 2 data modelling.
+- DoD: met by inventory (vn_ + gt_ + the 9 kept ki_ tables only).
 
 ## Phase 1 — UX Foundation (the wow pass)
 

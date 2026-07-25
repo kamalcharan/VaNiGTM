@@ -38,10 +38,9 @@ const defaultConfig: ShellConfig = {
     steps: [
       { id: 'user_profile',    order: 1, mandatory: true,  component: 'OnboardUserProfile', title: 'Your Profile' },
       { id: 'business_profile', order: 2, mandatory: true,  component: 'OnboardBusiness',    title: 'Business Details' },
-      { id: 'platform',         order: 3, mandatory: true,  component: 'OnboardPlatform',    title: 'Your Platform' },
-      { id: 'theme_selection',  order: 4, mandatory: false, component: 'OnboardTheme',       title: 'Theme' },
-      { id: 'invite_team',      order: 5, mandatory: false, component: 'OnboardInvite',      title: 'Invite Team' },
-      { id: 'risk_preferences', order: 6, mandatory: false, component: 'OnboardPreferences', title: 'Preferences' },
+      { id: 'theme_selection',  order: 3, mandatory: false, component: 'OnboardTheme',       title: 'Theme' },
+      { id: 'invite_team',      order: 4, mandatory: false, component: 'OnboardInvite',      title: 'Invite Team' },
+      { id: 'risk_preferences', order: 5, mandatory: false, component: 'OnboardPreferences', title: 'Preferences' },
     ],
   },
 };

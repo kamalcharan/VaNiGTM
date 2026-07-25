@@ -1,6 +1,6 @@
 /**
  * contact-skill: get_contact
- * Single contact with all channels and snapshot summary.
+ * Single contact with all channels.
  */
 
 import * as fs from 'fs';
