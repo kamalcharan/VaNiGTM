@@ -87,6 +87,7 @@ interface KbSource {
   display_name: string;
   gdrive_file_id: string | null;
   url: string | null;
+  raw_text: string | null;
 }
 
 export class IngestionAgent {
@@ -110,7 +111,7 @@ export class IngestionAgent {
       // 1. LOAD SOURCE
       const sourceResult = await db.query<KbSource>(
         `SELECT id, tenant_id, source_type, display_name,
-                gdrive_file_id, url
+                gdrive_file_id, url, raw_text
            FROM gt_kb_sources
           WHERE id = $source_id AND tenant_id = $tenant_id`,
         { source_id: sourceId, tenant_id: tenantId },
@@ -143,6 +144,10 @@ export class IngestionAgent {
       if (source.source_type === 'url' && source.url) {
         // URL source — fetch the page server-side and strip to text.
         rawText = await IngestionAgent.fetchUrlText(source.url);
+      } else if (source.raw_text && !source.gdrive_file_id) {
+        // Pre-supplied text (pasted context via POST /ingest/text) — the
+        // text IS the source; nothing to fetch or parse.
+        rawText = source.raw_text;
       } else if (source.gdrive_file_id) {
         const buffer = await IngestionAgent.downloadFromGDrive(
           pool,
@@ -173,12 +178,12 @@ export class IngestionAgent {
         status:         'ok',
       });
 
-      // 3b. URL sources: draft the GTM profile straight from the page text,
-      // BEFORE the (slower) per-chunk KG extraction — the onboarding wizard
+      // 3b. URL + pasted-text sources: draft the GTM profile straight from
+      // the text, BEFORE the (slower) per-chunk KG extraction — the wizard
       // polls the profile and gets a substantive company card fast.
       // Fill-only-empty inside the drafter; a draft failure never fails
       // the ingestion run.
-      if (source.source_type === 'url') {
+      if (source.source_type === 'url' || source.source_type === 'txt') {
         try {
           const draft = await draftProfileFromText(pool, tenantId, rawText, runId);
           await appendStep(pool, runId, {

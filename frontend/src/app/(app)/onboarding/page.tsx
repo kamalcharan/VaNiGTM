@@ -116,6 +116,12 @@ export default function MissionWizardPage() {
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
 
+  // Enrichment loop state (add context + re-run, any time after research)
+  const [enrichUrl, setEnrichUrl] = useState('');
+  const [enrichText, setEnrichText] = useState('');
+  const [enrich, setEnrich] = useState<'idle' | 'running'>('idle');
+  const [enrichNote, setEnrichNote] = useState('');
+
   /* ── Boot: resume from wherever the tenant already is ─────────────── */
 
   useEffect(() => {
@@ -335,6 +341,63 @@ export default function MissionWizardPage() {
       setFinishing(false);
     }
   }, [onboardingStatus.data, queryClient, showToast]);
+
+  /* ── Enrichment loop: add context → agents re-run → profile updates ── */
+
+  const submitEnrichment = useCallback(async () => {
+    const url = enrichUrl.trim();
+    const text = enrichText.trim();
+    if (!url && !text) {
+      showToast({ message: 'Add a URL or paste some context first', type: 'error' });
+      return;
+    }
+    setEnrich('running');
+    const scoreBefore = profile?.completion_score ?? 0;
+
+    try {
+      const submissions: { source_id: string }[] = [];
+      if (url) submissions.push(await apiFetch<{ source_id: string }>(API.ingest.submitUrl, { body: { url } }));
+      if (text) submissions.push(await apiFetch<{ source_id: string }>(API.ingest.submitText, { body: { text } }));
+
+      setEnrichNote('VaNi is working the new context into your profile…');
+
+      // Poll every submitted source to a terminal state.
+      let tries = 0;
+      const poll = async () => {
+        tries += 1;
+        let allDone = true;
+        for (const sub of submissions) {
+          try {
+            const res = await apiFetch<{ source: KbSource }>(API.ingest.getSource, { pathParams: { id: sub.source_id } });
+            if (res.source.status === 'error') {
+              showToast({ message: res.source.error_msg || 'One source failed to process', type: 'error' });
+            } else if (res.source.status !== 'complete') {
+              allDone = false;
+            }
+          } catch { allDone = false; }
+        }
+        if (allDone || tries >= SOURCE_POLL_LIMIT) {
+          const p = await refreshProfile();
+          setEnrich('idle');
+          setEnrichUrl('');
+          setEnrichText('');
+          const scoreAfter = p?.completion_score ?? scoreBefore;
+          showToast({
+            message: scoreAfter > scoreBefore
+              ? `Profile enriched — score ${scoreBefore} → ${scoreAfter}`
+              : 'Context absorbed — no empty fields left to fill, edit any field directly to override',
+            type: 'success',
+          });
+          return;
+        }
+        pollTimer.current = setTimeout(poll, POLL_MS);
+      };
+      poll();
+    } catch (err) {
+      setEnrich('idle');
+      showToast({ message: (err as ApiError).message || 'Could not submit the new context', type: 'error' });
+    }
+  }, [enrichUrl, enrichText, profile, refreshProfile, showToast]);
 
   const copyShareLink = useCallback(() => {
     if (!shareToken) return;
@@ -579,6 +642,50 @@ export default function MissionWizardPage() {
                 </div>
               )}
             </VdfApprovalCard>
+          )}
+
+          {/* ── The loop: add context, agents re-run, profile enriches ── */}
+          {(research === 'done' || confirmed.has('company')) && (
+            <section className={s.enrichCard}>
+              <div className={s.enrichHead}>
+                <span className={s.enrichEyebrow}>The loop · always open</span>
+                <span className={s.enrichTitle}>Teach VaNi more, any time</span>
+                <p className={s.enrichSub}>
+                  Add another page (pricing, case studies, docs) or paste context —
+                  competitor notes, call summaries, positioning. VaNi re-runs, fills the
+                  gaps, and every agent downstream builds on the richer profile.
+                  Your own edits always win over drafts.
+                </p>
+              </div>
+              <div className={s.enrichInputs}>
+                <input
+                  className={s.domainInput}
+                  value={enrichUrl}
+                  onChange={(e) => setEnrichUrl(e.target.value)}
+                  placeholder="another URL — pricing page, docs, a case study…"
+                  disabled={enrich === 'running'}
+                />
+                <textarea
+                  className={s.input}
+                  rows={3}
+                  value={enrichText}
+                  onChange={(e) => setEnrichText(e.target.value)}
+                  placeholder="…or paste context: competitor notes, a call summary, your positioning doc"
+                  disabled={enrich === 'running'}
+                />
+              </div>
+              <div className={s.enrichActions}>
+                {enrich === 'running' && (
+                  <span className={s.progressNoteInline}>
+                    <span className={s.progressDot} aria-hidden />
+                    {enrichNote}
+                  </span>
+                )}
+                <VdfButton variant="outline" onClick={submitEnrichment} loading={enrich === 'running'}>
+                  Feed it to VaNi
+                </VdfButton>
+              </div>
+            </section>
           )}
 
           {/* Locked steps preview */}

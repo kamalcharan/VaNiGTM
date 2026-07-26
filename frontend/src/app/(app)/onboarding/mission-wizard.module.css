@@ -374,3 +374,68 @@
   background: var(--color-primary-subtle);
   white-space: nowrap;
 }
+
+/* ── Enrichment loop card ── */
+
+.enrichCard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 24px;
+  border: 1px dashed color-mix(in srgb, var(--color-primary) 35%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--color-primary) 3%, transparent);
+}
+
+.enrichHead {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.enrichEyebrow {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.enrichTitle {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-fg);
+}
+
+.enrichSub {
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--color-muted);
+  margin: 0;
+  max-width: 58em;
+}
+
+.enrichInputs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.enrichActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.progressNoteInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}

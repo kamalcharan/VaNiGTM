@@ -216,6 +216,12 @@ export const API = {
       auth: true,
       description: 'Get a single ingestion source with its processing status',
     },
+    submitText: {
+      method: 'POST',
+      path: '/api/v1/ingest/text',
+      auth: true,
+      description: 'Submit pasted context text for ingestion into the knowledge graph',
+    },
   },
 
   /* ── Storyteller ──────────────────────────────────── */
