@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
@@ -88,6 +89,7 @@ const SOURCE_POLL_LIMIT = 100;  // ~5 min of crawling/extraction
 const PROFILE_POLL_LIMIT = 20;  // ~1 min for KNOWLEDGE_UPDATED → recalc
 
 export default function MissionWizardPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const onboardingStatus = useOnboardingStatus();
@@ -324,9 +326,9 @@ export default function MissionWizardPage() {
         });
       }
       setConfirmed((prev) => new Set(prev).add('deck'));
-      // The (app) layout guard sees onboarding_complete and routes to /dashboard.
       queryClient.invalidateQueries({ queryKey: ME_QUERY_KEY });
       showToast({ message: 'Mission configured — welcome to the war room', type: 'success' });
+      router.replace('/dashboard');
     } catch (err) {
       showToast({ message: (err as ApiError).message || 'Could not finish setup', type: 'error' });
     } finally {
@@ -372,6 +374,11 @@ export default function MissionWizardPage() {
         <div className={s.mission}>
           <span className={s.missionLabel}>Mission · Onboarding</span>
           <span className={s.missionName}>Set up your GTM engine</span>
+          {onboardingStatus.data?.complete && (
+            <button type="button" className={s.backLink} onClick={() => router.push('/dashboard')}>
+              ← Back to dashboard
+            </button>
+          )}
         </div>
         <div className={s.railWrap}>
           <VdfWizard

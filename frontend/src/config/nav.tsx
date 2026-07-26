@@ -55,7 +55,7 @@ export const NAV_ITEMS: NavItem[] = [
     id: 'mission-wizard',
     label: 'Mission Wizard',
     icon: <Icon><circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /></Icon>,
-    href: '/design/wizard',
+    href: '/onboarding',
     section: 'main',
   },
   {
