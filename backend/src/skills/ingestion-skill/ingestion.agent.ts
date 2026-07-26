@@ -27,6 +27,7 @@ import { PptxParser } from './parsers/pptx.parser';
 import { TextParser } from './parsers/text.parser';
 import { chunkText } from './pipeline/chunker';
 import { extractFromChunks } from './pipeline/extractor';
+import { draftProfileFromText } from '../profile-skill/profile.drafter';
 
 /* ── Parser registry (text.parser is the fallback, registered LAST) ─────── */
 
@@ -171,6 +172,32 @@ export class IngestionAgent {
         output_summary: `${rawText.length} chars extracted`,
         status:         'ok',
       });
+
+      // 3b. URL sources: draft the GTM profile straight from the page text,
+      // BEFORE the (slower) per-chunk KG extraction — the onboarding wizard
+      // polls the profile and gets a substantive company card fast.
+      // Fill-only-empty inside the drafter; a draft failure never fails
+      // the ingestion run.
+      if (source.source_type === 'url') {
+        try {
+          const draft = await draftProfileFromText(pool, tenantId, rawText, runId);
+          await appendStep(pool, runId, {
+            step_name:      'draft_profile',
+            action:         'Drafted GTM profile from website text',
+            output_summary: draft.fieldsFilled.length > 0
+              ? `filled: ${draft.fieldsFilled.join(', ')}`
+              : 'no empty fields to fill',
+            status:         'ok',
+          });
+        } catch (draftErr) {
+          await appendStep(pool, runId, {
+            step_name:      'draft_profile',
+            action:         'Profile draft failed — continuing with KG extraction',
+            output_summary: draftErr instanceof Error ? draftErr.message.slice(0, 300) : String(draftErr),
+            status:         'error',
+          });
+        }
+      }
 
       // 4. STEP: chunk
       const chunks = chunkText(rawText);

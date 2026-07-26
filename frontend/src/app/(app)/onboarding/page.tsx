@@ -453,11 +453,17 @@ export default function MissionWizardPage() {
               confirmLabel="Looks right — continue"
             >
               <div className={s.researchSummary}>
+                <div className={s.summaryField}>
+                  <span className={s.fieldLabel}>Product</span>
+                  <span className={profile?.product_name ? s.fieldValueBig : s.fieldEmpty}>
+                    {profile?.product_name || 'Not found yet — add it in the next step'}
+                  </span>
+                  {profile?.product_tagline && <span className={s.fieldValue}>{profile.product_tagline}</span>}
+                </div>
                 {[
-                  { label: 'Product', value: profile?.product_name },
                   { label: 'What it does', value: profile?.product_description },
                   { label: 'Core problem', value: profile?.core_problem },
-                  { label: 'Buyer', value: profile?.icp_role },
+                  { label: 'Buyer', value: [profile?.icp_role, profile?.icp_company_type, profile?.icp_industry].filter(Boolean).join(' · ') },
                   { label: 'Pain points', value: profile?.primary_pain_points?.join(' · ') },
                 ].map((f) => (
                   <div key={f.label} className={s.summaryField}>
@@ -465,6 +471,16 @@ export default function MissionWizardPage() {
                     <span className={f.value ? s.fieldValue : s.fieldEmpty}>{f.value || 'Not found yet — add it in the next step'}</span>
                   </div>
                 ))}
+                {(profile?.key_differentiators?.length ?? 0) > 0 && (
+                  <div className={s.summaryField}>
+                    <span className={s.fieldLabel}>Differentiators</span>
+                    <div className={s.chipRow}>
+                      {profile!.key_differentiators!.map((d) => (
+                        <span key={d} className={s.valueChip}>{d}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </VdfApprovalCard>
           )}
