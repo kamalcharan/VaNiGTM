@@ -99,7 +99,16 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      (URL_SUBMITTED → ingestion run → KNOWLEDGE_UPDATED → profile).
      Ollama must be pre-warmed (extractor + storyteller both hit LLM).
 2. **Phase 2 — data modelling** (screens now dictate schema; rename
-   kept ki_ tables to gt_).
+   kept ki_ tables to gt_). **Required input:**
+   `documents/design-notes-smartprofile-port.md` — distilled from the
+   ContractNest SmartProfile spec + n8n workflow the user shared
+   (2026-07-27): suggested_/approved_ field provenance for
+   gt_tenant_profile (replaces fill-only-empty), gt_semantic_clusters
+   + pinned-dim pgvector embeddings (prereq: verify vector extension
+   on vani_gtm_db), embeddings via VPS Ollama (nomic-embed-text, add
+   embed() to llm.client), their production cluster prompt, and the
+   hybrid vector+cluster-boost search that becomes Lead Finder's
+   matching engine. AI jobs run on the worker bus, NOT n8n.
 3. UI smoke state: contact CONT-0001 created through the UI post-Phase-0.
 
 ## What this product is (scope — LOCKED)
