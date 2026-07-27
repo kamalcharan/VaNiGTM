@@ -169,7 +169,7 @@ export default function LoginVault() {
             </h1>
 
             <p className={s.storyText}>
-              Sign back in to refine your ICP, regenerate your deck, or share it
+              Sign back in to refine your ideal customer, regenerate your deck, or share it
               with your next prospect.
             </p>
           </div>
@@ -177,7 +177,7 @@ export default function LoginVault() {
           {/* Bottom ticker */}
           <div className={s.storyTicker}>
             <div className={s.tickerItem}>
-              <span className={s.tickerLabel}>ICP builder</span>
+              <span className={s.tickerLabel}>Ideal customer</span>
             </div>
             <div className={s.tickerDot} />
             <div className={s.tickerItem}>
@@ -220,7 +220,7 @@ export default function LoginVault() {
                 </svg>
               </div>
               <div className={s.featureText}>
-                <span className={s.featureName}>ICP builder</span>
+                <span className={s.featureName}>Ideal customer</span>
                 <span className={s.featureDesc}>A clear picture of who you&rsquo;re selling to, from your own docs.</span>
               </div>
               <div className={s.featurePulse} />

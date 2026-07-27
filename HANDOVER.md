@@ -65,9 +65,28 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      (0.52MB), embedded in the landing HeroSection (autoplay muted
      loop, playsInline). Re-record from the REAL wizard once it's
      wired to the backend.
-   - **Phase 1 DoD met pending user sign-off ("wow").** Remaining
-     ruling for the user: make neural-ops the product default theme
-     (one line: NEXT_PUBLIC_DEFAULT_THEME or provider default).
+   - ✅ **1.5 DONE (2026-07-27) — terminology de-jargon pass.** A
+     PROSPECT REVIEW flagged that "ICP" is jargon most users won't
+     parse. User ruling: **ICP → "Ideal Customer"** in all user-facing
+     copy, and widen the pass to other jargon. Renamed across the
+     wizard, ICP Builder, login vault, landing (hero/features/pricing/
+     stepper/pain/testimonials), dashboard, storyteller, campaigns and
+     demo-data; `Pulses` → **Follow-ups** (nav + page + copy); `AEO`
+     spelled out ("AI answer engines like ChatGPT and Perplexity",
+     "AI search visibility"; the findings-rail teaser tag is now
+     "Invisible to AI"). **Deliberately NOT renamed** (churn with no
+     user benefit): `icp_role`/`icp_company_type` columns, `icp-skill`,
+     the `/onboarding/icp-builder` route, `ICP_FIELDS`, CSS class names,
+     and code comments. **`War Room` deliberately KEPT** — it is brand
+     metaphor consistent with Mission Wizard / mission control, not a
+     comprehension barrier; say so if the user wants it changed.
+   - **Phase 1 remaining (2026-07-27):**
+     a) **User ruling needed:** make neural-ops the product default
+        theme (one line: NEXT_PUBLIC_DEFAULT_THEME or provider default).
+     b) ⏸️ **Explainer video re-record — PARKED, OWNED BY THE USER.**
+        They are visualising a different approach and will say once
+        Phase 1 is otherwise complete. Do NOT re-record unprompted.
+     c) **"Wow" sign-off** — the DoD gate itself.
 
 ## ▶ NEXT (PLG direction APPROVED by user 2026-07-25)
 1. ✅ **Wizard wired to the live backend (2026-07-25)** — `/onboarding`

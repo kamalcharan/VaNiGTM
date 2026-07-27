@@ -8,7 +8,7 @@ const painPoints = [
   {
     icon: '\uD83D\uDCCA',
     title: 'Your GTM Lives in Ten Tabs',
-    desc: 'ICP in a doc, leads in a spreadsheet, sequences in one tool, analytics in another \u2014 nothing talks to each other, and no one has the whole picture.',
+    desc: 'Your ideal customer in a doc, leads in a spreadsheet, sequences in one tool, analytics in another \u2014 nothing talks to each other, and no one has the whole picture.',
   },
   {
     icon: '\u23F0',
@@ -18,7 +18,7 @@ const painPoints = [
   {
     icon: '\uD83C\uDFAF',
     title: 'Targeting Is a Guess',
-    desc: 'You spray a generic list and hope. No real ICP, no buying signals, no idea who is actually in-market right now.',
+    desc: 'You spray a generic list and hope. No real sense of who you sell to, no buying signals, no idea who is actually in-market right now.',
   },
   {
     icon: '\uD83D\uDD15',

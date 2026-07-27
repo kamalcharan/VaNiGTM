@@ -119,7 +119,7 @@ export default function StorytellerDashboardPage() {
           <div className={s.buildingCard}>
             <VdfKgLoader
               message="Storyteller is reading your knowledge graph"
-              hint="Weaving your ICP, pains, proof points and differentiators into seven slides — usually under two minutes"
+              hint="Weaving your ideal customer, pains, proof points and differentiators into seven slides — usually under two minutes"
             />
           </div>
         )}
@@ -130,7 +130,7 @@ export default function StorytellerDashboardPage() {
           <VdfEmptyState
             icon="🎬"
             title="No decks yet"
-            description="Storyteller turns your confirmed ICP, pains and competitor map into a shareable pitch deck."
+            description="Storyteller turns your confirmed ideal customer, pains and competitor map into a shareable pitch deck."
             action={
               <VdfButton variant="primary" onClick={handleBuild} loading={building}>
                 + New Deck

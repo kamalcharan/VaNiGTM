@@ -7,7 +7,7 @@ import s from '../page.module.css';
 // NOTE: placeholder testimonials \u2014 replace with real, attributed quotes before public launch.
 const testimonials = [
   {
-    quote: 'We went from a messy prospect spreadsheet to a live outbound motion in an afternoon. VaNi built our ICP and drafted the first sequence before I finished my coffee.',
+    quote: 'We went from a messy prospect spreadsheet to a live outbound motion in an afternoon. VaNi built our ideal-customer profile and drafted the first sequence before I finished my coffee.',
     authorName: 'Early access member',
     authorRole: 'Founder \u00B7 Seed-stage SaaS',
     authorInitials: 'EA',

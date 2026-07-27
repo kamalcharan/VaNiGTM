@@ -233,7 +233,7 @@ export default function CampaignDetailPage() {
   const badge = STATUS_BADGE_MAP[campaign.status] ?? STATUS_BADGE_MAP.draft;
 
   const TABS = [
-    { id: 'icp',       label: `ICP (${personas.length})` },
+    { id: 'icp',       label: `Ideal customer (${personas.length})` },
     { id: 'channels',  label: 'Channels' },
     { id: 'sequences', label: 'Sequences' },
     { id: 'contacts',  label: 'Contacts' },

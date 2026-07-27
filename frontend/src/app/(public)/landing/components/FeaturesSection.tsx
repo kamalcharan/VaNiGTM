@@ -15,7 +15,7 @@ interface Feature {
 const features: Feature[] = [
   {
     icon: '\uD83E\uDDED',
-    title: 'ICP & Persona Engine',
+    title: 'Ideal Customer & Persona Engine',
     desc: 'Define your ideal customer once \u2014 personas, buying signals, company size, and geography. VaNi turns your product into a targetable profile that every agent works from.',
     tag: 'the foundation',
     accent: 'var(--color-primary)',
@@ -29,7 +29,7 @@ const features: Feature[] = [
   },
   {
     icon: '\uD83D\uDD0E',
-    title: 'AEO & Content',
+    title: 'AI Search Visibility & Content',
     desc: 'Track your visibility in AI answers, target the queries your buyers ask, and build content clusters that get you cited. Own the answer, not just the search result.',
     tag: 'AI visibility',
     accent: 'var(--color-accent2)',
@@ -37,7 +37,7 @@ const features: Feature[] = [
   {
     icon: '\uD83E\uDE9C',
     title: 'Sequence Builder',
-    desc: 'Design multi-step outreach in a visual flow builder with an inline template editor. Agents draft, personalize, and run each step \u2014 grounded in your ICP, not generic spam.',
+    desc: 'Design multi-step outreach in a visual flow builder with an inline template editor. Agents draft, personalize, and run each step \u2014 grounded in your ideal customer, not generic spam.',
     tag: 'automated outreach',
     accent: 'var(--color-accent4)',
   },

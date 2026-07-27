@@ -201,7 +201,7 @@ function QueueEmpty() {
     <div className={s.emptyWrap}>
       <VdfEmptyState
         title="No contacts in queue"
-        description="Set up pulse schedules on client profiles to see them here."
+        description="Set up follow-up schedules on contact profiles to see them here."
         action={
           <VdfButton variant="outline" size="sm" onClick={() => router.push('/contacts')}>
             Go to Clients →
@@ -272,7 +272,7 @@ export default function PulsesPage() {
     <div className={s.page}>
       <VdfPageHeader
         eyebrow="PULSE QUEUE"
-        title="Pulses"
+        title="Follow-ups"
         meta={
           <>
             <strong>{stats.total_configs}</strong> client{stats.total_configs !== 1 ? 's' : ''} configured
@@ -384,7 +384,7 @@ export default function PulsesPage() {
         isOpen={drawerClientId !== null}
         onClose={() => setDrawerClientId(null)}
         title={drawerClientName}
-        subtitle="Pulse session"
+        subtitle="Follow-up session"
         width={560}
       >
         {drawerClientId !== null && (

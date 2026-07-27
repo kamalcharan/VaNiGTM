@@ -36,7 +36,7 @@ export default function HeroSection() {
         <span className={s.goldText}>Run by Agents</span>
       </h1>
       <p className={s.heroSub}>
-        Vikuna GTM turns your product into an intelligent growth operation — define your ICP,
+        Vikuna GTM turns your product into an intelligent growth operation — define your ideal customer,
         connect your channels, and deploy AI agents that find, engage, and convert your ideal
         customers. From positioning to pipeline, on autopilot.
       </p>

@@ -91,7 +91,7 @@ const SITE_HEALTH_ADVICE: Record<string, { label: string; why: string }> = {
   title: { label: '<title> tag', why: 'the first thing search engines and AI read about you' },
   meta_description: { label: 'Meta description', why: 'the summary Google and AI answer engines quote in results' },
   og_tags: { label: 'OpenGraph tags', why: 'controls how your links preview on LinkedIn and WhatsApp' },
-  json_ld: { label: 'JSON-LD structured data', why: 'makes your business quotable by AI answer engines (AEO)' },
+  json_ld: { label: 'JSON-LD structured data', why: 'makes your business quotable by AI answer engines like ChatGPT and Perplexity' },
   body_text: { label: 'Server-rendered content', why: 'your page is JS-only — crawlers and AI see an empty page' },
 };
 
@@ -100,7 +100,7 @@ const FINDING_TAGS: Record<string, { tag: string; hook: string }> = {
   title: { tag: 'No page title', hook: 'the first signal search engines read' },
   meta_description: { tag: 'Weak SEO', hook: 'Google has nothing to quote about you' },
   og_tags: { tag: 'Broken link previews', hook: 'shares on LinkedIn/WhatsApp show nothing' },
-  json_ld: { tag: 'No AEO', hook: 'AI answer engines can’t cite your business' },
+  json_ld: { tag: 'Invisible to AI', hook: 'AI answer engines can’t cite your business' },
   body_text: { tag: 'JS-only rendering', hook: 'non-JS crawlers see an empty page' },
 };
 
@@ -170,7 +170,7 @@ function firstLine(trace: string | null | undefined): string {
 const STEPS = [
   { id: 'company', label: 'Research company', locked: false },
   { id: 'competitors', label: 'Competitors', locked: false },
-  { id: 'icp', label: 'ICP & pains', locked: false },
+  { id: 'icp', label: 'Ideal customer', locked: false },
   { id: 'story', label: 'Storytelling', locked: true, lockedTag: 'Unlocks in mission control' },
   { id: 'campaigns', label: 'Campaigns', locked: true, lockedTag: 'Agent coming soon' },
   { id: 'pulse', label: 'Follow-ups', locked: true, lockedTag: 'Agent coming soon' },
@@ -180,7 +180,7 @@ const ICP_FIELDS: { key: keyof GtmProfile & string; label: string; required: boo
   { key: 'product_name', label: 'Product name', required: true },
   { key: 'product_description', label: 'What it does', required: true, multiline: true },
   { key: 'core_problem', label: 'Core problem it solves', required: true, multiline: true },
-  { key: 'icp_role', label: 'Buyer role (ICP)', required: true },
+  { key: 'icp_role', label: 'Buyer role', required: true },
   { key: 'icp_company_type', label: 'Company type', required: false },
   { key: 'primary_pain_points', label: 'Primary pain points (one per line)', required: true, multiline: true, list: true },
 ];
@@ -689,7 +689,7 @@ export default function MissionWizardPage() {
       await apiFetch(API.gtmProfile.approve);
       await refreshProfile();
       setConfirmed((prev) => new Set(prev).add('icp'));
-      showToast({ message: 'ICP confirmed — every agent now builds on it', type: 'success' });
+      showToast({ message: 'Ideal customer confirmed — every agent now builds on it', type: 'success' });
       await finishOnboarding();
     } catch (err) {
       const apiErr = err as ApiError;
@@ -934,7 +934,7 @@ export default function MissionWizardPage() {
           {/* ── STEP 2 — Competitor map (pipeline v2 stage 1) ─────── */}
           {current.id === 'competitors' && (
             <VdfApprovalCard
-              eyebrow="VaNi · researched from your ICP"
+              eyebrow="VaNi · researched from your ideal customer"
               title="Who shapes your buyers' expectations?"
               subtitle="I research your category across the live web, verify each candidate against their real site, and map them here. Remove anyone who doesn't belong — I'll position against the rest in your stories and campaigns."
               status={confirmed.has('competitors') ? 'confirmed' : 'draft'}
@@ -1090,11 +1090,11 @@ export default function MissionWizardPage() {
           {current.id === 'icp' && (
             <VdfApprovalCard
               eyebrow={`VaNi · profile score ${profile?.completion_score ?? 0}/100`}
-              title="Confirm your ICP & pains"
-              subtitle="The foundation every agent builds on. Confirming completes your mission — Storytelling unlocks in mission control."
+              title="Confirm your ideal customer &amp; their pains"
+              subtitle="Who you sell to, and what hurts them — the foundation every agent builds on. Confirming completes your mission; Storytelling unlocks in mission control."
               status={confirmed.has('icp') ? 'confirmed' : 'draft'}
               onConfirm={approveIcp}
-              confirmLabel="Confirm ICP & enter mission control →"
+              confirmLabel="Confirm &amp; enter mission control →"
               loading={approving || finishing}
             >
               {clusters.length > 0 && (
