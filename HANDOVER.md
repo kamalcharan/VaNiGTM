@@ -216,6 +216,23 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      generated OK end-to-end, quality needs work — deck-quality
      workstream (KG-edge-grounded prompts, competitor angles,
      stage-aware variants) starts NOW that relocation is done.
+1c. **Marketing playbooks captured (2026-07-27).** The user shared their
+   Claude marketing plugin's full skill playbooks (campaign-plan,
+   email-sequence, competitive-brief, brand-review, performance-report,
+   content-creation, seo-audit) as inspiration for VaNi's agents. Raw
+   text: `documents/skill-references/claude-marketing-skills.txt`;
+   distilled map + recommended build order:
+   `documents/design-notes-marketing-playbooks.md`. Key take: these are
+   the professional spec for stage-4/5 agents — VaNi fills their
+   structures from the tenant KG instead of interviewing the user.
+   Proposed order (NOT yet approved): brand-voice fields + auto
+   brand-review gate → research-skill v2 analysis layer (tiers +
+   battlecards) → sequence/campaign agents from playbook-seeded
+   gt_prompts. ALSO PENDING user go: the wizard competitor-card tag
+   redesign + relabeled remove button, and relocating the enrichment
+   loop to a new /knowledge "Teach VaNi" page (nav entry added,
+   uncommitted work paused mid-stream at user request — page.tsx wizard
+   cleanup + knowledge page not yet built).
 1b. **Deferred (user-agreed, 2026-07-27): full date handling.** The
    `DD-MMM-YYYY` render convention is live via `lib/format.ts` (the
    single gateway, CLAUDE.md rule). Still to come, later: tenant
