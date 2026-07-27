@@ -23,6 +23,42 @@ Consequence for the wizard: the Storytelling / Campaigns / Follow-ups entries
 come out of the step rail. They are destinations that unlock in mission
 control, and listing them as steps implies a wizard that never finishes.
 
+### 1.1 Two phases — the first one is much smaller than this document
+
+User ruling, same day: *"we will show global data — like FTCCI, but that
+won't create a campaign, it will only create a CRO push. Once that's in
+place, we go for real prospecting."*
+
+**Phase A — market evidence + conversion push.** The universe is shown
+**read-only**: here is your market, this many companies in your industries.
+It is a conversion lever aimed at the tenant, not an outreach campaign aimed
+at buyers. Nothing is adopted, nothing is contacted.
+
+Needs only: `gt_data_sources` (193), `gt_universe_company_sources` (194),
+`gt_universe_companies` + aliases (195), industry taxonomy (199).
+**Four migrations.**
+
+Deferred entirely: `gt_universe_contacts` (196) — so the DPDP question in
+§4.5 does not have to be answered yet, because Phase A ships **companies
+only**. Also deferred: `gt_prospects` (197), `gt_connectors` (198), staging
+quality columns (200).
+
+**Phase B — real prospecting.** Adoption into a tenant working set, contacts,
+Apollo, campaigns. Everything else in this document.
+
+### 1.2 Coverage honesty is a Phase A requirement, not a polish item
+
+FTCCI is a Telangana chamber directory: **87% of its 2,913 members are
+Hyderabad or Secunderabad** (2,541 rows), 2,840 of 2,913 PINs start with
+`50`, and the file is dated Oct 2023.
+
+That is a strong hook for a Hyderabad-region tenant and close to worthless
+for anyone else. So the push is **gated on the tenant's actual matched
+count**, and every surface carries provenance — "FTCCI directory · Telangana
+· Oct 2023". Showing a headline count to a tenant selling into US SaaS would
+be worse than showing nothing, and it is precisely the kind of impressive-
+looking emptiness rule 12 exists to prevent.
+
 ### Explicitly out of scope
 - **No web-search buyer discovery** (user ruling, 2026-07-27): "we are not
   there yet — we will only work on available data for now." Prospects come
@@ -309,6 +345,13 @@ better source, and late-merge alias resolution.
    Prospect scoring runs off *approved* clusters, so this gates the payoff of
    the final step. (Today clusters are ratified at step 3 but consumed at
    step 2, so they never fire — see `research.agent.ts:221`.)
-3. **`gt_universe_contacts.exposure` default** — the DPDP question in §4.5.
-4. **Apollo timing** — modelled now, but is the integration in this slice or
-   the next?
+3. ~~`gt_universe_contacts.exposure` default~~ — **deferred to Phase B.**
+   Phase A ships companies only, so no personal data is shared and the DPDP
+   question does not need answering to start.
+4. ~~Apollo timing~~ — **Phase B.**
+5. **"CRO push" reading** — taken here as a *conversion push at the tenant*
+   (market evidence as an activation lever), not the CRO audit lens the PRD
+   defines at line 86 (landing-page CTA/friction analysis). The screenshot
+   that accompanied the ruling showed credit-claim conversion mechanics,
+   which supports this reading. Correct it here if wrong — it changes what
+   Phase A builds, though not the schema.
