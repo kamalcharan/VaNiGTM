@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "VaNi GTM — headless page render\n\nPOST /vani-render-page\nbody: { \"url\": \"https://…\" }\nheader: x-vani-secret  (must equal env VANI_RENDER_SECRET)\n\nReturns { success, url, chars, html }.\nCalled by the VaNiGTM ingestion agent ONLY when a site's\nstatic HTML is too thin (JS-rendered SPA).\n\nSETUP (once):\n1. Install community node: Settings → Community Nodes →\n   n8n-nodes-puppeteer\n2. Set instance env: VANI_RENDER_SECRET=<long random string>\n3. Activate this workflow.\nBackend needs: N8N_RENDER_URL, N8N_RENDER_SECRET (same value),\nN8N_ENV=live for /webhook (else /webhook-test is used).",
+        "content": "VaNi GTM — headless page render\n\nPOST /vani-render-page\nbody: { \"url\": \"https://…\" }\nheader: x-vani-secret  (validated by the webhook's Header Auth\ncredential — NO env vars, NO enterprise features)\n\nReturns { success, url, chars, html }.\nCalled by the VaNiGTM ingestion agent ONLY when a site's\nstatic HTML is too thin (JS-rendered SPA).\n\nSETUP (once):\n1. Install community node: Settings → Community Nodes →\n   n8n-nodes-puppeteer  (BEFORE importing this workflow)\n2. Create credential: Credentials → New → Header Auth →\n   Name: 'VaNi Render Secret', Header Name: x-vani-secret,\n   Header Value: <long random string>\n3. Open the Webhook node and select that credential.\n4. Activate this workflow.\nBackend needs: N8N_RENDER_URL, N8N_RENDER_SECRET (same value),\nN8N_ENV=live for /webhook (else /webhook-test is used).",
         "height": 560,
         "width": 420,
         "color": 5
@@ -18,6 +18,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "vani-render-page",
+        "authentication": "headerAuth",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -26,14 +27,19 @@
       "typeVersion": 1.1,
       "position": [-1980, 200],
       "id": "a1b2c3d4-0002-4000-8000-000000000002",
-      "webhookId": "vani-render-page-001"
+      "webhookId": "vani-render-page-001",
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "VaNi Render Secret"
+        }
+      }
     },
     {
       "parameters": {
         "conditions": {
           "boolean": [
             {
-              "value1": "={{ $json.body.url !== undefined && $json.body.url.startsWith('http') && $json.headers['x-vani-secret'] === $env.VANI_RENDER_SECRET && $env.VANI_RENDER_SECRET !== undefined && $env.VANI_RENDER_SECRET !== '' }}",
+              "value1": "={{ $json.body.url !== undefined && $json.body.url.startsWith('http') }}",
               "value2": true
             }
           ]
@@ -52,8 +58,8 @@
           "string": [
             { "name": "status", "value": "error" },
             { "name": "errorCode", "value": "INVALID_INPUT_OR_AUTH" },
-            { "name": "message", "value": "Missing/invalid url, or bad x-vani-secret" },
-            { "name": "suggestion", "value": "Send { url } with a valid x-vani-secret header; ensure VANI_RENDER_SECRET is set on the n8n instance" }
+            { "name": "message", "value": "Missing or invalid url" },
+            { "name": "suggestion", "value": "Send { \"url\": \"https://…\" } in the request body" }
           ],
           "boolean": [
             { "name": "success", "value": false },

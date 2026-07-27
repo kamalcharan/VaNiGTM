@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "VaNi GTM — headless page render (STOCK NODES ONLY)\n\nSame contract as the puppeteer variant, but rendering is done\nby a browserless container — no community node needed.\n\nPOST /vani-render-page\nbody: { \"url\": \"https://…\" }\nheader: x-vani-secret  (must equal env VANI_RENDER_SECRET)\nReturns { success, url, chars, html }.\n\nSETUP (once):\n1. Run browserless on the VPS:\n   docker run -d --name browserless --restart unless-stopped \\\n     -p 3010:3000 -e \"TOKEN=<random>\" ghcr.io/browserless/chromium\n2. n8n instance env:\n   VANI_RENDER_SECRET=<long random string>\n   BROWSERLESS_URL=http://<vps-ip-or-container-host>:3010\n   BROWSERLESS_TOKEN=<same as TOKEN above>\n3. Import this workflow and activate.",
+        "content": "VaNi GTM — headless page render (STOCK NODES ONLY)\n\nSame contract as the puppeteer variant, but rendering is done\nby a browserless container — no community node needed.\n\nPOST /vani-render-page\nbody: { \"url\": \"https://…\" }\nheader: x-vani-secret  (validated by the webhook's Header Auth\ncredential — NO env vars, NO enterprise features)\nReturns { success, url, chars, html }.\n\nSETUP (once):\n1. Run browserless on the VPS:\n   docker run -d --name browserless --restart unless-stopped \\\n     -p 3010:3000 -e \"TOKEN=<random>\" ghcr.io/browserless/chromium\n2. Create credential: Credentials → New → Header Auth →\n   Name: 'VaNi Render Secret', Header Name: x-vani-secret,\n   Header Value: <long random string>\n3. Open the Webhook node, select that credential.\n4. Open the 'Render Page (browserless)' node and put your\n   browserless URL+token directly in the URL field\n   (replace the $env expression):\n   http://<host>:3010/content?token=<TOKEN>\n5. Import/activate. (Deactivate the puppeteer variant first —\n   same webhook path.)",
         "height": 620,
         "width": 440,
         "color": 4
@@ -18,6 +18,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "vani-render-page",
+        "authentication": "headerAuth",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -26,14 +27,19 @@
       "typeVersion": 1.1,
       "position": [-1980, 200],
       "id": "b1b2c3d4-0002-4000-8000-000000000002",
-      "webhookId": "vani-render-page-002"
+      "webhookId": "vani-render-page-002",
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "VaNi Render Secret"
+        }
+      }
     },
     {
       "parameters": {
         "conditions": {
           "boolean": [
             {
-              "value1": "={{ $json.body.url !== undefined && $json.body.url.startsWith('http') && $json.headers['x-vani-secret'] === $env.VANI_RENDER_SECRET && $env.VANI_RENDER_SECRET !== undefined && $env.VANI_RENDER_SECRET !== '' }}",
+              "value1": "={{ $json.body.url !== undefined && $json.body.url.startsWith('http') }}",
               "value2": true
             }
           ]
@@ -52,8 +58,8 @@
           "string": [
             { "name": "status", "value": "error" },
             { "name": "errorCode", "value": "INVALID_INPUT_OR_AUTH" },
-            { "name": "message", "value": "Missing/invalid url, or bad x-vani-secret" },
-            { "name": "suggestion", "value": "Send { url } with a valid x-vani-secret header; ensure VANI_RENDER_SECRET is set on the n8n instance" }
+            { "name": "message", "value": "Missing or invalid url" },
+            { "name": "suggestion", "value": "Send { \"url\": \"https://…\" } in the request body" }
           ],
           "boolean": [
             { "name": "success", "value": false },
@@ -87,7 +93,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ ($env.BROWSERLESS_URL || 'http://localhost:3010') + '/content' + ($env.BROWSERLESS_TOKEN ? '?token=' + $env.BROWSERLESS_TOKEN : '') }}",
+        "url": "http://YOUR-VPS-HOST:3010/content?token=YOUR-BROWSERLESS-TOKEN",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ url: $json.url, gotoOptions: { waitUntil: 'networkidle2', timeout: 45000 } }) }}",
