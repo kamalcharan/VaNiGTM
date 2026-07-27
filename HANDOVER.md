@@ -228,11 +228,24 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
    Proposed order (NOT yet approved): brand-voice fields + auto
    brand-review gate → research-skill v2 analysis layer (tiers +
    battlecards) → sequence/campaign agents from playbook-seeded
-   gt_prompts. ALSO PENDING user go: the wizard competitor-card tag
-   redesign + relabeled remove button, and relocating the enrichment
-   loop to a new /knowledge "Teach VaNi" page (nav entry added,
-   uncommitted work paused mid-stream at user request — page.tsx wizard
-   cleanup + knowledge page not yet built).
+   gt_prompts.
+1d. **Wizard UI pass from the live-run screenshot (2026-07-27, DONE).**
+   - Competitor rows → **tag-style cards in a responsive grid**
+     (design/research parity): status tag (Verified / Unverified /
+     Ignored) + domain chip, display-font name, description, action in
+     the card footer. The live "mapped so far" list uses the same card.
+   - **"Not a competitor" → "Remove"** ("Keep after all" to undo). The
+     old label read as a verdict — the user reported "almost all are
+     tagged not competitors" when only the agent-dropped one actually
+     was. Removed cards now carry an explicit `Ignored` tag, the header
+     reads "N on your map / M moving to your ignore list", the confirm
+     button counts ("Confirm 3 competitors"), and a hint spells out that
+     removal feeds the ignore list (backend already dismisses, 57d41e9).
+   - **Loop moved OUT of onboarding** to `/knowledge` ("Teach VaNi", new
+     nav item under Mission Wizard): URL + paste inputs, KG loader,
+     profile score ring, "what moves the needle" panel. The wizard keeps
+     a one-line pointer once onboarding is complete; enrichment state +
+     submitEnrichment deleted from page.tsx.
 1b. **Deferred (user-agreed, 2026-07-27): full date handling.** The
    `DD-MMM-YYYY` render convention is live via `lib/format.ts` (the
    single gateway, CLAUDE.md rule). Still to come, later: tenant

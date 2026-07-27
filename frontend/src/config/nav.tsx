@@ -59,6 +59,13 @@ export const NAV_ITEMS: NavItem[] = [
     section: 'main',
   },
   {
+    id: 'knowledge',
+    label: 'Teach VaNi',
+    icon: <Icon><path d="M12 2a7 7 0 00-7 7c0 2.4 1.2 4.4 3 5.7V17a2 2 0 002 2h4a2 2 0 002-2v-2.3c1.8-1.3 3-3.3 3-5.7a7 7 0 00-7-7z" /><line x1="10" y1="22" x2="14" y2="22" /></Icon>,
+    href: '/knowledge',
+    section: 'main',
+  },
+  {
     id: 'contacts',
     label: 'Contacts',
     icon: <Icon><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></Icon>,

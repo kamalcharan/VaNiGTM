@@ -1,0 +1,160 @@
+/* ═══════════════════════════════════════════════════════
+   TEACH VANI — the enrichment loop (out of onboarding)
+   ═══════════════════════════════════════════════════════ */
+
+.page {
+  max-width: 860px;
+  margin: 0 auto;
+  min-height: 100%;
+}
+
+.body {
+  padding: 20px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Feed card ── */
+
+.feedCard {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px;
+  border-radius: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.feedHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.feedIntro {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.feedTitle {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-fg);
+}
+
+.feedSub {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--color-muted);
+}
+
+.feedSub strong {
+  color: var(--color-fg);
+  font-weight: 600;
+}
+
+.scoreWrap {
+  flex-shrink: 0;
+}
+
+/* ── Inputs ── */
+
+.inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.urlInput,
+.textInput {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--color-fg);
+  outline: none;
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.urlInput {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.textInput {
+  resize: vertical;
+  field-sizing: content;
+  min-height: 110px;
+  max-height: 45vh;
+  overflow-y: auto;
+}
+
+.urlInput:focus,
+.textInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-glow);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── Hints ── */
+
+.hints {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px 24px;
+  border-radius: 14px;
+  border: 1px dashed var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+}
+
+.hintsLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.hintList {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+
+.hintList strong {
+  color: var(--color-fg);
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .body { padding: 16px 20px 24px; }
+  .feedHead { flex-direction: column; gap: 14px; }
+  .scoreWrap { align-self: flex-start; }
+}
+
+@media (max-width: 480px) {
+  .body { padding: 12px 14px 20px; }
+  .feedCard { padding: 18px; }
+}

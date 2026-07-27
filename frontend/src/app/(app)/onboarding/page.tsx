@@ -212,12 +212,6 @@ export default function MissionWizardPage() {
 
   const [finishing, setFinishing] = useState(false);
 
-  // Enrichment loop state (add context + re-run, any time after research)
-  const [enrichUrl, setEnrichUrl] = useState('');
-  const [enrichText, setEnrichText] = useState('');
-  const [enrich, setEnrich] = useState<'idle' | 'running'>('idle');
-  const [enrichNote, setEnrichNote] = useState('');
-
   /* ── Boot: resume from wherever the tenant already is ─────────────── */
 
   useEffect(() => {
@@ -475,6 +469,8 @@ export default function MissionWizardPage() {
     poll();
   }, [loadCompetitors, showToast]);
 
+  const keptCount = competitors.filter((c) => !removedIds.has(c.id)).length;
+
   // The research feed, reused across states: live (spinner on the active
   // step) while running, frozen as the evidence trail on failure/done.
   const renderCompFeed = (live: boolean) => (
@@ -625,63 +621,6 @@ export default function MissionWizardPage() {
       setApproving(false);
     }
   }, [finishOnboarding, refreshProfile, showToast]);
-
-  /* ── Enrichment loop: add context → agents re-run → profile updates ── */
-
-  const submitEnrichment = useCallback(async () => {
-    const url = enrichUrl.trim();
-    const text = enrichText.trim();
-    if (!url && !text) {
-      showToast({ message: 'Add a URL or paste some context first', type: 'error' });
-      return;
-    }
-    setEnrich('running');
-    const scoreBefore = profile?.completion_score ?? 0;
-
-    try {
-      const submissions: { source_id: string }[] = [];
-      if (url) submissions.push(await apiFetch<{ source_id: string }>(API.ingest.submitUrl, { body: { url } }));
-      if (text) submissions.push(await apiFetch<{ source_id: string }>(API.ingest.submitText, { body: { text } }));
-
-      setEnrichNote('VaNi is working the new context into your profile…');
-
-      // Poll every submitted source to a terminal state.
-      let tries = 0;
-      const poll = async () => {
-        tries += 1;
-        let allDone = true;
-        for (const sub of submissions) {
-          try {
-            const res = await apiFetch<{ source: KbSource }>(API.ingest.getSource, { pathParams: { id: sub.source_id } });
-            if (res.source.status === 'error') {
-              showToast({ message: res.source.error_msg || 'One source failed to process', type: 'error' });
-            } else if (res.source.status !== 'complete') {
-              allDone = false;
-            }
-          } catch { allDone = false; }
-        }
-        if (allDone || tries >= SOURCE_POLL_LIMIT) {
-          const p = await refreshProfile();
-          setEnrich('idle');
-          setEnrichUrl('');
-          setEnrichText('');
-          const scoreAfter = p?.completion_score ?? scoreBefore;
-          showToast({
-            message: scoreAfter > scoreBefore
-              ? `Profile enriched — score ${scoreBefore} → ${scoreAfter}`
-              : 'Context absorbed — no empty fields left to fill, edit any field directly to override',
-            type: 'success',
-          });
-          return;
-        }
-        pollTimer.current = setTimeout(poll, POLL_MS);
-      };
-      poll();
-    } catch (err) {
-      setEnrich('idle');
-      showToast({ message: (err as ApiError).message || 'Could not submit the new context', type: 'error' });
-    }
-  }, [enrichUrl, enrichText, profile, refreshProfile, showToast]);
 
   /* ── Mission rail ─────────────────────────────────────────────────── */
 
@@ -916,7 +855,9 @@ export default function MissionWizardPage() {
               subtitle="I research your category across the live web, verify each candidate against their real site, and map them here. Remove anyone who doesn't belong — I'll position against the rest in your stories and campaigns."
               status={confirmed.has('competitors') ? 'confirmed' : 'draft'}
               onConfirm={compResearch === 'running' ? undefined : confirmCompetitors}
-              confirmLabel={competitors.filter((c) => !removedIds.has(c.id)).length > 0 ? 'Confirm competitor map' : 'No competitors — continue'}
+              confirmLabel={keptCount > 0
+                ? `Confirm ${keptCount} competitor${keptCount === 1 ? '' : 's'}`
+                : 'No competitors — continue'}
               loading={confirmingCompetitors}
             >
               {compResearch === 'running' ? (
@@ -929,22 +870,26 @@ export default function MissionWizardPage() {
                   {/* Verified competitors land in the KG incrementally — show
                       them the moment they exist, mockup-style. */}
                   {competitors.length > 0 && (
-                    <div className={s.competitorList}>
+                    <div className={s.liveMap}>
                       <span className={s.fieldLabel}>Mapped so far · {competitors.length}</span>
-                      {competitors.map((c) => {
-                        const domain = typeof c.properties?.domain === 'string' ? c.properties.domain : null;
-                        return (
-                          <div key={c.id} className={s.competitorRow}>
-                            <div className={s.competitorMain}>
-                              <span className={s.competitorName}>
-                                {c.name}
-                                {domain && <span className={s.competitorDomain}> · {domain}</span>}
-                              </span>
-                              {c.description && <span className={s.competitorDesc}>{c.description}</span>}
-                            </div>
-                          </div>
-                        );
-                      })}
+                      <div className={s.competitorGrid}>
+                        {competitors.map((c) => {
+                          const domain = typeof c.properties?.domain === 'string' ? c.properties.domain : null;
+                          const verified = c.properties?.verified === true;
+                          return (
+                            <article key={c.id} className={s.compCard}>
+                              <div className={s.compTags}>
+                                <span className={`${s.tag} ${verified ? s.tagVerified : s.tagUnverified}`}>
+                                  {verified ? 'Verified' : 'Unverified'}
+                                </span>
+                                {domain && <span className={`${s.tag} ${s.tagDomain}`}>{domain}</span>}
+                              </div>
+                              <span className={s.compName}>{c.name}</span>
+                              {c.description && <p className={s.compDesc}>{c.description}</p>}
+                            </article>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -984,42 +929,66 @@ export default function MissionWizardPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className={s.competitorList}>
-                      {competitors.map((c) => {
-                        const removed = removedIds.has(c.id);
-                        const domain = typeof c.properties?.domain === 'string' ? c.properties.domain : null;
-                        const unverified = c.properties?.verified === false;
-                        return (
-                          <div key={c.id} className={`${s.competitorRow} ${removed ? s.competitorRemoved : ''}`}>
-                            <div className={s.competitorMain}>
-                              <span className={s.competitorName}>
-                                {c.name}
-                                {domain && <span className={s.competitorDomain}> · {domain}</span>}
-                                {unverified && <span className={s.competitorUnverified}> unverified</span>}
-                              </span>
-                              {c.description && <span className={s.competitorDesc}>{c.description}</span>}
-                            </div>
-                            <VdfButton
-                              variant={removed ? 'outline' : 'ghost'}
-                              size="sm"
-                              onClick={() => setRemovedIds((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(c.id)) { next.delete(c.id); } else { next.add(c.id); }
-                                return next;
-                              })}
-                            >
-                              {removed ? 'Undo' : 'Not a competitor'}
-                            </VdfButton>
-                          </div>
-                        );
-                      })}
+                    <>
+                      <div className={s.mapSummary}>
+                        <span className={s.mapCount}>
+                          <strong>{keptCount}</strong> on your map
+                        </span>
+                        {removedIds.size > 0 && (
+                          <span className={s.mapIgnored}>{removedIds.size} moving to your ignore list</span>
+                        )}
+                      </div>
+
+                      <div className={s.competitorGrid}>
+                        {competitors.map((c) => {
+                          const removed = removedIds.has(c.id);
+                          const domain = typeof c.properties?.domain === 'string' ? c.properties.domain : null;
+                          const verified = c.properties?.verified === true;
+                          return (
+                            <article key={c.id} className={`${s.compCard} ${removed ? s.compCardRemoved : ''}`}>
+                              <div className={s.compTags}>
+                                {removed ? (
+                                  <span className={`${s.tag} ${s.tagIgnored}`}>Ignored</span>
+                                ) : verified ? (
+                                  <span className={`${s.tag} ${s.tagVerified}`}>Verified</span>
+                                ) : (
+                                  <span className={`${s.tag} ${s.tagUnverified}`}>Unverified</span>
+                                )}
+                                {domain && <span className={`${s.tag} ${s.tagDomain}`}>{domain}</span>}
+                              </div>
+
+                              <span className={s.compName}>{c.name}</span>
+                              {c.description && <p className={s.compDesc}>{c.description}</p>}
+
+                              <div className={s.compFoot}>
+                                <VdfButton
+                                  variant={removed ? 'outline' : 'ghost'}
+                                  size="sm"
+                                  onClick={() => setRemovedIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(c.id)) { next.delete(c.id); } else { next.add(c.id); }
+                                    return next;
+                                  })}
+                                >
+                                  {removed ? 'Keep after all' : 'Remove'}
+                                </VdfButton>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+
+                      <p className={s.mapHint}>
+                        Removing a company adds it to your ignore list — VaNi won&apos;t propose it again on a future research run.
+                      </p>
+
                       <div className={s.errorActions}>
                         {compResearch !== 'failed' && (
                           <VdfButton variant="outline" size="sm" onClick={() => startCompetitorResearch(false)}>Research again</VdfButton>
                         )}
                         <VdfButton variant="ghost" size="sm" onClick={() => loadCompetitors()}>Refresh</VdfButton>
                       </div>
-                    </div>
+                    </>
                   )}
 
                   {compResearch === 'done' && compSteps.length > 0 && (
@@ -1074,51 +1043,17 @@ export default function MissionWizardPage() {
             </VdfApprovalCard>
           )}
 
-          {/* ── The loop: add context, agents re-run, profile enriches ──
-               Revisit-only (user ruling): first-run onboarding stays a
-               sprint to quick results; enrichment is a return activity
-               reached via the Mission Wizard menu item. */}
-          {onboardingStatus.data?.complete === true && (research === 'done' || confirmed.has('company')) && (
-            <section className={s.enrichCard}>
-              <div className={s.enrichHead}>
-                <span className={s.enrichEyebrow}>The loop · always open</span>
-                <span className={s.enrichTitle}>Teach VaNi more, any time</span>
-                <p className={s.enrichSub}>
-                  Add another page (pricing, case studies, docs) or paste context —
-                  competitor notes, call summaries, positioning. VaNi re-runs, fills the
-                  gaps, and every agent downstream builds on the richer profile.
-                  Your own edits always win over drafts.
-                </p>
-              </div>
-              <div className={s.enrichInputs}>
-                <input
-                  className={s.domainInput}
-                  value={enrichUrl}
-                  onChange={(e) => setEnrichUrl(e.target.value)}
-                  placeholder="another URL — pricing page, docs, a case study…"
-                  disabled={enrich === 'running'}
-                />
-                <textarea
-                  className={s.input}
-                  rows={3}
-                  value={enrichText}
-                  onChange={(e) => setEnrichText(e.target.value)}
-                  placeholder="…or paste context: competitor notes, a call summary, your positioning doc"
-                  disabled={enrich === 'running'}
-                />
-              </div>
-              <div className={s.enrichActions}>
-                {enrich === 'running' && (
-                  <span className={s.progressNoteInline}>
-                    <span className={s.progressDot} aria-hidden />
-                    {enrichNote}
-                  </span>
-                )}
-                <VdfButton variant="outline" onClick={submitEnrichment} loading={enrich === 'running'}>
-                  Feed it to VaNi
-                </VdfButton>
-              </div>
-            </section>
+          {/* The enrichment loop lives at /knowledge (Teach VaNi) — user
+              ruling: onboarding is a sprint to quick results, loops are a
+              return activity. Pointer only, once the mission is configured. */}
+          {onboardingStatus.data?.complete === true && (
+            <div className={s.loopPointer}>
+              <span>
+                Want VaNi to know more? Feed it pages and context any time in{' '}
+                <strong>Teach VaNi</strong> — every agent downstream builds on the richer profile.
+              </span>
+              <VdfButton variant="ghost" size="sm" href="/knowledge">Teach VaNi →</VdfButton>
+            </div>
           )}
 
           {/* Locked steps preview */}

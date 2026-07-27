@@ -248,104 +248,176 @@ textarea.input {
   box-shadow: 0 0 0 3px var(--color-primary-glow);
 }
 
-/* ── Step 2: competitor map ── */
+/* ── Step 2: competitor map — tag-style cards (design parity) ── */
 
-.feedDetails {
-  margin-top: 14px;
-  border-top: 1px solid var(--color-border);
-  padding-top: 12px;
+.mapSummary {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
 }
 
-.feedSummary {
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
+.mapCount {
+  font-size: 0.85rem;
   color: var(--color-muted);
-  list-style: none;
-  user-select: none;
 }
 
-.feedSummary::before {
-  content: '▸ ';
+.mapCount strong {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--color-fg);
 }
 
-.feedDetails[open] .feedSummary::before {
-  content: '▾ ';
+.mapIgnored {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.4px;
+  color: var(--color-warning);
 }
 
-.feedDetails[open] .feedSummary {
-  margin-bottom: 10px;
+.mapHint {
+  margin: 12px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--color-muted);
 }
 
-
-.competitorList {
+.liveMap {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.competitorRow {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 12px 14px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
-  border-radius: 12px;
-  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+.competitorGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(258px, 1fr));
+  gap: 12px;
 }
 
-.competitorMain {
+.compCard {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  min-width: 0;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.competitorName {
-  font-size: 0.9rem;
+.compCard:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  transform: translateY(-1px);
+}
+
+.compCardRemoved {
+  opacity: 0.5;
+  border-style: dashed;
+}
+
+.compCardRemoved:hover {
+  transform: none;
+}
+
+/* ── Tags ── */
+
+.compTags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-family: var(--font-mono);
+  font-size: 9px;
   font-weight: 600;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.tagVerified {
+  color: var(--color-success);
+  border-color: color-mix(in srgb, var(--color-success) 38%, transparent);
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+}
+
+.tagUnverified {
+  color: var(--color-warning);
+  border-color: color-mix(in srgb, var(--color-warning) 38%, transparent);
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+}
+
+.tagIgnored {
+  color: var(--color-muted);
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-muted) 10%, transparent);
+}
+
+.tagDomain {
+  text-transform: none;
+  letter-spacing: 0.2px;
+  font-weight: 500;
+  color: var(--color-muted);
+  border-color: var(--color-border);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compName {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--color-fg);
 }
 
-.competitorDomain {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 400;
-  color: var(--color-muted);
+.compCardRemoved .compName {
+  text-decoration: line-through;
 }
 
-.competitorUnverified {
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: var(--color-warning);
-  border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
-  border-radius: 6px;
-  padding: 1px 6px;
-  margin-left: 6px;
-  vertical-align: middle;
-}
-
-.competitorDesc {
+.compDesc {
+  margin: 0;
   font-size: 0.82rem;
   line-height: 1.5;
   color: var(--color-muted);
 }
 
-.competitorRemoved {
-  opacity: 0.45;
-  border-style: dashed;
+.compFoot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+  padding-top: 4px;
 }
 
-.competitorRemoved .competitorName {
-  text-decoration: line-through;
+/* ── Loop pointer (the loop itself lives at /knowledge) ── */
+
+.loopPointer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px dashed var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+
+.loopPointer strong {
+  color: var(--color-fg);
+  font-weight: 600;
 }
 
 /* ── Locked agents ── */
