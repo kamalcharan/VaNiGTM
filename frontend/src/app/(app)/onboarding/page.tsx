@@ -50,11 +50,31 @@ interface GtmProfile {
   approved_at: string | null;
 }
 
+interface AgentRunStep {
+  step_name: string;
+  action?: string;
+  output_summary?: string;
+  status?: string;
+}
+
 interface KbSource {
   id: string;
   status: 'pending' | 'processing' | 'complete' | 'error';
   error_msg?: string | null;
   node_count?: number | null;
+  run_status?: string | null;
+  run_steps?: AgentRunStep[] | null;
+}
+
+/** Friendly labels for the agent's real pipeline steps (gt_agent_runs.steps). */
+const RESEARCH_STEP_LABELS: Record<string, string> = {
+  parse: 'Connected — reading your website',
+  parse_complete: 'Website read',
+  draft_profile: 'Drafting your GTM profile',
+  chunk: 'Organizing what I found',
+  extract: 'Deep-reading each section',
+  extract_complete: 'Knowledge extracted',
+  complete: 'Saved to your knowledge graph',
 }
 
 interface DeckSummary {
@@ -85,8 +105,8 @@ const ICP_FIELDS: { key: keyof GtmProfile & string; label: string; required: boo
 ];
 
 const POLL_MS = 3000;
-const SOURCE_POLL_LIMIT = 100;  // ~5 min of crawling/extraction
-const PROFILE_POLL_LIMIT = 20;  // ~1 min for KNOWLEDGE_UPDATED → recalc
+const SOURCE_POLL_LIMIT = 200;  // ~10 min hard ceiling — profile-first exit normally fires long before
+const PENDING_HINT_AFTER = 8;   // ~24s still 'pending' → surface the "worker running?" hint
 
 export default function MissionWizardPage() {
   const router = useRouter();
@@ -102,6 +122,8 @@ export default function MissionWizardPage() {
   const [domain, setDomain] = useState('');
   const [research, setResearch] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [researchNote, setResearchNote] = useState('');
+  const [researchSteps, setResearchSteps] = useState<AgentRunStep[]>([]);
+  const [stillDigesting, setStillDigesting] = useState(false);
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Profile (steps 1–2)
@@ -188,6 +210,8 @@ export default function MissionWizardPage() {
       return;
     }
     setResearch('running');
+    setResearchSteps([]);
+    setStillDigesting(false);
     setResearchNote('Submitting your website to VaNi…');
 
     let sourceId: string;
@@ -200,51 +224,59 @@ export default function MissionWizardPage() {
       return;
     }
 
-    // Poll the source until the ingestion agent finishes.
-    setResearchNote('VaNi is reading your website…');
+    // Unified poll: each tick reads the source (real agent steps for the live
+    // checklist) AND the profile. The moment the profile drafter has produced
+    // fields we show the card — the slower KG extraction keeps running in the
+    // background and does not block the wizard.
+    setResearchNote('Waiting for an agent to pick this up…');
     let tries = 0;
-    const pollSource = async () => {
+    const poll = async () => {
       tries += 1;
+
+      // Profile-first exit: drafted fields = research is usable now.
+      const p = await refreshProfile();
+      if (p?.product_name) {
+        setResearch('done');
+        setStillDigesting(true); // KG extraction may still be running
+        return;
+      }
+
       try {
         const res = await apiFetch<{ source: KbSource }>(API.ingest.getSource, { pathParams: { id: sourceId } });
-        const st = res.source.status;
-        if (st === 'complete') {
-          setResearchNote('Extracting your positioning into a profile…');
-          pollProfile(0);
-          return;
+        const src = res.source;
+
+        if (Array.isArray(src.run_steps) && src.run_steps.length > 0) {
+          setResearchSteps(src.run_steps);
+          setResearchNote('');
+        } else if (src.status === 'pending' && tries >= PENDING_HINT_AFTER) {
+          setResearchNote('Still waiting for an agent to pick this up — is the worker process running?');
         }
-        if (st === 'error') {
+
+        if (src.status === 'error') {
           setResearch('error');
-          setResearchNote(res.source.error_msg || 'Ingestion failed');
+          setResearchNote(src.error_msg || 'Ingestion failed');
           return;
         }
-        if (st === 'processing') setResearchNote('VaNi is extracting entities from your pages…');
+        if (src.status === 'complete') {
+          // Pipeline done but drafter produced nothing usable — hand over.
+          const finalP = await refreshProfile();
+          setResearch('done');
+          if (!finalP?.product_name) {
+            showToast({ message: 'Research finished, but some fields need you — fill the gaps below.', type: 'info' });
+          }
+          return;
+        }
       } catch { /* transient — keep polling */ }
+
       if (tries >= SOURCE_POLL_LIMIT) {
         setResearch('error');
         setResearchNote('Research is taking too long — the agent may be busy. Try again, or fill the profile manually.');
         return;
       }
-      pollTimer.current = setTimeout(pollSource, POLL_MS);
+      pollTimer.current = setTimeout(poll, POLL_MS);
     };
 
-    // After ingestion, KNOWLEDGE_UPDATED recalculates the profile — poll for it.
-    const pollProfile = async (profileTries: number) => {
-      const p = await refreshProfile();
-      if (p?.product_name) {
-        setResearch('done');
-        return;
-      }
-      if (profileTries >= PROFILE_POLL_LIMIT) {
-        // Ingestion worked but the profile is thin — let the human take over.
-        setResearch('done');
-        showToast({ message: 'Research finished, but some fields need you — fill the gaps below.', type: 'info' });
-        return;
-      }
-      pollTimer.current = setTimeout(() => pollProfile(profileTries + 1), POLL_MS);
-    };
-
-    pollSource();
+    poll();
   }, [domain, refreshProfile, showToast]);
 
   /* ── Step 2: edit + approve ───────────────────────────────────────── */
@@ -482,11 +514,35 @@ export default function MissionWizardPage() {
                 </VdfButton>
               </div>
 
-              {research === 'running' && (
+              {research === 'running' && researchSteps.length === 0 && (
                 <div className={s.progressNote}>
                   <span className={s.progressDot} aria-hidden />
                   {researchNote}
                 </div>
+              )}
+
+              {research === 'running' && researchSteps.length > 0 && (
+                <ol className={s.stepFeed} aria-label="VaNi's live progress">
+                  {researchSteps.map((st, i) => {
+                    const isLast = i === researchSteps.length - 1;
+                    const failed = st.status === 'error';
+                    return (
+                      <li
+                        key={`${st.step_name}-${i}`}
+                        className={`${s.stepRow} ${isLast && !failed ? s.stepActive : s.stepDone} ${failed ? s.stepFailed : ''}`}
+                      >
+                        <span className={s.stepMark} aria-hidden>
+                          {failed ? '✕' : isLast ? '' : '✓'}
+                          {isLast && !failed && <span className={s.stepSpinner} />}
+                        </span>
+                        <span className={s.stepText}>
+                          {RESEARCH_STEP_LABELS[st.step_name] ?? st.action ?? st.step_name}
+                          {st.output_summary && <span className={s.stepDetail}> — {st.output_summary}</span>}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ol>
               )}
 
               {research === 'error' && (
@@ -515,6 +571,13 @@ export default function MissionWizardPage() {
               onConfirm={() => { setConfirmed((p) => new Set(p).add('company')); setStepIndex(1); }}
               confirmLabel="Looks right — continue"
             >
+              {stillDigesting && (
+                <div className={s.digestingNote}>
+                  <span className={s.progressDot} aria-hidden />
+                  I&apos;m still digesting the rest of your site into the knowledge graph in the
+                  background — you can continue, everything downstream picks it up automatically.
+                </div>
+              )}
               <div className={s.researchSummary}>
                 <div className={s.summaryField}>
                   <span className={s.fieldLabel}>Product</span>
