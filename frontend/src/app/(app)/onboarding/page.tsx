@@ -74,6 +74,9 @@ const RESEARCH_STEP_LABELS: Record<string, string> = {
   render_page: 'JS-rendered site — opening it in a headless browser',
   render_complete: 'Rendered page read',
   draft_profile: 'Drafting your GTM profile',
+  crawl_pages: 'Exploring more pages of your site',
+  crawl_complete: 'Site crawl finished',
+  draft_profile_enriched: 'Filling profile gaps from deeper pages',
   chunk: 'Organizing what I found',
   extract: 'Deep-reading each section',
   extract_complete: 'Knowledge extracted',
@@ -87,6 +90,15 @@ const SITE_HEALTH_ADVICE: Record<string, { label: string; why: string }> = {
   og_tags: { label: 'OpenGraph tags', why: 'controls how your links preview on LinkedIn and WhatsApp' },
   json_ld: { label: 'JSON-LD structured data', why: 'makes your business quotable by AI answer engines (AEO)' },
   body_text: { label: 'Server-rendered content', why: 'your page is JS-only — crawlers and AI see an empty page' },
+};
+
+/** Findings rail: punchy teaser tags per missing signal (PLG hook for the Auditor agent). */
+const FINDING_TAGS: Record<string, { tag: string; hook: string }> = {
+  title: { tag: 'No page title', hook: 'the first signal search engines read' },
+  meta_description: { tag: 'Weak SEO', hook: 'Google has nothing to quote about you' },
+  og_tags: { tag: 'Broken link previews', hook: 'shares on LinkedIn/WhatsApp show nothing' },
+  json_ld: { tag: 'No AEO', hook: 'AI answer engines can’t cite your business' },
+  body_text: { tag: 'JS-only rendering', hook: 'non-JS crawlers see an empty page' },
 };
 
 /** Pull the health check out of the run steps: "present: …; missing: a, b; …" */
@@ -805,8 +817,11 @@ export default function MissionWizardPage() {
             </VdfApprovalCard>
           )}
 
-          {/* ── The loop: add context, agents re-run, profile enriches ── */}
-          {(research === 'done' || confirmed.has('company')) && (
+          {/* ── The loop: add context, agents re-run, profile enriches ──
+               Revisit-only (user ruling): first-run onboarding stays a
+               sprint to quick results; enrichment is a return activity
+               reached via the Mission Wizard menu item. */}
+          {onboardingStatus.data?.complete === true && (research === 'done' || confirmed.has('company')) && (
             <section className={s.enrichCard}>
               <div className={s.enrichHead}>
                 <span className={s.enrichEyebrow}>The loop · always open</span>
@@ -859,6 +874,26 @@ export default function MissionWizardPage() {
             ))}
           </div>
         </main>
+
+        {/* ── Findings rail (right): free-audit teaser tags — PLG hook ── */}
+        {parseSiteHealth(researchSteps) && (
+          <aside className={s.findings}>
+            <span className={s.findingsEyebrow}>VaNi&apos;s findings</span>
+            <span className={s.findingsTitle}>Free site audit</span>
+            <div className={s.findingsTags}>
+              {parseSiteHealth(researchSteps)!.map((key) => (
+                <div key={key} className={s.findingTag}>
+                  <span className={s.findingTagName}>{FINDING_TAGS[key]?.tag ?? key}</span>
+                  <span className={s.findingTagHook}>{FINDING_TAGS[key]?.hook ?? 'missing signal'}</span>
+                </div>
+              ))}
+            </div>
+            <p className={s.findingsTeaser}>
+              The <strong>Auditor agent</strong> tracks these, scores your visibility, and
+              guides every fix — arriving in your mission control.
+            </p>
+          </aside>
+        )}
       </div>
     </div>
   );

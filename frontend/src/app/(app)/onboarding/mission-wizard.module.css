@@ -632,3 +632,102 @@
   line-height: 1.5;
   color: var(--color-muted);
 }
+
+/* ── Findings rail (right) — free-audit teaser, PLG hook ── */
+
+.findings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--color-warning) 35%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--color-warning) 4%, transparent);
+  position: sticky;
+  top: var(--space-lg);
+  min-width: 0;
+  animation: findings-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+
+@keyframes findings-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.findingsEyebrow {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--color-warning);
+}
+
+.findingsTitle {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-fg);
+  margin-top: -6px;
+}
+
+.findingsTags {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.findingTag {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
+  background: var(--color-surface);
+}
+
+.findingTagName {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-warning);
+}
+
+.findingTagHook {
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--color-muted);
+}
+
+.findingsTeaser {
+  font-size: 0.74rem;
+  line-height: 1.55;
+  color: var(--color-muted);
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--color-warning) 22%, transparent);
+}
+
+.findingsTeaser strong {
+  color: var(--color-fg);
+}
+
+/* Widen the grid to three columns when the findings rail is present.
+   :has() lets the layout adapt without threading a prop through. */
+@media (min-width: 1100px) {
+  .layout:has(.findings) {
+    grid-template-columns: 240px 1fr 240px;
+  }
+}
+
+@media (max-width: 1099px) {
+  .findings {
+    position: static;
+    order: 3;
+    grid-column: 1 / -1;
+  }
+}

@@ -140,11 +140,15 @@ export class IngestionAgent {
       });
 
       let rawText: string;
+      // Final HTML of the primary page (rendered version when escalated) —
+      // used after the fast draft to discover more site pages to crawl.
+      let primaryHtml: string | null = null;
 
       if (source.source_type === 'url' && source.url) {
         // URL source — fetch the page server-side and strip to text.
         const fetched = await IngestionAgent.fetchUrlText(source.url);
         rawText = fetched.text;
+        primaryHtml = fetched.html;
 
         // Record the site-health check as a real step — the wizard surfaces
         // it as onboarding's first mini digital-audit. Always measured on the
@@ -169,6 +173,7 @@ export class IngestionAgent {
           const renderedHtml = await IngestionAgent.renderPageViaN8n(source.url);
           const rendered = IngestionAgent.extractFromHtml(renderedHtml);
           rawText = rendered.text;
+          primaryHtml = renderedHtml; // rendered nav carries the real links on JS sites
 
           await appendStep(pool, runId, {
             step_name:      'render_complete',
@@ -235,6 +240,85 @@ export class IngestionAgent {
             : 'no empty fields to fill',
           status:         'ok',
         });
+      }
+
+      // 3c. Site crawl — AFTER the fast homepage draft (the wizard's card is
+      // already usable), read up to 6 more same-domain pages discovered from
+      // the primary page's nav, so the knowledge graph and a second
+      // gap-filling draft pass see the whole site, not just the landing page.
+      // Per-page failures are reported in the step output, never swallowed.
+      if (source.source_type === 'url' && source.url && primaryHtml) {
+        const extraPages = IngestionAgent.discoverSitePages(primaryHtml, source.url);
+        if (extraPages.length > 0) {
+          await appendStep(pool, runId, {
+            step_name:      'crawl_pages',
+            action:         `Exploring ${extraPages.length} more pages of the site`,
+            output_summary: extraPages.map((u) => new URL(u).pathname || '/').join(', '),
+            status:         'ok',
+          });
+
+          const pageTexts: { url: string; text: string }[] = [];
+          const failures: string[] = [];
+          let rendersUsed = 0;
+          const MAX_SUBPAGE_RENDERS = 4;
+
+          for (const pageUrl of extraPages) {
+            try {
+              let pageText = (await IngestionAgent.fetchUrlText(pageUrl)).text;
+              if (pageText.length < 200 && rendersUsed < MAX_SUBPAGE_RENDERS && IngestionAgent.renderConfigured()) {
+                rendersUsed++;
+                const renderedSub = await IngestionAgent.renderPageViaN8n(pageUrl);
+                pageText = IngestionAgent.extractFromHtml(renderedSub).text;
+              }
+              if (pageText.length >= 200) {
+                pageTexts.push({ url: pageUrl, text: pageText });
+              } else {
+                failures.push(`${new URL(pageUrl).pathname} (too thin)`);
+              }
+            } catch (pageErr) {
+              const msg = pageErr instanceof Error ? pageErr.message : String(pageErr);
+              failures.push(`${new URL(pageUrl).pathname} (${msg.slice(0, 80)})`);
+            }
+          }
+
+          await appendStep(pool, runId, {
+            step_name:      'crawl_complete',
+            action:         'Site crawl finished',
+            output_summary: `${pageTexts.length}/${extraPages.length} pages read`
+              + (failures.length ? ` — skipped: ${failures.join('; ')}` : ''),
+            status:         failures.length > 0 ? 'error' : 'ok',
+          });
+
+          if (pageTexts.length > 0) {
+            const MAX_CHARS = 200_000;
+            rawText = [
+              rawText,
+              ...pageTexts.map((p) => `\n\n===== PAGE: ${p.url} =====\n${p.text}`),
+            ].join('').slice(0, MAX_CHARS);
+
+            await db.query(
+              `UPDATE gt_kb_sources SET raw_text = $raw_text, updated_at = now() WHERE id = $source_id`,
+              { source_id: sourceId, raw_text: rawText },
+            );
+
+            // Second draft pass, deeper pages FIRST so the drafter sees new
+            // material inside its input cap; fill-only-empty means it can
+            // only add what the homepage draft left blank.
+            const enrichedInput = [
+              ...pageTexts.map((p) => `===== PAGE: ${p.url} =====\n${p.text}`),
+              `===== HOMEPAGE =====\n${rawText.slice(0, 6_000)}`,
+            ].join('\n\n');
+            const draft2 = await draftProfileFromText(pool, tenantId, enrichedInput, runId);
+            await appendStep(pool, runId, {
+              step_name:      'draft_profile_enriched',
+              action:         'Filled remaining profile gaps from deeper pages',
+              output_summary: draft2.fieldsFilled.length > 0
+                ? `filled: ${draft2.fieldsFilled.join(', ')}`
+                : 'homepage draft already covered everything',
+              status:         'ok',
+            });
+          }
+        }
       }
 
       // 4. STEP: chunk
@@ -704,8 +788,57 @@ export class IngestionAgent {
     return String(data.html);
   }
 
+  /**
+   * Discover same-domain pages worth crawling from a page's HTML —
+   * scored by how likely the path is to carry positioning content
+   * (about/services/pricing/case studies…). Bounded to `limit`.
+   */
+  private static discoverSitePages(html: string, baseUrl: string, limit = 6): string[] {
+    const base = new URL(baseUrl);
+    const seen = new Set<string>();
+    const scored: { url: string; score: number }[] = [];
+
+    const CONTENT_HINTS = /about|service|product|pricing|price|plan|case|customer|stor(y|ies)|solution|team|feature|industr|how|faq|why|platform|assessment/i;
+    const SKIP_EXT = /\.(png|jpe?g|svg|gif|webp|ico|css|js|json|xml|pdf|zip|mp4|webm|woff2?)($|\?)/i;
+
+    const hrefRe = /href\s*=\s*["']([^"'#]+)["']/gi;
+    let m: RegExpExecArray | null;
+    while ((m = hrefRe.exec(html)) && scored.length < 60) {
+      const raw = m[1].trim();
+      if (!raw || raw.startsWith('mailto:') || raw.startsWith('tel:') || raw.startsWith('javascript:')) continue;
+      let resolved: URL;
+      try {
+        resolved = new URL(raw, base);
+      } catch { continue; }
+      if (resolved.hostname !== base.hostname) continue;
+      if (SKIP_EXT.test(resolved.pathname)) continue;
+
+      resolved.hash = '';
+      resolved.search = '';
+      const normalized = resolved.href.replace(/\/$/, '');
+      const baseNorm = base.href.replace(/\/$/, '');
+      if (normalized === baseNorm || seen.has(normalized)) continue;
+      seen.add(normalized);
+
+      const depth = resolved.pathname.split('/').filter(Boolean).length;
+      let score = CONTENT_HINTS.test(resolved.pathname) ? 10 : 0;
+      score -= depth; // prefer shallow pages
+      scored.push({ url: normalized, score });
+    }
+
+    return scored
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map((s) => s.url);
+  }
+
+  private static renderConfigured(): boolean {
+    return Boolean(process.env.N8N_RENDER_URL && process.env.N8N_RENDER_SECRET);
+  }
+
   private static async fetchUrlText(url: string): Promise<{
     text: string;
+    html: string;
     health: { present: string[]; missing: string[]; summary: string };
   }> {
     let response: Response;
@@ -735,7 +868,7 @@ export class IngestionAgent {
     }
 
     const html = await response.text();
-    return IngestionAgent.extractFromHtml(html);
+    return { ...IngestionAgent.extractFromHtml(html), html };
   }
 
   // ── Private: Google Drive REST calls ───────────────────────────────────
