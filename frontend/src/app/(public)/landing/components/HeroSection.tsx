@@ -62,7 +62,15 @@ export default function HeroSection() {
           See What&apos;s Inside
         </VdfButton>
       </div>
-      {/* 10s muted loop of the agent-led wizard — synthetic data (POA 1.4) */}
+      {/* 11s muted loop of the agent-led wizard — synthetic data (POA 1.4),
+          recorded from /design/wizard?record=1.
+
+          WebM only, deliberately. The previous mp4 fallback was a recording of
+          the older wizard, so keeping it would have served the superseded UI to
+          exactly the browsers that fell back to it. Safari 14.1+ and iOS 17.4+
+          both play VP8/WebM, so one asset covers current browsers; an mp4 can
+          come back as a <source> below this one whenever it is re-encoded from
+          the same capture. */}
       <div className={s.heroVideoWrap}>
         <video
           className={s.heroVideo}
@@ -71,10 +79,9 @@ export default function HeroSection() {
           loop
           playsInline
           preload="metadata"
-          aria-label="Ten-second loop of the agent-led onboarding: type a domain, the agent researches your company, drafts campaigns, finds prospects and writes a personalized email"
+          aria-label="Eleven-second loop of the agent-led onboarding: the agent shows what it learned about your company, maps your competitors, drafts campaigns, finds prospects and decision makers, and writes a personalized email — each confirmed step filing into the mission rail alongside"
         >
           <source src="/media/wizard-loop.webm" type="video/webm" />
-          <source src="/media/wizard-loop.mp4" type="video/mp4" />
         </video>
       </div>
       <StatsRibbon />
