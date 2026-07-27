@@ -292,14 +292,30 @@ export function createVaniRouter(pool: Pool): Router {
   });
 
   // ── GET /competitors/research-status ─────────────────────────────────────
-  // Latest research run for the wizard's live feed: status + real agent
-  // steps + output/error. Null run = never researched.
+  // Research run for the wizard's live feed: status + real agent steps +
+  // output/error.
+  //
+  // ?event_id= / ?run_id= scope the lookup to ONE run. This matters: a
+  // freshly-emitted event has no gt_agent_runs row until the worker picks it
+  // up (≤ poll interval). Answering with the LATEST run in that window makes
+  // a re-run instantly inherit the previous run's 'completed' status — the
+  // UI declares victory while the real run is still queued. With event_id,
+  // `run: null` correctly means "queued, not started yet".
   router.get('/competitors/research-status', async (req: Request, res: Response) => {
     const jwt = requireAuth(req, res);
     if (!jwt) return;
 
+    const eventId = typeof req.query.event_id === 'string' ? req.query.event_id : null;
+    const runId   = typeof req.query.run_id   === 'string' ? req.query.run_id   : null;
+
     try {
       const db = createTenantDb(pool, jwt.tenant_id);
+      const scope = eventId
+        ? 'AND event_id = $event_id::uuid'
+        : runId
+          ? 'AND id = $run_id::bigint'
+          : '';
+
       const result = await db.query<{
         id: string;
         status: string;
@@ -312,9 +328,14 @@ export function createVaniRouter(pool: Pool): Router {
            FROM gt_agent_runs
           WHERE tenant_id = $tenant_id
             AND agent_name = 'COMPETITOR_RESEARCH_REQUESTED'
+            ${scope}
           ORDER BY created_at DESC
           LIMIT 1`,
-        { tenant_id: jwt.tenant_id },
+        {
+          tenant_id: jwt.tenant_id,
+          ...(eventId ? { event_id: eventId } : {}),
+          ...(!eventId && runId ? { run_id: runId } : {}),
+        },
       );
       res.json({ run: result.rows[0] ?? null });
     } catch (err) {

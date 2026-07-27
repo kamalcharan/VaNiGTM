@@ -225,6 +225,7 @@ export default function MissionWizardPage() {
   const [compResearch, setCompResearch] = useState<'idle' | 'running' | 'done' | 'failed'>('idle');
   const [compSteps, setCompSteps] = useState<AgentRunStep[]>([]);
   const [compError, setCompError] = useState('');
+  const [compNote, setCompNote] = useState('');
   const compPollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Market vocabulary — the semantic clusters that frame competitor search.
@@ -443,21 +444,41 @@ export default function MissionWizardPage() {
     }
   }, [showToast]);
 
-  const pollCompetitorResearch = useCallback(() => {
+  // `target` scopes the poll to the run THIS click created. Without it the
+  // status endpoint answers with the latest run — and since the worker takes
+  // up to a poll interval to create the new run, a re-run would instantly
+  // inherit the previous run's 'completed' and the UI would declare victory
+  // while the real run was still queued.
+  const pollCompetitorResearch = useCallback((target: { event_id?: string; run_id?: string }) => {
     // One chain only — a retry must never race a prior chain's updates.
     if (compPollTimer.current) {
       clearTimeout(compPollTimer.current);
       compPollTimer.current = null;
     }
+    const queryParams: Record<string, string> = {};
+    if (target.event_id) queryParams.event_id = target.event_id;
+    else if (target.run_id) queryParams.run_id = target.run_id;
+
     let tries = 0;
     const poll = async () => {
       tries += 1;
       try {
-        const res = await apiFetch<{ run: ResearchRun | null }>(API.vani.competitorResearchStatus);
+        const res = await apiFetch<{ run: ResearchRun | null }>(
+          API.vani.competitorResearchStatus,
+          { queryParams },
+        );
         const run = res.run;
+        if (!run) {
+          // Queued: the event exists, the worker hasn't picked it up yet.
+          setCompNote(tries >= PENDING_HINT_AFTER
+            ? 'Still waiting for an agent to pick this up — is the worker process running?'
+            : 'Waiting for an agent to pick this up…');
+        }
         if (run) {
+          setCompNote('');
           if (Array.isArray(run.steps) && run.steps.length > 0) setCompSteps(run.steps);
           if (run.status === 'completed') {
+            setCompNote('');
             setCompResearch('done');
             const found = await loadCompetitors();
             showToast({
@@ -472,6 +493,7 @@ export default function MissionWizardPage() {
             // Partial results survive: verified competitors were written to
             // the KG the moment they were earned — show them under the error.
             await loadCompetitors(true);
+            setCompNote('');
             setCompResearch('failed');
             setCompError(firstLine(run.error_trace) || 'Competitor research failed');
             return;
@@ -484,6 +506,7 @@ export default function MissionWizardPage() {
 
       if (tries >= SOURCE_POLL_LIMIT) {
         setCompResearch('failed');
+        setCompNote('');
         setCompError('Research is taking too long — is the worker process running?');
         return;
       }
@@ -544,9 +567,14 @@ export default function MissionWizardPage() {
     setCompResearch('running');
     setCompSteps([]);
     setCompError('');
+    setCompNote('Handing your request to the agent…');
     try {
-      await apiFetch(API.vani.researchCompetitors, { body: { resume } });
-      pollCompetitorResearch();
+      const res = await apiFetch<{ already_running?: boolean; event_id?: string; run_id?: string }>(
+        API.vani.researchCompetitors,
+        { body: { resume } },
+      );
+      // Follow exactly the run this call produced (or the one already going).
+      pollCompetitorResearch({ event_id: res.event_id, run_id: res.run_id });
     } catch (err) {
       setCompResearch('failed');
       setCompError((err as ApiError).message || 'Could not start competitor research');
@@ -568,7 +596,7 @@ export default function MissionWizardPage() {
         if (run && (run.status === 'queued' || run.status === 'running')) {
           setCompResearch('running');
           if (Array.isArray(run.steps) && run.steps.length > 0) setCompSteps(run.steps);
-          pollCompetitorResearch();
+          pollCompetitorResearch({ run_id: run.id });
           return;
         }
         if (run?.status === 'failed' && existing.length === 0) {
@@ -919,7 +947,7 @@ export default function MissionWizardPage() {
               {compResearch === 'running' ? (
                 <div className={s.researchSummary}>
                   <VdfKgLoader
-                    message="VaNi is researching your competitive landscape"
+                    message={compNote || 'VaNi is researching your competitive landscape'}
                     hint="Framing queries → searching the web → reading each candidate's real site → mapping your knowledge graph"
                   />
                   {compSteps.length > 0 && renderCompFeed(true)}

@@ -246,6 +246,21 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      failed STEP, never a failed profile recalc (rule 12).
    - Routes: `GET /profile/clusters`, `POST /profile/clusters/approve`.
    - NOT yet live-tested (needs migration 192 + a fresh run).
+1f. **BUG FIXED — "Research again" appeared to do nothing (2026-07-27).**
+   User clicked Research again and the card closed instantly. Cause:
+   `GET /vani/competitors/research-status` returned the LATEST run for
+   the tenant. A freshly-emitted event has no gt_agent_runs row until
+   the worker polls (≤3s), so the first status poll read the PREVIOUS,
+   completed run → UI jumped to 'done' with a "Research done — N
+   competitors" toast while the real run was still queued and then ran
+   invisibly. Fix: the status endpoint accepts `?event_id=` / `?run_id=`
+   and scopes to that one run; POST already returns event_id (and run_id
+   when a run is already active), so the wizard follows exactly the run
+   its click produced. `run: null` now correctly means "queued", shown
+   in the loader as "Waiting for an agent to pick this up…" escalating
+   to the worker-not-running hint after ~24s. The resume-on-entry path
+   polls by run_id. Lesson: never resolve "did my request start?" by
+   reading the newest row — bind to the identifier the request returned.
 1c. **Marketing playbooks captured (2026-07-27).** The user shared their
    Claude marketing plugin's full skill playbooks (campaign-plan,
    email-sequence, competitive-brief, brand-review, performance-report,
