@@ -282,6 +282,15 @@ export default function MissionWizardPage() {
         // Existing profile? → research is done. Approved profile means the
         // whole mission was configured (flow order guarantees competitors
         // were ruled on before approval).
+        //
+        // RESTORING THE MISSION, not just the profile. The wizard used to
+        // rebuild itself from gt_tenant_profile alone, so everything else the
+        // agents produced evaporated on reload: competitors came back empty
+        // (and the rail then ASSERTED "no named competitors"), the research
+        // run's steps were lost (so the site-health findings rail, the inline
+        // health line and the error card all went dark), and the market
+        // vocabulary only loaded if you happened to land on the ICP step.
+        // Three symptoms, one cause — restore all of it here.
         try {
           const res = await apiFetch<{ profile: GtmProfile }>(API.gtmProfile.get);
           if (cancelled) return;
@@ -290,14 +299,15 @@ export default function MissionWizardPage() {
             setResearch('done');
             setConfirmed((prev) => new Set(prev).add('company'));
             setStepIndex(1);
+            // Site-health findings belong to step 1, so they come back as soon
+            // as we know step 1 ran — not only once the profile is approved.
+            void restoreResearchSteps();
           }
           if (res.profile.approved_at) {
             setConfirmed((prev) => new Set(prev).add('competitors').add('icp'));
             setStepIndex(2);
-            // Competitors were ruled on before approval, so mission memory has
-            // to show them. Nothing else on this path fetches them — without
-            // this the rail rendered a confirmed step as "no competitors".
             void loadCompetitors(true);
+            void loadClusters();
           }
         } catch {
           // 404 PROFILE_NOT_FOUND — fresh tenant, start at step 1
@@ -307,7 +317,8 @@ export default function MissionWizardPage() {
       }
     })();
     return () => { cancelled = true; };
-    // boot runs once; loadCompetitors is read from the first render's scope
+    // boot runs once; the restore helpers are stable useCallbacks read from
+    // the first render's scope (declared below — the effect body runs after)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -317,6 +328,33 @@ export default function MissionWizardPage() {
   }, []);
 
   /* ── Step 1: research ─────────────────────────────────────────────── */
+
+  /* Pull the research run's steps back into state.
+     `researchSteps` is what every site-health surface reads — the findings
+     rail, the inline health line on the confirm card, and the error card. It
+     was only ever populated by the live poll during step 1, so a reload or a
+     return visit left all three dark for a tenant that HAD been audited.
+     Two calls on purpose: the list query omits `steps` (JSONB, and there can
+     be many sources), so we take the newest source and fetch just that one. */
+  const restoreResearchSteps = useCallback(async () => {
+    try {
+      const list = await apiFetch<{ sources: { id: string; source_type: string }[] }>(
+        API.ingest.listSources,
+      );
+      const newest = list.sources?.find((x) => x.source_type === 'url') ?? list.sources?.[0];
+      if (!newest) return;
+
+      const res = await apiFetch<{ source: KbSource }>(
+        API.ingest.getSource, { pathParams: { id: newest.id } },
+      );
+      if (Array.isArray(res.source.run_steps) && res.source.run_steps.length > 0) {
+        setResearchSteps(res.source.run_steps);
+      }
+    } catch {
+      // Best-effort rehydration: the wizard is fully usable without the
+      // findings rail, and a toast here would fire on every page load.
+    }
+  }, []);
 
   const refreshProfile = useCallback(async (): Promise<GtmProfile | null> => {
     try {
@@ -350,6 +388,11 @@ export default function MissionWizardPage() {
       if (p?.product_name) {
         setResearch('done');
         setStillDigesting(true); // KG extraction may still be running
+        // This exit returns BEFORE the source fetch below, so on a fast run —
+        // profile ready on the first tick — the run steps would never be read
+        // and every site-health surface would stay dark on a brand-new tenant.
+        // A slow LLM hid this by guaranteeing several step-fetching ticks first.
+        void restoreResearchSteps();
         showToast({ message: 'Research ready — review what VaNi drafted', type: 'success' });
         return;
       }
@@ -390,7 +433,7 @@ export default function MissionWizardPage() {
     };
 
     poll();
-  }, [refreshProfile, showToast]);
+  }, [refreshProfile, restoreResearchSteps, showToast]);
 
   const startResearch = useCallback(async () => {
     const input = domain.trim();

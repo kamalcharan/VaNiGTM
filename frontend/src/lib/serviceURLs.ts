@@ -251,11 +251,17 @@ export const API = {
       auth: true,
       description: 'Submit a website URL for ingestion into the knowledge graph',
     },
+    listSources: {
+      method: 'GET',
+      path: '/api/v1/ingest/sources',
+      auth: true,
+      description: 'List knowledge sources, newest first (no run steps — fetch getSource for those)',
+    },
     getSource: {
       method: 'GET',
       path: '/api/v1/ingest/sources/:id',
       auth: true,
-      description: 'Get a single ingestion source with its processing status',
+      description: 'Get a single ingestion source with its processing status and agent run steps',
     },
     submitText: {
       method: 'POST',
