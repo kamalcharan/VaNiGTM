@@ -193,6 +193,22 @@ const AUTO_CONFIRM_MS = 7000;
 /** Length of the card's leave animation — keep in sync with mission-wizard.module.css. */
 const HANDOFF_MS = 420;
 
+/** Rotating status copy for multi-minute agent phases. Every line describes
+    work the agent genuinely does — never a fake progress claim. */
+const RESEARCH_ROTATION = [
+  'Reading your pages the way a first-time buyer would',
+  'Pulling out what you sell, who for, and what it fixes',
+  'Noting proof — case studies, numbers, differentiators',
+  'Writing it all into your knowledge graph',
+];
+
+const COMPETITOR_ROTATION = [
+  'Framing the search from the words your buyers use',
+  'Sweeping the live web for who occupies your space',
+  'Opening each candidate’s real site to check they belong',
+  'Mapping the survivors into your knowledge graph',
+];
+
 const POLL_MS = 3000;
 const SOURCE_POLL_LIMIT = 200;  // ~10 min hard ceiling — profile-first exit normally fires long before
 const PENDING_HINT_AFTER = 8;   // ~24s still 'pending' → surface the "worker running?" hint
@@ -529,6 +545,16 @@ export default function MissionWizardPage() {
      which is the whole visual grammar of "this agent is done, the next one
      is taking over". Reduced motion skips straight to the swap. */
   const [handingOff, setHandingOff] = useState(false);
+
+  // Recording mode (?record=1) — the landing loop plays the SAME real flow
+  // with no countdown chrome and a tighter dwell. Read from location rather
+  // than useSearchParams so the page needs no Suspense boundary.
+  const [recording, setRecording] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setRecording(new URLSearchParams(window.location.search).get('record') === '1');
+  }, []);
+  const autoMs = recording ? 2200 : AUTO_CONFIRM_MS;
 
   const handoff = useCallback((stepId: string, nextIndex: number) => {
     const reduced = typeof window !== 'undefined'
@@ -879,10 +905,11 @@ export default function MissionWizardPage() {
               </div>
 
               {research === 'running' && researchSteps.length === 0 && (
-                <div className={s.progressNote}>
-                  <span className={s.progressDot} aria-hidden />
-                  {researchNote}
-                </div>
+                <VdfKgLoader
+                  subject={domain.trim() || undefined}
+                  message={researchNote || 'Reading your website'}
+                  rotating={RESEARCH_ROTATION}
+                />
               )}
 
               {research === 'running' && researchSteps.length > 0 && (
@@ -975,7 +1002,8 @@ export default function MissionWizardPage() {
               title="Here's what I learned"
               subtitle="Rough edges are normal — you'll refine everything in the next step."
               status={confirmed.has('company') ? 'confirmed' : 'draft'}
-              autoConfirmMs={AUTO_CONFIRM_MS}
+              autoConfirmMs={autoMs}
+              autoConfirmSilent={recording}
               onConfirm={() => { handoff('company', 1); }}
               confirmLabel="Looks right — continue"
             >
@@ -1034,7 +1062,8 @@ export default function MissionWizardPage() {
               title="Who shapes your buyers' expectations?"
               subtitle="I research your category across the live web, verify each candidate against their real site, and map them here. Remove anyone who doesn't belong — I'll position against the rest in your stories and campaigns."
               status={confirmed.has('competitors') ? 'confirmed' : 'draft'}
-              autoConfirmMs={compResearch === 'running' || compResearch === 'failed' ? undefined : AUTO_CONFIRM_MS}
+              autoConfirmMs={compResearch === 'running' || compResearch === 'failed' ? undefined : autoMs}
+              autoConfirmSilent={recording}
               onConfirm={compResearch === 'running' ? undefined : confirmCompetitors}
               confirmLabel={keptCount > 0
                 ? `Confirm ${keptCount} competitor${keptCount === 1 ? '' : 's'}`
@@ -1044,8 +1073,9 @@ export default function MissionWizardPage() {
               {compResearch === 'running' ? (
                 <div className={s.researchSummary}>
                   <VdfKgLoader
-                    message={compNote || 'VaNi is researching your competitive landscape'}
-                    hint="Framing queries → searching the web → reading each candidate's real site → mapping your knowledge graph"
+                    subject={profile?.product_name || domain.trim() || undefined}
+                    message={compNote || 'Researching your competitive landscape'}
+                    rotating={COMPETITOR_ROTATION}
                   />
                   {compSteps.length > 0 && renderCompFeed(true)}
                   {/* Verified competitors land in the KG incrementally — show

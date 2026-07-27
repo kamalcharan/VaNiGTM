@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import s from './VdfKgLoader.module.css';
 
 export interface VdfKgLoaderProps {
@@ -5,8 +8,24 @@ export interface VdfKgLoaderProps {
   message?: string;
   /** Secondary hint */
   hint?: string;
+  /**
+   * Who the work is for — rendered prominently ("Building knowledge for
+   * vikuna.io"). Agent work is slow; naming the subject makes the wait feel
+   * like watching YOUR thing get built rather than a spinner.
+   */
+  subject?: string;
+  /**
+   * Lines cycled every ~4s beneath the message. Real agent phases can sit
+   * silent for a minute at a time; rotating copy keeps the surface alive
+   * without ever claiming progress that hasn't happened.
+   */
+  rotating?: string[];
+  /** Seconds after which a "this one is deep" reassurance appears. 0 = off. */
+  patienceAfter?: number;
   className?: string;
 }
+
+const ROTATE_MS = 4200;
 
 // A small fixed constellation — nodes pulse awake in sequence, edges draw
 // between them. Deterministic layout (no randomness) so SSR/CSR match.
@@ -36,7 +55,31 @@ const EDGES: { from: number; to: number; delay: number }[] = [
  * the tenant's graph (deck building, enrichment). Tells the truth about
  * what's happening instead of a generic spinner.
  */
-export function VdfKgLoader({ message = 'Reading your knowledge graph', hint, className }: VdfKgLoaderProps) {
+export function VdfKgLoader({
+  message = 'Reading your knowledge graph',
+  hint,
+  subject,
+  rotating,
+  patienceAfter = 45,
+  className,
+}: VdfKgLoaderProps) {
+  const [rotIndex, setRotIndex] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!rotating || rotating.length < 2) return;
+    const id = setInterval(() => setRotIndex((i) => (i + 1) % rotating.length), ROTATE_MS);
+    return () => clearInterval(id);
+  }, [rotating]);
+
+  useEffect(() => {
+    if (!patienceAfter) return;
+    const id = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(id);
+  }, [patienceAfter]);
+
+  const patient = patienceAfter > 0 && elapsed >= patienceAfter;
+
   return (
     <div className={`${s.wrap} ${className || ''}`} role="status" aria-label={message}>
       <svg className={s.graph} viewBox="0 0 264 136" aria-hidden>
@@ -61,11 +104,30 @@ export function VdfKgLoader({ message = 'Reading your knowledge graph', hint, cl
           />
         ))}
       </svg>
+      {subject && (
+        <div className={s.subject}>
+          <span className={s.subjectLead}>Building knowledge for</span>
+          <span className={s.subjectName}>{subject}</span>
+        </div>
+      )}
+
       <div className={s.message}>
         {message}
         <span className={s.dots} aria-hidden />
       </div>
+
+      {rotating && rotating.length > 0 && (
+        <div key={rotIndex} className={s.rotating}>{rotating[rotIndex]}</div>
+      )}
+
       {hint && <div className={s.hint}>{hint}</div>}
+
+      {patient && (
+        <div className={s.patience}>
+          This one runs deep — a few minutes is normal. Everything found so far is
+          already saved, so nothing is lost if you step away.
+        </div>
+      )}
     </div>
   );
 }

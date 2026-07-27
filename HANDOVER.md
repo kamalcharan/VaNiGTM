@@ -104,6 +104,24 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      one arrives — the visual grammar of one agent finishing and the next
      taking over. Reduced motion swaps instantly. Keep `HANDOFF_MS` in
      page.tsx in sync with the keyframe duration in the CSS module.
+   - ✅ **1.7 DONE (2026-07-27) — engaging waits + recording mode.**
+     User accepted the LLM is slow and asked to make the WAIT engaging,
+     and to run the landing animation WITHOUT the hold timer.
+     - `VdfKgLoader` gained `subject` ("Building knowledge for
+       **vikuna.io**" — naming the tenant makes it *your* thing being
+       built, not a spinner), `rotating` (status lines cycling every
+       4.2s so a silent minute never looks frozen — every line describes
+       work the agent genuinely does, never a fake progress claim), and
+       `patienceAfter` (default 45s → "This one runs deep — a few
+       minutes is normal. Everything found so far is already saved.",
+       which is TRUE thanks to incremental KG writes + checkpoints).
+     - Wizard step 1 and the competitor phase both use it, named from
+       the domain / product_name, with their own rotation copy
+       (RESEARCH_ROTATION / COMPETITOR_ROTATION in page.tsx).
+     - **Recording mode: `/onboarding?record=1`** — the SAME real flow
+       with no countdown chrome (`VdfApprovalCard.autoConfirmSilent`)
+       and a 2.2s dwell instead of 7s. This is what the landing loop is
+       recorded from; no separate demo path to drift out of sync.
    - ⚠️ **This flow is what the landing video records** (item b below).
      It only reads as continuous if steps are FAST — on the 4+ minute VPS
      LLM the animation becomes card → dead loader → card. Use the Haiku

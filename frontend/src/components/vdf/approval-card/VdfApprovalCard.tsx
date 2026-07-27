@@ -24,6 +24,12 @@ export interface VdfApprovalCardProps {
    * once you touch your data, nothing commits it but you.
    */
   autoConfirmMs?: number;
+  /**
+   * Run the countdown but render no countdown chrome (no "· 5", no Hold).
+   * For recording the landing loop: the same real flow, minus UI that only
+   * exists to give a human a chance to intervene.
+   */
+  autoConfirmSilent?: boolean;
   className?: string;
 }
 
@@ -46,6 +52,7 @@ export function VdfApprovalCard({
   editLabel = 'Edit',
   loading,
   autoConfirmMs,
+  autoConfirmSilent,
   className,
 }: VdfApprovalCardProps) {
   const confirmed = status === 'confirmed';
@@ -97,6 +104,7 @@ export function VdfApprovalCard({
   };
 
   const counting = remaining !== null && remaining > 0;
+  const showCount = counting && !autoConfirmSilent;
 
   return (
     <section
@@ -127,10 +135,10 @@ export function VdfApprovalCard({
           )}
           {onConfirm && (
             <VdfButton variant="primary" onClick={onConfirm} loading={loading}>
-              {confirmLabel}{counting ? ` · ${remaining}` : ''}
+              {confirmLabel}{showCount ? ` · ${remaining}` : ''}
             </VdfButton>
           )}
-          {counting && (
+          {showCount && (
             <button type="button" className={s.holdBtn} onClick={cancelAuto}>
               Hold — I want to change something
             </button>
