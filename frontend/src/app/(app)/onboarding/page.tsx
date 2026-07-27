@@ -70,11 +70,30 @@ interface KbSource {
 const RESEARCH_STEP_LABELS: Record<string, string> = {
   parse: 'Connected — reading your website',
   parse_complete: 'Website read',
+  site_health: 'Website health check',
   draft_profile: 'Drafting your GTM profile',
   chunk: 'Organizing what I found',
   extract: 'Deep-reading each section',
   extract_complete: 'Knowledge extracted',
   complete: 'Saved to your knowledge graph',
+}
+
+/** Site-health signals → what's at stake (SEO/AEO/CRO framing). */
+const SITE_HEALTH_ADVICE: Record<string, { label: string; why: string }> = {
+  title: { label: '<title> tag', why: 'the first thing search engines and AI read about you' },
+  meta_description: { label: 'Meta description', why: 'the summary Google and AI answer engines quote in results' },
+  og_tags: { label: 'OpenGraph tags', why: 'controls how your links preview on LinkedIn and WhatsApp' },
+  json_ld: { label: 'JSON-LD structured data', why: 'makes your business quotable by AI answer engines (AEO)' },
+  body_text: { label: 'Server-rendered content', why: 'your page is JS-only — crawlers and AI see an empty page' },
+};
+
+/** Pull the health check out of the run steps: "present: …; missing: a, b; …" */
+function parseSiteHealth(steps: AgentRunStep[]): string[] | null {
+  const step = steps.find((st) => st.step_name === 'site_health');
+  const m = step?.output_summary?.match(/missing:\s*([^;]+)/);
+  if (!m) return null;
+  const missing = m[1].split(',').map((x) => x.trim()).filter((x) => x && x !== 'none');
+  return missing.length > 0 ? missing : null;
 }
 
 interface DeckSummary {
@@ -571,6 +590,32 @@ export default function MissionWizardPage() {
                 </ol>
               )}
 
+              {research === 'error' && parseSiteHealth(researchSteps) && (
+                <div className={s.healthCard}>
+                  <span className={s.healthEyebrow}>VaNi&apos;s first finding · website health</span>
+                  <p className={s.healthLede}>
+                    I connected to your site, but it ships almost nothing a crawler can read.
+                    This doesn&apos;t just block me — it makes you invisible to Google and to AI
+                    answer engines your buyers ask. Worth fixing regardless:
+                  </p>
+                  <ul className={s.healthList}>
+                    {parseSiteHealth(researchSteps)!.map((key) => (
+                      <li key={key} className={s.healthItem}>
+                        <span className={s.healthMark} aria-hidden>✗</span>
+                        <span>
+                          <strong>{SITE_HEALTH_ADVICE[key]?.label ?? key}</strong>
+                          {' — '}{SITE_HEALTH_ADVICE[key]?.why ?? 'missing'}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className={s.healthFoot}>
+                    The Auditor agent will track this once it ships. For now, add these to your
+                    site when you can — and let&apos;s keep your onboarding moving below.
+                  </p>
+                </div>
+              )}
+
               {research === 'error' && (
                 <div className={s.errorNote}>
                   <p>{researchNote}</p>
@@ -614,6 +659,14 @@ export default function MissionWizardPage() {
               onConfirm={() => { setConfirmed((p) => new Set(p).add('company')); setStepIndex(1); }}
               confirmLabel="Looks right — continue"
             >
+              {parseSiteHealth(researchSteps) && (
+                <div className={s.healthInline}>
+                  Heads-up: your site is missing{' '}
+                  {parseSiteHealth(researchSteps)!.map((k) => SITE_HEALTH_ADVICE[k]?.label ?? k).join(', ')}
+                  {' '}— that weakens SEO and AI-answer-engine visibility. The Auditor agent will
+                  track this; fixing it also makes my research sharper.
+                </div>
+              )}
               {stillDigesting && (
                 <div className={s.digestingNote}>
                   <span className={s.progressDot} aria-hidden />

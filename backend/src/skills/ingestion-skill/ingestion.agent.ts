@@ -143,7 +143,26 @@ export class IngestionAgent {
 
       if (source.source_type === 'url' && source.url) {
         // URL source — fetch the page server-side and strip to text.
-        rawText = await IngestionAgent.fetchUrlText(source.url);
+        const fetched = await IngestionAgent.fetchUrlText(source.url);
+        rawText = fetched.text;
+
+        // Record the site-health check as a real step — the wizard surfaces
+        // it as onboarding's first mini digital-audit (missing meta/OG/JSON-LD
+        // hurts SEO + AEO, not just our crawler).
+        await appendStep(pool, runId, {
+          step_name:      'site_health',
+          action:         'Checked how crawlable the site is',
+          output_summary: fetched.health.summary,
+          status:         fetched.health.missing.length === 0 ? 'ok' : 'error',
+        });
+
+        if (rawText.length < 200) {
+          throw new Error(
+            `URL_EMPTY_CONTENT: ${source.url} yielded only ${rawText.length} chars of readable text ` +
+            `(missing: ${fetched.health.missing.join(', ') || 'nothing'}). ` +
+            `The page renders in the browser — paste your website copy instead.`,
+          );
+        }
       } else if (source.raw_text && !source.gdrive_file_id) {
         // Pre-supplied text (pasted context via POST /ingest/text) — the
         // text IS the source; nothing to fetch or parse.
@@ -560,7 +579,35 @@ export class IngestionAgent {
     return out.join('\n');
   }
 
-  private static async fetchUrlText(url: string): Promise<string> {
+  /**
+   * Site-health signals — which crawlability/AEO basics the page ships.
+   * Doubles as the first Digital Audit finding, surfaced at onboarding:
+   * a site invisible to VaNi's crawler is invisible to AI answer engines.
+   */
+  private static analyzeSiteHealth(html: string, bodyChars: number): {
+    present: string[]; missing: string[]; summary: string;
+  } {
+    const checks: [key: string, ok: boolean][] = [
+      ['title', /<title[^>]*>\s*\S[\s\S]*?<\/title>/i.test(html)],
+      ['meta_description', /<meta\s[^>]*(?:name|property)\s*=\s*["']description["'][^>]*content\s*=\s*["'][^"']+["']/i.test(html)
+        || /<meta\s[^>]*content\s*=\s*["'][^"']+["'][^>]*(?:name|property)\s*=\s*["']description["']/i.test(html)],
+      ['og_tags', /<meta\s[^>]*property\s*=\s*["']og:/i.test(html)],
+      ['json_ld', /<script[^>]*type\s*=\s*["']application\/ld\+json["']/i.test(html)],
+      ['body_text', bodyChars >= 200],
+    ];
+    const present = checks.filter(([, ok]) => ok).map(([k]) => k);
+    const missing = checks.filter(([, ok]) => !ok).map(([k]) => k);
+    return {
+      present,
+      missing,
+      summary: `present: ${present.join(', ') || 'none'}; missing: ${missing.join(', ') || 'none'}; body: ${bodyChars} chars`,
+    };
+  }
+
+  private static async fetchUrlText(url: string): Promise<{
+    text: string;
+    health: { present: string[]; missing: string[]; summary: string };
+  }> {
     let response: Response;
     try {
       response = await fetch(url, {
@@ -613,16 +660,13 @@ export class IngestionAgent {
       .trim();
 
     const text = [metaText, bodyText, minedText].filter(Boolean).join('\n\n').trim();
-
-    if (text.length < 200) {
-      throw new Error(
-        `URL_EMPTY_CONTENT: ${url} yielded only ${text.length} chars of readable text — ` +
-        `the page renders in the browser. Paste your website copy instead.`,
-      );
-    }
+    const health = IngestionAgent.analyzeSiteHealth(html, bodyText.length);
 
     const MAX_CHARS = 200_000;
-    return text.length > MAX_CHARS ? text.slice(0, MAX_CHARS) : text;
+    return {
+      text: text.length > MAX_CHARS ? text.slice(0, MAX_CHARS) : text,
+      health,
+    };
   }
 
   // ── Private: Google Drive REST calls ───────────────────────────────────
