@@ -1,10 +1,132 @@
-# HANDOVER — Vikuna GTM (Phase 4: Storyteller + Frontend Rebrand)
+# HANDOVER — Vikuna GTM
 
 > **This doc is the sole continuity between sessions.** The next session starts
-> with zero memory — read this first.
-> **Current state (2026-07-25):** everything is merged to `main` (tip = PR #9
-> merge). Work on a fresh branch off main.
+> with zero memory — read this first, then `CLAUDE.md`.
+> **Current state (2026-07-27):** work lives on branch
+> **`claude/handover-docs-readiness-oqwyhl`** (NOT merged to main, no PR
+> opened — the user has not asked for one). Everything below is pushed.
 > **Supersedes** the earlier Phase 3 handover (that content is in git history).
+
+---
+
+# 🔴 START HERE — the immediate next task
+
+## 1. Rebuild the wizard's mission-memory rail (Phase 1 close-out)
+
+**Status: agreed with the user, NOT started. This is the next task.**
+
+### The mistake to not repeat
+Three attempts at this failed because **I never actually looked at
+`documents/ux-references/agent-wizard-flow.pdf`** — `pdftoppm` is NOT
+installed in this container and the install fails, so I designed from the
+README's *prose description* instead and got it wrong three times. The user
+finally said: *"you are still showing wizard steps but with couple of lines
+of data … you are not coming out of the thinking shell."* They were right.
+
+**HOW TO ACTUALLY SEE IT (do this first):**
+```bash
+pip install --quiet pymupdf
+python3 -c "
+import fitz, os
+d = fitz.open('documents/ux-references/agent-wizard-flow.pdf')   # 8 pages
+os.makedirs('/tmp/pdf', exist_ok=True)
+for i in range(d.page_count):
+    d[i].get_pixmap(dpi=100).save(f'/tmp/pdf/p{i+1}.png')
+"
+```
+Then Read the PNGs. **Look at pages 1 → 2 → 3 in order** — the pattern is
+only legible as a sequence. (Renders are internal-reference only: per
+`documents/ux-references/README.md` nothing from that folder may ship as an
+asset, and the renders must NOT be committed.)
+
+### What the reference actually does (verified by looking, 2026-07-27)
+1. **The card MOVES to the rail at FULL FIDELITY — it is not summarised.**
+   Page 2's left rail holds the complete ContractNest card (logo, name,
+   domain, the whole description paragraph, the "IN Hyderabad" chip) — the
+   exact card that was centre-stage on page 1, just narrower. Page 3 adds
+   step 2's full competitor set: 8 chips with favicons + external-link
+   icons, "COMPETITORS 14 ⚙", "+6 more". Real, interactive content.
+2. **Step labels are hairline mono separators**, not headings —
+   `√ step 1 · Research your company` is a thin divider ABOVE each card.
+   The card is the content; the label is just a rule between cards.
+3. **The top rail is nearly empty** — plain numbered circles joined by a
+   line, and ONLY the active step gets a labelled pill. This is the actual
+   root of the duplication the user reported: our top rail shows all six
+   labels permanently, so there is something to duplicate.
+4. Each rail card keeps a collapse chevron and stays interactive.
+
+### What is built today (the gap)
+`VdfMissionRail` renders marker + step title + a one-line digest + an
+optional expandable summary. That is a **table of contents**, not mission
+memory. The handoff animation (below) therefore flies a rich card into a
+slot that shows two lines of text — incoherent.
+
+### The fix (agreed shape, not yet built)
+- Rail becomes a **stack of the actual step cards in a narrow variant** —
+  same component rendered `variant="rail"`, not a digest. Likely a new
+  `VdfMissionMemory` (or a rail variant on `VdfApprovalCard`).
+- Step chips shed their labels except the active one.
+- Keep `useMissionHandoff` — the flight already lands on
+  `[data-mission-step="<id>"]`; it only becomes coherent once the landing
+  zone is the card itself.
+- Scope agreed with the user: **wizard shell only**; step CONTENT is reused
+  untouched.
+
+## 2. Pending USER actions (blocking live verification)
+- ⚠️ **Apply migrations 191 + 192** — `cd backend && npm run db:migrate`.
+  Neither is confirmed applied. Without 192 the market-vocabulary tags never
+  appear and research silently uses the weaker profile-guess path (it says
+  so in the feed).
+- ⚠️ **`ANTHROPIC_API_KEY` in `backend/.env`** — enables the Claude failover.
+  Not confirmed set. Hard-restart API + worker after (tsx watch reloads
+  code, not env).
+- ⚠️ **VPS LLM is too slow**: `LLM_PRIMARY_TIMEOUT_MS` has been **280000 the
+  whole time** and calls to `https://llm.dristiq.com` STILL time out — single
+  qwen calls exceed 4.6 minutes. Unknown: CPU vs GPU (`curl
+  https://llm.dristiq.com/api/ps` never provided). The failover makes this
+  survivable; it does not make it fast. **Use the Haiku path for demos and
+  for recording the landing loop.**
+- **No end-to-end journey has EVER been verified through the UI.** All the
+  code for journey #1 exists (register → crawl → vocabulary → competitors →
+  ideal customer → mission control). Proving it is the shortest path to a
+  real DoD.
+
+## 3. Phase 1 remaining (everything else is done)
+- a) **User ruling:** make neural-ops the product default theme (one line —
+  `NEXT_PUBLIC_DEFAULT_THEME` or the provider default).
+- b) ⏸️ **Explainer video re-record — PARKED, OWNED BY THE USER.** They are
+  visualising a different approach and will say when ready. **Do NOT
+  re-record unprompted.** When it happens, record from
+  `/design/wizard` (plays itself, synthetic data, no backend) or
+  `/onboarding?record=1` (real flow, no countdown chrome).
+- c) **"Wow" sign-off** — the DoD gate itself.
+
+## 4. Where the POA actually stands (assessed 2026-07-27)
+
+| Phase | State | Detail |
+|---|---|---|
+| 0 — Legacy removal | ✅ complete | |
+| 1 — UX Foundation | ✅ build done | only the 3 user items above remain |
+| 2 — Data modelling | ⚠️ ~20%, **out of order** | see the warning below |
+| 3 — Skills (1→8) | ⚠️ 2 of 8 | ✅ profile-skill v2, ✅ research-skill. ❌ audit, prospect, outreach, feedback, creative. story-skill is v1 only |
+| 4 — Stitching | ⚠️ 1 of 5 journeys | onboarding built in code; **E2E acceptance never achieved** |
+| 5 — Hardening | ❌ not started | RLS cutover still dormant — required pre-production |
+
+> ⚠️ **The finding worth acting on.** We have been building Phase 3 while
+> Phase 2 is barely started — the exact failure mode Phase 2 ("one coherent
+> modelling pass") was written to prevent. Schema has arrived piecemeal per
+> skill: migration 191 (checkpoints), 192 (semantic clusters — an explicit
+> Phase 2 item pulled forward, deliberately forward-compatible). Still
+> unmodelled: prospect staging, the universal connector registry, story
+> artifacts (campaign × persona × stage), the whole audit schema (runs, lens
+> scores, AEO visibility history), creative assets, orchestrator locks. No
+> ERD. The `ki_` → `gt_` rename is still pending.
+>
+> **Recommendation given to the user:** prove journey #1 end-to-end first
+> (shortest path to a real DoD, and the code already exists), then **stop and
+> do Phase 2 properly** before skill #3 — audit-skill and prospect-skill each
+> need their own schema, and piecemeal migrations will cost rework for the
+> rest of the build.
 
 ---
 
@@ -18,7 +140,33 @@ vn_ + gt_ + 9 kept ki_ import/pulse tables (rename in POA Phase 2).
 Read-only DB MCP connector prepared (.mcp.json + docs/mcp-db-setup.md) —
 VPS-side setup pending (user runs VPS steps + claude.ai env settings).
 
-## ▶ NEXT SESSION — start here
+## Session log — 2026-07-27 (branch `claude/handover-docs-readiness-oqwyhl`)
+
+Newest first. All pushed. Detail for each is in the phase sections below.
+
+| Commit | What |
+|---|---|
+| `a48df22` | Handoff extracted to `hooks/useMissionHandoff.ts`; **`/design/wizard` now plays itself** (autoplay + replay, synthetic data, no backend) — the fast way to review the motion |
+| `da4fe6b` | Handoff became a **measured FLIP** (was a fade that read as "card vanished") |
+| `24534fb` | Engaging long waits: `VdfKgLoader` `subject`/`rotating`/`patienceAfter`; **recording mode `/onboarding?record=1`** |
+| `4fe84f7` | Wizard flow = agent handoff; **auto-advance with a 7s interruptible countdown** (`VdfApprovalCard.autoConfirmMs`) |
+| `de35611` | **Terminology pass** — ICP → *Ideal Customer*, Pulses → *Follow-ups*, AEO spelled out (prospect feedback) |
+| `8b62c56` | Value Proposition Canvas **parked to the loop** with feasibility mapped |
+| `ecaca3a` | Claude **marketing playbooks** captured as agent blueprints |
+| `bf7dbeb` | **Semantic clusters** (migration 192) — market vocabulary now frames competitor search |
+| `360bc35` | Fix: *"Research again"* looked like a no-op while the run proceeded invisibly |
+| `57d41e9` | Competitor **ignore list** + wrong-domain guard |
+| `0b273f3` | **Claude API failover** for VPS LLM transport failures |
+| `857804e` | **Resume-from-failure** — checkpoints (migration 191) + incremental KG writes |
+| `272c170` | GTM pipeline v2 — competitors step in, Storyteller out to `/dashboard/storyteller` |
+
+**Standing constraints reaffirmed this session:** no PR without an explicit
+ask · migrations are manual and discussed first · CLAUDE.md rule 12 (no
+silent fallbacks — the LLM failover is a documented, approved exception) ·
+no secrets in the repo (the user pasted n8n/browserless credentials in chat
+earlier; rotation was advised).
+
+## Phase 0 / Phase 1 detail (history)
 1. ~~**Deck-viewer gap**~~ ✅ CLOSED (2026-07-25): the public deck viewer was
    confirmed missing from main and rebuilt —
    `frontend/src/app/(public)/deck/[token]/page.tsx` + module CSS, plus
