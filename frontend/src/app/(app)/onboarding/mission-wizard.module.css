@@ -966,19 +966,18 @@ textarea.input {
   background: color-mix(in srgb, var(--color-surface) 60%, transparent);
 }
 
-/* ── The handoff: a finished card visibly moves to mission memory ──
-   Not decoration — this is the visual grammar of one agent finishing and
-   the next taking over, and it is what the landing loop records. Keep
-   HANDOFF_MS in page.tsx in sync with the duration below. */
+/* ── The handoff: a finished card FLIES into its mission-memory slot ──
+   Not decoration — it is the visual grammar of one agent finishing and the
+   next taking over, and it is what the landing loop records. The flight
+   itself is a measured FLIP run from page.tsx via element.animate() (the
+   distance depends on where the rail slot actually is, so it can't live in
+   CSS). These rules only set up the element for it. Keep HANDOFF_MS in
+   page.tsx in sync with any duration changes. */
 
-.mainLeaving {
-  animation: wiz-handoff 420ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+.mainFlying {
+  transform-origin: top left;   /* makes the measured translate+scale land true */
   pointer-events: none;
-}
-
-@keyframes wiz-handoff {
-  from { opacity: 1; transform: translateX(0) scale(1); }
-  to   { opacity: 0; transform: translateX(-56px) scale(0.965); }
+  will-change: transform, opacity;
 }
 
 /* The stage card arriving for the next agent. */
@@ -992,8 +991,7 @@ textarea.input {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mainLeaving { animation: none; opacity: 1; }
-  .main > *    { animation: none; }
+  .main > * { animation: none; }
 }
 
 /* ── Mission-memory card bodies (expanded rail entries) ── */

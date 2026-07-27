@@ -99,11 +99,27 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      Countdown is disabled entirely under prefers-reduced-motion and
      while a step is running or failed. Implemented as
      `VdfApprovalCard.autoConfirmMs` so every future step inherits it.
-   - **The handoff animation** (`handoff()` + `.mainLeaving`): a
-     confirmed card slides left, fades and shrinks (420ms) while the next
-     one arrives — the visual grammar of one agent finishing and the next
-     taking over. Reduced motion swaps instantly. Keep `HANDOFF_MS` in
-     page.tsx in sync with the keyframe duration in the CSS module.
+   - **The handoff animation — a MEASURED FLIP, not a fade.** First
+     attempt only faded the card and nudged it 56px left while the rail
+     entry silently appeared; the user correctly reported "same thing
+     like before", because a fade is not a move. Now `handoff()`
+     measures the stage card AND the destination rail slot
+     (`[data-mission-step="<id>"]`, set by VdfMissionRail) and flies the
+     REAL card into that slot via `element.animate()` — translate +
+     scale computed from the two rects, 620ms, transform-only so nothing
+     reflows. `.mainFlying` sets `transform-origin: top left` so the
+     measured maths lands true. On arrival the rail slot pulses
+     (`.mission-step-landed`, a GLOBAL class in app/globals.css because
+     the wizard toggles it on an element the rail component owns).
+     A `setTimeout` safety net commits even if the animation is
+     interrupted (tab hidden) — never strand the user mid-handoff.
+     Reduced motion, a missing ref or no WAAPI all fall back to an
+     instant swap. Distance depends on runtime layout, so the flight
+     CANNOT live in CSS — keep `HANDOFF_MS` as the single duration.
+   - ⚠️ **To SEE the handoff you need an UNCONFIRMED step.** On a
+     completed mission every step is ✓ and there is no confirm button,
+     so nothing animates — that is the state the user's screenshot was
+     in. Test with a fresh tenant or a step not yet confirmed.
    - ✅ **1.7 DONE (2026-07-27) — engaging waits + recording mode.**
      User accepted the LLM is slow and asked to make the WAIT engaging,
      and to run the landing animation WITHOUT the hold timer.

@@ -42,7 +42,13 @@ export function VdfMissionRail({ items, label = 'Mission memory', className }: V
           const inspectable = item.state === 'done' && !!item.summary;
 
           return (
-            <li key={item.id} className={`${s.item} ${s[item.state]}`}>
+            <li
+              key={item.id}
+              className={`${s.item} ${s[item.state]}`}
+              /* Landing target for the wizard's handoff animation: the
+                 finished card physically flies into this slot. */
+              data-mission-step={item.id}
+            >
               <span className={s.marker} aria-hidden>
                 {item.state === 'done' ? (
                   <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
