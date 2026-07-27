@@ -251,6 +251,10 @@ export default function MissionWizardPage() {
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
   const [competitorsLoading, setCompetitorsLoading] = useState(false);
+  /** Have we actually FETCHED the competitor list? An empty `competitors` on
+      its own means "unknown", not "none" — the rail must never assert that a
+      tenant has no competitors just because nothing has loaded yet. */
+  const [competitorsKnown, setCompetitorsKnown] = useState(false);
   const [confirmingCompetitors, setConfirmingCompetitors] = useState(false);
   const [compResearch, setCompResearch] = useState<'idle' | 'running' | 'done' | 'failed'>('idle');
   const [compSteps, setCompSteps] = useState<AgentRunStep[]>([]);
@@ -290,6 +294,10 @@ export default function MissionWizardPage() {
           if (res.profile.approved_at) {
             setConfirmed((prev) => new Set(prev).add('competitors').add('icp'));
             setStepIndex(2);
+            // Competitors were ruled on before approval, so mission memory has
+            // to show them. Nothing else on this path fetches them — without
+            // this the rail rendered a confirmed step as "no competitors".
+            void loadCompetitors(true);
           }
         } catch {
           // 404 PROFILE_NOT_FOUND — fresh tenant, start at step 1
@@ -299,6 +307,8 @@ export default function MissionWizardPage() {
       }
     })();
     return () => { cancelled = true; };
+    // boot runs once; loadCompetitors is read from the first render's scope
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => () => {
@@ -465,6 +475,7 @@ export default function MissionWizardPage() {
     try {
       const res = await apiFetch<{ competitors: Competitor[] }>(API.vani.competitors);
       setCompetitors(res.competitors);
+      setCompetitorsKnown(true);
       return res.competitors;
     } catch (err) {
       if (!silent) showToast({ message: (err as ApiError).message || 'Could not load competitors', type: 'error' });
@@ -781,24 +792,36 @@ export default function MissionWizardPage() {
 
     if (done && step.id === 'competitors') {
       const kept = competitors.filter((c) => !removedIds.has(c.id));
-      artifact = kept.length > 0 ? (
-        <VdfMissionSection label="Competitors" count={kept.length}>
-          <VdfMissionChips
-            chips={kept.map((c) => {
-              const d = typeof c.properties?.domain === 'string' ? c.properties.domain : null;
-              return {
-                id: c.id,
-                label: d || c.name,
-                href: d ? `https://${d}` : undefined,
-              };
-            })}
-          />
-        </VdfMissionSection>
-      ) : (
-        <VdfMissionSection label="Competitors" count={0}>
-          <p className={s.memoryLine}>No named competitors — positioning on category strength.</p>
-        </VdfMissionSection>
-      );
+      if (kept.length > 0) {
+        artifact = (
+          <VdfMissionSection label="Competitors" count={kept.length}>
+            <VdfMissionChips
+              chips={kept.map((c) => {
+                const d = typeof c.properties?.domain === 'string' ? c.properties.domain : null;
+                return {
+                  id: c.id,
+                  label: d || c.name,
+                  href: d ? `https://${d}` : undefined,
+                };
+              })}
+            />
+          </VdfMissionSection>
+        );
+      } else if (competitorsKnown) {
+        // Fetched and genuinely empty — this is a real finding, so say it.
+        artifact = (
+          <VdfMissionSection label="Competitors" count={0}>
+            <p className={s.memoryLine}>No named competitors — positioning on category strength.</p>
+          </VdfMissionSection>
+        );
+      } else {
+        // Not fetched yet. Say nothing about the count rather than assert zero.
+        artifact = (
+          <VdfMissionSection label="Competitors">
+            <p className={s.memoryLine}>Loading what you confirmed…</p>
+          </VdfMissionSection>
+        );
+      }
     }
 
     if (done && step.id === 'icp') {
@@ -838,7 +861,7 @@ export default function MissionWizardPage() {
       // beyond them are operational and file only their separator
       expectsArtifact: ARTIFACT_STEPS.has(step.id),
     } as VdfMissionMemoryItem;
-  }), [confirmed, stepIndex, profile, domain, competitors, removedIds, clusters, removedClusters]);
+  }), [confirmed, stepIndex, profile, domain, competitors, competitorsKnown, removedIds, clusters, removedClusters]);
 
   const current = STEPS[stepIndex];
 

@@ -14,11 +14,14 @@ export interface VdfWizardProps {
   completedSteps: Set<string>;
   onStepClick?: (index: number) => void;
   /**
-   * `mission` — the agent-wizard top rail from ux-references: plain numbered
-   * circles joined by a line, and ONLY the active step carries a label, as a
-   * pill. Completed steps stay numbered (no checkmark up top — the ✓ lives in
-   * the mission-memory rail instead). Labelling every step permanently is what
-   * made the top rail duplicate the left rail.
+   * `mission` — the agent-wizard top rail: numbered circles joined by a line,
+   * each with its label inline, and the ACTIVE step raised into a pill with a
+   * live dot. Completed steps stay numbered (no checkmark up top — the ✓ lives
+   * in the mission-memory rail instead).
+   *
+   * The reference labels only the active step; the user asked for every label
+   * to stay visible (2026-07-27), so emphasis carries the active state instead
+   * of visibility.
    *
    * `default` — every step labelled underneath. Used by the other wizards.
    */
@@ -65,7 +68,7 @@ export function VdfWizard({
                 ) : (
                   <span className={s.dotNum}>{i + 1}</span>
                 )}
-                {mission && isCurrent && <span className={s.pillLabel}>{step.label}</span>}
+                {mission && <span className={s.pillLabel}>{step.label}</span>}
                 {!step.mandatory && !isDone && (
                   <span className={s.skipDot} />
                 )}

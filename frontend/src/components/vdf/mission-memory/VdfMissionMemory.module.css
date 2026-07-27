@@ -30,6 +30,15 @@
   scrollbar-color: var(--color-border) transparent;
   /* room for the scrollbar so chips don't sit under it */
   padding-right: 6px;
+  /* Soften both cut edges so a scrolled rail reads as scrolled rather than as
+     a card clipped mid-header. */
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 14px,
+    black calc(100% - 14px),
+    transparent 100%
+  );
 }
 
 .scroll::-webkit-scrollbar {
@@ -101,8 +110,15 @@
   min-width: 0;
 }
 
+/* A filed artifact sits in its own card so each step reads as one object in
+   memory rather than loose content under a rule. Held at partial surface
+   opacity so the chips and rows INSIDE it stay legible as separate elements. */
 .slot:not(:empty) {
-  padding-bottom: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
 }
 
 /* The active step's slot is drawn before its artifact exists so the flight

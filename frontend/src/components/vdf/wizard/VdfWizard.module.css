@@ -175,41 +175,69 @@
   background: color-mix(in srgb, var(--color-primary) 55%, var(--color-border));
 }
 
+/* Every step is circle + label. The button itself is the pill shell: it stays
+   invisible until the step is active, so emphasis — not visibility — carries
+   the current state. */
 .wizardMission .dot {
-  width: 22px;
-  height: 22px;
-  border-width: 1px;
+  width: auto;
+  height: 26px;
   flex-shrink: 0;
+  padding: 0 10px 0 2px;
+  gap: 7px;
+  border-radius: 999px;
+  border-color: transparent;
+  background: transparent;
   box-shadow: none;
 }
 
+/* the number keeps its own circle inside the shell */
 .wizardMission .dotNum {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   font-size: 0.66rem;
   font-weight: 600;
+}
+
+.wizardMission .dot:not(:disabled):hover {
+  transform: none;
+  border-color: transparent;
+  background: var(--color-surface);
 }
 
 /* completed steps stay plain numbered circles — the ✓ belongs to the
    mission-memory rail, which is where completion is actually recorded */
 .wizardMission .done {
-  background: var(--color-surface);
-  border-color: var(--color-border);
+  background: transparent;
+  border-color: transparent;
 }
 
 .wizardMission .done .dotNum {
   color: var(--color-fg);
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
 }
 
-/* ── The one labelled step ──────────────────────────── */
+.wizardMission .done .pillLabel {
+  color: var(--color-fg);
+}
+
+/* ── The active step ────────────────────────────────── */
 
 .wizardMission .current {
-  width: auto;
-  height: 26px;
-  padding: 0 11px 0 9px;
-  gap: 7px;
-  border-radius: 999px;
+  padding: 0 11px 0 4px;
   border-color: var(--color-border);
   background: var(--color-surface);
-  box-shadow: none;
+}
+
+.wizardMission .current .dotNum {
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
 }
 
 /* live marker ahead of the number */
@@ -229,10 +257,16 @@
 
 .pillLabel {
   font-size: 0.74rem;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1;
-  color: var(--color-fg);
+  color: var(--color-muted);
   white-space: nowrap;
+  transition: color 200ms ease;
+}
+
+.wizardMission .current .pillLabel {
+  color: var(--color-fg);
+  font-weight: 600;
 }
 
 @media (max-width: 640px) {
