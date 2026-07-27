@@ -230,8 +230,10 @@ export class IngestionAgent {
       // Fill-only-empty inside the drafter. A draft failure FAILS the run
       // (CLAUDE.md rule 12: no silent fallbacks — the draft is the point of
       // researching a URL; completing without it would fake success).
+      let firstDraftProfile: Awaited<ReturnType<typeof draftProfileFromText>>['profile'] | null = null;
       if (source.source_type === 'url' || source.source_type === 'txt') {
         const draft = await draftProfileFromText(pool, tenantId, rawText, runId);
+        firstDraftProfile = draft.profile;
         await appendStep(pool, runId, {
           step_name:      'draft_profile',
           action:         'Drafted GTM profile from website text',
@@ -302,19 +304,26 @@ export class IngestionAgent {
             );
 
             // Second draft pass, deeper pages FIRST so the drafter sees new
-            // material inside its input cap; fill-only-empty means it can
-            // only add what the homepage draft left blank.
+            // material inside its input cap. With the first draft as
+            // improveBaseline it may IMPROVE any agent-drafted value the
+            // richer pages support improving — but a field the human has
+            // edited since draft 1 no longer matches the baseline and is
+            // untouchable. Human edits always win.
             const enrichedInput = [
               ...pageTexts.map((p) => `===== PAGE: ${p.url} =====\n${p.text}`),
               `===== HOMEPAGE =====\n${rawText.slice(0, 6_000)}`,
             ].join('\n\n');
-            const draft2 = await draftProfileFromText(pool, tenantId, enrichedInput, runId);
+            const draft2 = await draftProfileFromText(pool, tenantId, enrichedInput, runId, {
+              improveBaseline: firstDraftProfile,
+              changeNote: 'enriched from site crawl',
+            });
+            const parts: string[] = [];
+            if (draft2.fieldsFilled.length) parts.push(`filled: ${draft2.fieldsFilled.join(', ')}`);
+            if (draft2.fieldsImproved.length) parts.push(`improved: ${draft2.fieldsImproved.join(', ')}`);
             await appendStep(pool, runId, {
               step_name:      'draft_profile_enriched',
-              action:         'Filled remaining profile gaps from deeper pages',
-              output_summary: draft2.fieldsFilled.length > 0
-                ? `filled: ${draft2.fieldsFilled.join(', ')}`
-                : 'homepage draft already covered everything',
+              action:         'Enriched the profile from deeper pages',
+              output_summary: parts.length ? parts.join(' · ') : 'homepage draft already covered everything',
               status:         'ok',
             });
           }

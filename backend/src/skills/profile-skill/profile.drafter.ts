@@ -59,8 +59,22 @@ Ground every value in the provided text. Short and concrete beats long and vague
 
 /* ── Draft + merge (fill only empty fields) ─────────────────────────────── */
 
+export interface DraftOptions {
+  /**
+   * Snapshot of the profile exactly as the agent's PREVIOUS draft left it.
+   * A field whose current value still equals this baseline is agent-owned
+   * (no human has touched it since) and MAY be improved by this pass.
+   * Any field that differs from the baseline is human-owned — untouchable.
+   * Omit for plain fill-only-empty behavior. (Full cross-session
+   * suggested_/approved_ provenance arrives with the Phase 2 schema.)
+   */
+  improveBaseline?: TenantProfile | null;
+  changeNote?: string;
+}
+
 export interface DraftResult {
   fieldsFilled: string[];
+  fieldsImproved: string[];
   fieldsSkipped: string[];
   profile: TenantProfile;
 }
@@ -72,15 +86,39 @@ function isEmpty(v: unknown): boolean {
   return false;
 }
 
+function sameValue(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+}
+
 export async function draftProfileFromText(
   pool: Pool,
   tenantId: string,
   rawText: string,
   runId: string,
+  options: DraftOptions = {},
 ): Promise<DraftResult> {
-  // The homepage's first ~24k chars carry the positioning; keep the LLM
-  // call well inside small-model context limits.
+  // The first ~24k chars carry the positioning; keep the LLM call well
+  // inside small-model context limits. Callers order the text so the most
+  // valuable content comes first.
   const text = rawText.slice(0, 24_000);
+
+  // On an improvement pass, show the model its own previous draft so it
+  // refines with the new material instead of regenerating from scratch.
+  const baseline = options.improveBaseline ?? null;
+  const baselineContext = baseline
+    ? `Current draft (improve any value the new content supports improving; keep values that are already the best available):\n${JSON.stringify({
+        product_name: baseline.product_name,
+        product_tagline: baseline.product_tagline,
+        product_category: baseline.product_category,
+        product_description: baseline.product_description,
+        core_problem: baseline.core_problem,
+        key_differentiators: baseline.key_differentiators,
+        icp_role: baseline.icp_role,
+        icp_company_type: baseline.icp_company_type,
+        icp_industry: baseline.icp_industry,
+        primary_pain_points: baseline.primary_pain_points,
+      }, null, 1)}\n\n`
+    : '';
 
   const draft = await callLLMValidated(
     {
@@ -88,7 +126,7 @@ export async function draftProfileFromText(
       tenantId,
       runId,
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: `Website text:\n\n${text}` }],
+      messages: [{ role: 'user', content: `${baselineContext}Website text:\n\n${text}` }],
       maxTokens: 1200,
       temperature: 0.2,
     },
@@ -99,28 +137,48 @@ export async function draftProfileFromText(
   const existing = await getProfile(pool, tenantId);
 
   const fieldsFilled: string[] = [];
+  const fieldsImproved: string[] = [];
   const fieldsSkipped: string[] = [];
   const fill: Partial<TenantProfile> = {};
 
   for (const [key, value] of Object.entries(draft)) {
     if (value === undefined) continue;
-    if (existing && !isEmpty(existing[key as keyof TenantProfile])) {
-      fieldsSkipped.push(key);
+    const current = existing?.[key as keyof TenantProfile];
+
+    if (isEmpty(current)) {
+      (fill as Record<string, unknown>)[key] = value;
+      fieldsFilled.push(key);
       continue;
     }
-    (fill as Record<string, unknown>)[key] = value;
-    fieldsFilled.push(key);
+
+    // Improvement rule: only fields the agent itself drafted (current value
+    // still equals the baseline — no human edit since) may be replaced.
+    if (
+      baseline
+      && sameValue(current, baseline[key as keyof TenantProfile])
+      && !sameValue(current, value)
+    ) {
+      (fill as Record<string, unknown>)[key] = value;
+      fieldsImproved.push(key);
+      continue;
+    }
+
+    fieldsSkipped.push(key);
   }
 
-  if (fieldsFilled.length === 0) {
+  if (fieldsFilled.length === 0 && fieldsImproved.length === 0) {
     return {
       fieldsFilled,
+      fieldsImproved,
       fieldsSkipped,
       profile: existing ?? await upsertProfile(pool, tenantId, { source: 'vani' }, 'vani', 'website research (no new fields)'),
     };
   }
 
   fill.source = 'vani';
-  const profile = await upsertProfile(pool, tenantId, fill, 'vani', 'drafted from website research');
-  return { fieldsFilled, fieldsSkipped, profile };
+  const profile = await upsertProfile(
+    pool, tenantId, fill, 'vani',
+    options.changeNote ?? 'drafted from website research',
+  );
+  return { fieldsFilled, fieldsImproved, fieldsSkipped, profile };
 }
