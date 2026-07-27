@@ -6,7 +6,7 @@
  * The agent-led onboarding wizard, pixel-final, composed ONLY from VDF
  * components + theme tokens. Implements the six ux-references patterns:
  * agent produces → human confirms (VdfApprovalCard), accumulating
- * left-rail mission memory (VdfMissionRail), numbered step rail
+ * left-rail mission memory (VdfMissionMemory), numbered step rail
  * (VdfWizard), substantive campaign cards, per-contact enrichment
  * waterfall (VdfEnrichmentWaterfall), operational-column tables.
  *
@@ -14,6 +14,10 @@
  * ux-references README rule. Interactive: confirming a step advances
  * the mission and accumulates the rail. Theme switchable in-page for
  * design review; product default is unchanged.
+ *
+ * `?record=1` strips every review-only affordance (bar, theme chips, replay
+ * row, countdown chrome) — this is what the landing hero loop is recorded
+ * from, since it needs no backend and carries no real tenant data.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -141,6 +145,16 @@ export default function WizardDesignPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  /* `?record=1` — the same screen with every review-only affordance removed:
+     no design-review bar, no theme chips, no replay row, and no countdown
+     chrome on the cards (nobody is going to intervene in a recording). Read
+     from location rather than useSearchParams so this client page needs no
+     Suspense boundary. */
+  const [recording, setRecording] = useState(false);
+  useEffect(() => {
+    setRecording(new URLSearchParams(window.location.search).get('record') === '1');
+  }, []);
+
   // Same handoff the live wizard uses — this page is where the motion gets
   // reviewed and recorded, so it must be the SAME code, not a lookalike.
   const { stageRef, handingOff, handoff } = useMissionHandoff<HTMLElement>();
@@ -217,6 +231,7 @@ export default function WizardDesignPage() {
       <VdfGridOverlay />
 
       {/* Design-review chrome: theme flip (not part of the product screen) */}
+      {!recording && (
       <div className={s.reviewBar}>
         <span className={s.reviewLabel}>DESIGN REVIEW · /design/wizard · synthetic data</span>
         <div className={s.themeChips}>
@@ -232,6 +247,7 @@ export default function WizardDesignPage() {
           ))}
         </div>
       </div>
+      )}
 
       <header className={s.top}>
         <div className={s.mission}>
@@ -261,7 +277,7 @@ export default function WizardDesignPage() {
               title="Here’s what I learned about your company"
               subtitle="I read your website, docs and public profiles. Correct anything that’s off — everything downstream builds on this."
               status={confirmed.has('company') ? 'confirmed' : 'draft'}
-              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} onConfirm={() => confirmStep('company')}
+              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} autoConfirmSilent={recording} onConfirm={() => confirmStep('company')}
               onEdit={() => {}}
             >
               <div className={s.companyGrid}>
@@ -302,7 +318,7 @@ export default function WizardDesignPage() {
               title="Four competitors shape your buyers’ expectations"
               subtitle="Remove anyone who doesn’t belong; I’ll position against the rest in campaigns and emails."
               status={confirmed.has('competitors') ? 'confirmed' : 'draft'}
-              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} onConfirm={() => confirmStep('competitors')}
+              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} autoConfirmSilent={recording} onConfirm={() => confirmStep('competitors')}
               onEdit={() => {}}
             >
               <div className={s.competitorList}>
@@ -325,7 +341,7 @@ export default function WizardDesignPage() {
               title="Two campaigns, ready to approve"
               subtitle="Each is a decision, not a blank: pain, qualification, live prospect counts."
               status={confirmed.has('campaigns') ? 'confirmed' : 'draft'}
-              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} onConfirm={() => confirmStep('campaigns')}
+              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} autoConfirmSilent={recording} onConfirm={() => confirmStep('campaigns')}
               onEdit={() => {}}
             >
               <div className={s.campaignGrid}>
@@ -360,7 +376,7 @@ export default function WizardDesignPage() {
               title="Potential customers that fit your ICP"
               subtitle="Operational columns only — enough to say yes or no to each."
               status={confirmed.has('prospects') ? 'confirmed' : 'draft'}
-              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} onConfirm={() => confirmStep('prospects')}
+              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} autoConfirmSilent={recording} onConfirm={() => confirmStep('prospects')}
               onEdit={() => {}}
             >
               <div className={s.tableWrap}>
@@ -392,7 +408,7 @@ export default function WizardDesignPage() {
               title="Decision makers at your approved prospects"
               subtitle="Each contact runs the enrichment waterfall — providers tried in order until a verified email hits."
               status={confirmed.has('contacts') ? 'confirmed' : 'draft'}
-              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} onConfirm={() => confirmStep('contacts')}
+              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} autoConfirmSilent={recording} onConfirm={() => confirmStep('contacts')}
               onEdit={() => {}}
             >
               <div className={s.contactList}>
@@ -415,7 +431,7 @@ export default function WizardDesignPage() {
               title="First email, personalized per contact"
               subtitle="Grounded in your value props and each prospect’s context. Approve to finish the mission."
               status={confirmed.has('emails') ? 'confirmed' : 'draft'}
-              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} onConfirm={() => confirmStep('emails')}
+              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} autoConfirmSilent={recording} onConfirm={() => confirmStep('emails')}
               confirmLabel="Approve & launch mission"
               onEdit={() => {}}
             >
@@ -440,6 +456,7 @@ export default function WizardDesignPage() {
         </main>
       </div>
 
+      {!recording && (
       <div className={s.replayRow}>
         <VdfButton variant="outline" size="sm" onClick={replay}>Replay the flow</VdfButton>
         <VdfButton
@@ -453,6 +470,7 @@ export default function WizardDesignPage() {
           {autoplay ? 'Playing hands-free — same handoff as the live wizard' : 'Autoplay paused — confirm manually'}
         </span>
       </div>
+      )}
     </div>
   );
 }
