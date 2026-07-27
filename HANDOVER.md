@@ -118,6 +118,13 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      a real SEO/AEO finding for that site, and a good signal that the
      site_health check's "measure the static page" design is correct).
      Ollama must be pre-warmed (extractor + storyteller both hit LLM).
+1b. **Deferred (user-agreed, 2026-07-27): full date handling.** The
+   `DD-MMM-YYYY` render convention is live via `lib/format.ts` (the
+   single gateway, CLAUDE.md rule). Still to come, later: tenant
+   timezone preferences, server↔UI conversion beyond browser-local,
+   and customer date-INPUT parsing/validation (a VDF date field).
+   All of it lands inside format.ts + one VDF component — nothing
+   else may grow date logic.
 2. **Phase 2 — data modelling** (screens now dictate schema; rename
    kept ki_ tables to gt_). **Required input:**
    `documents/design-notes-smartprofile-port.md` — distilled from the

@@ -168,6 +168,11 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
   padding, `.body` carries it; `min-height: 100%` (never `calc(100vh-…)`).
 - Theme: 12 themes via CSS variables; default vikuna-black (gold-on-black).
   Brand strings from `constants/brand.ts` (BRAND.name = 'Vikuna GTM').
+- **Dates: `DD-MMM-YYYY` (e.g. 27-Jul-2026) everywhere** — always via
+  `lib/format.ts` (`formatDate`/`formatDateTime`), never inline
+  `toLocaleDateString`. Server stores UTC; format.ts is the single
+  conversion gateway. Tenant timezone prefs + date-input parsing are
+  DEFERRED (tracked in HANDOVER) and will land in format.ts only.
 - `onboarding_complete` is DERIVED: `count(vn_tenant_onboarding WHERE
   status != 'completed') == 0`. Seeded steps at registration:
   `user_profile`, `business_profile`. `POST /profile/approve` does NOT

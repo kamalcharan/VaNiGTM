@@ -14,6 +14,7 @@ export { VdfVisibilityMatrix, type VdfVisibilityMatrixProps, type VdfVisibilityR
 export { VdfLiveFeed, type VdfLiveFeedProps, type VdfLiveFeedItem, type VdfLiveFeedKind } from './live-feed/VdfLiveFeed';
 export { VdfPipelineKanban, type VdfPipelineKanbanProps, type VdfKanbanColumn, type VdfKanbanCard } from './pipeline-kanban/VdfPipelineKanban';
 export { VdfFlowCanvas, type VdfFlowCanvasProps, type VdfFlowNode, type VdfFlowNodeKind } from './flow-canvas/VdfFlowCanvas';
+export { VdfKgLoader, type VdfKgLoaderProps } from './kg-loader/VdfKgLoader';
 export { VdfAtmosphere, type VdfAtmosphereProps } from './atmosphere/VdfAtmosphere';
 export { VdfParticles, type VdfParticlesProps } from './particles/VdfParticles';
 export { VdfModal, type VdfModalProps } from './modal/VdfModal';

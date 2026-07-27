@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
+import { formatDate } from '@/lib/format';
 import { useToast } from '@/components/toast';
 import {
   VdfPageHeader,
@@ -91,9 +92,7 @@ export default function StorytellerDashboardPage() {
             {decks.map((deck) => {
               const isApproved = deck.status === 'approved' && !!deck.share_token;
               const title = deck.title || 'Untitled deck';
-              const createdAt = new Date(deck.created_at).toLocaleDateString('en-IN', {
-                day: 'numeric', month: 'short', year: 'numeric',
-              });
+              const createdAt = formatDate(deck.created_at);
 
               return (
                 <div

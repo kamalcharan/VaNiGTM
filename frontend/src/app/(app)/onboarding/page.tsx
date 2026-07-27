@@ -30,6 +30,7 @@ import {
   VdfApprovalCard,
   VdfButton,
   VdfLoader,
+  VdfKgLoader,
   type VdfMissionRailItem,
 } from '@/components/vdf';
 import s from './mission-wizard.module.css';
@@ -165,6 +166,9 @@ export default function MissionWizardPage() {
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [approving, setApproving] = useState(false);
   const [missingFields, setMissingFields] = useState<string[]>([]);
+  // In-flight blur-saves — Confirm ICP awaits these so a just-edited field's
+  // PUT can never race the approve call (approve validating stale data).
+  const pendingSaves = useRef<Set<Promise<void>>>(new Set());
 
   // Step 3 state
   const [deckPhase, setDeckPhase] = useState<'idle' | 'building' | 'ready' | 'shared'>('idle');
@@ -243,6 +247,12 @@ export default function MissionWizardPage() {
   // background and does not block the wizard. Shared by the URL path and the
   // pasted-copy fallback.
   const pollResearch = useCallback((sourceId: string) => {
+    // Cancel any prior poll chain before starting a new one — retry/paste
+    // must never leave two chains racing each other's state updates.
+    if (pollTimer.current) {
+      clearTimeout(pollTimer.current);
+      pollTimer.current = null;
+    }
     setResearchNote('Waiting for an agent to pick this up…');
     let tries = 0;
     const poll = async () => {
@@ -253,6 +263,7 @@ export default function MissionWizardPage() {
       if (p?.product_name) {
         setResearch('done');
         setStillDigesting(true); // KG extraction may still be running
+        showToast({ message: 'Research ready — review what VaNi drafted', type: 'success' });
         return;
       }
 
@@ -351,19 +362,27 @@ export default function MissionWizardPage() {
     if (!(key in edits)) return;
     const raw = edits[key];
     const value = list ? raw.split('\n').map((x) => x.trim()).filter(Boolean) : raw.trim();
-    try {
-      const res = await apiFetch<{ profile: GtmProfile }>(API.gtmProfile.update, { body: { [key]: value } });
-      setProfile(res.profile);
-      setMissingFields((prev) => prev.filter((f) => f !== key));
-    } catch (err) {
-      showToast({ message: (err as ApiError).message || `Failed to save ${key}`, type: 'error' });
-    }
+    const save = (async () => {
+      try {
+        const res = await apiFetch<{ profile: GtmProfile }>(API.gtmProfile.update, { body: { [key]: value } });
+        setProfile(res.profile);
+        setMissingFields((prev) => prev.filter((f) => f !== key));
+      } catch (err) {
+        showToast({ message: (err as ApiError).message || `Failed to save ${key}`, type: 'error' });
+      }
+    })();
+    pendingSaves.current.add(save);
+    save.finally(() => pendingSaves.current.delete(save));
+    await save;
   }, [edits, showToast]);
 
   const approveIcp = useCallback(async () => {
     setApproving(true);
     setMissingFields([]);
     try {
+      // A field edited moments ago fires blur-save on the way to this click —
+      // wait for every in-flight PUT so approve validates the saved profile.
+      await Promise.all([...pendingSaves.current]);
       await apiFetch(API.gtmProfile.approve);
       await refreshProfile();
       setConfirmed((prev) => new Set(prev).add('icp'));
@@ -386,16 +405,22 @@ export default function MissionWizardPage() {
 
   /* ── Step 3: deck ─────────────────────────────────────────────────── */
 
+  const building = useRef(false);
   const buildDeck = useCallback(async () => {
+    if (building.current) return; // double-click guard — one build at a time
+    building.current = true;
     setDeckPhase('building');
     try {
       const res = await apiFetch<{ presentationId: string }>(API.storyteller.build);
       const d = await apiFetch<DeckSummary>(API.storyteller.get, { pathParams: { id: res.presentationId } });
       setDeck(d);
       setDeckPhase('ready');
+      showToast({ message: 'Deck drafted — review and approve to get your share link', type: 'success' });
     } catch (err) {
       setDeckPhase('idle');
       showToast({ message: (err as ApiError).message || 'Deck generation failed — try again', type: 'error' });
+    } finally {
+      building.current = false;
     }
   }, [showToast]);
 
@@ -781,10 +806,10 @@ export default function MissionWizardPage() {
               )}
 
               {deckPhase === 'building' && (
-                <div className={s.progressNote}>
-                  <span className={s.progressDot} aria-hidden />
-                  Storyteller is writing your deck — usually under two minutes…
-                </div>
+                <VdfKgLoader
+                  message="Storyteller is reading your knowledge graph"
+                  hint="Weaving your ICP, proof points and differentiators into seven slides — usually under two minutes"
+                />
               )}
 
               {deckPhase === 'ready' && deck && (
