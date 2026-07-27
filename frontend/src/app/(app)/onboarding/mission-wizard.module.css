@@ -224,12 +224,24 @@
   border-radius: 10px;
   padding: 11px 14px;
   font-family: var(--font-body);
-  font-size: 0.88rem;
-  line-height: 1.5;
+  font-size: 0.92rem;
+  line-height: 1.55;
   color: var(--color-fg);
   outline: none;
   resize: vertical;
   transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Auto-grow: the drafted content should be fully readable at a glance —
+   no nested scroll traps hiding what the user is about to approve.
+   field-sizing (Chrome 123+) grows the box with its content; the manual
+   resize handle stays as the fallback elsewhere. Page-level scroll is
+   the single scroll context. */
+textarea.input {
+  field-sizing: content;
+  min-height: 84px;
+  max-height: 45vh;
+  overflow-y: auto;
 }
 
 .input:focus {

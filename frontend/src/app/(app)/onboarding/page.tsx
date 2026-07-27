@@ -742,7 +742,7 @@ export default function MissionWizardPage() {
                       <textarea
                         id={`icp-${f.key}`}
                         className={s.input}
-                        rows={f.list ? 3 : 2}
+                        rows={f.list ? 6 : 4}
                         value={fieldValue(f.key)}
                         onChange={(e) => setEdits((p) => ({ ...p, [f.key]: e.target.value }))}
                         onBlur={() => saveField(f.key, f.list)}
