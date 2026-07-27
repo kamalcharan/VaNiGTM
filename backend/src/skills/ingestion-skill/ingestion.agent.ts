@@ -501,17 +501,74 @@ export class IngestionAgent {
   }
 
   // ── Private: URL fetch → plain text ────────────────────────────────────
-  // v1 scope: the submitted page only (typically the homepage). Strips
-  // scripts/styles/tags and collapses whitespace; caps the result so a
-  // pathological page can't flood the chunker.
+  // v1 scope: the submitted page only (typically the homepage). Combines
+  // three extraction layers so JS-rendered SPAs still yield usable copy:
+  //   1. visible body text (tags stripped)
+  //   2. <title> + meta description/og/twitter tags
+  //   3. prose mined from JSON-LD and framework data blobs
+  //      (__NEXT_DATA__/__NUXT__) — client-rendered sites ship their copy
+  //      there even when the body is empty.
+  // Caps the result so a pathological page can't flood the chunker.
+
+  /** Layer 2: title + meta tags that describe the site. */
+  private static extractMetaText(html: string): string {
+    const parts: string[] = [];
+
+    const title = html.match(/<title[^>]*>([\s\S]{1,300}?)<\/title>/i);
+    if (title && title[1].trim()) parts.push(title[1].trim());
+
+    const WANTED = new Set([
+      'description', 'og:description', 'og:title', 'og:site_name',
+      'twitter:description', 'twitter:title', 'keywords',
+    ]);
+    const tagRe = /<meta\s[^>]*>/gi;
+    let tag: RegExpExecArray | null;
+    while ((tag = tagRe.exec(html))) {
+      const name = tag[0].match(/(?:name|property)\s*=\s*["']([^"']+)["']/i)?.[1]?.toLowerCase();
+      const content = tag[0].match(/content\s*=\s*["']([^"']*)["']/i)?.[1]?.trim();
+      if (name && content && WANTED.has(name)) parts.push(content);
+    }
+    return [...new Set(parts)].join('\n');
+  }
+
+  /** Layer 3: prose strings mined from JSON-LD + framework data scripts. */
+  private static mineJsonProse(html: string): string {
+    const scriptRe = /<script[^>]*(?:id=["']__NEXT_DATA__["']|id=["']__NUXT_DATA__["']|type=["']application\/(?:ld\+)?json["'])[^>]*>([\s\S]*?)<\/script>/gi;
+    const seen = new Set<string>();
+    const out: string[] = [];
+    let total = 0;
+    let script: RegExpExecArray | null;
+
+    while ((script = scriptRe.exec(html)) && total < 15_000) {
+      const strRe = /"((?:[^"\\]|\\.){24,400})"/g;
+      let m: RegExpExecArray | null;
+      while ((m = strRe.exec(script[1])) && total < 15_000) {
+        const v = m[1]
+          .replace(/\\n/g, ' ')
+          .replace(/\\"/g, '"')
+          .replace(/\\u[0-9a-fA-F]{4}/g, ' ')
+          .trim();
+        // Keep only prose: needs spaces, no URLs/paths/markup/code characters.
+        if (!/\s/.test(v)) continue;
+        if (/https?:\/\/|[{}<>=;\\]/.test(v)) continue;
+        if (seen.has(v)) continue;
+        seen.add(v);
+        out.push(v);
+        total += v.length;
+      }
+    }
+    return out.join('\n');
+  }
 
   private static async fetchUrlText(url: string): Promise<string> {
     let response: Response;
     try {
       response = await fetch(url, {
         headers: {
-          'User-Agent': 'VaNiGTM-Ingestion/1.0 (+https://vikuna.in)',
-          Accept: 'text/html,text/plain;q=0.9,*/*;q=0.5',
+          // Browser-like UA — plain bot UAs get 403'd by common CDN bot rules.
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 VaNiGTM-Ingestion/1.0',
+          Accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5',
+          'Accept-Language': 'en',
         },
         redirect: 'follow',
         signal: AbortSignal.timeout(30_000),
@@ -532,7 +589,11 @@ export class IngestionAgent {
 
     const html = await response.text();
 
-    const text = html
+    // Layers 2 + 3 BEFORE stripping — scripts/meta are removed below.
+    const metaText = IngestionAgent.extractMetaText(html);
+    const minedText = IngestionAgent.mineJsonProse(html);
+
+    const bodyText = html
       .replace(/<script[\s\S]*?<\/script>/gi, ' ')
       .replace(/<style[\s\S]*?<\/style>/gi, ' ')
       .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
@@ -551,8 +612,13 @@ export class IngestionAgent {
       .replace(/\n\s*\n+/g, '\n\n')
       .trim();
 
-    if (text.length < 50) {
-      throw new Error(`URL_EMPTY_CONTENT: ${url} yielded ${text.length} chars of text — page may be JS-rendered`);
+    const text = [metaText, bodyText, minedText].filter(Boolean).join('\n\n').trim();
+
+    if (text.length < 200) {
+      throw new Error(
+        `URL_EMPTY_CONTENT: ${url} yielded only ${text.length} chars of readable text — ` +
+        `the page renders in the browser. Paste your website copy instead.`,
+      );
     }
 
     const MAX_CHARS = 200_000;

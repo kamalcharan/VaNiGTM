@@ -124,6 +124,7 @@ export default function MissionWizardPage() {
   const [researchNote, setResearchNote] = useState('');
   const [researchSteps, setResearchSteps] = useState<AgentRunStep[]>([]);
   const [stillDigesting, setStillDigesting] = useState(false);
+  const [pasteText, setPasteText] = useState('');
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Profile (steps 1–2)
@@ -203,31 +204,12 @@ export default function MissionWizardPage() {
     }
   }, []);
 
-  const startResearch = useCallback(async () => {
-    const input = domain.trim();
-    if (!input) {
-      showToast({ message: 'Enter your website domain first', type: 'error' });
-      return;
-    }
-    setResearch('running');
-    setResearchSteps([]);
-    setStillDigesting(false);
-    setResearchNote('Submitting your website to VaNi…');
-
-    let sourceId: string;
-    try {
-      const res = await apiFetch<{ source_id: string }>(API.ingest.submitUrl, { body: { url: input } });
-      sourceId = res.source_id;
-    } catch (err) {
-      setResearch('error');
-      setResearchNote((err as ApiError).message || 'Could not submit the URL');
-      return;
-    }
-
-    // Unified poll: each tick reads the source (real agent steps for the live
-    // checklist) AND the profile. The moment the profile drafter has produced
-    // fields we show the card — the slower KG extraction keeps running in the
-    // background and does not block the wizard.
+  // Unified poll: each tick reads the source (real agent steps for the live
+  // checklist) AND the profile. The moment the profile drafter has produced
+  // fields we show the card — the slower KG extraction keeps running in the
+  // background and does not block the wizard. Shared by the URL path and the
+  // pasted-copy fallback.
+  const pollResearch = useCallback((sourceId: string) => {
     setResearchNote('Waiting for an agent to pick this up…');
     let tries = 0;
     const poll = async () => {
@@ -277,7 +259,51 @@ export default function MissionWizardPage() {
     };
 
     poll();
-  }, [domain, refreshProfile, showToast]);
+  }, [refreshProfile, showToast]);
+
+  const startResearch = useCallback(async () => {
+    const input = domain.trim();
+    if (!input) {
+      showToast({ message: 'Enter your website domain first', type: 'error' });
+      return;
+    }
+    setResearch('running');
+    setResearchSteps([]);
+    setStillDigesting(false);
+    setResearchNote('Submitting your website to VaNi…');
+
+    try {
+      const res = await apiFetch<{ source_id: string }>(API.ingest.submitUrl, { body: { url: input } });
+      pollResearch(res.source_id);
+    } catch (err) {
+      setResearch('error');
+      setResearchNote((err as ApiError).message || 'Could not submit the URL');
+    }
+  }, [domain, pollResearch, showToast]);
+
+  // Fallback for JS-rendered sites the crawler can't read: the user pastes
+  // their website copy and it runs through the exact same research pipeline.
+  const startPasteResearch = useCallback(async () => {
+    const text = pasteText.trim();
+    if (text.length < 40) {
+      showToast({ message: 'Paste at least a paragraph of your website copy', type: 'error' });
+      return;
+    }
+    setResearch('running');
+    setResearchSteps([]);
+    setStillDigesting(false);
+    setResearchNote('Analyzing your pasted copy…');
+
+    try {
+      const res = await apiFetch<{ source_id: string }>(API.ingest.submitText, {
+        body: { text, title: 'Website copy (pasted)' },
+      });
+      pollResearch(res.source_id);
+    } catch (err) {
+      setResearch('error');
+      setResearchNote((err as ApiError).message || 'Could not submit the pasted copy');
+    }
+  }, [pasteText, pollResearch, showToast]);
 
   /* ── Step 2: edit + approve ───────────────────────────────────────── */
 
@@ -556,6 +582,23 @@ export default function MissionWizardPage() {
                     >
                       Skip — I&apos;ll fill it in myself
                     </VdfButton>
+                  </div>
+
+                  {/* Fallback for JS-rendered sites: paste the copy, same pipeline */}
+                  <div className={s.pasteFallback}>
+                    <span className={s.fieldLabel}>Or paste your website copy — VaNi researches it the same way</span>
+                    <textarea
+                      className={s.input}
+                      rows={5}
+                      value={pasteText}
+                      onChange={(e) => setPasteText(e.target.value)}
+                      placeholder="Open your website, select-all, copy, paste here — homepage + about/pricing works best"
+                    />
+                    <div className={s.errorActions}>
+                      <VdfButton variant="primary" size="sm" onClick={startPasteResearch}>
+                        Research from pasted copy
+                      </VdfButton>
+                    </div>
                   </div>
                 </div>
               )}
