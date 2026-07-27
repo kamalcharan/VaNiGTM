@@ -22,7 +22,14 @@ export type NodeLabel =
   | 'PainPoint'
   | 'Differentiator'
   | 'Team'
-  | 'Competitor';
+  | 'Competitor'
+  // GTM evidence layer — the material decks, Lead Finder and the Auditor
+  // reason over (added with the site-crawl upgrade; no DB constraint on
+  // label, so purely additive).
+  | 'CaseStudy'
+  | 'Metric'
+  | 'Industry'
+  | 'Pricing';
 
 export interface KGNode {
   id: string;
@@ -50,7 +57,8 @@ export type RelationshipType =
   | 'ADDRESSES'
   | 'SOLVES'
   | 'DIFFERENTIATES_FROM'
-  | 'BUILT_BY';
+  | 'BUILT_BY'
+  | 'PROVES';   // CaseStudy/Metric → Differentiator/Product — evidence links
 
 /**
  * Upsert a node by (tenant_id, label, name).

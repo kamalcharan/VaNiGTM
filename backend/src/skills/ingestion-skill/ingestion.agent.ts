@@ -18,7 +18,7 @@ import type { Pool } from 'pg';
 import { createTenantDb } from '../../db';
 import { appendStep, setStatus } from '../../agent-core/agent.runner';
 import { emitEvent } from '../../agent-core/event.store';
-import { upsertNode } from '../../agent-core/kg.store';
+import { upsertNode, upsertEdge } from '../../agent-core/kg.store';
 
 import type { Parser } from './parsers/parser.interface';
 import { PdfParser }  from './parsers/pdf.parser';
@@ -26,7 +26,7 @@ import { DocxParser } from './parsers/docx.parser';
 import { PptxParser } from './parsers/pptx.parser';
 import { TextParser } from './parsers/text.parser';
 import { chunkText } from './pipeline/chunker';
-import { extractFromChunks } from './pipeline/extractor';
+import { extractFromChunks, type SourcedChunk } from './pipeline/extractor';
 import { draftProfileFromText } from '../profile-skill/profile.drafter';
 
 /* ── Parser registry (text.parser is the fallback, registered LAST) ─────── */
@@ -143,6 +143,10 @@ export class IngestionAgent {
       // Final HTML of the primary page (rendered version when escalated) —
       // used after the fast draft to discover more site pages to crawl.
       let primaryHtml: string | null = null;
+      // Per-page sections — chunked separately so every KG node carries the
+      // source_url of the page it was extracted from (provenance for every
+      // future agent that cites the graph).
+      const sections: { url: string | null; text: string }[] = [];
 
       if (source.source_type === 'url' && source.url) {
         // URL source — fetch the page server-side and strip to text.
@@ -190,10 +194,12 @@ export class IngestionAgent {
             );
           }
         }
+        sections.push({ url: source.url, text: rawText });
       } else if (source.raw_text && !source.gdrive_file_id) {
         // Pre-supplied text (pasted context via POST /ingest/text) — the
         // text IS the source; nothing to fetch or parse.
         rawText = source.raw_text;
+        sections.push({ url: null, text: rawText });
       } else if (source.gdrive_file_id) {
         const buffer = await IngestionAgent.downloadFromGDrive(
           pool,
@@ -206,6 +212,7 @@ export class IngestionAgent {
         const parser    = selectParser(mimeType, extension);
 
         rawText = await parser.extract(buffer, source.display_name);
+        sections.push({ url: null, text: rawText });
       } else {
         throw new Error(
           `UNSUPPORTED_SOURCE: source ${sourceId} has neither a url (source_type='url') nor a gdrive_file_id`,
@@ -274,6 +281,7 @@ export class IngestionAgent {
               }
               if (pageText.length >= 200) {
                 pageTexts.push({ url: pageUrl, text: pageText });
+                sections.push({ url: pageUrl, text: pageText });
               } else {
                 failures.push(`${new URL(pageUrl).pathname} (too thin)`);
               }
@@ -330,8 +338,10 @@ export class IngestionAgent {
         }
       }
 
-      // 4. STEP: chunk
-      const chunks = chunkText(rawText);
+      // 4. STEP: chunk — per section, so each chunk knows its page of origin.
+      const chunks: SourcedChunk[] = sections.flatMap((sec) =>
+        chunkText(sec.text).map((c) => ({ ...c, source_url: sec.url })),
+      );
 
       await db.query(
         `UPDATE gt_kb_sources SET chunk_count = $count, updated_at = now() WHERE id = $source_id`,
@@ -341,7 +351,7 @@ export class IngestionAgent {
       await appendStep(pool, runId, {
         step_name:      'chunk',
         action:         'Split into chunks',
-        output_summary: `${chunks.length} chunks`,
+        output_summary: `${chunks.length} chunks across ${sections.length} page(s)`,
         status:         'ok',
       });
 
@@ -352,25 +362,47 @@ export class IngestionAgent {
         status:    'ok',
       });
 
-      const nodes = await extractFromChunks(pool, tenantId, runId, chunks);
+      const { nodes, relations } = await extractFromChunks(pool, tenantId, runId, chunks);
 
       await appendStep(pool, runId, {
         step_name:      'extract_complete',
         action:         'LLM extraction finished',
-        output_summary: `${nodes.length} unique nodes extracted`,
+        output_summary: `${nodes.length} nodes, ${relations.length} relationships extracted`,
         status:         'ok',
       });
 
-      // 6. WRITE TO GRAPH
+      // 6. WRITE TO GRAPH — nodes first (building a name→id map), then the
+      // edges between them. Edges are what make this a graph the deck Q&A,
+      // Lead Finder and Auditor can reason over, not a tag list.
+      const nodeIds = new Map<string, string>();
       for (const node of nodes) {
         try {
-          await upsertNode(pool, tenantId, node, runId);
+          const nodeId = await upsertNode(pool, tenantId, node, runId);
+          nodeIds.set(`${node.label}:${node.name}`.toLowerCase(), nodeId);
           written++;
         } catch (err) {
           console.warn(
             `[Ingestion] Node upsert failed (${node.label}/${node.name}):`,
             err,
           );
+        }
+      }
+
+      let edgesWritten = 0;
+      let edgesSkipped = 0;
+      for (const rel of relations) {
+        const fromId = nodeIds.get(rel.from.toLowerCase());
+        const toId   = nodeIds.get(rel.to.toLowerCase());
+        if (!fromId || !toId || fromId === toId) {
+          edgesSkipped++;
+          continue; // endpoint didn't survive validation/upsert — skip, counted
+        }
+        try {
+          await upsertEdge(pool, tenantId, fromId, rel.type, toId, {}, runId);
+          edgesWritten++;
+        } catch (err) {
+          edgesSkipped++;
+          console.warn(`[Ingestion] Edge upsert failed (${rel.from} -${rel.type}-> ${rel.to}):`, err);
         }
       }
 
@@ -385,13 +417,14 @@ export class IngestionAgent {
 
       // 7. UPDATE RUN
       await setStatus(pool, runId, 'completed', {
-        output: { source_id: sourceId, nodes_written: written },
+        output: { source_id: sourceId, nodes_written: written, edges_written: edgesWritten },
       });
 
       await appendStep(pool, runId, {
         step_name:      'complete',
-        action:         'Wrote nodes to knowledge graph',
-        output_summary: `${written} nodes`,
+        action:         'Wrote to knowledge graph',
+        output_summary: `${written} nodes, ${edgesWritten} relationships`
+          + (edgesSkipped ? ` (${edgesSkipped} relations skipped — unresolved endpoints)` : ''),
         status:         'ok',
       });
 
@@ -401,7 +434,7 @@ export class IngestionAgent {
         tenantId,
         'KNOWLEDGE_UPDATED',
         'agent',
-        { run_id: runId, source_id: sourceId, nodes_written: written },
+        { run_id: runId, source_id: sourceId, nodes_written: written, edges_written: edgesWritten },
         runId,
       );
     } catch (err) {
