@@ -25,6 +25,7 @@ import { VaniAgent } from '../skills/vani-skill/vani.agent';
 import { IngestionAgent } from '../skills/ingestion-skill/ingestion.agent';
 import { CompetitorResearchAgent } from '../skills/research-skill/research.agent';
 import { recalculateProfileFromNodes } from '../skills/profile-skill/profile.service';
+import { generateClusters, listClusters } from '../skills/profile-skill/cluster.service';
 
 /* ── Event Queue interface ──────────────────────────────────────────────── */
 
@@ -136,12 +137,45 @@ const AGENT_REGISTRY: Record<string, AgentHandler> = {
       'Recalculated from ingested knowledge nodes',
       runId,
     );
+
+    // Market vocabulary (gt_semantic_clusters): drafted here so it rides the
+    // existing pipeline instead of adding a wizard step. Refreshes freely
+    // while the tenant hasn't ratified it — once they approve, the
+    // vocabulary is theirs and only an explicit regenerate touches it.
+    let clusterCount: number | null = null;
+    if (result.profile.product_name || result.profile.product_description) {
+      try {
+        const approved = await listClusters(pool, tenantId, { approvedOnly: true });
+        if (approved.length === 0) {
+          const clusters = await generateClusters(pool, tenantId, runId);
+          clusterCount = clusters.length;
+          await appendStep(pool, runId, {
+            step_name:      'market_vocabulary',
+            action:         'Mapped the market vocabulary your buyers search',
+            output_summary: clusters.map((c) => c.primary_term).join(', ') || 'none',
+            status:         'ok',
+          });
+        }
+      } catch (err) {
+        // Vocabulary is an enhancement to an already-successful profile
+        // recalc — surface it loudly as a failed STEP, but don't fail the
+        // run and lose the profile update (rule 12: visible, not silent).
+        await appendStep(pool, runId, {
+          step_name:      'market_vocabulary',
+          action:         'Could not map the market vocabulary',
+          output_summary: (err instanceof Error ? err.message : String(err)).slice(0, 200),
+          status:         'error',
+        });
+      }
+    }
+
     await setStatus(pool, runId, 'completed', {
       output: {
         profile_id:          result.profile.id,
         completion_score:    result.profile.completion_score,
         crossed_threshold:   result.crossedCompletionThreshold,
         missing_fields:      result.missingFields,
+        ...(clusterCount !== null ? { clusters_drafted: clusterCount } : {}),
       },
     });
   },

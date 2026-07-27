@@ -45,7 +45,7 @@ backend/
                         ingestion, profile, pulse, research, sequence,
                         storyteller, vani
     server.ts         — Express entry; migrate.ts — manual migration runner
-  migrations/         — 001…191 (highest = 191)
+  migrations/         — 001…192 (highest = 192)
 frontend/
   src/
     app/(auth)        — login, register, forgot/reset password, invite
@@ -121,6 +121,15 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
   product/icp/gtm/vision weights 40/30/20/10, `is_complete` = score ≥ 60).
 - **Prompts:** `gt_prompts` (system + tenant override), key format
   `<skill>.<name>` — e.g. `vani-skill.gather`.
+- **Market vocabulary:** `gt_semantic_clusters` (migration 192) — 3–5
+  human-approved topic clusters per tenant, each with 10–15
+  `related_terms` and a `cluster_type` (category/offering/buyer/pain/
+  outcome). Drafted by `profile-skill/cluster.service` on the
+  KNOWLEDGE_UPDATED path, ratified in the wizard's ICP card, and used by
+  research-skill to frame every search. Competitors = whoever occupies
+  the same vocabulary space. Phase 2 adds `cluster_embedding vector(768)`
+  + HNSW on this table for Lead Finder matching — same table, vocabulary
+  first, vectors second.
 - **Token budget:** per tenant per day in `gt_tenant_context`.
 - **Resume-from-failure:** `gt_agent_runs.checkpoint` JSONB (migration 191)
   + `saveCheckpoint`/`loadCheckpoint`/`findResumableRun` in agent.runner.
@@ -145,7 +154,7 @@ Each skill in `backend/src/skills/<name>/`:
 | vani-skill | profile conversation agent | ✅ live |
 | profile-skill | typed profile + completion score | ✅ live |
 | ingestion-skill | files/URL/GDrive → KG | ✅ live |
-| research-skill | outward competitor research (ICP → web → KG) | ✅ live (needs SEARXNG_URL) |
+| research-skill | outward competitor research (vocabulary → web → KG) | ✅ live (needs SEARXNG_URL) |
 | storyteller-skill | profile → pitch deck → share + Q&A | ✅ live (v1) |
 | contact-skill | GTM contacts + channels (gt_contacts) | ✅ live (v2) |
 | campaign / channel / sequence / icp / gtm-analytics | campaign suite | ✅ live |
@@ -191,7 +200,7 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
 
 ## Migrations — MANUAL ONLY, NO AUTO-MIGRATE
 - Never run automatically. Apply: `cd backend && npm run db:migrate`;
-  status: `npm run db:migrate -- --status`. Highest = **191**.
+  status: `npm run db:migrate -- --status`. Highest = **192**.
 - Discuss schema changes with the user first. Make migrations **idempotent
   and guarded** (IF NOT EXISTS; DO-block existence checks before copying
   from or altering legacy tables — vani_gtm_db was bootstrapped fresh and

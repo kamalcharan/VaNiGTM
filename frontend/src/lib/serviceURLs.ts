@@ -199,6 +199,18 @@ export const API = {
       auth: true,
       description: 'Get the GTM profile revision history',
     },
+    clusters: {
+      method: 'GET',
+      path: '/api/v1/profile/clusters',
+      auth: true,
+      description: 'Market vocabulary — the semantic clusters that frame competitor search',
+    },
+    approveClusters: {
+      method: 'POST',
+      path: '/api/v1/profile/clusters/approve',
+      auth: true,
+      description: 'Ratify the market vocabulary (edits + removals, then approve)',
+    },
   },
 
   /* ── VaNi (knowledge graph) ───────────────────────── */

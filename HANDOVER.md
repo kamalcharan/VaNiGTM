@@ -216,6 +216,36 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      generated OK end-to-end, quality needs work — deck-quality
      workstream (KG-edge-grounded prompts, competitor angles,
      stage-aware variants) starts NOW that relocation is done.
+1e. **SEMANTIC CLUSTERS — the market vocabulary layer (user-directed,
+   2026-07-27). ⚠️ APPLY MIGRATION 192.** The user challenged the
+   research design: searching without curated vocabulary drops quality,
+   and pulling only a stop-gap forward is rework ("why redo, when C
+   works better?"). Agreed and built. `gt_semantic_clusters` is the
+   Phase 2 table built in the only possible dependency order —
+   vocabulary now (search needs it), `cluster_embedding vector(768)` +
+   HNSW in Phase 2 (Lead Finder needs it). NOT rework.
+   - **User design ruling:** `cluster_type`
+     (category/offering/buyer/pain/outcome) replaces the ported
+     ContractNest 12-value INDUSTRY enum — cluster TYPE drives how a
+     cluster is searched; industry does not. Industry filtering returns
+     in Phase 2 for Lead Finder.
+   - Each cluster carries 10–15 `related_terms` (synonyms, customer
+     phrases, jargon, transliterations) — the fuel that turns "AI
+     transformation companies" into "fractional CDO"/"part-time CDO".
+     This is the fix for the Accenture-vs-boutique result.
+   - `approved_at` NULL = agent-suggested, set = human-confirmed
+     (mirrors gt_tenant_profile). Only APPROVED clusters frame research.
+   - Flow: KNOWLEDGE_UPDATED → profile recalc → `generateClusters()`
+     (1 LLM call, prompt seeded as `profile-skill.semantic_clusters`)
+     → tags in the wizard's ICP card → confirming the ICP ratifies them
+     (no extra step, per the sprint ruling) → research frames queries
+     from them, and says so in the feed. No approved vocabulary → it
+     falls back to the old profile-guess and tells the user why.
+   - Agent refresh never clobbers a human decision (approved or
+     human-edited rows keep their terms); cluster failure is a visible
+     failed STEP, never a failed profile recalc (rule 12).
+   - Routes: `GET /profile/clusters`, `POST /profile/clusters/approve`.
+   - NOT yet live-tested (needs migration 192 + a fresh run).
 1c. **Marketing playbooks captured (2026-07-27).** The user shared their
    Claude marketing plugin's full skill playbooks (campaign-plan,
    email-sequence, competitive-brief, brand-review, performance-report,

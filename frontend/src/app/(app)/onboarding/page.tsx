@@ -120,6 +120,23 @@ interface Competitor {
   properties: Record<string, unknown>;
 }
 
+interface SemanticCluster {
+  id: string;
+  primary_term: string;
+  related_terms: string[];
+  cluster_type: string;
+  approved_at: string | null;
+}
+
+/** Cluster type → what it means for the tenant, in plain words. */
+const CLUSTER_TYPE_LABEL: Record<string, string> = {
+  category: 'category',
+  offering: 'offering',
+  buyer: 'buyer',
+  pain: 'pain',
+  outcome: 'outcome',
+};
+
 interface ResearchRun {
   id: string;
   status: string;
@@ -209,6 +226,12 @@ export default function MissionWizardPage() {
   const [compSteps, setCompSteps] = useState<AgentRunStep[]>([]);
   const [compError, setCompError] = useState('');
   const compPollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Market vocabulary — the semantic clusters that frame competitor search.
+  // Agent drafts them during the profile pipeline; the human ratifies them
+  // with the ICP (same click, no extra wizard step).
+  const [clusters, setClusters] = useState<SemanticCluster[]>([]);
+  const [removedClusters, setRemovedClusters] = useState<Set<string>>(new Set());
 
   const [finishing, setFinishing] = useState(false);
 
@@ -471,6 +494,23 @@ export default function MissionWizardPage() {
 
   const keptCount = competitors.filter((c) => !removedIds.has(c.id)).length;
 
+  /* ── Market vocabulary (semantic clusters) ────────────────────────── */
+
+  const loadClusters = useCallback(async () => {
+    try {
+      const res = await apiFetch<{ clusters: SemanticCluster[] }>(API.gtmProfile.clusters);
+      setClusters(res.clusters);
+    } catch {
+      // Vocabulary is an enhancement to the ICP card, never a blocker —
+      // the step still works without it (research falls back to the profile).
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!booting && STEPS[stepIndex]?.id === 'icp') loadClusters();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booting, stepIndex]);
+
   // The research feed, reused across states: live (spinner on the active
   // step) while running, frozen as the evidence trail on failure/done.
   const renderCompFeed = (live: boolean) => (
@@ -602,6 +642,22 @@ export default function MissionWizardPage() {
       // A field edited moments ago fires blur-save on the way to this click —
       // wait for every in-flight PUT so approve validates the saved profile.
       await Promise.all([...pendingSaves.current]);
+
+      // Ratify the market vocabulary in the same click — approved clusters
+      // are what frame every future competitor-research query.
+      if (clusters.length > 0) {
+        try {
+          await apiFetch(API.gtmProfile.approveClusters, {
+            body: { remove: [...removedClusters] },
+          });
+        } catch (err) {
+          showToast({
+            message: (err as ApiError).message || 'Could not save your market vocabulary',
+            type: 'error',
+          });
+        }
+      }
+
       await apiFetch(API.gtmProfile.approve);
       await refreshProfile();
       setConfirmed((prev) => new Set(prev).add('icp'));
@@ -620,7 +676,7 @@ export default function MissionWizardPage() {
     } finally {
       setApproving(false);
     }
-  }, [finishOnboarding, refreshProfile, showToast]);
+  }, [clusters, removedClusters, finishOnboarding, refreshProfile, showToast]);
 
   /* ── Mission rail ─────────────────────────────────────────────────── */
 
@@ -1013,6 +1069,49 @@ export default function MissionWizardPage() {
               confirmLabel="Confirm ICP & enter mission control →"
               loading={approving || finishing}
             >
+              {clusters.length > 0 && (
+                <section className={s.vocabBlock}>
+                  <span className={s.fieldLabel}>Your market vocabulary</span>
+                  <p className={s.vocabHint}>
+                    The words your buyers actually search — VaNi builds every competitor
+                    search from these. Drop anything that isn&apos;t you.
+                  </p>
+                  <div className={s.vocabList}>
+                    {clusters.map((c) => {
+                      const dropped = removedClusters.has(c.id);
+                      return (
+                        <div key={c.id} className={`${s.vocabCluster} ${dropped ? s.vocabClusterOut : ''}`}>
+                          <div className={s.vocabHead}>
+                            <span className={`${s.tag} ${c.cluster_type === 'category' ? s.tagVerified : s.tagDomain}`}>
+                              {CLUSTER_TYPE_LABEL[c.cluster_type] ?? c.cluster_type}
+                            </span>
+                            <span className={s.vocabTerm}>{c.primary_term}</span>
+                            <button
+                              type="button"
+                              className={s.vocabDrop}
+                              onClick={() => setRemovedClusters((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(c.id)) { next.delete(c.id); } else { next.add(c.id); }
+                                return next;
+                              })}
+                            >
+                              {dropped ? 'Undo' : 'Not us'}
+                            </button>
+                          </div>
+                          {c.related_terms.length > 0 && (
+                            <div className={s.vocabTerms}>
+                              {c.related_terms.slice(0, 12).map((t) => (
+                                <span key={t} className={s.vocabTermChip}>{t}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
               <div className={s.icpFields}>
                 {ICP_FIELDS.map((f) => (
                   <div key={f.key} className={s.icpField}>

@@ -5,6 +5,8 @@
  *   PUT  /          upsert profile fields (JWT)
  *   POST /approve   approve profile, emit PROFILE_COMPLETE (JWT)
  *   GET  /history   paginated version history (JWT)
+ *   GET  /clusters          market vocabulary (JWT)
+ *   POST /clusters/approve  ratify the vocabulary (JWT)
  *
  * Auth: every endpoint requires a valid JWT; tenant_id is read from the
  * token, never from the body.
@@ -22,6 +24,7 @@ import {
   upsertProfile,
   type TenantProfile,
 } from './profile.service';
+import { listClusters, approveClusters } from './cluster.service';
 
 /* ── SQL files (loaded once at module init) ─────────────────────────────── */
 
@@ -204,6 +207,53 @@ export function createProfileRouter(pool: Pool): Router {
       res.json({ history: result.rows });
     } catch (err) {
       console.error('[Profile:GET /history]', err);
+      res.status(500).json({
+        error: { code: 'INTERNAL_ERROR', message: messageOf(err) },
+      });
+    }
+  });
+
+  // ── GET /clusters ────────────────────────────────────────────────────
+  // The tenant's market vocabulary (gt_semantic_clusters, migration 192).
+  // Powers the ICP card's vocabulary tags and, once approved, frames every
+  // competitor-research query.
+  router.get('/clusters', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    try {
+      const clusters = await listClusters(pool, jwt.tenant_id);
+      res.json({ clusters });
+    } catch (err) {
+      console.error('[Profile:GET /clusters]', err);
+      res.status(500).json({
+        error: { code: 'INTERNAL_ERROR', message: messageOf(err) },
+      });
+    }
+  });
+
+  // ── POST /clusters/approve ───────────────────────────────────────────
+  // Human gate on the vocabulary: `edits` carries renamed terms / curated
+  // related_terms / changed types, `remove` deactivates rejected clusters,
+  // and everything still active is stamped approved_at.
+  router.post('/clusters/approve', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    const body = (req.body ?? {}) as { edits?: unknown; remove?: unknown };
+    const edits = Array.isArray(body.edits)
+      ? (body.edits as Array<{ id: string; primary_term?: string; related_terms?: string[]; cluster_type?: string }>)
+          .filter((e) => e && typeof e.id === 'string')
+      : [];
+    const remove = Array.isArray(body.remove)
+      ? body.remove.filter((x): x is string => typeof x === 'string')
+      : [];
+
+    try {
+      const clusters = await approveClusters(pool, jwt.tenant_id, edits, remove);
+      res.json({ success: true, clusters });
+    } catch (err) {
+      console.error('[Profile:POST /clusters/approve]', err);
       res.status(500).json({
         error: { code: 'INTERNAL_ERROR', message: messageOf(err) },
       });

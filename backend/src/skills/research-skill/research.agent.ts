@@ -39,6 +39,7 @@ import { callLLMValidated } from '../../agent-core/llm.client';
 import { searchWeb, type WebSearchResult } from '../../agent-core/search.client';
 import { upsertNode, upsertEdge } from '../../agent-core/kg.store';
 import { IngestionAgent } from '../ingestion-skill/ingestion.agent';
+import { listClusters } from '../profile-skill/cluster.service';
 
 export const RESEARCH_AGENT_NAME = 'COMPETITOR_RESEARCH_REQUESTED';
 
@@ -205,22 +206,50 @@ export class CompetitorResearchAgent {
       primary_pain_points: (profile.primary_pain_points ?? []).slice(0, 5),
     }, null, 2);
 
-    // 2. FRAME QUERIES (skipped on resume when checkpointed)
+    // 2. FRAME QUERIES (skipped on resume when checkpointed).
+    //
+    // The tenant's APPROVED market vocabulary (gt_semantic_clusters) is the
+    // input whenever it exists — competitors are whoever occupies the same
+    // vocabulary space, and a human already ratified those terms. Without
+    // it the agent falls back to guessing from the raw profile, which is
+    // what produced category-generic results (a fractional-CDO boutique
+    // matched against Accenture) before clusters existed.
     let queries: string[];
     if (cp.queries && cp.queries.length > 0) {
       queries = cp.queries;
     } else {
+      const clusters = await listClusters(pool, tenantId, { approvedOnly: true });
+      const grounded = clusters.length > 0;
+
+      const vocabulary = grounded
+        ? clusters
+            .map((c) => `- [${c.cluster_type}] ${c.primary_term}: ${c.related_terms.slice(0, 12).join(', ')}`)
+            .join('\n')
+        : '';
+
       ({ queries } = await callLLMValidated(
         {
           pool, tenantId, runId,
-          system:
-            'You are a competitive-intelligence researcher. Given a company profile, ' +
-            'write web-search queries that will surface its direct competitors — ' +
-            'vendors a buyer would evaluate instead. Prefer queries like ' +
-            '"<category> tools for <buyer>", "<product-type> alternatives", ' +
-            '"top <category> companies <industry>". Respond with ONLY JSON inside ' +
-            `<queries> tags: <queries>{"queries": ["...", "..."]}</queries>. Max ${MAX_QUERIES} queries.`,
-          messages: [{ role: 'user', content: `Company profile:\n${profileContext}` }],
+          system: grounded
+            ? 'You are a competitive-intelligence researcher. The company has ' +
+              'confirmed the vocabulary its buyers actually use — build the ' +
+              'searches from THOSE terms, not from broader words you would ' +
+              'otherwise reach for. Anchor on the "category" clusters, and ' +
+              'use related_terms verbatim where they read like something a ' +
+              'buyer would type. Aim at direct peers, not the largest firms ' +
+              'in an adjacent category. Respond with ONLY JSON inside ' +
+              `<queries> tags: <queries>{"queries": ["...", "..."]}</queries>. Max ${MAX_QUERIES} queries.`
+            : 'You are a competitive-intelligence researcher. Given a company profile, ' +
+              'write web-search queries that will surface its direct competitors — ' +
+              'vendors a buyer would evaluate instead. Use the company\'s OWN specific ' +
+              'category and buyer, never a broad umbrella term. Respond with ONLY JSON ' +
+              `inside <queries> tags: <queries>{"queries": ["...", "..."]}</queries>. Max ${MAX_QUERIES} queries.`,
+          messages: [{
+            role: 'user',
+            content: grounded
+              ? `Confirmed market vocabulary:\n${vocabulary}\n\nCompany profile:\n${profileContext}`
+              : `Company profile:\n${profileContext}`,
+          }],
           maxTokens: 300,
         },
         QueriesSchema,
@@ -230,8 +259,11 @@ export class CompetitorResearchAgent {
 
       await appendStep(pool, runId, {
         step_name: 'frame_queries',
-        action: 'Framed the competitive landscape',
-        output_summary: queries.map((q) => `"${q}"`).join(' · '),
+        action: grounded
+          ? `Framed the search from your ${clusters.length} confirmed market terms`
+          : 'Framed the competitive landscape from your profile',
+        output_summary: queries.map((q) => `"${q}"`).join(' · ')
+          + (grounded ? '' : ' (no confirmed vocabulary yet — confirm your market terms for sharper results)'),
         status: 'ok',
       });
     }
