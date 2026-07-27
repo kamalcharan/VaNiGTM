@@ -80,6 +80,34 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      and code comments. **`War Room` deliberately KEPT** — it is brand
      metaphor consistent with Mission Wizard / mission control, not a
      comprehension barrier; say so if the user wants it changed.
+   - ✅ **1.6 DONE (2026-07-27) — wizard flow rebuilt as an agent handoff.**
+     User spotted that the top step chips and the left rail were saying
+     the SAME thing, and pointed back at `ux-references/agent-wizard-
+     flow.pdf` (+ its README, which already said it): **"accumulating
+     left rail = mission memory — each completed step COLLAPSES INTO THE
+     RAIL and stays inspectable"**. The rail had been built as a second
+     list of step names; it now carries the agent's REAL output,
+     expandable — company card (description, problem, differentiator
+     chips), the confirmed competitor list, the buyer + pain + vocabulary
+     chips. Top chips = where you are; rail = what was found. No overlap.
+   - **User ruling on advancing:** the flow AUTO-RUNS; manual controls
+     appear on error. Ready steps arm a **7s interruptible countdown on
+     the confirm button** ("Confirm 4 competitors · 5") with an explicit
+     "Hold — I want to change something". ANY interaction inside the card
+     (pointer/focus/key, capture phase) cancels it PERMANENTLY for that
+     card — once a human touches their data, only a human commits it.
+     Countdown is disabled entirely under prefers-reduced-motion and
+     while a step is running or failed. Implemented as
+     `VdfApprovalCard.autoConfirmMs` so every future step inherits it.
+   - **The handoff animation** (`handoff()` + `.mainLeaving`): a
+     confirmed card slides left, fades and shrinks (420ms) while the next
+     one arrives — the visual grammar of one agent finishing and the next
+     taking over. Reduced motion swaps instantly. Keep `HANDOFF_MS` in
+     page.tsx in sync with the keyframe duration in the CSS module.
+   - ⚠️ **This flow is what the landing video records** (item b below).
+     It only reads as continuous if steps are FAST — on the 4+ minute VPS
+     LLM the animation becomes card → dead loader → card. Use the Haiku
+     path for the recording and for demos.
    - **Phase 1 remaining (2026-07-27):**
      a) **User ruling needed:** make neural-ops the product default
         theme (one line: NEXT_PUBLIC_DEFAULT_THEME or provider default).

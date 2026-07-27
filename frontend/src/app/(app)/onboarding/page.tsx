@@ -185,6 +185,14 @@ const ICP_FIELDS: { key: keyof GtmProfile & string; label: string; required: boo
   { key: 'primary_pain_points', label: 'Primary pain points (one per line)', required: true, multiline: true, list: true },
 ];
 
+/** Auto-confirm window on a ready step (user ruling: 6–8s, interruptible).
+    The agent keeps the flow moving; the human only acts to CHANGE something.
+    Touching the card cancels it permanently — see VdfApprovalCard. */
+const AUTO_CONFIRM_MS = 7000;
+
+/** Length of the card's leave animation — keep in sync with mission-wizard.module.css. */
+const HANDOFF_MS = 420;
+
 const POLL_MS = 3000;
 const SOURCE_POLL_LIMIT = 200;  // ~10 min hard ceiling — profile-first exit normally fires long before
 const PENDING_HINT_AFTER = 8;   // ~24s still 'pending' → surface the "worker running?" hint
@@ -515,6 +523,28 @@ export default function MissionWizardPage() {
     poll();
   }, [loadCompetitors, showToast]);
 
+  /* ── The handoff ─────────────────────────────────────────────────────
+     A finished step doesn't just disappear — it visibly hands off. The
+     stage card plays a short leave animation while the rail entry arrives,
+     which is the whole visual grammar of "this agent is done, the next one
+     is taking over". Reduced motion skips straight to the swap. */
+  const [handingOff, setHandingOff] = useState(false);
+
+  const handoff = useCallback((stepId: string, nextIndex: number) => {
+    const reduced = typeof window !== 'undefined'
+      && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    const commit = () => {
+      setConfirmed((prev) => new Set(prev).add(stepId));
+      setStepIndex(nextIndex);
+      setHandingOff(false);
+    };
+
+    if (reduced) { commit(); return; }
+    setHandingOff(true);
+    window.setTimeout(commit, HANDOFF_MS);
+  }, []);
+
   const keptCount = competitors.filter((c) => !removedIds.has(c.id)).length;
 
   /* ── Market vocabulary (semantic clusters) ────────────────────────── */
@@ -625,8 +655,7 @@ export default function MissionWizardPage() {
       const keep = competitors.filter((c) => !removedIds.has(c.id)).map((c) => c.id);
       const remove = [...removedIds];
       await apiFetch(API.vani.confirmCompetitors, { body: { keep, remove } });
-      setConfirmed((prev) => new Set(prev).add('competitors'));
-      setStepIndex(2);
+      handoff('competitors', 2);
       showToast({
         message: keep.length > 0
           ? `Competitor map confirmed — ${keep.length} kept`
@@ -638,7 +667,7 @@ export default function MissionWizardPage() {
     } finally {
       setConfirmingCompetitors(false);
     }
-  }, [competitors, removedIds, showToast]);
+  }, [competitors, removedIds, handoff, showToast]);
 
   /* ── Step 3: confirm ICP — the mission's finish line ──────────────── */
 
@@ -708,21 +737,87 @@ export default function MissionWizardPage() {
 
   /* ── Mission rail ─────────────────────────────────────────────────── */
 
-  const railItems: VdfMissionRailItem[] = useMemo(() => STEPS.map((step, i) => ({
-    id: step.id,
-    step: i + 1,
-    title: step.locked ? `${step.label} · soon` : step.label,
-    state: confirmed.has(step.id) ? 'done' : (!step.locked && i === stepIndex) ? 'active' : 'pending',
-    digest: confirmed.has(step.id)
-      ? step.id === 'company'
-        ? (profile?.product_tagline || profile?.product_name || 'Company researched')
-        : step.id === 'competitors'
-          ? `${competitors.filter((c) => !removedIds.has(c.id)).length || 'No'} competitors confirmed`
-          : step.id === 'icp'
-            ? `Approved · score ${profile?.completion_score ?? '—'}`
-            : undefined
-      : undefined,
-  })), [confirmed, stepIndex, profile, competitors, removedIds]);
+  // Mission memory: each finished step COLLAPSES INTO THE RAIL carrying the
+  // agent's real output, expandable (ux-references pattern 2 — "the rail is
+  // the audit trail of what the agent did"). The top chips say where you
+  // are; the rail says what was found. Neither repeats the other.
+  const railItems: VdfMissionRailItem[] = useMemo(() => STEPS.map((step, i) => {
+    const done = confirmed.has(step.id);
+    let digest: string | undefined;
+    let summary: React.ReactNode;
+
+    if (done && step.id === 'company') {
+      digest = profile?.product_tagline || profile?.product_name || 'Company researched';
+      summary = (
+        <div className={s.memoryBody}>
+          {profile?.product_description && (
+            <p className={s.memoryLine}>{profile.product_description}</p>
+          )}
+          {profile?.core_problem && (
+            <p className={s.memoryLine}><strong>Problem:</strong> {profile.core_problem}</p>
+          )}
+          {(profile?.key_differentiators ?? []).length > 0 && (
+            <div className={s.memoryChips}>
+              {(profile!.key_differentiators ?? []).slice(0, 6).map((d) => (
+                <span key={d} className={s.memoryChip}>{d}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (done && step.id === 'competitors') {
+      const kept = competitors.filter((c) => !removedIds.has(c.id));
+      digest = `${kept.length || 'No'} competitor${kept.length === 1 ? '' : 's'} confirmed`;
+      summary = kept.length > 0 ? (
+        <div className={s.memoryBody}>
+          {kept.map((c) => (
+            <p key={c.id} className={s.memoryLine}>
+              <strong>{c.name}</strong>
+              {typeof c.properties?.domain === 'string' ? ` · ${c.properties.domain}` : ''}
+            </p>
+          ))}
+        </div>
+      ) : (
+        <div className={s.memoryBody}>
+          <p className={s.memoryLine}>No named competitors — positioning on category strength.</p>
+        </div>
+      );
+    }
+
+    if (done && step.id === 'icp') {
+      digest = `${profile?.icp_role || 'Buyer defined'} · score ${profile?.completion_score ?? '—'}`;
+      summary = (
+        <div className={s.memoryBody}>
+          {profile?.icp_role && <p className={s.memoryLine}><strong>Buyer:</strong> {profile.icp_role}</p>}
+          {(profile?.primary_pain_points ?? []).length > 0 && (
+            <div className={s.memoryChips}>
+              {(profile!.primary_pain_points ?? []).slice(0, 6).map((pt) => (
+                <span key={pt} className={s.memoryChip}>{pt}</span>
+              ))}
+            </div>
+          )}
+          {clusters.length > 0 && (
+            <div className={s.memoryChips}>
+              {clusters.filter((c) => !removedClusters.has(c.id)).slice(0, 6).map((c) => (
+                <span key={c.id} className={s.memoryChip}>{c.primary_term}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return {
+      id: step.id,
+      step: i + 1,
+      title: step.locked ? `${step.label} · soon` : step.label,
+      state: done ? 'done' : (!step.locked && i === stepIndex) ? 'active' : 'pending',
+      digest,
+      summary,
+    } as VdfMissionRailItem;
+  }), [confirmed, stepIndex, profile, competitors, removedIds, clusters, removedClusters]);
 
   const current = STEPS[stepIndex];
 
@@ -759,7 +854,7 @@ export default function MissionWizardPage() {
           <VdfMissionRail items={railItems} />
         </aside>
 
-        <main className={s.main} key={current.id}>
+        <main className={`${s.main} ${handingOff ? s.mainLeaving : ''}`} key={current.id}>
 
           {/* ── STEP 1 — Research ─────────────────────────────────── */}
           {current.id === 'company' && research !== 'done' && (
@@ -880,7 +975,8 @@ export default function MissionWizardPage() {
               title="Here's what I learned"
               subtitle="Rough edges are normal — you'll refine everything in the next step."
               status={confirmed.has('company') ? 'confirmed' : 'draft'}
-              onConfirm={() => { setConfirmed((p) => new Set(p).add('company')); setStepIndex(1); }}
+              autoConfirmMs={AUTO_CONFIRM_MS}
+              onConfirm={() => { handoff('company', 1); }}
               confirmLabel="Looks right — continue"
             >
               {parseSiteHealth(researchSteps) && (
@@ -938,6 +1034,7 @@ export default function MissionWizardPage() {
               title="Who shapes your buyers' expectations?"
               subtitle="I research your category across the live web, verify each candidate against their real site, and map them here. Remove anyone who doesn't belong — I'll position against the rest in your stories and campaigns."
               status={confirmed.has('competitors') ? 'confirmed' : 'draft'}
+              autoConfirmMs={compResearch === 'running' || compResearch === 'failed' ? undefined : AUTO_CONFIRM_MS}
               onConfirm={compResearch === 'running' ? undefined : confirmCompetitors}
               confirmLabel={keptCount > 0
                 ? `Confirm ${keptCount} competitor${keptCount === 1 ? '' : 's'}`
