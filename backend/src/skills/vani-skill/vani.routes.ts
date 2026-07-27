@@ -233,6 +233,78 @@ export function createVaniRouter(pool: Pool): Router {
     }
   });
 
+  // ── POST /competitors/research ───────────────────────────────────────────
+  // Kick off outward competitor research (research-skill agent): profile →
+  // search queries → SearXNG → verify candidate sites → KG Competitor nodes.
+  // Deduped: an already queued/running research run is returned instead of
+  // emitting a second event.
+  router.post('/competitors/research', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    try {
+      const db = createTenantDb(pool, jwt.tenant_id);
+      const active = await db.query<{ id: string }>(
+        `SELECT id::text FROM gt_agent_runs
+          WHERE tenant_id = $tenant_id
+            AND agent_name = 'COMPETITOR_RESEARCH_REQUESTED'
+            AND status IN ('queued', 'running')
+          ORDER BY created_at DESC
+          LIMIT 1`,
+        { tenant_id: jwt.tenant_id },
+      );
+      if (active.rows[0]) {
+        res.json({ already_running: true, run_id: active.rows[0].id });
+        return;
+      }
+
+      const eventId = await emitEvent(
+        pool,
+        jwt.tenant_id,
+        'COMPETITOR_RESEARCH_REQUESTED',
+        'human',
+        { requested_by: jwt.user_id },
+        jwt.user_id,
+      );
+      res.json({ already_running: false, event_id: eventId });
+    } catch (err) {
+      console.error('[VaNi:/competitors/research]', err);
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });
+    }
+  });
+
+  // ── GET /competitors/research-status ─────────────────────────────────────
+  // Latest research run for the wizard's live feed: status + real agent
+  // steps + output/error. Null run = never researched.
+  router.get('/competitors/research-status', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    try {
+      const db = createTenantDb(pool, jwt.tenant_id);
+      const result = await db.query<{
+        id: string;
+        status: string;
+        steps: unknown;
+        output: Record<string, unknown> | null;
+        error_trace: string | null;
+        created_at: Date;
+      }>(
+        `SELECT id::text, status, steps, output, error_trace, created_at
+           FROM gt_agent_runs
+          WHERE tenant_id = $tenant_id
+            AND agent_name = 'COMPETITOR_RESEARCH_REQUESTED'
+          ORDER BY created_at DESC
+          LIMIT 1`,
+        { tenant_id: jwt.tenant_id },
+      );
+      res.json({ run: result.rows[0] ?? null });
+    } catch (err) {
+      console.error('[VaNi:/competitors/research-status]', err);
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });
+    }
+  });
+
   // ── POST /competitors/confirm ────────────────────────────────────────────
   // Human ruling on the competitor map: kept nodes are stamped
   // properties.confirmed=true (a signal Storyteller/campaigns can ground

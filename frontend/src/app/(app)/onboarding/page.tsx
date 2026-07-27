@@ -120,6 +120,30 @@ interface Competitor {
   properties: Record<string, unknown>;
 }
 
+interface ResearchRun {
+  id: string;
+  status: string;
+  steps: AgentRunStep[] | null;
+  output: Record<string, unknown> | null;
+  error_trace: string | null;
+}
+
+/** Friendly labels for the competitor-research agent's steps. web_search and
+    verify are deliberately absent — their `action` strings carry the specifics
+    ("Searched: …", "Acme: verified against its site") and read better raw. */
+const COMPETITOR_STEP_LABELS: Record<string, string> = {
+  init: 'Agent picked up your request',
+  load_profile: 'Framing research around your profile',
+  frame_queries: 'Deciding what to search for',
+  shortlist: 'Shortlisting candidate competitors',
+  kg_write: 'Mapping competitors into your knowledge graph',
+};
+
+/** First line of a server error trace — the real cause, not the stack. */
+function firstLine(trace: string | null | undefined): string {
+  return (trace ?? '').split('\n')[0].trim();
+}
+
 /* ── Wizard steps — GTM pipeline v2 ─────────────────────────────────────
    Onboarding = research → competitors → ICP → mission configured.
    Storytelling deliberately LEAVES the wizard (design-notes-gtm-pipeline-v2:
@@ -176,11 +200,15 @@ export default function MissionWizardPage() {
   // PUT can never race the approve call (approve validating stale data).
   const pendingSaves = useRef<Set<Promise<void>>>(new Set());
 
-  // Step 2 state — competitor map (agent produced, human keeps/removes)
+  // Step 2 state — competitor map (agent researched, human keeps/removes)
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
   const [competitorsLoading, setCompetitorsLoading] = useState(false);
   const [confirmingCompetitors, setConfirmingCompetitors] = useState(false);
+  const [compResearch, setCompResearch] = useState<'idle' | 'running' | 'done' | 'failed'>('idle');
+  const [compSteps, setCompSteps] = useState<AgentRunStep[]>([]);
+  const [compError, setCompError] = useState('');
+  const compPollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [finishing, setFinishing] = useState(false);
 
@@ -225,7 +253,10 @@ export default function MissionWizardPage() {
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => () => { if (pollTimer.current) clearTimeout(pollTimer.current); }, []);
+  useEffect(() => () => {
+    if (pollTimer.current) clearTimeout(pollTimer.current);
+    if (compPollTimer.current) clearTimeout(compPollTimer.current);
+  }, []);
 
   /* ── Step 1: research ─────────────────────────────────────────────── */
 
@@ -374,26 +405,116 @@ export default function MissionWizardPage() {
     await save;
   }, [edits, showToast]);
 
-  /* ── Step 2: competitor map (agent produced, human keeps/removes) ──── */
+  /* ── Step 2: competitor map (agent researched, human keeps/removes) ──
+     Competitors are RESEARCHED outward from the profile (web search via
+     the research-skill agent) — a tenant's own site almost never names
+     rivals. Crawl-found Competitor nodes are a bonus second source. */
 
-  const loadCompetitors = useCallback(async () => {
+  const loadCompetitors = useCallback(async (): Promise<Competitor[]> => {
     setCompetitorsLoading(true);
     try {
       const res = await apiFetch<{ competitors: Competitor[] }>(API.vani.competitors);
       setCompetitors(res.competitors);
+      return res.competitors;
     } catch (err) {
       showToast({ message: (err as ApiError).message || 'Could not load competitors', type: 'error' });
+      return [];
     } finally {
       setCompetitorsLoading(false);
     }
   }, [showToast]);
 
-  // Load the map when the competitors step becomes active (KG extraction may
-  // still be adding nodes in the background — Refresh re-pulls).
-  useEffect(() => {
-    if (!booting && STEPS[stepIndex]?.id === 'competitors' && !confirmed.has('competitors')) {
-      loadCompetitors();
+  const pollCompetitorResearch = useCallback(() => {
+    // One chain only — a retry must never race a prior chain's updates.
+    if (compPollTimer.current) {
+      clearTimeout(compPollTimer.current);
+      compPollTimer.current = null;
     }
+    let tries = 0;
+    const poll = async () => {
+      tries += 1;
+      try {
+        const res = await apiFetch<{ run: ResearchRun | null }>(API.vani.competitorResearchStatus);
+        const run = res.run;
+        if (run) {
+          if (Array.isArray(run.steps) && run.steps.length > 0) setCompSteps(run.steps);
+          if (run.status === 'completed') {
+            setCompResearch('done');
+            const found = await loadCompetitors();
+            showToast({
+              message: found.length > 0
+                ? `Research done — ${found.length} competitor${found.length === 1 ? '' : 's'} on your map`
+                : 'Research done — no verifiable competitors found in your category',
+              type: 'success',
+            });
+            return;
+          }
+          if (run.status === 'failed') {
+            setCompResearch('failed');
+            setCompError(firstLine(run.error_trace) || 'Competitor research failed');
+            return;
+          }
+        }
+      } catch { /* transient — keep polling */ }
+
+      if (tries >= SOURCE_POLL_LIMIT) {
+        setCompResearch('failed');
+        setCompError('Research is taking too long — is the worker process running?');
+        return;
+      }
+      compPollTimer.current = setTimeout(poll, POLL_MS);
+    };
+    poll();
+  }, [loadCompetitors, showToast]);
+
+  const startCompetitorResearch = useCallback(async () => {
+    setCompResearch('running');
+    setCompSteps([]);
+    setCompError('');
+    try {
+      await apiFetch(API.vani.researchCompetitors);
+      pollCompetitorResearch();
+    } catch (err) {
+      setCompResearch('failed');
+      setCompError((err as ApiError).message || 'Could not start competitor research');
+    }
+  }, [pollCompetitorResearch]);
+
+  // Entering the step: resume a running research run, surface a failed one,
+  // or — agent-led — auto-start research when nothing has been mapped yet.
+  useEffect(() => {
+    if (booting || STEPS[stepIndex]?.id !== 'competitors' || confirmed.has('competitors')) return;
+    let cancelled = false;
+    (async () => {
+      const existing = await loadCompetitors();
+      if (cancelled) return;
+      try {
+        const res = await apiFetch<{ run: ResearchRun | null }>(API.vani.competitorResearchStatus);
+        if (cancelled) return;
+        const run = res.run;
+        if (run && (run.status === 'queued' || run.status === 'running')) {
+          setCompResearch('running');
+          if (Array.isArray(run.steps) && run.steps.length > 0) setCompSteps(run.steps);
+          pollCompetitorResearch();
+          return;
+        }
+        if (run?.status === 'failed' && existing.length === 0) {
+          setCompResearch('failed');
+          setCompError(firstLine(run.error_trace) || 'Competitor research failed');
+          return;
+        }
+        if (!run && existing.length === 0) {
+          startCompetitorResearch();
+          return;
+        }
+        setCompResearch('done');
+      } catch {
+        // Status endpoint unreachable — the list is still usable; research
+        // can be started manually with the button.
+        setCompResearch('idle');
+      }
+    })();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booting, stepIndex]);
 
@@ -753,55 +874,112 @@ export default function MissionWizardPage() {
           {/* ── STEP 2 — Competitor map (pipeline v2 stage 1) ─────── */}
           {current.id === 'competitors' && (
             <VdfApprovalCard
-              eyebrow="VaNi · mapped from your website"
+              eyebrow="VaNi · researched from your ICP"
               title="Who shapes your buyers' expectations?"
-              subtitle="Remove anyone who doesn't belong — I'll position against the rest in your stories and campaigns. If the crawl is still digesting, Refresh pulls in new finds."
+              subtitle="I research your category across the live web, verify each candidate against their real site, and map them here. Remove anyone who doesn't belong — I'll position against the rest in your stories and campaigns."
               status={confirmed.has('competitors') ? 'confirmed' : 'draft'}
-              onConfirm={confirmCompetitors}
+              onConfirm={compResearch === 'running' ? undefined : confirmCompetitors}
               confirmLabel={competitors.filter((c) => !removedIds.has(c.id)).length > 0 ? 'Confirm competitor map' : 'No competitors — continue'}
               loading={confirmingCompetitors}
             >
-              {competitorsLoading ? (
-                <VdfKgLoader message="Reading competitors from your knowledge graph" />
-              ) : competitors.length === 0 ? (
-                <div className={s.summaryField}>
-                  <span className={s.fieldEmpty}>
-                    No competitors found on your site yet. That's common — sites rarely name rivals.
-                    Paste competitor notes into the loop later, or continue and VaNi will position
-                    on category strength instead.
-                  </span>
-                  <div className={s.errorActions}>
-                    <VdfButton variant="ghost" size="sm" onClick={loadCompetitors}>Refresh</VdfButton>
-                  </div>
+              {compResearch === 'running' ? (
+                <div className={s.researchSummary}>
+                  <VdfKgLoader
+                    message="VaNi is researching your competitive landscape"
+                    hint="Framing queries → searching the web → reading each candidate's real site → mapping your knowledge graph"
+                  />
+                  {compSteps.length > 0 && (
+                    <ol className={s.stepFeed} aria-label="VaNi's live research progress">
+                      {compSteps.map((st, i) => {
+                        const isLast = i === compSteps.length - 1;
+                        const failed = st.status === 'error';
+                        return (
+                          <li
+                            key={`${st.step_name}-${i}`}
+                            className={`${s.stepRow} ${isLast && !failed ? s.stepActive : s.stepDone} ${failed ? s.stepFailed : ''}`}
+                          >
+                            <span className={s.stepMark} aria-hidden>
+                              {failed ? '✕' : isLast ? '' : '✓'}
+                              {isLast && !failed && <span className={s.stepSpinner} />}
+                            </span>
+                            <span className={s.stepText}>
+                              {COMPETITOR_STEP_LABELS[st.step_name] ?? st.action ?? st.step_name}
+                              {st.output_summary && <span className={s.stepDetail}> — {st.output_summary}</span>}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  )}
                 </div>
               ) : (
-                <div className={s.competitorList}>
-                  {competitors.map((c) => {
-                    const removed = removedIds.has(c.id);
-                    return (
-                      <div key={c.id} className={`${s.competitorRow} ${removed ? s.competitorRemoved : ''}`}>
-                        <div className={s.competitorMain}>
-                          <span className={s.competitorName}>{c.name}</span>
-                          {c.description && <span className={s.competitorDesc}>{c.description}</span>}
-                        </div>
-                        <VdfButton
-                          variant={removed ? 'outline' : 'ghost'}
-                          size="sm"
-                          onClick={() => setRemovedIds((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(c.id)) { next.delete(c.id); } else { next.add(c.id); }
-                            return next;
-                          })}
-                        >
-                          {removed ? 'Undo' : 'Not a competitor'}
-                        </VdfButton>
+                <>
+                  {compResearch === 'failed' && (
+                    <div className={s.errorNote}>
+                      <p>{compError}</p>
+                      <div className={s.errorActions}>
+                        <VdfButton variant="outline" size="sm" onClick={startCompetitorResearch}>Try again</VdfButton>
                       </div>
-                    );
-                  })}
-                  <div className={s.errorActions}>
-                    <VdfButton variant="ghost" size="sm" onClick={loadCompetitors}>Refresh</VdfButton>
-                  </div>
-                </div>
+                    </div>
+                  )}
+
+                  {competitorsLoading ? (
+                    <VdfKgLoader message="Reading competitors from your knowledge graph" />
+                  ) : competitors.length === 0 ? (
+                    <div className={s.summaryField}>
+                      <span className={s.fieldEmpty}>
+                        {compResearch === 'done'
+                          ? 'Research finished — no candidate survived verification against their real site. Some categories are genuinely uncrowded; re-run any time, or add competitor notes through the loop and confirm to keep moving.'
+                          : 'No competitors on the map yet.'}
+                      </span>
+                      <div className={s.errorActions}>
+                        {compResearch !== 'failed' && (
+                          <VdfButton variant="outline" size="sm" onClick={startCompetitorResearch}>
+                            {compResearch === 'done' ? 'Research again' : 'Research competitors'}
+                          </VdfButton>
+                        )}
+                        <VdfButton variant="ghost" size="sm" onClick={loadCompetitors}>Refresh</VdfButton>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={s.competitorList}>
+                      {competitors.map((c) => {
+                        const removed = removedIds.has(c.id);
+                        const domain = typeof c.properties?.domain === 'string' ? c.properties.domain : null;
+                        const unverified = c.properties?.verified === false;
+                        return (
+                          <div key={c.id} className={`${s.competitorRow} ${removed ? s.competitorRemoved : ''}`}>
+                            <div className={s.competitorMain}>
+                              <span className={s.competitorName}>
+                                {c.name}
+                                {domain && <span className={s.competitorDomain}> · {domain}</span>}
+                                {unverified && <span className={s.competitorUnverified}> unverified</span>}
+                              </span>
+                              {c.description && <span className={s.competitorDesc}>{c.description}</span>}
+                            </div>
+                            <VdfButton
+                              variant={removed ? 'outline' : 'ghost'}
+                              size="sm"
+                              onClick={() => setRemovedIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(c.id)) { next.delete(c.id); } else { next.add(c.id); }
+                                return next;
+                              })}
+                            >
+                              {removed ? 'Undo' : 'Not a competitor'}
+                            </VdfButton>
+                          </div>
+                        );
+                      })}
+                      <div className={s.errorActions}>
+                        {compResearch !== 'failed' && (
+                          <VdfButton variant="outline" size="sm" onClick={startCompetitorResearch}>Research again</VdfButton>
+                        )}
+                        <VdfButton variant="ghost" size="sm" onClick={loadCompetitors}>Refresh</VdfButton>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </VdfApprovalCard>
           )}

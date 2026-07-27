@@ -23,6 +23,7 @@ import { emitEvent, type GTEvent } from './event.store';
 import { createRun, setStatus, appendStep } from './agent.runner';
 import { VaniAgent } from '../skills/vani-skill/vani.agent';
 import { IngestionAgent } from '../skills/ingestion-skill/ingestion.agent';
+import { CompetitorResearchAgent } from '../skills/research-skill/research.agent';
 import { recalculateProfileFromNodes } from '../skills/profile-skill/profile.service';
 
 /* ── Event Queue interface ──────────────────────────────────────────────── */
@@ -115,6 +116,12 @@ const AGENT_REGISTRY: Record<string, AgentHandler> = {
       },
     });
   },
+
+  // Outward competitor research (GTM pipeline v2 stage 1) — competitors
+  // are researched from the profile/ICP, not scraped off the tenant's own
+  // site. Triggered by the wizard's competitors step (or a manual re-run).
+  COMPETITOR_RESEARCH_REQUESTED: (pool, tenantId, payload, runId) =>
+    CompetitorResearchAgent.run(pool, tenantId, payload, runId),
 
   // Fires after IngestionAgent.run() writes nodes from any source (Drive
   // file today; direct upload / URL once those entry points exist).

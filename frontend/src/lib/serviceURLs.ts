@@ -216,6 +216,18 @@ export const API = {
       auth: true,
       description: 'Confirm the competitor map — keep (stamped confirmed) / remove (deleted)',
     },
+    researchCompetitors: {
+      method: 'POST',
+      path: '/api/v1/vani/competitors/research',
+      auth: true,
+      description: 'Kick off outward competitor research (profile → web search → verified KG nodes)',
+    },
+    competitorResearchStatus: {
+      method: 'GET',
+      path: '/api/v1/vani/competitors/research-status',
+      auth: true,
+      description: 'Latest competitor-research run — status, live steps, output/error',
+    },
   },
 
   /* ── Ingestion ────────────────────────────────────── */

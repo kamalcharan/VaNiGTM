@@ -281,6 +281,27 @@ textarea.input {
   color: var(--color-fg);
 }
 
+.competitorDomain {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--color-muted);
+}
+
+.competitorUnverified {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--color-warning);
+  border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
+  border-radius: 6px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 .competitorDesc {
   font-size: 0.82rem;
   line-height: 1.5;

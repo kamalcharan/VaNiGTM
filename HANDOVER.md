@@ -145,9 +145,30 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      confirmed, wizard lands on ICP step for enrichment revisits.
    - Smoke: both packages typecheck (only known pre-existing
      errors); `/onboarding` + `/dashboard/storyteller` serve 200.
+   - **Competitor RESEARCH agent added (user ruling: competitors must
+     be researched from the ICP, not scraped off the tenant's site;
+     user chose self-hosted SearXNG).** New `research-skill`:
+     `COMPETITOR_RESEARCH_REQUESTED` event → CompetitorResearchAgent
+     (profile → LLM-framed queries → SearXNG JSON API via
+     `agent-core/search.client.ts` → LLM shortlist of vendors →
+     per-candidate verification against their REAL site via
+     `IngestionAgent.fetchUrlText` (now public) + LLM fit-judgment →
+     KG write: Competitor nodes {source:'research', domain, verified,
+     angle, confirmed:false} + Company —DIFFERENTIATES_FROM→ edges).
+     Unverifiable candidates are KEPT marked `verified:false` (human
+     gate decides — transparent, not a fallback); dropped candidates
+     are visible steps. Routes: `POST /vani/competitors/research`
+     (dedupes active runs) + `GET /vani/competitors/research-status`.
+     Wizard step 2 auto-starts research when the map is empty, shows
+     the KG loader + live step feed, surfaces failures with the real
+     cause + Retry, badges unverified rows. **DEPLOY PREREQ (user):**
+     SearXNG on the VPS per `docs/searxng-setup.md` — port 3011,
+     settings.yml must add `json` to search.formats (403 otherwise),
+     then `SEARXNG_URL` in backend/.env (+ hard-restart worker).
+     Without it research fails loudly with SEARCH_NOT_CONFIGURED.
    - NOT yet live-tested with a fresh tenant through the new step 2
-     (needs worker + Ollama warm + a site whose crawl yields
-     Competitor nodes). First live Storyteller run verdict: deck
+     (needs worker + Ollama warm + SearXNG deployed). First live
+     Storyteller run verdict: deck
      generated OK end-to-end, quality needs work — deck-quality
      workstream (KG-edge-grounded prompts, competitor angles,
      stage-aware variants) starts NOW that relocation is done.

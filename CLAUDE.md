@@ -42,7 +42,8 @@ backend/
                         prospect processing lands with prospect-skill
     services/         — skill-registry, skill-loader
     skills/           — campaign, channel, contact, gtm-analytics, icp,
-                        ingestion, profile, pulse, sequence, storyteller, vani
+                        ingestion, profile, pulse, research, sequence,
+                        storyteller, vani
     server.ts         — Express entry; migrate.ts — manual migration runner
   migrations/         — 001…190 (highest = 190)
 frontend/
@@ -106,8 +107,11 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
   status (`queued/running/awaiting/completed/failed`), token usage.
 - **Registered events:** TENANT_REGISTERED, HUMAN_APPROVED → VaNi;
   FILE_UPLOADED, URL_SUBMITTED, FOLDER_CONNECTED → ingestion;
-  KNOWLEDGE_UPDATED → profile recalc. PROFILE_COMPLETE is emitted (no
-  consumer yet — ICP/Storyteller agents subscribe as they're built).
+  KNOWLEDGE_UPDATED → profile recalc; COMPETITOR_RESEARCH_REQUESTED →
+  research-skill (profile → SearXNG web search → verified KG Competitor
+  nodes; needs `SEARXNG_URL`, see docs/searxng-setup.md). PROFILE_COMPLETE
+  is emitted (no consumer yet — ICP/Storyteller agents subscribe as
+  they're built).
 - **Human-in-the-loop:** agents park runs at `awaiting` with
   `awaiting_input`; humans respond via REST routes; approval gates before
   anything externally visible.
@@ -135,6 +139,7 @@ Each skill in `backend/src/skills/<name>/`:
 | vani-skill | profile conversation agent | ✅ live |
 | profile-skill | typed profile + completion score | ✅ live |
 | ingestion-skill | files/URL/GDrive → KG | ✅ live |
+| research-skill | outward competitor research (ICP → web → KG) | ✅ live (needs SEARXNG_URL) |
 | storyteller-skill | profile → pitch deck → share + Q&A | ✅ live (v1) |
 | contact-skill | GTM contacts + channels (gt_contacts) | ✅ live (v2) |
 | campaign / channel / sequence / icp / gtm-analytics | campaign suite | ✅ live |

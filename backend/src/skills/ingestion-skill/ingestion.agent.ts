@@ -878,7 +878,9 @@ export class IngestionAgent {
     return Boolean(process.env.N8N_RENDER_URL && process.env.N8N_RENDER_SECRET);
   }
 
-  private static async fetchUrlText(url: string): Promise<{
+  // Public: the competitor-research agent reuses this to verify candidate
+  // domains against their real sites (static read only — no render leg).
+  static async fetchUrlText(url: string): Promise<{
     text: string;
     html: string;
     health: { present: string[]; missing: string[]; summary: string };
