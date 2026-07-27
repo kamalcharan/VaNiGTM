@@ -410,17 +410,19 @@ export default function MissionWizardPage() {
      the research-skill agent) — a tenant's own site almost never names
      rivals. Crawl-found Competitor nodes are a bonus second source. */
 
-  const loadCompetitors = useCallback(async (): Promise<Competitor[]> => {
-    setCompetitorsLoading(true);
+  // silent=true → no error toast (poll ticks re-pull the map every few
+  // seconds; a transient failure there must not spam toasts).
+  const loadCompetitors = useCallback(async (silent = false): Promise<Competitor[]> => {
+    if (!silent) setCompetitorsLoading(true);
     try {
       const res = await apiFetch<{ competitors: Competitor[] }>(API.vani.competitors);
       setCompetitors(res.competitors);
       return res.competitors;
     } catch (err) {
-      showToast({ message: (err as ApiError).message || 'Could not load competitors', type: 'error' });
+      if (!silent) showToast({ message: (err as ApiError).message || 'Could not load competitors', type: 'error' });
       return [];
     } finally {
-      setCompetitorsLoading(false);
+      if (!silent) setCompetitorsLoading(false);
     }
   }, [showToast]);
 
@@ -450,10 +452,16 @@ export default function MissionWizardPage() {
             return;
           }
           if (run.status === 'failed') {
+            // Partial results survive: verified competitors were written to
+            // the KG the moment they were earned — show them under the error.
+            await loadCompetitors(true);
             setCompResearch('failed');
             setCompError(firstLine(run.error_trace) || 'Competitor research failed');
             return;
           }
+          // Still running: refresh the map too — accepted competitors land
+          // in the KG incrementally and appear under the live feed.
+          await loadCompetitors(true);
         }
       } catch { /* transient — keep polling */ }
 
@@ -466,6 +474,32 @@ export default function MissionWizardPage() {
     };
     poll();
   }, [loadCompetitors, showToast]);
+
+  // The research feed, reused across states: live (spinner on the active
+  // step) while running, frozen as the evidence trail on failure/done.
+  const renderCompFeed = (live: boolean) => (
+    <ol className={s.stepFeed} aria-label="VaNi's research steps">
+      {compSteps.map((st, i) => {
+        const failed = st.status === 'error';
+        const active = live && i === compSteps.length - 1 && !failed;
+        return (
+          <li
+            key={`${st.step_name}-${i}`}
+            className={`${s.stepRow} ${active ? s.stepActive : s.stepDone} ${failed ? s.stepFailed : ''}`}
+          >
+            <span className={s.stepMark} aria-hidden>
+              {failed ? '✕' : active ? '' : '✓'}
+              {active && <span className={s.stepSpinner} />}
+            </span>
+            <span className={s.stepText}>
+              {COMPETITOR_STEP_LABELS[st.step_name] ?? st.action ?? st.step_name}
+              {st.output_summary && <span className={s.stepDetail}> — {st.output_summary}</span>}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
 
   // resume=true → the agent picks up the last failed run's checkpoint and
   // skips completed stages (queries/search/shortlist/assessed candidates) —
@@ -891,28 +925,27 @@ export default function MissionWizardPage() {
                     message="VaNi is researching your competitive landscape"
                     hint="Framing queries → searching the web → reading each candidate's real site → mapping your knowledge graph"
                   />
-                  {compSteps.length > 0 && (
-                    <ol className={s.stepFeed} aria-label="VaNi's live research progress">
-                      {compSteps.map((st, i) => {
-                        const isLast = i === compSteps.length - 1;
-                        const failed = st.status === 'error';
+                  {compSteps.length > 0 && renderCompFeed(true)}
+                  {/* Verified competitors land in the KG incrementally — show
+                      them the moment they exist, mockup-style. */}
+                  {competitors.length > 0 && (
+                    <div className={s.competitorList}>
+                      <span className={s.fieldLabel}>Mapped so far · {competitors.length}</span>
+                      {competitors.map((c) => {
+                        const domain = typeof c.properties?.domain === 'string' ? c.properties.domain : null;
                         return (
-                          <li
-                            key={`${st.step_name}-${i}`}
-                            className={`${s.stepRow} ${isLast && !failed ? s.stepActive : s.stepDone} ${failed ? s.stepFailed : ''}`}
-                          >
-                            <span className={s.stepMark} aria-hidden>
-                              {failed ? '✕' : isLast ? '' : '✓'}
-                              {isLast && !failed && <span className={s.stepSpinner} />}
-                            </span>
-                            <span className={s.stepText}>
-                              {COMPETITOR_STEP_LABELS[st.step_name] ?? st.action ?? st.step_name}
-                              {st.output_summary && <span className={s.stepDetail}> — {st.output_summary}</span>}
-                            </span>
-                          </li>
+                          <div key={c.id} className={s.competitorRow}>
+                            <div className={s.competitorMain}>
+                              <span className={s.competitorName}>
+                                {c.name}
+                                {domain && <span className={s.competitorDomain}> · {domain}</span>}
+                              </span>
+                              {c.description && <span className={s.competitorDesc}>{c.description}</span>}
+                            </div>
+                          </div>
                         );
                       })}
-                    </ol>
+                    </div>
                   )}
                 </div>
               ) : (
@@ -928,6 +961,7 @@ export default function MissionWizardPage() {
                           Start fresh
                         </VdfButton>
                       </div>
+                      {compSteps.length > 0 && renderCompFeed(false)}
                     </div>
                   )}
 
@@ -986,6 +1020,13 @@ export default function MissionWizardPage() {
                         <VdfButton variant="ghost" size="sm" onClick={() => loadCompetitors()}>Refresh</VdfButton>
                       </div>
                     </div>
+                  )}
+
+                  {compResearch === 'done' && compSteps.length > 0 && (
+                    <details className={s.feedDetails}>
+                      <summary className={s.feedSummary}>How VaNi researched this</summary>
+                      {renderCompFeed(false)}
+                    </details>
                   )}
                 </>
               )}

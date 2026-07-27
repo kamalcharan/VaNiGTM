@@ -42,10 +42,16 @@ import { IngestionAgent } from '../ingestion-skill/ingestion.agent';
 
 export const RESEARCH_AGENT_NAME = 'COMPETITOR_RESEARCH_REQUESTED';
 
+// Prompt sizing (user direction: many small prompts, never one big one —
+// each stage is its own LLM call, and the per-call context is kept lean so
+// slow VPS inference stays inside the timeout):
 const MAX_QUERIES = 4;
 const RESULTS_PER_QUERY = 8;
-const MAX_VERIFY = 6;          // candidates whose sites we actually read
-const SITE_TEXT_CAP = 4_000;   // chars of candidate-site text shown to the LLM
+const SHORTLIST_RESULTS_CAP = 20;  // results shown to the shortlist prompt
+const SNIPPET_CAP = 160;           // chars of each result snippet in-prompt
+const MAX_VERIFY = 6;              // candidates whose sites we actually read
+const SITE_TEXT_CAP = 2_500;       // chars of candidate-site text per verify call
+const FIELD_CAP = 400;             // chars per long profile field in-prompt
 
 const QueriesSchema = z.object({
   queries: z.array(z.string().min(3)).min(1).max(MAX_QUERIES),
@@ -171,15 +177,19 @@ export class CompetitorResearchAgent {
         .filter((h): h is string => Boolean(h)),
     );
 
+    // Lean profile context shared by every prompt — long fields truncated;
+    // competitor research needs the gist, not the essay.
+    const clip = (v: string | null): string | null =>
+      v && v.length > FIELD_CAP ? `${v.slice(0, FIELD_CAP)}…` : v;
     const profileContext = JSON.stringify({
       product_name: profile.product_name,
-      product_description: profile.product_description,
-      core_problem: profile.core_problem,
-      key_differentiators: profile.key_differentiators,
+      product_description: clip(profile.product_description),
+      core_problem: clip(profile.core_problem),
+      key_differentiators: (profile.key_differentiators ?? []).slice(0, 5),
       icp_role: profile.icp_role,
       icp_company_type: profile.icp_company_type,
       icp_industry: profile.icp_industry,
-      primary_pain_points: profile.primary_pain_points,
+      primary_pain_points: (profile.primary_pain_points ?? []).slice(0, 5),
     }, null, 2);
 
     // 2. FRAME QUERIES (skipped on resume when checkpointed)
@@ -253,7 +263,8 @@ export class CompetitorResearchAgent {
       candidates = cp.candidates;
     } else {
       const resultsBlock = results
-        .map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet}`)
+        .slice(0, SHORTLIST_RESULTS_CAP)
+        .map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet.slice(0, SNIPPET_CAP)}`)
         .join('\n');
 
       const shortlisted = await callLLMValidated(
