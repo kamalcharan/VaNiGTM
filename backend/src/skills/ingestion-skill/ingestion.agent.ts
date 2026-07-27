@@ -200,27 +200,19 @@ export class IngestionAgent {
       // 3b. URL + pasted-text sources: draft the GTM profile straight from
       // the text, BEFORE the (slower) per-chunk KG extraction — the wizard
       // polls the profile and gets a substantive company card fast.
-      // Fill-only-empty inside the drafter; a draft failure never fails
-      // the ingestion run.
+      // Fill-only-empty inside the drafter. A draft failure FAILS the run
+      // (CLAUDE.md rule 12: no silent fallbacks — the draft is the point of
+      // researching a URL; completing without it would fake success).
       if (source.source_type === 'url' || source.source_type === 'txt') {
-        try {
-          const draft = await draftProfileFromText(pool, tenantId, rawText, runId);
-          await appendStep(pool, runId, {
-            step_name:      'draft_profile',
-            action:         'Drafted GTM profile from website text',
-            output_summary: draft.fieldsFilled.length > 0
-              ? `filled: ${draft.fieldsFilled.join(', ')}`
-              : 'no empty fields to fill',
-            status:         'ok',
-          });
-        } catch (draftErr) {
-          await appendStep(pool, runId, {
-            step_name:      'draft_profile',
-            action:         'Profile draft failed — continuing with KG extraction',
-            output_summary: draftErr instanceof Error ? draftErr.message.slice(0, 300) : String(draftErr),
-            status:         'error',
-          });
-        }
+        const draft = await draftProfileFromText(pool, tenantId, rawText, runId);
+        await appendStep(pool, runId, {
+          step_name:      'draft_profile',
+          action:         'Drafted GTM profile from website text',
+          output_summary: draft.fieldsFilled.length > 0
+            ? `filled: ${draft.fieldsFilled.join(', ')}`
+            : 'no empty fields to fill',
+          status:         'ok',
+        });
       }
 
       // 4. STEP: chunk

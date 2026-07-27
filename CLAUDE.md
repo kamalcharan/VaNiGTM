@@ -24,6 +24,11 @@ UX blueprints: `documents/gtm-engine-ui/` + `documents/ux-references/`
   `llm.client.ts` appends `/no_think` and sends `Authorization: Bearer
   $LLM_PRIMARY_KEY` only if set).
 - No VaNi framework. No VaNiBase. No Supabase.
+- **n8n:** user's n8n infra is available and approved for agent-adjacent
+  jobs where it fits (e.g. a headless site-render webhook). Business
+  logic stays in this repo; n8n calls must be authenticated (shared
+  secret/HMAC) and environment-routed (`live` → /webhook, else
+  /webhook-test).
 
 ## Repo structure (actual)
 ```
@@ -197,6 +202,21 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
    onboarding model (see ux-references README).
 10. **Migrations manual + guarded + idempotent** (rule above).
 11. **No secrets in the repo** — connector credentials live in env/VPS only.
+12. **NO SILENT FALLBACKS** (user ruling, 2026-07-27). A fallback that
+    kicks in automatically hides the real issue and fakes a working
+    system — the user can't tell degraded output from real output.
+    When something fails: **fail loudly**, surface the true cause to
+    the user, and stop. Distinctions:
+    - ❌ Forbidden: auto-substituting mock/partial/alternate results
+      when the primary path fails; swallowing a step failure and
+      letting the run report success; defaulting to stale/empty data
+      without saying so.
+    - ✅ Allowed: an *explicit user-chosen* alternate path offered
+      AFTER a visible failure with the real diagnosis (e.g. the
+      wizard's paste-copy option shown under the crawl-failure card).
+    - Any exception (auto-fallback that seems genuinely warranted)
+      must be proposed to the user and approved case-by-case BEFORE
+      being built; document approved ones here.
 
 ## Running locally
 ```bash
