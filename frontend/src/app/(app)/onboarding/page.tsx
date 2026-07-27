@@ -4,14 +4,22 @@
  * /onboarding — the agent-led mission wizard (LIVE, replaces form-first
  * onboarding per the approved PLG direction).
  *
- * Steps 1–3 are wired to the real backend (GTM pipeline v2):
+ * Steps 1–4 are wired to the real backend (GTM pipeline v2):
  *   1. Research company    → POST /ingest/url → poll source → poll profile
- *   2. Confirm competitors → GET /vani/competitors → POST /vani/competitors/confirm
- *   3. Confirm ICP & pains → PUT /profile (blur-save) → POST /profile/approve
+ *   2. Confirm vocabulary  → GET /profile/clusters → POST /profile/clusters/approve
+ *   3. Confirm competitors → GET /vani/competitors → POST /vani/competitors/confirm
+ *   4. Confirm ICP & pains → PUT /profile (blur-save) → POST /profile/approve
  * Confirming the ICP configures the mission and enters mission control.
- * Steps 4–6 (Storytelling / Campaigns / Follow-ups) are visible but
+ * Steps 5–7 (Storytelling / Campaigns / Follow-ups) are visible but
  * locked — Storytelling unlocks in mission control (dashboard), the rest
  * as those agents ship. See documents/design-notes-gtm-pipeline-v2.md.
+ *
+ * STEP 2 EXISTS BECAUSE OF AN ORDERING BUG. The market vocabulary
+ * (gt_semantic_clusters) is drafted at the end of ingestion and used by
+ * competitor research, which reads APPROVED clusters only. It used to be
+ * ratified on the ICP card at the very end — after the search that needed
+ * it had already run — so every first-run search fell back to guessing from
+ * the profile. Ratification now sits ahead of the step that consumes it.
  *
  * Finishing PATCHes every pending vn_tenant_onboarding step; the (app)
  * layout guard then routes to /dashboard. The ICP builder at
@@ -167,13 +175,16 @@ function firstLine(trace: string | null | undefined): string {
 }
 
 /* ── Wizard steps — GTM pipeline v2 ─────────────────────────────────────
-   Onboarding = research → competitors → ICP → mission configured.
+   Onboarding = research → vocabulary → competitors → ICP → mission
+   configured. Vocabulary sits ahead of competitors on purpose: it is the
+   input that frames the search (see the header note).
    Storytelling deliberately LEAVES the wizard (design-notes-gtm-pipeline-v2:
    a shareable deck from thin inputs is a landmine); it unlocks in mission
    control once the ICP is confirmed. */
 
 const STEPS = [
   { id: 'company', label: 'Research company', locked: false },
+  { id: 'vocabulary', label: 'Market vocabulary', locked: false },
   { id: 'competitors', label: 'Competitors', locked: false },
   { id: 'icp', label: 'Ideal customer', locked: false },
   { id: 'story', label: 'Storytelling', locked: true, lockedTag: 'Unlocks in mission control' },
@@ -183,7 +194,7 @@ const STEPS = [
 
 /** Steps that file a durable artifact into mission memory. Everything else
     files its separator only — see VdfMissionMemory. */
-const ARTIFACT_STEPS = new Set(['company', 'competitors', 'icp']);
+const ARTIFACT_STEPS = new Set(['company', 'vocabulary', 'competitors', 'icp']);
 
 const ICP_FIELDS: { key: keyof GtmProfile & string; label: string; required: boolean; multiline?: boolean; list?: boolean }[] = [
   { key: 'product_name', label: 'Product name', required: true },
@@ -198,6 +209,19 @@ const ICP_FIELDS: { key: keyof GtmProfile & string; label: string; required: boo
     The agent keeps the flow moving; the human only acts to CHANGE something.
     Touching the card cancels it permanently — see VdfApprovalCard. */
 const AUTO_CONFIRM_MS = 7000;
+
+/** Vocabulary poll: clusters are drafted at the end of ingestion, so the
+    step can open before the worker has written them. ~90s of patience. */
+const VOCAB_POLL_MS = 3000;
+const VOCAB_POLL_TRIES = 30;
+
+/** Waiting copy for the vocabulary draft — each line is work genuinely done. */
+const VOCAB_ROTATION = [
+  'Reading how you describe what you sell',
+  'Grouping the terms your buyers would actually type',
+  'Separating category words from offering and pain words',
+  'Checking each term against what your pages say',
+];
 
 /** Rotating status copy for multi-minute agent phases. Every line describes
     work the agent genuinely does — never a fake progress claim. */
@@ -267,6 +291,10 @@ export default function MissionWizardPage() {
   // with the ICP (same click, no extra wizard step).
   const [clusters, setClusters] = useState<SemanticCluster[]>([]);
   const [removedClusters, setRemovedClusters] = useState<Set<string>>(new Set());
+  const [approvingVocab, setApprovingVocab] = useState(false);
+  /** Waiting on the worker to draft the vocabulary — see the poll below. */
+  const [vocabWaiting, setVocabWaiting] = useState(false);
+  const vocabTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [finishing, setFinishing] = useState(false);
 
@@ -304,8 +332,8 @@ export default function MissionWizardPage() {
             void restoreResearchSteps();
           }
           if (res.profile.approved_at) {
-            setConfirmed((prev) => new Set(prev).add('competitors').add('icp'));
-            setStepIndex(2);
+            setConfirmed((prev) => new Set(prev).add('vocabulary').add('competitors').add('icp'));
+            setStepIndex(3);
             void loadCompetitors(true);
             void loadClusters();
           }
@@ -622,22 +650,88 @@ export default function MissionWizardPage() {
 
   const keptCount = competitors.filter((c) => !removedIds.has(c.id)).length;
 
+  /* The queries the research agent actually ran. It already writes them to
+     its run feed as `frame_queries` — "…" · "…" · "…" — so the card can show
+     its working without any backend change. */
+  const framedQueries = useMemo(() => {
+    const step = compSteps.find((st) => st.step_name === 'frame_queries');
+    if (!step?.output_summary) return [];
+    return (step.output_summary.match(/"([^"]+)"/g) ?? [])
+      .map((q) => q.slice(1, -1))
+      .filter(Boolean);
+  }, [compSteps]);
+
   /* ── Market vocabulary (semantic clusters) ────────────────────────── */
 
-  const loadClusters = useCallback(async () => {
+  const loadClusters = useCallback(async (): Promise<SemanticCluster[]> => {
     try {
       const res = await apiFetch<{ clusters: SemanticCluster[] }>(API.gtmProfile.clusters);
       setClusters(res.clusters);
+      return res.clusters;
     } catch {
-      // Vocabulary is an enhancement to the ICP card, never a blocker —
-      // the step still works without it (research falls back to the profile).
+      // Never a blocker: research still runs, it just falls back to guessing
+      // from the profile — and says so, loudly, in its own run feed.
+      return [];
     }
   }, []);
 
+  // Entering the vocabulary step: the clusters may not exist yet.
+  //
+  // They are drafted at the END of ingestion — draft_profile (which is what
+  // releases the wizard to show step 1) fires long before KNOWLEDGE_UPDATED,
+  // which is what triggers generateClusters. So a user who confirms step 1
+  // quickly arrives here ahead of the worker. Poll rather than render an
+  // empty step, and say plainly that we are waiting.
   useEffect(() => {
-    if (!booting && STEPS[stepIndex]?.id === 'icp') loadClusters();
+    if (booting || STEPS[stepIndex]?.id !== 'vocabulary') return;
+    if (confirmed.has('vocabulary')) return;
+
+    let cancelled = false;
+    let tries = 0;
+    setVocabWaiting(true);
+
+    const tick = async () => {
+      if (cancelled) return;
+      tries += 1;
+      const found = await loadClusters();
+      if (cancelled) return;
+
+      if (found.length > 0 || tries >= VOCAB_POLL_TRIES) {
+        setVocabWaiting(false);
+        return;
+      }
+      vocabTimer.current = setTimeout(tick, VOCAB_POLL_MS);
+    };
+    tick();
+
+    return () => {
+      cancelled = true;
+      if (vocabTimer.current) clearTimeout(vocabTimer.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [booting, stepIndex]);
+  }, [booting, stepIndex, confirmed]);
+
+  /** Ratify the vocabulary, then hand off to competitor research — which is
+      the whole point of the reorder: the search that runs next is framed by
+      terms a human just approved, instead of guessed from the profile. */
+  const approveVocabulary = useCallback(async () => {
+    setApprovingVocab(true);
+    try {
+      if (clusters.length > 0) {
+        await apiFetch(API.gtmProfile.approveClusters, {
+          body: { remove: [...removedClusters] },
+        });
+      }
+      handoff('vocabulary', 2);
+    } catch (err) {
+      showToast({
+        message: (err as ApiError).message || 'Could not save your market vocabulary',
+        type: 'error',
+      });
+    } finally {
+      setApprovingVocab(false);
+    }
+  }, [clusters, removedClusters, handoff, showToast]);
 
   // The research feed, reused across states: live (spinner on the active
   // step) while running, frozen as the evidence trail on failure/done.
@@ -730,7 +824,7 @@ export default function MissionWizardPage() {
       const keep = competitors.filter((c) => !removedIds.has(c.id)).map((c) => c.id);
       const remove = [...removedIds];
       await apiFetch(API.vani.confirmCompetitors, { body: { keep, remove } });
-      handoff('competitors', 2);
+      handoff('competitors', 3);
       showToast({
         message: keep.length > 0
           ? `Competitor map confirmed — ${keep.length} kept`
@@ -775,21 +869,11 @@ export default function MissionWizardPage() {
       // wait for every in-flight PUT so approve validates the saved profile.
       await Promise.all([...pendingSaves.current]);
 
-      // Ratify the market vocabulary in the same click — approved clusters
-      // are what frame every future competitor-research query.
-      if (clusters.length > 0) {
-        try {
-          await apiFetch(API.gtmProfile.approveClusters, {
-            body: { remove: [...removedClusters] },
-          });
-        } catch (err) {
-          showToast({
-            message: (err as ApiError).message || 'Could not save your market vocabulary',
-            type: 'error',
-          });
-        }
-      }
-
+      // The vocabulary is NOT ratified here any more. It was, and that was
+      // the bug: competitor research runs on entering step 3 but only reads
+      // APPROVED clusters, so approving them at the last step meant every
+      // first-run search was ungrounded. It now has its own step, ahead of
+      // the search that consumes it.
       await apiFetch(API.gtmProfile.approve);
       await refreshProfile();
       setConfirmed((prev) => new Set(prev).add('icp'));
@@ -808,7 +892,7 @@ export default function MissionWizardPage() {
     } finally {
       setApproving(false);
     }
-  }, [clusters, removedClusters, finishOnboarding, refreshProfile, showToast]);
+  }, [finishOnboarding, refreshProfile, showToast]);
 
   /* ── Mission rail ─────────────────────────────────────────────────── */
 
@@ -830,6 +914,22 @@ export default function MissionWizardPage() {
           description={profile?.product_description || undefined}
           tags={(profile?.key_differentiators ?? []).slice(0, 3)}
         />
+      );
+    }
+
+    if (done && step.id === 'vocabulary') {
+      const keptClusters = clusters.filter((c) => !removedClusters.has(c.id));
+      artifact = keptClusters.length > 0 ? (
+        <VdfMissionSection label="Market vocabulary" count={keptClusters.length}>
+          <VdfMissionChips
+            chips={keptClusters.map((c) => ({ id: c.id, label: c.primary_term }))}
+            visible={6}
+          />
+        </VdfMissionSection>
+      ) : (
+        <VdfMissionSection label="Market vocabulary">
+          <p className={s.memoryLine}>Searching from your profile — no vocabulary confirmed.</p>
+        </VdfMissionSection>
       );
     }
 
@@ -867,30 +967,21 @@ export default function MissionWizardPage() {
       }
     }
 
+    // The vocabulary is step 2's artifact now — the ICP step keeps only the
+    // buyer, so the rail never files the same thing under two steps.
     if (done && step.id === 'icp') {
-      const keptClusters = clusters.filter((c) => !removedClusters.has(c.id));
       artifact = (
-        <>
-          <VdfMissionSection label="Ideal customer">
-            <VdfMissionRows
-              rows={[
-                ...(profile?.icp_role ? [{ id: 'role', label: profile.icp_role, active: true }] : []),
-                ...(profile?.icp_company_type ? [{ id: 'type', label: profile.icp_company_type }] : []),
-                ...(profile?.primary_pain_points ?? []).slice(0, 4).map((pt, n) => ({
-                  id: `pain-${n}`, label: pt,
-                })),
-              ]}
-            />
-          </VdfMissionSection>
-          {keptClusters.length > 0 && (
-            <VdfMissionSection label="Market vocabulary" count={keptClusters.length}>
-              <VdfMissionChips
-                chips={keptClusters.map((c) => ({ id: c.id, label: c.primary_term }))}
-                visible={6}
-              />
-            </VdfMissionSection>
-          )}
-        </>
+        <VdfMissionSection label="Ideal customer">
+          <VdfMissionRows
+            rows={[
+              ...(profile?.icp_role ? [{ id: 'role', label: profile.icp_role, active: true }] : []),
+              ...(profile?.icp_company_type ? [{ id: 'type', label: profile.icp_company_type }] : []),
+              ...(profile?.primary_pain_points ?? []).slice(0, 4).map((pt, n) => ({
+                id: `pain-${n}`, label: pt,
+              })),
+            ]}
+          />
+        </VdfMissionSection>
       );
     }
 
@@ -1121,10 +1212,83 @@ export default function MissionWizardPage() {
             </VdfApprovalCard>
           )}
 
-          {/* ── STEP 2 — Competitor map (pipeline v2 stage 1) ─────── */}
+          {/* ── STEP 2 — Market vocabulary ─────────────────────────
+              Ratified HERE, ahead of the competitor search that consumes it.
+              It used to live on the ICP card at the end, which meant research
+              only ever saw unapproved clusters and fell back to guessing from
+              the profile — see research.agent.ts, listClusters({approvedOnly}). */}
+          {current.id === 'vocabulary' && (
+            <VdfApprovalCard
+              eyebrow="VaNi · the words your market uses"
+              title="Is this how your buyers talk?"
+              subtitle="Every competitor search — and every match we make later — is framed from these terms. Drop anything that isn't you; that is the whole point of this step."
+              status={confirmed.has('vocabulary') ? 'confirmed' : 'draft'}
+              onConfirm={approveVocabulary}
+              confirmLabel="Confirm vocabulary &amp; find competitors →"
+              loading={approvingVocab}
+            >
+              {clusters.length === 0 ? (
+                <VdfKgLoader
+                  subject={profile?.product_name || domain.trim() || undefined}
+                  message={vocabWaiting
+                    ? 'Reading your knowledge graph for the language your market uses'
+                    : 'No market vocabulary yet'}
+                  rotating={vocabWaiting ? VOCAB_ROTATION : undefined}
+                  patienceAfter={20000}
+                />
+              ) : (
+                <div className={s.vocabList}>
+                  {clusters.map((c) => {
+                    const dropped = removedClusters.has(c.id);
+                    return (
+                      <div key={c.id} className={`${s.vocabCluster} ${dropped ? s.vocabClusterOut : ''}`}>
+                        <div className={s.vocabHead}>
+                          <span className={`${s.tag} ${c.cluster_type === 'category' ? s.tagVerified : s.tagDomain}`}>
+                            {CLUSTER_TYPE_LABEL[c.cluster_type] ?? c.cluster_type}
+                          </span>
+                          <span className={s.vocabTerm}>{c.primary_term}</span>
+                          <button
+                            type="button"
+                            className={s.vocabDrop}
+                            onClick={() => setRemovedClusters((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(c.id)) { next.delete(c.id); } else { next.add(c.id); }
+                              return next;
+                            })}
+                          >
+                            {dropped ? 'Undo' : 'Not us'}
+                          </button>
+                        </div>
+                        {c.related_terms.length > 0 && (
+                          <div className={s.vocabTerms}>
+                            {c.related_terms.slice(0, 12).map((t) => (
+                              <span key={t} className={s.vocabTermChip}>{t}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Never pretend the search will be grounded when it won't be. */}
+              {!vocabWaiting && clusters.length === 0 && (
+                <p className={s.vocabHint}>
+                  VaNi couldn&apos;t draft a vocabulary from what it read. You can continue —
+                  competitor research will frame its searches from your profile instead, and
+                  it will say so in its own feed.
+                </p>
+              )}
+            </VdfApprovalCard>
+          )}
+
+          {/* ── STEP 3 — Competitor map (pipeline v2 stage 1) ─────── */}
           {current.id === 'competitors' && (
             <VdfApprovalCard
-              eyebrow="VaNi · researched from your ideal customer"
+              eyebrow={framedQueries.length > 0
+                ? 'VaNi · searched your confirmed market terms'
+                : 'VaNi · researched from your profile'}
               title="Who shapes your buyers' expectations?"
               subtitle="I research your category across the live web, verify each candidate against their real site, and map them here. Remove anyone who doesn't belong — I'll position against the rest in your stories and campaigns."
               status={confirmed.has('competitors') ? 'confirmed' : 'draft'}
@@ -1136,6 +1300,24 @@ export default function MissionWizardPage() {
                 : 'No competitors — continue'}
               loading={confirmingCompetitors}
             >
+              {/* The searches the vocabulary produced — reference page 2 shows
+                  the agent's working next to its results, and it is the only
+                  place the confirmed terms are visibly cashed in. */}
+              {framedQueries.length > 0 && (
+                <VdfMissionSection label="Queries" count={framedQueries.length}>
+                  <div className={s.queryList}>
+                    {framedQueries.map((q) => (
+                      <span key={q} className={s.queryChip}>
+                        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
+                          <circle cx="5.2" cy="5.2" r="3.4" /><path d="M7.8 7.8L10.5 10.5" />
+                        </svg>
+                        {q}
+                      </span>
+                    ))}
+                  </div>
+                </VdfMissionSection>
+              )}
+
               {compResearch === 'running' ? (
                 <div className={s.researchSummary}>
                   <VdfKgLoader
@@ -1290,49 +1472,6 @@ export default function MissionWizardPage() {
               confirmLabel="Confirm &amp; enter mission control →"
               loading={approving || finishing}
             >
-              {clusters.length > 0 && (
-                <section className={s.vocabBlock}>
-                  <span className={s.fieldLabel}>Your market vocabulary</span>
-                  <p className={s.vocabHint}>
-                    The words your buyers actually search — VaNi builds every competitor
-                    search from these. Drop anything that isn&apos;t you.
-                  </p>
-                  <div className={s.vocabList}>
-                    {clusters.map((c) => {
-                      const dropped = removedClusters.has(c.id);
-                      return (
-                        <div key={c.id} className={`${s.vocabCluster} ${dropped ? s.vocabClusterOut : ''}`}>
-                          <div className={s.vocabHead}>
-                            <span className={`${s.tag} ${c.cluster_type === 'category' ? s.tagVerified : s.tagDomain}`}>
-                              {CLUSTER_TYPE_LABEL[c.cluster_type] ?? c.cluster_type}
-                            </span>
-                            <span className={s.vocabTerm}>{c.primary_term}</span>
-                            <button
-                              type="button"
-                              className={s.vocabDrop}
-                              onClick={() => setRemovedClusters((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(c.id)) { next.delete(c.id); } else { next.add(c.id); }
-                                return next;
-                              })}
-                            >
-                              {dropped ? 'Undo' : 'Not us'}
-                            </button>
-                          </div>
-                          {c.related_terms.length > 0 && (
-                            <div className={s.vocabTerms}>
-                              {c.related_terms.slice(0, 12).map((t) => (
-                                <span key={t} className={s.vocabTermChip}>{t}</span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-              )}
-
               <div className={s.icpFields}>
                 {ICP_FIELDS.map((f) => (
                   <div key={f.key} className={s.icpField}>
