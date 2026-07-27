@@ -233,6 +233,15 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
     - Any exception (auto-fallback that seems genuinely warranted)
       must be proposed to the user and approved case-by-case BEFORE
       being built; document approved ones here.
+    - ✅ APPROVED EXCEPTION (user, 2026-07-27): **LLM transport
+      failover** — when a VPS LLM call fails at the transport level
+      (LLM_VPS_UNREACHABLE / LLM_VPS_ERROR) and ANTHROPIC_API_KEY is
+      set, llm.client retries that ONE call on the Claude API
+      (LLM_FAILOVER_MODEL, default claude-haiku-4-5), then returns to
+      the VPS primary. Never silent: visible `llm_failover` step in
+      the run feed + tokens tracked under the separate 'escalation'
+      bucket. Validation failures (LLM_VALIDATION_FAILED) deliberately
+      do NOT fail over — bad answers stay loud.
 
 ## Running locally
 ```bash

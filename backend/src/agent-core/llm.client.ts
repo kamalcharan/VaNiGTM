@@ -6,10 +6,19 @@
  *          Config: LLM_PRIMARY_URL + LLM_PRIMARY_MODEL.
  *          Zero external cost. All routine agent work runs here.
  *
- * ESCALATION: escalate() — stub. Throws ESCALATION_NOT_IMPLEMENTED.
- *             Will be wired up to Anthropic / OpenAI when an agent
- *             actually needs reasoning beyond the VPS model. No SDK
- *             installed until that day.
+ * FAILOVER (user-approved rule-12 exception, 2026-07-27): when the VPS
+ *          call fails at the TRANSPORT level (LLM_VPS_UNREACHABLE timeout
+ *          or LLM_VPS_ERROR non-200) and ANTHROPIC_API_KEY is configured,
+ *          the SAME call is retried once on the Claude API
+ *          (LLM_FAILOVER_MODEL, default claude-haiku-4-5). Per-call only —
+ *          the next call goes back to the VPS primary. NEVER silent:
+ *          every failover run gets a visible 'llm_failover' step in
+ *          gt_agent_runs.steps carrying the real VPS error, and tokens are
+ *          recorded under the separate 'escalation' usage bucket.
+ *          Deliberately NOT triggered by LLM_VALIDATION_FAILED — a model
+ *          that answers badly is a quality problem that must stay visible,
+ *          not get papered over by paid calls.
+ *          Without ANTHROPIC_API_KEY behavior is unchanged: fail loudly.
  *
  * Token budget: enforced per tenant per day via gt_tenant_context.
  *               vps and escalation usage tracked separately.
@@ -18,9 +27,11 @@
  *             Retries ONCE with a correction message before throwing.
  */
 
+import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import type { Pool } from 'pg';
 import { createTenantDb } from '../db';
+import { appendStep } from './agent.runner';
 
 /* ── VPS LLM config ──────────────────────────────────────────────────────── */
 
@@ -28,6 +39,17 @@ const VPS_URL   = process.env.LLM_PRIMARY_URL   ?? 'http://localhost:11434';
 const VPS_MODEL = process.env.LLM_PRIMARY_MODEL ?? 'qwen2.5';
 const VPS_TIMEOUT_MS = parseInt(process.env.LLM_PRIMARY_TIMEOUT_MS ?? '60000', 10);
 const VPS_KEY   = process.env.LLM_PRIMARY_KEY   || '';
+
+/* ── Claude failover config ──────────────────────────────────────────────── */
+
+const FAILOVER_MODEL = process.env.LLM_FAILOVER_MODEL ?? 'claude-haiku-4-5';
+
+let anthropicClient: Anthropic | null = null;
+function getAnthropic(): Anthropic | null {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+  if (!anthropicClient) anthropicClient = new Anthropic();
+  return anthropicClient;
+}
 
 /* ── Types ───────────────────────────────────────────────────────────────── */
 
@@ -127,17 +149,8 @@ async function recordTokenUsage(
 
 /* ── Primary: VPS LLM call ──────────────────────────────────────────────── */
 
-/**
- * Call the VPS-hosted LLM via OpenAI-compatible /v1/chat/completions.
- * Works with Ollama, vLLM, llama.cpp server, LM Studio.
- *
- * Records token usage in gt_tenant_context.daily_token_usage.vps.
- * Throws on transport / non-200 / budget exceeded.
- */
-export async function callLLM(options: LLMCallOptions): Promise<LLMResult> {
+async function callVps(options: LLMCallOptions): Promise<LLMResult> {
   const { tenantId, pool, system, messages, maxTokens = 1000, temperature = 0.2 } = options;
-
-  await checkTokenBudget(pool, tenantId, maxTokens);
 
   // Qwen3 thinking suppression: append /no_think unless already present.
   const systemContent = system.includes('/no_think')
@@ -191,19 +204,94 @@ export async function callLLM(options: LLMCallOptions): Promise<LLMResult> {
   return { text, inputTokens, outputTokens, source: 'vps' };
 }
 
-/* ── Escalation (stub) ──────────────────────────────────────────────────── */
+/* ── Failover: Claude API call ──────────────────────────────────────────── */
+
+async function callClaude(options: LLMCallOptions): Promise<LLMResult> {
+  const { tenantId, pool, system, messages, maxTokens = 1000 } = options;
+
+  const client = getAnthropic();
+  if (!client) {
+    throw new Error('CLAUDE_NOT_CONFIGURED: ANTHROPIC_API_KEY is not set');
+  }
+
+  // The /no_think suffix is a qwen-ism — strip it for Claude.
+  const systemContent = system.replace(/\s*\/no_think\s*$/, '').trim();
+
+  const response = await client.messages.create({
+    model:      FAILOVER_MODEL,
+    max_tokens: maxTokens,
+    system:     systemContent,
+    messages,
+  });
+
+  const text = response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map((block) => block.text)
+    .join('');
+
+  const inputTokens  = response.usage.input_tokens;
+  const outputTokens = response.usage.output_tokens;
+
+  await recordTokenUsage(pool, tenantId, inputTokens + outputTokens, 'escalation');
+
+  return { text, inputTokens, outputTokens, source: 'escalation' };
+}
+
+/* ── Failover visibility — rule 12: never silent ────────────────────────── */
+
+// One 'llm_failover' step per run keeps the feed readable when several calls
+// in the same run escalate; every escalation is still console-logged and
+// visible in the token accounting ('escalation' bucket).
+const failoverNotedRuns = new Set<string>();
+
+async function noteFailover(
+  pool: Pool,
+  runId: string | number,
+  vpsError: string,
+): Promise<void> {
+  const cause = vpsError.split('\n')[0].slice(0, 200);
+  console.warn(`[LLM] VPS failed — failing over to ${FAILOVER_MODEL} (run ${runId}): ${cause}`);
+
+  const key = String(runId);
+  if (failoverNotedRuns.has(key)) return;
+  failoverNotedRuns.add(key);
+  if (failoverNotedRuns.size > 500) failoverNotedRuns.clear(); // bound memory
+
+  try {
+    await appendStep(pool, runId, {
+      step_name:      'llm_failover',
+      action:         `VPS model unavailable — ${FAILOVER_MODEL} took over for this run's failed calls`,
+      output_summary: cause,
+      status:         'ok',
+    });
+  } catch (err) {
+    console.warn('[LLM] Could not record llm_failover step:', err);
+  }
+}
+
+/* ── Public entry point ─────────────────────────────────────────────────── */
 
 /**
- * Placeholder for future external LLM (Anthropic / OpenAI) integration.
- * No SDK is installed yet. Wire up when the first agent needs complex
- * reasoning beyond the VPS model.
+ * Call the LLM: VPS primary, with per-call Claude failover on transport
+ * failure (see header). Budget is checked once up front and covers both
+ * paths; usage is recorded under 'vps' or 'escalation' respectively.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function escalate(_prompt: string, _context?: string): Promise<string> {
-  throw new Error(
-    'ESCALATION_NOT_IMPLEMENTED: External LLM escalation not yet configured. ' +
-    'The VPS model handles all current agent reasoning.',
-  );
+export async function callLLM(options: LLMCallOptions): Promise<LLMResult> {
+  await checkTokenBudget(options.pool, options.tenantId, options.maxTokens ?? 1000);
+
+  try {
+    return await callVps(options);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const transportFailure =
+      msg.startsWith('LLM_VPS_UNREACHABLE') || msg.startsWith('LLM_VPS_ERROR');
+
+    if (transportFailure && getAnthropic()) {
+      await noteFailover(options.pool, options.runId, msg);
+      return callClaude(options);
+    }
+    throw err; // no key configured, or a non-transport failure → loud, as always
+  }
 }
 
 /* ── Validated call (JSON with Zod) ─────────────────────────────────────── */

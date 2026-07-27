@@ -185,14 +185,31 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      checkpoint {chunks_done/total}; edges still resolve at the end
      (cheap, no LLM). Profile is always reloaded fresh on resume.
    - **Live-run status (2026-07-27):** SearXNG deployed + JSON API
-     verified by the user (real results via curl). First wizard run
-     reached the LLM stage and died on `LLM_VPS_UNREACHABLE:
-     https://llm.dristiq.com — TimeoutError` (60s default). Root-cause
-     fixes STILL PENDING user action: raise LLM_PRIMARY_TIMEOUT_MS in
-     backend/.env (e.g. 180000) + hard-restart worker, pre-warm the
-     VPS model with keep_alive:"24h", and confirm what vikuna-llm runs
-     on (CPU vs GPU — verify calls carry ~5k-token prompts). Resume
-     makes these failures cheap; it does not make slow calls succeed.
+     verified by the user (real results via curl). TWO wizard runs
+     died on `LLM_VPS_UNREACHABLE: https://llm.dristiq.com —
+     TimeoutError` — and the user confirmed LLM_PRIMARY_TIMEOUT_MS
+     was **280000 the whole time**, meaning single qwen calls exceed
+     4.6 MINUTES on that box. The VPS LLM is too slow for this
+     pipeline as-is (still unknown: CPU or GPU, `curl
+     https://llm.dristiq.com/api/ps` output). Prompt slimming helps;
+     the real mitigation is the failover below.
+   - **Claude API failover (user-directed, approved rule-12
+     exception — documented in CLAUDE.md rule 12).** qwen stays
+     primary; when a call fails at the TRANSPORT level
+     (LLM_VPS_UNREACHABLE / LLM_VPS_ERROR) and ANTHROPIC_API_KEY is
+     set, llm.client retries that one call on Claude
+     (LLM_FAILOVER_MODEL, default claude-haiku-4-5 — $1/$5 per MTok;
+     a full research run ≈ $0.02–0.03, full onboarding ≈ $0.10–0.15),
+     then the NEXT call goes back to qwen. Never silent: one visible
+     `llm_failover` step per run (with the real VPS error) + tokens
+     recorded under the pre-existing 'escalation' bucket in
+     gt_tenant_context. Validation failures deliberately do NOT
+     escalate (quality problems stay loud). Without the key, behavior
+     is unchanged (fail loudly). `@anthropic-ai/sdk` added to
+     backend. **User action: put ANTHROPIC_API_KEY in backend/.env
+     (env only, never repo) + hard-restart API and worker.**
+     Deferred by user intent: a global LLM_PROVIDER switch
+     (qwen vs claude as primary) — failover-only for now.
    - NOT yet live-tested end-to-end through the new step 2 (needs
      migration 191 applied + worker + warm LLM + SearXNG). First live
      Storyteller run verdict: deck
