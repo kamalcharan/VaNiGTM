@@ -11,18 +11,48 @@ Called by the ingestion agent ONLY when a site's static HTML yields
 escalation appears as `render_page` / `render_complete` steps in the
 run, and any failure fails the ingestion run loudly (rule 12).
 
-### Deploy (once, on the n8n instance)
+### Two variants — pick ONE (same webhook path + contract)
 
-1. **Install the community node** — Settings → Community Nodes →
+| File | Rendering engine | Needs |
+|---|---|---|
+| `vani-render-page.browserless.workflow.json` | **RECOMMENDED** — browserless container, stock n8n nodes only | one docker container on the VPS |
+| `vani-render-page.workflow.json` | `n8n-nodes-puppeteer` community node | community-node install (Chromium deps inside the n8n container — fragile on Docker installs) |
+
+⚠️ **Import order matters:** n8n rejects a workflow referencing an
+uninstalled node type ("Unrecognized node type:
+n8n-nodes-puppeteer.puppeteer"). For the puppeteer variant you MUST
+install the community node BEFORE importing. The browserless variant
+has no such requirement — it imports on any stock n8n.
+
+### Deploy — variant A: browserless (recommended)
+
+1. **Run browserless** on the VPS:
+   ```bash
+   docker run -d --name browserless --restart unless-stopped \
+     -p 3010:3000 -e "TOKEN=<random-token>" ghcr.io/browserless/chromium
+   ```
+2. **n8n instance env:**
+   ```
+   VANI_RENDER_SECRET=<long random string>
+   BROWSERLESS_URL=http://<host-reachable-from-n8n>:3010
+   BROWSERLESS_TOKEN=<same as TOKEN above>
+   ```
+   (n8n reads these via `$env`; requires `N8N_BLOCK_ENV_ACCESS_IN_NODE`
+   to NOT be true. If n8n runs in Docker on the same host, use the
+   docker network address, not localhost.)
+3. **Import** `vani-render-page.browserless.workflow.json`, **activate**.
+
+### Deploy — variant B: puppeteer community node
+
+1. **Install the community node FIRST** — Settings → Community Nodes →
    Install → `n8n-nodes-puppeteer`. (Ships Chromium; on a Docker
-   install use an image with Chrome deps, e.g. add
-   `--cap-add=SYS_ADMIN` or the puppeteer docker docs' deps.)
-2. **Set the shared secret** on the instance environment:
-   `VANI_RENDER_SECRET=<long random string>`
-   (n8n reads it via `$env` in the validate node; requires
-   `N8N_BLOCK_ENV_ACCESS_IN_NODE` to NOT be true.)
+   install the container needs Chrome deps — if the install or first
+   run fails, use variant A instead.)
+2. **Set** `VANI_RENDER_SECRET=<long random string>` on the instance
+   environment.
 3. **Import** `vani-render-page.workflow.json` and **activate** it.
-4. Smoke test:
+
+### Smoke test (either variant)
    ```bash
    curl -X POST "$N8N_URL/webhook/vani-render-page" \
      -H 'Content-Type: application/json' \
