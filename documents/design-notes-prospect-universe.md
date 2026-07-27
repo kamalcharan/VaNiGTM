@@ -349,9 +349,9 @@ better source, and late-merge alias resolution.
    Phase A ships companies only, so no personal data is shared and the DPDP
    question does not need answering to start.
 4. ~~Apollo timing~~ — **Phase B.**
-5. **"CRO push" reading** — taken here as a *conversion push at the tenant*
-   (market evidence as an activation lever), not the CRO audit lens the PRD
-   defines at line 86 (landing-page CTA/friction analysis). The screenshot
-   that accompanied the ruling showed credit-claim conversion mechanics,
-   which supports this reading. Correct it here if wrong — it changes what
-   Phase A builds, though not the schema.
+5. ~~"CRO push" reading~~ — **confirmed 2026-07-27.** It is a *conversion
+   moment aimed at the tenant*: free credits, expected outcomes (emails →
+   replies → meetings), social proof with real numbers, and card capture via
+   Stripe under "you won't be charged yet". **Not** the CRO audit lens the
+   PRD defines at line 86. Phase A's job is to make that moment earned —
+   market evidence first, conversion second.
