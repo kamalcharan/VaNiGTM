@@ -118,6 +118,17 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      a real SEO/AEO finding for that site, and a good signal that the
      site_health check's "measure the static page" design is correct).
      Ollama must be pre-warmed (extractor + storyteller both hit LLM).
+1a. **PIPELINE RE-SEQUENCED (user ruling, 2026-07-27) — read
+   `documents/design-notes-gtm-pipeline-v2.md` before touching the
+   wizard or Storyteller.** Five stages: competitive analysis →
+   business-model analysis (open discussion, NOT committed) → ICP +
+   pains → storytelling (stage/behaviour-aware, gated on 1+3) →
+   campaigns (drip + story + journey). Storyteller LEAVES onboarding
+   (landmine: shareable artifact from thin inputs); onboarding ends at
+   mission-configured (research → competitors → ICP). Journey-stage
+   vocabulary: `documents/customer-journey-maps.pdf`. First live
+   Storyteller run verdict: deck generated OK end-to-end, quality
+   needs work — improvements happen AFTER the relocation.
 1b. **Deferred (user-agreed, 2026-07-27): full date handling.** The
    `DD-MMM-YYYY` render convention is live via `lib/format.ts` (the
    single gateway, CLAUDE.md rule). Still to come, later: tenant
