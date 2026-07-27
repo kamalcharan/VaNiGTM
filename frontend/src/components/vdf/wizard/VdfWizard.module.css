@@ -125,6 +125,127 @@
   color: var(--color-fg);
 }
 
+/* ═══════════════════════════════════════════════════════
+   MISSION VARIANT — agent-wizard top rail (ux-references)
+
+   Plain numbered circles joined by a rule; only the active step is
+   labelled, as a pill. Nothing else carries text, so the top rail can
+   never duplicate the mission-memory rail on the left.
+
+   The connector becomes a real flex sibling here (not the absolute rule
+   the default variant uses) because the active pill is wider than a
+   circle — an absolutely-positioned line can't span unequal widths
+   without gaps.
+   ═══════════════════════════════════════════════════════ */
+
+.wizardMission {
+  padding: 0;
+}
+
+.wizardMission .track {
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.wizardMission .stepWrap {
+  flex-direction: row;
+  align-items: center;
+  min-width: 0;
+  gap: 0;
+}
+
+/* every step after the first absorbs the slack, stretching its connector */
+.wizardMission .stepWrap:not(:first-child) {
+  flex: 1 1 auto;
+}
+
+.wizardMission .line {
+  position: static;
+  flex: 1 1 auto;
+  min-width: 20px;
+  width: auto;
+  height: 1px;
+  top: auto;
+  right: auto;
+  margin: 0 10px;
+  background: var(--color-border);
+}
+
+.wizardMission .lineDone {
+  background: color-mix(in srgb, var(--color-primary) 55%, var(--color-border));
+}
+
+.wizardMission .dot {
+  width: 22px;
+  height: 22px;
+  border-width: 1px;
+  flex-shrink: 0;
+  box-shadow: none;
+}
+
+.wizardMission .dotNum {
+  font-size: 0.66rem;
+  font-weight: 600;
+}
+
+/* completed steps stay plain numbered circles — the ✓ belongs to the
+   mission-memory rail, which is where completion is actually recorded */
+.wizardMission .done {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.wizardMission .done .dotNum {
+  color: var(--color-fg);
+}
+
+/* ── The one labelled step ──────────────────────────── */
+
+.wizardMission .current {
+  width: auto;
+  height: 26px;
+  padding: 0 11px 0 9px;
+  gap: 7px;
+  border-radius: 999px;
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  box-shadow: none;
+}
+
+/* live marker ahead of the number */
+.wizardMission .current::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--color-success);
+}
+
+.wizardMission .current .dotNum {
+  color: var(--color-fg);
+  font-weight: 700;
+}
+
+.pillLabel {
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-fg);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .wizardMission .pillLabel {
+    font-size: 0.68rem;
+  }
+
+  .wizardMission .line {
+    min-width: 10px;
+    margin: 0 6px;
+  }
+}
+
 /* ── Responsive ─────────────────────────────────────── */
 @media (max-width: 640px) {
   .stepWrap {

@@ -21,13 +21,17 @@ import { useMissionHandoff } from '@/hooks/useMissionHandoff';
 import { useTheme } from '@/config/theme';
 import {
   VdfWizard,
-  VdfMissionRail,
+  VdfMissionMemory,
+  VdfMissionCard,
+  VdfMissionSection,
+  VdfMissionChips,
+  VdfMissionRows,
   VdfApprovalCard,
   VdfButton,
   VdfEnrichmentWaterfall,
   VdfAtmosphere,
   VdfGridOverlay,
-  type VdfMissionRailItem,
+  type VdfMissionMemoryItem,
   type VdfEnrichmentProvider,
 } from '@/components/vdf';
 import s from './wizard.module.css';
@@ -48,11 +52,20 @@ const STEPS = [
 ];
 
 const COMPETITORS = [
-  { name: 'Northbeam Analytics', angle: 'Enterprise attribution suite', note: 'Wins on integrations; slow onboarding (6–8 weeks)' },
-  { name: 'Clearsight Metrics', angle: 'Self-serve dashboards for SMB', note: 'Cheap entry tier; no revenue attribution' },
-  { name: 'Fathomline', angle: 'Agency-focused reporting', note: 'White-label reports; weak API story' },
-  { name: 'TraceLoop', angle: 'Developer-first event pipeline', note: 'Loved by engineers; no GTM-side workflows' },
+  { name: 'Northbeam Analytics', domain: 'northbeam.example', angle: 'Enterprise attribution suite', note: 'Wins on integrations; slow onboarding (6–8 weeks)' },
+  { name: 'Clearsight Metrics', domain: 'clearsight.example', angle: 'Self-serve dashboards for SMB', note: 'Cheap entry tier; no revenue attribution' },
+  { name: 'Fathomline', domain: 'fathomline.example', angle: 'Agency-focused reporting', note: 'White-label reports; weak API story' },
+  { name: 'TraceLoop', domain: 'traceloop.example', angle: 'Developer-first event pipeline', note: 'Loved by engineers; no GTM-side workflows' },
 ];
+
+/** What step 1 files into mission memory — the company card, narrow. */
+const COMPANY = {
+  name: 'Solstice Metrics',
+  domain: 'solsticemetrics.example',
+  description:
+    'Revenue attribution platform that joins ad spend, outbound touches and CRM outcomes into one funnel view — built for mid-market B2B SaaS without a data team.',
+  tags: ['Series A · 40 people', 'Marketing analytics'],
+};
 
 const CAMPAIGNS = [
   {
@@ -148,13 +161,52 @@ export default function WizardDesignPage() {
 
   const finished = confirmed.size >= STEPS.length - 1;
 
-  const railItems: VdfMissionRailItem[] = useMemo(() => STEPS.map((step, i) => ({
+  /* ── What each step files into mission memory ──────────────────────────
+     Only the DEFINITIONAL steps file an artifact, and each files its own
+     shape (see the reference, pages 1–8). Steps 4–6 are operational — their
+     tables live on the stage and file nothing but a separator. */
+  const artifacts: Record<string, React.ReactNode> = {
+    company: (
+      <VdfMissionCard
+        name={COMPANY.name}
+        domain={COMPANY.domain}
+        description={COMPANY.description}
+        tags={COMPANY.tags}
+      />
+    ),
+    competitors: (
+      <VdfMissionSection label="Competitors" count={COMPETITORS.length} onConfigure={() => {}}>
+        <VdfMissionChips
+          chips={COMPETITORS.map((c) => ({
+            id: c.name,
+            label: c.domain,
+            href: `https://${c.domain}`,
+          }))}
+        />
+      </VdfMissionSection>
+    ),
+    campaigns: (
+      <VdfMissionSection label="Campaigns" count={CAMPAIGNS.length} onConfigure={() => {}}>
+        <VdfMissionRows
+          rows={CAMPAIGNS.map((c, i) => ({
+            id: c.name,
+            label: c.name,
+            metric: `${c.prospects}`,
+            active: i === 0,
+          }))}
+        />
+      </VdfMissionSection>
+    ),
+  };
+
+  const railItems: VdfMissionMemoryItem[] = useMemo(() => STEPS.map((step, i) => ({
     id: step.id,
     step: i + 1,
     title: step.label,
     state: confirmed.has(step.id) ? 'done' : i === stepIndex ? 'active' : 'pending',
-    digest: confirmed.has(step.id) ? RAIL_DIGESTS[step.id] : undefined,
-    summary: confirmed.has(step.id) ? RAIL_SUMMARIES[step.id] : undefined,
+    artifact: confirmed.has(step.id) ? artifacts[step.id] : undefined,
+    expectsArtifact: step.id in artifacts,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   })), [confirmed, stepIndex]);
 
   const current = STEPS[stepIndex];
@@ -188,6 +240,7 @@ export default function WizardDesignPage() {
         </div>
         <div className={s.railWrap}>
           <VdfWizard
+            variant="mission"
             steps={STEPS.map(({ id, label }) => ({ id, label, mandatory: true }))}
             currentIndex={stepIndex}
             completedSteps={confirmed}
@@ -198,7 +251,7 @@ export default function WizardDesignPage() {
 
       <div className={s.layout}>
         <aside className={s.left}>
-          <VdfMissionRail items={railItems} />
+          <VdfMissionMemory items={railItems} />
         </aside>
 
         <main ref={stageRef} className={`${s.main} ${handingOff ? s.mainFlying : ''}`} key={current.id}>
@@ -214,10 +267,8 @@ export default function WizardDesignPage() {
               <div className={s.companyGrid}>
                 <div className={s.field}>
                   <span className={s.fieldLabel}>What you do</span>
-                  <p className={s.fieldValue}>
-                    Revenue attribution platform that joins ad spend, outbound touches and CRM
-                    outcomes into one funnel view — built for mid-market B2B SaaS without a data team.
-                  </p>
+                  {/* Same string the rail files — the artifact IS this card. */}
+                  <p className={s.fieldValue}>{COMPANY.description}</p>
                 </div>
                 <div className={s.fieldRow}>
                   <div className={s.field}>
@@ -406,22 +457,3 @@ export default function WizardDesignPage() {
   );
 }
 
-/* ── Rail digests/summaries (what "mission memory" retains) ─────────── */
-
-const RAIL_DIGESTS: Record<string, string> = {
-  company: 'Revenue attribution for mid-market SaaS · Series A · $12k–$60k ACV',
-  competitors: '4 competitors mapped — Northbeam, Clearsight, Fathomline, TraceLoop',
-  campaigns: '2 campaigns · 459 prospects pooled',
-  prospects: '5 companies approved from 459 sourced',
-  contacts: '3 decision makers · 2 emails verified',
-  emails: 'Sequence drafted in your voice',
-};
-
-const RAIL_SUMMARIES: Record<string, React.ReactNode> = {
-  company: 'Positioning locked: spend→revenue attribution, no data team required, lives inside the CRM. Everything downstream cites these value props.',
-  competitors: 'Differentiation angles saved: faster onboarding than Northbeam, deeper attribution than Clearsight, stronger API than Fathomline, GTM workflows TraceLoop lacks.',
-  campaigns: 'Blind-spend (312 prospects) and agency-graduation (147 prospects), each with pain statement + qualification criteria.',
-  prospects: 'Brightpath CRM, Quill & Ledger, Orbital HQ, Lanternworks, Fieldnote Labs.',
-  contacts: 'Maya Reston (verified), Jonas Feld (verified), Priya Anand — no email found, queued for retry.',
-  emails: 'Opener references live channel mix; body grounds on HubSpot value prop; single CTA.',
-};

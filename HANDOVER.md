@@ -3,8 +3,9 @@
 > **This doc is the sole continuity between sessions.** The next session starts
 > with zero memory — read this first, then `CLAUDE.md`.
 > **Current state (2026-07-27):** work lives on branch
-> **`claude/handover-docs-readiness-oqwyhl`** (NOT merged to main, no PR
+> **`claude/handover-docs-readiness-ajq5q2`** (NOT merged to main, no PR
 > opened — the user has not asked for one). Everything below is pushed.
+> The earlier `…-oqwyhl` branch is gone; its history is contained in this one.
 > **Supersedes** the earlier Phase 3 handover (that content is in git history).
 
 ---
@@ -13,7 +14,56 @@
 
 ## 1. Rebuild the wizard's mission-memory rail (Phase 1 close-out)
 
-**Status: agreed with the user, NOT started. This is the next task.**
+**Status: ✅ BUILT for steps 1–4 (2026-07-27). Steps 5–6 deferred — see the
+open question at the end of this section.**
+
+### What shipped
+`VdfMissionMemory` + `VdfMissionArtifact` (`components/vdf/mission-memory/`)
+replace the old `VdfMissionRail`, which is deleted. Both `/onboarding` and
+`/design/wizard` use them, and `VdfWizard` gained `variant="mission"` for the
+top rail. Verified by driving `/design/wizard` in a real browser and looking
+at the screenshots — see "How to actually see it" below, which now applies to
+reviewing the build too, not just the reference.
+
+**The rule the reference actually encodes** — and the thing three earlier
+attempts missed: each step reduces into the rail in its OWN shape, and the
+reduction is an editorial decision per step, not a mechanical narrowing.
+
+| Step | Files into memory | Shape |
+|---|---|---|
+| 1 Research company | the company card again, narrow | `VdfMissionCard` — logo, name, domain inline, FULL description paragraph, tags. Drops the status badge and the keyword chips |
+| 2 Competitors | the competitor set only | `VdfMissionSection` + `VdfMissionChips` — 2-up domain chips, external-link icons, `+N more`. The product summary and search queries are DISCARDED |
+| 3 Ideal customer | buyer + vocabulary | `VdfMissionRows` (buyer role, company type, pain points) + a `Market vocabulary` chip section |
+| 4+ operational | nothing but a separator | reference pages 7–8: steps 4/5/6 stack as hairline labels with no card — their tables live on the stage, not in memory |
+
+Other verified-from-the-image behaviours now implemented:
+- Step labels are **hairline mono separators** (`√ step 1 · Research company`),
+  a rule between artifacts — not a heading over one.
+- The **top rail carries no labels except the active one**, which is a pill
+  with a live dot. Completed steps stay plain numbered circles: no checkmark
+  up top, because completion is recorded in the memory rail. This was the
+  actual root of the duplication the user reported.
+- The rail **scrolls and follows its tail** as the mission grows.
+- The active step's slot is **pre-announced** (dashed landing zone) before its
+  artifact exists — that empty slot is what `useMissionHandoff` measures, and
+  it is why the flight reads as filing rather than appearing. `expectsArtifact`
+  distinguishes "hasn't arrived yet" from "never files one", so operational
+  steps don't advertise a landing zone that stays empty forever.
+
+### ⚠️ Open question blocking steps 5–6
+Reference page 8 shows steps 4/5/6 rendered as **tabs over one workspace**
+(`Companies · People · Emails`), not three sequential stages — yet page 7 shows
+step 5 as its own numbered circle in the top rail, and page 8 crops the top
+rail out entirely. So: **does the top rail show 6 circles, or do 4–6 collapse
+into one because they're tabs?** The reference does not answer itself. Ask the
+user before building steps 5–6; do not guess. (Our live wizard currently has
+6 circles and steps 4–6 are locked, so nothing is broken meanwhile.)
+
+Also note the live wizard's steps are NOT the reference's: ours are
+company → competitors → **ideal customer** → story/campaigns/follow-ups
+(locked), against the reference's company → competitors → **campaigns** →
+customers → decision makers → emails. The artifact shapes were mapped onto
+our steps, not copied positionally.
 
 ### The mistake to not repeat
 Three attempts at this failed because **I never actually looked at
@@ -34,43 +84,29 @@ for i in range(d.page_count):
     d[i].get_pixmap(dpi=100).save(f'/tmp/pdf/p{i+1}.png')
 "
 ```
-Then Read the PNGs. **Look at pages 1 → 2 → 3 in order** — the pattern is
-only legible as a sequence. (Renders are internal-reference only: per
+Then Read the PNGs. **Read all 8 pages, in order** — the pattern is only
+legible as a sequence, and pages 7–8 carry the rule that steps 4–6 file no
+artifact. Reading only 1→3 is how the first pass got the reduction table
+wrong. (Renders are internal-reference only: per
 `documents/ux-references/README.md` nothing from that folder may ship as an
 asset, and the renders must NOT be committed.)
 
-### What the reference actually does (verified by looking, 2026-07-27)
-1. **The card MOVES to the rail at FULL FIDELITY — it is not summarised.**
-   Page 2's left rail holds the complete ContractNest card (logo, name,
-   domain, the whole description paragraph, the "IN Hyderabad" chip) — the
-   exact card that was centre-stage on page 1, just narrower. Page 3 adds
-   step 2's full competitor set: 8 chips with favicons + external-link
-   icons, "COMPETITORS 14 ⚙", "+6 more". Real, interactive content.
-2. **Step labels are hairline mono separators**, not headings —
-   `√ step 1 · Research your company` is a thin divider ABOVE each card.
-   The card is the content; the label is just a rule between cards.
-3. **The top rail is nearly empty** — plain numbered circles joined by a
-   line, and ONLY the active step gets a labelled pill. This is the actual
-   root of the duplication the user reported: our top rail shows all six
-   labels permanently, so there is something to duplicate.
-4. Each rail card keeps a collapse chevron and stays interactive.
+**HOW TO SEE WHAT YOU BUILT** — the same discipline applies to the build.
+`/design/wizard` plays itself with synthetic data and no backend, so it can
+be driven headlessly. Playwright is not in `frontend/node_modules`; install
+it in a scratch dir and pin the pre-installed browser (the bundled version
+does not match `/opt/pw-browsers`):
+```js
+chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' })
+```
+Pause autoplay first and click `Confirm & continue` to step through —
+screenshotting on a timer races the 620ms handoff and captures blank frames.
 
-### What is built today (the gap)
-`VdfMissionRail` renders marker + step title + a one-line digest + an
-optional expandable summary. That is a **table of contents**, not mission
-memory. The handoff animation (below) therefore flies a rich card into a
-slot that shows two lines of text — incoherent.
-
-### The fix (agreed shape, not yet built)
-- Rail becomes a **stack of the actual step cards in a narrow variant** —
-  same component rendered `variant="rail"`, not a digest. Likely a new
-  `VdfMissionMemory` (or a rail variant on `VdfApprovalCard`).
-- Step chips shed their labels except the active one.
-- Keep `useMissionHandoff` — the flight already lands on
-  `[data-mission-step="<id>"]`; it only becomes coherent once the landing
-  zone is the card itself.
-- Scope agreed with the user: **wizard shell only**; step CONTENT is reused
-  untouched.
+### Gotcha that will bite again
+**There is no global `box-sizing: border-box` reset in this app.** Any padded,
+bordered `width: 100%` child of a fixed-width container overflows it by
+exactly its padding + border. Every box in `mission-memory` sets `box-sizing`
+explicitly for this reason.
 
 ## 2. Pending USER actions (blocking live verification)
 - ⚠️ **Apply migrations 191 + 192** — `cd backend && npm run db:migrate`.

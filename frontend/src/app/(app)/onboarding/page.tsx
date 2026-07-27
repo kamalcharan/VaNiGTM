@@ -29,12 +29,16 @@ import { useMissionHandoff } from '@/hooks/useMissionHandoff';
 import { ME_QUERY_KEY } from '@/hooks/useMe';
 import {
   VdfWizard,
-  VdfMissionRail,
+  VdfMissionMemory,
+  VdfMissionCard,
+  VdfMissionSection,
+  VdfMissionChips,
+  VdfMissionRows,
   VdfApprovalCard,
   VdfButton,
   VdfLoader,
   VdfKgLoader,
-  type VdfMissionRailItem,
+  type VdfMissionMemoryItem,
 } from '@/components/vdf';
 import s from './mission-wizard.module.css';
 
@@ -176,6 +180,10 @@ const STEPS = [
   { id: 'campaigns', label: 'Campaigns', locked: true, lockedTag: 'Agent coming soon' },
   { id: 'pulse', label: 'Follow-ups', locked: true, lockedTag: 'Agent coming soon' },
 ];
+
+/** Steps that file a durable artifact into mission memory. Everything else
+    files its separator only — see VdfMissionMemory. */
+const ARTIFACT_STEPS = new Set(['company', 'competitors', 'icp']);
 
 const ICP_FIELDS: { key: keyof GtmProfile & string; label: string; required: boolean; multiline?: boolean; list?: boolean }[] = [
   { key: 'product_name', label: 'Product name', required: true },
@@ -750,75 +758,73 @@ export default function MissionWizardPage() {
 
   /* ── Mission rail ─────────────────────────────────────────────────── */
 
-  // Mission memory: each finished step COLLAPSES INTO THE RAIL carrying the
-  // agent's real output, expandable (ux-references pattern 2 — "the rail is
-  // the audit trail of what the agent did"). The top chips say where you
-  // are; the rail says what was found. Neither repeats the other.
-  const railItems: VdfMissionRailItem[] = useMemo(() => STEPS.map((step, i) => {
+  // Mission memory: a finished step files its REAL ARTIFACT into the rail —
+  // the agent's output re-laid narrow, not a digest line (ux-references
+  // pages 1–8). Each step reduces in its own shape: the company card stays a
+  // card, competitors keep only their domains, the ideal customer keeps the
+  // buyer and the vocabulary. The top rail says where you are; the memory
+  // says what was found. Neither repeats the other.
+  const railItems: VdfMissionMemoryItem[] = useMemo(() => STEPS.map((step, i) => {
     const done = confirmed.has(step.id);
-    let digest: string | undefined;
-    let summary: React.ReactNode;
+    let artifact: React.ReactNode;
 
     if (done && step.id === 'company') {
-      digest = profile?.product_tagline || profile?.product_name || 'Company researched';
-      summary = (
-        <div className={s.memoryBody}>
-          {profile?.product_description && (
-            <p className={s.memoryLine}>{profile.product_description}</p>
-          )}
-          {profile?.core_problem && (
-            <p className={s.memoryLine}><strong>Problem:</strong> {profile.core_problem}</p>
-          )}
-          {(profile?.key_differentiators ?? []).length > 0 && (
-            <div className={s.memoryChips}>
-              {(profile!.key_differentiators ?? []).slice(0, 6).map((d) => (
-                <span key={d} className={s.memoryChip}>{d}</span>
-              ))}
-            </div>
-          )}
-        </div>
+      artifact = (
+        <VdfMissionCard
+          name={profile?.product_name || 'Your company'}
+          domain={domain.trim() || undefined}
+          description={profile?.product_description || undefined}
+          tags={(profile?.key_differentiators ?? []).slice(0, 3)}
+        />
       );
     }
 
     if (done && step.id === 'competitors') {
       const kept = competitors.filter((c) => !removedIds.has(c.id));
-      digest = `${kept.length || 'No'} competitor${kept.length === 1 ? '' : 's'} confirmed`;
-      summary = kept.length > 0 ? (
-        <div className={s.memoryBody}>
-          {kept.map((c) => (
-            <p key={c.id} className={s.memoryLine}>
-              <strong>{c.name}</strong>
-              {typeof c.properties?.domain === 'string' ? ` · ${c.properties.domain}` : ''}
-            </p>
-          ))}
-        </div>
+      artifact = kept.length > 0 ? (
+        <VdfMissionSection label="Competitors" count={kept.length}>
+          <VdfMissionChips
+            chips={kept.map((c) => {
+              const d = typeof c.properties?.domain === 'string' ? c.properties.domain : null;
+              return {
+                id: c.id,
+                label: d || c.name,
+                href: d ? `https://${d}` : undefined,
+              };
+            })}
+          />
+        </VdfMissionSection>
       ) : (
-        <div className={s.memoryBody}>
+        <VdfMissionSection label="Competitors" count={0}>
           <p className={s.memoryLine}>No named competitors — positioning on category strength.</p>
-        </div>
+        </VdfMissionSection>
       );
     }
 
     if (done && step.id === 'icp') {
-      digest = `${profile?.icp_role || 'Buyer defined'} · score ${profile?.completion_score ?? '—'}`;
-      summary = (
-        <div className={s.memoryBody}>
-          {profile?.icp_role && <p className={s.memoryLine}><strong>Buyer:</strong> {profile.icp_role}</p>}
-          {(profile?.primary_pain_points ?? []).length > 0 && (
-            <div className={s.memoryChips}>
-              {(profile!.primary_pain_points ?? []).slice(0, 6).map((pt) => (
-                <span key={pt} className={s.memoryChip}>{pt}</span>
-              ))}
-            </div>
+      const keptClusters = clusters.filter((c) => !removedClusters.has(c.id));
+      artifact = (
+        <>
+          <VdfMissionSection label="Ideal customer">
+            <VdfMissionRows
+              rows={[
+                ...(profile?.icp_role ? [{ id: 'role', label: profile.icp_role, active: true }] : []),
+                ...(profile?.icp_company_type ? [{ id: 'type', label: profile.icp_company_type }] : []),
+                ...(profile?.primary_pain_points ?? []).slice(0, 4).map((pt, n) => ({
+                  id: `pain-${n}`, label: pt,
+                })),
+              ]}
+            />
+          </VdfMissionSection>
+          {keptClusters.length > 0 && (
+            <VdfMissionSection label="Market vocabulary" count={keptClusters.length}>
+              <VdfMissionChips
+                chips={keptClusters.map((c) => ({ id: c.id, label: c.primary_term }))}
+                visible={6}
+              />
+            </VdfMissionSection>
           )}
-          {clusters.length > 0 && (
-            <div className={s.memoryChips}>
-              {clusters.filter((c) => !removedClusters.has(c.id)).slice(0, 6).map((c) => (
-                <span key={c.id} className={s.memoryChip}>{c.primary_term}</span>
-              ))}
-            </div>
-          )}
-        </div>
+        </>
       );
     }
 
@@ -827,10 +833,12 @@ export default function MissionWizardPage() {
       step: i + 1,
       title: step.locked ? `${step.label} · soon` : step.label,
       state: done ? 'done' : (!step.locked && i === stepIndex) ? 'active' : 'pending',
-      digest,
-      summary,
-    } as VdfMissionRailItem;
-  }), [confirmed, stepIndex, profile, competitors, removedIds, clusters, removedClusters]);
+      artifact,
+      // steps 1–3 are definitional and file an artifact; the locked steps
+      // beyond them are operational and file only their separator
+      expectsArtifact: ARTIFACT_STEPS.has(step.id),
+    } as VdfMissionMemoryItem;
+  }), [confirmed, stepIndex, profile, domain, competitors, removedIds, clusters, removedClusters]);
 
   const current = STEPS[stepIndex];
 
@@ -854,6 +862,7 @@ export default function MissionWizardPage() {
         </div>
         <div className={s.railWrap}>
           <VdfWizard
+            variant="mission"
             steps={STEPS.map(({ id, label }) => ({ id, label, mandatory: true }))}
             currentIndex={stepIndex}
             completedSteps={confirmed}
@@ -864,7 +873,7 @@ export default function MissionWizardPage() {
 
       <div className={s.layout}>
         <aside className={s.left}>
-          <VdfMissionRail items={railItems} />
+          <VdfMissionMemory items={railItems} />
         </aside>
 
         <main

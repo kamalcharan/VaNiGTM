@@ -13,11 +13,29 @@ export interface VdfWizardProps {
   currentIndex: number;
   completedSteps: Set<string>;
   onStepClick?: (index: number) => void;
+  /**
+   * `mission` — the agent-wizard top rail from ux-references: plain numbered
+   * circles joined by a line, and ONLY the active step carries a label, as a
+   * pill. Completed steps stay numbered (no checkmark up top — the ✓ lives in
+   * the mission-memory rail instead). Labelling every step permanently is what
+   * made the top rail duplicate the left rail.
+   *
+   * `default` — every step labelled underneath. Used by the other wizards.
+   */
+  variant?: 'default' | 'mission';
 }
 
-export function VdfWizard({ steps, currentIndex, completedSteps, onStepClick }: VdfWizardProps) {
+export function VdfWizard({
+  steps,
+  currentIndex,
+  completedSteps,
+  onStepClick,
+  variant = 'default',
+}: VdfWizardProps) {
+  const mission = variant === 'mission';
+
   return (
-    <div className={s.wizard}>
+    <div className={`${s.wizard} ${mission ? s.wizardMission : ''}`}>
       <div className={s.track}>
         {steps.map((step, i) => {
           const isDone = completedSteps.has(step.id);
@@ -37,24 +55,28 @@ export function VdfWizard({ steps, currentIndex, completedSteps, onStepClick }: 
                 onClick={() => isClickable && onStepClick?.(i)}
                 disabled={!isClickable}
                 aria-label={`Step ${i + 1}: ${step.label}`}
+                aria-current={isCurrent ? 'step' : undefined}
                 title={step.label}
               >
-                {isDone ? (
+                {isDone && !mission ? (
                   <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                     <polyline points="2.5 6 5 8.5 9.5 3.5" />
                   </svg>
                 ) : (
                   <span className={s.dotNum}>{i + 1}</span>
                 )}
+                {mission && isCurrent && <span className={s.pillLabel}>{step.label}</span>}
                 {!step.mandatory && !isDone && (
                   <span className={s.skipDot} />
                 )}
               </button>
 
-              {/* Label */}
-              <span className={`${s.label} ${isCurrent ? s.labelCurrent : ''} ${isDone ? s.labelDone : ''}`}>
-                {step.label}
-              </span>
+              {/* Label — mission variant carries it inside the active pill instead */}
+              {!mission && (
+                <span className={`${s.label} ${isCurrent ? s.labelCurrent : ''} ${isDone ? s.labelDone : ''}`}>
+                  {step.label}
+                </span>
+              )}
             </div>
           );
         })}

@@ -6,7 +6,13 @@ export { VdfIcon, type VdfIconProps } from './icon/VdfIcon';
 export { VdfGoldThread, type VdfGoldThreadProps } from './gold-thread/VdfGoldThread';
 export { VdfNoiseOverlay, type VdfNoiseOverlayProps } from './noise-overlay/VdfNoiseOverlay';
 export { VdfGridOverlay, type VdfGridOverlayProps } from './grid-overlay/VdfGridOverlay';
-export { VdfMissionRail, type VdfMissionRailProps, type VdfMissionRailItem } from './mission-rail/VdfMissionRail';
+export { VdfMissionMemory, type VdfMissionMemoryProps, type VdfMissionMemoryItem } from './mission-memory/VdfMissionMemory';
+export {
+  VdfMissionSection, type VdfMissionSectionProps,
+  VdfMissionCard, type VdfMissionCardProps,
+  VdfMissionChips, type VdfMissionChipsProps, type VdfMissionChip,
+  VdfMissionRows, type VdfMissionRow,
+} from './mission-memory/VdfMissionArtifact';
 export { VdfApprovalCard, type VdfApprovalCardProps } from './approval-card/VdfApprovalCard';
 export { VdfEnrichmentWaterfall, type VdfEnrichmentWaterfallProps, type VdfEnrichmentProvider } from './enrichment-waterfall/VdfEnrichmentWaterfall';
 export { VdfScoreRing, type VdfScoreRingProps } from './score-ring/VdfScoreRing';
