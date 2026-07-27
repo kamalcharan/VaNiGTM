@@ -7,19 +7,21 @@ here but not authored — per CLAUDE.md schema changes are discussed first.
 
 ---
 
-## 1. Why this slice, and what it closes
+## 1. Where this lives (user ruling, 2026-07-27)
 
-Onboarding currently ends at "mission configured": the tenant has approved a
-profile, a competitor set and an ideal customer, and lands on a dashboard
-holding nothing they can act on. They did the work; the engine has not paid
-them back.
+**Onboarding ends at step 3.** The tenant approves their company profile,
+their competitor set, and their ideal customer — including the industries
+they sell to — and that is setup complete. **Prospect discovery, campaigns
+and everything downstream happen inside the product**, not in the wizard.
 
-The loop closes when the tenant sees **companies that match their ICP** —
-output that could only have come from their own profile. That is the last
-onboarding step, and everything after it (decision makers, emails, campaigns,
-follow-ups) is the product running, not the setup completing.
+So this slice is *not* an onboarding feature. The wizard's job is to produce
+a profile good enough to match against; the universe is what mission control
+matches it to. Nothing in the model below changes as a result — the schema is
+the same, it is the surface that moves.
 
-This slice models what that step needs, and nothing else.
+Consequence for the wizard: the Storytelling / Campaigns / Follow-ups entries
+come out of the step rail. They are destinations that unlock in mission
+control, and listing them as steps implies a wizard that never finishes.
 
 ### Explicitly out of scope
 - **No web-search buyer discovery** (user ruling, 2026-07-27): "we are not
@@ -177,7 +179,38 @@ The `mapping_template` is the same concept the etl mapper already uses — "thes
 33 CSV columns map to our fields" — so BYO upload and provider sync share one
 mechanism.
 
-### 4.9 etl staging quality columns (migration 199)
+### 4.9 Industry taxonomy (migration 199) — required by "mark industries"
+
+Onboarding must capture the industries the tenant sells to, so mission
+control can filter the universe by them. That cannot be free text on either
+side. The two real files show why:
+
+| Source | Values | Distinct | Shape |
+|---|---|---|---|
+| FTCCI `BUSINESS` | 2,825 | **2,170** (2,071 singletons) | prose — and inconsistent with itself: `Manufacturers` ×213 vs `Manufacturer` ×71, `Chartered Accountants` ×39 vs `Chartered Accountant` ×28 |
+| CSV `Company industry` | 110 | **35** | a real controlled vocabulary — `IT Services and IT Consulting`, `Software Development`, `Banking` |
+
+Directory data ships prose; provider data ships a taxonomy. Joining a
+tenant's industries to universe companies on strings would match almost
+nothing on the FTCCI side.
+
+- **`gt_industries`** — canonical taxonomy, seeded from the provider
+  vocabulary (the CSV's 35 values are a recognisable standard list), with
+  `parent_id` for grouping.
+- **`gt_industry_aliases`** — `(source_id, raw_value) → industry_id` with a
+  `confidence` and `mapped_by` (`rule` / `llm` / `human`). FTCCI's 2,170
+  strings map here; Apollo's are near 1:1.
+- **`gt_tenant_target_industries`** — tenant × industry. Today the profile
+  carries `icp_industry VARCHAR(200)` (`184_gt_tenant_profile.sql:42`) —
+  singular and free text. That column stays as the drafted prose; the
+  ratified selection lives here.
+
+**Unmapped is visible, never silently dropped.** With 73% of FTCCI's industry
+strings appearing once, a meaningful tail will not map. Those companies must
+be reported as *unmapped* rather than quietly excluded from matching — a
+filter that silently omits stock is the failure mode rule 12 exists for.
+
+### 4.10 etl staging quality columns (migration 200)
 `ki_import_staging` gains per-row `validity`, `reject_reasons JSONB`. This is
 what turns `etl.routes.ts:338`'s `501` into a real landing step.
 
@@ -236,7 +269,11 @@ at the loser keep resolving through the alias.
 | 196 | `gt_universe_contacts` (with `exposure`) |
 | 197 | `gt_prospects` + `gt_contacts.prospect_id` |
 | 198 | `gt_connectors` |
-| 199 | `ki_import_staging` quality columns |
+| 199 | `gt_industries` + `gt_industry_aliases` + `gt_tenant_target_industries` |
+| 200 | `ki_import_staging` quality columns |
+
+199 is the only one onboarding itself depends on — "mark industries" is a
+step-3 requirement. The rest serve mission control and can land later.
 
 All guarded and idempotent (`IF NOT EXISTS`, DO-block existence checks).
 Manual apply only — `npm run db:migrate`.
@@ -260,11 +297,14 @@ better source, and late-merge alias resolution.
 
 ---
 
-## 8. Decisions still needed
+## 8. Decisions
 
-1. **Does onboarding end at prospects?** If yes, Storytelling / Campaigns /
-   Follow-ups come out of the wizard step rail — they are destinations, not
-   steps, and are already labelled "unlocks in mission control".
+1. ~~Does onboarding end at prospects?~~ **Answered 2026-07-27: no.**
+   Onboarding ends at step 3 (ideal customer + target industries). Prospect
+   discovery and campaigns live in the product. See §1.
+
+### Still needed
+
 2. **Vocabulary reorder** — its own step, or ratified on the step-1 card?
    Prospect scoring runs off *approved* clusters, so this gates the payoff of
    the final step. (Today clusters are ratified at step 3 but consumed at
