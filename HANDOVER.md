@@ -261,6 +261,31 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
    to the worker-not-running hint after ~24s. The resume-on-entry path
    polls by run_id. Lesson: never resolve "did my request start?" by
    reading the newest row — bind to the identifier the request returned.
+1g. **PARKED (user ruling, 2026-07-27): Value Proposition Canvas belongs
+   in the LOOP, not the wizard.** The user asked whether the ICP step's
+   pain points could render as a Strategyzer Value Proposition Canvas,
+   then ruled it a loop/enhancement surface — onboarding stays a sprint.
+   Build it in `/onboarding/icp-builder` (the existing refine surface)
+   and/or `/knowledge`, NOT in the wizard step.
+   Feasibility mapped — 4 of 6 boxes are already live:
+   - Pains ← primary_pain_points[] + PainPoint nodes (ICP FEELS) ✅
+   - Products/Services ← Product/Feature nodes ✅
+   - Pain Relievers ← existing `SOLVES`/`ADDRESSES` edges ✅ (the hard
+     part: the canvas is meaningful because of the LINES between halves,
+     and those are real extracted edges with source_url provenance)
+   - Customer Jobs ← UseCase nodes ⚠️ close, not identical
+   - **Gains ❌ and Gain Creators ❌ — MISSING. Build these FIRST**, or
+     the canvas renders a third empty and reads as broken: add a `Gain`
+     NodeLabel + `WANTS` (ICP→Gain) / `CREATES` (Product→Gain) relation
+     types to kg.store + the extraction prompt (purely additive — no DB
+     constraint on label, same as CaseStudy/Metric were), optionally a
+     `desired_gains[]` profile field mirroring primary_pain_points.
+   - The real payoff beyond layout: **fit/gap analysis.** A PainPoint
+     with no inbound SOLVES edge = an unaddressed pain (positioning
+     hole); a capability solving nothing = an unsold strength. "3 of
+     your 5 pains have no matching capability" is a genuine finding and
+     a PLG teaser in the same family as the SEO/AEO ones. Feeds stage 4
+     directly (storytelling exists to explain the pains).
 1c. **Marketing playbooks captured (2026-07-27).** The user shared their
    Claude marketing plugin's full skill playbooks (campaign-plan,
    email-sequence, competitive-brief, brand-review, performance-report,
