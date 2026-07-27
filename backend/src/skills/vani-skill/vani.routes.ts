@@ -206,8 +206,9 @@ export function createVaniRouter(pool: Pool): Router {
   });
 
   // ── GET /competitors ─────────────────────────────────────────────────────
-  // The competitors VaNi found in the knowledge graph (crawl + conversation).
-  // Powers the wizard's confirm-competitors step (GTM pipeline v2 stage 1).
+  // The competitors VaNi mapped (research + crawl + conversation), minus the
+  // ones the human dismissed — dismissed nodes stay in the KG as the ignore
+  // list (research-skill never re-proposes them) but never surface here.
   router.get('/competitors', async (req: Request, res: Response) => {
     const jwt = requireAuth(req, res);
     if (!jwt) return;
@@ -223,6 +224,7 @@ export function createVaniRouter(pool: Pool): Router {
         `SELECT id, name, description, properties
            FROM gt_kg_nodes
           WHERE tenant_id = $tenant_id AND label = 'Competitor'
+            AND COALESCE((properties->>'dismissed')::boolean, false) = false
           ORDER BY name`,
         { tenant_id: jwt.tenant_id },
       );
@@ -324,7 +326,10 @@ export function createVaniRouter(pool: Pool): Router {
   // ── POST /competitors/confirm ────────────────────────────────────────────
   // Human ruling on the competitor map: kept nodes are stamped
   // properties.confirmed=true (a signal Storyteller/campaigns can ground
-  // on); removed nodes are DELETED (edges cascade). Confirming an empty
+  // on); removed nodes are DISMISSED, not deleted — they become the ignore
+  // list. The node stays in the KG with dismissed=true so a future
+  // research run (or crawl upsert, which merges properties) can never
+  // re-propose a company the human already ruled out. Confirming an empty
   // keep list is valid — some tenants genuinely have no named competitors.
   router.post('/competitors/confirm', async (req: Request, res: Response) => {
     const jwt = requireAuth(req, res);
@@ -339,7 +344,9 @@ export function createVaniRouter(pool: Pool): Router {
       await db.transaction(async (tx) => {
         for (const id of remove) {
           await tx.query(
-            `DELETE FROM gt_kg_nodes
+            `UPDATE gt_kg_nodes
+                SET properties = properties || '{"dismissed": true, "confirmed": false}'::jsonb,
+                    updated_at = now()
               WHERE id = $id AND tenant_id = $tenant_id AND label = 'Competitor'`,
             { id, tenant_id: jwt.tenant_id },
           );
@@ -355,7 +362,7 @@ export function createVaniRouter(pool: Pool): Router {
         }
       });
 
-      res.json({ success: true, kept: keep.length, removed: remove.length });
+      res.json({ success: true, kept: keep.length, dismissed: remove.length });
     } catch (err) {
       console.error('[VaNi:/competitors/confirm]', err);
       res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });

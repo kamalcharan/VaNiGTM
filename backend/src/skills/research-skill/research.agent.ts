@@ -66,6 +66,7 @@ const CandidatesSchema = z.object({
 });
 
 const AssessmentSchema = z.object({
+  site_belongs_to_candidate: z.boolean(),
   is_competitor: z.boolean(),
   positioning: z.string(),
   angle: z.string(),
@@ -177,6 +178,18 @@ export class CompetitorResearchAgent {
         .filter((h): h is string => Boolean(h)),
     );
 
+    // Ignore list — competitors the human already ruled out ("Remove" in the
+    // wizard sets properties.dismissed=true). A dismissed company must never
+    // be re-proposed by a later research run.
+    const dismissedResult = await db.query<{ name: string }>(
+      `SELECT name FROM gt_kg_nodes
+        WHERE tenant_id = $tenant_id AND label = 'Competitor'
+          AND COALESCE((properties->>'dismissed')::boolean, false) = true`,
+      { tenant_id: tenantId },
+    );
+    const dismissedNames = dismissedResult.rows.map((r) => r.name);
+    const dismissedSet = new Set(dismissedNames.map((n) => n.toLowerCase().trim()));
+
     // Lean profile context shared by every prompt — long fields truncated;
     // competitor research needs the gist, not the essay.
     const clip = (v: string | null): string | null =>
@@ -260,7 +273,9 @@ export class CompetitorResearchAgent {
     //    themselves candidates.
     let candidates: Candidate[];
     if (cp.candidates && cp.candidates.length > 0) {
-      candidates = cp.candidates;
+      // Resumed shortlist still respects the ignore list — the human may
+      // have dismissed companies between the failed run and this resume.
+      candidates = cp.candidates.filter((c) => !dismissedSet.has(c.name.toLowerCase().trim()));
     } else {
       const resultsBlock = results
         .slice(0, SHORTLIST_RESULTS_CAP)
@@ -275,11 +290,17 @@ export class CompetitorResearchAgent {
             'identify actual VENDOR companies that compete with the profiled company — ' +
             'products a buyer would evaluate instead. Directories, listicles, review ' +
             'sites (G2, Capterra, Wikipedia, Reddit, LinkedIn) are evidence, never ' +
-            'candidates. For each candidate give its primary domain ONLY if it appears ' +
-            'in the results (a result URL or clearly stated); otherwise use null — ' +
-            'NEVER guess a domain. Respond with ONLY JSON inside <candidates> tags: ' +
-            '<candidates>{"candidates": [{"name": "...", "domain": "example.com" | null, ' +
-            '"reason": "why this competes"}]}</candidates>. Max 8, best first.',
+            'candidates. "domain" must be the candidate\'s OWN website domain — a ' +
+            'directory, review-site, analyst or blog URL that merely MENTIONS the ' +
+            "candidate is NEVER its domain. If the candidate's own site does not " +
+            'appear in the results, use null — NEVER guess and NEVER borrow the ' +
+            'domain of the page that mentioned them. Respond with ONLY JSON inside ' +
+            '<candidates> tags: <candidates>{"candidates": [{"name": "...", ' +
+            '"domain": "example.com" | null, "reason": "why this competes"}]}' +
+            '</candidates>. Max 8, best first.' +
+            (dismissedNames.length > 0
+              ? ` NEVER include these companies — the user already ruled them out: ${dismissedNames.join(', ')}.`
+              : ''),
           messages: [{
             role: 'user',
             content: `Company profile:\n${profileContext}\n\nSearch results:\n${resultsBlock}`,
@@ -289,15 +310,21 @@ export class CompetitorResearchAgent {
         CandidatesSchema,
         'candidates',
       );
-      candidates = shortlisted.candidates as Candidate[];
+      const proposed = shortlisted.candidates as Candidate[];
+
+      // Hard filter behind the prompt: drop anything on the ignore list.
+      candidates = proposed.filter((c) => !dismissedSet.has(c.name.toLowerCase().trim()));
+      const ignored = proposed.length - candidates.length;
+
       await saveCheckpoint(pool, runId, { candidates });
 
       await appendStep(pool, runId, {
         step_name: 'shortlist',
         action: 'Shortlisted candidate competitors',
-        output_summary: candidates.length > 0
+        output_summary: (candidates.length > 0
           ? candidates.map((c) => c.name).join(', ')
-          : 'none found in the results',
+          : 'none found in the results')
+          + (ignored > 0 ? ` (${ignored} skipped — on your ignore list)` : ''),
         status: candidates.length > 0 ? 'ok' : 'skipped',
       });
     }
@@ -402,12 +429,16 @@ export class CompetitorResearchAgent {
           {
             pool, tenantId, runId,
             system:
-              'You are a competitive-intelligence analyst. Decide whether the ' +
-              'candidate company ACTUALLY competes with the profiled company — a ' +
-              'buyer would evaluate one instead of the other. If yes, summarize the ' +
+              'You are a competitive-intelligence analyst. FIRST decide whether the ' +
+              `website text actually belongs to the candidate company itself — if it ` +
+              'is a different company, a directory, an analyst page or a listicle, ' +
+              'set site_belongs_to_candidate=false. THEN decide whether the ' +
+              'candidate ACTUALLY competes with the profiled company — a buyer ' +
+              'would evaluate one instead of the other. If yes, summarize the ' +
               "candidate's positioning (1-2 sentences) and the profiled company's " +
               'strongest differentiation angle against it (1 sentence). Respond with ' +
-              'ONLY JSON inside <assessment> tags: <assessment>{"is_competitor": ' +
+              'ONLY JSON inside <assessment> tags: <assessment>' +
+              '{"site_belongs_to_candidate": true|false, "is_competitor": ' +
               'true|false, "positioning": "...", "angle": "..."}</assessment>.',
             messages: [{
               role: 'user',
@@ -421,6 +452,31 @@ export class CompetitorResearchAgent {
           AssessmentSchema,
           'assessment',
         );
+
+        if (!assessment.site_belongs_to_candidate) {
+          // Wrong site (borrowed listicle/analyst domain) — the verdict is
+          // meaningless. Keep the candidate unverified WITHOUT the bogus
+          // domain, for the human gate to rule on.
+          outcome = {
+            accepted: true,
+            verified: false,
+            site_read: true,
+            description: candidate.reason,
+            angle: null,
+            domain: null,
+            evidence_url: null,
+          };
+          await writeCompetitor(outcome, candidate.name);
+          await appendStep(pool, runId, {
+            step_name: 'verify',
+            action: `${candidate.name}: ${domain} isn't their site — kept unverified, domain cleared`,
+            output_summary: 'the search evidence only had pages that mention them',
+            status: 'skipped',
+          });
+          assessed[candidate.name] = outcome;
+          await saveCheckpoint(pool, runId, { assessed });
+          continue;
+        }
 
         if (assessment.is_competitor) {
           outcome = {
