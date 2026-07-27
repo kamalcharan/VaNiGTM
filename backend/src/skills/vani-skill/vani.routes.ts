@@ -205,6 +205,75 @@ export function createVaniRouter(pool: Pool): Router {
     }
   });
 
+  // ── GET /competitors ─────────────────────────────────────────────────────
+  // The competitors VaNi found in the knowledge graph (crawl + conversation).
+  // Powers the wizard's confirm-competitors step (GTM pipeline v2 stage 1).
+  router.get('/competitors', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    try {
+      const db = createTenantDb(pool, jwt.tenant_id);
+      const result = await db.query<{
+        id: string;
+        name: string;
+        description: string | null;
+        properties: Record<string, unknown>;
+      }>(
+        `SELECT id, name, description, properties
+           FROM gt_kg_nodes
+          WHERE tenant_id = $tenant_id AND label = 'Competitor'
+          ORDER BY name`,
+        { tenant_id: jwt.tenant_id },
+      );
+      res.json({ competitors: result.rows });
+    } catch (err) {
+      console.error('[VaNi:/competitors]', err);
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });
+    }
+  });
+
+  // ── POST /competitors/confirm ────────────────────────────────────────────
+  // Human ruling on the competitor map: kept nodes are stamped
+  // properties.confirmed=true (a signal Storyteller/campaigns can ground
+  // on); removed nodes are DELETED (edges cascade). Confirming an empty
+  // keep list is valid — some tenants genuinely have no named competitors.
+  router.post('/competitors/confirm', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    const body = (req.body ?? {}) as { keep?: unknown; remove?: unknown };
+    const keep = Array.isArray(body.keep) ? body.keep.filter((x): x is string => typeof x === 'string') : [];
+    const remove = Array.isArray(body.remove) ? body.remove.filter((x): x is string => typeof x === 'string') : [];
+
+    try {
+      const db = createTenantDb(pool, jwt.tenant_id);
+      await db.transaction(async (tx) => {
+        for (const id of remove) {
+          await tx.query(
+            `DELETE FROM gt_kg_nodes
+              WHERE id = $id AND tenant_id = $tenant_id AND label = 'Competitor'`,
+            { id, tenant_id: jwt.tenant_id },
+          );
+        }
+        for (const id of keep) {
+          await tx.query(
+            `UPDATE gt_kg_nodes
+                SET properties = properties || '{"confirmed": true}'::jsonb,
+                    updated_at = now()
+              WHERE id = $id AND tenant_id = $tenant_id AND label = 'Competitor'`,
+            { id, tenant_id: jwt.tenant_id },
+          );
+        }
+      });
+
+      res.json({ success: true, kept: keep.length, removed: remove.length });
+    } catch (err) {
+      console.error('[VaNi:/competitors/confirm]', err);
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });
+    }
+  });
+
   return router;
 }
 

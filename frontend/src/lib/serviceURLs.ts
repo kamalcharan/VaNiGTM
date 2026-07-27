@@ -201,6 +201,23 @@ export const API = {
     },
   },
 
+  /* ── VaNi (knowledge graph) ───────────────────────── */
+
+  vani: {
+    competitors: {
+      method: 'GET',
+      path: '/api/v1/vani/competitors',
+      auth: true,
+      description: 'Competitors VaNi found in the knowledge graph',
+    },
+    confirmCompetitors: {
+      method: 'POST',
+      path: '/api/v1/vani/competitors/confirm',
+      auth: true,
+      description: 'Confirm the competitor map — keep (stamped confirmed) / remove (deleted)',
+    },
+  },
+
   /* ── Ingestion ────────────────────────────────────── */
 
   ingest: {

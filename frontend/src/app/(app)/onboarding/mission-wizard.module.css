@@ -165,8 +165,7 @@
 
 /* ── Research summary / step 3 shared field styles ── */
 
-.researchSummary,
-.deckReady {
+.researchSummary {
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -249,49 +248,52 @@ textarea.input {
   box-shadow: 0 0 0 3px var(--color-primary-glow);
 }
 
-/* ── Step 3: deck ── */
+/* ── Step 2: competitor map ── */
 
-.deckStart {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.deckActions {
-  display: flex;
-  gap: 10px;
-}
-
-.shareBlock {
+.competitorList {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-}
-
-.shareLinkRow {
-  display: flex;
-  align-items: center;
   gap: 10px;
-  padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--color-success) 35%, transparent);
-  background: color-mix(in srgb, var(--color-success) 7%, transparent);
-  border-radius: 12px;
-  flex-wrap: wrap;
 }
 
-.shareLink {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  color: var(--color-fg);
-  flex: 1;
-  min-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.finishRow {
+.competitorRow {
   display: flex;
-  justify-content: flex-end;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  border-radius: 12px;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.competitorMain {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.competitorName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.competitorDesc {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+.competitorRemoved {
+  opacity: 0.45;
+  border-style: dashed;
+}
+
+.competitorRemoved .competitorName {
+  text-decoration: line-through;
 }
 
 /* ── Locked agents ── */

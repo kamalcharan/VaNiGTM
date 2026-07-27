@@ -123,12 +123,34 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
    wizard or Storyteller.** Five stages: competitive analysis →
    business-model analysis (open discussion, NOT committed) → ICP +
    pains → storytelling (stage/behaviour-aware, gated on 1+3) →
-   campaigns (drip + story + journey). Storyteller LEAVES onboarding
-   (landmine: shareable artifact from thin inputs); onboarding ends at
-   mission-configured (research → competitors → ICP). Journey-stage
-   vocabulary: `documents/customer-journey-maps.pdf`. First live
-   Storyteller run verdict: deck generated OK end-to-end, quality
-   needs work — improvements happen AFTER the relocation.
+   campaigns (drip + story + journey). Journey-stage vocabulary:
+   `documents/customer-journey-maps.pdf`.
+   ✅ **IMPLEMENTED (2026-07-27, user "goahead"):**
+   - Wizard is now research → **confirm competitors** → confirm ICP →
+     mission configured. Deck step REMOVED from `/onboarding`;
+     confirming the ICP finishes onboarding directly (approve →
+     PATCH pending steps → /dashboard). Locked rail: Storytelling
+     ("Unlocks in mission control"), Campaigns, Follow-ups.
+   - New backend endpoints (vani.routes.ts): `GET /api/v1/vani/
+     competitors` (KG Competitor nodes) + `POST /api/v1/vani/
+     competitors/confirm` (keep → `properties.confirmed=true`,
+     remove → node DELETE with edge cascade; empty keep list valid —
+     "No competitors — continue"). Registered in serviceURLs
+     (`API.vani.*`).
+   - **Storyteller relocated to `/dashboard/storyteller`**: build
+     (KG-constellation loader while drafting), **Approve & share**
+     on awaiting decks (PATCH approve → share token), Copy link /
+     open on approved decks. Wizard has zero storyteller code left.
+   - Boot/revisit logic: approved profile ⇒ competitors+ICP marked
+     confirmed, wizard lands on ICP step for enrichment revisits.
+   - Smoke: both packages typecheck (only known pre-existing
+     errors); `/onboarding` + `/dashboard/storyteller` serve 200.
+   - NOT yet live-tested with a fresh tenant through the new step 2
+     (needs worker + Ollama warm + a site whose crawl yields
+     Competitor nodes). First live Storyteller run verdict: deck
+     generated OK end-to-end, quality needs work — deck-quality
+     workstream (KG-edge-grounded prompts, competitor angles,
+     stage-aware variants) starts NOW that relocation is done.
 1b. **Deferred (user-agreed, 2026-07-27): full date handling.** The
    `DD-MMM-YYYY` render convention is live via `lib/format.ts` (the
    single gateway, CLAUDE.md rule). Still to come, later: tenant

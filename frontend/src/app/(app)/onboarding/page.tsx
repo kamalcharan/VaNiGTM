@@ -4,12 +4,14 @@
  * /onboarding — the agent-led mission wizard (LIVE, replaces form-first
  * onboarding per the approved PLG direction).
  *
- * Steps 1–3 are wired to the real backend:
- *   1. Research company  → POST /ingest/url → poll source → poll profile
- *   2. Confirm ICP       → PUT /profile (blur-save) → POST /profile/approve
- *   3. Pitch deck        → POST /storyteller/build → PATCH approve → share link
- * Steps 4–6 (Lead Finder / Sequence / Pulse) are visible but locked —
- * they unlock as those agents ship.
+ * Steps 1–3 are wired to the real backend (GTM pipeline v2):
+ *   1. Research company    → POST /ingest/url → poll source → poll profile
+ *   2. Confirm competitors → GET /vani/competitors → POST /vani/competitors/confirm
+ *   3. Confirm ICP & pains → PUT /profile (blur-save) → POST /profile/approve
+ * Confirming the ICP configures the mission and enters mission control.
+ * Steps 4–6 (Storytelling / Campaigns / Follow-ups) are visible but
+ * locked — Storytelling unlocks in mission control (dashboard), the rest
+ * as those agents ship. See documents/design-notes-gtm-pipeline-v2.md.
  *
  * Finishing PATCHes every pending vn_tenant_onboarding step; the (app)
  * layout guard then routes to /dashboard. The ICP builder at
@@ -111,22 +113,26 @@ function parseSiteHealth(steps: AgentRunStep[]): string[] | null {
   return missing.length > 0 ? missing : null;
 }
 
-interface DeckSummary {
+interface Competitor {
   id: string;
-  title: string | null;
-  status: string;
-  share_token: string | null;
+  name: string;
+  description: string | null;
+  properties: Record<string, unknown>;
 }
 
-/* ── Wizard steps (1–3 live, 4–6 locked) ────────────────────────────── */
+/* ── Wizard steps — GTM pipeline v2 ─────────────────────────────────────
+   Onboarding = research → competitors → ICP → mission configured.
+   Storytelling deliberately LEAVES the wizard (design-notes-gtm-pipeline-v2:
+   a shareable deck from thin inputs is a landmine); it unlocks in mission
+   control once the ICP is confirmed. */
 
 const STEPS = [
   { id: 'company', label: 'Research company', locked: false },
-  { id: 'icp', label: 'Confirm ICP', locked: false },
-  { id: 'deck', label: 'Pitch deck', locked: false },
-  { id: 'prospects', label: 'Find customers', locked: true },
-  { id: 'sequence', label: 'Outreach', locked: true },
-  { id: 'pulse', label: 'Follow-ups', locked: true },
+  { id: 'competitors', label: 'Competitors', locked: false },
+  { id: 'icp', label: 'ICP & pains', locked: false },
+  { id: 'story', label: 'Storytelling', locked: true, lockedTag: 'Unlocks in mission control' },
+  { id: 'campaigns', label: 'Campaigns', locked: true, lockedTag: 'Agent coming soon' },
+  { id: 'pulse', label: 'Follow-ups', locked: true, lockedTag: 'Agent coming soon' },
 ];
 
 const ICP_FIELDS: { key: keyof GtmProfile & string; label: string; required: boolean; multiline?: boolean; list?: boolean }[] = [
@@ -170,10 +176,12 @@ export default function MissionWizardPage() {
   // PUT can never race the approve call (approve validating stale data).
   const pendingSaves = useRef<Set<Promise<void>>>(new Set());
 
-  // Step 3 state
-  const [deckPhase, setDeckPhase] = useState<'idle' | 'building' | 'ready' | 'shared'>('idle');
-  const [deck, setDeck] = useState<DeckSummary | null>(null);
-  const [shareToken, setShareToken] = useState<string | null>(null);
+  // Step 2 state — competitor map (agent produced, human keeps/removes)
+  const [competitors, setCompetitors] = useState<Competitor[]>([]);
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+  const [competitorsLoading, setCompetitorsLoading] = useState(false);
+  const [confirmingCompetitors, setConfirmingCompetitors] = useState(false);
+
   const [finishing, setFinishing] = useState(false);
 
   // Enrichment loop state (add context + re-run, any time after research)
@@ -191,7 +199,9 @@ export default function MissionWizardPage() {
         const domainHint = typeof window !== 'undefined' ? sessionStorage.getItem('gtm-domain-hint') : null;
         if (domainHint) setDomain(domainHint);
 
-        // Existing profile? → research is done; approved? → jump to deck.
+        // Existing profile? → research is done. Approved profile means the
+        // whole mission was configured (flow order guarantees competitors
+        // were ruled on before approval).
         try {
           const res = await apiFetch<{ profile: GtmProfile }>(API.gtmProfile.get);
           if (cancelled) return;
@@ -202,24 +212,12 @@ export default function MissionWizardPage() {
             setStepIndex(1);
           }
           if (res.profile.approved_at) {
-            setConfirmed((prev) => new Set(prev).add('icp'));
+            setConfirmed((prev) => new Set(prev).add('competitors').add('icp'));
             setStepIndex(2);
           }
         } catch {
           // 404 PROFILE_NOT_FOUND — fresh tenant, start at step 1
         }
-
-        // Existing approved deck? → share link is ready.
-        try {
-          const res = await apiFetch<{ decks: DeckSummary[] }>(API.storyteller.list);
-          if (cancelled) return;
-          const approved = res.decks.find((d) => d.status === 'approved' && d.share_token);
-          if (approved) {
-            setDeck(approved);
-            setShareToken(approved.share_token);
-            setDeckPhase('shared');
-          }
-        } catch { /* list is best-effort on boot */ }
       } finally {
         if (!cancelled) setBooting(false);
       }
@@ -376,6 +374,73 @@ export default function MissionWizardPage() {
     await save;
   }, [edits, showToast]);
 
+  /* ── Step 2: competitor map (agent produced, human keeps/removes) ──── */
+
+  const loadCompetitors = useCallback(async () => {
+    setCompetitorsLoading(true);
+    try {
+      const res = await apiFetch<{ competitors: Competitor[] }>(API.vani.competitors);
+      setCompetitors(res.competitors);
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Could not load competitors', type: 'error' });
+    } finally {
+      setCompetitorsLoading(false);
+    }
+  }, [showToast]);
+
+  // Load the map when the competitors step becomes active (KG extraction may
+  // still be adding nodes in the background — Refresh re-pulls).
+  useEffect(() => {
+    if (!booting && STEPS[stepIndex]?.id === 'competitors' && !confirmed.has('competitors')) {
+      loadCompetitors();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booting, stepIndex]);
+
+  const confirmCompetitors = useCallback(async () => {
+    setConfirmingCompetitors(true);
+    try {
+      const keep = competitors.filter((c) => !removedIds.has(c.id)).map((c) => c.id);
+      const remove = [...removedIds];
+      await apiFetch(API.vani.confirmCompetitors, { body: { keep, remove } });
+      setConfirmed((prev) => new Set(prev).add('competitors'));
+      setStepIndex(2);
+      showToast({
+        message: keep.length > 0
+          ? `Competitor map confirmed — ${keep.length} kept`
+          : 'Confirmed — no named competitors, VaNi will position on category instead',
+        type: 'success',
+      });
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Could not confirm competitors', type: 'error' });
+    } finally {
+      setConfirmingCompetitors(false);
+    }
+  }, [competitors, removedIds, showToast]);
+
+  /* ── Step 3: confirm ICP — the mission's finish line ──────────────── */
+
+  const finishOnboarding = useCallback(async () => {
+    setFinishing(true);
+    try {
+      const status = onboardingStatus.data
+        ?? await apiFetch<{ complete: boolean; steps: { step_id: string; status: string }[] }>(API.onboarding.status);
+      const pending = status.steps.filter((st) => st.status !== 'completed');
+      for (const st of pending) {
+        await apiFetch(API.onboarding.completeStep, {
+          body: { step_id: st.step_id, status: 'completed', metadata: { via: 'mission-wizard' } },
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ME_QUERY_KEY });
+      showToast({ message: 'Mission configured — Storytelling is now unlocked in mission control', type: 'success' });
+      router.replace('/dashboard');
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Could not finish setup', type: 'error' });
+    } finally {
+      setFinishing(false);
+    }
+  }, [onboardingStatus.data, queryClient, router, showToast]);
+
   const approveIcp = useCallback(async () => {
     setApproving(true);
     setMissingFields([]);
@@ -386,8 +451,8 @@ export default function MissionWizardPage() {
       await apiFetch(API.gtmProfile.approve);
       await refreshProfile();
       setConfirmed((prev) => new Set(prev).add('icp'));
-      setStepIndex(2);
       showToast({ message: 'ICP confirmed — every agent now builds on it', type: 'success' });
+      await finishOnboarding();
     } catch (err) {
       const apiErr = err as ApiError;
       const missing = (apiErr.details?.missing as string[] | undefined) ?? [];
@@ -401,62 +466,7 @@ export default function MissionWizardPage() {
     } finally {
       setApproving(false);
     }
-  }, [refreshProfile, showToast]);
-
-  /* ── Step 3: deck ─────────────────────────────────────────────────── */
-
-  const building = useRef(false);
-  const buildDeck = useCallback(async () => {
-    if (building.current) return; // double-click guard — one build at a time
-    building.current = true;
-    setDeckPhase('building');
-    try {
-      const res = await apiFetch<{ presentationId: string }>(API.storyteller.build);
-      const d = await apiFetch<DeckSummary>(API.storyteller.get, { pathParams: { id: res.presentationId } });
-      setDeck(d);
-      setDeckPhase('ready');
-      showToast({ message: 'Deck drafted — review and approve to get your share link', type: 'success' });
-    } catch (err) {
-      setDeckPhase('idle');
-      showToast({ message: (err as ApiError).message || 'Deck generation failed — try again', type: 'error' });
-    } finally {
-      building.current = false;
-    }
-  }, [showToast]);
-
-  const approveDeck = useCallback(async () => {
-    if (!deck) return;
-    try {
-      const res = await apiFetch<{ shareToken: string }>(API.storyteller.approve, { pathParams: { id: deck.id } });
-      setShareToken(res.shareToken);
-      setDeckPhase('shared');
-      showToast({ message: 'Deck approved — share link is live', type: 'success' });
-    } catch (err) {
-      showToast({ message: (err as ApiError).message || 'Could not approve the deck', type: 'error' });
-    }
-  }, [deck, showToast]);
-
-  const finishOnboarding = useCallback(async () => {
-    setFinishing(true);
-    try {
-      const status = onboardingStatus.data
-        ?? await apiFetch<{ complete: boolean; steps: { step_id: string; status: string }[] }>(API.onboarding.status);
-      const pending = status.steps.filter((st) => st.status !== 'completed');
-      for (const st of pending) {
-        await apiFetch(API.onboarding.completeStep, {
-          body: { step_id: st.step_id, status: 'completed', metadata: { via: 'mission-wizard' } },
-        });
-      }
-      setConfirmed((prev) => new Set(prev).add('deck'));
-      queryClient.invalidateQueries({ queryKey: ME_QUERY_KEY });
-      showToast({ message: 'Mission configured — welcome to the war room', type: 'success' });
-      router.replace('/dashboard');
-    } catch (err) {
-      showToast({ message: (err as ApiError).message || 'Could not finish setup', type: 'error' });
-    } finally {
-      setFinishing(false);
-    }
-  }, [onboardingStatus.data, queryClient, showToast]);
+  }, [finishOnboarding, refreshProfile, showToast]);
 
   /* ── Enrichment loop: add context → agents re-run → profile updates ── */
 
@@ -515,14 +525,6 @@ export default function MissionWizardPage() {
     }
   }, [enrichUrl, enrichText, profile, refreshProfile, showToast]);
 
-  const copyShareLink = useCallback(() => {
-    if (!shareToken) return;
-    const link = `${window.location.origin}/deck/${shareToken}`;
-    navigator.clipboard?.writeText(link)
-      .then(() => showToast({ message: 'Share link copied', type: 'success' }))
-      .catch(() => showToast({ message: link, type: 'info' }));
-  }, [shareToken, showToast]);
-
   /* ── Mission rail ─────────────────────────────────────────────────── */
 
   const railItems: VdfMissionRailItem[] = useMemo(() => STEPS.map((step, i) => ({
@@ -533,11 +535,13 @@ export default function MissionWizardPage() {
     digest: confirmed.has(step.id)
       ? step.id === 'company'
         ? (profile?.product_tagline || profile?.product_name || 'Company researched')
-        : step.id === 'icp'
-          ? `Approved · score ${profile?.completion_score ?? '—'}`
-          : step.id === 'deck' ? 'Deck approved + shared' : undefined
+        : step.id === 'competitors'
+          ? `${competitors.filter((c) => !removedIds.has(c.id)).length || 'No'} competitors confirmed`
+          : step.id === 'icp'
+            ? `Approved · score ${profile?.completion_score ?? '—'}`
+            : undefined
       : undefined,
-  })), [confirmed, stepIndex, profile]);
+  })), [confirmed, stepIndex, profile, competitors, removedIds]);
 
   const current = STEPS[stepIndex];
 
@@ -746,16 +750,72 @@ export default function MissionWizardPage() {
             </VdfApprovalCard>
           )}
 
-          {/* ── STEP 2 — Confirm ICP ──────────────────────────────── */}
+          {/* ── STEP 2 — Competitor map (pipeline v2 stage 1) ─────── */}
+          {current.id === 'competitors' && (
+            <VdfApprovalCard
+              eyebrow="VaNi · mapped from your website"
+              title="Who shapes your buyers' expectations?"
+              subtitle="Remove anyone who doesn't belong — I'll position against the rest in your stories and campaigns. If the crawl is still digesting, Refresh pulls in new finds."
+              status={confirmed.has('competitors') ? 'confirmed' : 'draft'}
+              onConfirm={confirmCompetitors}
+              confirmLabel={competitors.filter((c) => !removedIds.has(c.id)).length > 0 ? 'Confirm competitor map' : 'No competitors — continue'}
+              loading={confirmingCompetitors}
+            >
+              {competitorsLoading ? (
+                <VdfKgLoader message="Reading competitors from your knowledge graph" />
+              ) : competitors.length === 0 ? (
+                <div className={s.summaryField}>
+                  <span className={s.fieldEmpty}>
+                    No competitors found on your site yet. That's common — sites rarely name rivals.
+                    Paste competitor notes into the loop later, or continue and VaNi will position
+                    on category strength instead.
+                  </span>
+                  <div className={s.errorActions}>
+                    <VdfButton variant="ghost" size="sm" onClick={loadCompetitors}>Refresh</VdfButton>
+                  </div>
+                </div>
+              ) : (
+                <div className={s.competitorList}>
+                  {competitors.map((c) => {
+                    const removed = removedIds.has(c.id);
+                    return (
+                      <div key={c.id} className={`${s.competitorRow} ${removed ? s.competitorRemoved : ''}`}>
+                        <div className={s.competitorMain}>
+                          <span className={s.competitorName}>{c.name}</span>
+                          {c.description && <span className={s.competitorDesc}>{c.description}</span>}
+                        </div>
+                        <VdfButton
+                          variant={removed ? 'outline' : 'ghost'}
+                          size="sm"
+                          onClick={() => setRemovedIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(c.id)) { next.delete(c.id); } else { next.add(c.id); }
+                            return next;
+                          })}
+                        >
+                          {removed ? 'Undo' : 'Not a competitor'}
+                        </VdfButton>
+                      </div>
+                    );
+                  })}
+                  <div className={s.errorActions}>
+                    <VdfButton variant="ghost" size="sm" onClick={loadCompetitors}>Refresh</VdfButton>
+                  </div>
+                </div>
+              )}
+            </VdfApprovalCard>
+          )}
+
+          {/* ── STEP 3 — Confirm ICP: the mission's finish line ───── */}
           {current.id === 'icp' && (
             <VdfApprovalCard
               eyebrow={`VaNi · profile score ${profile?.completion_score ?? 0}/100`}
-              title="Confirm your ICP"
-              subtitle="This is the foundation — every agent (decks, prospecting, outreach) is gated on it. Edits save when you leave a field."
+              title="Confirm your ICP & pains"
+              subtitle="The foundation every agent builds on. Confirming completes your mission — Storytelling unlocks in mission control."
               status={confirmed.has('icp') ? 'confirmed' : 'draft'}
               onConfirm={approveIcp}
-              confirmLabel="Confirm ICP"
-              loading={approving}
+              confirmLabel="Confirm ICP & enter mission control →"
+              loading={approving || finishing}
             >
               <div className={s.icpFields}>
                 {ICP_FIELDS.map((f) => (
@@ -784,61 +844,6 @@ export default function MissionWizardPage() {
                   </div>
                 ))}
               </div>
-            </VdfApprovalCard>
-          )}
-
-          {/* ── STEP 3 — Pitch deck ───────────────────────────────── */}
-          {current.id === 'deck' && (
-            <VdfApprovalCard
-              eyebrow="Storyteller · your second agent"
-              title={deckPhase === 'shared' ? 'Your deck is live' : 'Turn your ICP into a pitch deck'}
-              subtitle={
-                deckPhase === 'shared'
-                  ? 'Anyone with the link sees an always-current deck that answers questions in your voice.'
-                  : 'Storyteller reads your confirmed profile and knowledge graph, and drafts a seven-slide deck for your approval.'
-              }
-              status={confirmed.has('deck') ? 'confirmed' : 'draft'}
-            >
-              {deckPhase === 'idle' && (
-                <div className={s.deckStart}>
-                  <VdfButton variant="primary" onClick={buildDeck}>Build my deck</VdfButton>
-                </div>
-              )}
-
-              {deckPhase === 'building' && (
-                <VdfKgLoader
-                  message="Storyteller is reading your knowledge graph"
-                  hint="Weaving your ICP, proof points and differentiators into seven slides — usually under two minutes"
-                />
-              )}
-
-              {deckPhase === 'ready' && deck && (
-                <div className={s.deckReady}>
-                  <div className={s.summaryField}>
-                    <span className={s.fieldLabel}>Draft ready</span>
-                    <span className={s.fieldValue}>{deck.title || 'Untitled deck'}</span>
-                  </div>
-                  <div className={s.deckActions}>
-                    <VdfButton variant="primary" onClick={approveDeck}>Approve &amp; get share link</VdfButton>
-                    <VdfButton variant="ghost" onClick={buildDeck}>Rebuild</VdfButton>
-                  </div>
-                </div>
-              )}
-
-              {deckPhase === 'shared' && shareToken && (
-                <div className={s.shareBlock}>
-                  <div className={s.shareLinkRow}>
-                    <span className={s.shareLink}>{typeof window !== 'undefined' ? `${window.location.origin}/deck/${shareToken}` : `/deck/${shareToken}`}</span>
-                    <VdfButton variant="outline" size="sm" onClick={copyShareLink}>Copy</VdfButton>
-                    <VdfButton variant="ghost" size="sm" href={`/deck/${shareToken}`}>Open</VdfButton>
-                  </div>
-                  <div className={s.finishRow}>
-                    <VdfButton variant="primary" onClick={finishOnboarding} loading={finishing}>
-                      Enter mission control →
-                    </VdfButton>
-                  </div>
-                </div>
-              )}
             </VdfApprovalCard>
           )}
 
@@ -894,7 +899,7 @@ export default function MissionWizardPage() {
             {STEPS.filter((st) => st.locked).map((st) => (
               <div key={st.id} className={s.lockedCard}>
                 <span className={s.lockedName}>{st.label}</span>
-                <span className={s.lockedTag}>Agent coming soon</span>
+                <span className={s.lockedTag}>{st.lockedTag}</span>
               </div>
             ))}
           </div>
