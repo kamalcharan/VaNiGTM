@@ -116,7 +116,22 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      Reduced motion, a missing ref or no WAAPI all fall back to an
      instant swap. Distance depends on runtime layout, so the flight
      CANNOT live in CSS — keep `HANDOFF_MS` as the single duration.
-   - ⚠️ **To SEE the handoff you need an UNCONFIRMED step.** On a
+   - ✅ **The handoff is now SHARED and REVIEWABLE (2026-07-27).** The
+     user reported "if it travels, why cant i see" with a screenshot of
+     **`/design/wizard`** — the static Phase 1.2 mockup (Solstice
+     Metrics), not the live wizard. Fair mistake, and it exposed the
+     real gap: judging the motion required a backend + LLM + fresh
+     tenant. Fixed:
+     - Extracted the FLIP into **`hooks/useMissionHandoff.ts`**
+       (`stageRef`, `handingOff`, `handoff(stepId, commit)`, exported
+       `HANDOFF_MS`). BOTH wizards use it, so the product and the
+       surface used to review/record it can never drift.
+     - **`/design/wizard` now PLAYS ITSELF** — all 6 synthetic steps
+       auto-advance (3.2s dwell) with the same flight, plus "Replay the
+       flow" and a pause/resume autoplay toggle. Zero backend, zero
+       LLM, zero auth: this is the fastest way to judge the motion, and
+       a viable synthetic-data recording surface for the landing loop.
+   - ⚠️ **On the LIVE wizard the handoff only plays on an UNCONFIRMED step.** On a
      completed mission every step is ✓ and there is no confirm button,
      so nothing animates — that is the state the user's screenshot was
      in. Test with a fresh tenant or a step not yet confirmed.

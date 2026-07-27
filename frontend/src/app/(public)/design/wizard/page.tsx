@@ -17,11 +17,13 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { useMissionHandoff } from '@/hooks/useMissionHandoff';
 import { useTheme } from '@/config/theme';
 import {
   VdfWizard,
   VdfMissionRail,
   VdfApprovalCard,
+  VdfButton,
   VdfEnrichmentWaterfall,
   VdfAtmosphere,
   VdfGridOverlay,
@@ -31,6 +33,10 @@ import {
 import s from './wizard.module.css';
 
 /* ── Synthetic mission data (fictional) ─────────────────────────────── */
+
+/** Dwell per step when the design wizard plays itself — snappy enough to
+    review the motion repeatedly, slow enough to read the card. */
+const DESIGN_DWELL_MS = 3200;
 
 const STEPS = [
   { id: 'company', label: 'Research company' },
@@ -122,10 +128,25 @@ export default function WizardDesignPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  // Same handoff the live wizard uses — this page is where the motion gets
+  // reviewed and recorded, so it must be the SAME code, not a lookalike.
+  const { stageRef, handingOff, handoff } = useMissionHandoff<HTMLElement>();
+  const [autoplay, setAutoplay] = useState(true);
+
   const confirmStep = (id: string) => {
-    setConfirmed((prev) => new Set(prev).add(id));
-    setStepIndex((i) => Math.min(STEPS.length - 1, i + 1));
+    handoff(id, () => {
+      setConfirmed((prev) => new Set(prev).add(id));
+      setStepIndex((i) => Math.min(STEPS.length - 1, i + 1));
+    });
   };
+
+  const replay = () => {
+    setConfirmed(new Set());
+    setStepIndex(0);
+    setAutoplay(true);
+  };
+
+  const finished = confirmed.size >= STEPS.length - 1;
 
   const railItems: VdfMissionRailItem[] = useMemo(() => STEPS.map((step, i) => ({
     id: step.id,
@@ -180,14 +201,14 @@ export default function WizardDesignPage() {
           <VdfMissionRail items={railItems} />
         </aside>
 
-        <main className={s.main} key={current.id}>
+        <main ref={stageRef} className={`${s.main} ${handingOff ? s.mainFlying : ''}`} key={current.id}>
           {current.id === 'company' && (
             <VdfApprovalCard
               eyebrow="VaNi · researched from solsticemetrics.example"
               title="Here’s what I learned about your company"
               subtitle="I read your website, docs and public profiles. Correct anything that’s off — everything downstream builds on this."
               status={confirmed.has('company') ? 'confirmed' : 'draft'}
-              onConfirm={() => confirmStep('company')}
+              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} onConfirm={() => confirmStep('company')}
               onEdit={() => {}}
             >
               <div className={s.companyGrid}>
@@ -230,7 +251,7 @@ export default function WizardDesignPage() {
               title="Four competitors shape your buyers’ expectations"
               subtitle="Remove anyone who doesn’t belong; I’ll position against the rest in campaigns and emails."
               status={confirmed.has('competitors') ? 'confirmed' : 'draft'}
-              onConfirm={() => confirmStep('competitors')}
+              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} onConfirm={() => confirmStep('competitors')}
               onEdit={() => {}}
             >
               <div className={s.competitorList}>
@@ -253,7 +274,7 @@ export default function WizardDesignPage() {
               title="Two campaigns, ready to approve"
               subtitle="Each is a decision, not a blank: pain, qualification, live prospect counts."
               status={confirmed.has('campaigns') ? 'confirmed' : 'draft'}
-              onConfirm={() => confirmStep('campaigns')}
+              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} onConfirm={() => confirmStep('campaigns')}
               onEdit={() => {}}
             >
               <div className={s.campaignGrid}>
@@ -288,7 +309,7 @@ export default function WizardDesignPage() {
               title="Potential customers that fit your ICP"
               subtitle="Operational columns only — enough to say yes or no to each."
               status={confirmed.has('prospects') ? 'confirmed' : 'draft'}
-              onConfirm={() => confirmStep('prospects')}
+              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} onConfirm={() => confirmStep('prospects')}
               onEdit={() => {}}
             >
               <div className={s.tableWrap}>
@@ -320,7 +341,7 @@ export default function WizardDesignPage() {
               title="Decision makers at your approved prospects"
               subtitle="Each contact runs the enrichment waterfall — providers tried in order until a verified email hits."
               status={confirmed.has('contacts') ? 'confirmed' : 'draft'}
-              onConfirm={() => confirmStep('contacts')}
+              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} onConfirm={() => confirmStep('contacts')}
               onEdit={() => {}}
             >
               <div className={s.contactList}>
@@ -343,7 +364,7 @@ export default function WizardDesignPage() {
               title="First email, personalized per contact"
               subtitle="Grounded in your value props and each prospect’s context. Approve to finish the mission."
               status={confirmed.has('emails') ? 'confirmed' : 'draft'}
-              onConfirm={() => confirmStep('emails')}
+              autoConfirmMs={autoplay && !finished ? DESIGN_DWELL_MS : undefined} onConfirm={() => confirmStep('emails')}
               confirmLabel="Approve & launch mission"
               onEdit={() => {}}
             >
@@ -366,6 +387,20 @@ export default function WizardDesignPage() {
             </div>
           )}
         </main>
+      </div>
+
+      <div className={s.replayRow}>
+        <VdfButton variant="outline" size="sm" onClick={replay}>Replay the flow</VdfButton>
+        <VdfButton
+          variant="ghost"
+          size="sm"
+          onClick={() => setAutoplay((a) => !a)}
+        >
+          {autoplay ? 'Pause autoplay' : 'Resume autoplay'}
+        </VdfButton>
+        <span className={s.replayNote}>
+          {autoplay ? 'Playing hands-free — same handoff as the live wizard' : 'Autoplay paused — confirm manually'}
+        </span>
       </div>
     </div>
   );

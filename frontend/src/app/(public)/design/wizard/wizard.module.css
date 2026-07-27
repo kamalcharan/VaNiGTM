@@ -459,3 +459,27 @@
 @media (prefers-reduced-motion: reduce) {
   .missionComplete { animation: none; }
 }
+
+
+/* ── Handoff flight + replay control (shared motion with /onboarding) ── */
+
+.mainFlying {
+  transform-origin: top left;   /* the measured translate+scale lands true */
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.replayRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: var(--space-lg);
+}
+
+.replayNote {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}

@@ -25,6 +25,7 @@ import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { useOnboardingStatus } from '@/hooks/useOnboarding';
+import { useMissionHandoff } from '@/hooks/useMissionHandoff';
 import { ME_QUERY_KEY } from '@/hooks/useMe';
 import {
   VdfWizard,
@@ -189,9 +190,6 @@ const ICP_FIELDS: { key: keyof GtmProfile & string; label: string; required: boo
     The agent keeps the flow moving; the human only acts to CHANGE something.
     Touching the card cancels it permanently — see VdfApprovalCard. */
 const AUTO_CONFIRM_MS = 7000;
-
-/** Length of the card's leave animation — keep in sync with mission-wizard.module.css. */
-const HANDOFF_MS = 620;
 
 /** Rotating status copy for multi-minute agent phases. Every line describes
     work the agent genuinely does — never a fake progress claim. */
@@ -539,13 +537,16 @@ export default function MissionWizardPage() {
     poll();
   }, [loadCompetitors, showToast]);
 
-  /* ── The handoff ─────────────────────────────────────────────────────
-     A finished step doesn't just disappear — it visibly hands off. The
-     stage card plays a short leave animation while the rail entry arrives,
-     which is the whole visual grammar of "this agent is done, the next one
-     is taking over". Reduced motion skips straight to the swap. */
-  const [handingOff, setHandingOff] = useState(false);
-  const stageRef = useRef<HTMLElement>(null);
+  /* ── The handoff — shared with /design/wizard so the motion can't drift.
+     A finished card FLIES into its mission-memory slot; see the hook. */
+  const { stageRef, handingOff, handoff: flyTo } = useMissionHandoff<HTMLElement>();
+
+  const handoff = useCallback((stepId: string, nextIndex: number) => {
+    flyTo(stepId, () => {
+      setConfirmed((prev) => new Set(prev).add(stepId));
+      setStepIndex(nextIndex);
+    });
+  }, [flyTo]);
 
   // Recording mode (?record=1) — the landing loop plays the SAME real flow
   // with no countdown chrome and a tighter dwell. Read from location rather
@@ -556,59 +557,6 @@ export default function MissionWizardPage() {
     setRecording(new URLSearchParams(window.location.search).get('record') === '1');
   }, []);
   const autoMs = recording ? 2200 : AUTO_CONFIRM_MS;
-
-  const handoff = useCallback((stepId: string, nextIndex: number) => {
-    const commit = () => {
-      setConfirmed((prev) => new Set(prev).add(stepId));
-      setStepIndex(nextIndex);
-      setHandingOff(false);
-    };
-
-    const reduced = typeof window === 'undefined'
-      || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-
-    const stage = stageRef.current;
-    const target = typeof document !== 'undefined'
-      ? document.querySelector<HTMLElement>(`[data-mission-step="${stepId}"]`)
-      : null;
-
-    // No motion, or nothing to measure → just swap.
-    if (reduced || !stage || !target || typeof stage.animate !== 'function') {
-      commit();
-      return;
-    }
-
-    // FLIP: the finished card physically travels into its rail slot, which
-    // is the whole point — you SEE one agent hand off to the next. Transform
-    // only, so nothing reflows while it flies.
-    const from = stage.getBoundingClientRect();
-    const to = target.getBoundingClientRect();
-    const dx = to.left - from.left;
-    const dy = to.top - from.top;
-    const scale = Math.max(0.12, Math.min(1, to.width / Math.max(from.width, 1)));
-
-    setHandingOff(true);
-    const flight = stage.animate(
-      [
-        { transform: 'translate(0px, 0px) scale(1)', opacity: 1 },
-        { transform: `translate(${dx}px, ${dy}px) scale(${scale})`, opacity: 0 },
-      ],
-      { duration: HANDOFF_MS, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' },
-    );
-
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      target.classList.add('mission-step-landed');
-      window.setTimeout(() => target.classList.remove('mission-step-landed'), 900);
-      commit();
-    };
-    flight.addEventListener('finish', finish);
-    // Safety net: if the animation is interrupted (tab hidden, etc.) the
-    // flow must still advance — never strand the user mid-handoff.
-    window.setTimeout(finish, HANDOFF_MS + 200);
-  }, []);
 
   const keptCount = competitors.filter((c) => !removedIds.has(c.id)).length;
 
