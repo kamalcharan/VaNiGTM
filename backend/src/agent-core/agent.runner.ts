@@ -43,6 +43,7 @@ export interface AgentRun {
   agent_name: string;
   status: AgentStatus | string;
   steps: AgentStep[];
+  checkpoint: Record<string, unknown> | null;
   awaiting_input: Record<string, unknown> | null;
   retry_count: number;
   last_checkpoint: string | null;
@@ -163,6 +164,75 @@ export async function appendStep(
   );
 }
 
+/* ── Checkpoints (resume from point of failure) ─────────────────────────── */
+
+/**
+ * Merge working state into the run's checkpoint (migration 191). Agents
+ * call this after each expensive stage; on failure the checkpoint survives
+ * and a resumed run skips what's already done. Merge semantics — pass only
+ * the keys that changed.
+ */
+export async function saveCheckpoint(
+  pool: Pool,
+  runId: string | number,
+  state: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await pool.query(
+      `UPDATE gt_agent_runs
+          SET checkpoint = COALESCE(checkpoint, '{}'::jsonb) || $1::jsonb
+        WHERE id = $2`,
+      [JSON.stringify(state), runId],
+    );
+  } catch (err) {
+    // 42703 = undefined_column → migration 191 not applied yet. Surface the
+    // real fix instead of a cryptic pg error (rule 12).
+    if ((err as { code?: string })?.code === '42703') {
+      throw new Error(
+        'CHECKPOINT_COLUMN_MISSING: gt_agent_runs.checkpoint does not exist — apply migration 191 (cd backend && npm run db:migrate)',
+      );
+    }
+    throw err;
+  }
+}
+
+/** Read a run's checkpoint. Null when the run never checkpointed. */
+export async function loadCheckpoint(
+  pool: Pool,
+  runId: string | number,
+): Promise<Record<string, unknown> | null> {
+  const result = await pool.query<{ checkpoint: Record<string, unknown> | null }>(
+    `SELECT checkpoint FROM gt_agent_runs WHERE id = $1`,
+    [runId],
+  );
+  return result.rows[0]?.checkpoint ?? null;
+}
+
+/**
+ * Latest failed run with a checkpoint for (tenant, agent) — the resume
+ * candidate. 24h freshness window: older working state (stale search
+ * results, a changed profile) should be re-earned, not resumed.
+ */
+export async function findResumableRun(
+  pool: Pool,
+  tenantId: string,
+  agentName: string,
+): Promise<{ id: string; checkpoint: Record<string, unknown> } | null> {
+  const result = await pool.query<{ id: string; checkpoint: Record<string, unknown> }>(
+    `SELECT id::text, checkpoint
+       FROM gt_agent_runs
+      WHERE tenant_id = $1
+        AND agent_name = $2
+        AND status = 'failed'
+        AND checkpoint IS NOT NULL
+        AND created_at > now() - interval '24 hours'
+      ORDER BY created_at DESC
+      LIMIT 1`,
+    [tenantId, agentName],
+  );
+  return result.rows[0] ?? null;
+}
+
 /* ── Reads ──────────────────────────────────────────────────────────────── */
 
 /**
@@ -174,7 +244,7 @@ export async function getRun(
 ): Promise<AgentRun | null> {
   const result = await pool.query<AgentRun>(
     `SELECT id::text, tenant_id, event_id, agent_name, status, steps,
-            awaiting_input, retry_count, last_checkpoint, output,
+            checkpoint, awaiting_input, retry_count, last_checkpoint, output,
             error_trace, token_usage, duration_ms,
             started_at, completed_at, created_at
        FROM gt_agent_runs
@@ -196,7 +266,7 @@ export async function getRuns(
 ): Promise<AgentRun[]> {
   const result = await pool.query<AgentRun>(
     `SELECT id::text, tenant_id, event_id, agent_name, status, steps,
-            awaiting_input, retry_count, last_checkpoint,
+            checkpoint, awaiting_input, retry_count, last_checkpoint,
             token_usage, duration_ms, started_at, completed_at, created_at
        FROM gt_agent_runs
       WHERE tenant_id = $1

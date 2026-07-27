@@ -11,9 +11,16 @@
  *   5. verifies each candidate against its REAL site (static fetch via
  *      IngestionAgent.fetchUrlText) and has the LLM judge fit — this is
  *      the anti-hallucination gate: a name the model invented dies here
- *   6. writes verified competitors into the KG as Competitor nodes
- *      (properties: source/domain/verified/angle, confirmed=false) with a
- *      Company —DIFFERENTIATES_FROM→ Competitor edge
+ *   6. writes each accepted competitor into the KG THE MOMENT it is
+ *      earned (node + Company —DIFFERENTIATES_FROM→ edge) — a crash
+ *      after candidate 3 keeps candidates 1–3
+ *
+ * Resume-from-failure (migration 191): after every expensive stage the
+ * working state is merged into gt_agent_runs.checkpoint. When the wizard
+ * retries with resume=true, the event payload carries resume_run_id; this
+ * run restores the failed run's checkpoint and skips completed stages —
+ * visibly, as a 'restore' step. LLM timeouts and TOKEN_BUDGET_EXCEEDED
+ * therefore cost only the calls that never happened.
  *
  * The human rules on the map in the wizard (keep/remove → /competitors/
  * confirm). Every step lands in gt_agent_runs.steps for the live feed.
@@ -27,11 +34,13 @@
 import type { Pool } from 'pg';
 import { z } from 'zod';
 import { createTenantDb } from '../../db';
-import { appendStep, setStatus } from '../../agent-core/agent.runner';
+import { appendStep, setStatus, saveCheckpoint, loadCheckpoint } from '../../agent-core/agent.runner';
 import { callLLMValidated } from '../../agent-core/llm.client';
 import { searchWeb, type WebSearchResult } from '../../agent-core/search.client';
 import { upsertNode, upsertEdge } from '../../agent-core/kg.store';
 import { IngestionAgent } from '../ingestion-skill/ingestion.agent';
+
+export const RESEARCH_AGENT_NAME = 'COMPETITOR_RESEARCH_REQUESTED';
 
 const MAX_QUERIES = 4;
 const RESULTS_PER_QUERY = 8;
@@ -67,17 +76,68 @@ interface ProfileRow {
   primary_pain_points: string[] | null;
 }
 
+interface Candidate {
+  name: string;
+  domain: string | null;
+  reason: string;
+}
+
+/** Per-candidate outcome, keyed by name in the checkpoint. */
+interface Assessed {
+  accepted: boolean;
+  verified: boolean;
+  site_read: boolean;   // counts against MAX_VERIFY on resume
+  description: string;
+  angle: string | null;
+  domain: string | null;
+  evidence_url: string | null;
+}
+
+/** Shape of gt_agent_runs.checkpoint for this agent (all keys optional —
+    each stage adds its own as it completes). */
+interface ResearchCheckpoint {
+  queries?: string[];
+  results?: WebSearchResult[];
+  candidates?: Candidate[];
+  assessed?: Record<string, Assessed>;
+}
+
 export class CompetitorResearchAgent {
   static async run(
     pool: Pool,
     tenantId: string,
-    _payload: Record<string, unknown>,
+    payload: Record<string, unknown>,
     runId: string,
   ): Promise<void> {
     const db = createTenantDb(pool, tenantId);
 
+    // RESUME — the route found the latest failed run with a checkpoint and
+    // put its id in the payload; load the working state from that run.
+    const resumedFrom = payload.resume_run_id as string | undefined;
+    const cp: ResearchCheckpoint = resumedFrom
+      ? ((await loadCheckpoint(pool, resumedFrom)) as ResearchCheckpoint | null) ?? {}
+      : {};
+    if (resumedFrom) {
+      const assessedCount = Object.keys(cp.assessed ?? {}).length;
+      await appendStep(pool, runId, {
+        step_name: 'restore',
+        action: `Resuming from run #${resumedFrom} — skipping what's already done`,
+        output_summary: [
+          cp.queries ? `${cp.queries.length} queries` : null,
+          cp.results ? `${cp.results.length} search results` : null,
+          cp.candidates ? `${cp.candidates.length} candidates` : null,
+          assessedCount ? `${assessedCount} already assessed` : null,
+        ].filter(Boolean).join(', ') || 'nothing restorable — starting fresh',
+        status: 'ok',
+      });
+      // Carry the restored state forward onto THIS run so a second failure
+      // resumes from here, not from the older run.
+      await saveCheckpoint(pool, runId, cp as Record<string, unknown>);
+    }
+
     // 1. PROFILE — research is framed by it; without one there is nothing
-    //    to research against.
+    //    to research against. Always loaded fresh (cheap, and edits since
+    //    the failed run should be honoured).
     const profileResult = await db.query<ProfileRow>(
       `SELECT product_name, product_description, core_problem,
               key_differentiators, icp_role, icp_company_type,
@@ -122,204 +182,117 @@ export class CompetitorResearchAgent {
       primary_pain_points: profile.primary_pain_points,
     }, null, 2);
 
-    // 2. FRAME QUERIES
-    const { queries } = await callLLMValidated(
-      {
-        pool, tenantId, runId,
-        system:
-          'You are a competitive-intelligence researcher. Given a company profile, ' +
-          'write web-search queries that will surface its direct competitors — ' +
-          'vendors a buyer would evaluate instead. Prefer queries like ' +
-          '"<category> tools for <buyer>", "<product-type> alternatives", ' +
-          '"top <category> companies <industry>". Respond with ONLY JSON inside ' +
-          `<queries> tags: <queries>{"queries": ["...", "..."]}</queries>. Max ${MAX_QUERIES} queries.`,
-        messages: [{ role: 'user', content: `Company profile:\n${profileContext}` }],
-        maxTokens: 300,
-      },
-      QueriesSchema,
-      'queries',
-    );
-
-    await appendStep(pool, runId, {
-      step_name: 'frame_queries',
-      action: 'Framed the competitive landscape',
-      output_summary: queries.map((q) => `"${q}"`).join(' · '),
-      status: 'ok',
-    });
-
-    // 3. SEARCH — every query is a visible step; a failed search fails the
-    //    run (config/instance problem the user must see, not paper over).
-    const seen = new Map<string, WebSearchResult>();
-    for (const query of queries) {
-      const results = await searchWeb(query, RESULTS_PER_QUERY);
-      for (const r of results) {
-        const host = hostnameOf(r.url);
-        if (!host || ownDomains.has(host)) continue;
-        if (!seen.has(r.url)) seen.set(r.url, r);
-      }
-      await appendStep(pool, runId, {
-        step_name: 'web_search',
-        action: `Searched: "${query}"`,
-        output_summary: `${results.length} results`,
-        status: 'ok',
-      });
-    }
-    const results = [...seen.values()].slice(0, 30);
-    if (results.length === 0) {
-      throw new Error(
-        'SEARCH_EMPTY: every query returned zero results — check the SearXNG ' +
-        'instance and its enabled engines (docs/searxng-setup.md)',
-      );
-    }
-
-    // 4. SHORTLIST candidate vendors from the result set. Listicles and
-    //    review sites are useful EVIDENCE (they name vendors) but are not
-    //    themselves candidates.
-    const resultsBlock = results
-      .map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet}`)
-      .join('\n');
-
-    const { candidates } = await callLLMValidated(
-      {
-        pool, tenantId, runId,
-        system:
-          'You are a competitive-intelligence researcher. From the search results, ' +
-          'identify actual VENDOR companies that compete with the profiled company — ' +
-          'products a buyer would evaluate instead. Directories, listicles, review ' +
-          'sites (G2, Capterra, Wikipedia, Reddit, LinkedIn) are evidence, never ' +
-          'candidates. For each candidate give its primary domain ONLY if it appears ' +
-          'in the results (a result URL or clearly stated); otherwise use null — ' +
-          'NEVER guess a domain. Respond with ONLY JSON inside <candidates> tags: ' +
-          '<candidates>{"candidates": [{"name": "...", "domain": "example.com" | null, ' +
-          '"reason": "why this competes"}]}</candidates>. Max 8, best first.',
-        messages: [{
-          role: 'user',
-          content: `Company profile:\n${profileContext}\n\nSearch results:\n${resultsBlock}`,
-        }],
-        maxTokens: 800,
-      },
-      CandidatesSchema,
-      'candidates',
-    );
-
-    await appendStep(pool, runId, {
-      step_name: 'shortlist',
-      action: 'Shortlisted candidate competitors',
-      output_summary: candidates.length > 0
-        ? candidates.map((c) => c.name).join(', ')
-        : 'none found in the results',
-      status: candidates.length > 0 ? 'ok' : 'skipped',
-    });
-
-    // 5. VERIFY each candidate against its real site + judge fit.
-    const accepted: Array<{
-      name: string;
-      domain: string | null;
-      description: string;
-      angle: string | null;
-      verified: boolean;
-      evidenceUrl: string | null;
-    }> = [];
-
-    let verified = 0;
-    for (const candidate of candidates) {
-      const domain = normalizeDomain(candidate.domain);
-
-      if (!domain || verified >= MAX_VERIFY) {
-        // No verifiable domain (or over the read cap): keep for the human
-        // gate, transparently marked unverified.
-        accepted.push({
-          name: candidate.name,
-          domain,
-          description: candidate.reason,
-          angle: null,
-          verified: false,
-          evidenceUrl: null,
-        });
-        await appendStep(pool, runId, {
-          step_name: 'verify',
-          action: `${candidate.name}: kept unverified`,
-          output_summary: domain ? 'verification cap reached' : 'no domain in the search evidence',
-          status: 'skipped',
-        });
-        continue;
-      }
-
-      verified += 1;
-      const siteUrl = `https://${domain}`;
-      let siteText: string | null = null;
-      try {
-        siteText = (await IngestionAgent.fetchUrlText(siteUrl)).text;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        accepted.push({
-          name: candidate.name,
-          domain,
-          description: candidate.reason,
-          angle: null,
-          verified: false,
-          evidenceUrl: siteUrl,
-        });
-        await appendStep(pool, runId, {
-          step_name: 'verify',
-          action: `${candidate.name}: site unreadable — kept unverified`,
-          output_summary: msg.slice(0, 160),
-          status: 'error',
-        });
-        continue;
-      }
-
-      const assessment = await callLLMValidated(
+    // 2. FRAME QUERIES (skipped on resume when checkpointed)
+    let queries: string[];
+    if (cp.queries && cp.queries.length > 0) {
+      queries = cp.queries;
+    } else {
+      ({ queries } = await callLLMValidated(
         {
           pool, tenantId, runId,
           system:
-            'You are a competitive-intelligence analyst. Decide whether the ' +
-            'candidate company ACTUALLY competes with the profiled company — a ' +
-            'buyer would evaluate one instead of the other. If yes, summarize the ' +
-            "candidate's positioning (1-2 sentences) and the profiled company's " +
-            'strongest differentiation angle against it (1 sentence). Respond with ' +
-            'ONLY JSON inside <assessment> tags: <assessment>{"is_competitor": ' +
-            'true|false, "positioning": "...", "angle": "..."}</assessment>.',
-          messages: [{
-            role: 'user',
-            content:
-              `Profiled company:\n${profileContext}\n\n` +
-              `Candidate: ${candidate.name} (${domain})\n` +
-              `Candidate website text:\n${siteText.slice(0, SITE_TEXT_CAP)}`,
-          }],
-          maxTokens: 400,
+            'You are a competitive-intelligence researcher. Given a company profile, ' +
+            'write web-search queries that will surface its direct competitors — ' +
+            'vendors a buyer would evaluate instead. Prefer queries like ' +
+            '"<category> tools for <buyer>", "<product-type> alternatives", ' +
+            '"top <category> companies <industry>". Respond with ONLY JSON inside ' +
+            `<queries> tags: <queries>{"queries": ["...", "..."]}</queries>. Max ${MAX_QUERIES} queries.`,
+          messages: [{ role: 'user', content: `Company profile:\n${profileContext}` }],
+          maxTokens: 300,
         },
-        AssessmentSchema,
-        'assessment',
-      );
+        QueriesSchema,
+        'queries',
+      ));
+      await saveCheckpoint(pool, runId, { queries });
 
-      if (!assessment.is_competitor) {
-        await appendStep(pool, runId, {
-          step_name: 'verify',
-          action: `${candidate.name}: read its site — not a real competitor, dropped`,
-          output_summary: assessment.positioning.slice(0, 160),
-          status: 'ok',
-        });
-        continue;
-      }
-
-      accepted.push({
-        name: candidate.name,
-        domain,
-        description: assessment.positioning,
-        angle: assessment.angle,
-        verified: true,
-        evidenceUrl: siteUrl,
-      });
       await appendStep(pool, runId, {
-        step_name: 'verify',
-        action: `${candidate.name}: verified against its site`,
-        output_summary: assessment.angle.slice(0, 160),
+        step_name: 'frame_queries',
+        action: 'Framed the competitive landscape',
+        output_summary: queries.map((q) => `"${q}"`).join(' · '),
         status: 'ok',
       });
     }
 
-    // 6. KG WRITE — Competitor nodes + Company —DIFFERENTIATES_FROM→ edges.
+    // 3. SEARCH (skipped on resume when checkpointed) — every query is a
+    //    visible step; a failed search fails the run (config/instance
+    //    problem the user must see, not paper over).
+    let results: WebSearchResult[];
+    if (cp.results && cp.results.length > 0) {
+      results = cp.results;
+    } else {
+      const seen = new Map<string, WebSearchResult>();
+      for (const query of queries) {
+        const found = await searchWeb(query, RESULTS_PER_QUERY);
+        for (const r of found) {
+          const host = hostnameOf(r.url);
+          if (!host || ownDomains.has(host)) continue;
+          if (!seen.has(r.url)) seen.set(r.url, r);
+        }
+        await appendStep(pool, runId, {
+          step_name: 'web_search',
+          action: `Searched: "${query}"`,
+          output_summary: `${found.length} results`,
+          status: 'ok',
+        });
+      }
+      results = [...seen.values()].slice(0, 30);
+      if (results.length === 0) {
+        throw new Error(
+          'SEARCH_EMPTY: every query returned zero results — check the SearXNG ' +
+          'instance and its enabled engines (docs/searxng-setup.md)',
+        );
+      }
+      await saveCheckpoint(pool, runId, { results });
+    }
+
+    // 4. SHORTLIST (skipped on resume when checkpointed). Listicles and
+    //    review sites are useful EVIDENCE (they name vendors) but are not
+    //    themselves candidates.
+    let candidates: Candidate[];
+    if (cp.candidates && cp.candidates.length > 0) {
+      candidates = cp.candidates;
+    } else {
+      const resultsBlock = results
+        .map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet}`)
+        .join('\n');
+
+      const shortlisted = await callLLMValidated(
+        {
+          pool, tenantId, runId,
+          system:
+            'You are a competitive-intelligence researcher. From the search results, ' +
+            'identify actual VENDOR companies that compete with the profiled company — ' +
+            'products a buyer would evaluate instead. Directories, listicles, review ' +
+            'sites (G2, Capterra, Wikipedia, Reddit, LinkedIn) are evidence, never ' +
+            'candidates. For each candidate give its primary domain ONLY if it appears ' +
+            'in the results (a result URL or clearly stated); otherwise use null — ' +
+            'NEVER guess a domain. Respond with ONLY JSON inside <candidates> tags: ' +
+            '<candidates>{"candidates": [{"name": "...", "domain": "example.com" | null, ' +
+            '"reason": "why this competes"}]}</candidates>. Max 8, best first.',
+          messages: [{
+            role: 'user',
+            content: `Company profile:\n${profileContext}\n\nSearch results:\n${resultsBlock}`,
+          }],
+          maxTokens: 800,
+        },
+        CandidatesSchema,
+        'candidates',
+      );
+      candidates = shortlisted.candidates as Candidate[];
+      await saveCheckpoint(pool, runId, { candidates });
+
+      await appendStep(pool, runId, {
+        step_name: 'shortlist',
+        action: 'Shortlisted candidate competitors',
+        output_summary: candidates.length > 0
+          ? candidates.map((c) => c.name).join(', ')
+          : 'none found in the results',
+        status: candidates.length > 0 ? 'ok' : 'skipped',
+      });
+    }
+
+    // Company node — looked up BEFORE the verify loop so each accepted
+    // competitor gets its differentiation edge the moment it is written.
     const companyResult = await db.query<{ id: string }>(
       `SELECT id FROM gt_kg_nodes
         WHERE tenant_id = $tenant_id AND label = 'Company'
@@ -329,37 +302,160 @@ export class CompetitorResearchAgent {
     );
     const companyNodeId = companyResult.rows[0]?.id ?? null;
 
-    let written = 0;
-    for (const comp of accepted) {
+    // 5+6. VERIFY + WRITE, incrementally. Each candidate: fetch its real
+    // site, LLM-judge fit, and — if accepted — persist node + edge NOW.
+    // The assessed map is checkpointed after every candidate, so a crash
+    // at candidate 4 resumes at candidate 4.
+    const assessed: Record<string, Assessed> = { ...(cp.assessed ?? {}) };
+    let siteReads = Object.values(assessed).filter((a) => a.site_read).length;
+
+    const writeCompetitor = async (a: Assessed, name: string): Promise<void> => {
       const nodeId = await upsertNode(pool, tenantId, {
         label: 'Competitor',
-        name: comp.name,
-        description: comp.description,
+        name,
+        description: a.description,
         properties: {
           source: 'research',
-          domain: comp.domain,
-          verified: comp.verified,
-          evidence_url: comp.evidenceUrl,
-          ...(comp.angle ? { angle: comp.angle } : {}),
+          domain: a.domain,
+          verified: a.verified,
+          evidence_url: a.evidence_url,
+          ...(a.angle ? { angle: a.angle } : {}),
           confirmed: false,
         },
       }, runId);
-      written += 1;
-
       if (companyNodeId) {
         await upsertEdge(
           pool, tenantId,
           companyNodeId, 'DIFFERENTIATES_FROM', nodeId,
-          { source: 'research', ...(comp.angle ? { basis: comp.angle } : {}) },
+          { source: 'research', ...(a.angle ? { basis: a.angle } : {}) },
           runId,
         );
       }
+    };
+
+    for (const candidate of candidates) {
+      if (assessed[candidate.name]) continue; // done in a previous run
+
+      const domain = normalizeDomain(candidate.domain);
+      let outcome: Assessed;
+
+      if (!domain || siteReads >= MAX_VERIFY) {
+        // No verifiable domain (or over the read cap): keep for the human
+        // gate, transparently marked unverified.
+        outcome = {
+          accepted: true,
+          verified: false,
+          site_read: false,
+          description: candidate.reason,
+          angle: null,
+          domain,
+          evidence_url: null,
+        };
+        await writeCompetitor(outcome, candidate.name);
+        await appendStep(pool, runId, {
+          step_name: 'verify',
+          action: `${candidate.name}: kept unverified`,
+          output_summary: domain ? 'verification cap reached' : 'no domain in the search evidence',
+          status: 'skipped',
+        });
+      } else {
+        siteReads += 1;
+        const siteUrl = `https://${domain}`;
+        let siteText: string | null = null;
+        try {
+          siteText = (await IngestionAgent.fetchUrlText(siteUrl)).text;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          outcome = {
+            accepted: true,
+            verified: false,
+            site_read: true,
+            description: candidate.reason,
+            angle: null,
+            domain,
+            evidence_url: siteUrl,
+          };
+          await writeCompetitor(outcome, candidate.name);
+          await appendStep(pool, runId, {
+            step_name: 'verify',
+            action: `${candidate.name}: site unreadable — kept unverified`,
+            output_summary: msg.slice(0, 160),
+            status: 'error',
+          });
+          assessed[candidate.name] = outcome;
+          await saveCheckpoint(pool, runId, { assessed });
+          continue;
+        }
+
+        const assessment = await callLLMValidated(
+          {
+            pool, tenantId, runId,
+            system:
+              'You are a competitive-intelligence analyst. Decide whether the ' +
+              'candidate company ACTUALLY competes with the profiled company — a ' +
+              'buyer would evaluate one instead of the other. If yes, summarize the ' +
+              "candidate's positioning (1-2 sentences) and the profiled company's " +
+              'strongest differentiation angle against it (1 sentence). Respond with ' +
+              'ONLY JSON inside <assessment> tags: <assessment>{"is_competitor": ' +
+              'true|false, "positioning": "...", "angle": "..."}</assessment>.',
+            messages: [{
+              role: 'user',
+              content:
+                `Profiled company:\n${profileContext}\n\n` +
+                `Candidate: ${candidate.name} (${domain})\n` +
+                `Candidate website text:\n${siteText.slice(0, SITE_TEXT_CAP)}`,
+            }],
+            maxTokens: 400,
+          },
+          AssessmentSchema,
+          'assessment',
+        );
+
+        if (assessment.is_competitor) {
+          outcome = {
+            accepted: true,
+            verified: true,
+            site_read: true,
+            description: assessment.positioning,
+            angle: assessment.angle,
+            domain,
+            evidence_url: siteUrl,
+          };
+          await writeCompetitor(outcome, candidate.name);
+          await appendStep(pool, runId, {
+            step_name: 'verify',
+            action: `${candidate.name}: verified against its site`,
+            output_summary: assessment.angle.slice(0, 160),
+            status: 'ok',
+          });
+        } else {
+          outcome = {
+            accepted: false,
+            verified: true,
+            site_read: true,
+            description: assessment.positioning,
+            angle: null,
+            domain,
+            evidence_url: siteUrl,
+          };
+          await appendStep(pool, runId, {
+            step_name: 'verify',
+            action: `${candidate.name}: read its site — not a real competitor, dropped`,
+            output_summary: assessment.positioning.slice(0, 160),
+            status: 'ok',
+          });
+        }
+      }
+
+      assessed[candidate.name] = outcome;
+      await saveCheckpoint(pool, runId, { assessed });
     }
 
+    const written = Object.values(assessed).filter((a) => a.accepted).length;
     await appendStep(pool, runId, {
       step_name: 'kg_write',
-      action: 'Mapped competitors into your knowledge graph',
-      output_summary: `${written} competitor${written === 1 ? '' : 's'} written` +
+      action: 'Competitor map complete in your knowledge graph',
+      output_summary: `${written} competitor${written === 1 ? '' : 's'} mapped` +
         (companyNodeId ? ' with differentiation edges' : ''),
       status: 'ok',
     });
@@ -370,6 +466,7 @@ export class CompetitorResearchAgent {
         results_considered: results.length,
         candidates_shortlisted: candidates.length,
         competitors_written: written,
+        ...(resumedFrom ? { resumed_from_run: resumedFrom } : {}),
       },
     });
   }

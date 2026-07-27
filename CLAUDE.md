@@ -45,7 +45,7 @@ backend/
                         ingestion, profile, pulse, research, sequence,
                         storyteller, vani
     server.ts         — Express entry; migrate.ts — manual migration runner
-  migrations/         — 001…190 (highest = 190)
+  migrations/         — 001…191 (highest = 191)
 frontend/
   src/
     app/(auth)        — login, register, forgot/reset password, invite
@@ -122,6 +122,12 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
 - **Prompts:** `gt_prompts` (system + tenant override), key format
   `<skill>.<name>` — e.g. `vani-skill.gather`.
 - **Token budget:** per tenant per day in `gt_tenant_context`.
+- **Resume-from-failure:** `gt_agent_runs.checkpoint` JSONB (migration 191)
+  + `saveCheckpoint`/`loadCheckpoint`/`findResumableRun` in agent.runner.
+  Long agents checkpoint after each expensive stage and write KG results
+  incrementally (earn it → write it); a retry with `resume:true` skips
+  completed stages via a visible `restore` step. Research-skill is fully
+  resumable; ingestion writes nodes per chunk (crash keeps them).
 
 ## Skills Pattern
 
@@ -185,7 +191,7 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
 
 ## Migrations — MANUAL ONLY, NO AUTO-MIGRATE
 - Never run automatically. Apply: `cd backend && npm run db:migrate`;
-  status: `npm run db:migrate -- --status`. Highest = **190**.
+  status: `npm run db:migrate -- --status`. Highest = **191**.
 - Discuss schema changes with the user first. Make migrations **idempotent
   and guarded** (IF NOT EXISTS; DO-block existence checks before copying
   from or altering legacy tables — vani_gtm_db was bootstrapped fresh and

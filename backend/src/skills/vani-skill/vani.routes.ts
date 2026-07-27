@@ -16,7 +16,7 @@ import type { Pool } from 'pg';
 import { verifyAccessToken, type JwtPayload } from '../../auth/token.service';
 import { createTenantDb } from '../../db';
 import { emitEvent } from '../../agent-core/event.store';
-import { getRuns } from '../../agent-core/agent.runner';
+import { getRuns, findResumableRun } from '../../agent-core/agent.runner';
 import { VaniAgent } from './vani.agent';
 
 /* ── Auth guard ─────────────────────────────────────────────────────────── */
@@ -238,6 +238,10 @@ export function createVaniRouter(pool: Pool): Router {
   // search queries → SearXNG → verify candidate sites → KG Competitor nodes.
   // Deduped: an already queued/running research run is returned instead of
   // emitting a second event.
+  //
+  // Body { resume: true } → resume-from-failure: the latest failed run's
+  // checkpoint (migration 191, ≤24h old) is picked up and completed stages
+  // are skipped. No resumable run → starts fresh (resumed:false says so).
   router.post('/competitors/research', async (req: Request, res: Response) => {
     const jwt = requireAuth(req, res);
     if (!jwt) return;
@@ -258,15 +262,27 @@ export function createVaniRouter(pool: Pool): Router {
         return;
       }
 
+      const wantResume = (req.body ?? {}).resume === true;
+      let resumeRunId: string | null = null;
+      if (wantResume) {
+        const resumable = await findResumableRun(
+          pool, jwt.tenant_id, 'COMPETITOR_RESEARCH_REQUESTED',
+        );
+        resumeRunId = resumable?.id ?? null;
+      }
+
       const eventId = await emitEvent(
         pool,
         jwt.tenant_id,
         'COMPETITOR_RESEARCH_REQUESTED',
         'human',
-        { requested_by: jwt.user_id },
+        {
+          requested_by: jwt.user_id,
+          ...(resumeRunId ? { resume_run_id: resumeRunId } : {}),
+        },
         jwt.user_id,
       );
-      res.json({ already_running: false, event_id: eventId });
+      res.json({ already_running: false, event_id: eventId, resumed: Boolean(resumeRunId) });
     } catch (err) {
       console.error('[VaNi:/competitors/research]', err);
       res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });

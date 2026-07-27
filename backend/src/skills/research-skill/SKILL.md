@@ -38,6 +38,20 @@ Registered on the event bus (worker `AGENT_REGISTRY`):
    plus a `Company —DIFFERENTIATES_FROM→ Competitor` edge (basis = angle)
    when the tenant's Company node exists.
 
+## Resume-from-failure (migration 191)
+Working state is merged into `gt_agent_runs.checkpoint` after every
+expensive stage (`queries` → `results` → `candidates` → per-candidate
+`assessed`), and each accepted competitor is written to the KG **the
+moment it's earned** (incremental node+edge writes, not batched at the
+end). On failure (LLM timeout, `TOKEN_BUDGET_EXCEEDED`), the wizard's
+failure card offers **Resume from where it stopped** →
+`POST /competitors/research {resume:true}` → the route finds the latest
+failed run with a checkpoint (≤24h, `findResumableRun`) and passes
+`resume_run_id` in the event payload; the new run restores that state
+(visible `restore` step) and re-runs only what never completed. The
+profile is always reloaded fresh so edits since the failure are honoured.
+"Start fresh" / "Research again" ignore checkpoints.
+
 ## Human gate
 The wizard lists all Competitor nodes (crawl-found + researched);
 keep/remove → `POST /api/v1/vani/competitors/confirm` stamps

@@ -79,18 +79,31 @@ Rules:
 - Skip generic statements. Specific knowledge only.
 - If nothing useful in this chunk, output nothing.`;
 
+/** Called after each chunk with the NEW (cross-chunk-deduped) nodes and
+    relations that chunk produced — lets the caller persist incrementally
+    so a mid-extraction crash keeps everything already extracted. */
+export type OnChunkExtracted = (progress: {
+  chunkIndex: number;
+  chunksTotal: number;
+  nodes: ExtractedNode[];
+  relations: ExtractedRelation[];
+}) => Promise<void>;
+
 export async function extractFromChunks(
   pool: Pool,
   tenantId: string,
   runId: string,
   chunks: SourcedChunk[],
+  onChunk?: OnChunkExtracted,
 ): Promise<ExtractionResult> {
   const nodes: ExtractedNode[] = [];
   const relations: ExtractedRelation[] = [];
   const seenNodes = new Set<string>();
   const seenRelations = new Set<string>();
 
-  for (const chunk of chunks) {
+  for (const [chunkIndex, chunk] of chunks.entries()) {
+    const chunkNodes: ExtractedNode[] = [];
+    const chunkRelations: ExtractedRelation[] = [];
     try {
       const result = await callLLM({
         tenantId,
@@ -118,7 +131,7 @@ export async function extractFromChunks(
           const key = `${parsed.label}:${parsed.name}`.toLowerCase();
           if (!seenNodes.has(key)) {
             seenNodes.add(key);
-            nodes.push({
+            const node: ExtractedNode = {
               label:       parsed.label,
               name:        parsed.name,
               description: parsed.description,
@@ -126,7 +139,9 @@ export async function extractFromChunks(
                 ...((parsed.properties as Record<string, unknown>) ?? {}),
                 ...(chunk.source_url ? { source_url: chunk.source_url } : {}),
               },
-            });
+            };
+            nodes.push(node);
+            chunkNodes.push(node);
           }
         }
       }
@@ -148,12 +163,23 @@ export async function extractFromChunks(
           const key = `${parsed.from}|${parsed.type}|${parsed.to}`.toLowerCase();
           if (!seenRelations.has(key)) {
             seenRelations.add(key);
-            relations.push({ from: parsed.from, type: parsed.type, to: parsed.to });
+            const relation: ExtractedRelation = { from: parsed.from, type: parsed.type, to: parsed.to };
+            relations.push(relation);
+            chunkRelations.push(relation);
           }
         }
       }
     } catch (err) {
       console.warn(`[Ingestion] Chunk ${chunk.index} extraction failed:`, err);
+    }
+
+    if (onChunk) {
+      await onChunk({
+        chunkIndex,
+        chunksTotal: chunks.length,
+        nodes: chunkNodes,
+        relations: chunkRelations,
+      });
     }
   }
 

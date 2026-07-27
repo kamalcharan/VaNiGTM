@@ -467,12 +467,15 @@ export default function MissionWizardPage() {
     poll();
   }, [loadCompetitors, showToast]);
 
-  const startCompetitorResearch = useCallback(async () => {
+  // resume=true → the agent picks up the last failed run's checkpoint and
+  // skips completed stages (queries/search/shortlist/assessed candidates) —
+  // a timeout or token-budget failure costs only the calls that never ran.
+  const startCompetitorResearch = useCallback(async (resume = false) => {
     setCompResearch('running');
     setCompSteps([]);
     setCompError('');
     try {
-      await apiFetch(API.vani.researchCompetitors);
+      await apiFetch(API.vani.researchCompetitors, { body: { resume } });
       pollCompetitorResearch();
     } catch (err) {
       setCompResearch('failed');
@@ -918,7 +921,12 @@ export default function MissionWizardPage() {
                     <div className={s.errorNote}>
                       <p>{compError}</p>
                       <div className={s.errorActions}>
-                        <VdfButton variant="outline" size="sm" onClick={startCompetitorResearch}>Try again</VdfButton>
+                        <VdfButton variant="primary" size="sm" onClick={() => startCompetitorResearch(true)}>
+                          Resume from where it stopped
+                        </VdfButton>
+                        <VdfButton variant="ghost" size="sm" onClick={() => startCompetitorResearch(false)}>
+                          Start fresh
+                        </VdfButton>
                       </div>
                     </div>
                   )}
@@ -934,11 +942,11 @@ export default function MissionWizardPage() {
                       </span>
                       <div className={s.errorActions}>
                         {compResearch !== 'failed' && (
-                          <VdfButton variant="outline" size="sm" onClick={startCompetitorResearch}>
+                          <VdfButton variant="outline" size="sm" onClick={() => startCompetitorResearch(false)}>
                             {compResearch === 'done' ? 'Research again' : 'Research competitors'}
                           </VdfButton>
                         )}
-                        <VdfButton variant="ghost" size="sm" onClick={loadCompetitors}>Refresh</VdfButton>
+                        <VdfButton variant="ghost" size="sm" onClick={() => loadCompetitors()}>Refresh</VdfButton>
                       </div>
                     </div>
                   ) : (
@@ -973,9 +981,9 @@ export default function MissionWizardPage() {
                       })}
                       <div className={s.errorActions}>
                         {compResearch !== 'failed' && (
-                          <VdfButton variant="outline" size="sm" onClick={startCompetitorResearch}>Research again</VdfButton>
+                          <VdfButton variant="outline" size="sm" onClick={() => startCompetitorResearch(false)}>Research again</VdfButton>
                         )}
-                        <VdfButton variant="ghost" size="sm" onClick={loadCompetitors}>Refresh</VdfButton>
+                        <VdfButton variant="ghost" size="sm" onClick={() => loadCompetitors()}>Refresh</VdfButton>
                       </div>
                     </div>
                   )}

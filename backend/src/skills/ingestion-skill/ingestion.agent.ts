@@ -16,7 +16,7 @@
 
 import type { Pool } from 'pg';
 import { createTenantDb } from '../../db';
-import { appendStep, setStatus } from '../../agent-core/agent.runner';
+import { appendStep, setStatus, saveCheckpoint } from '../../agent-core/agent.runner';
 import { emitEvent } from '../../agent-core/event.store';
 import { upsertNode, upsertEdge } from '../../agent-core/kg.store';
 
@@ -362,32 +362,46 @@ export class IngestionAgent {
         status:    'ok',
       });
 
-      const { nodes, relations } = await extractFromChunks(pool, tenantId, runId, chunks);
+      // 5b+6a. EXTRACT + WRITE NODES INCREMENTALLY — each chunk's nodes are
+      // upserted the moment they're extracted, so a mid-extraction crash
+      // (LLM timeout, token budget) keeps everything already earned. Edges
+      // are resolved after all chunks (endpoints can span chunks) — they're
+      // cheap DB writes, no LLM cost to re-earn on a rerun. Checkpoint
+      // tracks per-chunk progress for observability (migration 191).
+      const nodeIds = new Map<string, string>();
+      const { nodes, relations } = await extractFromChunks(
+        pool, tenantId, runId, chunks,
+        async ({ chunkIndex, chunksTotal, nodes: chunkNodes }) => {
+          for (const node of chunkNodes) {
+            try {
+              const nodeId = await upsertNode(pool, tenantId, node, runId);
+              nodeIds.set(`${node.label}:${node.name}`.toLowerCase(), nodeId);
+              written++;
+            } catch (err) {
+              console.warn(
+                `[Ingestion] Node upsert failed (${node.label}/${node.name}):`,
+                err,
+              );
+            }
+          }
+          await saveCheckpoint(pool, runId, {
+            stage:        'extract',
+            chunks_done:  chunkIndex + 1,
+            chunks_total: chunksTotal,
+            nodes_written: written,
+          });
+        },
+      );
 
       await appendStep(pool, runId, {
         step_name:      'extract_complete',
         action:         'LLM extraction finished',
-        output_summary: `${nodes.length} nodes, ${relations.length} relationships extracted`,
+        output_summary: `${nodes.length} nodes, ${relations.length} relationships extracted — nodes written as they landed`,
         status:         'ok',
       });
 
-      // 6. WRITE TO GRAPH — nodes first (building a name→id map), then the
-      // edges between them. Edges are what make this a graph the deck Q&A,
-      // Lead Finder and Auditor can reason over, not a tag list.
-      const nodeIds = new Map<string, string>();
-      for (const node of nodes) {
-        try {
-          const nodeId = await upsertNode(pool, tenantId, node, runId);
-          nodeIds.set(`${node.label}:${node.name}`.toLowerCase(), nodeId);
-          written++;
-        } catch (err) {
-          console.warn(
-            `[Ingestion] Node upsert failed (${node.label}/${node.name}):`,
-            err,
-          );
-        }
-      }
-
+      // 6b. EDGES — what makes this a graph the deck Q&A, Lead Finder and
+      // Auditor can reason over, not a tag list.
       let edgesWritten = 0;
       let edgesSkipped = 0;
       for (const rel of relations) {

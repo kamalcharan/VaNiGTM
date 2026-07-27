@@ -166,8 +166,35 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
      settings.yml must add `json` to search.formats (403 otherwise),
      then `SEARXNG_URL` in backend/.env (+ hard-restart worker).
      Without it research fails loudly with SEARCH_NOT_CONFIGURED.
-   - NOT yet live-tested with a fresh tenant through the new step 2
-     (needs worker + Ollama warm + SearXNG deployed). First live
+   - **Resume-from-failure (user-requested after a live
+     LLM_VPS_UNREACHABLE timeout killed a research run mid-verify).**
+     ⚠️ **APPLY MIGRATION 191 before running this code** (`cd backend
+     && npm run db:migrate`) — adds `gt_agent_runs.checkpoint JSONB` +
+     partial index; agents now call saveCheckpoint and fail with a
+     clear CHECKPOINT_COLUMN_MISSING error if it's absent. Mechanics:
+     agent.runner gains saveCheckpoint (jsonb merge) / loadCheckpoint /
+     findResumableRun (latest failed run w/ checkpoint, ≤24h). The
+     research agent checkpoints after every stage (queries → results →
+     candidates → per-candidate assessed) AND writes each accepted
+     competitor to the KG the moment it's verified (incremental, not
+     batched); wizard failure card now offers "Resume from where it
+     stopped" (POST research {resume:true} → resume_run_id in event
+     payload → visible 'restore' step) vs "Start fresh". Ingestion
+     retrofitted with the same earn-it-write-it pattern: extractor
+     gained an onChunk callback, nodes upsert per chunk + per-chunk
+     checkpoint {chunks_done/total}; edges still resolve at the end
+     (cheap, no LLM). Profile is always reloaded fresh on resume.
+   - **Live-run status (2026-07-27):** SearXNG deployed + JSON API
+     verified by the user (real results via curl). First wizard run
+     reached the LLM stage and died on `LLM_VPS_UNREACHABLE:
+     https://llm.dristiq.com — TimeoutError` (60s default). Root-cause
+     fixes STILL PENDING user action: raise LLM_PRIMARY_TIMEOUT_MS in
+     backend/.env (e.g. 180000) + hard-restart worker, pre-warm the
+     VPS model with keep_alive:"24h", and confirm what vikuna-llm runs
+     on (CPU vs GPU — verify calls carry ~5k-token prompts). Resume
+     makes these failures cheap; it does not make slow calls succeed.
+   - NOT yet live-tested end-to-end through the new step 2 (needs
+     migration 191 applied + worker + warm LLM + SearXNG). First live
      Storyteller run verdict: deck
      generated OK end-to-end, quality needs work — deck-quality
      workstream (KG-edge-grounded prompts, competitor angles,
