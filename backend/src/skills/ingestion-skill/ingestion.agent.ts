@@ -147,8 +147,9 @@ export class IngestionAgent {
         rawText = fetched.text;
 
         // Record the site-health check as a real step — the wizard surfaces
-        // it as onboarding's first mini digital-audit (missing meta/OG/JSON-LD
-        // hurts SEO + AEO, not just our crawler).
+        // it as onboarding's first mini digital-audit. Always measured on the
+        // STATIC page: that is what Google and AI answer engines see, even
+        // when we escalate to a headless render below.
         await appendStep(pool, runId, {
           step_name:      'site_health',
           action:         'Checked how crawlable the site is',
@@ -157,11 +158,32 @@ export class IngestionAgent {
         });
 
         if (rawText.length < 200) {
-          throw new Error(
-            `URL_EMPTY_CONTENT: ${source.url} yielded only ${rawText.length} chars of readable text ` +
-            `(missing: ${fetched.health.missing.join(', ') || 'nothing'}). ` +
-            `The page renders in the browser — paste your website copy instead.`,
-          );
+          // Escalation, not a fallback: visible as run steps, and any
+          // renderer failure fails the run loudly (rule 12).
+          await appendStep(pool, runId, {
+            step_name: 'render_page',
+            action:    'Static read too thin — rendering the page in a headless browser (n8n)',
+            status:    'ok',
+          });
+
+          const renderedHtml = await IngestionAgent.renderPageViaN8n(source.url);
+          const rendered = IngestionAgent.extractFromHtml(renderedHtml);
+          rawText = rendered.text;
+
+          await appendStep(pool, runId, {
+            step_name:      'render_complete',
+            action:         'Rendered page read',
+            output_summary: `${rawText.length} chars of readable text after rendering`,
+            status:         'ok',
+          });
+
+          if (rawText.length < 200) {
+            throw new Error(
+              `URL_EMPTY_CONTENT: ${source.url} yielded only ${rawText.length} chars even after ` +
+              `headless rendering (static page missing: ${fetched.health.missing.join(', ') || 'nothing'}). ` +
+              `Paste your website copy instead.`,
+            );
+          }
         }
       } else if (source.raw_text && !source.gdrive_file_id) {
         // Pre-supplied text (pasted context via POST /ingest/text) — the
@@ -596,38 +618,11 @@ export class IngestionAgent {
     };
   }
 
-  private static async fetchUrlText(url: string): Promise<{
+  /** Run the three extraction layers + health check over an HTML document. */
+  private static extractFromHtml(html: string): {
     text: string;
     health: { present: string[]; missing: string[]; summary: string };
-  }> {
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        headers: {
-          // Browser-like UA — plain bot UAs get 403'd by common CDN bot rules.
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 VaNiGTM-Ingestion/1.0',
-          Accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5',
-          'Accept-Language': 'en',
-        },
-        redirect: 'follow',
-        signal: AbortSignal.timeout(30_000),
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      throw new Error(`URL_FETCH_FAILED: ${url} — ${msg}`);
-    }
-
-    if (!response.ok) {
-      throw new Error(`URL_FETCH_FAILED: ${url} — HTTP ${response.status} ${response.statusText}`);
-    }
-
-    const contentType = response.headers.get('content-type') ?? '';
-    if (!/text\/html|text\/plain|application\/xhtml/.test(contentType)) {
-      throw new Error(`URL_UNSUPPORTED_CONTENT: ${url} returned '${contentType}' — only HTML/text pages are ingestible`);
-    }
-
-    const html = await response.text();
-
+  } {
     // Layers 2 + 3 BEFORE stripping — scripts/meta are removed below.
     const metaText = IngestionAgent.extractMetaText(html);
     const minedText = IngestionAgent.mineJsonProse(html);
@@ -659,6 +654,88 @@ export class IngestionAgent {
       text: text.length > MAX_CHARS ? text.slice(0, MAX_CHARS) : text,
       health,
     };
+  }
+
+  /**
+   * Headless-render escalation via the user's n8n infra (CLAUDE.md: n8n
+   * approved for agent-adjacent jobs; authenticated + environment-routed).
+   * Called ONLY when the static read is too thin, and always visible as a
+   * run step — never a silent fallback (rule 12). Throws loudly when the
+   * renderer is unconfigured, unreachable, or returns nothing.
+   */
+  private static async renderPageViaN8n(url: string): Promise<string> {
+    const base = process.env.N8N_RENDER_URL;
+    const secret = process.env.N8N_RENDER_SECRET;
+    if (!base || !secret) {
+      throw new Error(
+        'RENDER_NOT_CONFIGURED: this site needs headless rendering — set N8N_RENDER_URL and ' +
+        'N8N_RENDER_SECRET (see documents/n8n/README.md) or paste the website copy instead.',
+      );
+    }
+    const prefix = process.env.N8N_ENV === 'live' ? '/webhook' : '/webhook-test';
+
+    let res: Response;
+    try {
+      res = await fetch(`${base.replace(/\/$/, '')}${prefix}/vani-render-page`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-vani-secret': secret },
+        body: JSON.stringify({ url }),
+        signal: AbortSignal.timeout(90_000),
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`RENDER_FAILED: could not reach the n8n renderer — ${msg}`);
+    }
+
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      throw new Error(`RENDER_FAILED: n8n responded ${res.status} — ${detail.slice(0, 300)}`);
+    }
+
+    let data: { success?: boolean; html?: string; message?: string };
+    try {
+      data = await res.json() as typeof data;
+    } catch {
+      throw new Error('RENDER_FAILED: n8n returned a non-JSON response');
+    }
+    if (!data.success || !data.html) {
+      throw new Error(`RENDER_FAILED: ${data.message || 'renderer returned no HTML'}`);
+    }
+    return String(data.html);
+  }
+
+  private static async fetchUrlText(url: string): Promise<{
+    text: string;
+    health: { present: string[]; missing: string[]; summary: string };
+  }> {
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        headers: {
+          // Browser-like UA — plain bot UAs get 403'd by common CDN bot rules.
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 VaNiGTM-Ingestion/1.0',
+          Accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5',
+          'Accept-Language': 'en',
+        },
+        redirect: 'follow',
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`URL_FETCH_FAILED: ${url} — ${msg}`);
+    }
+
+    if (!response.ok) {
+      throw new Error(`URL_FETCH_FAILED: ${url} — HTTP ${response.status} ${response.statusText}`);
+    }
+
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!/text\/html|text\/plain|application\/xhtml/.test(contentType)) {
+      throw new Error(`URL_UNSUPPORTED_CONTENT: ${url} returned '${contentType}' — only HTML/text pages are ingestible`);
+    }
+
+    const html = await response.text();
+    return IngestionAgent.extractFromHtml(html);
   }
 
   // ── Private: Google Drive REST calls ───────────────────────────────────

@@ -1,0 +1,201 @@
+{
+  "name": "VaNi GTM - Render Page",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "VaNi GTM — headless page render\n\nPOST /vani-render-page\nbody: { \"url\": \"https://…\" }\nheader: x-vani-secret  (must equal env VANI_RENDER_SECRET)\n\nReturns { success, url, chars, html }.\nCalled by the VaNiGTM ingestion agent ONLY when a site's\nstatic HTML is too thin (JS-rendered SPA).\n\nSETUP (once):\n1. Install community node: Settings → Community Nodes →\n   n8n-nodes-puppeteer\n2. Set instance env: VANI_RENDER_SECRET=<long random string>\n3. Activate this workflow.\nBackend needs: N8N_RENDER_URL, N8N_RENDER_SECRET (same value),\nN8N_ENV=live for /webhook (else /webhook-test is used).",
+        "height": 560,
+        "width": 420,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-2464, -16],
+      "typeVersion": 1,
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Sticky Note - Render Page"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vani-render-page",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Render Page Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-1980, 200],
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "webhookId": "vani-render-page-001"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.body.url !== undefined && $json.body.url.startsWith('http') && $json.headers['x-vani-secret'] === $env.VANI_RENDER_SECRET && $env.VANI_RENDER_SECRET !== undefined && $env.VANI_RENDER_SECRET !== '' }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Validate Render Input",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-1772, 200],
+      "id": "a1b2c3d4-0003-4000-8000-000000000003"
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            { "name": "status", "value": "error" },
+            { "name": "errorCode", "value": "INVALID_INPUT_OR_AUTH" },
+            { "name": "message", "value": "Missing/invalid url, or bad x-vani-secret" },
+            { "name": "suggestion", "value": "Send { url } with a valid x-vani-secret header; ensure VANI_RENDER_SECRET is set on the n8n instance" }
+          ],
+          "boolean": [
+            { "name": "success", "value": false },
+            { "name": "recoverable", "value": false }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Invalid Render Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [-1564, 360],
+      "id": "a1b2c3d4-0004-4000-8000-000000000004"
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            { "name": "url", "value": "={{ $json.body.url }}" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Prepare Render Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [-1564, 120],
+      "id": "a1b2c3d4-0005-4000-8000-000000000005"
+    },
+    {
+      "parameters": {
+        "operation": "getPageContent",
+        "url": "={{ $json.url }}",
+        "options": {
+          "waitUntil": "networkidle2",
+          "timeout": 45000
+        }
+      },
+      "name": "Render Page (Puppeteer)",
+      "type": "n8n-nodes-puppeteer.puppeteer",
+      "typeVersion": 1,
+      "position": [-1356, 120],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "id": "a1b2c3d4-0006-4000-8000-000000000006",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize across n8n-nodes-puppeteer versions: HTML may land in\n// body / data / html. Empty or errored → structured error (no silent ok).\nconst item = $input.first().json;\nconst url = $('Prepare Render Data').first().json.url;\n\nif (item.error !== undefined) {\n  return {\n    success: false,\n    status: 'error',\n    errorCode: 'RENDER_FAILED',\n    message: 'Headless render failed',\n    details: String(item.error?.message || item.error).slice(0, 300),\n    url,\n    recoverable: true\n  };\n}\n\nconst html = item.body || item.data || item.html || '';\nif (typeof html !== 'string' || html.length < 100) {\n  return {\n    success: false,\n    status: 'error',\n    errorCode: 'RENDER_EMPTY',\n    message: 'Renderer returned no HTML',\n    details: `got ${typeof html === 'string' ? html.length : typeof html} — page may have blocked the browser`,\n    url,\n    recoverable: true\n  };\n}\n\nreturn {\n  success: true,\n  url,\n  chars: html.length,\n  html\n};"
+      },
+      "name": "Format Render Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1148, 120],
+      "id": "a1b2c3d4-0007-4000-8000-000000000007"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.success === true }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Render OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-940, 120],
+      "id": "a1b2c3d4-0008-4000-8000-000000000008"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": { "responseCode": 200 }
+      },
+      "name": "Respond Render Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [-732, 0],
+      "id": "a1b2c3d4-0009-4000-8000-000000000009"
+    },
+    {
+      "parameters": {},
+      "name": "Merge Render Errors",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [-940, 360],
+      "id": "a1b2c3d4-0010-4000-8000-000000000010"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": { "responseCode": 400 }
+      },
+      "name": "Respond Render Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [-732, 360],
+      "id": "a1b2c3d4-0011-4000-8000-000000000011"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Render Page Webhook": {
+      "main": [[{ "node": "Validate Render Input", "type": "main", "index": 0 }]]
+    },
+    "Validate Render Input": {
+      "main": [
+        [{ "node": "Prepare Render Data", "type": "main", "index": 0 }],
+        [{ "node": "Invalid Render Input", "type": "main", "index": 0 }]
+      ]
+    },
+    "Invalid Render Input": {
+      "main": [[{ "node": "Merge Render Errors", "type": "main", "index": 0 }]]
+    },
+    "Prepare Render Data": {
+      "main": [[{ "node": "Render Page (Puppeteer)", "type": "main", "index": 0 }]]
+    },
+    "Render Page (Puppeteer)": {
+      "main": [[{ "node": "Format Render Result", "type": "main", "index": 0 }]]
+    },
+    "Format Render Result": {
+      "main": [[{ "node": "Render OK?", "type": "main", "index": 0 }]]
+    },
+    "Render OK?": {
+      "main": [
+        [{ "node": "Respond Render Success", "type": "main", "index": 0 }],
+        [{ "node": "Merge Render Errors", "type": "main", "index": 1 }]
+      ]
+    },
+    "Merge Render Errors": {
+      "main": [[{ "node": "Respond Render Error", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

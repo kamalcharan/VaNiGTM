@@ -71,6 +71,8 @@ const RESEARCH_STEP_LABELS: Record<string, string> = {
   parse: 'Connected — reading your website',
   parse_complete: 'Website read',
   site_health: 'Website health check',
+  render_page: 'JS-rendered site — opening it in a headless browser',
+  render_complete: 'Rendered page read',
   draft_profile: 'Drafting your GTM profile',
   chunk: 'Organizing what I found',
   extract: 'Deep-reading each section',
