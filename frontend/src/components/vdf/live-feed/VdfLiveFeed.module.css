@@ -1,0 +1,129 @@
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.headLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.liveChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--color-success);
+  padding: 3px 10px;
+  border-radius: 100px;
+  border: 1px solid color-mix(in srgb, var(--color-success) 35%, transparent);
+  background: color-mix(in srgb, var(--color-success) 8%, transparent);
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-success);
+  animation: feed-pulse 2s ease-in-out infinite;
+}
+
+@keyframes feed-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 8px 64px 88px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 9px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
+  animation: feed-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+@keyframes feed-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.marker {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  align-self: center;
+}
+
+.action  { background: var(--color-primary); box-shadow: 0 0 8px var(--color-primary-glow); }
+.success { background: var(--color-success); }
+.warn    { background: var(--color-warning); }
+.error   { background: var(--color-danger); }
+.info    { background: var(--color-muted); }
+
+.time {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.agent {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.message {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--color-fg);
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .item {
+    grid-template-columns: 8px 1fr;
+  }
+  .time, .agent {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item, .liveDot { animation: none; }
+}

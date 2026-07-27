@@ -24,6 +24,11 @@ UX blueprints: `documents/gtm-engine-ui/` + `documents/ux-references/`
   `llm.client.ts` appends `/no_think` and sends `Authorization: Bearer
   $LLM_PRIMARY_KEY` only if set).
 - No VaNi framework. No VaNiBase. No Supabase.
+- **n8n:** user's n8n infra is available and approved for agent-adjacent
+  jobs where it fits (e.g. a headless site-render webhook). Business
+  logic stays in this repo; n8n calls must be authenticated (shared
+  secret/HMAC) and environment-routed (`live` → /webhook, else
+  /webhook-test).
 
 ## Repo structure (actual)
 ```
@@ -37,9 +42,10 @@ backend/
                         prospect processing lands with prospect-skill
     services/         — skill-registry, skill-loader
     skills/           — campaign, channel, contact, gtm-analytics, icp,
-                        ingestion, profile, pulse, sequence, storyteller, vani
+                        ingestion, profile, pulse, research, sequence,
+                        storyteller, vani
     server.ts         — Express entry; migrate.ts — manual migration runner
-  migrations/         — 001…190 (highest = 190)
+  migrations/         — 001…192 (highest = 192)
 frontend/
   src/
     app/(auth)        — login, register, forgot/reset password, invite
@@ -101,8 +107,11 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
   status (`queued/running/awaiting/completed/failed`), token usage.
 - **Registered events:** TENANT_REGISTERED, HUMAN_APPROVED → VaNi;
   FILE_UPLOADED, URL_SUBMITTED, FOLDER_CONNECTED → ingestion;
-  KNOWLEDGE_UPDATED → profile recalc. PROFILE_COMPLETE is emitted (no
-  consumer yet — ICP/Storyteller agents subscribe as they're built).
+  KNOWLEDGE_UPDATED → profile recalc; COMPETITOR_RESEARCH_REQUESTED →
+  research-skill (profile → SearXNG web search → verified KG Competitor
+  nodes; needs `SEARXNG_URL`, see docs/searxng-setup.md). PROFILE_COMPLETE
+  is emitted (no consumer yet — ICP/Storyteller agents subscribe as
+  they're built).
 - **Human-in-the-loop:** agents park runs at `awaiting` with
   `awaiting_input`; humans respond via REST routes; approval gates before
   anything externally visible.
@@ -112,7 +121,22 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
   product/icp/gtm/vision weights 40/30/20/10, `is_complete` = score ≥ 60).
 - **Prompts:** `gt_prompts` (system + tenant override), key format
   `<skill>.<name>` — e.g. `vani-skill.gather`.
+- **Market vocabulary:** `gt_semantic_clusters` (migration 192) — 3–5
+  human-approved topic clusters per tenant, each with 10–15
+  `related_terms` and a `cluster_type` (category/offering/buyer/pain/
+  outcome). Drafted by `profile-skill/cluster.service` on the
+  KNOWLEDGE_UPDATED path, ratified in the wizard's ICP card, and used by
+  research-skill to frame every search. Competitors = whoever occupies
+  the same vocabulary space. Phase 2 adds `cluster_embedding vector(768)`
+  + HNSW on this table for Lead Finder matching — same table, vocabulary
+  first, vectors second.
 - **Token budget:** per tenant per day in `gt_tenant_context`.
+- **Resume-from-failure:** `gt_agent_runs.checkpoint` JSONB (migration 191)
+  + `saveCheckpoint`/`loadCheckpoint`/`findResumableRun` in agent.runner.
+  Long agents checkpoint after each expensive stage and write KG results
+  incrementally (earn it → write it); a retry with `resume:true` skips
+  completed stages via a visible `restore` step. Research-skill is fully
+  resumable; ingestion writes nodes per chunk (crash keeps them).
 
 ## Skills Pattern
 
@@ -130,6 +154,7 @@ Each skill in `backend/src/skills/<name>/`:
 | vani-skill | profile conversation agent | ✅ live |
 | profile-skill | typed profile + completion score | ✅ live |
 | ingestion-skill | files/URL/GDrive → KG | ✅ live |
+| research-skill | outward competitor research (vocabulary → web → KG) | ✅ live (needs SEARXNG_URL) |
 | storyteller-skill | profile → pitch deck → share + Q&A | ✅ live (v1) |
 | contact-skill | GTM contacts + channels (gt_contacts) | ✅ live (v2) |
 | campaign / channel / sequence / icp / gtm-analytics | campaign suite | ✅ live |
@@ -163,6 +188,11 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
   padding, `.body` carries it; `min-height: 100%` (never `calc(100vh-…)`).
 - Theme: 12 themes via CSS variables; default vikuna-black (gold-on-black).
   Brand strings from `constants/brand.ts` (BRAND.name = 'Vikuna GTM').
+- **Dates: `DD-MMM-YYYY` (e.g. 27-Jul-2026) everywhere** — always via
+  `lib/format.ts` (`formatDate`/`formatDateTime`), never inline
+  `toLocaleDateString`. Server stores UTC; format.ts is the single
+  conversion gateway. Tenant timezone prefs + date-input parsing are
+  DEFERRED (tracked in HANDOVER) and will land in format.ts only.
 - `onboarding_complete` is DERIVED: `count(vn_tenant_onboarding WHERE
   status != 'completed') == 0`. Seeded steps at registration:
   `user_profile`, `business_profile`. `POST /profile/approve` does NOT
@@ -170,7 +200,7 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
 
 ## Migrations — MANUAL ONLY, NO AUTO-MIGRATE
 - Never run automatically. Apply: `cd backend && npm run db:migrate`;
-  status: `npm run db:migrate -- --status`. Highest = **190**.
+  status: `npm run db:migrate -- --status`. Highest = **192**.
 - Discuss schema changes with the user first. Make migrations **idempotent
   and guarded** (IF NOT EXISTS; DO-block existence checks before copying
   from or altering legacy tables — vani_gtm_db was bootstrapped fresh and
@@ -197,6 +227,30 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
    onboarding model (see ux-references README).
 10. **Migrations manual + guarded + idempotent** (rule above).
 11. **No secrets in the repo** — connector credentials live in env/VPS only.
+12. **NO SILENT FALLBACKS** (user ruling, 2026-07-27). A fallback that
+    kicks in automatically hides the real issue and fakes a working
+    system — the user can't tell degraded output from real output.
+    When something fails: **fail loudly**, surface the true cause to
+    the user, and stop. Distinctions:
+    - ❌ Forbidden: auto-substituting mock/partial/alternate results
+      when the primary path fails; swallowing a step failure and
+      letting the run report success; defaulting to stale/empty data
+      without saying so.
+    - ✅ Allowed: an *explicit user-chosen* alternate path offered
+      AFTER a visible failure with the real diagnosis (e.g. the
+      wizard's paste-copy option shown under the crawl-failure card).
+    - Any exception (auto-fallback that seems genuinely warranted)
+      must be proposed to the user and approved case-by-case BEFORE
+      being built; document approved ones here.
+    - ✅ APPROVED EXCEPTION (user, 2026-07-27): **LLM transport
+      failover** — when a VPS LLM call fails at the transport level
+      (LLM_VPS_UNREACHABLE / LLM_VPS_ERROR) and ANTHROPIC_API_KEY is
+      set, llm.client retries that ONE call on the Claude API
+      (LLM_FAILOVER_MODEL, default claude-haiku-4-5), then returns to
+      the VPS primary. Never silent: visible `llm_failover` step in
+      the run feed + tokens tracked under the separate 'escalation'
+      bucket. Validation failures (LLM_VALIDATION_FAILED) deliberately
+      do NOT fail over — bad answers stay loud.
 
 ## Running locally
 ```bash

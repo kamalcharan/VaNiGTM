@@ -1,0 +1,150 @@
+.grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+/* ── Trend chart (single series) ── */
+
+.chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.grid {
+  stroke: color-mix(in srgb, var(--color-border) 60%, transparent);
+  stroke-width: 1;
+}
+
+.line {
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dot {
+  fill: var(--color-primary);
+  stroke: var(--color-surface);
+  stroke-width: 2;
+}
+
+.dot:hover {
+  r: 6;
+}
+
+.lastLabel {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--color-fg);
+}
+
+/* ── Per-campaign bars ── */
+
+.channels {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'name meta'
+    'track rate';
+  gap: 6px 12px;
+  align-items: center;
+}
+
+.chName {
+  grid-area: name;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.chMeta {
+  grid-area: meta;
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.chTrack {
+  grid-area: track;
+  height: 10px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-border) 50%, transparent);
+  overflow: hidden;
+}
+
+.chFill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--color-primary);
+  animation: fill-grow 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: left;
+}
+
+@keyframes fill-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+.chRate {
+  grid-area: rate;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Recommendations ── */
+
+.recs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  counter-reset: rec;
+}
+
+.rec {
+  position: relative;
+  padding: 12px 14px 12px 44px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg);
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--color-fg);
+  counter-increment: rec;
+}
+
+.rec::before {
+  content: counter(rec, decimal-leading-zero);
+  position: absolute;
+  left: 14px;
+  top: 13px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chFill { animation: none; }
+}

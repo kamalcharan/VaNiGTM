@@ -12,7 +12,7 @@ import s from './demo-data.module.css';
 
 const SEED_ITEMS = [
   { icon: '🎯', count: 3,  label: 'GTM Campaigns (1 draft, 2 active)' },
-  { icon: '👤', count: 8,  label: 'ICP Personas with buying signals' },
+  { icon: '👤', count: 8,  label: 'Buyer personas with buying signals' },
   { icon: '📧', count: 3,  label: 'Channels (Email, WhatsApp, LinkedIn)' },
   { icon: '🔄', count: 4,  label: 'Outreach Sequences with steps' },
   { icon: '📝', count: 12, label: 'Message Templates (with A/B variants)' },

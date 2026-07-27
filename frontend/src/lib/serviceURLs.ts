@@ -199,6 +199,70 @@ export const API = {
       auth: true,
       description: 'Get the GTM profile revision history',
     },
+    clusters: {
+      method: 'GET',
+      path: '/api/v1/profile/clusters',
+      auth: true,
+      description: 'Market vocabulary — the semantic clusters that frame competitor search',
+    },
+    approveClusters: {
+      method: 'POST',
+      path: '/api/v1/profile/clusters/approve',
+      auth: true,
+      description: 'Ratify the market vocabulary (edits + removals, then approve)',
+    },
+  },
+
+  /* ── VaNi (knowledge graph) ───────────────────────── */
+
+  vani: {
+    competitors: {
+      method: 'GET',
+      path: '/api/v1/vani/competitors',
+      auth: true,
+      description: 'Competitors VaNi found in the knowledge graph',
+    },
+    confirmCompetitors: {
+      method: 'POST',
+      path: '/api/v1/vani/competitors/confirm',
+      auth: true,
+      description: 'Confirm the competitor map — keep (stamped confirmed) / remove (deleted)',
+    },
+    researchCompetitors: {
+      method: 'POST',
+      path: '/api/v1/vani/competitors/research',
+      auth: true,
+      description: 'Kick off outward competitor research (profile → web search → verified KG nodes)',
+    },
+    competitorResearchStatus: {
+      method: 'GET',
+      path: '/api/v1/vani/competitors/research-status',
+      auth: true,
+      description: 'Latest competitor-research run — status, live steps, output/error',
+    },
+  },
+
+  /* ── Ingestion ────────────────────────────────────── */
+
+  ingest: {
+    submitUrl: {
+      method: 'POST',
+      path: '/api/v1/ingest/url',
+      auth: true,
+      description: 'Submit a website URL for ingestion into the knowledge graph',
+    },
+    getSource: {
+      method: 'GET',
+      path: '/api/v1/ingest/sources/:id',
+      auth: true,
+      description: 'Get a single ingestion source with its processing status',
+    },
+    submitText: {
+      method: 'POST',
+      path: '/api/v1/ingest/text',
+      auth: true,
+      description: 'Submit pasted context text for ingestion into the knowledge graph',
+    },
   },
 
   /* ── Storyteller ──────────────────────────────────── */
@@ -233,6 +297,12 @@ export const API = {
       path: '/api/v1/storyteller/:id/qa',
       auth: true,
       description: 'Ask a grounded question about a deck',
+    },
+    share: {
+      method: 'GET',
+      path: '/api/v1/storyteller/share/:token',
+      auth: false,
+      description: 'Public: fetch an approved deck by its share token',
     },
   },
 

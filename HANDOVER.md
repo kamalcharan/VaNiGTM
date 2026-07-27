@@ -1,10 +1,132 @@
-# HANDOVER — Vikuna GTM (Phase 4: Storyteller + Frontend Rebrand)
+# HANDOVER — Vikuna GTM
 
 > **This doc is the sole continuity between sessions.** The next session starts
-> with zero memory — read this first.
-> **Current state (2026-07-25):** everything is merged to `main` (tip = PR #9
-> merge). Work on a fresh branch off main.
+> with zero memory — read this first, then `CLAUDE.md`.
+> **Current state (2026-07-27):** work lives on branch
+> **`claude/handover-docs-readiness-oqwyhl`** (NOT merged to main, no PR
+> opened — the user has not asked for one). Everything below is pushed.
 > **Supersedes** the earlier Phase 3 handover (that content is in git history).
+
+---
+
+# 🔴 START HERE — the immediate next task
+
+## 1. Rebuild the wizard's mission-memory rail (Phase 1 close-out)
+
+**Status: agreed with the user, NOT started. This is the next task.**
+
+### The mistake to not repeat
+Three attempts at this failed because **I never actually looked at
+`documents/ux-references/agent-wizard-flow.pdf`** — `pdftoppm` is NOT
+installed in this container and the install fails, so I designed from the
+README's *prose description* instead and got it wrong three times. The user
+finally said: *"you are still showing wizard steps but with couple of lines
+of data … you are not coming out of the thinking shell."* They were right.
+
+**HOW TO ACTUALLY SEE IT (do this first):**
+```bash
+pip install --quiet pymupdf
+python3 -c "
+import fitz, os
+d = fitz.open('documents/ux-references/agent-wizard-flow.pdf')   # 8 pages
+os.makedirs('/tmp/pdf', exist_ok=True)
+for i in range(d.page_count):
+    d[i].get_pixmap(dpi=100).save(f'/tmp/pdf/p{i+1}.png')
+"
+```
+Then Read the PNGs. **Look at pages 1 → 2 → 3 in order** — the pattern is
+only legible as a sequence. (Renders are internal-reference only: per
+`documents/ux-references/README.md` nothing from that folder may ship as an
+asset, and the renders must NOT be committed.)
+
+### What the reference actually does (verified by looking, 2026-07-27)
+1. **The card MOVES to the rail at FULL FIDELITY — it is not summarised.**
+   Page 2's left rail holds the complete ContractNest card (logo, name,
+   domain, the whole description paragraph, the "IN Hyderabad" chip) — the
+   exact card that was centre-stage on page 1, just narrower. Page 3 adds
+   step 2's full competitor set: 8 chips with favicons + external-link
+   icons, "COMPETITORS 14 ⚙", "+6 more". Real, interactive content.
+2. **Step labels are hairline mono separators**, not headings —
+   `√ step 1 · Research your company` is a thin divider ABOVE each card.
+   The card is the content; the label is just a rule between cards.
+3. **The top rail is nearly empty** — plain numbered circles joined by a
+   line, and ONLY the active step gets a labelled pill. This is the actual
+   root of the duplication the user reported: our top rail shows all six
+   labels permanently, so there is something to duplicate.
+4. Each rail card keeps a collapse chevron and stays interactive.
+
+### What is built today (the gap)
+`VdfMissionRail` renders marker + step title + a one-line digest + an
+optional expandable summary. That is a **table of contents**, not mission
+memory. The handoff animation (below) therefore flies a rich card into a
+slot that shows two lines of text — incoherent.
+
+### The fix (agreed shape, not yet built)
+- Rail becomes a **stack of the actual step cards in a narrow variant** —
+  same component rendered `variant="rail"`, not a digest. Likely a new
+  `VdfMissionMemory` (or a rail variant on `VdfApprovalCard`).
+- Step chips shed their labels except the active one.
+- Keep `useMissionHandoff` — the flight already lands on
+  `[data-mission-step="<id>"]`; it only becomes coherent once the landing
+  zone is the card itself.
+- Scope agreed with the user: **wizard shell only**; step CONTENT is reused
+  untouched.
+
+## 2. Pending USER actions (blocking live verification)
+- ⚠️ **Apply migrations 191 + 192** — `cd backend && npm run db:migrate`.
+  Neither is confirmed applied. Without 192 the market-vocabulary tags never
+  appear and research silently uses the weaker profile-guess path (it says
+  so in the feed).
+- ⚠️ **`ANTHROPIC_API_KEY` in `backend/.env`** — enables the Claude failover.
+  Not confirmed set. Hard-restart API + worker after (tsx watch reloads
+  code, not env).
+- ⚠️ **VPS LLM is too slow**: `LLM_PRIMARY_TIMEOUT_MS` has been **280000 the
+  whole time** and calls to `https://llm.dristiq.com` STILL time out — single
+  qwen calls exceed 4.6 minutes. Unknown: CPU vs GPU (`curl
+  https://llm.dristiq.com/api/ps` never provided). The failover makes this
+  survivable; it does not make it fast. **Use the Haiku path for demos and
+  for recording the landing loop.**
+- **No end-to-end journey has EVER been verified through the UI.** All the
+  code for journey #1 exists (register → crawl → vocabulary → competitors →
+  ideal customer → mission control). Proving it is the shortest path to a
+  real DoD.
+
+## 3. Phase 1 remaining (everything else is done)
+- a) **User ruling:** make neural-ops the product default theme (one line —
+  `NEXT_PUBLIC_DEFAULT_THEME` or the provider default).
+- b) ⏸️ **Explainer video re-record — PARKED, OWNED BY THE USER.** They are
+  visualising a different approach and will say when ready. **Do NOT
+  re-record unprompted.** When it happens, record from
+  `/design/wizard` (plays itself, synthetic data, no backend) or
+  `/onboarding?record=1` (real flow, no countdown chrome).
+- c) **"Wow" sign-off** — the DoD gate itself.
+
+## 4. Where the POA actually stands (assessed 2026-07-27)
+
+| Phase | State | Detail |
+|---|---|---|
+| 0 — Legacy removal | ✅ complete | |
+| 1 — UX Foundation | ✅ build done | only the 3 user items above remain |
+| 2 — Data modelling | ⚠️ ~20%, **out of order** | see the warning below |
+| 3 — Skills (1→8) | ⚠️ 2 of 8 | ✅ profile-skill v2, ✅ research-skill. ❌ audit, prospect, outreach, feedback, creative. story-skill is v1 only |
+| 4 — Stitching | ⚠️ 1 of 5 journeys | onboarding built in code; **E2E acceptance never achieved** |
+| 5 — Hardening | ❌ not started | RLS cutover still dormant — required pre-production |
+
+> ⚠️ **The finding worth acting on.** We have been building Phase 3 while
+> Phase 2 is barely started — the exact failure mode Phase 2 ("one coherent
+> modelling pass") was written to prevent. Schema has arrived piecemeal per
+> skill: migration 191 (checkpoints), 192 (semantic clusters — an explicit
+> Phase 2 item pulled forward, deliberately forward-compatible). Still
+> unmodelled: prospect staging, the universal connector registry, story
+> artifacts (campaign × persona × stage), the whole audit schema (runs, lens
+> scores, AEO visibility history), creative assets, orchestrator locks. No
+> ERD. The `ki_` → `gt_` rename is still pending.
+>
+> **Recommendation given to the user:** prove journey #1 end-to-end first
+> (shortest path to a real DoD, and the code already exists), then **stop and
+> do Phase 2 properly** before skill #3 — audit-skill and prospect-skill each
+> need their own schema, and piecemeal migrations will cost rework for the
+> rest of the build.
 
 ---
 
@@ -18,17 +140,444 @@ vn_ + gt_ + 9 kept ki_ import/pulse tables (rename in POA Phase 2).
 Read-only DB MCP connector prepared (.mcp.json + docs/mcp-db-setup.md) —
 VPS-side setup pending (user runs VPS steps + claude.ai env settings).
 
-## ▶ NEXT SESSION — start here
-1. **Deck-viewer gap:** verify `frontend/src/app/(public)/deck/[token]/page.tsx`
-   exists on main (see "Continuity gap" below). Build it if missing — that
-   closes the locked scope (ICP + pitch generation).
+## Session log — 2026-07-27 (branch `claude/handover-docs-readiness-oqwyhl`)
+
+Newest first. All pushed. Detail for each is in the phase sections below.
+
+| Commit | What |
+|---|---|
+| `a48df22` | Handoff extracted to `hooks/useMissionHandoff.ts`; **`/design/wizard` now plays itself** (autoplay + replay, synthetic data, no backend) — the fast way to review the motion |
+| `da4fe6b` | Handoff became a **measured FLIP** (was a fade that read as "card vanished") |
+| `24534fb` | Engaging long waits: `VdfKgLoader` `subject`/`rotating`/`patienceAfter`; **recording mode `/onboarding?record=1`** |
+| `4fe84f7` | Wizard flow = agent handoff; **auto-advance with a 7s interruptible countdown** (`VdfApprovalCard.autoConfirmMs`) |
+| `de35611` | **Terminology pass** — ICP → *Ideal Customer*, Pulses → *Follow-ups*, AEO spelled out (prospect feedback) |
+| `8b62c56` | Value Proposition Canvas **parked to the loop** with feasibility mapped |
+| `ecaca3a` | Claude **marketing playbooks** captured as agent blueprints |
+| `bf7dbeb` | **Semantic clusters** (migration 192) — market vocabulary now frames competitor search |
+| `360bc35` | Fix: *"Research again"* looked like a no-op while the run proceeded invisibly |
+| `57d41e9` | Competitor **ignore list** + wrong-domain guard |
+| `0b273f3` | **Claude API failover** for VPS LLM transport failures |
+| `857804e` | **Resume-from-failure** — checkpoints (migration 191) + incremental KG writes |
+| `272c170` | GTM pipeline v2 — competitors step in, Storyteller out to `/dashboard/storyteller` |
+
+**Standing constraints reaffirmed this session:** no PR without an explicit
+ask · migrations are manual and discussed first · CLAUDE.md rule 12 (no
+silent fallbacks — the LLM failover is a documented, approved exception) ·
+no secrets in the repo (the user pasted n8n/browserless credentials in chat
+earlier; rotation was advised).
+
+## Phase 0 / Phase 1 detail (history)
+1. ~~**Deck-viewer gap**~~ ✅ CLOSED (2026-07-25): the public deck viewer was
+   confirmed missing from main and rebuilt —
+   `frontend/src/app/(public)/deck/[token]/page.tsx` + module CSS, plus
+   `API.storyteller.share` registered in `serviceURLs.ts` (auth: false).
+   Stage machine (loading/error/ready), keyboard + dot navigation, VDF
+   loader/error-screen, theme variables only. This closes the locked scope
+   (ICP + pitch generation). Smoke: route compiles and serves 200 in dev;
+   verify once against a live backend with deck
+   `E0cZmJMe2Ju6qZZasiC5iTRJ6vDH1FtE` (tenant `c829c707`).
 2. **Phase 1 — UX wow pass** (POA Phase 1, `documents/POA-VaNi-GTM.md`):
-   Neural Ops as a VDF theme → pixel-final screens (onboarding = the
-   agent-led wizard: agent produces → human confirms, accumulating left
-   rail, enrichment waterfall — patterns distilled in
-   `documents/ux-references/README.md`, source PDF alongside, layout
-   blueprints in `documents/gtm-engine-ui/`) → VDF component gap build →
-   8–10s synthetic-data landing explainer video.
+   - ✅ **1.1 DONE (2026-07-25):** Neural Ops is a first-class theme
+     (`config/theme/themes/neuralOps.ts`, id `neural-ops`, registered;
+     dark = void/cyan/signal canonical, light = counterpart). Theme
+     pipeline now supports per-theme fonts (`ThemeConfig.fonts`,
+     emitted by ThemeProvider + ThemeScript; defaults preserved for the
+     other 14 themes) — neural-ops uses Outfit / Instrument Sans /
+     JetBrains Mono, loaded in the root layout font link. Mockup
+     motion/glow/grid patterns are VDF utilities:
+     `components/vdf/vdf-utilities.css` (`.vdf-animate-in` + delays,
+     `.vdf-pulse`, `.vdf-glow-*`, `.vdf-glow-card`, `.vdf-gradient-text`,
+     `.vdf-ops-label`, reduced-motion safe; imported in root layout) +
+     `<VdfGridOverlay/>` (blueprint grid, pairs with VdfAtmosphere).
+     All theme-token driven (color-mix over --color-*) — works under
+     every theme. Verified via Playwright: /login + /landing render in
+     neural-ops; vikuna-black unchanged. **Default theme stays
+     vikuna-black** — flipping the product to neural-ops is a one-line
+     env/default change the user makes when ready.
+   - ✅ **1.2 DONE (2026-07-25):** all 12 screens exist as pixel-final
+     interactive designs under **`/design`** (index page links them;
+     shared `DesignShell` chrome with Neural Ops ⇄ Vikuna Black flip;
+     synthetic "Solstice Metrics" data throughout): wizard (also in
+     the sidebar as "Mission Wizard"), icp (+VaNi chat surface),
+     knowledge, research, audit, campaigns, prospects, sequences,
+     war-room, agent-logs, analytics, settings.
+   - ✅ **1.3 DONE:** all 8 gap components in VDF — VdfMissionRail,
+     VdfApprovalCard, VdfEnrichmentWaterfall, VdfScoreRing,
+     VdfVisibilityMatrix, VdfLiveFeed, VdfPipelineKanban,
+     VdfFlowCanvas (+ reused VdfWizard as the step rail). All
+     theme-token driven, reduced-motion safe, exported from the index.
+   - ✅ **1.4 DONE:** 9.8s muted-loop explainer recorded from the
+     design wizard (Playwright walkthrough, review chrome hidden,
+     wordmark close: "Your AI GTM team."). Files:
+     `frontend/public/media/wizard-loop.webm` (0.45MB) + `.mp4`
+     (0.52MB), embedded in the landing HeroSection (autoplay muted
+     loop, playsInline). Re-record from the REAL wizard once it's
+     wired to the backend.
+   - ✅ **1.5 DONE (2026-07-27) — terminology de-jargon pass.** A
+     PROSPECT REVIEW flagged that "ICP" is jargon most users won't
+     parse. User ruling: **ICP → "Ideal Customer"** in all user-facing
+     copy, and widen the pass to other jargon. Renamed across the
+     wizard, ICP Builder, login vault, landing (hero/features/pricing/
+     stepper/pain/testimonials), dashboard, storyteller, campaigns and
+     demo-data; `Pulses` → **Follow-ups** (nav + page + copy); `AEO`
+     spelled out ("AI answer engines like ChatGPT and Perplexity",
+     "AI search visibility"; the findings-rail teaser tag is now
+     "Invisible to AI"). **Deliberately NOT renamed** (churn with no
+     user benefit): `icp_role`/`icp_company_type` columns, `icp-skill`,
+     the `/onboarding/icp-builder` route, `ICP_FIELDS`, CSS class names,
+     and code comments. **`War Room` deliberately KEPT** — it is brand
+     metaphor consistent with Mission Wizard / mission control, not a
+     comprehension barrier; say so if the user wants it changed.
+   - ✅ **1.6 DONE (2026-07-27) — wizard flow rebuilt as an agent handoff.**
+     User spotted that the top step chips and the left rail were saying
+     the SAME thing, and pointed back at `ux-references/agent-wizard-
+     flow.pdf` (+ its README, which already said it): **"accumulating
+     left rail = mission memory — each completed step COLLAPSES INTO THE
+     RAIL and stays inspectable"**. The rail had been built as a second
+     list of step names; it now carries the agent's REAL output,
+     expandable — company card (description, problem, differentiator
+     chips), the confirmed competitor list, the buyer + pain + vocabulary
+     chips. Top chips = where you are; rail = what was found. No overlap.
+   - **User ruling on advancing:** the flow AUTO-RUNS; manual controls
+     appear on error. Ready steps arm a **7s interruptible countdown on
+     the confirm button** ("Confirm 4 competitors · 5") with an explicit
+     "Hold — I want to change something". ANY interaction inside the card
+     (pointer/focus/key, capture phase) cancels it PERMANENTLY for that
+     card — once a human touches their data, only a human commits it.
+     Countdown is disabled entirely under prefers-reduced-motion and
+     while a step is running or failed. Implemented as
+     `VdfApprovalCard.autoConfirmMs` so every future step inherits it.
+   - **The handoff animation — a MEASURED FLIP, not a fade.** First
+     attempt only faded the card and nudged it 56px left while the rail
+     entry silently appeared; the user correctly reported "same thing
+     like before", because a fade is not a move. Now `handoff()`
+     measures the stage card AND the destination rail slot
+     (`[data-mission-step="<id>"]`, set by VdfMissionRail) and flies the
+     REAL card into that slot via `element.animate()` — translate +
+     scale computed from the two rects, 620ms, transform-only so nothing
+     reflows. `.mainFlying` sets `transform-origin: top left` so the
+     measured maths lands true. On arrival the rail slot pulses
+     (`.mission-step-landed`, a GLOBAL class in app/globals.css because
+     the wizard toggles it on an element the rail component owns).
+     A `setTimeout` safety net commits even if the animation is
+     interrupted (tab hidden) — never strand the user mid-handoff.
+     Reduced motion, a missing ref or no WAAPI all fall back to an
+     instant swap. Distance depends on runtime layout, so the flight
+     CANNOT live in CSS — keep `HANDOFF_MS` as the single duration.
+   - ✅ **The handoff is now SHARED and REVIEWABLE (2026-07-27).** The
+     user reported "if it travels, why cant i see" with a screenshot of
+     **`/design/wizard`** — the static Phase 1.2 mockup (Solstice
+     Metrics), not the live wizard. Fair mistake, and it exposed the
+     real gap: judging the motion required a backend + LLM + fresh
+     tenant. Fixed:
+     - Extracted the FLIP into **`hooks/useMissionHandoff.ts`**
+       (`stageRef`, `handingOff`, `handoff(stepId, commit)`, exported
+       `HANDOFF_MS`). BOTH wizards use it, so the product and the
+       surface used to review/record it can never drift.
+     - **`/design/wizard` now PLAYS ITSELF** — all 6 synthetic steps
+       auto-advance (3.2s dwell) with the same flight, plus "Replay the
+       flow" and a pause/resume autoplay toggle. Zero backend, zero
+       LLM, zero auth: this is the fastest way to judge the motion, and
+       a viable synthetic-data recording surface for the landing loop.
+   - ⚠️ **On the LIVE wizard the handoff only plays on an UNCONFIRMED step.** On a
+     completed mission every step is ✓ and there is no confirm button,
+     so nothing animates — that is the state the user's screenshot was
+     in. Test with a fresh tenant or a step not yet confirmed.
+   - ✅ **1.7 DONE (2026-07-27) — engaging waits + recording mode.**
+     User accepted the LLM is slow and asked to make the WAIT engaging,
+     and to run the landing animation WITHOUT the hold timer.
+     - `VdfKgLoader` gained `subject` ("Building knowledge for
+       **vikuna.io**" — naming the tenant makes it *your* thing being
+       built, not a spinner), `rotating` (status lines cycling every
+       4.2s so a silent minute never looks frozen — every line describes
+       work the agent genuinely does, never a fake progress claim), and
+       `patienceAfter` (default 45s → "This one runs deep — a few
+       minutes is normal. Everything found so far is already saved.",
+       which is TRUE thanks to incremental KG writes + checkpoints).
+     - Wizard step 1 and the competitor phase both use it, named from
+       the domain / product_name, with their own rotation copy
+       (RESEARCH_ROTATION / COMPETITOR_ROTATION in page.tsx).
+     - **Recording mode: `/onboarding?record=1`** — the SAME real flow
+       with no countdown chrome (`VdfApprovalCard.autoConfirmSilent`)
+       and a 2.2s dwell instead of 7s. This is what the landing loop is
+       recorded from; no separate demo path to drift out of sync.
+   - ⚠️ **This flow is what the landing video records** (item b below).
+     It only reads as continuous if steps are FAST — on the 4+ minute VPS
+     LLM the animation becomes card → dead loader → card. Use the Haiku
+     path for the recording and for demos.
+   - **Phase 1 remaining (2026-07-27):**
+     a) **User ruling needed:** make neural-ops the product default
+        theme (one line: NEXT_PUBLIC_DEFAULT_THEME or provider default).
+     b) ⏸️ **Explainer video re-record — PARKED, OWNED BY THE USER.**
+        They are visualising a different approach and will say once
+        Phase 1 is otherwise complete. Do NOT re-record unprompted.
+     c) **"Wow" sign-off** — the DoD gate itself.
+
+## ▶ NEXT (PLG direction APPROVED by user 2026-07-25)
+1. ✅ **Wizard wired to the live backend (2026-07-25)** — `/onboarding`
+   IS now the agent-led mission wizard (old form-first page replaced;
+   `/onboarding/icp-builder` kept as the refine surface; the old
+   Onboard* components remain in components/onboarding for reuse).
+   - **Backend added:** `POST /api/v1/ingest/url` (validates/normalizes,
+     upserts gt_kb_sources url row — resubmit re-ingests, no dup rows —
+     emits URL_SUBMITTED) and **URL support in IngestionAgent.run**
+     (fetchUrlText: 30s-timeout fetch, HTML→text strip, 200k-char cap,
+     JS-rendered pages fail with URL_EMPTY_CONTENT). Previously
+     URL_SUBMITTED was registered but unimplemented (gdrive-only).
+   - **Wizard flow:** step 1 domain → submit → poll source status →
+     poll profile (KNOWLEDGE_UPDATED recalc) → researched card;
+     error path offers retry OR "fill manually". Step 2 editable ICP
+     fields (blur-save PUT, highlights `missing` fields from 400
+     PROFILE_INCOMPLETE) → POST approve. Step 3 build deck →
+     approve → share link (copy/open) → "Enter mission control"
+     PATCHes ALL pending vn_tenant_onboarding steps → layout guard
+     routes to /dashboard. Steps 4–6 locked ("agent coming soon").
+     Boot resumes mid-mission (existing profile/approval/deck
+     detected). serviceURLs: added `ingest.submitUrl` + `ingest.getSource`.
+   - **Landing PLG hook:** hero domain input ("Watch VaNi learn your
+     business") stores `gtm-domain-hint` in sessionStorage → /register;
+     wizard step 1 prefills it.
+   - ✅ **n8n render escalation VERIFIED LIVE (2026-07-27)** — after a
+     long infra debugging session (community-node Chrome-missing on
+     the Alpine n8n image → switched to the browserless docker variant
+     → n8n Header-Auth credential in place of blocked `$env` access →
+     cross-network container DNS failure → resolved via the
+     `root_default` network gateway IP + browserless's host-published
+     port, since browserless and the n8n worker container weren't on
+     a mutually-resolvable network). Direct webhook test against
+     `https://vikuna.io/` (a JS-only Vite/React SPA) returned
+     `success:true`, 39,657 chars of fully rendered HTML — confirms
+     the whole escalation chain (static crawl → health check →
+     `render_page` → n8n → browserless → `render_complete`) is
+     operationally live on the user's VPS. Two workflow files in
+     `documents/n8n/` both patched to self-diagnose (name missing
+     HTML by the actual json/binary keys returned) — keep both in
+     sync if editing either's `Format Render Result` node again.
+   - ⚠️ **Still NOT E2E-tested end-to-end through the WIZARD UI** —
+     the render leg is proven at the n8n layer only. Next live test:
+     register a fresh tenant → wizard step 1 → a real JS-rendered
+     domain → confirm the drafted profile quality against rich real
+     copy (worth watching: `vikuna.io`'s meta/OG/JSON-LD tags are
+     injected by styled-components at runtime, not served statically —
+     a real SEO/AEO finding for that site, and a good signal that the
+     site_health check's "measure the static page" design is correct).
+     Ollama must be pre-warmed (extractor + storyteller both hit LLM).
+1a. **PIPELINE RE-SEQUENCED (user ruling, 2026-07-27) — read
+   `documents/design-notes-gtm-pipeline-v2.md` before touching the
+   wizard or Storyteller.** Five stages: competitive analysis →
+   business-model analysis (open discussion, NOT committed) → ICP +
+   pains → storytelling (stage/behaviour-aware, gated on 1+3) →
+   campaigns (drip + story + journey). Journey-stage vocabulary:
+   `documents/customer-journey-maps.pdf`.
+   ✅ **IMPLEMENTED (2026-07-27, user "goahead"):**
+   - Wizard is now research → **confirm competitors** → confirm ICP →
+     mission configured. Deck step REMOVED from `/onboarding`;
+     confirming the ICP finishes onboarding directly (approve →
+     PATCH pending steps → /dashboard). Locked rail: Storytelling
+     ("Unlocks in mission control"), Campaigns, Follow-ups.
+   - New backend endpoints (vani.routes.ts): `GET /api/v1/vani/
+     competitors` (KG Competitor nodes) + `POST /api/v1/vani/
+     competitors/confirm` (keep → `properties.confirmed=true`,
+     remove → node DELETE with edge cascade; empty keep list valid —
+     "No competitors — continue"). Registered in serviceURLs
+     (`API.vani.*`).
+   - **Storyteller relocated to `/dashboard/storyteller`**: build
+     (KG-constellation loader while drafting), **Approve & share**
+     on awaiting decks (PATCH approve → share token), Copy link /
+     open on approved decks. Wizard has zero storyteller code left.
+   - Boot/revisit logic: approved profile ⇒ competitors+ICP marked
+     confirmed, wizard lands on ICP step for enrichment revisits.
+   - Smoke: both packages typecheck (only known pre-existing
+     errors); `/onboarding` + `/dashboard/storyteller` serve 200.
+   - **Competitor RESEARCH agent added (user ruling: competitors must
+     be researched from the ICP, not scraped off the tenant's site;
+     user chose self-hosted SearXNG).** New `research-skill`:
+     `COMPETITOR_RESEARCH_REQUESTED` event → CompetitorResearchAgent
+     (profile → LLM-framed queries → SearXNG JSON API via
+     `agent-core/search.client.ts` → LLM shortlist of vendors →
+     per-candidate verification against their REAL site via
+     `IngestionAgent.fetchUrlText` (now public) + LLM fit-judgment →
+     KG write: Competitor nodes {source:'research', domain, verified,
+     angle, confirmed:false} + Company —DIFFERENTIATES_FROM→ edges).
+     Unverifiable candidates are KEPT marked `verified:false` (human
+     gate decides — transparent, not a fallback); dropped candidates
+     are visible steps. Routes: `POST /vani/competitors/research`
+     (dedupes active runs) + `GET /vani/competitors/research-status`.
+     Wizard step 2 auto-starts research when the map is empty, shows
+     the KG loader + live step feed, surfaces failures with the real
+     cause + Retry, badges unverified rows. **DEPLOY PREREQ (user):**
+     SearXNG on the VPS per `docs/searxng-setup.md` — port 3011,
+     settings.yml must add `json` to search.formats (403 otherwise),
+     then `SEARXNG_URL` in backend/.env (+ hard-restart worker).
+     Without it research fails loudly with SEARCH_NOT_CONFIGURED.
+   - **Resume-from-failure (user-requested after a live
+     LLM_VPS_UNREACHABLE timeout killed a research run mid-verify).**
+     ⚠️ **APPLY MIGRATION 191 before running this code** (`cd backend
+     && npm run db:migrate`) — adds `gt_agent_runs.checkpoint JSONB` +
+     partial index; agents now call saveCheckpoint and fail with a
+     clear CHECKPOINT_COLUMN_MISSING error if it's absent. Mechanics:
+     agent.runner gains saveCheckpoint (jsonb merge) / loadCheckpoint /
+     findResumableRun (latest failed run w/ checkpoint, ≤24h). The
+     research agent checkpoints after every stage (queries → results →
+     candidates → per-candidate assessed) AND writes each accepted
+     competitor to the KG the moment it's verified (incremental, not
+     batched); wizard failure card now offers "Resume from where it
+     stopped" (POST research {resume:true} → resume_run_id in event
+     payload → visible 'restore' step) vs "Start fresh". Ingestion
+     retrofitted with the same earn-it-write-it pattern: extractor
+     gained an onChunk callback, nodes upsert per chunk + per-chunk
+     checkpoint {chunks_done/total}; edges still resolve at the end
+     (cheap, no LLM). Profile is always reloaded fresh on resume.
+   - **Live-run status (2026-07-27):** SearXNG deployed + JSON API
+     verified by the user (real results via curl). TWO wizard runs
+     died on `LLM_VPS_UNREACHABLE: https://llm.dristiq.com —
+     TimeoutError` — and the user confirmed LLM_PRIMARY_TIMEOUT_MS
+     was **280000 the whole time**, meaning single qwen calls exceed
+     4.6 MINUTES on that box. The VPS LLM is too slow for this
+     pipeline as-is (still unknown: CPU or GPU, `curl
+     https://llm.dristiq.com/api/ps` output). Prompt slimming helps;
+     the real mitigation is the failover below.
+   - **Claude API failover (user-directed, approved rule-12
+     exception — documented in CLAUDE.md rule 12).** qwen stays
+     primary; when a call fails at the TRANSPORT level
+     (LLM_VPS_UNREACHABLE / LLM_VPS_ERROR) and ANTHROPIC_API_KEY is
+     set, llm.client retries that one call on Claude
+     (LLM_FAILOVER_MODEL, default claude-haiku-4-5 — $1/$5 per MTok;
+     a full research run ≈ $0.02–0.03, full onboarding ≈ $0.10–0.15),
+     then the NEXT call goes back to qwen. Never silent: one visible
+     `llm_failover` step per run (with the real VPS error) + tokens
+     recorded under the pre-existing 'escalation' bucket in
+     gt_tenant_context. Validation failures deliberately do NOT
+     escalate (quality problems stay loud). Without the key, behavior
+     is unchanged (fail loudly). `@anthropic-ai/sdk` added to
+     backend. **User action: put ANTHROPIC_API_KEY in backend/.env
+     (env only, never repo) + hard-restart API and worker.**
+     Deferred by user intent: a global LLM_PROVIDER switch
+     (qwen vs claude as primary) — failover-only for now.
+   - NOT yet live-tested end-to-end through the new step 2 (needs
+     migration 191 applied + worker + warm LLM + SearXNG). First live
+     Storyteller run verdict: deck
+     generated OK end-to-end, quality needs work — deck-quality
+     workstream (KG-edge-grounded prompts, competitor angles,
+     stage-aware variants) starts NOW that relocation is done.
+1e. **SEMANTIC CLUSTERS — the market vocabulary layer (user-directed,
+   2026-07-27). ⚠️ APPLY MIGRATION 192.** The user challenged the
+   research design: searching without curated vocabulary drops quality,
+   and pulling only a stop-gap forward is rework ("why redo, when C
+   works better?"). Agreed and built. `gt_semantic_clusters` is the
+   Phase 2 table built in the only possible dependency order —
+   vocabulary now (search needs it), `cluster_embedding vector(768)` +
+   HNSW in Phase 2 (Lead Finder needs it). NOT rework.
+   - **User design ruling:** `cluster_type`
+     (category/offering/buyer/pain/outcome) replaces the ported
+     ContractNest 12-value INDUSTRY enum — cluster TYPE drives how a
+     cluster is searched; industry does not. Industry filtering returns
+     in Phase 2 for Lead Finder.
+   - Each cluster carries 10–15 `related_terms` (synonyms, customer
+     phrases, jargon, transliterations) — the fuel that turns "AI
+     transformation companies" into "fractional CDO"/"part-time CDO".
+     This is the fix for the Accenture-vs-boutique result.
+   - `approved_at` NULL = agent-suggested, set = human-confirmed
+     (mirrors gt_tenant_profile). Only APPROVED clusters frame research.
+   - Flow: KNOWLEDGE_UPDATED → profile recalc → `generateClusters()`
+     (1 LLM call, prompt seeded as `profile-skill.semantic_clusters`)
+     → tags in the wizard's ICP card → confirming the ICP ratifies them
+     (no extra step, per the sprint ruling) → research frames queries
+     from them, and says so in the feed. No approved vocabulary → it
+     falls back to the old profile-guess and tells the user why.
+   - Agent refresh never clobbers a human decision (approved or
+     human-edited rows keep their terms); cluster failure is a visible
+     failed STEP, never a failed profile recalc (rule 12).
+   - Routes: `GET /profile/clusters`, `POST /profile/clusters/approve`.
+   - NOT yet live-tested (needs migration 192 + a fresh run).
+1f. **BUG FIXED — "Research again" appeared to do nothing (2026-07-27).**
+   User clicked Research again and the card closed instantly. Cause:
+   `GET /vani/competitors/research-status` returned the LATEST run for
+   the tenant. A freshly-emitted event has no gt_agent_runs row until
+   the worker polls (≤3s), so the first status poll read the PREVIOUS,
+   completed run → UI jumped to 'done' with a "Research done — N
+   competitors" toast while the real run was still queued and then ran
+   invisibly. Fix: the status endpoint accepts `?event_id=` / `?run_id=`
+   and scopes to that one run; POST already returns event_id (and run_id
+   when a run is already active), so the wizard follows exactly the run
+   its click produced. `run: null` now correctly means "queued", shown
+   in the loader as "Waiting for an agent to pick this up…" escalating
+   to the worker-not-running hint after ~24s. The resume-on-entry path
+   polls by run_id. Lesson: never resolve "did my request start?" by
+   reading the newest row — bind to the identifier the request returned.
+1g. **PARKED (user ruling, 2026-07-27): Value Proposition Canvas belongs
+   in the LOOP, not the wizard.** The user asked whether the ICP step's
+   pain points could render as a Strategyzer Value Proposition Canvas,
+   then ruled it a loop/enhancement surface — onboarding stays a sprint.
+   Build it in `/onboarding/icp-builder` (the existing refine surface)
+   and/or `/knowledge`, NOT in the wizard step.
+   Feasibility mapped — 4 of 6 boxes are already live:
+   - Pains ← primary_pain_points[] + PainPoint nodes (ICP FEELS) ✅
+   - Products/Services ← Product/Feature nodes ✅
+   - Pain Relievers ← existing `SOLVES`/`ADDRESSES` edges ✅ (the hard
+     part: the canvas is meaningful because of the LINES between halves,
+     and those are real extracted edges with source_url provenance)
+   - Customer Jobs ← UseCase nodes ⚠️ close, not identical
+   - **Gains ❌ and Gain Creators ❌ — MISSING. Build these FIRST**, or
+     the canvas renders a third empty and reads as broken: add a `Gain`
+     NodeLabel + `WANTS` (ICP→Gain) / `CREATES` (Product→Gain) relation
+     types to kg.store + the extraction prompt (purely additive — no DB
+     constraint on label, same as CaseStudy/Metric were), optionally a
+     `desired_gains[]` profile field mirroring primary_pain_points.
+   - The real payoff beyond layout: **fit/gap analysis.** A PainPoint
+     with no inbound SOLVES edge = an unaddressed pain (positioning
+     hole); a capability solving nothing = an unsold strength. "3 of
+     your 5 pains have no matching capability" is a genuine finding and
+     a PLG teaser in the same family as the SEO/AEO ones. Feeds stage 4
+     directly (storytelling exists to explain the pains).
+1c. **Marketing playbooks captured (2026-07-27).** The user shared their
+   Claude marketing plugin's full skill playbooks (campaign-plan,
+   email-sequence, competitive-brief, brand-review, performance-report,
+   content-creation, seo-audit) as inspiration for VaNi's agents. Raw
+   text: `documents/skill-references/claude-marketing-skills.txt`;
+   distilled map + recommended build order:
+   `documents/design-notes-marketing-playbooks.md`. Key take: these are
+   the professional spec for stage-4/5 agents — VaNi fills their
+   structures from the tenant KG instead of interviewing the user.
+   Proposed order (NOT yet approved): brand-voice fields + auto
+   brand-review gate → research-skill v2 analysis layer (tiers +
+   battlecards) → sequence/campaign agents from playbook-seeded
+   gt_prompts.
+1d. **Wizard UI pass from the live-run screenshot (2026-07-27, DONE).**
+   - Competitor rows → **tag-style cards in a responsive grid**
+     (design/research parity): status tag (Verified / Unverified /
+     Ignored) + domain chip, display-font name, description, action in
+     the card footer. The live "mapped so far" list uses the same card.
+   - **"Not a competitor" → "Remove"** ("Keep after all" to undo). The
+     old label read as a verdict — the user reported "almost all are
+     tagged not competitors" when only the agent-dropped one actually
+     was. Removed cards now carry an explicit `Ignored` tag, the header
+     reads "N on your map / M moving to your ignore list", the confirm
+     button counts ("Confirm 3 competitors"), and a hint spells out that
+     removal feeds the ignore list (backend already dismisses, 57d41e9).
+   - **Loop moved OUT of onboarding** to `/knowledge` ("Teach VaNi", new
+     nav item under Mission Wizard): URL + paste inputs, KG loader,
+     profile score ring, "what moves the needle" panel. The wizard keeps
+     a one-line pointer once onboarding is complete; enrichment state +
+     submitEnrichment deleted from page.tsx.
+1b. **Deferred (user-agreed, 2026-07-27): full date handling.** The
+   `DD-MMM-YYYY` render convention is live via `lib/format.ts` (the
+   single gateway, CLAUDE.md rule). Still to come, later: tenant
+   timezone preferences, server↔UI conversion beyond browser-local,
+   and customer date-INPUT parsing/validation (a VDF date field).
+   All of it lands inside format.ts + one VDF component — nothing
+   else may grow date logic.
+2. **Phase 2 — data modelling** (screens now dictate schema; rename
+   kept ki_ tables to gt_). **Required input:**
+   `documents/design-notes-smartprofile-port.md` — distilled from the
+   ContractNest SmartProfile spec + n8n workflow the user shared
+   (2026-07-27): suggested_/approved_ field provenance for
+   gt_tenant_profile (replaces fill-only-empty), gt_semantic_clusters
+   + pinned-dim pgvector embeddings (prereq: verify vector extension
+   on vani_gtm_db), embeddings via VPS Ollama (nomic-embed-text, add
+   embed() to llm.client), their production cluster prompt, and the
+   hybrid vector+cluster-boost search that becomes Lead Finder's
+   matching engine. AI jobs run on the worker bus, NOT n8n.
 3. UI smoke state: contact CONT-0001 created through the UI post-Phase-0.
 
 ## What this product is (scope — LOCKED)
@@ -64,14 +613,15 @@ for every downstream agent.
     upserts if absent, writes history snapshot.
   - `PATCH /api/v1/onboarding/step` → completes a step, returns `onboarding_complete`.
 
-### ⚠️ Continuity gap — verify on next session
-- **`frontend/src/app/(public)/deck/[token]/page.tsx` (public deck viewer) is NOT
-  on the branch as of `85796b5`.** It was reported built locally but never
-  committed/pushed. **A fresh clone will not have it.** First action next
-  session: confirm whether it exists locally and push it, or rebuild it.
-  (Pattern to mirror: `(public)/intake/[token]/page.tsx` — `'use client'`,
-  `useParams()`, direct `fetch` to `NEXT_PUBLIC_API_URL` (no api-client/JWT),
-  a Stage machine. Endpoint: `GET /api/v1/storyteller/share/:token` → `{ title, slides }`.)
+### ✅ Continuity gap — RESOLVED (2026-07-25)
+- The public deck viewer was rebuilt and pushed:
+  `frontend/src/app/(public)/deck/[token]/page.tsx` (+ `deck-viewer.module.css`).
+  It goes through `apiFetch` + `API.storyteller.share` (auth: false) rather
+  than a raw fetch — the old `(public)/intake/[token]` pattern was removed in
+  Phase 0, and serviceURLs/api-client is the house convention. Endpoint:
+  `GET /api/v1/storyteller/share/:token` → `{ title, slides }` (Slide =
+  `{ id, type, title, subtitle, bullets[{icon,head,body}], narration }`;
+  narration is intentionally NOT rendered — speaker notes).
 
 ---
 
@@ -157,7 +707,8 @@ serviceURLs all landed via PR #8. The spec below is kept for reference.
 - **Debug console.logs in the storyteller share handler: already removed**
   (commit `9bed127`) — verified clean at `85796b5`. Nothing to do unless they
   reappear.
-- **`deck/[token]/page.tsx` not on the branch** (see Continuity gap above).
+- ~~`deck/[token]/page.tsx` not on the branch~~ — rebuilt and pushed
+  (see resolved Continuity gap above).
 
 ---
 

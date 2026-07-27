@@ -16,7 +16,7 @@ import type { Pool } from 'pg';
 import { verifyAccessToken, type JwtPayload } from '../../auth/token.service';
 import { createTenantDb } from '../../db';
 import { emitEvent } from '../../agent-core/event.store';
-import { getRuns } from '../../agent-core/agent.runner';
+import { getRuns, findResumableRun } from '../../agent-core/agent.runner';
 import { VaniAgent } from './vani.agent';
 
 /* ── Auth guard ─────────────────────────────────────────────────────────── */
@@ -202,6 +202,191 @@ export function createVaniRouter(pool: Pool): Router {
       res.status(500).json({
         error: { code: 'INTERNAL_ERROR', message: messageOf(err) },
       });
+    }
+  });
+
+  // ── GET /competitors ─────────────────────────────────────────────────────
+  // The competitors VaNi mapped (research + crawl + conversation), minus the
+  // ones the human dismissed — dismissed nodes stay in the KG as the ignore
+  // list (research-skill never re-proposes them) but never surface here.
+  router.get('/competitors', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    try {
+      const db = createTenantDb(pool, jwt.tenant_id);
+      const result = await db.query<{
+        id: string;
+        name: string;
+        description: string | null;
+        properties: Record<string, unknown>;
+      }>(
+        `SELECT id, name, description, properties
+           FROM gt_kg_nodes
+          WHERE tenant_id = $tenant_id AND label = 'Competitor'
+            AND COALESCE((properties->>'dismissed')::boolean, false) = false
+          ORDER BY name`,
+        { tenant_id: jwt.tenant_id },
+      );
+      res.json({ competitors: result.rows });
+    } catch (err) {
+      console.error('[VaNi:/competitors]', err);
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });
+    }
+  });
+
+  // ── POST /competitors/research ───────────────────────────────────────────
+  // Kick off outward competitor research (research-skill agent): profile →
+  // search queries → SearXNG → verify candidate sites → KG Competitor nodes.
+  // Deduped: an already queued/running research run is returned instead of
+  // emitting a second event.
+  //
+  // Body { resume: true } → resume-from-failure: the latest failed run's
+  // checkpoint (migration 191, ≤24h old) is picked up and completed stages
+  // are skipped. No resumable run → starts fresh (resumed:false says so).
+  router.post('/competitors/research', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    try {
+      const db = createTenantDb(pool, jwt.tenant_id);
+      const active = await db.query<{ id: string }>(
+        `SELECT id::text FROM gt_agent_runs
+          WHERE tenant_id = $tenant_id
+            AND agent_name = 'COMPETITOR_RESEARCH_REQUESTED'
+            AND status IN ('queued', 'running')
+          ORDER BY created_at DESC
+          LIMIT 1`,
+        { tenant_id: jwt.tenant_id },
+      );
+      if (active.rows[0]) {
+        res.json({ already_running: true, run_id: active.rows[0].id });
+        return;
+      }
+
+      const wantResume = (req.body ?? {}).resume === true;
+      let resumeRunId: string | null = null;
+      if (wantResume) {
+        const resumable = await findResumableRun(
+          pool, jwt.tenant_id, 'COMPETITOR_RESEARCH_REQUESTED',
+        );
+        resumeRunId = resumable?.id ?? null;
+      }
+
+      const eventId = await emitEvent(
+        pool,
+        jwt.tenant_id,
+        'COMPETITOR_RESEARCH_REQUESTED',
+        'human',
+        {
+          requested_by: jwt.user_id,
+          ...(resumeRunId ? { resume_run_id: resumeRunId } : {}),
+        },
+        jwt.user_id,
+      );
+      res.json({ already_running: false, event_id: eventId, resumed: Boolean(resumeRunId) });
+    } catch (err) {
+      console.error('[VaNi:/competitors/research]', err);
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });
+    }
+  });
+
+  // ── GET /competitors/research-status ─────────────────────────────────────
+  // Research run for the wizard's live feed: status + real agent steps +
+  // output/error.
+  //
+  // ?event_id= / ?run_id= scope the lookup to ONE run. This matters: a
+  // freshly-emitted event has no gt_agent_runs row until the worker picks it
+  // up (≤ poll interval). Answering with the LATEST run in that window makes
+  // a re-run instantly inherit the previous run's 'completed' status — the
+  // UI declares victory while the real run is still queued. With event_id,
+  // `run: null` correctly means "queued, not started yet".
+  router.get('/competitors/research-status', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    const eventId = typeof req.query.event_id === 'string' ? req.query.event_id : null;
+    const runId   = typeof req.query.run_id   === 'string' ? req.query.run_id   : null;
+
+    try {
+      const db = createTenantDb(pool, jwt.tenant_id);
+      const scope = eventId
+        ? 'AND event_id = $event_id::uuid'
+        : runId
+          ? 'AND id = $run_id::bigint'
+          : '';
+
+      const result = await db.query<{
+        id: string;
+        status: string;
+        steps: unknown;
+        output: Record<string, unknown> | null;
+        error_trace: string | null;
+        created_at: Date;
+      }>(
+        `SELECT id::text, status, steps, output, error_trace, created_at
+           FROM gt_agent_runs
+          WHERE tenant_id = $tenant_id
+            AND agent_name = 'COMPETITOR_RESEARCH_REQUESTED'
+            ${scope}
+          ORDER BY created_at DESC
+          LIMIT 1`,
+        {
+          tenant_id: jwt.tenant_id,
+          ...(eventId ? { event_id: eventId } : {}),
+          ...(!eventId && runId ? { run_id: runId } : {}),
+        },
+      );
+      res.json({ run: result.rows[0] ?? null });
+    } catch (err) {
+      console.error('[VaNi:/competitors/research-status]', err);
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });
+    }
+  });
+
+  // ── POST /competitors/confirm ────────────────────────────────────────────
+  // Human ruling on the competitor map: kept nodes are stamped
+  // properties.confirmed=true (a signal Storyteller/campaigns can ground
+  // on); removed nodes are DISMISSED, not deleted — they become the ignore
+  // list. The node stays in the KG with dismissed=true so a future
+  // research run (or crawl upsert, which merges properties) can never
+  // re-propose a company the human already ruled out. Confirming an empty
+  // keep list is valid — some tenants genuinely have no named competitors.
+  router.post('/competitors/confirm', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    const body = (req.body ?? {}) as { keep?: unknown; remove?: unknown };
+    const keep = Array.isArray(body.keep) ? body.keep.filter((x): x is string => typeof x === 'string') : [];
+    const remove = Array.isArray(body.remove) ? body.remove.filter((x): x is string => typeof x === 'string') : [];
+
+    try {
+      const db = createTenantDb(pool, jwt.tenant_id);
+      await db.transaction(async (tx) => {
+        for (const id of remove) {
+          await tx.query(
+            `UPDATE gt_kg_nodes
+                SET properties = properties || '{"dismissed": true, "confirmed": false}'::jsonb,
+                    updated_at = now()
+              WHERE id = $id AND tenant_id = $tenant_id AND label = 'Competitor'`,
+            { id, tenant_id: jwt.tenant_id },
+          );
+        }
+        for (const id of keep) {
+          await tx.query(
+            `UPDATE gt_kg_nodes
+                SET properties = properties || '{"confirmed": true}'::jsonb,
+                    updated_at = now()
+              WHERE id = $id AND tenant_id = $tenant_id AND label = 'Competitor'`,
+            { id, tenant_id: jwt.tenant_id },
+          );
+        }
+      });
+
+      res.json({ success: true, kept: keep.length, dismissed: remove.length });
+    } catch (err) {
+      console.error('[VaNi:/competitors/confirm]', err);
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: messageOf(err) } });
     }
   });
 

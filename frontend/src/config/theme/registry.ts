@@ -6,6 +6,7 @@ import { HeritageTheme } from './themes/heritage';
 import { JadeThornTheme } from './themes/jadeThorn';
 import { ModernBoldTheme } from './themes/modernBold';
 import { ModernBusinessTheme } from './themes/modernBusiness';
+import { NeuralOpsTheme } from './themes/neuralOps';
 import { ProfessionalRedefinedTheme } from './themes/professionalRedefined';
 import { PurpleToneTheme } from './themes/purpleToneTheme';
 import { SleekCoolTheme } from './themes/sleekCool';
@@ -18,6 +19,7 @@ export const themes: ThemeConfig[] = [
   JadeThornTheme,             // Default — listed first
   HeritageTheme,
   VikunaBlackTheme,
+  NeuralOpsTheme,
   ClassicElegantTheme,
   PurpleToneTheme,
   BharathaVarshaTheme,

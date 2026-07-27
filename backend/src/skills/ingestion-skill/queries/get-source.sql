@@ -11,7 +11,7 @@ SELECT
   s.chunk_count,
   s.node_count,
   s.error_msg,
-  s.raw_text,
+  length(s.raw_text) AS raw_chars,
   s.created_at,
   s.updated_at,
   r.status        AS run_status,

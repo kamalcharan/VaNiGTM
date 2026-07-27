@@ -1,0 +1,114 @@
+.board {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  align-items: flex-start;
+}
+
+.column {
+  flex: 0 0 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+  padding: 12px;
+  min-height: 120px;
+}
+
+.colHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 4px;
+}
+
+.colTitle {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.colTitleSuccess {
+  color: var(--color-success);
+}
+
+.colCount {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  padding: 1px 8px;
+  border-radius: 100px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  cursor: default;
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card:hover {
+  border-color: var(--color-primary-dim);
+  transform: translateY(-1px);
+}
+
+.cardTitle {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  line-height: 1.35;
+}
+
+.cardSub {
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--color-muted);
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.metaChip {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.03em;
+  color: var(--color-primary);
+  padding: 2px 8px;
+  border-radius: 100px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+  background: var(--color-primary-subtle);
+  white-space: nowrap;
+}
+
+.emptyCol {
+  text-align: center;
+  color: var(--color-muted);
+  opacity: 0.5;
+  padding: 12px 0;
+  font-size: 0.8rem;
+}

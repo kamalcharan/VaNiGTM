@@ -16,13 +16,13 @@ const steps: StepItem[] = [
     meta: '~ 2 minutes',
   },
   {
-    title: 'Define Your ICP & Channels',
+    title: 'Define Your Ideal Customer & Channels',
     description: 'Set your personas, buying signals, company size, and geography. Connect email, WhatsApp, and LinkedIn with orchestration rules.',
     meta: '~ 5 minutes',
   },
   {
     title: 'Build Your Sequences',
-    description: 'Design multi-step outreach in the visual flow builder. Agents draft and personalize every step, grounded in your ICP.',
+    description: 'Design multi-step outreach in the visual flow builder. Agents draft and personalize every step, grounded in your ideal customer.',
     meta: 'instant',
   },
   {

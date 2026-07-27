@@ -672,3 +672,72 @@
   .heroStagger1 { font-size: 2.2rem; }
   .sectionEyebrow { font-size: 0.65rem; }
 }
+
+/* ── Hero explainer video (POA 1.4) ── */
+
+.heroVideoWrap {
+  margin-top: var(--space-2xl);
+  width: min(880px, 100%);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 0 60px var(--color-primary-glow), 0 24px 80px rgba(0, 0, 0, 0.45);
+  animation: heroVideoIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+}
+
+.heroVideo {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@keyframes heroVideoIn {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroVideoWrap { animation: none; }
+}
+
+/* ── Hero domain hook (PLG entry) ── */
+
+.heroDomainRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  width: min(620px, 100%);
+  margin: 0 auto var(--space-md);
+}
+
+.heroDomainInput {
+  flex: 1;
+  min-width: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  color: var(--color-fg);
+  outline: none;
+  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+
+.heroDomainInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-glow);
+}
+
+.heroDomainInput::placeholder {
+  color: var(--color-muted);
+  opacity: 0.5;
+}
+
+@media (max-width: 640px) {
+  .heroDomainRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

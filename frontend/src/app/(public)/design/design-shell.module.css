@@ -1,0 +1,235 @@
+/* Shared chrome + primitives for /design/* screens. Theme tokens only. */
+
+.screen {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--space-xl) var(--space-2xl);
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ── Review bar ── */
+
+.reviewBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--color-border);
+  margin-bottom: var(--space-xl);
+}
+
+.reviewLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--color-muted);
+  opacity: 0.8;
+}
+
+.reviewHome {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.reviewHome:hover {
+  text-decoration: underline;
+}
+
+.themeChips {
+  display: flex;
+  gap: 6px;
+}
+
+.themeChip {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  padding: 4px 12px;
+  border-radius: 100px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.themeChipActive {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+
+/* ── Page head ── */
+
+.pageHead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: var(--space-xl);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3.2vw, 2.3rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--color-fg);
+  margin: 0;
+}
+
+.lede {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--color-muted);
+  margin: 4px 0 0;
+  max-width: 60em;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  animation: shell-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes shell-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Panel ── */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.panelLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.panelActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Stat tiles ── */
+
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+}
+
+.statValue {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--color-fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.tone_default { color: var(--color-fg); }
+.tone_primary { color: var(--color-primary); }
+.tone_success { color: var(--color-success); }
+.tone_warning { color: var(--color-warning); }
+
+.statLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* ── Data table ── */
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 12px 14px;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
+  vertical-align: middle;
+}
+
+.table tr:hover td {
+  background: var(--color-primary-subtle);
+  color: var(--color-fg);
+}
+
+.cellStrong {
+  color: var(--color-fg) !important;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content { animation: none; }
+}

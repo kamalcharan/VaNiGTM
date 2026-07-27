@@ -1,5 +1,5 @@
 import { themes, defaultTheme } from './registry';
-import { ThemeConfig, ThemeColors } from './types';
+import { ThemeColors, ThemeFonts } from './types';
 
 /**
  * ThemeScript — server component that injects:
@@ -11,8 +11,20 @@ import { ThemeConfig, ThemeColors } from './types';
  * default theme renders instantly with no layout shift.
  */
 
-function buildCSSVars(colors: ThemeColors, isDark: boolean, bg: string): string {
+// App default font stack — themes without a fonts override fall back to these
+// (must match the inline defaults in app/layout.tsx).
+const DEFAULT_FONTS: ThemeFonts = {
+  display: "'Playfair Display', Georgia, serif",
+  body: "'DM Sans', system-ui, sans-serif",
+  mono: "'JetBrains Mono', monospace",
+};
+
+function buildCSSVars(colors: ThemeColors, isDark: boolean, bg: string, fonts?: ThemeFonts): string {
+  const f = fonts ?? DEFAULT_FONTS;
   return [
+    `--font-display:${f.display}`,
+    `--font-body:${f.body}`,
+    `--font-mono:${f.mono}`,
     `--color-primary:${colors.brand.primary}`,
     `--color-secondary:${colors.brand.secondary}`,
     `--color-tertiary:${colors.brand.tertiary}`,
@@ -52,8 +64,8 @@ export function buildThemeMap(): Record<string, { light: string; dark: string }>
   const map: Record<string, { light: string; dark: string }> = {};
   for (const t of themes) {
     map[t.id] = {
-      light: buildCSSVars(t.colors, false, t.colors.utility.primaryBackground),
-      dark: buildCSSVars(t.darkMode.colors, true, t.darkMode.colors.utility.primaryBackground),
+      light: buildCSSVars(t.colors, false, t.colors.utility.primaryBackground, t.fonts),
+      dark: buildCSSVars(t.darkMode.colors, true, t.darkMode.colors.utility.primaryBackground, t.fonts),
     };
   }
   return map;
@@ -71,7 +83,7 @@ export function ThemeScript({
   const fallbackTheme = themes.find(t => t.id === defaultThemeId) || defaultTheme;
   const isDark = defaultColorMode === 'dark';
   const fallbackColors = isDark ? fallbackTheme.darkMode.colors : fallbackTheme.colors;
-  const fallbackCSS = buildCSSVars(fallbackColors, isDark, fallbackColors.utility.primaryBackground);
+  const fallbackCSS = buildCSSVars(fallbackColors, isDark, fallbackColors.utility.primaryBackground, fallbackTheme.fonts);
 
   // Form design tokens — structural, NOT theme-dependent
   const formTokens = [

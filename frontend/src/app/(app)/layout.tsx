@@ -44,14 +44,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!isLoading && !isAuthenticated) router.replace('/login');
   }, [isLoading, isAuthenticated, router]);
 
-  // Onboarding guard
+  // Onboarding guard — incomplete tenants are routed INTO the wizard.
+  // The reverse redirect is intentionally absent: the mission wizard stays
+  // revisitable from the menu after completion (re-research, rebuild deck);
+  // the wizard itself navigates to /dashboard when the mission finishes.
   useEffect(() => {
     if (isLoading || !tenant) return;
     if (!tenant.onboarding_complete && !isOnboarding) {
       router.replace('/onboarding');
-    } else if (tenant.onboarding_complete && isOnboarding) {
-      // onboarding_complete just became true — push to dashboard
-      router.replace('/dashboard');
     }
   }, [isLoading, tenant, isOnboarding, router]);
 

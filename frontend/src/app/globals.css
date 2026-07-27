@@ -1,0 +1,19 @@
+
+/* ── Mission handoff landing pulse ───────────────────────────────────────
+   Applied briefly to a mission-rail slot when a finished wizard card flies
+   into it, so the arrival is legible rather than a silent appearance.
+   Global (not a CSS module) because the wizard toggles it by DOM class on
+   an element the rail component owns. */
+.mission-step-landed {
+  animation: mission-step-land 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes mission-step-land {
+  0%   { transform: scale(1); }
+  22%  { transform: scale(1.045); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mission-step-landed { animation: none; }
+}

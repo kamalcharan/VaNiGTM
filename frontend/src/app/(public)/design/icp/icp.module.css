@@ -1,0 +1,170 @@
+.grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  min-width: 0;
+  position: sticky;
+  top: var(--space-lg);
+}
+
+.miniRing {
+  opacity: 0.9;
+}
+
+.miniRing .wrap {
+  gap: 0;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.fieldLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.fieldValue {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--color-fg);
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg);
+  cursor: text;
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fieldValue:hover {
+  border-color: var(--color-primary-dim);
+  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+}
+
+.completionWrap {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.completionNote {
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+/* ── VaNi chat surface ── */
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.msg {
+  display: flex;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.msgVani {
+  align-items: flex-start;
+}
+
+.msgUser {
+  justify-content: flex-end;
+}
+
+.msgDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 0 8px var(--color-primary-glow);
+  margin-top: 8px;
+  flex-shrink: 0;
+}
+
+.msgText {
+  font-size: 0.8rem;
+  line-height: 1.55;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  color: var(--color-fg);
+}
+
+.msgVani .msgText {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-top-left-radius: 4px;
+}
+
+.msgUser .msgText {
+  background: var(--color-primary-subtle);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+  border-top-right-radius: 4px;
+}
+
+.chatInput {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg);
+  margin-top: 4px;
+}
+
+.chatPlaceholder {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  opacity: 0.6;
+}
+
+.chatSend {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--color-primary);
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+  border-radius: 6px;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .side {
+    position: static;
+  }
+}

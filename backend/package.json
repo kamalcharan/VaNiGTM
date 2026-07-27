@@ -13,6 +13,7 @@
     "worker:prod": "node dist/agent-core/worker.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@types/cookie-parser": "^1.4.10",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",

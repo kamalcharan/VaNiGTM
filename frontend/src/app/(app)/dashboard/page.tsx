@@ -30,9 +30,9 @@ function icpStatusLabel(score: number): string {
 }
 
 function icpCtaLabel(score: number): string {
-  if (score === 0) return 'Build your ICP';
-  if (score < 60) return 'Continue your ICP';
-  return 'Edit your ICP';
+  if (score === 0) return 'Define your ideal customer';
+  if (score < 60) return 'Continue your ideal customer';
+  return 'Edit your ideal customer';
 }
 
 function greeting() {
@@ -64,7 +64,7 @@ export default function DashboardPage() {
           // Fresh tenant — no profile row yet. Same empty state as icp-builder.
           setProfile(EMPTY_PROFILE);
         } else {
-          showToast({ message: (err as ApiError).message || 'Failed to load ICP profile', type: 'error' });
+          showToast({ message: (err as ApiError).message || 'Failed to load your profile', type: 'error' });
           setProfile(EMPTY_PROFILE);
         }
       }
@@ -97,7 +97,7 @@ export default function DashboardPage() {
           <div className={s.icpRow}>
             <VdfReadinessRing pct={score} size={64} strokeWidth={5} />
             <div className={s.icpInfo}>
-              <div className={s.icpEyebrow}>ICP Foundation</div>
+              <div className={s.icpEyebrow}>Ideal Customer</div>
               <div className={s.icpStatus}>{profile === null ? 'Loading…' : icpStatusLabel(score)}</div>
               <div className={s.icpScore}>{score}% complete</div>
             </div>
@@ -115,12 +115,12 @@ export default function DashboardPage() {
             className={`${s.agentTile} ${unlocked ? s.agentTileActive : s.agentTileLocked}`}
             onClick={() => unlocked && router.push('/dashboard/storyteller')}
             disabled={!unlocked}
-            title={unlocked ? undefined : 'Build your ICP first'}
+            title={unlocked ? undefined : 'Define your ideal customer first'}
           >
             <span className={s.agentIcon}>🎬</span>
             <span className={s.agentTitle}>Storytelling</span>
             <span className={s.agentSub}>
-              {unlocked ? 'Generate pitch decks from your ICP' : 'Build your ICP first'}
+              {unlocked ? 'Generate pitch decks from your ideal customer' : 'Define your ideal customer first'}
             </span>
           </button>
 

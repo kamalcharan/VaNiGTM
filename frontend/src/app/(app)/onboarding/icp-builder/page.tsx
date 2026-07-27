@@ -109,7 +109,7 @@ const SECTIONS: SectionDef[] = [
     ],
   },
   {
-    id: 'icp', label: 'ICP', max: 30,
+    id: 'icp', label: 'Ideal customer', max: 30,
     fields: [
       { key: 'icp_role', label: 'Buyer Role', type: 'text' },
       { key: 'icp_company_type', label: 'Company Type', type: 'text' },
@@ -200,7 +200,7 @@ export default function IcpBuilderPage() {
           // Fresh tenant — no profile row yet. Render the empty skeleton, not an error.
           setProfile(EMPTY_PROFILE);
         } else {
-          showToast({ message: (err as ApiError).message || 'Failed to load ICP profile', type: 'error' });
+          showToast({ message: (err as ApiError).message || 'Failed to load your profile', type: 'error' });
           setLoadError(true);
         }
       } finally {
@@ -381,12 +381,12 @@ export default function IcpBuilderPage() {
       // Non-fatal — navigate anyway; the guard re-checks on every render.
     }
 
-    showToast({ message: 'ICP confirmed — welcome to your dashboard!', type: 'success' });
+    showToast({ message: 'Ideal customer confirmed — welcome to your dashboard!', type: 'success' });
     router.push('/dashboard');
   }
 
   if (loading || !draft || !profile) {
-    return <VdfLoader message="Loading your ICP profile" hint="Fetching product, ICP, GTM, and vision data" />;
+    return <VdfLoader message="Loading your profile" hint="Fetching product, ideal customer, go-to-market and vision data" />;
   }
 
   if (loadError) {
@@ -394,7 +394,7 @@ export default function IcpBuilderPage() {
       <VdfErrorScreen
         code={500}
         icon="⚠️"
-        title="Couldn't load your ICP profile"
+        title="Couldn't load your profile"
         description="Something went wrong fetching your profile data. Please try refreshing the page."
       />
     );
@@ -475,7 +475,7 @@ export default function IcpBuilderPage() {
     <div className={s.page}>
       <VdfPageHeader
         eyebrow="GTM PROFILE"
-        title="Build Your ICP"
+        title="Your Ideal Customer"
         meta={<>This profile feeds every VaNi agent — Storyteller, Lead Finder, and Campaigns all read from it.</>}
       />
 
@@ -532,7 +532,7 @@ export default function IcpBuilderPage() {
 
         <div className={s.confirmBar}>
           {profile.completion_score < 60 && (
-            <div className={s.confirmHint}>Reach 60% overall completion to confirm your ICP.</div>
+            <div className={s.confirmHint}>Reach 60% overall completion to confirm.</div>
           )}
           <VdfButton
             variant="primary"
@@ -540,7 +540,7 @@ export default function IcpBuilderPage() {
             loading={confirmPhase === 'running'}
             onClick={handleConfirmIcp}
           >
-            Confirm ICP
+            Confirm ideal customer
           </VdfButton>
           {confirmPhase === 'error' && confirmErrorMessage && (
             <div className={s.confirmErrorText}>{confirmErrorMessage}</div>
