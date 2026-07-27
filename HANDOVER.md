@@ -93,10 +93,30 @@ VPS-side setup pending (user runs VPS steps + claude.ai env settings).
    - **Landing PLG hook:** hero domain input ("Watch VaNi learn your
      business") stores `gtm-domain-hint` in sessionStorage → /register;
      wizard step 1 prefills it.
-   - ⚠️ **NOT E2E-tested** — this container has no DB/LLM/worker.
-     Typecheck + route-compile verified only. First live test: register
-     fresh tenant → type a real domain → watch worker logs
-     (URL_SUBMITTED → ingestion run → KNOWLEDGE_UPDATED → profile).
+   - ✅ **n8n render escalation VERIFIED LIVE (2026-07-27)** — after a
+     long infra debugging session (community-node Chrome-missing on
+     the Alpine n8n image → switched to the browserless docker variant
+     → n8n Header-Auth credential in place of blocked `$env` access →
+     cross-network container DNS failure → resolved via the
+     `root_default` network gateway IP + browserless's host-published
+     port, since browserless and the n8n worker container weren't on
+     a mutually-resolvable network). Direct webhook test against
+     `https://vikuna.io/` (a JS-only Vite/React SPA) returned
+     `success:true`, 39,657 chars of fully rendered HTML — confirms
+     the whole escalation chain (static crawl → health check →
+     `render_page` → n8n → browserless → `render_complete`) is
+     operationally live on the user's VPS. Two workflow files in
+     `documents/n8n/` both patched to self-diagnose (name missing
+     HTML by the actual json/binary keys returned) — keep both in
+     sync if editing either's `Format Render Result` node again.
+   - ⚠️ **Still NOT E2E-tested end-to-end through the WIZARD UI** —
+     the render leg is proven at the n8n layer only. Next live test:
+     register a fresh tenant → wizard step 1 → a real JS-rendered
+     domain → confirm the drafted profile quality against rich real
+     copy (worth watching: `vikuna.io`'s meta/OG/JSON-LD tags are
+     injected by styled-components at runtime, not served statically —
+     a real SEO/AEO finding for that site, and a good signal that the
+     site_health check's "measure the static page" design is correct).
      Ollama must be pre-warmed (extractor + storyteller both hit LLM).
 2. **Phase 2 — data modelling** (screens now dictate schema; rename
    kept ki_ tables to gt_). **Required input:**
