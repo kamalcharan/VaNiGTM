@@ -19,7 +19,7 @@
 
 import { type ReactNode } from 'react';
 import { VdfBadge, VdfCheckbox } from '@/components/vdf';
-import s from '@/app/(app)/companies/companies.module.css';
+import s from '@/app/(app)/prospects/records.module.css';
 
 export type Freshness = 'current' | 'recent' | 'ageing' | 'stale' | 'unknown';
 

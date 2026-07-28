@@ -78,14 +78,14 @@ export const NAV_ITEMS: NavItem[] = [
   {
     // The companies an import lands. Contacts are the people; this is who
     // they work for, plus the tenant's existing customers.
-    id: 'companies',
-    label: 'Companies',
+    id: 'prospects',
+    label: 'Prospects',
     icon: <Icon><path d="M3 21h18" /><path d="M5 21V7l7-4 7 4v14" /><path d="M9 21v-6h6v6" /></Icon>,
-    href: '/companies',
+    href: '/prospects',
     section: 'main',
     skill: 'prospect-skill',
-    fn: 'get_prospects',
-    recipe: 'prospect-list',
+    fn: 'get_records',
+    recipe: 'record-list',
   },
   {
     id: 'campaigns',
@@ -140,8 +140,8 @@ export const NAV_ITEMS: NavItem[] = [
     section: 'data',
     adminOnly: true,
     skill: 'prospect-skill',
-    fn: 'get_universe_companies',
-    recipe: 'universe-list',
+    fn: 'get_records',
+    recipe: 'record-list',
   },
   {
     id: 'import',

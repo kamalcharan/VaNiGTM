@@ -18,8 +18,16 @@ screen could read.
 People live in `gt_contacts` and are served by **contact-skill**. A company and
 the people at it are linked by `gt_contacts.prospect_id`.
 
-Tables: `gt_prospects` (196), `gt_prospect_tags` (203), `gt_tags` /
-`gt_load_tags` (199), `gt_source_loads` (193).
+Tables: `gt_prospects` (196), `gt_universe_company_sources` (195),
+`gt_prospect_tags` (203), `gt_tags` / `gt_load_tags` (199),
+`gt_source_loads` (193), and `gt_record_view` (204) — one shape over both
+record tables.
+
+**Why two tables and one view.** They share 25 columns but have OPPOSITE dedup
+rules: the pool keeps one row per source per record, which is what makes the
+field-level merge re-runnable, while a tenant must have exactly one row per
+company. So the tables stay separate and everything derived from them —
+freshness, duplicate flags, tags — is defined once in the view.
 
 ## The three questions this skill answers
 
@@ -53,25 +61,18 @@ Both draw on the same `gt_tags` vocabulary, so a tenant has one tag list.
 
 ## Functions
 
-### get_prospects
-Paginated list of imported companies with quality, duplicate flags and tags.
-- Parameters: search?, relationship?, tag_id?, only_duplicates?, min_quality?, limit?, offset?
-- Returns: { prospects: [{ id, ref, name, relationship, domain_normalized, city, state_code, industry_raw, employees_band, completeness, validity, freshness, shares_domain, shares_name, load_label, tags }], total, recipe: 'prospect-list' }
+### get_records
+Both record surfaces, one function. scope 'mine' = the tenant's prospects; scope 'pool' = the shared directory pool (admin only).
+- Parameters: scope?, search?, relationship?, tag_id?, only_duplicates?, min_quality?, limit?, offset?
+- Returns: { scope, records: [{ id, ref, name, relationship, domain_normalized, city, state_code, industry_raw, employees_band, completeness, validity, freshness, duplicate, resolved, source_label, raw, tags }], stats, recipe: 'record-list' }
+
 
 ### get_prospect
 One company in full: every mapped field, every column the source file carried, the people at it, and its tags.
 - Parameters: prospect_id (required)
 - Returns: { prospect, people: [{ id, name, job_title, channels }], tags, source_row, recipe: 'prospect-profile' }
 
-### get_prospect_stats
-Set-level health: totals, average completeness and validity separately, freshness bands, duplicate counts.
-- Parameters: none
-- Returns: { stats: { total, customers, prospects, avg_completeness, avg_validity, with_rejected_fields, with_domain, undated, fresh, stale, sharing_domain, sharing_name }, recipe: 'prospect-stats' }
 
-### get_universe_companies
-The common pool — company records delivered by directories and providers, shared across tenants. Admin tenants only, checked against vn_tenants.is_admin.
-- Parameters: search?, load_id?, tag_id?, only_duplicates?, limit?, offset?
-- Returns: { companies: [{ id, name, source_record_id, domain_normalized, city, state_code, industry_raw, employees_band, completeness, validity, freshness, resolved, shares_block, load_label, source_code, tags }], total, stats, recipe: 'universe-list' }
 
 ### tag_prospects
 Apply or remove a direct tag across many records. Tags inherited from the delivery are not removable here.
@@ -86,5 +87,7 @@ Apply or remove a direct tag across many records. Tags inherited from the delive
   tenant (or is a platform tag) before writing. Prospect ids naming another
   tenant's records match nothing — the filter IS the authorisation.
 - Tenant-facing ids are `ref` (`PROS-0001`), never the raw PK.
-- `get-prospects.sql` and `count-prospects.sql` share their filter block. A
-  filter added to one must be added to the other or the pagination lies.
+- There is ONE list query (`get-records.sql`) and ONE stats query, both
+  reading `gt_record_view`. A filter or a derived column is written once and
+  both surfaces get it — the previous split is why the pool query was missing
+  `raw` after the tenant side already had it.

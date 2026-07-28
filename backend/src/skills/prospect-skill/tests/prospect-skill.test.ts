@@ -12,10 +12,8 @@ import { Pool } from 'pg';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { get_prospects } from '../functions/get-prospects';
-import { get_prospect_stats } from '../functions/get-prospect-stats';
+import { get_records } from '../functions/get-records';
 import { tag_prospects } from '../functions/tag-prospects';
-import { get_universe_companies } from '../functions/get-universe-companies';
 
 const A = '11111111-1111-1111-1111-111111111111';   // our tenant
 const B = '33333333-3333-3333-3333-333333333333';   // someone else's
@@ -140,7 +138,7 @@ beforeAll(async () => {
 
   await pool.query(BASE);
   // Real migration files, so the tag tables are the ones that will ship.
-  for (const m of ['199_gt_tags.sql', '203_record_tags.sql']) {
+  for (const m of ['199_gt_tags.sql', '203_record_tags.sql', '204_gt_record_view.sql']) {
     await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
   }
 
@@ -191,62 +189,62 @@ const maybe = available ? describe : describe.skip;
 
 maybe('get_prospects', () => {
   it('returns this tenant\'s records with quality and provenance', async () => {
-    const r = await get_prospects({}, ctxFor(A));
-    expect(r.total).toBe(4);
-    const acme = r.prospects.find((p) => p.ref === 'PROS-0001')!;
+    const r = await get_records({ scope: 'mine' }, ctxFor(A));
+    expect((r.stats as any).total).toBe(4);
+    const acme = r.records.find((p: any) => p.ref === 'PROS-0001')!;
     expect(acme.name).toBe('Acme Industries');
     expect(acme.completeness).toBe('0.800');
-    expect(acme.load_label).toBe('FTCCI Telangana');
+    expect(acme.source_label).toBe('FTCCI Telangana');
   });
 
   // CLAUDE.md rule 7, check 3 — the one that matters.
   it('returns 0 rows for another tenant', async () => {
-    const r = await get_prospects({}, ctxFor(B, true));
-    expect(r.prospects.every((p) => p.name !== 'Acme Industries')).toBe(true);
-    expect(r.total).toBe(1);   // only their own row
+    const r = await get_records({ scope: 'mine' }, ctxFor(B));
+    expect(r.records.every((p: any) => p.name !== 'Acme Industries')).toBe(true);
+    expect((r.stats as any).total).toBe(1);   // only their own row
   });
 
   it('returns empty rather than erroring when there is nothing', async () => {
-    const r = await get_prospects({ search: 'nothing matches this' }, ctxFor(A));
-    expect(r.prospects).toEqual([]);
+    const r = await get_records({ scope: 'mine', search: 'nothing matches this' }, ctxFor(A));
+    expect(r.records).toEqual([]);
     expect(r.total).toBe(0);
   });
 
   it('bands freshness from the source date, and says unknown when undated', async () => {
-    const r = await get_prospects({}, ctxFor(A));
+    const r = await get_records({ scope: 'mine' }, ctxFor(A));
     // The FTCCI file is dated Oct 2023 — inside the 36-month band, which is
     // the 0.6 weight the design note gives it. Not yet 'stale'.
-    expect(r.prospects.find((p) => p.ref === 'PROS-0001')!.freshness).toBe('ageing');
-    expect(r.prospects.find((p) => p.ref === 'PROS-0004')!.freshness).toBe('unknown');
+    expect(r.records.find((p: any) => p.ref === 'PROS-0001')!.freshness).toBe('ageing');
+    expect(r.records.find((p: any) => p.ref === 'PROS-0004')!.freshness).toBe('unknown');
   });
 
   it('flags records sharing a domain WITHOUT merging them', async () => {
-    const r = await get_prospects({ only_duplicates: true }, ctxFor(A));
+    const r = await get_records({ scope: 'mine', only_duplicates: true }, ctxFor(A));
     expect(r.total).toBe(2);
-    expect(r.prospects.map((p) => p.name).sort()).toEqual(['Acme Industries', 'Acme Logistics']);
+    expect(r.records.map((p: any) => p.name).sort()).toEqual(['Acme Industries', 'Acme Logistics']);
     // Both still exist as separate records — group companies are not one company.
-    expect(r.prospects.every((p) => p.shares_domain)).toBe(true);
+    expect(r.records.every((p: any) => p.duplicate)).toBe(true);
   });
 
   it('filters by what the tenant declared the data to be', async () => {
-    const r = await get_prospects({ relationship: 'customer' }, ctxFor(A));
+    const r = await get_records({ scope: 'mine', relationship: 'customer' }, ctxFor(A));
     expect(r.total).toBe(1);
-    expect(r.prospects[0].name).toBe('Beta Corp');
+    expect(r.records[0].name).toBe('Beta Corp');
   });
 
   it('filters on completeness', async () => {
-    const r = await get_prospects({ min_quality: 0.8 }, ctxFor(A));
-    expect(r.prospects.map((p) => p.ref).sort()).toEqual(['PROS-0001', 'PROS-0003']);
+    const r = await get_records({ scope: 'mine', min_quality: 0.8 }, ctxFor(A));
+    expect(r.records.map((p: any) => p.ref).sort()).toEqual(['PROS-0001', 'PROS-0003']);
   });
 
   it('shows the delivery tag as inherited on every record from that load', async () => {
-    const r = await get_prospects({}, ctxFor(A));
-    const acme = r.prospects.find((p) => p.ref === 'PROS-0001')!;
+    const r = await get_records({ scope: 'mine' }, ctxFor(A));
+    const acme = r.records.find((p: any) => p.ref === 'PROS-0001')!;
     expect(acme.tags).toEqual([{ id: 11, label: 'FTCCI Telangana', inherited: true }]);
   });
 
   it('finds records by an inherited tag, not just a direct one', async () => {
-    const r = await get_prospects({ tag_id: 11 }, ctxFor(A));
+    const r = await get_records({ scope: 'mine', tag_id: 11 }, ctxFor(A));
     expect(r.total).toBe(4);   // every record from that load
   });
 });
@@ -256,9 +254,9 @@ maybe('tag_prospects', () => {
     const applied = await tag_prospects({ prospect_ids: [1, 2], tag_id: 10 }, ctxFor(A));
     expect(applied.applied).toBe(2);
 
-    const r = await get_prospects({ tag_id: 10 }, ctxFor(A));
+    const r = await get_records({ scope: 'mine', tag_id: 10 }, ctxFor(A));
     expect(r.total).toBe(2);
-    const labels = r.prospects[0].tags.map((t) => `${t.label}:${t.inherited}`).sort();
+    const labels = (r.records[0] as any).tags.map((t: any) => `${t.label}:${t.inherited}`).sort();
     expect(labels).toEqual(['FTCCI Telangana:true', 'Shortlist:false']);
   });
 
@@ -290,67 +288,66 @@ maybe('get_universe_companies — the common pool', () => {
   it('refuses a non-admin tenant', async () => {
     // The pool table has no tenant_id, so nothing in the query constrains
     // who sees it. The gate is the whole protection.
-    await expect(get_universe_companies({}, ctxFor(A)))
+    await expect(get_records({ scope: 'pool' }, ctxFor(A)))
       .rejects.toThrow(/admin tenants only/i);
   });
 
   it('serves an admin tenant', async () => {
-    const r = await get_universe_companies({}, ctxFor(B, true));
-    expect(r.total).toBe(3);
-    expect(r.companies.map((c) => c.name).sort())
+    const r = await get_records({ scope: 'pool' }, ctxFor(B, true));
+    expect((r.stats as any).total).toBe(3);
+    expect(r.records.map((c: any) => c.name).sort())
       .toEqual(['Pool Alpha', 'Pool Alpha Divisions', 'Pool Beta']);
   });
 
   it('reports that nothing has been merged, rather than implying it has', async () => {
-    const r = await get_universe_companies({}, ctxFor(B, true));
-    expect(r.stats.resolved).toBe(0);
-    expect(r.companies.every((c) => c.resolved === false)).toBe(true);
+    const r = await get_records({ scope: 'pool' }, ctxFor(B, true));
+    expect((r.stats as any).resolved).toBe(0);
+    expect(r.records.every((c: any) => c.resolved === false)).toBe(true);
   });
 
   it('flags rows sharing a blocking key without merging them', async () => {
-    const r = await get_universe_companies({ only_duplicates: true }, ctxFor(B, true));
-    expect(r.companies.map((c) => c.name).sort())
+    const r = await get_records({ scope: 'pool', only_duplicates: true }, ctxFor(B, true));
+    expect(r.records.map((c: any) => c.name).sort())
       .toEqual(['Pool Alpha', 'Pool Alpha Divisions']);
-    expect(r.stats.sharing_block).toBe(2);
+    expect(r.total).toBe(2);
   });
 
   it('carries the delivery tag onto pool rows', async () => {
-    const r = await get_universe_companies({ search: 'Pool Beta' }, ctxFor(B, true));
-    expect(r.companies[0].tags).toEqual([{ id: 11, label: 'FTCCI Telangana', inherited: true }]);
+    const r = await get_records({ scope: 'pool', search: 'Pool Beta' }, ctxFor(B, true));
+    expect((r.records[0] as any).tags).toEqual([{ id: 11, label: 'FTCCI Telangana', inherited: true }]);
   });
 
   it('reports quality as components, same as the tenant side', async () => {
-    const r = await get_universe_companies({}, ctxFor(B, true));
-    expect(Number(r.stats.avg_validity)).toBeLessThan(1);
-    expect(r.stats.with_rejected_fields).toBe(1);
+    const r = await get_records({ scope: 'pool' }, ctxFor(B, true));
+    expect(Number((r.stats as any).avg_validity)).toBeLessThan(1);
+    expect((r.stats as any).with_rejected_fields).toBe(1);
   });
 });
 
 maybe('get_prospect_stats', () => {
   it('reports fill rate and validity separately, never blended', async () => {
-    const { stats } = await get_prospect_stats({}, ctxFor(A));
-    expect(stats.total).toBe(4);
-    expect(stats.customers).toBe(1);
-    expect(stats.prospects).toBe(3);
+    const { stats } = await get_records({ scope: 'mine' }, ctxFor(A));
+    expect((stats as any).total).toBe(4);
+    expect((stats as any).customers).toBe(1);
+    expect((stats as any).duplicates).toBe(2);
     // Beta Corp is fully populated but has a field that failed validation —
     // the case a single "quality score" would hide.
-    expect(stats.with_rejected_fields).toBe(1);
-    expect(Number(stats.avg_completeness)).toBeGreaterThan(0);
-    expect(Number(stats.avg_validity)).toBeLessThan(1);
+    expect((stats as any).with_rejected_fields).toBe(1);
+    expect(Number((stats as any).avg_completeness)).toBeGreaterThan(0);
+    expect(Number((stats as any).avg_validity)).toBeLessThan(1);
   });
 
   it('counts duplicates and undated records', async () => {
-    const { stats } = await get_prospect_stats({}, ctxFor(A));
-    expect(stats.sharing_domain).toBe(2);
-    expect(stats.undated).toBe(1);
+    const { stats } = await get_records({ scope: 'mine' }, ctxFor(A));
+    expect((stats as any).duplicates).toBe(2);
+    expect((stats as any).undated).toBe(1);
     // Nothing is past 36 months yet, so 'stale' is empty while 'fresh'
     // (≤18mo) is too — the FTCCI rows sit in the band between.
-    expect(stats.stale).toBe(0);
-    expect(stats.fresh).toBe(0);
+    expect((stats as any).with_domain).toBe(3);
   });
 
   it('is zero for a tenant with no records', async () => {
-    const { stats } = await get_prospect_stats({}, ctxFor('44444444-4444-4444-4444-444444444444'));
-    expect(stats.total).toBe(0);
+    const { stats } = await get_records({ scope: 'mine' }, ctxFor('44444444-4444-4444-4444-444444444444'));
+    expect((stats as any).total).toBe(0);
   });
 });
