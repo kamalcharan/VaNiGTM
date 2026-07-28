@@ -44,19 +44,26 @@ the research did no work — that is a failure even at 10% reply.
   variant normalisation; likely ~370 after)
 - Researchable: those with a resolvable domain (~107 known, expect more after
   normalisation)
-- Two tenants, two offers: **Vikuna** (CAI Officer, CDO, MVP as a Service, AI
-  Transformation) and **ContractNest** (product)
+- **Segment: pharma** (user ruling, 2026-07-28). Hyderabad is India's
+  bulk-drug capital, so it is the largest segment in the file, those companies
+  have real websites to research, and the ACV justifies per-account research.
+- **One tenant: Vikuna.** Three offers — **CDO as a Service**, **CAIO as a
+  Service**, **AI Automations**. ContractNest is pulled from the pilot; its
+  fit with pharma manufacturers was not convincing and testing an unconvincing
+  offer would produce a failure that says nothing about the method.
 
-### One person never receives two pitches
-
-Research decides which offer — or none:
+### Research decides which offer — or none
 
 ```
 researched accounts
-   ├─ plants + AMC/service arm + vendor SLAs   → ContractNest
-   ├─ digital team, automation signals, scale  → Vikuna
-   └─ no signal / too small / unreadable       → DO NOT CONTACT
+   ├─ multi-plant, exports, certifications, no data lead  → CDO as a Service
+   ├─ digital/AI mandate, no AI leadership, budget        → CAIO as a Service
+   ├─ heavy document load, wide catalogue, exports        → AI Automations
+   └─ no signal / too small / unreadable                  → DO NOT CONTACT
 ```
+
+One tenant and one segment means nobody can receive two pitches by
+construction — the earlier cross-tenant collision cannot occur.
 
 **A ~40% contact rate is a good outcome, not a shortfall.** The right to not
 send is as much the product as the message. "No fit" is a first-class result
@@ -260,11 +267,13 @@ Listed so scope creep is visible when it happens:
 
 ## Needed from the user before Step 2
 
-1. **Offer catalogue** — real descriptions of CAI Officer, CDO, MVP as a
-   Service, AI Transformation, and ContractNest: who it is for, what problem
-   it solves, price band, proof. Fit scoring is only as good as this input; a
-   one-line offer produces a worthless score.
-2. **Sending identity** — which mailbox, which domain, for each tenant.
+1. **Offer catalogue — `backend/config/offers/vikuna.json`.** Drafted from
+   the offer names; every field needs correcting, and **`price_band` and
+   `proof` are deliberately empty on all three offers** because they cannot
+   be invented. `loadOfferCatalogue` throws and names each gap, so the
+   research batch cannot run against a half-written catalogue — a blank
+   scores as a confident number, and that number decides who gets contacted.
+2. **Sending identity** — which mailbox, which domain.
 3. **Who writes the messages** in Step 5.
 
 ## Known risks
@@ -272,6 +281,6 @@ Listed so scope creep is visible when it happens:
 | Risk | Why it matters |
 |---|---|
 | **Channel** | WhatsApp fits this audience but forbids cold outreach; listed emails are often `info@`. Reachability is the least-tested assumption in the whole thesis |
-| **Offer-market fit** | A 40-person unit is not buying "AI Transformation". Bad fit produces zero replies and the wrong lesson — that research-first failed. Letting research assign the offer is the mitigation; expect the split to favour ContractNest |
+| **Offer-market fit** | A 40-person unit is not buying a fractional CDO. Bad fit produces zero replies and the wrong lesson — that research-first failed. Two mitigations: pharma was chosen because the ACV supports these offers, and each offer carries `disqualifiers` so "no fit" is reachable rather than the model always finding a reason to pitch |
 | **Small n** | 45 sends yields a signal, not statistics. Do not A/B message angles at this volume; test one thing |
 | **Outcome capture** | Consultative deals close offline over months. Step 4 + phone follow-up are the mitigation, and both depend on human discipline |
