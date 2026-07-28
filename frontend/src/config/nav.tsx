@@ -76,6 +76,18 @@ export const NAV_ITEMS: NavItem[] = [
     recipe: 'contact-list',
   },
   {
+    // The companies an import lands. Contacts are the people; this is who
+    // they work for, plus the tenant's existing customers.
+    id: 'companies',
+    label: 'Companies',
+    icon: <Icon><path d="M3 21h18" /><path d="M5 21V7l7-4 7 4v14" /><path d="M9 21v-6h6v6" /></Icon>,
+    href: '/companies',
+    section: 'main',
+    skill: 'prospect-skill',
+    fn: 'get_prospects',
+    recipe: 'prospect-list',
+  },
+  {
     id: 'campaigns',
     label: 'Campaigns',
     icon: <Icon><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></Icon>,
