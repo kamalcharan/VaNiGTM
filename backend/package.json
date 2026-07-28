@@ -9,6 +9,7 @@
     "lint": "tsc --noEmit",
     "db:migrate": "tsx src/migrate.ts",
     "db:seed": "tsx src/seed.ts",
+    "cohort": "tsx src/cohort.ts",
     "worker": "tsx watch src/agent-core/worker.ts",
     "worker:prod": "node dist/agent-core/worker.js"
   },

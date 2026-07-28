@@ -107,12 +107,22 @@ taxonomy is not in this plan.
 column, `industry_raw` untouched), `etl/industry-normalizer.ts` (the cluster
 rules), and `prospect-skill/build_cohort`.
 
+Run it from `backend/` — no JWT, no running server, no PowerShell JSON
+mangling (CLAUDE.md lesson 9):
+
+```bash
+npm run cohort -- --list-tenants                        # find the tenant
+npm run cohort -- --tenant-name=ftcci                   # DRY RUN (the default)
+npm run cohort -- --tenant=<uuid> --tag="Pilot Manufacturing"
+npm run cohort -- --tenant=<uuid> --live                # live environment
+```
+
+Dry run is the default; writing requires `--tag`. Same function as the API
+below — one implementation, no second copy of the rules:
+
 ```
 POST /api/v1/skills/prospect-skill/build_cohort
 { "params": { "cluster": "manufacturing", "dry_run": true } }
-
-POST /api/v1/skills/prospect-skill/build_cohort
-{ "params": { "cluster": "manufacturing", "tag_label": "Pilot Manufacturing" } }
 ```
 
 Always dry-run first. It returns `matched` / `excluded` / `no_rule` /
