@@ -105,7 +105,7 @@ const pad = (s: string | number, n: number) => String(s).padStart(n);
 
 function printReport(r: any, isLive: boolean) {
   console.log('');
-  console.log(`  cluster        ${r.cluster}`);
+  console.log(`  cluster        ${r.cluster}${r.sub ? ` / ${r.sub}` : '   (whole cluster — see segments below)'}`);
   console.log(`  environment    ${isLive ? 'LIVE' : 'sandbox'}`);
   console.log(`  mode           ${r.dry_run ? 'DRY RUN — nothing written' : 'APPLIED'}`);
   console.log('');
@@ -118,16 +118,42 @@ function printReport(r: any, isLive: boolean) {
   console.log(`  with domain    ${pad(r.with_domain, 6)}   <- the number the pilot is sized on`);
   console.log(`  no domain      ${pad(r.without_domain, 6)}   cannot be researched`);
 
+  if (r.segments.length) {
+    console.log('\n  Segments inside the cluster — pick ONE for the pilot. A bulk-drug');
+    console.log('  maker and a plastic chair maker share nothing but the word');
+    console.log('  "manufacturing", and one message cannot address both.\n');
+    console.log('     rows   domains   segment');
+    for (const s of r.segments) {
+      console.log(`    ${pad(s.rows, 5)}   ${pad(s.with_domain, 7)}   ${s.sub.padEnd(13)} ${s.label}`);
+    }
+    if (r.unsegmented) {
+      console.log(`    ${pad(r.unsegmented, 5)}   ${pad('-', 7)}   (unsegmented — in the cluster, no sub-rule matched)`);
+    }
+  }
+
+  // The FTCCI industry_raw is a product description, so nearly every value is
+  // unique. Printing them all is 1,200 lines of noise; the head is enough to
+  // see whether the rule is behaving.
   if (r.variants.length) {
-    console.log('\n  Collapsed onto the canonical value:');
-    for (const v of r.variants) console.log(`    ${pad(v.rows, 6)}  ${v.industry_raw}`);
+    const TOP = 15;
+    console.log(`\n  Collapsed onto the canonical value (${r.variants.length} distinct, top ${TOP}):`);
+    for (const v of r.variants.slice(0, TOP)) {
+      console.log(`    ${pad(v.rows, 6)}  ${v.industry_raw.replace(/\s+/g, ' ').slice(0, 90)}`);
+    }
+    if (r.variants.length > TOP) {
+      console.log(`    ${pad('', 6)}  ... and ${r.variants.length - TOP} more, nearly all appearing once`);
+    }
   }
 
   if (r.excluded_samples.length) {
+    const TOP = 20;
     console.log('\n  Excluded — READ THIS. Anything here that is a real manufacturer');
     console.log('  means the rule is wrong and must be fixed before researching:');
-    for (const e of r.excluded_samples) {
-      console.log(`    ${pad(e.rows, 6)}  ${e.industry_raw}   (on "${e.excluded_by}")`);
+    for (const e of r.excluded_samples.slice(0, TOP)) {
+      console.log(`    ${pad(e.rows, 6)}  ${e.industry_raw.replace(/\s+/g, ' ').slice(0, 80)}   (on "${e.excluded_by}")`);
+    }
+    if (r.excluded_samples.length > TOP) {
+      console.log(`    ${pad('', 6)}  ... and ${r.excluded_samples.length - TOP} more`);
     }
   }
 
@@ -224,15 +250,25 @@ async function main() {
     // logged-in user, so it records the tenant rather than inventing one.
     const ctx = ctxFor(pool, tenantId, isLive, tenantId);
 
+    const sub = flag('sub');
     const result = await build_cohort(
-      { cluster, tag_label: tag || undefined, dry_run: !tag },
+      { cluster, sub: sub || undefined, tag_label: tag || undefined, dry_run: !tag },
       ctx,
     );
     printReport(result, isLive);
 
     if (!tag) {
-      console.log('  Dry run. To write the canonical value and apply the tag:');
-      console.log(`    npx tsx src/cohort.ts --tenant=${tenantId}${isLive ? ' --live' : ''} "--tag=Pilot Manufacturing"`);
+      const env = isLive ? ' --live' : '';
+      if (!sub && result.segments.length > 1) {
+        console.log('  Dry run. Pick a segment from the table above, then:');
+        console.log(`    npx tsx src/cohort.ts --tenant=${tenantId}${env} --sub=<segment>`);
+        console.log('');
+        console.log('  Tagging the WHOLE cluster is possible but not advised — see the note');
+        console.log('  above the segment table.');
+      } else {
+        console.log('  Dry run. To write the canonical value and apply the tag:');
+        console.log(`    npx tsx src/cohort.ts --tenant=${tenantId}${env}${sub ? ` --sub=${sub}` : ''} "--tag=Pilot ${sub || 'Manufacturing'}"`);
+      }
       console.log('');
     }
   } catch (err) {

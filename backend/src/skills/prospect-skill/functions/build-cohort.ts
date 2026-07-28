@@ -26,11 +26,19 @@
  */
 
 import { SkillContext } from '../../../shared/types';
-import { canonicalIndustry, getCluster, clusterNames } from '../../../etl/industry-normalizer';
+import {
+  canonicalIndustry, getCluster, clusterNames, subClusters,
+} from '../../../etl/industry-normalizer';
 
 interface BuildCohortParams {
   /** Cluster canonical name, e.g. 'manufacturing'. */
   cluster: string;
+  /**
+   * Narrow to one segment inside the cluster, e.g. 'pharma'. Without it the
+   * cohort is the whole cluster — which for FTCCI means ~1,200 companies
+   * that share nothing but the word "manufacturing".
+   */
+  sub?: string;
   /** Tag applied to every match. Created for this tenant if new. */
   tag_label?: string;
   /** Classify and report, write nothing. */
@@ -43,8 +51,17 @@ interface ExcludedSample {
   rows: number;
 }
 
+interface SubClusterCount {
+  sub: string;
+  label: string;
+  rows: number;
+  /** The only ones that can be researched — the pilot sizes on this. */
+  with_domain: number;
+}
+
 interface BuildCohortResult {
   cluster: string;
+  sub: string | null;
   dry_run: boolean;
   scanned: number;
   matched: number;
@@ -54,6 +71,13 @@ interface BuildCohortResult {
   /** Of the matches — the number the pilot is actually sized on. */
   with_domain: number;
   without_domain: number;
+  /**
+   * How the whole cluster divides — ALWAYS the full cluster, even when `sub`
+   * narrowed the cohort, so the report can be used to choose a segment.
+   */
+  segments: SubClusterCount[];
+  /** In the cluster, claimed by no sub-rule. */
+  unsegmented: number;
   /** Distinct raw strings that collapsed onto the canonical value. */
   variants: { industry_raw: string; rows: number }[];
   /** Every exclusion, so the rule can be argued with. */
@@ -97,6 +121,14 @@ export async function build_cohort(
   const dryRun = params.dry_run === true;
   const tagLabel = (params.tag_label ?? '').trim() || null;
 
+  const wantSub = (params.sub ?? '').trim() || null;
+  const defined = subClusters(cluster.canonical);
+  if (wantSub && !defined.some((s) => s.sub === wantSub)) {
+    throw new Error(
+      `Unknown segment "${wantSub}" in ${cluster.canonical}. Defined: ${defined.map((s) => s.sub).join(', ')}.`,
+    );
+  }
+
   return ctx.db.transaction(async (tx) => {
     // Active rows only: a deactivated record is not a prospect anyone will
     // research, and including it would inflate the cohort size the pilot is
@@ -110,17 +142,45 @@ export async function build_cohort(
       { $tenant_id: ctx.tenant_id, $is_live: ctx.is_live },
     );
 
+    /** In the cohort — narrowed by `sub`. Drives the tag. */
     const matched: ProspectRow[] = [];
+    /**
+     * In the CLUSTER, whatever segment. Drives industry_canonical: the column
+     * is derived truth about the row, so a plastics maker is manufacturing
+     * even on a run that only tags pharma. Deriving it from the cohort would
+     * make the column depend on which command was last run.
+     */
+    const clusterMatched: number[] = [];
     const excluded: { row: ProspectRow; excluded_by: string }[] = [];
     let noRule = 0;
     let noIndustry = 0;
     /** Rows carrying THIS canonical that the rule no longer claims. */
     const staleCanonical: number[] = [];
+    /** Whole-cluster breakdown, independent of any `sub` narrowing. */
+    const bySub = new Map<string, { rows: number; with_domain: number }>();
+    let unsegmented = 0;
 
     for (const row of scan.rows) {
       const verdict = canonicalIndustry(row.industry_raw);
       if (verdict.reason === 'matched' && verdict.canonical === cluster.canonical) {
-        matched.push(row);
+        clusterMatched.push(row.id);
+        // Counted for the WHOLE cluster before `sub` narrows the cohort —
+        // otherwise choosing a segment would need one run per segment.
+        if (verdict.sub) {
+          const acc = bySub.get(verdict.sub) ?? { rows: 0, with_domain: 0 };
+          acc.rows += 1;
+          if (row.domain_normalized !== null) acc.with_domain += 1;
+          bySub.set(verdict.sub, acc);
+        } else {
+          unsegmented += 1;
+        }
+
+        if (!wantSub || verdict.sub === wantSub) {
+          matched.push(row);
+          continue;
+        }
+        // In the cluster but not this segment: not a match, and its stale
+        // canonical must not be cleared — it is still a manufacturer.
         continue;
       }
       if (row.industry_canonical === cluster.canonical) staleCanonical.push(row.id);
@@ -157,7 +217,17 @@ export async function build_cohort(
       staleTagged: number,
     ): BuildCohortResult => ({
       cluster: cluster.canonical,
+      sub: wantSub,
       dry_run: dryRun,
+      segments: defined
+        .map((s) => ({
+          sub: s.sub, label: s.label,
+          rows: bySub.get(s.sub)?.rows ?? 0,
+          with_domain: bySub.get(s.sub)?.with_domain ?? 0,
+        }))
+        .filter((s) => s.rows > 0)
+        .sort((a, b) => b.with_domain - a.with_domain),
+      unsegmented,
       scanned: scan.rows.length,
       matched: matched.length,
       excluded: excluded.length,
@@ -176,9 +246,10 @@ export async function build_cohort(
     if (dryRun) return report(null, 0, 0);
 
     // ── Write the collapsed value ────────────────────────────────────
-    // Every match takes the SAME canonical, so this is one statement rather
-    // than a batched VALUES update.
-    if (matchedIds.length > 0) {
+    // The whole CLUSTER, not the narrowed cohort — see clusterMatched. Every
+    // row takes the SAME canonical, so this is one statement rather than a
+    // batched VALUES update.
+    if (clusterMatched.length > 0) {
       await tx.query(
         `UPDATE gt_prospects
          SET    industry_canonical = $canonical, updated_at = now()
@@ -187,7 +258,7 @@ export async function build_cohort(
            AND  is_live   = $is_live
            AND  industry_canonical IS DISTINCT FROM $canonical`,
         {
-          $canonical: cluster.canonical, $ids: matchedIds,
+          $canonical: cluster.canonical, $ids: clusterMatched,
           $tenant_id: ctx.tenant_id, $is_live: ctx.is_live,
         },
       );

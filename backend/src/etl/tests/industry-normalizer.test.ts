@@ -11,6 +11,7 @@ import {
   normalizeIndustryText,
   getCluster,
   clusterNames,
+  subClusters,
 } from '../industry-normalizer';
 
 describe('normalizeIndustryText', () => {
@@ -105,5 +106,62 @@ describe('cluster registry', () => {
 
   it('keeps canonical names inside VARCHAR(60)', () => {
     for (const name of clusterNames()) expect(name.length).toBeLessThanOrEqual(60);
+  });
+});
+
+describe('sub-clusters — FTCCI industry_raw is a product description', () => {
+  // "Manufacturing of Bulk Drugs" and "Manufacturing of Plastic Chairs" are
+  // both manufacturing and share nothing else. These are the real strings.
+  it.each([
+    ['Manufacturing of Bulk Drugs and Drug Intermediates', 'pharma'],
+    ['Manufacturing of API and Intermediates', 'pharma'],
+    ['Manufacturing of Nutraceuticals', 'pharma'],
+    ['Manufacturing of Cosmetic Herbal Products', 'pharma'],
+    ['Manufacturing of Biosimilars', 'pharma'],
+    ['Manufacturing of Excipients', 'pharma'],
+    ['Manufacturing of Rice', 'food'],
+    ['Manufacturing of Confectionery Candy Toffee', 'food'],
+    ['Manufacturing & Exports  of Chocolate Products', 'food'],
+    ['Manufacturing of Pickles, Snacks, Masalas, Chutney Powders', 'food'],
+    ['Manufacturing of HDPE / PP Woven Sacks', 'plastics'],
+    ['Manufacturing of Plastic Chairs', 'plastics'],
+    ['Manufacturing of Rigid Boxes Packaging  & Multi Color Offset Printers', 'plastics'],
+    ['Manufacturing of Ceiling Fans, Pedestal Fan, Table Fans', 'electrical'],
+    ['Manufacturing of Alternators, Motors, Rotary Converters', 'electrical'],
+    ['Manufacturing of Instruments Transformers, Potential Transformers', 'electrical'],
+    ['Manufacturing of Special Purpose Machines', 'engineering'],
+    ['Manufacturing of Alloys Steel Casting ,General Engineering Spares', 'engineering'],
+    ['Manufacturing of Forgings, Components', 'engineering'],
+    ['Manufacturing of Agro Chemicals, Fertilizers, Micro Nutrients, Seeds', 'chemicals'],
+    ['Manufacturing & Exports of Refractory Products', 'chemicals'],
+    ['Manufacturing of Plywood Doors', 'construction'],
+    ['Manufacturing of Gypsum Plaster, Gypsum Channel, Plaster Board', 'construction'],
+  ])('%s -> %s', (raw, sub) => {
+    const v = canonicalIndustry(raw);
+    expect(v.canonical).toBe('manufacturing');
+    expect(v.sub).toBe(sub);
+  });
+
+  it('leaves a row unsegmented rather than forcing it into a segment', () => {
+    // "Coil Nails" is manufacturing and matches no sub-rule. That is an
+    // answer, not a failure — the report counts it as unsegmented.
+    const v = canonicalIndustry('Manufacturing of Coil Nails');
+    expect(v.canonical).toBe('manufacturing');
+    expect(v.sub).toBeNull();
+  });
+
+  it('resolves an overlap by declared precedence, not by chance', () => {
+    // Food before chemicals: this company sells food.
+    const v = canonicalIndustry('Manufacturing of Cocoa Powder and Food Products, Dyes and Chemicals');
+    expect(v.sub).toBe('food');
+  });
+
+  it('reports no sub for a row outside the cluster', () => {
+    expect(canonicalIndustry('Hotels & Restaurants').sub).toBeUndefined();
+  });
+
+  it('exposes the sub-clusters for a cluster, and none for an unknown one', () => {
+    expect(subClusters('manufacturing').map((s) => s.sub)).toContain('pharma');
+    expect(subClusters('nope')).toEqual([]);
   });
 });

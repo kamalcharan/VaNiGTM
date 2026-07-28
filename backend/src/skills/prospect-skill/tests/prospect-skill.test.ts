@@ -576,3 +576,78 @@ maybe('build_cohort — Step 1 of the manufacturing pilot', () => {
     expect(r.tag).toBeNull();
   });
 });
+
+maybe('build_cohort — segments inside the cluster', () => {
+  // Real FTCCI strings: industry_raw is a product description, so a cluster
+  // this wide has to be narrowed before anyone writes a message.
+  beforeAll(async () => {
+    await pool.query(`DELETE FROM gt_prospect_tags WHERE tenant_id = $1`, [C]);
+    await pool.query(`DELETE FROM gt_prospects WHERE tenant_id = $1`, [C]);
+    await pool.query(
+      `INSERT INTO gt_prospects (tenant_id,is_live,ref,name,domain_normalized,industry_raw)
+       VALUES
+         ($1,false,'S-01','Bulk Drug Co','bulkdrug.com','Manufacturing of Bulk Drugs and Drug Intermediates'),
+         ($1,false,'S-02','API Labs','apilabs.com','Manufacturing of API and Intermediates'),
+         ($1,false,'S-03','Nutra Ltd',NULL,'Manufacturing of Nutraceuticals'),
+         ($1,false,'S-04','Chair Co','chairco.com','Manufacturing of Plastic Chairs'),
+         ($1,false,'S-05','Sack Co','sackco.com','Manufacturing of HDPE / PP Woven Sacks'),
+         ($1,false,'S-06','Nails Co','nailsco.com','Manufacturing of Coil Nails')`,
+      [C]);
+  });
+
+  it('breaks the cluster into segments, sized on reachable rows', async () => {
+    const r = await build_cohort({ cluster: 'manufacturing', dry_run: true }, ctxFor(C));
+    expect(r.matched).toBe(6);
+
+    const pharma = r.segments.find((s) => s.sub === 'pharma')!;
+    expect(pharma.rows).toBe(3);
+    expect(pharma.with_domain).toBe(2);      // Nutra Ltd has no domain
+
+    expect(r.segments.find((s) => s.sub === 'plastics')!.rows).toBe(2);
+    expect(r.unsegmented).toBe(1);            // Coil Nails
+    expect(r.segments.some((s) => s.rows === 0)).toBe(false);
+  });
+
+  it('narrows the cohort to one segment', async () => {
+    const r = await build_cohort(
+      { cluster: 'manufacturing', sub: 'pharma', dry_run: true }, ctxFor(C));
+    expect(r.sub).toBe('pharma');
+    expect(r.matched).toBe(3);
+    expect(r.with_domain).toBe(2);
+    // The breakdown still describes the WHOLE cluster, so one run is enough
+    // to choose a different segment.
+    expect(r.segments.find((s) => s.sub === 'plastics')!.rows).toBe(2);
+  });
+
+  it('rejects a segment it has no rules for, naming the ones it has', async () => {
+    await expect(build_cohort({ cluster: 'manufacturing', sub: 'aerospace' }, ctxFor(C)))
+      .rejects.toThrow(/pharma/);
+  });
+
+  it('tags only the segment but marks the whole cluster canonical', async () => {
+    const r = await build_cohort(
+      { cluster: 'manufacturing', sub: 'pharma', tag_label: 'Pilot Pharma' }, ctxFor(C));
+    expect(r.tagged).toBe(3);
+
+    // industry_canonical is derived truth about the row: a plastics maker is
+    // manufacturing even on a run that only tags pharma.
+    const canon = await pool.query(
+      `SELECT count(*)::int AS n FROM gt_prospects
+       WHERE tenant_id = $1 AND industry_canonical = 'manufacturing'`, [C]);
+    expect(canon.rows[0].n).toBe(6);
+
+    const tagged = await pool.query(
+      `SELECT p.ref FROM gt_prospects p
+       JOIN   gt_prospect_tags pt ON pt.prospect_id = p.id
+       WHERE  pt.tag_id = $1 ORDER BY p.ref`, [r.tag!.id]);
+    expect(tagged.rows.map((x: any) => x.ref)).toEqual(['S-01', 'S-02', 'S-03']);
+  });
+
+  it('does not clear the canonical of a row in another segment', async () => {
+    await build_cohort({ cluster: 'manufacturing', sub: 'plastics' }, ctxFor(C));
+    const still = await pool.query(
+      `SELECT count(*)::int AS n FROM gt_prospects
+       WHERE tenant_id = $1 AND industry_canonical = 'manufacturing'`, [C]);
+    expect(still.rows[0].n).toBe(6);
+  });
+});

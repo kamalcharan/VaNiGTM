@@ -113,10 +113,30 @@ mangling (CLAUDE.md lesson 9):
 ```bash
 npx tsx src/cohort.ts --list-tenants                    # find the tenant
 # (npm run cohort -- <flags> drops the flags on PowerShell; use npx)
-npx tsx src/cohort.ts --tenant-name=ftcci               # DRY RUN (the default)
-npx tsx src/cohort.ts --tenant=<uuid> "--tag=Pilot Manufacturing"
-npx tsx src/cohort.ts --tenant=<uuid> --live            # live environment
+npx tsx src/cohort.ts --tenant=<uuid> --live            # DRY RUN, whole cluster
+npx tsx src/cohort.ts --tenant=<uuid> --live --sub=pharma
+npx tsx src/cohort.ts --tenant=<uuid> --live --sub=pharma "--tag=Pilot Pharma"
 ```
+
+**The cluster is too wide to be a cohort.** FTCCI's `industry_raw` is not a
+category, it is a product description — "Manufacturing of Bulk Drugs and Drug
+Intermediates", "Manufacturing of Plastic Chairs". That is why 2,149 distinct
+values appear across 2,882 rows. A bulk-drug maker and a plastic chair maker
+share nothing but the word "manufacturing", so one message cannot address
+both, and a 700-account cohort would force exactly the generic copy this
+pilot exists to detect.
+
+So the dry run prints a **segment table** — pharma, food, plastics,
+electrical, engineering, chemicals, textiles, construction — with rows and
+reachable rows for each, and `--sub=` narrows the cohort to one. The
+breakdown always describes the WHOLE cluster, so a single run is enough to
+choose. Rows in the cluster that no sub-rule claims are counted as
+`unsegmented` rather than forced into a segment.
+
+`industry_canonical` is written for the whole cluster regardless of `--sub`
+— it is derived truth about the row, and a plastics maker is still
+manufacturing on a run that only tags pharma. The tag is the cohort; the
+column is not.
 
 Dry run is the default; writing requires `--tag`. Same function as the API
 below — one implementation, no second copy of the rules:
