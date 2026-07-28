@@ -57,6 +57,7 @@ interface AuthInfo {
   user_id: string;
   tenant_id: string;
   is_live: boolean;
+  is_admin: boolean;
 }
 
 function extractAuth(req: { headers: Record<string, any> }): AuthInfo | null {
@@ -64,10 +65,37 @@ function extractAuth(req: { headers: Record<string, any> }): AuthInfo | null {
   if (!header?.startsWith('Bearer ')) return null;
   try {
     const jwt = verifyAccessToken(header.slice(7));
-    return { user_id: jwt.user_id, tenant_id: jwt.tenant_id, is_live: jwt.is_live !== false };
+    return {
+      user_id: jwt.user_id,
+      tenant_id: jwt.tenant_id,
+      is_live: jwt.is_live !== false,
+      // vn_tenants.is_admin (migration 012), carried in the token. NEVER read
+      // an admin claim from the request body.
+      is_admin: jwt.is_admin === true,
+    };
   } catch {
     return null;
   }
+}
+
+/**
+ * Load a session the caller actually owns.
+ *
+ * Session ids are SERIAL, so they are trivially enumerable — several routes
+ * here fetched `WHERE id = $1` with no tenant filter, which let any
+ * authenticated tenant read or act on another tenant's import by guessing a
+ * number. Every :id route goes through this instead (CLAUDE.md rules 1 & 10).
+ */
+async function loadOwnedSession(
+  pool: Pool,
+  sessionId: number,
+  tenantId: string,
+): Promise<any | null> {
+  const r = await pool.query(
+    'SELECT * FROM ki_import_sessions WHERE id = $1 AND tenant_id = $2',
+    [sessionId, tenantId],
+  );
+  return r.rows[0] ?? null;
 }
 
 /* ── Router ────────────────────────────────────────── */
@@ -154,7 +182,10 @@ export function createEtlRouter(pool: Pool): Router {
       const auth = extractAuth(req);
       if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
-      const fileResult = await pool.query('SELECT * FROM ki_file_uploads WHERE id = $1', [req.params.fileId]);
+      const fileResult = await pool.query(
+        'SELECT * FROM ki_file_uploads WHERE id = $1 AND tenant_id = $2',
+        [req.params.fileId, auth.tenant_id],
+      );
       if (fileResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found' } }); return; }
 
       const file = fileResult.rows[0] as any;
@@ -323,10 +354,8 @@ export function createEtlRouter(pool: Pool): Router {
       const sessionId = Number(req.params.id);
 
       // Verify session exists and is staged
-      const sessResult = await pool.query('SELECT * FROM ki_import_sessions WHERE id = $1', [sessionId]);
-      if (sessResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }); return; }
-
-      const session = sessResult.rows[0] as any;
+      const session = await loadOwnedSession(pool, sessionId, auth.tenant_id);
+      if (!session) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }); return; }
       if (session.status !== 'staged' && session.status !== 'completed_with_errors') {
         res.status(400).json({ error: { code: 'INVALID_STATUS', message: `Session is "${session.status}", expected "staged"` } });
         return;
@@ -366,8 +395,8 @@ export function createEtlRouter(pool: Pool): Router {
                 s.processing_completed_at, f.original_filename
          FROM ki_import_sessions s
          LEFT JOIN ki_file_uploads f ON f.id = s.file_upload_id
-         WHERE s.id = $1`,
-        [req.params.id],
+         WHERE s.id = $1 AND s.tenant_id = $2`,
+        [req.params.id, auth.tenant_id],
       );
 
       if (result.rows.length === 0) {
@@ -408,6 +437,11 @@ export function createEtlRouter(pool: Pool): Router {
       const page = Math.max(1, Number(req.query.page) || 1);
       const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
       const offset = (page - 1) * limit;
+
+      // Staging rows carry no tenant of their own — they are only reachable
+      // through a session, so ownership is checked on the session first.
+      const owned = await loadOwnedSession(pool, sessionId, auth.tenant_id);
+      if (!owned) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }); return; }
 
       // Build WHERE clause
       const conditions = ['session_id = $1'];
@@ -461,10 +495,8 @@ export function createEtlRouter(pool: Pool): Router {
       const sessionId = Number(req.params.id);
 
       // Verify session
-      const sessResult = await pool.query('SELECT * FROM ki_import_sessions WHERE id = $1', [sessionId]);
-      if (sessResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }); return; }
-
-      const session = sessResult.rows[0] as any;
+      const session = await loadOwnedSession(pool, sessionId, auth.tenant_id);
+      if (!session) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }); return; }
 
       // Reset failed (and orphan, for transaction imports) rows to pending
       const statusesToReset = session.import_type === 'transaction'
