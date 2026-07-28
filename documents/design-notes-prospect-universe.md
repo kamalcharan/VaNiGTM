@@ -134,7 +134,46 @@ The source registry and trust config. Not tenant-scoped.
 Tier lives in a table so re-tuning trust is an UPDATE plus a re-merge, not a
 deploy.
 
+### 4.1a `gt_source_loads` (migration 193) — one row per dataset delivered
+
+**Added after the user confirmed the pipeline of incoming data**: more FTCCI
+chapters across India, other federations of commerce, Telangana hospital
+groups, manufacturing associations — "very soon".
+
+That breaks the assumption that a source is a single dataset. FTCCI is not
+one file; it is Hyderabad Oct 2023, then Warangal, then others, each with its
+own coverage and date. So the unit of ingestion is the **load**, not the
+source.
+
+| Column | Notes |
+|---|---|
+| `source_id` → `gt_data_sources` | the publisher |
+| `label` | "FTCCI Hyderabad", "Telangana Hospital Groups" |
+| `region`, `state_code` | what this load covers |
+| `as_of` DATE | per load, not per publisher |
+| `default_industry_id` | see below |
+| `tier_override` | a specialist directory can outrank its publisher's default |
+| `file_checksum`, `row_count`, `loaded_at`, `loaded_by` | |
+
+Three things this buys that a source-only model cannot:
+
+**Rollback.** A bad file is undone by retiring its load, not by unpicking one
+publisher's rows from three years of ingests.
+
+**Vertical loads classify themselves.** Every row in "hospital groups of
+Telangana" *is* healthcare; every row in a manufacturing association *is*
+manufacturing. `default_industry_id` on the load gives thousands of rows an
+industry with no per-row mapping — at lower confidence than an explicit
+per-row value, so a provider that states the industry still wins. This
+sidesteps the FTCCI problem (2,170 distinct prose strings) entirely for
+vertical sources, and it is the cheapest industry coverage available.
+
+**Coverage becomes answerable.** See §4.11.
+
 ### 4.2 `gt_universe_company_sources` (migration 194)
+
+Carries `load_id` → `gt_source_loads` alongside `source_id`. `source_as_of`
+is inherited from the load unless the row states its own.
 One immutable row per (source, source record). Never merged, never
 overwritten by another source.
 
@@ -246,6 +285,46 @@ strings appearing once, a meaningful tail will not map. Those companies must
 be reported as *unmapped* rather than quietly excluded from matching — a
 filter that silently omits stock is the failure mode rule 12 exists for.
 
+### 4.11 Coverage — what we can honestly offer, and what to acquire next
+
+Once several chambers, federations, hospital groups and manufacturing
+associations are loaded, "do we have anything for this tenant" stops being
+rhetorical. It varies per tenant, and the CRO push is gated on the answer.
+
+A materialised **`gt_universe_coverage`** — counts by (industry, state,
+freshness band) — serves two purposes:
+
+1. **Gating the push.** A tenant selling to Hyderabad manufacturers sees a
+   real number; a tenant selling to US SaaS sees an honest "not yet in your
+   market" instead of a headline built on 2,913 Telangana rows.
+2. **Telling you what data to buy.** The same table, read the other way, is a
+   ranked gap list: which industry × region combinations tenants ask for and
+   we cannot serve. That turns data acquisition from instinct into a queue.
+
+**Geography normalisation is cheap and load-bearing here.** Indian PIN codes
+encode the circle in their first two digits — 2,840 of FTCCI's 2,913 rows
+begin `50` (Telangana). Deriving `state_code` from PIN at ingest gives
+regional filtering across every future chamber load for almost nothing, and
+it is more reliable than the free-text city field (`Hyderabad`, `Secunderabad`,
+`R.R.Dist.`, `Medchal-Malkajgiri` all appear).
+
+### 4.12 Overlap is now the normal case, not the edge case
+
+A Telangana hospital group is very likely also an FTCCI member. Manufacturing
+associations overlap chambers. Once these land together, dedup fires
+constantly rather than occasionally — which promotes two things from
+defensive to load-bearing:
+
+- **Field-level merge** (§3): the specialist directory will have better
+  vertical detail, the chamber better general contact detail. Record-level
+  would discard one of them on every overlap.
+- **`gt_universe_company_aliases`** (§4.4): late merges will be routine, so
+  tenant prospects must resolve through aliases from day one.
+
+It also means tier is not simply "provider beats directory" — a specialist
+hospital directory's record of a hospital should outrank a general chamber's.
+Hence `tier_override` on the load.
+
 ### 4.10 etl staging quality columns (migration 200)
 `ki_import_staging` gains per-row `validity`, `reject_reasons JSONB`. This is
 what turns `etl.routes.ts:338`'s `501` into a real landing step.
@@ -299,7 +378,7 @@ at the loser keep resolving through the alias.
 
 | # | What |
 |---|---|
-| 193 | `gt_data_sources` + seed rows for `ftcci`, `apollo`, `upload` |
+| 193 | `gt_data_sources` + `gt_source_loads` + seed rows for `ftcci`, `apollo`, `upload` |
 | 194 | `gt_universe_company_sources` |
 | 195 | `gt_universe_companies` + `gt_universe_company_aliases` |
 | 196 | `gt_universe_contacts` (with `exposure`) |
@@ -307,6 +386,7 @@ at the loser keep resolving through the alias.
 | 198 | `gt_connectors` |
 | 199 | `gt_industries` + `gt_industry_aliases` + `gt_tenant_target_industries` |
 | 200 | `ki_import_staging` quality columns |
+| 201 | `gt_universe_coverage` (materialised) |
 
 199 is the only one onboarding itself depends on — "mark industries" is a
 step-3 requirement. The rest serve mission control and can land later.
