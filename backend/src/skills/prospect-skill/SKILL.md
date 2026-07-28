@@ -59,6 +59,20 @@ resolved exact clashes; this surfaces the near-misses for a human.
 
 Both draw on the same `gt_tags` vocabulary, so a tenant has one tag list.
 
+**Which of them are a segment?** None, until a rule says so. The FTCCI import
+landed 2,149 distinct `industry_raw` strings, 2,050 of them appearing once —
+"Manufacturers" (210) and "Manufacturer" (68) are the same concept arriving
+twice. `build_cohort` runs the cluster rules in `etl/industry-normalizer.ts`
+over a tenant's records, writes the collapsed value to `industry_canonical`
+(migration 206) and tags the matches, so one tag selects the cohort.
+
+`industry_raw` is never rewritten — it is what the file said, and the rule is
+not yet validated against a human. Exclusions ("Manufacturers Association" is
+not a manufacturer) are RETURNED with the term that excluded them, and a tag
+is never revoked on a re-run: rows tagged but no longer matching come back as
+`tagged_no_longer_matching` for a person to decide. This is not the industry
+taxonomy — it is the clusters a running pilot needs.
+
 ## Functions
 
 ### get_records
@@ -78,6 +92,12 @@ One company in full: every mapped field, every column the source file carried, t
 Apply or remove a direct tag across many records. Tags inherited from the delivery are not removable here.
 - Parameters: prospect_ids (required), tag_id (required), apply?
 - Returns: { applied, removed, recipe: 'prospect-tag' }
+
+
+### build_cohort
+Collapse free-text industries onto a cluster rule, store the canonical value and tag the matches. dry_run reports without writing.
+- Parameters: cluster (required), tag_label?, dry_run?
+- Returns: { cluster, dry_run, scanned, matched, excluded, no_rule, no_industry, with_domain, without_domain, variants, excluded_samples, tag, tagged, tagged_no_longer_matching, recipe: 'cohort-report' }
 
 ## Rules
 

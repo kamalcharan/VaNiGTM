@@ -77,6 +77,20 @@ confirmed. Everything below reads `gt_prospects`.
 - DoD: row counts reconcile — staged = landed + held, and held rows carry a
   real reason
 
+**Run `scripts/verify-import.sql`** — it answers this with numbers instead of a
+screenshot, and reports a true cause rather than the "current transaction is
+aborted" message a per-row catch produces after the real error:
+
+```bash
+psql "$DB_PRIMARY" -f scripts/verify-import.sql
+psql "$DB_PRIMARY" -v tenant="'<uuid>'" -v days=30 -f scripts/verify-import.sql
+```
+
+PASS when section 2's verdict is `clean`, section 4 shows a non-zero prospects
+count for the load, and section 5 returns no `state_code` longer than 8
+characters. A `STOPPED EARLY` verdict means rows are still `pending` — that is
+a failure even when the session row says `completed`.
+
 ### Step 1 — Normalise the manufacturing variants  ·  0.5 day
 
 **Scope discipline:** the manufacturing cluster ONLY. The full 2,149-value
@@ -89,6 +103,28 @@ taxonomy is not in this plan.
 - DoD: one tag selects the whole cohort in `/prospects`; counts reported —
   total, with domain, without
 
+**Built:** migration **206** (`gt_prospects.industry_canonical` — one nullable
+column, `industry_raw` untouched), `etl/industry-normalizer.ts` (the cluster
+rules), and `prospect-skill/build_cohort`.
+
+```
+POST /api/v1/skills/prospect-skill/build_cohort
+{ "params": { "cluster": "manufacturing", "dry_run": true } }
+
+POST /api/v1/skills/prospect-skill/build_cohort
+{ "params": { "cluster": "manufacturing", "tag_label": "Pilot Manufacturing" } }
+```
+
+Always dry-run first. It returns `matched` / `excluded` / `no_rule` /
+`no_industry`, the `variants` that collapsed, every `excluded_samples` entry
+with the term that excluded it, and `with_domain` — **the number the pilot is
+actually sized on**. Then re-run with `tag_label` and the tag selects the
+cohort in `/prospects`.
+
+Two rules the function will not break: `industry_raw` is never rewritten, and
+a tag is never revoked — rows tagged but no longer matching come back as
+`tagged_no_longer_matching` for a human to act on.
+
 ### Step 2 — Account research brief  ·  3 days  ·  THE BUILD
 
 The only real build in this plan, and the one piece that is the actual moat.
@@ -100,7 +136,7 @@ text + html + a site-health assessment), `renderPageViaN8n` for thin pages,
 candidate — this points the same machinery at a prospect.
 
 **New:** `backend/src/skills/research-skill/account.agent.ts`, event
-`ACCOUNT_RESEARCH_REQUESTED`, migration **206** `gt_account_briefs`.
+`ACCOUNT_RESEARCH_REQUESTED`, migration **207** `gt_account_briefs`.
 
 Per-account pipeline, every stage a visible step, checkpointed between:
 
@@ -140,7 +176,7 @@ Agent produces, human confirms. Reuses `RecordsPage` / `RecordTable` /
 
 ### Step 4 — Touch log  ·  0.5 day
 
-The smallest thing that answers "did it work". Migration **207**
+The smallest thing that answers "did it work". Migration **208**
 `gt_touch_log`: `tenant_id`, `prospect_id`, `offer`, `channel`, `touched_at`,
 `outcome`, `notes`.
 

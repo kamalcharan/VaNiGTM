@@ -14,10 +14,13 @@ import fs from 'fs';
 import path from 'path';
 import { get_records } from '../functions/get-records';
 import { tag_prospects } from '../functions/tag-prospects';
+import { build_cohort } from '../functions/build-cohort';
 
 const A = '11111111-1111-1111-1111-111111111111';   // our tenant
 const B = '33333333-3333-3333-3333-333333333333';   // someone else's
 const USER = '22222222-2222-2222-2222-222222222222';
+const C = '66666666-6666-6666-6666-666666666666';   // cohort fixtures
+const D = '44444444-4444-4444-4444-444444444444';   // a tenant with no data
 
 const MIGRATIONS = path.resolve(__dirname, '../../../../migrations');
 
@@ -138,7 +141,8 @@ beforeAll(async () => {
 
   await pool.query(BASE);
   // Real migration files, so the tag tables are the ones that will ship.
-  for (const m of ['199_gt_tags.sql', '203_record_tags.sql', '205_gt_record_view_active.sql']) {
+  for (const m of ['199_gt_tags.sql', '203_record_tags.sql', '205_gt_record_view_active.sql',
+                   '206_prospect_industry_canonical.sql']) {
     await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
   }
 
@@ -408,5 +412,167 @@ maybe('get_prospect_stats', () => {
   it('is zero for a tenant with no records', async () => {
     const { stats } = await get_records({ scope: 'mine' }, ctxFor('44444444-4444-4444-4444-444444444444'));
     expect((stats as any).total).toBe(0);
+  });
+});
+
+maybe('build_cohort — Step 1 of the manufacturing pilot', () => {
+  // Its own tenant, so the counts here cannot be disturbed by, or disturb,
+  // the fixtures every other block above asserts against.
+  beforeAll(async () => {
+    await pool.query(`INSERT INTO vn_tenants (id,name) VALUES ($1,'Cohort')`, [C]);
+    await pool.query(
+      `INSERT INTO gt_prospects (tenant_id,is_live,ref,name,domain_normalized,industry_raw)
+       VALUES
+         ($1,false,'C-0001','Alpha Steel','alphasteel.com','Manufacturers'),
+         ($1,false,'C-0002','Beta Pharma','betapharma.com','Manufacturer'),
+         ($1,false,'C-0003','Gamma Mills',NULL,'Manufacturing & Trading'),
+         ($1,false,'C-0004','Delta Tools','deltatools.com','MFG'),
+         ($1,false,'C-0005','Telangana Mfrs Association','tma.org','Manufacturers Association'),
+         ($1,false,'C-0006','Zeta Hotels','zeta.com','Hotels & Restaurants'),
+         ($1,false,'C-0007','Eta Traders',NULL,NULL),
+         ($1,false,'C-0008','Theta Closed','theta.com','Manufacturers')`,
+      [C]);
+    // A deactivated manufacturer: real in the table, not in the cohort.
+    await pool.query(`UPDATE gt_prospects SET is_active = false WHERE ref = 'C-0008'`);
+  });
+
+  it('rejects a cluster it has no rules for, naming the ones it has', async () => {
+    await expect(build_cohort({ cluster: 'aerospace' }, ctxFor(C)))
+      .rejects.toThrow(/manufacturing/);
+  });
+
+  it('classifies without writing when asked to dry run', async () => {
+    const r = await build_cohort({ cluster: 'manufacturing', dry_run: true }, ctxFor(C));
+
+    expect(r.dry_run).toBe(true);
+    expect(r.scanned).toBe(7);            // C-0008 is deactivated
+    expect(r.matched).toBe(4);            // Manufacturers, Manufacturer, Manufacturing &, MFG
+    expect(r.excluded).toBe(1);           // the association
+    expect(r.no_rule).toBe(1);            // hotels
+    expect(r.no_industry).toBe(1);        // Eta Traders
+
+    const written = await pool.query(
+      `SELECT count(*)::int AS n FROM gt_prospects
+       WHERE tenant_id = $1 AND industry_canonical IS NOT NULL`, [C]);
+    expect(written.rows[0].n).toBe(0);
+  });
+
+  it('reports the size the pilot is actually planned on', async () => {
+    const r = await build_cohort({ cluster: 'manufacturing', dry_run: true }, ctxFor(C));
+    // Only rows with a domain can be researched — Gamma Mills cannot.
+    expect(r.with_domain).toBe(3);
+    expect(r.without_domain).toBe(1);
+    expect(r.with_domain + r.without_domain).toBe(r.matched);
+  });
+
+  it('shows which raw strings collapsed, so the rule can be checked', async () => {
+    const r = await build_cohort({ cluster: 'manufacturing', dry_run: true }, ctxFor(C));
+    expect(r.variants.map((v) => v.industry_raw).sort())
+      .toEqual(['MFG', 'Manufacturer', 'Manufacturers', 'Manufacturing & Trading']);
+  });
+
+  it('reports what it excluded rather than dropping it silently', async () => {
+    const r = await build_cohort({ cluster: 'manufacturing', dry_run: true }, ctxFor(C));
+    expect(r.excluded_samples).toEqual([
+      { industry_raw: 'Manufacturers Association', excluded_by: 'association', rows: 1 },
+    ]);
+  });
+
+  it('writes the collapsed value and tags the cohort', async () => {
+    const r = await build_cohort(
+      { cluster: 'manufacturing', tag_label: 'Pilot Manufacturing' }, ctxFor(C));
+
+    expect(r.dry_run).toBe(false);
+    expect(r.matched).toBe(4);
+    expect(r.tagged).toBe(4);
+    expect(r.tag!.label).toBe('Pilot Manufacturing');
+
+    const rows = await pool.query(
+      `SELECT ref, industry_raw FROM gt_prospects
+       WHERE tenant_id = $1 AND industry_canonical = 'manufacturing' ORDER BY ref`, [C]);
+    expect(rows.rows.map((x: any) => x.ref)).toEqual(['C-0001', 'C-0002', 'C-0003', 'C-0004']);
+
+    // The source string is provenance and is never rewritten.
+    expect(rows.rows[0].industry_raw).toBe('Manufacturers');
+  });
+
+  it('selects the whole cohort through the tag, from the normal list query', async () => {
+    const built = await build_cohort(
+      { cluster: 'manufacturing', tag_label: 'Pilot Manufacturing' }, ctxFor(C));
+    const listed = await get_records({ scope: 'mine', tag_id: built.tag!.id }, ctxFor(C));
+    expect(listed.total).toBe(4);
+  });
+
+  it('is idempotent — a second run tags nothing new', async () => {
+    const again = await build_cohort(
+      { cluster: 'manufacturing', tag_label: 'Pilot Manufacturing' }, ctxFor(C));
+    expect(again.matched).toBe(4);
+    expect(again.tagged).toBe(0);
+    expect(again.tagged_no_longer_matching).toBe(0);
+  });
+
+  it('surfaces a stale tag instead of revoking a human-visible assertion', async () => {
+    const first = await build_cohort(
+      { cluster: 'manufacturing', tag_label: 'Pilot Manufacturing' }, ctxFor(C));
+
+    // Someone hand-tags a record the rule never claimed.
+    const hotel = await pool.query(
+      `SELECT id FROM gt_prospects WHERE tenant_id = $1 AND ref = 'C-0006'`, [C]);
+    await tag_prospects(
+      { prospect_ids: [Number(hotel.rows[0].id)], tag_id: first.tag!.id }, ctxFor(C));
+
+    const r = await build_cohort(
+      { cluster: 'manufacturing', tag_label: 'Pilot Manufacturing' }, ctxFor(C));
+    expect(r.tagged_no_longer_matching).toBe(1);
+
+    // Still tagged. The rule reports, the human decides.
+    const still = await pool.query(
+      `SELECT count(*)::int AS n FROM gt_prospect_tags
+       WHERE tag_id = $1 AND prospect_id = $2`, [first.tag!.id, hotel.rows[0].id]);
+    expect(still.rows[0].n).toBe(1);
+
+    await tag_prospects(
+      { prospect_ids: [Number(hotel.rows[0].id)], tag_id: first.tag!.id, apply: false }, ctxFor(C));
+  });
+
+  it('clears a derived value the rule no longer claims', async () => {
+    // industry_canonical is derived, not asserted — unlike a tag, it must
+    // not survive a row that stopped matching.
+    await pool.query(
+      `UPDATE gt_prospects SET industry_raw = 'Hotels' WHERE tenant_id = $1 AND ref = 'C-0004'`, [C]);
+
+    const r = await build_cohort({ cluster: 'manufacturing' }, ctxFor(C));
+    expect(r.matched).toBe(3);
+
+    const left = await pool.query(
+      `SELECT industry_canonical FROM gt_prospects WHERE tenant_id = $1 AND ref = 'C-0004'`, [C]);
+    expect(left.rows[0].industry_canonical).toBeNull();
+
+    await pool.query(
+      `UPDATE gt_prospects SET industry_raw = 'MFG' WHERE tenant_id = $1 AND ref = 'C-0004'`, [C]);
+  });
+
+  // CLAUDE.md rule 7, check 3.
+  it('never touches another tenant\'s records', async () => {
+    const before = await pool.query(
+      `SELECT count(*)::int AS n FROM gt_prospects
+       WHERE tenant_id = $1 AND industry_canonical IS NOT NULL`, [C]);
+
+    const r = await build_cohort({ cluster: 'manufacturing' }, ctxFor(B));
+    expect(r.matched).toBe(0);          // B's only row carries no industry
+
+    const after = await pool.query(
+      `SELECT count(*)::int AS n FROM gt_prospects
+       WHERE tenant_id = $1 AND industry_canonical IS NOT NULL`, [C]);
+    expect(after.rows[0].n).toBe(before.rows[0].n);
+  });
+
+  // CLAUDE.md rule 7, check 2.
+  it('returns an empty report rather than erroring for a tenant with nothing', async () => {
+    const r = await build_cohort({ cluster: 'manufacturing' }, ctxFor(D));
+    expect(r.scanned).toBe(0);
+    expect(r.matched).toBe(0);
+    expect(r.variants).toEqual([]);
+    expect(r.tag).toBeNull();
   });
 });
