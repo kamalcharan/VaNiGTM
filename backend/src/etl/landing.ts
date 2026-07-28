@@ -255,6 +255,8 @@ export async function landSession(
 
   /* ── Decide and write, row by row inside one transaction per batch ──── */
 
+  const pendingUpdates: PendingUpdate[] = [];
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -373,32 +375,28 @@ export async function landSession(
         else counts.successful++;
         if (locked) counts.campaignLocked++;
 
-        await client.query(
-          `UPDATE ki_import_staging
-           SET processing_status = $2, conflict_kind = $3, conflict_target_table = $4,
-               conflict_target_id = $5, field_diff = $6::jsonb, campaign_locked = $7,
-               created_record_id = $8, created_record_type = $9,
-               error_messages = $10, processed_at = now()
-           WHERE id = $1`,
-          [
-            row.id, rowStatus, conflictKind, conflictTable, conflictTargetId,
-            diff ? JSON.stringify(diff) : null, locked,
-            createdId, createdType, errors.length ? errors : null,
-          ],
-        );
+        // Queued, not written: one UPDATE per row is the single largest
+        // source of round trips here, and it is the same shape every time.
+        pendingUpdates.push([
+          row.id, rowStatus, conflictKind, conflictTable, conflictTargetId,
+          diff ? JSON.stringify(diff) : null, locked,
+          createdId, createdType, errors.length ? errors : null,
+        ]);
+        if (pendingUpdates.length >= UPDATE_BATCH) {
+          await flushUpdates(client, pendingUpdates);
+        }
       } catch (rowErr: any) {
         // One bad row must not take the import down, and it must not be
         // silently skipped either (rule 12).
         counts.failed++;
-        await client.query(
-          `UPDATE ki_import_staging
-           SET processing_status = 'failed', error_messages = $2, processed_at = now()
-           WHERE id = $1`,
-          [row.id, [rowErr.message || 'Unknown error']],
-        );
+        pendingUpdates.push([
+          row.id, 'failed', null, null, null, null, false, null, null,
+          [rowErr.message || 'Unknown error'],
+        ]);
       }
     }
 
+    await flushUpdates(client, pendingUpdates);
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK');
@@ -437,6 +435,64 @@ export async function landSession(
 
 /* ── Writers ──────────────────────────────────────────────────────────── */
 
+/** Rows per batched staging UPDATE. 500 keeps the parameter count well
+ *  inside PostgreSQL's 65535 bind limit (10 params per row = 5,000). */
+const UPDATE_BATCH = 500;
+
+type PendingUpdate = [
+  number,            // staging id
+  string,            // processing_status
+  string | null,     // conflict_kind
+  string | null,     // conflict_target_table
+  number | null,     // conflict_target_id
+  string | null,     // field_diff (json text)
+  boolean,           // campaign_locked
+  string | null,     // created_record_id
+  string | null,     // created_record_type
+  string[] | null,   // error_messages
+];
+
+/**
+ * Write a batch of staging outcomes in ONE statement.
+ *
+ * UPDATE ... FROM (VALUES ...) rather than N updates. Every value is cast
+ * explicitly: a VALUES list has no column types to infer from, so an
+ * all-NULL column would otherwise come back as `text` and fail to assign.
+ */
+async function flushUpdates(client: PoolClient, batch: PendingUpdate[]): Promise<void> {
+  if (batch.length === 0) return;
+
+  const params: any[] = [];
+  const tuples = batch.map((u, i) => {
+    const o = i * 10;
+    params.push(...u);
+    return `($${o + 1}::bigint, $${o + 2}::text, $${o + 3}::text, $${o + 4}::text,` +
+           ` $${o + 5}::bigint, $${o + 6}::jsonb, $${o + 7}::boolean,` +
+           ` $${o + 8}::text, $${o + 9}::text, $${o + 10}::text[])`;
+  });
+
+  await client.query(
+    `UPDATE ki_import_staging AS s
+     SET processing_status = v.status,
+         conflict_kind = v.kind,
+         conflict_target_table = v.target_table,
+         conflict_target_id = v.target_id,
+         field_diff = v.diff,
+         campaign_locked = v.locked,
+         created_record_id = v.created_id,
+         created_record_type = v.created_type,
+         error_messages = v.errors,
+         processed_at = now()
+     FROM (VALUES ${tuples.join(',')})
+       AS v(id, status, kind, target_table, target_id, diff, locked,
+            created_id, created_type, errors)
+     WHERE s.id = v.id`,
+    params,
+  );
+
+  batch.length = 0;
+}
+
 function personKeyOf(p: any): string | null {
   const name = normalizePersonName(p?.name);
   if (!name) return null;
@@ -450,10 +506,10 @@ async function insertProspect(
   client: PoolClient, c: any, row: StagedRow, auth: any, session: any,
   relationship: string, sourceAsOf: string | null,
 ): Promise<number> {
-  // Tenant-facing id: PROS-0001. Raw PKs are never exposed (CLAUDE.md).
-  const seq = await client.query('SELECT gt_next_seq($1, $2) AS ref', [auth.tenant_id, 'prospect']);
-  const ref = (seq.rows[0] as any).ref;
-
+  // The tenant-facing ref (PROS-0001) is generated INSIDE the insert rather
+  // than by a preceding SELECT. Raw PKs are never exposed (CLAUDE.md), and at
+  // 2,913 rows a separate round trip per row is a second of wall clock on a
+  // socket and far worse across a network.
   const r = await client.query(
     `INSERT INTO gt_prospects
        (tenant_id, is_live, ref, load_id, source, relationship,
@@ -461,11 +517,11 @@ async function insertProspect(
         state_code, pin, country, industry_raw, employees_band, revenue_band,
         linkedin_url, year_founded, description, raw,
         completeness, validity, source_as_of, created_by)
-     VALUES ($1,$2,$3,$4,'upload',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
-             $17,$18,$19,$20,$21,$22::jsonb,$23,$24,$25,$26)
+     VALUES ($1,$2,gt_next_seq($1,'prospect'),$3,'upload',$4,$5,$6,$7,$8,$9,$10,$11,
+             $12,$13,$14,$15,$16,$17,$18,$19,$20,$21::jsonb,$22,$23,$24,$25)
      RETURNING id`,
     [
-      auth.tenant_id, auth.is_live, ref, session.load_id, relationship,
+      auth.tenant_id, auth.is_live, session.load_id, relationship,
       c.name, c.domain_normalized, c.website, c.email, c.phone, c.address_line,
       c.city, c.state_code, c.pin, c.country, c.industry_raw, c.employees_band,
       c.revenue_band, c.linkedin_url, c.year_founded, c.description,
@@ -501,22 +557,26 @@ async function insertContact(
 async function insertChannels(
   client: PoolClient, contactId: number, p: any, auth: any,
 ): Promise<number> {
-  let n = 0;
-  const channels: [string, string | null][] = [
-    ['email', p.email],
-    ['mobile', p.mobile],
-  ];
-  for (const [type, value] of channels) {
-    if (!value) continue;
-    await client.query(
-      `INSERT INTO gt_contact_channels
-         (contact_id, tenant_id, is_live, channel_type, channel_value, is_primary, source)
-       VALUES ($1,$2,$3,$4,$5,true,'upload')`,
-      [contactId, auth.tenant_id, auth.is_live, type, value],
-    );
-    n++;
-  }
-  return n;
+  const channels = ([['email', p.email], ['mobile', p.mobile]] as const)
+    .filter(([, v]) => Boolean(v));
+  if (channels.length === 0) return 0;
+
+  // One statement for both channels rather than one each — the same round-trip
+  // argument as the ref above, doubled across every person in the file.
+  const values: any[] = [];
+  const tuples = channels.map(([type, value], i) => {
+    const o = i * 5;
+    values.push(contactId, auth.tenant_id, auth.is_live, type, value);
+    return `($${o + 1},$${o + 2},$${o + 3},$${o + 4},$${o + 5},true,'upload')`;
+  });
+
+  await client.query(
+    `INSERT INTO gt_contact_channels
+       (contact_id, tenant_id, is_live, channel_type, channel_value, is_primary, source)
+     VALUES ${tuples.join(',')}`,
+    values,
+  );
+  return channels.length;
 }
 
 /**

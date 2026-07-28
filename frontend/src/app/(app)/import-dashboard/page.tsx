@@ -7,7 +7,7 @@ import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
-import { VdfStatusBadge, VdfLoader, VdfProactiveCard, VdfEmptyState, VdfButton, VdfStatCard, VdfPageHeader, type BadgeVariant } from '@/components/vdf';
+import { VdfStatusBadge, VdfLoader, VdfProactiveCard, VdfEmptyState, VdfButton, VdfStatCard, VdfPageHeader, VdfModal, type BadgeVariant } from '@/components/vdf';
 import d from '@/styles/data.module.css';
 import s from './dashboard-page.module.css';
 
@@ -267,6 +267,8 @@ export default function ImportDashboardPage() {
   const [patchingRecord, setPatchingRecord] = useState(false);
   const [reprocessingId, setReprocessingId] = useState<number | null>(null);
   const [resolving, setResolving] = useState(false);
+  const [processingStaged, setProcessingStaged] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [rowChoices, setRowChoices] = useState<Record<string, 'keep' | 'take'>>({});
   const [recordsVersion, setRecordsVersion] = useState(0);
   const [syncingStats, setSyncingStats] = useState(false);
@@ -395,9 +397,42 @@ export default function ImportDashboardPage() {
     finally { setReprocessing(false); }
   }
 
+  /**
+   * Move staged rows into the live tables.
+   *
+   * The /import wizard does this automatically as part of one action, so this
+   * is for a session that stopped short — staged before landing existed, or
+   * interrupted. Without it a staged session is a dead end: 2,913 rows sitting
+   * in the dashboard with no way to bring them in.
+   */
+  async function handleProcessStaged() {
+    if (!selectedSession || processingStaged) return;
+    setProcessingStaged(true);
+    try {
+      const path = API.etl.process.path.replace(':id', String(selectedSession.id));
+      const r = await apiFetch<{
+        successful: number; duplicate: number; conflict: number;
+        failed: number; landed?: { companies: number; people: number };
+      }>({ ...API.etl.process, path });
+
+      const bits = [`${r.successful.toLocaleString()} imported`];
+      if (r.duplicate > 0) bits.push(`${r.duplicate.toLocaleString()} already held`);
+      if (r.conflict > 0) bits.push(`${r.conflict.toLocaleString()} need your call`);
+      if (r.failed > 0) bits.push(`${r.failed.toLocaleString()} failed`);
+      showToast({ message: bits.join(' · '), type: r.failed > 0 ? 'warning' : 'success' });
+
+      fetchSessions();
+      refreshRecords();
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Could not import staged rows', type: 'error' });
+    } finally {
+      setProcessingStaged(false);
+    }
+  }
+
   async function handleDeleteStaging() {
     if (!selectedSession || deletingStaging) return;
-    if (!confirm('Permanently delete staging data? You won\'t be able to reprocess.')) return;
+    setConfirmDelete(false);
     setDeletingStaging(true);
     try {
       await apiFetch<any>({ ...API.etl.deleteStaging, path: API.etl.deleteStaging.path.replace(':id', String(selectedSession.id)) });
@@ -669,8 +704,23 @@ export default function ImportDashboardPage() {
                         ⚠ {syncingStats ? 'Syncing...' : 'Sync Stats'}
                       </button>
                     )}
+                    {/* Staged but not landed. The wizard does this as part of
+                        one action; a session that stopped short would
+                        otherwise be a dead end. */}
+                    {['staged', 'completed_with_errors'].includes(selectedSession.status) && (
+                      <button
+                        className={s.pageBtn}
+                        onClick={handleProcessStaged}
+                        disabled={processingStaged}
+                        title="Move these staged rows into your live data"
+                      >
+                        {processingStaged
+                          ? 'Importing…'
+                          : `Import ${selectedSession.total_records.toLocaleString()} staged rows →`}
+                      </button>
+                    )}
                     <button style={{ color: 'var(--color-danger)', fontSize: '0.72rem', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-                      onClick={handleDeleteStaging} disabled={deletingStaging}>
+                      onClick={() => setConfirmDelete(true)} disabled={deletingStaging}>
                       {'\u{1F5D1}'} {deletingStaging ? 'Deleting...' : 'Delete Staging'}
                     </button>
                   </div>
@@ -964,6 +1014,42 @@ export default function ImportDashboardPage() {
         </>
       );
       })()}
+
+      {/* Destructive confirmation belongs in the app's own chrome, not a
+          browser dialog — window.confirm cannot be themed, cannot say what is
+          actually being deleted, and reads as the page misbehaving. */}
+      <VdfModal
+        isOpen={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title="Delete staging data?"
+        subtitle={selectedSession
+          ? `${selectedSession.total_records.toLocaleString()} staged rows from ${selectedSession.original_filename ?? 'this import'}`
+          : undefined}
+        width="sm"
+        footer={
+          <>
+            <VdfButton variant="ghost" onClick={() => setConfirmDelete(false)}>
+              Cancel
+            </VdfButton>
+            <VdfButton variant="danger" onClick={handleDeleteStaging} disabled={deletingStaging}>
+              {deletingStaging ? 'Deleting…' : 'Delete staging data'}
+            </VdfButton>
+          </>
+        }
+      >
+        <p style={{ color: 'var(--color-muted)', lineHeight: 1.6 }}>
+          This removes the staged rows permanently. Anything already imported
+          into your live data stays — only the staging copy goes, and this
+          import can no longer be reprocessed or retried.
+        </p>
+        {selectedSession && ['staged', 'needs_review'].includes(selectedSession.status) && (
+          <p style={{ color: 'var(--color-warning)', lineHeight: 1.6, marginTop: 12 }}>
+            {selectedSession.status === 'staged'
+              ? 'These rows have not been imported yet. Deleting now discards them entirely.'
+              : 'Some rows are still waiting on your decision. Deleting now discards those decisions.'}
+          </p>
+        )}
+      </VdfModal>
     </div>
   );
 }

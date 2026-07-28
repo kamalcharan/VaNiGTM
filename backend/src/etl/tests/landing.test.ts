@@ -436,6 +436,34 @@ maybe()('landSession — the common pool', () => {
   });
 });
 
+maybe()('landSession — at the real file size', () => {
+  // The FTCCI file is 2,913 rows. The landing issues statements per row, so
+  // this is where a design that is fine for ten rows becomes a request that
+  // hangs. Measured here so a regression shows up as a number, not as a user
+  // watching a spinner.
+  it('lands 2,913 rows', async () => {
+    const rows = Array.from({ length: 2913 }, (_, i) => ({
+      mapped: {
+        company: company({ name: `Scale Co ${i}`, domain_normalized: `scale${i}.com` }),
+        people: [person({ name: `Person ${i}`, company_domain: `scale${i}.com`, email: `p${i}@scale${i}.com` })],
+      },
+      dedup_key: `d:scale${i}.com`,
+    }));
+
+    const r = await stageAndLand(rows);
+
+    expect(r.successful).toBe(2913);
+    expect(r.landed.companies).toBe(2913);
+    expect(r.landed.people).toBe(2913);
+    expect(r.conflict).toBe(0);
+
+    // Reported so the cost is visible in CI output rather than guessed at.
+    // eslint-disable-next-line no-console
+    console.log(`[scale] 2,913 rows landed in ${(r.duration_ms / 1000).toFixed(1)}s ` +
+                `(${(r.duration_ms / 2913).toFixed(2)} ms/row)`);
+  }, 180000);
+});
+
 maybe()('the checksum guard (migration 202)', () => {
   it('refuses a second active load of identical bytes', async () => {
     await pool!.query(
