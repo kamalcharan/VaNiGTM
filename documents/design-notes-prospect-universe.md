@@ -23,30 +23,45 @@ Consequence for the wizard: the Storytelling / Campaigns / Follow-ups entries
 come out of the step rail. They are destinations that unlock in mission
 control, and listing them as steps implies a wizard that never finishes.
 
-### 1.1 Two phases — the first one is much smaller than this document
+### 1.1 Build order (user ruling, 2026-07-27 — supersedes the earlier split)
 
-User ruling, same day: *"we will show global data — like FTCCI, but that
-won't create a campaign, it will only create a CRO push. Once that's in
-place, we go for real prospecting."*
+> *"For the moment we will go with the user uploading his data. We will have
+> FTCCI and others as a common pool available to tenants based on business
+> model."*
 
-**Phase A — market evidence + conversion push.** The universe is shown
-**read-only**: here is your market, this many companies in your industries.
-It is a conversion lever aimed at the tenant, not an outreach campaign aimed
-at buyers. Nothing is adopted, nothing is contacted.
+So **BYO upload ships first**, and the common pool follows as an
+entitlement — access granted by plan, not to everyone.
 
-Needs only: `gt_data_sources` (193), `gt_universe_company_sources` (194),
-`gt_universe_companies` + aliases (195), industry taxonomy (199).
-**Four migrations.**
+**Phase A — the tenant's own data.**
+`gt_source_loads` + quality/dedup pipeline (193) · industry taxonomy (199) ·
+`gt_prospects` + `gt_contacts.prospect_id` (197) · staging quality columns
+(200). The etl `501` at `etl.routes.ts:338` becomes a real landing step.
 
-Deferred entirely: `gt_universe_contacts` (196) — so the DPDP question in
-§4.5 does not have to be answered yet, because Phase A ships **companies
-only**. Also deferred: `gt_prospects` (197), `gt_connectors` (198), staging
-quality columns (200).
+**Phase B — the common pool.** `gt_universe_*` (194–196), entitlement gating,
+coverage (201). Then Apollo and the connector registry (198).
 
-**Phase B — real prospecting.** Adoption into a tenant working set, contacts,
-Apollo, campaigns. Everything else in this document.
+**The pipeline is the same for both, and that is the point.** An upload *is*
+a load — same `gt_source_loads` row, `source = 'upload'`, scoped to the
+tenant that sent it. Everything in §5 (quality components), §6 (identity and
+dedup) and §3 (field-level merge) applies unchanged to a tenant's own file.
+Only the destination table differs: tenant uploads land in `gt_prospects`,
+common-pool loads land in `gt_universe_companies`.
 
-### 1.2 Coverage honesty is a Phase A requirement, not a polish item
+That ordering is lower-risk than it looks, because the tenant side exercises
+the hard machinery — normalise, score, dedup, merge, upsert — against real
+files before any of it touches shared data.
+
+**Uploads need this machinery as much as directories do.** The provider CSV
+profiled in §2 was a *tenant-shaped* file, and it carried `undefined+` in 60
+of 119 revenue values and `Nov-50` 34 times in the employee column. Dedup,
+freshness and validity are not universe-only concerns; they are what stops a
+tenant's own import from quietly poisoning their pipeline.
+
+**Design constraint carried forward:** `gt_prospects.universe_company_id` is
+nullable from day one, so adoption from the pool in Phase B needs no
+migration of Phase A rows.
+
+### 1.2 Coverage honesty (applies whenever the common pool is shown)
 
 FTCCI is a Telangana chamber directory: **87% of its 2,913 members are
 Hyderabad or Secunderabad** (2,541 rows), 2,840 of 2,913 PINs start with
@@ -388,8 +403,11 @@ at the loser keep resolving through the alias.
 | 200 | `ki_import_staging` quality columns |
 | 201 | `gt_universe_coverage` (materialised) |
 
-199 is the only one onboarding itself depends on — "mark industries" is a
-step-3 requirement. The rest serve mission control and can land later.
+**Phase A order:** 193 · 199 · 197 · 200 — the tenant's own uploads, end to
+end. **Phase B:** 194 · 195 · 196 · 201, then 198.
+
+199 is also the only one onboarding itself depends on — "mark industries" is
+a wizard requirement, independent of either phase.
 
 All guarded and idempotent (`IF NOT EXISTS`, DO-block existence checks).
 Manual apply only — `npm run db:migrate`.
