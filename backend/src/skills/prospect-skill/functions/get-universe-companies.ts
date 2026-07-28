@@ -58,6 +58,8 @@ export interface UniverseCompany {
   shares_block: boolean;
   load_label: string | null;
   source_code: string | null;
+  /** The complete original row from the file. */
+  raw: Record<string, unknown>;
   tags: { id: number; label: string; inherited: boolean }[];
 }
 

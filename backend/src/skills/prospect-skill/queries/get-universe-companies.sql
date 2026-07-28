@@ -28,6 +28,11 @@ paged AS (
         u.industry_raw, u.employees_band, u.revenue_band, u.linkedin_url,
         u.year_founded, u.description,
         u.completeness, u.validity, u.source_as_of, u.load_id,
+        -- The untouched source row. Every column the file carried, including
+        -- the ones no field claimed — a membership number, a fax, the
+        -- representatives. Nothing was discarded at import, so nothing is
+        -- withheld here.
+        u.raw,
         u.company_id IS NOT NULL AS resolved,
         (u.blocking_key IN (SELECT blocking_key FROM dupe_block)) AS shares_block
     FROM gt_universe_company_sources u

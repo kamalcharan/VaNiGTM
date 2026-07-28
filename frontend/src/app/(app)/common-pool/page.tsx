@@ -48,6 +48,8 @@ interface PoolCompany {
   load_label: string | null;
   source_code: string | null;
   tags: Tag[];
+  /** Every column the file carried, untouched. */
+  raw: Record<string, unknown>;
 }
 
 interface PoolStats {
@@ -278,6 +280,26 @@ export default function CommonPoolPage() {
                 <span>{(value as string) || '—'}</span>
               </div>
             ))}
+            {/* Everything else the file carried — the columns no field
+                claimed. For a chamber directory that is the panel code, the
+                membership number, the fax, and the representatives. They were
+                never discarded at import, so they are shown here in full. */}
+            {detail.raw && Object.keys(detail.raw).length > 0 && (
+              <>
+                <div className={s.detailLabel} style={{ marginTop: 20, marginBottom: 6 }}>
+                  Everything from your file ({Object.keys(detail.raw).length} columns)
+                </div>
+                {Object.entries(detail.raw).map(([col, value]) => (
+                  <div key={col} className={s.detailRow}>
+                    <span className={s.detailLabel}>{col}</span>
+                    <span style={{ textAlign: 'right', wordBreak: 'break-word' }}>
+                      {value === null || value === undefined || value === '' ? '—' : String(value)}
+                    </span>
+                  </div>
+                ))}
+              </>
+            )}
+
             {detail.shares_block && (
               <div className={s.note} style={{ marginTop: 12 }}>
                 This row shares its identifier with another row in the pool.
