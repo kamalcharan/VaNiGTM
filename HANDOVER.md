@@ -2,205 +2,262 @@
 
 > **This doc is the sole continuity between sessions.** The next session starts
 > with zero memory — read this first, then `CLAUDE.md`.
-> **Current state (2026-07-27):** work lives on branch
-> **`claude/handover-docs-readiness-ajq5q2`** (NOT merged to main, no PR
-> opened — the user has not asked for one). Everything below is pushed.
-> The earlier `…-oqwyhl` branch is gone; its history is contained in this one.
-> **Supersedes** the earlier Phase 3 handover (that content is in git history).
+> **Current state (2026-07-28):** work was developed on
+> **`claude/handover-docs-readiness-ajq5q2`** and **merged to `main`** at the
+> user's request. Everything below is pushed.
+
+---
+
+# 📌 STANDING PRODUCT DECISIONS
+
+> **Read this section before proposing anything.** These were re-derived from
+> scratch in the 2026-07-27 session because the handover recorded only the
+> *next task*, not the *rulings*. The user had to repeat decisions they had
+> already given. That is the failure this section exists to prevent — when a
+> ruling is made, it belongs here immediately.
+
+### Scope of onboarding
+- **Onboarding ends at "ideal customer".** Profile → vocabulary → competitors
+  → ideal customer, and that is setup complete.
+- **Prospect discovery, campaigns and everything downstream live inside the
+  product**, not the wizard. Storytelling / Campaigns / Follow-ups are
+  destinations that unlock in mission control — they should come OUT of the
+  wizard's step rail (not yet done).
+- Onboarding must also **capture the industries the tenant sells to**.
+
+### Prospect data
+- **No web-search buyer discovery.** *"We are not there yet — we will only
+  work on available data for now."* Nothing is sourced by crawling.
+- **Two pools, one pipeline:** a tenant's own uploads, and a common pool
+  (FTCCI and other directories) **available to tenants based on business
+  model** — an entitlement, not a default.
+- **BYO upload ships first**; the common pool follows.
+- **Seeding happens from UI upload.** Do not pre-seed taxonomies — industry
+  values and their aliases come from the uploaded data itself and are curated
+  afterwards on real values.
+- More data is coming **soon**: further FTCCI chapters across India, other
+  federations of commerce, Telangana hospital groups, manufacturing
+  associations. Design for many overlapping datasets, not one file.
+- Data principles the user has stated more than once: **multiple sources,
+  freshness, data quality, deduplication, upsert on re-delivery, and better
+  quality wins on conflict.**
+
+### The CRO push
+- The common pool is shown as **market evidence** and creates a **CRO push**,
+  not a campaign. CRO here = the **conversion moment** aimed at the tenant:
+  free credits, expected outcomes (emails → replies → meetings), social proof,
+  Stripe card capture under "you won't be charged yet". It is **not** the
+  landing-page audit lens the PRD defines at line 86.
+- *"Once that's in place, we go for real prospecting."*
+
+### Out of scope right now
+- Audit / AEO schema (user ruling).
+- Universe **contacts** — the common pool ships **companies only**, which
+  defers the DPDP/GDPR question rather than answering it under pressure.
+
+### Working rules
+- **Use the existing ETL / import infrastructure. Do not create new.**
+- n8n will connect the user's email/Gmail and send from it (Phase B, outreach).
 
 ---
 
 # 🔴 START HERE — the immediate next task
 
-## 1. Rebuild the wizard's mission-memory rail (Phase 1 close-out)
+## The upload option the user cannot see
 
-**Status: ✅ BUILT for steps 1–4 (2026-07-27). Steps 5–6 deferred — see the
-open question at the end of this section.**
+**`/import` exists** (sidebar → Data → "Import Data") and its whole wizard
+works — upload → map → stage. The reason there is no way to upload companies
+is one MFD-era leftover in
+`frontend/src/app/(app)/import/page.tsx:51`:
 
-### What shipped
-`VdfMissionMemory` + `VdfMissionArtifact` (`components/vdf/mission-memory/`)
-replace the old `VdfMissionRail`, which is deleted. Both `/onboarding` and
-`/design/wizard` use them, and `VdfWizard` gained `variant="mission"` for the
-top rail. Verified by driving `/design/wizard` in a real browser and looking
-at the screenshots — see "How to actually see it" below, which now applies to
-reviewing the build too, not just the reference.
-
-**The rule the reference actually encodes** — and the thing three earlier
-attempts missed: each step reduces into the rail in its OWN shape, and the
-reduction is an editorial decision per step, not a mechanical narrowing.
-
-| Step | Files into memory | Shape |
-|---|---|---|
-| 1 Research company | the company card again, narrow | `VdfMissionCard` — logo, name, domain inline, FULL description paragraph, tags. Drops the status badge and the keyword chips |
-| 2 Competitors | the competitor set only | `VdfMissionSection` + `VdfMissionChips` — 2-up domain chips, external-link icons, `+N more`. The product summary and search queries are DISCARDED |
-| 3 Ideal customer | buyer + vocabulary | `VdfMissionRows` (buyer role, company type, pain points) + a `Market vocabulary` chip section |
-| 4+ operational | nothing but a separator | reference pages 7–8: steps 4/5/6 stack as hairline labels with no card — their tables live on the stage, not in memory |
-
-Other verified-from-the-image behaviours now implemented:
-- Step labels are **hairline mono separators** (`√ step 1 · Research company`),
-  a rule between artifacts — not a heading over one.
-- The **top rail carries no labels except the active one**, which is a pill
-  with a live dot. Completed steps stay plain numbered circles: no checkmark
-  up top, because completion is recorded in the memory rail. This was the
-  actual root of the duplication the user reported.
-- The rail **scrolls and follows its tail** as the mission grows.
-- The active step's slot is **pre-announced** (dashed landing zone) before its
-  artifact exists — that empty slot is what `useMissionHandoff` measures, and
-  it is why the flight reads as filing rather than appearing. `expectsArtifact`
-  distinguishes "hasn't arrived yet" from "never files one", so operational
-  steps don't advertise a landing zone that stays empty forever.
-
-### ⚠️ Open question blocking steps 5–6
-Reference page 8 shows steps 4/5/6 rendered as **tabs over one workspace**
-(`Companies · People · Emails`), not three sequential stages — yet page 7 shows
-step 5 as its own numbered circle in the top rail, and page 8 crops the top
-rail out entirely. So: **does the top rail show 6 circles, or do 4–6 collapse
-into one because they're tabs?** The reference does not answer itself. Ask the
-user before building steps 5–6; do not guess. (Our live wizard currently has
-6 circles and steps 4–6 are locked, so nothing is broken meanwhile.)
-
-Also note the live wizard's steps are NOT the reference's: ours are
-company → competitors → **ideal customer** → story/campaigns/follow-ups
-(locked), against the reference's company → competitors → **campaigns** →
-customers → decision makers → emails. The artifact shapes were mapped onto
-our steps, not copied positionally.
-
-### The mistake to not repeat
-Three attempts at this failed because **I never actually looked at
-`documents/ux-references/agent-wizard-flow.pdf`** — `pdftoppm` is NOT
-installed in this container and the install fails, so I designed from the
-README's *prose description* instead and got it wrong three times. The user
-finally said: *"you are still showing wizard steps but with couple of lines
-of data … you are not coming out of the thinking shell."* They were right.
-
-**HOW TO ACTUALLY SEE IT (do this first):**
-```bash
-pip install --quiet pymupdf
-python3 -c "
-import fitz, os
-d = fitz.open('documents/ux-references/agent-wizard-flow.pdf')   # 8 pages
-os.makedirs('/tmp/pdf', exist_ok=True)
-for i in range(d.page_count):
-    d[i].get_pixmap(dpi=100).save(f'/tmp/pdf/p{i+1}.png')
-"
-```
-Then Read the PNGs. **Read all 8 pages, in order** — the pattern is only
-legible as a sequence, and pages 7–8 carry the rule that steps 4–6 file no
-artifact. Reading only 1→3 is how the first pass got the reduction table
-wrong. (Renders are internal-reference only: per
-`documents/ux-references/README.md` nothing from that folder may ship as an
-asset, and the renders must NOT be committed.)
-
-**HOW TO SEE WHAT YOU BUILT** — the same discipline applies to the build.
-`/design/wizard` plays itself with synthetic data and no backend, so it can
-be driven headlessly. Playwright is not in `frontend/node_modules`; install
-it in a scratch dir and pin the pre-installed browser (the bundled version
-does not match `/opt/pw-browsers`):
 ```js
-chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' })
+const IMPORT_TYPES = [
+  { id: 'customer', label: 'Customers', … enabled: true },
+];
 ```
-Pause autoplay first and click `Confirm & continue` to step through —
-screenshotting on a timer races the 620ms handoff and captures blank frames.
 
-### Gotcha that will bite again
-**There is no global `box-sizing: border-box` reset in this app.** Any padded,
-bordered `width: 100%` child of a fixed-width container overflows it by
-exactly its padding + border. Every box in `mission-memory` sets `box-sizing`
-explicitly for this reason.
+**The task:**
+1. Add a `company` entry to `IMPORT_TYPES` (label it for prospects/companies).
+2. When `isAdmin` (from `useAuth()`), show a **destination** choice:
+   *My prospects* → `destination: 'prospects'` · *Common pool* →
+   `destination: 'universe_companies'`. Non-admins never see it.
+3. Pass `destination` (and optionally `load_label`, `load_region`,
+   `load_as_of`) on `POST /api/v1/etl/sessions`.
 
-## 2. Pending USER actions (blocking live verification)
-- ⚠️ **Apply migrations 191 + 192** — `cd backend && npm run db:migrate`.
-  Neither is confirmed applied. Without 192 the market-vocabulary tags never
-  appear and research silently uses the weaker profile-guess path (it says
-  so in the feed).
-- ⚠️ **`ANTHROPIC_API_KEY` in `backend/.env`** — enables the Claude failover.
-  Not confirmed set. Hard-restart API + worker after (tsx watch reloads
-  code, not env).
-- ⚠️ **VPS LLM is too slow**: `LLM_PRIMARY_TIMEOUT_MS` has been **280000 the
-  whole time** and calls to `https://llm.dristiq.com` STILL time out — single
-  qwen calls exceed 4.6 minutes. Unknown: CPU vs GPU (`curl
-  https://llm.dristiq.com/api/ps` never provided). The failover makes this
-  survivable; it does not make it fast. **Use the Haiku path for demos and
-  for recording the landing loop.**
-- **No end-to-end journey has EVER been verified through the UI.** All the
-  code for journey #1 exists (register → crawl → vocabulary → competitors →
-  ideal customer → mission control). Proving it is the shortest path to a
-  real DoD.
+**The backend for this is already done and pushed.** `import_type: 'company'`
+is accepted, `destination` is honoured, the admin gate returns 403 for a
+non-admin asking for the pool (read from the JWT, never the body), and every
+company import creates a `gt_source_loads` row.
 
-## 3. Phase 1 remaining (everything else is done)
-- a) **User ruling:** make neural-ops the product default theme (one line —
-  `NEXT_PUBLIC_DEFAULT_THEME` or the provider default).
-- b) ⏸️ **Explainer video re-record — PARKED, OWNED BY THE USER.** They are
-  visualising a different approach and will say when ready. **Do NOT
-  re-record unprompted.** When it happens, record from
-  `/design/wizard` (plays itself, synthetic data, no backend) or
-  `/onboarding?record=1` (real flow, no countdown chrome).
-- c) **"Wow" sign-off** — the DoD gate itself.
+## Then: landing (the `501`)
 
-## 4. Where the POA actually stands (assessed 2026-07-27)
+`POST /etl/sessions/:id/process` still returns **501** at
+`backend/src/etl/etl.routes.ts`. That is the last piece: staged rows →
+`gt_prospects` (tenant) or `gt_universe_company_sources` → resolve →
+`gt_universe_companies` (pool).
 
-| Phase | State | Detail |
-|---|---|---|
-| 0 — Legacy removal | ✅ complete | |
-| 1 — UX Foundation | ✅ build done | only the 3 user items above remain |
-| 2 — Data modelling | ⚠️ ~20%, **out of order** | see the warning below |
-| 3 — Skills (1→8) | ⚠️ 2 of 8 | ✅ profile-skill v2, ✅ research-skill. ❌ audit, prospect, outreach, feedback, creative. story-skill is v1 only |
-| 4 — Stitching | ⚠️ 1 of 5 journeys | onboarding built in code; **E2E acceptance never achieved** |
-| 5 — Hardening | ❌ not started | RLS cutover still dormant — required pre-production |
+Everything it needs exists: `backend/src/etl/company-processor.ts` does
+mapping, normalisation, quality scoring and dedup keys, and is **verified
+against real rows from both source files**.
 
-> ⚠️ **The finding worth acting on.** We have been building Phase 3 while
-> Phase 2 is barely started — the exact failure mode Phase 2 ("one coherent
-> modelling pass") was written to prevent. Schema has arrived piecemeal per
-> skill: migration 191 (checkpoints), 192 (semantic clusters — an explicit
-> Phase 2 item pulled forward, deliberately forward-compatible). Still
-> unmodelled: prospect staging, the universal connector registry, story
-> artifacts (campaign × persona × stage), the whole audit schema (runs, lens
-> scores, AEO visibility history), creative assets, orchestrator locks. No
-> ERD. The `ki_` → `gt_` rename is still pending.
->
-> **Recommendation given to the user:** prove journey #1 end-to-end first
-> (shortest path to a real DoD, and the code already exists), then **stop and
-> do Phase 2 properly** before skill #3 — audit-skill and prospect-skill each
-> need their own schema, and piecemeal migrations will cost rework for the
-> rest of the build.
+**Postgres 16 is installed in this container.** You can stand up a scratch
+cluster and load the real 2,913-row FTCCI file end to end — see "How to verify
+without the VPS" below. Do that; it is the fastest way to make this real.
 
 ---
 
-## ✅ Phase 0 (legacy removal) COMPLETE — 2026-07-25
-kewalinvest submodule gone; contact layer is gt_contacts/gt_contact_channels
-(migrations 187/189/190 applied + verified: gt_next_seq → CONT-0001, pulse
-client_id nullable); MFD skills/pages/routers removed (~27k lines); etl
-pipeline + pulse-skill KEPT and retargeted to contacts (etl processing = 501
-until prospect-skill); CLAUDE.md fully rewritten GTM-only. DB inventory =
-vn_ + gt_ + 9 kept ki_ import/pulse tables (rename in POA Phase 2).
-Read-only DB MCP connector prepared (.mcp.json + docs/mcp-db-setup.md) —
-VPS-side setup pending (user runs VPS steps + claude.ai env settings).
+# ⚠️ PENDING USER ACTIONS
 
-## Session log — 2026-07-27 (branch `claude/handover-docs-readiness-oqwyhl`)
+- **Migrations 193–197 are APPLIED** (confirmed by the user 2026-07-28).
+  191 + 192 were confirmed applied earlier.
+- ⚠️ **`ANTHROPIC_API_KEY` in `backend/.env`** — enables the Claude failover.
+  Still not confirmed.
+- ⚠️ **VPS LLM is too slow.** `LLM_PRIMARY_TIMEOUT_MS` has been 280000 the
+  whole time and calls to `https://llm.dristiq.com` still time out. That host
+  is **blocked from this container** (proxy returns 403 CONNECT), so it cannot
+  be diagnosed from here — run `curl -s https://llm.dristiq.com/api/ps`
+  locally, or allowlist the host.
+- ⚠️ **DB MCP connector.** `.mcp.json` pointed at `mcp-gtm.dristiq.com`, which
+  answers nothing. Fixed to **`mcp-db.dristiq.com`**, which answers 401
+  (reachable, wants auth). Still needs: `GTM_MCP_BASIC` set in the Claude
+  environment, the host allowlisted, and **confirmation it serves
+  `vani_gtm_db`** and not another product's database.
+- **No end-to-end journey has EVER been verified through the UI.**
 
-Newest first. All pushed. Detail for each is in the phase sections below.
+---
+
+# 🧪 WHAT IS VERIFIED vs WHAT IS NOT
+
+Be honest about this in every future session — it was the biggest risk on
+2026-07-27, when four changes landed on journey #1 with none of them run.
+
+**Verified against a real Postgres** (scratch cluster, this container):
+- Migrations 193–197 apply and **re-apply** cleanly (guards hold).
+- RLS on for `gt_prospects` and `gt_tenant_target_industries`, off for the
+  cross-tenant pool — checked against `pg_tables` / `pg_policies`.
+- `destination` CHECK rejects unknown values.
+- Generated `name_key` emits `[AUTOMOTIVE MANUFACTURERS]`, `[QUILL LEDGER]`.
+
+**Verified against the real source files:**
+- `company-processor` on FTCCI and provider rows: domain from a bare host,
+  first-of multi-value email/phone, **PIN "500 003" → TG**, and both junk
+  patterns rejected with reasons — `"Nov-50"` (spreadsheet date coercion) and
+  `"undefined+"` (populated but meaningless).
+
+**Verified in a browser:**
+- `/design/wizard` mission rail, all four steps, at two viewports.
+- `/landing` plays the re-recorded hero loop (11.1s, 593KB, single webm).
+
+**NOT verified — needs a live backend and an authenticated tenant:**
+- The whole `/onboarding` journey, including everything shipped on 2026-07-27:
+  the rail rebuild, the boot rehydration, the competitors fix, and the
+  **vocabulary reorder** (which moved step indices, added a poll and relocated
+  an approval call).
+- The ETL destination/admin gate.
+
+---
+
+# 🔧 How to verify without the VPS
+
+Two things this container CAN do that earlier sessions assumed it could not.
+
+**Postgres 16 is installed.** Stand up a scratch cluster and apply migrations
+for real rather than reviewing SQL by eye — this is how the `name_key`
+trailing-space bug was caught:
+```bash
+mkdir -p /tmp/pg && chown postgres:postgres /tmp/pg
+su postgres -c "/usr/lib/postgresql/16/bin/initdb -D /tmp/pg/data -U postgres --auth=trust"
+su postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D /tmp/pg/data -o '-p 55432 -k /tmp' -l /tmp/pg/log start"
+psql -h /tmp -p 55432 -U postgres -c "CREATE DATABASE scratch;"
+```
+
+**Chromium + Playwright work**, but the bundled browser version does not match
+`/opt/pw-browsers`. Install playwright in a scratch dir and pin the binary:
+```js
+chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' })
+```
+`/design/wizard?record=1` plays itself with synthetic data and no backend, and
+strips all review chrome — that is what the landing hero loop is recorded from.
+Pause autoplay and click through rather than screenshotting on a timer, which
+races the 620ms handoff and captures blank frames.
+
+**Blocked from this container:** `llm.dristiq.com`, `mcp-gtm.dristiq.com`
+(403 CONNECT). `mcp-db.dristiq.com` reaches but 401s.
+
+---
+
+# 🧱 Gotchas that will bite again
+
+1. **There is no global `box-sizing: border-box` reset in this app.** Any
+   padded, bordered `width: 100%` child of a fixed-width container overflows
+   by exactly its padding + border.
+2. **Read the whole reference, in order.** `documents/ux-references/agent-wizard-flow.pdf`
+   is 8 pages (and is byte-identical to the file sometimes called `UI.pdf` —
+   same MD5). Reading only 1→3 produced a wrong reduction table; pages 7–8
+   carry the rule that steps 4–6 file no artifact. `pdftoppm` is unavailable;
+   use `pip install pymupdf` and render at dpi, then Read the PNGs. **Renders
+   must not be committed.**
+3. **Clusters are drafted at the END of ingestion.** `draft_profile`
+   (`ingestion.agent.ts:245`) releases the wizard to show step 1, but
+   `KNOWLEDGE_UPDATED` (line 445) is what triggers `generateClusters`. Anything
+   assuming vocabulary is available with the profile card is wrong.
+4. **The wizard used to rebuild itself from `gt_tenant_profile` alone**, so
+   competitors, run steps and clusters evaporated on reload. Fixed — but the
+   pattern is worth checking whenever new agent output is added.
+
+---
+
+# 📋 Session log — 2026-07-27/28
+
+Newest first. All merged to `main`.
 
 | Commit | What |
 |---|---|
-| `a48df22` | Handoff extracted to `hooks/useMissionHandoff.ts`; **`/design/wizard` now plays itself** (autoplay + replay, synthetic data, no backend) — the fast way to review the motion |
-| `da4fe6b` | Handoff became a **measured FLIP** (was a fade that read as "card vanished") |
-| `24534fb` | Engaging long waits: `VdfKgLoader` `subject`/`rotating`/`patienceAfter`; **recording mode `/onboarding?record=1`** |
-| `4fe84f7` | Wizard flow = agent handoff; **auto-advance with a 7s interruptible countdown** (`VdfApprovalCard.autoConfirmMs`) |
-| `de35611` | **Terminology pass** — ICP → *Ideal Customer*, Pulses → *Follow-ups*, AEO spelled out (prospect feedback) |
-| `8b62c56` | Value Proposition Canvas **parked to the loop** with feasibility mapped |
-| `ecaca3a` | Claude **marketing playbooks** captured as agent blueprints |
-| `bf7dbeb` | **Semantic clusters** (migration 192) — market vocabulary now frames competitor search |
-| `360bc35` | Fix: *"Research again"* looked like a no-op while the run proceeded invisibly |
-| `57d41e9` | Competitor **ignore list** + wrong-domain guard |
-| `0b273f3` | **Claude API failover** for VPS LLM transport failures |
-| `857804e` | **Resume-from-failure** — checkpoints (migration 191) + incremental KG writes |
-| `272c170` | GTM pipeline v2 — competitors step in, Storyteller out to `/dashboard/storyteller` |
+| `50ddbed` | ETL accepts company imports, admin-gated `destination`, a `gt_source_loads` row per import |
+| `f41cae1` | `company-processor` — map/normalise/score/dedup, verified on real rows from both files |
+| `9cfb14c` | DB connector pointed at `mcp-db.dristiq.com` (the host that answers) |
+| `26810a8` | **`name_key` never trimmed** — caught by applying migrations to a real Postgres |
+| `1940276` | Migrations 193–197: one pipeline, two destinations |
+| `98bca60` | **Cross-tenant hole in the ETL routes fixed** — five routes fetched by SERIAL id with no tenant predicate |
+| `d8d4a1e` | Upload ships first; common pool becomes an entitlement |
+| `e6d87ab` | Model the **load**, not just the source |
+| `214a9b3` | **Vocabulary reorder** — ratified before the search that consumes it |
+| `15945cd` · `7f2e81c` · `5829a52` · `5bbabe0` | Prospect-universe design notes (Phase A/B, CRO reading, industry taxonomy) |
+| `85910e2` | **Restore the whole mission on boot**, not just the profile — brought back the site-health findings rail |
+| `8103010` · `c785fb8` | Landing hero loop re-recorded against the new rail; `?record=1` added |
+| `358ec47` | Top-rail labels kept, artifacts carded, **stop asserting "no competitors"** when none were loaded |
+| `c598981` | **Rail rebuilt as real mission memory** (steps 1–4) |
 
-**Standing constraints reaffirmed this session:** no PR without an explicit
-ask · migrations are manual and discussed first · CLAUDE.md rule 12 (no
-silent fallbacks — the LLM failover is a documented, approved exception) ·
-no secrets in the repo (the user pasted n8n/browserless credentials in chat
-earlier; rotation was advised).
+**Three bugs found only by using the product**, not by review: competitors
+asserted as zero when unloaded, the site-health findings rail starved of data,
+and the vocabulary never reaching the search that needed it. Plus one security
+hole and one SQL defect found by running things. This is the argument for
+proving journey #1 before building further.
+
+---
+
+# 📐 Key design documents
+
+- `documents/design-notes-prospect-universe.md` — **the current design work.**
+  Source/load model, field-level merge, quality components, identity
+  resolution, industry taxonomy, Phase A/B split, coverage.
+- `documents/POA-VaNi-GTM.md` — phases. Note Phase 2 is being taken as a
+  **scoped slice** (the prospect tables) rather than one big pass.
+- `documents/PRD-VaNi-GTM.md` · `documents/GTM-AGENT-ROADMAP.md`
+- `documents/ux-references/` — internal-only; nothing ships as an asset.
+
+# 📊 Where the POA stands (2026-07-28)
+
+| Phase | State |
+|---|---|
+| 0 — Legacy removal | ✅ complete |
+| 1 — UX Foundation | ✅ build done; neural-ops default + "wow" sign-off remain |
+| 2 — Data modelling | ⚠️ prospect slice modelled and applied (193–197); rest untouched |
+| 3 — Skills | ⚠️ 2 of 8 (profile v2, research). story-skill v1 only |
+| 4 — Stitching | ⚠️ **E2E acceptance never achieved** |
+| 5 — Hardening | ❌ RLS cutover still dormant — required pre-production |
+
+---
 
 ## Phase 0 / Phase 1 detail (history)
 1. ~~**Deck-viewer gap**~~ ✅ CLOSED (2026-07-25): the public deck viewer was
