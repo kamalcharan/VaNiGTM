@@ -56,6 +56,9 @@ export interface LandingResult {
 interface StagedRow {
   id: number;
   row_number: number;
+  /** The untouched source row. Kept so a landed record can show every column
+   *  the file carried, including ones no field map claimed. */
+  raw_data: any;
   mapped_data: any;
   completeness: number | null;
   validity: number | null;
@@ -183,7 +186,7 @@ export async function landSession(
   const incomingWeight = freshnessWeight(sourceAsOf);
 
   const staged = await pool.query<StagedRow>(
-    `SELECT id, row_number, mapped_data, completeness, validity, dedup_key
+    `SELECT id, row_number, raw_data, mapped_data, completeness, validity, dedup_key
      FROM   ki_import_staging
      WHERE  session_id = $1
        AND  processing_status IN ('pending', 'failed', 'conflict')
@@ -525,7 +528,7 @@ async function insertProspect(
       c.name, c.domain_normalized, c.website, c.email, c.phone, c.address_line,
       c.city, c.state_code, c.pin, c.country, c.industry_raw, c.employees_band,
       c.revenue_band, c.linkedin_url, c.year_founded, c.description,
-      JSON.stringify(row.mapped_data ?? {}),
+      JSON.stringify(row.raw_data ?? {}),
       row.completeness, row.validity, sourceAsOf, auth.user_id,
     ],
   );
@@ -546,7 +549,7 @@ async function insertContact(
     [
       auth.tenant_id, auth.is_live, p.prefix, p.name, p.job_title,
       p.company_name, p.company_domain, p.linkedin_url, p.location,
-      JSON.stringify(row.mapped_data ?? {}), prospectId,
+      JSON.stringify(row.raw_data ?? {}), prospectId,
       session.load_id, sourceAsOf, row.completeness, row.validity, auth.user_id,
     ],
   );
@@ -621,7 +624,7 @@ async function upsertUniverseSource(
       loadRow?.source_id, loadRow?.id, String(recordId), c.name, c.domain_normalized,
       c.website, c.email, c.phone, c.address_line, c.city, c.state_code, c.pin,
       c.country, c.industry_raw, c.employees_band, c.revenue_band, c.linkedin_url,
-      c.year_founded, c.description, JSON.stringify(row.mapped_data ?? {}),
+      c.year_founded, c.description, JSON.stringify(row.raw_data ?? {}),
       sourceAsOf, row.completeness, row.validity, row.dedup_key,
     ],
   );

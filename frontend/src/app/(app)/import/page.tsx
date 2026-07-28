@@ -128,6 +128,60 @@ const RELATIONSHIPS: {
   },
 ];
 
+/**
+ * Every target a column can be assigned to.
+ *
+ * The value is a QUALIFIED key — it names the entity as well as the field, so
+ * `person.2.full_name` is the second representative's name. The backend needs
+ * no built-in knowledge of the file's headers: whatever is picked here is what
+ * staging obeys, so a format nobody anticipated still imports.
+ */
+const COMPANY_TARGETS: [string, string][] = [
+  ['company.name', 'Company name'],
+  ['company.website', 'Website'],
+  ['company.domain', 'Domain'],
+  ['company.email', 'Company email'],
+  ['company.phone', 'Company phone'],
+  ['company.address_1', 'Address line 1'],
+  ['company.address_2', 'Address line 2'],
+  ['company.city', 'City'],
+  ['company.state', 'State'],
+  ['company.pin', 'PIN / postcode'],
+  ['company.country', 'Country'],
+  ['company.industry_raw', 'Industry'],
+  ['company.employees_band', 'Employees'],
+  ['company.revenue_band', 'Revenue'],
+  ['company.year_founded', 'Year founded'],
+  ['company.linkedin_url', 'Company LinkedIn'],
+  ['company.description', 'Description'],
+];
+
+const PERSON_FIELDS: [string, string][] = [
+  ['full_name', 'Name'],
+  ['first_name', 'First name'],
+  ['last_name', 'Last name'],
+  ['job_title', 'Job title'],
+  ['email', 'Email'],
+  ['mobile', 'Phone / mobile'],
+  ['linkedin_url', 'LinkedIn'],
+  ['location', 'Location'],
+];
+
+/**
+ * The detector's suggestions arrive unqualified (`name`, `job_title`). Qualify
+ * them so the dropdown can pre-select, and so an untouched mapping still goes
+ * up in the same shape as an edited one.
+ */
+function qualifySuggestion(
+  header: string,
+  field: string,
+  plan?: ExtractionPlan,
+): string {
+  if (!field || field.includes('.')) return field;
+  const owner = plan?.entities.find((e) => header in e.columns);
+  return owner?.kind === 'person' ? `person.1.${field}` : `company.${field}`;
+}
+
 /* ── Main Component ────────────────────────────────── */
 
 export default function ImportPage() {
@@ -607,11 +661,14 @@ export default function ImportPage() {
               {headerInfo.extraction_plan.unresolved_columns.length > 0 && (
                 <div className={s.lookupNote}>
                   <strong>
-                    {headerInfo.extraction_plan.unresolved_columns.length} column
-                    {headerInfo.extraction_plan.unresolved_columns.length !== 1 ? 's' : ''} could not be placed
+                    VaNi could not guess {headerInfo.extraction_plan.unresolved_columns.length} column
+                    {headerInfo.extraction_plan.unresolved_columns.length !== 1 ? 's' : ''}
                   </strong>{' '}
-                  and will be kept with the row but not imported into a field:{' '}
-                  {headerInfo.extraction_plan.unresolved_columns.map((u) => u.header).join(', ')}.
+                  — {headerInfo.extraction_plan.unresolved_columns.map((u) => u.header).join(', ')}.
+                  Assign them below if they matter; a directory's three
+                  representative columns usually live here. Anything you leave
+                  unassigned is still <strong>kept as extra data</strong> on the
+                  record — nothing from your file is discarded.
                 </div>
               )}
             </div>
@@ -748,10 +805,28 @@ export default function ImportPage() {
                 >
                   <span className={s.mappingSource}>{header}</span>
                   <span className={s.mappingArrow}>{target ? '\u2192' : '\u00B7'}</span>
-                  <span className={`${s.mappingTarget} ${target ? s.mappingMapped : s.mappingUnmapped}`}>
-                    {target || 'unmapped'}
-                    {platformLabel && <span className={s.mappingPlatformTag}>{platformLabel}</span>}
-                  </span>
+                  {/* Any column to any field. The file's format is whatever
+                      you say it is \u2014 nothing here depends on VaNi recognising
+                      the header. */}
+                  <select
+                    className={`${s.mappingTarget} ${target ? s.mappingMapped : s.mappingUnmapped}`}
+                    value={qualifySuggestion(header, target, headerInfo.extraction_plan)}
+                    onChange={(e) => setMapping((prev) => ({ ...prev, [header]: e.target.value }))}
+                    style={{ background: 'transparent', border: '1px solid var(--color-border)',
+                             borderRadius: 6, padding: '4px 8px', color: 'inherit', width: '100%' }}
+                  >
+                    <option value="">Keep as extra data (not imported into a field)</option>
+                    <optgroup label="Company">
+                      {COMPANY_TARGETS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </optgroup>
+                    {[1, 2, 3, 4, 5].map((slot) => (
+                      <optgroup key={slot} label={`Person ${slot}`}>
+                        {PERSON_FIELDS.map(([f, l]) => (
+                          <option key={f} value={`person.${slot}.${f}`}>{l}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
                   <span className={s.mappingSample}>{sampleStr.length > 40 ? sampleStr.slice(0, 40) + '...' : sampleStr}</span>
                 </div>
               );

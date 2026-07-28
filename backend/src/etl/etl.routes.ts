@@ -25,6 +25,10 @@ import { mapCustomerRow, CUSTOMER_FIELD_MAP } from './customer-processor';
 import { mapCompanyRow, COMPANY_FIELD_MAP } from './company-processor';
 import { mapContactRow, personDedupKey } from './contact-processor';
 import { detectEntities, estimateRows, personBlocks, type ExtractionPlan } from './entity-detector';
+import {
+  resolveMappings, companyRowFor, personRowForSlot, identityMapping,
+  unmappedColumns,
+} from './mapping-plan';
 import { landSession } from './landing';
 import { verifyAccessToken, type JwtPayload } from '../auth/token.service';
 
@@ -632,6 +636,10 @@ export function createEtlRouter(pool: Pool): Router {
       );
       const sessionId = (sessionResult.rows[0] as any).id;
 
+      // Did the human assign the columns themselves? If so that wins over any
+      // detection — the file's format is whatever they say it is.
+      const explicit = resolveMappings(field_mappings);
+
       // Parse Excel and stage all rows
       const rows = parseExcelRows(file.file_path);
       const BATCH_SIZE = 500;
@@ -653,7 +661,40 @@ export function createEtlRouter(pool: Pool): Router {
           let rejects: unknown[] = [];
           let dedupKey: string | null = null;
 
-          if (import_type === 'company') {
+          if (import_type === 'company' && explicit) {
+            // The human assigned every column. No detection, no built-in
+            // header names — this path works on a file nobody anticipated.
+            const companyRow = companyRowFor(raw, explicit.company);
+            const company = Object.keys(explicit.company).length > 0
+              ? mapCompanyRow(companyRow, identityMapping(companyRow))
+              : null;
+
+            const people = explicit.people
+              .map((slot) => {
+                const personRow = personRowForSlot(raw, slot, explicit.company);
+                return mapContactRow(personRow, identityMapping(personRow));
+              })
+              .filter((p) => p.mapped.name);
+
+            const claimed = [
+              ...Object.keys(explicit.company),
+              ...explicit.people.flatMap((slot) => Object.keys(slot)),
+            ];
+            mappedData = {
+              company: company?.mapped ?? null,
+              people: people.map((p) => p.mapped),
+              // Everything no field claimed, kept for future use.
+              metadata: unmappedColumns(raw, claimed),
+            };
+            const primary = company ?? people[0] ?? null;
+            completeness = primary?.quality.completeness ?? null;
+            validity = primary?.quality.validity ?? null;
+            rejects = [
+              ...(company?.quality.reject_reasons ?? []),
+              ...people.flatMap((p) => p.quality.reject_reasons),
+            ];
+            dedupKey = primary?.dedup_key ?? null;
+          } else if (import_type === 'company') {
             const company = wantsCompany ? mapCompanyRow(raw, mappings) : null;
 
             // A company-first file repeats the person block inline. Extracting
@@ -682,9 +723,11 @@ export function createEtlRouter(pool: Pool): Router {
               }
             }
 
+            const claimedAuto = (plan?.entities ?? []).flatMap((e) => Object.keys(e.columns));
             mappedData = {
               company: company?.mapped ?? null,
               people: people.map((p) => p.mapped),
+              metadata: unmappedColumns(raw, claimedAuto),
             };
 
             // Row-level quality is the primary entity's — the company when

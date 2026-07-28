@@ -131,6 +131,19 @@ export const NAV_ITEMS: NavItem[] = [
     recipe: 'data-table',
   },
   {
+    // Cross-tenant infrastructure: the shared directory pool. Its own page
+    // rather than a tab, because it is not the tenant's data.
+    id: 'common-pool',
+    label: 'Common Pool',
+    icon: <Icon><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3a15 15 0 010 18a15 15 0 010-18z" /></Icon>,
+    href: '/common-pool',
+    section: 'data',
+    adminOnly: true,
+    skill: 'prospect-skill',
+    fn: 'get_universe_companies',
+    recipe: 'universe-list',
+  },
+  {
     id: 'import',
     label: 'Import Data',
     icon: <Icon><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></Icon>,

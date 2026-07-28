@@ -58,6 +58,11 @@ Paginated list of imported companies with quality, duplicate flags and tags.
 - Parameters: search?, relationship?, tag_id?, only_duplicates?, min_quality?, limit?, offset?
 - Returns: { prospects: [{ id, ref, name, relationship, domain_normalized, city, state_code, industry_raw, employees_band, completeness, validity, freshness, shares_domain, shares_name, load_label, tags }], total, recipe: 'prospect-list' }
 
+### get_prospect
+One company in full: every mapped field, every column the source file carried, the people at it, and its tags.
+- Parameters: prospect_id (required)
+- Returns: { prospect, people: [{ id, name, job_title, channels }], tags, source_row, recipe: 'prospect-profile' }
+
 ### get_prospect_stats
 Set-level health: totals, average completeness and validity separately, freshness bands, duplicate counts.
 - Parameters: none
