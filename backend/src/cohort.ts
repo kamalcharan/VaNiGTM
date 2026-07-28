@@ -3,10 +3,10 @@
  *
  * Step 1 of documents/POA-manufacturing-pilot.md, without an HTTP round trip.
  *
- *   npm run cohort -- --list-tenants
- *   npm run cohort -- --tenant=<uuid>                       (dry run)
- *   npm run cohort -- --tenant=<uuid> --tag="Pilot Manufacturing"
- *   npm run cohort -- --tenant-name=ftcci --live
+ *   npx tsx src/cohort.ts --list-tenants
+ *   npx tsx src/cohort.ts --tenant=<uuid>                  (dry run)
+ *   npx tsx src/cohort.ts --tenant=<uuid> "--tag=Pilot Manufacturing"
+ *   npx tsx src/cohort.ts --tenant-name=ftcci --live
  *
  * ── WHY A CLI AND NOT CURL ────────────────────────────────────────────
  *
@@ -196,7 +196,7 @@ async function main() {
 
     if (!tenantId) {
       console.error('[Cohort] --tenant=<uuid> or --tenant-name=<substring> is required.');
-      console.error('         npm run cohort -- --list-tenants   to see them.');
+      console.error('         npx tsx src/cohort.ts --list-tenants   to see them.');
       process.exit(1);
     }
 
@@ -214,7 +214,7 @@ async function main() {
 
     if (!tag) {
       console.log('  Dry run. To write the canonical value and apply the tag:');
-      console.log(`    npm run cohort -- --tenant=${tenantId}${isLive ? ' --live' : ''} --tag="Pilot Manufacturing"`);
+      console.log(`    npx tsx src/cohort.ts --tenant=${tenantId}${isLive ? ' --live' : ''} "--tag=Pilot Manufacturing"`);
       console.log('');
     }
   } catch (err) {

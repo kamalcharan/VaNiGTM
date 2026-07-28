@@ -111,10 +111,11 @@ Run it from `backend/` — no JWT, no running server, no PowerShell JSON
 mangling (CLAUDE.md lesson 9):
 
 ```bash
-npm run cohort -- --list-tenants                        # find the tenant
-npm run cohort -- --tenant-name=ftcci                   # DRY RUN (the default)
-npm run cohort -- --tenant=<uuid> --tag="Pilot Manufacturing"
-npm run cohort -- --tenant=<uuid> --live                # live environment
+npx tsx src/cohort.ts --list-tenants                    # find the tenant
+# (npm run cohort -- <flags> drops the flags on PowerShell; use npx)
+npx tsx src/cohort.ts --tenant-name=ftcci               # DRY RUN (the default)
+npx tsx src/cohort.ts --tenant=<uuid> "--tag=Pilot Manufacturing"
+npx tsx src/cohort.ts --tenant=<uuid> --live            # live environment
 ```
 
 Dry run is the default; writing requires `--tag`. Same function as the API
