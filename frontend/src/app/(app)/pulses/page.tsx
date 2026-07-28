@@ -245,7 +245,9 @@ export default function PulsesPage() {
   });
 
   useEffect(() => {
-    if (isError) showToast({ message: (error as Error)?.message || 'Failed to load queue', type: 'error' });
+    // ApiError carries a message but is not an Error, so the direct cast does
+    // not typecheck. Read the field rather than asserting the wrong shape.
+    if (isError) showToast({ message: (error as { message?: string } | null)?.message || 'Failed to load queue', type: 'error' });
   }, [isError, error, showToast]);
 
   const items = data?.data?.items  ?? [];

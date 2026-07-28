@@ -339,6 +339,12 @@ export const API = {
       auth: true,
       description: 'Create import session with field mapping and stage data',
     },
+    resolveConflicts: {
+      method: 'POST',
+      path: '/api/v1/etl/sessions/:id/conflicts/resolve',
+      auth: true,
+      description: 'Apply the human decision on held rows (per-field keep/take, or accept recommended)',
+    },
     tags: {
       method: 'GET',
       path: '/api/v1/etl/tags',

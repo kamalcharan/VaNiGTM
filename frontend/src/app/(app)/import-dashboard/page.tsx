@@ -31,6 +31,13 @@ interface StagingRecord {
   mapped_data: Record<string, any>; raw_data: Record<string, any>;
   error_messages: string[] | null; warnings: string[] | null;
   created_record_id: string | null; processed_at: string | null;
+  /** Set on a held row: what you hold vs what arrived, per field, with a reason. */
+  field_diff?: Record<string, {
+    existing: unknown; incoming: unknown;
+    recommended: 'keep' | 'take'; reason: string;
+  }> | null;
+  /** The target contact is in a running campaign — never bulk-decided. */
+  campaign_locked?: boolean;
 }
 
 interface RecordsResponse { records: StagingRecord[]; page: number; limit: number; total: number; total_pages: number; }
@@ -45,6 +52,10 @@ const STATUS_MAP: Record<string, { label: string; color: BadgeVariant }> = {
   orphan:   { label: 'Orphan',    color: 'warning' },
   success: { label: 'Added', color: 'success' },
   duplicate: { label: 'Duplicate', color: 'muted' },  // already tracked — rejected, no action
+  // Held, not failed: the row would change a record you already hold, and
+  // only a human decides that. Nothing was written.
+  conflict: { label: 'Needs your call', color: 'warning' },
+  needs_review: { label: 'Needs review', color: 'warning' },
 };
 
 const ALIAS_STATUS_MAP: Record<string, { label: string; color: BadgeVariant }> = {
@@ -78,6 +89,19 @@ interface ColDef {
 }
 
 const COL_DEFS: Record<string, ColDef[]> = {
+  // The GTM import. mapped_data is { company, people[] } rather than a flat
+  // row, because one source row commonly carries a company AND the people at
+  // it — so these keys are dotted paths (see resolveCell).
+  company: [
+    { header: '#',        kind: 'row' },
+    { header: 'Company',  kind: 'data', key: 'company.name',              bold: true },
+    { header: 'Domain',   kind: 'data', key: 'company.domain_normalized', mono: true },
+    { header: 'Location', kind: 'data', key: 'company.city',              muted: true },
+    { header: 'Industry', kind: 'data', key: 'company.industry_raw',      muted: true },
+    { header: 'People',   kind: 'data', key: 'people.length' },
+    { header: 'Status',   kind: 'status' },
+    { header: '',         kind: 'action' },
+  ],
   scheme: [
     { header: '#',            kind: 'row' },
     { header: 'Scheme Code',  kind: 'data', key: 'scheme_code',  mono: true },
@@ -118,6 +142,26 @@ const COL_DEFS: Record<string, ColDef[]> = {
   ],
 };
 
+/**
+ * Read a cell out of mapped_data.
+ *
+ * MFD imports stage a flat row, so a bare key works. The GTM import stages
+ * { company, people[] }, so its columns are dotted paths. Without this every
+ * company cell renders "—" against the right headers, which is exactly how
+ * the dashboard looked before: 2,913 rows and nothing in them.
+ */
+function resolveCell(md: Record<string, any>, key: string): string | number | null {
+  if (!key.includes('.')) return md[key] ?? null;
+
+  let cur: any = md;
+  for (const part of key.split('.')) {
+    if (cur === null || cur === undefined) return null;
+    cur = part === 'length' && Array.isArray(cur) ? cur.length : cur[part];
+  }
+  if (cur === null || cur === undefined || cur === '') return null;
+  return typeof cur === 'object' ? JSON.stringify(cur) : cur;
+}
+
 /* ── Drawer config — per import type ────────────────── */
 
 interface DrawerConf {
@@ -127,6 +171,15 @@ interface DrawerConf {
 }
 
 const DRAWER_CONF: Record<string, DrawerConf> = {
+  company: {
+    title:      'Imported Record',
+    getHeading: (md) => md.company?.name || md.people?.[0]?.name || 'Unknown Record',
+    getMeta:    (md) => [
+      md.company?.domain_normalized,
+      md.company?.city,
+      md.people?.length ? `${md.people.length} ${md.people.length === 1 ? 'person' : 'people'}` : null,
+    ].filter(Boolean).join(' · '),
+  },
   scheme: {
     title:      'Scheme Record',
     getHeading: (md) => md.scheme_name || 'Unknown Scheme',
@@ -183,6 +236,7 @@ const EDIT_FIELDS: Record<string, Array<{ key: string; label: string; type?: 'te
 
 const TYPE_FILTERS = [
   { key: 'all',         label: 'All',          icon: <List          size={14} /> },
+  { key: 'company',     label: 'GTM imports',  icon: <Users         size={14} /> },
   { key: 'scheme',      label: 'Schemes',      icon: <Database      size={14} /> },
   { key: 'customer',    label: 'Customers',    icon: <Users         size={14} /> },
   { key: 'transaction', label: 'Transactions', icon: <ArrowLeftRight size={14} /> },
@@ -212,6 +266,8 @@ export default function ImportDashboardPage() {
   const [editedData, setEditedData] = useState<Record<string, any>>({});
   const [patchingRecord, setPatchingRecord] = useState(false);
   const [reprocessingId, setReprocessingId] = useState<number | null>(null);
+  const [resolving, setResolving] = useState(false);
+  const [rowChoices, setRowChoices] = useState<Record<string, 'keep' | 'take'>>({});
   const [recordsVersion, setRecordsVersion] = useState(0);
   const [syncingStats, setSyncingStats] = useState(false);
   const [rebuildingHoldings, setRebuildingHoldings] = useState(false);
@@ -277,6 +333,57 @@ export default function ImportDashboardPage() {
   }, [selectedSession?.id, recordFilter, recordPage, recordsVersion]); // eslint-disable-line
 
   function handleSelectSession(sess: Session) { setSelectedSession(sess); setRecordFilter('all'); setRecordPage(1); }
+
+  /**
+   * Apply the quality model's suggestion to every held row EXCEPT the
+   * campaign-locked ones. Nobody reviews 2,913 decisions by hand — but a row
+   * whose target is mid-sequence is never swept up, because changing an email
+   * under a running campaign misdirects outreach that has already gone out.
+   * The backend enforces that too; this is not the only guard.
+   */
+  async function handleAcceptRecommended() {
+    if (!selectedSession || resolving) return;
+    setResolving(true);
+    try {
+      const path = API.etl.resolveConflicts.path.replace(':id', String(selectedSession.id));
+      const r = await apiFetch<{ applied: number; skipped: number; conflicts_remaining: number }>(
+        { ...API.etl.resolveConflicts, path },
+        { body: { accept_recommended: true } },
+      );
+      showToast({
+        message: r.skipped > 0
+          ? `${r.applied} applied. ${r.skipped} left for you — those contacts are in a running campaign.`
+          : `${r.applied} applied. ${r.conflicts_remaining} still need a decision.`,
+        type: 'success',
+      });
+      refreshRecords();
+      fetchSessions();
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Could not apply decisions', type: 'error' });
+    } finally {
+      setResolving(false);
+    }
+  }
+
+  /** One row, one explicit decision — the only route for a campaign-locked row. */
+  async function handleResolveRow(stagingId: number, fields: Record<string, 'keep' | 'take'>) {
+    if (!selectedSession || resolving) return;
+    setResolving(true);
+    try {
+      const path = API.etl.resolveConflicts.path.replace(':id', String(selectedSession.id));
+      await apiFetch({ ...API.etl.resolveConflicts, path }, {
+        body: { decisions: [{ staging_id: stagingId, fields }] },
+      });
+      showToast({ message: 'Decision applied.', type: 'success' });
+      setDrawerRecord(null);
+      refreshRecords();
+      fetchSessions();
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Could not apply decision', type: 'error' });
+    } finally {
+      setResolving(false);
+    }
+  }
 
   async function handleReprocess() {
     if (!selectedSession || reprocessing) return; setReprocessing(true);
@@ -353,11 +460,18 @@ export default function ImportDashboardPage() {
   }
 
   // VaNi analysis
-  const isFinished = selectedSession ? ['completed', 'completed_with_errors'].includes(selectedSession.status) : false;
+  const isFinished = selectedSession ? ['completed', 'completed_with_errors', 'needs_review'].includes(selectedSession.status) : false;
   const orphanCount = selectedSession?.orphan_records ?? 0;
+  // Conflicts are counted from the records themselves: a held row is neither
+  // successful nor failed, and reporting it as either would be a lie.
+  const conflictCount = records?.records?.filter((r: any) => r.processing_status === 'conflict').length ?? 0;
   const vaniMsg = selectedSession
     ? !isFinished
-      ? 'Processing import...'
+      ? selectedSession.status === 'staged'
+        ? 'Staged and ready. Nothing has been written yet.'
+        : 'Processing import...'
+      : selectedSession.status === 'needs_review'
+      ? `${selectedSession.successful_records.toLocaleString()} imported. Some rows would change records you already hold — those are held for your decision and nothing was overwritten.`
       : selectedSession.failed_records > 0
       ? `Import completed with ${selectedSession.failed_records} failure${selectedSession.failed_records > 1 ? 's' : ''}. Review failed records and reprocess, or check field mappings.`
       : orphanCount > 0
@@ -494,6 +608,32 @@ export default function ImportDashboardPage() {
                 />
               )}
 
+              {/* Held rows — the merge review. Only appears when there is
+                  genuinely something to decide. */}
+              {selectedSession.status === 'needs_review' && (
+                <div className={s.tableCard} style={{ marginBottom: 16, padding: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>Some rows need your call</div>
+                      <div style={{ color: 'var(--color-muted)', fontSize: '0.85rem', maxWidth: 620 }}>
+                        These would change records you already hold. Nothing was
+                        overwritten. VaNi has ranked each field by how fresh and
+                        how complete each side is — you decide. Contacts in a
+                        running campaign are never decided in bulk.
+                      </div>
+                    </div>
+                    <button
+                      className={s.pageBtn}
+                      onClick={handleAcceptRecommended}
+                      disabled={resolving}
+                      style={{ whiteSpace: 'nowrap' }}
+                    >
+                      {resolving ? 'Applying…' : 'Apply recommended to all'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Table card */}
               <div className={s.tableCard}>
                 <div className={s.tableToolbar}>
@@ -501,8 +641,13 @@ export default function ImportDashboardPage() {
                     {[
                       { key: 'all',       label: 'All' },
                       { key: 'pending',   label: 'Pending', show: true },
-                      { key: 'success',   label: `New (${selectedSession.successful_records - selectedSession.duplicate_records})` },
+                      { key: 'success',   label: `New (${selectedSession.successful_records})` },
                       { key: 'duplicate', label: `Duplicate (${selectedSession.duplicate_records})` },
+                      // Only offered when there is something to decide, so the
+                      // happy path never shows a queue that does not exist.
+                      ...(selectedSession.status === 'needs_review' || conflictCount > 0
+                        ? [{ key: 'conflict', label: `Needs your call${conflictCount ? ` (${conflictCount})` : ''}` }]
+                        : []),
                       { key: 'failed',    label: `Failed (${selectedSession.failed_records})` },
                       ...(selectedSession.import_type === 'transaction'
                         ? [{ key: 'orphan', label: `Orphan (${selectedSession.orphan_records ?? 0})` }]
@@ -564,7 +709,7 @@ export default function ImportDashboardPage() {
                                     <td key={ci} style={{ color: 'var(--color-muted)', fontWeight: 500 }}>{rec.row_number}</td>
                                   );
                                   if (col.kind === 'data') {
-                                    const val = col.key ? (md[col.key] ?? '—') : '—';
+                                    const val = col.key ? (resolveCell(md, col.key) ?? '—') : '—';
                                     return (
                                       <td key={ci}
                                         className={col.mono ? d.tdMono : undefined}
@@ -730,7 +875,65 @@ export default function ImportDashboardPage() {
                   </div>
                 );
               })()}
-              {!drawerRecord.error_messages?.length && drawerRecord.processing_status !== 'success' && drawerRecord.processing_status !== 'duplicate' && !drawerRecord.mapped_data?._alias_status && (
+              {/* The decision itself: what you hold, what arrived, and why
+                  VaNi leans one way. Choosing is per FIELD — the whole point
+                  of a field-level merge is that you keep the good phone AND
+                  take the new domain. */}
+              {drawerRecord.processing_status === 'conflict' && drawerRecord.field_diff && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>What changed</div>
+                  {drawerRecord.campaign_locked && (
+                    <div className={`${s.drawerDiagnostic} ${s.diagWarn}`} style={{ marginBottom: 12 }}>
+                      <span>
+                        This contact is in a running campaign. Changing what a
+                        sequence sends to can misdirect outreach already sent,
+                        so this row is never decided in bulk.
+                      </span>
+                    </div>
+                  )}
+
+                  {Object.entries(drawerRecord.field_diff as Record<string, any>).map(([field, d]) => {
+                    const choice = rowChoices[field] ?? d.recommended;
+                    return (
+                      <div key={field} style={{ padding: '10px 0', borderBottom: '1px solid var(--color-border)' }}>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--color-muted)', marginBottom: 6 }}>
+                          {field.replace(/_/g, ' ')} — {d.reason}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          {(['keep', 'take'] as const).map((opt) => (
+                            <button
+                              key={opt}
+                              className={`${s.filterTab} ${choice === opt ? s.filterTabActive : ''}`}
+                              onClick={() => setRowChoices((p) => ({ ...p, [field]: opt }))}
+                            >
+                              {opt === 'keep' ? 'Keep: ' : 'Use new: '}
+                              {String((opt === 'keep' ? d.existing : d.incoming) ?? '—')}
+                              {opt === d.recommended ? ' · suggested' : ''}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  <button
+                    className={s.pageBtn}
+                    style={{ marginTop: 14 }}
+                    disabled={resolving}
+                    onClick={() => {
+                      const fields = Object.fromEntries(
+                        Object.entries(drawerRecord.field_diff as Record<string, any>)
+                          .map(([f, d]) => [f, rowChoices[f] ?? d.recommended]),
+                      ) as Record<string, 'keep' | 'take'>;
+                      handleResolveRow(drawerRecord.id, fields);
+                    }}
+                  >
+                    {resolving ? 'Applying…' : 'Apply this decision'}
+                  </button>
+                </div>
+              )}
+
+              {!drawerRecord.error_messages?.length && drawerRecord.processing_status !== 'success' && drawerRecord.processing_status !== 'duplicate' && drawerRecord.processing_status !== 'conflict' && !drawerRecord.mapped_data?._alias_status && (
                 <div className={`${s.drawerDiagnostic} ${s.diagInfo}`}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                   <span>Pending processing.</span>

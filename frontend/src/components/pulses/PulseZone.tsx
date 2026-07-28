@@ -16,7 +16,11 @@ import s from './PulseZone.module.css';
 
 /* ── Constants ──────────────────────────────────────────────────────────────── */
 
-const FREQ_OPTIONS = [
+type Frequency = 'monthly' | 'bimonthly' | 'quarterly' | 'custom';
+
+// `as const` on the values, so opt.value is the union the state expects
+// rather than a widened string.
+const FREQ_OPTIONS: { value: Frequency; label: string; sub: string }[] = [
   { value: 'monthly',   label: 'Monthly',   sub: 'Every 30d' },
   { value: 'bimonthly', label: 'Bimonthly', sub: 'Every 60d' },
   { value: 'quarterly', label: 'Quarterly', sub: 'Every 90d' },

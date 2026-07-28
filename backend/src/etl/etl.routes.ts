@@ -832,7 +832,10 @@ export function createEtlRouter(pool: Pool): Router {
       // Fetch page
       const result = await pool.query(
         `SELECT id, row_number, processing_status, mapped_data, raw_data,
-                error_messages, warnings, created_record_id, processed_at
+                error_messages, warnings, created_record_id, processed_at,
+                -- A held row is only reviewable if the reviewer can see the
+                -- decision material and whether it is campaign-sensitive.
+                field_diff, campaign_locked, conflict_kind, conflict_target_id
          FROM ki_import_staging
          WHERE ${where}
          ORDER BY row_number

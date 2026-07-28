@@ -81,8 +81,13 @@ interface ProcessResult {
   successful: number;
   failed: number;
   duplicate: number;
+  /** Rows held because they would change a record already held. */
+  conflict?: number;
+  /** Of those, how many belong to a contact in a running campaign. */
+  campaign_locked?: number;
   orphans: number;
   duration_ms: number;
+  landed?: { companies: number; people: number; channels: number };
 }
 
 /* ── Import type cards ─────────────────────────────── */
@@ -136,6 +141,7 @@ export default function ImportPage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [newTagLabel, setNewTagLabel] = useState('');
+  const [stagingOnly, setStagingOnly] = useState(false);
   const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
   const [headerInfo, setHeaderInfo] = useState<HeaderInfo | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
@@ -284,15 +290,35 @@ export default function ImportPage() {
         setSessionInfo(session);
         setStep('processing');
 
-        // Immediately trigger processing
-        const processResult = await apiFetch<ProcessResult>(API.etl.process, {
-          pathParams: { id: String(session.session_id) },
-        });
-        setResult(processResult);
-        setStep('results');
+        // Staging and landing are ONE action from here on. The user confirmed
+        // the import; they are not asked to come back and press go again.
+        try {
+          const processResult = await apiFetch<ProcessResult>(API.etl.process, {
+            pathParams: { id: String(session.session_id) },
+          });
+          setResult(processResult);
+          setStep('results');
+        } catch (processErr: any) {
+          // The rows ARE staged — that work is not lost, and saying
+          // "Processing failed" with nothing else is what made a half-done
+          // import look like a total one.
+          setStagingOnly(true);
+          setResult({
+            session_id: session.session_id,
+            status: 'staged',
+            processed: session.total_records,
+            successful: 0, failed: 0, duplicate: 0, conflict: 0,
+            orphans: 0, duration_ms: 0,
+          });
+          setStep('results');
+          showToast({
+            message: `${session.total_records.toLocaleString()} rows are staged and safe. Landing them failed: ${processErr.message}`,
+            type: 'error',
+          });
+        }
       }
     } catch (err: any) {
-      showToast({ message: err.message || 'Processing failed', type: 'error' });
+      showToast({ message: err.message || 'Import failed', type: 'error' });
       setStep('mapping');
     } finally {
       setLoading(false);
@@ -368,6 +394,35 @@ export default function ImportPage() {
       }
       if (result.duration_ms) {
         insights.push(`Processed ${result.processed.toLocaleString()} rows in ${(result.duration_ms / 1000).toFixed(1)}s via VaNi.`);
+      }
+
+    } else if (importType === 'company') {
+      if (stagingOnly) {
+        insights.push('Your rows are staged and nothing is lost. Open the import dashboard to retry landing them.');
+        return insights;
+      }
+      if (result.landed) {
+        if (result.landed.companies > 0) {
+          insights.push(`${result.landed.companies.toLocaleString()} companies added to ${relationship === 'dataset' ? 'the common pool' : relationship === 'customers' ? 'your customers' : 'your prospects'}.`);
+        }
+        if (result.landed.people > 0) {
+          insights.push(`${result.landed.people.toLocaleString()} people added, with ${result.landed.channels.toLocaleString()} email and phone channels.`);
+        }
+      }
+      if (result.duplicate > 0) {
+        insights.push(`${result.duplicate.toLocaleString()} row${result.duplicate !== 1 ? 's' : ''} said nothing new — already held, so skipped.`);
+      }
+      if ((result.conflict ?? 0) > 0) {
+        insights.push(`${result.conflict!.toLocaleString()} row${result.conflict !== 1 ? 's' : ''} would change something you already hold. Nothing was overwritten — decide in the import dashboard.`);
+      }
+      if ((result.campaign_locked ?? 0) > 0) {
+        insights.push(`${result.campaign_locked} of those belong to contacts in a running campaign, so they need an explicit decision rather than a bulk accept.`);
+      }
+      if (result.failed > 0) {
+        insights.push(`${result.failed} row${result.failed !== 1 ? 's' : ''} could not be imported — open them to see why.`);
+      }
+      if (result.duration_ms) {
+        insights.push(`Processed ${result.processed.toLocaleString()} rows in ${(result.duration_ms / 1000).toFixed(1)}s.`);
       }
 
     } else if (importType === 'customer') {
@@ -760,16 +815,33 @@ export default function ImportPage() {
       {step === 'results' && result && (
         <div className={s.stepContent}>
           {/* Status banner */}
-          <div className={`${s.resultBanner} ${result.failed > 0 ? s.resultBannerWarn : s.resultBannerOk}`}>
+          {/* The banner states what actually happened. Held rows are NOT a
+              failure \u2014 nothing was overwritten and the work is not lost \u2014 so
+              they never get the error treatment. */}
+          <div className={`${s.resultBanner} ${
+            stagingOnly || result.failed > 0 || (result.conflict ?? 0) > 0
+              ? s.resultBannerWarn : s.resultBannerOk
+          }`}>
             <span className={s.resultBannerIcon}>
-              {result.failed > 0 ? '\u26A0\uFE0F' : '\u2705'}
+              {stagingOnly ? '\u23F8\uFE0F' : (result.failed > 0 || (result.conflict ?? 0) > 0) ? '\u26A0\uFE0F' : '\u2705'}
             </span>
             <div>
               <div className={s.resultBannerTitle}>
-                {result.failed > 0 ? 'Completed with errors' : 'Import successful'}
+                {stagingOnly
+                  ? 'Staged, not yet imported'
+                  : (result.conflict ?? 0) > 0
+                  ? 'Imported \u2014 some rows need your call'
+                  : result.failed > 0
+                  ? 'Completed with errors'
+                  : 'Import successful'}
               </div>
               <div className={s.resultBannerDesc}>
-                {result.processed.toLocaleString()} records processed from {fileInfo?.filename}
+                {stagingOnly
+                  ? `${result.processed.toLocaleString()} rows from ${fileInfo?.filename} are staged and safe. Nothing has been written yet.`
+                  : `${result.processed.toLocaleString()} records processed from ${fileInfo?.filename}`}
+                {result.landed && !stagingOnly && (
+                  <> \u2014 {result.landed.companies.toLocaleString()} companies, {result.landed.people.toLocaleString()} people.</>
+                )}
               </div>
             </div>
           </div>
@@ -779,6 +851,9 @@ export default function ImportPage() {
             <VdfStatCard value={result.processed} label="Total Processed" />
             <VdfStatCard value={result.successful} label={importType === 'transaction' ? 'Imported' : 'New Records'} accent="success" />
             <VdfStatCard value={result.duplicate} label="Duplicates Skipped" accent="info" />
+            {(result.conflict ?? 0) > 0 && (
+              <VdfStatCard value={result.conflict ?? 0} label="Need Your Call" accent="warning" />
+            )}
             {result.orphans > 0 && (
               <VdfStatCard value={result.orphans} label="Unmatched (Orphan)" accent="warning" />
             )}
