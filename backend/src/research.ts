@@ -32,7 +32,8 @@
 import 'dotenv/config';
 import { Pool, type PoolClient } from 'pg';
 import { AccountResearchAgent } from './skills/research-skill/account.agent';
-import { loadOfferCatalogue } from './skills/research-skill/offer-catalogue';
+import { readOffers, catalogueProblems } from './skills/research-skill/offer-catalogue';
+import { createTenantDb } from './db';
 import { createRun, setStatus, getRun } from './agent-core/agent.runner';
 import { emitEvent } from './agent-core/event.store';
 
@@ -147,7 +148,6 @@ async function main() {
     }
     const isLive = has('live');
     const verbose = !has('brief');
-    const catalogueSlug = flag('catalogue') || 'vikuna';
 
     /* --show: read what is already written, research nothing. */
     if (has('show')) {
@@ -169,13 +169,15 @@ async function main() {
 
     /* The catalogue, before anything else — the agent checks it too, but
        failing here costs no run row. */
-    try {
-      const cat = loadOfferCatalogue(catalogueSlug);
-      console.log(`\n  Offers: ${cat.offers.map((o) => o.name).join(' · ')}`);
-    } catch (err) {
-      console.error(`\n${(err as Error).message}\n`);
+    const offers = await readOffers(createTenantDb(pool, tenantId), tenantId);
+    const problems = catalogueProblems(offers);
+    if (problems.length > 0) {
+      console.error('\n  These offers are not ready for fit scoring:');
+      for (const p of problems) console.error(`    - ${p}`);
+      console.error('\n  Fix them on the Research screen (/research), then run this again.\n');
       process.exit(1);
     }
+    console.log(`\n  Offers: ${offers.map((o) => o.name).join(' · ')}`);
 
     /* The cohort: a tag by label is friendlier than an id. */
     const tagLabel = flag('tag');
@@ -206,7 +208,6 @@ async function main() {
 
     const limit = Number(flag('limit')) || 10;
     const payload: Record<string, unknown> = {
-      offer_catalogue: catalogueSlug,
       is_live: isLive,
       limit,
       ...(tagId ? { tag_id: tagId } : {}),

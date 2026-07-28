@@ -1,16 +1,15 @@
 /**
- * Offer catalogue validation.
+ * Offer readiness.
  *
- * The point of these tests is the FAILURE cases. Fit scoring decides who gets
- * contacted, so a catalogue that is half-written must stop the run before any
- * account is crawled, not produce a confident number from a blank.
+ * The point of these tests is the FAILURE cases. This validation is the only
+ * thing between a half-written offer and a confident fit score that decides
+ * who gets contacted — and it now drives a checklist on screen, so it has to
+ * report EVERY gap at once rather than the first one it meets.
  */
 
 import {
-  validateCatalogue, catalogueForPrompt, loadOfferCatalogue, cataloguePath,
-  type OfferCatalogue, type Offer,
+  catalogueProblems, offerIsReady, assertReady, catalogueForPrompt, type Offer,
 } from '../offer-catalogue';
-import fs from 'fs';
 
 const offer = (over: Partial<Offer> = {}): Offer => ({
   id: 'cdo-as-a-service',
@@ -26,94 +25,108 @@ const offer = (over: Partial<Offer> = {}): Offer => ({
   ...over,
 });
 
-const catalogue = (offers: Offer[]): OfferCatalogue => ({
-  tenant_slug: 'vikuna', tenant_label: 'Vikuna Technologies',
-  segment: 'manufacturing/pharma', offers,
+describe('catalogueProblems', () => {
+  it('finds nothing wrong with a fully written offer', () => {
+    expect(catalogueProblems([offer()])).toEqual([]);
+    expect(offerIsReady(offer())).toBe(true);
+  });
+
+  // The two fields nobody can invent, and the reason the screen blocks.
+  it('reports an empty proof', () => {
+    expect(catalogueProblems([offer({ proof: '' })])).toEqual(
+      expect.arrayContaining([expect.stringMatching(/proof is empty/)]),
+    );
+  });
+
+  it('reports an empty price band', () => {
+    expect(catalogueProblems([offer({ price_band: '' })])).toEqual(
+      expect.arrayContaining([expect.stringMatching(/price_band is empty/)]),
+    );
+  });
+
+  it('rejects text that is present but too short to score against', () => {
+    // "TBD" passes a not-empty check and is worthless to a model.
+    expect(catalogueProblems([offer({ proof: 'TBD' })])).toEqual(
+      expect.arrayContaining([expect.stringMatching(/too short to score against/)]),
+    );
+  });
+
+  it('reports missing signals — fit scoring would have nothing to match on', () => {
+    expect(catalogueProblems([offer({ signals: [] })])).toEqual(
+      expect.arrayContaining([expect.stringMatching(/signals is empty/)]),
+    );
+  });
+
+  it('reports missing disqualifiers, because "no fit" must stay reachable', () => {
+    expect(catalogueProblems([offer({ disqualifiers: [] })])).toEqual(
+      expect.arrayContaining([expect.stringMatching(/disqualifiers is empty/)]),
+    );
+  });
+
+  it('reports a list entry too short to be useful', () => {
+    expect(catalogueProblems([offer({ signals: ['big'] })])).toEqual(
+      expect.arrayContaining([expect.stringMatching(/too short to be useful/)]),
+    );
+  });
+
+  it('reports duplicate offer ids', () => {
+    expect(catalogueProblems([offer(), offer()])).toEqual(
+      expect.arrayContaining([expect.stringMatching(/duplicate offer id/)]),
+    );
+  });
+
+  // What makes the on-screen checklist usable instead of whack-a-mole.
+  it('reports EVERY problem at once, across every offer', () => {
+    const problems = catalogueProblems([
+      offer({ name: 'First', proof: '', price_band: '' }),
+      offer({ id: 'second', name: 'Second', signals: [] }),
+    ]);
+    expect(problems).toEqual(expect.arrayContaining([
+      expect.stringMatching(/First: proof is empty/),
+      expect.stringMatching(/First: price_band is empty/),
+      expect.stringMatching(/Second: signals is empty/),
+    ]));
+  });
+
+  it('names the offer a problem belongs to, so the screen can point at it', () => {
+    expect(catalogueProblems([offer({ name: 'CAIO as a Service', proof: '' })])[0])
+      .toMatch(/^CAIO as a Service:/);
+  });
+
+  it('says so when there are no offers at all', () => {
+    expect(catalogueProblems([])).toEqual(['No offers defined.']);
+  });
 });
 
-describe('validateCatalogue', () => {
-  it('accepts a fully written offer', () => {
-    expect(() => validateCatalogue(catalogue([offer()]), 'test')).not.toThrow();
+describe('assertReady', () => {
+  it('passes a complete catalogue silently', () => {
+    expect(() => assertReady([offer()])).not.toThrow();
   });
 
-  it('rejects an empty proof — the field nobody can invent', () => {
-    expect(() => validateCatalogue(catalogue([offer({ proof: '' })]), 'test'))
-      .toThrow(/proof is empty/);
-  });
-
-  it('rejects an empty price band', () => {
-    expect(() => validateCatalogue(catalogue([offer({ price_band: '' })]), 'test'))
-      .toThrow(/price_band is empty/);
-  });
-
-  it('rejects text too short to score against', () => {
-    // "TBD" passes a not-empty check and is worthless to a model.
-    expect(() => validateCatalogue(catalogue([offer({ proof: 'TBD' })]), 'test'))
-      .toThrow(/too short to score against/);
-  });
-
-  it('rejects missing signals — fit scoring would have nothing to match', () => {
-    expect(() => validateCatalogue(catalogue([offer({ signals: [] })]), 'test'))
-      .toThrow(/signals is empty/);
-  });
-
-  it('rejects missing disqualifiers, because "no fit" must be reachable', () => {
-    expect(() => validateCatalogue(catalogue([offer({ disqualifiers: [] })]), 'test'))
-      .toThrow(/disqualifiers is empty/);
-  });
-
-  it('rejects a list entry too short to be useful', () => {
-    expect(() => validateCatalogue(catalogue([offer({ signals: ['big'] })]), 'test'))
-      .toThrow(/too short to be useful/);
-  });
-
-  it('rejects duplicate offer ids', () => {
-    expect(() => validateCatalogue(catalogue([offer(), offer()]), 'test'))
-      .toThrow(/duplicate offer id/);
-  });
-
-  it('reports every problem at once, not the first', () => {
-    try {
-      validateCatalogue(catalogue([offer({ proof: '', price_band: '', signals: [] })]), 'test');
-      throw new Error('should have thrown');
-    } catch (e) {
-      const msg = (e as Error).message;
-      expect(msg).toMatch(/proof is empty/);
-      expect(msg).toMatch(/price_band is empty/);
-      expect(msg).toMatch(/signals is empty/);
-    }
-  });
-
-  it('rejects a catalogue with no offers', () => {
-    expect(() => validateCatalogue(catalogue([]), 'test')).toThrow(/no offers defined/);
+  it('throws with every gap named, and says why it matters', () => {
+    expect(() => assertReady([offer({ proof: '', price_band: '' })]))
+      .toThrow(/OFFER_CATALOGUE_INCOMPLETE/);
+    expect(() => assertReady([offer({ proof: '' })]))
+      .toThrow(/decides who gets contacted/);
   });
 });
 
 describe('catalogueForPrompt', () => {
+  const cat = { tenant_id: 't', offers: [offer()] };
+
   it('gives the model reasons to say no, not only reasons to say yes', () => {
-    const text = catalogueForPrompt(catalogue([offer()]));
+    const text = catalogueForPrompt(cat);
     expect(text).toMatch(/Do NOT recommend this when:/);
     expect(text).toContain('Trading or distribution only');
   });
 
   it('carries the id the model must return', () => {
-    expect(catalogueForPrompt(catalogue([offer()]))).toContain('id: cdo-as-a-service');
-  });
-});
-
-describe('loadOfferCatalogue', () => {
-  it('names the missing file rather than failing obscurely', () => {
-    expect(() => loadOfferCatalogue('does-not-exist'))
-      .toThrow(/No catalogue for "does-not-exist"/);
+    expect(catalogueForPrompt(cat)).toContain('id: cdo-as-a-service');
   });
 
-  it('the shipped vikuna draft parses and has the three offers', () => {
-    // Deliberately NOT asserting it validates — price_band and proof are
-    // empty by design until a human fills them, and the test that matters
-    // is that loading it then fails loudly.
-    const raw = JSON.parse(fs.readFileSync(cataloguePath('vikuna'), 'utf8')) as OfferCatalogue;
-    expect(raw.offers.map((o) => o.id).sort())
-      .toEqual(['ai-automations', 'caio-as-a-service', 'cdo-as-a-service']);
-    expect(() => loadOfferCatalogue('vikuna')).toThrow(/not ready for fit scoring/);
+  it('carries proof and price, which are what make a fit judgement real', () => {
+    const text = catalogueForPrompt(cat);
+    expect(text).toContain('INR 3-6 lakh');
+    expect(text).toContain('Hyderabad API manufacturers');
   });
 });

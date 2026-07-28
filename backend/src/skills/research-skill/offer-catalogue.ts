@@ -1,30 +1,24 @@
 /**
  * VaNi GTM — Offer catalogue
  *
- * What a tenant sells, in the shape the fit-scoring stage needs. Loaded from
- * `backend/config/offers/<slug>.json`.
+ * What a tenant sells, in the shape the fit-scoring stage needs. Read from
+ * `gt_offers` (migration 209) and edited on the Research screen.
  *
- * ── WHY A FILE, FOR NOW ───────────────────────────────────────────────
- *
- * This is tenant business data and it will end up in a table with a UI —
- * every offer will be editable, versioned and approved like anything else
- * externally visible. But while the wording is being iterated by hand, a
- * versioned file is reviewable in a diff, and a diff is exactly what you
- * want when the question is "did changing this sentence change who we
- * contact". The loader is the only thing that would change.
+ * This was a JSON file under config/offers/ for exactly as long as the
+ * wording was being drafted by a developer. The moment a human had to fill
+ * it in, a file on the server stopped being a reasonable answer.
  *
  * ── VALIDATION FAILS LOUDLY ───────────────────────────────────────────
  *
  * Fit scoring is only as good as what it scores against. A one-line offer
- * produces a number that LOOKS meaningful and is not, and that number would
- * then decide who gets contacted. So a catalogue missing `proof`,
- * `price_band`, `signals` or `disqualifiers` throws at load, before a single
- * account is crawled — rather than quietly scoring against a blank
+ * produces a number that LOOKS meaningful and is not, and that number then
+ * decides who gets contacted. So a catalogue missing `proof`, `price_band`,
+ * `signals` or `disqualifiers` throws BEFORE a single account is crawled,
+ * naming every gap at once, rather than quietly scoring against a blank
  * (CLAUDE.md rule 12).
  */
 
-import fs from 'fs';
-import path from 'path';
+import type { SkillDb } from '../../types/skill.types';
 
 export interface Offer {
   id: string;
@@ -42,53 +36,47 @@ export interface Offer {
 }
 
 export interface OfferCatalogue {
-  tenant_slug: string;
-  tenant_label: string;
-  segment: string;
+  tenant_id: string;
   offers: Offer[];
 }
 
-const CONFIG_DIR = path.resolve(__dirname, '../../../config/offers');
-
+/** Fields a human must supply before anything can be scored against them. */
 const REQUIRED_TEXT: (keyof Offer)[] = [
   'id', 'name', 'one_line', 'who_for', 'problem', 'price_band', 'proof',
 ];
 const REQUIRED_LIST: (keyof Offer)[] = ['what_we_do', 'signals', 'disqualifiers'];
 
 /** Long enough to carry a thought. A three-word `proof` is not proof. */
-const MIN_TEXT = 12;
+export const MIN_TEXT = 12;
 
-export function cataloguePath(slug: string): string {
-  return path.join(CONFIG_DIR, `${slug}.json`);
-}
-
-export function validateCatalogue(cat: OfferCatalogue, source: string): void {
+/**
+ * Everything wrong with a catalogue, in one list. Returning all the problems
+ * rather than throwing on the first is what lets the screen show a checklist
+ * instead of a whack-a-mole.
+ */
+export function catalogueProblems(offers: Offer[]): string[] {
   const problems: string[] = [];
-
-  if (!cat.tenant_slug) problems.push('tenant_slug is missing');
-  if (!Array.isArray(cat.offers) || cat.offers.length === 0) {
-    throw new Error(`[Offers] ${source}: no offers defined.`);
-  }
+  if (offers.length === 0) return ['No offers defined.'];
 
   const seen = new Set<string>();
-  for (const [i, offer] of cat.offers.entries()) {
-    const where = offer.id || `offer[${i}]`;
+  for (const [i, offer] of offers.entries()) {
+    const where = offer.name || offer.id || `offer ${i + 1}`;
 
     for (const field of REQUIRED_TEXT) {
       const value = offer[field];
       if (typeof value !== 'string' || value.trim().length === 0) {
-        problems.push(`${where}.${field} is empty`);
+        problems.push(`${where}: ${field} is empty`);
       } else if (field !== 'id' && value.trim().length < MIN_TEXT) {
-        problems.push(`${where}.${field} is too short to score against ("${value.trim()}")`);
+        problems.push(`${where}: ${field} is too short to score against ("${value.trim()}")`);
       }
     }
 
     for (const field of REQUIRED_LIST) {
       const value = offer[field];
       if (!Array.isArray(value) || value.length === 0) {
-        problems.push(`${where}.${field} is empty — fit scoring has nothing to match on`);
+        problems.push(`${where}: ${field} is empty — fit scoring has nothing to match on`);
       } else if (value.some((v) => typeof v !== 'string' || v.trim().length < MIN_TEXT)) {
-        problems.push(`${where}.${field} contains an entry too short to be useful`);
+        problems.push(`${where}: ${field} contains an entry too short to be useful`);
       }
     }
 
@@ -97,39 +85,75 @@ export function validateCatalogue(cat: OfferCatalogue, source: string): void {
       seen.add(offer.id);
     }
   }
+  return problems;
+}
 
+/** True when this one offer could be scored against as it stands. */
+export function offerIsReady(offer: Offer): boolean {
+  return catalogueProblems([offer]).length === 0;
+}
+
+export function assertReady(offers: Offer[]): void {
+  const problems = catalogueProblems(offers);
   if (problems.length > 0) {
     throw new Error(
-      `[Offers] ${source} is not ready for fit scoring:\n  - ${problems.join('\n  - ')}\n` +
-      '\nFill these in before running the research batch. Scoring against a blank ' +
-      'produces a number that looks meaningful and is not, and that number decides ' +
-      'who gets contacted.',
+      `OFFER_CATALOGUE_INCOMPLETE: the offers are not ready for fit scoring:\n  - ${problems.join('\n  - ')}\n`
+      + '\nFill these in on the Research screen before running the batch. Scoring '
+      + 'against a blank produces a number that looks meaningful and is not, and '
+      + 'that number decides who gets contacted.',
     );
   }
 }
 
-export function loadOfferCatalogue(slug: string): OfferCatalogue {
-  const file = cataloguePath(slug);
+interface OfferRow {
+  offer_key: string; name: string; one_line: string; who_for: string;
+  problem: string; what_we_do: string[]; signals: string[];
+  disqualifiers: string[]; price_band: string | null; proof: string | null;
+}
 
-  let raw: string;
-  try {
-    raw = fs.readFileSync(file, 'utf8');
-  } catch {
+const toOffer = (r: OfferRow): Offer => ({
+  id: r.offer_key,
+  name: r.name,
+  one_line: r.one_line,
+  who_for: r.who_for,
+  problem: r.problem,
+  what_we_do: r.what_we_do ?? [],
+  signals: r.signals ?? [],
+  disqualifiers: r.disqualifiers ?? [],
+  price_band: r.price_band ?? '',
+  proof: r.proof ?? '',
+});
+
+/** Every active offer for a tenant, validated or not. */
+export async function readOffers(db: SkillDb, tenantId: string): Promise<Offer[]> {
+  const res = await db.query<OfferRow>(
+    `SELECT offer_key, name, one_line, who_for, problem, what_we_do,
+            signals, disqualifiers, price_band, proof
+       FROM gt_offers
+      WHERE tenant_id = $tenant_id AND is_active = true
+      ORDER BY sort_order, offer_key`,
+    { tenant_id: tenantId },
+  );
+  return res.rows.map(toOffer);
+}
+
+/**
+ * The catalogue, or a loud refusal. Used by the research agent — nothing is
+ * crawled until this returns.
+ */
+export async function loadOfferCatalogue(
+  db: SkillDb,
+  tenantId: string,
+): Promise<OfferCatalogue> {
+  const offers = await readOffers(db, tenantId);
+  if (offers.length === 0) {
     throw new Error(
-      `[Offers] No catalogue for "${slug}" at ${file}. ` +
-      'Create it from another tenant\'s file — fit scoring cannot run without one.',
+      'OFFER_CATALOGUE_EMPTY: this tenant has no offers. Add what you sell on the '
+      + 'Research screen — fit scoring cannot run without it.',
     );
   }
-
-  let parsed: OfferCatalogue;
-  try {
-    parsed = JSON.parse(raw) as OfferCatalogue;
-  } catch (err) {
-    throw new Error(`[Offers] ${file} is not valid JSON: ${(err as Error).message}`);
-  }
-
-  validateCatalogue(parsed, file);
-  return parsed;
+  assertReady(offers);
+  return { tenant_id: tenantId, offers };
 }
 
 /**

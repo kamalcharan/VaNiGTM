@@ -1,3 +1,11 @@
+---
+name: research-skill
+version: 1.0.0
+description: Outward research — competitors from the profile, and per-company account briefs for a prospect cohort
+tier: starter
+default_recipe: brief-list
+---
+
 # research-skill — outward competitive research (GTM pipeline v2, stage 1)
 
 ## Why this skill exists
@@ -95,3 +103,30 @@ Three rules this agent will not break:
 
 One run covers the whole cohort and checkpoints after every account, so a
 crash at 60 of 100 keeps 59 briefs and a resume starts at 60.
+
+## Functions
+
+### get_offers
+What this tenant sells, each with a readiness verdict, plus the exact list of what is still missing.
+- Parameters: none
+- Returns: { offers: [{ id, name, one_line, who_for, problem, what_we_do, signals, disqualifiers, price_band, proof, is_ready }], problems, ready, recipe: 'offer-list' }
+
+### save_offer
+Create or update one offer. A half-written offer is storable — the gate is at research time, not save time.
+- Parameters: name (required, string), offer_key (optional, string), one_line (optional, string), who_for (optional, string), problem (optional, string), what_we_do (optional, array), signals (optional, array), disqualifiers (optional, array), price_band (optional, string), proof (optional, string)
+- Returns: { offer_key, recipe: 'offer-card' }
+
+### get_briefs
+The research output as a queue of decisions. Stats cover the whole batch; rows cover the current filter.
+- Parameters: status (optional, string), offer (optional, string), search (optional, string), page (optional, number), limit (optional, number), offset (optional, number)
+- Returns: { briefs, total, page, limit, stats, recipe: 'brief-list' }
+
+### decide_brief
+A human's ruling on one brief. Ruling a company out requires a reason.
+- Parameters: brief_id (required, number), decision (required, string), offer_key (optional, string), note (optional, string)
+- Returns: { brief_id, decision, recipe: 'brief-card' }
+
+### start_research
+Queue the research batch for the worker. Validates the offers first and reports how many companies are actually reachable.
+- Parameters: tag_id (optional, number), prospect_ids (optional, array), limit (optional, number)
+- Returns: { event_id, queued, reachable, recipe: 'research-queued' }

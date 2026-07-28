@@ -202,7 +202,26 @@ detail in a first touch is worse than no touch.
   full batch; zero claims without evidence
 - Runtime: ~2–4 min/account on local qwen3:8b → ~5 hours for 107, unattended
 
-### Step 3 — Brief review surface  ·  1.5 days
+### Step 3 — The Research screen  ·  BUILT
+
+`/research` — everything the pilot needs, in the order it happens:
+
+1. **What you sell** — offers edited in the app (`gt_offers`, migration 209),
+   each with a readiness verdict and a checklist of what is still missing.
+   This replaced `config/offers/*.json`: asking a human to hand-edit JSON on
+   a server to describe their own business is not a product.
+2. **Research a cohort** — pick the tag, pick how many, start. The button is
+   DISABLED until every offer is complete, and says why.
+3. **The briefs** — read them, approve, reassign the offer, or rule the
+   company out. Ruling out REQUIRES a reason; those reasons are the pilot's
+   most useful output after the reply rate.
+
+Every brief shows its evidence — claim, source URL, and the excerpt from the
+page it was found on. A brief whose claims could not be verified is flagged
+`No evidence` in the list and in the stats, because that is the one failure
+that would put an invented detail into a first email.
+
+### Step 3b — Original spec (kept for reference)  ·  1.5 days
 
 Agent produces, human confirms. Reuses `RecordsPage` / `RecordTable` /
 `VdfModal` — no new patterns.

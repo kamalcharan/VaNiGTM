@@ -1,0 +1,134 @@
+/* Research — offers, the batch, and the briefs it produces.
+   Theme variables only; no hardcoded colours (CLAUDE.md rule 4). */
+
+.section { margin-bottom: 2.5rem; }
+
+.sectionHead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;
+}
+.sectionTitle {
+  font-size: 1.05rem; font-weight: 600; color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+.sectionNote { font-size: 0.8rem; color: var(--color-text-muted); max-width: 62ch; }
+
+/* ── The blocking checklist ─────────────────────────────────────────── */
+
+.blocker {
+  border: 1px solid var(--color-warning, var(--color-border));
+  background: var(--color-surface);
+  border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem;
+}
+.blockerTitle {
+  font-size: 0.9rem; font-weight: 600; color: var(--color-text);
+  margin-bottom: 0.5rem;
+}
+.blockerList { margin: 0.25rem 0 0.75rem; padding-left: 1.1rem; }
+.blockerList li {
+  font-size: 0.82rem; color: var(--color-text-muted); margin-bottom: 0.25rem;
+}
+.blockerWhy { font-size: 0.78rem; color: var(--color-text-muted); font-style: italic; }
+
+/* ── Offers ─────────────────────────────────────────────────────────── */
+
+.offerGrid {
+  display: grid; gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+.offerCard {
+  border: 1px solid var(--color-border); background: var(--color-surface);
+  border-radius: 12px; padding: 1rem 1.1rem; cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+  display: flex; flex-direction: column; gap: 0.5rem;
+}
+.offerCard:hover { border-color: var(--color-accent); transform: translateY(-2px); }
+.offerHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
+.offerName { font-size: 0.95rem; font-weight: 600; color: var(--color-text); }
+.offerLine { font-size: 0.8rem; color: var(--color-text-muted); line-height: 1.45; }
+.offerMissing { font-size: 0.75rem; color: var(--color-text-muted); }
+
+/* ── Briefs ─────────────────────────────────────────────────────────── */
+
+.briefList { display: flex; flex-direction: column; gap: 0.75rem; }
+.briefCard {
+  border: 1px solid var(--color-border); background: var(--color-surface);
+  border-radius: 12px; padding: 1rem 1.1rem; cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.briefCard:hover { border-color: var(--color-accent); }
+.briefHead {
+  display: flex; align-items: center; gap: 0.6rem;
+  justify-content: space-between; flex-wrap: wrap;
+}
+.briefName { font-size: 0.95rem; font-weight: 600; color: var(--color-text); }
+.briefDomain { font-size: 0.78rem; color: var(--color-text-muted); }
+.briefHook {
+  margin-top: 0.5rem; font-size: 0.85rem; color: var(--color-text);
+  line-height: 1.5; border-left: 2px solid var(--color-accent);
+  padding-left: 0.75rem;
+}
+.briefMakes { margin-top: 0.4rem; font-size: 0.8rem; color: var(--color-text-muted); }
+.badges { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+
+/* ── Detail ─────────────────────────────────────────────────────────── */
+
+.detailField { margin-bottom: 1rem; }
+.detailLabel {
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--color-text-muted); margin-bottom: 0.25rem;
+}
+.detailValue { font-size: 0.86rem; color: var(--color-text); line-height: 1.55; }
+
+.evidence {
+  border: 1px solid var(--color-border); border-radius: 8px;
+  padding: 0.6rem 0.75rem; margin-bottom: 0.5rem;
+}
+.evidenceClaim { font-size: 0.82rem; color: var(--color-text); font-weight: 500; }
+.evidenceUrl {
+  font-size: 0.72rem; color: var(--color-accent); word-break: break-all;
+  display: block; margin: 0.2rem 0;
+}
+.evidenceExcerpt {
+  font-size: 0.78rem; color: var(--color-text-muted);
+  font-style: italic; line-height: 1.45;
+}
+
+.fitRow {
+  display: flex; align-items: baseline; gap: 0.6rem;
+  font-size: 0.8rem; margin-bottom: 0.35rem;
+}
+.fitScore {
+  font-variant-numeric: tabular-nums; font-weight: 600;
+  color: var(--color-text); min-width: 2.5rem;
+}
+.fitReason { color: var(--color-text-muted); }
+
+.formRow { margin-bottom: 1rem; }
+.formLabel {
+  display: block; font-size: 0.78rem; font-weight: 500;
+  color: var(--color-text); margin-bottom: 0.35rem;
+}
+.formHint { font-size: 0.72rem; color: var(--color-text-muted); margin-top: 0.25rem; }
+.textarea {
+  width: 100%; min-height: 72px; resize: vertical;
+  background: var(--color-surface); color: var(--color-text);
+  border: 1px solid var(--color-border); border-radius: 8px;
+  padding: 0.6rem 0.75rem; font: inherit; font-size: 0.85rem; line-height: 1.5;
+}
+.textarea:focus { outline: none; border-color: var(--color-accent); }
+
+.actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.filters {
+  display: flex; gap: 0.5rem; flex-wrap: wrap;
+  align-items: center; margin-bottom: 1rem;
+}
+.select {
+  background: var(--color-surface); color: var(--color-text);
+  border: 1px solid var(--color-border); border-radius: 8px;
+  padding: 0.45rem 0.7rem; font: inherit; font-size: 0.82rem;
+}
+.statGrid {
+  display: grid; gap: 0.75rem; margin-bottom: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}

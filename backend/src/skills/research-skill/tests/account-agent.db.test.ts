@@ -21,7 +21,6 @@ const A = '11111111-1111-1111-1111-111111111111';
 const B = '33333333-3333-3333-3333-333333333333';
 
 const MIGRATIONS = path.resolve(__dirname, '../../../../migrations');
-const CONFIG = path.resolve(__dirname, '../../../../config/offers');
 
 const available = (() => {
   try {
@@ -82,6 +81,13 @@ CREATE TABLE gt_agent_runs (id BIGSERIAL PRIMARY KEY, tenant_id UUID, agent_name
   checkpoint JSONB, awaiting_input JSONB, retry_count INT DEFAULT 0, last_checkpoint TEXT,
   output JSONB, error_trace TEXT, token_usage JSONB, duration_ms INT,
   started_at TIMESTAMPTZ, completed_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT now());
+CREATE TABLE gt_offers (id BIGSERIAL PRIMARY KEY, tenant_id UUID NOT NULL,
+  offer_key VARCHAR(60) NOT NULL, name VARCHAR(120) NOT NULL, one_line TEXT NOT NULL,
+  who_for TEXT NOT NULL, problem TEXT NOT NULL, what_we_do TEXT[] NOT NULL DEFAULT '{}',
+  signals TEXT[] NOT NULL DEFAULT '{}', disqualifiers TEXT[] NOT NULL DEFAULT '{}',
+  price_band TEXT, proof TEXT, is_active BOOLEAN NOT NULL DEFAULT true,
+  sort_order SMALLINT NOT NULL DEFAULT 0, created_by UUID,
+  created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now());
 CREATE FUNCTION set_tenant_context(t UUID) RETURNS void AS $$
   BEGIN PERFORM set_config('app.current_tenant_id', t::text, true); END $$ LANGUAGE plpgsql;
 `;
@@ -118,28 +124,34 @@ beforeAll(async () => {
   await pool.query(`INSERT INTO gt_prospect_tags VALUES (1,7,$1),(2,7,$1),(3,7,$1)`, [A]);
   await pool.query(`INSERT INTO gt_prospect_tags VALUES (9,7,$1)`, [B]);
 
-  // A COMPLETE catalogue for the tests. The shipped vikuna.json is a draft
-  // with empty proof/price_band on purpose, and is asserted to fail below.
-  fs.writeFileSync(path.join(CONFIG, '__test.json'), JSON.stringify({
-    tenant_slug: '__test', tenant_label: 'Test Co', segment: 'manufacturing/pharma',
-    offers: [{
-      id: 'cdo-as-a-service', name: 'CDO as a Service',
-      one_line: 'A fractional Chief Data Officer for pharma manufacturers.',
-      who_for: 'Mid-size pharma manufacturers with multiple plants.',
-      problem: 'Data is trapped across plant and quality systems.',
-      what_we_do: ['A single definition layer across plant systems'],
-      signals: ['More than one manufacturing site listed on the site'],
-      disqualifiers: ['Trading or distribution only, no manufacturing'],
-      price_band: 'INR 3-6 lakh per month for six months',
-      proof: 'Delivered for two Hyderabad API manufacturers.',
-    }],
-  }, null, 2));
+  // Tenant A sells one COMPLETE offer. Tenant B's is deliberately
+  // half-written — price_band and proof empty — which is what a real tenant
+  // looks like the moment before someone fills them in.
+  await pool.query(
+    `INSERT INTO gt_offers (tenant_id, offer_key, name, one_line, who_for, problem,
+                            what_we_do, signals, disqualifiers, price_band, proof)
+     VALUES ($1,'cdo-as-a-service','CDO as a Service',
+             'A fractional Chief Data Officer for pharma manufacturers.',
+             'Mid-size pharma manufacturers with multiple plants.',
+             'Data is trapped across plant and quality systems.',
+             ARRAY['A single definition layer across plant systems'],
+             ARRAY['More than one manufacturing site listed on the site'],
+             ARRAY['Trading or distribution only, no manufacturing'],
+             'INR 3-6 lakh per month for six months',
+             'Delivered for two Hyderabad API manufacturers.')`, [A]);
+  await pool.query(
+    `INSERT INTO gt_offers (tenant_id, offer_key, name, one_line, who_for, problem,
+                            what_we_do, signals, disqualifiers)
+     VALUES ($1,'half-written','Half Written Offer',
+             'An offer nobody finished writing down.',
+             'Somebody, presumably, somewhere out there.',
+             'A problem that was never actually described here.',
+             ARRAY['Something we would do for them'],
+             ARRAY['Something visible on their website'],
+             ARRAY['Something that would rule them out'])`, [B]);
 }, 60000);
 
-afterAll(async () => {
-  if (pool) await pool.end();
-  try { fs.unlinkSync(path.join(CONFIG, '__test.json')); } catch { /* already gone */ }
-});
+afterAll(async () => { if (pool) await pool.end(); });
 
 beforeEach(() => { fetched.length = 0; llmQueue = []; siteText = {}; });
 
@@ -185,11 +197,11 @@ function queueHealthyAccount(excerpt: string, offer: string | null) {
 const maybe = available ? describe : describe.skip;
 
 maybe('the offer catalogue gate', () => {
-  it('fails before crawling anything when the catalogue is half-written', async () => {
-    const runId = await newRun();
-    // The shipped draft: proof and price_band deliberately empty.
-    await expect(AccountResearchAgent.run(pool, A,
-      { offer_catalogue: 'vikuna', tag_id: 7 }, runId)).rejects.toThrow(/not ready for fit scoring/);
+  it('fails before crawling anything when the offers are half-written', async () => {
+    const runId = await newRun(B);
+    // Tenant B's offer has no price_band and no proof.
+    await expect(AccountResearchAgent.run(pool, B,
+      { tag_id: 7 }, runId)).rejects.toThrow(/not ready for fit scoring/);
 
     // THE assertion: a half-written catalogue costs zero crawls.
     expect(fetched).toHaveLength(0);
@@ -199,16 +211,18 @@ maybe('the offer catalogue gate', () => {
     expect(steps.some((s: any) => s.step_name === 'offer_catalogue' && s.status === 'error')).toBe(true);
   });
 
-  it('fails loudly when no catalogue is named at all', async () => {
-    const runId = await newRun();
-    await expect(AccountResearchAgent.run(pool, A, { tag_id: 7 }, runId))
-      .rejects.toThrow(/OFFER_CATALOGUE_MISSING/);
+  it('fails loudly when the tenant sells nothing at all', async () => {
+    await pool.query(`INSERT INTO vn_tenants (id,slug) VALUES ($1,'nothing') ON CONFLICT DO NOTHING`,
+      ['77777777-7777-7777-7777-777777777777']);
+    const runId = await newRun('77777777-7777-7777-7777-777777777777');
+    await expect(AccountResearchAgent.run(pool, '77777777-7777-7777-7777-777777777777',
+      { tag_id: 7 }, runId)).rejects.toThrow(/OFFER_CATALOGUE_EMPTY/);
     expect(fetched).toHaveLength(0);
   });
 
   it('fails loudly when no cohort is named', async () => {
     const runId = await newRun();
-    await expect(AccountResearchAgent.run(pool, A, { offer_catalogue: '__test' }, runId))
+    await expect(AccountResearchAgent.run(pool, A, {}, runId))
       .rejects.toThrow(/COHORT_MISSING/);
   });
 });
@@ -225,7 +239,7 @@ maybe('researching a cohort', () => {
     queueHealthyAccount('two units in Medak district', null);
 
     const runId = await newRun();
-    await AccountResearchAgent.run(pool, A, { offer_catalogue: '__test', tag_id: 7 }, runId);
+    await AccountResearchAgent.run(pool, A, { tag_id: 7 }, runId);
 
     const rows = await briefs();
     // Gamma has no domain: there is nothing to research, so it is not a row.
@@ -254,7 +268,7 @@ maybe('researching a cohort', () => {
     queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
 
     const runId = await newRun();
-    await AccountResearchAgent.run(pool, A, { offer_catalogue: '__test', prospect_ids: [1, 2] }, runId);
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1, 2] }, runId);
 
     const rows = await briefs();
     const alpha = rows.find((r: any) => Number(r.prospect_id) === 1)!;
@@ -280,7 +294,7 @@ maybe('researching a cohort', () => {
     llmQueue.push({ scores: [], recommended_offer: null, reason: 'thin' });
 
     const runId = await newRun();
-    await AccountResearchAgent.run(pool, A, { offer_catalogue: '__test', prospect_ids: [1] }, runId);
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, runId);
 
     const rows = await briefs();
     const evidence = rows[0].raw_evidence as { claim: string }[];
@@ -298,7 +312,7 @@ maybe('researching a cohort', () => {
     llmQueue.push({ scores: [], recommended_offer: 'something-we-never-sold', reason: 'invented' });
 
     const runId = await newRun();
-    await AccountResearchAgent.run(pool, A, { offer_catalogue: '__test', prospect_ids: [1] }, runId);
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, runId);
 
     const rows = await briefs();
     expect(rows[0].recommended_offer).toBeNull();
@@ -310,7 +324,7 @@ maybe('researching a cohort', () => {
     siteText = { 'https://alpha.com': siteBody('active pharmaceutical ingredients') };
     queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
     let runId = await newRun();
-    await AccountResearchAgent.run(pool, A, { offer_catalogue: '__test', prospect_ids: [1] }, runId);
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, runId);
 
     await pool.query(
       `UPDATE gt_account_briefs SET status='approved', decided_by=$1, decided_at=now(),
@@ -318,7 +332,7 @@ maybe('researching a cohort', () => {
 
     queueHealthyAccount('two units in Medak district', null);
     runId = await newRun();
-    await AccountResearchAgent.run(pool, A, { offer_catalogue: '__test', prospect_ids: [1] }, runId);
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, runId);
 
     const rows = await briefs();
     expect(rows).toHaveLength(1);                 // replaced, not duplicated
@@ -341,7 +355,7 @@ maybe('checkpoint and resume', () => {
     // an unreadable brief rather than losing Alpha.
 
     const runId = await newRun();
-    await AccountResearchAgent.run(pool, A, { offer_catalogue: '__test', prospect_ids: [1, 2] }, runId);
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1, 2] }, runId);
 
     const rows = await briefs();
     expect(rows).toHaveLength(2);
@@ -360,7 +374,7 @@ maybe('checkpoint and resume', () => {
     queueHealthyAccount('two units in Medak district', null);
     const runId = await newRun();
     await AccountResearchAgent.run(pool, A,
-      { offer_catalogue: '__test', prospect_ids: [1, 2], resume_run_id: first }, runId);
+      { prospect_ids: [1, 2], resume_run_id: first }, runId);
 
     // Alpha was never fetched — it was already done.
     expect(fetched.some((u) => u.includes('alpha.com'))).toBe(false);
@@ -378,16 +392,17 @@ maybe('tenant isolation', () => {
   it('never researches another tenant\'s prospects, even on a shared tag', async () => {
     siteText = { 'https://theirs.com': siteBody('their products') };
     const runId = await newRun(A);
-    await AccountResearchAgent.run(pool, A, { offer_catalogue: '__test', prospect_ids: [9] }, runId);
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [9] }, runId);
 
     expect(fetched).toHaveLength(0);              // id 9 belongs to tenant B
     expect(await briefs(A)).toHaveLength(0);
     expect(await briefs(B)).toHaveLength(0);
   });
 
-  it('returns cleanly for a tenant with nothing in the cohort', async () => {
-    const runId = await newRun(B);
-    await AccountResearchAgent.run(pool, B, { offer_catalogue: '__test', tag_id: 999 }, runId);
+  it('returns cleanly when the cohort is empty', async () => {
+    // Tenant A, whose offers ARE complete, against a tag nothing carries.
+    const runId = await newRun(A);
+    await AccountResearchAgent.run(pool, A, { tag_id: 999 }, runId);
     const out = (await pool.query(`SELECT status, output FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
     expect(out.status).toBe('completed');
     expect(out.output.researched).toBe(0);

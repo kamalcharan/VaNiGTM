@@ -88,6 +88,18 @@ export const NAV_ITEMS: NavItem[] = [
     recipe: 'record-list',
   },
   {
+    // Read a company's own site before writing to them, and decide who is
+    // not worth writing to at all.
+    id: 'research',
+    label: 'Research',
+    icon: <Icon><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></Icon>,
+    href: '/research',
+    section: 'main',
+    skill: 'research-skill',
+    fn: 'get_briefs',
+    recipe: 'brief-list',
+  },
+  {
     id: 'campaigns',
     label: 'Campaigns',
     icon: <Icon><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></Icon>,

@@ -190,16 +190,9 @@ export class AccountResearchAgent {
     // ── The catalogue, BEFORE anything is crawled ──────────────────────
     // A half-written catalogue must cost zero crawls. loadOfferCatalogue
     // throws naming every missing field.
-    const slug = String(payload.offer_catalogue ?? '').trim();
-    if (!slug) {
-      throw new Error(
-        'OFFER_CATALOGUE_MISSING: the event payload must name an offer catalogue ' +
-        '(e.g. offer_catalogue: "vikuna"). Fit scoring cannot run without one.',
-      );
-    }
     let catalogue: OfferCatalogue;
     try {
-      catalogue = loadOfferCatalogue(slug);
+      catalogue = await loadOfferCatalogue(db, tenantId);
     } catch (err) {
       await appendStep(pool, runId, {
         step_name: 'offer_catalogue',
@@ -214,7 +207,7 @@ export class AccountResearchAgent {
 
     await appendStep(pool, runId, {
       step_name: 'offer_catalogue',
-      action: `Loaded ${catalogue.tenant_label}'s offers`,
+      action: 'Loaded the offers to score against',
       output_summary: catalogue.offers.map((o) => o.name).join(' · '),
       status: 'ok',
     });
@@ -319,7 +312,7 @@ export class AccountResearchAgent {
         unreadable,
         with_recommendation: recommended,
         no_fit: written - unreadable - recommended,
-        catalogue: catalogue.tenant_slug,
+        offers: catalogue.offers.length,
       },
     });
   }
