@@ -77,6 +77,25 @@ async function main() {
   const summary = registry.summary();
   console.log(`[VaNi-GTM] Loaded ${summary.skills} skills, ${summary.handlers} handlers`);
 
+  // Name every registered function at boot. The registry is built ONCE here,
+  // so "No handler registered for x.y" at request time always means the
+  // process was started without that file — and the only way to tell used to
+  // be inferring it. Now the answer is in the log.
+  for (const skill of [...registry.skills.values()].sort((a, b) => a.name.localeCompare(b.name))) {
+    const fns = (skill.functions ?? [])
+      .map((f) => f.name)
+      .filter((n) => typeof registry.getHandler(skill.name, n) === 'function');
+    const declaredOnly = (skill.functions ?? [])
+      .map((f) => f.name)
+      .filter((n) => typeof registry.getHandler(skill.name, n) !== 'function');
+    console.log(
+      `[VaNi-GTM]   ${skill.name}: ${fns.join(', ') || '(none)'}`
+      + (declaredOnly.length
+        ? `  ⚠ declared in SKILL.md but NOT registered: ${declaredOnly.join(', ')}`
+        : ''),
+    );
+  }
+
   /* ── Skill execution route ──────────────────────────── */
 
   app.post('/api/v1/skills/:skillName/:functionName', async (req, res) => {
