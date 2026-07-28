@@ -34,11 +34,12 @@ const available = (() => {
 let pool: Pool;
 
 /** A SkillContext backed by the real pool, matching the shape functions use. */
-function ctxFor(tenantId: string) {
+function ctxFor(tenantId: string, isAdmin = false) {
   return {
     tenant_id: tenantId,
     is_live: false,
     user_id: USER,
+    is_admin: isAdmin,
     db: {
       query: (sql: string, params: Record<string, unknown> = {}) => {
         // Mirror translateParams: named -> positional, in first-seen order.
@@ -200,7 +201,7 @@ maybe('get_prospects', () => {
 
   // CLAUDE.md rule 7, check 3 — the one that matters.
   it('returns 0 rows for another tenant', async () => {
-    const r = await get_prospects({}, ctxFor(B));
+    const r = await get_prospects({}, ctxFor(B, true));
     expect(r.prospects.every((p) => p.name !== 'Acme Industries')).toBe(true);
     expect(r.total).toBe(1);   // only their own row
   });
@@ -294,33 +295,32 @@ maybe('get_universe_companies — the common pool', () => {
   });
 
   it('serves an admin tenant', async () => {
-    await pool.query(`UPDATE vn_tenants SET is_admin = true WHERE id = $1`, [B]);
-    const r = await get_universe_companies({}, ctxFor(B));
+    const r = await get_universe_companies({}, ctxFor(B, true));
     expect(r.total).toBe(3);
     expect(r.companies.map((c) => c.name).sort())
       .toEqual(['Pool Alpha', 'Pool Alpha Divisions', 'Pool Beta']);
   });
 
   it('reports that nothing has been merged, rather than implying it has', async () => {
-    const r = await get_universe_companies({}, ctxFor(B));
+    const r = await get_universe_companies({}, ctxFor(B, true));
     expect(r.stats.resolved).toBe(0);
     expect(r.companies.every((c) => c.resolved === false)).toBe(true);
   });
 
   it('flags rows sharing a blocking key without merging them', async () => {
-    const r = await get_universe_companies({ only_duplicates: true }, ctxFor(B));
+    const r = await get_universe_companies({ only_duplicates: true }, ctxFor(B, true));
     expect(r.companies.map((c) => c.name).sort())
       .toEqual(['Pool Alpha', 'Pool Alpha Divisions']);
     expect(r.stats.sharing_block).toBe(2);
   });
 
   it('carries the delivery tag onto pool rows', async () => {
-    const r = await get_universe_companies({ search: 'Pool Beta' }, ctxFor(B));
+    const r = await get_universe_companies({ search: 'Pool Beta' }, ctxFor(B, true));
     expect(r.companies[0].tags).toEqual([{ id: 11, label: 'FTCCI Telangana', inherited: true }]);
   });
 
   it('reports quality as components, same as the tenant side', async () => {
-    const r = await get_universe_companies({}, ctxFor(B));
+    const r = await get_universe_companies({}, ctxFor(B, true));
     expect(Number(r.stats.avg_validity)).toBeLessThan(1);
     expect(r.stats.with_rejected_fields).toBe(1);
   });

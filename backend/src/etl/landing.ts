@@ -265,6 +265,15 @@ export async function landSession(
     await client.query('BEGIN');
 
     for (const row of rows) {
+      // A SAVEPOINT per row, not a bare try/catch.
+      //
+      // PostgreSQL ABORTS the whole transaction on the first failed statement:
+      // every later one returns "current transaction is aborted" until the
+      // block ends. So catching a row error and carrying on only looked like
+      // isolation — the first bad row poisoned all 119, the final flush threw,
+      // and the entire import rolled back with every row still 'pending' and
+      // no per-row error to show for it.
+      await client.query('SAVEPOINT row_work');
       try {
         const company = row.mapped_data?.company ?? null;
         const people: any[] = row.mapped_data?.people ?? [];
@@ -385,12 +394,16 @@ export async function landSession(
           diff ? JSON.stringify(diff) : null, locked,
           createdId, createdType, errors.length ? errors : null,
         ]);
+        // Flushed outside the row's savepoint, below, so a rolled-back row
+        // cannot discard the outcomes of the rows before it.
+        await client.query('RELEASE SAVEPOINT row_work');
         if (pendingUpdates.length >= UPDATE_BATCH) {
           await flushUpdates(client, pendingUpdates);
         }
       } catch (rowErr: any) {
-        // One bad row must not take the import down, and it must not be
-        // silently skipped either (rule 12).
+        // Undo only this row. The transaction is usable again afterwards, so
+        // the remaining rows genuinely still get their chance.
+        await client.query('ROLLBACK TO SAVEPOINT row_work');
         counts.failed++;
         pendingUpdates.push([
           row.id, 'failed', null, null, null, null, false, null, null,

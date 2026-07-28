@@ -30,7 +30,7 @@ import {
   unmappedColumns,
 } from './mapping-plan';
 import { landSession } from './landing';
-import { verifyAccessToken, type JwtPayload } from '../auth/token.service';
+import { resolveAuth, type AuthContext } from '../auth/auth-context';
 
 const UPLOAD_DIR = path.resolve(__dirname, '../../uploads');
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -59,31 +59,14 @@ const upload = multer({
   },
 });
 
-/* ── Auth helper (JWT) ─────────────────────────────── */
+/* ── Auth ───────────────────────────────────────────── */
+// Resolved by the one shared resolver (auth/auth-context.ts). This file used
+// to carry its own copy, and the two drifted on is_live.
 
-interface AuthInfo {
-  user_id: string;
-  tenant_id: string;
-  is_live: boolean;
-  is_admin: boolean;
-}
+type AuthInfo = AuthContext;
 
 function extractAuth(req: { headers: Record<string, any> }): AuthInfo | null {
-  const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) return null;
-  try {
-    const jwt = verifyAccessToken(header.slice(7));
-    return {
-      user_id: jwt.user_id,
-      tenant_id: jwt.tenant_id,
-      is_live: jwt.is_live !== false,
-      // vn_tenants.is_admin (migration 012), carried in the token. NEVER read
-      // an admin claim from the request body.
-      is_admin: jwt.is_admin === true,
-    };
-  } catch {
-    return null;
-  }
+  return resolveAuth(req.headers.authorization);
 }
 
 /**

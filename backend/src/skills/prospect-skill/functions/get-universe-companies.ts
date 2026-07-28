@@ -7,9 +7,9 @@
  * ── ADMIN ONLY, CHECKED AGAINST THE DATABASE ──────────────────────────
  *
  * gt_universe_company_sources is cross-tenant infrastructure with no
- * tenant_id, so nothing in the query itself constrains who sees it.
- * SkillContext carries no is_admin, so the flag is read from vn_tenants —
- * authoritative, and never a claim the caller supplied.
+ * tenant_id, so nothing in the query itself constrains who sees it. The gate
+ * is ctx.is_admin, resolved once per request from the JWT by the single
+ * auth resolver — the same flag the ETL routes use.
  *
  * ── THESE ARE SOURCE ROWS, NOT MERGED COMPANIES ───────────────────────
  *
@@ -86,11 +86,10 @@ export async function get_universe_companies(
   params: GetUniverseParams,
   ctx: SkillContext,
 ): Promise<GetUniverseResult> {
-  const admin = await ctx.db.query<{ is_admin: boolean }>(
-    'SELECT is_admin FROM vn_tenants WHERE id = $tenant_id',
-    { $tenant_id: ctx.tenant_id },
-  );
-  if (!admin.rows[0]?.is_admin) {
+  // One flag, resolved once for the request (auth/auth-context.ts). This used
+  // to re-query vn_tenants — a second answer to a question already answered,
+  // which is exactly how is_live drifted apart.
+  if (!ctx.is_admin) {
     throw new Error('The common pool is available to admin tenants only.');
   }
 

@@ -12,6 +12,7 @@ import { createIngestionRouter } from './skills/ingestion-skill/ingestion.routes
 import { createProfileRouter } from './skills/profile-skill/profile.routes';
 import { createStorytellerRouter } from './skills/storyteller-skill/storyteller.routes';
 import { verifyAccessToken } from './auth/token.service';
+import { resolveAuth } from './auth/auth-context';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -91,15 +92,9 @@ async function main() {
       return;
     }
 
-    let tenantId: string;
-    let isLive: boolean;
-    let userId: string;
-    try {
-      const jwt = verifyAccessToken(authHeader.slice(7));
-      tenantId = jwt.tenant_id;
-      isLive   = jwt.is_live;
-      userId   = jwt.user_id;
-    } catch {
+    // One resolver, shared with the ETL routes. See auth/auth-context.ts.
+    const auth = resolveAuth(authHeader);
+    if (!auth) {
       res.status(401).json({
         error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token' },
       });
@@ -107,8 +102,14 @@ async function main() {
     }
 
     // Create tenant-scoped DB interface (RLS context set per query)
-    const db = createTenantDb(pool, tenantId);
-    const ctx = { tenant_id: tenantId, is_live: isLive, user_id: userId, db };
+    const db = createTenantDb(pool, auth.tenant_id);
+    const ctx = {
+      tenant_id: auth.tenant_id,
+      is_live: auth.is_live,
+      user_id: auth.user_id,
+      is_admin: auth.is_admin,
+      db,
+    };
 
     try {
       const result = await registry.execute(skillName, functionName, params, ctx);

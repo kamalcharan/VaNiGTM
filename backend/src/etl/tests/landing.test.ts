@@ -464,6 +464,52 @@ maybe()('landSession — at the real file size', () => {
   }, 180000);
 });
 
+maybe()('landSession — one bad row must not take the import down', () => {
+  /**
+   * The exact failure a real import hit: 119 rows staged, session marked
+   * `failed`, processing_completed_at NULL, and every row still `pending`
+   * with no per-row error to show for it.
+   *
+   * Cause: PostgreSQL aborts the WHOLE transaction on the first failed
+   * statement. A per-row try/catch looked like isolation but the transaction
+   * was already poisoned, so every later row failed too and the final flush
+   * threw, rolling back the lot. Only a SAVEPOINT actually isolates a row.
+   */
+  it('lands the good rows and fails only the bad one', async () => {
+    const tooLong = 'X'.repeat(400);   // gt_prospects.name is VARCHAR(300)
+
+    const r = await stageAndLand([
+      { mapped: { company: company({ name: 'Good One', domain_normalized: 'good1.com' }), people: [] }, dedup_key: 'd:good1.com' },
+      { mapped: { company: company({ name: tooLong, domain_normalized: 'bad.com' }), people: [] }, dedup_key: 'd:bad.com' },
+      { mapped: { company: company({ name: 'Good Two', domain_normalized: 'good2.com' }), people: [] }, dedup_key: 'd:good2.com' },
+    ]);
+
+    // The row AFTER the bad one must still land — that is the whole point.
+    expect(r.successful).toBe(2);
+    expect(r.failed).toBe(1);
+    expect(r.status).toBe('completed_with_errors');
+
+    const landed = await pool!.query(
+      `SELECT name FROM gt_prospects WHERE domain_normalized IN ('good1.com','good2.com') ORDER BY name`,
+    );
+    expect(landed.rows.map((x: any) => x.name)).toEqual(['Good One', 'Good Two']);
+
+    // And the failure is recorded ON THE ROW, not lost in a rollback.
+    const failedRow = await pool!.query(
+      `SELECT error_messages FROM ki_import_staging
+       WHERE processing_status = 'failed' ORDER BY id DESC LIMIT 1`,
+    );
+    expect(failedRow.rows[0].error_messages?.[0]).toBeTruthy();
+  });
+
+  it('leaves no row stuck at pending', async () => {
+    const stuck = await pool!.query(
+      `SELECT COUNT(*)::int n FROM ki_import_staging WHERE processing_status = 'pending'`,
+    );
+    expect(stuck.rows[0].n).toBe(0);
+  });
+});
+
 maybe()('the checksum guard (migration 202)', () => {
   it('refuses a second active load of identical bytes', async () => {
     await pool!.query(

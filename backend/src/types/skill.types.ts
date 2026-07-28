@@ -42,6 +42,13 @@ export interface SkillContext {
   is_live: boolean;
   /** User ID from JWT — for audit fields (created_by, user_id). */
   user_id: string;
+  /**
+   * vn_tenants.is_admin, carried in the JWT and resolved once by
+   * auth/auth-context.ts. A skill needing an admin gate reads this rather
+   * than querying for it again — two answers to the same question is how
+   * is_live drifted.
+   */
+  is_admin: boolean;
 }
 
 /* ── Skill layer types ────────────────────────────────── */
