@@ -25,6 +25,7 @@ import { mapCustomerRow, CUSTOMER_FIELD_MAP } from './customer-processor';
 import { mapCompanyRow, COMPANY_FIELD_MAP } from './company-processor';
 import { mapContactRow } from './contact-processor';
 import { detectEntities, estimateRows, type ExtractionPlan } from './entity-detector';
+import { landSession } from './landing';
 import { verifyAccessToken, type JwtPayload } from '../auth/token.service';
 
 const UPLOAD_DIR = path.resolve(__dirname, '../../uploads');
@@ -146,24 +147,38 @@ export function createEtlRouter(pool: Pool): Router {
       }
       const fileHash = crypto.createHash('sha256').update(fs.readFileSync(file.path)).digest('hex');
 
-      // Re-delivery is EXPECTED, not an error. A refreshed FTCCI chapter
-      // arrives under the same name, and the design note requires
-      // re-ingestion to be idempotent by construction — which it cannot be if
-      // upload rejects it outright, as this route used to with a 409.
+      // THE SAME FILE CANNOT BE IMPORTED TWICE (user ruling, 2026-07-28).
       //
-      // So the upload proceeds and the caller is TOLD. Duplicate content is
-      // resolved where it belongs: the merge review, per row, with a human
-      // deciding (user ruling, 2026-07-28).
+      // Matched on the sha256, not the filename. Identical bytes are not a
+      // delivery — there is nothing new in them — and letting them through is
+      // how a user who retried after a failed step ended up with two staging
+      // sessions holding the same 2,913 rows and nothing saying so.
+      //
+      // A REFRESHED file has different content and a different checksum, so it
+      // still loads; its row-level clashes are settled in the merge review.
+      // gt_source_loads carries a matching unique index (migration 202), so
+      // this cannot be raced past.
       const prior = await pool.query(
-        `SELECT l.id, l.label, l.as_of, l.loaded_at
+        `SELECT l.id, l.label, l.loaded_at
          FROM   gt_source_loads l
          WHERE  l.file_checksum = $1
+           AND  l.status = 'active'
            AND  (l.tenant_id = $2 OR l.tenant_id IS NULL)
          ORDER BY l.loaded_at DESC
          LIMIT 1`,
         [fileHash, auth.tenant_id],
       );
-      const priorLoad = prior.rows[0] ?? null;
+      if (prior.rows.length > 0) {
+        const p = prior.rows[0] as any;
+        fs.unlink(file.path, () => {});   // do not keep a file we refused
+        res.status(409).json({
+          error: {
+            code: 'ALREADY_IMPORTED',
+            message: `This exact file has already been imported as "${p.label}". Nothing in it has changed, so there is nothing new to import. Upload an updated file, or retire the earlier load if you need to import it again.`,
+          },
+        });
+        return;
+      }
 
       // Always associate uploads with the tenant who triggered the import
       const tenantId = auth.tenant_id;
@@ -178,9 +193,6 @@ export function createEtlRouter(pool: Pool): Router {
         filename: file.originalname,
         size: file.size,
         import_type: importType,
-        // Byte-identical content already loaded. Shown to the user so a
-        // re-delivery is a deliberate act, never an accident.
-        prior_load: priorLoad,
       });
     } catch (err: any) {
       console.error('[ETL:upload]', err);
@@ -232,6 +244,123 @@ export function createEtlRouter(pool: Pool): Router {
     } catch (err: any) {
       console.error('[ETL:headers]', err);
       res.status(500).json({ error: { code: 'PARSE_FAILED', message: err.message || 'Failed to parse file' } });
+    }
+  });
+
+  /* ── POST /sessions/:id/conflicts/resolve ───────── */
+  //
+  // Where the tenant takes the call. The quality model already ranked every
+  // field and said why; this applies what the HUMAN chose.
+  //
+  // `decisions` is [{ staging_id, fields: { <field>: 'keep' | 'take' } }].
+  // `accept_recommended: true` applies the model's suggestion in bulk — but
+  // NEVER to a campaign_locked row, which always needs an explicit choice.
+
+  router.post('/sessions/:id/conflicts/resolve', async (req, res) => {
+    try {
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const sessionId = Number(req.params.id);
+      const session = await loadOwnedSession(pool, sessionId, auth.tenant_id);
+      if (!session) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }); return; }
+
+      const { decisions, accept_recommended } = req.body ?? {};
+
+      let targets: any[] = [];
+      if (accept_recommended === true) {
+        const r = await pool.query(
+          `SELECT id, field_diff, conflict_target_table, conflict_target_id
+           FROM   ki_import_staging
+           WHERE  session_id = $1 AND processing_status = 'conflict'
+             AND  campaign_locked = false`,
+          [sessionId],
+        );
+        targets = (r.rows as any[]).map((row) => ({
+          staging_id: row.id,
+          fields: Object.fromEntries(
+            Object.entries(row.field_diff ?? {}).map(([f, d]: [string, any]) => [f, d.recommended]),
+          ),
+        }));
+      } else if (Array.isArray(decisions)) {
+        targets = decisions;
+      } else {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Provide decisions[] or accept_recommended:true' } });
+        return;
+      }
+
+      let applied = 0;
+      let skipped = 0;
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        for (const d of targets) {
+          const r = await client.query(
+            `SELECT id, field_diff, conflict_target_table, conflict_target_id, campaign_locked
+             FROM   ki_import_staging
+             WHERE  id = $1 AND session_id = $2 AND processing_status = 'conflict'`,
+            [d.staging_id, sessionId],
+          );
+          const row = r.rows[0] as any;
+          if (!row) { skipped++; continue; }
+
+          // Belt and braces: a campaign-locked row can only be resolved by an
+          // explicit per-row decision, never swept up by a bulk accept.
+          if (row.campaign_locked && accept_recommended === true) { skipped++; continue; }
+
+          const takes = Object.entries(d.fields ?? {})
+            .filter(([, choice]) => choice === 'take')
+            .map(([field]) => field);
+
+          if (takes.length > 0 && row.conflict_target_id && row.conflict_target_table) {
+            const table = row.conflict_target_table === 'gt_contacts' ? 'gt_contacts' : 'gt_prospects';
+            const sets = takes.map((f, i) => `${f} = $${i + 3}`).join(', ');
+            const values = takes.map((f) => (row.field_diff?.[f]?.incoming ?? null));
+            await client.query(
+              `UPDATE ${table} SET ${sets}, updated_at = now()
+               WHERE id = $1 AND tenant_id = $2`,
+              [row.conflict_target_id, auth.tenant_id, ...values],
+            );
+          }
+
+          await client.query(
+            `UPDATE ki_import_staging
+             SET processing_status = 'success', merge_decision = $2::jsonb,
+                 decided_by = $3, decided_at = now()
+             WHERE id = $1`,
+            [row.id, JSON.stringify(d.fields ?? {}), auth.user_id],
+          );
+          applied++;
+        }
+
+        await client.query('COMMIT');
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+      } finally {
+        client.release();
+      }
+
+      await reconcileSessionCounters(sessionId);
+
+      const remaining = await pool.query(
+        `SELECT COUNT(*)::int AS n FROM ki_import_staging
+         WHERE session_id = $1 AND processing_status = 'conflict'`,
+        [sessionId],
+      );
+      const left = (remaining.rows[0] as any).n;
+
+      await pool.query(
+        `UPDATE ki_import_sessions SET status = $2 WHERE id = $1`,
+        [sessionId, left > 0 ? 'needs_review' : 'completed'],
+      );
+
+      res.json({ applied, skipped, conflicts_remaining: left });
+    } catch (err: any) {
+      console.error('[ETL:resolve-conflicts]', err);
+      res.status(500).json({ error: { code: 'RESOLVE_FAILED', message: err.message || 'Failed to apply decisions' } });
     }
   });
 
@@ -596,20 +725,19 @@ export function createEtlRouter(pool: Pool): Router {
       // Verify session exists and is staged
       const session = await loadOwnedSession(pool, sessionId, auth.tenant_id);
       if (!session) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }); return; }
-      if (session.status !== 'staged' && session.status !== 'completed_with_errors') {
-        res.status(400).json({ error: { code: 'INVALID_STATUS', message: `Session is "${session.status}", expected "staged"` } });
+      const runnable = ['staged', 'completed_with_errors', 'needs_review'];
+      if (!runnable.includes(session.status)) {
+        res.status(400).json({ error: { code: 'INVALID_STATUS', message: `Session is "${session.status}", expected one of ${runnable.join(', ')}` } });
         return;
       }
 
-      // Processing engine removed with the MFD cleanup. The prospect
-      // processor (staged rows -> gt_contacts with dedup + scoring) lands
-      // with prospect-skill (POA Phase 3.4).
-      res.status(501).json({
-        error: {
-          code: 'PROSPECT_PROCESSING_PENDING',
-          message: 'Import processing is being rebuilt for prospect imports (staged rows -> gt_contacts). Staging and mapping work; processing lands with prospect-skill.',
-        },
-      });
+      await pool.query(
+        `UPDATE ki_import_sessions SET status = 'processing', processing_started_at = now() WHERE id = $1`,
+        [sessionId],
+      );
+
+      const result = await landSession(pool, session, auth);
+      res.json(result);
     } catch (err: any) {
       console.error('[ETL:process]', err);
       // Mark session failed
