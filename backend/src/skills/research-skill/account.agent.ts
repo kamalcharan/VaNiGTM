@@ -158,6 +158,29 @@ export function verifyEvidence(
 const originOf = (domain: string): string =>
   domain.startsWith('http') ? domain : `https://${domain}`;
 
+/**
+ * The addresses one site actually answers on, in order.
+ *
+ * A single https://<domain> attempt writes off companies that are perfectly
+ * reachable: plenty of Indian manufacturers serve only on www, and plenty
+ * have TLS that node rejects while a browser shrugs. Aurobindo Pharma — a
+ * company with a market cap in the billions — failed the first batch on
+ * exactly this.
+ *
+ * NOT a silent fallback: these are the same site, every attempt is reported
+ * in the fetch_site step, and the one that answered is recorded.
+ */
+export function urlVariants(domain: string): string[] {
+  if (domain.startsWith('http')) return [domain];
+  const bare = domain.replace(/^www\./, '');
+  return [
+    `https://${bare}`,
+    `https://www.${bare}`,
+    `http://${bare}`,
+    `http://www.${bare}`,
+  ];
+}
+
 /* ── Agent ───────────────────────────────────────────────────────────── */
 
 export class AccountResearchAgent {
@@ -279,15 +302,22 @@ export class AccountResearchAgent {
         );
 
         await this.writeBrief(db, tenantId, isLive, prospectId, runId, brief);
-        if (brief.status === 'unreadable') unreadable++;
+        if (brief.status === 'unreadable' || brief.status === 'extract_failed') unreadable++;
         else if (brief.recommended_offer) recommended++;
         written++;
       } catch (err) {
         // One account's failure is not the batch's. Record it AS the brief,
         // so a reviewer sees the gap rather than a silently shorter list.
+        //
+        // And say WHOSE failure it was: a model that truncated mid-JSON says
+        // nothing about the company and is retryable, while a dead website is
+        // a finding about them. Recording both as 'unreadable' would have the
+        // pilot conclude that Telangana pharma has no web presence when the
+        // truth was a token limit.
         const message = err instanceof Error ? err.message : String(err);
+        const ours = /^LLM_|^TOKEN_BUDGET|^PROMPT_NOT_FOUND/.test(message);
         await this.writeBrief(db, tenantId, isLive, prospectId, runId, {
-          status: 'unreadable',
+          status: ours ? 'extract_failed' : 'unreadable',
           domain,
           error: message.slice(0, 500),
         });
@@ -332,29 +362,43 @@ export class AccountResearchAgent {
       ? target.website
       : originOf(domain);
 
-    // 1. FETCH — the home page, static first.
-    let home: { text: string; html: string; health: { summary: string } };
-    try {
-      home = await IngestionAgent.fetchUrlText(root);
-    } catch (err) {
-      // Not a run failure: a dead domain is a real, reportable finding.
+    // 1. FETCH — the home page, static first, across the addresses the site
+    //    might answer on.
+    let home: { text: string; html: string; health: { summary: string } } | null = null;
+    let reached = root;
+    const attempts: string[] = [];
+
+    for (const candidate of urlVariants(target.website ?? domain)) {
+      try {
+        home = await IngestionAgent.fetchUrlText(candidate);
+        reached = candidate;
+        break;
+      } catch (err) {
+        const why = (err as Error).message.replace(/^URL_FETCH_FAILED: \S+ — /, '');
+        attempts.push(`${candidate} (${why})`);
+      }
+    }
+
+    if (!home) {
+      // A dead domain is a real, reportable finding about the company —
+      // every address we tried is named so it can be argued with.
       return {
         status: 'unreadable', domain,
-        error: `Could not read ${root}: ${(err as Error).message}`.slice(0, 500),
+        error: `No address answered. Tried: ${attempts.join('; ')}`.slice(0, 500),
       };
     }
 
     const pages: PageText[] = [];
     if (home.text.length >= MIN_USABLE_TEXT) {
-      pages.push({ url: root, text: home.text.slice(0, PAGE_TEXT_CAP) });
+      pages.push({ url: reached, text: home.text.slice(0, PAGE_TEXT_CAP) });
     } else if (IngestionAgent.renderConfigured()) {
       // Escalation, not a fallback: visible as its own step, and a failure
       // here is reported rather than papered over.
       try {
-        const html = await IngestionAgent.renderPageViaN8n(root);
+        const html = await IngestionAgent.renderPageViaN8n(reached);
         const rendered = IngestionAgent.extractFromHtml(html);
         if (rendered.text.length >= MIN_USABLE_TEXT) {
-          pages.push({ url: root, text: rendered.text.slice(0, PAGE_TEXT_CAP) });
+          pages.push({ url: reached, text: rendered.text.slice(0, PAGE_TEXT_CAP) });
         }
         await appendStep(pool, runId, {
           step_name: 'render_page',
@@ -374,13 +418,14 @@ export class AccountResearchAgent {
 
     await appendStep(pool, runId, {
       step_name: 'fetch_site',
-      action: `${target.name} — ${domain}`,
-      output_summary: home.health.summary,
+      action: `${target.name} — ${reached}`,
+      output_summary: home.health.summary
+        + (attempts.length > 0 ? ` · first ${attempts.length} address(es) did not answer` : ''),
       status: pages.length > 0 ? 'ok' : 'error',
     });
 
     // 2. CRAWL — a handful of paths that pay off for a manufacturer.
-    const linked = this.subpagesFrom(home.html, root).slice(0, MAX_SUBPAGES);
+    const linked = this.subpagesFrom(home.html, reached).slice(0, MAX_SUBPAGES);
     for (const url of linked) {
       if (pages.reduce((n, p) => n + p.text.length, 0) >= TOTAL_TEXT_CAP) break;
       try {
@@ -417,7 +462,10 @@ export class AccountResearchAgent {
         pool, tenantId, runId,
         system: await loadPrompt(pool, 'research-skill.account_extract', tenantId),
         messages: [{ role: 'user', content: `Company: ${target.name}\n\n${pageBlock}` }],
-        maxTokens: 900,
+        // 900 truncated a real API manufacturer mid-string on its own
+        // product list, and a half-written JSON object fails validation
+        // no matter how good the content was.
+        maxTokens: 2_000,
       },
       ExtractSchema,
     );
@@ -451,7 +499,7 @@ export class AccountResearchAgent {
           role: 'user',
           content: `Company brief:\n${briefText}\n\nOUR OFFERS:\n${catalogueText}`,
         }],
-        maxTokens: 700,
+        maxTokens: 1_200,
       },
       FitSchema,
     );

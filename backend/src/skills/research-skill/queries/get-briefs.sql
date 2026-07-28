@@ -31,7 +31,7 @@ SELECT
     b.updated_at,
     -- The check a reviewer makes first: did it assert anything it could not
     -- point at on a page we actually read?
-    (b.status <> 'unreadable'
+    (b.status NOT IN ('unreadable','extract_failed')
      AND jsonb_array_length(COALESCE(b.raw_evidence, '[]'::jsonb)) = 0) AS unevidenced,
     COUNT(*) OVER () AS filtered_total
 FROM   gt_account_briefs b

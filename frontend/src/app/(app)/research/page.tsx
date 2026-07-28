@@ -63,12 +63,15 @@ interface BatchStatus {
 /** Badge variants the VDF library actually has. */
 const STATUS_VARIANT: Record<string, 'default' | 'gold' | 'success' | 'info'> = {
   approved: 'success', drafted: 'info', unreadable: 'gold',
-  rejected: 'default', no_contact: 'default',
+  extract_failed: 'gold', rejected: 'default', no_contact: 'default',
 };
 
 const STATUS_LABEL: Record<string, string> = {
   drafted: 'Needs a decision', approved: 'Approved',
-  unreadable: 'Site unreadable', rejected: 'Rejected', no_contact: 'Do not contact',
+  // Deliberately different wording: one is about them, one is about us.
+  unreadable: 'No usable website',
+  extract_failed: 'Our extraction failed — retryable',
+  rejected: 'Rejected', no_contact: 'Do not contact',
 };
 
 const emptyOffer = (): Offer => ({
@@ -352,7 +355,12 @@ export default function ResearchPage() {
               <VdfStatCard value={stats.total ?? 0} label="Researched" />
               <VdfStatCard value={stats.with_offer ?? 0} label="Offer suggested" accent="success" />
               <VdfStatCard value={stats.no_fit ?? 0} label="No fit" />
-              <VdfStatCard value={stats.unreadable ?? 0} label="Site unreadable" accent="warning" />
+              <VdfStatCard value={stats.unreadable ?? 0} label="No website" accent="warning" />
+              <VdfStatCard
+                value={stats.extract_failed ?? 0} label="Extraction failed"
+                accent={Number(stats.extract_failed ?? 0) > 0 ? 'danger' : 'default'}
+                sub="ours, not theirs — retry these"
+              />
               <VdfStatCard
                 value={stats.unevidenced ?? 0} label="No evidence"
                 accent={Number(stats.unevidenced ?? 0) > 0 ? 'danger' : 'default'}
@@ -369,7 +377,8 @@ export default function ResearchPage() {
               <option value="approved">Approved</option>
               <option value="no_contact">Do not contact</option>
               <option value="rejected">Rejected</option>
-              <option value="unreadable">Site unreadable</option>
+              <option value="unreadable">No usable website</option>
+              <option value="extract_failed">Extraction failed (retryable)</option>
             </select>
             <select className={s.select} value={offerFilter} onChange={(e) => setOfferFilter(e.target.value)}>
               <option value="">Any offer</option>
@@ -410,7 +419,7 @@ export default function ResearchPage() {
                   </div>
                   {b.hook && <div className={s.briefHook}>{b.hook}</div>}
                   {b.what_they_make && <div className={s.briefMakes}>{b.what_they_make}</div>}
-                  {b.status === 'unreadable' && b.error && (
+                  {(b.status === 'unreadable' || b.status === 'extract_failed') && b.error && (
                     <div className={s.briefMakes}>{b.error}</div>
                   )}
                 </div>
@@ -448,7 +457,9 @@ export default function ResearchPage() {
         title={openBrief?.name}
         subtitle={openBrief?.domain ?? undefined}
         width="lg"
-        footer={openBrief && openBrief.status !== 'unreadable' ? (
+        footer={openBrief
+          && openBrief.status !== 'unreadable'
+          && openBrief.status !== 'extract_failed' ? (
           <div className={s.actions}>
             <VdfButton variant="primary" onClick={() => onDecide('approved')} disabled={decide.isPending}>
               Approve
@@ -558,16 +569,22 @@ function BriefDetail({
       </div>
     ) : null;
 
-  if (brief.status === 'unreadable') {
+  if (brief.status === 'unreadable' || brief.status === 'extract_failed') {
+    const ours = brief.status === 'extract_failed';
     return (
       <>
         <div className={s.detailField}>
-          <div className={s.detailLabel}>Site could not be read</div>
+          <div className={s.detailLabel}>
+            {ours ? 'Our extraction failed' : 'No address answered'}
+          </div>
           <div className={s.detailValue}>{brief.error}</div>
         </div>
         <div className={s.formHint}>
-          No brief was invented for this one. An invented detail in a first message is the
-          one mistake that cannot be walked back.
+          {ours
+            ? 'This says nothing about the company — their site read fine and our own '
+              + 'step fell over. Re-running the batch will pick it up again.'
+            : 'No brief was invented for this one. An invented detail in a first message '
+              + 'is the one mistake that cannot be walked back.'}
         </div>
       </>
     );

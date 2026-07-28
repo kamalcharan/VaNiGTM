@@ -10,7 +10,7 @@
  * account-agent.db.test.ts.
  */
 
-import { meaningful, verifyEvidence, AccountResearchAgent } from '../account.agent';
+import { meaningful, verifyEvidence, urlVariants, AccountResearchAgent } from '../account.agent';
 
 const page = (url: string, text: string) => ({ url, text });
 
@@ -137,5 +137,33 @@ describe('subpagesFrom', () => {
     const dupes = '<a href="/about">a</a><a href="/about#top">b</a><a href="/about">c</a>';
     const found = AccountResearchAgent.subpagesFrom(dupes, 'https://acme.com');
     expect(new Set(found).size).toBe(found.length);
+  });
+});
+
+describe('urlVariants — a site is not dead because one address refused', () => {
+  it('tries apex, www and plain http, in that order', () => {
+    expect(urlVariants('aurobindo.in')).toEqual([
+      'https://aurobindo.in',
+      'https://www.aurobindo.in',
+      'http://aurobindo.in',
+      'http://www.aurobindo.in',
+    ]);
+  });
+
+  it('does not double up when the domain already carries www', () => {
+    const v = urlVariants('www.biophore.com');
+    expect(v).toEqual([
+      'https://biophore.com',
+      'https://www.biophore.com',
+      'http://biophore.com',
+      'http://www.biophore.com',
+    ]);
+    expect(new Set(v).size).toBe(v.length);
+  });
+
+  it('respects an explicit URL rather than guessing around it', () => {
+    // A website column carrying a full URL is a human's answer; do not
+    // second-guess it with three variants.
+    expect(urlVariants('https://shop.example.com/en')).toEqual(['https://shop.example.com/en']);
   });
 });
