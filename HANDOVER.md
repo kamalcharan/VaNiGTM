@@ -91,6 +91,25 @@
 - This extends the design note's existing universe-refresh rule ("never as
   a mutation under them") to **upload merges**, which it did not cover.
 
+### The import lifecycle (user ruling, 2026-07-28)
+- **Import is ONE action.** Staging then landing is internal plumbing — the
+  user confirmed the import once and is not asked to come back and press go.
+  *"do you expect it for the users to check again?"*
+- **Only genuine clashes come back to them.** A first import into an empty
+  table asks nothing at all.
+- **Never dress a partial success as a failure.** A red X on a successful
+  staging is a lie about what happened. *"it resembled error (toast with X
+  mark — that itself is misleading)."*
+- 🔒 **THE SAME FILE CANNOT BE IMPORTED TWICE.** *"keep a crypto
+  restriction … if user is trying to import same file again, alert him it
+  cannot be done."* Matched on **sha256, not filename**, so a refreshed
+  delivery still loads. Enforced in the route AND by a unique index
+  (migration 202). Retiring the earlier load is the only way to reload the
+  same bytes. **This REVERSES commit ce4b7a2** — removing the guard let a
+  retry create two staging sessions holding the same 2,913 rows.
+- **Build the whole lifecycle, not a slice.** Offering to ship half and
+  finish later was rejected outright.
+
 ### Working rules
 - **Use the existing ETL / import infrastructure. Do not create new.**
 - n8n will connect the user's email/Gmail and send from it (Phase B, outreach).
@@ -105,7 +124,29 @@
 
 # 🔴 START HERE — the immediate next task
 
-## The `501` — landing the staged rows
+## Prove the import journey against the live VPS
+
+The whole import lifecycle is BUILT: upload → detect → stage → land →
+review → dashboard. It is covered by 59 tests including 8 that run the real
+landing against a real PostgreSQL. **It has never run against `vani_gtm_db`
+with a real file through the browser.**
+
+Apply migrations **198–202**, restart API + worker, and run the FTCCI file
+through `/import` end to end. Watch for:
+- companies in `gt_prospects` with `PROS-` refs, people in `gt_contacts`
+  with their `gt_contact_channels`
+- the dashboard showing company columns with actual values (not `—`)
+- a second upload of the same file refused with `ALREADY_IMPORTED`
+
+## Then: what the pool still needs
+
+`gt_universe_company_sources` receives rows and upserts idempotently, but
+**golden-record resolution is not built** — `gt_universe_companies` stays
+empty. That is the Phase B merge engine (design note §3/§6: block, resolve
+within block, field-level merge, late-merge aliases). Until it exists, an
+admin dataset import loads source rows and nothing reads them.
+
+## Older note — the `501` is DONE (kept for the rules it lists)
 
 `POST /etl/sessions/:id/process` still returns **501** at
 `backend/src/etl/etl.routes.ts`. Everything upstream of it now works.
@@ -153,7 +194,9 @@ headers or a human mapping. That is by design (rule 12) but it means the
 
 # ⚠️ PENDING USER ACTIONS
 
-- 🔴 **APPLY MIGRATIONS 198, 199, 200, 201** (`cd backend && npm run db:migrate`).
+- 🔴 **APPLY MIGRATIONS 198, 199, 200, 201, 202** (`cd backend && npm run db:migrate`).
+  202 enforces the checksum restriction — the same file cannot be imported
+  twice.
   **201 is required for the import to run at all** — 104 CHECKs `import_type`
   against the MFD list with no `'company'`. It also repairs a narrowing 200
   introduced in the staging status CHECK, so apply it even if 200 is done.
@@ -313,6 +356,9 @@ Newest first. All merged to `main`.
 
 | Commit | What |
 |---|---|
+| `ed9792c` | Import screen tells the truth; dashboard reads company data; **merge review built**; frontend build green for the first time |
+| `49d0780` | **The 501 is gone** — landing.ts + the checksum restriction + 8 real-database integration tests |
+| `a9340e5` | The INSERT wrote to a column no migration creates; `import_type` CHECK had no `'company'` |
 | `9205b0c` | `/import` asks what the data MEANS — three relationship cards, detection review, tags, as-of, re-delivery notice |
 | `ac8cef2` | Unblock the production build (demo-data typed a skill response as `{}`) |
 | `ce4b7a2` | Processors wired into staging at last; `mapCompanyRow` honours the user's mapping; tags endpoints; re-delivery no longer 409s |
