@@ -651,3 +651,36 @@ maybe('build_cohort — segments inside the cluster', () => {
     expect(still.rows[0].n).toBe(6);
   });
 });
+
+maybe('tag facets — the dropdown must offer what the filter accepts', () => {
+  // The bug this covers: a tag applied by hand filtered correctly but never
+  // appeared in the dropdown, so the cohort it named could not be selected.
+  it('offers a DIRECT tag, not only the delivery tag', async () => {
+    const built = await build_cohort(
+      { cluster: 'manufacturing', tag_label: 'Facet Cohort' }, ctxFor(C));
+
+    const r = await get_records({ scope: 'mine' }, ctxFor(C));
+    const labels = ((r as any).facets.tags as { id: number; label: string }[])
+      .map((t) => t.label);
+    expect(labels).toContain('Facet Cohort');
+
+    // And picking it from the dropdown returns the cohort it names.
+    const picked = await get_records({ scope: 'mine', tag_id: built.tag!.id }, ctxFor(C));
+    expect(picked.total).toBe(built.tagged || built.matched);
+  });
+
+  it('counts a record once when it carries the same tag twice', async () => {
+    // Inherited AND direct is the normal case for a cohort built over an
+    // imported delivery — it is one record, not two.
+    const r = await get_records({ scope: 'mine' }, ctxFor(A));
+    const facets = ((r as any).facets.tags as { id: number; label: string; count: number }[]);
+    const ftcci = facets.find((t) => t.label === 'FTCCI Telangana');
+    expect(ftcci?.count).toBe(4);          // four records, not eight
+  });
+
+  it('still offers the delivery tag on the pool, which has no direct tags', async () => {
+    const r = await get_records({ scope: 'pool' }, ctxFor(B, true));
+    const labels = ((r as any).facets.tags as { label: string }[]).map((t) => t.label);
+    expect(labels).toContain('FTCCI Telangana');
+  });
+});

@@ -27,12 +27,26 @@ SELECT
         ORDER  BY n DESC LIMIT 100
      ) i)                                                AS industries,
 
+    -- BOTH sources, because the list query filters on both. Offering only
+    -- the delivery tags made a tag applied by hand impossible to select: it
+    -- existed, it filtered correctly, and it never appeared in the dropdown.
+    -- A facet that does not match its own filter is worse than no facet.
     (SELECT COALESCE(json_agg(json_build_object('id', t.id, 'label', t.label, 'count', c.n)
                               ORDER BY t.label), '[]'::json)
      FROM (
-        SELECT lt.tag_id, COUNT(*)::int AS n
-        FROM   visible v JOIN gt_load_tags lt ON lt.load_id = v.load_id
-        GROUP  BY lt.tag_id
+        SELECT tag_id, COUNT(DISTINCT id)::int AS n
+        FROM (
+            -- inherited, from the delivery the record arrived in
+            SELECT v.id, lt.tag_id
+            FROM   visible v JOIN gt_load_tags lt ON lt.load_id = v.load_id
+            UNION
+            -- direct, applied to the record afterwards. Only 'mine' has
+            -- these: gt_prospect_tags hangs off gt_prospects.
+            SELECT v.id, pt.tag_id
+            FROM   visible v JOIN gt_prospect_tags pt ON pt.prospect_id = v.id
+            WHERE  v.scope = 'mine'
+        ) src
+        GROUP BY tag_id
      ) c JOIN gt_tags t ON t.id = c.tag_id AND t.is_active)  AS tags,
 
     (SELECT COUNT(*)::int FROM visible WHERE domain_normalized IS NOT NULL) AS with_domain,
