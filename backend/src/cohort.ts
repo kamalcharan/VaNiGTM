@@ -156,16 +156,30 @@ async function main() {
 
   try {
     if (has('list-tenants')) {
+      // The display name lives on vn_tenant_profiles, not vn_tenants — LEFT
+      // JOIN so a tenant with no profile row still lists, by slug.
+      // Counts are split by environment because picking the wrong one is the
+      // most likely reason a run scans nothing.
+      // Wrapped: ORDER BY cannot use a select alias inside an expression.
       const { rows } = await pool.query(
-        `SELECT t.id, t.name, t.is_admin,
-                (SELECT count(*) FROM gt_prospects p
-                  WHERE p.tenant_id = t.id AND p.is_active) AS prospects
-         FROM   vn_tenants t ORDER BY prospects DESC, t.name`);
-      console.log('\n  prospects  admin  tenant_id                             name');
+        `SELECT * FROM (
+           SELECT t.id, t.slug, t.is_admin, tp.name,
+                  (SELECT count(*) FROM gt_prospects p
+                    WHERE p.tenant_id = t.id AND p.is_active AND NOT p.is_live) AS sandbox,
+                  (SELECT count(*) FROM gt_prospects p
+                    WHERE p.tenant_id = t.id AND p.is_active AND p.is_live) AS live
+           FROM   vn_tenants t
+           LEFT   JOIN vn_tenant_profiles tp ON tp.tenant_id = t.id
+         ) x
+         ORDER BY (x.sandbox + x.live) DESC, x.slug`);
+
+      console.log('\n  sandbox     live  admin  tenant_id                             name / slug');
       for (const r of rows) {
-        console.log(`  ${pad(r.prospects, 9)}  ${r.is_admin ? '  y  ' : '     '}  ${r.id}  ${r.name}`);
+        const label = r.name ? `${r.name}  (${r.slug})` : r.slug;
+        console.log(`  ${pad(r.sandbox, 7)}  ${pad(r.live, 7)}  ${r.is_admin ? '  y  ' : '     '}  ${r.id}  ${label}`);
       }
-      console.log('');
+      console.log('\n  Prospect counts per environment. Run without --live for the sandbox');
+      console.log('  column, with --live for the live one.\n');
       return;
     }
 
@@ -179,8 +193,12 @@ async function main() {
     const tenantName = flag('tenant-name');
 
     if (!tenantId && tenantName) {
+      // Matches the display name OR the slug — a tenant may have no profile.
       const { rows } = await pool.query(
-        `SELECT id, name FROM vn_tenants WHERE name ILIKE $1`, [`%${tenantName}%`]);
+        `SELECT t.id, COALESCE(tp.name, t.slug) AS name
+         FROM   vn_tenants t
+         LEFT   JOIN vn_tenant_profiles tp ON tp.tenant_id = t.id
+         WHERE  tp.name ILIKE $1 OR t.slug ILIKE $1`, [`%${tenantName}%`]);
       if (rows.length === 0) {
         console.error(`[Cohort] No tenant matching "${tenantName}". Try --list-tenants.`);
         process.exit(1);
