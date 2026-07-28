@@ -55,59 +55,108 @@
 - Universe **contacts** — the common pool ships **companies only**, which
   defers the DPDP/GDPR question rather than answering it under pressure.
 
+### The three uploads (user ruling, 2026-07-28)
+1. Tenant uploads **his contacts**.
+2. Tenant uploads **his customers**.
+3. Admin uploads **datasets** (the common pool).
+4. All three **carry tags** — "ftcci telangana", "tfcci andhrapradesh" —
+   and **tags can be created** by the user.
+5. Tenant uploads **customer orders / history** — LATER, not now.
+
+**Two orthogonal axes. Do not collapse them.**
+- The **tenant declares the RELATIONSHIP** (contacts / customers / dataset).
+  No file can state it; it is never inferred.
+- The **ETL detects the ENTITY** (people / companies / both). *"contacts
+  might be people or companies — we cant seperate right now, let ETL skill
+  identify it, user can give his own inputs if required."*
+- One file commonly yields BOTH: FTCCI is company-first with 3 reps inline
+  (2,913 companies + ~5,800 people); the provider CSV is contact-first
+  (119 people / 95 companies). Detection groups COLUMNS, not files.
+- Detection is deterministic header matching — **no LLM**. Unresolvable
+  columns are shown to the user, never guessed (rule 12).
+
+### Merge conflicts — THE TENANT DECIDES (user ruling, 2026-07-28)
+- *"field merge — let user decide … explain to user and he will take call."*
+- The quality model (`field_score = validity × tier × freshness`) is
+  **demoted from decision to recommendation**. It ranks and explains; a
+  human commits. Nothing auto-merges.
+- Conflicts are caught **at staging, before anything lands**
+  (`ki_import_staging.processing_status = 'conflict'` + `field_diff`).
+- **Campaign safety:** *"there might already be a campaign running, and
+  changes might impact merge."* A row whose target has a live
+  `gt_contact_assignments` (stage not converted/lost) is marked
+  `campaign_locked` and **excluded from bulk accept** — changing an email
+  or phone mid-sequence misdirects outreach already sent. The diff must
+  show what has already gone out, or the decision is a rubber stamp.
+- This extends the design note's existing universe-refresh rule ("never as
+  a mutation under them") to **upload merges**, which it did not cover.
+
 ### Working rules
 - **Use the existing ETL / import infrastructure. Do not create new.**
 - n8n will connect the user's email/Gmail and send from it (Phase B, outreach).
+- **Tags sit on the LOAD, not the row** — records inherit via `load_id`.
+  Tags are a human filter dimension and **never override derived data**:
+  `state_code` comes from PIN and wins over any tag.
+- **Every upload is a load** (`gt_source_loads`), contacts included — so
+  freshness/provenance are not company-only privileges. The UI asks for
+  an **as-of date**; undated = scored less fresh, not current.
 
 ---
 
 # 🔴 START HERE — the immediate next task
 
-## The upload option the user cannot see
-
-**`/import` exists** (sidebar → Data → "Import Data") and its whole wizard
-works — upload → map → stage. The reason there is no way to upload companies
-is one MFD-era leftover in
-`frontend/src/app/(app)/import/page.tsx:51`:
-
-```js
-const IMPORT_TYPES = [
-  { id: 'customer', label: 'Customers', … enabled: true },
-];
-```
-
-**The task:**
-1. Add a `company` entry to `IMPORT_TYPES` (label it for prospects/companies).
-2. When `isAdmin` (from `useAuth()`), show a **destination** choice:
-   *My prospects* → `destination: 'prospects'` · *Common pool* →
-   `destination: 'universe_companies'`. Non-admins never see it.
-3. Pass `destination` (and optionally `load_label`, `load_region`,
-   `load_as_of`) on `POST /api/v1/etl/sessions`.
-
-**The backend for this is already done and pushed.** `import_type: 'company'`
-is accepted, `destination` is honoured, the admin gate returns 403 for a
-non-admin asking for the pool (read from the JWT, never the body), and every
-company import creates a `gt_source_loads` row.
-
-## Then: landing (the `501`)
+## The `501` — landing the staged rows
 
 `POST /etl/sessions/:id/process` still returns **501** at
-`backend/src/etl/etl.routes.ts`. That is the last piece: staged rows →
-`gt_prospects` (tenant) or `gt_universe_company_sources` → resolve →
-`gt_universe_companies` (pool).
+`backend/src/etl/etl.routes.ts`. Everything upstream of it now works.
 
-Everything it needs exists: `backend/src/etl/company-processor.ts` does
-mapping, normalisation, quality scoring and dedup keys, and is **verified
-against real rows from both source files**.
+What it has to do, and the rules it must obey:
 
-**Postgres 16 is installed in this container.** You can stand up a scratch
-cluster and load the real 2,913-row FTCCI file end to end — see "How to verify
-without the VPS" below. Do that; it is the fastest way to make this real.
+1. **Route by entity, not by file.** `mapped_data` on each staging row is
+   `{ company: {...} | null, people: [...] }`. Companies →
+   `gt_prospects` (tenant, with `relationship`) or
+   `gt_universe_company_sources` → resolve → `gt_universe_companies` (pool).
+   People → `gt_contacts` **always** (Phase A ships no shared contact pool).
+2. **Detect conflicts before landing.** Block on `dedup_key` (already
+   written at staging). In-file collisions AND collisions with existing
+   records become `processing_status = 'conflict'` with a `field_diff` —
+   they do NOT land.
+3. **Mark `campaign_locked`** by checking `gt_contact_assignments` for a
+   live assignment on the target (stage not `converted`/`lost`). Those rows
+   never bulk-accept.
+4. **Copy the load's `as_of` onto the row** (`source_as_of`) — freshness is
+   scored, and the columns now exist on both `gt_prospects` and
+   `gt_contacts`.
+5. Channels: a person's email/mobile become `gt_contact_channels` rows.
+
+Then the **merge review UI** — the surface where the tenant takes the call.
+Nothing auto-merges.
+
+**Postgres 16 is installed in this container** and migrations 198–200 were
+verified on it (see "How to verify without the VPS"). Use it.
+
+## ⚠️ The real source files are NOT in this container
+
+`FTCCI_member_data_26.10.2023.xlsx` and `Company_prospect_2.csv` are gone —
+`backend/uploads/` holds only old MFD files. The maps and processors encode
+what was learned from them, and `company-processor.test.ts` pins those
+findings, but **loading the real 2,913 rows end to end needs the user to
+upload the files again.**
+
+One consequence: **FTCCI's representative column names were never seen by
+this session.** `CONTACT_FIELD_MAP` covers Apollo-style and generic headers;
+FTCCI rep columns will land in `unresolved_columns` and need either the real
+headers or a human mapping. That is by design (rule 12) but it means the
+~5,800 people are NOT yet reachable without the file.
 
 ---
 
 # ⚠️ PENDING USER ACTIONS
 
+- 🔴 **APPLY MIGRATIONS 198, 199, 200** (`cd backend && npm run db:migrate`).
+  All three verified on a real PostgreSQL 16 — apply, re-apply, constraints
+  reject bad values. **198 repairs a live defect** (see below) and the code
+  now shipped depends on all three.
 - **Migrations 193–197 are APPLIED** (confirmed by the user 2026-07-28).
   191 + 192 were confirmed applied earlier.
 - ⚠️ **`ANTHROPIC_API_KEY` in `backend/.env`** — enables the Claude failover.
@@ -131,7 +180,22 @@ without the VPS" below. Do that; it is the fastest way to make this real.
 Be honest about this in every future session — it was the biggest risk on
 2026-07-27, when four changes landed on journey #1 with none of them run.
 
-**Verified against a real Postgres** (scratch cluster, this container):
+**Verified against a real Postgres** (scratch cluster, this container) —
+2026-07-28 session:
+- Migrations **198, 199, 200** apply and re-apply cleanly.
+- `normalized_name` before the repair: `'John Smith' → 'J S'`,
+  `'priya sharma' → ''`. After: correct. `person_key` composes name+employer.
+- CHECK constraints reject `relationship='partner'`, `'leads'`, and
+  `processing_status='nonsense'`; accept `'conflict'` and `'customer'`.
+- Tag slug namespaces isolate (platform vs tenant), and a tenant **cannot
+  attach another tenant's private tag** to a load.
+
+**Verified by tests** (`cd backend && npm test` — 46 tests, the first in the
+repo; jest roots now include `src/etl`):
+- Both normalisation defects pinned, the junk patterns, PIN→state, dedup keys,
+  entity detection on both real file shapes, and the user-override path.
+
+**Verified against a real Postgres** (scratch cluster, earlier session):
 - Migrations 193–197 apply and **re-apply** cleanly (guards hold).
 - RLS on for `gt_prospects` and `gt_tenant_target_industries`, off for the
   cross-tenant pool — checked against `pg_tables` / `pg_policies`.
@@ -149,6 +213,10 @@ Be honest about this in every future session — it was the biggest risk on
 - `/landing` plays the re-recorded hero loop (11.1s, 593KB, single webm).
 
 **NOT verified — needs a live backend and an authenticated tenant:**
+- The whole new `/import` flow through the UI: relationship cards, the
+  detection review, tags, as-of, and the re-delivery notice. It typechecks
+  and compiles; **no request has ever been made against it.**
+- The tag endpoints over HTTP (their SQL was verified directly).
 - The whole `/onboarding` journey, including everything shipped on 2026-07-27:
   the rail rebuild, the boot rehydration, the competitors fix, and the
   **vocabulary reorder** (which moved step indices, added a poll and relocated
@@ -204,6 +272,22 @@ races the 620ms handoff and captures blank frames.
 4. **The wizard used to rebuild itself from `gt_tenant_profile` alone**, so
    competitors, run steps and clusters evaporated on reload. Fixed — but the
    pattern is worth checking whenever new agent output is added.
+5. **Normalisation expressions are duplicated between SQL and JS, and BOTH
+   copies have shipped wrong.** `gt_contacts.normalized_name` (187, from
+   ki_contacts 119) filtered `[^A-Z0-9\s]` BEFORE upper-casing and deleted
+   every lowercase letter — `'priya sharma'` normalised to `''`, so contact
+   *search* was broken and any dedup would have merged unrelated people.
+   `gt_prospects.name_key` (196) never trimmed. Both are now pinned by tests
+   in `src/etl/tests/`. **If you change one copy, change the other** — the
+   JS lives in `src/etl/field-normalizers.ts` and says which column it
+   mirrors.
+6. **The frontend production build is RED on main** for reasons unrelated to
+   any of this: `pulses/page.tsx:248` (ApiError→Error cast) and
+   `PulseZone.tsx:92` (SetStateAction). `demo-data/page.tsx` was fixed here.
+   `npm run build` fails at the first one — do not read that as your change.
+7. **`npx tsc --noEmit` must be run from `backend/` or `frontend/`,** not the
+   repo root. From the root it picks up the wrong tsconfig and invents
+   dozens of `Cannot find name 'process'` errors.
 
 ---
 
@@ -213,6 +297,11 @@ Newest first. All merged to `main`.
 
 | Commit | What |
 |---|---|
+| `9205b0c` | `/import` asks what the data MEANS — three relationship cards, detection review, tags, as-of, re-delivery notice |
+| `ac8cef2` | Unblock the production build (demo-data typed a skill response as `{}`) |
+| `ce4b7a2` | Processors wired into staging at last; `mapCompanyRow` honours the user's mapping; tags endpoints; re-delivery no longer 409s |
+| `e2db21e` | `entity-detector` + `contact-processor` + **the repo's first tests** (46) |
+| `a2f7237` | Migrations 198–200 — and **the `normalized_name` repair** |
 | `50ddbed` | ETL accepts company imports, admin-gated `destination`, a `gt_source_loads` row per import |
 | `f41cae1` | `company-processor` — map/normalise/score/dedup, verified on real rows from both files |
 | `9cfb14c` | DB connector pointed at `mcp-db.dristiq.com` (the host that answers) |
