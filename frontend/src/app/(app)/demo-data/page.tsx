@@ -37,7 +37,9 @@ export default function DemoDataPage() {
     {
       onSuccess: (data) => {
         queryClient.invalidateQueries();
-        const msg = data?.data?.message ?? 'Demo data created successfully.';
+        const msg = typeof data?.data?.message === 'string'
+          ? data.data.message
+          : 'Demo data created successfully.';
         setResult({ type: 'success', title: 'Demo data seeded', message: msg });
         showToast({ message: 'Demo data created!', type: 'success' });
       },
@@ -53,7 +55,9 @@ export default function DemoDataPage() {
     {
       onSuccess: (data) => {
         queryClient.invalidateQueries();
-        const msg = data?.data?.message ?? 'Demo data cleared.';
+        const msg = typeof data?.data?.message === 'string'
+          ? data.data.message
+          : 'Demo data cleared.';
         setResult({ type: 'success', title: 'Data cleared', message: msg });
         showToast({ message: 'GTM data cleared.', type: 'success' });
         setConfirmClear(false);
