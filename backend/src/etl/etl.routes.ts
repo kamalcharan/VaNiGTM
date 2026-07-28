@@ -23,8 +23,8 @@ import crypto from 'crypto';
 import { parseExcelHeaders, parseExcelRows } from './excel-parser';
 import { mapCustomerRow, CUSTOMER_FIELD_MAP } from './customer-processor';
 import { mapCompanyRow, COMPANY_FIELD_MAP } from './company-processor';
-import { mapContactRow } from './contact-processor';
-import { detectEntities, estimateRows, type ExtractionPlan } from './entity-detector';
+import { mapContactRow, personDedupKey } from './contact-processor';
+import { detectEntities, estimateRows, personBlocks, type ExtractionPlan } from './entity-detector';
 import { landSession } from './landing';
 import { verifyAccessToken, type JwtPayload } from '../auth/token.service';
 
@@ -612,7 +612,11 @@ export function createEtlRouter(pool: Pool): Router {
         plan = detectEntities(headers, sampleRows);
       }
       const wantsCompany = plan ? plan.entities.some((e) => e.kind === 'company') : import_type === 'company';
-      const wantsPerson = plan ? plan.entities.some((e) => e.kind === 'person') : false;
+      const personEntity = plan?.entities.find((e) => e.kind === 'person');
+      const wantsPerson = Boolean(personEntity);
+      // How many people one source row carries. 1 unless the file repeats a
+      // person block inline.
+      const personPerRow = personEntity?.per_row ?? 1;
 
       // Create session
       const sessionResult = await pool.query(
@@ -651,21 +655,46 @@ export function createEtlRouter(pool: Pool): Router {
 
           if (import_type === 'company') {
             const company = wantsCompany ? mapCompanyRow(raw, mappings) : null;
-            const person = wantsPerson ? mapContactRow(raw, mappings) : null;
+
+            // A company-first file repeats the person block inline. Extracting
+            // only the first would silently drop two of every three FTCCI
+            // representatives — the row count is not the people count.
+            const people = wantsPerson
+              ? personBlocks(raw, personPerRow)
+                  .map((block) => mapContactRow(block, mappings))
+                  .filter((p) => p.mapped.name)
+              : [];
+
+            // A representative works at the company on their row. The person
+            // map does not claim the company's own website column (`WEB` is a
+            // company discriminator and must stay one), so the employer is
+            // filled in from the company here — which tightens the person
+            // blocking key from name+company-name to name+domain.
+            if (company?.mapped) {
+              for (const p of people) {
+                if (!p.mapped.company_domain && company.mapped.domain_normalized) {
+                  p.mapped.company_domain = company.mapped.domain_normalized;
+                }
+                if (!p.mapped.company_name && company.mapped.name) {
+                  p.mapped.company_name = company.mapped.name;
+                }
+                p.dedup_key = personDedupKey(p.mapped);
+              }
+            }
 
             mappedData = {
               company: company?.mapped ?? null,
-              people: person ? [person.mapped] : [],
+              people: people.map((p) => p.mapped),
             };
 
             // Row-level quality is the primary entity's — the company when
-            // there is one, otherwise the person.
-            const primary = company ?? person;
+            // there is one, otherwise the first person.
+            const primary = company ?? people[0] ?? null;
             completeness = primary?.quality.completeness ?? null;
             validity = primary?.quality.validity ?? null;
             rejects = [
               ...(company?.quality.reject_reasons ?? []),
-              ...(person?.quality.reject_reasons ?? []),
+              ...people.flatMap((p) => p.quality.reject_reasons),
             ];
             dedupKey = primary?.dedup_key ?? null;
           } else {

@@ -25,6 +25,72 @@
 -- not block a reload.
 -- ============================================================
 
+-- ── Prerequisite check ────────────────────────────────────────────────
+--
+-- gt_source_loads is created by migration 193. If it is missing, 193 did not
+-- actually run here — which happens because the runner records a migration as
+-- applied in vn_migrations independently of whether the schema really
+-- received it, and it BASELINES every existing file as applied when
+-- vn_migrations is empty but a schema exists (migrate.ts).
+--
+-- Bare "relation does not exist" sends you looking at THIS file. It says which
+-- migration is actually missing instead.
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'gt_source_loads'
+    ) THEN
+        RAISE EXCEPTION
+            'gt_source_loads is missing, so migration 193 never actually ran on this database. Migration history can say "applied" while the schema does not have it. Check with: SELECT to_regclass(''public.gt_source_loads''); and re-apply 193_gt_data_sources.sql (psql -f), then 194-197, before this one.';
+    END IF;
+END $$;
+
+-- ── Existing duplicates must be resolved before the index can exist ───
+--
+-- A database that already carries two active loads of the same bytes cannot
+-- have this index built on it — which is precisely the database this
+-- migration is for, since removing the guard is what allowed the duplicates.
+--
+-- Nothing is deleted. The extra loads are RETIRED (status = 'retired'), which
+-- is the same lever documented at the bottom of this file for legitimately
+-- reloading a file. Their rows keep their load_id and stay exactly where they
+-- are; only the "this checksum is currently loaded" claim moves.
+--
+-- Which one survives: the load carrying the most imported records, because
+-- that is the delivery the tenant's data actually came from. Ties break on the
+-- oldest, i.e. the original delivery.
+--
+-- This is a data change, so it is announced rather than done quietly.
+DO $$
+DECLARE
+    v_retired INT;
+BEGIN
+    WITH ranked AS (
+        SELECT l.id,
+               ROW_NUMBER() OVER (
+                   PARTITION BY l.tenant_id, l.file_checksum
+                   ORDER BY (
+                       (SELECT COUNT(*) FROM gt_prospects p WHERE p.load_id = l.id)
+                     + (SELECT COUNT(*) FROM gt_contacts  c WHERE c.load_id = l.id)
+                   ) DESC,
+                   l.loaded_at ASC
+               ) AS rn
+        FROM   gt_source_loads l
+        WHERE  l.file_checksum IS NOT NULL
+          AND  l.status = 'active'
+    )
+    UPDATE gt_source_loads t
+    SET    status = 'retired'
+    FROM   ranked r
+    WHERE  t.id = r.id AND r.rn > 1;
+
+    GET DIAGNOSTICS v_retired = ROW_COUNT;
+
+    IF v_retired > 0 THEN
+        RAISE NOTICE '[202] Retired % duplicate load(s) — the same file had been loaded more than once. Nothing was deleted; their rows are untouched. Review with: SELECT id, label, loaded_at, status FROM gt_source_loads ORDER BY loaded_at DESC;', v_retired;
+    END IF;
+END $$;
+
 -- A tenant's own uploads: unique per tenant.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_gt_source_loads_tenant_checksum
     ON gt_source_loads(tenant_id, file_checksum)

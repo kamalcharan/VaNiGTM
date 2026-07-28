@@ -4,7 +4,7 @@
  * design plus the ways detection is allowed to fail.
  */
 
-import { detectEntities, deIndexHeader, estimateRows } from '../entity-detector';
+import { detectEntities, deIndexHeader, estimateRows, personBlocks } from '../entity-detector';
 import { mapContactRow, personDedupKey } from '../contact-processor';
 
 /** FTCCI: company-first, reps inline. */
@@ -126,6 +126,67 @@ describe('repeated inline person blocks', () => {
     ]);
     const person = plan.entities.find((e) => e.kind === 'person')!;
     expect(person.reasons.join(' ')).toContain('up to 2 people');
+  });
+});
+
+describe('personBlocks — pulling repeated people out of one row', () => {
+  // Detecting that a row carries three people is worth nothing if only the
+  // first is extracted. This is where 2,913 rows become ~5,800 contacts.
+  const ftcciRow = {
+    'COMPANY': 'Acme Industries',
+    'WEB': 'acme.com',
+    'CONTACT NAME 1': 'Priya Sharma',   'DESIGNATION 1': 'Managing Director',
+    'CONTACT NAME 2': 'Ramesh Kumar',   'DESIGNATION 2': 'Director',
+    'CONTACT NAME 3': 'Anita Rao',      'DESIGNATION 3': 'Company Secretary',
+  };
+
+  it('returns one block per person', () => {
+    expect(personBlocks(ftcciRow, 3)).toHaveLength(3);
+  });
+
+  it('gives each block only ITS person, stripped of the index', () => {
+    const [first, second, third] = personBlocks(ftcciRow, 3);
+    expect(first['CONTACT NAME']).toBe('Priya Sharma');
+    expect(second['CONTACT NAME']).toBe('Ramesh Kumar');
+    expect(third['DESIGNATION']).toBe('Company Secretary');
+    expect(first['CONTACT NAME 2']).toBeUndefined();
+  });
+
+  it('repeats the shared company columns into every block', () => {
+    // Each representative works at that company, so the employer must ride
+    // along or the contact lands with no company and a useless dedup key.
+    for (const b of personBlocks(ftcciRow, 3)) {
+      expect(b['COMPANY']).toBe('Acme Industries');
+      expect(b['WEB']).toBe('acme.com');
+    }
+  });
+
+  it('passes the row through untouched when there is only one person', () => {
+    expect(personBlocks({ 'Full Name': 'Solo' }, 1)).toEqual([{ 'Full Name': 'Solo' }]);
+  });
+
+  it('maps each block to a distinct contact', () => {
+    const people = personBlocks(ftcciRow, 3)
+      .map((b) => mapContactRow(b))
+      .filter((p) => p.mapped.name);
+    expect(people.map((p) => p.mapped.name))
+      .toEqual(['Priya Sharma', 'Ramesh Kumar', 'Anita Rao']);
+    expect(people.map((p) => p.mapped.job_title))
+      .toEqual(['Managing Director', 'Director', 'Company Secretary']);
+    // Distinct keys, each carrying the shared employer. The employer arrives
+    // as the company NAME here: `WEB` is a company discriminator and is
+    // deliberately not in the person map, so the staging step fills the domain
+    // in from the company on the row (see etl.routes.ts).
+    expect(new Set(people.map((p) => p.dedup_key)).size).toBe(3);
+    expect(people.every((p) => p.dedup_key?.endsWith('|ACME INDUSTRIES'))).toBe(true);
+  });
+
+  it('drops empty slots rather than importing blank people', () => {
+    const sparse = { 'COMPANY': 'Beta', 'CONTACT NAME 1': 'Only One', 'CONTACT NAME 2': '' };
+    const people = personBlocks(sparse, 2)
+      .map((b) => mapContactRow(b))
+      .filter((p) => p.mapped.name);
+    expect(people).toHaveLength(1);
   });
 });
 

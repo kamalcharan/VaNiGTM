@@ -17,6 +17,21 @@
 -- Same gt_tags vocabulary for both, so a tenant's tag list stays one list.
 -- ============================================================
 
+-- Prerequisite check — see the same block in 202 for why a bare
+-- "relation does not exist" is not good enough here.
+DO $$
+DECLARE missing TEXT;
+BEGIN
+    SELECT string_agg(t, ', ') INTO missing
+    FROM   unnest(ARRAY['gt_prospects', 'gt_tags', 'gt_contacts']) AS t
+    WHERE  to_regclass('public.' || t) IS NULL;
+
+    IF missing IS NOT NULL THEN
+        RAISE EXCEPTION
+            'Missing prerequisite table(s): %. gt_prospects comes from migration 196, gt_tags from 199, gt_contacts from 187 — those must really exist, not merely be recorded as applied in vn_migrations.', missing;
+    END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS gt_prospect_tags (
     prospect_id BIGINT      NOT NULL REFERENCES gt_prospects(id) ON DELETE CASCADE,
     tag_id      BIGINT      NOT NULL REFERENCES gt_tags(id) ON DELETE CASCADE,

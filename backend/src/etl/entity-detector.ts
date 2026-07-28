@@ -274,6 +274,41 @@ export function detectEntities(
 }
 
 /**
+ * Split one source row into the person blocks it carries.
+ *
+ * A company-first file repeats a person block inline: FTCCI has three
+ * representatives per member row, which is the difference between importing
+ * 2,913 people and ~5,800. detectEntities reports how many blocks there are;
+ * this is what actually pulls them apart.
+ *
+ * For block i, a header carrying index i is stripped back to its base
+ * (`CONTACT NAME 2` -> `CONTACT NAME`), so an unchanged mapContactRow can read
+ * it. Un-indexed headers — the company's name, its city — stay in EVERY
+ * block, because each representative works at that company.
+ */
+export function personBlocks(
+  raw: Record<string, unknown>,
+  perRow: number,
+): Record<string, unknown>[] {
+  if (perRow <= 1) return [raw];
+
+  const blocks: Record<string, unknown>[] = [];
+  for (let i = 1; i <= perRow; i++) {
+    const sub: Record<string, unknown> = {};
+    for (const [header, value] of Object.entries(raw)) {
+      const deIndexed = deIndexHeader(header);
+      if (deIndexed) {
+        if (deIndexed.index === i) sub[deIndexed.base] = value;
+      } else {
+        sub[header] = value;
+      }
+    }
+    blocks.push(sub);
+  }
+  return blocks;
+}
+
+/**
  * Estimated output per entity, for the review screen. People are
  * `rows × per_row` when a file repeats a person block inline — the honest
  * number, not the row count.
