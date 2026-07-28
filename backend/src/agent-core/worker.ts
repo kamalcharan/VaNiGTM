@@ -24,6 +24,7 @@ import { createRun, setStatus, appendStep } from './agent.runner';
 import { VaniAgent } from '../skills/vani-skill/vani.agent';
 import { IngestionAgent } from '../skills/ingestion-skill/ingestion.agent';
 import { CompetitorResearchAgent } from '../skills/research-skill/research.agent';
+import { AccountResearchAgent } from '../skills/research-skill/account.agent';
 import { recalculateProfileFromNodes } from '../skills/profile-skill/profile.service';
 import { generateClusters, listClusters } from '../skills/profile-skill/cluster.service';
 
@@ -123,6 +124,13 @@ const AGENT_REGISTRY: Record<string, AgentHandler> = {
   // site. Triggered by the wizard's competitors step (or a manual re-run).
   COMPETITOR_RESEARCH_REQUESTED: (pool, tenantId, payload, runId) =>
     CompetitorResearchAgent.run(pool, tenantId, payload, runId),
+
+  // Per-company research for the manufacturing pilot: crawl a prospect's own
+  // site, extract evidence-bound facts, score the tenant's offer catalogue
+  // against them, and write gt_account_briefs. One run covers the whole
+  // cohort and checkpoints after each account.
+  ACCOUNT_RESEARCH_REQUESTED: (pool, tenantId, payload, runId) =>
+    AccountResearchAgent.run(pool, tenantId, payload, runId),
 
   // Fires after IngestionAgent.run() writes nodes from any source (Drive
   // file today; direct upload / URL once those entry points exist).

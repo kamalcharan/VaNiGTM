@@ -758,8 +758,14 @@ export class IngestionAgent {
     };
   }
 
-  /** Run the three extraction layers + health check over an HTML document. */
-  private static extractFromHtml(html: string): {
+  /**
+   * Run the three extraction layers + health check over an HTML document.
+   *
+   * Public: the account-research agent reuses this on rendered HTML, the
+   * same way it reuses fetchUrlText. One extraction implementation, so a
+   * fix to the layering benefits every caller.
+   */
+  static extractFromHtml(html: string): {
     text: string;
     health: { present: string[]; missing: string[]; summary: string };
   } {
@@ -803,7 +809,8 @@ export class IngestionAgent {
    * run step — never a silent fallback (rule 12). Throws loudly when the
    * renderer is unconfigured, unreachable, or returns nothing.
    */
-  private static async renderPageViaN8n(url: string): Promise<string> {
+  /** Public for the same reason as extractFromHtml — see its comment. */
+  static async renderPageViaN8n(url: string): Promise<string> {
     const base = process.env.N8N_RENDER_URL;
     const secret = process.env.N8N_RENDER_SECRET;
     if (!base || !secret) {
@@ -888,7 +895,8 @@ export class IngestionAgent {
       .map((s) => s.url);
   }
 
-  private static renderConfigured(): boolean {
+  /** Public: callers must be able to ask before attempting an escalation. */
+  static renderConfigured(): boolean {
     return Boolean(process.env.N8N_RENDER_URL && process.env.N8N_RENDER_SECRET);
   }
 

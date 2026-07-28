@@ -65,3 +65,33 @@ keep/remove → `POST /api/v1/vani/competitors/confirm` stamps
 - Routes live in `vani-skill/vani.routes.ts` (the wizard's `/vani` surface):
   `POST /competitors/research` (dedupes active runs) and
   `GET /competitors/research-status` (latest run: status/steps/output/error).
+
+## Account research (manufacturing pilot)
+
+The same outward-research machinery pointed at a PROSPECT instead of a
+competitor. `ACCOUNT_RESEARCH_REQUESTED` → `account.agent.ts` → one brief per
+company in `gt_account_briefs` (migration 207).
+
+Six stages per account, each a visible run step:
+`fetch_site` → `crawl_pages` → `extract` → `fit_score` → `hook` → `write`.
+Prompts are `research-skill.account_extract` / `.account_fit` / `.account_hook`
+(migration 208), tenant-overridable like any other.
+
+Event payload: `offer_catalogue` (required, a slug under `config/offers/`),
+plus `tag_id` OR `prospect_ids`, optional `limit`, `is_live`, `resume_run_id`.
+
+Three rules this agent will not break:
+
+- **A half-written offer catalogue costs zero crawls.** It is validated before
+  the first fetch, because fit scoring against a blank produces a confident
+  number that then decides who gets contacted.
+- **Every claim carries evidence.** The model must quote the page text it read
+  from; an excerpt appearing on no page we fetched is dropped, visibly, in the
+  `extract` step. An unreadable site becomes `status='unreadable'` with the
+  real reason — never a guessed brief.
+- **"No fit" is a first-class outcome.** Every offer is scored, disqualifiers
+  are in the prompt, and an offer id absent from the catalogue is discarded as
+  invented.
+
+One run covers the whole cohort and checkpoints after every account, so a
+crash at 60 of 100 keeps 59 briefs and a resume starts at 60.
