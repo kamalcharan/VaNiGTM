@@ -153,7 +153,10 @@ headers or a human mapping. That is by design (rule 12) but it means the
 
 # ⚠️ PENDING USER ACTIONS
 
-- 🔴 **APPLY MIGRATIONS 198, 199, 200** (`cd backend && npm run db:migrate`).
+- 🔴 **APPLY MIGRATIONS 198, 199, 200, 201** (`cd backend && npm run db:migrate`).
+  **201 is required for the import to run at all** — 104 CHECKs `import_type`
+  against the MFD list with no `'company'`. It also repairs a narrowing 200
+  introduced in the staging status CHECK, so apply it even if 200 is done.
   All three verified on a real PostgreSQL 16 — apply, re-apply, constraints
   reject bad values. **198 repairs a live defect** (see below) and the code
   now shipped depends on all three.
@@ -288,6 +291,19 @@ races the 620ms handoff and captures blank frames.
 7. **`npx tsc --noEmit` must be run from `backend/` or `frontend/`,** not the
    repo root. From the root it picks up the wrong tsconfig and invents
    dozens of `Cannot find name 'process'` errors.
+8. **The ETL code was ported from kewalinvest and assumes ITS schema, not
+   this repo's migrations.** `POST /etl/sessions` wrote to
+   `ki_import_sessions.customer_lookup_method`, a column NO migration here
+   creates — so the route had never once succeeded against `vani_gtm_db`.
+   Behind it, 104's `import_type` CHECK had no `'company'`. Both fixed
+   (201). **Before trusting any other ported `ki_` query, diff the columns
+   it names against what the migrations actually create.** A scratch
+   Postgres built from the migration files is the way to check.
+9. **Re-adding a CHECK constraint you dropped? Find every migration that
+   widened it first.** Migration 200 re-added the staging
+   `processing_status` CHECK from 104's list and silently dropped
+   `'orphan'`, which 143/146 had added. Caught only by grepping for other
+   `processing_status IN` declarations.
 
 ---
 
