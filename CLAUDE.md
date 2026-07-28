@@ -272,8 +272,18 @@ Skill smoke test:
 `{ "params": {...} }`.
 
 ## DB inspection (read-only MCP)
-`.mcp.json` registers `gtm-postgres` (SSE via `mcp-gtm.dristiq.com`,
+`.mcp.json` registers `gtm-postgres` (SSE via **`mcp-db.dristiq.com`**,
 auth from `GTM_MCP_BASIC` env). Setup/runbook: `docs/mcp-db-setup.md`.
+
+⚠️ It pointed at `mcp-gtm.dristiq.com` until 2026-07-27 and never connected —
+that host does not answer (curl gets nothing; the agent proxy logs
+`403 CONNECT`). `mcp-db.dristiq.com` answers `401`, i.e. reachable and
+awaiting auth. If the connector still fails, check in this order:
+1. `GTM_MCP_BASIC` set in the Claude environment (not just on the VPS),
+2. `mcp-db.dristiq.com` on the environment's network allowlist,
+3. the host actually serving `vani_gtm_db` — the runbook was written to give
+   GTM its **own** vhost, so confirm this one is not pointed at another
+   product's database before trusting what it returns.
 
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the

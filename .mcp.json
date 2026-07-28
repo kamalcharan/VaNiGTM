@@ -2,7 +2,7 @@
   "mcpServers": {
     "gtm-postgres": {
       "type": "sse",
-      "url": "https://mcp-gtm.dristiq.com/sse",
+      "url": "https://mcp-db.dristiq.com/sse",
       "headers": { "Authorization": "Basic ${GTM_MCP_BASIC}" }
     }
   }

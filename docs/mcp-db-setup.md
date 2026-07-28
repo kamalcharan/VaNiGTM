@@ -1,5 +1,13 @@
 # Postgres MCP Connector — vani_gtm_db (read-only)
 
+> **STATUS 2026-07-27.** The repo pointed `.mcp.json` at
+> `mcp-gtm.dristiq.com`, which never came up — it answers nothing and the
+> agent proxy logs `403 CONNECT`. `.mcp.json` now points at
+> **`mcp-db.dristiq.com`**, which answers `401` (reachable, needs auth).
+> The vhost steps below describe standing up a *separate* GTM host; they are
+> unapplied. Before trusting query results, confirm `mcp-db.dristiq.com` is
+> serving `vani_gtm_db` and not another product's database.
+
 Adapts the proven KaalaDristi v2 architecture (MCP server on the VPS behind
 nginx TLS + basic-auth, SSE transport) to `vani_gtm_db`. Only the DB, role,
 container, and hostname differ.
