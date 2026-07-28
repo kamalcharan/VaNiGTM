@@ -184,3 +184,53 @@ function findValue(raw: Record<string, unknown>, header: string): unknown {
   }
   return undefined;
 }
+
+/**
+ * Convert the detector's guess into the SAME shape a human assignment
+ * produces, so there is exactly one extraction path.
+ *
+ * Staging used to branch: an explicit-mapping path and a separate
+ * auto-detected path, each mapping rows its own way. Two paths doing the same
+ * job is how `is_live` drifted and how the pool detail ended up missing a
+ * feature the tenant detail had. Detection is a SUGGESTION — so it should
+ * produce a suggestion in the same currency the human edits, and then both go
+ * through one piece of code.
+ *
+ * `perRow` comes from the detected person entity: a header carrying an index
+ * belongs to that slot, and an un-indexed person header (or the company's
+ * columns) belongs to every slot, because each representative works at that
+ * company.
+ */
+export function planToMapping(
+  plan: { entities: { kind: string; columns: Record<string, string>; per_row: number }[] } | null,
+): ResolvedMapping | null {
+  if (!plan || plan.entities.length === 0) return null;
+
+  const company: Record<string, string> = {};
+  const personEntity = plan.entities.find((e) => e.kind === 'person');
+  const companyEntity = plan.entities.find((e) => e.kind === 'company');
+
+  for (const [header, field] of Object.entries(companyEntity?.columns ?? {})) {
+    company[header] = field;
+  }
+
+  const slots = Math.max(1, personEntity?.per_row ?? 1);
+  const people: Record<string, string>[] = personEntity
+    ? Array.from({ length: slots }, () => ({}))
+    : [];
+
+  if (personEntity) {
+    for (const [header, field] of Object.entries(personEntity.columns)) {
+      const indexed = header.match(/\b(\d{1,2})\b/);
+      if (indexed && slots > 1) {
+        const slot = Number(indexed[1]);
+        if (slot >= 1 && slot <= slots) people[slot - 1][header] = field;
+      } else {
+        // Un-indexed: the same column feeds every person on the row.
+        for (const slot of people) slot[header] = field;
+      }
+    }
+  }
+
+  return { company, people };
+}

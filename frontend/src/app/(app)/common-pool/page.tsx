@@ -16,12 +16,16 @@ import { useSkillQuery } from '@/hooks/useSkill';
 import { useAuth } from '@/context/auth-provider';
 import { formatDate } from '@/lib/format';
 import {
-  VdfPageHeader, VdfLoader, VdfStatCard, VdfBadge, VdfEmptyState,
+  VdfPageHeader, VdfLoader, VdfStatCard, VdfEmptyState,
   VdfSearchBar, VdfModal,
 } from '@/components/vdf';
+import {
+  RecordTable, DetailRow, SourceRowSection, pct,
+  type RecordRow, type RecordTag,
+} from '@/components/records/RecordTable';
 import s from '../companies/companies.module.css';
 
-interface Tag { id: number; label: string; inherited: boolean }
+type Tag = RecordTag;
 
 interface PoolCompany {
   id: number;
@@ -59,16 +63,6 @@ interface PoolStats {
   undated: number; sharing_block: number;
 }
 
-const FRESHNESS: Record<string, { label: string; variant: 'success' | 'info' | 'default' | 'gold' }> = {
-  current: { label: 'Current', variant: 'success' },
-  recent:  { label: 'Recent',  variant: 'info'    },
-  ageing:  { label: 'Ageing',  variant: 'gold'    },
-  stale:   { label: 'Stale',   variant: 'default' },
-  unknown: { label: 'Undated', variant: 'default' },
-};
-
-const pct = (v: string | null): string =>
-  v === null ? '—' : `${Math.round(Number(v) * 100)}%`;
 
 export default function CommonPoolPage() {
   const { isAdmin } = useAuth();
@@ -182,71 +176,26 @@ export default function CommonPoolPage() {
             description="Import a directory from Import Data, choosing 'Common pool dataset', and its rows land here."
           />
         ) : (
-          <div className={s.tableCard}>
-            <table className={s.table}>
-              <thead>
-                <tr>
-                  <th>Company</th>
-                  <th>Domain</th>
-                  <th>Location</th>
-                  <th>Industry</th>
-                  <th>Quality</th>
-                  <th>Delivery</th>
-                  <th>Tags</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((c) => (
-                  <tr key={c.id} className={s.row} onClick={() => setDetail(c)}>
-                    <td>
-                      <div className={s.name}>{c.name}</div>
-                      <div className={s.sub}>
-                        {c.source_record_id}
-                        {c.shares_block && (
-                          <> · <span className={s.dupe}>shares an identifier</span></>
-                        )}
-                      </div>
-                    </td>
-                    <td className={s.mono}>{c.domain_normalized ?? '—'}</td>
-                    <td className={s.muted}>
-                      {[c.city, c.state_code].filter(Boolean).join(', ') || '—'}
-                    </td>
-                    <td className={s.muted}>{c.industry_raw ?? '—'}</td>
-                    <td>
-                      <div className={s.quality}>
-                        <span title="Share of tracked fields populated">{pct(c.completeness)} full</span>
-                        <span
-                          className={Number(c.validity ?? 1) < 1 ? s.badValidity : undefined}
-                          title="Share of populated fields that passed validation"
-                        >
-                          {pct(c.validity)} valid
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <VdfBadge variant={FRESHNESS[c.freshness].variant}>
-                        {FRESHNESS[c.freshness].label}
-                      </VdfBadge>
-                      <div className={s.sub}>{c.load_label ?? '—'}</div>
-                    </td>
-                    <td onClick={(e) => e.stopPropagation()}>
-                      <div className={s.tags}>
-                        {c.tags.length === 0 ? <span className={s.muted}>—</span> : c.tags.map((t) => (
-                          <button key={t.id} className={s.tag} onClick={() => setTagId(t.id)}
-                            title="From the delivery this row arrived in">
-                            {t.label}
-                          </button>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className={s.footer}>
-              Showing {rows.length.toLocaleString()} of {total.toLocaleString()}
-            </div>
-          </div>
+          <RecordTable
+            rows={rows.map((c): RecordRow => ({
+              id: c.id,
+              name: c.name,
+              ref: c.source_record_id,
+              domain_normalized: c.domain_normalized,
+              city: c.city,
+              state_code: c.state_code,
+              industry_raw: c.industry_raw,
+              completeness: c.completeness,
+              validity: c.validity,
+              freshness: c.freshness,
+              duplicate: c.shares_block,
+              source_label: c.load_label,
+              tags: c.tags,
+            }))}
+            total={total}
+            onOpen={(r) => setDetail(rows.find((x) => x.id === r.id) ?? null)}
+            onTagClick={setTagId}
+          />
         )}
       </div>
 
@@ -259,46 +208,22 @@ export default function CommonPoolPage() {
       >
         {detail && (
           <div className={s.detail}>
-            {[
-              ['Domain', detail.domain_normalized],
-              ['Website', detail.website],
-              ['Email', detail.email],
-              ['Phone', detail.phone],
-              ['Location', [detail.city, detail.state_code, detail.pin, detail.country].filter(Boolean).join(', ')],
-              ['Industry', detail.industry_raw],
-              ['Employees', detail.employees_band],
-              ['Revenue', detail.revenue_band],
-              ['Description', detail.description],
-              ['Completeness', `${pct(detail.completeness)} of tracked fields populated`],
-              ['Validity', `${pct(detail.validity)} of populated fields passed validation`],
-              ['Data as of', detail.source_as_of ? formatDate(detail.source_as_of) : 'Not stated — scored as less fresh'],
-              ['Delivery', detail.load_label],
-              ['Merged into a company', detail.resolved ? 'Yes' : 'Not yet — the merge step is not built'],
-            ].map(([label, value]) => (
-              <div key={label as string} className={s.detailRow}>
-                <span className={s.detailLabel}>{label}</span>
-                <span>{(value as string) || '—'}</span>
-              </div>
-            ))}
-            {/* Everything else the file carried — the columns no field
-                claimed. For a chamber directory that is the panel code, the
-                membership number, the fax, and the representatives. They were
-                never discarded at import, so they are shown here in full. */}
-            {detail.raw && Object.keys(detail.raw).length > 0 && (
-              <>
-                <div className={s.detailLabel} style={{ marginTop: 20, marginBottom: 6 }}>
-                  Everything from your file ({Object.keys(detail.raw).length} columns)
-                </div>
-                {Object.entries(detail.raw).map(([col, value]) => (
-                  <div key={col} className={s.detailRow}>
-                    <span className={s.detailLabel}>{col}</span>
-                    <span style={{ textAlign: 'right', wordBreak: 'break-word' }}>
-                      {value === null || value === undefined || value === '' ? '—' : String(value)}
-                    </span>
-                  </div>
-                ))}
-              </>
-            )}
+            <DetailRow label="Domain"      value={detail.domain_normalized} />
+            <DetailRow label="Website"     value={detail.website} />
+            <DetailRow label="Email"       value={detail.email} />
+            <DetailRow label="Phone"       value={detail.phone} />
+            <DetailRow label="Location"    value={[detail.city, detail.state_code, detail.pin, detail.country].filter(Boolean).join(', ')} />
+            <DetailRow label="Industry"    value={detail.industry_raw} />
+            <DetailRow label="Employees"   value={detail.employees_band} />
+            <DetailRow label="Revenue"     value={detail.revenue_band} />
+            <DetailRow label="Description" value={detail.description} />
+            <DetailRow label="Completeness" value={`${pct(detail.completeness)} of tracked fields populated`} />
+            <DetailRow label="Validity"    value={`${pct(detail.validity)} of populated fields passed validation`} />
+            <DetailRow label="Data as of"  value={detail.source_as_of ? formatDate(detail.source_as_of) : 'Not stated — scored as less fresh'} />
+            <DetailRow label="Delivery"    value={detail.load_label} />
+            <DetailRow label="Merged into a company" value={detail.resolved ? 'Yes' : 'Not yet — the merge step is not built'} />
+
+            <SourceRowSection raw={detail.raw} />
 
             {detail.shares_block && (
               <div className={s.note} style={{ marginTop: 12 }}>

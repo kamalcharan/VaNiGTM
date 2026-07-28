@@ -23,12 +23,16 @@ import { useToast } from '@/components/toast';
 import { useAuth } from '@/context/auth-provider';
 import { formatDate } from '@/lib/format';
 import {
-  VdfPageHeader, VdfLoader, VdfStatCard, VdfBadge, VdfEmptyState,
-  VdfSearchBar, VdfButton, VdfModal, VdfCheckbox,
+  VdfPageHeader, VdfLoader, VdfStatCard, VdfEmptyState,
+  VdfSearchBar, VdfButton, VdfModal,
 } from '@/components/vdf';
+import {
+  RecordTable, DetailRow, SourceRowSection, pct,
+  type RecordRow, type RecordTag,
+} from '@/components/records/RecordTable';
 import s from './companies.module.css';
 
-interface Tag { id: number; label: string; inherited: boolean }
+type Tag = RecordTag;
 
 interface Prospect {
   id: number;
@@ -67,16 +71,6 @@ interface Stats {
   loads?: number; resolved?: number; sharing_block?: number;
 }
 
-const FRESHNESS: Record<string, { label: string; variant: 'success' | 'info' | 'default' | 'gold' }> = {
-  current: { label: 'Current',  variant: 'success' },
-  recent:  { label: 'Recent',   variant: 'info'    },
-  ageing:  { label: 'Ageing',   variant: 'gold'    },
-  stale:   { label: 'Stale',    variant: 'default' },
-  unknown: { label: 'Undated',  variant: 'default' },
-};
-
-const pct = (v: string | null): string =>
-  v === null ? '—' : `${Math.round(Number(v) * 100)}%`;
 
 export default function CompaniesPage() {
   const { showToast } = useToast();
@@ -225,82 +219,29 @@ export default function CompaniesPage() {
             description="Import a file from Import Data and the companies in it land here."
           />
         ) : (
-          <div className={s.tableCard}>
-            <table className={s.table}>
-              <thead>
-                <tr>
-                  <th style={{ width: 36 }}></th>
-                  <th>Company</th>
-                  <th>Domain</th>
-                  <th>Location</th>
-                  <th>Industry</th>
-                  <th>Quality</th>
-                  <th>Source</th>
-                  <th>Tags</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((p) => (
-                  <tr key={p.id} onClick={() => setDetail(p)} className={s.row}>
-                    <td onClick={(e) => e.stopPropagation()}>
-                      <VdfCheckbox
-                        checked={selected.includes(p.id)}
-                        onChange={(c) => setSelected((prev) =>
-                          c ? [...prev, p.id] : prev.filter((x) => x !== p.id))}
-                      />
-                    </td>
-                    <td>
-                      <div className={s.name}>{p.name}</div>
-                      <div className={s.sub}>
-                        {p.ref}
-                        {p.relationship === 'customer' && <> · <span className={s.customer}>Customer</span></>}
-                        {(p.shares_domain || p.shares_name) && (
-                          <> · <span className={s.dupe}>
-                            shares a {p.shares_domain ? 'domain' : 'name'}
-                          </span></>
-                        )}
-                      </div>
-                    </td>
-                    <td className={s.mono}>{p.domain_normalized ?? '—'}</td>
-                    <td className={s.muted}>
-                      {[p.city, p.state_code].filter(Boolean).join(', ') || '—'}
-                    </td>
-                    <td className={s.muted}>{p.industry_raw ?? '—'}</td>
-                    <td>
-                      <div className={s.quality}>
-                        <span title="Share of tracked fields populated">{pct(p.completeness)} full</span>
-                        <span
-                          className={Number(p.validity ?? 1) < 1 ? s.badValidity : undefined}
-                          title="Share of populated fields that passed validation"
-                        >
-                          {pct(p.validity)} valid
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <VdfBadge variant={FRESHNESS[p.freshness].variant}>
-                        {FRESHNESS[p.freshness].label}
-                      </VdfBadge>
-                      <div className={s.sub}>{p.load_label ?? '—'}</div>
-                    </td>
-                    <td onClick={(e) => e.stopPropagation()}>
-                      <div className={s.tags}>
-                        {p.tags.length === 0 ? <span className={s.muted}>—</span> : p.tags.map((t) => (
-                          <button key={t.id} className={s.tag} onClick={() => setTagId(t.id)}
-                            title={t.inherited ? 'From the delivery this record arrived in' : 'Added to this record'}>
-                            {t.label}{t.inherited ? ' ·' : ''}
-                          </button>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className={s.footer}>
-              Showing {rows.length.toLocaleString()} of {total.toLocaleString()}
-            </div>
-          </div>
+          <RecordTable
+            rows={rows.map((p): RecordRow => ({
+              id: p.id,
+              name: p.name,
+              ref: p.ref,
+              domain_normalized: p.domain_normalized,
+              city: p.city,
+              state_code: p.state_code,
+              industry_raw: p.industry_raw,
+              completeness: p.completeness,
+              validity: p.validity,
+              freshness: p.freshness,
+              duplicate: Boolean(p.shares_domain || p.shares_name),
+              source_label: p.load_label,
+              tags: p.tags,
+              badge: p.relationship === 'customer' ? 'Customer' : null,
+            }))}
+            total={total}
+            selected={selected}
+            onSelect={setSelected}
+            onOpen={(r) => setDetail(rows.find((x) => x.id === r.id) ?? null)}
+            onTagClick={setTagId}
+          />
         )}
       </div>
 
@@ -338,68 +279,39 @@ export default function CompaniesPage() {
       >
         {detail && (
           <div className={s.detail}>
-            {Object.entries({
-              'Domain': detail.domain_normalized,
-              'Website': detailData?.data?.prospect?.website,
-              'Email': detailData?.data?.prospect?.email,
-              'Phone': detailData?.data?.prospect?.phone,
-              'Address': detailData?.data?.prospect?.address_line,
-              'Location': [detail.city, detail.state_code, detailData?.data?.prospect?.pin,
-                           detailData?.data?.prospect?.country].filter(Boolean).join(', '),
-              'Industry': detail.industry_raw,
-              'Employees': detail.employees_band,
-              'Revenue': detailData?.data?.prospect?.revenue_band,
-              'Year founded': detailData?.data?.prospect?.year_founded,
-              'LinkedIn': detailData?.data?.prospect?.linkedin_url,
-              'Description': detailData?.data?.prospect?.description,
-              'Completeness': `${pct(detail.completeness)} of tracked fields populated`,
-              'Validity': `${pct(detail.validity)} of populated fields passed validation`,
-              'Data as of': detail.source_as_of ? formatDate(detail.source_as_of)
-                                                : 'Not stated — scored as less fresh',
-              'Arrived in': detail.load_label,
-            }).map(([label, value]) => (
-              <div key={label} className={s.detailRow}>
-                <span className={s.detailLabel}>{label}</span>
-                <span>{(value as string) || '—'}</span>
-              </div>
-            ))}
+            <DetailRow label="Domain"      value={detail.domain_normalized} />
+            <DetailRow label="Website"     value={detailData?.data?.prospect?.website} />
+            <DetailRow label="Email"       value={detailData?.data?.prospect?.email} />
+            <DetailRow label="Phone"       value={detailData?.data?.prospect?.phone} />
+            <DetailRow label="Address"     value={detailData?.data?.prospect?.address_line} />
+            <DetailRow label="Location"    value={[detail.city, detail.state_code, detailData?.data?.prospect?.pin, detailData?.data?.prospect?.country].filter(Boolean).join(', ')} />
+            <DetailRow label="Industry"    value={detail.industry_raw} />
+            <DetailRow label="Employees"   value={detail.employees_band} />
+            <DetailRow label="Revenue"     value={detailData?.data?.prospect?.revenue_band} />
+            <DetailRow label="Year founded" value={detailData?.data?.prospect?.year_founded} />
+            <DetailRow label="LinkedIn"    value={detailData?.data?.prospect?.linkedin_url} />
+            <DetailRow label="Description" value={detailData?.data?.prospect?.description} />
+            <DetailRow label="Completeness" value={`${pct(detail.completeness)} of tracked fields populated`} />
+            <DetailRow label="Validity"    value={`${pct(detail.validity)} of populated fields passed validation`} />
+            <DetailRow label="Data as of"  value={detail.source_as_of ? formatDate(detail.source_as_of) : 'Not stated — scored as less fresh'} />
+            <DetailRow label="Arrived in"  value={detail.load_label} />
 
-            {/* The people at this company. A directory row commonly carries
-                several — FTCCI has up to three representatives per member. */}
             {(detailData?.data?.people?.length ?? 0) > 0 && (
               <>
                 <div className={s.detailLabel} style={{ marginTop: 20, marginBottom: 6 }}>
                   People at this company
                 </div>
                 {detailData!.data.people.map((person) => (
-                  <div key={person.id} className={s.detailRow}>
-                    <span>
-                      <strong>{person.name}</strong>
-                      {person.job_title && <span className={s.muted}> · {person.job_title}</span>}
-                    </span>
-                    <span className={s.muted}>
-                      {person.channels.map((ch) => ch.value).join(' · ') || '—'}
-                    </span>
-                  </div>
+                  <DetailRow
+                    key={person.id}
+                    label={`${person.name}${person.job_title ? ' · ' + person.job_title : ''}`}
+                    value={person.channels.map((ch) => ch.value).join(' · ')}
+                  />
                 ))}
               </>
             )}
 
-            {/* Everything else the file carried. Nothing is discarded at
-                import, so nothing is hidden here either. */}
-            {detailData?.data?.source_row && Object.keys(detailData.data.source_row).length > 0 && (
-              <>
-                <div className={s.detailLabel} style={{ marginTop: 20, marginBottom: 6 }}>
-                  Everything else from your file
-                </div>
-                {Object.entries(detailData.data.source_row).map(([col, value]) => (
-                  <div key={col} className={s.detailRow}>
-                    <span className={s.detailLabel}>{col}</span>
-                    <span>{value === null || value === '' ? '—' : String(value)}</span>
-                  </div>
-                ))}
-              </>
-            )}
+            <SourceRowSection raw={detailData?.data?.source_row} />
 
             {(detail.shares_domain || detail.shares_name) && (
               <div className={s.note} style={{ marginTop: 12 }}>

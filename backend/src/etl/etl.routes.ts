@@ -26,7 +26,7 @@ import { mapCompanyRow, COMPANY_FIELD_MAP } from './company-processor';
 import { mapContactRow, personDedupKey } from './contact-processor';
 import { detectEntities, estimateRows, personBlocks, type ExtractionPlan } from './entity-detector';
 import {
-  resolveMappings, companyRowFor, personRowForSlot, identityMapping,
+  resolveMappings, planToMapping, companyRowFor, personRowForSlot, identityMapping,
   unmappedColumns,
 } from './mapping-plan';
 import { landSession } from './landing';
@@ -621,7 +621,9 @@ export function createEtlRouter(pool: Pool): Router {
 
       // Did the human assign the columns themselves? If so that wins over any
       // detection — the file's format is whatever they say it is.
-      const explicit = resolveMappings(field_mappings);
+      // ONE extraction path. A human assignment wins; otherwise the detector's
+      // guess is converted into the same shape and run through the same code.
+      const explicit = resolveMappings(field_mappings) ?? planToMapping(plan);
 
       // Parse Excel and stage all rows
       const rows = parseExcelRows(file.file_path);
@@ -645,8 +647,6 @@ export function createEtlRouter(pool: Pool): Router {
           let dedupKey: string | null = null;
 
           if (import_type === 'company' && explicit) {
-            // The human assigned every column. No detection, no built-in
-            // header names — this path works on a file nobody anticipated.
             const companyRow = companyRowFor(raw, explicit.company);
             const company = Object.keys(explicit.company).length > 0
               ? mapCompanyRow(companyRow, identityMapping(companyRow))
@@ -669,52 +669,7 @@ export function createEtlRouter(pool: Pool): Router {
               // Everything no field claimed, kept for future use.
               metadata: unmappedColumns(raw, claimed),
             };
-            const primary = company ?? people[0] ?? null;
-            completeness = primary?.quality.completeness ?? null;
-            validity = primary?.quality.validity ?? null;
-            rejects = [
-              ...(company?.quality.reject_reasons ?? []),
-              ...people.flatMap((p) => p.quality.reject_reasons),
-            ];
-            dedupKey = primary?.dedup_key ?? null;
-          } else if (import_type === 'company') {
-            const company = wantsCompany ? mapCompanyRow(raw, mappings) : null;
 
-            // A company-first file repeats the person block inline. Extracting
-            // only the first would silently drop two of every three FTCCI
-            // representatives — the row count is not the people count.
-            const people = wantsPerson
-              ? personBlocks(raw, personPerRow)
-                  .map((block) => mapContactRow(block, mappings))
-                  .filter((p) => p.mapped.name)
-              : [];
-
-            // A representative works at the company on their row. The person
-            // map does not claim the company's own website column (`WEB` is a
-            // company discriminator and must stay one), so the employer is
-            // filled in from the company here — which tightens the person
-            // blocking key from name+company-name to name+domain.
-            if (company?.mapped) {
-              for (const p of people) {
-                if (!p.mapped.company_domain && company.mapped.domain_normalized) {
-                  p.mapped.company_domain = company.mapped.domain_normalized;
-                }
-                if (!p.mapped.company_name && company.mapped.name) {
-                  p.mapped.company_name = company.mapped.name;
-                }
-                p.dedup_key = personDedupKey(p.mapped);
-              }
-            }
-
-            const claimedAuto = (plan?.entities ?? []).flatMap((e) => Object.keys(e.columns));
-            mappedData = {
-              company: company?.mapped ?? null,
-              people: people.map((p) => p.mapped),
-              metadata: unmappedColumns(raw, claimedAuto),
-            };
-
-            // Row-level quality is the primary entity's — the company when
-            // there is one, otherwise the first person.
             const primary = company ?? people[0] ?? null;
             completeness = primary?.quality.completeness ?? null;
             validity = primary?.quality.validity ?? null;
