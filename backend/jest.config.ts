@@ -3,7 +3,7 @@ import type { Config } from 'jest';
 const config: Config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src/skills', '<rootDir>/src/services'],
+  roots: ['<rootDir>/src/skills', '<rootDir>/src/services', '<rootDir>/src/etl'],
   testMatch: ['**/tests/**/*.test.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   transform: {
