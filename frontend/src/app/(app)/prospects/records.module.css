@@ -153,3 +153,29 @@
 @media (max-width: 768px) {
   .body { padding: 16px 16px 32px; }
 }
+
+/* Filter dropdowns — themed to match the chips they sit beside. */
+.select {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  max-width: 260px;
+}
+
+.select:hover { border-color: var(--color-primary); }
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px 0 4px;
+  font-size: 0.8rem;
+}
+
+.pager button:disabled { opacity: 0.4; cursor: not-allowed; }

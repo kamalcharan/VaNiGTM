@@ -15,8 +15,10 @@ SELECT
     COUNT(*) FILTER (WHERE COALESCE(validity, 1) < 1)::int    AS with_rejected_fields,
     COUNT(*) FILTER (WHERE domain_normalized IS NOT NULL)::int AS with_domain,
     COUNT(*) FILTER (WHERE source_as_of IS NULL)::int          AS undated,
-    COUNT(*) FILTER (WHERE duplicate)::int                     AS duplicates
+    COUNT(*) FILTER (WHERE duplicate)::int                     AS duplicates,
+    COUNT(*) FILTER (WHERE NOT is_active)::int                 AS inactive
 FROM   gt_record_view v
 WHERE  v.scope = $scope::text
+  AND  v.is_active
   AND  ( v.scope = 'pool'
          OR (v.tenant_id = $tenant_id::uuid AND v.is_live = $is_live::boolean) );

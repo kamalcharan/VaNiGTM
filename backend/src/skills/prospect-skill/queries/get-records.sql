@@ -12,7 +12,12 @@
 -- ctx.is_admin in the function before this query is reached.
 --
 -- Named params: $scope, $tenant_id, $is_live, $search, $relationship,
---               $tag_id, $only_duplicates, $min_quality, $limit, $offset
+--               $tag_id, $only_duplicates, $min_quality, $industry, $domain,
+--               $show_inactive, $limit, $offset
+--
+-- NOTE: a named param written in a COMMENT is still translated — the
+-- substitution scans the whole file. Do not name one here that the caller
+-- does not supply.
 
 WITH paged AS (
     -- The filtered total, carried on every row. The stats query answers a
@@ -27,6 +32,17 @@ WITH paged AS (
       AND  ($relationship::text IS NULL OR v.relationship = $relationship::text)
       AND  ($min_quality::numeric IS NULL OR COALESCE(v.completeness, 0) >= $min_quality::numeric)
       AND  (NOT $only_duplicates::boolean OR v.duplicate)
+      -- Deactivated rows are HIDDEN by default, not unreachable. A pool row
+      -- is always active — a delivery is retired at the load, not per row.
+      AND  ($show_inactive::boolean OR v.is_active)
+      AND  ($industry::text IS NULL OR v.industry_raw = $industry::text)
+      -- 'has' / 'none' answer "which of these can we actually reach", which
+      -- is a different question from matching a particular domain.
+      AND  ($domain::text IS NULL
+            OR ($domain::text = 'has'  AND v.domain_normalized IS NOT NULL)
+            OR ($domain::text = 'none' AND v.domain_normalized IS NULL)
+            OR ($domain::text NOT IN ('has','none')
+                AND v.domain_normalized ILIKE '%' || $domain::text || '%'))
       AND  (
           $search::text IS NULL
           OR v.name ILIKE '%' || $search::text || '%'

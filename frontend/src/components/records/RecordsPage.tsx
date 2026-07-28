@@ -16,7 +16,7 @@
  * is_live diverge and silently hide landed records.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { apiFetch } from '@/lib/api-client';
@@ -25,10 +25,11 @@ import { useToast } from '@/components/toast';
 import { formatDate } from '@/lib/format';
 import {
   VdfPageHeader, VdfLoader, VdfStatCard, VdfEmptyState,
-  VdfSearchBar, VdfButton, VdfModal,
+  VdfSearchBar, VdfButton, VdfModal, VdfCheckbox,
 } from '@/components/vdf';
 import {
   RecordTable, DetailRow, SourceRowSection, pct,
+  COLUMNS, DEFAULT_COLUMNS,
   type RecordRow, type RecordTag, type Freshness,
 } from './RecordTable';
 import s from '@/app/(app)/prospects/records.module.css';
@@ -68,11 +69,18 @@ interface Record {
 }
 type Record_ = { [k: string]: unknown };
 
+interface Facets {
+  industries: { value: string; count: number }[];
+  tags: { id: number; label: string; count: number }[];
+  with_domain: number;
+  without_domain: number;
+}
+
 interface Stats {
   total: number; loads: number; customers: number; resolved: number;
   avg_completeness: string | null; avg_validity: string | null;
   with_rejected_fields: number; with_domain: number;
-  undated: number; duplicates: number;
+  undated: number; duplicates: number; inactive: number;
 }
 
 export interface RecordsPageProps {
@@ -93,6 +101,28 @@ export function RecordsPage({
   const isPool = scope === 'pool';
 
   const [search, setSearch] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [domain, setDomain] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
+  const [page, setPage] = useState(1);
+  const [chooser, setChooser] = useState(false);
+  // Remembered per surface: a user who hides Quality on the pool has not said
+  // anything about their prospects.
+  const [visible, setVisible] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return DEFAULT_COLUMNS;
+    try {
+      const saved = window.localStorage.getItem(`records.columns.${scope}`);
+      return saved ? JSON.parse(saved) : DEFAULT_COLUMNS;
+    } catch { return DEFAULT_COLUMNS; }
+  });
+
+  function toggleColumn(key: string) {
+    setVisible((prev) => {
+      const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
+      try { window.localStorage.setItem(`records.columns.${scope}`, JSON.stringify(next)); } catch { /* private mode */ }
+      return next;
+    });
+  }
   const [relationship, setRelationship] = useState('');
   const [onlyDuplicates, setOnlyDuplicates] = useState(false);
   const [tagId, setTagId] = useState<number | null>(null);
@@ -101,18 +131,31 @@ export function RecordsPage({
   const [tags, setTags] = useState<RecordTag[]>([]);
   const [detail, setDetail] = useState<Record | null>(null);
 
+  const PAGE_SIZE = 50;
+
   const params = useMemo(() => ({
     scope,
     search: search.trim() || undefined,
     // A pool row is nobody's customer, so this filter is meaningless there.
     ...(isPool ? {} : { relationship: relationship || undefined }),
+    industry: industry || undefined,
+    domain: domain || undefined,
     only_duplicates: onlyDuplicates || undefined,
+    show_inactive: showInactive || undefined,
     tag_id: tagId ?? undefined,
-    limit: 100,
-  }), [scope, isPool, search, relationship, onlyDuplicates, tagId]);
+    page,
+    limit: PAGE_SIZE,
+  }), [scope, isPool, search, relationship, industry, domain,
+       onlyDuplicates, showInactive, tagId, page]);
+
+  // Any filter change invalidates the current page — page 7 of a narrowed
+  // result is usually empty, which reads as "no matches".
+  useEffect(() => { setPage(1); },
+    [search, relationship, industry, domain, onlyDuplicates, showInactive, tagId]);
 
   const { data, isLoading, isError, error } = useSkillQuery<{
-    records: Record[]; total: number; stats: Stats;
+    records: Record[]; total: number; page: number; limit: number;
+    stats: Stats; facets: Facets;
   }>('prospect-skill', 'get_records', params);
 
   const { mutate: applyTag, isPending: tagging } = useSkillMutation(
@@ -140,6 +183,8 @@ export function RecordsPage({
   const rows = data?.data?.records ?? [];
   const total = data?.data?.total ?? 0;
   const stats = data?.data?.stats;
+  const facets = data?.data?.facets;
+  const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className={s.page}>
@@ -204,11 +249,46 @@ export function RecordsPage({
               title="Records sharing an identifier with another record">
               Possible duplicates{stats?.duplicates ? ` (${stats.duplicates})` : ''}
             </button>
-            {tagId !== null && (
-              <button className={`${s.chip} ${s.chipActive}`} onClick={() => setTagId(null)}>
-                Clear tag filter ✕
+            {/* Inactive rows are hidden, not unreachable. Only offered when
+                there are some — a toggle for zero rows is noise. */}
+            {!isPool && (stats?.inactive ?? 0) > 0 && (
+              <button
+                className={`${s.chip} ${showInactive ? s.chipActive : ''}`}
+                onClick={() => setShowInactive((v) => !v)}>
+                Include inactive ({stats!.inactive})
               </button>
             )}
+          </div>
+
+          {/* Values come from the data, so a dropdown never offers an option
+              that matches nothing. */}
+          <div className={s.chips}>
+            <select className={s.select} value={industry}
+              onChange={(e) => setIndustry(e.target.value)}>
+              <option value="">All industries</option>
+              {(facets?.industries ?? []).map((i) => (
+                <option key={i.value} value={i.value}>{i.value} ({i.count})</option>
+              ))}
+            </select>
+
+            <select className={s.select} value={tagId ?? ''}
+              onChange={(e) => setTagId(e.target.value ? Number(e.target.value) : null)}>
+              <option value="">All tags</option>
+              {(facets?.tags ?? []).map((t) => (
+                <option key={t.id} value={t.id}>{t.label} ({t.count})</option>
+              ))}
+            </select>
+
+            <select className={s.select} value={domain}
+              onChange={(e) => setDomain(e.target.value)}>
+              <option value="">Any domain</option>
+              <option value="has">Has a domain ({facets?.with_domain ?? 0})</option>
+              <option value="none">No domain ({facets?.without_domain ?? 0})</option>
+            </select>
+
+            <button className={s.chip} onClick={() => setChooser(true)}>
+              Columns ({visible.length}/{COLUMNS.length})
+            </button>
           </div>
         </div>
 
@@ -236,9 +316,43 @@ export function RecordsPage({
             onSelect={isPool ? undefined : setSelected}
             onOpen={(row) => setDetail(rows.find((x) => x.id === row.id) ?? null)}
             onTagClick={setTagId}
+            columns={visible}
           />
         )}
+
+        {/* Paging. Shown only when there is more than one page, so a small
+            result set is not decorated with controls that do nothing. */}
+        {lastPage > 1 && (
+          <div className={s.pager}>
+            <button className={s.chip} disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}>← Previous</button>
+            <span className={s.muted}>
+              Page {page} of {lastPage.toLocaleString()} · {total.toLocaleString()} records
+            </span>
+            <button className={s.chip} disabled={page >= lastPage}
+              onClick={() => setPage((p) => Math.min(lastPage, p + 1))}>Next →</button>
+          </div>
+        )}
       </div>
+
+      <VdfModal
+        isOpen={chooser}
+        onClose={() => setChooser(false)}
+        title="Columns"
+        subtitle="Remembered for this screen on this browser. Company always shows."
+        width="sm"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {COLUMNS.map((c) => (
+            <VdfCheckbox
+              key={c.key}
+              checked={visible.includes(c.key)}
+              onChange={() => toggleColumn(c.key)}
+              label={c.label}
+            />
+          ))}
+        </div>
+      </VdfModal>
 
       <VdfModal
         isOpen={tagModal}

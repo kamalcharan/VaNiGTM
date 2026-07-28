@@ -63,8 +63,8 @@ Both draw on the same `gt_tags` vocabulary, so a tenant has one tag list.
 
 ### get_records
 Both record surfaces, one function. scope 'mine' = the tenant's prospects; scope 'pool' = the shared directory pool (admin only).
-- Parameters: scope?, search?, relationship?, tag_id?, only_duplicates?, min_quality?, limit?, offset?
-- Returns: { scope, records: [{ id, ref, name, relationship, domain_normalized, city, state_code, industry_raw, employees_band, completeness, validity, freshness, duplicate, resolved, source_label, raw, tags }], stats, recipe: 'record-list' }
+- Parameters: scope?, search?, relationship?, tag_id?, industry?, domain?, only_duplicates?, min_quality?, show_inactive?, page?, limit?, offset?
+- Returns: { scope, records: [{ id, ref, name, relationship, domain_normalized, city, state_code, industry_raw, employees_band, completeness, validity, freshness, duplicate, resolved, is_active, source_label, raw, tags }], total, page, limit, stats, facets, recipe: 'record-list' }
 
 
 ### get_prospect

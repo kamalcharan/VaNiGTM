@@ -138,7 +138,7 @@ beforeAll(async () => {
 
   await pool.query(BASE);
   // Real migration files, so the tag tables are the ones that will ship.
-  for (const m of ['199_gt_tags.sql', '203_record_tags.sql', '204_gt_record_view.sql']) {
+  for (const m of ['199_gt_tags.sql', '203_record_tags.sql', '205_gt_record_view_active.sql']) {
     await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
   }
 
@@ -246,6 +246,65 @@ maybe('get_prospects', () => {
   it('finds records by an inherited tag, not just a direct one', async () => {
     const r = await get_records({ scope: 'mine', tag_id: 11 }, ctxFor(A));
     expect(r.total).toBe(4);   // every record from that load
+  });
+});
+
+maybe('filters, paging and active state', () => {
+  it('filters by industry, from a value the facets actually offer', async () => {
+    const r = await get_records({ scope: 'mine', industry: 'IT Services' }, ctxFor(A));
+    expect(r.total).toBe(1);
+    expect((r.records[0] as any).name).toBe('Beta Corp');
+  });
+
+  it('offers only industries that match more than one record', async () => {
+    // The tail is 2,050 values seen once. A dropdown of those is a list, not
+    // a filter — search covers them.
+    const r = await get_records({ scope: 'mine' }, ctxFor(A));
+    const values = ((r as any).facets.industries as { value: string }[]).map((i) => i.value);
+    expect(values).not.toContain('IT Services');   // appears once
+  });
+
+  it('splits records by whether they can be reached at all', async () => {
+    const has  = await get_records({ scope: 'mine', domain: 'has' },  ctxFor(A));
+    const none = await get_records({ scope: 'mine', domain: 'none' }, ctxFor(A));
+    expect(has.total).toBe(3);
+    expect(none.total).toBe(1);            // Gamma Ltd has no domain
+    expect(has.total + none.total).toBe(4);
+  });
+
+  it('matches a domain substring', async () => {
+    const r = await get_records({ scope: 'mine', domain: 'acme' }, ctxFor(A));
+    expect(r.total).toBe(2);
+  });
+
+  it('hides deactivated records, and can show them on request', async () => {
+    await pool.query(`UPDATE gt_prospects SET is_active = false WHERE ref = 'PROS-0004'`);
+    const hidden = await get_records({ scope: 'mine' }, ctxFor(A));
+    expect(hidden.total).toBe(3);
+
+    const shown = await get_records({ scope: 'mine', show_inactive: true }, ctxFor(A));
+    expect(shown.total).toBe(4);
+    expect((shown.records.find((r: any) => r.ref === 'PROS-0004') as any).is_active).toBe(false);
+
+    await pool.query(`UPDATE gt_prospects SET is_active = true WHERE ref = 'PROS-0004'`);
+  });
+
+  it('pages without losing or repeating a record', async () => {
+    const p1 = await get_records({ scope: 'mine', page: 1, limit: 2 }, ctxFor(A));
+    const p2 = await get_records({ scope: 'mine', page: 2, limit: 2 }, ctxFor(A));
+
+    expect(p1.records).toHaveLength(2);
+    expect(p2.records).toHaveLength(2);
+    // total is the FILTERED total, not the page size.
+    expect(p1.total).toBe(4);
+
+    const ids = [...p1.records, ...p2.records].map((r: any) => r.id);
+    expect(new Set(ids).size).toBe(4);   // no overlap between pages
+  });
+
+  it('keeps the tenant filter on every page', async () => {
+    const r = await get_records({ scope: 'mine', page: 1, limit: 100 }, ctxFor(B));
+    expect(r.records.every((x: any) => x.name !== 'Acme Industries')).toBe(true);
   });
 });
 

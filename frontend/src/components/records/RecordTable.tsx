@@ -59,7 +59,25 @@ export interface RecordRow {
   tags: RecordTag[];
   /** Free-text note under the name, e.g. "Customer". */
   badge?: string | null;
+  is_active?: boolean;
 }
+
+/**
+ * Every column a record surface can show, in display order.
+ *
+ * The field chooser picks from this list. Company is deliberately absent —
+ * a table of records with no name is not a shorter table, it is a broken one.
+ */
+export const COLUMNS: { key: string; label: string }[] = [
+  { key: 'domain',     label: 'Domain' },
+  { key: 'location',   label: 'Location' },
+  { key: 'industry',   label: 'Industry' },
+  { key: 'quality',    label: 'Quality' },
+  { key: 'source',     label: 'Source' },
+  { key: 'tags',       label: 'Tags' },
+];
+
+export const DEFAULT_COLUMNS = COLUMNS.map((c) => c.key);
 
 export interface RecordTableProps {
   rows: RecordRow[];
@@ -69,13 +87,17 @@ export interface RecordTableProps {
   onSelect?: (ids: number[]) => void;
   onOpen: (row: RecordRow) => void;
   onTagClick?: (tagId: number) => void;
+  /** Column keys to render, from COLUMNS. Company always shows. */
+  columns?: string[];
   emptyLabel?: ReactNode;
 }
 
 export function RecordTable({
   rows, total, selected, onSelect, onOpen, onTagClick,
+  columns = DEFAULT_COLUMNS,
 }: RecordTableProps) {
   const selectable = Boolean(selected && onSelect);
+  const on = (key: string) => columns.includes(key);
 
   return (
     <div className={s.tableCard}>
@@ -84,12 +106,12 @@ export function RecordTable({
           <tr>
             {selectable && <th style={{ width: 36 }} />}
             <th>Company</th>
-            <th>Domain</th>
-            <th>Location</th>
-            <th>Industry</th>
-            <th>Quality</th>
-            <th>Source</th>
-            <th>Tags</th>
+            {on('domain')   && <th>Domain</th>}
+            {on('location') && <th>Location</th>}
+            {on('industry') && <th>Industry</th>}
+            {on('quality')  && <th>Quality</th>}
+            {on('source')   && <th>Source</th>}
+            {on('tags')     && <th>Tags</th>}
           </tr>
         </thead>
         <tbody>
@@ -109,15 +131,19 @@ export function RecordTable({
                 <div className={s.name}>{r.name}</div>
                 <div className={s.sub}>
                   {r.ref}
+                  {r.is_active === false && <> · <span className={s.dupe}>inactive</span></>}
                   {r.badge && <> · <span className={s.customer}>{r.badge}</span></>}
                   {r.duplicate && <> · <span className={s.dupe}>shares an identifier</span></>}
                 </div>
               </td>
-              <td className={s.mono}>{r.domain_normalized ?? '—'}</td>
-              <td className={s.muted}>
-                {[r.city, r.state_code].filter(Boolean).join(', ') || '—'}
-              </td>
-              <td className={s.muted}>{r.industry_raw ?? '—'}</td>
+              {on('domain') && <td className={s.mono}>{r.domain_normalized ?? '—'}</td>}
+              {on('location') && (
+                <td className={s.muted}>
+                  {[r.city, r.state_code].filter(Boolean).join(', ') || '—'}
+                </td>
+              )}
+              {on('industry') && <td className={s.muted}>{r.industry_raw ?? '—'}</td>}
+              {on('quality') && (
               <td>
                 {/* Two numbers, never blended. Fill rate is not quality: the
                     profiled file read 100% populated on revenue while most of
@@ -132,12 +158,16 @@ export function RecordTable({
                   </span>
                 </div>
               </td>
+              )}
+              {on('source') && (
               <td>
                 <VdfBadge variant={FRESHNESS[r.freshness].variant}>
                   {FRESHNESS[r.freshness].label}
                 </VdfBadge>
                 <div className={s.sub}>{r.source_label ?? '—'}</div>
               </td>
+              )}
+              {on('tags') && (
               <td onClick={(e) => e.stopPropagation()}>
                 <div className={s.tags}>
                   {r.tags.length === 0 ? <span className={s.muted}>—</span> : r.tags.map((t) => (
@@ -152,6 +182,7 @@ export function RecordTable({
                   ))}
                 </div>
               </td>
+              )}
             </tr>
           ))}
         </tbody>
