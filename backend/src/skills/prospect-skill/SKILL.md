@@ -63,6 +63,11 @@ Set-level health: totals, average completeness and validity separately, freshnes
 - Parameters: none
 - Returns: { stats: { total, customers, prospects, avg_completeness, avg_validity, with_rejected_fields, with_domain, undated, fresh, stale, sharing_domain, sharing_name }, recipe: 'prospect-stats' }
 
+### get_universe_companies
+The common pool — company records delivered by directories and providers, shared across tenants. Admin tenants only, checked against vn_tenants.is_admin.
+- Parameters: search?, load_id?, tag_id?, only_duplicates?, limit?, offset?
+- Returns: { companies: [{ id, name, source_record_id, domain_normalized, city, state_code, industry_raw, employees_band, completeness, validity, freshness, resolved, shares_block, load_label, source_code, tags }], total, stats, recipe: 'universe-list' }
+
 ### tag_prospects
 Apply or remove a direct tag across many records. Tags inherited from the delivery are not removable here.
 - Parameters: prospect_ids (required), tag_id (required), apply?

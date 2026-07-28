@@ -15,6 +15,7 @@ import path from 'path';
 import { get_prospects } from '../functions/get-prospects';
 import { get_prospect_stats } from '../functions/get-prospect-stats';
 import { tag_prospects } from '../functions/tag-prospects';
+import { get_universe_companies } from '../functions/get-universe-companies';
 
 const A = '11111111-1111-1111-1111-111111111111';   // our tenant
 const B = '33333333-3333-3333-3333-333333333333';   // someone else's
@@ -77,7 +78,19 @@ function ctxFor(tenantId: string) {
 }
 
 const BASE = `
-CREATE TABLE vn_tenants (id UUID PRIMARY KEY, name VARCHAR(200) NOT NULL);
+CREATE TABLE vn_tenants (id UUID PRIMARY KEY, name VARCHAR(200) NOT NULL,
+  is_admin BOOLEAN NOT NULL DEFAULT false);
+CREATE TABLE gt_universe_company_sources (id BIGSERIAL PRIMARY KEY,
+  source_id SMALLINT, load_id BIGINT, source_record_id VARCHAR(200) NOT NULL,
+  company_id BIGINT, name VARCHAR(300) NOT NULL, domain_normalized VARCHAR(255),
+  website VARCHAR(500), email VARCHAR(320), phone VARCHAR(120), address_line TEXT,
+  city VARCHAR(120), state_code VARCHAR(8), pin VARCHAR(12), country VARCHAR(80),
+  industry_raw TEXT, industry_id INTEGER, employees_band VARCHAR(40),
+  revenue_band VARCHAR(40), linkedin_url VARCHAR(500), year_founded SMALLINT,
+  description TEXT, raw JSONB DEFAULT '{}'::jsonb, source_as_of DATE,
+  completeness NUMERIC(4,3), validity NUMERIC(4,3),
+  field_quality JSONB DEFAULT '{}'::jsonb, blocking_key TEXT,
+  ingested_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now());
 CREATE TABLE gt_industries (id SERIAL PRIMARY KEY, code VARCHAR(80) UNIQUE, name VARCHAR(160));
 CREATE TABLE gt_data_sources (id SMALLSERIAL PRIMARY KEY, code VARCHAR(40) UNIQUE NOT NULL,
   name VARCHAR(120) NOT NULL, kind VARCHAR(20) NOT NULL DEFAULT 'upload', tier SMALLINT DEFAULT 50);
@@ -153,6 +166,18 @@ beforeAll(async () => {
   await pool.query(
     `INSERT INTO gt_prospects (tenant_id,is_live,ref,name,domain_normalized,completeness,validity)
      VALUES ($1,false,'PROS-0001','Someone Elses Co','other.com',1.0,1.0)`, [B]);
+
+  // Common pool: two rows sharing a blocking key, neither resolved into a
+  // golden record — because the merge engine does not exist yet.
+  await pool.query(
+    `INSERT INTO gt_universe_company_sources
+       (source_id,load_id,source_record_id,name,domain_normalized,city,
+        completeness,validity,source_as_of,blocking_key)
+     VALUES
+       (1,1,'A-3','Pool Alpha','alpha.com','Hyderabad',0.7,1.0,'2023-10-26','d:alpha.com'),
+       (1,1,'A-4','Pool Alpha Divisions','alpha.com','Hyderabad',0.5,1.0,'2023-10-26','d:alpha.com'),
+       (1,1,'A-5','Pool Beta','beta.com','Warangal',0.9,0.8,'2023-10-26','d:beta.com')`,
+  );
 
   await pool.query(`INSERT INTO gt_tags (id,tenant_id,label) VALUES (10,$1,'Shortlist')`, [A]);
   await pool.query(`INSERT INTO gt_tags (id,tenant_id,label) VALUES (11,NULL,'FTCCI Telangana')`);
@@ -257,6 +282,47 @@ maybe('tag_prospects', () => {
     const r = await tag_prospects(
       { prospect_ids: [Number(theirs.rows[0].id)], tag_id: 10 }, ctxFor(A));
     expect(r.applied).toBe(0);   // the filter is the authorisation
+  });
+});
+
+maybe('get_universe_companies — the common pool', () => {
+  it('refuses a non-admin tenant', async () => {
+    // The pool table has no tenant_id, so nothing in the query constrains
+    // who sees it. The gate is the whole protection.
+    await expect(get_universe_companies({}, ctxFor(A)))
+      .rejects.toThrow(/admin tenants only/i);
+  });
+
+  it('serves an admin tenant', async () => {
+    await pool.query(`UPDATE vn_tenants SET is_admin = true WHERE id = $1`, [B]);
+    const r = await get_universe_companies({}, ctxFor(B));
+    expect(r.total).toBe(3);
+    expect(r.companies.map((c) => c.name).sort())
+      .toEqual(['Pool Alpha', 'Pool Alpha Divisions', 'Pool Beta']);
+  });
+
+  it('reports that nothing has been merged, rather than implying it has', async () => {
+    const r = await get_universe_companies({}, ctxFor(B));
+    expect(r.stats.resolved).toBe(0);
+    expect(r.companies.every((c) => c.resolved === false)).toBe(true);
+  });
+
+  it('flags rows sharing a blocking key without merging them', async () => {
+    const r = await get_universe_companies({ only_duplicates: true }, ctxFor(B));
+    expect(r.companies.map((c) => c.name).sort())
+      .toEqual(['Pool Alpha', 'Pool Alpha Divisions']);
+    expect(r.stats.sharing_block).toBe(2);
+  });
+
+  it('carries the delivery tag onto pool rows', async () => {
+    const r = await get_universe_companies({ search: 'Pool Beta' }, ctxFor(B));
+    expect(r.companies[0].tags).toEqual([{ id: 11, label: 'FTCCI Telangana', inherited: true }]);
+  });
+
+  it('reports quality as components, same as the tenant side', async () => {
+    const r = await get_universe_companies({}, ctxFor(B));
+    expect(Number(r.stats.avg_validity)).toBeLessThan(1);
+    expect(r.stats.with_rejected_fields).toBe(1);
   });
 });
 
