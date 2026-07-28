@@ -39,11 +39,11 @@ CREATE TABLE IF NOT EXISTS gt_prospects (
     -- Company fields, COPIED (see header)
     name                  VARCHAR(300) NOT NULL,
     name_key              TEXT         GENERATED ALWAYS AS (
-                              REGEXP_REPLACE(
+                              BTRIM(REGEXP_REPLACE(
                                 REGEXP_REPLACE(
                                   REGEXP_REPLACE(UPPER(name), '[^A-Z0-9 ]', ' ', 'g'),
                                   '\y(PVT|PRIVATE|LTD|LIMITED|LLP|INC|CO|COMPANY|THE)\y', ' ', 'g'),
-                                '\s+', ' ', 'g')
+                                '\s+', ' ', 'g'))
                           ) STORED,
     domain_normalized     VARCHAR(255),
     website               VARCHAR(500),
