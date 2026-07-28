@@ -109,11 +109,14 @@ BEGIN
         EXECUTE format('ALTER TABLE ki_import_staging DROP CONSTRAINT %I', c_name);
     END IF;
 
+    -- 'orphan' comes from migrations 143/146 and MUST be carried forward:
+    -- reconcileSessionCounters counts it and the MFD RPCs write it. Re-adding
+    -- only 104's original list would silently narrow the column.
     ALTER TABLE ki_import_staging
         ADD CONSTRAINT ki_import_staging_processing_status_check
         CHECK (processing_status IN (
             'pending', 'processing', 'success', 'failed',
-            'duplicate', 'skipped', 'conflict'
+            'duplicate', 'skipped', 'orphan', 'conflict'
         ));
 END $$;
 

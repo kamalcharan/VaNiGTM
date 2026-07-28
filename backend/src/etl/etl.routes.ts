@@ -373,7 +373,7 @@ export function createEtlRouter(pool: Pool): Router {
       const auth = extractAuth(req);
       if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
-      const { file_id, import_type, field_mappings, customer_lookup_method,
+      const { file_id, import_type, field_mappings,
               destination, load_label, load_region, load_as_of,
               relationship, extraction_plan, tag_ids } = req.body;
 
@@ -427,7 +427,10 @@ export function createEtlRouter(pool: Pool): Router {
       const tenantId = auth.tenant_id;
       const mappings = field_mappings
         || (import_type === 'company' ? COMPANY_FIELD_MAP : CUSTOMER_FIELD_MAP);
-      const lookupMethod = customer_lookup_method || 'iwell_code';
+      // customer_lookup_method is deliberately absent. It is MFD
+      // transaction-matching machinery, no migration in this repo ever created
+      // the column, and neither supported import type reads it — writing to it
+      // is why this route had never once succeeded here (migration 201).
 
       // EVERY import is a load, contacts included — same rollback, freshness
       // and provenance handling a directory delivery gets. Freshness is a
@@ -485,11 +488,11 @@ export function createEtlRouter(pool: Pool): Router {
       // Create session
       const sessionResult = await pool.query(
         `INSERT INTO ki_import_sessions
-           (tenant_id, file_upload_id, import_type, field_mappings, customer_lookup_method,
+           (tenant_id, file_upload_id, import_type, field_mappings,
             created_by, destination, load_id, relationship, extraction_plan)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb) RETURNING id`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb) RETURNING id`,
         [
-          tenantId, file_id, import_type, JSON.stringify(mappings), lookupMethod,
+          tenantId, file_id, import_type, JSON.stringify(mappings),
           auth.user_id, dest, loadId, relationship ?? null,
           plan ? JSON.stringify(plan) : null,
         ],
