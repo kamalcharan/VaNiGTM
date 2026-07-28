@@ -120,6 +120,60 @@ export function normalizeCompanyName(raw: unknown): string {
 }
 
 /**
+ * Indian states and union territories, name -> code.
+ *
+ * state_code is VARCHAR(8) BY DESIGN — it is a normalised code, which is what
+ * makes regional filtering and coverage counting possible. A provider export
+ * ships full names ("Telangana", "Maharashtra", "Andhra Pradesh"), every one
+ * of which is longer than eight characters, so passing the raw value through
+ * does not merely store something untidy — the INSERT fails outright.
+ */
+const STATE_CODES: Record<string, string> = {
+  'ANDHRA PRADESH': 'AP', 'ARUNACHAL PRADESH': 'AR', 'ASSAM': 'AS',
+  'BIHAR': 'BR', 'CHHATTISGARH': 'CG', 'CHATTISGARH': 'CG', 'GOA': 'GA',
+  'GUJARAT': 'GJ', 'HARYANA': 'HR', 'HIMACHAL PRADESH': 'HP',
+  'JHARKHAND': 'JH', 'KARNATAKA': 'KA', 'KERALA': 'KL',
+  'MADHYA PRADESH': 'MP', 'MAHARASHTRA': 'MH', 'MANIPUR': 'MN',
+  'MEGHALAYA': 'ML', 'MIZORAM': 'MZ', 'NAGALAND': 'NL',
+  'ODISHA': 'OD', 'ORISSA': 'OD', 'PUNJAB': 'PB', 'RAJASTHAN': 'RJ',
+  'SIKKIM': 'SK', 'TAMIL NADU': 'TN', 'TAMILNADU': 'TN',
+  'TELANGANA': 'TG', 'TELENGANA': 'TG', 'TRIPURA': 'TR',
+  'UTTAR PRADESH': 'UP', 'UTTARAKHAND': 'UK', 'UTTARANCHAL': 'UK',
+  'WEST BENGAL': 'WB',
+  'ANDAMAN AND NICOBAR ISLANDS': 'AN', 'CHANDIGARH': 'CH',
+  'DADRA AND NAGAR HAVELI AND DAMAN AND DIU': 'DN', 'DELHI': 'DL',
+  'NEW DELHI': 'DL', 'JAMMU AND KASHMIR': 'JK', 'LADAKH': 'LA',
+  'LAKSHADWEEP': 'LD', 'PUDUCHERRY': 'PY', 'PONDICHERRY': 'PY',
+};
+
+/**
+ * Normalise whatever the file calls a state into something that fits, and
+ * REPORT what it could not place instead of truncating it.
+ *
+ * Order: a known name wins; an already-short value is assumed to be a code
+ * (so a US 'CA' or 'TX' passes through); anything else is rejected loudly and
+ * left null — the original value survives in the record's raw row regardless.
+ */
+export function normalizeStateCode(
+  raw: unknown,
+  rejects?: RejectReason[],
+): string | null {
+  const s = str(raw);
+  if (!s) return null;
+
+  const mapped = STATE_CODES[s.toUpperCase().replace(/[.\-]/g, ' ').replace(/\s+/g, ' ').trim()];
+  if (mapped) return mapped;
+
+  if (s.length <= 8) return s.toUpperCase();
+
+  rejects?.push({
+    field: 'state',
+    reason: `"${s}" is not a state code and is not a name we recognise — stored on the row but not used for regional filtering`,
+  });
+  return null;
+}
+
+/**
  * Quality components for a mapped row.
  *
  * Completeness is fill rate. Validity is measured against what the row TRIED

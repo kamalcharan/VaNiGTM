@@ -105,3 +105,44 @@ describe('dedupKey', () => {
     })).toBeNull();
   });
 });
+
+describe('state_code must FIT the column, not just look right', () => {
+  // The bug that killed a 119-row contacts import. gt_prospects.state_code is
+  // VARCHAR(8); the fallback passed the raw state name straight through, so
+  // "Andhra Pradesh" (14 chars) failed the INSERT. PostgreSQL then aborted the
+  // whole transaction, every remaining row failed with "current transaction is
+  // aborted", and nothing landed.
+  const LONGER_THAN_THE_COLUMN = ['Andhra Pradesh', 'Telangana', 'Maharashtra', 'Karnataka'];
+
+  it('maps full state names to a code that fits', () => {
+    for (const name of LONGER_THAN_THE_COLUMN) {
+      const r = mapCompanyRow({ 'COMPANY': 'Acme', 'Company state': name });
+      expect(r.mapped.state_code).not.toBeNull();
+      expect(r.mapped.state_code!.length).toBeLessThanOrEqual(8);
+    }
+    expect(mapCompanyRow({ 'COMPANY': 'A', 'Company state': 'Telangana' }).mapped.state_code).toBe('TG');
+    expect(mapCompanyRow({ 'COMPANY': 'A', 'Company state': 'Andhra Pradesh' }).mapped.state_code).toBe('AP');
+  });
+
+  it('still prefers the PIN over a typed name', () => {
+    const r = mapCompanyRow({ 'COMPANY': 'A', 'PIN': '500 003', 'Company state': 'Maharashtra' });
+    expect(r.mapped.state_code).toBe('TG');
+  });
+
+  it('passes an existing short code through', () => {
+    expect(mapCompanyRow({ 'COMPANY': 'A', 'Company state': 'CA' }).mapped.state_code).toBe('CA');
+  });
+
+  it('rejects an unrecognised long value loudly instead of truncating it', () => {
+    const r = mapCompanyRow({ 'COMPANY': 'A', 'Company state': 'Some Province Nobody Knows' });
+    expect(r.mapped.state_code).toBeNull();
+    expect(r.quality.reject_reasons.some((x) => x.field === 'state')).toBe(true);
+  });
+
+  it('NOTHING the mapper produces can overflow state_code', () => {
+    for (const v of [...LONGER_THAN_THE_COLUMN, 'CA', 'Some Province Nobody Knows', '']) {
+      const code = mapCompanyRow({ 'COMPANY': 'A', 'Company state': v }).mapped.state_code;
+      expect(code === null || code.length <= 8).toBe(true);
+    }
+  });
+});

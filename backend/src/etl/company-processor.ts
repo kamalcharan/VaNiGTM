@@ -109,6 +109,7 @@ import {
   cleanValue,
   normalizeDomain,
   normalizeCompanyName,
+  normalizeStateCode,
   scoreQuality,
   type RejectReason,
 } from './field-normalizers';
@@ -189,7 +190,10 @@ export function mapCompanyRow(
     phone: firstOf(g('phone'), /[/\\,;]/),
     address_line: addressParts.length ? addressParts.join(', ') : null,
     city: str(g('city')),
-    state_code: stateFromPin(pin) ?? str(g('state')),
+    // PIN first — the postal circle is more reliable than a typed state name.
+    // The fallback MUST be normalised: state_code is VARCHAR(8) and a raw
+    // "Andhra Pradesh" both overflows the column and fails the insert.
+    state_code: stateFromPin(pin) ?? normalizeStateCode(g('state'), rejects),
     pin,
     country: str(g('country')),
     industry_raw: clean('industry', g('industry_raw')),
