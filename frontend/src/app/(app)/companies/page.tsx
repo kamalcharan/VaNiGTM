@@ -83,7 +83,6 @@ export default function CompaniesPage() {
   const queryClient = useQueryClient();
   const { isAdmin } = useAuth();
 
-  const [scope, setScope] = useState<'mine' | 'pool'>('mine');
   const [search, setSearch] = useState('');
   const [relationship, setRelationship] = useState<string>('');
   const [onlyDuplicates, setOnlyDuplicates] = useState(false);
@@ -93,32 +92,31 @@ export default function CompaniesPage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [detail, setDetail] = useState<Prospect | null>(null);
 
-  // `relationship` is a tenant-side idea — a pool row is nobody's customer —
-  // so it is not sent when the pool is in scope.
+  // The list carries a handful of columns; the record itself carries
+  // everything the file did. Fetched on open rather than for every row.
+  const { data: detailData } = useSkillQuery<{
+    prospect: Record<string, any>;
+    people: { id: number; name: string; job_title: string | null;
+              channels: { type: string; value: string }[] }[];
+    tags: Tag[];
+    source_row: Record<string, any>;
+  }>('prospect-skill', 'get_prospect', { prospect_id: detail?.id }, { enabled: detail !== null });
+
   const params = useMemo(() => ({
     search: search.trim() || undefined,
-    ...(scope === 'pool' ? {} : { relationship: relationship || undefined }),
+    relationship: relationship || undefined,
     only_duplicates: onlyDuplicates || undefined,
     tag_id: tagId ?? undefined,
     limit: 100,
-  }), [scope, search, relationship, onlyDuplicates, tagId]);
+  }), [search, relationship, onlyDuplicates, tagId]);
 
-  // Two scopes, one screen. "Mine" is gt_prospects, tenant-scoped. "Pool" is
-  // gt_universe_company_sources — cross-tenant infrastructure, admin only,
-  // and gated again in the skill against vn_tenants.is_admin.
-  const isPool = scope === 'pool';
-
-  const { data, isLoading, isError, error } = useSkillQuery<{
-    prospects?: Prospect[]; companies?: Prospect[]; total: number; stats?: Stats;
-  }>(
-    'prospect-skill',
-    isPool ? 'get_universe_companies' : 'get_prospects',
-    params,
-    { enabled: !isPool || isAdmin },
-  );
+  // Tenant-scoped only. The shared pool lives at /common-pool — a different
+  // table with no tenant_id, so it gets its own page rather than a tab here.
+  const { data, isLoading, isError, error } =
+    useSkillQuery<{ prospects: Prospect[]; total: number }>('prospect-skill', 'get_prospects', params);
 
   const { data: statsData } =
-    useSkillQuery<{ stats: Stats }>('prospect-skill', 'get_prospect_stats', {}, { enabled: !isPool });
+    useSkillQuery<{ stats: Stats }>('prospect-skill', 'get_prospect_stats', {});
 
   const { mutate: applyTag, isPending: tagging } = useSkillMutation(
     'prospect-skill', 'tag_prospects',
@@ -144,16 +142,16 @@ export default function CompaniesPage() {
 
   // Skill responses are wrapped: { success, skill, function, recipe, data }.
   // The pool function returns `companies` and carries its own stats.
-  const rows: Prospect[] = (isPool ? data?.data?.companies : data?.data?.prospects) ?? [];
+  const rows: Prospect[] = data?.data?.prospects ?? [];
   const total = data?.data?.total ?? 0;
-  const stats = isPool ? data?.data?.stats : statsData?.data?.stats;
+  const stats = statsData?.data?.stats;
 
   return (
     <div className={s.page}>
       <VdfPageHeader
         eyebrow="GTM RECORDS"
         title="Companies"
-        actions={selected.length > 0 && !isPool ? (
+        actions={selected.length > 0 ? (
           <VdfButton variant="primary" onClick={openTagModal}>
             Tag {selected.length} selected
           </VdfButton>
@@ -161,49 +159,16 @@ export default function CompaniesPage() {
       />
 
       <div className={s.body}>
-        {/* Scope. The pool tab only exists for an admin tenant — and the
-            skill re-checks that against the database regardless. */}
-        {isAdmin && (
-          <div className={s.chips}>
-            <button className={`${s.chip} ${!isPool ? s.chipActive : ''}`}
-              onClick={() => { setScope('mine'); setSelected([]); }}>
-              My companies
-            </button>
-            <button className={`${s.chip} ${isPool ? s.chipActive : ''}`}
-              onClick={() => { setScope('pool'); setSelected([]); }}>
-              Common pool
-            </button>
-          </div>
-        )}
-
-        {isPool && (
-          <div className={s.note}>
-            These are the <strong>source rows</strong> each delivery contributed.
-            The merged company record they resolve into is not built yet, so
-            nothing here has been de-duplicated across deliveries — rows sharing
-            an identifier are flagged, not combined.
-          </div>
-        )}
         {/* Set health. Fill rate and validity side by side, never merged. */}
         {stats && (
           <div className={s.stats}>
-            <VdfStatCard value={stats.total} label={isPool ? 'Source Rows' : 'Companies'} />
-            {isPool ? (
-              <VdfStatCard value={stats.loads ?? 0} label="Deliveries" accent="info" />
-            ) : (
-              <VdfStatCard value={stats.customers ?? 0} label="Customers" accent="success" />
-            )}
+            <VdfStatCard value={stats.total} label="Companies" />
+            <VdfStatCard value={stats.customers ?? 0} label="Customers" accent="success" />
             <VdfStatCard value={pct(stats.avg_completeness)} label="Avg Completeness" accent="info" />
             <VdfStatCard value={pct(stats.avg_validity)} label="Avg Validity"
               accent={Number(stats.avg_validity ?? 1) < 1 ? 'warning' : 'info'} />
-            <VdfStatCard
-              value={(isPool ? stats.sharing_block : stats.sharing_domain) ?? 0}
-              label={isPool ? 'Share an Identifier' : 'Share a Domain'}
-              accent={((isPool ? stats.sharing_block : stats.sharing_domain) ?? 0) > 0 ? 'warning' : undefined} />
-            {isPool && (
-              // 0 until the merge engine exists. Shown, not hidden.
-              <VdfStatCard value={stats.resolved ?? 0} label="Merged into a Company" />
-            )}
+            <VdfStatCard value={stats.sharing_domain ?? 0} label="Share a Domain"
+              accent={(stats.sharing_domain ?? 0) > 0 ? 'warning' : undefined} />
           </div>
         )}
 
@@ -221,9 +186,7 @@ export default function CompaniesPage() {
         <div className={s.filters}>
           <VdfSearchBar value={search} onChange={setSearch} placeholder="Search name, domain, city, industry…" />
           <div className={s.chips}>
-            {/* Prospect/customer is a tenant-side distinction — a pool row is
-                nobody's customer, so these do not appear there. */}
-            {!isPool && [
+            {[
               { key: '', label: 'All' },
               { key: 'prospect', label: 'Prospects' },
               { key: 'customer', label: 'Customers' },
@@ -239,11 +202,7 @@ export default function CompaniesPage() {
               onClick={() => setOnlyDuplicates((v) => !v)}
               title="Records sharing an identifier with another record"
             >
-              Possible duplicates
-              {(() => {
-                const n = (isPool ? stats?.sharing_block : stats?.sharing_domain) ?? 0;
-                return n ? ` (${n})` : '';
-              })()}
+              Possible duplicates{stats?.sharing_domain ? ` (${stats.sharing_domain})` : ''}
             </button>
             {tagId !== null && (
               <button className={`${s.chip} ${s.chipActive}`} onClick={() => setTagId(null)}>
@@ -270,9 +229,7 @@ export default function CompaniesPage() {
             <table className={s.table}>
               <thead>
                 <tr>
-                  {/* Selection drives tagging, which only applies to a
-                      tenant's own records. */}
-                  {!isPool && <th style={{ width: 36 }}></th>}
+                  <th style={{ width: 36 }}></th>
                   <th>Company</th>
                   <th>Domain</th>
                   <th>Location</th>
@@ -285,23 +242,21 @@ export default function CompaniesPage() {
               <tbody>
                 {rows.map((p) => (
                   <tr key={p.id} onClick={() => setDetail(p)} className={s.row}>
-                    {!isPool && (
-                      <td onClick={(e) => e.stopPropagation()}>
-                        <VdfCheckbox
-                          checked={selected.includes(p.id)}
-                          onChange={(c) => setSelected((prev) =>
-                            c ? [...prev, p.id] : prev.filter((x) => x !== p.id))}
-                        />
-                      </td>
-                    )}
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <VdfCheckbox
+                        checked={selected.includes(p.id)}
+                        onChange={(c) => setSelected((prev) =>
+                          c ? [...prev, p.id] : prev.filter((x) => x !== p.id))}
+                      />
+                    </td>
                     <td>
                       <div className={s.name}>{p.name}</div>
                       <div className={s.sub}>
-                        {isPool ? p.source_record_id : p.ref}
+                        {p.ref}
                         {p.relationship === 'customer' && <> · <span className={s.customer}>Customer</span></>}
-                        {(p.shares_domain || p.shares_name || p.shares_block) && (
+                        {(p.shares_domain || p.shares_name) && (
                           <> · <span className={s.dupe}>
-                            shares a {p.shares_domain || p.shares_block ? 'domain' : 'name'}
+                            shares a {p.shares_domain ? 'domain' : 'name'}
                           </span></>
                         )}
                       </div>
@@ -372,31 +327,80 @@ export default function CompaniesPage() {
         )}
       </VdfModal>
 
-      {/* Row detail — the full record, and why its quality reads as it does. */}
+      {/* The record in full: mapped fields, the people at it, and every
+          column the source file carried — including ones no field claimed. */}
       <VdfModal
         isOpen={detail !== null}
         onClose={() => setDetail(null)}
         title={detail?.name}
         subtitle={detail ? `${detail.ref ?? ''} · ${detail.relationship}` : undefined}
-        width="md"
+        width="lg"
       >
         {detail && (
           <div className={s.detail}>
-            {[
-              ['Domain', detail.domain_normalized],
-              ['Location', [detail.city, detail.state_code].filter(Boolean).join(', ')],
-              ['Industry', detail.industry_raw],
-              ['Employees', detail.employees_band],
-              ['Completeness', `${pct(detail.completeness)} of tracked fields populated`],
-              ['Validity', `${pct(detail.validity)} of populated fields passed validation`],
-              ['Data as of', detail.source_as_of ? formatDate(detail.source_as_of) : 'Not stated — scored as less fresh'],
-              ['Arrived in', detail.load_label],
-            ].map(([label, value]) => (
-              <div key={label as string} className={s.detailRow}>
+            {Object.entries({
+              'Domain': detail.domain_normalized,
+              'Website': detailData?.data?.prospect?.website,
+              'Email': detailData?.data?.prospect?.email,
+              'Phone': detailData?.data?.prospect?.phone,
+              'Address': detailData?.data?.prospect?.address_line,
+              'Location': [detail.city, detail.state_code, detailData?.data?.prospect?.pin,
+                           detailData?.data?.prospect?.country].filter(Boolean).join(', '),
+              'Industry': detail.industry_raw,
+              'Employees': detail.employees_band,
+              'Revenue': detailData?.data?.prospect?.revenue_band,
+              'Year founded': detailData?.data?.prospect?.year_founded,
+              'LinkedIn': detailData?.data?.prospect?.linkedin_url,
+              'Description': detailData?.data?.prospect?.description,
+              'Completeness': `${pct(detail.completeness)} of tracked fields populated`,
+              'Validity': `${pct(detail.validity)} of populated fields passed validation`,
+              'Data as of': detail.source_as_of ? formatDate(detail.source_as_of)
+                                                : 'Not stated — scored as less fresh',
+              'Arrived in': detail.load_label,
+            }).map(([label, value]) => (
+              <div key={label} className={s.detailRow}>
                 <span className={s.detailLabel}>{label}</span>
                 <span>{(value as string) || '—'}</span>
               </div>
             ))}
+
+            {/* The people at this company. A directory row commonly carries
+                several — FTCCI has up to three representatives per member. */}
+            {(detailData?.data?.people?.length ?? 0) > 0 && (
+              <>
+                <div className={s.detailLabel} style={{ marginTop: 20, marginBottom: 6 }}>
+                  People at this company
+                </div>
+                {detailData!.data.people.map((person) => (
+                  <div key={person.id} className={s.detailRow}>
+                    <span>
+                      <strong>{person.name}</strong>
+                      {person.job_title && <span className={s.muted}> · {person.job_title}</span>}
+                    </span>
+                    <span className={s.muted}>
+                      {person.channels.map((ch) => ch.value).join(' · ') || '—'}
+                    </span>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* Everything else the file carried. Nothing is discarded at
+                import, so nothing is hidden here either. */}
+            {detailData?.data?.source_row && Object.keys(detailData.data.source_row).length > 0 && (
+              <>
+                <div className={s.detailLabel} style={{ marginTop: 20, marginBottom: 6 }}>
+                  Everything else from your file
+                </div>
+                {Object.entries(detailData.data.source_row).map(([col, value]) => (
+                  <div key={col} className={s.detailRow}>
+                    <span className={s.detailLabel}>{col}</span>
+                    <span>{value === null || value === '' ? '—' : String(value)}</span>
+                  </div>
+                ))}
+              </>
+            )}
+
             {(detail.shares_domain || detail.shares_name) && (
               <div className={s.note} style={{ marginTop: 12 }}>
                 This record shares its {detail.shares_domain ? 'domain' : 'normalised name'} with
