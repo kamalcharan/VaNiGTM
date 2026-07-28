@@ -130,3 +130,8 @@ A human's ruling on one brief. Ruling a company out requires a reason.
 Queue the research batch for the worker. Validates the offers first and reports how many companies are actually reachable.
 - Parameters: tag_id (optional, number), prospect_ids (optional, array), limit (optional, number)
 - Returns: { event_id, queued, reachable, recipe: 'research-queued' }
+
+### batch_status
+Whether the last batch is queued, running, finished — or sitting in a queue nobody is reading because the worker is down.
+- Parameters: none
+- Returns: { verdict, message, healthy, done_count, requested, run_id, run_status, event_status, event_age_seconds, error, started_at, completed_at, recipe: 'batch-status' }

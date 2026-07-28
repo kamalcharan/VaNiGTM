@@ -50,6 +50,16 @@ interface Brief {
 
 interface Tag { id: number; label: string }
 
+interface BatchStatus {
+  verdict: 'never_run' | 'queued' | 'running' | 'worker_down' | 'failed' | 'completed' | 'unknown';
+  message: string;
+  healthy: boolean;
+  done_count: number;
+  requested: number | null;
+  run_status: string | null;
+  error: string | null;
+}
+
 /** Badge variants the VDF library actually has. */
 const STATUS_VARIANT: Record<string, 'default' | 'gold' | 'success' | 'info'> = {
   approved: 'success', drafted: 'info', unreadable: 'gold',
@@ -95,6 +105,12 @@ export default function ResearchPage() {
   const tagsQ = useSkillQuery<{ records: unknown[]; facets: { tags: Tag[] } }>(
     'prospect-skill', 'get_records', { scope: 'mine', limit: 1 },
   );
+  // Polled: the worker is a separate process, and "queued" means nothing if
+  // nobody is reading the queue. 5s is fast enough to catch a dead worker
+  // while a batch is being watched, and cheap — it is one indexed row.
+  const statusQ = useSkillQuery<BatchStatus>(
+    'research-skill', 'batch_status', {}, { refetchInterval: 5000 },
+  );
 
   const saveOffer = useSkillMutation('research-skill', 'save_offer');
   const startResearch = useSkillMutation('research-skill', 'start_research');
@@ -106,6 +122,7 @@ export default function ResearchPage() {
   const briefs = briefsQ.data?.data.briefs ?? [];
   const stats = briefsQ.data?.data.stats ?? {};
   const tags = (tagsQ.data?.data.facets?.tags ?? []) as Tag[];
+  const batch = statusQ.data?.data;
 
   const offerName = useMemo(() => {
     const m = new Map(offers.map((o) => [o.id, o.name]));
@@ -296,6 +313,26 @@ export default function ResearchPage() {
               <span className={s.formHint}>Finish your offers above first.</span>
             )}
           </div>
+
+          {batch && batch.verdict !== 'never_run' && (
+            <div className={batch.healthy ? s.batchOk : s.batchBad}>
+              <div className={s.batchLine}>
+                <strong>
+                  {batch.verdict === 'running' ? 'Running' :
+                   batch.verdict === 'queued' ? 'Queued' :
+                   batch.verdict === 'worker_down' ? 'Nothing is picking this up' :
+                   batch.verdict === 'failed' ? 'Last batch failed' : 'Last batch finished'}
+                </strong>
+                {batch.requested !== null && (
+                  <span className={s.batchProgress}>
+                    {batch.done_count} of {batch.requested} companies
+                  </span>
+                )}
+              </div>
+              <div className={s.batchMessage}>{batch.message}</div>
+              {batch.error && <div className={s.batchMessage}>{batch.error}</div>}
+            </div>
+          )}
         </section>
 
         {/* 3 ── THE BRIEFS ────────────────────────────────────────── */}
