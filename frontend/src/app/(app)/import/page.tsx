@@ -5,21 +5,58 @@ import { Database, Users, ArrowLeftRight, Bookmark } from 'lucide-react';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
-import { VdfInsightsCard, VdfStatCard, VdfPageHeader } from '@/components/vdf';
+import { VdfInsightsCard, VdfStatCard, VdfPageHeader, VdfInput, VdfCheckbox } from '@/components/vdf';
 import { useAuth } from '@/context/auth-provider';
+import { formatDate } from '@/lib/format';
 import s from './import-page.module.css';
 
 /* ── Types ─────────────────────────────────────────── */
 
-// Only 'customer' is exposed in IMPORT_TYPES below; the rest remain in the
-// type union so dead branches in this file still type-check.
-type ImportType = 'scheme' | 'customer' | 'transaction' | 'bookmark';
+// MFD-era types. 'customer' is the legacy client import; the GTM imports all
+// go up as 'company' and are distinguished by `relationship` below.
+type ImportType = 'scheme' | 'customer' | 'transaction' | 'bookmark' | 'company';
 type Step = 'type' | 'upload' | 'mapping' | 'processing' | 'results';
+
+/**
+ * What the TENANT says this data is to them. No file can state it, so it is
+ * declared here and never inferred. Orthogonal to the ENTITIES (people /
+ * companies) the backend detector finds inside the file.
+ */
+type Relationship = 'contacts' | 'customers' | 'dataset';
+
+interface DetectedEntity {
+  kind: 'company' | 'person';
+  columns: Record<string, string>;
+  reasons: string[];
+  per_row: number;
+}
+
+interface ExtractionPlan {
+  entities: DetectedEntity[];
+  unresolved_columns: { header: string; sample: string | null; reason: string }[];
+  confidence: 'high' | 'low';
+  notes: string[];
+}
+
+interface Tag {
+  id: number;
+  label: string;
+  slug: string;
+  is_platform: boolean;
+}
+
+interface PriorLoad {
+  id: number;
+  label: string;
+  as_of: string | null;
+  loaded_at: string;
+}
 
 interface FileInfo {
   file_id: number;
   filename: string;
   size: number;
+  prior_load?: PriorLoad | null;
 }
 
 interface HeaderInfo {
@@ -27,6 +64,8 @@ interface HeaderInfo {
   sample_rows: Record<string, any>[];
   total_rows: number;
   suggested_mapping: Record<string, string>;
+  extraction_plan?: ExtractionPlan;
+  row_estimates?: Record<string, number>;
 }
 
 interface SessionInfo {
@@ -48,18 +87,55 @@ interface ProcessResult {
 
 /* ── Import type cards ─────────────────────────────── */
 
-const IMPORT_TYPES: { id: ImportType; label: string; desc: string; icon: ReactNode; enabled: boolean }[] = [
-  { id: 'customer',    label: 'Customers',     desc: 'Client contacts — externalid, PAN, mobile, email, addresses',  icon: <Users size={22} />,          enabled: true  },
+/**
+ * The three uploads, by what the data MEANS to the tenant.
+ *
+ * Deliberately not "people vs companies" — a file is commonly both, and which
+ * it is gets detected from the columns rather than declared here.
+ */
+const RELATIONSHIPS: {
+  id: Relationship;
+  label: string;
+  desc: string;
+  icon: ReactNode;
+  adminOnly: boolean;
+}[] = [
+  {
+    id: 'contacts',
+    label: 'My contacts',
+    desc: 'People and companies you know but have not sold to yet',
+    icon: <Users size={22} />,
+    adminOnly: false,
+  },
+  {
+    id: 'customers',
+    label: 'My customers',
+    desc: 'Who already buys from you — the ground truth for your ideal customer',
+    icon: <Bookmark size={22} />,
+    adminOnly: false,
+  },
+  {
+    id: 'dataset',
+    label: 'Common pool dataset',
+    desc: 'A directory delivery shared across tenants — FTCCI, federations, associations',
+    icon: <Database size={22} />,
+    adminOnly: true,
+  },
 ];
 
 /* ── Main Component ────────────────────────────────── */
 
 export default function ImportPage() {
   const { showToast } = useToast();
-  const { tenant } = useAuth();
+  const { tenant, isAdmin } = useAuth();
 
   const [step, setStep] = useState<Step>('type');
-  const [importType, setImportType] = useState<ImportType>('customer');
+  const [importType, setImportType] = useState<ImportType>('company');
+  const [relationship, setRelationship] = useState<Relationship>('contacts');
+  const [asOf, setAsOf] = useState('');
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [newTagLabel, setNewTagLabel] = useState('');
   const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
   const [headerInfo, setHeaderInfo] = useState<HeaderInfo | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
@@ -70,11 +146,46 @@ export default function ImportPage() {
   const [mappingAnimated, setMappingAnimated] = useState(false);
   const [lookupMethod, setLookupMethod] = useState<'iwell_code' | 'customer_name' | 'both'>('iwell_code');
 
-  /* ── Step 1: Type Selection ──────────────────────── */
+  /* ── Step 1: What is this data? ──────────────────── */
 
-  function handleTypeSelect(type: ImportType) {
-    setImportType(type);
+  async function handleRelationshipSelect(rel: Relationship) {
+    setRelationship(rel);
+    setImportType('company');
     setStep('upload');
+
+    // Tags describe the delivery, so they are picked once the file is chosen.
+    // Loading them here keeps the review step from waiting on a round trip.
+    try {
+      const res = await apiFetch<{ tags: Tag[] }>(API.etl.tags);
+      setTags(res.tags || []);
+    } catch {
+      // Tags are optional metadata — a failure here must not block the import,
+      // but it is surfaced rather than swallowed.
+      showToast({ message: 'Could not load tags — you can still import without them.', type: 'error' });
+    }
+  }
+
+  async function handleCreateTag() {
+    const label = newTagLabel.trim();
+    if (!label) return;
+    try {
+      const res = await apiFetch<{ tag: Tag | null }>(API.etl.createTag, {
+        // A platform tag is visible to every tenant, so only offer it for the
+        // shared pool. The backend re-checks against the JWT regardless.
+        body: { label, is_platform: relationship === 'dataset' && isAdmin },
+      });
+      if (res.tag) {
+        setTags((prev) => (prev.some((t) => t.id === res.tag!.id) ? prev : [...prev, res.tag!]));
+        setSelectedTagIds((prev) => (prev.includes(res.tag!.id) ? prev : [...prev, res.tag!.id]));
+      }
+      setNewTagLabel('');
+    } catch (err: any) {
+      showToast({ message: err.message || 'Could not create tag', type: 'error' });
+    }
+  }
+
+  function toggleTag(id: number) {
+    setSelectedTagIds((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
   }
 
   /* ── Step 2: File Upload ─────────────────────────── */
@@ -152,12 +263,21 @@ export default function ImportPage() {
         setResult(processResult);
         setStep('results');
       } else {
-        // Standard ETL pipeline (scheme master, customer, transaction)
+        // Standard ETL pipeline. `relationship` is what the tenant declared;
+        // `extraction_plan` is what the detector found and the human accepted.
+        // The admin gate on the shared pool is re-checked server-side from the
+        // JWT — this only decides what to ask for.
         const session = await apiFetch<SessionInfo>(API.etl.createSession, {
           body: {
             file_id: fileInfo.file_id,
             import_type: importType,
             field_mappings: mapping,
+            relationship,
+            extraction_plan: headerInfo?.extraction_plan ?? null,
+            destination: relationship === 'dataset' ? 'universe_companies' : 'prospects',
+            tag_ids: selectedTagIds,
+            load_label: fileInfo.filename,
+            load_as_of: asOf || null,
             ...(importType === 'transaction' ? { customer_lookup_method: lookupMethod } : {}),
           },
         });
@@ -200,6 +320,9 @@ export default function ImportPage() {
     setResult(null);
     setMappingAnimated(false);
     setLookupMethod('iwell_code');
+    setSelectedTagIds([]);
+    setAsOf('');
+    setNewTagLabel('');
   }
 
   /* ── VaNi insights for results ───────────────────── */
@@ -315,24 +438,26 @@ export default function ImportPage() {
         ))}
       </div>
 
-      {/* ── STEP 1: Type Selection ──────────────────── */}
+      {/* ── STEP 1: What is this data? ──────────────── */}
       {step === 'type' && (
         <div className={s.stepContent}>
           <div style={{ marginBottom: 24 }}>
-            <VdfInsightsCard insights={[{ icon: '✨', text: 'Choose the data type you want to import. Scheme Master is the foundation — import it first.' }]} />
+            <VdfInsightsCard insights={[{
+              icon: '✨',
+              text: 'Tell VaNi what this data is to you. Whether the file holds people, companies or both is worked out from the columns — you only confirm it.',
+            }]} />
           </div>
           <div className={s.typeGrid}>
-            {IMPORT_TYPES.map((t) => (
+            {RELATIONSHIPS.filter((r) => !r.adminOnly || isAdmin).map((r) => (
               <button
-                key={t.id}
-                className={`${s.typeCard} ${!t.enabled ? s.typeDisabled : ''}`}
-                onClick={() => t.enabled && handleTypeSelect(t.id)}
-                disabled={!t.enabled}
+                key={r.id}
+                className={s.typeCard}
+                onClick={() => handleRelationshipSelect(r.id)}
               >
-                <span className={s.typeIcon}>{t.icon}</span>
-                <span className={s.typeName}>{t.label}</span>
-                <span className={s.typeDesc}>{t.desc}</span>
-                {!t.enabled && <span className={s.typeBadge}>Coming soon</span>}
+                <span className={s.typeIcon}>{r.icon}</span>
+                <span className={s.typeName}>{r.label}</span>
+                <span className={s.typeDesc}>{r.desc}</span>
+                {r.adminOnly && <span className={s.typeBadge}>Admin</span>}
               </button>
             ))}
           </div>
@@ -343,7 +468,7 @@ export default function ImportPage() {
       {step === 'upload' && (
         <div className={s.stepContent}>
           <div style={{ marginBottom: 24 }}>
-            <VdfInsightsCard insights={[{ icon: '📁', text: `Upload your ${IMPORT_TYPES.find((t) => t.id === importType)?.label || ''} file. Supports .xlsx, .xls, and .csv (max 10MB).` }]} />
+            <VdfInsightsCard insights={[{ icon: '📁', text: `Upload your ${RELATIONSHIPS.find((r) => r.id === relationship)?.label || ''} file. Supports .xlsx, .xls, and .csv (max 10MB).` }]} />
           </div>
           <label
             className={`${s.dropZone} ${dragOver ? s.dropZoneActive : ''} ${loading ? s.dropZoneLoading : ''}`}
@@ -377,6 +502,112 @@ export default function ImportPage() {
         <div className={s.stepContent}>
           <div style={{ marginBottom: 24 }}>
             <VdfInsightsCard insights={[{ icon: '🧠', text: `Detected ${headerInfo.total_rows.toLocaleString()} rows with ${headerInfo.headers.length} columns. Field mapping auto-applied — review and confirm.` }]} />
+          </div>
+
+          {/* Re-delivery: identical content is already loaded. Said out loud so
+              importing it again is a deliberate act, not an accident. */}
+          {fileInfo?.prior_load && (
+            <div className={s.platformHint}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="14" height="14" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <span>
+                <strong>This is a re-delivery.</strong> The same file content was loaded as
+                {' '}&ldquo;{fileInfo.prior_load.label}&rdquo; on {formatDate(fileInfo.prior_load.loaded_at)}.
+                Importing it again is fine — rows that clash with what you already
+                hold will be held for your decision rather than overwritten.
+              </span>
+            </div>
+          )}
+
+          {/* What the detector found. Reasons are shown because the user has to
+              be able to disagree with it — that is the override half of the
+              ruling, and it cannot work if the reasoning is hidden. */}
+          {headerInfo.extraction_plan && (
+            <div className={s.lookupSection}>
+              <div className={s.lookupTitle}>What VaNi found in this file</div>
+              <div className={s.lookupDesc}>
+                {headerInfo.extraction_plan.entities.length === 0
+                  ? 'Nothing recognisable yet — map the columns below before importing.'
+                  : 'Confirm this is right. One file often carries both companies and the people at them.'}
+              </div>
+
+              <div className={s.lookupGrid}>
+                {headerInfo.extraction_plan.entities.map((e) => (
+                  <div key={e.kind} className={s.lookupOption} style={{ cursor: 'default' }}>
+                    <span className={s.lookupOptionLabel}>
+                      {e.kind === 'company' ? 'Companies' : 'People'}
+                      {' · '}
+                      {(headerInfo.row_estimates?.[e.kind] ?? headerInfo.total_rows).toLocaleString()}
+                    </span>
+                    <span className={s.lookupOptionDesc}>{e.reasons.join(' ')}</span>
+                  </div>
+                ))}
+              </div>
+
+              {headerInfo.extraction_plan.notes.map((n, i) => (
+                <div key={i} className={s.lookupNote}>{n}</div>
+              ))}
+
+              {headerInfo.extraction_plan.unresolved_columns.length > 0 && (
+                <div className={s.lookupNote}>
+                  <strong>
+                    {headerInfo.extraction_plan.unresolved_columns.length} column
+                    {headerInfo.extraction_plan.unresolved_columns.length !== 1 ? 's' : ''} could not be placed
+                  </strong>{' '}
+                  and will be kept with the row but not imported into a field:{' '}
+                  {headerInfo.extraction_plan.unresolved_columns.map((u) => u.header).join(', ')}.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Freshness and tags belong to the DELIVERY, so they are asked once
+              here rather than per row. as_of is a scored quality component —
+              an undated load is treated as older, not as current. */}
+          <div className={s.lookupSection}>
+            <div className={s.lookupTitle}>About this delivery</div>
+            <div className={s.lookupDesc}>
+              How current is this data, and what should it be grouped under?
+            </div>
+
+            <div style={{ maxWidth: 280, marginBottom: 16 }}>
+              <VdfInput
+                label="Data is current as of"
+                type="date"
+                value={asOf}
+                onChange={(e) => setAsOf(e.target.value)}
+                hint="Leave blank if unknown — it will be scored as less fresh."
+              />
+            </div>
+
+            {tags.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+                {tags.map((t) => (
+                  <VdfCheckbox
+                    key={t.id}
+                    checked={selectedTagIds.includes(t.id)}
+                    onChange={() => toggleTag(t.id)}
+                    label={t.is_platform ? `${t.label} (shared)` : t.label}
+                  />
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', maxWidth: 420 }}>
+              <div style={{ flex: 1 }}>
+                <VdfInput
+                  label="Add a tag"
+                  value={newTagLabel}
+                  onChange={(e) => setNewTagLabel(e.target.value)}
+                  placeholder="FTCCI Telangana"
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreateTag(); } }}
+                />
+              </div>
+              <button className={s.backBtn} onClick={handleCreateTag} disabled={!newTagLabel.trim()}>
+                Add
+              </button>
+            </div>
           </div>
 
           {/* P3b: Transaction import — show which platform column maps to vendor_code */}

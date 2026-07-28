@@ -339,6 +339,18 @@ export const API = {
       auth: true,
       description: 'Create import session with field mapping and stage data',
     },
+    tags: {
+      method: 'GET',
+      path: '/api/v1/etl/tags',
+      auth: true,
+      description: 'Tags available to this tenant (platform tags + their own)',
+    },
+    createTag: {
+      method: 'POST',
+      path: '/api/v1/etl/tags',
+      auth: true,
+      description: 'Create a tag. Platform-wide tags are admin-only.',
+    },
     process: {
       method: 'POST',
       path: '/api/v1/etl/sessions/:id/process',
