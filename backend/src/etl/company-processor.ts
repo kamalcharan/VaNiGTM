@@ -98,25 +98,22 @@ export interface ProcessedCompanyRow {
 }
 
 /* ── Normalisers ──────────────────────────────────────────────────────── */
+//
+// The primitives live in field-normalizers.ts because company rows and person
+// rows come out of the SAME files and must treat junk identically. normalizeDomain
+// is re-exported here so existing importers keep working.
 
-const str = (v: unknown): string | null => {
-  if (v === null || v === undefined) return null;
-  const s = String(v).trim();
-  return s.length > 0 ? s : null;
-};
+import {
+  str,
+  firstOf,
+  cleanValue,
+  normalizeDomain,
+  normalizeCompanyName,
+  scoreQuality,
+  type RejectReason,
+} from './field-normalizers';
 
-/** Strip scheme, www and path. FTCCI ships bare hosts ("www.acme.com"). */
-export function normalizeDomain(raw: unknown): string | null {
-  const s = str(raw);
-  if (!s) return null;
-  const host = s
-    .toLowerCase()
-    .replace(/^https?:\/\//, '')
-    .replace(/^www\./, '')
-    .split(/[/?#]/)[0]
-    .trim();
-  return host.includes('.') ? host : null;
-}
+export { normalizeDomain };
 
 /**
  * Indian PIN → state, on the first two digits (the postal circle).
@@ -139,26 +136,28 @@ export function stateFromPin(raw: unknown): string | null {
   return null;
 }
 
-/** Multi-value cells: FTCCI packs emails with ';' and phones with '/' or '\'. */
-const firstOf = (raw: unknown, seps: RegExp): string | null => {
-  const s = str(raw);
-  return s ? (str(s.split(seps)[0]) ?? null) : null;
-};
-
-/**
- * A spreadsheet turns "11-50" into a date and exports it as "Nov-50".
- * That is not an employee band, and storing it would poison every range
- * filter built on the column.
- */
-const DATE_COERCED = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-\d+$/i;
-/** Export artefacts that look populated but carry no information. */
-const NULL_LITERALS = /^(undefined\+?|null|n\/?a|-|—)$/i;
-
 /* ── Mapping ──────────────────────────────────────────────────────────── */
 
-export function mapCompanyRow(raw: Record<string, unknown>): ProcessedCompanyRow {
+/**
+ * @param mappings The user's confirmed header → key map from the review step.
+ *                 It OVERRIDES the defaults. This argument used to be absent:
+ *                 a human could re-point a column in the mapping table and the
+ *                 import would silently ignore it, which is exactly the kind of
+ *                 quiet divergence rule 12 exists to prevent.
+ */
+export function mapCompanyRow(
+  raw: Record<string, unknown>,
+  mappings?: Record<string, string>,
+): ProcessedCompanyRow {
+  const effective: Record<string, string> = { ...COMPANY_FIELD_MAP };
+  if (mappings) {
+    for (const [header, key] of Object.entries(mappings)) {
+      effective[header.trim().toUpperCase()] = key;
+    }
+  }
+
   const g = (key: string): unknown => {
-    for (const [header, mapped] of Object.entries(COMPANY_FIELD_MAP)) {
+    for (const [header, mapped] of Object.entries(effective)) {
       if (mapped !== key) continue;
       for (const k of Object.keys(raw)) {
         if (k.trim().toUpperCase() === header) {
@@ -170,21 +169,8 @@ export function mapCompanyRow(raw: Record<string, unknown>): ProcessedCompanyRow
     return null;
   };
 
-  const rejects: { field: string; reason: string }[] = [];
-
-  const clean = (field: string, v: unknown): string | null => {
-    const s = str(v);
-    if (!s) return null;
-    if (NULL_LITERALS.test(s)) {
-      rejects.push({ field, reason: `literal "${s}" — populated but meaningless` });
-      return null;
-    }
-    if (DATE_COERCED.test(s)) {
-      rejects.push({ field, reason: `"${s}" — a range coerced to a date by a spreadsheet` });
-      return null;
-    }
-    return s;
-  };
+  const rejects: RejectReason[] = [];
+  const clean = (field: string, v: unknown): string | null => cleanValue(field, v, rejects);
 
   const website = str(g('website'));
   const domain = normalizeDomain(g('domain')) ?? normalizeDomain(website);
@@ -219,17 +205,9 @@ export function mapCompanyRow(raw: Record<string, unknown>): ProcessedCompanyRow
     'name', 'domain_normalized', 'email', 'phone', 'city',
     'state_code', 'industry_raw', 'employees_band', 'description',
   ];
-  const filled = tracked.filter((k) => mapped[k] !== null && mapped[k] !== '').length;
-  const completeness = Number((filled / tracked.length).toFixed(3));
-
-  // Validity is measured against what the row TRIED to populate, so a sparse
-  // clean row is not punished the way a full dirty one is.
-  const attempted = tracked.length;
-  const validity = Number(((attempted - rejects.length) / attempted).toFixed(3));
-
   return {
     mapped,
-    quality: { completeness, validity, reject_reasons: rejects },
+    quality: scoreQuality(mapped, tracked, rejects),
     dedup_key: dedupKey(mapped),
   };
 }
@@ -243,12 +221,10 @@ export function mapCompanyRow(raw: Record<string, unknown>): ProcessedCompanyRow
  */
 export function dedupKey(m: MappedCompany): string | null {
   if (m.domain_normalized) return `d:${m.domain_normalized}`;
-  const nameKey = m.name
-    .toUpperCase()
-    .replace(/[^A-Z0-9 ]/g, ' ')
-    .replace(/\b(PVT|PRIVATE|LTD|LIMITED|LLP|INC|CO|COMPANY|THE)\b/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  // Shares its expression with gt_prospects.name_key (migration 196) via
+  // normalizeCompanyName, so the JS blocking key and the stored column cannot
+  // drift apart.
+  const nameKey = normalizeCompanyName(m.name);
   if (!nameKey) return null;
   return `n:${nameKey}|${(m.pin ?? '').replace(/\D/g, '')}`;
 }

@@ -22,7 +22,9 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { parseExcelHeaders, parseExcelRows } from './excel-parser';
 import { mapCustomerRow, CUSTOMER_FIELD_MAP } from './customer-processor';
-import { COMPANY_FIELD_MAP } from './company-processor';
+import { mapCompanyRow, COMPANY_FIELD_MAP } from './company-processor';
+import { mapContactRow } from './contact-processor';
+import { detectEntities, estimateRows, type ExtractionPlan } from './entity-detector';
 import { verifyAccessToken, type JwtPayload } from '../auth/token.service';
 
 const UPLOAD_DIR = path.resolve(__dirname, '../../uploads');
@@ -144,17 +146,24 @@ export function createEtlRouter(pool: Pool): Router {
       }
       const fileHash = crypto.createHash('sha256').update(fs.readFileSync(file.path)).digest('hex');
 
-      // Check duplicate by filename — scoped to this tenant
-      const dup = await pool.query(
-        `SELECT id FROM ki_file_uploads WHERE original_filename = $1 AND processing_status = 'completed' AND tenant_id = $2`,
-        [file.originalname, auth.tenant_id],
+      // Re-delivery is EXPECTED, not an error. A refreshed FTCCI chapter
+      // arrives under the same name, and the design note requires
+      // re-ingestion to be idempotent by construction — which it cannot be if
+      // upload rejects it outright, as this route used to with a 409.
+      //
+      // So the upload proceeds and the caller is TOLD. Duplicate content is
+      // resolved where it belongs: the merge review, per row, with a human
+      // deciding (user ruling, 2026-07-28).
+      const prior = await pool.query(
+        `SELECT l.id, l.label, l.as_of, l.loaded_at
+         FROM   gt_source_loads l
+         WHERE  l.file_checksum = $1
+           AND  (l.tenant_id = $2 OR l.tenant_id IS NULL)
+         ORDER BY l.loaded_at DESC
+         LIMIT 1`,
+        [fileHash, auth.tenant_id],
       );
-      if (dup.rows.length > 0) {
-        res.status(409).json({
-          error: { code: 'DUPLICATE_FILE', message: `A file named "${file.originalname}" has already been imported.` },
-        });
-        return;
-      }
+      const priorLoad = prior.rows[0] ?? null;
 
       // Always associate uploads with the tenant who triggered the import
       const tenantId = auth.tenant_id;
@@ -169,6 +178,9 @@ export function createEtlRouter(pool: Pool): Router {
         filename: file.originalname,
         size: file.size,
         import_type: importType,
+        // Byte-identical content already loaded. Shown to the user so a
+        // re-delivery is a deliberate act, never an accident.
+        prior_load: priorLoad,
       });
     } catch (err: any) {
       console.error('[ETL:upload]', err);
@@ -192,8 +204,20 @@ export function createEtlRouter(pool: Pool): Router {
       const file = fileResult.rows[0] as any;
       const { headers, sampleRows, totalRows } = parseExcelHeaders(file.file_path);
 
-      // Contact/prospect import is the only supported type post-MFD-cleanup
-      const suggestedMapping = CUSTOMER_FIELD_MAP;
+      // What is actually IN this file. The detector groups columns by entity —
+      // one file commonly yields both companies and the people at them — and
+      // returns anything it cannot place instead of guessing (rule 12). The
+      // human confirms or edits the plan at the review step.
+      const plan = detectEntities(headers, sampleRows);
+
+      // Flattened header -> field view, for the mapping table the review step
+      // already renders. Entity ownership lives in extraction_plan.
+      const suggestedMapping: Record<string, string> = {};
+      for (const entity of plan.entities) {
+        for (const [header, field] of Object.entries(entity.columns)) {
+          suggestedMapping[header] = field;
+        }
+      }
 
       res.json({
         file_id: file.id,
@@ -202,10 +226,90 @@ export function createEtlRouter(pool: Pool): Router {
         sample_rows: sampleRows,
         total_rows: totalRows,
         suggested_mapping: suggestedMapping,
+        extraction_plan: plan,
+        row_estimates: estimateRows(plan, totalRows),
       });
     } catch (err: any) {
       console.error('[ETL:headers]', err);
       res.status(500).json({ error: { code: 'PARSE_FAILED', message: err.message || 'Failed to parse file' } });
+    }
+  });
+
+  /* ── GET /tags ──────────────────────────────────── */
+  // A tenant sees platform tags (which name the common-pool deliveries) plus
+  // their own. Never another tenant's — that is the whole reason the
+  // namespace is split.
+
+  router.get('/tags', async (req, res) => {
+    try {
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const result = await pool.query(
+        `SELECT id, tenant_id, label, slug, (tenant_id IS NULL) AS is_platform
+         FROM   gt_tags
+         WHERE  is_active = true
+           AND  (tenant_id IS NULL OR tenant_id = $1)
+         ORDER BY (tenant_id IS NULL) DESC, label ASC`,
+        [auth.tenant_id],
+      );
+
+      res.json({ tags: result.rows });
+    } catch (err: any) {
+      console.error('[ETL:tags]', err);
+      res.status(500).json({ error: { code: 'FETCH_FAILED', message: 'Failed to fetch tags' } });
+    }
+  });
+
+  /* ── POST /tags ─────────────────────────────────── */
+
+  router.post('/tags', async (req, res) => {
+    try {
+      const auth = extractAuth(req);
+      if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
+
+      const label = typeof req.body?.label === 'string' ? req.body.label.trim() : '';
+      if (!label) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'label is required' } });
+        return;
+      }
+
+      // A platform tag is visible to every tenant, so creating one is an
+      // admin act — read from the JWT, never from the body.
+      const wantsPlatform = req.body?.is_platform === true;
+      if (wantsPlatform && !auth.is_admin) {
+        res.status(403).json({
+          error: { code: 'ADMIN_REQUIRED', message: 'Only an admin tenant can create a tag visible to everyone.' },
+        });
+        return;
+      }
+      const owner = wantsPlatform ? null : auth.tenant_id;
+
+      // Creating a tag that already exists returns the existing one — the
+      // user asked for a tag with that name, and they now have it.
+      const result = await pool.query(
+        `INSERT INTO gt_tags (tenant_id, label, created_by)
+         VALUES ($1, $2, $3)
+         ON CONFLICT DO NOTHING
+         RETURNING id, tenant_id, label, slug`,
+        [owner, label, auth.user_id],
+      );
+
+      if (result.rows.length > 0) {
+        res.status(201).json({ tag: result.rows[0] });
+        return;
+      }
+
+      const existing = await pool.query(
+        `SELECT id, tenant_id, label, slug FROM gt_tags
+         WHERE slug = LOWER(BTRIM(REGEXP_REPLACE(REGEXP_REPLACE($1, '[^A-Za-z0-9]+', ' ', 'g'), '\\s+', ' ', 'g')))
+           AND tenant_id IS NOT DISTINCT FROM $2`,
+        [label, owner],
+      );
+      res.json({ tag: existing.rows[0] ?? null, existing: true });
+    } catch (err: any) {
+      console.error('[ETL:create-tag]', err);
+      res.status(500).json({ error: { code: 'TAG_FAILED', message: err.message || 'Failed to create tag' } });
     }
   });
 
@@ -270,10 +374,21 @@ export function createEtlRouter(pool: Pool): Router {
       if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
       const { file_id, import_type, field_mappings, customer_lookup_method,
-              destination, load_label, load_region, load_as_of } = req.body;
+              destination, load_label, load_region, load_as_of,
+              relationship, extraction_plan, tag_ids } = req.body;
 
       if (!file_id || !import_type) {
         res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'file_id and import_type required' } });
+        return;
+      }
+
+      // What the TENANT says this data is to them. No file can state it, so
+      // it is never inferred — and the detector's entity findings are a
+      // separate axis entirely.
+      if (relationship && !['contacts', 'customers', 'dataset'].includes(relationship)) {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: `Unknown relationship "${relationship}". Expected contacts, customers or dataset.` },
+        });
         return;
       }
 
@@ -289,10 +404,15 @@ export function createEtlRouter(pool: Pool): Router {
         return;
       }
 
-      // Where this import lands. The common pool is shared across every
-      // tenant, so writing to it is gated on vn_tenants.is_admin carried in
-      // the JWT — never on anything the client sends.
-      const dest = destination === 'universe_companies' ? 'universe_companies' : 'prospects';
+      // Where COMPANY rows land. People always land in gt_contacts: Phase A
+      // ships no shared contact pool, so no personal data reaches the common
+      // pool and the DPDP question stays deferred by design.
+      //
+      // The common pool is shared across every tenant, so writing to it is
+      // gated on vn_tenants.is_admin carried in the JWT — never on anything
+      // the client sends. A 'dataset' relationship implies the pool.
+      const wantsPool = destination === 'universe_companies' || relationship === 'dataset';
+      const dest = wantsPool ? 'universe_companies' : 'prospects';
       if (dest === 'universe_companies' && !auth.is_admin) {
         res.status(403).json({
           error: {
@@ -309,38 +429,70 @@ export function createEtlRouter(pool: Pool): Router {
         || (import_type === 'company' ? COMPANY_FIELD_MAP : CUSTOMER_FIELD_MAP);
       const lookupMethod = customer_lookup_method || 'iwell_code';
 
-      // Every import is a load — same rollback, freshness and provenance
-      // handling a directory delivery gets. Common-pool loads carry no
-      // tenant; a tenant's own upload is scoped to them.
-      let loadId: number | null = null;
-      if (import_type === 'company') {
-        const srcCode = dest === 'universe_companies' ? (req.body.source_code || 'upload') : 'upload';
-        const src = await pool.query('SELECT id FROM gt_data_sources WHERE code = $1', [srcCode]);
-        if (src.rows.length === 0) {
-          res.status(400).json({ error: { code: 'UNKNOWN_SOURCE', message: `No data source registered with code "${srcCode}".` } });
-          return;
-        }
-        const load = await pool.query(
-          `INSERT INTO gt_source_loads (source_id, label, region, as_of, tenant_id, file_checksum, loaded_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-          [
-            (src.rows[0] as any).id,
-            load_label || file.original_filename,
-            load_region || null,
-            load_as_of || null,
-            dest === 'universe_companies' ? null : tenantId,
-            file.file_hash,
-            auth.user_id,
-          ],
-        );
-        loadId = (load.rows[0] as any).id;
+      // EVERY import is a load, contacts included — same rollback, freshness
+      // and provenance handling a directory delivery gets. Freshness is a
+      // scored quality component, so an undated upload is a real gap, not a
+      // cosmetic one. Common-pool loads carry no tenant; a tenant's own
+      // upload is scoped to them.
+      const srcCode = dest === 'universe_companies' ? (req.body.source_code || 'upload') : 'upload';
+      const src = await pool.query('SELECT id FROM gt_data_sources WHERE code = $1', [srcCode]);
+      if (src.rows.length === 0) {
+        res.status(400).json({ error: { code: 'UNKNOWN_SOURCE', message: `No data source registered with code "${srcCode}".` } });
+        return;
       }
+      const load = await pool.query(
+        `INSERT INTO gt_source_loads (source_id, label, region, as_of, tenant_id, file_checksum, loaded_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        [
+          (src.rows[0] as any).id,
+          load_label || file.original_filename,
+          load_region || null,
+          load_as_of || null,
+          dest === 'universe_companies' ? null : tenantId,
+          file.file_hash,
+          auth.user_id,
+        ],
+      );
+      const loadId: number = (load.rows[0] as any).id;
+
+      // Tags describe the delivery, so they attach to the load and every row
+      // inherits them through load_id. A tenant may only apply their own tags
+      // or platform ones — the filter is the authorisation.
+      if (Array.isArray(tag_ids) && tag_ids.length > 0) {
+        await pool.query(
+          `INSERT INTO gt_load_tags (load_id, tag_id, created_by)
+           SELECT $1, t.id, $2
+           FROM   gt_tags t
+           WHERE  t.id = ANY($3::bigint[])
+             AND  t.is_active = true
+             AND  (t.tenant_id IS NULL OR t.tenant_id = $4)
+           ON CONFLICT DO NOTHING`,
+          [loadId, auth.user_id, tag_ids, tenantId],
+        );
+      }
+
+      // The plan the human confirmed at the review step wins; fall back to
+      // re-detecting from the file's own headers so a caller that skips the
+      // review step still stages something coherent.
+      let plan: ExtractionPlan | null = extraction_plan ?? null;
+      if (!plan && import_type === 'company') {
+        const { headers, sampleRows } = parseExcelHeaders(file.file_path);
+        plan = detectEntities(headers, sampleRows);
+      }
+      const wantsCompany = plan ? plan.entities.some((e) => e.kind === 'company') : import_type === 'company';
+      const wantsPerson = plan ? plan.entities.some((e) => e.kind === 'person') : false;
 
       // Create session
       const sessionResult = await pool.query(
-        `INSERT INTO ki_import_sessions (tenant_id, file_upload_id, import_type, field_mappings, customer_lookup_method, created_by, destination, load_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [tenantId, file_id, import_type, JSON.stringify(mappings), lookupMethod, auth.user_id, dest, loadId],
+        `INSERT INTO ki_import_sessions
+           (tenant_id, file_upload_id, import_type, field_mappings, customer_lookup_method,
+            created_by, destination, load_id, relationship, extraction_plan)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb) RETURNING id`,
+        [
+          tenantId, file_id, import_type, JSON.stringify(mappings), lookupMethod,
+          auth.user_id, dest, loadId, relationship ?? null,
+          plan ? JSON.stringify(plan) : null,
+        ],
       );
       const sessionId = (sessionResult.rows[0] as any).id;
 
@@ -356,16 +508,54 @@ export function createEtlRouter(pool: Pool): Router {
         batch.forEach((raw, batchIdx) => {
           const rowNum = i + batchIdx + 1;
 
-          // Apply field mapping + pre-processing
-          const mapped = mapCustomerRow(raw, mappings);
+          // One source row can produce a company AND the people at it, so
+          // mapped_data carries both. Quality is scored HERE, before anything
+          // lands, which is the whole point of staging.
+          let mappedData: Record<string, unknown>;
+          let completeness: number | null = null;
+          let validity: number | null = null;
+          let rejects: unknown[] = [];
+          let dedupKey: string | null = null;
 
-          const offset = batchIdx * 4;
-          placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}::jsonb, $${offset + 4}::jsonb)`);
-          values.push(sessionId, rowNum, JSON.stringify(raw), JSON.stringify(mapped));
+          if (import_type === 'company') {
+            const company = wantsCompany ? mapCompanyRow(raw, mappings) : null;
+            const person = wantsPerson ? mapContactRow(raw, mappings) : null;
+
+            mappedData = {
+              company: company?.mapped ?? null,
+              people: person ? [person.mapped] : [],
+            };
+
+            // Row-level quality is the primary entity's — the company when
+            // there is one, otherwise the person.
+            const primary = company ?? person;
+            completeness = primary?.quality.completeness ?? null;
+            validity = primary?.quality.validity ?? null;
+            rejects = [
+              ...(company?.quality.reject_reasons ?? []),
+              ...(person?.quality.reject_reasons ?? []),
+            ];
+            dedupKey = primary?.dedup_key ?? null;
+          } else {
+            // MFD customer import — untouched legacy path.
+            mappedData = mapCustomerRow(raw, mappings);
+          }
+
+          const offset = batchIdx * 8;
+          placeholders.push(
+            `($${offset + 1}, $${offset + 2}, $${offset + 3}::jsonb, $${offset + 4}::jsonb,` +
+            ` $${offset + 5}, $${offset + 6}, $${offset + 7}::jsonb, $${offset + 8})`,
+          );
+          values.push(
+            sessionId, rowNum, JSON.stringify(raw), JSON.stringify(mappedData),
+            completeness, validity, JSON.stringify(rejects), dedupKey,
+          );
         });
 
         await pool.query(
-          `INSERT INTO ki_import_staging (session_id, row_number, raw_data, mapped_data)
+          `INSERT INTO ki_import_staging
+             (session_id, row_number, raw_data, mapped_data,
+              completeness, validity, reject_reasons, dedup_key)
            VALUES ${placeholders.join(', ')}`,
           values,
         );
