@@ -22,6 +22,7 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { parseExcelHeaders, parseExcelRows } from './excel-parser';
 import { mapCustomerRow, CUSTOMER_FIELD_MAP } from './customer-processor';
+import { COMPANY_FIELD_MAP } from './company-processor';
 import { verifyAccessToken, type JwtPayload } from '../auth/token.service';
 
 const UPLOAD_DIR = path.resolve(__dirname, '../../uploads');
@@ -136,9 +137,9 @@ export function createEtlRouter(pool: Pool): Router {
       const file = req.file;
       if (!file) { res.status(400).json({ error: { code: 'NO_FILE', message: 'No file uploaded' } }); return; }
 
-      const importType = req.body.import_type || 'customer';
-      if (importType !== 'customer') {
-        res.status(400).json({ error: { code: 'UNSUPPORTED_TYPE', message: `Import type "${importType}" was removed with the MFD cleanup. Only contact/prospect imports are supported.` } });
+      const importType = req.body.import_type || 'company';
+      if (!['customer', 'company'].includes(importType)) {
+        res.status(400).json({ error: { code: 'UNSUPPORTED_TYPE', message: `Import type "${importType}" is not supported. Use "company" for prospects and the common pool.` } });
         return;
       }
       const fileHash = crypto.createHash('sha256').update(fs.readFileSync(file.path)).digest('hex');
@@ -268,32 +269,78 @@ export function createEtlRouter(pool: Pool): Router {
       const auth = extractAuth(req);
       if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
-      const { file_id, import_type, field_mappings, customer_lookup_method } = req.body;
+      const { file_id, import_type, field_mappings, customer_lookup_method,
+              destination, load_label, load_region, load_as_of } = req.body;
 
       if (!file_id || !import_type) {
         res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'file_id and import_type required' } });
         return;
       }
 
-      // Verify file exists
-      const fileResult = await pool.query('SELECT * FROM ki_file_uploads WHERE id = $1', [file_id]);
+      // Verify the file belongs to the caller
+      const fileResult = await pool.query(
+        'SELECT * FROM ki_file_uploads WHERE id = $1 AND tenant_id = $2',
+        [file_id, auth.tenant_id],
+      );
       if (fileResult.rows.length === 0) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found' } }); return; }
 
-      if (import_type !== 'customer') {
-        res.status(400).json({ error: { code: 'UNSUPPORTED_TYPE', message: `Import type "${import_type}" was removed with the MFD cleanup. Only contact/prospect imports are supported.` } });
+      if (!['customer', 'company'].includes(import_type)) {
+        res.status(400).json({ error: { code: 'UNSUPPORTED_TYPE', message: `Import type "${import_type}" is not supported.` } });
+        return;
+      }
+
+      // Where this import lands. The common pool is shared across every
+      // tenant, so writing to it is gated on vn_tenants.is_admin carried in
+      // the JWT — never on anything the client sends.
+      const dest = destination === 'universe_companies' ? 'universe_companies' : 'prospects';
+      if (dest === 'universe_companies' && !auth.is_admin) {
+        res.status(403).json({
+          error: {
+            code: 'ADMIN_REQUIRED',
+            message: 'Uploading to the common pool requires an admin tenant.',
+          },
+        });
         return;
       }
 
       const file = fileResult.rows[0] as any;
       const tenantId = auth.tenant_id;
-      const mappings = field_mappings || CUSTOMER_FIELD_MAP;
+      const mappings = field_mappings
+        || (import_type === 'company' ? COMPANY_FIELD_MAP : CUSTOMER_FIELD_MAP);
       const lookupMethod = customer_lookup_method || 'iwell_code';
+
+      // Every import is a load — same rollback, freshness and provenance
+      // handling a directory delivery gets. Common-pool loads carry no
+      // tenant; a tenant's own upload is scoped to them.
+      let loadId: number | null = null;
+      if (import_type === 'company') {
+        const srcCode = dest === 'universe_companies' ? (req.body.source_code || 'upload') : 'upload';
+        const src = await pool.query('SELECT id FROM gt_data_sources WHERE code = $1', [srcCode]);
+        if (src.rows.length === 0) {
+          res.status(400).json({ error: { code: 'UNKNOWN_SOURCE', message: `No data source registered with code "${srcCode}".` } });
+          return;
+        }
+        const load = await pool.query(
+          `INSERT INTO gt_source_loads (source_id, label, region, as_of, tenant_id, file_checksum, loaded_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+          [
+            (src.rows[0] as any).id,
+            load_label || file.original_filename,
+            load_region || null,
+            load_as_of || null,
+            dest === 'universe_companies' ? null : tenantId,
+            file.file_hash,
+            auth.user_id,
+          ],
+        );
+        loadId = (load.rows[0] as any).id;
+      }
 
       // Create session
       const sessionResult = await pool.query(
-        `INSERT INTO ki_import_sessions (tenant_id, file_upload_id, import_type, field_mappings, customer_lookup_method, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-        [tenantId, file_id, import_type, JSON.stringify(mappings), lookupMethod, auth.user_id],
+        `INSERT INTO ki_import_sessions (tenant_id, file_upload_id, import_type, field_mappings, customer_lookup_method, created_by, destination, load_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+        [tenantId, file_id, import_type, JSON.stringify(mappings), lookupMethod, auth.user_id, dest, loadId],
       );
       const sessionId = (sessionResult.rows[0] as any).id;
 
