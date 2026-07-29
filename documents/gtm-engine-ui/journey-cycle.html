@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VaNi GTM — Journey Cycle (playable prototype)</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+  JOURNEY CYCLE — playable prototype
+  Design notes: documents/design-notes-journey-campaign.md
+  Plan:         documents/POA-journey-campaign.md
+
+  ── WHY AN AGENDA AND NOT A BOARD ────────────────────────────────────
+  The backend computes what each journey is OWED ("find the person",
+  "write the story", "decide: another story or stop") — not just what
+  state it is in. Every board shows status; this shows debt.
+
+  And the segment decides it. Twelve accounts, not twelve thousand:
+  high value, judgement-dense, every company known by name. A kanban
+  needs volume to be useful and a node-graph needs volume to be
+  beautiful. At this scale both are decoration.
+
+  ── SYNTHETIC DATA ONLY ──────────────────────────────────────────────
+  Every company, person and quote below is invented. Per
+  documents/ux-references/README.md nothing real ships in a mockup.
+  ═══════════════════════════════════════════════════════════════════════
+-->
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ═══ Vikuna Black (dark) — the product's default theme ═══════════════ */
+:root{
+  --void:#0B0B0D; --s0:#101013; --s1:#15151A; --s2:#1C1C22; --s3:#24242C;
+  --gold:#C9A84C; --gold-dim:#A2853A; --gold-glow:rgba(201,168,76,.14);
+  --gold-pulse:rgba(201,168,76,.06);
+  --text:#F0ECE2; --text-2:#9A9587; --text-3:#615D53; --text-ghost:#3A3833;
+  --line:rgba(240,236,226,.09); --line-2:rgba(240,236,226,.16);
+  --ok:#5FA97B; --warn:#D9A441; --bad:#C9615A; --cool:#7C8FB5;
+  --f-d:'Outfit',sans-serif; --f-b:'Instrument Sans',sans-serif; --f-m:'JetBrains Mono',monospace;
+  --e:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.4,.64,1);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px;-webkit-font-smoothing:antialiased}
+body{font-family:var(--f-b);background:var(--void);color:var(--text);min-height:100vh;line-height:1.55;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 70% 45% at 15% -5%,rgba(201,168,76,.05),transparent 60%),
+             radial-gradient(ellipse 50% 40% at 90% 105%,rgba(124,143,181,.035),transparent 55%)}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+::selection{background:var(--gold);color:var(--void)}
+
+/* ═══ Shell ══════════════════════════════════════════════════════════ */
+.shell{display:grid;grid-template-columns:64px 1fr;min-height:100vh;position:relative;z-index:1}
+.rail{background:var(--s0);border-right:1px solid var(--line);display:flex;flex-direction:column;
+  align-items:center;padding:14px 0;gap:4px;position:sticky;top:0;height:100vh}
+.mark{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--gold),#7a6428);
+  display:grid;place-items:center;font-family:var(--f-d);font-weight:800;font-size:13px;color:var(--void);margin-bottom:20px}
+.nav{width:44px;height:42px;display:grid;place-items:center;border-radius:10px;color:var(--text-3);
+  transition:.25s var(--e);position:relative}
+.nav:hover{color:var(--text-2);background:var(--s2)}
+.nav.on{color:var(--gold);background:var(--gold-pulse)}
+.nav.on::before{content:'';position:absolute;left:-10px;top:50%;transform:translateY(-50%);
+  width:3px;height:18px;background:var(--gold);border-radius:0 2px 2px 0}
+.nav svg{width:19px;height:19px;stroke-width:1.5;fill:none;stroke:currentColor}
+.tip{display:none;position:absolute;left:52px;background:var(--s3);padding:5px 10px;border-radius:6px;
+  font-size:11.5px;white-space:nowrap;border:1px solid var(--line-2);z-index:99;color:var(--text)}
+.nav:hover .tip{display:block}
+.grow{flex:1}
+.main{padding:30px 44px 90px;max-width:1220px;width:100%;margin:0 auto}
+
+/* ═══ Page header ════════════════════════════════════════════════════ */
+.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:22px}
+.eyebrow{font-family:var(--f-m);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin-bottom:5px}
+h1{font-family:var(--f-d);font-weight:300;font-size:29px;letter-spacing:-.02em;line-height:1.1}
+h1 b{font-weight:600;color:var(--gold)}
+.sub{color:var(--text-2);font-size:13.5px;margin-top:6px;max-width:60ch}
+
+/* ═══ THE STRIP — the river, folded flat ═════════════════════════════
+   Not a progress bar. Each tick is one account, positioned by state and
+   SUNK by how long it has sat there. A company that has gone quiet
+   physically drops out of its band, so stalling is visible without
+   anybody running a report. ══════════════════════════════════════════ */
+.strip{border:1px solid var(--line);border-radius:14px;background:
+  linear-gradient(180deg,var(--s1),var(--s0));padding:14px 18px 8px;margin-bottom:26px;position:relative;overflow:hidden}
+.strip::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(201,168,76,.03) 50%,transparent)}
+.strip-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.strip-title{font-family:var(--f-m);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3)}
+.strip-legend{font-size:11px;color:var(--text-3)}
+.strip-legend em{font-style:normal;color:var(--warn)}
+.bands{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
+.band{position:relative;border-radius:9px;background:rgba(240,236,226,.02);
+  border:1px solid transparent;transition:.28s var(--e);cursor:pointer;padding:0 0 16px;overflow:hidden}
+.band:hover{background:var(--gold-pulse);border-color:rgba(201,168,76,.18)}
+.band.sel{background:var(--gold-pulse);border-color:var(--gold-dim)}
+/* The well is where dwell becomes POSITION. A fresh journey floats at the
+   top; one that has sat a fortnight hangs below the waterline. Nobody has
+   to run a report to see which companies have gone quiet — they have
+   physically sunk. */
+.well{position:relative;height:66px}
+.well::after{content:'';position:absolute;left:7px;right:7px;top:52%;height:1px;
+  background:repeating-linear-gradient(90deg,var(--line-2) 0 3px,transparent 3px 7px)}
+.tick{position:absolute;height:7px;border-radius:4px;background:var(--gold);
+  transition:.5s var(--spring);box-shadow:0 0 8px var(--gold-glow)}
+.tick.d0{background:var(--gold)}
+.tick.d1{background:var(--gold-dim);opacity:.85;box-shadow:none}
+.tick.d2{background:var(--warn);opacity:.9;box-shadow:0 0 8px rgba(217,164,65,.25)}
+.tick.d3{background:var(--bad);opacity:.95;box-shadow:0 0 9px rgba(201,97,90,.28)}
+/* Count rides on the label line, not in the well. In the corner it collided
+   with the rightmost tick, which read as a rendering accident rather than as
+   a company that had gone deep. The well now belongs to the ticks alone. */
+.band-n{font-family:var(--f-m);font-size:11px;color:var(--text-2);transition:.3s}
+.band.sel .band-n,.band:hover .band-n{color:var(--gold)}
+.band.sel .band-l,.band:hover .band-l{color:var(--text-2)}
+.band-l{position:absolute;bottom:3px;left:0;right:0;display:flex;justify-content:center;
+  align-items:baseline;gap:6px;font-size:9px;letter-spacing:.05em;color:var(--text-ghost);
+  text-transform:uppercase}
+.band.sel .band-l{color:var(--text-2)}
+
+/* ═══ Agenda ═════════════════════════════════════════════════════════ */
+.agenda{display:flex;flex-direction:column;gap:12px}
+.daygroup{font-family:var(--f-m);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--text-3);margin:14px 0 2px;display:flex;align-items:center;gap:10px}
+.daygroup::after{content:'';flex:1;height:1px;background:var(--line)}
+
+.debt{border:1px solid var(--line);border-radius:14px;background:var(--s1);
+  padding:16px 18px;display:grid;grid-template-columns:92px 1fr;gap:16px;
+  transition:.28s var(--e);position:relative;overflow:hidden}
+.debt:hover{border-color:var(--line-2);background:var(--s2);transform:translateY(-1px)}
+.debt::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--gold);opacity:.55}
+.debt.done{opacity:0;transform:translateX(28px) scale(.98);height:0;padding:0;margin:0;border:0;pointer-events:none}
+.debt.stalled::before{background:var(--warn)}
+
+.verb{display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+.verb-chip{font-family:var(--f-m);font-size:10px;letter-spacing:.13em;padding:4px 8px;border-radius:5px;
+  background:var(--gold-glow);color:var(--gold);border:1px solid rgba(201,168,76,.25)}
+.verb-chip.warn{background:rgba(217,164,65,.12);color:var(--warn);border-color:rgba(217,164,65,.28)}
+.dwell{font-family:var(--f-m);font-size:10.5px;color:var(--text-3)}
+.dwell.hot{color:var(--warn)}
+
+.co{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:3px}
+.co-name{font-family:var(--f-d);font-size:16.5px;font-weight:500;letter-spacing:-.01em}
+.co-meta{font-size:11.5px;color:var(--text-3)}
+.pill{font-family:var(--f-m);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  padding:2px 7px;border-radius:4px;border:1px solid var(--line-2);color:var(--text-2)}
+.pill.gold{color:var(--gold);border-color:rgba(201,168,76,.3);background:var(--gold-pulse)}
+
+/* the agent's proposal, in the agent's voice — the whole point of the row */
+.prop{border-left:2px solid rgba(201,168,76,.35);padding:8px 0 8px 13px;margin:9px 0 12px;
+  font-size:13.5px;color:var(--text);line-height:1.6}
+.prop .who{font-family:var(--f-m);font-size:10px;letter-spacing:.12em;color:var(--gold);
+  text-transform:uppercase;display:block;margin-bottom:4px}
+.prop .cite{color:var(--text-2);font-size:12px;display:block;margin-top:6px;font-family:var(--f-m)}
+.prop .cite a{color:var(--cool);text-decoration:none;border-bottom:1px dotted rgba(124,143,181,.4)}
+
+.acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;border:1px solid var(--line-2);
+  color:var(--text-2);transition:.2s var(--e)}
+.btn:hover{border-color:var(--gold-dim);color:var(--text);background:var(--gold-pulse)}
+.btn.pri{background:var(--gold);color:var(--void);border-color:var(--gold);font-weight:600}
+.btn.pri:hover{background:#dfbc5c;color:var(--void)}
+.btn.ghost{border-color:transparent;color:var(--text-3)}
+.btn.ghost:hover{color:var(--text-2);background:var(--s3)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.spacer{flex:1}
+
+/* ═══ The thread — one account as a vertical ledger ═══════════════════ */
+.back{font-size:12.5px;color:var(--text-3);margin-bottom:16px;display:inline-flex;gap:7px;align-items:center}
+.back:hover{color:var(--gold)}
+.owed{border:1px solid rgba(201,168,76,.3);background:linear-gradient(180deg,var(--gold-pulse),transparent);
+  border-radius:14px;padding:16px 18px;margin-bottom:24px}
+.owed-l{font-family:var(--f-m);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:7px}
+
+.thread{position:relative;padding-left:26px}
+.thread::before{content:'';position:absolute;left:5px;top:6px;bottom:12px;width:1px;
+  background:linear-gradient(180deg,var(--line-2),var(--line),transparent)}
+.ent{position:relative;padding:0 0 22px}
+.ent::before{content:'';position:absolute;left:-24px;top:6px;width:11px;height:11px;border-radius:50%;
+  background:var(--s0);border:2px solid var(--text-ghost)}
+.ent.agent::before{border-color:var(--cool)}
+.ent.you::before{border-color:var(--gold);background:var(--gold)}
+.ent.sys::before{border-color:var(--text-ghost);width:7px;height:7px;left:-22px;top:8px}
+.ent-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.ent-when{font-family:var(--f-m);font-size:11px;color:var(--text-3);min-width:62px}
+.ent-what{font-size:13.5px;font-weight:500}
+.ent-who{font-family:var(--f-m);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+.ent-body{font-size:13px;color:var(--text-2);margin-top:5px;line-height:1.6;padding-left:72px}
+@media(max-width:720px){.ent-body{padding-left:0}}
+.ent-body q{color:var(--text);font-style:italic}
+.ev{font-family:var(--f-m);font-size:11.5px;color:var(--cool);display:block;margin-top:3px}
+
+/* ═══ Compose — the evidence-traced editor ═══════════════════════════
+   R-S1 rendered as UI: a sentence whose claim traces to the brief's
+   evidence is underlined in gold; one that does not is flagged. This
+   is the rule that separates the product from mail-merge, so it is the
+   one thing the writing screen is built around. ═════════════════════ */
+.compose{display:grid;grid-template-columns:340px 1fr;gap:22px;align-items:start}
+@media(max-width:960px){.compose{grid-template-columns:1fr}}
+.panel{border:1px solid var(--line);border-radius:14px;background:var(--s1);padding:16px 18px}
+.panel h3{font-family:var(--f-m);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--text-3);font-weight:400;margin-bottom:12px}
+.rec{font-size:13.5px;line-height:1.6;margin-bottom:14px}
+.rec b{color:var(--gold);font-weight:600}
+.evline{border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin-bottom:7px;
+  font-size:12.5px;cursor:pointer;transition:.2s var(--e);background:var(--s0)}
+.evline:hover{border-color:var(--gold-dim);background:var(--gold-pulse)}
+.evline .src{font-family:var(--f-m);font-size:10.5px;color:var(--cool);display:block;margin-top:4px}
+/* Grid, not float — a float made the CITE label sit on top of wrapped
+   evidence text, which is the text the whole screen exists to protect. */
+.evline{display:grid;grid-template-columns:1fr auto;column-gap:10px;align-items:start}
+.evline .src{grid-column:1/-1}
+.evline .use{font-family:var(--f-m);font-size:9.5px;letter-spacing:.1em;color:var(--text-3);
+  text-transform:uppercase;padding-top:2px}
+.evline:hover .use{color:var(--gold)}
+
+.editor{border:1px solid var(--line);border-radius:14px;background:var(--s1);overflow:hidden}
+.ed-bar{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--line);background:var(--s0)}
+.ed-bar input{flex:1;background:none;border:none;color:var(--text);font:inherit;font-size:13.5px;outline:none}
+.ed-bar input::placeholder{color:var(--text-ghost)}
+#body{width:100%;min-height:230px;padding:16px;background:none;border:none;color:var(--text);
+  font:inherit;font-size:14px;line-height:1.75;outline:none;resize:vertical}
+#body::placeholder{color:var(--text-ghost)}
+.trace{border-top:1px solid var(--line);padding:12px 16px;background:var(--s0)}
+.trace-h{font-family:var(--f-m);font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--text-3);margin-bottom:9px;display:flex;justify-content:space-between}
+.sent{font-size:12.5px;padding:5px 0 5px 20px;position:relative;color:var(--text-2);line-height:1.5}
+.sent::before{position:absolute;left:0;top:5px;font-family:var(--f-m);font-size:11px}
+.sent.ok::before{content:'✓';color:var(--ok)}
+.sent.ok{color:var(--text)}
+.sent.no::before{content:'!';color:var(--warn)}
+.sent.own::before{content:'○';color:var(--text-3)}
+.sent .tag{font-family:var(--f-m);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--text-3);margin-left:7px}
+.verdict{padding:10px 16px;border-top:1px solid var(--line);font-size:12.5px;display:flex;
+  align-items:center;gap:10px;background:var(--s1)}
+.verdict.bad{color:var(--warn)}
+.verdict.good{color:var(--ok)}
+
+/* ═══ Campaign run ═══════════════════════════════════════════════════ */
+.runsteps{display:flex;gap:0;margin-bottom:22px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.rs{flex:1;padding:12px 14px;font-size:12px;color:var(--text-3);background:var(--s0);
+  border-right:1px solid var(--line);position:relative;transition:.3s var(--e)}
+.rs:last-child{border-right:none}
+.rs.on{color:var(--gold);background:var(--gold-pulse)}
+.rs.past{color:var(--text-2)}
+.rs .n{font-family:var(--f-m);font-size:10px;letter-spacing:.1em;display:block;margin-bottom:2px;opacity:.65}
+.member{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:13px 16px;
+  border:1px solid var(--line);border-radius:11px;background:var(--s1);margin-bottom:9px;transition:.25s var(--e)}
+.member.sent{border-color:rgba(95,169,123,.3);background:rgba(95,169,123,.05)}
+.member-t{font-size:13px;color:var(--text-2);margin-top:3px}
+.lockbar{display:flex;align-items:center;gap:11px;padding:12px 16px;border-radius:11px;
+  border:1px dashed var(--line-2);color:var(--text-2);font-size:12.5px;margin-bottom:16px}
+.lockbar.locked{border-style:solid;border-color:rgba(201,168,76,.35);background:var(--gold-pulse);color:var(--gold)}
+
+/* ═══ Misc ═══════════════════════════════════════════════════════════ */
+.empty{text-align:center;padding:70px 20px;color:var(--text-3)}
+.empty .big{font-family:var(--f-d);font-size:22px;font-weight:300;color:var(--text-2);margin-bottom:8px}
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--s3);border:1px solid var(--line-2);border-radius:11px;padding:12px 20px;
+  font-size:13px;opacity:0;transition:.3s var(--e);z-index:200;pointer-events:none;max-width:min(560px,90vw)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast b{color:var(--gold)}
+.note{font-size:12px;color:var(--text-3);margin-top:9px;line-height:1.55}
+.hidden{display:none!important}
+.reasonbox{width:100%;margin-top:10px;background:var(--s0);border:1px solid var(--line-2);border-radius:9px;
+  padding:10px 12px;color:var(--text);font:inherit;font-size:13px;outline:none}
+.reasonbox:focus{border-color:var(--gold-dim)}
+.reqd{font-size:11.5px;color:var(--warn);margin-top:6px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="rail">
+    <div class="mark">V</div>
+    <button class="nav" onclick="go('agenda')" id="nav-agenda"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span class="tip">Journeys</span></button>
+    <button class="nav" onclick="toast('Prospects — who exists, imports, segments. Unchanged in this design.')"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/></svg><span class="tip">Prospects</span></button>
+    <button class="nav" onclick="toast('Research — briefs, offers, the pilot scoreboard. Unchanged in this design.')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span class="tip">Research</span></button>
+    <button class="nav" onclick="go('run')" id="nav-run"><svg viewBox="0 0 24 24"><path d="M4 4h16v5H4zM4 13h16v7H4z"/></svg><span class="tip">Campaign run</span></button>
+    <div class="grow"></div>
+    <button class="nav" onclick="reset()"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span class="tip">Reset prototype</span></button>
+  </nav>
+  <main class="main" id="view"></main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   SYNTHETIC COHORT — every name invented. A Telangana/Andhra formulations
+   and agri-processing cohort of the size the pilot actually runs.
+   ═══════════════════════════════════════════════════════════════════════ */
+const STATES = ['sourced','researched','qualified','addressed','ready','waiting','answered','won'];
+const LABEL  = {sourced:'sourced',researched:'researched',qualified:'qualified',addressed:'addressed',
+                ready:'ready',waiting:'waiting',answered:'answered',won:'won',
+                ruled_out:'ruled out',parked:'parked',lost:'lost'};
+const OWED = {
+  sourced:'Research this company', researched:'Rule on the brief', qualified:'Find the person',
+  addressed:'Write the story', ready:'Send it', waiting:'Wait for an answer',
+  answered:'Decide: another story, advance, or stop', won:'Hand over to the lifetime arc',
+  ruled_out:'Nothing — ruled out', parked:'Nothing until the wake date', lost:'Nothing — closed'
+};
+const VERB = {sourced:'RESEARCH',researched:'RULE',qualified:'FIND',addressed:'WRITE',
+              ready:'SEND',waiting:'WAIT',answered:'DECIDE',won:'HAND OVER'};
+
+function seed(){ return [
+ {id:1,name:'Sriveda Lifesciences',city:'Hyderabad',ind:'API manufacturing',state:'answered',days:3,
+  offer:'ai-automations',person:'R. Menon · Head of Digital',stories:1,
+  prop:'They replied asking what it costs — that is interest, not a price objection. A second story on payback period, attaching the batch-record case study, answers the real question. Do not discount.',
+  cite:'Reply, 26-Jul: "Sounds useful. What kind of investment are we looking at?"',
+  ev:[{c:'Two formulation units, Jeedimetla and Bollaram',u:'sriveda.example/about'},
+      {c:'Hiring a QA documentation lead',u:'sriveda.example/careers'},
+      {c:'WHO-GMP and EU-GMP certified',u:'sriveda.example/quality'}],
+  log:[
+   {d:'12-Jul',w:'researched',who:'agent',b:'Brief written from 6 pages. 4 claims evidenced, 1 dropped for want of a source.'},
+   {d:'14-Jul',w:'qualified',who:'you',b:'AI Automations. <q>Two units and a QA hire — batch records are the obvious first cut.</q>'},
+   {d:'15-Jul',w:'addressed',who:'you',b:'R. Menon, Head of Digital. Promoted from the brief, contact page.',e:'sriveda.example/contact'},
+   {d:'18-Jul',w:'ready',who:'you',b:'Story 1 approved — opened on the Jeedimetla QA hire.'},
+   {d:'19-Jul',w:'waiting',who:'you',b:'Sent by email. Logged as a researched send.'},
+   {d:'26-Jul',w:'answered',who:'you',b:'Replied. <q>Sounds useful. What kind of investment are we looking at?</q>'}]},
+
+ {id:2,name:'Kakatiya Organics',city:'Warangal',ind:'Intermediates',state:'addressed',days:1,
+  offer:'caio-as-a-service',person:'S. Rangarajan · Managing Director',stories:0,
+  prop:'Open on the Unit-3 commissioning they announced this month — it is the only thing on their site with a date on it, and it is the reason a CAIO engagement lands now rather than next year.',
+  cite:'kakatiya-organics.example/news — "Unit-3 commissioned, capacity up 40%"',
+  ev:[{c:'Unit-3 commissioned this month, capacity up 40%',u:'kakatiya-organics.example/news'},
+      {c:'No named technology or data leadership',u:'kakatiya-organics.example/leadership'},
+      {c:'Exports to 14 countries',u:'kakatiya-organics.example/about'}],
+  log:[
+   {d:'12-Jul',w:'researched',who:'agent',b:'Brief written from 5 pages plus 2 search results.'},
+   {d:'16-Jul',w:'qualified',who:'you',b:'CAIO-as-a-service. <q>Expanding fast with nobody owning data. Textbook.</q>'},
+   {d:'28-Jul',w:'addressed',who:'you',b:'S. Rangarajan, Managing Director.',e:'kakatiya-organics.example/leadership'}]},
+
+ {id:3,name:'Deccan Poultry Farms',city:'Vijayawada',ind:'Agri processing',state:'ready',days:2,
+  offer:'ai-automations',person:'A. Krishnamurthy · Operations Head',stories:1,
+  prop:'Story approved and waiting on a send. It goes out with the next run.',
+  cite:'',
+  ev:[{c:'Fourteen sheds across three districts',u:'deccanpoultry.example/operations'},
+      {c:'Feed conversion tracked on paper at shed level',u:'deccanpoultry.example/about'}],
+  log:[
+   {d:'11-Jul',w:'researched',who:'agent',b:'Brief written from 4 pages.'},
+   {d:'15-Jul',w:'qualified',who:'you',b:'AI Automations. <q>Paper at shed level across 14 sheds is the whole pitch.</q>'},
+   {d:'22-Jul',w:'addressed',who:'you',b:'A. Krishnamurthy, Operations Head.'},
+   {d:'27-Jul',w:'ready',who:'you',b:'Story 1 approved — opened on shed-level feed conversion.'}]},
+
+ {id:4,name:'Godavari Formulations',city:'Rajahmundry',ind:'Finished dosage',state:'researched',days:14,
+  offer:null,person:null,stories:0,
+  prop:'Scored 0.71 for AI Automations against 0.68 for CAIO — inside the margin, so the smaller ask was recommended. Two units, no digital hire visible. Worth a ruling either way; it has sat undecided a fortnight.',
+  cite:'Brief written 15-Jul · 7 pages read · 5 claims evidenced',
+  ev:[{c:'Two units, Rajahmundry and Kakinada',u:'godavariform.example/about'},
+      {c:'Recently added a serialisation line',u:'godavariform.example/news'}],
+  log:[{d:'15-Jul',w:'researched',who:'agent',b:'Brief written from 7 pages. Fit unclear — 0.03 between the top two offers.'}]},
+
+ {id:5,name:'Nallamala Agro Exports',city:'Kurnool',ind:'Spice processing',state:'qualified',days:9,
+  offer:'ai-automations',person:null,stories:0,
+  prop:'No person yet. Their site names nobody — the brief found an office address and a generic enquiries line, and that is genuinely all there is. It will not be guessed at.',
+  cite:'Brief: named_contacts is empty. No LinkedIn source configured.',
+  ev:[{c:'Sorting and grading done by hand at three centres',u:'nallamala.example/process'}],
+  log:[
+   {d:'13-Jul',w:'researched',who:'agent',b:'Brief written from 3 pages. Thin site.'},
+   {d:'20-Jul',w:'qualified',who:'you',b:'AI Automations. <q>Manual grading at three centres. Worth one message.</q>'}]},
+
+ {id:6,name:'Bhadrachalam Chemicals',city:'Bhadradri',ind:'Bulk drugs',state:'waiting',days:6,
+  offer:'cdo-as-a-service',person:'V. Iyer · Plant Head',stories:1,
+  prop:'Sent six days ago. The response window has eight days left.',
+  cite:'',
+  ev:[{c:'Effluent treatment reporting cited as a board priority',u:'bhadrachem.example/sustainability'}],
+  log:[
+   {d:'12-Jul',w:'researched',who:'agent',b:'Brief written from 6 pages.'},
+   {d:'17-Jul',w:'qualified',who:'you',b:'CDO-as-a-service.'},
+   {d:'20-Jul',w:'addressed',who:'you',b:'V. Iyer, Plant Head.'},
+   {d:'22-Jul',w:'ready',who:'you',b:'Story 1 approved.'},
+   {d:'23-Jul',w:'waiting',who:'you',b:'Sent by email.'}]},
+
+ {id:7,name:'Manjeera Biotech',city:'Sangareddy',ind:'Fermentation',state:'sourced',days:21,
+  offer:null,person:null,stories:0,
+  prop:'Never researched. It came in with the Telangana load on 10-Jul and has sat untouched for three weeks.',
+  cite:'',ev:[],log:[{d:'10-Jul',w:'sourced',who:'sys',b:'Imported with the Telangana formulations load.'}]},
+
+ {id:8,name:'Palnadu Cold Chain',city:'Guntur',ind:'Cold storage',state:'parked',days:4,
+  offer:'ai-automations',person:'K. Reddy · Director',stories:1,reason:'Budget locked until the new financial year',
+  wake:'01-Apr-2027',
+  prop:'Parked until April. Nothing is owed.',cite:'',
+  ev:[{c:'Eleven cold rooms, temperature logged manually',u:'palnadu.example/facilities'}],
+  log:[
+   {d:'12-Jul',w:'researched',who:'agent',b:'Brief written from 4 pages.'},
+   {d:'16-Jul',w:'qualified',who:'you',b:'AI Automations.'},
+   {d:'19-Jul',w:'addressed',who:'you',b:'K. Reddy, Director.'},
+   {d:'21-Jul',w:'ready',who:'you',b:'Story 1 approved.'},
+   {d:'22-Jul',w:'waiting',who:'you',b:'Sent by email.'},
+   {d:'25-Jul',w:'answered',who:'you',b:'Replied. <q>Interesting but our budget is locked till April.</q>'},
+   {d:'25-Jul',w:'parked',who:'you',b:'Budget locked until the new financial year. Wake 01-Apr-2027.'}]},
+
+ {id:9,name:'Tungabhadra Sugars',city:'Kurnool',ind:'Sugar & ethanol',state:'ruled_out',days:11,
+  offer:null,person:null,stories:0,reason:'Single plant, no IT spend, and the site is eight years stale',
+  prop:'Ruled out.',cite:'',ev:[],
+  log:[
+   {d:'13-Jul',w:'researched',who:'agent',b:'Brief written from 2 pages. Site last updated 2019.'},
+   {d:'18-Jul',w:'ruled_out',who:'you',b:'Single plant, no IT spend, and the site is eight years stale.'}]},
+
+ {id:10,name:'Krishna Delta Feeds',city:'Machilipatnam',ind:'Animal feed',state:'sourced',days:19,
+  offer:null,person:null,stories:0,prop:'Never researched. Imported 10-Jul.',cite:'',ev:[],
+  log:[{d:'10-Jul',w:'sourced',who:'sys',b:'Imported with the Telangana formulations load.'}]},
+
+ {id:11,name:'Osmania Diagnostics',city:'Hyderabad',ind:'Diagnostics',state:'researched',days:3,
+  offer:null,person:null,stories:0,
+  prop:'Scored 0.81 for CDO-as-a-service, a clear 0.19 clear of the next offer. Forty collection centres reporting into spreadsheets. This is the strongest unruled brief in the cohort.',
+  cite:'Brief written 26-Jul · 8 pages read · 6 claims evidenced',
+  ev:[{c:'Forty collection centres across two states',u:'osmaniadiag.example/network'},
+      {c:'Reports consolidated weekly in spreadsheets',u:'osmaniadiag.example/about'},
+      {c:'Hiring a data analyst and a lab systems lead',u:'osmaniadiag.example/careers'}],
+  log:[{d:'26-Jul',w:'researched',who:'agent',b:'Brief written from 8 pages. Fit clear.'}]},
+
+ {id:12,name:'Warangal Textiles',city:'Warangal',ind:'Textiles',state:'lost',days:8,
+  offer:'ai-automations',person:'D. Sharma · GM',stories:2,reason:'Two stories, no reply, and the second bounced',
+  prop:'Closed.',cite:'',ev:[],
+  log:[
+   {d:'11-Jul',w:'researched',who:'agent',b:'Brief written from 5 pages.'},
+   {d:'14-Jul',w:'qualified',who:'you',b:'AI Automations.'},
+   {d:'16-Jul',w:'addressed',who:'you',b:'D. Sharma, GM.'},
+   {d:'17-Jul',w:'waiting',who:'you',b:'Story 1 sent.'},
+   {d:'24-Jul',w:'lost',who:'you',b:'Two stories, no reply, and the second bounced.'}]},
+];}
+
+let CO = seed();
+let RUN = {stage:'draft', members:[], sent:[]};
+let VIEW = {page:'agenda', id:null, band:null};
+
+/* ── dwell → how far a tick sinks in its band ─────────────────────── */
+function sink(d){ return d<=3?0 : d<=7?1 : d<=14?2 : 3; }
+const ACTIVE = c => !['ruled_out','parked','lost','won'].includes(c.state);
+
+/* ═══ THE STRIP ═══════════════════════════════════════════════════════ */
+function strip(){
+  const stalled = CO.filter(c=>ACTIVE(c) && sink(c.days)>=2).length;
+  const bands = STATES.map(s=>{
+    const inb = CO.filter(c=>c.state===s);
+    // Spread across the well horizontally so ticks never stack, and DOWN it
+    // by dwell: 8% for something that moved today, 84% for three weeks cold.
+    const depth = [12, 36, 60, 82];
+    const ticks = inb.map((c,i)=>{
+      const n = inb.length;
+      const w = Math.max(14, Math.min(34, 76/n));       // narrower as a band fills
+      const left = n===1 ? 50 : 14 + (i*(72/(n-1)));
+      return `<span class="tick d${sink(c.days)}"
+        style="left:${left}%;top:${depth[sink(c.days)]}%;width:${w}%;transform:translateX(-50%)"
+        title="${c.name} · ${c.days} days in ${LABEL[s]}"></span>`;
+    }).join('');
+    return `<button class="band ${VIEW.band===s?'sel':''}" onclick="pickBand('${s}')"
+      title="${inb.length} ${LABEL[s]}">
+      <div class="well">${ticks}</div>
+      <div class="band-l">${LABEL[s]}<span class="band-n">${inb.length||'·'}</span></div></button>`;
+  }).join('');
+  const exits = CO.filter(c=>!ACTIVE(c));
+  return `<section class="strip">
+    <div class="strip-head">
+      <span class="strip-title">The cohort · 12 companies</span>
+      <span class="strip-legend">a tick that hangs low has gone quiet · <em>${stalled} stalled</em> · ${exits.length} closed or parked</span>
+    </div>
+    <div class="bands">${bands}</div>
+  </section>`;
+}
+function pickBand(s){ VIEW.band = VIEW.band===s?null:s; render(); }
+
+/* ═══ AGENDA ══════════════════════════════════════════════════════════ */
+function debtCard(c){
+  const owedNow = ACTIVE(c) && c.state!=='waiting';
+  const hot = sink(c.days)>=2;
+  return `<article class="debt ${hot?'stalled':''}" id="debt-${c.id}">
+    <div class="verb">
+      <span class="verb-chip ${hot?'warn':''}">${VERB[c.state]}</span>
+      <span class="dwell ${hot?'hot':''}">${c.days}d in state</span>
+      ${c.stories?`<span class="dwell">${c.stories} ${c.stories===1?'story':'stories'}</span>`:''}
+    </div>
+    <div>
+      <div class="co">
+        <button class="co-name" onclick="open_(${c.id})" style="text-align:left">${c.name}</button>
+        <span class="co-meta">${c.city} · ${c.ind}</span>
+        ${c.offer?`<span class="pill gold">${c.offer}</span>`:''}
+        ${c.person?`<span class="pill">${c.person.split(' · ')[0]}</span>`:''}
+      </div>
+      ${c.prop?`<div class="prop"><span class="who">VaNi proposes</span>${c.prop}
+        ${c.cite?`<span class="cite">${c.cite}</span>`:''}</div>`:''}
+      <div class="acts">${actionsFor(c)}</div>
+      <div id="reason-${c.id}"></div>
+    </div>
+  </article>`;
+}
+
+function actionsFor(c, onThread){
+  // No point offering the thread from inside the thread.
+  const open = onThread ? '' : `<button class="btn ghost" onclick="open_(${c.id})">Open the thread</button>`;
+  switch(c.state){
+    case 'sourced':    return `<button class="btn pri" onclick="act(${c.id},'researched')">Research it</button>
+                               <button class="btn" onclick="askReason(${c.id},'ruled_out')">Rule out</button>
+                               <span class="spacer"></span>${open}`;
+    case 'researched': return `<button class="btn pri" onclick="act(${c.id},'qualified')">Accept the offer</button>
+                               <button class="btn" onclick="toast('Reassigning the offer keeps the agent proposal — the disagreement is the useful part.')">Different offer</button>
+                               <button class="btn" onclick="askReason(${c.id},'ruled_out')">Rule out</button>
+                               <span class="spacer"></span>${open}`;
+    case 'qualified':  return c.person
+                               ? `<button class="btn pri" onclick="act(${c.id},'addressed')">Confirm ${c.person.split(' · ')[0]}</button><span class="spacer"></span>${open}`
+                               : `<button class="btn" disabled>No person found</button>
+                                  <button class="btn" onclick="toast('Add a contact by hand — the brief named nobody, and it will not invent one.')">Add by hand</button>
+                                  <button class="btn" onclick="askReason(${c.id},'parked')">Park it</button>
+                                  <span class="spacer"></span>${open}`;
+    case 'addressed':  return `<button class="btn pri" onclick="go('compose',${c.id})">Write the story</button>
+                               <button class="btn ghost" onclick="toast('Skipped for today. It stays owed.')">Not today</button>
+                               <span class="spacer"></span>${open}`;
+    case 'ready':      return `<button class="btn pri" onclick="stageOne(${c.id})">Add to the run</button>
+                               <span class="spacer"></span>${open}`;
+    case 'waiting':    return `<button class="btn" onclick="act(${c.id},'answered')">Log a reply</button>
+                               <button class="btn ghost" onclick="askReason(${c.id},'lost')">No response</button>
+                               <span class="spacer"></span>${open}`;
+    case 'answered':   return `<button class="btn pri" onclick="anotherStory(${c.id})">Write another story</button>
+                               <button class="btn" onclick="act(${c.id},'won')">Won</button>
+                               <button class="btn" onclick="askReason(${c.id},'parked')">Park</button>
+                               <button class="btn ghost" onclick="askReason(${c.id},'lost')">Stop</button>
+                               <span class="spacer"></span>${open}`;
+    default:           return open;
+  }
+}
+
+function agenda(){
+  let list = CO.filter(c=>ACTIVE(c) && c.state!=='waiting');
+  if(VIEW.band) list = CO.filter(c=>c.state===VIEW.band);
+  // Ranked by debt, then by how long it has been owed. A company that has
+  // sat three weeks outranks one that arrived this morning.
+  const rank = {answered:0,addressed:1,ready:2,qualified:3,researched:4,sourced:5,waiting:6};
+  list.sort((a,b)=> (rank[a.state]??9)-(rank[b.state]??9) || b.days-a.days);
+
+  const waiting = CO.filter(c=>c.state==='waiting');
+  const quiet   = CO.filter(c=>!ACTIVE(c));
+
+  const body = list.length
+    ? list.map(debtCard).join('')
+    : `<div class="empty"><div class="big">Nothing owed here.</div>
+        <div>Every journey in this state is waiting on somebody else.</div></div>`;
+
+  return `${strip()}
+    <div class="ph"><div>
+      <div class="eyebrow">Journeys</div>
+      <h1>${VIEW.band?`<b>${list.length}</b> in ${LABEL[VIEW.band]}`:`<b>${list.length}</b> owed today`}</h1>
+      <p class="sub">${VIEW.band
+        ? `Filtered to one state. <button class="btn ghost" style="padding:2px 8px" onclick="pickBand('${VIEW.band}')">show what is owed</button>`
+        : 'Ranked by what is owed, then by how long it has been owed. VaNi has already proposed the next move on each — accept it or overrule it.'}</p>
+    </div></div>
+    <div class="agenda">${body}</div>
+    ${!VIEW.band && waiting.length?`<div class="daygroup">Out with them · ${waiting.length}</div>
+      <div class="agenda">${waiting.map(debtCard).join('')}</div>`:''}
+    ${!VIEW.band && quiet.length?`<div class="daygroup">Closed, parked and ruled out · ${quiet.length}</div>
+      <div class="agenda">${quiet.map(c=>`<article class="debt" style="opacity:.6">
+        <div class="verb"><span class="verb-chip" style="background:none;color:var(--text-3);border-color:var(--line)">${LABEL[c.state].toUpperCase()}</span></div>
+        <div><div class="co"><button class="co-name" onclick="open_(${c.id})" style="text-align:left">${c.name}</button>
+          <span class="co-meta">${c.reason||''}</span>${c.wake?`<span class="pill">wakes ${c.wake}</span>`:''}</div></div>
+      </article>`).join('')}</div>`:''}`;
+}
+
+/* ═══ THE THREAD ══════════════════════════════════════════════════════ */
+function thread(c){
+  const glyph = {agent:'agent',you:'you',sys:'system'};
+  const entries = [...c.log].reverse().map(e=>`
+    <div class="ent ${e.who}">
+      <div class="ent-h">
+        <span class="ent-when">${e.d}</span>
+        <span class="ent-what">${LABEL[e.w]||e.w}</span>
+        <span class="ent-who">${glyph[e.who]}</span>
+      </div>
+      ${e.b?`<div class="ent-body">${e.b}${e.e?`<span class="ev">${e.e}</span>`:''}</div>`:''}
+    </div>`).join('');
+
+  return `<button class="back" onclick="go('agenda')">← the agenda</button>
+    <div class="ph"><div>
+      <div class="eyebrow">${c.city} · ${c.ind}${c.offer?` · ${c.offer}`:''}</div>
+      <h1>${c.name}</h1>
+    </div></div>
+    ${ACTIVE(c)?`<div class="owed">
+      <div class="owed-l">Owed · ${LABEL[c.state]} for ${c.days} days</div>
+      <div style="font-size:15px;margin-bottom:${c.prop?'10px':'12px'}">${OWED[c.state]}</div>
+      ${c.prop?`<div class="prop" style="margin:0 0 12px"><span class="who">VaNi proposes</span>${c.prop}
+        ${c.cite?`<span class="cite">${c.cite}</span>`:''}</div>`:''}
+      <div class="acts">${actionsFor(c, true)}</div>
+      <div id="reason-${c.id}"></div>
+    </div>`:`<div class="owed" style="border-color:var(--line);background:none">
+      <div class="owed-l" style="color:var(--text-3)">${LABEL[c.state]}</div>
+      <div style="font-size:14px;color:var(--text-2)">${c.reason||OWED[c.state]}${c.wake?` · wakes ${c.wake}`:''}</div>
+    </div>`}
+    ${c.ev.length?`<div class="panel" style="margin-bottom:24px">
+      <h3>What the brief could evidence · ${c.ev.length}</h3>
+      ${c.ev.map(e=>`<div class="evline" style="cursor:default">${e.c}<span class="src">${e.u}</span></div>`).join('')}
+      <p class="note">Only these may be asserted about them. A claim with no line here does not ship.</p>
+    </div>`:''}
+    <div class="thread">${entries}</div>`;
+}
+
+/* ═══ COMPOSE — the evidence-traced editor ════════════════════════════ */
+function compose(c){
+  return `<button class="back" onclick="go('agenda')">← the agenda</button>
+    <div class="ph"><div>
+      <div class="eyebrow">Story ${c.stories+1} · ${c.name} · ${c.person||''}</div>
+      <h1>Write it</h1>
+      <p class="sub">VaNi recommends the <b style="color:var(--gold)">topic and the evidence</b>. You write the words.
+      Every claim you make about them has to trace to a line on the left, or it does not ship.</p>
+    </div></div>
+    <div class="compose">
+      <div>
+        <div class="panel" style="margin-bottom:14px">
+          <h3>VaNi recommends</h3>
+          <div class="rec">${c.prop}</div>
+          <div class="rec" style="font-size:12.5px;color:var(--text-2)">
+            Offer: <b>${c.offer}</b> · Length: <b>110 words</b> · Channel: <b>email</b>
+          </div>
+          ${c.stories?`<p class="note">Story ${c.stories} opened on a different angle. This one may not repeat it.</p>`:''}
+        </div>
+        <div class="panel">
+          <h3>Evidence · click to cite</h3>
+          ${c.ev.map((e,i)=>`<div class="evline" onclick="cite(${i})">
+            <span>${e.c}</span><span class="use">cite</span>
+            <span class="src">${e.u}</span></div>`).join('')}
+          <p class="note">These came from their own site. Anything else you write about them will be flagged below.</p>
+        </div>
+      </div>
+      <div>
+        <div class="editor">
+          <div class="ed-bar"><input id="subj" placeholder="Subject line…" oninput="trace()"></div>
+          <textarea id="body" oninput="trace()" placeholder="Write to ${c.person?c.person.split(' · ')[0]:'them'}…
+
+Click an evidence line on the left to drop it in, then write around it."></textarea>
+          <div class="trace">
+            <div class="trace-h"><span>Claim trace</span><span id="tcount">nothing written yet</span></div>
+            <div id="tlist"><p class="note" style="margin:0">Every sentence you write is checked here as you type.</p></div>
+          </div>
+          <div class="verdict" id="verdict">
+            <span style="color:var(--text-3)">Write something and VaNi will check it against the brief.</span>
+          </div>
+        </div>
+        <div class="acts" style="margin-top:14px">
+          <button class="btn pri" id="approve" onclick="approveStory(${c.id})" disabled>Approve · journey goes ready</button>
+          <button class="btn ghost" onclick="go('agenda')">Leave it as a draft</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function cite(i){
+  const c = CO.find(x=>x.id===VIEW.id); const e = c.ev[i];
+  const t = document.getElementById('body');
+  t.value += (t.value && !t.value.endsWith('\n\n') ? '\n\n' : '') + e.c + '. ';
+  t.focus(); trace();
+}
+
+/* ── What the tracer is actually looking for ───────────────────────────
+   NOT "is every sentence evidenced" — that would flag greetings, subject
+   lines and questions, and a tool that cries wolf gets switched off.
+
+   It looks for an INVENTED FACT ABOUT THEM: a line that makes a specific
+   factual claim, is about the recipient rather than about us, and matches
+   nothing the brief could evidence. That is the one mistake in a first
+   touch that cannot be walked back, and it is the whole of R-S1.
+
+   So a line lands in one of four buckets:
+     traced      — shares real terms with an evidence line
+     about us    — first person, or an ask; ours to say, needs no source
+     unsupported — asserts something specific about them, sourced nowhere
+     neutral     — a connector, a greeting, a question that claims nothing
+   Only `unsupported` blocks approval. ──────────────────────────────── */
+const OURS = /\b(we|we'd|we're|our|ours|us|i|i'd|i'm|my|happy|worth|minutes|call|chat|would you|shall|can i|let me)\b/i;
+const STOP = new Set(['this','that','with','from','they','their','there','have','been','which','about','into','over','across','were','than','then','what','when','your','yours','after','before','while','because','would','could']);
+
+/** Content words worth matching on. Numbers are kept WHATEVER their length —
+    "40%", "Unit-3", "14 sheds". A figure is the most specific thing a
+    sentence can carry and the easiest to invent, so dropping short ones as
+    noise would blind the check to exactly what it is for. */
+function terms(s){
+  return s.toLowerCase().split(/[^a-z0-9]+/)
+    .filter(w => w && (/\d/.test(w) || (w.length>3 && !STOP.has(w))));
+}
+/** Does this line assert a specific fact at all? A greeting does not. */
+function isClaim(s){
+  const t = terms(s);
+  return /\d/.test(s) || t.length >= 5;
+}
+
+function trace(){
+  const c = CO.find(x=>x.id===VIEW.id);
+  const subj = document.getElementById('subj').value.trim();
+  const body = document.getElementById('body').value;
+
+  const lines = [];
+  if(subj) lines.push({s:subj, kind:'subject'});
+  body.split(/(?<=[.!?])\s+|\n+/).map(x=>x.trim()).filter(x=>x.length>4)
+      .forEach(s=>lines.push({s, kind:'line'}));
+
+  let ok=0, bad=0;
+  const rows = lines.map(({s,kind})=>{
+    const t = terms(s);
+    // Traced when it shares real terms with one evidence line. Two shared
+    // terms, or one shared NUMBER — a figure that appears in both is not a
+    // coincidence, and a figure that appears in neither is invented.
+    const hit = c.ev.map(e=>{
+      const et = terms(e.c);
+      const shared = t.filter(w=>et.includes(w));
+      const num = shared.some(w=>/\d/.test(w));
+      return {e, score: shared.length + (num?2:0)};
+    }).filter(x=>x.score>=2).sort((a,b)=>b.score-a.score)[0];
+
+    const label = kind==='subject' ? '<span class="tag">subject</span>' : '';
+    if(hit){ ok++; return `<div class="sent ok">${s}<span class="tag">${hit.e.u}</span></div>`; }
+    if(OURS.test(s)) return `<div class="sent own">${s}<span class="tag">about us</span></div>`;
+    if(!isClaim(s))  return `<div class="sent own">${s}${label||'<span class="tag">claims nothing</span>'}</div>`;
+    bad++; return `<div class="sent no">${s}<span class="tag">nothing in the brief supports this</span></div>`;
+  });
+
+  document.getElementById('tlist').innerHTML = rows.join('')
+    || '<p class="note" style="margin:0">Every sentence you write is checked here as you type.</p>';
+  document.getElementById('tcount').textContent = lines.length
+    ? `${ok} traced · ${bad} unsupported` : 'nothing written yet';
+  const sents = lines;
+
+  const v = document.getElementById('verdict'); const btn = document.getElementById('approve');
+  if(!lines.length){ v.className='verdict'; v.innerHTML='<span style="color:var(--text-3)">Write something and VaNi will check it against the brief.</span>'; btn.disabled=true; return; }
+  if(bad){ v.className='verdict bad'; btn.disabled=true;
+    v.innerHTML=`<b>${bad} sentence${bad>1?'s':''} assert${bad>1?'':'s'} something the brief cannot support.</b>&nbsp;<span style="color:var(--text-2)">Cut it, or research it first.</span>`; return; }
+  if(!ok){ v.className='verdict bad'; btn.disabled=true;
+    v.innerHTML='<b>Nothing here is about them.</b>&nbsp;<span style="color:var(--text-2)">This is a template with a name on it — that is the failure even at a 10% reply rate.</span>'; return; }
+  v.className='verdict good'; btn.disabled=false;
+  v.innerHTML=`<b>${ok} claim${ok>1?'s':''} traced to their own site.</b>&nbsp;<span style="color:var(--text-2)">This says something a template could not.</span>`;
+}
+
+/* ═══ CAMPAIGN RUN ════════════════════════════════════════════════════ */
+function run(){
+  const ready = CO.filter(c=>c.state==='ready');
+  const steps = ['draft','staged','approved','delivering','concluded'];
+  const bar = steps.map((s,i)=>`<div class="rs ${RUN.stage===s?'on':''} ${steps.indexOf(RUN.stage)>i?'past':''}">
+    <span class="n">0${i+1}</span>${s}</div>`).join('');
+
+  let body='';
+  if(RUN.stage==='draft'){
+    body = ready.length
+      ? `<p class="sub" style="margin-bottom:18px">${ready.length} ${ready.length===1?'journey has':'journeys have'} an approved story and no send. Staging resolves them into members — one per journey, each carrying its own story. Nothing goes out.</p>
+         ${ready.map(c=>`<div class="member"><div><b>${c.name}</b>
+           <div class="member-t">${c.person} · ${c.offer} · story ${c.stories}</div></div>
+           <span class="pill gold">ready</span></div>`).join('')}
+         <div class="acts" style="margin-top:16px"><button class="btn pri" onclick="RUN.stage='staged';render()">Stage the run</button></div>`
+      : `<div class="empty"><div class="big">No stories are waiting.</div>
+         <div>A run delivers approved stories. Write one first — the agenda will tell you which company is owed it.</div></div>`;
+  }
+  if(RUN.stage==='staged'){
+    body = `<div class="lockbar">Membership is not frozen yet. Approving locks these ${ready.length} and nothing may be added after.</div>
+      ${ready.map(c=>`<div class="member"><div><b>${c.name}</b>
+        <div class="member-t">${c.person} · email · story ${c.stories}</div></div>
+        <button class="btn ghost" onclick="toast('Read the story before approving the run — that is what approval means.')">Read the story</button></div>`).join('')}
+      <p class="note" style="margin-top:14px">Membership freezes at approval on purpose. If the list can move after you press go, the denominator moves with it and the reply rate stops meaning anything.</p>
+      <div class="acts" style="margin-top:16px">
+        <button class="btn pri" onclick="approveRun()">Approve · freeze these ${ready.length}</button>
+        <button class="btn ghost" onclick="RUN.stage='draft';render()">Back</button></div>`;
+  }
+  if(RUN.stage==='delivering'||RUN.stage==='approved'){
+    const done = RUN.sent.length, total = RUN.members.length;
+    body = `<div class="lockbar locked">Frozen · ${total} members · nothing may be added to this run</div>
+      ${RUN.members.map(c=>{const s=RUN.sent.includes(c.id);
+        return `<div class="member ${s?'sent':''}"><div><b>${c.name}</b>
+          <div class="member-t">${c.person} · ${c.offer}</div></div>
+          ${s?`<span class="pill" style="color:var(--ok);border-color:rgba(95,169,123,.35)">sent · logged</span>`
+             :`<button class="btn pri" onclick="deliver(${c.id})">Mark sent</button>`}</div>`}).join('')}
+      <p class="note" style="margin-top:14px">Each send is logged through the same touch log the pilot scoreboard reads, with <b>had_brief</b> frozen at that moment. ${done}/${total} delivered.</p>
+      ${done===total?`<div class="acts" style="margin-top:16px"><button class="btn pri" onclick="concludeRun()">Conclude the run</button></div>`:''}`;
+  }
+  if(RUN.stage==='concluded'){
+    body = `<div class="empty"><div class="big">Run concluded.</div>
+      <div>${RUN.members.length} journeys moved to <b style="color:var(--gold)">waiting</b>. When an answer lands, each one opens a stage decision on the agenda.</div>
+      <div class="acts" style="justify-content:center;margin-top:20px"><button class="btn pri" onclick="go('agenda')">Back to the agenda</button>
+      <button class="btn ghost" onclick="RUN={stage:'draft',members:[],sent:[]};render()">Start another run</button></div></div>`;
+  }
+
+  return `<div class="ph"><div>
+      <div class="eyebrow">Campaign</div><h1>One run</h1>
+      <p class="sub">One channel, one step, over a frozen set of journeys. The campaign delivers stories the journey already approved — it never writes one, never picks an offer, and never touches a journey twice.</p>
+    </div></div>
+    <div class="runsteps">${bar}</div>${body}`;
+}
+
+function stageOne(id){ RUN.stage='draft'; go('run'); toast('Ready journeys are staged together — this one is in the run.'); }
+function approveRun(){
+  RUN.members = CO.filter(c=>c.state==='ready'); RUN.stage='delivering'; RUN.sent=[]; render();
+  toast('<b>Frozen.</b> These '+RUN.members.length+' are the run, whatever happens next.');
+}
+function deliver(id){
+  RUN.sent.push(id); move(id,'waiting'); render();
+}
+function concludeRun(){ RUN.stage='concluded'; render(); }
+
+/* ═══ TRANSITIONS ═════════════════════════════════════════════════════ */
+const EXITS=['ruled_out','parked','lost'];
+function move(id,to,reason){
+  const c = CO.find(x=>x.id===id); if(!c) return;
+  const today = '29-Jul';
+  c.log.push({d:today,w:to,who:'you',b:reason||''});
+  c.state=to; c.days=0; if(reason) c.reason=reason;
+  if(to==='parked') c.wake='01-Apr-2027';
+  c.prop = PROP[to] ? PROP[to](c) : '';
+  c.cite='';
+}
+const PROP = {
+  qualified: c=> c.person
+    ? `The brief named ${c.person}. Confirm the role and the channel and this journey is addressed.`
+    : `No person yet. Their site names nobody, and it will not be guessed at — add one by hand or park it.`,
+  addressed: c=> `Write story ${c.stories+1}. VaNi will recommend the angle and hand you the evidence.`,
+  ready:     c=> `Story approved and waiting on a send. It goes out with the next run.`,
+  waiting:   c=> `Sent today. The response window has 14 days on it.`,
+  answered:  c=> `An answer came back. Decide whether another story is owed or the journey moves.`,
+  researched:c=> `Brief written just now. It is waiting on a ruling.`,
+  won:       c=> `Won. The lifetime arc takes it from here.`,
+};
+
+function act(id,to){
+  const c = CO.find(x=>x.id===id);
+  if(to==='researched'){ c.ev=c.ev.length?c.ev:[{c:'Placeholder finding from their site',u:c.name.toLowerCase().replace(/\W/g,'')+'.example/about'}]; }
+  if(to==='answered'){ c.stories=c.stories||1; }
+  const el = document.getElementById('debt-'+id);
+  if(el && VIEW.page==='agenda'){ el.classList.add('done'); setTimeout(()=>{ move(id,to); render(); toast(msgFor(to,c)); },260); }
+  else { move(id,to); render(); toast(msgFor(to,c)); }
+}
+function msgFor(to,c){
+  if(to==='qualified') return `<b>${c.name}</b> is qualified. Next it needs a person.`;
+  if(to==='addressed') return `<b>${c.name}</b> is addressed. Next it needs a story.`;
+  if(to==='won')       return `<b>${c.name}</b> won — moved to the lifetime arc. Arc 2 has no states yet, so it parks there.`;
+  if(to==='answered')  return `Answer logged. The stage decision is now owed on <b>${c.name}</b>.`;
+  if(to==='researched')return `Brief written for <b>${c.name}</b>. It is waiting on your ruling.`;
+  return `<b>${c.name}</b> moved to ${LABEL[to]}.`;
+}
+
+/* R-J1 — an exit or a backward move has to say why. */
+function askReason(id,to){
+  const host = document.getElementById('reason-'+id); if(!host) return;
+  host.innerHTML = `<textarea class="reasonbox" id="rz-${id}" rows="2"
+      placeholder="${to==='parked'?'Why not now, and when should it come back?':'Why is this the end of it?'}"></textarea>
+    <div class="reqd">${to==='parked'?'Parking':'Ruling a company out'} needs a reason — it is the only thing the Learning Graph can read.</div>
+    <div class="acts" style="margin-top:9px">
+      <button class="btn pri" onclick="commitReason(${id},'${to}')">${to==='parked'?'Park it':'Confirm'}</button>
+      <button class="btn ghost" onclick="document.getElementById('reason-${id}').innerHTML=''">Cancel</button></div>`;
+  document.getElementById('rz-'+id).focus();
+}
+function commitReason(id,to){
+  const v = document.getElementById('rz-'+id).value.trim();
+  if(v.length<3){ toast('A reason is required. Without it, nothing downstream can learn why this company went away.'); return; }
+  const c = CO.find(x=>x.id===id);
+  move(id,to,v); render();
+  toast(`<b>${c.name}</b> — ${LABEL[to]}. The reason is on the ledger, and the Learning Graph reads it.`);
+}
+
+function anotherStory(id){
+  const c = CO.find(x=>x.id===id);
+  move(id,'addressed','Another story owed — they asked about cost');
+  c.prop = `Story ${c.stories+1}. They asked what it costs, so this one answers payback rather than repeating the first angle. A story that says the same thing again is not another story.`;
+  go('compose',id);
+}
+function approveStory(id){
+  const c = CO.find(x=>x.id===id);
+  c.stories++; move(id,'ready'); go('agenda');
+  toast(`Story ${c.stories} approved for <b>${c.name}</b>. The journey is ready and the run can carry it.`);
+}
+
+/* ═══ Router ══════════════════════════════════════════════════════════ */
+function go(page,id){ VIEW.page=page; if(id!=null) VIEW.id=id; window.scrollTo(0,0); render(); }
+function open_(id){ VIEW.id=id; go('thread'); }
+function render(){
+  const v = document.getElementById('view');
+  document.querySelectorAll('.nav').forEach(n=>n.classList.remove('on'));
+  const active = VIEW.page==='run' ? 'nav-run' : 'nav-agenda';
+  document.getElementById(active)?.classList.add('on');
+  if(VIEW.page==='agenda') v.innerHTML = agenda();
+  else if(VIEW.page==='thread') v.innerHTML = thread(CO.find(c=>c.id===VIEW.id));
+  else if(VIEW.page==='compose'){ v.innerHTML = compose(CO.find(c=>c.id===VIEW.id)); trace(); }
+  else if(VIEW.page==='run') v.innerHTML = run();
+}
+let tt;
+function toast(html){ const t=document.getElementById('toast'); t.innerHTML=html; t.classList.add('show');
+  clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'),4200); }
+function reset(){ CO=seed(); RUN={stage:'draft',members:[],sent:[]}; VIEW={page:'agenda',id:null,band:null};
+  render(); toast('Prototype reset to the starting cohort.'); }
+render();
+</script>
+</body>
+</html>
