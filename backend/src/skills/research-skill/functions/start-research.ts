@@ -148,9 +148,9 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
   // batch: a hundred companies queued against a budget that covered seven,
   // discovered at company eight.
   const budget = await getTokenBudget(getPool(), ctx.tenant_id);
-  const affordable = budget.unmetered
-    ? null
-    : Math.floor(budget.remaining / COST_FULL_RESEARCH);
+  const affordable = budget.capped
+    ? Math.floor(budget.remaining / COST_FULL_RESEARCH)
+    : null;
 
   const split = {
     selected,
@@ -163,8 +163,8 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
     // The cheap half: one call each, no crawling.
     needs_rescore: refresh ? 0 : needsRescore,
     to_research: todo,
-    tokens_remaining: budget.unmetered ? null : budget.remaining,
-    tokens_limit: budget.unmetered ? null : budget.limit,
+    tokens_used_today: budget.tracked ? budget.used : null,
+    tokens_limit: budget.limit,
     /** Companies today's remaining budget covers. null = nothing is metered. */
     affordable_today: affordable,
   };

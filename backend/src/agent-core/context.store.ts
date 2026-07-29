@@ -8,7 +8,8 @@
  *   knowledge         — keyed by agent: { "vani-skill": {...}, "icp-skill": {...} }
  *   flags             — onboarding steps, feature flags, agent run counts
  *   daily_token_usage — { "YYYY-MM-DD": { "vps": N, "escalation": M } }
- *   daily_token_limit — int, default 100k
+ *   daily_token_limit — int, or NULL for no cap (the default since
+ *                       migration 217). Usage is metered either way.
  *
  * Helpers here are intentionally small. Agents read/write JSONB directly
  * via the SkillDb because the shape evolves per agent.
@@ -24,7 +25,7 @@ export interface TenantContext {
   knowledge: Record<string, Record<string, unknown>>;
   flags: Record<string, unknown>;
   daily_token_usage: Record<string, { vps?: number; escalation?: number }>;
-  daily_token_limit: number;
+  daily_token_limit: number | null;
   version: number;
   updated_by: string | null;
   updated_at: Date;

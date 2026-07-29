@@ -107,11 +107,22 @@ crash at 60 of 100 keeps 59 briefs and a resume starts at 60.
 ### The token budget is a resource, not a wall
 
 A company costs about **14,000 tokens** to research (crawl + extract + fit +
-hook) and **3,500** to re-score. The framework default of 100,000 a day is
-therefore about **seven companies**, which is why the first real batch died at
-company eight with `TOKEN_BUDGET_EXCEEDED` on everything after it.
+hook) and **3,500** to re-score. The framework's old default of 100,000 a day
+was therefore about **seven companies**, which is why the first real batch died
+at company eight with `TOKEN_BUDGET_EXCEEDED` on everything after it.
 
-Three rules now:
+**There is no default cap any more** (migration 217). `daily_token_limit` is
+NULL for every tenant that was still sitting on that 100,000, and NULL for
+every new one. A cap exists only because somebody set one FOR THAT TENANT — a
+default applied to everyone is a product-level restriction wearing a
+per-tenant column.
+
+**Usage is still metered, always.** Metering and capping are different things
+and only one of them was the problem: `daily_token_usage` is how anyone learns
+what a batch of a hundred companies costs, and without that number any cap
+gets picked by guessing — which is how the 100,000 got there.
+
+When a cap IS set, three rules:
 
 - **Priced before the first crawl.** The agent reads the budget, prices the
   ACTUAL queue (re-scores cost a quarter of a crawl), and writes a `budget`
@@ -224,12 +235,12 @@ Ratify, reword or throw out one proposed rule. Only accepted rules reach the fit
 ### get_budget
 Today's token budget, converted into the unit the person pressing the button thinks in: companies. A budget you can only find by crashing into it is a trap.
 - Parameters: none
-- Returns: { limit, used, remaining, unmetered, cost_per_company, cost_per_rescore, affordable_companies, affordable_rescores, recipe: 'budget-card' }
+- Returns: { limit, used, remaining, capped, tracked, cost_per_company, cost_per_rescore, affordable_companies, affordable_rescores, recipe: 'budget-card' }
 
 ### set_budget
-Raise or lower the daily token limit. Deliberately manual — a cap that lifts itself when it binds is not a cap.
-- Parameters: daily_token_limit (required, number — 10,000 to 20,000,000)
-- Returns: { daily_token_limit, recipe: 'budget-card' }
+Set or REMOVE the daily token cap for this tenant. `null`/`0`/empty removes it, which is also the default state (migration 217). Deliberately manual — a cap that lifts itself when it binds is not a cap, and one applied by default is not per-tenant.
+- Parameters: daily_token_limit (required, number 10,000–100,000,000 — or null/0 for no cap)
+- Returns: { daily_token_limit, capped, message, recipe: 'budget-card' }
 
 ### delete_briefs
 Throw research away so it can be run from scratch. A scope is required (status, tag, or prospect_ids) — there is no "delete everything". Without `confirm` it only counts. Briefs a human has decided are excluded unless `include_decided` is passed.

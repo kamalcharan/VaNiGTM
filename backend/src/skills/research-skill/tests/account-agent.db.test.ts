@@ -56,14 +56,18 @@ jest.mock('../../../agent-core/prompt.store', () => ({
 let llmQueue: unknown[] = [];
 // Unmetered by default so existing tests are unaffected; a test that cares
 // about the budget sets `budget` and the agent sees a real limit.
-let budget: { limit: number; used: number; remaining: number; unmetered: boolean } =
-  { limit: 0, used: 0, remaining: Number.POSITIVE_INFINITY, unmetered: true };
+// No cap by default — which is what a real tenant looks like since migration
+// 217. A test that cares about a cap sets one.
+let budget: {
+  limit: number | null; used: number; remaining: number;
+  capped: boolean; tracked: boolean;
+} = { limit: null, used: 0, remaining: Number.POSITIVE_INFINITY, capped: false, tracked: true };
 jest.mock('../../../agent-core/llm.client', () => ({
   callLLMValidated: jest.fn(async () => {
     // Tokens are SPENT by calls. A static stub would let the agent read the
     // same remaining budget forever and never stop — hiding the exact bug
     // these tests exist for.
-    if (!budget.unmetered) {
+    if (budget.capped) {
       budget.used += SPEND_PER_CALL;
       budget.remaining = Math.max(0, budget.remaining - SPEND_PER_CALL);
     }
@@ -177,7 +181,8 @@ afterAll(async () => { if (pool) await pool.end(); });
 
 beforeEach(() => {
   fetched.length = 0; llmQueue = []; siteText = {};
-  budget = { limit: 0, used: 0, remaining: Number.POSITIVE_INFINITY, unmetered: true };
+  budget = { limit: null, used: 0, remaining: Number.POSITIVE_INFINITY,
+             capped: false, tracked: true };
 });
 
 async function newRun(tenantId = A): Promise<string> {
@@ -933,8 +938,32 @@ maybe('what a human ruled is remembered, not overwritten', () => {
 maybe('running out of budget', () => {
   beforeEach(async () => { await pool.query('DELETE FROM gt_account_briefs'); });
 
+  // The default since migration 217, and the point of it: a tenant nobody
+  // configured is not silently capped at a number sized for chat agents.
+  it('does not limit a tenant nobody set a cap for', async () => {
+    // budget is left at capped:false by beforeEach.
+    siteText = {
+      'https://alpha.com': siteBody('APIs'),
+      'https://beta.com': siteBody('bulk drugs'),
+    };
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+
+    const runId = await newRun();
+    await AccountResearchAgent.run(pool, A, { tag_id: 7 }, runId);
+
+    expect(await briefs()).toHaveLength(2);
+    const { output, steps } = (await pool.query(
+      `SELECT output, steps FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
+    expect(output.stopped_for_budget).toBe(false);
+    // No cap, so no budget step to read and nothing to decide against.
+    expect(steps.some((x: any) => x.step_name === 'budget')).toBe(false);
+    expect(output.tokens_limit).toBeNull();
+  });
+
   const metered = (remaining: number) => {
-    budget = { limit: 100_000, used: 100_000 - remaining, remaining, unmetered: false };
+    budget = { limit: 100_000, used: 100_000 - remaining, remaining,
+               capped: true, tracked: true };
   };
 
   // The defect this exists for: a spent budget wrote extract_failed across

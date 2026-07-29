@@ -107,15 +107,20 @@ interface Split {
   /** Facts already gathered; only the offer judgement is out of date. */
   needs_rescore: number;
   to_research: number;
-  tokens_remaining: number | null;
+  tokens_used_today: number | null;
   tokens_limit: number | null;
   /** Companies today's remaining tokens cover. null = nothing is metered. */
   affordable_today: number | null;
 }
 
 interface Budget {
-  limit: number | null; used: number | null; remaining: number | null;
-  unmetered: boolean;
+  /** null = no cap for this tenant, which is the default. */
+  limit: number | null;
+  /** Always counted, cap or no cap — this is how you learn what a batch costs. */
+  used: number | null;
+  remaining: number | null;
+  capped: boolean;
+  tracked: boolean;
   cost_per_company: number; cost_per_rescore: number;
   affordable_companies: number | null; affordable_rescores: number | null;
 }
@@ -358,21 +363,26 @@ export default function ResearchPage() {
   };
 
   const onSetBudget = async () => {
+    // Empty is a real answer, and the default one — so this cannot bail on a
+    // falsy value the way a "did they type anything" check would.
     const want = window.prompt(
-      'Daily token limit.\n\n'
+      'Daily token cap for this tenant.\n\n'
+      + 'Leave it EMPTY for no cap. That is the default: a cap exists only '
+      + 'because you set one here.\n\n'
       + 'Account research costs roughly 14,000 tokens per company — a re-score '
-      + 'about 3,500. A hundred companies is around 1.4 million.\n\n'
-      + 'This cap exists so a runaway agent costs a bounded amount. It does not '
-      + 'raise itself.',
-      String(budget?.limit ?? 100000),
+      + 'about 3,500. A hundred companies is around 1.4 million.',
+      budget?.limit === null ? '' : String(budget?.limit ?? ''),
     );
-    if (!want) return;
+    if (want === null) return;   // cancelled, as opposed to cleared
     try {
-      await setBudget.mutateAsync({ daily_token_limit: Number(want) });
-      showToast({ type: 'success', message: `Daily limit set to ${Number(want).toLocaleString()} tokens` });
+      const res = await setBudget.mutateAsync({
+        daily_token_limit: want.trim() === '' ? null : Number(want),
+      });
+      const { message } = (res.data ?? {}) as unknown as { message: string };
+      showToast({ type: 'success', message });
       refresh(); previewQ.refetch();
     } catch (err) {
-      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Could not set the limit' });
+      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Could not set the cap' });
     }
   };
 
@@ -573,34 +583,44 @@ export default function ResearchPage() {
               crashing into it is not a budget: the first real batch queued a
               hundred companies against a limit that covered seven, and found
               out at company eight. */}
-          {budget && !budget.unmetered && (
+          {budget?.tracked && (
             <div className={
-              (budget.affordable_companies ?? 0) < 1 ? s.budgetBad : s.budgetOk
+              budget.capped && (budget.affordable_companies ?? 0) < 1
+                ? s.budgetBad : s.budgetOk
             }>
               <div className={s.budgetLine}>
                 <strong>
-                  {(budget.used ?? 0).toLocaleString()} of{' '}
-                  {(budget.limit ?? 0).toLocaleString()} tokens used today
+                  {(budget.used ?? 0).toLocaleString()} tokens used today
+                  {budget.capped && <> of {(budget.limit ?? 0).toLocaleString()}</>}
                 </strong>
                 <span className={s.budgetAfford}>
-                  {(budget.affordable_companies ?? 0) < 1
-                    ? 'nothing more fits today'
-                    : `about ${budget.affordable_companies} more compan${
-                        budget.affordable_companies === 1 ? 'y' : 'ies'}`}
-                  {' · '}
-                  {budget.affordable_rescores} re-score
-                  {budget.affordable_rescores === 1 ? '' : 's'}
+                  {!budget.capped
+                    ? 'no cap on this tenant'
+                    : (budget.affordable_companies ?? 0) < 1
+                      ? 'nothing more fits today'
+                      : `about ${budget.affordable_companies} more compan${
+                          budget.affordable_companies === 1 ? 'y' : 'ies'} · `
+                        + `${budget.affordable_rescores} re-score${
+                          budget.affordable_rescores === 1 ? '' : 's'}`}
                 </span>
                 <button type="button" className={s.linkButton} onClick={onSetBudget}>
-                  Change the limit
+                  {budget.capped ? 'Change or remove the cap' : 'Set a daily cap'}
                 </button>
               </div>
               <div className={s.budgetNote}>
+                {/* The meter stays visible with no cap on purpose. It is how you
+                    find out what a batch of a hundred actually costs — and
+                    without that number, any cap you ever set is a guess, which
+                    is exactly how the old 100,000 default got here. */}
                 Roughly {budget.cost_per_company.toLocaleString()} tokens per company
                 researched, {budget.cost_per_rescore.toLocaleString()} to re-score one
-                against changed offers. The cap is ours, not the model&rsquo;s — it
-                resets at midnight UTC, and a batch that runs out stops cleanly and
-                keeps everything it finished.
+                against changed offers.
+                {budget.capped
+                  ? ' The cap is yours, not the model’s — it resets at midnight UTC,'
+                    + ' and a batch that runs out stops cleanly and keeps everything'
+                    + ' it finished.'
+                  : ' Counted so you can see what a batch costs; nothing here will'
+                    + ' stop a run.'}
               </div>
             </div>
           )}

@@ -74,19 +74,36 @@ interface DailyUsage { vps?: number; escalation?: number }
 
 /* ── Token budget ────────────────────────────────────────────────────────── */
 
+/**
+ * Today's spend, and the cap if this tenant has one.
+ *
+ * ── METERING AND CAPPING ARE DIFFERENT THINGS ─────────────────────────
+ *
+ * `used` is always real: every call is counted, cap or no cap. That number is
+ * how anyone finds out what a batch of a hundred companies actually costs.
+ *
+ * `limit` is NULL for most tenants and that is correct (migration 217). A cap
+ * exists only because somebody set one FOR THAT TENANT — the framework does
+ * not get to impose one by default, which is how a number sized for chat
+ * agents came to mean "seven companies" for account research.
+ */
 export interface TokenBudget {
-  limit: number;
+  /** null = no cap for this tenant. */
+  limit: number | null;
   used: number;
+  /** Infinity when uncapped. */
   remaining: number;
-  /** No gt_tenant_context row — nothing is being counted for this tenant. */
-  unmetered: boolean;
+  /** A cap is in force. When false, nothing here will ever refuse a call. */
+  capped: boolean;
+  /** There is a context row, so usage is being recorded. */
+  tracked: boolean;
 }
 
 /**
- * What is left in today's budget.
+ * What today has cost, and what is left if anything is limiting it.
  *
- * Exported because a budget that can only be discovered by CRASHING INTO IT is
- * not a budget, it is a trap. A long agent needs to know before it starts how
+ * Exported because a cap that can only be discovered by CRASHING INTO IT is
+ * not a cap, it is a trap. A long agent needs to know before it starts how
  * much work it can afford, and a screen needs to say "7 companies fit in what
  * you have left" instead of queueing a hundred and failing at eight.
  */
@@ -96,7 +113,7 @@ export async function getTokenBudget(
 ): Promise<TokenBudget> {
   const db = createTenantDb(pool, tenantId);
   const result = await db.query<{
-    daily_token_limit: number;
+    daily_token_limit: number | null;
     daily_token_usage: Record<string, DailyUsage>;
   }>(
     `SELECT daily_token_limit, daily_token_usage
@@ -105,19 +122,33 @@ export async function getTokenBudget(
     { tenant_id: tenantId },
   );
 
-  // No context row yet → nothing is metered. ensureTenantContext should be
-  // called by the agent at startup, but a missing row must not block a
-  // first-time agent.
+  // No context row yet → nothing is counted and nothing is capped.
+  // ensureTenantContext should be called by the agent at startup, but a
+  // missing row must never block a first-time agent.
   if (!result.rows[0]) {
-    return { limit: 0, used: 0, remaining: Number.POSITIVE_INFINITY, unmetered: true };
+    return {
+      limit: null, used: 0, remaining: Number.POSITIVE_INFINITY,
+      capped: false, tracked: false,
+    };
   }
 
   const today = new Date().toISOString().split('T')[0];
   const usage = result.rows[0].daily_token_usage?.[today] ?? {};
   const used  = (usage.vps ?? 0) + (usage.escalation ?? 0);
-  const limit = result.rows[0].daily_token_limit ?? 100000;
+  const limit = result.rows[0].daily_token_limit;
 
-  return { limit, used, remaining: Math.max(0, limit - used), unmetered: false };
+  // NULL or a non-positive number both mean "no cap". Accepting 0 as well
+  // costs nothing and means an operator typing 0 gets what they obviously
+  // meant rather than a tenant that can never call anything.
+  const capped = typeof limit === 'number' && limit > 0;
+
+  return {
+    limit: capped ? limit : null,
+    used,
+    remaining: capped ? Math.max(0, (limit as number) - used) : Number.POSITIVE_INFINITY,
+    capped,
+    tracked: true,
+  };
 }
 
 async function checkTokenBudget(
@@ -126,13 +157,14 @@ async function checkTokenBudget(
   estimatedTokens: number,
 ): Promise<void> {
   const budget = await getTokenBudget(pool, tenantId);
-  if (budget.unmetered) return;
+  if (!budget.capped) return;
 
-  if (budget.used + estimatedTokens > budget.limit) {
+  if (budget.used + estimatedTokens > (budget.limit as number)) {
     throw new Error(
       `TOKEN_BUDGET_EXCEEDED: Tenant ${tenantId} has used ${budget.used} tokens today `
-      + `(limit: ${budget.limit}). This is OUR OWN cap, not the model refusing — `
-      + 'raise the daily limit on the Research screen, or wait for it to reset at midnight UTC.',
+      + `against a cap of ${budget.limit} that was set for this tenant. This is not the `
+      + 'model refusing — change or remove the cap on the Research screen, or wait for '
+      + 'midnight UTC.',
     );
   }
 }

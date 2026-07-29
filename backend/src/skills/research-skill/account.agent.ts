@@ -427,7 +427,7 @@ export class AccountResearchAgent {
     // that the budget went at company eight — burning network and time on
     // ninety-two companies to produce ninety-two failure rows.
     const budget = await getTokenBudget(pool, tenantId);
-    if (!budget.unmetered) {
+    if (budget.capped) {
       // Priced over the ACTUAL queue, not by dividing through by the worst
       // case. A cohort that only needs re-scoring costs a quarter as much,
       // and pricing it as crawls refused batches that would have finished
@@ -508,7 +508,7 @@ export class AccountResearchAgent {
         // companies as broken when the only thing that happened is that we
         // ran out of budget, and a later run would then treat them as
         // retryable pipeline failures rather than untouched work.
-        if (!budget.unmetered) {
+        if (budget.capped) {
           const cost = hasFacts ? COST_RESCORE_ONLY : COST_FULL_RESEARCH;
           const now = await getTokenBudget(pool, tenantId);
           if (now.remaining < cost) {
@@ -652,8 +652,10 @@ export class AccountResearchAgent {
         // tick over a batch that covered a fifth of the cohort.
         stopped_for_budget: stoppedForBudget,
         not_attempted: notAttempted,
-        tokens_used: after.unmetered ? null : after.used,
-        tokens_limit: after.unmetered ? null : after.limit,
+        // Usage is recorded whether or not a cap exists — this is how
+        // anyone finds out what a batch of a hundred actually costs.
+        tokens_used: after.tracked ? after.used : null,
+        tokens_limit: after.limit,
         // Companies whose facts were reused — no crawl, one LLM call. The
         // number that shows what the facts/judgement split is worth.
         rescored_without_crawling: rescoredOnly,

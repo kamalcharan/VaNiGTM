@@ -36,8 +36,12 @@ jest.mock('../../../agent-core/prompt.store', () => ({
 let llmQueue: unknown[] = [];
 // Unmetered by default so existing tests are unaffected; a test that cares
 // about the budget sets `budget` and the agent sees a real limit.
-let budget: { limit: number; used: number; remaining: number; unmetered: boolean } =
-  { limit: 0, used: 0, remaining: Number.POSITIVE_INFINITY, unmetered: true };
+// No cap by default — which is what a real tenant looks like since migration
+// 217. A test that cares about a cap sets one.
+let budget: {
+  limit: number | null; used: number; remaining: number;
+  capped: boolean; tracked: boolean;
+} = { limit: null, used: 0, remaining: Number.POSITIVE_INFINITY, capped: false, tracked: true };
 jest.mock('../../../agent-core/llm.client', () => ({
   callLLMValidated: jest.fn(async () => {
     if (llmQueue.length === 0) throw new Error('stub LLM: nothing queued');
