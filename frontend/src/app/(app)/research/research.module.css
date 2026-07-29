@@ -71,6 +71,27 @@
 .briefMakes { margin-top: 0.4rem; font-size: 0.8rem; color: var(--color-text-muted); }
 .badges { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
 
+/* The smallest-sane-ask rule, shown rather than applied silently. Quiet
+   surface, accent left edge — it explains a decision, it is not an alarm. */
+.ladder {
+  margin-top: 0.5rem; padding: 0.5rem 0.7rem;
+  font-size: 0.8rem; line-height: 1.5;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2, var(--color-surface));
+  border-left: 2px solid var(--color-accent);
+  border-radius: 0 6px 6px 0;
+}
+.ladder strong { color: var(--color-text); font-weight: 600; }
+
+/* Two scores inside the margin. This one IS a warning: the number on screen
+   looks like a ranking and is not one. */
+.unclear {
+  margin-top: 0.5rem; padding: 0.5rem 0.7rem;
+  font-size: 0.8rem; line-height: 1.5;
+  color: var(--color-warning, var(--color-text));
+  border: 1px dashed var(--color-border); border-radius: 6px;
+}
+
 /* ── Detail ─────────────────────────────────────────────────────────── */
 
 .detailField { margin-bottom: 1rem; }

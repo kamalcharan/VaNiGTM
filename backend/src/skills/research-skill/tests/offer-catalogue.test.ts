@@ -8,11 +8,13 @@
  */
 
 import {
-  catalogueProblems, offerIsReady, assertReady, catalogueForPrompt, type Offer,
+  catalogueProblems, offerIsReady, assertReady, catalogueForPrompt,
+  shuffleForCompany, chooseOffer, FIT_MARGIN, type Offer,
 } from '../offer-catalogue';
 
 const offer = (over: Partial<Offer> = {}): Offer => ({
   id: 'cdo-as-a-service',
+  commitment: 'retainer',
   name: 'CDO as a Service',
   one_line: 'A fractional Chief Data Officer for pharma manufacturers.',
   who_for: 'Mid-size pharma manufacturers with multiple plants.',
@@ -128,5 +130,154 @@ describe('catalogueForPrompt', () => {
     const text = catalogueForPrompt(cat);
     expect(text).toContain('INR 3-6 lakh');
     expect(text).toContain('Hyderabad API manufacturers');
+  });
+
+  // commitment is the ladder rule's input, not the model's. Telling the model
+  // how big an ask something is invites it to conflate "fits" with "sellable",
+  // and we lose the ability to see which judgement was which.
+  it('never tells the model how big an ask an offer is', () => {
+    const text = catalogueForPrompt({
+      tenant_id: 't',
+      offers: [offer({ commitment: 'retainer' }), offer({ id: 'b', commitment: 'entry' })],
+    });
+    expect(text).not.toMatch(/retainer|commitment/i);
+  });
+});
+
+/* ── Order ──────────────────────────────────────────────────────────── */
+
+describe('shuffleForCompany', () => {
+  const five = ['cdo', 'caio', 'audit', 'workshop', 'automations'].map((id) => ({ id }));
+
+  it('gives the same company the same order every time', () => {
+    expect(shuffleForCompany(five, '4021')).toEqual(shuffleForCompany(five, '4021'));
+  });
+
+  it('keeps every offer — this reorders, it does not sample', () => {
+    const out = shuffleForCompany(five, '77').map((o) => o.id).sort();
+    expect(out).toEqual([...five].map((o) => o.id).sort());
+  });
+
+  // The actual defect: one offer was first in every prompt in the batch and
+  // won 4 of 5 companies by 0.03.
+  it('does not put the same offer first for every company', () => {
+    const firsts = new Set(
+      Array.from({ length: 40 }, (_, i) => shuffleForCompany(five, String(i))[0].id),
+    );
+    expect(firsts.size).toBeGreaterThan(1);
+  });
+
+  it('is unaffected by the order it was given, so sort_order cannot leak in', () => {
+    const reversed = [...five].reverse();
+    expect(shuffleForCompany(five, '9')).toEqual(shuffleForCompany(reversed, '9'));
+  });
+});
+
+/* ── The ladder ─────────────────────────────────────────────────────── */
+
+describe('chooseOffer', () => {
+  const offers = [
+    { id: 'cdo', commitment: 'retainer' as const },
+    { id: 'automations', commitment: 'project' as const },
+    { id: 'audit', commitment: 'entry' as const },
+    { id: 'workshop', commitment: 'entry' as const },
+  ];
+
+  // Biophore, from the first pilot run. Four offers spanning 0.13 — every gap
+  // inside the noise, and a retainer "winning" by 0.03.
+  it('opens with the smallest ask when everything fits about equally', () => {
+    const c = chooseOffer([
+      { offer_id: 'cdo', score: 0.81 },
+      { offer_id: 'automations', score: 0.78 },
+      { offer_id: 'workshop', score: 0.72 },
+      { offer_id: 'audit', score: 0.68 },
+    ], offers);
+
+    expect(c.best).toBe('cdo');
+    expect(c.recommended).toBe('workshop');   // entry rung, higher of the two
+    expect(c.laddered_from).toBe('cdo');
+    expect(c.margin).toBeCloseTo(0.03, 3);
+    expect(c.unclear).toBe(true);
+  });
+
+  it('leaves a clear winner alone', () => {
+    const c = chooseOffer([
+      { offer_id: 'cdo', score: 0.9 },
+      { offer_id: 'audit', score: 0.3 },
+    ], offers);
+
+    expect(c.best).toBe('cdo');
+    expect(c.recommended).toBe('cdo');
+    expect(c.laddered_from).toBeNull();
+    expect(c.unclear).toBe(false);
+  });
+
+  it('only reaches down as far as the margin, never past it', () => {
+    const c = chooseOffer([
+      { offer_id: 'cdo', score: 0.9 },
+      { offer_id: 'audit', score: 0.9 - FIT_MARGIN - 0.01 },
+    ], offers);
+    expect(c.recommended).toBe('cdo');
+  });
+
+  it('takes an entry offer exactly at the margin', () => {
+    const c = chooseOffer([
+      { offer_id: 'cdo', score: 0.9 },
+      { offer_id: 'audit', score: 0.75 },
+    ], offers);
+    expect(c.recommended).toBe('audit');
+  });
+
+  it('prefers the lower rung over the higher score, that being the whole point', () => {
+    const c = chooseOffer([
+      { offer_id: 'automations', score: 0.7 },
+      { offer_id: 'audit', score: 0.62 },
+    ], offers);
+    expect(c.recommended).toBe('audit');
+  });
+
+  it('ignores scores for offers that are not in the catalogue', () => {
+    const c = chooseOffer([
+      { offer_id: 'invented-offer', score: 0.99 },
+      { offer_id: 'cdo', score: 0.5 },
+    ], offers);
+    expect(c.best).toBe('cdo');
+    expect(c.recommended).toBe('cdo');
+  });
+
+  it('reports no margin when only one offer was scored', () => {
+    const c = chooseOffer([{ offer_id: 'cdo', score: 0.7 }], offers);
+    expect(c.margin).toBeNull();
+    expect(c.unclear).toBe(false);
+  });
+
+  it('says nothing at all rather than guessing when nothing was scored', () => {
+    expect(chooseOffer([], offers)).toEqual({
+      best: null, recommended: null, margin: null, unclear: false, laddered_from: null,
+    });
+  });
+
+  it('is deterministic when two offers tie exactly', () => {
+    const a = chooseOffer([
+      { offer_id: 'audit', score: 0.7 }, { offer_id: 'workshop', score: 0.7 },
+    ], offers);
+    const b = chooseOffer([
+      { offer_id: 'workshop', score: 0.7 }, { offer_id: 'audit', score: 0.7 },
+    ], offers);
+    expect(a.recommended).toBe(b.recommended);
+  });
+});
+
+describe('commitment validation', () => {
+  it('rejects a rung the ladder rule does not recognise', () => {
+    expect(catalogueProblems([offer({ commitment: 'cheap' as never })])).toEqual(
+      expect.arrayContaining([expect.stringMatching(/commitment must be one of/)]),
+    );
+  });
+
+  it('accepts all three rungs', () => {
+    for (const c of ['entry', 'project', 'retainer'] as const) {
+      expect(catalogueProblems([offer({ commitment: c })])).toEqual([]);
+    }
   });
 });

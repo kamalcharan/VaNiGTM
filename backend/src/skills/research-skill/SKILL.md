@@ -104,6 +104,27 @@ Three rules this agent will not break:
 One run covers the whole cohort and checkpoints after every account, so a
 crash at 60 of 100 keeps 59 briefs and a resume starts at 60.
 
+### Fit is not the same question as what to open with (migration 212)
+
+The first pilot run scored one offer top on 4 of 5 companies, winning by
+0.03–0.04 — inside the noise of the model's own judgement, and always the
+offer rendered first in the prompt. Two fixes, both outside the model:
+
+- **Order varies per company.** `catalogueForPrompt(cat, seed)` orders offers
+  by `sha256(prospect_id : offer_id)`, so no offer wins on position, and the
+  same company re-scored gets the same order — a moved score means the offer
+  wording moved, not that the dice landed differently.
+- **The smallest sane first ask wins ties.** Each offer carries a
+  `commitment` rung — `entry` / `project` / `retainer` — which is **never put
+  in the prompt**. The model scores fit blind to it; `chooseOffer()` then
+  takes, among the offers within `FIT_MARGIN` (0.15) of the top score, the
+  lowest rung. The brief stores `best_fit_offer` (what the model said) beside
+  `recommended_offer` (what we act on) and `fit_margin`, and the screen shows
+  both — a recommendation nobody can argue with is one nobody should trust.
+
+The rule only ever narrows an existing yes. A "no fit" verdict stays a no; it
+picks a smaller ask, it never manufactures one.
+
 ## Functions
 
 ### get_offers
@@ -113,7 +134,7 @@ What this tenant sells, each with a readiness verdict, plus the exact list of wh
 
 ### save_offer
 Create or update one offer. A half-written offer is storable — the gate is at research time, not save time.
-- Parameters: name (required, string), offer_key (optional, string), one_line (optional, string), who_for (optional, string), problem (optional, string), what_we_do (optional, array), signals (optional, array), disqualifiers (optional, array), price_band (optional, string), proof (optional, string)
+- Parameters: name (required, string), offer_key (optional, string), one_line (optional, string), who_for (optional, string), problem (optional, string), what_we_do (optional, array), signals (optional, array), disqualifiers (optional, array), price_band (optional, string), proof (optional, string), commitment (optional, string — entry | project | retainer; omitted leaves the stored value alone, anything else is rejected)
 - Returns: { offer_key, recipe: 'offer-card' }
 
 ### get_briefs

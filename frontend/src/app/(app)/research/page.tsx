@@ -27,11 +27,28 @@ import s from './research.module.css';
 
 /* ── Types ──────────────────────────────────────────────────────────── */
 
+type Commitment = 'entry' | 'project' | 'retainer';
+
 interface Offer {
   id: string; name: string; one_line: string; who_for: string; problem: string;
   what_we_do: string[]; signals: string[]; disqualifiers: string[];
-  price_band: string; proof: string; is_ready: boolean;
+  price_band: string; proof: string; commitment: Commitment; is_ready: boolean;
 }
+
+/**
+ * How big an ask each offer is — the axis the fit score deliberately does NOT
+ * measure. The agent scores fit blind to this, then opens with the smallest
+ * ask among the offers that fit equally well.
+ */
+const COMMITMENT_OPTIONS: { value: Commitment; label: string; hint: string }[] = [
+  { value: 'entry', label: 'Entry', hint: 'A workshop, an audit, an assessment — something a stranger can say yes to.' },
+  { value: 'project', label: 'Project', hint: 'Bounded delivery with a start and an end.' },
+  { value: 'retainer', label: 'Retainer', hint: 'Ongoing. Almost never a sane first ask.' },
+];
+
+const COMMITMENT_SHORT: Record<Commitment, string> = {
+  entry: 'entry ask', project: 'project', retainer: 'retainer',
+};
 
 interface Evidence { claim: string; url: string; excerpt: string }
 
@@ -42,7 +59,12 @@ interface Brief {
   service_signals: string | null; digital_maturity: string | null;
   named_contacts: { name?: string; title?: string; email?: string }[];
   fit: Record<string, { score: number; reason: string }>;
-  recommended_offer: string | null; fit_reason: string | null;
+  recommended_offer: string | null;
+  /** What the model scored highest, before the smallest-ask rule. */
+  best_fit_offer: string | null;
+  /** Top score minus second. Under FIT_MARGIN the two are the same score. */
+  fit_margin: string | number | null;
+  fit_reason: string | null;
   hook: string | null; raw_evidence: Evidence[]; error: string | null;
   decision_note: string | null; decided_at: string | null;
   unevidenced: boolean; updated_at: string;
@@ -134,8 +156,18 @@ function Area({ label, value, hint, onEdit, minRows = 3 }: {
 const emptyOffer = (): Offer => ({
   id: '', name: '', one_line: '', who_for: '', problem: '',
   what_we_do: [], signals: [], disqualifiers: [], price_band: '', proof: '',
-  is_ready: false,
+  commitment: 'project', is_ready: false,
 });
+
+/** NUMERIC comes back from pg as a string. Never trust it to be a number. */
+const num = (v: string | number | null | undefined): number | null => {
+  if (v === null || v === undefined) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+/** Mirrors FIT_MARGIN in backend offer-catalogue.ts — change both together. */
+const FIT_MARGIN = 0.15;
 
 /* ── Page ───────────────────────────────────────────────────────────── */
 
@@ -199,6 +231,11 @@ export default function ResearchPage() {
     return (key: string | null) => (key ? m.get(key) ?? key : null);
   }, [offers]);
 
+  const commitmentOf = useMemo(() => {
+    const m = new Map(offers.map((o) => [o.id, o.commitment]));
+    return (key: string | null) => (key ? m.get(key) ?? null : null);
+  }, [offers]);
+
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['skill', 'research-skill'] });
   };
@@ -218,6 +255,7 @@ export default function ResearchPage() {
         disqualifiers: draft.disqualifiers,
         price_band: draft.price_band,
         proof: draft.proof,
+        commitment: draft.commitment,
       });
       showToast({ type: 'success', message: `Saved “${draft.name}”` });
       setEditing(null);
@@ -318,9 +356,12 @@ export default function ResearchPage() {
               >
                 <div className={s.offerHead}>
                   <span className={s.offerName}>{o.name}</span>
-                  <VdfBadge variant={o.is_ready ? 'success' : 'gold'}>
-                    {o.is_ready ? 'Ready' : 'Incomplete'}
-                  </VdfBadge>
+                  <div className={s.badges}>
+                    <VdfBadge variant="default">{COMMITMENT_SHORT[o.commitment]}</VdfBadge>
+                    <VdfBadge variant={o.is_ready ? 'success' : 'gold'}>
+                      {o.is_ready ? 'Ready' : 'Incomplete'}
+                    </VdfBadge>
+                  </div>
                 </div>
                 <div className={s.offerLine}>{o.one_line}</div>
                 {!o.is_ready && (
@@ -468,6 +509,16 @@ export default function ResearchPage() {
               <VdfStatCard value={stats.total ?? 0} label="Researched" />
               <VdfStatCard value={stats.with_offer ?? 0} label="Offer suggested" accent="success" />
               <VdfStatCard value={stats.no_fit ?? 0} label="No fit" />
+              <VdfStatCard
+                value={stats.smaller_ask ?? 0} label="Smaller first ask"
+                sub="best fit was too big to open with"
+              />
+              <VdfStatCard
+                value={stats.fit_unclear ?? 0} label="Too close to call"
+                accent={Number(stats.fit_unclear ?? 0) > Number(stats.with_offer ?? 0) / 2
+                  ? 'warning' : 'default'}
+                sub="top two inside the margin — your offers may not discriminate"
+              />
               <VdfStatCard value={stats.unreadable ?? 0} label="No website" accent="warning" />
               <VdfStatCard
                 value={stats.extract_failed ?? 0} label="Extraction failed"
@@ -530,6 +581,20 @@ export default function ResearchPage() {
                       </VdfBadge>
                     </div>
                   </div>
+                  {b.best_fit_offer && b.best_fit_offer !== b.recommended_offer && (
+                    <div className={s.ladder}>
+                      Fits <strong>{offerName(b.best_fit_offer)}</strong> best — opening
+                      with <strong>{offerName(b.recommended_offer)}</strong>, the smaller ask
+                      in the same fit band.
+                    </div>
+                  )}
+                  {num(b.fit_margin) !== null && num(b.fit_margin)! < FIT_MARGIN
+                    && b.recommended_offer && (
+                    <div className={s.unclear}>
+                      Top two offers within {num(b.fit_margin)!.toFixed(2)} — not
+                      distinguishable on what the site says.
+                    </div>
+                  )}
                   {b.hook && <div className={s.briefHook}>{b.hook}</div>}
                   {b.what_they_make && <div className={s.briefMakes}>{b.what_they_make}</div>}
                   {(b.status === 'unreadable' || b.status === 'extract_failed') && b.error && (
@@ -586,7 +651,8 @@ export default function ResearchPage() {
       >
         {openBrief && (
           <BriefDetail
-            brief={openBrief} offers={offers} offerName={offerName}
+            brief={openBrief} offers={offers}
+            offerName={offerName} commitmentOf={commitmentOf}
             note={note} setNote={setNote}
             reassign={reassign} setReassign={setReassign}
           />
@@ -683,6 +749,23 @@ function OfferForm({
             onEdit={(v) => set({ disqualifiers: toLines(v) })}
             hint="One per line. Without these the agent always finds a reason to say yes."
           />
+          <div className={s.formRow}>
+            <label className={s.formLabel}>How big an ask is it</label>
+            <select
+              className={s.select} value={draft.commitment}
+              onChange={(e) => set({ commitment: e.target.value as Commitment })}
+            >
+              {COMMITMENT_OPTIONS.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+            <div className={s.formHint}>
+              {COMMITMENT_OPTIONS.find((c) => c.value === draft.commitment)?.hint}
+              {' '}The agent scores fit without seeing this — then, among the offers
+              that fit a company equally well, it opens with the smallest ask.
+            </div>
+          </div>
+
           <Area
             label="Price band" value={draft.price_band} minRows={2}
             onEdit={(v) => set({ price_band: v })}
@@ -719,9 +802,10 @@ function OfferForm({
 /* ── Brief detail ───────────────────────────────────────────────────── */
 
 function BriefDetail({
-  brief, offers, offerName, note, setNote, reassign, setReassign,
+  brief, offers, offerName, commitmentOf, note, setNote, reassign, setReassign,
 }: {
   brief: Brief; offers: Offer[]; offerName: (k: string | null) => string | null;
+  commitmentOf: (k: string | null) => Commitment | null;
   note: string; setNote: (v: string) => void;
   reassign: string; setReassign: (v: string) => void;
 }) {
@@ -783,13 +867,51 @@ function BriefDetail({
         <div className={s.detailLabel}>
           Fit — {offerName(brief.recommended_offer) ?? 'nothing fits'}
         </div>
-        {brief.fit_reason && <div className={s.detailValue}>{brief.fit_reason}</div>}
-        {Object.entries(brief.fit ?? {}).map(([id, f]) => (
-          <div key={id} className={s.fitRow}>
-            <span className={s.fitScore}>{Number(f.score).toFixed(2)}</span>
-            <span className={s.fitReason}>{offerName(id)} — {f.reason}</span>
+
+        {/* Both numbers, always, when the rule moved anything. Showing only
+            the recommendation would hide the rule from the person being asked
+            to trust it. */}
+        {brief.best_fit_offer && brief.best_fit_offer !== brief.recommended_offer && (
+          <div className={s.ladder}>
+            The model scored <strong>{offerName(brief.best_fit_offer)}</strong> highest
+            {commitmentOf(brief.best_fit_offer)
+              && ` (${COMMITMENT_SHORT[commitmentOf(brief.best_fit_offer)!]})`}.
+            {' '}Opening with <strong>{offerName(brief.recommended_offer)}</strong>
+            {commitmentOf(brief.recommended_offer)
+              && ` (${COMMITMENT_SHORT[commitmentOf(brief.recommended_offer)!]})`}
+            {' '}instead: it scores inside {FIT_MARGIN.toFixed(2)} of the top and is a
+            far smaller thing to say yes to. Approve with a different offer below if
+            you disagree.
           </div>
-        ))}
+        )}
+
+        {num(brief.fit_margin) !== null && brief.recommended_offer && (
+          num(brief.fit_margin)! < FIT_MARGIN ? (
+            <div className={s.unclear}>
+              Top two offers are {num(brief.fit_margin)!.toFixed(2)} apart. That is
+              inside the noise of the model&rsquo;s own judgement — treat them as tied,
+              not ranked.
+            </div>
+          ) : (
+            <div className={s.formHint}>
+              Clear by {num(brief.fit_margin)!.toFixed(2)} over the next offer.
+            </div>
+          )
+        )}
+
+        {brief.fit_reason && <div className={s.detailValue}>{brief.fit_reason}</div>}
+        {Object.entries(brief.fit ?? {})
+          .sort((a, b) => b[1].score - a[1].score)
+          .map(([id, f]) => (
+            <div key={id} className={s.fitRow}>
+              <span className={s.fitScore}>{Number(f.score).toFixed(2)}</span>
+              <span className={s.fitReason}>
+                {offerName(id)}
+                {commitmentOf(id) && ` · ${COMMITMENT_SHORT[commitmentOf(id)!]}`}
+                {' — '}{f.reason}
+              </span>
+            </div>
+          ))}
       </div>
 
       <div className={s.detailField}>

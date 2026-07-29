@@ -217,6 +217,7 @@ column now.
 | # | Item | Why then |
 |---|---|---|
 | 5 | ~~Split facts from judgement~~ | ✅ **DONE 2026-07-29.** Migration 211. `facts_at` / `judged_at` / `offers_fingerprint` (hash of key + updated_at per active offer). Editing an offer stales every judgement and nothing else, so a re-score is ONE call per company and zero crawling. Also fixed a silent data loss: `certifications` were extracted, fed to the fit prompt, and never stored — for a pharma company those ARE the scale signal |
+| 5b | ~~Fit scores bunched — one offer won everything by 0.03~~ | ✅ **DONE 2026-07-29.** Migration 212. See §9 below |
 | 6 | SearXNG as a second source | Fixes the unreachable fit signals. Deliberately after the first ten: if the briefs are already specific enough to write from, this is refinement not necessity |
 | 7 | Prospect dossier page | Replaces both modals |
 | 8 | `industry_sub` stored + filterable on `/prospects` | Enables segments |
@@ -260,3 +261,64 @@ column now.
 data. Once segments are built on them, changing a rule silently changes who is
 in a segment. A segment should record which rules produced it and say so when
 they have moved — same no-silent-change posture as everything else.
+
+---
+
+## 9. Fit is not the same question as what to open with
+
+*(Migration 212, 2026-07-29. Written after the first five briefs.)*
+
+### What the data said
+
+```
+Biological E              cdo 0.72 · ai-auto 0.68 · workshop 0.65 · audit 0.58 · caio 0.15
+Biophore                  cdo 0.81 · ai-auto 0.78 · workshop 0.72 · audit 0.68 · caio 0.15
+Sri Krishna               cdo 0.75 · ai-auto 0.72 · audit 0.68 · workshop 0.35 · caio 0.15
+Venkateshwara Hatcheries  ai-auto 0.72 · workshop 0.65 · audit 0.45 · cdo 0.15
+Chemiloids                everything 0.12-0.18 → no fit
+```
+
+Two rows are genuinely discriminating — Hatcheries drops CDO to 0.15,
+Chemiloids fits nothing. The rest are not. The top gaps are 0.03–0.04, which
+is inside the noise of the model's own judgement, and the winner was the offer
+rendered **first in the prompt** every single time (`ORDER BY sort_order`).
+
+### Three causes, three fixes
+
+| Cause | Fix | Where |
+|---|---|---|
+| CDO was always first in the prompt | Offers ordered per company by `sha256(prospect_id : offer_id)` — deterministic, so a re-score of the same company gets the same order and a moved score means the *wording* moved | `catalogueForPrompt(cat, seed)` |
+| Fit and "right-sized first ask" were one number | `gt_offers.commitment` — `entry` / `project` / `retainer`. **Never in the prompt.** Among offers within `FIT_MARGIN` (0.15) of the top score, take the lowest rung | `chooseOffer()` |
+| A 0.03 win read as a decision | `fit_margin` stored; under the margin the brief says "treat them as tied, not ranked" | migration 212 + `/research` |
+
+### Why the Digital Systems Audit could never win on fit
+
+Its signals are a **subset** of CDO's — everything that makes the audit fit
+makes CDO fit at least as well, so it ties at best and never wins. That is not
+a bug in the offer; it is what "an audit is the first step of the engagement"
+means. Fit scoring answers *"which offer best matches what this company is"*.
+It cannot answer *"which offer is the right-sized ask for a company that has
+never heard of us"* — and the second question is the one that decides the
+first message. `commitment` is that second axis, kept deliberately out of the
+model's hands so the two judgements stay separable and inspectable.
+
+### What is deliberately NOT automated
+
+`caio-as-a-service` sat at 0.12–0.15 on every company because all its signals
+are news, press and hiring — sources we do not read (§4). The honest fix is
+the tenant's, not the code's: rewrite those signals as things visible on a
+website, or wait for SearXNG (NEXT item 6). Nothing here papers over it.
+
+Same for CDO's signals, which describe the *segment* ("multi-site pharma with
+exports") rather than the *offer* — which is why every pharma manufacturer
+scores high on it. A signal that fires on the whole cohort carries no
+information, and no amount of post-processing recovers what the signal never
+distinguished.
+
+### The batch numbers that tell you it is working
+
+`gt_agent_runs.output` now carries `smaller_first_ask` and `fit_unclear`, and
+the same two appear as stat cards. **`fit_unclear` on more than about half the
+batch is a verdict on the offers, not on the companies** — it means the offers
+do not discriminate, and rewriting signals will do more than any further
+scoring work.

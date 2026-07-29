@@ -11,7 +11,10 @@
  *   3. extract      — page text → structured facts, every one carrying the URL
  *                     and excerpt it came from
  *   4. fit_score    — those facts against the tenant's offer catalogue, scoring
- *                     EVERY offer, with "none" a first-class outcome
+ *                     EVERY offer, with "none" a first-class outcome. The
+ *                     offers are rendered in a per-company order so no offer
+ *                     wins on position, and the smallest-sane-ask rule is
+ *                     applied to the scores afterwards, in code.
  *   5. hook         — the one specific, verifiable observation the approach
  *                     opens with
  *   6. write        — gt_account_briefs
@@ -43,7 +46,8 @@ import { callLLMValidated } from '../../agent-core/llm.client';
 import { loadPrompt } from '../../agent-core/prompt.store';
 import { IngestionAgent } from '../ingestion-skill/ingestion.agent';
 import {
-  loadOfferCatalogue, catalogueForPrompt, catalogueFingerprint, type OfferCatalogue,
+  loadOfferCatalogue, catalogueForPrompt, catalogueFingerprint, chooseOffer,
+  FIT_MARGIN, type OfferCatalogue,
 } from './offer-catalogue';
 
 export const ACCOUNT_RESEARCH_AGENT_NAME = 'ACCOUNT_RESEARCH_REQUESTED';
@@ -247,13 +251,11 @@ export class AccountResearchAgent {
       });
       throw err;
     }
-    const catalogueText = catalogueForPrompt(catalogue);
-    const validOfferIds = new Set(catalogue.offers.map((o) => o.id));
-
     await appendStep(pool, runId, {
       step_name: 'offer_catalogue',
       action: 'Loaded the offers to score against',
-      output_summary: catalogue.offers.map((o) => o.name).join(' · '),
+      output_summary: catalogue.offers
+        .map((o) => `${o.name} (${o.commitment})`).join(' · '),
       status: 'ok',
     });
 
@@ -349,6 +351,11 @@ export class AccountResearchAgent {
     let unreadable = 0;
     let recommended = 0;
     let rescoredOnly = 0;
+    // Companies where the smallest-sane-ask rule moved the recommendation off
+    // the top scorer, and companies where the top two were indistinguishable.
+    // Both are how you tell whether the rule is doing anything.
+    let laddered = 0;
+    let unclear = 0;
 
     for (const target of queue) {
       const prospectId = Number(target.id);
@@ -381,9 +388,7 @@ export class AccountResearchAgent {
             status: 'ok',
           });
         } else {
-          factHalf = await this.researchOne(
-            pool, tenantId, runId, target, catalogueText, validOfferIds,
-          );
+          factHalf = await this.researchOne(pool, tenantId, runId, target);
           // Nothing readable: record the gap and move on — there is nothing
           // to judge.
           if (factHalf.status !== 'facts') {
@@ -405,7 +410,12 @@ export class AccountResearchAgent {
 
         const verdict = await this.judge(
           pool, tenantId, runId, target.name, facts,
-          target.industry_raw, catalogueText, validOfferIds,
+          target.industry_raw, catalogue,
+          // Seeded on the prospect: the offers are rendered in a different
+          // order for every company, so no offer wins on position — and the
+          // SAME order every time this company is re-scored, so a moved
+          // score means the wording moved.
+          String(prospectId),
         );
 
         if (factHalf) {
@@ -419,6 +429,10 @@ export class AccountResearchAgent {
         }
 
         if (verdict.recommended_offer) recommended++;
+        if (verdict.recommended_offer
+            && verdict.best_fit_offer !== verdict.recommended_offer) laddered++;
+        if (typeof verdict.fit_margin === 'number'
+            && verdict.fit_margin < FIT_MARGIN) unclear++;
         written++;
       } catch (err) {
         // One account's failure is not the batch's. Record it AS the brief,
@@ -459,6 +473,11 @@ export class AccountResearchAgent {
         rescored_without_crawling: rescoredOnly,
         unreadable,
         with_recommendation: recommended,
+        // Opened with something smaller than the best-fitting offer.
+        smaller_first_ask: laddered,
+        // Top two offers inside the margin — the brief flags these rather
+        // than presenting a coin toss as a decision.
+        fit_unclear: unclear,
         no_fit: written - unreadable - recommended,
         offers: catalogue.offers.length,
       },
@@ -472,8 +491,6 @@ export class AccountResearchAgent {
     tenantId: string,
     runId: string,
     target: TargetRow,
-    catalogueText: string,
-    validOfferIds: Set<string>,
   ): Promise<Record<string, unknown>> {
     const domain = target.domain_normalized!;
     const root = target.website && target.website.startsWith('http')
@@ -627,9 +644,13 @@ export class AccountResearchAgent {
     companyName: string,
     facts: BriefFacts,
     industryRaw: string | null,
-    catalogueText: string,
-    validOfferIds: Set<string>,
+    catalogue: OfferCatalogue,
+    seed: string,
   ): Promise<Record<string, unknown>> {
+    const catalogueText = catalogueForPrompt(catalogue, seed);
+    const validOfferIds = new Set(catalogue.offers.map((o) => o.id));
+    const offerName = new Map(catalogue.offers.map((o) => [o.id, o.name]));
+
     const briefText = [
       `What they make: ${facts.what_they_make ?? 'not stated'}`,
       `Scale: ${facts.scale_signals ?? 'not stated'}`,
@@ -638,8 +659,6 @@ export class AccountResearchAgent {
       `Certifications: ${(facts.certifications ?? []).join(', ') || 'not stated'}`,
       `Industry as filed: ${industryRaw ?? 'not stated'}`,
     ].join('\n');
-
-    const target = { name: companyName };
 
     // 4. FIT — every offer scored; "none" is a real answer.
     const fit = await callLLMValidated(
@@ -656,36 +675,90 @@ export class AccountResearchAgent {
     );
 
     // A model that returns an offer id we never gave it has invented one.
-    const chosen = fit.recommended_offer && validOfferIds.has(fit.recommended_offer)
+    const modelChoice = fit.recommended_offer && validOfferIds.has(fit.recommended_offer)
       ? fit.recommended_offer
       : null;
-    if (fit.recommended_offer && !chosen) {
+    if (fit.recommended_offer && !modelChoice) {
       await appendStep(pool, runId, {
         step_name: 'fit_score',
-        action: `${target.name}: discarded an offer id that is not in the catalogue`,
+        action: `${companyName}: discarded an offer id that is not in the catalogue`,
         output_summary: `"${fit.recommended_offer}" — treated as no fit`,
         status: 'error',
       });
+    }
+
+    const scored: { offer_id: string; score: number; reason: string }[] = fit.scores
+      .filter((s) => typeof s.offer_id === 'string' && validOfferIds.has(s.offer_id))
+      .map((s) => ({
+        offer_id: s.offer_id as string,
+        score: Number(s.score) || 0,
+        reason: String(s.reason ?? ''),
+      }));
+
+    // ── THE LADDER ────────────────────────────────────────────────────
+    //
+    // The model has said how well each offer MATCHES this company. It has
+    // not been asked — and is not told anything that would let it answer —
+    // how big an ask each one is. That second question is settled here, in
+    // code, where the rule is one function anyone can read and argue with.
+    //
+    // Only ever narrows an existing yes. If the model found no fit, there is
+    // no fit; the rule picks a smaller ask, it never invents one.
+    const choice = modelChoice
+      ? chooseOffer(scored, catalogue.offers)
+      : { best: null, recommended: null, margin: null, unclear: false, laddered_from: null };
+
+    // The model named an offer but returned no usable scores — take it at
+    // its word rather than dropping a real fit on a technicality.
+    const bestFit = choice.best ?? modelChoice;
+    const chosen = choice.recommended ?? modelChoice;
+
+    if (modelChoice) {
+      await appendStep(pool, runId, {
+        step_name: 'fit_score',
+        action: `${companyName}: scored against ${validOfferIds.size} offer(s)`,
+        output_summary: choice.laddered_from
+          ? `best fit ${offerName.get(bestFit!) ?? bestFit} → opening with `
+            + `${offerName.get(chosen!) ?? chosen} (same fit band, smaller first ask)`
+          : `→ ${offerName.get(chosen!) ?? chosen}`
+            + (choice.margin !== null ? ` · clear by ${choice.margin.toFixed(2)}` : ''),
+        status: 'ok',
+      });
+
+      // Said out loud rather than buried in a column: two scores this close
+      // are the same score, and a reviewer who cannot see that will read a
+      // coin toss as a judgement.
+      if (choice.unclear) {
+        await appendStep(pool, runId, {
+          step_name: 'fit_unclear',
+          action: `${companyName}: top two offers are within ${choice.margin?.toFixed(2)}`,
+          output_summary: 'not distinguishable on the evidence — the brief says so',
+          status: 'ok',
+        });
+      }
     } else {
       await appendStep(pool, runId, {
         step_name: 'fit_score',
-        action: `${target.name}: scored against ${validOfferIds.size} offer(s)`,
-        output_summary: chosen ? `→ ${chosen}` : '→ no fit',
+        action: `${companyName}: scored against ${validOfferIds.size} offer(s)`,
+        output_summary: '→ no fit',
         status: 'ok',
       });
     }
 
-    // 5. HOOK — only when there is something to open with.
+    // 5. HOOK — only when there is something to open with, and about the
+    //    offer we will ACTUALLY open with. Previously this was handed the
+    //    raw offer key ("cdo-as-a-service"), which is not how anyone would
+    //    write the sentence it is being asked for.
     let hook: string | null = null;
     if (chosen) {
-      const offerName = [...validOfferIds].includes(chosen) ? chosen : '';
       const h = await callLLMValidated(
         {
           pool, tenantId, runId,
           system: await loadPrompt(pool, 'research-skill.account_hook', tenantId),
           messages: [{
             role: 'user',
-            content: `Company brief:\n${briefText}\n\nOffer we intend to discuss: ${offerName}`,
+            content: `Company brief:\n${briefText}\n\n`
+              + `Offer we intend to discuss: ${offerName.get(chosen) ?? chosen}`,
           }],
           maxTokens: 250,
         },
@@ -694,20 +767,22 @@ export class AccountResearchAgent {
       hook = meaningful(h.hook);
       await appendStep(pool, runId, {
         step_name: 'hook',
-        action: `${target.name}: opening observation`,
+        action: `${companyName}: opening observation`,
         output_summary: hook ?? 'none — the brief was too thin to say anything specific',
         status: 'ok',
       });
     }
 
     const fitMap: Record<string, { score: number; reason: string }> = {};
-    for (const sc of fit.scores) {
-      if (validOfferIds.has(sc.offer_id)) fitMap[sc.offer_id] = { score: sc.score, reason: sc.reason };
+    for (const sc of scored) {
+      fitMap[sc.offer_id] = { score: sc.score, reason: sc.reason };
     }
 
     return {
       fit: fitMap,
       recommended_offer: chosen,
+      best_fit_offer: bestFit,
+      fit_margin: choice.margin,
       fit_reason: meaningful(fit.reason),
       hook,
     };
@@ -733,6 +808,8 @@ export class AccountResearchAgent {
         `UPDATE gt_account_briefs
             SET fit                = $fit::jsonb,
                 recommended_offer  = $recommended_offer,
+                best_fit_offer     = $best_fit_offer,
+                fit_margin         = $fit_margin,
                 fit_reason         = $fit_reason,
                 hook               = $hook,
                 offers_fingerprint = $offers_fingerprint,
@@ -750,6 +827,8 @@ export class AccountResearchAgent {
           run_id: runId,
           fit: JSON.stringify(verdict.fit ?? {}),
           recommended_offer: verdict.recommended_offer ?? null,
+          best_fit_offer: verdict.best_fit_offer ?? null,
+          fit_margin: verdict.fit_margin ?? null,
           fit_reason: verdict.fit_reason ?? null,
           hook: verdict.hook ?? null,
           offers_fingerprint: verdict.offers_fingerprint ?? null,
@@ -772,13 +851,14 @@ export class AccountResearchAgent {
            (tenant_id, is_live, prospect_id, run_id, domain, fetched_at, pages_read,
             site_health, what_they_make, scale_signals, service_signals,
             digital_maturity, certifications, named_contacts, fit, recommended_offer,
-            fit_reason, hook, raw_evidence, error, status,
+            best_fit_offer, fit_margin, fit_reason, hook, raw_evidence, error, status,
             facts_at, judged_at, offers_fingerprint)
          VALUES
            ($tenant_id, $is_live, $prospect_id, $run_id, $domain, now(), $pages_read,
             $site_health, $what_they_make, $scale_signals, $service_signals,
             $digital_maturity, $certifications::text[], $named_contacts::jsonb,
-            $fit::jsonb, $recommended_offer, $fit_reason, $hook,
+            $fit::jsonb, $recommended_offer, $best_fit_offer, $fit_margin,
+            $fit_reason, $hook,
             $raw_evidence::jsonb, $error, $status,
             $facts_at, $judged_at, $offers_fingerprint)
          ON CONFLICT (tenant_id, is_live, prospect_id) DO UPDATE SET
@@ -795,6 +875,8 @@ export class AccountResearchAgent {
             named_contacts    = EXCLUDED.named_contacts,
             fit               = EXCLUDED.fit,
             recommended_offer = EXCLUDED.recommended_offer,
+            best_fit_offer    = EXCLUDED.best_fit_offer,
+            fit_margin        = EXCLUDED.fit_margin,
             fit_reason        = EXCLUDED.fit_reason,
             hook              = EXCLUDED.hook,
             raw_evidence      = EXCLUDED.raw_evidence,
@@ -822,6 +904,8 @@ export class AccountResearchAgent {
           named_contacts: JSON.stringify(brief.named_contacts ?? []),
           fit: JSON.stringify(brief.fit ?? {}),
           recommended_offer: brief.recommended_offer ?? null,
+          best_fit_offer: brief.best_fit_offer ?? null,
+          fit_margin: brief.fit_margin ?? null,
           fit_reason: brief.fit_reason ?? null,
           hook: brief.hook ?? null,
           raw_evidence: JSON.stringify(brief.raw_evidence ?? []),

@@ -22,6 +22,11 @@ SELECT
     b.named_contacts,
     b.fit,
     b.recommended_offer,
+    -- What the model actually said, before the smallest-sane-ask rule. When
+    -- these differ the brief shows both — a recommendation nobody can argue
+    -- with is a recommendation nobody should trust.
+    b.best_fit_offer,
+    b.fit_margin,
     b.fit_reason,
     b.hook,
     b.raw_evidence,

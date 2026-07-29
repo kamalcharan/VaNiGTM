@@ -12,6 +12,7 @@
  */
 
 import { SkillContext } from '../../../shared/types';
+import { isCommitment, COMMITMENTS, type Commitment } from '../offer-catalogue';
 
 interface SaveOfferParams {
   offer_key?: string;
@@ -24,6 +25,7 @@ interface SaveOfferParams {
   disqualifiers?: string[];
   price_band?: string;
   proof?: string;
+  commitment?: string;
 }
 
 const slugify = (s: string): string =>
@@ -44,16 +46,32 @@ export async function save_offer(
   const key = (params.offer_key ?? '').trim() || slugify(name);
   if (!key) throw new Error('Could not derive an id from that name — give it letters or numbers.');
 
+  // The one field here that is NOT free text, because a rung the ladder rule
+  // does not recognise would silently be treated as 'project' and quietly
+  // change which offer a real company hears about first. Omitted = leave what
+  // is there (a caller that does not mention it must not reset it).
+  let commitment: Commitment | null = null;
+  if (params.commitment !== undefined && params.commitment !== null) {
+    if (!isCommitment(params.commitment)) {
+      throw new Error(
+        `commitment must be one of ${COMMITMENTS.join(', ')} — got "${params.commitment}".`,
+      );
+    }
+    commitment = params.commitment;
+  }
+
   return ctx.db.transaction(async (tx) => {
     await tx.query(
       `INSERT INTO gt_offers
          (tenant_id, offer_key, name, one_line, who_for, problem,
-          what_we_do, signals, disqualifiers, price_band, proof, created_by)
+          what_we_do, signals, disqualifiers, price_band, proof,
+          commitment, created_by)
        VALUES
          ($tenant_id, $offer_key, $name, $one_line, $who_for, $problem,
           $what_we_do::text[], $signals::text[], $disqualifiers::text[],
-          $price_band, $proof, $user_id)
+          $price_band, $proof, COALESCE($commitment::text, 'project'), $user_id)
        ON CONFLICT (tenant_id, offer_key) DO UPDATE SET
+          commitment    = COALESCE($commitment::text, gt_offers.commitment),
           name          = EXCLUDED.name,
           one_line      = EXCLUDED.one_line,
           who_for       = EXCLUDED.who_for,
@@ -74,6 +92,7 @@ export async function save_offer(
         disqualifiers: cleanList(params.disqualifiers),
         price_band: String(params.price_band ?? '').trim() || null,
         proof: String(params.proof ?? '').trim() || null,
+        commitment,
         user_id: ctx.user_id,
       },
     );

@@ -111,7 +111,7 @@ beforeAll(async () => {
   // The real migrations, so the shipped constraints are what is tested —
   // including 210, which is what makes 'extract_failed' a legal status.
   for (const m of ['207_gt_account_briefs.sql', '210_brief_extract_failed.sql',
-                   '211_brief_facts_and_judgement.sql']) {
+                   '211_brief_facts_and_judgement.sql', '212_offer_commitment.sql']) {
     await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
   }
 
@@ -617,5 +617,155 @@ maybe('facts and judgement are separate halves', () => {
     expect(fetched.some((u) => u.includes('alpha.com'))).toBe(true);
     const out = (await pool.query(`SELECT output FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
     expect(out.output.rescored_without_crawling).toBe(0);
+  });
+});
+
+/* ── The ladder (migration 212) ─────────────────────────────────────── */
+
+maybe('what fits best vs what to open with', () => {
+  // A second offer on the entry rung, so the two axes can come apart at all.
+  // Added and removed here rather than in the fixture: every other test in
+  // this file counts LLM calls, and a second offer changes nothing about them
+  // but a third row in the prompt is noise those tests do not need.
+  beforeAll(async () => {
+    await pool.query(
+      `INSERT INTO gt_offers (tenant_id, offer_key, name, one_line, who_for, problem,
+                              what_we_do, signals, disqualifiers, price_band, proof,
+                              commitment)
+       VALUES ($1,'digital-systems-audit','Digital Systems Audit',
+               'A two-week read of what your plant systems actually hold.',
+               'Manufacturers who suspect their data is a mess and want it named.',
+               'Nobody can say what is in which system, so every decision is re-litigated.',
+               ARRAY['A written map of every system and what it is trusted for'],
+               ARRAY['ERP named on the site with no analytics layer visible'],
+               ARRAY['Fewer than about fifty staff'],
+               'INR 4-6 lakh, fixed',
+               'Run for two Hyderabad manufacturers in 2025.',
+               'entry')`, [A]);
+  });
+  afterAll(async () => {
+    await pool.query(`DELETE FROM gt_offers WHERE tenant_id = $1 AND offer_key = 'digital-systems-audit'`, [A]);
+  });
+  beforeEach(async () => { await pool.query('DELETE FROM gt_account_briefs'); });
+
+  /** Facts, then a fit verdict with whatever scores the test wants. */
+  const queueWith = (scores: { offer_id: string; score: number }[], rec: string | null) => {
+    llmQueue.push({
+      what_they_make: 'Active pharmaceutical ingredients',
+      scale_signals: 'Two units in Medak',
+      certifications: ['WHO-GMP'],
+      evidence: [{ claim: 'Two units in Medak', url: 'https://alpha.com', excerpt: 'two units in Medak district' }],
+    });
+    llmQueue.push({
+      scores: scores.map((s) => ({ ...s, reason: 'because' })),
+      recommended_offer: rec, reason: 'multi-site, no data lead',
+    });
+    if (rec) llmQueue.push({ hook: 'Two units in Medak, each with its own batch records.' });
+  };
+
+  // Biophore's real numbers from the first pilot run, in miniature: a
+  // retainer beating an entry offer by 0.13 — inside the noise.
+  it('opens with the smaller ask and records what actually fit best', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueWith([
+      { offer_id: 'cdo-as-a-service', score: 0.81 },
+      { offer_id: 'digital-systems-audit', score: 0.68 },
+    ], 'cdo-as-a-service');
+
+    const runId = await newRun();
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, runId);
+
+    const row = (await briefs())[0];
+    expect(row.best_fit_offer).toBe('cdo-as-a-service');
+    expect(row.recommended_offer).toBe('digital-systems-audit');
+    expect(Number(row.fit_margin)).toBeCloseTo(0.13, 3);
+
+    // Visible in the feed, not only in a column.
+    const steps = (await pool.query(`SELECT steps FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0].steps;
+    expect(steps.some((x: any) => x.step_name === 'fit_score' && /smaller first ask/.test(x.output_summary))).toBe(true);
+    expect(steps.some((x: any) => x.step_name === 'fit_unclear')).toBe(true);
+
+    const out = (await pool.query(`SELECT output FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
+    expect(out.output.smaller_first_ask).toBe(1);
+  });
+
+  it('leaves a clear winner alone and says the gap was clear', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueWith([
+      { offer_id: 'cdo-as-a-service', score: 0.9 },
+      { offer_id: 'digital-systems-audit', score: 0.2 },
+    ], 'cdo-as-a-service');
+
+    const runId = await newRun();
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, runId);
+
+    const row = (await briefs())[0];
+    expect(row.recommended_offer).toBe('cdo-as-a-service');
+    expect(row.best_fit_offer).toBe('cdo-as-a-service');
+    expect(Number(row.fit_margin)).toBeCloseTo(0.7, 3);
+
+    const out = (await pool.query(`SELECT output FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
+    expect(out.output.smaller_first_ask).toBe(0);
+    expect(out.output.fit_unclear).toBe(0);
+  });
+
+  // The rule narrows an existing yes. It must never turn a no into a yes,
+  // however high something scored (CLAUDE.md rule 12).
+  it('never manufactures a recommendation the model did not make', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueWith([
+      { offer_id: 'cdo-as-a-service', score: 0.4 },
+      { offer_id: 'digital-systems-audit', score: 0.38 },
+    ], null);
+
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+
+    const row = (await briefs())[0];
+    expect(row.recommended_offer).toBeNull();
+    expect(row.best_fit_offer).toBeNull();
+    expect(row.hook).toBeNull();
+  });
+
+  // The hook is written about the offer we will ACTUALLY open with, and with
+  // the offer's NAME — it used to be handed the raw key.
+  it('writes the hook about the offer being opened with, by name', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueWith([
+      { offer_id: 'cdo-as-a-service', score: 0.81 },
+      { offer_id: 'digital-systems-audit', score: 0.7 },
+    ], 'cdo-as-a-service');
+
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+
+    const { callLLMValidated } = jest.requireMock('../../../agent-core/llm.client');
+    const hookCall = callLLMValidated.mock.calls.at(-1)[0];
+    expect(hookCall.messages[0].content).toContain('Digital Systems Audit');
+    expect(hookCall.messages[0].content).not.toContain('digital-systems-audit');
+  });
+
+  // The primacy fix, end to end. readOffers returns `ORDER BY sort_order,
+  // offer_key`, which puts cdo-as-a-service first — and on the first pilot
+  // run the offer rendered first won 4 of 5 companies by 0.03. So the
+  // assertion is that the prompt does NOT follow catalogue order.
+  //
+  // Deterministic, not statistical: with a seed of '1' the hash orders the
+  // audit first. Whether any two given companies differ is a property of the
+  // hash and is tested over 40 seeds in offer-catalogue.test.ts; what matters
+  // here is that the agent actually passes the seed through.
+  it('does not render the offers in catalogue order', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueWith([{ offer_id: 'cdo-as-a-service', score: 0.8 }], 'cdo-as-a-service');
+
+    const { callLLMValidated } = jest.requireMock('../../../agent-core/llm.client');
+    callLLMValidated.mock.calls.length = 0;
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+
+    const fitPrompt = (callLLMValidated.mock.calls
+      .map((c: any) => c[0].messages[0].content as string)
+      .find((c: string) => c.includes('OUR OFFERS:')))!;
+    const body = fitPrompt.slice(fitPrompt.indexOf('OUR OFFERS:'));
+
+    expect(body.indexOf('id: digital-systems-audit'))
+      .toBeLessThan(body.indexOf('id: cdo-as-a-service'));
   });
 });

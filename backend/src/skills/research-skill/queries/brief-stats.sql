@@ -13,6 +13,18 @@ SELECT
                        AND recommended_offer IS NULL)                 AS no_fit,
     count(*) FILTER (WHERE recommended_offer IS NOT NULL
                        AND hook IS NULL)                              AS no_hook,
+    -- The top two offers scored within the margin, so the "winner" won on
+    -- noise. Kept as a batch-level number because a handful is normal and a
+    -- majority means the offers themselves do not discriminate — which is a
+    -- problem with the offer wording, not with any one company.
+    -- 0.15 mirrors FIT_MARGIN in offer-catalogue.ts; change both together.
+    count(*) FILTER (WHERE recommended_offer IS NOT NULL
+                       AND fit_margin IS NOT NULL
+                       AND fit_margin < 0.15)                         AS fit_unclear,
+    -- The smallest-sane-ask rule moved the recommendation off the best fit.
+    count(*) FILTER (WHERE recommended_offer IS NOT NULL
+                       AND best_fit_offer IS NOT NULL
+                       AND best_fit_offer <> recommended_offer)       AS smaller_ask,
     -- Claims the model could not point at. Read these first.
     count(*) FILTER (WHERE status NOT IN ('unreadable','extract_failed')
                        AND jsonb_array_length(COALESCE(raw_evidence,'[]'::jsonb)) = 0) AS unevidenced,
