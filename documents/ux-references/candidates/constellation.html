@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VaNiGTM — Sriveda Lifesciences · Constellation</title>
+<style>
+  :root{
+    --bg:#060707; --card:#0d100e; --card2:#111412; --line:#1d231f; --line2:#262d28;
+    --txt:#e6e9e5; --mut:#7c857e; --dim:#4a524c;
+    --green:#4ade80; --green-dk:#1d5c38; --yellow:#d4c34c; --orange:#c07a3c;
+    --red:#e56a6a; --amber:#d4a72c; --vani:#7dd3fc;
+    --mono:'SFMono-Regular',ui-monospace,'Cascadia Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-family:-apple-system,'Segoe UI',Inter,Roboto,sans-serif;font-size:14px;padding:26px 30px 60px;}
+  .wrap{max-width:1480px;margin:0 auto}
+  .crumb{color:var(--mut);font-size:12.5px;margin-bottom:18px}
+  .crumb b{color:var(--txt);font-weight:500}
+  .kicker{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;color:var(--mut);text-transform:uppercase;margin-bottom:8px}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px}
+  h1{font-size:30px;font-weight:600;letter-spacing:-.01em}
+  .metrics{display:flex;gap:38px;text-align:right}
+  .metric .v{font-size:26px;font-weight:500}
+  .metric .v.green{color:var(--green)}
+  .metric .l{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:var(--mut);text-transform:uppercase;margin-top:3px}
+  .chips{display:flex;gap:8px;margin:14px 0 22px;flex-wrap:wrap}
+  .chip{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:5px 11px;border-radius:6px;border:1px solid var(--line2);color:var(--mut)}
+  .chip.amber{color:var(--amber);border-color:#4d3f14}
+  .chip.warn{color:var(--orange);border-color:#4a2f16}
+  .chip.green{color:var(--green);border-color:var(--green-dk);box-shadow:0 0 12px rgba(74,222,128,.08)}
+
+  /* journey ribbon */
+  .ribbon{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:16px 18px 14px;margin-bottom:16px}
+  .ribbon .kicker{margin-bottom:12px;display:flex;justify-content:space-between}
+  .ribbon .kicker span:last-child{letter-spacing:.02em;text-transform:none;font-family:inherit;font-size:11.5px;color:var(--dim)}
+  .stages{display:flex;gap:6px}
+  .stage{flex:1;position:relative;padding:9px 0 8px;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--dim);border-top:2px solid var(--line);text-transform:uppercase}
+  .stage.past{color:var(--mut);border-top-color:#2e3a32}
+  .stage.cur-audit{color:var(--green);border-top-color:var(--green)}
+  .stage.cur-amc{color:var(--vani);border-top-color:var(--vani)}
+  .stage .mark{display:block;margin-top:6px;font-size:9px;letter-spacing:.06em;color:var(--mut);text-transform:none}
+  .stage.cur-audit .mark{color:var(--green)}
+  .stage.cur-amc .mark{color:var(--vani)}
+
+  .grid{display:grid;grid-template-columns:1fr 392px;gap:16px;align-items:start}
+
+  .card{border:1px solid var(--line);background:var(--card);border-radius:12px}
+  .card-h{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
+  .card-h .kicker{margin:0}
+  .card-h .note{font-size:11.5px;color:var(--dim)}
+
+  #map{display:block;width:100%;height:auto}
+  .maplegend{display:flex;gap:20px;align-items:center;padding:12px 18px;border-top:1px solid var(--line);flex-wrap:wrap}
+  .lg{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--mut)}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .lg .ghostbox{width:14px;height:10px;border:1.5px dashed var(--vani);border-radius:3px}
+
+  /* scrubber */
+  .scrub{display:flex;align-items:center;gap:16px;padding:13px 18px;border-top:1px solid var(--line)}
+  .scrub label{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:var(--mut);text-transform:uppercase;white-space:nowrap}
+  .scrub input{flex:1;accent-color:var(--green)}
+  .scrub .when{font-family:var(--mono);font-size:11px;color:var(--txt);min-width:150px;text-align:right}
+  .scrub .when.past{color:var(--amber)}
+
+  /* right rail */
+  .tabs{display:flex;border-bottom:1px solid var(--line)}
+  .tab{flex:1;padding:13px 0;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--dim);cursor:pointer;text-transform:uppercase;border-bottom:2px solid transparent}
+  .tab.on{color:var(--txt);border-bottom-color:var(--green)}
+  .rail-body{max-height:760px;overflow-y:auto}
+  .titem{padding:15px 18px;border-bottom:1px solid var(--line);cursor:pointer}
+  .titem:hover{background:var(--card2)}
+  .titem .tag{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px;display:flex;justify-content:space-between}
+  .titem .tag .t-act{color:var(--green)} .titem .tag .t-task{color:var(--amber)} .titem .tag .t-rev{color:var(--vani)}
+  .titem .tag .who{color:var(--dim)}
+  .titem h4{font-size:13.5px;font-weight:500;margin-bottom:4px}
+  .titem p{font-size:12px;color:var(--mut);line-height:1.5}
+  .sig{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;gap:14px}
+  .sig .d{font-family:var(--mono);font-size:10px;color:var(--dim);white-space:nowrap;padding-top:2px}
+  .sig .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:4px}
+  .sig p{font-size:12.5px;line-height:1.55;color:var(--txt)}
+  .sig .relit{font-family:var(--mono);font-size:10.5px;color:var(--mut);margin-top:5px}
+  .sig .relit b{color:var(--green);font-weight:500}
+
+  /* detail panel */
+  .panel{display:none}
+  .panel.on{display:block}
+  .panel .p-head{padding:16px 18px;border-bottom:1px solid var(--line)}
+  .panel .p-kind{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:7px}
+  .panel h3{font-size:16px;font-weight:600}
+  .panel .p-meta{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
+  .pm{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;padding:4px 9px;border-radius:5px;border:1px solid var(--line2);color:var(--mut);text-transform:uppercase}
+  .pm.vani{color:var(--vani);border-color:#1d3d4d}
+  .pm.hum{color:var(--amber);border-color:#4d3f14}
+  .p-sec{padding:14px 18px;border-bottom:1px solid var(--line)}
+  .p-sec .kicker{margin-bottom:9px}
+  .p-sec p{font-size:12.5px;color:var(--txt);line-height:1.6}
+  .p-sec p.mut{color:var(--mut)}
+  .why li{font-size:12.5px;color:var(--mut);line-height:1.7;list-style:none;padding-left:16px;position:relative}
+  .why li:before{content:'→';position:absolute;left:0;color:var(--green)}
+  .why li b{color:var(--txt);font-weight:500}
+  textarea.draft{width:100%;min-height:96px;background:#0a0d0b;border:1px solid var(--line2);border-radius:8px;color:var(--txt);font-size:12.5px;line-height:1.6;padding:10px 12px;resize:vertical;font-family:inherit}
+  textarea.draft::placeholder{color:var(--dim)}
+  .draft-note{font-size:10.5px;color:var(--dim);margin-top:6px;font-family:var(--mono)}
+  .toggle3{display:flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;margin-top:4px}
+  .toggle3 div{flex:1;text-align:center;padding:8px 4px;font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;cursor:pointer;border-right:1px solid var(--line2)}
+  .toggle3 div:last-child{border-right:none}
+  .toggle3 div.on{background:#12241a;color:var(--green)}
+  .toggle3 div.on.vani{background:#0e2230;color:var(--vani)}
+  .toggle3 div.locked{cursor:not-allowed;opacity:.45}
+  .btnrow{display:flex;gap:8px;padding:14px 18px}
+  .btn{flex:1;padding:10px 0;text-align:center;border-radius:8px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border:1px solid var(--line2);color:var(--mut)}
+  .btn.pri{background:#12341f;border-color:var(--green-dk);color:var(--green)}
+  .btn.warn{color:var(--amber);border-color:#4d3f14}
+  .btn:hover{filter:brightness(1.25)}
+  .countbar{display:flex;align-items:center;gap:10px;padding:12px 18px;background:#0b1520;border-bottom:1px solid #16303f}
+  .countbar .pulse{width:8px;height:8px;border-radius:50%;background:var(--vani);animation:pu 1.6s infinite}
+  .countbar span{font-family:var(--mono);font-size:11px;color:var(--vani);letter-spacing:.05em}
+  .p-back{padding:12px 18px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--dim);cursor:pointer;text-transform:uppercase}
+  .p-back:hover{color:var(--txt)}
+
+  @keyframes pu{0%,100%{opacity:1}50%{opacity:.25}}
+  @keyframes dashmove{to{stroke-dashoffset:-24}}
+
+  /* svg */
+  .nlabel{font-size:13px;font-weight:600;fill:var(--txt)}
+  .nsub{font-family:var(--mono);font-size:9.5px;fill:var(--mut);letter-spacing:.08em}
+  .nmeta{font-family:var(--mono);font-size:9px;letter-spacing:.06em}
+  .tagchip{font-family:var(--mono);font-size:8.5px;letter-spacing:.12em}
+  .hublabel{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;fill:var(--txt)}
+  .hubstage{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em}
+  g.node{cursor:pointer}
+  g.node .box{transition:filter .15s}
+  g.node:hover .box{filter:brightness(1.3)}
+  g.node.sel .box{stroke-width:1.8;filter:brightness(1.35)}
+  .ghost-dot{animation:pu 1.8s infinite}
+  .fatigue{stroke-dasharray:5 6;animation:dashmove 1.4s linear infinite}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="crumb">&larr; the journey field &nbsp;&middot;&nbsp; <b>the map is what you know — the ghosts are what happens next.</b> &nbsp;You hold the veto.</div>
+  <div class="kicker">Account &middot; Hyderabad &middot; API Manufacturing &middot; 2 opportunities in motion</div>
+  <div class="head">
+    <h1>Sriveda Lifesciences</h1>
+    <div class="metrics">
+      <div class="metric"><div class="v green" id="mIntent">0.68</div><div class="l">Intent</div></div>
+      <div class="metric"><div class="v green" id="mTemp">warming</div><div class="l">Temperature</div></div>
+      <div class="metric"><div class="v" id="mEvid">4/6</div><div class="l">Live evidence</div></div>
+      <div class="metric"><div class="v" style="color:var(--vani)">2</div><div class="l">Next 7 days</div></div>
+    </div>
+  </div>
+  <div class="chips">
+    <span class="chip amber" id="chipStage">Audit &middot; considering</span>
+    <span class="chip" style="color:var(--vani);border-color:#1d3d4d">AMC &middot; expanding</span>
+    <span class="chip warn">Audit stalled 3d — unstall proposed</span>
+    <span class="chip">R. Menon &middot; Head of Digital</span>
+    <span class="chip">S. Rao &middot; Plant Head</span>
+    <span class="chip green">2 nodes relit this week</span>
+  </div>
+
+  <!-- JOURNEY RIBBON -->
+  <div class="ribbon">
+    <div class="kicker"><span>The journey — stage per opportunity, not per account</span><span>stage moves by score or by hand — the badge always says which</span></div>
+    <div class="stages" id="ribbon"></div>
+  </div>
+
+  <div class="grid">
+    <!-- MAP -->
+    <div class="card">
+      <div class="card-h">
+        <span class="kicker">The constellation</span>
+        <span class="note">recency pulls inward &middot; evidence half-life 60 days &middot; dotted = proposed, not yet real</span>
+      </div>
+      <svg id="map" viewBox="0 0 1180 660" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="maplegend">
+        <div class="lg"><span class="dot" style="background:var(--green)"></span>fed this month</div>
+        <div class="lg"><span class="dot" style="background:var(--yellow)"></span>within the half-life</div>
+        <div class="lg"><span class="dot" style="background:var(--orange)"></span>fading</div>
+        <div class="lg"><span class="dot" style="background:var(--dim)"></span>stale — cannot open with it</div>
+        <div class="lg"><span class="ghostbox"></span>proposed next (ghost)</div>
+        <div class="lg"><span class="dot pulse" style="background:var(--vani);animation:pu 1.6s infinite"></span>VaNi will act — veto window open</div>
+      </div>
+      <div class="scrub">
+        <label>Replay the story</label>
+        <input type="range" id="scrub" min="0" max="90" value="90">
+        <span class="when" id="scrubWhen">today</span>
+      </div>
+    </div>
+
+    <!-- RIGHT RAIL -->
+    <div class="card" id="rail">
+      <div id="railDefault">
+        <div class="tabs">
+          <div class="tab on" data-tab="today">Today &middot; 3</div>
+          <div class="tab" data-tab="signals">Signals in</div>
+        </div>
+        <div class="rail-body" id="railBody"></div>
+      </div>
+      <div class="panel" id="panel"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ data */
+const STAGES = ['AWARE','ENGAGED','CONSIDERING','EVALUATING','WON','EXPANDING'];
+
+const HUBS = {
+  account:{x:330,y:330,r:62},
+  audit:{x:645,y:225,r:44,label:'DIGITAL INFRA AUDIT',stage:'CONSIDERING',color:'#4ade80',prov:'score 0.68 · auto'},
+  amc:{x:585,y:508,r:36,label:'AMC RENEWAL',stage:'EXPANDING',color:'#7dd3fc',prov:'moved by Charan'},
+  cnest:{x:165,y:530,r:32,label:'CONTRACTNEST ?',stage:'PROPOSED',color:'#7dd3fc',ghost:true}
+};
+
+const CONTACTS = [
+  {id:'menon',x:243,y:222,name:'R. Menon',role:'HEAD OF DIGITAL'},
+  {id:'rao',x:224,y:420,name:'S. Rao',role:'PLANT HEAD'}
+];
+
+/* age in days; kind: signal | nourish | ghost */
+const NODES = [
+ {id:'batch', hub:'audit', kind:'signal', x:610,y:52,  w:172, age:11, title:'Batch record burden', chip:'THEY ENGAGED', chipC:'#4ade80',
+  detail:{p:'Story 1 opened twice. Careers page lists a new QA-documentation lead in Jeedimetla — they are hiring against this pain.', raw:'Evidence: story open ×2 (18-Jul), careers listing (18-Jul).'}},
+ {id:'cost', hub:'audit', kind:'signal', x:800,y:88, w:158, age:3, title:'Cost & payback', chip:'THEY ASKED', chipC:'#e56a6a',
+  detail:{p:'R. Menon replied: “Sounds useful. What kind of investment are we looking at?” Direct pricing intent — the strongest node on the map.', raw:'Raw: email reply, 26-Jul, thread #4.'}},
+ {id:'capex', hub:'audit', kind:'signal', x:835,y:228, w:158, age:6, title:'Capex on digital', chip:null,
+  detail:{p:'Q1 FY27 concall: MD flags “a meaningful allocation toward plant digitisation.” Exchange filing 20-Jul: ₹18cr capital outlay approved.', raw:'Raw: concall transcript 23-Jul · filing 20-Jul.'}},
+ {id:'owner', hub:'audit', kind:'signal', x:435,y:105, w:152, age:17, title:'No data owner', chip:null,
+  detail:{p:'Two visits to the CAIO page from a Hyderabad IP. Original hook: “Expanding, and nobody owns data.”', raw:'Raw: site analytics 05-Jul.'}},
+ {id:'gmp', hub:'audit', kind:'signal', x:790,y:345, w:172, age:210, title:'GMP / audit readiness', chip:null,
+  detail:{p:'Raised 7 months ago, never fed since. Stale — cannot open with it.', raw:''}},
+ {id:'story1', hub:'audit', kind:'nourish', x:478,y:322, w:158, age:10, title:'Story 1 · sent', chip:'REPLIED ✓', chipC:'#4ade80',
+  detail:{p:'Written at Batch record burden. 3 claims traced, 0 unsupported. Outcome: R. Menon replied asking about investment → lit Cost & payback.', raw:''}},
+
+ {id:'g1', hub:'audit', kind:'ghost', x:968,y:120, w:196, mode:'vani', target:'R. Menon', channel:'EMAIL',
+  title:'Payback calculator', sub:'frame vs ₹18cr approved capex',
+  why:['<b>They asked</b> — cost & payback question, 3d ago','<b>Filing</b> — ₹18cr outlay approved, 20-Jul','Journey position: CONSIDERING → answer price with payback, not a quote'],
+  countdown:'sends Thu 10:00 · veto open 41h'},
+ {id:'g2', hub:'audit', kind:'ghost', x:965,y:440, w:196, mode:'human', target:'S. Rao', channel:'CALL',
+  title:'15-min call · S. Rao', sub:'QA-hire → batch-records angle',
+  why:['<b>Careers signal</b> — QA documentation lead listed','Plant Head owns the pain; Menon owns the budget','Committee coverage: 2nd thread, not a 2nd send to Menon']},
+
+ {id:'uptime', hub:'amc', kind:'signal', x:740,y:600, w:168, age:14, title:'Uptime SLA praised', chip:'THEY ENGAGED', chipC:'#4ade80',
+  detail:{p:'Ops head praised response times on last quarter’s AMC review call.', raw:''}},
+ {id:'terms', hub:'amc', kind:'nourish', x:408,y:600, w:168, age:32, title:'Renewal terms · sent', chip:'OPENED', chipC:'#d4c34c',
+  detail:{p:'Renewal terms doc sent 32d ago, opened once, no reply.', raw:''}},
+ {id:'g3', hub:'amc', kind:'ghost', x:845,y:512, w:186, mode:'human', target:'R. Menon', channel:'WHATSAPP',
+  title:'Uptime report + terms nudge', sub:'renewal close, social proof',
+  why:['Renewal window opens in 3 weeks','Uptime praise is fresh — attach it','<b>Governor:</b> held +4d — Menon already receives the calculator this week']},
+
+ {id:'third', hub:'account', kind:'signal', x:58,y:348, w:190, age:240, title:'Third unit at Pashamylaram', chip:'RAISED', chipC:'#7c857e',
+  detail:{p:'Account-level knowledge: expansion intent raised 8 months ago. Feeds every opportunity, belongs to none.', raw:''}}
+];
+
+const SIGNALS = [
+ {d:'26-Jul', k:'REPLY', kc:'#4ade80', p:'R. Menon: “Sounds useful. What kind of investment are we looking at?”', relit:'Cost & payback'},
+ {d:'23-Jul', k:'CONCALL', kc:'#d4c34c', p:'Q1 FY27 earnings call — MD flags “a meaningful allocation toward plant digitisation over the next two quarters”.', relit:'Capex on digital'},
+ {d:'20-Jul', k:'EXCHANGE FILING', kc:'#d4c34c', p:'Outcome of board meeting: ₹18cr capital outlay approved.', relit:'Capex on digital'},
+ {d:'18-Jul', k:'CAREERS PAGE', kc:'#7dd3fc', p:'New listing — QA documentation lead, Jeedimetla.', relit:'Batch record burden'},
+ {d:'05-Jul', k:'SITE VISIT', kc:'#7dd3fc', p:'Two visits to the CAIO page from a Hyderabad IP.', relit:'No data owner'}
+];
+
+const TODAY = [
+ {node:'g1', tag:'VETO WINDOW', cls:'t-act', who:'VANI · EMAIL', h:'Payback calculator → R. Menon',
+  p:'Drafted slot open. VaNi sends Thu 10:00 unless you hold it. They asked; the filing says the money exists.'},
+ {node:'g2', tag:'YOUR TASK', cls:'t-task', who:'HUMAN · CALL', h:'Call S. Rao — QA hire → batch records',
+  p:'Second thread into the committee. Talk track attached from the Batch-record node.'},
+ {node:'cnesthub', tag:'REVIEW', cls:'t-rev', who:'VANI PROPOSES', h:'Open a ContractNest opportunity?',
+  p:'Uptime praise + expansion signals + ₹18cr capex → a service-contracts conversation may be live here.'}
+];
+
+/* ------------------------------------------------------------ freshness */
+function fresh(age){
+  if(age<=30) return {c:'#4ade80', o:1};
+  if(age<=60) return {c:'#d4c34c', o:.9};
+  if(age<=120) return {c:'#c07a3c', o:.7};
+  return {c:'#4a524c', o:.38};
+}
+
+/* ------------------------------------------------------------ ribbon */
+function renderRibbon(T){
+  const audStage = T>15 ? 'ENGAGED' : 'CONSIDERING';
+  const el = document.getElementById('ribbon');
+  el.innerHTML = STAGES.map(s=>{
+    let cls='stage', mark='';
+    const ai = STAGES.indexOf(audStage);
+    const si = STAGES.indexOf(s);
+    if(si<ai) cls+=' past';
+    if(s===audStage){cls+=' cur-audit'; mark=`<span class="mark">● audit · ${T>15?'score 0.41 · auto':'score 0.68 · auto'}</span>`;}
+    if(s==='EXPANDING' && T<=45){cls+=' cur-amc'; mark+=`<span class="mark">● amc · moved by Charan</span>`;}
+    return `<div class="${cls}">${s}${mark}</div>`;
+  }).join('');
+}
+
+/* ------------------------------------------------------------ map */
+const svg = document.getElementById('map');
+const NS='http://www.w3.org/2000/svg';
+function E(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);(parent||svg).appendChild(e);return e;}
+
+let selected=null, accepted={}, held={};
+
+function drawMap(T){
+  svg.innerHTML='';
+  const defs=E('defs',{});
+  const grad=E('radialGradient',{id:'acct'},defs);
+  E('stop',{offset:'0%','stop-color':'#241d07'},grad);
+  E('stop',{offset:'100%','stop-color':'#0d100e'},grad);
+
+  const gEdges=E('g',{}), gFat=E('g',{}), gNodes=E('g',{});
+  const A=HUBS.account;
+
+  /* account -> hub spokes */
+  for(const hid of ['audit','amc','cnest']){
+    const h=HUBS[hid];
+    if(hid==='cnest' && T>0) continue;
+    E('line',{x1:A.x,y1:A.y,x2:h.x,y2:h.y,stroke:'#1d231f','stroke-width':1.4,
+      'stroke-dasharray':h.ghost?'3 5':'none'},gEdges);
+  }
+
+  /* nodes + edges */
+  NODES.forEach(n=>{
+    const isGhost = n.kind==='ghost';
+    if(isGhost && T>0) return;
+    if(!isGhost && n.age < T) return;           // didn't exist yet
+    const effAge = isGhost ? 0 : n.age - T;
+    const f = isGhost ? {c:(n.mode==='vani'?'#7dd3fc':'#d4a72c'), o:1} : fresh(effAge);
+    const h = HUBS[n.hub];
+
+    E('line',{x1:h.x,y1:h.y,x2:n.x+n.w/2,y2:n.y+22,stroke:f.c,'stroke-width':isGhost?1.2:1.3,
+      opacity:isGhost?.5:Math.max(.15,f.o*.55),'stroke-dasharray':isGhost?'4 5':'none'},gEdges);
+
+    const g=E('g',{class:'node'+(selected===n.id?' sel':''),'data-id':n.id},gNodes);
+    const hgt = isGhost?66:48;
+    const box=E('rect',{class:'box',x:n.x,y:n.y,width:n.w,height:hgt,rx:9,
+      fill: isGhost ? (accepted[n.id] ? '#0e2016' : '#0b0f12') : '#12151300',
+      'fill-opacity': isGhost?1:1, stroke:f.c,'stroke-opacity':isGhost?.9:Math.max(.25,f.o*.8),
+      'stroke-width':accepted[n.id]?1.6:1.1,
+      'stroke-dasharray': (isGhost && !accepted[n.id]) ? '5 4':'none'},g);
+    if(!isGhost) box.setAttribute('fill','#121513');
+    box.setAttribute('fill-opacity', isGhost?1:Math.max(.5,f.o));
+
+    const tt=E('text',{class:'nlabel',x:n.x+12,y:n.y+21,opacity:Math.max(.35,f.o)},g);
+    tt.textContent=n.title;
+    const st=E('text',{class:'nsub',x:n.x+12,y:n.y+37,opacity:Math.max(.3,f.o)},g);
+    st.textContent = isGhost ? `${n.channel} → ${n.target.toUpperCase()}` : (effAge>=60 ? Math.round(effAge/30)+'mo ago' : effAge+'d ago');
+
+    if(isGhost){
+      const meta=E('text',{class:'nmeta',x:n.x+12,y:n.y+54,fill:f.c},g);
+      meta.textContent = accepted[n.id] ? '✓ SCHEDULED' :
+        held[n.id] ? '⏸ HELD FOR REVIEW' :
+        (n.mode==='vani' ? '◔ '+n.countdown : '◇ AWAITING YOU · '+n.sub.toUpperCase().slice(0,18));
+      E('circle',{class:'ghost-dot',cx:n.x+n.w-13,cy:n.y+13,r:3.4,fill:f.c},g);
+    } else {
+      E('circle',{cx:n.x+n.w-13,cy:n.y+hgt-13,r:3.4,fill:f.c,'fill-opacity':f.o},g);
+    }
+
+    if(n.chip && !isGhost){
+      const cw=n.chip.length*6.4+18;
+      E('rect',{x:n.x+n.w-cw+10,y:n.y-10,width:cw,height:17,rx:8,fill:'#0d100e',stroke:n.chipC,'stroke-opacity':.75,'stroke-width':1,opacity:Math.max(.3,f.o)},g);
+      const c=E('text',{class:'tagchip',x:n.x+n.w-cw+19,y:n.y+2,fill:n.chipC,opacity:Math.max(.35,f.o)},g);
+      c.textContent=n.chip;
+    }
+    if(isGhost){
+      const lbl = n.mode==='vani'?'VANI':'HUMAN';
+      E('rect',{x:n.x+10,y:n.y-10,width:lbl.length*6.4+18,height:17,rx:8,fill:'#0d100e',stroke:f.c,'stroke-width':1},g);
+      const c=E('text',{class:'tagchip',x:n.x+19,y:n.y+2,fill:f.c},g);
+      c.textContent=lbl;
+    }
+    g.addEventListener('click',()=>selectNode(n.id));
+  });
+
+  /* fatigue governor arc (only at now, if both ghosts pending) */
+  if(T===0 && !accepted['g3'] && !held['g3']){
+    E('path',{class:'fatigue',d:'M 1066 192 C 1150 320, 1120 420, 1000 508',fill:'none',stroke:'#d4a72c','stroke-width':1.3,opacity:.75},gFat);
+    const fx=1092,fy=345;
+    E('rect',{x:fx-78,y:fy-13,width:156,height:40,rx:8,fill:'#141007',stroke:'#4d3f14'},gFat);
+    const t1=E('text',{class:'nmeta',x:fx-68,y:fy+3,fill:'#d4a72c'},gFat); t1.textContent='R. MENON · 2 SENDS, 1 WEEK';
+    const t2=E('text',{class:'nmeta',x:fx-68,y:fy+18,fill:'#8a7226'},gFat); t2.textContent='GOVERNOR: WHATSAPP +4D';
+  }
+
+  /* hubs */
+  for(const hid of ['audit','amc','cnest']){
+    const h=HUBS[hid];
+    if(hid==='cnest' && T>0) continue;
+    const g=E('g',{class:'node','data-id':hid+'hub'},gNodes);
+    E('circle',{class:'box',cx:h.x,cy:h.y,r:h.r,fill:'#0d100e',stroke:h.color,'stroke-width':1.3,
+      'stroke-opacity':.85,'stroke-dasharray':h.ghost?'5 5':'none'},g);
+    const l1=E('text',{class:'hublabel',x:h.x,y:h.y-2,'text-anchor':'middle'},g); l1.textContent=h.label;
+    const stage = hid==='audit' ? (T>15?'ENGAGED':'CONSIDERING') : h.stage;
+    const l2=E('text',{class:'hubstage',x:h.x,y:h.y+14,'text-anchor':'middle',fill:h.color},g); l2.textContent=stage;
+    if(h.ghost){
+      const l3=E('text',{class:'nmeta',x:h.x,y:h.y-h.r-8,'text-anchor':'middle',fill:'#7dd3fc'},g); l3.textContent='VANI PROPOSES';
+    }
+    g.addEventListener('click',()=>selectNode(hid+'hub'));
+  }
+
+  /* account center */
+  const gA=E('g',{},gNodes);
+  E('circle',{cx:A.x,cy:A.y,r:A.r,fill:'url(#acct)',stroke:'#8a7226','stroke-width':1.4},gA);
+  const a1=E('text',{class:'nlabel',x:A.x,y:A.y-6,'text-anchor':'middle'},gA); a1.textContent='Sriveda';
+  const a2=E('text',{class:'nlabel',x:A.x,y:A.y+12,'text-anchor':'middle'},gA); a2.textContent='Lifesciences';
+  const a3=E('text',{class:'nmeta',x:A.x,y:A.y+32,'text-anchor':'middle',fill:'#8a7226'},gA); a3.textContent='ACCOUNT';
+
+  /* contacts */
+  CONTACTS.forEach(c=>{
+    const g=E('g',{},gNodes);
+    E('line',{x1:A.x,y1:A.y,x2:c.x,y2:c.y,stroke:'#1d231f','stroke-width':1},g);
+    E('circle',{cx:c.x,cy:c.y,r:17,fill:'#121513',stroke:'#3a423c','stroke-width':1.2},g);
+    const i=E('text',{x:c.x,y:c.y+4,'text-anchor':'middle','font-size':'10','font-weight':'600',fill:'#c9cec9'},g);
+    i.textContent=c.name.split(' ').map(w=>w[0]).join('');
+    const n1=E('text',{class:'nmeta',x:c.x,y:c.y+32,'text-anchor':'middle',fill:'#7c857e'},g); n1.textContent=c.name.toUpperCase();
+    const n2=E('text',{class:'nmeta',x:c.x,y:c.y+44,'text-anchor':'middle',fill:'#4a524c'},g); n2.textContent=c.role;
+  });
+}
+
+/* ------------------------------------------------------------ rail */
+function renderRail(tab){
+  const b=document.getElementById('railBody');
+  if(tab==='today'){
+    b.innerHTML = TODAY.map(t=>`
+      <div class="titem" data-node="${t.node}">
+        <div class="tag"><span class="${t.cls}">${t.tag}</span><span class="who">${t.who}</span></div>
+        <h4>${t.h}</h4><p>${t.p}</p>
+      </div>`).join('');
+    b.querySelectorAll('.titem').forEach(el=>el.addEventListener('click',()=>selectNode(el.dataset.node)));
+  } else {
+    b.innerHTML = SIGNALS.map(s=>`
+      <div class="sig"><div class="d">${s.d}</div>
+        <div><div class="k" style="color:${s.kc}">${s.k}</div><p>${s.p}</p>
+        <div class="relit">→ relit <b>${s.relit}</b></div></div>
+      </div>`).join('') +
+      `<div style="padding:14px 18px;font-size:11.5px;color:var(--dim);line-height:1.6">Every signal relights a node and re-plans the pending ghosts. A filing is not a reminder to follow up — it is a new thing to say.</div>`;
+  }
+}
+
+/* ------------------------------------------------------------ panel */
+function selectNode(id){
+  selected=id;
+  drawMap(currentT());
+  const panel=document.getElementById('panel');
+  const def=document.getElementById('railDefault');
+  const n=NODES.find(x=>x.id===id);
+  let html='';
+
+  if(id==='cnesthub'){
+    html = phead('VANI PROPOSES · NEW OPPORTUNITY','#7dd3fc','ContractNest — service contracts',
+      [pm('ACCOUNT-LEVEL'),pm('CONFIDENCE 0.55')]) +
+      sec('Why VaNi thinks this is live', `<ul class="why">
+        <li><b>Uptime SLA praised</b> on the AMC review — service quality is felt</li>
+        <li><b>₹18cr capex approved</b> — new equipment means new maintenance contracts</li>
+        <li><b>Third unit</b> raised 8 months ago — expansion multiplies contract surface</li></ul>`) +
+      sec('If you accept', `<p class="mut">A third hub opens on this map with its own journey, starting at AWARE. Nourishment for it will respect the same account-level fatigue governor.</p>`) +
+      `<div class="btnrow"><div class="btn pri">Open opportunity</div><div class="btn">Not yet</div><div class="btn warn">Never for this account</div></div>`;
+  }
+  else if(id&&id.endsWith('hub')){
+    const h=HUBS[id.replace('hub','')];
+    if(h) html = phead('OPPORTUNITY','#4ade80',h.label,[pm(h.stage),pm(h.prov||'')]) +
+      sec('Autonomy — per channel, this opportunity', `
+        <p class="mut" style="margin-bottom:10px">EMAIL</p><div class="toggle3"><div>Human</div><div class="on vani">VaNi delivers</div><div class="locked">VaNi full · story-skill</div></div>
+        <p class="mut" style="margin:12px 0 10px">WHATSAPP</p><div class="toggle3"><div class="on">Human</div><div>VaNi delivers</div><div class="locked">VaNi full · story-skill</div></div>
+        <p class="mut" style="margin:12px 0 10px">CALLS</p><div class="toggle3"><div class="on">Human</div><div style="opacity:.4">—</div><div class="locked">—</div></div>`) +
+      sec('Stage provenance', `<p class="mut">CONSIDERING since 14-Jul · moved by score (0.61 → threshold 0.60). Override is yours — overrides train the scoring model.</p>`);
+  }
+  else if(n && n.kind==='ghost'){
+    const isV=n.mode==='vani' && !held[n.id];
+    html = (isV && !accepted[n.id] ? `<div class="countbar"><div class="pulse"></div><span>${n.countdown} — VaNi acts unless you hold</span></div>`:'') +
+      phead('PROPOSED NOURISHMENT','#7dd3fc',n.title,
+        [pm(n.channel),pm('→ '+n.target),n.mode==='vani'?pm('VANI DELIVERS','vani'):pm('HUMAN','hum')]) +
+      sec('Why now — the reasoning chain', `<ul class="why">${n.why.map(w=>`<li>${w}</li>`).join('')}</ul>`) +
+      sec('The draft slot', `<textarea class="draft" placeholder="${n.mode==='vani'
+        ? 'VaNi recommendation brief above. Approve the angle and draft here — delivery is automated.'
+        : 'Your talk track. VaNi recommends the angle; you own the words.'}"></textarea>
+        <div class="draft-note">story-skill will pre-fill this slot when it ships — same panel, no rework</div>`) +
+      `<div class="btnrow">${accepted[n.id]
+        ? `<div class="btn pri">✓ Scheduled</div><div class="btn" data-act="unschedule" data-id="${n.id}">Unschedule</div>`
+        : `<div class="btn pri" data-act="accept" data-id="${n.id}">Accept &amp; schedule</div>
+           ${n.mode==='vani'?`<div class="btn warn" data-act="hold" data-id="${n.id}">${held[n.id]?'Held ✓':'Hold'}</div>`:''}
+           <div class="btn" data-act="snooze" data-id="${n.id}">Snooze</div>
+           <div class="btn" data-act="reject" data-id="${n.id}">Reject</div>`}</div>
+      <div style="padding:0 18px 14px;font-size:10.5px;color:var(--dim);font-family:var(--mono)">rejects feed the learning graph — VaNi asks why, once</div>`;
+  }
+  else if(n && n.kind==='nourish'){
+    html = phead('NOURISHMENT · DELIVERED','#4ade80',n.title,[pm(n.age+'D AGO'),n.chip?pm(n.chip):'' ]) +
+      sec('What happened', `<p>${n.detail.p}</p>`);
+  }
+  else if(n){
+    const f=fresh(n.age - currentT());
+    html = phead('SIGNAL · '+(n.age<=30?'FED THIS MONTH':n.age<=60?'WITHIN HALF-LIFE':n.age<=120?'FADING':'STALE'),f.c,n.title,[pm((n.age>=60?Math.round(n.age/30)+'MO':n.age+'D')+' AGO')]) +
+      sec('What it means', `<p>${n.detail.p}</p>`) +
+      (n.detail.raw?sec('Raw evidence', `<p class="mut">${n.detail.raw}</p>`):'') +
+      sec('Ghosts fed by this node', `<p class="mut">${id==='cost'?'Payback calculator (VaNi, Thu 10:00)':id==='batch'?'Call S. Rao — QA-hire angle':'none pending'}</p>`);
+  }
+
+  if(!html){ back(); return; }
+  panel.innerHTML = `<div class="p-back">&larr; back to today</div>` + html;
+  panel.classList.add('on'); def.style.display='none';
+  panel.querySelector('.p-back').addEventListener('click',back);
+  panel.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click',()=>{
+    const act=b.dataset.act, nid=b.dataset.id;
+    if(act==='accept'){accepted[nid]=true;}
+    if(act==='unschedule'){delete accepted[nid];}
+    if(act==='hold'){held[nid]=true;}
+    if(act==='snooze'||act==='reject'){held[nid]=true;}
+    selectNode(nid);
+  }));
+
+  function phead(kind,kc,title,metas){return `<div class="p-head"><div class="p-kind" style="color:${kc}">${kind}</div><h3>${title}</h3><div class="p-meta">${metas.filter(Boolean).join('')}</div></div>`;}
+  function pm(t,cls){return t?`<span class="pm ${cls||''}">${t}</span>`:'';}
+  function sec(k,body){return `<div class="p-sec"><div class="kicker">${k}</div>${body}</div>`;}
+}
+function back(){
+  selected=null;
+  document.getElementById('panel').classList.remove('on');
+  document.getElementById('railDefault').style.display='block';
+  drawMap(currentT());
+}
+
+/* ------------------------------------------------------------ scrubber */
+const scrub=document.getElementById('scrub');
+function currentT(){ return 90 - Number(scrub.value); }
+scrub.addEventListener('input',()=>{
+  const T=currentT();
+  const when=document.getElementById('scrubWhen');
+  if(T===0){when.textContent='today';when.classList.remove('past');}
+  else{
+    const d=new Date(Date.now()-T*86400000);
+    when.textContent=T+'d ago · '+d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+    when.classList.add('past');
+  }
+  document.getElementById('mIntent').textContent = T>15?'0.41':T>3?'0.58':'0.68';
+  document.getElementById('mTemp').textContent = T>15?'cool':'warming';
+  document.getElementById('mEvid').textContent = T>15?'2/6':'4/6';
+  document.getElementById('chipStage').textContent = 'Audit · '+(T>15?'engaged':'considering');
+  renderRibbon(T); drawMap(T);
+  if(T>0) back();
+});
+
+/* tabs */
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on'); renderRail(t.dataset.tab);
+}));
+
+/* init */
+renderRibbon(0); drawMap(0); renderRail('today');
+</script>
+</body>
+</html>

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VaNiGTM — Sriveda Lifesciences · Engagement Runway</title>
+<style>
+  :root{
+    --bg:#060707; --card:#0d100e; --card2:#111412; --line:#1d231f; --line2:#262d28;
+    --txt:#e6e9e5; --mut:#7c857e; --dim:#4a524c;
+    --green:#4ade80; --green-dk:#1d5c38; --yellow:#d4c34c; --orange:#c07a3c;
+    --red:#e56a6a; --amber:#d4a72c; --vani:#7dd3fc;
+    --mono:'SFMono-Regular',ui-monospace,'Cascadia Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-family:-apple-system,'Segoe UI',Inter,Roboto,sans-serif;font-size:14px;padding:26px 30px 60px}
+  .wrap{max-width:1560px;margin:0 auto}
+  .crumb{color:var(--mut);font-size:12.5px;margin-bottom:18px}
+  .crumb b{color:var(--txt);font-weight:500}
+  .kicker{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;color:var(--mut);text-transform:uppercase;margin-bottom:8px}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px}
+  h1{font-size:30px;font-weight:600;letter-spacing:-.01em}
+  .metrics{display:flex;gap:38px;text-align:right}
+  .metric .v{font-size:26px;font-weight:500}
+  .metric .v.green{color:var(--green)}
+  .metric .l{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:var(--mut);text-transform:uppercase;margin-top:3px}
+  .opptabs{display:flex;gap:8px;margin:16px 0 14px}
+  .opptab{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:8px 14px;border-radius:8px;border:1px solid var(--line2);color:var(--mut);cursor:pointer}
+  .opptab.on{color:var(--green);border-color:var(--green-dk);background:#0e1a12}
+  .opptab.ghosted{border-style:dashed;color:var(--vani);border-color:#1d3d4d}
+
+  .grid{display:grid;grid-template-columns:1fr 372px;gap:16px;align-items:start}
+  .card{border:1px solid var(--line);background:var(--card);border-radius:12px}
+  .card-h{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);gap:14px}
+  .card-h .kicker{margin:0}
+  .simbtn{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:8px 14px;border-radius:8px;cursor:pointer;border:1px solid #1d3d4d;color:var(--vani);background:#0b1520;white-space:nowrap}
+  .simbtn.back{border-color:var(--line2);color:var(--mut);background:transparent}
+  .simbtn:hover{filter:brightness(1.3)}
+  #run{display:block;width:100%;height:auto}
+  .runlegend{display:flex;gap:18px;align-items:center;padding:12px 18px;border-top:1px solid var(--line);flex-wrap:wrap}
+  .lg{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--mut)}
+  .sw{width:14px;height:10px;border-radius:3px}
+
+  /* rail */
+  .rail-h{padding:14px 18px;border-bottom:1px solid var(--line)}
+  .pol{padding:14px 18px;border-bottom:1px solid var(--line)}
+  .pol .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:6px;color:var(--green)}
+  .pol .k.v{color:var(--vani)} .pol .k.a{color:var(--amber)}
+  .pol p{font-size:12.5px;color:var(--mut);line-height:1.6}
+  .pol p b{color:var(--txt);font-weight:500}
+  .panel{display:none}
+  .panel.on{display:block}
+  .p-head{padding:16px 18px;border-bottom:1px solid var(--line)}
+  .p-kind{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:7px}
+  .panel h3{font-size:16px;font-weight:600}
+  .p-meta{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
+  .pm{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;padding:4px 9px;border-radius:5px;border:1px solid var(--line2);color:var(--mut);text-transform:uppercase}
+  .pm.vani{color:var(--vani);border-color:#1d3d4d}.pm.hum{color:var(--amber);border-color:#4d3f14}
+  .p-sec{padding:14px 18px;border-bottom:1px solid var(--line)}
+  .p-sec .kicker{margin-bottom:9px}
+  .p-sec p{font-size:12.5px;color:var(--txt);line-height:1.6}
+  .p-sec p.mut{color:var(--mut)}
+  .why li{font-size:12.5px;color:var(--mut);line-height:1.7;list-style:none;padding-left:16px;position:relative}
+  .why li:before{content:'→';position:absolute;left:0;color:var(--green)}
+  .why li b{color:var(--txt);font-weight:500}
+  textarea.draft{width:100%;min-height:88px;background:#0a0d0b;border:1px solid var(--line2);border-radius:8px;color:var(--txt);font-size:12.5px;line-height:1.6;padding:10px 12px;resize:vertical;font-family:inherit}
+  textarea.draft::placeholder{color:var(--dim)}
+  .btnrow{display:flex;gap:8px;padding:14px 18px}
+  .btn{flex:1;padding:10px 0;text-align:center;border-radius:8px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border:1px solid var(--line2);color:var(--mut)}
+  .btn.pri{background:#12341f;border-color:var(--green-dk);color:var(--green)}
+  .btn.warn{color:var(--amber);border-color:#4d3f14}
+  .btn:hover{filter:brightness(1.25)}
+  .p-back{padding:12px 18px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--dim);cursor:pointer;text-transform:uppercase}
+  .p-back:hover{color:var(--txt)}
+
+  @keyframes pu{0%,100%{opacity:1}50%{opacity:.25}}
+  .pulse{animation:pu 1.6s infinite}
+  @keyframes dashmove{to{stroke-dashoffset:-24}}
+  .flow{stroke-dasharray:4 5;animation:dashmove 1.6s linear infinite}
+
+  .tlab{font-family:var(--mono);font-size:9px;fill:var(--dim);letter-spacing:.06em}
+  .ntitle{font-size:12px;font-weight:600;fill:var(--txt)}
+  .nsub{font-family:var(--mono);font-size:9px;fill:var(--mut);letter-spacing:.06em}
+  .nmeta{font-family:var(--mono);font-size:8.5px;letter-spacing:.06em}
+  .stlab{font-family:var(--mono);font-size:9px;letter-spacing:.14em}
+  g.item{cursor:pointer}
+  g.item:hover .box{filter:brightness(1.35)}
+  g.item.sel .box{stroke-width:1.8;filter:brightness(1.35)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="crumb">&larr; the constellation &nbsp;&middot;&nbsp; <b>a drip campaign is a sequence pretending to know the future — this one listens.</b>&nbsp; Dates &amp; frequency are policies; the story spends them.</div>
+  <div class="kicker">Account &middot; Sriveda Lifesciences &middot; Engagement runway &middot; day 17 of ~40</div>
+  <div class="head">
+    <h1>Digital Infra Audit — the running story</h1>
+    <div class="metrics">
+      <div class="metric"><div class="v green" id="mIntent">0.68</div><div class="l">Intent</div></div>
+      <div class="metric"><div class="v green">warming</div><div class="l">Temperature</div></div>
+      <div class="metric"><div class="v" id="mEvid">4/6</div><div class="l">Live evidence</div></div>
+      <div class="metric"><div class="v" style="color:var(--vani)" id="mNext">2 + gate</div><div class="l">Next 7 days</div></div>
+    </div>
+  </div>
+  <div class="opptabs">
+    <div class="opptab on">Digital Infra Audit &middot; considering</div>
+    <div class="opptab">AMC renewal &middot; expanding</div>
+    <div class="opptab ghosted">+ ContractNest ? &middot; VaNi proposes</div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-h">
+        <span class="kicker">The runway — them above the line, us below it</span>
+        <button class="simbtn" id="sim">&#9654;&nbsp; simulate: they engage the calculator</button>
+      </div>
+      <svg id="run" viewBox="0 0 1180 650" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="runlegend">
+        <div class="lg"><span class="sw" style="border:1.5px solid var(--green)"></span>happened</div>
+        <div class="lg"><span class="sw" style="border:1.5px dashed var(--vani)"></span>committed &amp; dated — veto open</div>
+        <div class="lg"><span class="sw" style="border:1.5px dashed var(--dim)"></span>branched — the gate decides</div>
+        <div class="lg"><span class="sw" style="border:1px dashed #33393425;background:#10141220"></span>shaped, not scheduled (day 30–40)</div>
+        <div class="lg"><span style="color:var(--amber);font-size:12px">◆</span>gate — behaviour chooses the path</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="railDefault">
+        <div class="rail-h"><span class="kicker" style="margin:0">Why this is not a sequence</span></div>
+        <div class="pol"><div class="k v">Horizon rule</div><p><b>Next 7 days:</b> committed, dated, veto open. <b>Day 8–20:</b> branched — exists only as gate outcomes. <b>Day 20–40:</b> shaped, not scheduled. Nothing is promised that behaviour hasn't earned.</p></div>
+        <div class="pol"><div class="k a">Cadence policy</div><p>&le;2 touches per contact per week, across <b>all</b> opportunities. Quiet Sat–Sun. The AMC nudge to R. Menon was auto-moved +2d by the governor — visible on his cadence strip below the axis.</p></div>
+        <div class="pol"><div class="k">Gates, not steps</div><p>A classic drip says <b>“day 12: email 4.”</b> Here day 12 doesn't exist yet. The gate at day +7 asks: did they engage the payback calculator? Each answer is a different story — different content, channel, tempo.</p></div>
+        <div class="pol"><div class="k v">Autonomy</div><p>Email: <b>VaNi delivers</b> (veto window). WhatsApp &amp; calls: <b>human</b>. Story-skill will later draft in the same slots — the runway doesn't change shape when it does.</p></div>
+        <div class="pol"><div class="k a">What re-plans the runway</div><p>Analytics, replies, chatbot invocations, surveys, filings, concalls. Every signal lands above the line — and everything right of TODAY is recomputed. Press <b>simulate</b> to watch it happen.</p></div>
+      </div>
+      <div class="panel" id="panel"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('run');
+function E(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);(p||svg).appendChild(e);return e;}
+const X=t=>46+(t+30)*(1088/72);
+const AX=300;
+let SIM=false, selected=null;
+
+const TICKS=[[-28,'01-Jul'],[-21,'08-Jul'],[-14,'15-Jul'],[-7,'22-Jul'],[0,'TODAY'],[7,'05-Aug'],[14,'12-Aug'],[21,'19-Aug'],[28,'26-Aug'],[35,'02-Sep'],[42,'09-Sep']];
+
+/* items: lane them(above)/us(below) */
+const THEM=[
+ {id:'s1',t:-24,y:196,w:150,k:'SITE VISIT',title:'CAIO page ×2',c:'#7dd3fc'},
+ {id:'s2',t:-11,y:112,w:150,k:'CAREERS',title:'QA doc lead listed',c:'#7dd3fc'},
+ {id:'s3',t:-9,y:196,w:150,k:'FILING',title:'₹18cr outlay approved',c:'#d4c34c'},
+ {id:'s4',t:-6,y:82,w:150,k:'CONCALL',title:'“plant digitisation”',c:'#d4c34c'},
+ {id:'s5',t:-3,y:158,w:158,k:'REPLY',title:'“what investment?”',c:'#4ade80'},
+];
+const SIMSIG={id:'s6',t:5,y:112,w:158,k:'REPLY · SIMULATED',title:'calculator opened ×3, replied',c:'#4ade80'};
+
+const US=[
+ {id:'o1',t:-17,y:340,w:120,kind:'past',k:'RESEARCHED',title:'Brief · 6 pages',sub:'4 claims evidenced'},
+ {id:'o2',t:-15,y:402,w:130,kind:'past',k:'OFFER CHOSEN',title:'CAIO-as-a-service',sub:'“nobody owns data”'},
+ {id:'o3',t:-10,y:464,w:150,kind:'past',k:'STORY 1 · EMAIL',title:'Batch record burden',sub:'REPLIED ✓ → lit cost node'},
+ {id:'f1',t:2,y:340,w:168,kind:'commit',mode:'vani',k:'EMAIL · VANI',title:'Payback calculator',sub:'◔ Thu 10:00 · veto 41h',
+   why:['<b>They asked</b> — pricing question, 3d ago','<b>Filing</b> — ₹18cr approved: frame payback against money that exists','Date rule: answer a pricing question within 5 days'],
+   prov:'31-Jul · set by reply-gap rule · governor ok · quiet-hours ok'},
+ {id:'f2',t:3,y:402,w:158,kind:'commit',mode:'human',k:'CALL · HUMAN',title:'Call S. Rao',sub:'◇ QA-hire → batch records',
+   why:['<b>Careers signal</b> — they are hiring against the pain','Committee coverage — second thread, not a second send to Menon'],
+   prov:'01-Aug · your slot · talk track from Batch-record node'},
+ {id:'f3',t:6,y:526,w:172,kind:'commit',mode:'human',k:'AMC · WHATSAPP',title:'Uptime + terms nudge',sub:'governor: moved +2d',dim:true,
+   why:['Renewal window opens in 3 weeks','<b>Governor</b> — Menon already gets the calculator this week; moved from 02-Aug to 04-Aug'],
+   prov:'04-Aug · other opportunity, same person — cadence is account-level'},
+];
+const GATE={t:7,y:AX,label:'GATE · did they engage?',sub:'reply/open within 5d'};
+const BR_A=[
+ {id:'a1',t:13,y:340,w:150,k:'EMAIL',title:'ROI workshop invite',sub:'if engaged',
+   why:['Exists only on the engaged branch','Purpose: convert pricing interest into a working session'],prov:'~10-Aug · gate +3d'},
+ {id:'a2',t:20,y:402,w:150,k:'CALL',title:'Site-visit proposal',sub:'aim: EVALUATING',
+   why:['Stage push: CONSIDERING → EVALUATING needs a physical moment','Paired with S. Rao thread'],prov:'~17-Aug · workshop +7d'},
+];
+const BR_B=[
+ {id:'b1',t:11,y:464,w:140,k:'WHATSAPP',title:'Soft nudge',sub:'if silence',
+   why:['Silence ≠ next email. Channel switch — lighter, personal'],prov:'~08-Aug · gate +3d'},
+ {id:'b2',t:17,y:526,w:150,k:'EMAIL',title:'Peer case study',sub:'API plant, Hyd',
+   why:['Third angle: proof, not price','If this also dies → gate 2 recommends dormancy, not noise'],prov:'~13-Aug · nudge +5d'},
+];
+const SOFT={x1:25,x2:41,y1:452,y2:560,title:'evaluation pack · pilot proposal',sub:'day 30–40 — shaped by the gates,',sub2:'scheduled by nothing else'};
+
+/* intent line */
+const INTENT_PAST=[[-24,.30],[-15,.41],[-9,.52],[-3,.61],[0,.68]];
+const INTENT_A=[[0,.68],[5,.74],[11,.77],[17,.81]];
+const INTENT_B=[[0,.68],[7,.66],[15,.63]];
+const IY=i=>272-(i-.3)*150;
+
+function draw(){
+  svg.innerHTML='';
+  /* stage bands */
+  const bands=[['ENGAGED',-30,-15,'#3a423c',false],['CONSIDERING',-15,14,'#4ade80',false],['EVALUATING',14,42,SIM?'#4ade80':'#4a524c',!SIM]];
+  bands.forEach(([n,a,b,c,proj])=>{
+    E('line',{x1:X(a),y1:40,x2:X(b),y2:40,stroke:c,'stroke-width':2,'stroke-dasharray':proj?'4 5':'none',opacity:proj?.5:.9});
+    const t=E('text',{class:'stlab',x:(X(a)+X(b))/2,y:32,'text-anchor':'middle',fill:c,opacity:proj?.6:1});
+    t.textContent=n+(proj?' · PROJECTED':(n==='EVALUATING'&&SIM?' · ON TRACK':''));
+  });
+
+  /* axis + ticks */
+  E('line',{x1:X(-30),y1:AX,x2:X(42),y2:AX,stroke:'#262d28','stroke-width':1.4});
+  TICKS.forEach(([t,l])=>{
+    E('line',{x1:X(t),y1:AX-4,x2:X(t),y2:AX+4,stroke:'#3a423c'});
+    const e=E('text',{class:'tlab',x:X(t),y:AX+18,'text-anchor':'middle',fill:t===0?'#e6e9e5':'#4a524c'});
+    e.textContent=l;
+  });
+  /* today line */
+  E('line',{x1:X(0),y1:52,x2:X(0),y2:636,stroke:'#4ade80','stroke-width':1.2,opacity:.55});
+  const tl=E('text',{class:'stlab',x:X(0)+6,y:62,fill:'#4ade80'});tl.textContent='DAY 17';
+
+  /* lane labels */
+  const l1=E('text',{class:'stlab',x:52,y:70,fill:'#7c857e'});l1.textContent='THEM — SIGNALS IN';
+  const l2=E('text',{class:'stlab',x:52,y:340,fill:'#7c857e'});l2.textContent='US — NOURISHMENT OUT';
+
+  /* intent line */
+  const pts=INTENT_PAST.concat(SIM?[[5,.74]]:[]);
+  E('polyline',{points:pts.map(([t,i])=>`${X(t)},${IY(i)}`).join(' '),fill:'none',stroke:'#4ade80','stroke-width':1.6,opacity:.85});
+  const projA=(SIM?[[5,.74]]:[[0,.68]]).concat(INTENT_A.filter(p=>p[0]>(SIM?5:0)));
+  E('polyline',{points:projA.map(([t,i])=>`${X(t)},${IY(i)}`).join(' '),fill:'none',stroke:'#4ade80','stroke-width':1.3,'stroke-dasharray':'3 5',opacity:SIM?.9:.5});
+  if(!SIM) E('polyline',{points:INTENT_B.map(([t,i])=>`${X(t)},${IY(i)}`).join(' '),fill:'none',stroke:'#4a524c','stroke-width':1.2,'stroke-dasharray':'3 5',opacity:.6});
+  E('line',{x1:X(-30),y1:IY(.75),x2:X(42),y2:IY(.75),stroke:'#8a7226','stroke-width':.8,'stroke-dasharray':'2 6',opacity:.6});
+  const th=E('text',{class:'nmeta',x:X(42)-4,y:IY(.75)-5,'text-anchor':'end',fill:'#8a7226'});th.textContent='INTENT 0.75 → EVALUATING';
+  const il=E('text',{class:'nmeta',x:X(0)+6,y:IY(.68)-8,fill:'#4ade80'});il.textContent=SIM?'0.74':'0.68';
+
+  /* THEM items */
+  const themAll=THEM.concat(SIM?[SIMSIG]:[]);
+  themAll.forEach(s=>{
+    const x=X(s.t)-s.w/2;
+    E('line',{x1:X(s.t),y1:s.y+40,x2:X(s.t),y2:AX,stroke:s.c,'stroke-width':1,opacity:.35});
+    E('circle',{cx:X(s.t),cy:AX,r:3.5,fill:s.c});
+    const g=E('g',{class:'item'});
+    E('rect',{class:'box',x:x,y:s.y,width:s.w,height:40,rx:8,fill:'#101413',stroke:s.c,'stroke-opacity':.7,'stroke-width':1},g);
+    const k=E('text',{class:'nmeta',x:x+10,y:s.y+15,fill:s.c},g);k.textContent=s.k;
+    const t=E('text',{class:'ntitle',x:x+10,y:s.y+31},g);t.textContent=s.title;
+  });
+
+  /* US past + committed */
+  US.forEach(n=>drawUs(n));
+  /* gate */
+  const gx=X(GATE.t);
+  const gg=E('g',{class:'item','data-id':'gate'});
+  E('path',{class:'box',d:`M ${gx} ${AX-13} L ${gx+13} ${AX} L ${gx} ${AX+13} L ${gx-13} ${AX} Z`,fill:SIM?'#12341f':'#141007',stroke:SIM?'#4ade80':'#d4a72c','stroke-width':1.4},gg);
+  const gl=E('text',{class:'nmeta',x:gx,y:AX-22,'text-anchor':'middle',fill:SIM?'#4ade80':'#d4a72c'},gg);
+  gl.textContent=SIM?'GATE · ENGAGED ✓':GATE.label;
+  if(!SIM){const gs=E('text',{class:'nmeta',x:gx,y:AX+30,'text-anchor':'middle',fill:'#8a7226'},gg);gs.textContent=GATE.sub;}
+  gg.addEventListener('click',()=>select('gate'));
+
+  /* branches */
+  const brA=BR_A, brB=SIM?[]:BR_B;
+  brA.forEach((n,i)=>{drawUs({...n,kind:'branch',mode:'vani',bright:SIM});});
+  brB.forEach(n=>drawUs({...n,kind:'branch',mode:'dim'}));
+  /* branch edges */
+  const eA=E('path',{class:SIM?'flow':'',d:`M ${gx+13} ${AX} C ${gx+50} ${AX+25}, ${X(13)-95} 366, ${X(13)-77} 366`,fill:'none',stroke:'#4ade80','stroke-width':1.2,'stroke-dasharray':SIM?'4 5':'3 5',opacity:SIM?.9:.45});
+  if(!SIM){
+    E('path',{d:`M ${gx+13} ${AX} C ${gx+40} ${AX+90}, ${X(11)-85} 490, ${X(11)-72} 490`,fill:'none',stroke:'#4a524c','stroke-width':1.1,'stroke-dasharray':'3 5',opacity:.5});
+  }
+  /* soft block */
+  E('rect',{x:X(SOFT.x1),y:SOFT.y1,width:X(SOFT.x2)-X(SOFT.x1),height:SOFT.y2-SOFT.y1,rx:10,fill:'#10141240',stroke:'#333934',
+    'stroke-dasharray':'3 6','stroke-width':1,opacity:SIM?.85:.6});
+  const st=E('text',{class:'ntitle',x:X(SOFT.x1)+14,y:SOFT.y1+26,opacity:.6});st.textContent=SOFT.title;
+  const ss=E('text',{class:'nsub',x:X(SOFT.x1)+14,y:SOFT.y1+44,opacity:.55});ss.textContent=SOFT.sub;
+  const ss2=E('text',{class:'nsub',x:X(SOFT.x1)+14,y:SOFT.y1+58,opacity:.55});ss2.textContent=SOFT.sub2;
+
+  /* cadence strips */
+  const cy1=606,cy2=630;
+  const cl=E('text',{class:'nmeta',x:52,y:cy1+3,fill:'#7c857e'});cl.textContent='R. MENON';
+  const cl2=E('text',{class:'nmeta',x:52,y:cy2+3,fill:'#7c857e'});cl2.textContent='S. RAO';
+  E('line',{x1:130,y1:cy1,x2:X(42),y2:cy1,stroke:'#1d231f'});
+  E('line',{x1:130,y1:cy2,x2:X(42),y2:cy2,stroke:'#1d231f'});
+  const menon=[-10,2,6].concat(SIM?[11,17]:[]);
+  menon.forEach(t=>E('line',{x1:X(t),y1:cy1-5,x2:X(t),y2:cy1+5,stroke:t<0?'#4ade80':'#7dd3fc','stroke-width':2}));
+  /* governed move: original slot crossed */
+  E('text',{class:'nmeta',x:X(4),y:cy1-8,'text-anchor':'middle',fill:'#d4a72c'}).textContent='×';
+  E('path',{d:`M ${X(4)} ${cy1-4} C ${X(5)} ${cy1-14}, ${X(5.4)} ${cy1-14}, ${X(6)} ${cy1-6}`,fill:'none',stroke:'#d4a72c','stroke-width':.9,opacity:.8});
+  const gv=E('text',{class:'nmeta',x:X(8),y:cy1+16,fill:'#8a7226'});gv.textContent='GOVERNOR: ≤2/WK — AMC MOVED +2D';
+  [3].forEach(t=>E('line',{x1:X(t),y1:cy2-5,x2:X(t),y2:cy2+5,stroke:'#d4a72c','stroke-width':2}));
+}
+
+function drawUs(n){
+  const x=X(n.t)-n.w/2, past=n.kind==='past', branch=n.kind==='branch';
+  const c = past?'#4ade80' : n.kind==='commit'?(n.mode==='vani'?'#7dd3fc':'#d4a72c') : (n.mode==='dim'?'#4a524c':(n.bright?'#4ade80':'#7dd3fc'));
+  const op = n.dim?.75 : branch&&!n.bright?.7:1;
+  E('line',{x1:X(n.t),y1:AX,x2:X(n.t),y2:n.y,stroke:c,'stroke-width':1,opacity:.3*op});
+  E('circle',{cx:X(n.t),cy:AX,r:3.5,fill:c,opacity:op});
+  const g=E('g',{class:'item'+(selected===n.id?' sel':''),'data-id':n.id});
+  E('rect',{class:'box',x:x,y:n.y,width:n.w,height:52,rx:8,fill:past?'#101413':'#0b0f12',stroke:c,'stroke-opacity':.8*op,'stroke-width':1.1,
+    'stroke-dasharray':past?'none':'5 4'},g);
+  const k=E('text',{class:'nmeta',x:x+10,y:n.y+15,fill:c,opacity:op},g);k.textContent=n.k;
+  const t=E('text',{class:'ntitle',x:x+10,y:n.y+31,opacity:op},g);t.textContent=n.title;
+  const s=E('text',{class:'nsub',x:x+10,y:n.y+45,opacity:op},g);
+  s.textContent=(n.id==='f1'&&SIM)?'SENT ✓ · OPENED ×3':n.sub;
+  if(n.kind==='commit'&&n.mode==='vani'&&!SIM) E('circle',{class:'pulse',cx:x+n.w-11,cy:n.y+11,r:3.2,fill:c},g);
+  g.addEventListener('click',()=>select(n.id));
+}
+
+/* ------------- panel ------------- */
+function select(id){
+  selected=id;draw();
+  const p=document.getElementById('panel'),d=document.getElementById('railDefault');
+  const all=US.concat(BR_A,BR_B);
+  const n=all.find(x=>x.id===id);
+  let html='';
+  if(id==='gate'){
+    html=ph('GATE — BEHAVIOUR CHOOSES THE PATH','#d4a72c','Did they engage the calculator?',[pm('DAY +7'),pm('RULE: 5D WINDOW')])+
+    sec('This is the anti-sequence',`<p class="mut">A drip campaign would already know what email 4 says. VaNiGTM refuses to: the two futures differ in content, channel and tempo. Only one will ever exist.</p>`)+
+    sec('If engaged',`<ul class="why"><li>ROI workshop invite (~+4d) → site-visit proposal → EVALUATING</li></ul>`)+
+    sec('If silence',`<ul class="why"><li>Channel switch: WhatsApp nudge, then peer proof. If that dies too — dormancy, not noise. Dormant ≠ dead: filings still relight nodes.</li></ul>`);
+  } else if(n&&n.why){
+    const isV=n.mode==='vani';
+    html=ph(n.kind==='commit'?'COMMITTED · VETO OPEN':'BRANCHED — NOT YET REAL',isV?'#7dd3fc':'#d4a72c',n.title,
+      [pm(n.k),isV?pm('VANI DELIVERS','vani'):pm('HUMAN','hum')])+
+    sec('Why',`<ul class="why">${n.why.map(w=>`<li>${w}</li>`).join('')}</ul>`)+
+    sec('Date provenance — where the schedule comes from',`<p class="mut">${n.prov}</p>`)+
+    sec('The draft slot',`<textarea class="draft" placeholder="VaNi holds the angle; you hold the words. Story-skill will pre-fill this later — same slot."></textarea>`)+
+    `<div class="btnrow"><div class="btn pri">Accept</div><div class="btn warn">Hold</div><div class="btn">Snooze</div><div class="btn">Reject</div></div>`;
+  } else if(n){
+    html=ph('HAPPENED','#4ade80',n.title,[pm(n.k)])+sec('Record',`<p class="mut">${n.sub}</p>`);
+  }
+  if(!html){back();return;}
+  p.innerHTML=`<div class="p-back">&larr; back to policies</div>`+html;
+  p.classList.add('on');d.style.display='none';
+  p.querySelector('.p-back').addEventListener('click',back);
+  function ph(k,kc,t,m){return `<div class="p-head"><div class="p-kind" style="color:${kc}">${k}</div><h3>${t}</h3><div class="p-meta">${m.join('')}</div></div>`;}
+  function pm(t,cls){return `<span class="pm ${cls||''}">${t}</span>`;}
+  function sec(k,b){return `<div class="p-sec"><div class="kicker">${k}</div>${b}</div>`;}
+}
+function back(){selected=null;document.getElementById('panel').classList.remove('on');document.getElementById('railDefault').style.display='block';draw();}
+
+/* ------------- simulate ------------- */
+document.getElementById('sim').addEventListener('click',()=>{
+  SIM=!SIM;
+  const b=document.getElementById('sim');
+  b.innerHTML=SIM?'&#8634;&nbsp; back to now':'&#9654;&nbsp; simulate: they engage the calculator';
+  b.classList.toggle('back',SIM);
+  document.getElementById('mIntent').textContent=SIM?'0.74':'0.68';
+  document.getElementById('mEvid').textContent=SIM?'5/6':'4/6';
+  document.getElementById('mNext').textContent=SIM?'workshop':'2 + gate';
+  back();
+});
+
+draw();
+</script>
+</body>
+</html>
