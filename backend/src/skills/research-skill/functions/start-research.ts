@@ -18,6 +18,8 @@ import { readCorrections, correctionsFingerprint, judgementFingerprint } from '.
 import { readLessons } from '../lessons';
 import { emitEvent } from '../../../agent-core/event.store';
 import { getPool } from '../../../db/pool';
+import { getTokenBudget } from '../../../agent-core/llm.client';
+import { COST_FULL_RESEARCH } from '../account.agent';
 
 interface StartResearchParams {
   tag_id?: number;
@@ -141,6 +143,15 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
     ? reachableCount
     : reachableCount - alreadyResearched - unreadable + needsRescore;
 
+  // How much of this the day's tokens can actually pay for. Answered BEFORE
+  // the button, because the alternative is what happened on the first real
+  // batch: a hundred companies queued against a budget that covered seven,
+  // discovered at company eight.
+  const budget = await getTokenBudget(getPool(), ctx.tenant_id);
+  const affordable = budget.unmetered
+    ? null
+    : Math.floor(budget.remaining / COST_FULL_RESEARCH);
+
   const split = {
     selected,
     reachable: reachableCount,
@@ -152,6 +163,10 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
     // The cheap half: one call each, no crawling.
     needs_rescore: refresh ? 0 : needsRescore,
     to_research: todo,
+    tokens_remaining: budget.unmetered ? null : budget.remaining,
+    tokens_limit: budget.unmetered ? null : budget.limit,
+    /** Companies today's remaining budget covers. null = nothing is metered. */
+    affordable_today: affordable,
   };
 
   // Preview: answer the question, queue nothing.
@@ -169,6 +184,17 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
     throw new Error(
       `All ${reachableCount} reachable companies here already have a brief. `
       + 'Tick "redo existing briefs" if you want them researched again.',
+    );
+  }
+  // Refuse before queueing rather than after crawling. The run would stop
+  // cleanly either way, but a batch that cannot start is better said here
+  // than discovered in a run feed.
+  if (affordable !== null && affordable < 1) {
+    throw new Error(
+      `Today's token budget is spent — ${budget.used.toLocaleString()} of `
+      + `${budget.limit.toLocaleString()} used, and one company costs about `
+      + `${COST_FULL_RESEARCH.toLocaleString()}. This is our own cap, not the model `
+      + 'refusing. Raise the daily limit below, or it resets at midnight UTC.',
     );
   }
 

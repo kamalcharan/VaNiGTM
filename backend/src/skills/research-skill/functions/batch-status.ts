@@ -54,11 +54,33 @@ export async function batch_status(_params: Record<string, unknown>, ctx: SkillC
   }
 
   const verdict = (row.verdict as Verdict) ?? 'unknown';
+
+  // A batch that ran out of tokens COMPLETED — everything it wrote is real
+  // and nothing is half-done — but showing "finished" over a run that covered
+  // a fifth of the cohort is the kind of true-but-useless status that makes
+  // people stop reading them.
+  const out = (row.output ?? {}) as Record<string, unknown>;
+  const budgetStop = verdict === 'completed' && out.stopped_for_budget === true;
+  const notAttempted = Number(out.not_attempted ?? 0);
+
+  const message = budgetStop
+    ? `Stopped early — today's token budget is spent. `
+      + `${Number(out.researched ?? 0)} brief(s) written and kept`
+      + (notAttempted > 0 ? `, ${notAttempted} not attempted` : '')
+      + '. Nothing was lost: raise the daily limit or re-run after midnight UTC '
+      + 'and it picks up where it stopped.'
+    : (MESSAGE[verdict] ?? MESSAGE.unknown);
+
   return {
     verdict,
-    message: MESSAGE[verdict] ?? MESSAGE.unknown,
+    message,
+    stopped_for_budget: budgetStop,
+    not_attempted: notAttempted,
+    tokens_used: out.tokens_used ?? null,
+    tokens_limit: out.tokens_limit ?? null,
     // The one thing the screen colours on: is anything wrong right now.
-    healthy: verdict !== 'worker_down' && verdict !== 'failed',
+    // A budget stop is not a failure, but it IS something to act on.
+    healthy: verdict !== 'worker_down' && verdict !== 'failed' && !budgetStop,
     done_count: Number(row.done_count ?? 0),
     requested: row.requested === null ? null : Number(row.requested),
     run_id: row.run_id ?? null,

@@ -42,7 +42,7 @@ import type { Pool } from 'pg';
 import { z } from 'zod';
 import { createTenantDb } from '../../db';
 import { appendStep, setStatus, saveCheckpoint, loadCheckpoint } from '../../agent-core/agent.runner';
-import { callLLMValidated } from '../../agent-core/llm.client';
+import { callLLMValidated, getTokenBudget } from '../../agent-core/llm.client';
 import { loadPrompt } from '../../agent-core/prompt.store';
 import { IngestionAgent } from '../ingestion-skill/ingestion.agent';
 import {
@@ -66,6 +66,20 @@ const PAGE_TEXT_CAP     = 2_500;
 const TOTAL_TEXT_CAP    = 8_000;
 const MIN_USABLE_TEXT   = 200;   // below this a page said nothing
 const EXCERPT_CAP       = 200;
+
+/* ── What a company costs ────────────────────────────────────────────────
+ *
+ * Measured, not guessed: extract sends up to TOTAL_TEXT_CAP of page text and
+ * takes up to 2,000 back; fit sends the brief plus the catalogue plus the
+ * learned rules and takes up to 1,200; hook is small. Input tokens count
+ * against the budget too, which is what made "100k a day" quietly mean seven
+ * companies rather than the fifty it sounds like.
+ *
+ * Deliberately a slight OVER-estimate. Stopping one company early is a
+ * non-event; stopping one company late means a half-finished brief and a
+ * failure the reviewer has to interpret. */
+export const COST_FULL_RESEARCH = 14_000;  // crawl + extract + fit + hook
+export const COST_RESCORE_ONLY  = 3_500;   // fit + hook, facts already held
 
 /** Paths worth trying, in the order they pay off for a manufacturer. */
 const SUBPAGE_HINTS = [
@@ -184,6 +198,23 @@ export function verifyEvidence(
     return haystack.includes(needle.slice(0, 120));
   });
   return { kept, dropped: evidence.length - kept.length };
+}
+
+/**
+ * Does this company need the expensive half?
+ *
+ * Facts already gathered and still good = judge only, no network at all. One
+ * function rather than two copies of the condition, because the budget
+ * ESTIMATE and the loop must agree — an estimate that prices a re-score as a
+ * crawl refuses batches that would have finished comfortably.
+ */
+export function needsCrawl(
+  t: Pick<TargetRow, 'facts_at' | 'what_they_make' | 'scale_signals'>,
+  refresh: boolean,
+): boolean {
+  if (refresh) return true;
+  return t.facts_at === null
+    || (t.what_they_make === null && t.scale_signals === null);
 }
 
 const originOf = (domain: string): string =>
@@ -389,10 +420,65 @@ export class AccountResearchAgent {
       return;
     }
 
+    // ── What today's budget can actually pay for ───────────────────────
+    //
+    // Said BEFORE the first crawl. Without this the run works its way down a
+    // hundred companies, crawls each one, and only discovers at the LLM call
+    // that the budget went at company eight — burning network and time on
+    // ninety-two companies to produce ninety-two failure rows.
+    const budget = await getTokenBudget(pool, tenantId);
+    if (!budget.unmetered) {
+      // Priced over the ACTUAL queue, not by dividing through by the worst
+      // case. A cohort that only needs re-scoring costs a quarter as much,
+      // and pricing it as crawls refused batches that would have finished
+      // comfortably — which is exactly the kind of wrong "no" that makes a
+      // budget feel like a bug.
+      let acc = 0;
+      let affordable = 0;
+      for (const t of queue) {
+        acc += needsCrawl(t, refresh) ? COST_FULL_RESEARCH : COST_RESCORE_ONLY;
+        if (acc > budget.remaining) break;
+        affordable++;
+      }
+
+      await appendStep(pool, runId, {
+        step_name: 'budget',
+        action: `${budget.used.toLocaleString()} of ${budget.limit.toLocaleString()} tokens used today`,
+        output_summary: affordable >= queue.length
+          ? `${budget.remaining.toLocaleString()} left — enough for all ${queue.length}`
+          : `${budget.remaining.toLocaleString()} left — about ${affordable} of `
+            + `${queue.length} compan${affordable === 1 ? 'y' : 'ies'}. `
+            + 'The rest stop cleanly and resume when the budget does.',
+        status: affordable >= queue.length ? 'ok' : 'error',
+      });
+
+      // Not even the first company is affordable: refuse before crawling, and
+      // say whose limit it is. A run that crawls a hundred sites and writes a
+      // hundred failures teaches the reviewer nothing except distrust.
+      if (affordable < 1) {
+        await setStatus(pool, runId, 'completed', {
+          output: {
+            researched: 0,
+            stopped_for_budget: true,
+            tokens_used: budget.used,
+            tokens_limit: budget.limit,
+            message: `Today's token budget is spent (${budget.used.toLocaleString()} of `
+              + `${budget.limit.toLocaleString()}). Nothing was crawled. This is our own `
+              + 'cap, not the model refusing — raise the daily limit on the Research '
+              + 'screen, or it resets at midnight UTC.',
+          },
+        });
+        return;
+      }
+    }
+
     let written = 0;
     let unreadable = 0;
     let recommended = 0;
     let rescoredOnly = 0;
+    /** Set when the budget ran out mid-batch — a clean stop, not a failure. */
+    let stoppedForBudget = false;
+    let notAttempted = 0;
     // Companies where the smallest-sane-ask rule moved the recommendation off
     // the top scorer, and companies where the top two were indistinguishable.
     // Both are how you tell whether the rule is doing anything.
@@ -405,11 +491,40 @@ export class AccountResearchAgent {
 
       try {
         // Does this company need the expensive half, or only the cheap one?
+        // Worked out first, because it also decides what this company COSTS.
         // Facts already gathered and still good = judge only, no network at
         // all. That is the whole point of the split: editing an offer costs
         // one call per company rather than a re-crawl.
-        const hasFacts = !refresh && target.facts_at !== null
-          && (target.what_they_make !== null || target.scale_signals !== null);
+        const hasFacts = !needsCrawl(target, refresh);
+
+        // ── Can this company be paid for? ──────────────────────────────
+        //
+        // Checked here, before the crawl, and re-read each time because the
+        // budget is per TENANT — another agent may have spent it while this
+        // batch was running.
+        //
+        // A company we cannot afford is NOT written as a failed brief. It was
+        // never attempted; recording it as extract_failed would mark ninety
+        // companies as broken when the only thing that happened is that we
+        // ran out of budget, and a later run would then treat them as
+        // retryable pipeline failures rather than untouched work.
+        if (!budget.unmetered) {
+          const cost = hasFacts ? COST_RESCORE_ONLY : COST_FULL_RESEARCH;
+          const now = await getTokenBudget(pool, tenantId);
+          if (now.remaining < cost) {
+            stoppedForBudget = true;
+            notAttempted = queue.length - queue.indexOf(target);
+            await appendStep(pool, runId, {
+              step_name: 'budget_stop',
+              action: `Stopped at ${target.name} — today's token budget is spent`,
+              output_summary: `${written} brief(s) written and kept · `
+                + `${notAttempted} not attempted. Nothing was lost; re-run when the `
+                + 'budget resets or after raising it.',
+              status: 'error',
+            });
+            break;
+          }
+        }
 
         let facts: BriefFacts;
         let factHalf: Record<string, unknown> | null = null;
@@ -486,7 +601,26 @@ export class AccountResearchAgent {
         // pilot conclude that Telangana pharma has no web presence when the
         // truth was a token limit.
         const message = err instanceof Error ? err.message : String(err);
-        const ours = /^LLM_|^TOKEN_BUDGET|^PROMPT_NOT_FOUND/.test(message);
+
+        // Budget is not a per-company failure — it is the end of the batch.
+        // Recording it as one would write extract_failed across every
+        // remaining company, which reads as "our pipeline is broken on ninety
+        // companies" when the truth is "we stopped spending". Break, keep
+        // everything already earned, and report it as a stop.
+        if (message.startsWith('TOKEN_BUDGET_EXCEEDED')) {
+          stoppedForBudget = true;
+          notAttempted = queue.length - queue.indexOf(target);
+          await appendStep(pool, runId, {
+            step_name: 'budget_stop',
+            action: `Stopped at ${target.name} — today's token budget ran out mid-company`,
+            output_summary: `${written} brief(s) written and kept · `
+              + `${notAttempted} not attempted.`,
+            status: 'error',
+          });
+          break;
+        }
+
+        const ours = /^LLM_|^PROMPT_NOT_FOUND/.test(message);
         await this.writeBrief(db, tenantId, isLive, prospectId, runId, {
           status: ours ? 'extract_failed' : 'unreadable',
           domain,
@@ -507,9 +641,19 @@ export class AccountResearchAgent {
       await saveCheckpoint(pool, runId, { done: [...done] });
     }
 
+    const after = await getTokenBudget(pool, tenantId);
+
     await setStatus(pool, runId, 'completed', {
       output: {
         researched: written,
+        // A budget stop is a COMPLETED run that did less than asked, not a
+        // failed one. Everything written is real; nothing was half-done. The
+        // screen reads these to say so plainly instead of showing a green
+        // tick over a batch that covered a fifth of the cohort.
+        stopped_for_budget: stoppedForBudget,
+        not_attempted: notAttempted,
+        tokens_used: after.unmetered ? null : after.used,
+        tokens_limit: after.unmetered ? null : after.limit,
         // Companies whose facts were reused — no crawl, one LLM call. The
         // number that shows what the facts/judgement split is worth.
         rescored_without_crawling: rescoredOnly,

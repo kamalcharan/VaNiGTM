@@ -107,6 +107,17 @@ interface Split {
   /** Facts already gathered; only the offer judgement is out of date. */
   needs_rescore: number;
   to_research: number;
+  tokens_remaining: number | null;
+  tokens_limit: number | null;
+  /** Companies today's remaining tokens cover. null = nothing is metered. */
+  affordable_today: number | null;
+}
+
+interface Budget {
+  limit: number | null; used: number | null; remaining: number | null;
+  unmetered: boolean;
+  cost_per_company: number; cost_per_rescore: number;
+  affordable_companies: number | null; affordable_rescores: number | null;
 }
 
 interface BatchStatus {
@@ -117,6 +128,9 @@ interface BatchStatus {
   requested: number | null;
   run_status: string | null;
   error: string | null;
+  /** Completed, but it did less than asked because the tokens ran out. */
+  stopped_for_budget: boolean;
+  not_attempted: number;
 }
 
 /** Badge variants the VDF library actually has. */
@@ -242,7 +256,11 @@ export default function ResearchPage() {
     decisions: number; can_propose: boolean; min_decisions: number;
   }>('research-skill', 'get_lessons', {});
 
+  const budgetQ = useSkillQuery<Budget>('research-skill', 'get_budget', {});
+
   const saveOffer = useSkillMutation('research-skill', 'save_offer');
+  const setBudget = useSkillMutation('research-skill', 'set_budget');
+  const deleteBriefs = useSkillMutation('research-skill', 'delete_briefs');
   const proposeLessons = useSkillMutation('research-skill', 'propose_lessons');
   const decideLesson = useSkillMutation('research-skill', 'decide_lesson');
   const startResearch = useSkillMutation('research-skill', 'start_research');
@@ -257,6 +275,7 @@ export default function ResearchPage() {
   const batch = statusQ.data?.data;
   const split = previewQ.data?.data;
   const learn = lessonsQ.data?.data;
+  const budget = budgetQ.data?.data;
   const lessons = learn?.lessons ?? [];
   const toResearch = redoExisting ? (split?.reachable ?? 0) : (split?.to_research ?? 0);
 
@@ -335,6 +354,57 @@ export default function ResearchPage() {
       refresh();
     } catch (err) {
       showToast({ type: 'error', message: err instanceof Error ? err.message : 'Could not record that decision' });
+    }
+  };
+
+  const onSetBudget = async () => {
+    const want = window.prompt(
+      'Daily token limit.\n\n'
+      + 'Account research costs roughly 14,000 tokens per company — a re-score '
+      + 'about 3,500. A hundred companies is around 1.4 million.\n\n'
+      + 'This cap exists so a runaway agent costs a bounded amount. It does not '
+      + 'raise itself.',
+      String(budget?.limit ?? 100000),
+    );
+    if (!want) return;
+    try {
+      await setBudget.mutateAsync({ daily_token_limit: Number(want) });
+      showToast({ type: 'success', message: `Daily limit set to ${Number(want).toLocaleString()} tokens` });
+      refresh(); previewQ.refetch();
+    } catch (err) {
+      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Could not set the limit' });
+    }
+  };
+
+  /**
+   * Two calls on purpose: count first, then delete only if the human agrees to
+   * that exact number. Nobody should be able to delete 144 briefs meaning to
+   * delete 4.
+   */
+  const onDelete = async (scope: Record<string, unknown>, what: string) => {
+    try {
+      const dry = await deleteBriefs.mutateAsync(scope);
+      const { matched, decided_included } = (dry.data ?? {}) as unknown as
+        { matched: number; decided_included: number };
+      if (matched === 0) {
+        showToast({ type: 'info', message: `Nothing matches ${what}.` });
+        return;
+      }
+      const ok = window.confirm(
+        `Delete ${matched} brief${matched === 1 ? '' : 's'} — ${what}?\n\n`
+        + (decided_included > 0
+          ? `${decided_included} of them carry your own ruling, which the Learning `
+            + 'Graph reads. That goes too.\n\n'
+          : '')
+        + 'The companies themselves are untouched and can be researched again.',
+      );
+      if (!ok) return;
+      const res = await deleteBriefs.mutateAsync({ ...scope, confirm: true });
+      const { deleted } = (res.data ?? {}) as unknown as { deleted: number };
+      showToast({ type: 'success', message: `${deleted} brief(s) deleted` });
+      refresh(); previewQ.refetch();
+    } catch (err) {
+      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Could not delete' });
     }
   };
 
@@ -498,6 +568,43 @@ export default function ResearchPage() {
             )}
           </div>
 
+          {/* ── Today's budget ─────────────────────────────────────────
+              Above the split, not below it. A budget you can only discover by
+              crashing into it is not a budget: the first real batch queued a
+              hundred companies against a limit that covered seven, and found
+              out at company eight. */}
+          {budget && !budget.unmetered && (
+            <div className={
+              (budget.affordable_companies ?? 0) < 1 ? s.budgetBad : s.budgetOk
+            }>
+              <div className={s.budgetLine}>
+                <strong>
+                  {(budget.used ?? 0).toLocaleString()} of{' '}
+                  {(budget.limit ?? 0).toLocaleString()} tokens used today
+                </strong>
+                <span className={s.budgetAfford}>
+                  {(budget.affordable_companies ?? 0) < 1
+                    ? 'nothing more fits today'
+                    : `about ${budget.affordable_companies} more compan${
+                        budget.affordable_companies === 1 ? 'y' : 'ies'}`}
+                  {' · '}
+                  {budget.affordable_rescores} re-score
+                  {budget.affordable_rescores === 1 ? '' : 's'}
+                </span>
+                <button type="button" className={s.linkButton} onClick={onSetBudget}>
+                  Change the limit
+                </button>
+              </div>
+              <div className={s.budgetNote}>
+                Roughly {budget.cost_per_company.toLocaleString()} tokens per company
+                researched, {budget.cost_per_rescore.toLocaleString()} to re-score one
+                against changed offers. The cap is ours, not the model&rsquo;s — it
+                resets at midnight UTC, and a batch that runs out stops cleanly and
+                keeps everything it finished.
+              </div>
+            </div>
+          )}
+
           {split && (
             <div className={s.split}>
               <span><strong>{split.selected}</strong> in this cohort</span>
@@ -527,6 +634,12 @@ export default function ResearchPage() {
                 </span>
               )}
               <span className={s.splitStrong}>{toResearch} to research</span>
+              {split.affordable_today !== null && split.affordable_today < toResearch && (
+                <span className={s.splitRetry}>
+                  today&rsquo;s budget covers about {split.affordable_today} of them —
+                  the rest stop cleanly and resume
+                </span>
+              )}
 
               {(split.already_researched > 0 || split.no_address_answered > 0) && (
                 <label className={s.redo}>
@@ -547,7 +660,9 @@ export default function ResearchPage() {
                   {batch.verdict === 'running' ? 'Running' :
                    batch.verdict === 'queued' ? 'Queued' :
                    batch.verdict === 'worker_down' ? 'Nothing is picking this up' :
-                   batch.verdict === 'failed' ? 'Last batch failed' : 'Last batch finished'}
+                   batch.verdict === 'failed' ? 'Last batch failed' :
+                   batch.stopped_for_budget ? 'Stopped early — budget spent' :
+                   'Last batch finished'}
                 </strong>
                 {batch.requested !== null && (
                   <span className={s.batchProgress}>
@@ -618,6 +733,42 @@ export default function ResearchPage() {
               {offers.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
               <option value="none">No fit</option>
             </select>
+
+            {/* Scoped deletes only. `refresh` re-crawls and overwrites, which
+                is the right tool most of the time; this is for when a batch
+                produced garbage and the rows are colouring the stats and the
+                Learning Graph while you try to read them. Briefs you have
+                ruled on are never included. */}
+            {Number(stats.extract_failed ?? 0) > 0 && (
+              <button
+                type="button" className={s.linkButton}
+                disabled={deleteBriefs.isPending}
+                onClick={() => onDelete({ status: 'extract_failed' },
+                  'the ones our extraction failed on')}
+              >
+                Delete the {stats.extract_failed} failed
+              </button>
+            )}
+            {Number(stats.unreadable ?? 0) > 0 && (
+              <button
+                type="button" className={s.linkButton}
+                disabled={deleteBriefs.isPending}
+                onClick={() => onDelete({ status: 'unreadable' },
+                  'the ones whose site did not answer')}
+              >
+                Delete the {stats.unreadable} unreadable
+              </button>
+            )}
+            {tagId !== '' && (
+              <button
+                type="button" className={s.linkButtonDanger}
+                disabled={deleteBriefs.isPending}
+                onClick={() => onDelete({ tag_id: tagId },
+                  `every undecided brief in ${tags.find((t) => t.id === tagId)?.label ?? 'this cohort'}`)}
+              >
+                Delete this cohort&rsquo;s research
+              </button>
+            )}
           </div>
 
           {briefsQ.isLoading ? (

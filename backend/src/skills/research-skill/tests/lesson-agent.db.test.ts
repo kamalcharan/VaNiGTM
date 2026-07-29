@@ -34,11 +34,16 @@ jest.mock('../../../agent-core/prompt.store', () => ({
 }));
 
 let llmQueue: unknown[] = [];
+// Unmetered by default so existing tests are unaffected; a test that cares
+// about the budget sets `budget` and the agent sees a real limit.
+let budget: { limit: number; used: number; remaining: number; unmetered: boolean } =
+  { limit: 0, used: 0, remaining: Number.POSITIVE_INFINITY, unmetered: true };
 jest.mock('../../../agent-core/llm.client', () => ({
   callLLMValidated: jest.fn(async () => {
     if (llmQueue.length === 0) throw new Error('stub LLM: nothing queued');
     return llmQueue.shift();
   }),
+  getTokenBudget: jest.fn(async () => budget),
 }));
 
 import { FitLessonAgent, MIN_DECISIONS } from '../lesson.agent';

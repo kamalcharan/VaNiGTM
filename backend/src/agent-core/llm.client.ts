@@ -74,11 +74,26 @@ interface DailyUsage { vps?: number; escalation?: number }
 
 /* ── Token budget ────────────────────────────────────────────────────────── */
 
-async function checkTokenBudget(
+export interface TokenBudget {
+  limit: number;
+  used: number;
+  remaining: number;
+  /** No gt_tenant_context row — nothing is being counted for this tenant. */
+  unmetered: boolean;
+}
+
+/**
+ * What is left in today's budget.
+ *
+ * Exported because a budget that can only be discovered by CRASHING INTO IT is
+ * not a budget, it is a trap. A long agent needs to know before it starts how
+ * much work it can afford, and a screen needs to say "7 companies fit in what
+ * you have left" instead of queueing a hundred and failing at eight.
+ */
+export async function getTokenBudget(
   pool: Pool,
   tenantId: string,
-  estimatedTokens: number,
-): Promise<void> {
+): Promise<TokenBudget> {
   const db = createTenantDb(pool, tenantId);
   const result = await db.query<{
     daily_token_limit: number;
@@ -90,18 +105,34 @@ async function checkTokenBudget(
     { tenant_id: tenantId },
   );
 
-  // No context row yet → allow. ensureTenantContext should be called by the
-  // agent at startup, but a missing row should not block first-time agents.
-  if (!result.rows[0]) return;
+  // No context row yet → nothing is metered. ensureTenantContext should be
+  // called by the agent at startup, but a missing row must not block a
+  // first-time agent.
+  if (!result.rows[0]) {
+    return { limit: 0, used: 0, remaining: Number.POSITIVE_INFINITY, unmetered: true };
+  }
 
   const today = new Date().toISOString().split('T')[0];
   const usage = result.rows[0].daily_token_usage?.[today] ?? {};
-  const total = (usage.vps ?? 0) + (usage.escalation ?? 0);
+  const used  = (usage.vps ?? 0) + (usage.escalation ?? 0);
   const limit = result.rows[0].daily_token_limit ?? 100000;
 
-  if (total + estimatedTokens > limit) {
+  return { limit, used, remaining: Math.max(0, limit - used), unmetered: false };
+}
+
+async function checkTokenBudget(
+  pool: Pool,
+  tenantId: string,
+  estimatedTokens: number,
+): Promise<void> {
+  const budget = await getTokenBudget(pool, tenantId);
+  if (budget.unmetered) return;
+
+  if (budget.used + estimatedTokens > budget.limit) {
     throw new Error(
-      `TOKEN_BUDGET_EXCEEDED: Tenant ${tenantId} has used ${total} tokens today (limit: ${limit})`,
+      `TOKEN_BUDGET_EXCEEDED: Tenant ${tenantId} has used ${budget.used} tokens today `
+      + `(limit: ${budget.limit}). This is OUR OWN cap, not the model refusing — `
+      + 'raise the daily limit on the Research screen, or wait for it to reset at midnight UTC.',
     );
   }
 }
@@ -293,6 +324,24 @@ export async function callLLM(options: LLMCallOptions): Promise<LLMResult> {
     throw err; // no key configured, or a non-transport failure → loud, as always
   }
 }
+
+/*
+ * ── WHY TOKEN_BUDGET_EXCEEDED DOES NOT FAIL OVER ──────────────────────
+ *
+ * The budget check runs BEFORE callVps, so a budget stop never reaches the
+ * catch above — and that is correct, not an oversight.
+ *
+ * The approved failover exception (CLAUDE.md rule 12) is for TRANSPORT
+ * failures: the VPS is unreachable or returned a non-200. That is the machine
+ * failing, and spending a few Claude tokens to get past it is obviously right.
+ *
+ * TOKEN_BUDGET_EXCEEDED is not the machine failing. It is a cap WE set,
+ * working exactly as intended. Failing over to a paid API to get around our
+ * own limit would mean the limit silently stops being a limit — the one
+ * scenario where "it kept working" is the bad outcome, because the whole
+ * point of the cap is that someone notices. So it stays loud, and the fix is
+ * to raise the cap deliberately or wait for the reset.
+ */
 
 /* ── Validated call (JSON with Zod) ─────────────────────────────────────── */
 

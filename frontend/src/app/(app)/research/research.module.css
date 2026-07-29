@@ -92,6 +92,37 @@
   border: 1px dashed var(--color-border); border-radius: 6px;
 }
 
+/* ── Today's budget ─────────────────────────────────────────────────── */
+
+.budgetOk, .budgetBad {
+  border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 1rem;
+  border: 1px solid var(--color-border); background: var(--color-surface);
+}
+/* Nothing more fits today. Not a failure — but it is the reason the button
+   will not do what you expect, so it has to look different. */
+.budgetBad { border-color: var(--color-warning, var(--color-accent)); }
+
+.budgetLine {
+  display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;
+  font-size: 0.85rem; color: var(--color-text);
+}
+.budgetAfford { color: var(--color-text-muted); }
+.budgetNote {
+  margin-top: 0.35rem; font-size: 0.76rem; line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+/* Inline actions that are not primary work — change a limit, delete a set of
+   failed rows. Deliberately not buttons: they must not compete with Research. */
+.linkButton, .linkButtonDanger {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-size: 0.8rem; text-decoration: underline; text-underline-offset: 3px;
+  font-family: inherit;
+}
+.linkButton { color: var(--color-accent); }
+.linkButtonDanger { color: var(--color-warning, var(--color-text-muted)); }
+.linkButton:disabled, .linkButtonDanger:disabled { opacity: 0.5; cursor: default; }
+
 /* ── The Learning Graph ─────────────────────────────────────────────── */
 
 .lessonList { display: flex; flex-direction: column; gap: 0.9rem; }

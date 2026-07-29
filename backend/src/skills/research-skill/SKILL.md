@@ -104,6 +104,30 @@ Three rules this agent will not break:
 One run covers the whole cohort and checkpoints after every account, so a
 crash at 60 of 100 keeps 59 briefs and a resume starts at 60.
 
+### The token budget is a resource, not a wall
+
+A company costs about **14,000 tokens** to research (crawl + extract + fit +
+hook) and **3,500** to re-score. The framework default of 100,000 a day is
+therefore about **seven companies**, which is why the first real batch died at
+company eight with `TOKEN_BUDGET_EXCEEDED` on everything after it.
+
+Three rules now:
+
+- **Priced before the first crawl.** The agent reads the budget, prices the
+  ACTUAL queue (re-scores cost a quarter of a crawl), and writes a `budget`
+  step saying how many it can afford. If not even one fits it refuses having
+  crawled nothing.
+- **A budget stop is a STOP, not a failure.** It breaks the loop, keeps every
+  brief already written, records `stopped_for_budget` + `not_attempted`, and
+  completes. It does **not** write `extract_failed` per company — that marked
+  ninety untouched companies as broken, and a later run would then treat them
+  as retryable pipeline failures instead of work never started.
+- **It never fails over to Claude.** The approved exception (CLAUDE.md rule 12)
+  is for TRANSPORT failures — the VPS down or erroring. `TOKEN_BUDGET_EXCEEDED`
+  is a cap we set working as intended, and failing over to a paid API to get
+  around our own limit means the limit silently stops being one. Raise it
+  deliberately (`set_budget`) or wait for midnight UTC.
+
 ### Fit is not the same question as what to open with (migration 212)
 
 The first pilot run scored one offer top on 4 of 5 companies, winning by
@@ -196,6 +220,21 @@ Ask the agent what it has learned from your decisions. Queues `FIT_LESSONS_REQUE
 Ratify, reword or throw out one proposed rule. Only accepted rules reach the fit prompt. Rewording is first-class — the agent's original stays in `lesson`, yours goes in `edited_lesson`. Rejected rules are kept so the same proposal is not made again.
 - Parameters: lesson_id (required, number), decision (required, string — accepted | rejected), edited_lesson (optional, string)
 - Returns: { lesson_id, decision, lesson, rescore_available, recipe: 'lesson-card' }
+
+### get_budget
+Today's token budget, converted into the unit the person pressing the button thinks in: companies. A budget you can only find by crashing into it is a trap.
+- Parameters: none
+- Returns: { limit, used, remaining, unmetered, cost_per_company, cost_per_rescore, affordable_companies, affordable_rescores, recipe: 'budget-card' }
+
+### set_budget
+Raise or lower the daily token limit. Deliberately manual — a cap that lifts itself when it binds is not a cap.
+- Parameters: daily_token_limit (required, number — 10,000 to 20,000,000)
+- Returns: { daily_token_limit, recipe: 'budget-card' }
+
+### delete_briefs
+Throw research away so it can be run from scratch. A scope is required (status, tag, or prospect_ids) — there is no "delete everything". Without `confirm` it only counts. Briefs a human has decided are excluded unless `include_decided` is passed.
+- Parameters: status (optional, string), tag_id (optional, number), prospect_ids (optional, array), include_decided (optional, boolean), confirm (optional, boolean)
+- Returns: { matched, decided_included, deleted, confirmed, message, recipe: 'delete-preview' | 'delete-result' }
 
 ### batch_status
 Whether the last batch is queued, running, finished — or sitting in a queue nobody is reading because the worker is down.

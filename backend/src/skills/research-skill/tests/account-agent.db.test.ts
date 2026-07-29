@@ -54,14 +54,31 @@ jest.mock('../../../agent-core/prompt.store', () => ({
 }));
 
 let llmQueue: unknown[] = [];
+// Unmetered by default so existing tests are unaffected; a test that cares
+// about the budget sets `budget` and the agent sees a real limit.
+let budget: { limit: number; used: number; remaining: number; unmetered: boolean } =
+  { limit: 0, used: 0, remaining: Number.POSITIVE_INFINITY, unmetered: true };
 jest.mock('../../../agent-core/llm.client', () => ({
   callLLMValidated: jest.fn(async () => {
+    // Tokens are SPENT by calls. A static stub would let the agent read the
+    // same remaining budget forever and never stop — hiding the exact bug
+    // these tests exist for.
+    if (!budget.unmetered) {
+      budget.used += SPEND_PER_CALL;
+      budget.remaining = Math.max(0, budget.remaining - SPEND_PER_CALL);
+    }
     if (llmQueue.length === 0) throw new Error('stub LLM: nothing queued');
     return llmQueue.shift();
   }),
+  getTokenBudget: jest.fn(async () => ({ ...budget })),
 }));
 
-import { AccountResearchAgent } from '../account.agent';
+/** Three calls per full company (extract, fit, hook) ≈ COST_FULL_RESEARCH. */
+const SPEND_PER_CALL = 4_700;
+
+import {
+  AccountResearchAgent, COST_FULL_RESEARCH, COST_RESCORE_ONLY,
+} from '../account.agent';
 
 /* ── Schema ────────────────────────────────────────────────────────────── */
 
@@ -158,7 +175,10 @@ beforeAll(async () => {
 
 afterAll(async () => { if (pool) await pool.end(); });
 
-beforeEach(() => { fetched.length = 0; llmQueue = []; siteText = {}; });
+beforeEach(() => {
+  fetched.length = 0; llmQueue = []; siteText = {};
+  budget = { limit: 0, used: 0, remaining: Number.POSITIVE_INFINITY, unmetered: true };
+});
 
 async function newRun(tenantId = A): Promise<string> {
   const r = await pool.query<{ id: string }>(
@@ -905,5 +925,98 @@ maybe('what a human ruled is remembered, not overwritten', () => {
       .map((c: any) => c[0].messages[0].content as string)
       .find((c: string) => c.includes('OUR OFFERS:'))!;
     expect(fit).not.toContain('somebody else entirely');
+  });
+});
+
+/* ── The token budget (a resource, not a wall) ──────────────────────── */
+
+maybe('running out of budget', () => {
+  beforeEach(async () => { await pool.query('DELETE FROM gt_account_briefs'); });
+
+  const metered = (remaining: number) => {
+    budget = { limit: 100_000, used: 100_000 - remaining, remaining, unmetered: false };
+  };
+
+  // The defect this exists for: a spent budget wrote extract_failed across
+  // every remaining company, so ninety untouched companies looked like
+  // ninety broken ones — and a later run would treat them as retryable
+  // pipeline failures rather than work never started.
+  it('crawls nothing and writes nothing when the budget is already spent', async () => {
+    metered(1_000);
+    siteText = { 'https://alpha.com': siteBody('APIs'), 'https://beta.com': siteBody('bulk drugs') };
+
+    const runId = await newRun();
+    await AccountResearchAgent.run(pool, A, { tag_id: 7 }, runId);
+
+    expect(fetched).toHaveLength(0);
+    expect(await briefs()).toHaveLength(0);
+
+    const { output } = (await pool.query(
+      `SELECT output FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
+    expect(output.stopped_for_budget).toBe(true);
+    expect(output.researched).toBe(0);
+    // Whose limit it is, said plainly — this is not the model refusing.
+    expect(output.message).toMatch(/our own cap/i);
+  });
+
+  it('does what it can afford, keeps it, and stops clean', async () => {
+    // Enough for exactly one full company.
+    metered(COST_FULL_RESEARCH + 100);
+    siteText = { 'https://alpha.com': siteBody('APIs'), 'https://beta.com': siteBody('bulk drugs') };
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+
+    const runId = await newRun();
+    await AccountResearchAgent.run(pool, A, { tag_id: 7 }, runId);
+
+    const rows = await briefs();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBe('drafted');      // real, not a failure row
+
+    const { output, steps } = (await pool.query(
+      `SELECT output, steps FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
+    expect(output.stopped_for_budget).toBe(true);
+    expect(output.researched).toBe(1);
+    expect(output.not_attempted).toBe(1);
+    expect(steps.some((x: any) => x.step_name === 'budget_stop')).toBe(true);
+  });
+
+  // Said BEFORE the first crawl, so nobody watches a hundred companies get
+  // read only to find out at company eight.
+  it('says up front how many it can afford', async () => {
+    metered(COST_FULL_RESEARCH * 1.5);
+    siteText = { 'https://alpha.com': siteBody('APIs'), 'https://beta.com': siteBody('bulk') };
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+
+    const runId = await newRun();
+    await AccountResearchAgent.run(pool, A, { tag_id: 7 }, runId);
+
+    const { steps } = (await pool.query(
+      `SELECT steps FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
+    const b = steps.find((x: any) => x.step_name === 'budget');
+    expect(b).toBeDefined();
+    expect(b.output_summary).toMatch(/about 1 of 2 compan/);
+  });
+
+  // A re-score is a quarter the cost, so a budget too small to research with
+  // can still be big enough to re-judge with.
+  it('prices a re-score lower than a full crawl', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+
+    await pool.query(`UPDATE gt_offers SET updated_at = now() + interval '1 second'
+                       WHERE tenant_id = $1`, [A]);
+    // Too little for a crawl, ample for a judgement.
+    metered(COST_RESCORE_ONLY + 100);
+    fetched.length = 0;
+    llmQueue = [{ scores: [], recommended_offer: null, reason: 'no longer a fit' }];
+
+    const runId = await newRun();
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, runId);
+
+    const { output } = (await pool.query(
+      `SELECT output FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
+    expect(output.rescored_without_crawling).toBe(1);
+    expect(output.stopped_for_budget).toBe(false);
   });
 });
