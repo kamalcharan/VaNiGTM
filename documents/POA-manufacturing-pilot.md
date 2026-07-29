@@ -55,9 +55,11 @@ the research did no work — that is a failure even at 10% reply.
 | 1 · Normalise the variants | ✅ **144 pharma manufacturers, 101 with a website** — and the CLI is no longer the only way to do it (migrations 218/219: cluster + segment are filters on `/prospects`, and a filter can be saved as a named segment) |
 | 2 · Account research brief | ✅ Built, and rebuilt four times against real failures — see "What Step 2 became" |
 | 3 · The Research screen | ✅ Offers, cohort, briefs, and the Learning Graph |
-| 4 · Touch log | ⬜ **The only code left.** ~0.5 day |
-| 5 · Write and send | ⬜ Manual by design |
-| 6 · Read the result | ⬜ Against the criteria above |
+| 4 · Touch log | ✅ Migration 221 + the scoreboard. `pilot_result` computes the pre-registered criteria; the verdict is withheld below 20 concluded sends |
+| 5 · Write and send | ⬜ Manual by design — log each touch on the dossier |
+| 6 · Read the result | ✅ Built — "Did it work" on `/research`. Reading it is what remains |
+
+**No code is left. Everything below is running it.**
 
 **Blocking the run, and neither is code:**
 
@@ -320,14 +322,14 @@ Agent produces, human confirms. Reuses `RecordsPage` / `RecordTable` /
 - Actions: **approve** · **reassign offer** · **do not contact (with reason)**
 - DoD: every brief in the cohort reaches a decision; no-contact reasons queryable
 
-### Step 4 — Touch log  ·  0.5 day  ·  ⬜ THE ONLY CODE LEFT
+### Step 4 — Touch log  ·  ✅ DONE
 
 The smallest thing that answers "did it work". Migration **221**
 `gt_touch_log`: `tenant_id`, `is_live`, `prospect_id`, `offer`, `channel`,
 `touched_at`, `outcome`, `notes`.
 
 > ⚠️ The number moved. This said migration 208, which was taken by the
-> research prompts while the pilot was being built. Next free is **221**.
+> research prompts while the pilot was being built.
 
 Manual entry only. This is the embryo of the event log, deliberately kept to
 seven columns — it exists so the result is data rather than a spreadsheet that
@@ -350,10 +352,32 @@ order tests the wrong thing.
   call captures outcome far better than an open-pixel
 - Every touch and every response logged in `gt_touch_log`
 
-### Step 6 — Read the result  ·  0.5 day  ·  ⬜
+### Step 6 — Read the result  ·  ✅ BUILT, ⬜ NOT YET READ
 
 Against the pre-registered criteria above. Both gates — reply rate and the
 side-by-side message read.
+
+`pilot_result` computes the first gate and **refuses to compute the second**,
+which is returned as an open question. Three rules, all of which make the
+number less flattering than the alternatives:
+
+- **A send inside the 14-day window is neither a reply nor a non-reply.**
+  Counting pending sends as non-replies depresses the rate early; dropping
+  them from the denominator inflates it. Both are wrong, so they are excluded
+  from the rate and reported separately.
+- **Silence past the window IS an answer.** Otherwise the rate measures only
+  the touches somebody remembered to close.
+- **Below 20 concluded sends there is no verdict.** At fifteen, one reply
+  moves the rate seven points and can cross a criterion boundary alone.
+
+`not_interested` counts as a REPLY — the thesis is that research earns a
+response, not that it wins deals, and counting a clear no as silence would
+flatter the channel while hiding an offer problem. `bounced` is neither: it
+never reached them, and reachability is the least-tested assumption here.
+
+**`verdictFor()` in `touches.ts` was written from this plan, not from the
+data. Editing those thresholds voids the pre-registration** and makes the run
+exploratory rather than a test.
 
 ---
 

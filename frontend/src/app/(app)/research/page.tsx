@@ -80,6 +80,30 @@ interface Brief {
 
 interface Tag { id: number; label: string }
 
+interface PilotSide {
+  sends: number; companies: number; concluded: number; pending: number;
+  replies: number; meetings: number; bounced: number;
+  /** null = nothing concluded. "0%" and "no reading yet" are different. */
+  reply_rate: number | null;
+}
+
+interface PilotResult {
+  researched: PilotSide;
+  unresearched: PilotSide;
+  comparison: { researched_rate: number | null; unresearched_rate: number | null;
+                difference: number } | null;
+  verdict: 'validated' | 'needs_work' | 'do_not_build' | 'too_early';
+  verdict_text: string;
+  response_window_days: number;
+  min_concluded_for_verdict: number;
+  qualitative_gate: string;
+}
+
+const VERDICT_TONE: Record<PilotResult['verdict'], 'success' | 'warning' | 'danger' | 'default'> = {
+  validated: 'success', needs_work: 'warning',
+  do_not_build: 'danger', too_early: 'default',
+};
+
 interface SegmentRef {
   id: number; name: string; summary: string;
   live_count: number; with_website: number;
@@ -301,6 +325,8 @@ export default function ResearchPage() {
     { enabled: tagId !== '' || segmentId !== '' || picked.length > 0 },
   );
 
+  const pilotQ = useSkillQuery<PilotResult>('research-skill', 'pilot_result', {});
+
   const lessonsQ = useSkillQuery<{
     lessons: Lesson[]; proposed: number; accepted: number; rejected: number;
     decisions: number; can_propose: boolean; min_decisions: number;
@@ -331,6 +357,7 @@ export default function ResearchPage() {
   const split = previewQ.data?.data;
   const segments = segmentsQ.data?.data.segments ?? [];
   const learn = lessonsQ.data?.data;
+  const pilot = pilotQ.data?.data;
   const budget = budgetQ.data?.data;
   const lessons = learn?.lessons ?? [];
   const toResearch = redoExisting ? (split?.reachable ?? 0) : (split?.to_research ?? 0);
@@ -994,6 +1021,78 @@ export default function ResearchPage() {
             </div>
           )}
         </section>
+        {/* 5 ── DID IT WORK ───────────────────────────────────────────
+            The pilot's whole point, and the reason gt_touch_log exists: the
+            criteria were pre-registered before anything was built, and a
+            criterion nobody can compute is not a criterion. */}
+        {pilot && pilot.researched.sends + pilot.unresearched.sends > 0 && (
+          <section className={s.section}>
+            <div className={s.sectionHead}>
+              <div>
+                <div className={s.sectionTitle}>Did it work</div>
+                <div className={s.sectionNote}>
+                  Read against criteria written down BEFORE the run, so no result can
+                  be rationalised afterwards. Sends inside the{' '}
+                  {pilot.response_window_days}-day window count as neither a reply nor
+                  a non-reply; silence past it counts as an answer.
+                </div>
+              </div>
+            </div>
+
+            <div className={pilot.verdict === 'validated' ? s.budgetOk : s.budgetBad}>
+              <div className={s.budgetLine}>
+                <strong>
+                  {pilot.researched.reply_rate === null
+                    ? 'No reading yet'
+                    : `${(pilot.researched.reply_rate * 100).toFixed(1)}% reply rate on researched sends`}
+                </strong>
+                <span className={s.budgetAfford}>
+                  {pilot.researched.replies} of {pilot.researched.concluded} concluded
+                  {pilot.researched.pending > 0
+                    && ` · ${pilot.researched.pending} still inside the window`}
+                  {pilot.researched.bounced > 0
+                    && ` · ${pilot.researched.bounced} never reached them`}
+                </span>
+              </div>
+              <div className={s.budgetNote}>{pilot.verdict_text}</div>
+              {pilot.verdict === 'too_early' && (
+                <div className={s.budgetNote}>
+                  {pilot.researched.concluded} concluded of the{' '}
+                  {pilot.min_concluded_for_verdict} needed. Below that, one reply moves
+                  the rate enough to cross a criterion on its own.
+                </div>
+              )}
+            </div>
+
+            {/* Unresearched sends were never in the plan. If any exist they are
+                the only control the pilot has, and ignoring them wastes them. */}
+            {pilot.comparison && (
+              <div className={s.split}>
+                <span>
+                  <strong>
+                    {((pilot.comparison.researched_rate ?? 0) * 100).toFixed(1)}%
+                  </strong> researched
+                </span>
+                <span className={s.splitMuted}>
+                  vs {((pilot.comparison.unresearched_rate ?? 0) * 100).toFixed(1)}%
+                  {' '}unresearched
+                </span>
+                <span className={s.splitStrong}>
+                  {pilot.comparison.difference >= 0 ? '+' : ''}
+                  {(pilot.comparison.difference * 100).toFixed(1)} points
+                </span>
+              </div>
+            )}
+
+            {/* No query can answer this, and a screen showing only the rate
+                would let the pilot pass on half its criteria. */}
+            <div className={s.unclear}>
+              <strong>The second gate, which no number can settle:</strong>{' '}
+              {pilot.qualitative_gate}
+            </div>
+          </section>
+        )}
+
         {/* 4 ── WHAT IT HAS LEARNED ───────────────────────────────── */}
         <section className={s.section}>
           <div className={s.sectionHead}>

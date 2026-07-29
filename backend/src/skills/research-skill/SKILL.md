@@ -306,7 +306,63 @@ The companies you could research, each with what is already known: never researc
 - Parameters: tag_id (optional, number), search (optional, string), state (optional, string — all | new | researched | failed | stale | decided), limit (optional, number), offset (optional, number)
 - Returns: { targets, total, limit, offset, recipe: 'target-list' }
 
+### log_touch
+Record that you contacted someone. Manual by design — the pilot tests whether the brief enables a good message, not whether an LLM can write one. `had_brief` is FROZEN at log time so deleting a brief cannot move a send out of the researched denominator.
+- Parameters: prospect_id (required, number), channel (required, string — email | phone | linkedin | whatsapp | other), offer (optional, string), touched_at (optional, ISO date), notes (optional, string)
+- Returns: { touch_id, had_brief, message, recipe: 'touch-card' }
+
+### set_touch_outcome
+What came back. Separate from logging the send because they happen days apart. Pass an empty outcome to clear a mis-click.
+- Parameters: touch_id (required, number), outcome (required — replied | meeting | not_interested | bounced | no_response, or empty to clear), outcome_at (optional, ISO date), notes (optional, string)
+- Returns: { touch_id, outcome, recipe: 'touch-card' }
+
+### get_touches
+Touches for one company or across the pilot, each flagged `is_pending` when it is still inside the response window.
+- Parameters: prospect_id (optional, number), limit (optional, number)
+- Returns: { touches, recipe: 'touch-list' }
+
+### pilot_result
+The pre-registered criteria, computed. See "Reading the pilot" below.
+- Parameters: none
+- Returns: { researched, unresearched, comparison, verdict, verdict_text, response_window_days, min_concluded_for_verdict, qualitative_gate, recipe: 'pilot-result' }
+
 ### batch_status
 Whether the last batch is queued, running, finished — or sitting in a queue nobody is reading because the worker is down.
 - Parameters: none
 - Returns: { verdict, message, healthy, done_count, requested, run_id, run_status, event_status, event_age_seconds, error, started_at, completed_at, recipe: 'batch-status' }
+
+## Reading the pilot (migration 221)
+
+`gt_touch_log` exists so the plan's pre-registered criteria are a query rather
+than a spreadsheet somebody reconstructs from memory in three weeks:
+
+| Reply rate on researched sends | Verdict |
+|---|---|
+| ≥ 8% | Thesis validated — build the machinery |
+| 3–8% | Something is there; offer or channel needs work before automating |
+| < 3% | Offer-market fit or channel, NOT process — **do not build agents** |
+
+`verdictFor()` in `touches.ts` was written from the plan, not from the data.
+**Editing those thresholds voids the pre-registration** and makes the run
+exploratory rather than a test.
+
+Three rules, all of which make the number LESS flattering:
+
+- **Pending is neither.** A send inside the 14-day window with no outcome is
+  counted as neither a reply nor a non-reply. Counting it as a non-reply
+  depresses the rate early; excluding it from the denominator inflates it.
+- **Silence past the window IS an answer.** Otherwise the rate measures only
+  the touches somebody remembered to close.
+- **Under 20 concluded sends, no verdict.** At fifteen, one reply moves the
+  rate seven points and can cross a boundary on its own.
+
+`not_interested` counts as a REPLY. The thesis is that researched outreach
+earns a response, not that it wins deals — a clear no is engagement, and
+counting it as silence would flatter the channel and hide an offer problem.
+`bounced` is neither: it never reached them, and reachability is the
+least-tested assumption in the plan.
+
+The second gate — read the messages side by side and ask whether a researched
+one says anything a template would not — is returned as an unanswered
+question. No query can answer it, and a screen showing only the rate would let
+the pilot pass on half its criteria.

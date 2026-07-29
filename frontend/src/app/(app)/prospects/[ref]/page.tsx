@@ -81,6 +81,25 @@ interface Brief {
 }
 
 interface OfferRef { offer_key: string; name: string; commitment: string }
+
+interface Touch {
+  id: number; offer: string | null; channel: string;
+  touched_at: string; outcome: string | null; outcome_at: string | null;
+  notes: string | null; had_brief: boolean; is_pending: boolean;
+}
+
+const CHANNELS = ['email', 'phone', 'linkedin', 'whatsapp', 'other'] as const;
+
+/** `not_interested` is a REPLY — the thesis is that research earns a
+ *  response, not that it wins deals. `bounced` never reached them. */
+const OUTCOMES: { value: string; label: string }[] = [
+  { value: '', label: 'No response yet' },
+  { value: 'replied', label: 'Replied' },
+  { value: 'meeting', label: 'Meeting agreed' },
+  { value: 'not_interested', label: 'Not interested (still a reply)' },
+  { value: 'bounced', label: 'Bounced — never reached them' },
+  { value: 'no_response', label: 'No response' },
+];
 interface TagRef { id: number; label: string; inherited: boolean }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -117,6 +136,8 @@ export default function DossierPage() {
 
   const [note, setNote] = useState('');
   const [reassign, setReassign] = useState('');
+  const [channel, setChannel] = useState<string>('email');
+  const [touchNote, setTouchNote] = useState('');
 
   const q = useSkillQuery<{
     prospect: Prospect; people: Person[]; tags: TagRef[];
@@ -126,6 +147,14 @@ export default function DossierPage() {
 
   const decide = useSkillMutation('research-skill', 'decide_brief');
   const startResearch = useSkillMutation('research-skill', 'start_research');
+  const logTouch = useSkillMutation('research-skill', 'log_touch');
+  const setOutcome = useSkillMutation('research-skill', 'set_touch_outcome');
+
+  const touchesQ = useSkillQuery<{ touches: Touch[] }>(
+    'research-skill', 'get_touches',
+    { prospect_id: q.data?.data?.prospect?.id },
+    { enabled: Boolean(q.data?.data?.prospect?.id) },
+  );
 
   const d = q.data?.data;
   const p = d?.prospect;
@@ -170,6 +199,32 @@ export default function DossierPage() {
       });
     } catch (err) {
       showToast({ type: 'error', message: err instanceof Error ? err.message : 'Could not queue it' });
+    }
+  };
+
+  const onLogTouch = async () => {
+    if (!p) return;
+    try {
+      const res = await logTouch.mutateAsync({
+        prospect_id: p.id, channel,
+        offer: effective ?? undefined,
+        notes: touchNote || undefined,
+      });
+      const { message } = (res.data ?? {}) as unknown as { message: string };
+      showToast({ type: 'success', message });
+      setTouchNote('');
+      qc.invalidateQueries({ queryKey: ['skill', 'research-skill'] });
+    } catch (err) {
+      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Could not log that' });
+    }
+  };
+
+  const onSetOutcome = async (touchId: number, outcome: string) => {
+    try {
+      await setOutcome.mutateAsync({ touch_id: touchId, outcome: outcome || null });
+      qc.invalidateQueries({ queryKey: ['skill', 'research-skill'] });
+    } catch (err) {
+      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Could not record that' });
     }
   };
 
@@ -384,9 +439,71 @@ export default function DossierPage() {
                 )}
               </section>
             )}
+            {/* 5. WHAT WAS ACTUALLY SENT, and what came back. Below the
+                   decision because that is the order it happens in, and on
+                   this page because the person who approved a company is the
+                   person who writes to it. */}
+            {brief?.decided_at && (
+              <section className={s.card}>
+                <h2 className={s.cardTitle}>Touches</h2>
+
+                {(touchesQ.data?.data.touches ?? []).map((t) => (
+                  <div key={t.id} className={s.touch}>
+                    <div className={s.touchHead}>
+                      <span className={s.touchWhen}>
+                        {formatDate(t.touched_at)} · {t.channel}
+                        {t.offer && <> · {offerName(t.offer)}</>}
+                      </span>
+                      {t.is_pending && (
+                        <VdfBadge variant="info">inside the response window</VdfBadge>
+                      )}
+                      {!t.had_brief && (
+                        <VdfBadge variant="default">unresearched</VdfBadge>
+                      )}
+                    </div>
+                    <select
+                      className={s.select}
+                      value={t.outcome ?? ''}
+                      onChange={(e) => onSetOutcome(t.id, e.target.value)}
+                      disabled={setOutcome.isPending}
+                    >
+                      {OUTCOMES.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                    {t.notes && <div className={s.hint}>{t.notes}</div>}
+                  </div>
+                ))}
+
+                <div className={s.formRow}>
+                  <label className={s.label}>Log a touch</label>
+                  <select
+                    className={s.select} value={channel}
+                    onChange={(e) => setChannel(e.target.value)}
+                  >
+                    {CHANNELS.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <textarea
+                    className={s.textarea} value={touchNote} rows={2}
+                    onChange={(e) => setTouchNote(e.target.value)}
+                    placeholder="What you actually said, or anything worth remembering"
+                  />
+                  <div className={s.hint}>
+                    Manual on purpose. The pilot tests whether the brief enables a good
+                    message, not whether a model can write one — so you write and send,
+                    and this is the record that it happened.
+                  </div>
+                </div>
+
+                <VdfButton
+                  variant="outline" onClick={onLogTouch} disabled={logTouch.isPending}
+                >
+                  {logTouch.isPending ? 'Logging…' : 'I contacted them'}
+                </VdfButton>
+              </section>
+            )}
           </div>
 
-          {/* ── Right: who they are, and how to reach them ─────────── */}
           <aside className={s.side}>
             <section className={s.card}>
               <div className={s.badges}>
