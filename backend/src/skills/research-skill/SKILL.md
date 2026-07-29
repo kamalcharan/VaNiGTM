@@ -230,7 +230,7 @@ A human's ruling on one brief. Ruling a company out requires a reason.
 
 ### start_research
 Queue the research batch for the worker. Validates the offers first, and reports the whole split — selected, reachable, already researched, to do — before anything runs. preview answers without queueing.
-- Parameters: tag_id (optional, number), prospect_ids (optional, array), limit (optional, number), refresh (optional, boolean), preview (optional, boolean)
+- Parameters: tag_id (optional, number), segment_id (optional, number — resolved to explicit ids here, so the run is a fixed list a later rule change cannot move), prospect_ids (optional, array), limit (optional, number), refresh (optional, boolean), preview (optional, boolean)
 - Returns: { selected, reachable, no_website, already_researched, extraction_failed, no_address_answered, needs_rescore, to_research, queued, event_id, recipe: 'research-queued' }
 
 ### get_lessons

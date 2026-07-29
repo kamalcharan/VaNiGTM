@@ -19,11 +19,23 @@ import { readLessons } from '../lessons';
 import { emitEvent } from '../../../agent-core/event.store';
 import { getPool } from '../../../db/pool';
 import { getTokenBudget } from '../../../agent-core/llm.client';
+import { segmentPredicate } from '../../prospect-skill/segment-sql';
+import { cleanDefinition } from '../../prospect-skill/segments';
 import { COST_FULL_RESEARCH } from '../account.agent';
 
 interface StartResearchParams {
   tag_id?: number;
   prospect_ids?: number[];
+  /**
+   * Research a saved segment.
+   *
+   * Resolved to explicit prospect ids HERE, not carried into the run. A
+   * segment is a live definition — if the batch carried the definition
+   * instead, a rule change mid-run would move the cohort underneath it and
+   * nobody could say afterwards which companies were actually researched.
+   * Resolving now means the run is a fixed list, and the list is a record.
+   */
+  segment_id?: number;
   limit?: number;
   /** Redo companies that already have a brief. Default false. */
   refresh?: boolean;
@@ -46,11 +58,43 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
   }
 
   const tagId = Number(params.tag_id) || null;
-  const ids = Array.isArray(params.prospect_ids)
+  let ids = Array.isArray(params.prospect_ids)
     ? params.prospect_ids.map(Number).filter(Number.isFinite)
     : [];
+
+  if (params.segment_id && ids.length === 0) {
+    const seg = await ctx.db.query<{ definition: unknown }>(
+      `SELECT definition FROM gt_segments
+        WHERE id = $segment_id AND tenant_id = $tenant_id AND is_live = $is_live
+          AND is_active`,
+      { segment_id: Number(params.segment_id), tenant_id: ctx.tenant_id, is_live: ctx.is_live },
+    );
+    if (seg.rows.length === 0) throw new Error('No such segment.');
+
+    const members = await ctx.db.query<{ id: string }>(
+      `SELECT p.id::text FROM gt_prospects p
+        WHERE p.tenant_id = $tenant_id
+          AND p.is_live   = $is_live
+          AND p.is_active = true
+          AND p.domain_normalized IS NOT NULL
+          AND ${segmentPredicate('p', '$definition::jsonb')}`,
+      {
+        tenant_id: ctx.tenant_id, is_live: ctx.is_live,
+        definition: JSON.stringify(cleanDefinition(seg.rows[0].definition)),
+      },
+    );
+    ids = members.rows.map((r) => Number(r.id));
+
+    if (ids.length === 0) {
+      throw new Error(
+        'Nothing in that segment has a website, so there is nothing to read. '
+        + 'The segment itself is fine — widen it, or check the website filter.',
+      );
+    }
+  }
+
   if (!tagId && ids.length === 0) {
-    throw new Error('Pick a cohort tag, or select the companies to research.');
+    throw new Error('Pick a cohort, a segment, or select the companies to research.');
   }
 
   // The whole split, said out loud BEFORE anything starts. Re-running a

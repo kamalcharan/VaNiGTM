@@ -1,24 +1,37 @@
 /**
  * prospect-skill: get_segments
  *
- * The saved segments, each with a live count beside the one it was saved with.
+ * The saved segments, with the count they were saved with, a live count, and
+ * — the number that actually matters — how much of each has been researched.
  *
- * ── WHY BOTH NUMBERS ──────────────────────────────────────────────────
+ * ── WHAT A RULE CHANGE CAN AND CANNOT DO ──────────────────────────────
  *
- * A segment stores its DEFINITION, not a member list — deliberately, so a
- * company that gains a domain tomorrow joins "pharma with a website" on its
- * own. The cost is that the number you saw when you saved it can stop being
- * true, either because the data moved or because the industry rules did.
+ * User question, 2026-07-29: "when Research is done, any changes happening
+ * might impact Research data already in?"
  *
- * Showing only the live count hides that anything changed. Showing only the
- * saved one is a lie with a timestamp. So both, plus `rules_moved` when the
- * classification itself has been edited since — because that is the case
- * where the same name silently covers different companies, and it is the one
- * the design note flagged as the standing risk.
+ * It cannot. A brief hangs off `prospect_id`, and prospects do not move. The
+ * only classification that reaches the fit prompt is `industry_raw` — the
+ * ORIGINAL imported text, never recomputed — and `judgementFingerprint`
+ * covers offers, corrections and lessons but deliberately NOT industry, so
+ * reclassifying nothing stales nothing. No brief is altered, invalidated or
+ * lost when a rule moves.
+ *
+ * What moves is MEMBERSHIP, and the damage is coverage rather than
+ * corruption:
+ *
+ *   - the segment gains companies → they have no research
+ *   - the segment loses companies → you researched things it no longer covers
+ *
+ * That was invisible: the card said "101" and gave no hint that eight of them
+ * had never been read. So the counts below are not decoration — they are the
+ * only way the consequence of a rule change is legible in terms anyone acts
+ * on. `rules_moved` says the definition may now cover different companies;
+ * `unresearched` says how much that actually costs you.
  */
 
 import { SkillContext } from '../../../shared/types';
 import { describeDefinition, cleanDefinition } from '../segments';
+import { segmentPredicate } from '../segment-sql';
 import { rulesVersion } from '../../../etl/industry-normalizer';
 
 export async function get_segments(
@@ -26,52 +39,39 @@ export async function get_segments(
   ctx: SkillContext,
 ) {
   const current = rulesVersion();
+  const match = segmentPredicate('p', 's.definition');
 
   const res = await ctx.db.query<Record<string, unknown>>(
     `SELECT s.id, s.name, s.note, s.definition,
             s.member_count, s.counted_at, s.rules_version,
             s.created_at, s.updated_at,
-            -- The live count, in the same statement, so the two numbers on a
-            -- card can never come from different moments.
-            (SELECT count(*) FROM gt_prospects p
-              WHERE p.tenant_id = s.tenant_id
-                AND p.is_live   = s.is_live
-                AND p.is_active = true
-                AND (s.definition->>'industry_canonical' IS NULL
-                     OR p.industry_canonical = s.definition->>'industry_canonical')
-                AND (s.definition->>'industry_sub' IS NULL
-                     OR p.industry_sub = s.definition->>'industry_sub')
-                AND (s.definition->>'relationship' IS NULL
-                     OR p.relationship = s.definition->>'relationship')
-                AND (s.definition->>'city' IS NULL
-                     OR p.city ILIKE s.definition->>'city')
-                AND (s.definition->>'state_code' IS NULL
-                     OR p.state_code = s.definition->>'state_code')
-                AND (s.definition->>'min_quality' IS NULL
-                     OR COALESCE(p.completeness, 0) >= (s.definition->>'min_quality')::numeric)
-                AND (s.definition->>'domain' IS NULL
-                     OR (s.definition->>'domain' = 'has'  AND p.domain_normalized IS NOT NULL)
-                     OR (s.definition->>'domain' = 'none' AND p.domain_normalized IS NULL))
-                AND (s.definition->>'tag_id' IS NULL OR EXISTS (
-                      SELECT 1 FROM gt_prospect_tags pt
-                       WHERE pt.prospect_id = p.id
-                         AND pt.tag_id = (s.definition->>'tag_id')::bigint))
-                AND (s.definition->>'search' IS NULL
-                     OR p.name ILIKE '%' || (s.definition->>'search') || '%'
-                     OR p.domain_normalized ILIKE '%' || (s.definition->>'search') || '%'
-                     OR p.industry_raw ILIKE '%' || (s.definition->>'search') || '%')
-            ) AS live_count,
-            -- Reachability, because it is the number that decides how much of
-            -- a segment can actually be researched.
-            (SELECT count(*) FROM gt_prospects p
-              WHERE p.tenant_id = s.tenant_id AND p.is_live = s.is_live
-                AND p.is_active = true AND p.domain_normalized IS NOT NULL
-                AND (s.definition->>'industry_canonical' IS NULL
-                     OR p.industry_canonical = s.definition->>'industry_canonical')
-                AND (s.definition->>'industry_sub' IS NULL
-                     OR p.industry_sub = s.definition->>'industry_sub')
-            ) AS with_website
+            m.*
        FROM gt_segments s
+       -- One pass over the members, so every number on a card comes from the
+       -- same moment. Separate subqueries would let the live count and the
+       -- research counts disagree by a write.
+       LEFT JOIN LATERAL (
+         SELECT count(*)::int                                        AS live_count,
+                count(*) FILTER (WHERE p.domain_normalized IS NOT NULL)::int
+                                                                     AS with_website,
+                count(*) FILTER (WHERE b.facts_at IS NOT NULL)::int   AS researched,
+                count(*) FILTER (WHERE b.decided_at IS NOT NULL)::int AS decided,
+                count(*) FILTER (WHERE b.status IN ('extract_failed','unreadable'))::int
+                                                                     AS research_failed,
+                -- Reachable, and nobody has read it. The number a rule change
+                -- actually costs.
+                count(*) FILTER (WHERE p.domain_normalized IS NOT NULL
+                                   AND b.facts_at IS NULL)::int       AS unresearched
+           FROM gt_prospects p
+           LEFT JOIN gt_account_briefs b
+                  ON b.prospect_id = p.id
+                 AND b.tenant_id   = s.tenant_id
+                 AND b.is_live     = s.is_live
+          WHERE p.tenant_id = s.tenant_id
+            AND p.is_live   = s.is_live
+            AND p.is_active = true
+            AND ${match}
+       ) m ON true
       WHERE s.tenant_id = $tenant_id
         AND s.is_live   = $is_live
         AND s.is_active = true
@@ -92,10 +92,13 @@ export async function get_segments(
       member_count: saved,
       live_count: live,
       with_website: Number(r.with_website ?? 0),
+      researched: Number(r.researched ?? 0),
+      decided: Number(r.decided ?? 0),
+      research_failed: Number(r.research_failed ?? 0),
+      unresearched: Number(r.unresearched ?? 0),
       counted_at: r.counted_at,
-      // The two ways a saved segment stops meaning what it meant. Named
-      // separately because the fixes are different: one is data moving under
-      // a stable rule, the other is the rule itself moving.
+      // Two different problems with two different fixes: data moving under a
+      // stable rule, versus the rule itself moving.
       drifted: saved !== null && saved !== live,
       rules_moved: r.rules_version !== null && r.rules_version !== current,
       created_at: r.created_at,

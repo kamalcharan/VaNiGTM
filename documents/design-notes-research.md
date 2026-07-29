@@ -91,6 +91,43 @@ Pharma's useful sources (PharmaCompass, Pharmabiz, DGFT, USFDA warning
 letters) have nothing to do with a textile or plastics segment. Hence a source
 repository rather than a hardcoded list.
 
+**R7 · A rule change cannot touch research already done.** (user question,
+2026-07-29: "when Research is done, any changes happening might impact
+Research data already in?")
+
+Checked against the code, not assumed:
+
+- A brief hangs off `prospect_id`. Prospects do not move when rules change.
+- The only classification reaching the fit prompt is `industry_raw` — the
+  ORIGINAL imported text, never recomputed. `industry_canonical` and
+  `industry_sub` reach no prompt at all.
+- `judgementFingerprint` covers offers, corrections and lessons and
+  deliberately NOT industry, so reclassifying stales nothing.
+
+**No brief is altered, invalidated or lost when a rule moves.** There is a
+test that reclassifies and asserts the brief is unchanged down to
+`updated_at`.
+
+What moves is MEMBERSHIP, and the damage is coverage, not corruption:
+
+- the segment gains companies → they have no research
+- the segment loses companies → you researched things it no longer covers
+
+That was invisible — the card said "101" and gave no hint that eight of them
+had never been read. So a segment now reports `researched` / `unresearched` /
+`research_failed` / `decided`, and the chip says **"8 unread"** rather than
+showing an abstract drift dot. The consequence of a rule change is legible in
+the only terms anyone acts on.
+
+**The saved count is never auto-updated.** That number is the evidence
+something changed; silently refreshing it would erase the finding. `recount`
+is an explicit action a human takes after looking at the new one.
+
+**A research run resolves a segment to explicit prospect ids at queue time.**
+If the run carried the definition instead, a rule change mid-batch would move
+the cohort underneath it and nobody could say afterwards which companies were
+actually researched.
+
 ## 3. The four objects
 
 The same four questions for every tenant, whatever they sell:
@@ -259,11 +296,7 @@ column now.
 - `/research` keeps its own list. It is a work queue over briefs; `/prospects`
   is the record surface. Rows on both now reach the same dossier.
 
-**Still needing a ruling:**
-- A segment stores its definition, so membership moves when the industry rules
-  move. `rules_version` makes that VISIBLE (`rules_moved` on the card) but
-  nothing acts on it. Should a segment be re-countable in place, or does a
-  moved rule warrant re-approving the segment?
+**Answered 2026-07-29 — R7 below.**
 
 **A caveat to build in:** the sub-cluster rules are mine, derived from FTCCI
 data. Once segments are built on them, changing a rule silently changes who is

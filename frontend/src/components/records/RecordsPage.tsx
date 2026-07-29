@@ -97,6 +97,11 @@ interface Segment {
   member_count: number | null;
   live_count: number;
   with_website: number;
+  /** Research coverage — what a membership change actually costs. */
+  researched: number;
+  decided: number;
+  research_failed: number;
+  unresearched: number;
   /** The data moved under a stable rule. */
   drifted: boolean;
   /** The classification rules themselves changed — the same name may now
@@ -460,15 +465,27 @@ export function RecordsPage({
                   <button
                     className={`${s.chip} ${segmentId === seg.id ? s.chipActive : ''}`}
                     onClick={() => applySegment(seg)}
-                    title={`${seg.summary} · ${seg.with_website} with a website`}
+                    title={[
+                      seg.summary,
+                      `${seg.with_website} with a website`,
+                      `${seg.researched} researched`,
+                      seg.unresearched > 0 ? `${seg.unresearched} not read yet` : null,
+                      seg.decided > 0 ? `${seg.decided} you ruled on` : null,
+                      seg.rules_moved
+                        ? 'The industry rules changed since this was saved — it may cover different companies now'
+                        : seg.drifted ? `Saved with ${seg.member_count}, now ${seg.live_count}` : null,
+                    ].filter(Boolean).join(' · ')}
                   >
                     {seg.name} ({seg.live_count})
-                    {(seg.drifted || seg.rules_moved) && (
-                      <span className={s.segmentFlag} title={seg.rules_moved
-                        ? 'The industry rules changed since this was saved — it may cover different companies now'
-                        : `Saved with ${seg.member_count}, now ${seg.live_count}`}>
-                        {' '}•
+                    {/* Coverage, not a dot. "8 unread" is a thing to act on;
+                        "membership may have moved" is not. */}
+                    {seg.unresearched > 0 && (
+                      <span className={s.segmentFlag}>
+                        {' '}· {seg.unresearched} unread
                       </span>
+                    )}
+                    {(seg.drifted || seg.rules_moved) && (
+                      <span className={s.segmentFlag}>{' '}•</span>
                     )}
                   </button>
                   <button
@@ -494,9 +511,35 @@ export function RecordsPage({
               </button>
 
               {segmentId !== null && (
-                <button className={s.chip} onClick={() => setSegmentId(null)}>
-                  Detach from segment
-                </button>
+                <>
+                  {/* The acknowledgement, made an action. The saved count is
+                      never auto-updated — that number is the evidence anything
+                      changed — so re-stamping it is something a human does
+                      after looking at the new one. */}
+                  {(() => {
+                    const seg = segments.find((x) => x.id === segmentId);
+                    if (!seg || (!seg.drifted && !seg.rules_moved)) return null;
+                    return (
+                      <button
+                        className={s.chip}
+                        disabled={saveSegment.isPending}
+                        title={seg.rules_moved
+                          ? 'The classification rules moved. Nothing already researched is affected — briefs belong to companies, not segments — but this name may now cover a different set. Re-count to accept the new one.'
+                          : `Saved with ${seg.member_count}, now ${seg.live_count}. Re-count to accept it.`}
+                        onClick={async () => {
+                          await saveSegment.mutateAsync({ segment_id: seg.id, recount: true });
+                          queryClient.invalidateQueries({ queryKey: ['skill', 'prospect-skill'] });
+                          showToast({ type: 'success', message: `"${seg.name}" re-counted at ${seg.live_count}.` });
+                        }}
+                      >
+                        Re-count ({segments.find((x) => x.id === segmentId)?.live_count})
+                      </button>
+                    );
+                  })()}
+                  <button className={s.chip} onClick={() => setSegmentId(null)}>
+                    Detach from segment
+                  </button>
+                </>
               )}
             </div>
           )}

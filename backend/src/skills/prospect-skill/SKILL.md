@@ -87,13 +87,13 @@ One company in full: every mapped field, every column the source file carried, t
 - Returns: { prospect, people: [{ id, name, job_title, channels }], tags, brief, offers, source_row, recipe: 'prospect-profile' }
 
 ### get_segments
-Saved segments, each with the count it was saved with AND a live count. `drifted` = the data moved; `rules_moved` = the industry rules themselves changed, so the same name may now cover different companies.
+Saved segments, each with the count it was saved with, a live count, and its RESEARCH COVERAGE. `drifted` = the data moved; `rules_moved` = the industry rules themselves changed, so the same name may now cover different companies; `unresearched` = what that actually costs — reachable members nobody has read.
 - Parameters: none
-- Returns: { segments: [{ id, name, note, definition, summary, member_count, live_count, with_website, drifted, rules_moved }], rules_version, recipe: 'segment-list' }
+- Returns: { segments: [{ id, name, note, definition, summary, member_count, live_count, with_website, researched, decided, research_failed, unresearched, drifted, rules_moved }], rules_version, recipe: 'segment-list' }
 
 ### save_segment
-Name the filter you are looking at. Stores the DEFINITION, not a member list — a company that gains a domain tomorrow joins "pharma with a website" on its own. Refuses a filter that selects everything. The member count is computed here so the card and the list can never disagree.
-- Parameters: name (required, string), segment_id (optional, number — to rename or redefine), note (optional, string), definition (optional, object — search, industry_canonical, industry_sub, domain, tag_id, relationship, min_quality, city, state_code)
+Name the filter you are looking at. Stores the DEFINITION, not a member list — a company that gains a domain tomorrow joins "pharma with a website" on its own. Refuses a filter that selects everything. The member count is computed here so the card and the list can never disagree. `recount: true` re-stamps the count and rules version WITHOUT touching the definition — the explicit acknowledgement that membership moved, which is why the saved count is never auto-updated.
+- Parameters: name (required unless recount), segment_id (optional, number — to rename, redefine or recount), note (optional, string), definition (optional, object — search, industry_canonical, industry_sub, domain, tag_id, relationship, min_quality, city, state_code), recount (optional, boolean)
 - Returns: { segment_id, name, member_count, summary, recipe: 'segment-card' }
 
 ### delete_segment

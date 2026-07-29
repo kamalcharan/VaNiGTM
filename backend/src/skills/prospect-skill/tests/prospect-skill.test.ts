@@ -916,3 +916,112 @@ maybe('research state on the record list', () => {
     }
   });
 });
+
+/* ── What a rule change can and cannot touch ────────────────────────── */
+
+maybe('reclassifying does not disturb research already done', () => {
+  let researchedId = 0;
+
+  beforeAll(async () => {
+    await pool.query(`DELETE FROM gt_account_briefs WHERE tenant_id = $1`, [C]);
+    const ins = await pool.query<{ id: number }>(
+      `INSERT INTO gt_prospects (tenant_id,is_live,ref,name,domain_normalized,industry_raw)
+       VALUES ($1,false,'RC-01','Stable Co','stable.com','Manufacturing of Bulk Drugs')
+       RETURNING id`, [C]);
+    researchedId = Number(ins.rows[0].id);
+
+    await pool.query(
+      `INSERT INTO gt_account_briefs
+         (tenant_id,is_live,prospect_id,domain,status,what_they_make,
+          recommended_offer,fit,facts_at,judged_at,fetched_at)
+       VALUES ($1,false,$2,'stable.com','drafted','Bulk drugs','cdo-as-a-service',
+               '{"cdo-as-a-service":{"score":0.8,"reason":"two units"}}'::jsonb,
+               now(),now(),now())`, [C, researchedId]);
+  });
+
+  // The user's question, made checkable: a brief hangs off prospect_id, and
+  // prospects do not move. Reclassification rewrites industry_sub and touches
+  // nothing else.
+  it('leaves the brief byte-for-byte alone when the classification is rerun', async () => {
+    const before = (await pool.query(
+      `SELECT * FROM gt_account_briefs WHERE prospect_id = $1`, [researchedId])).rows[0];
+
+    await build_cohort({ cluster: 'manufacturing' }, ctxFor(C));
+
+    const after = (await pool.query(
+      `SELECT * FROM gt_account_briefs WHERE prospect_id = $1`, [researchedId])).rows[0];
+
+    expect(after.what_they_make).toBe(before.what_they_make);
+    expect(after.recommended_offer).toBe(before.recommended_offer);
+    expect(after.fit).toEqual(before.fit);
+    expect(after.facts_at.toISOString()).toBe(before.facts_at.toISOString());
+    expect(after.judged_at.toISOString()).toBe(before.judged_at.toISOString());
+    expect(after.updated_at.toISOString()).toBe(before.updated_at.toISOString());
+  });
+
+  // What DOES change is coverage, and it has to be legible as a number
+  // someone acts on rather than as an abstract "membership may have moved".
+  it('reports how much of a segment has actually been researched', async () => {
+    await pool.query(
+      `INSERT INTO gt_prospects (tenant_id,is_live,ref,name,domain_normalized,industry_raw,
+                                 industry_canonical,industry_sub)
+       VALUES ($1,false,'RC-02','Unread Co','unread.com','Manufacturing of API',
+               'manufacturing','pharma')`, [C]);
+
+    const seg = await save_segment({
+      name: 'Coverage check',
+      definition: { industry_sub: 'pharma', domain: 'has' },
+    }, ctxFor(C));
+
+    const listed = await get_segments({}, ctxFor(C));
+    const found = listed.segments.find((x) => x.id === seg.segment_id)!;
+
+    expect(found.researched).toBeGreaterThanOrEqual(1);
+    expect(found.unresearched).toBeGreaterThanOrEqual(1);
+    expect(found.researched + found.unresearched).toBe(found.with_website);
+  });
+
+  // The saved count must NOT move on its own — that is the evidence anything
+  // changed. Re-counting is a thing a human does after looking.
+  it('only re-stamps the count when asked to', async () => {
+    const seg = await save_segment({
+      name: 'Recount check',
+      definition: { industry_sub: 'pharma' },
+    }, ctxFor(C));
+    const saved = seg.member_count;
+
+    await pool.query(
+      `INSERT INTO gt_prospects (tenant_id,is_live,ref,name,domain_normalized,
+                                 industry_raw,industry_canonical,industry_sub)
+       VALUES ($1,false,'RC-03','Late Arrival','late.com','Manufacturing of API',
+               'manufacturing','pharma')`, [C]);
+
+    let listed = await get_segments({}, ctxFor(C));
+    let found = listed.segments.find((x) => x.id === seg.segment_id)!;
+    expect(found.member_count).toBe(saved);          // untouched
+    expect(found.live_count).toBe(saved + 1);        // reality
+    expect(found.drifted).toBe(true);
+
+    await save_segment({ segment_id: seg.segment_id, recount: true }, ctxFor(C));
+
+    listed = await get_segments({}, ctxFor(C));
+    found = listed.segments.find((x) => x.id === seg.segment_id)!;
+    expect(found.member_count).toBe(saved + 1);
+    expect(found.drifted).toBe(false);
+  });
+
+  it('a recount keeps the name and the definition exactly as they were', async () => {
+    const seg = await save_segment({
+      name: 'Untouched name', note: 'the original note',
+      definition: { industry_sub: 'pharma', domain: 'has' },
+    }, ctxFor(C));
+
+    await save_segment({ segment_id: seg.segment_id, recount: true }, ctxFor(C));
+
+    const listed = await get_segments({}, ctxFor(C));
+    const found = listed.segments.find((x) => x.id === seg.segment_id)!;
+    expect(found.name).toBe('Untouched name');
+    expect(found.note).toBe('the original note');
+    expect(found.definition).toEqual({ industry_sub: 'pharma', domain: 'has' });
+  });
+});

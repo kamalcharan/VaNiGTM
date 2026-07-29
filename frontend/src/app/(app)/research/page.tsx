@@ -76,6 +76,12 @@ interface Brief {
 
 interface Tag { id: number; label: string }
 
+interface SegmentRef {
+  id: number; name: string; summary: string;
+  live_count: number; with_website: number;
+  researched: number; unresearched: number;
+}
+
 interface Target {
   id: number; ref: string | null; name: string; domain: string | null;
   industry_raw: string | null;
@@ -241,6 +247,7 @@ export default function ResearchPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [offerFilter, setOfferFilter] = useState('');
   const [tagId, setTagId] = useState<number | ''>('');
+  const [segmentId, setSegmentId] = useState<number | ''>('');
   const [limit, setLimit] = useState(10);
   const [note, setNote] = useState('');
   const [reassign, setReassign] = useState('');
@@ -265,6 +272,12 @@ export default function ResearchPage() {
   const tagsQ = useSkillQuery<{ records: unknown[]; facets: { tags: Tag[] } }>(
     'prospect-skill', 'get_records', { scope: 'mine', limit: 1 },
   );
+  // Segments are the answer to "who am I talking to", so they belong in the
+  // cohort picker beside tags — a saved definition you cannot act on is a
+  // bookmark.
+  const segmentsQ = useSkillQuery<{ segments: SegmentRef[] }>(
+    'prospect-skill', 'get_segments', {},
+  );
   // Polled: the worker is a separate process, and "queued" means nothing if
   // nobody is reading the queue. 5s is fast enough to catch a dead worker
   // while a batch is being watched, and cheap — it is one indexed row.
@@ -277,8 +290,8 @@ export default function ResearchPage() {
     'research-skill', 'start_research',
     picked.length > 0
       ? { prospect_ids: picked, preview: true }
-      : { tag_id: tagId || undefined, preview: true },
-    { enabled: tagId !== '' || picked.length > 0 },
+      : { tag_id: tagId || undefined, segment_id: segmentId || undefined, preview: true },
+    { enabled: tagId !== '' || segmentId !== '' || picked.length > 0 },
   );
 
   const lessonsQ = useSkillQuery<{
@@ -309,6 +322,7 @@ export default function ResearchPage() {
   const tags = (tagsQ.data?.data.facets?.tags ?? []) as Tag[];
   const batch = statusQ.data?.data;
   const split = previewQ.data?.data;
+  const segments = segmentsQ.data?.data.segments ?? [];
   const learn = lessonsQ.data?.data;
   const budget = budgetQ.data?.data;
   const lessons = learn?.lessons ?? [];
@@ -361,7 +375,11 @@ export default function ResearchPage() {
       const res = await startResearch.mutateAsync(
         picked.length > 0
           ? { prospect_ids: picked, limit: Math.max(picked.length, 1), refresh: redoExisting }
-          : { tag_id: tagId || undefined, limit, refresh: redoExisting },
+          : {
+            tag_id: tagId || undefined,
+            segment_id: segmentId || undefined,
+            limit, refresh: redoExisting,
+          },
       );
       const { queued } = (res.data ?? {}) as unknown as { queued: number };
       showToast({
@@ -583,11 +601,33 @@ export default function ResearchPage() {
           </div>
 
           <div className={s.filters}>
+            {/* A saved segment first — it is the thing someone defined on
+                purpose. Tags remain, because a tag says something a filter
+                cannot derive ("met at FTCCI 2026"). */}
+            <select
+              className={s.select} value={segmentId}
+              onChange={(e) => {
+                setSegmentId(e.target.value ? Number(e.target.value) : '');
+                setTagId('');
+              }}
+            >
+              <option value="">Pick a segment…</option>
+              {segments.map((sg) => (
+                <option key={sg.id} value={sg.id}>
+                  {sg.name} — {sg.with_website} reachable
+                  {sg.unresearched > 0 ? `, ${sg.unresearched} unread` : ''}
+                </option>
+              ))}
+            </select>
+
             <select
               className={s.select} value={tagId}
-              onChange={(e) => setTagId(e.target.value ? Number(e.target.value) : '')}
+              onChange={(e) => {
+                setTagId(e.target.value ? Number(e.target.value) : '');
+                setSegmentId('');
+              }}
             >
-              <option value="">Pick a cohort tag…</option>
+              <option value="">…or a cohort tag</option>
               {tags.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
             </select>
             {/* The count only decides anything when you have NOT named the
@@ -617,7 +657,7 @@ export default function ResearchPage() {
             <VdfButton
               variant="primary"
               onClick={onStart}
-              disabled={!ready || (!tagId && picked.length === 0)
+              disabled={!ready || (!tagId && !segmentId && picked.length === 0)
                         || toResearch === 0 || startResearch.isPending}
             >
               {startResearch.isPending

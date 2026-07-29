@@ -179,3 +179,13 @@
 }
 
 .pager button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Segment chips: the name, the live count, and what is still unread. */
+.segmentWrap { display: inline-flex; align-items: stretch; }
+.segmentFlag { color: var(--color-warning, var(--color-text-muted)); }
+.segmentX {
+  background: none; border: none; cursor: pointer; padding: 0 0.35rem;
+  color: var(--color-text-muted); font-size: 0.95rem; line-height: 1;
+  font-family: inherit;
+}
+.segmentX:hover { color: var(--color-warning, var(--color-text)); }
