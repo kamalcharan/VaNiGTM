@@ -5,7 +5,7 @@
 -- brief carries its own tenant_id, and so does the prospect, and neither is
 -- optional (CLAUDE.md rules 1 and 8).
 --
--- Named params: $tenant_id, $is_live, $status, $offer, $search, $limit, $offset
+-- Named params: $tenant_id, $is_live, $status, $offer, $view, $search, $limit, $offset
 
 SELECT
     b.id,
@@ -53,6 +53,32 @@ JOIN   gt_prospects p
 WHERE  b.tenant_id = $tenant_id
   AND  b.is_live   = $is_live
   AND  ($status::text IS NULL OR b.status = $status::text)
+  -- ── The stat cards, as filters ──────────────────────────────────────
+  -- Every number on that row is a question ("which 5 were too close to
+  -- call?"), and a number you cannot click is a question you have to answer
+  -- with a spreadsheet. One `view` param rather than six booleans, because
+  -- the cards are mutually exclusive by construction — you are looking at one
+  -- slice at a time.
+  AND  ($view::text IS NULL
+        OR ($view::text = 'with_offer'
+            AND COALESCE(b.human_offer, b.recommended_offer) IS NOT NULL)
+        OR ($view::text = 'no_fit'
+            AND b.status NOT IN ('unreadable','extract_failed')
+            AND COALESCE(b.human_offer, b.recommended_offer) IS NULL)
+        OR ($view::text = 'smaller_ask'
+            AND b.recommended_offer IS NOT NULL
+            AND b.best_fit_offer IS NOT NULL
+            AND b.best_fit_offer <> b.recommended_offer)
+        OR ($view::text = 'fit_unclear'
+            AND b.recommended_offer IS NOT NULL
+            AND b.fit_margin IS NOT NULL
+            AND b.fit_margin < 0.15)
+        OR ($view::text = 'unevidenced'
+            AND b.status NOT IN ('unreadable','extract_failed')
+            AND jsonb_array_length(COALESCE(b.raw_evidence, '[]'::jsonb)) = 0)
+        OR ($view::text = 'decided'   AND b.decided_at IS NOT NULL)
+        OR ($view::text = 'undecided' AND b.decided_at IS NULL
+            AND b.status NOT IN ('unreadable','extract_failed')))
   -- Filtered on the EFFECTIVE offer: a reviewer who moved a company onto the
   -- audit expects to find it under the audit.
   AND  ($offer::text IS NULL

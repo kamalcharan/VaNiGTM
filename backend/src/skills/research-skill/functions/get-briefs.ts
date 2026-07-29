@@ -16,13 +16,33 @@ const sql = (f: string) => fs.readFileSync(path.join(QUERIES, f), 'utf8');
 interface GetBriefsParams {
   status?: string;
   offer?: string;
+  /**
+   * One of the stat cards, as a filter.
+   *
+   * with_offer | no_fit | smaller_ask | fit_unclear | unevidenced |
+   * decided | undecided
+   *
+   * Rejected loudly rather than ignored: a filter that silently does nothing
+   * shows the unfiltered list, which reads as "all 97 are too close to call".
+   */
+  view?: string;
   search?: string;
   page?: number;
   limit?: number;
   offset?: number;
 }
 
+const VIEWS = new Set([
+  'with_offer', 'no_fit', 'smaller_ask', 'fit_unclear',
+  'unevidenced', 'decided', 'undecided',
+]);
+
 export async function get_briefs(params: GetBriefsParams, ctx: SkillContext) {
+  const view = params.view?.trim() || null;
+  if (view && !VIEWS.has(view)) {
+    throw new Error(`Unknown view "${view}". One of: ${[...VIEWS].join(', ')}.`);
+  }
+
   const limit = Math.min(Math.max(Number(params.limit) || 25, 1), 100);
   const offset = params.page && Number(params.page) > 0
     ? (Number(params.page) - 1) * limit
@@ -35,6 +55,7 @@ export async function get_briefs(params: GetBriefsParams, ctx: SkillContext) {
       ...scope,
       status: params.status ?? null,
       offer: params.offer ?? null,
+      view: view ?? null,
       search: params.search ?? null,
       limit,
       offset,

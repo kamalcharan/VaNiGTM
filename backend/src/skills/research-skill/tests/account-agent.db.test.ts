@@ -96,6 +96,8 @@ const SPEND_PER_CALL = 4_700;
 import {
   AccountResearchAgent, COST_FULL_RESEARCH, COST_RESCORE_ONLY,
 } from '../account.agent';
+import { get_briefs } from '../functions/get-briefs';
+import { createTenantDb } from '../../../db';
 
 /* ── Schema ────────────────────────────────────────────────────────────── */
 
@@ -106,7 +108,8 @@ CREATE TABLE gt_tags (id BIGSERIAL PRIMARY KEY, tenant_id UUID, label VARCHAR(80
 CREATE TABLE gt_prospects (id BIGSERIAL PRIMARY KEY,
   tenant_id UUID NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
   is_live BOOLEAN NOT NULL DEFAULT false, is_active BOOLEAN NOT NULL DEFAULT true,
-  name VARCHAR(300) NOT NULL, domain_normalized VARCHAR(255), website VARCHAR(500),
+  ref VARCHAR(32), name VARCHAR(300) NOT NULL,
+  domain_normalized VARCHAR(255), website VARCHAR(500),
   industry_raw TEXT, completeness NUMERIC(4,3));
 CREATE TABLE gt_prospect_tags (prospect_id BIGINT REFERENCES gt_prospects(id) ON DELETE CASCADE,
   tag_id BIGINT, tenant_id UUID, PRIMARY KEY (prospect_id, tag_id));
@@ -1320,5 +1323,89 @@ maybe('the web as a second source', () => {
     const { steps } = (await pool.query(
       `SELECT steps FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
     expect(steps.some((x: any) => x.step_name === 'web_search' && x.status === 'ok')).toBe(true);
+  });
+});
+
+/* ── The stat cards, as filters ─────────────────────────────────────── */
+
+maybe('filtering the briefs by a stat card', () => {
+  beforeAll(async () => {
+    await pool.query('DELETE FROM gt_account_briefs');
+    // One row per card, so each filter has something to find AND something to
+    // exclude — a filter tested only against matching rows is not tested.
+    await pool.query(
+      `INSERT INTO gt_account_briefs
+         (tenant_id,is_live,prospect_id,domain,status,fetched_at,facts_at,
+          recommended_offer,best_fit_offer,fit_margin,raw_evidence,decided_at)
+       VALUES
+         -- an offer, clear margin, evidenced, undecided
+         ($1,false,1,'alpha.com','drafted',now(),now(),
+          'cdo-as-a-service','cdo-as-a-service',0.400,
+          '[{"claim":"x","url":"u","excerpt":"e"}]'::jsonb,NULL),
+         -- laddered AND too close to call AND unevidenced
+         ($1,false,2,'beta.com','drafted',now(),now(),
+          'digital-systems-audit','cdo-as-a-service',0.050,'[]'::jsonb,NULL),
+         -- no fit, decided
+         ($1,false,3,'gamma.com','no_contact',now(),now(),
+          NULL,NULL,NULL,'[{"claim":"y","url":"u","excerpt":"e"}]'::jsonb,now())`,
+      [A]);
+    await pool.query(
+      `INSERT INTO gt_prospects (id,tenant_id,is_live,name,domain_normalized)
+       VALUES (3,$1,false,'Gamma NoWeb2','gamma.com')
+       ON CONFLICT (id) DO NOTHING`, [A]);
+  });
+
+  // Built per call: `pool` is assigned in beforeAll, so anything capturing it
+  // at describe scope captures undefined.
+  const ctxFor = (tenant = A) => ({
+    tenant_id: tenant, is_live: false, user_id: tenant, is_admin: false,
+    db: createTenantDb(pool, tenant),
+  });
+
+  const idsFor = async (view?: string) => {
+    const r = await get_briefs(view ? { view } : {}, ctxFor() as never);
+    return (r.briefs as Record<string, unknown>[])
+      .map((b) => Number(b.prospect_id)).sort();
+  };
+
+  it('with_offer excludes the one with no fit', async () => {
+    expect(await idsFor('with_offer')).toEqual([1, 2]);
+  });
+
+  it('no_fit finds only that one', async () => {
+    expect(await idsFor('no_fit')).toEqual([3]);
+  });
+
+  it('smaller_ask finds the laddered one', async () => {
+    expect(await idsFor('smaller_ask')).toEqual([2]);
+  });
+
+  it('fit_unclear finds the one inside the margin', async () => {
+    expect(await idsFor('fit_unclear')).toEqual([2]);
+  });
+
+  it('unevidenced finds the one with nothing verified', async () => {
+    expect(await idsFor('unevidenced')).toEqual([2]);
+  });
+
+  it('decided and undecided split the set', async () => {
+    expect(await idsFor('decided')).toEqual([3]);
+    expect(await idsFor('undecided')).toEqual([1, 2]);
+  });
+
+  it('no view shows everything', async () => {
+    expect(await idsFor()).toEqual([1, 2, 3]);
+  });
+
+  // A filter that silently does nothing shows the unfiltered list, which
+  // reads as "all 97 are too close to call".
+  it('refuses a view it does not know instead of ignoring it', async () => {
+    await expect(get_briefs({ view: 'nonsense' }, ctxFor() as never))
+      .rejects.toThrow(/Unknown view/);
+  });
+
+  it('never reaches another tenant\'s briefs', async () => {
+    const r = await get_briefs({ view: 'with_offer' }, ctxFor(B) as never);
+    expect(r.briefs).toHaveLength(0);
   });
 });

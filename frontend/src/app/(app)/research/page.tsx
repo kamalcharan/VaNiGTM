@@ -249,6 +249,8 @@ export default function ResearchPage() {
   const [editing, setEditing] = useState<Offer | null>(null);
   const [openBrief, setOpenBrief] = useState<Brief | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
+  /** Which stat card is acting as the filter, if any. */
+  const [view, setView] = useState('');
   const [offerFilter, setOfferFilter] = useState('');
   const [tagId, setTagId] = useState<number | ''>('');
   const [segmentId, setSegmentId] = useState<number | ''>('');
@@ -271,6 +273,7 @@ export default function ResearchPage() {
   }>('research-skill', 'get_briefs', {
     status: statusFilter || undefined,
     offer: offerFilter || undefined,
+    view: view || undefined,
     limit: 50,
   });
   const tagsQ = useSkillQuery<{ records: unknown[]; facets: { tags: Tag[] } }>(
@@ -807,33 +810,68 @@ export default function ResearchPage() {
             </div>
           </div>
 
+          {/* ── The numbers, as filters ────────────────────────────────
+              Every one of these is a question — "which 5 were too close to
+              call?" — and a number you cannot click is a question you have to
+              answer with a spreadsheet. Clicking the active card clears it,
+              so there is always a way back without hunting for a reset. */}
           {Number(stats.total ?? 0) > 0 && (
             <div className={s.statGrid}>
-              <VdfStatCard value={stats.total ?? 0} label="Researched" />
-              <VdfStatCard value={stats.with_offer ?? 0} label="Offer suggested" accent="success" />
-              <VdfStatCard value={stats.no_fit ?? 0} label="No fit" />
-              <VdfStatCard
+              <StatFilter
+                value={stats.total ?? 0} label="Researched"
+                view="" active={view} onPick={setView}
+                hint="Everything researched — click to clear any filter"
+              />
+              <StatFilter
+                value={stats.with_offer ?? 0} label="Offer suggested" accent="success"
+                view="with_offer" active={view} onPick={setView}
+              />
+              <StatFilter
+                value={stats.no_fit ?? 0} label="No fit"
+                view="no_fit" active={view} onPick={setView}
+              />
+              <StatFilter
                 value={stats.smaller_ask ?? 0} label="Smaller first ask"
                 sub="best fit was too big to open with"
+                view="smaller_ask" active={view} onPick={setView}
               />
-              <VdfStatCard
+              <StatFilter
                 value={stats.fit_unclear ?? 0} label="Too close to call"
+                sub="top two inside the margin — your offers may not discriminate"
                 accent={Number(stats.fit_unclear ?? 0) > Number(stats.with_offer ?? 0) / 2
                   ? 'warning' : 'default'}
-                sub="top two inside the margin — your offers may not discriminate"
+                view="fit_unclear" active={view} onPick={setView}
               />
-              <VdfStatCard value={stats.unreadable ?? 0} label="No website" accent="warning" />
-              <VdfStatCard
+              <StatFilter
+                value={stats.unreadable ?? 0} label="No website" accent="warning"
+                view="" status="unreadable"
+                active={statusFilter === 'unreadable' ? 'unreadable' : view}
+                onPick={() => {
+                  setView('');
+                  setStatusFilter(statusFilter === 'unreadable' ? '' : 'unreadable');
+                }}
+              />
+              <StatFilter
                 value={stats.extract_failed ?? 0} label="Extraction failed"
-                accent={Number(stats.extract_failed ?? 0) > 0 ? 'danger' : 'default'}
                 sub="ours, not theirs — retry these"
+                accent={Number(stats.extract_failed ?? 0) > 0 ? 'danger' : 'default'}
+                view="" status="extract_failed"
+                active={statusFilter === 'extract_failed' ? 'extract_failed' : view}
+                onPick={() => {
+                  setView('');
+                  setStatusFilter(statusFilter === 'extract_failed' ? '' : 'extract_failed');
+                }}
               />
-              <VdfStatCard
+              <StatFilter
                 value={stats.unevidenced ?? 0} label="No evidence"
-                accent={Number(stats.unevidenced ?? 0) > 0 ? 'danger' : 'default'}
                 sub="claims we could not verify"
+                accent={Number(stats.unevidenced ?? 0) > 0 ? 'danger' : 'default'}
+                view="unevidenced" active={view} onPick={setView}
               />
-              <VdfStatCard value={stats.decided ?? 0} label="Decided" />
+              <StatFilter
+                value={stats.decided ?? 0} label="Decided"
+                view="decided" active={view} onPick={setView}
+              />
             </div>
           )}
 
@@ -1288,6 +1326,54 @@ function OfferForm({
         </div>
       </div>
     </>
+  );
+}
+
+/* ── A number you can click ─────────────────────────────────────────── */
+
+/**
+ * A stat card that filters the list under it.
+ *
+ * Every number on that row is a question — "which 5 were too close to call?"
+ * — and a number you cannot click is a question you have to answer with a
+ * spreadsheet. Clicking the ACTIVE card clears it, so there is always a way
+ * back without hunting for a reset control.
+ *
+ * A zero is not clickable: an empty list with a filter chip on it reads as
+ * "something is broken" rather than "there are none of those".
+ */
+function StatFilter({
+  value, label, sub, accent, view, status, active, onPick, hint,
+}: {
+  value: string | number;
+  label: string;
+  sub?: string;
+  accent?: 'default' | 'success' | 'warning' | 'danger';
+  /** The `view` this card selects. Empty string = the "clear everything" card. */
+  view: string;
+  /** Set instead of `view` when the card maps to a brief STATUS. */
+  status?: string;
+  active: string;
+  onPick: (next: string) => void;
+  hint?: string;
+}) {
+  const key = status ?? view;
+  const isActive = key !== '' && active === key;
+  const clickable = Number(value) > 0 || view === '';
+
+  return (
+    <button
+      type="button"
+      className={`${s.statFilter} ${isActive ? s.statFilterOn : ''}`}
+      disabled={!clickable}
+      onClick={() => onPick(isActive ? '' : view)}
+      title={hint ?? (clickable
+        ? (isActive ? `Showing only these — click to clear` : `Show only these`)
+        : 'None of these')}
+      aria-pressed={isActive}
+    >
+      <VdfStatCard value={value} label={label} sub={sub} accent={accent} />
+    </button>
   );
 }
 

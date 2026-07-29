@@ -258,7 +258,7 @@ Create or update one offer. A half-written offer is storable — the gate is at 
 
 ### get_briefs
 The research output as a queue of decisions. Stats cover the whole batch; rows cover the current filter.
-- Parameters: status (optional, string), offer (optional, string), search (optional, string), page (optional, number), limit (optional, number), offset (optional, number)
+- Parameters: status (optional, string), offer (optional, string), view (optional, string — with_offer | no_fit | smaller_ask | fit_unclear | unevidenced | decided | undecided; an unknown value is rejected, not ignored), search (optional, string), page (optional, number), limit (optional, number), offset (optional, number)
 - Returns: { briefs, total, page, limit, stats, recipe: 'brief-list' }
 
 ### decide_brief
