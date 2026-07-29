@@ -1,0 +1,140 @@
+/* The prospect dossier. Theme variables only (CLAUDE.md rule 4). */
+
+.back {
+  background: none; border: none; padding: 0; margin-bottom: 1.25rem;
+  color: var(--color-text-muted); font-size: 0.8rem; cursor: pointer;
+  font-family: inherit;
+}
+.back:hover { color: var(--color-accent); }
+
+/* Two columns: the argument on the left, the record on the right. Collapses
+   to one on narrow screens — the left column is the one that must stay
+   readable, so it comes first in the source. */
+.grid {
+  display: grid; gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: start;
+}
+@media (max-width: 1024px) {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.main, .side { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
+
+.card {
+  border: 1px solid var(--color-border); background: var(--color-surface);
+  border-radius: 12px; padding: 1.1rem 1.25rem;
+}
+.cardTitle {
+  font-size: 0.95rem; font-weight: 600; color: var(--color-text);
+  margin: 0 0 0.85rem; letter-spacing: -0.01em;
+}
+
+.field { margin-bottom: 0.85rem; }
+.label {
+  font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--color-text-muted); margin-bottom: 0.2rem; display: block;
+}
+.value {
+  font-size: 0.86rem; color: var(--color-text); line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.link {
+  font-size: 0.82rem; color: var(--color-accent);
+  overflow-wrap: anywhere; text-decoration: none;
+}
+.link:hover { text-decoration: underline; }
+
+.meta {
+  font-size: 0.72rem; color: var(--color-text-muted); margin-top: 0.6rem;
+}
+.hint {
+  font-size: 0.74rem; color: var(--color-text-muted);
+  line-height: 1.45; margin-top: 0.3rem;
+}
+.emptyNote {
+  font-size: 0.84rem; color: var(--color-text-muted);
+  line-height: 1.5; margin-bottom: 0.85rem;
+}
+
+.badges {
+  display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.85rem;
+}
+
+/* The one sentence a first message opens with. */
+.hook {
+  font-size: 0.9rem; line-height: 1.55; color: var(--color-text);
+  border-left: 2px solid var(--color-accent); padding-left: 0.85rem;
+  margin-bottom: 0.9rem;
+}
+
+.ladder {
+  padding: 0.6rem 0.75rem; margin-bottom: 0.75rem;
+  font-size: 0.8rem; line-height: 1.5; color: var(--color-text-muted);
+  border-left: 2px solid var(--color-accent);
+  background: var(--color-surface-2, var(--color-surface));
+  border-radius: 0 6px 6px 0;
+}
+.ladder strong { color: var(--color-text); font-weight: 600; }
+
+.unclear {
+  padding: 0.6rem 0.75rem; margin-bottom: 0.75rem;
+  font-size: 0.8rem; line-height: 1.5;
+  color: var(--color-warning, var(--color-text));
+  border: 1px dashed var(--color-border); border-radius: 6px;
+}
+
+/* Every offer's score, so what was REJECTED is as visible as what won. */
+.fitTable { margin-top: 0.85rem; }
+.fitRow {
+  display: grid; grid-template-columns: 3rem minmax(0, 12rem) minmax(0, 1fr);
+  gap: 0.6rem; align-items: baseline;
+  font-size: 0.8rem; padding: 0.35rem 0;
+  border-top: 1px solid var(--color-border);
+}
+@media (max-width: 640px) {
+  .fitRow { grid-template-columns: 3rem minmax(0, 1fr); }
+  .fitReason { grid-column: 2; }
+}
+.fitScore {
+  font-variant-numeric: tabular-nums; font-weight: 600; color: var(--color-text);
+}
+.fitName { color: var(--color-text); }
+.fitReason { color: var(--color-text-muted); line-height: 1.45; }
+
+.evidence {
+  border: 1px solid var(--color-border); border-radius: 8px;
+  padding: 0.6rem 0.75rem; margin-bottom: 0.5rem;
+}
+.evidenceClaim { font-size: 0.82rem; color: var(--color-text); font-weight: 500; }
+.evidenceUrl {
+  font-size: 0.72rem; color: var(--color-accent); display: block;
+  margin: 0.2rem 0; overflow-wrap: anywhere;
+}
+.evidenceExcerpt {
+  font-size: 0.78rem; color: var(--color-text-muted);
+  font-style: italic; line-height: 1.45;
+}
+
+.formRow { margin-bottom: 1.1rem; }
+.select, .textarea {
+  width: 100%; box-sizing: border-box;
+  padding: 0.55rem 0.7rem; border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface); color: var(--color-text);
+  font-size: 0.85rem; font-family: inherit;
+}
+.textarea { line-height: 1.5; resize: vertical; }
+
+.actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+.person {
+  padding: 0.5rem 0; border-top: 1px solid var(--color-border);
+}
+.person:first-of-type { border-top: none; padding-top: 0; }
+.personName { font-size: 0.85rem; font-weight: 600; color: var(--color-text); }
+.personRole { font-size: 0.78rem; color: var(--color-text-muted); }
+.personChannel {
+  font-size: 0.78rem; color: var(--color-text-muted);
+  overflow-wrap: anywhere; margin-top: 0.15rem;
+}

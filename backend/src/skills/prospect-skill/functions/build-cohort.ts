@@ -151,6 +151,12 @@ export async function build_cohort(
      * make the column depend on which command was last run.
      */
     const clusterMatched: number[] = [];
+    /**
+     * The narrower verdict per row. Computed since migration 206 and thrown
+     * away until 218 gave it a column — which is why every segment question
+     * had to be answered by re-running this script.
+     */
+    const subById = new Map<number, string | null>();
     const excluded: { row: ProspectRow; excluded_by: string }[] = [];
     let noRule = 0;
     let noIndustry = 0;
@@ -164,6 +170,7 @@ export async function build_cohort(
       const verdict = canonicalIndustry(row.industry_raw);
       if (verdict.reason === 'matched' && verdict.canonical === cluster.canonical) {
         clusterMatched.push(row.id);
+        subById.set(row.id, verdict.sub ?? null);
         // Counted for the WHOLE cluster before `sub` narrows the cohort —
         // otherwise choosing a segment would need one run per segment.
         if (verdict.sub) {
@@ -264,13 +271,35 @@ export async function build_cohort(
       );
     }
 
+    // ── The sub-cluster, per row ─────────────────────────────────────
+    // Unlike the canonical, this DIFFERS per row, so it is one UPDATE driven
+    // by a VALUES list rather than a single assignment. Same posture though:
+    // the whole cluster, not the narrowed cohort, or the column would depend
+    // on which command was last run.
+    if (clusterMatched.length > 0) {
+      const subs = clusterMatched.map((id) => subById.get(id) ?? null);
+      await tx.query(
+        `UPDATE gt_prospects p
+         SET    industry_sub = v.sub, updated_at = now()
+         FROM   unnest($ids::bigint[], $subs::text[]) AS v(id, sub)
+         WHERE  p.id = v.id
+           AND  p.tenant_id = $tenant_id
+           AND  p.is_live   = $is_live
+           AND  p.industry_sub IS DISTINCT FROM v.sub`,
+        {
+          $ids: clusterMatched, $subs: subs,
+          $tenant_id: ctx.tenant_id, $is_live: ctx.is_live,
+        },
+      );
+    }
+
     // Re-running after a rule is tightened must not leave the old verdict
     // behind. Clearing a DERIVED column is not the same as revoking a tag —
     // nobody asserted this value by hand.
     if (staleCanonical.length > 0) {
       await tx.query(
         `UPDATE gt_prospects
-         SET    industry_canonical = NULL, updated_at = now()
+         SET    industry_canonical = NULL, industry_sub = NULL, updated_at = now()
          WHERE  id = ANY($ids::bigint[])
            AND  tenant_id = $tenant_id
            AND  is_live   = $is_live`,

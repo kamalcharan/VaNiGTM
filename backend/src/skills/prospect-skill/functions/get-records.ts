@@ -17,6 +17,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { SkillContext } from '../../../shared/types';
+import { cleanDefinition, type SegmentDefinition } from '../segments';
 
 const LIST_SQL  = fs.readFileSync(path.join(__dirname, '../queries/get-records.sql'), 'utf-8');
 const STATS_SQL  = fs.readFileSync(path.join(__dirname, '../queries/record-stats.sql'), 'utf-8');
@@ -33,6 +34,14 @@ interface GetRecordsParams {
   min_quality?: number;
   /** Exact industry_raw value, from the facets list. */
   industry?: string;
+  /** Derived cluster, e.g. 'manufacturing' (migration 206). */
+  industry_canonical?: string;
+  /** Derived sub-cluster, e.g. 'pharma' (migration 218). */
+  industry_sub?: string;
+  /** 'none' | 'done' | 'failed' | 'decided' — research state. */
+  research?: string;
+  /** Load a saved segment's definition; explicit params still win over it. */
+  segment_id?: number;
   /** 'has' | 'none' | a substring to match. */
   domain?: string;
   show_inactive?: boolean;
@@ -55,19 +64,45 @@ export async function get_records(params: GetRecordsParams, ctx: SkillContext) {
   const page   = Math.max(1, params.page ?? 1);
   const offset = params.offset ?? (page - 1) * limit;
 
+  // A segment is a saved filter, so opening one is loading its definition —
+  // but anything the caller passed EXPLICITLY still wins. Otherwise clicking
+  // a segment would lock the screen's own controls, and a filter you cannot
+  // adjust after applying it is a dead end rather than a starting point.
+  let segment: SegmentDefinition = {};
+  if (params.segment_id) {
+    const seg = await ctx.db.query<{ definition: unknown }>(
+      `SELECT definition FROM gt_segments
+        WHERE id = $segment_id AND tenant_id = $tenant_id AND is_live = $is_live
+          AND is_active`,
+      { segment_id: Number(params.segment_id), tenant_id: ctx.tenant_id, is_live: ctx.is_live },
+    );
+    if (seg.rows.length === 0) throw new Error('No such segment.');
+    segment = cleanDefinition(seg.rows[0].definition);
+  }
+
+  const pick = <K extends keyof SegmentDefinition>(key: K): string | number | null => {
+    const explicit = (params as Record<string, unknown>)[key as string];
+    if (typeof explicit === 'string' && explicit.trim()) return explicit.trim();
+    if (typeof explicit === 'number' && Number.isFinite(explicit)) return explicit;
+    return (segment[key] as string | number | undefined) ?? null;
+  };
+
   const filters = {
     $scope: scope,
     $tenant_id: ctx.tenant_id,
     $is_live: ctx.is_live,
-    $search: params.search?.trim() || null,
+    $search: pick('search'),
     // A pool row is nobody's customer, so the relationship filter is
     // meaningless there and is not passed through.
-    $relationship: scope === 'mine' ? (params.relationship?.trim() || null) : null,
-    $tag_id: params.tag_id ?? null,
+    $relationship: scope === 'mine' ? pick('relationship') : null,
+    $tag_id: pick('tag_id'),
     $only_duplicates: params.only_duplicates ?? false,
-    $min_quality: params.min_quality ?? null,
+    $min_quality: pick('min_quality'),
     $industry: params.industry?.trim() || null,
-    $domain: params.domain?.trim() || null,
+    $industry_canonical: pick('industry_canonical'),
+    $industry_sub: pick('industry_sub'),
+    $research: params.research?.trim() || null,
+    $domain: pick('domain'),
     $show_inactive: params.show_inactive ?? false,
   };
 

@@ -49,5 +49,40 @@ SELECT
         GROUP BY tag_id
      ) c JOIN gt_tags t ON t.id = c.tag_id AND t.is_active)  AS tags,
 
+    -- The DERIVED classification (migrations 206, 218). Short lists by
+    -- construction — a handful of clusters, a handful of segments each — so
+    -- unlike industry_raw these are genuinely usable as dropdowns, which is
+    -- the whole reason the columns exist.
+    (SELECT COALESCE(json_agg(json_build_object('value', industry_canonical, 'count', n)
+                              ORDER BY n DESC, industry_canonical), '[]'::json)
+     FROM (
+        SELECT industry_canonical, COUNT(*)::int AS n
+        FROM   visible WHERE industry_canonical IS NOT NULL
+        GROUP  BY industry_canonical
+     ) c)                                                AS clusters,
+
+    (SELECT COALESCE(json_agg(json_build_object('value', industry_sub,
+                                                'cluster', industry_canonical,
+                                                'count', n)
+                              ORDER BY n DESC, industry_sub), '[]'::json)
+     FROM (
+        SELECT industry_sub, industry_canonical, COUNT(*)::int AS n
+        FROM   visible WHERE industry_sub IS NOT NULL
+        GROUP  BY industry_sub, industry_canonical
+     ) sc)                                               AS segments,
+
+    -- Research state, so the counts on the filter match what picking it shows.
+    (SELECT COALESCE(json_build_object(
+              'none',    COUNT(*) FILTER (WHERE b.id IS NULL),
+              'done',    COUNT(*) FILTER (WHERE b.facts_at IS NOT NULL),
+              'failed',  COUNT(*) FILTER (WHERE b.status IN ('extract_failed','unreadable')),
+              'decided', COUNT(*) FILTER (WHERE b.decided_at IS NOT NULL)),
+              '{}'::json)
+     FROM visible v
+     LEFT JOIN gt_account_briefs b
+            ON v.scope = 'mine' AND b.prospect_id = v.id
+           AND b.tenant_id = $tenant_id::uuid AND b.is_live = $is_live::boolean
+    )                                                    AS research,
+
     (SELECT COUNT(*)::int FROM visible WHERE domain_normalized IS NOT NULL) AS with_domain,
     (SELECT COUNT(*)::int FROM visible WHERE domain_normalized IS NULL)     AS without_domain;

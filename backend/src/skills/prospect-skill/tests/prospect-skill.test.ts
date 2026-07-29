@@ -15,6 +15,9 @@ import path from 'path';
 import { get_records } from '../functions/get-records';
 import { tag_prospects } from '../functions/tag-prospects';
 import { build_cohort } from '../functions/build-cohort';
+import { save_segment } from '../functions/save-segment';
+import { get_segments } from '../functions/get-segments';
+import { delete_segment } from '../functions/delete-segment';
 
 const A = '11111111-1111-1111-1111-111111111111';   // our tenant
 const B = '33333333-3333-3333-3333-333333333333';   // someone else's
@@ -35,6 +38,31 @@ const available = (() => {
 let pool: Pool;
 
 /** A SkillContext backed by the real pool, matching the shape functions use. */
+/**
+ * Mirrors db/query.ts translateParams: named -> positional, in first-seen
+ * order, and — like the real thing — accepting keys with OR without the `$`
+ * prefix. The mock used to demand the prefix, which meant a function written
+ * the way most of the codebase writes them would pass in production and throw
+ * here. A test harness stricter than the code it stands in for tests the
+ * harness.
+ */
+function lookup(params: Record<string, unknown>, name: string): unknown {
+  if (`$${name}` in params) return params[`$${name}`];
+  if (name in params) return params[name];
+  throw new Error(`Missing param $${name}`);
+}
+
+function translate(sql: string, params: Record<string, unknown>) {
+  const order: string[] = [];
+  const text = sql.replace(/\$([a-zA-Z_][a-zA-Z0-9_]*)/g, (_m, name) => {
+    lookup(params, name);   // throws with the same message the real one does
+    let i = order.indexOf(name);
+    if (i === -1) { order.push(name); i = order.length - 1; }
+    return `$${i + 1}`;
+  });
+  return { text, order };
+}
+
 function ctxFor(tenantId: string, isAdmin = false) {
   return {
     tenant_id: tenantId,
@@ -44,14 +72,8 @@ function ctxFor(tenantId: string, isAdmin = false) {
     db: {
       query: (sql: string, params: Record<string, unknown> = {}) => {
         // Mirror translateParams: named -> positional, in first-seen order.
-        const order: string[] = [];
-        const text = sql.replace(/\$([a-z_][a-z0-9_]*)/gi, (_m, name) => {
-          if (!(`$${name}` in params)) throw new Error(`Missing param $${name}`);
-          let i = order.indexOf(name);
-          if (i === -1) { order.push(name); i = order.length - 1; }
-          return `$${i + 1}`;
-        });
-        return pool.query(text, order.map((n) => params[`$${n}`]));
+        const { text, order } = translate(sql, params);
+        return pool.query(text, order.map((n) => lookup(params, n)));
       },
       transaction: async (fn: (tx: any) => Promise<any>) => {
         const c = await pool.connect();
@@ -59,14 +81,8 @@ function ctxFor(tenantId: string, isAdmin = false) {
           await c.query('BEGIN');
           const tx = {
             query: (sql: string, params: Record<string, unknown> = {}) => {
-              const order: string[] = [];
-              const text = sql.replace(/\$([a-z_][a-z0-9_]*)/gi, (_m, name) => {
-                if (!(`$${name}` in params)) throw new Error(`Missing param $${name}`);
-                let i = order.indexOf(name);
-                if (i === -1) { order.push(name); i = order.length - 1; }
-                return `$${i + 1}`;
-              });
-              return c.query(text, order.map((n) => params[`$${n}`]));
+              const { text, order } = translate(sql, params);
+              return c.query(text, order.map((n) => lookup(params, n)));
             },
           };
           const out = await fn(tx);
@@ -141,12 +157,25 @@ beforeAll(async () => {
 
   await pool.query(BASE);
   // Real migration files, so the tag tables are the ones that will ship.
+  // Order matters: 218 rebuilds the record view to expose the derived
+  // classification, so the columns it selects must exist first (206, 218) and
+  // the briefs it joins must exist too (207-213) — get_records reports
+  // research state now.
   for (const m of ['199_gt_tags.sql', '203_record_tags.sql', '205_gt_record_view_active.sql',
-                   '206_prospect_industry_canonical.sql']) {
+                   '206_prospect_industry_canonical.sql', '207_gt_account_briefs.sql',
+                   '210_brief_extract_failed.sql', '211_brief_facts_and_judgement.sql',
+                   '213_brief_human_offer.sql', '218_prospect_industry_sub.sql',
+                   '219_gt_segments.sql']) {
     await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
   }
 
-  await pool.query(`INSERT INTO vn_tenants (id,name) VALUES ($1,'Us'),($2,'Them')`, [A, B]);
+  // C is created here, not inside the describe that first uses it: a fixture
+  // owned by one block makes every later block depend on declaration order,
+  // and a test that passes only when its neighbours run is not testing the
+  // code.
+  await pool.query(
+    `INSERT INTO vn_tenants (id,name) VALUES ($1,'Us'),($2,'Them'),($3,'Cohort fixtures')
+     ON CONFLICT DO NOTHING`, [A, B, C]);
   await pool.query(`INSERT INTO gt_data_sources (code,name) VALUES ('upload','Upload')`);
   await pool.query(
     `INSERT INTO gt_source_loads (id,source_id,label,as_of,tenant_id)
@@ -419,7 +448,10 @@ maybe('build_cohort — Step 1 of the manufacturing pilot', () => {
   // Its own tenant, so the counts here cannot be disturbed by, or disturb,
   // the fixtures every other block above asserts against.
   beforeAll(async () => {
-    await pool.query(`INSERT INTO vn_tenants (id,name) VALUES ($1,'Cohort')`, [C]);
+    // Created at the top level now, so later blocks do not depend on this
+    // one having run first.
+    await pool.query(
+      `INSERT INTO vn_tenants (id,name) VALUES ($1,'Cohort') ON CONFLICT DO NOTHING`, [C]);
     await pool.query(
       `INSERT INTO gt_prospects (tenant_id,is_live,ref,name,domain_normalized,industry_raw)
        VALUES
@@ -682,5 +714,205 @@ maybe('tag facets — the dropdown must offer what the filter accepts', () => {
     const r = await get_records({ scope: 'pool' }, ctxFor(B, true));
     const labels = ((r as any).facets.tags as { label: string }[]).map((t) => t.label);
     expect(labels).toContain('FTCCI Telangana');
+  });
+});
+
+/* ── Segments and the derived classification (migrations 218, 219) ──── */
+
+maybe('the derived classification is filterable', () => {
+  beforeAll(async () => {
+    // Classify, so industry_canonical and industry_sub are populated the way
+    // a real run leaves them.
+    await build_cohort({ cluster: 'manufacturing' }, ctxFor(C));
+  });
+
+  it('filters on the cluster, not the raw product description', async () => {
+    const r = await get_records(
+      { scope: 'mine', industry_canonical: 'manufacturing' }, ctxFor(C),
+    );
+    expect(r.records.length).toBeGreaterThan(0);
+    for (const rec of r.records as Record<string, unknown>[]) {
+      expect(rec.industry_canonical).toBe('manufacturing');
+    }
+  });
+
+  // The whole reason the column exists: "Manufacturing of Bulk Drugs" and
+  // "Manufacturing of Plastic Chairs" are both manufacturing and share
+  // nothing else, so a cohort has to be narrower than the cluster.
+  it('filters on the segment inside the cluster', async () => {
+    const all = await get_records(
+      { scope: 'mine', industry_canonical: 'manufacturing' }, ctxFor(C),
+    );
+    const pharma = await get_records({ scope: 'mine', industry_sub: 'pharma' }, ctxFor(C));
+
+    expect(pharma.records.length).toBeGreaterThan(0);
+    expect(pharma.records.length).toBeLessThan(all.records.length);
+    for (const rec of pharma.records as Record<string, unknown>[]) {
+      expect(rec.industry_sub).toBe('pharma');
+    }
+  });
+
+  it('offers both as facets, so a dropdown never lists a dead option', async () => {
+    const r = await get_records({ scope: 'mine' }, ctxFor(C));
+    const facets = r.facets as unknown as {
+      clusters: { value: string; count: number }[];
+      segments: { value: string; cluster: string; count: number }[];
+    };
+    expect(facets.clusters.some((c) => c.value === 'manufacturing')).toBe(true);
+    expect(facets.segments.some((x) => x.value === 'pharma')).toBe(true);
+    for (const c of facets.clusters) expect(c.count).toBeGreaterThan(0);
+  });
+
+  it('never leaks another tenant\'s records through the new filters', async () => {
+    const r = await get_records(
+      { scope: 'mine', industry_canonical: 'manufacturing' }, ctxFor(B),
+    );
+    expect(r.records).toHaveLength(0);
+  });
+});
+
+maybe('segments', () => {
+  it('saves the definition and counts it here, so the two agree', async () => {
+    const res = await save_segment({
+      name: 'Pharma with a website',
+      note: 'The pilot cohort',
+      definition: { industry_sub: 'pharma', domain: 'has' },
+    }, ctxFor(C));
+
+    expect(res.segment_id).toBeGreaterThan(0);
+    expect(res.summary).toMatch(/pharma/);
+
+    const listed = await get_segments({}, ctxFor(C));
+    const seg = listed.segments.find((x) => x.id === res.segment_id)!;
+    expect(seg.member_count).toBe(res.member_count);
+    expect(seg.live_count).toBe(res.member_count);
+    expect(seg.drifted).toBe(false);
+  });
+
+  // A name that constrains nothing is a decision nobody made, and the first
+  // campaign built on it would go to the whole list.
+  it('refuses a filter that selects every company', async () => {
+    await expect(save_segment({ name: 'Everyone', definition: {} }, ctxFor(C)))
+      .rejects.toThrow(/selects every company/);
+  });
+
+  it('refuses an unnamed segment', async () => {
+    await expect(save_segment({ name: '  ', definition: { domain: 'has' } }, ctxFor(C)))
+      .rejects.toThrow(/needs a name/);
+  });
+
+  // Definition, not membership: the whole point. A company that gains a
+  // domain tomorrow joins without anyone re-running anything — and the saved
+  // count going stale is the visible cost, which is why both are shown.
+  it('follows the data, and says when the saved count no longer matches', async () => {
+    const res = await save_segment({
+      name: 'Pharma, reachable',
+      definition: { industry_sub: 'pharma', domain: 'has' },
+    }, ctxFor(C));
+    const before = res.member_count;
+
+    await pool.query(
+      `UPDATE gt_prospects SET domain_normalized = 'newlyfound.com'
+        WHERE tenant_id = $1 AND industry_sub = 'pharma'
+          AND domain_normalized IS NULL`, [C]);
+
+    const listed = await get_segments({}, ctxFor(C));
+    const seg = listed.segments.find((x) => x.id === res.segment_id)!;
+    expect(seg.live_count).toBeGreaterThan(before);
+    expect(seg.member_count).toBe(before);   // what you were told when you saved
+    expect(seg.drifted).toBe(true);
+  });
+
+  it('loads a saved definition back into get_records', async () => {
+    const res = await save_segment({
+      name: 'Pharma only',
+      definition: { industry_sub: 'pharma' },
+    }, ctxFor(C));
+
+    const r = await get_records({ scope: 'mine', segment_id: res.segment_id }, ctxFor(C));
+    expect(r.records.length).toBeGreaterThan(0);
+    for (const rec of r.records as Record<string, unknown>[]) {
+      expect(rec.industry_sub).toBe('pharma');
+    }
+  });
+
+  // A segment you cannot adjust after opening it is a dead end rather than a
+  // starting point.
+  it('lets an explicit filter override the segment it was loaded from', async () => {
+    const res = await save_segment({
+      name: 'Pharma, any domain',
+      definition: { industry_sub: 'pharma' },
+    }, ctxFor(C));
+
+    const narrowed = await get_records(
+      { scope: 'mine', segment_id: res.segment_id, domain: 'none' }, ctxFor(C),
+    );
+    for (const rec of narrowed.records as Record<string, unknown>[]) {
+      expect(rec.domain_normalized).toBeNull();
+    }
+  });
+
+  it('never opens another tenant\'s segment', async () => {
+    const res = await save_segment({
+      name: 'Ours alone', definition: { domain: 'has' },
+    }, ctxFor(C));
+    await expect(get_records({ scope: 'mine', segment_id: res.segment_id }, ctxFor(B)))
+      .rejects.toThrow(/No such segment/);
+  });
+
+  it('soft-deletes, freeing the name and keeping the row', async () => {
+    const res = await save_segment({
+      name: 'Temporary', definition: { domain: 'has' },
+    }, ctxFor(C));
+    await delete_segment({ segment_id: res.segment_id }, ctxFor(C));
+
+    const listed = await get_segments({}, ctxFor(C));
+    expect(listed.segments.some((x) => x.id === res.segment_id)).toBe(false);
+
+    const still = await pool.query(
+      `SELECT is_active FROM gt_segments WHERE id = $1`, [res.segment_id]);
+    expect(still.rows[0].is_active).toBe(false);
+
+    // The name is free again.
+    await expect(save_segment({ name: 'Temporary', definition: { domain: 'has' } }, ctxFor(C)))
+      .resolves.toBeDefined();
+  });
+});
+
+maybe('research state on the record list', () => {
+  // Its own fixture: depending on another describe's rows makes a test that
+  // passes or fails on declaration order, which is not a property of the code.
+  let researchedId = 0;
+  beforeAll(async () => {
+    await pool.query(`DELETE FROM gt_account_briefs WHERE tenant_id = $1`, [C]);
+    const ins = await pool.query<{ id: number }>(
+      `INSERT INTO gt_prospects (tenant_id,is_live,ref,name,domain_normalized,industry_raw)
+       VALUES ($1,false,'R-01','Researched Co','researched.com','Manufacturing of API'),
+              ($1,false,'R-02','Untouched Co','untouched.com','Manufacturing of API')
+       RETURNING id`, [C]);
+    researchedId = Number(ins.rows[0].id);
+  });
+
+  it('reports it per record, derived from the brief', async () => {
+    const id = researchedId;
+    await pool.query(
+      `INSERT INTO gt_account_briefs
+         (tenant_id, is_live, prospect_id, status, facts_at, fetched_at,
+          recommended_offer)
+       VALUES ($1, false, $2, 'drafted', now(), now(), 'cdo-as-a-service')
+       ON CONFLICT (tenant_id, is_live, prospect_id) DO NOTHING`, [C, id]);
+
+    const r = await get_records({ scope: 'mine', research: 'done' }, ctxFor(C));
+    const row = (r.records as Record<string, unknown>[]).find((x) => Number(x.id) === id)!;
+    expect(row.researched).toBe(true);
+    expect(row.research_offer).toBe('cdo-as-a-service');
+    expect(row.research_decided).toBe(false);
+  });
+
+  it('filters to the ones nobody has looked at', async () => {
+    const r = await get_records({ scope: 'mine', research: 'none' }, ctxFor(C));
+    for (const rec of r.records as Record<string, unknown>[]) {
+      expect(rec.researched).toBeFalsy();
+    }
   });
 });

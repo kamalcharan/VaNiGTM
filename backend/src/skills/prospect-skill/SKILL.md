@@ -77,14 +77,29 @@ taxonomy — it is the clusters a running pilot needs.
 
 ### get_records
 Both record surfaces, one function. scope 'mine' = the tenant's prospects; scope 'pool' = the shared directory pool (admin only).
-- Parameters: scope?, search?, relationship?, tag_id?, industry?, domain?, only_duplicates?, min_quality?, show_inactive?, page?, limit?, offset?
-- Returns: { scope, records: [{ id, ref, name, relationship, domain_normalized, city, state_code, industry_raw, employees_band, completeness, validity, freshness, duplicate, resolved, is_active, source_label, raw, tags }], total, page, limit, stats, facets, recipe: 'record-list' }
+- Parameters: scope?, search?, relationship?, tag_id?, industry? (exact industry_raw), industry_canonical? (derived cluster), industry_sub? (derived segment), research? (none | done | failed | decided), segment_id? (loads a saved definition; explicit params still win), domain?, only_duplicates?, min_quality?, show_inactive?, page?, limit?, offset?
+- Returns: { scope, records: [{ id, ref, name, relationship, domain_normalized, city, state_code, industry_raw, industry_canonical, industry_sub, employees_band, completeness, validity, freshness, duplicate, resolved, is_active, source_label, raw, tags, research_status, researched, research_decided, research_offer, researched_at }], total, page, limit, stats, facets: { industries, tags, clusters, segments, research, with_domain, without_domain }, recipe: 'record-list' }
 
 
 ### get_prospect
-One company in full: every mapped field, every column the source file carried, the people at it, and its tags.
-- Parameters: prospect_id (required)
-- Returns: { prospect, people: [{ id, name, job_title, channels }], tags, source_row, recipe: 'prospect-profile' }
+One company in full: every mapped field, every column the source file carried, the people at it, its tags, and its account brief. Backs the dossier page `/prospects/<ref>` — the research is returned here rather than from a second call, because a page that renders the company and pops the research in a moment later is two screens pretending to be one.
+- Parameters: prospect_id (optional, number) OR ref (optional, string — PROS-0042). One is required; raw PKs are never in a URL.
+- Returns: { prospect, people: [{ id, name, job_title, channels }], tags, brief, offers, source_row, recipe: 'prospect-profile' }
+
+### get_segments
+Saved segments, each with the count it was saved with AND a live count. `drifted` = the data moved; `rules_moved` = the industry rules themselves changed, so the same name may now cover different companies.
+- Parameters: none
+- Returns: { segments: [{ id, name, note, definition, summary, member_count, live_count, with_website, drifted, rules_moved }], rules_version, recipe: 'segment-list' }
+
+### save_segment
+Name the filter you are looking at. Stores the DEFINITION, not a member list — a company that gains a domain tomorrow joins "pharma with a website" on its own. Refuses a filter that selects everything. The member count is computed here so the card and the list can never disagree.
+- Parameters: name (required, string), segment_id (optional, number — to rename or redefine), note (optional, string), definition (optional, object — search, industry_canonical, industry_sub, domain, tag_id, relationship, min_quality, city, state_code)
+- Returns: { segment_id, name, member_count, summary, recipe: 'segment-card' }
+
+### delete_segment
+Soft delete. The row stays (a run or campaign may name it) and the name is freed.
+- Parameters: segment_id (required, number)
+- Returns: { segment_id, name, message, recipe: 'segment-card' }
 
 
 

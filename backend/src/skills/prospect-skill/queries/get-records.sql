@@ -13,6 +13,7 @@
 --
 -- Named params: $scope, $tenant_id, $is_live, $search, $relationship,
 --               $tag_id, $only_duplicates, $min_quality, $industry, $domain,
+--               $industry_canonical, $industry_sub, $research,
 --               $show_inactive, $limit, $offset
 --
 -- NOTE: a named param written in a COMMENT is still translated — the
@@ -36,6 +37,37 @@ WITH paged AS (
       -- is always active — a delivery is retired at the load, not per row.
       AND  ($show_inactive::boolean OR v.is_active)
       AND  ($industry::text IS NULL OR v.industry_raw = $industry::text)
+      -- The DERIVED classification (migrations 206, 218). industry_raw is a
+      -- product description — "Manufacturing of Bulk Drugs" and
+      -- "Manufacturing of Plastic Chairs" are both manufacturing and share
+      -- nothing else — so a segment has to filter on the cluster and the
+      -- sub-cluster, not the raw text.
+      AND  ($industry_canonical::text IS NULL
+            OR v.industry_canonical = $industry_canonical::text)
+      AND  ($industry_sub::text IS NULL OR v.industry_sub = $industry_sub::text)
+      -- Research state, so "who have I not looked at yet" is a filter rather
+      -- than a spreadsheet exercise. Pool rows have no briefs and are
+      -- excluded by any value other than NULL.
+      AND  ($research::text IS NULL
+            OR (v.scope = 'mine' AND (
+                 ($research::text = 'none' AND NOT EXISTS (
+                     SELECT 1 FROM gt_account_briefs b
+                      WHERE b.prospect_id = v.id AND b.tenant_id = $tenant_id::uuid
+                        AND b.is_live = $is_live::boolean))
+              OR ($research::text = 'done' AND EXISTS (
+                     SELECT 1 FROM gt_account_briefs b
+                      WHERE b.prospect_id = v.id AND b.tenant_id = $tenant_id::uuid
+                        AND b.is_live = $is_live::boolean AND b.facts_at IS NOT NULL))
+              OR ($research::text = 'failed' AND EXISTS (
+                     SELECT 1 FROM gt_account_briefs b
+                      WHERE b.prospect_id = v.id AND b.tenant_id = $tenant_id::uuid
+                        AND b.is_live = $is_live::boolean
+                        AND b.status IN ('extract_failed','unreadable')))
+              OR ($research::text = 'decided' AND EXISTS (
+                     SELECT 1 FROM gt_account_briefs b
+                      WHERE b.prospect_id = v.id AND b.tenant_id = $tenant_id::uuid
+                        AND b.is_live = $is_live::boolean AND b.decided_at IS NOT NULL))
+            )))
       -- 'has' / 'none' answer "which of these can we actually reach", which
       -- is a different question from matching a particular domain.
       AND  ($domain::text IS NULL
@@ -75,7 +107,15 @@ SELECT
         WHEN pg.source_as_of > (CURRENT_DATE - INTERVAL '36 months') THEN 'ageing'
         ELSE 'stale'
     END AS freshness,
-    COALESCE(tg.tags, '[]'::json) AS tags
+    COALESCE(tg.tags, '[]'::json) AS tags,
+    -- Research state on the list itself (NEXT item 10). DERIVED from the
+    -- brief, deliberately not a tag: a tag is a human assertion about a
+    -- company and this is a fact about what we did.
+    br.status                     AS research_status,
+    br.facts_at IS NOT NULL       AS researched,
+    br.decided_at IS NOT NULL     AS research_decided,
+    COALESCE(br.human_offer, br.recommended_offer) AS research_offer,
+    br.updated_at                 AS researched_at
 FROM paged pg
 LEFT JOIN gt_source_loads l ON l.id = pg.load_id
 LEFT JOIN LATERAL (
@@ -91,4 +131,9 @@ LEFT JOIN LATERAL (
     ) src
     JOIN gt_tags t ON t.id = src.tag_id AND t.is_active = true
 ) tg ON true
+LEFT JOIN gt_account_briefs br
+       ON pg.scope = 'mine'
+      AND br.prospect_id = pg.id
+      AND br.tenant_id   = $tenant_id::uuid
+      AND br.is_live     = $is_live::boolean
 ORDER BY pg.recorded_at DESC, pg.id DESC;

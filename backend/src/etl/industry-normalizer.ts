@@ -21,6 +21,8 @@
  * wrong (CLAUDE.md rule 12).
  */
 
+import { createHash } from 'crypto';
+
 export interface SubCluster {
   /** Narrower segment inside a cluster, e.g. 'pharma'. */
   sub: string;
@@ -177,3 +179,29 @@ export function canonicalIndustry(raw: unknown): IndustryMatch {
 
 export const subClusters = (canonical: string): SubCluster[] =>
   byCanonical.get(canonical)?.subclusters ?? [];
+
+/**
+ * A fingerprint of the classification rules themselves.
+ *
+ * Segments store a definition, not a member list — so membership moves when
+ * these rules move. That is the right trade (a company that gains a domain
+ * tomorrow should join "pharma with a website" on its own), but it means a
+ * saved count can quietly stop being true.
+ *
+ * Recording WHICH generation of the rules produced a count lets the screen
+ * say "the rules have changed since you saved this" instead of showing a
+ * different set of companies under the same name. The caveat in
+ * design-notes-research.md §8, made checkable.
+ *
+ * Hashed over every pattern, so editing one regex changes it and reordering
+ * the clusters changes it too — precedence IS part of the rule.
+ */
+export function rulesVersion(): string {
+  const material = CLUSTERS.map((c) => [
+    c.canonical,
+    c.include.source,
+    c.exclude.source,
+    ...(c.subclusters ?? []).map((s) => `${s.sub}:${s.match.source}`),
+  ].join('|')).join('\n');
+  return createHash('sha256').update(material).digest('hex').slice(0, 12);
+}

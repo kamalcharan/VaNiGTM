@@ -19,6 +19,7 @@
 
 import { type ReactNode } from 'react';
 import { VdfBadge, VdfCheckbox } from '@/components/vdf';
+import { formatDate } from '@/lib/format';
 import s from '@/app/(app)/prospects/records.module.css';
 
 export type Freshness = 'current' | 'recent' | 'ageing' | 'stale' | 'unknown';
@@ -60,6 +61,16 @@ export interface RecordRow {
   /** Free-text note under the name, e.g. "Customer". */
   badge?: string | null;
   is_active?: boolean;
+  /* ── Research state (NEXT item 10) ────────────────────────────────
+     DERIVED from the account brief, deliberately NOT a tag. A tag is a
+     human assertion about a company; this is a fact about what we did to
+     it, and conflating the two would let a stale hand-applied label claim
+     a company had been researched. Absent on pool rows. */
+  research_status?: string | null;
+  researched?: boolean | null;
+  research_decided?: boolean | null;
+  research_offer?: string | null;
+  researched_at?: string | null;
 }
 
 /**
@@ -74,6 +85,7 @@ export const COLUMNS: { key: string; label: string }[] = [
   { key: 'industry',   label: 'Industry' },
   { key: 'quality',    label: 'Quality' },
   { key: 'source',     label: 'Source' },
+  { key: 'research',   label: 'Research' },
   { key: 'tags',       label: 'Tags' },
 ];
 
@@ -111,6 +123,7 @@ export function RecordTable({
             {on('industry') && <th>Industry</th>}
             {on('quality')  && <th>Quality</th>}
             {on('source')   && <th>Source</th>}
+            {on('research') && <th>Research</th>}
             {on('tags')     && <th>Tags</th>}
           </tr>
         </thead>
@@ -165,6 +178,27 @@ export function RecordTable({
                   {FRESHNESS[r.freshness].label}
                 </VdfBadge>
                 <div className={s.sub}>{r.source_label ?? '—'}</div>
+              </td>
+              )}
+              {on('research') && (
+              <td>
+                {r.research_status === 'extract_failed' ? (
+                  <VdfBadge variant="gold">Failed — retryable</VdfBadge>
+                ) : r.research_status === 'unreadable' ? (
+                  <VdfBadge variant="gold">No usable site</VdfBadge>
+                ) : r.researched ? (
+                  <>
+                    <VdfBadge variant={r.research_decided ? 'success' : 'info'}>
+                      {r.research_decided ? 'Decided' : 'Needs a decision'}
+                    </VdfBadge>
+                    <div className={s.sub}>
+                      {r.research_offer ?? 'no fit'}
+                      {r.researched_at && <> · {formatDate(r.researched_at)}</>}
+                    </div>
+                  </>
+                ) : (
+                  <span className={s.muted}>—</span>
+                )}
               </td>
               )}
               {on('tags') && (

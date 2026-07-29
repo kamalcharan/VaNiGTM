@@ -220,12 +220,12 @@ column now.
 | 5b | ~~Fit scores bunched — one offer won everything by 0.03~~ | ✅ **DONE 2026-07-29.** Migration 212. See §9 |
 | 5c | ~~Correction loop / Learning Graph~~ | ✅ **DONE 2026-07-29.** Migrations 213–215. The agent derives rules from your brief decisions; you ratify, reword or throw out each one; only ratified rules score anything. See §10 |
 | 6 | SearXNG as a second source | Fixes the unreachable fit signals. Deliberately after the first ten: if the briefs are already specific enough to write from, this is refinement not necessity |
-| 7 | Prospect dossier page | Replaces both modals |
-| 8 | `industry_sub` stored + filterable on `/prospects` | Enables segments |
-| 9 | `gt_segments` — saved definitions, Save-as-segment on `/prospects` | Removes the CLI from the path permanently |
-| 10 | Research status + brief visible on `/prospects` | Derived column, NOT a tag — tags are human assertions |
-| 11 | Select specific companies to research | API already supports `prospect_ids`; only the UI is missing |
-| 12 | KG loader while running · running indicator in the navbar | Cheap, and the batch already survives navigation |
+| 7 | ~~Prospect dossier page~~ | ✅ **DONE 2026-07-29.** `/prospects/<ref>` — a full page, addressable, `ref` not the PK. Facts → judgement → evidence → decision, in that order, because putting the recommendation first makes everything after it read as justification |
+| 8 | ~~`industry_sub` stored + filterable~~ | ✅ **DONE 2026-07-29.** Migration 218. Computed since 206 and thrown away for want of a column — which is why every segment question needed the CLI. Cluster + segment are now facets on `/prospects` |
+| 9 | ~~`gt_segments`~~ | ✅ **DONE 2026-07-29.** Migration 219. Stores the DEFINITION, not a member list. Built on `/prospects` (R4). Shows the saved count beside the live one, and flags `rules_moved` when the classification itself changed |
+| 10 | ~~Research status on `/prospects`~~ | ✅ **DONE 2026-07-29.** A derived column and a filter (not researched / researched / failed / decided), NOT a tag — a tag is a human assertion, this is a fact about what we did |
+| 11 | ~~Select specific companies to research~~ | ✅ **DONE 2026-07-29.** `list_targets` + a searchable picker showing each company's state |
+| 12 | Running indicator in the navbar | ✅ **DONE 2026-07-29** (`VdfAgentActivity`, with the token meter). The KG loader itself is still open |
 
 ### LATER — platform
 
@@ -250,13 +250,20 @@ column now.
   principle (user, 2026-07-29) as the easiest cold-open of the four. Content
   drafted from the CV; needs adding.
 
-**Needing a ruling:**
-- Is `industry_sub` its own dropdown on `/prospects`, alongside industry? (Two
-  dropdowns where there is now one.)
-- Does `/research` keep its own list, reframed as a work queue ("12 briefs
-  need a decision") with every row linking to the dossier? Recommended: yes.
-- `ref` (`PROS-0042`) in the dossier URL rather than the raw PK. Recommended:
-  ref — raw PKs are never exposed (CLAUDE.md).
+**Answered by building it (2026-07-29):**
+- `industry_sub` is its own dropdown, alongside the cluster and beside the raw
+  industry — three, not one. The raw list has a 2,000-value long tail and is
+  kept only because search cannot replace an exact match; the two derived ones
+  are what anyone actually filters on.
+- The dossier URL carries `ref` (`PROS-0042`). Raw PKs are never exposed.
+- `/research` keeps its own list. It is a work queue over briefs; `/prospects`
+  is the record surface. Rows on both now reach the same dossier.
+
+**Still needing a ruling:**
+- A segment stores its definition, so membership moves when the industry rules
+  move. `rules_version` makes that VISIBLE (`rules_moved` on the card) but
+  nothing acts on it. Should a segment be re-countable in place, or does a
+  moved rule warrant re-approving the segment?
 
 **A caveat to build in:** the sub-cluster rules are mine, derived from FTCCI
 data. Once segments are built on them, changing a rule silently changes who is

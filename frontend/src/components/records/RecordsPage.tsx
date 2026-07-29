@@ -17,6 +17,7 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { apiFetch } from '@/lib/api-client';
@@ -25,7 +26,7 @@ import { useToast } from '@/components/toast';
 import { formatDate } from '@/lib/format';
 import {
   VdfPageHeader, VdfLoader, VdfStatCard, VdfEmptyState,
-  VdfSearchBar, VdfButton, VdfModal, VdfCheckbox,
+  VdfSearchBar, VdfButton, VdfModal, VdfCheckbox, VdfInput,
 } from '@/components/vdf';
 import {
   RecordTable, DetailRow, SourceRowSection, pct,
@@ -52,6 +53,15 @@ interface Record {
   pin: string | null;
   country: string | null;
   industry_raw: string | null;
+  /** Derived cluster / segment (migrations 206, 218). */
+  industry_canonical: string | null;
+  industry_sub: string | null;
+  /** Research state, derived from the brief — NOT a tag. */
+  research_status: string | null;
+  researched: boolean | null;
+  research_decided: boolean | null;
+  research_offer: string | null;
+  researched_at: string | null;
   employees_band: string | null;
   revenue_band: string | null;
   linkedin_url: string | null;
@@ -72,9 +82,40 @@ type Record_ = { [k: string]: unknown };
 interface Facets {
   industries: { value: string; count: number }[];
   tags: { id: number; label: string; count: number }[];
+  /** Derived cluster / segment — short lists, so usable as dropdowns. */
+  clusters: { value: string; count: number }[];
+  segments: { value: string; cluster: string; count: number }[];
+  research: { none?: number; done?: number; failed?: number; decided?: number };
   with_domain: number;
   without_domain: number;
 }
+
+interface Segment {
+  id: number; name: string; note: string | null;
+  definition: SegmentDefinition;
+  summary: string;
+  member_count: number | null;
+  live_count: number;
+  with_website: number;
+  /** The data moved under a stable rule. */
+  drifted: boolean;
+  /** The classification rules themselves changed — the same name may now
+   *  cover different companies. A different problem with a different fix. */
+  rules_moved: boolean;
+}
+
+interface SegmentDefinition {
+  search?: string; industry_canonical?: string; industry_sub?: string;
+  domain?: string; tag_id?: number; relationship?: string;
+  min_quality?: number; city?: string; state_code?: string;
+}
+
+const RESEARCH_STATES: { value: string; label: string; key: keyof Facets['research'] }[] = [
+  { value: 'none', label: 'Not researched', key: 'none' },
+  { value: 'done', label: 'Researched', key: 'done' },
+  { value: 'failed', label: 'Research failed', key: 'failed' },
+  { value: 'decided', label: 'You ruled on', key: 'decided' },
+];
 
 interface Stats {
   total: number; loads: number; customers: number; resolved: number;
@@ -96,12 +137,20 @@ export interface RecordsPageProps {
 export function RecordsPage({
   scope, eyebrow, title, intro, emptyTitle, emptyDescription,
 }: RecordsPageProps) {
+  const router = useRouter();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const isPool = scope === 'pool';
 
   const [search, setSearch] = useState('');
   const [industry, setIndustry] = useState('');
+  const [cluster, setCluster] = useState('');
+  const [sub, setSub] = useState('');
+  const [research, setResearch] = useState('');
+  const [segmentId, setSegmentId] = useState<number | null>(null);
+  const [saveSeg, setSaveSeg] = useState(false);
+  const [segName, setSegName] = useState('');
+  const [segNote, setSegNote] = useState('');
   const [domain, setDomain] = useState('');
   const [showInactive, setShowInactive] = useState(false);
   const [page, setPage] = useState(1);
@@ -139,24 +188,92 @@ export function RecordsPage({
     // A pool row is nobody's customer, so this filter is meaningless there.
     ...(isPool ? {} : { relationship: relationship || undefined }),
     industry: industry || undefined,
+    industry_canonical: cluster || undefined,
+    industry_sub: sub || undefined,
+    research: research || undefined,
     domain: domain || undefined,
     only_duplicates: onlyDuplicates || undefined,
     show_inactive: showInactive || undefined,
     tag_id: tagId ?? undefined,
     page,
     limit: PAGE_SIZE,
-  }), [scope, isPool, search, relationship, industry, domain,
-       onlyDuplicates, showInactive, tagId, page]);
+  }), [scope, isPool, search, relationship, industry, cluster, sub, research,
+       domain, onlyDuplicates, showInactive, tagId, page]);
 
   // Any filter change invalidates the current page — page 7 of a narrowed
   // result is usually empty, which reads as "no matches".
   useEffect(() => { setPage(1); },
-    [search, relationship, industry, domain, onlyDuplicates, showInactive, tagId]);
+    [search, relationship, industry, cluster, sub, research, domain,
+     onlyDuplicates, showInactive, tagId]);
 
   const { data, isLoading, isError, error } = useSkillQuery<{
     records: Record[]; total: number; page: number; limit: number;
     stats: Stats; facets: Facets;
   }>('prospect-skill', 'get_records', params);
+
+  // Segments are a 'mine' concept: a pool row is nobody's working set.
+  const segmentsQ = useSkillQuery<{ segments: Segment[] }>(
+    'prospect-skill', 'get_segments', {}, { enabled: !isPool },
+  );
+  const saveSegment = useSkillMutation('prospect-skill', 'save_segment');
+  const deleteSegment = useSkillMutation('prospect-skill', 'delete_segment');
+  const segments = segmentsQ.data?.data.segments ?? [];
+
+  /** The filter as a segment definition — the same shape the backend stores. */
+  const currentDefinition = (): SegmentDefinition => ({
+    ...(search.trim() ? { search: search.trim() } : {}),
+    ...(cluster ? { industry_canonical: cluster } : {}),
+    ...(sub ? { industry_sub: sub } : {}),
+    ...(domain ? { domain } : {}),
+    ...(tagId ? { tag_id: tagId } : {}),
+    ...(relationship ? { relationship } : {}),
+  });
+
+  const definitionIsEmpty = Object.keys(currentDefinition()).length === 0;
+
+  /** Load a saved segment back INTO the controls, so it stays editable. */
+  function applySegment(seg: Segment) {
+    const d = seg.definition ?? {};
+    setSearch(d.search ?? '');
+    setCluster(d.industry_canonical ?? '');
+    setSub(d.industry_sub ?? '');
+    setDomain(d.domain ?? '');
+    setTagId(d.tag_id ?? null);
+    setRelationship(d.relationship ?? '');
+    setSegmentId(seg.id);
+    setPage(1);
+  }
+
+  async function onSaveSegment() {
+    try {
+      const res = await saveSegment.mutateAsync({
+        segment_id: segmentId ?? undefined,
+        name: segName,
+        note: segNote || undefined,
+        definition: currentDefinition(),
+      });
+      const { member_count } = (res.data ?? {}) as unknown as { member_count: number };
+      showToast({
+        type: 'success',
+        message: `Saved "${segName}" — ${member_count} compan${member_count === 1 ? 'y' : 'ies'}.`,
+      });
+      setSaveSeg(false); setSegName(''); setSegNote('');
+      queryClient.invalidateQueries({ queryKey: ['skill', 'prospect-skill'] });
+    } catch (err) {
+      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Could not save' });
+    }
+  }
+
+  async function onDeleteSegment(seg: Segment) {
+    if (!window.confirm(`Remove the segment "${seg.name}"? The companies in it are untouched.`)) return;
+    try {
+      await deleteSegment.mutateAsync({ segment_id: seg.id });
+      if (segmentId === seg.id) setSegmentId(null);
+      queryClient.invalidateQueries({ queryKey: ['skill', 'prospect-skill'] });
+    } catch (err) {
+      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Could not remove it' });
+    }
+  }
 
   const { mutate: applyTag, isPending: tagging } = useSkillMutation(
     'prospect-skill', 'tag_prospects',
@@ -263,6 +380,44 @@ export function RecordsPage({
           {/* Values come from the data, so a dropdown never offers an option
               that matches nothing. */}
           <div className={s.chips}>
+            {/* The DERIVED classification comes first. industry_raw is a
+                product description with a 2,000-value long tail; the cluster
+                and segment are the two anyone actually filters on, and they
+                are what a cohort is built from. */}
+            {!isPool && (facets?.clusters ?? []).length > 0 && (
+              <select className={s.select} value={cluster}
+                onChange={(e) => { setCluster(e.target.value); setSub(''); }}>
+                <option value="">Any cluster</option>
+                {(facets?.clusters ?? []).map((c) => (
+                  <option key={c.value} value={c.value}>{c.value} ({c.count})</option>
+                ))}
+              </select>
+            )}
+
+            {!isPool && (facets?.segments ?? []).length > 0 && (
+              <select className={s.select} value={sub}
+                onChange={(e) => setSub(e.target.value)}>
+                <option value="">Any segment</option>
+                {(facets?.segments ?? [])
+                  .filter((x) => !cluster || x.cluster === cluster)
+                  .map((x) => (
+                    <option key={x.value} value={x.value}>{x.value} ({x.count})</option>
+                  ))}
+              </select>
+            )}
+
+            {!isPool && (
+              <select className={s.select} value={research}
+                onChange={(e) => setResearch(e.target.value)}>
+                <option value="">Any research state</option>
+                {RESEARCH_STATES.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label} ({facets?.research?.[r.key] ?? 0})
+                  </option>
+                ))}
+              </select>
+            )}
+
             <select className={s.select} value={industry}
               onChange={(e) => setIndustry(e.target.value)}>
               <option value="">All industries</option>
@@ -290,6 +445,61 @@ export function RecordsPage({
               Columns ({visible.length}/{COLUMNS.length})
             </button>
           </div>
+
+          {/* ── Segments ──────────────────────────────────────────────
+              A segment IS this filter, named and kept. Built here rather
+              than on a page of its own (design note R4): the definition and
+              the thing it defines have to be visible at the same time, or
+              you are editing a query you cannot see the result of. The pilot
+              cohort came out of a CLI script, which is the clearest way this
+              product has failed its user. */}
+          {!isPool && (
+            <div className={s.chips}>
+              {segments.map((seg) => (
+                <span key={seg.id} className={s.segmentWrap}>
+                  <button
+                    className={`${s.chip} ${segmentId === seg.id ? s.chipActive : ''}`}
+                    onClick={() => applySegment(seg)}
+                    title={`${seg.summary} · ${seg.with_website} with a website`}
+                  >
+                    {seg.name} ({seg.live_count})
+                    {(seg.drifted || seg.rules_moved) && (
+                      <span className={s.segmentFlag} title={seg.rules_moved
+                        ? 'The industry rules changed since this was saved — it may cover different companies now'
+                        : `Saved with ${seg.member_count}, now ${seg.live_count}`}>
+                        {' '}•
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    className={s.segmentX}
+                    onClick={() => onDeleteSegment(seg)}
+                    title={`Remove "${seg.name}"`}
+                    aria-label={`Remove ${seg.name}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+
+              <button
+                className={s.chip}
+                disabled={definitionIsEmpty}
+                title={definitionIsEmpty
+                  ? 'Narrow the list first — a segment that selects everything is not a segment'
+                  : 'Save this filter as a named segment'}
+                onClick={() => { setSaveSeg(true); setSegName(''); setSegNote(''); }}
+              >
+                + Save as segment
+              </button>
+
+              {segmentId !== null && (
+                <button className={s.chip} onClick={() => setSegmentId(null)}>
+                  Detach from segment
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {isLoading ? (
@@ -314,7 +524,16 @@ export function RecordsPage({
             total={total}
             selected={isPool ? undefined : selected}
             onSelect={isPool ? undefined : setSelected}
-            onOpen={(row) => setDetail(rows.find((x) => x.id === row.id) ?? null)}
+            onOpen={(row) => {
+              const full = rows.find((x) => x.id === row.id) ?? null;
+              // A tenant's own record gets the full dossier page (design note
+              // R5). A modal cannot hold the research, the evidence and the
+              // decision at once, and a decision made in a box you have to
+              // scroll inside is a decision made on half the information.
+              // Pool rows have no ref and no brief, so they keep the modal.
+              if (!isPool && full?.ref) { router.push(`/prospects/${full.ref}`); return; }
+              setDetail(full);
+            }}
             onTagClick={setTagId}
             columns={visible}
           />
@@ -334,6 +553,42 @@ export function RecordsPage({
           </div>
         )}
       </div>
+
+      {/* ── Name this filter ─────────────────────────────────────── */}
+      <VdfModal
+        isOpen={saveSeg}
+        onClose={() => setSaveSeg(false)}
+        title={segmentId ? 'Update this segment' : 'Save as a segment'}
+        subtitle="A segment is this filter, kept. It stores the definition, not a list — so a company that gains a website tomorrow joins on its own."
+        footer={(
+          <div className={s.modalActions}>
+            <VdfButton variant="outline" onClick={() => setSaveSeg(false)}>Cancel</VdfButton>
+            <VdfButton
+              variant="primary"
+              disabled={!segName.trim() || saveSegment.isPending}
+              onClick={onSaveSegment}
+            >
+              {saveSegment.isPending ? 'Saving…' : 'Save'}
+            </VdfButton>
+          </div>
+        )}
+      >
+        <div className={s.note} style={{ marginBottom: 16 }}>
+          Selecting <strong>{total}</strong> compan{total === 1 ? 'y' : 'ies'} right now.
+        </div>
+        <VdfInput
+          label="Name"
+          placeholder="Pharma manufacturers with a website"
+          value={segName}
+          onChange={(e) => setSegName(e.target.value)}
+        />
+        <VdfInput
+          label="Why this group (optional)"
+          placeholder="Bulk drug makers in Telangana — the pilot cohort"
+          value={segNote}
+          onChange={(e) => setSegNote(e.target.value)}
+        />
+      </VdfModal>
 
       <VdfModal
         isOpen={chooser}
