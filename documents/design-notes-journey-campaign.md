@@ -212,25 +212,64 @@ grouped without a rewrite.
 
 ## 3. What goes into the campaign — the story
 
-**The story is a first-class artifact belonging to the journey**, not a
-field on a campaign member. It is written before any campaign exists,
-survives the campaign, and a journey accumulates several over its life.
+### 3.1 Two scopes of content, one skill
+
+Storyteller's purpose is **nurturing customer-journey content**. The deck is
+the first *form* it took, not the boundary of the job. The right split is
+not deck-vs-message, it is **who the content is about**:
+
+| Scope | About | Written | Reused | Examples |
+|---|---|---|---|---|
+| **Asset** | **us** | once | across every journey | deck, one-pager, case study, offer explainer |
+| **Move** | **them** | per journey | never | the outreach story, the follow-up, the meeting recap, the proposal note |
+
+A move **carries** assets. *"Here is what I noticed about your plant → here
+is the offer → here is the six-slide deck on how it worked elsewhere."* The
+argument is per account; the proof is reused.
+
+Both are authored by the same spine, which `buildDeck` already implements:
+**load context → load prompt → `callLLMValidated` against a schema → persist
+at `awaiting` → human approves → it becomes usable.** What varies by content
+kind is the schema, the prompt key, and the inputs. That spine is worth
+extracting rather than duplicating.
+
+### 3.2 The story (a move) as an artifact
+
+**The story belongs to the journey**, not to a campaign member. It is
+written before any campaign exists, survives the campaign, and a journey
+accumulates several over its life.
 
 Each story carries: a sequence number within the journey, an author
 (`human` | `agent`), a status (`draft` → `approved` → `sent`), the offer it
-argues, its evidence trace, and — once concluded — what it got.
+argues, the assets it attaches, its evidence trace, and — once concluded —
+what it got.
 
 **Two ways one gets written, both ending at the same gate:**
 
 - **Human writes it.** Straight to `draft`, human approves.
 - **Agent drafts it** from the brief's `hook` + `raw_evidence`, the decided
-  offer, the person's role, the accepted fit lessons, and the ledger of what
-  earlier stories on this journey already said. Human edits and approves.
+  offer, the person's role, the accepted fit lessons, the assets available
+  for this stage, and the ledger of what earlier stories on this journey
+  already said. Human edits and approves.
 
-Rules:
+### 3.3 Content is stage-addressed — this is the nurture engine
 
-- **R-S1 — Nothing unsupported ships.** Every factual claim traces to a
-  `raw_evidence` entry on that brief, or it is cut. This is what makes
+Every asset and every story declares the **arc and stage(s) it serves**. A
+journey at `addressed` needs different content from one at `answered` after
+a *"not now"*, and both differ from an Arc-2 account being onboarded.
+
+That tagging is what turns a content library into nurture: the stage
+decision (§1.4) becomes *"given this stage and what came back, which angle
+and which asset next?"* — a question the agent can propose against and a
+human can rule on. Arc 2 is almost entirely this: onboarding content,
+expansion content, advocacy content, same table, same gate.
+
+### 3.4 Rules
+
+- **R-S1 — Nothing unsupported ships, and the two scopes are evidenced
+  differently.** Claims about the **prospect** trace to a `raw_evidence`
+  entry on that prospect's brief. Claims about the **tenant** trace to an
+  approved asset. Neither may be invented at send time. This is what makes
   `pilot_result`'s qualitative gate enforceable rather than aspirational:
   *"if a researched message says roughly what a template would have said, the
   research did no work."* It binds an agent draft and a human draft equally.
@@ -239,6 +278,9 @@ Rules:
   thing again is not another story.
 - **R-S3 — The human approves the text, not a template.** At pilot scale
   that is four reads. Bulk approval needs its own ruling (D5).
+- **R-S4 — An asset is approved once, a move is approved every time.** An
+  asset is reusable precisely because its claims were vetted at authoring
+  time. A move is about a specific company and is vetted per instance.
 
 ---
 
@@ -311,23 +353,41 @@ a send nobody decided.
 
 ## 8. Where I disagree
 
-### 8.1 "Story skill" should not be `storyteller-skill`
+### 8.1 ~~"Story skill" should not be storyteller-skill~~ — withdrawn
 
-`storyteller-skill` today builds **pitch decks**: `DeckSchema`, slides,
-`gt_presentations`, a public `share_token` route, audience Q&A. It reads
-`gt_tenant_profile` + the KG — *tenant-level* inputs.
+**v1 said stories should live outside `storyteller-skill` because a deck
+cannot satisfy the evidence rule. That was judging the skill by its current
+output rather than its job, and it was wrong.** Storyteller's purpose is
+nurturing customer-journey content; the deck is the first form, not the
+boundary.
 
-An outreach story is a different artifact with an incompatible contract: it
-is **per journey**, per person, and **evidence-bound to one brief** (R-S1).
-A deck cannot satisfy R-S1 because a deck is not about any one account.
+The concern behind it was real and survives in a better shape: a deck is
+about **us** and an outreach story is about **them**, and those are
+evidenced from different sources. §3.4 R-S1 now says exactly that — prospect
+claims trace to a brief, tenant claims trace to an approved asset — which
+dissolves the conflict instead of splitting the skill. One authoring skill,
+two content scopes.
 
-If the two are merged, the evidence rule quietly stops holding — and that
-rule is the only thing separating this product from mail-merge.
+**What that means for the existing code:**
 
-**Recommendation:** keep `storyteller-skill` for decks. Write stories inside
-the journey. Let a story *attach* a deck as an asset (the share link is a
-perfectly good thing to put in a message). Two artifacts, one link between
-them, both rules intact.
+- The `buildDeck` spine (context → prompt → `callLLMValidated` → `awaiting`
+  → approve) is the reusable part. Extract it; it already does the right
+  thing including refusing to write a half row on validation failure.
+- `DeckSchema` stays as the deck kind's contract. Each new kind brings its
+  own schema and its own prompt key under `storyteller-skill.*` (the deck
+  keeps `vani-skill.generate_slides`, reused as-is as it is today).
+- `gt_presentations` becomes the home for **assets** of every kind rather
+  than a second content table being created beside it — one home, or the
+  library forks in two. Add `kind`, `arc`, `stages TEXT[]`, and a `body`
+  JSONB backfilled from `slides`; leave the table rename to POA Phase 2
+  with the other renames. The `slides` column carrying a one-pager would be
+  ugly, which is why `body` goes in now and `slides` is left deprecated
+  rather than reused. → **D7**
+- The public `share_token` route already works for any asset kind. That is
+  the mechanism by which a move attaches proof.
+- Moves (`gt_journey_stories`) are a separate table because they are
+  journey-scoped, approved per instance, and never reused — not because they
+  are a different skill.
 
 ### 8.2 "Customer journey map" — we are building a ledger, not a map
 
@@ -373,7 +433,7 @@ until there is a real customer to learn the next state from.
 | **D4** | Does `parked` auto-wake at `wake_at`? | Surface only. An automatic wake is a send nobody decided. |
 | **D5** | Bulk story approval — now or later? | Later |
 | **D6** | A journey for every cohort member, or only from `researched`? | Every member. The sourced→researched gap is a number worth seeing. |
-| **D7** | Stories in `storyteller-skill`, or their own thing? | Their own thing (§8.1) — deck attaches as an asset |
+| **D7** | Generalise `gt_presentations` into the asset library (kind / arc / stages / body), or a new table beside it? | Generalise. Two content tables means two libraries and the nurture library forks. (§8.1) |
 | **D8** | Build Arc 2 states now? | No — declare the arc, build Arc 1 (§8.3) |
 
 ---
@@ -387,9 +447,16 @@ gt_journeys              one row per (tenant, is_live, prospect_id)
 
 gt_journey_events        append-only; actor, from_state, to_state, reason, payload
 
-gt_journey_stories       journey_id, seq, author ('human'|'agent'), offer,
-                         subject, body, evidence_refs, status
-                         ('draft'|'approved'|'sent'), approved_by, approved_at
+gt_presentations         THE ASSET LIBRARY (about us, reused, approved once)
+  + kind ('deck'|'one_pager'|'case_study'|'explainer')
+  + arc, stages TEXT[]          -- what this asset is for
+  + body JSONB                  -- backfilled from slides; slides deprecated
+  (existing: title, status, share_token, approved_at)
+
+gt_journey_stories       THE MOVES (about them, per journey, approved each time)
+  journey_id, seq, author ('human'|'agent'), offer, stage,
+  subject, body, asset_ids BIGINT[], evidence_refs,
+  status ('draft'|'approved'|'sent'), approved_by, approved_at
 
 gt_campaign_runs         campaign_id (nullable), channel, filter, status,
                          staged_at, approved_at, approved_by, concluded_at
