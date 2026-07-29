@@ -9,6 +9,7 @@ import { useToast } from '@/components/toast';
 import { VdfLoader } from '../loader/VdfLoader';
 import { VdfModal } from '../modal/VdfModal';
 import { VdfButton } from '../button/VdfButton';
+import { VdfAgentActivity } from '../agent-activity/VdfAgentActivity';
 import s from './VdfSidebar.module.css';
 
 export interface VdfSidebarProps {
@@ -214,6 +215,15 @@ export function VdfSidebar({ activeId, mobileOpen = false, onMobileClose }: VdfS
             })}
           </div>
         </div>
+
+        {/* What the agents are doing, and what today has cost. Above the
+            environment badge so a running batch is the last thing read before
+            the user block — a batch takes hours and nobody watches the
+            Research page while it runs. */}
+        <VdfAgentActivity
+          compact={!showExpanded}
+          onOpenResearch={() => router.push('/research')}
+        />
 
         {/* Environment badge */}
         <button

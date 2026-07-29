@@ -104,6 +104,22 @@ Three rules this agent will not break:
 One run covers the whole cohort and checkpoints after every account, so a
 crash at 60 of 100 keeps 59 briefs and a resume starts at 60.
 
+### A failure never deletes what an earlier run earned
+
+Failures used to go through `writeBrief`, whose `ON CONFLICT` sets every
+column from `EXCLUDED`. A company with a good brief — facts, evidence, a real
+fit score — had all of it overwritten with NULLs the moment ANY later attempt
+failed. In the pilot, Venkateshwara Hatcheries was scored 0.72 for AI
+Automations; a re-run hit the token cap, the catch block called `writeBrief`,
+and the brief became "No fit" with an empty fit map. The research was not
+wasted, it was **deleted** — by an error that had nothing to do with that
+company.
+
+`writeFailure` records the error and the run id and moves nothing else. A row
+that already carries `facts_at` keeps its status too: it is still a real
+brief, and a retry falling over does not un-know what we learned. Only a row
+that never got anywhere becomes `unreadable` / `extract_failed`.
+
 ### The token budget is a resource, not a wall
 
 A company costs about **14,000 tokens** to research (crawl + extract + fit +
@@ -246,6 +262,11 @@ Set or REMOVE the daily token cap for this tenant. `null`/`0`/empty removes it, 
 Throw research away so it can be run from scratch. A scope is required (status, tag, or prospect_ids) — there is no "delete everything". Without `confirm` it only counts. Briefs a human has decided are excluded unless `include_decided` is passed.
 - Parameters: status (optional, string), tag_id (optional, number), prospect_ids (optional, array), include_decided (optional, boolean), confirm (optional, boolean)
 - Returns: { matched, decided_included, deleted, confirmed, message, recipe: 'delete-preview' | 'delete-result' }
+
+### list_targets
+The companies you could research, each with what is already known: never researched, our extraction failed, judgement stale against the current offers, or already ruled on. Drives the picker — choosing which companies to research is a decision, and "research 10" cannot express it.
+- Parameters: tag_id (optional, number), search (optional, string), state (optional, string — all | new | researched | failed | stale | decided), limit (optional, number), offset (optional, number)
+- Returns: { targets, total, limit, offset, recipe: 'target-list' }
 
 ### batch_status
 Whether the last batch is queued, running, finished — or sitting in a queue nobody is reading because the worker is down.

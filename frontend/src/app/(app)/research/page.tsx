@@ -76,6 +76,23 @@ interface Brief {
 
 interface Tag { id: number; label: string }
 
+interface Target {
+  id: number; ref: string | null; name: string; domain: string | null;
+  industry_raw: string | null;
+  brief_status: string | null;
+  has_facts: boolean; decided: boolean; stale: boolean;
+  offer: string | null; error: string | null; researched_at: string | null;
+}
+
+const TARGET_STATES: { value: string; label: string }[] = [
+  { value: 'all', label: 'Everything' },
+  { value: 'new', label: 'Never researched' },
+  { value: 'failed', label: 'Failed — worth retrying' },
+  { value: 'stale', label: 'Needs re-scoring' },
+  { value: 'researched', label: 'Already researched' },
+  { value: 'decided', label: 'You have ruled on' },
+];
+
 type LessonKind = 'disqualifier' | 'sizing' | 'preference' | 'signal';
 
 interface Lesson {
@@ -228,6 +245,12 @@ export default function ResearchPage() {
   const [note, setNote] = useState('');
   const [reassign, setReassign] = useState('');
   const [redoExisting, setRedoExisting] = useState(false);
+  // Explicit picks. Empty = "whatever the cohort filter selects", which is
+  // still the right default for a first pass.
+  const [picking, setPicking] = useState(false);
+  const [picked, setPicked] = useState<number[]>([]);
+  const [pickSearch, setPickSearch] = useState('');
+  const [pickState, setPickState] = useState('all');
 
   const offersQ = useSkillQuery<{ offers: Offer[]; problems: string[]; ready: boolean }>(
     'research-skill', 'get_offers', {},
@@ -252,8 +275,10 @@ export default function ResearchPage() {
   // rather than discovered from the run. Queues nothing.
   const previewQ = useSkillQuery<Split>(
     'research-skill', 'start_research',
-    { tag_id: tagId || undefined, preview: true },
-    { enabled: tagId !== '' },
+    picked.length > 0
+      ? { prospect_ids: picked, preview: true }
+      : { tag_id: tagId || undefined, preview: true },
+    { enabled: tagId !== '' || picked.length > 0 },
   );
 
   const lessonsQ = useSkillQuery<{
@@ -262,6 +287,11 @@ export default function ResearchPage() {
   }>('research-skill', 'get_lessons', {});
 
   const budgetQ = useSkillQuery<Budget>('research-skill', 'get_budget', {});
+  const targetsQ = useSkillQuery<{ targets: Target[]; total: number }>(
+    'research-skill', 'list_targets',
+    { tag_id: tagId || undefined, search: pickSearch || undefined, state: pickState, limit: 300 },
+    { enabled: picking },
+  );
 
   const saveOffer = useSkillMutation('research-skill', 'save_offer');
   const setBudget = useSkillMutation('research-skill', 'set_budget');
@@ -325,9 +355,14 @@ export default function ResearchPage() {
 
   const onStart = async () => {
     try {
-      const res = await startResearch.mutateAsync({
-        tag_id: tagId || undefined, limit, refresh: redoExisting,
-      });
+      // Explicit picks win over the cohort. `limit` still applies as a
+      // ceiling, but when you have named the companies it is not the thing
+      // deciding what runs.
+      const res = await startResearch.mutateAsync(
+        picked.length > 0
+          ? { prospect_ids: picked, limit: Math.max(picked.length, 1), refresh: redoExisting }
+          : { tag_id: tagId || undefined, limit, refresh: redoExisting },
+      );
       const { queued } = (res.data ?? {}) as unknown as { queued: number };
       showToast({
         type: 'success',
@@ -555,23 +590,43 @@ export default function ResearchPage() {
               <option value="">Pick a cohort tag…</option>
               {tags.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
             </select>
-            <select
-              className={s.select} value={limit}
-              onChange={(e) => setLimit(Number(e.target.value))}
-            >
-              {[10, 25, 50, 100, 200].map((n) => (
-                <option key={n} value={n}>{n} companies</option>
-              ))}
-            </select>
+            {/* The count only decides anything when you have NOT named the
+                companies. "Research 10" is fine for a first smoke test and
+                useless once you know which four you actually want. */}
+            {picked.length === 0 && (
+              <select
+                className={s.select} value={limit}
+                onChange={(e) => setLimit(Number(e.target.value))}
+              >
+                {[10, 25, 50, 100, 200].map((n) => (
+                  <option key={n} value={n}>{n} companies</option>
+                ))}
+              </select>
+            )}
+
+            <VdfButton variant="outline" onClick={() => setPicking(true)}>
+              {picked.length > 0
+                ? `${picked.length} picked — change`
+                : 'Pick companies'}
+            </VdfButton>
+            {picked.length > 0 && (
+              <button type="button" className={s.linkButton} onClick={() => setPicked([])}>
+                Clear the picks
+              </button>
+            )}
             <VdfButton
               variant="primary"
               onClick={onStart}
-              disabled={!ready || !tagId || toResearch === 0 || startResearch.isPending}
+              disabled={!ready || (!tagId && picked.length === 0)
+                        || toResearch === 0 || startResearch.isPending}
             >
               {startResearch.isPending
                 ? 'Queueing…'
-                : `Research ${Math.min(limit, toResearch) || ''} compan${
-                    Math.min(limit, toResearch) === 1 ? 'y' : 'ies'}`.trim()}
+                : `Research ${
+                    (picked.length > 0 ? toResearch : Math.min(limit, toResearch)) || ''
+                  } compan${
+                    (picked.length > 0 ? toResearch : Math.min(limit, toResearch)) === 1
+                      ? 'y' : 'ies'}`.trim()}
             </VdfButton>
             {!ready && (
               <span className={s.formHint}>Finish your offers above first.</span>
@@ -817,7 +872,8 @@ export default function ResearchPage() {
                         ? <VdfBadge variant="success">
                             {offerName(b.effective_offer ?? b.recommended_offer)}
                           </VdfBadge>
-                        : b.status !== 'unreadable' && <VdfBadge variant="default">No fit</VdfBadge>}
+                        : b.status !== 'unreadable' && b.status !== 'extract_failed'
+                          && <VdfBadge variant="default">No fit</VdfBadge>}
                       <VdfBadge variant={STATUS_VARIANT[b.status] ?? 'default'}>
                         {STATUS_LABEL[b.status] ?? b.status}
                       </VdfBadge>
@@ -841,6 +897,15 @@ export default function ResearchPage() {
                   {b.what_they_make && <div className={s.briefMakes}>{b.what_they_make}</div>}
                   {(b.status === 'unreadable' || b.status === 'extract_failed') && b.error && (
                     <div className={s.briefMakes}>{b.error}</div>
+                  )}
+                  {/* A brief that survived a failed retry keeps its content and
+                      carries the error. Hiding it would make a stale brief look
+                      freshly confirmed. */}
+                  {b.status !== 'unreadable' && b.status !== 'extract_failed' && b.error && (
+                    <div className={s.retryNote}>
+                      Last attempt to refresh this failed — what you see is the
+                      earlier research, kept: {b.error}
+                    </div>
                   )}
                 </div>
               ))}
@@ -902,6 +967,93 @@ export default function ResearchPage() {
         </section>
 
       </div>
+
+      {/* ── Pick the companies ─────────────────────────────────────── */}
+      <VdfModal
+        isOpen={picking}
+        onClose={() => setPicking(false)}
+        title="Pick the companies to research"
+        subtitle="Each row says what is already known about it, so this is a decision rather than a guess."
+        width="xl"
+        footer={(
+          <div className={s.pickFooter}>
+            <span className={s.formHint}>
+              {picked.length === 0
+                ? 'Nothing picked — the cohort filter decides.'
+                : `${picked.length} picked.`}
+            </span>
+            <div className={s.actions}>
+              <VdfButton variant="ghost" onClick={() => setPicked([])}>Clear</VdfButton>
+              <VdfButton variant="primary" onClick={() => setPicking(false)}>Done</VdfButton>
+            </div>
+          </div>
+        )}
+      >
+        <div className={s.filters}>
+          <VdfInput
+            label="Find a company"
+            placeholder="Name or domain…"
+            value={pickSearch}
+            onChange={(e) => setPickSearch(e.target.value)}
+          />
+          <select className={s.select} value={pickState} onChange={(e) => setPickState(e.target.value)}>
+            {TARGET_STATES.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+          <button
+            type="button" className={s.linkButton}
+            onClick={() => {
+              const ids = (targetsQ.data?.data.targets ?? []).map((t) => t.id);
+              setPicked((p) => [...new Set([...p, ...ids])]);
+            }}
+          >
+            Pick all {targetsQ.data?.data.total ?? 0} showing
+          </button>
+        </div>
+
+        {targetsQ.isLoading ? (
+          <VdfLoader message="Loading companies" />
+        ) : (targetsQ.data?.data.targets ?? []).length === 0 ? (
+          <VdfEmptyState
+            title="Nothing matches"
+            description="Try a different filter, or clear the cohort tag to see everything with a website."
+          />
+        ) : (
+          <div className={s.pickList}>
+            {(targetsQ.data?.data.targets ?? []).map((t) => {
+              const on = picked.includes(t.id);
+              return (
+                <label key={t.id} className={on ? s.pickRowOn : s.pickRow}>
+                  <input
+                    type="checkbox" checked={on}
+                    onChange={() => setPicked((p) =>
+                      p.includes(t.id) ? p.filter((x) => x !== t.id) : [...p, t.id])}
+                  />
+                  <span className={s.pickName}>
+                    {t.name}
+                    <span className={s.briefDomain}> {t.domain}</span>
+                  </span>
+                  <span className={s.badges}>
+                    {!t.brief_status && <VdfBadge variant="info">Never researched</VdfBadge>}
+                    {t.brief_status === 'extract_failed' && (
+                      <VdfBadge variant="gold">Our extraction failed</VdfBadge>
+                    )}
+                    {t.brief_status === 'unreadable' && (
+                      <VdfBadge variant="gold">Site did not answer</VdfBadge>
+                    )}
+                    {t.stale && <VdfBadge variant="default">Needs re-scoring</VdfBadge>}
+                    {t.decided && <VdfBadge variant="success">You ruled on it</VdfBadge>}
+                    {t.offer && !t.decided && (
+                      <VdfBadge variant="default">{offerName(t.offer)}</VdfBadge>
+                    )}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        )}
+      </VdfModal>
 
       {/* ── Offer editor ───────────────────────────────────────────── */}
       <VdfModal

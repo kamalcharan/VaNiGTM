@@ -549,7 +549,15 @@ export class AccountResearchAgent {
           // Nothing readable: record the gap and move on — there is nothing
           // to judge.
           if (factHalf.status !== 'facts') {
-            await this.writeBrief(db, tenantId, isLive, prospectId, runId, factHalf);
+            // Non-destructive: a company that HAD a readable site last week
+            // and does not today keeps last week's brief, with the new
+            // failure recorded on it.
+            await this.writeFailure(
+              db, tenantId, isLive, prospectId, runId,
+              factHalf.status as 'unreadable' | 'extract_failed',
+              (factHalf.domain as string) ?? null,
+              (factHalf.error as string) ?? 'unreadable',
+            );
             unreadable++;
             written++;
             done.add(prospectId);
@@ -621,11 +629,10 @@ export class AccountResearchAgent {
         }
 
         const ours = /^LLM_|^PROMPT_NOT_FOUND/.test(message);
-        await this.writeBrief(db, tenantId, isLive, prospectId, runId, {
-          status: ours ? 'extract_failed' : 'unreadable',
-          domain,
-          error: message.slice(0, 500),
-        });
+        await this.writeFailure(
+          db, tenantId, isLive, prospectId, runId,
+          ours ? 'extract_failed' : 'unreadable', domain, message,
+        );
         unreadable++;
         written++;
         await appendStep(pool, runId, {
@@ -1023,6 +1030,58 @@ export class AccountResearchAgent {
           fit_reason: verdict.fit_reason ?? null,
           hook: verdict.hook ?? null,
           offers_fingerprint: verdict.offers_fingerprint ?? null,
+        },
+      );
+    });
+  }
+
+  /**
+   * Record that an attempt failed, WITHOUT destroying what an earlier attempt
+   * earned.
+   *
+   * ── THE BUG THIS EXISTS FOR ───────────────────────────────────────────
+   *
+   * Failures used to go through writeBrief, whose ON CONFLICT sets every
+   * column from EXCLUDED. So a company with a perfectly good brief — facts,
+   * evidence, a real fit score — had all of it overwritten with NULLs the
+   * moment ANY later attempt failed. In the pilot, Venkateshwara Hatcheries
+   * had been scored at 0.72 for AI Automations; a re-run hit the token cap,
+   * the catch block called writeBrief, and the brief became "No fit" with an
+   * empty fit map. The research was not just wasted, it was deleted — and by
+   * an error that had nothing to do with that company.
+   *
+   * So: the error and the run id are recorded, and NOTHING else moves. A row
+   * that already carries facts keeps its status too — it is still a real
+   * brief; a retry falling over does not un-know what we learned.
+   */
+  private static async writeFailure(
+    db: ReturnType<typeof createTenantDb>,
+    tenantId: string,
+    isLive: boolean,
+    prospectId: number,
+    runId: string,
+    status: 'extract_failed' | 'unreadable',
+    domain: string | null,
+    error: string,
+  ): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.query(
+        `INSERT INTO gt_account_briefs
+           (tenant_id, is_live, prospect_id, run_id, domain, status, error, fetched_at)
+         VALUES
+           ($tenant_id, $is_live, $prospect_id, $run_id, $domain, $status, $error, now())
+         ON CONFLICT (tenant_id, is_live, prospect_id) DO UPDATE SET
+            run_id     = EXCLUDED.run_id,
+            error      = EXCLUDED.error,
+            -- Facts already gathered mean this is still a brief. Only a row
+            -- that never got anywhere becomes a failure row.
+            status     = CASE WHEN gt_account_briefs.facts_at IS NOT NULL
+                              THEN gt_account_briefs.status
+                              ELSE EXCLUDED.status END,
+            updated_at = now()`,
+        {
+          tenant_id: tenantId, is_live: isLive, prospect_id: prospectId,
+          run_id: runId, domain, status, error: error.slice(0, 500),
         },
       );
     });

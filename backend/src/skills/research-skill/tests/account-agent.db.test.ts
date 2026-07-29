@@ -1049,3 +1049,61 @@ maybe('running out of budget', () => {
     expect(output.stopped_for_budget).toBe(false);
   });
 });
+
+/* ── A failure must not delete what an earlier run earned ───────────── */
+
+maybe('failures are non-destructive', () => {
+  beforeEach(async () => { await pool.query('DELETE FROM gt_account_briefs'); });
+
+  const researchOk = async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+  };
+
+  // Venkateshwara Hatcheries, from the pilot: scored 0.72 for AI Automations,
+  // then a re-run hit the token cap, the catch block overwrote the row, and
+  // the brief became "No fit" with an empty fit map. The research was not
+  // wasted, it was DELETED — by an error that had nothing to do with them.
+  it('keeps the facts and the fit when a later attempt falls over', async () => {
+    await researchOk();
+    const before = (await briefs())[0];
+    expect(before.recommended_offer).toBe('cdo-as-a-service');
+
+    // Force a re-crawl that fails at the LLM.
+    fetched.length = 0;
+    llmQueue = [];   // the stub throws: 'stub LLM: nothing queued'
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1], refresh: true }, await newRun());
+
+    const after = (await briefs())[0];
+    expect(after.recommended_offer).toBe('cdo-as-a-service');
+    expect(after.what_they_make).toBe(before.what_they_make);
+    expect(after.fit).toEqual(before.fit);
+    expect(after.raw_evidence).toEqual(before.raw_evidence);
+    // Still a real brief — and the failure is recorded on it, not instead of it.
+    expect(after.status).toBe('drafted');
+    expect(after.error).toMatch(/nothing queued/);
+  });
+
+  it('keeps a brief when the site stops answering', async () => {
+    await researchOk();
+    siteText = {};   // every address now fails
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1], refresh: true }, await newRun());
+
+    const after = (await briefs())[0];
+    expect(after.what_they_make).toBe('Active pharmaceutical ingredients');
+    expect(after.status).toBe('drafted');
+    expect(after.error).toMatch(/No address answered/);
+  });
+
+  // A company that never got anywhere still becomes a failure row — that is
+  // the honest state, and it is what makes extract_failed retryable.
+  it('still records a first attempt that never got anywhere', async () => {
+    siteText = {};
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+
+    const row = (await briefs())[0];
+    expect(row.status).toBe('unreadable');
+    expect(row.facts_at).toBeNull();
+  });
+});

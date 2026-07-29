@@ -85,3 +85,4 @@ export { VdfToggleGroup, type VdfToggleGroupProps, type VdfToggleOption, type To
 export { VdfPageHeader, type VdfPageHeaderProps } from './page-header/VdfPageHeader';
 export { VdfSummaryCard, type VdfSummaryCardProps, type SummaryAccent } from './summary-card/VdfSummaryCard';
 export { VdfDashPanel, type VdfDashPanelProps } from './dash-panel/VdfDashPanel';
+export { VdfAgentActivity } from './agent-activity/VdfAgentActivity';

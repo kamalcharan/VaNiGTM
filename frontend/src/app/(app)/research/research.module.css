@@ -307,3 +307,32 @@
   display: flex; align-items: center; gap: 0.4rem;
   font-size: 0.78rem; color: var(--color-text-muted); cursor: pointer;
 }
+
+/* ── Picking the companies ──────────────────────────────────────────── */
+
+.pickList {
+  display: flex; flex-direction: column; gap: 0.3rem;
+  max-height: 55vh; overflow-y: auto;
+}
+.pickRow, .pickRowOn {
+  display: flex; align-items: center; gap: 0.7rem;
+  padding: 0.55rem 0.7rem; border-radius: 8px; cursor: pointer;
+  border: 1px solid transparent; font-size: 0.85rem;
+}
+.pickRow:hover { background: var(--color-surface); }
+.pickRowOn {
+  background: var(--color-surface);
+  border-color: var(--color-accent);
+}
+.pickName { flex: 1; color: var(--color-text); font-weight: 500; }
+.pickFooter {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; width: 100%; flex-wrap: wrap;
+}
+
+/* A brief that survived a failed retry: the content is real but older than it
+   looks, and saying nothing would make it read as freshly confirmed. */
+.retryNote {
+  margin-top: 0.4rem; font-size: 0.76rem; line-height: 1.45;
+  color: var(--color-warning, var(--color-text-muted));
+}
