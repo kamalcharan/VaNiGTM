@@ -94,16 +94,27 @@ Arc 1 gets states. That column costs nothing now and saves a backfill later.
 | UI | confirm/correct/reject on the dossier |
 | Done when | R-C1 holds: a brief that named nobody leaves the journey at `qualified` and says so — no `info@` guessing |
 
-### Phase 3 — The story, human-written *(unblocks the pilot)*
+### Phase 3 — The story: human-written, AI-recommended *(unblocks the pilot)*
+
+**Ruled:** the human writes the words. The agent recommends the **topic and
+context** — which angle, which evidence from the brief, which offer, which
+stage-appropriate asset. Not the prose.
+
+That split is not a compromise, it is the only part that can be tuned early.
+A topic recommendation is judged the moment a human accepts or discards it —
+a signal available at n=4. Prose can only be judged by reply rate, which
+needs ~20 concluded sends. So the recommender starts learning immediately
+while the generator waits for the pilot to answer.
 
 | | |
 |---|---|
 | Migrations | `gt_content_kinds` (+ seed `email`), `gt_journey_stories` |
-| Skill | `create_story`, `approve_story`, `list_stories` — **no generation** |
-| UI | write/edit/approve on the dossier; the journey's earlier stories visible while writing (R-S2) |
+| Skill | `create_story`, `approve_story`, `list_stories`, `recommend_topic` |
+| Agent | `STORY_TOPIC_REQUESTED` — proposes angle + evidence + asset, parks at `awaiting`. Never prose. |
+| UI | the recommendation beside an empty box the human types into; the journey's earlier stories visible while writing (R-S2) |
 | Done when | four pilot stories are written, approved, and the journeys read `ready` |
 
-**This is the phase that lets the pilot send.** Deliberately no LLM in it.
+**This is the phase that lets the pilot send.**
 
 ### Phase 4 — The campaign run *(delivery)*
 
@@ -194,9 +205,33 @@ library — both landed in Phases 1 and 7 — are the whole preparation.
 
 | Phase | State |
 |---|---|
-| D1–D6, D8 | awaiting ruling |
-| D7 | **ruled** — open kind registry (§1) |
-| Phases 1–8 | not started |
+| D1–D8 | **ruled** — proceeding on the recommendations in the design note |
+| **Phase 1 — journey ledger** | ✅ **backend done.** Migration 222, `journey-skill` (states / service / 3 functions), and the four existing flows wired in. 409 tests pass. UI outstanding. |
+| Phase 2 — the person | next |
+| Phase 3 — story (human-written, AI-recommended) | after 2 |
+| Phase 4 — campaign run | after 3 |
+| Phase 5 — stage decision | closes the cycle |
+| Phases 6–8 | the long game |
 
-Nothing is built until D1–D6 and D8 are ruled on. Phase 1 is the first
-thing that would be written.
+### Phase 1, as built
+
+- `gt_journeys` + `gt_journey_events` (migration 222), backfilled once from
+  prospects + briefs + touches, then owned by the ledger. Idempotent, and a
+  re-run cannot overwrite a state a human has since moved.
+- `arc` shipped; only Arc 1 has states.
+- `states.ts` — one state machine for the CHECK constraint, the API and the UI.
+- `journey.service.ts` — `ensureJourney` / `moveJourney` / `moveByProspect` /
+  `moveIfAt`. Takes the caller's `tx`, so a journey move commits with whatever
+  caused it.
+- Wired: `writeBrief → researched` (only from `sourced`), `decide_brief →
+  qualified | ruled_out`, `log_touch → waiting`, `set_touch_outcome →
+  answered`.
+
+**Two things the tests changed.** `reasonRequired` now also fires moving OUT
+of an exit — un-parking reverses a recorded judgement, and without it a
+cohort quietly refills with companies rejected for good cause. And
+`JourneyRow.id` was typed `number` while node-pg returns BIGINT as a string;
+coerced once at the boundary.
+
+**Outstanding for Phase 1:** the board UI (`/journeys`) and the journey panel
+on the dossier.
