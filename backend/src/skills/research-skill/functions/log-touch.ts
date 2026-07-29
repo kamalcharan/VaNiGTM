@@ -10,6 +10,7 @@
 
 import { SkillContext } from '../../../shared/types';
 import { CHANNELS, isChannel } from '../touches';
+import { moveByProspect } from '../../journey-skill/journey.service';
 
 interface LogTouchParams {
   prospect_id: number;
@@ -69,9 +70,27 @@ export async function log_touch(params: LogTouchParams, ctx: SkillContext) {
       },
     );
 
+    // The journey moves with the touch, in the same transaction. A send that
+    // committed while the journey stayed at `ready` would leave the ledger
+    // quietly wrong, and the ledger is the thing everything downstream reads.
+    //
+    // Forward skips are legal here on purpose: somebody who emailed a company
+    // without walking it through the states still moved that relationship,
+    // and refusing the move would only make the record lie about it.
+    const journey = await moveByProspect(
+      tx, { tenant_id: ctx.tenant_id, is_live: ctx.is_live }, prospectId, 'waiting',
+      {
+        actor: 'human',
+        actor_id: ctx.user_id,
+        offer: String(params.offer ?? '').trim() || null,
+        payload: { touch_id: Number(res.rows[0].id), channel: params.channel },
+      },
+    );
+
     return {
       touch_id: Number(res.rows[0].id),
       had_brief: res.rows[0].had_brief,
+      journey_state: journey?.state ?? 'waiting',
       message: res.rows[0].had_brief
         ? 'Logged as a researched send — it counts toward the pilot criteria.'
         : 'Logged. This company has no brief, so it sits OUTSIDE the researched '

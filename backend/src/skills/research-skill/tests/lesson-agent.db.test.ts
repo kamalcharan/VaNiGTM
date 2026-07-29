@@ -60,7 +60,8 @@ CREATE TABLE gt_prospects (id BIGSERIAL PRIMARY KEY,
   tenant_id UUID NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
   is_live BOOLEAN NOT NULL DEFAULT false, is_active BOOLEAN NOT NULL DEFAULT true,
   name VARCHAR(300) NOT NULL, domain_normalized VARCHAR(255), website VARCHAR(500),
-  industry_raw TEXT, completeness NUMERIC(4,3));
+  industry_raw TEXT, completeness NUMERIC(4,3),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now());
 CREATE TABLE gt_agent_runs (id BIGSERIAL PRIMARY KEY, tenant_id UUID, agent_name TEXT,
   event_id TEXT, status TEXT DEFAULT 'queued', steps JSONB NOT NULL DEFAULT '[]'::jsonb,
   checkpoint JSONB, awaiting_input JSONB, retry_count INT DEFAULT 0, last_checkpoint TEXT,

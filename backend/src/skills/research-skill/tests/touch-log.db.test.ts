@@ -39,7 +39,12 @@ CREATE TABLE gt_prospects (id BIGSERIAL PRIMARY KEY,
   tenant_id UUID NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
   is_live BOOLEAN NOT NULL DEFAULT false, is_active BOOLEAN NOT NULL DEFAULT true,
   ref VARCHAR(32), name VARCHAR(300) NOT NULL, domain_normalized VARCHAR(255),
-  website VARCHAR(500), industry_raw TEXT, completeness NUMERIC(4,3));
+  website VARCHAR(500), industry_raw TEXT, completeness NUMERIC(4,3),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE gt_contacts (id BIGSERIAL PRIMARY KEY,
+  tenant_id UUID NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
+  is_live BOOLEAN NOT NULL DEFAULT false, full_name VARCHAR(200),
+  prospect_id BIGINT REFERENCES gt_prospects(id) ON DELETE SET NULL);
 CREATE FUNCTION set_tenant_context(t UUID) RETURNS void AS $$
   BEGIN PERFORM set_config('app.current_tenant_id', t::text, true); END $$ LANGUAGE plpgsql;
 `;
@@ -62,7 +67,7 @@ beforeAll(async () => {
   await pool.query(BASE);
   for (const m of ['207_gt_account_briefs.sql', '210_brief_extract_failed.sql',
                    '211_brief_facts_and_judgement.sql', '213_brief_human_offer.sql',
-                   '221_gt_touch_log.sql']) {
+                   '221_gt_touch_log.sql', '222_gt_journeys.sql']) {
     await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
   }
 

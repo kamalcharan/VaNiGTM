@@ -9,6 +9,7 @@
 
 import { SkillContext } from '../../../shared/types';
 import { OUTCOMES, isOutcome } from '../touches';
+import { moveByProspect } from '../../journey-skill/journey.service';
 
 interface SetOutcomeParams {
   touch_id: number;
@@ -30,7 +31,7 @@ export async function set_touch_outcome(params: SetOutcomeParams, ctx: SkillCont
   }
 
   return ctx.db.transaction(async (tx) => {
-    const res = await tx.query<{ id: number; outcome: string | null }>(
+    const res = await tx.query<{ id: number; outcome: string | null; prospect_id: number }>(
       // outcome and outcome_at move together — the CHECK constraint enforces
       // it, and "how long did it take" is the second question anyone asks
       // after the rate.
@@ -41,7 +42,7 @@ export async function set_touch_outcome(params: SetOutcomeParams, ctx: SkillCont
               notes      = COALESCE(NULLIF($notes, ''), notes),
               updated_at = now()
         WHERE id = $id AND tenant_id = $tenant_id AND is_live = $is_live
-        RETURNING id, outcome`,
+        RETURNING id, outcome, prospect_id`,
       {
         id, outcome: clearing ? null : params.outcome,
         outcome_at: params.outcome_at ?? null,
@@ -51,9 +52,30 @@ export async function set_touch_outcome(params: SetOutcomeParams, ctx: SkillCont
     );
     if (res.rows.length === 0) throw new Error('No such touch.');
 
+    // An answer is the event the whole journey has been waiting for — it is
+    // what opens the stage decision (another story, advance, or stop). Moving
+    // the journey here rather than on a later sweep means the decision is
+    // owed the moment the answer is recorded.
+    //
+    // Clearing an outcome walks it back, which is a backward move and
+    // therefore carries its reason (R-J1). A mis-clicked outcome must be
+    // reversible without leaving the journey stranded at `answered`.
+    const journey = await moveByProspect(
+      tx, { tenant_id: ctx.tenant_id, is_live: ctx.is_live },
+      Number(res.rows[0].prospect_id),
+      clearing ? 'waiting' : 'answered',
+      {
+        actor: 'human',
+        actor_id: ctx.user_id,
+        reason: clearing ? 'Outcome cleared — back to waiting' : null,
+        payload: { touch_id: id, outcome: res.rows[0].outcome },
+      },
+    );
+
     return {
       touch_id: id,
       outcome: res.rows[0].outcome,
+      journey_state: journey?.state ?? null,
       recipe: 'touch-card' as const,
     };
   });

@@ -55,6 +55,7 @@ import {
   judgementFingerprint,
 } from './corrections';
 import { readLessons, lessonsForPrompt } from './lessons';
+import { moveIfAt } from '../journey-skill/journey.service';
 
 export const ACCOUNT_RESEARCH_AGENT_NAME = 'ACCOUNT_RESEARCH_REQUESTED';
 
@@ -1358,6 +1359,31 @@ export class AccountResearchAgent {
           offers_fingerprint: brief.offers_fingerprint ?? null,
         },
       );
+
+      // A brief now exists, so the journey owes a human decision rather than
+      // research. Same transaction as the brief write: a journey saying
+      // "researched" with no brief behind it would send somebody looking for
+      // a decision they cannot make.
+      //
+      // ONLY from `sourced`. Re-researching a company somebody has already
+      // been emailed genuinely replaces the knowledge, but it does not
+      // un-send the email — dragging that journey back to `researched` would
+      // overwrite a real event with a derived one.
+      //
+      // Deliberately NOT applied to 'extract_failed'. That status means OUR
+      // pipeline fell over, not that we learned anything — research is still
+      // owed, and migration 210 exists precisely so a crash never reads as a
+      // finding about the company.
+      if (brief.status !== 'extract_failed') {
+        await moveIfAt(
+          tx, { tenant_id: tenantId, is_live: isLive }, prospectId,
+          ['sourced'], 'researched',
+          {
+            actor: 'agent',
+            payload: { run_id: runId, status: brief.status ?? 'drafted' },
+          },
+        );
+      }
     });
   }
 

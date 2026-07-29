@@ -110,7 +110,8 @@ CREATE TABLE gt_prospects (id BIGSERIAL PRIMARY KEY,
   is_live BOOLEAN NOT NULL DEFAULT false, is_active BOOLEAN NOT NULL DEFAULT true,
   ref VARCHAR(32), name VARCHAR(300) NOT NULL,
   domain_normalized VARCHAR(255), website VARCHAR(500),
-  industry_raw TEXT, completeness NUMERIC(4,3));
+  industry_raw TEXT, completeness NUMERIC(4,3),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now());
 CREATE TABLE gt_prospect_tags (prospect_id BIGINT REFERENCES gt_prospects(id) ON DELETE CASCADE,
   tag_id BIGINT, tenant_id UUID, PRIMARY KEY (prospect_id, tag_id));
 CREATE TABLE gt_agent_runs (id BIGSERIAL PRIMARY KEY, tenant_id UUID, agent_name TEXT,
@@ -125,6 +126,10 @@ CREATE TABLE gt_offers (id BIGSERIAL PRIMARY KEY, tenant_id UUID NOT NULL,
   price_band TEXT, proof TEXT, is_active BOOLEAN NOT NULL DEFAULT true,
   sort_order SMALLINT NOT NULL DEFAULT 0, created_by UUID,
   created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE gt_contacts (id BIGSERIAL PRIMARY KEY,
+  tenant_id UUID NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
+  is_live BOOLEAN NOT NULL DEFAULT false, full_name VARCHAR(200),
+  prospect_id BIGINT REFERENCES gt_prospects(id) ON DELETE SET NULL);
 CREATE FUNCTION set_tenant_context(t UUID) RETURNS void AS $$
   BEGIN PERFORM set_config('app.current_tenant_id', t::text, true); END $$ LANGUAGE plpgsql;
 `;
@@ -149,7 +154,10 @@ beforeAll(async () => {
   // including 210, which is what makes 'extract_failed' a legal status.
   for (const m of ['207_gt_account_briefs.sql', '210_brief_extract_failed.sql',
                    '211_brief_facts_and_judgement.sql', '212_offer_commitment.sql',
-                   '213_brief_human_offer.sql', '214_gt_fit_lessons.sql']) {
+                   '213_brief_human_offer.sql', '214_gt_fit_lessons.sql',
+                   // The journey ledger: writeBrief now moves a sourced
+                   // journey to researched in the same transaction.
+                   '221_gt_touch_log.sql', '222_gt_journeys.sql']) {
     await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
   }
 

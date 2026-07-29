@@ -11,6 +11,7 @@
  */
 
 import { SkillContext } from '../../../shared/types';
+import { moveByProspect } from '../../journey-skill/journey.service';
 
 interface DecideBriefParams {
   brief_id: number;
@@ -50,7 +51,7 @@ export async function decide_brief(params: DecideBriefParams, ctx: SkillContext)
 
     // tenant_id and is_live in the WHERE clause ARE the authorisation — a
     // brief id from another tenant simply matches nothing.
-    const res = await tx.query<{ id: number }>(
+    const res = await tx.query<{ id: number; prospect_id: number; offer: string | null }>(
       // recommended_offer is NOT touched. It is what the agent proposed, and
       // overwriting it with the human's choice destroyed the single most
       // useful thing the pilot produces — the disagreement between the two.
@@ -64,7 +65,8 @@ export async function decide_brief(params: DecideBriefParams, ctx: SkillContext)
               decided_at        = now(),
               updated_at        = now()
         WHERE id = $brief_id AND tenant_id = $tenant_id AND is_live = $is_live
-        RETURNING id`,
+        RETURNING id, prospect_id,
+                  COALESCE(human_offer, recommended_offer) AS offer`,
       {
         brief_id: briefId, decision: params.decision,
         offer_key: params.offer_key ?? null, note,
@@ -72,6 +74,34 @@ export async function decide_brief(params: DecideBriefParams, ctx: SkillContext)
       },
     );
     if (res.rows.length === 0) throw new Error('No such brief.');
-    return { brief_id: briefId, decision: params.decision, recipe: 'brief-card' as const };
+
+    // This ruling IS the journey's `qualified` gate. Both writes commit
+    // together — a journey that advanced for a decision which then rolled
+    // back is exactly the drift the ledger exists to prevent.
+    //
+    // The offer is COPIED onto the journey, not joined. A later re-score
+    // must never change what we are selling to an account already contacted
+    // (design note R-J5 / R7).
+    const toState = params.decision === 'approved' ? 'qualified' : 'ruled_out';
+    const journey = await moveByProspect(
+      tx, { tenant_id: ctx.tenant_id, is_live: ctx.is_live },
+      Number(res.rows[0].prospect_id), toState,
+      {
+        actor: 'human',
+        actor_id: ctx.user_id,
+        // The reason requirement on ruled_out is already satisfied: the
+        // note is mandatory above for anything but an approval.
+        reason: toState === 'ruled_out' ? note : null,
+        offer: toState === 'qualified' ? res.rows[0].offer : null,
+        payload: { brief_id: briefId, decision: params.decision },
+      },
+    );
+
+    return {
+      brief_id: briefId,
+      decision: params.decision,
+      journey_state: journey?.state ?? null,
+      recipe: 'brief-card' as const,
+    };
   });
 }
