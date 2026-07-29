@@ -14,6 +14,8 @@
 
 import { SkillContext } from '../../../shared/types';
 import { readOffers, catalogueProblems, catalogueFingerprint } from '../offer-catalogue';
+import { readCorrections, correctionsFingerprint, judgementFingerprint } from '../corrections';
+import { readLessons } from '../lessons';
 import { emitEvent } from '../../../agent-core/event.store';
 import { getPool } from '../../../db/pool';
 
@@ -96,6 +98,9 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
                        AND b.is_live     = $is_live
                        AND b.facts_at IS NOT NULL
                        AND b.status NOT IN ('unreadable','extract_failed')
+                       -- A brief the reviewer has ruled on is never
+                       -- re-judged; their decision stands.
+                       AND b.decided_at IS NULL
                        AND b.offers_fingerprint IS DISTINCT FROM $fingerprint))::text
                                                                    AS needs_rescore
        FROM gt_prospects p
@@ -108,7 +113,16 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
     {
       tenant_id: ctx.tenant_id, is_live: ctx.is_live,
       tag_id: tagId, ids: ids.length > 0 ? ids : null,
-      fingerprint: await catalogueFingerprint(ctx.db, ctx.tenant_id),
+      // The same stamp the agent writes: offers AND what the reviewer has
+      // taught it. Ratify a lesson and the undecided briefs go stale here,
+      // which is what puts "N re-scoring" on screen before the button.
+      fingerprint: judgementFingerprint(
+        await catalogueFingerprint(ctx.db, ctx.tenant_id),
+        correctionsFingerprint(
+          await readCorrections(ctx.db, ctx.tenant_id, ctx.is_live),
+          await readLessons(ctx.db, ctx.tenant_id, ctx.is_live),
+        ),
+      ),
     },
   );
 

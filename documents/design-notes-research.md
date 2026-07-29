@@ -217,7 +217,8 @@ column now.
 | # | Item | Why then |
 |---|---|---|
 | 5 | ~~Split facts from judgement~~ | ✅ **DONE 2026-07-29.** Migration 211. `facts_at` / `judged_at` / `offers_fingerprint` (hash of key + updated_at per active offer). Editing an offer stales every judgement and nothing else, so a re-score is ONE call per company and zero crawling. Also fixed a silent data loss: `certifications` were extracted, fed to the fit prompt, and never stored — for a pharma company those ARE the scale signal |
-| 5b | ~~Fit scores bunched — one offer won everything by 0.03~~ | ✅ **DONE 2026-07-29.** Migration 212. See §9 below |
+| 5b | ~~Fit scores bunched — one offer won everything by 0.03~~ | ✅ **DONE 2026-07-29.** Migration 212. See §9 |
+| 5c | ~~Correction loop / Learning Graph~~ | ✅ **DONE 2026-07-29.** Migrations 213–215. The agent derives rules from your brief decisions; you ratify, reword or throw out each one; only ratified rules score anything. See §10 |
 | 6 | SearXNG as a second source | Fixes the unreachable fit signals. Deliberately after the first ten: if the briefs are already specific enough to write from, this is refinement not necessity |
 | 7 | Prospect dossier page | Replaces both modals |
 | 8 | `industry_sub` stored + filterable on `/prospects` | Enables segments |
@@ -322,3 +323,91 @@ the same two appear as stat cards. **`fit_unclear` on more than about half the
 batch is a verdict on the offers, not on the companies** — it means the offers
 do not discriminate, and rewriting signals will do more than any further
 scoring work.
+
+---
+
+## 10. The correction loop — the Learning Graph
+
+*(Migrations 213–215, 2026-07-29.)*
+
+### What was being thrown away
+
+`decide_brief` did `recommended_offer = COALESCE($offer_key, recommended_offer)`.
+The moment a reviewer approved a company under a different offer than the agent
+proposed, **the agent's proposal was gone**. The single most useful thing the
+pilot produces — the disagreement, and the reviewer's reason for it — was being
+overwritten by the correction itself.
+
+Migration 213 splits them. `recommended_offer` is the agent's word and is never
+rewritten by a human; `human_offer` is the reviewer's; reads take
+`COALESCE(human_offer, recommended_offer)`. Same posture as best-fit vs
+recommended: **a judgement is a record, not a mutable field.**
+
+### Three layers, and why it is not just a prompt trick
+
+| Layer | What it is | Where |
+|---|---|---|
+| **Rulings** | The last 8 disagreements + 4 confirmations, verbatim, in the fit prompt | `corrections.ts` |
+| **Lessons** | Rules the agent DERIVES from the full decision history, that a human ratifies | `lesson.agent.ts` → `gt_fit_lessons` |
+| **Staleness** | Both feed `judgementFingerprint` beside the offers, so ratifying a rule offers a re-score | `corrections.ts` |
+
+Rulings alone are **recency, not memory**: the eleventh ruling pushes out the
+first, and what the reviewer taught us in week one is gone. A lesson is the
+generalisation — it survives its own evidence scrolling away, and unlike an
+example it can be edited, argued with, or thrown out.
+
+### The agent proposes; it never ratifies
+
+`FIT_LESSONS_REQUESTED` → the agent reads every decided brief, proposes at most
+five rules, each carrying the companies it was inferred from, at
+`status='proposed'`. **Only `accepted` rows reach the fit prompt.**
+
+A model that derives a rule from its own corrected mistakes and then obeys it,
+with nobody in between, is how a system drifts into a policy nobody chose — and
+it does so confidently and invisibly. This is the same agent-produces /
+human-confirms model as onboarding (CLAUDE.md rule 9).
+
+Four gates on a proposal:
+
+1. **Evidence is mandatory.** A rule must cite companies from the decision
+   history; one citing a company nobody decided on is dropped as invented, and
+   the drop is visible in the run feed. An unfalsifiable rule does not get to
+   decide who is contacted.
+2. **A floor of 6 decisions.** Below that a "rule" is a description of a
+   handful of companies. It refuses and says so rather than inventing a policy
+   out of a Tuesday afternoon.
+3. **Rewording is first-class.** The inference is usually close and rarely
+   exactly right — "they reject small companies" wants to be "reject
+   single-plant companies with no stated exports". The agent's original stays
+   in `lesson`, the reviewer's in `edited_lesson`, and the gap between them is
+   the most honest measure of how good the inference was.
+4. **Rejected rules are kept.** Delete them and the same proposal returns next
+   week, forever.
+
+### Decided briefs are never re-judged
+
+Ratifying a lesson stales every **undecided** judgement, so the Research screen
+offers to re-score them — one LLM call each, no crawling (migration 211). A
+brief a human has ruled on is skipped: re-scoring it would move the offer out
+from under a decision that named a different one. That skip is also a bug fix —
+before this, editing an offer silently overwrote a reviewer's reassignment.
+
+### What this is not
+
+Not training, not fine-tuning, not statistics. At a hundred companies ten
+examples are a demonstration of how one reviewer thinks, and the prompt says so
+in those words — a model shown eight rejections with no framing will infer
+"reject things". Disagreements and confirmations are capped **separately** for
+the same reason: take the ten most recent rulings outright and one bad
+afternoon becomes the model's entire picture of what the reviewer wants.
+
+### Still open
+
+- No `fit_unclear` → lesson path yet. When the top two offers tie repeatedly on
+  the same pair, that is itself a lesson ("these two are not distinguishable on
+  a website — always lead with the audit"), and the agent does not look for it.
+- Lessons are per tenant and per environment. Whether a sandbox lesson should
+  carry to live is a real question and is deliberately answered "no" for now.
+- Nothing decays. A rule accepted in month one still applies in month six even
+  if every decision since has contradicted it. A confidence that erodes when
+  new rulings disagree is the obvious next step and is not built.

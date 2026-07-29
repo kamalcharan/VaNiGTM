@@ -111,7 +111,8 @@ beforeAll(async () => {
   // The real migrations, so the shipped constraints are what is tested —
   // including 210, which is what makes 'extract_failed' a legal status.
   for (const m of ['207_gt_account_briefs.sql', '210_brief_extract_failed.sql',
-                   '211_brief_facts_and_judgement.sql', '212_offer_commitment.sql']) {
+                   '211_brief_facts_and_judgement.sql', '212_offer_commitment.sql',
+                   '213_brief_human_offer.sql', '214_gt_fit_lessons.sql']) {
     await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
   }
 
@@ -767,5 +768,142 @@ maybe('what fits best vs what to open with', () => {
 
     expect(body.indexOf('id: digital-systems-audit'))
       .toBeLessThan(body.indexOf('id: cdo-as-a-service'));
+  });
+});
+
+/* ── The correction loop (migrations 213-215) ───────────────────────── */
+
+maybe('what a human ruled is remembered, not overwritten', () => {
+  beforeEach(async () => {
+    await pool.query('DELETE FROM gt_account_briefs');
+    await pool.query('DELETE FROM gt_fit_lessons');
+  });
+
+  const researched = async (id: number, domain: string, offer: string | null) => {
+    siteText = { [`https://${domain}`]: siteBody('APIs') };
+    queueHealthyAccount('two units in Medak district', offer);
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [id] }, await newRun());
+  };
+
+  // The defect migration 213 exists for: decide_brief overwrote the agent's
+  // recommendation with the human's, destroying the disagreement — the single
+  // most useful thing the pilot produces.
+  it('keeps the agent\'s proposal when a human reassigns the offer', async () => {
+    await researched(1, 'alpha.com', 'cdo-as-a-service');
+    await pool.query(
+      `UPDATE gt_account_briefs
+          SET status='approved', human_offer='digital-systems-audit',
+              decision_note='too early for a retainer', decided_at=now()
+        WHERE tenant_id=$1`, [A]);
+
+    const row = (await briefs())[0];
+    expect(row.recommended_offer).toBe('cdo-as-a-service');   // the agent's word
+    expect(row.human_offer).toBe('digital-systems-audit');    // the human's
+  });
+
+  it('shows the fit prompt what the reviewer has already decided', async () => {
+    // Two rulings, so there is something to show at all.
+    await researched(1, 'alpha.com', 'cdo-as-a-service');
+    await pool.query(
+      `UPDATE gt_account_briefs SET status='no_contact',
+              decision_note='single unit, no exports — too small', decided_at=now()
+        WHERE tenant_id=$1 AND prospect_id=1`, [A]);
+
+    const { callLLMValidated } = jest.requireMock('../../../agent-core/llm.client');
+    callLLMValidated.mock.calls.length = 0;
+    await researched(2, 'beta.com', 'cdo-as-a-service');
+
+    const fit = callLLMValidated.mock.calls
+      .map((c: any) => c[0].messages[0].content as string)
+      .find((c: string) => c.includes('OUR OFFERS:'))!;
+
+    expect(fit).toContain('HOW THIS REVIEWER HAS ACTUALLY DECIDED');
+    expect(fit).toContain('Alpha API');
+    expect(fit).toContain('single unit, no exports — too small');
+    // The framing that stops eight rejections reading as "reject everything".
+    expect(fit).toMatch(/NOT a rule and NOT a quota/);
+  });
+
+  it('shows ratified lessons as rules, and never shows unratified ones', async () => {
+    await pool.query(
+      `INSERT INTO gt_fit_lessons (tenant_id,is_live,lesson,kind,lesson_key,status)
+       VALUES ($1,false,'Score the retainer below 0.3 for single-plant companies',
+               'sizing','key-accepted','accepted'),
+              ($1,false,'Never approve anyone in Telangana at all',
+               'disqualifier','key-proposed','proposed')`, [A]);
+
+    const { callLLMValidated } = jest.requireMock('../../../agent-core/llm.client');
+    callLLMValidated.mock.calls.length = 0;
+    await researched(1, 'alpha.com', 'cdo-as-a-service');
+
+    const fit = callLLMValidated.mock.calls
+      .map((c: any) => c[0].messages[0].content as string)
+      .find((c: string) => c.includes('OUR OFFERS:'))!;
+
+    expect(fit).toContain('RULES THIS REVIEWER HAS CONFIRMED');
+    expect(fit).toContain('single-plant companies');
+    // THE assertion: a proposal nobody has accepted cannot influence a score.
+    expect(fit).not.toContain('Never approve anyone in Telangana');
+  });
+
+  // A ruling stands until the human changes it. Re-scoring a decided brief
+  // would move the offer out from under a decision that named a different one.
+  it('never re-judges a brief a human has ruled on', async () => {
+    await researched(1, 'alpha.com', 'cdo-as-a-service');
+    await pool.query(
+      `UPDATE gt_account_briefs SET status='approved',
+              human_offer='digital-systems-audit', decided_at=now()
+        WHERE tenant_id=$1`, [A]);
+
+    // Ratifying a lesson stales every judgement made before it.
+    await pool.query(
+      `INSERT INTO gt_fit_lessons (tenant_id,is_live,lesson,kind,lesson_key,status)
+       VALUES ($1,false,'Score the retainer below 0.3 for single-plant companies',
+               'sizing','key-x','accepted')`, [A]);
+
+    fetched.length = 0;
+    llmQueue = [];
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+
+    expect(fetched).toHaveLength(0);   // and no LLM call, or the stub throws
+    const row = (await briefs())[0];
+    expect(row.human_offer).toBe('digital-systems-audit');
+    expect(row.status).toBe('approved');
+  });
+
+  // The other half of the same rule: an UNDECIDED brief does go stale, which
+  // is what puts "N re-scoring" on the screen.
+  it('re-scores an undecided brief when a lesson is ratified', async () => {
+    await researched(1, 'alpha.com', 'cdo-as-a-service');
+    await pool.query(
+      `INSERT INTO gt_fit_lessons (tenant_id,is_live,lesson,kind,lesson_key,status)
+       VALUES ($1,false,'Score the retainer below 0.3 for single-plant companies',
+               'sizing','key-y','accepted')`, [A]);
+
+    fetched.length = 0;
+    llmQueue = [{ scores: [], recommended_offer: null, reason: 'too small under the new rule' }];
+    const runId = await newRun();
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, runId);
+
+    expect(fetched).toHaveLength(0);          // re-scored, never re-crawled
+    expect(llmQueue).toHaveLength(0);         // exactly one call
+    const out = (await pool.query(`SELECT output FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
+    expect(out.output.rescored_without_crawling).toBe(1);
+  });
+
+  it('never reads another tenant\'s decisions', async () => {
+    await pool.query(
+      `INSERT INTO gt_fit_lessons (tenant_id,is_live,lesson,kind,lesson_key,status)
+       VALUES ($1,false,'A rule belonging to somebody else entirely',
+               'sizing','key-theirs','accepted')`, [B]);
+
+    const { callLLMValidated } = jest.requireMock('../../../agent-core/llm.client');
+    callLLMValidated.mock.calls.length = 0;
+    await researched(1, 'alpha.com', 'cdo-as-a-service');
+
+    const fit = callLLMValidated.mock.calls
+      .map((c: any) => c[0].messages[0].content as string)
+      .find((c: string) => c.includes('OUR OFFERS:'))!;
+    expect(fit).not.toContain('somebody else entirely');
   });
 });

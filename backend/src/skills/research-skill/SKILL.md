@@ -125,6 +125,36 @@ offer rendered first in the prompt. Two fixes, both outside the model:
 The rule only ever narrows an existing yes. A "no fit" verdict stays a no; it
 picks a smaller ask, it never manufactures one.
 
+### The correction loop (migrations 213–215)
+
+Every fit judgement is scored against three things now: the offers, the
+reviewer's recent rulings, and the rules they have ratified.
+
+**`FIT_LESSONS_REQUESTED` → `lesson.agent.ts`.** Reads every decided brief,
+proposes at most five RULES with the companies each was inferred from, and
+writes them to `gt_fit_lessons` at `status='proposed'`. A proposal citing a
+company that was never decided on is dropped as invented — the same evidence
+gate the account agent applies to excerpts. Below `MIN_DECISIONS` (6) it
+refuses and says so; a rule drawn from four companies is a description.
+
+**A human ratifies.** `decide_lesson` accepts, rewords or rejects. Only
+`accepted` rows reach the fit prompt. The agent never ratifies its own
+inference — a model that derives rules from its corrected mistakes and then
+obeys them, with nobody in between, drifts into a policy nobody chose. A
+reworded rule keeps the agent's original in `lesson` so the gap between what
+it inferred and what the reviewer meant stays visible. Rejected rules are
+KEPT, or the same proposal returns every week.
+
+**`recommended_offer` is never overwritten by a human** (migration 213). It is
+the agent's word; `human_offer` is the reviewer's; reads take
+`COALESCE(human_offer, recommended_offer)`. The disagreement between the two
+is what the loop learns from, and `decide_brief` used to destroy it.
+
+**A decided brief is never re-judged.** Ratifying a lesson stales every
+UNDECIDED judgement (they feed `judgementFingerprint` alongside the offers),
+so the Research screen offers a re-score — one LLM call each, no crawling. A
+ruling stands until the reviewer changes it.
+
 ## Functions
 
 ### get_offers
@@ -151,6 +181,21 @@ A human's ruling on one brief. Ruling a company out requires a reason.
 Queue the research batch for the worker. Validates the offers first, and reports the whole split — selected, reachable, already researched, to do — before anything runs. preview answers without queueing.
 - Parameters: tag_id (optional, number), prospect_ids (optional, array), limit (optional, number), refresh (optional, boolean), preview (optional, boolean)
 - Returns: { selected, reachable, no_website, already_researched, extraction_failed, no_address_answered, needs_rescore, to_research, queued, event_id, recipe: 'research-queued' }
+
+### get_lessons
+The Learning Graph as a review queue: rules the agent inferred from your brief decisions, in every state. `can_propose` says whether there are enough decisions yet, so the screen can explain a disabled button.
+- Parameters: none
+- Returns: { lessons, proposed, accepted, rejected, decisions, can_propose, min_decisions, recipe: 'lesson-list' }
+
+### propose_lessons
+Ask the agent what it has learned from your decisions. Queues `FIT_LESSONS_REQUESTED`; refuses below `MIN_DECISIONS` rulings, because a "rule" drawn from four companies is a description, not a rule.
+- Parameters: none
+- Returns: { event_id, decisions, recipe: 'lessons-queued' }
+
+### decide_lesson
+Ratify, reword or throw out one proposed rule. Only accepted rules reach the fit prompt. Rewording is first-class — the agent's original stays in `lesson`, yours goes in `edited_lesson`. Rejected rules are kept so the same proposal is not made again.
+- Parameters: lesson_id (required, number), decision (required, string — accepted | rejected), edited_lesson (optional, string)
+- Returns: { lesson_id, decision, lesson, rescore_available, recipe: 'lesson-card' }
 
 ### batch_status
 Whether the last batch is queued, running, finished — or sitting in a queue nobody is reading because the worker is down.

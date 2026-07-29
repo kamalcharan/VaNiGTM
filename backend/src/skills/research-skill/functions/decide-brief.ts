@@ -51,9 +51,14 @@ export async function decide_brief(params: DecideBriefParams, ctx: SkillContext)
     // tenant_id and is_live in the WHERE clause ARE the authorisation — a
     // brief id from another tenant simply matches nothing.
     const res = await tx.query<{ id: number }>(
+      // recommended_offer is NOT touched. It is what the agent proposed, and
+      // overwriting it with the human's choice destroyed the single most
+      // useful thing the pilot produces — the disagreement between the two.
+      // The reviewer's choice goes in human_offer (migration 213), and reads
+      // take COALESCE(human_offer, recommended_offer).
       `UPDATE gt_account_briefs
           SET status            = $decision,
-              recommended_offer = COALESCE($offer_key, recommended_offer),
+              human_offer       = COALESCE($offer_key, human_offer),
               decision_note     = NULLIF($note, ''),
               decided_by        = $user_id,
               decided_at        = now(),

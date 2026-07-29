@@ -25,6 +25,7 @@ import { VaniAgent } from '../skills/vani-skill/vani.agent';
 import { IngestionAgent } from '../skills/ingestion-skill/ingestion.agent';
 import { CompetitorResearchAgent } from '../skills/research-skill/research.agent';
 import { AccountResearchAgent } from '../skills/research-skill/account.agent';
+import { FitLessonAgent } from '../skills/research-skill/lesson.agent';
 import { recalculateProfileFromNodes } from '../skills/profile-skill/profile.service';
 import { generateClusters, listClusters } from '../skills/profile-skill/cluster.service';
 
@@ -131,6 +132,13 @@ const AGENT_REGISTRY: Record<string, AgentHandler> = {
   // cohort and checkpoints after each account.
   ACCOUNT_RESEARCH_REQUESTED: (pool, tenantId, payload, runId) =>
     AccountResearchAgent.run(pool, tenantId, payload, runId),
+
+  // The Learning Graph. Reads every brief the reviewer has ruled on and
+  // PROPOSES the rules behind those rulings, each carrying the companies it
+  // was inferred from. Nothing it proposes affects scoring until a human
+  // accepts it — the agent never ratifies its own inference.
+  FIT_LESSONS_REQUESTED: (pool, tenantId, payload, runId) =>
+    FitLessonAgent.run(pool, tenantId, payload, runId),
 
   // Fires after IngestionAgent.run() writes nodes from any source (Drive
   // file today; direct upload / URL once those entry points exist).

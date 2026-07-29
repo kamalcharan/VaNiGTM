@@ -37,7 +37,9 @@ export type EventType =
   // GTM pipeline v2 — outward competitor research (research-skill)
   | 'COMPETITOR_RESEARCH_REQUESTED'
   // Manufacturing pilot — per-company research over a tagged cohort
-  | 'ACCOUNT_RESEARCH_REQUESTED';
+  | 'ACCOUNT_RESEARCH_REQUESTED'
+  // Learning Graph — derive fit rules from a reviewer's brief decisions
+  | 'FIT_LESSONS_REQUESTED';
 
 export type SourceType = 'human' | 'agent' | 'cron' | 'system' | 'webhook';
 export type EventStatus = 'pending' | 'processing' | 'done' | 'failed';

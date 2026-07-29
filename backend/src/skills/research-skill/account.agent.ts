@@ -49,6 +49,11 @@ import {
   loadOfferCatalogue, catalogueForPrompt, catalogueFingerprint, chooseOffer,
   FIT_MARGIN, type OfferCatalogue,
 } from './offer-catalogue';
+import {
+  readCorrections, correctionsForPrompt, correctionsFingerprint,
+  judgementFingerprint,
+} from './corrections';
+import { readLessons, lessonsForPrompt } from './lessons';
 
 export const ACCOUNT_RESEARCH_AGENT_NAME = 'ACCOUNT_RESEARCH_REQUESTED';
 
@@ -259,6 +264,33 @@ export class AccountResearchAgent {
       status: 'ok',
     });
 
+    // ── What this reviewer has already decided ─────────────────────────
+    //
+    // Ratified lessons first — those are rules a human has agreed to, and
+    // they are what the fit prompt leans on. The raw rulings go in as the
+    // evidence underneath them, capped, so a lesson is never an assertion
+    // without cases.
+    const lessons = await readLessons(db, tenantId, isLive);
+    const corrections = await readCorrections(db, tenantId, isLive);
+    const offerName = (k: string | null): string =>
+      (k ? catalogue.offers.find((o) => o.id === k)?.name ?? k : 'no fit');
+    const learnedText = [
+      lessonsForPrompt(lessons),
+      correctionsForPrompt(corrections, offerName),
+    ].filter(Boolean).join('\n\n');
+
+    const decidedCount = corrections.disagreements.length + corrections.confirmations.length;
+    if (lessons.length > 0 || decidedCount > 0) {
+      await appendStep(pool, runId, {
+        step_name: 'prior_decisions',
+        action: 'Read what you have already ruled on',
+        output_summary: `${lessons.length} ratified lesson(s) · `
+          + `${corrections.disagreements.length} disagreement(s) and `
+          + `${corrections.confirmations.length} confirmation(s) shown as examples`,
+        status: 'ok',
+      });
+    }
+
     // ── The cohort ─────────────────────────────────────────────────────
     const tagId = payload.tag_id as number | undefined;
     const explicitIds = Array.isArray(payload.prospect_ids)
@@ -278,7 +310,13 @@ export class AccountResearchAgent {
 
     // Only rows with a domain: there is nothing to research without one, and
     // silently including them would make the batch look bigger than the work.
-    const fingerprint = await catalogueFingerprint(db, tenantId);
+    //
+    // The stamp covers BOTH inputs to a judgement — the offers and what the
+    // reviewer has ruled. Either moving makes an undecided judgement stale.
+    const fingerprint = judgementFingerprint(
+      await catalogueFingerprint(db, tenantId),
+      correctionsFingerprint(corrections, lessons),
+    );
 
     // Existing facts come back with the row, so a company that only needs
     // re-scoring never touches the network.
@@ -308,9 +346,13 @@ export class AccountResearchAgent {
           -- Selected when it needs EITHER half: no brief at all, our own
           -- extraction failed, or the judgement was made against a different
           -- offer set. The loop then works out which half to run.
+          -- A brief a human has RULED ON is never re-judged. Their decision
+          -- stands until they change it; re-scoring it would silently move
+          -- the offer out from under a ruling that named a different one.
           AND ($refresh::boolean OR b.id IS NULL
                OR b.status = 'extract_failed'
                OR (b.status <> 'unreadable'
+                   AND b.decided_at IS NULL
                    AND b.offers_fingerprint IS DISTINCT FROM $fingerprint))
         ORDER BY p.completeness DESC NULLS LAST, p.id
         LIMIT $limit`,
@@ -410,7 +452,7 @@ export class AccountResearchAgent {
 
         const verdict = await this.judge(
           pool, tenantId, runId, target.name, facts,
-          target.industry_raw, catalogue,
+          target.industry_raw, catalogue, learnedText,
           // Seeded on the prospect: the offers are rendered in a different
           // order for every company, so no offer wins on position — and the
           // SAME order every time this company is re-scored, so a moved
@@ -645,6 +687,8 @@ export class AccountResearchAgent {
     facts: BriefFacts,
     industryRaw: string | null,
     catalogue: OfferCatalogue,
+    /** Ratified lessons + recent rulings. Empty until a human decides something. */
+    learnedText: string,
     seed: string,
   ): Promise<Record<string, unknown>> {
     const catalogueText = catalogueForPrompt(catalogue, seed);
@@ -667,7 +711,8 @@ export class AccountResearchAgent {
         system: await loadPrompt(pool, 'research-skill.account_fit', tenantId),
         messages: [{
           role: 'user',
-          content: `Company brief:\n${briefText}\n\nOUR OFFERS:\n${catalogueText}`,
+          content: `Company brief:\n${briefText}\n\nOUR OFFERS:\n${catalogueText}`
+            + (learnedText ? `\n\n${learnedText}` : ''),
         }],
         maxTokens: 1_200,
       },

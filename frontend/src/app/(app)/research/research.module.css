@@ -92,6 +92,48 @@
   border: 1px dashed var(--color-border); border-radius: 6px;
 }
 
+/* ── The Learning Graph ─────────────────────────────────────────────── */
+
+.lessonList { display: flex; flex-direction: column; gap: 0.9rem; }
+
+.lessonCard {
+  border: 1px solid var(--color-accent); border-radius: 10px;
+  padding: 1rem 1.1rem; background: var(--color-surface);
+}
+/* Already ruled on: still readable, no longer asking for anything. */
+.lessonCardDecided {
+  border: 1px solid var(--color-border); border-radius: 10px;
+  padding: 1rem 1.1rem; background: var(--color-surface);
+  opacity: 0.72;
+}
+.lessonHead {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.6rem;
+}
+.lessonWhen { font-size: 0.72rem; color: var(--color-text-muted); }
+.lessonText {
+  font-size: 0.95rem; line-height: 1.55; color: var(--color-text);
+  font-weight: 500; margin-bottom: 0.75rem;
+}
+.lessonOriginal {
+  font-size: 0.78rem; color: var(--color-text-muted);
+  font-style: italic; margin-bottom: 0.75rem;
+}
+.lessonEvidence {
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.7rem; margin-bottom: 0.85rem;
+}
+.lessonCase {
+  font-size: 0.8rem; color: var(--color-text-muted);
+  margin-bottom: 0.45rem; line-height: 1.45;
+}
+.lessonCase strong { color: var(--color-text); font-weight: 600; }
+.lessonNote {
+  font-size: 0.78rem; font-style: italic;
+  padding-left: 0.7rem; border-left: 2px solid var(--color-border);
+  margin-top: 0.2rem;
+}
+
 /* ── Detail ─────────────────────────────────────────────────────────── */
 
 .detailField { margin-bottom: 1rem; }

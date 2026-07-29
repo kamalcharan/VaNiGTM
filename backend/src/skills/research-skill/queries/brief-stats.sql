@@ -29,6 +29,14 @@ SELECT
     count(*) FILTER (WHERE status NOT IN ('unreadable','extract_failed')
                        AND jsonb_array_length(COALESCE(raw_evidence,'[]'::jsonb)) = 0) AS unevidenced,
     count(*) FILTER (WHERE decided_at IS NOT NULL)                    AS decided,
+    -- Rulings the Learning Graph can generalise from: a company ruled out, or
+    -- approved under an offer other than the one the agent proposed.
+    count(*) FILTER (WHERE decided_at IS NOT NULL
+                       AND status NOT IN ('unreadable','extract_failed')
+                       AND (status IN ('rejected','no_contact')
+                            OR (human_offer IS NOT NULL
+                                AND human_offer IS DISTINCT FROM recommended_offer)))
+                                                                      AS disagreements,
     count(*) FILTER (WHERE status = 'approved')                       AS approved,
     count(*) FILTER (WHERE status IN ('rejected','no_contact'))       AS declined
 FROM   gt_account_briefs

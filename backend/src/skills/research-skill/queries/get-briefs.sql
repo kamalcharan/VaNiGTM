@@ -21,11 +21,17 @@ SELECT
     b.digital_maturity,
     b.named_contacts,
     b.fit,
+    -- Three offers, three different questions, none of them overwriting
+    -- another:
+    --   best_fit_offer     what the model scored highest
+    --   recommended_offer  what the agent decided to open with (the ladder)
+    --   human_offer        what the reviewer moved it to, if they did
+    -- A recommendation nobody can argue with is one nobody should trust, and
+    -- the disagreements are what the Learning Graph is built from.
     b.recommended_offer,
-    -- What the model actually said, before the smallest-sane-ask rule. When
-    -- these differ the brief shows both — a recommendation nobody can argue
-    -- with is a recommendation nobody should trust.
     b.best_fit_offer,
+    b.human_offer,
+    COALESCE(b.human_offer, b.recommended_offer) AS effective_offer,
     b.fit_margin,
     b.fit_reason,
     b.hook,
@@ -47,9 +53,12 @@ JOIN   gt_prospects p
 WHERE  b.tenant_id = $tenant_id
   AND  b.is_live   = $is_live
   AND  ($status::text IS NULL OR b.status = $status::text)
+  -- Filtered on the EFFECTIVE offer: a reviewer who moved a company onto the
+  -- audit expects to find it under the audit.
   AND  ($offer::text IS NULL
-        OR ($offer::text = 'none' AND b.recommended_offer IS NULL)
-        OR b.recommended_offer = $offer::text)
+        OR ($offer::text = 'none'
+            AND COALESCE(b.human_offer, b.recommended_offer) IS NULL)
+        OR COALESCE(b.human_offer, b.recommended_offer) = $offer::text)
   AND  ($search::text IS NULL
         OR p.name ILIKE '%' || $search::text || '%'
         OR b.domain ILIKE '%' || $search::text || '%'

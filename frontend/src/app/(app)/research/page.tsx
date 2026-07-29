@@ -59,9 +59,13 @@ interface Brief {
   service_signals: string | null; digital_maturity: string | null;
   named_contacts: { name?: string; title?: string; email?: string }[];
   fit: Record<string, { score: number; reason: string }>;
+  /** What the agent decided to open with. Never overwritten by a human. */
   recommended_offer: string | null;
   /** What the model scored highest, before the smallest-ask rule. */
   best_fit_offer: string | null;
+  /** What the reviewer moved it to, if they did. */
+  human_offer: string | null;
+  effective_offer: string | null;
   /** Top score minus second. Under FIT_MARGIN the two are the same score. */
   fit_margin: string | number | null;
   fit_reason: string | null;
@@ -71,6 +75,27 @@ interface Brief {
 }
 
 interface Tag { id: number; label: string }
+
+type LessonKind = 'disqualifier' | 'sizing' | 'preference' | 'signal';
+
+interface Lesson {
+  id: number;
+  lesson: string;
+  edited_lesson: string | null;
+  kind: LessonKind;
+  applies_to: string | null;
+  evidence: { company?: string; decision?: string; note?: string; offer?: string }[];
+  status: 'proposed' | 'accepted' | 'rejected';
+  proposed_at: string;
+  decided_at: string | null;
+}
+
+const KIND_LABEL: Record<LessonKind, string> = {
+  disqualifier: 'Reason to score down',
+  sizing: 'How big or small',
+  preference: 'Which offer to lead with',
+  signal: 'What counts as evidence',
+};
 
 interface Split {
   selected: number; reachable: number; no_website: number;
@@ -212,7 +237,14 @@ export default function ResearchPage() {
     { enabled: tagId !== '' },
   );
 
+  const lessonsQ = useSkillQuery<{
+    lessons: Lesson[]; proposed: number; accepted: number; rejected: number;
+    decisions: number; can_propose: boolean; min_decisions: number;
+  }>('research-skill', 'get_lessons', {});
+
   const saveOffer = useSkillMutation('research-skill', 'save_offer');
+  const proposeLessons = useSkillMutation('research-skill', 'propose_lessons');
+  const decideLesson = useSkillMutation('research-skill', 'decide_lesson');
   const startResearch = useSkillMutation('research-skill', 'start_research');
   const decide = useSkillMutation('research-skill', 'decide_brief');
 
@@ -224,6 +256,8 @@ export default function ResearchPage() {
   const tags = (tagsQ.data?.data.facets?.tags ?? []) as Tag[];
   const batch = statusQ.data?.data;
   const split = previewQ.data?.data;
+  const learn = lessonsQ.data?.data;
+  const lessons = learn?.lessons ?? [];
   const toResearch = redoExisting ? (split?.reachable ?? 0) : (split?.to_research ?? 0);
 
   const offerName = useMemo(() => {
@@ -301,6 +335,41 @@ export default function ResearchPage() {
       refresh();
     } catch (err) {
       showToast({ type: 'error', message: err instanceof Error ? err.message : 'Could not record that decision' });
+    }
+  };
+
+  const onPropose = async () => {
+    try {
+      const res = await proposeLessons.mutateAsync({});
+      const { decisions } = (res.data ?? {}) as unknown as { decisions: number };
+      showToast({
+        type: 'success',
+        message: `Reading your ${decisions} decisions. Proposals appear here in a `
+          + 'minute or two — none of them changes scoring until you accept it.',
+      });
+    } catch (err) {
+      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Could not start' });
+    }
+  };
+
+  const onDecideLesson = async (
+    lesson: Lesson, decision: 'accepted' | 'rejected', edited?: string,
+  ) => {
+    try {
+      await decideLesson.mutateAsync({
+        lesson_id: lesson.id, decision, edited_lesson: edited || undefined,
+      });
+      showToast({
+        type: 'success',
+        message: decision === 'accepted'
+          ? 'Accepted — every company scored from now on is judged against this. '
+            + 'Undecided briefs can be re-scored without crawling.'
+          : 'Thrown out, and it will not be proposed again.',
+      });
+      refresh();
+      previewQ.refetch();
+    } catch (err) {
+      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Could not record that' });
     }
   };
 
@@ -573,8 +642,10 @@ export default function ResearchPage() {
                     </div>
                     <div className={s.badges}>
                       {b.unevidenced && <VdfBadge variant="gold" dot>No evidence</VdfBadge>}
-                      {b.recommended_offer
-                        ? <VdfBadge variant="success">{offerName(b.recommended_offer)}</VdfBadge>
+                      {(b.effective_offer ?? b.recommended_offer)
+                        ? <VdfBadge variant="success">
+                            {offerName(b.effective_offer ?? b.recommended_offer)}
+                          </VdfBadge>
                         : b.status !== 'unreadable' && <VdfBadge variant="default">No fit</VdfBadge>}
                       <VdfBadge variant={STATUS_VARIANT[b.status] ?? 'default'}>
                         {STATUS_LABEL[b.status] ?? b.status}
@@ -605,6 +676,60 @@ export default function ResearchPage() {
             </div>
           )}
         </section>
+        {/* 4 ── WHAT IT HAS LEARNED ───────────────────────────────── */}
+        <section className={s.section}>
+          <div className={s.sectionHead}>
+            <div>
+              <div className={s.sectionTitle}>
+                What it has learned from you
+                {(learn?.proposed ?? 0) > 0 && (
+                  <> <VdfBadge variant="gold" dot>{learn!.proposed} to review</VdfBadge></>
+                )}
+              </div>
+              <div className={s.sectionNote}>
+                Every brief you approve or rule out teaches it something. Ask it what it
+                has noticed, and it proposes rules with the companies each one came from.
+                Nothing it proposes changes a score until you accept it.
+              </div>
+            </div>
+            <VdfButton
+              variant="outline"
+              onClick={onPropose}
+              disabled={!learn?.can_propose || proposeLessons.isPending}
+            >
+              {proposeLessons.isPending ? 'Reading…' : 'What have you learned?'}
+            </VdfButton>
+          </div>
+
+          {learn && !learn.can_propose && (
+            <div className={s.formHint}>
+              {learn.decisions} decision{learn.decisions === 1 ? '' : 's'} so far —
+              rules are inferred from {learn.min_decisions} or more. Below that a
+              &ldquo;rule&rdquo; is just a description of a handful of companies, and it
+              would go on to decide who gets contacted.
+            </div>
+          )}
+
+          {lessons.length > 0 && (
+            <div className={s.lessonList}>
+              {lessons.map((l) => (
+                <LessonCard
+                  key={l.id} lesson={l} offerName={offerName}
+                  busy={decideLesson.isPending}
+                  onDecide={(d, edited) => onDecideLesson(l, d, edited)}
+                />
+              ))}
+            </div>
+          )}
+
+          {learn && lessons.length === 0 && learn.can_propose && (
+            <VdfEmptyState
+              title="Nothing proposed yet"
+              description={`${learn.decisions} decisions are waiting to be read. Ask it what it has noticed.`}
+            />
+          )}
+        </section>
+
       </div>
 
       {/* ── Offer editor ───────────────────────────────────────────── */}
@@ -799,6 +924,114 @@ function OfferForm({
   );
 }
 
+/* ── One proposed rule ──────────────────────────────────────────────── */
+
+/**
+ * A rule the agent inferred, and the decision a human owes it.
+ *
+ * ── WHY THE EVIDENCE IS NOT COLLAPSED BEHIND A TOGGLE ─────────────────
+ *
+ * Accepting a rule here changes which real companies get contacted. The only
+ * way to judge one is against the decisions it came from — and a rule whose
+ * evidence you have to go looking for gets accepted on how confident it
+ * sounds. So the companies and the reviewer's own words are on the card,
+ * always, next to the buttons.
+ *
+ * ── WHY REWORDING IS A FIRST-CLASS ACTION ─────────────────────────────
+ *
+ * The inference is usually close and rarely exactly right. "They reject small
+ * companies" wants to be "reject single-plant companies with no stated
+ * exports". Making the reviewer choose between accepting a sentence they half
+ * agree with and rejecting one that is nearly correct throws away the useful
+ * half of the work.
+ */
+function LessonCard({ lesson, offerName, busy, onDecide }: {
+  lesson: Lesson;
+  offerName: (k: string | null) => string | null;
+  busy: boolean;
+  onDecide: (decision: 'accepted' | 'rejected', edited?: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(lesson.edited_lesson ?? lesson.lesson);
+  const pending = lesson.status === 'proposed';
+
+  return (
+    <div className={pending ? s.lessonCard : s.lessonCardDecided}>
+      <div className={s.lessonHead}>
+        <div className={s.badges}>
+          <VdfBadge variant="default">{KIND_LABEL[lesson.kind] ?? lesson.kind}</VdfBadge>
+          {lesson.applies_to && (
+            <VdfBadge variant="info">{offerName(lesson.applies_to)}</VdfBadge>
+          )}
+          {lesson.status === 'accepted' && <VdfBadge variant="success">In use</VdfBadge>}
+          {lesson.status === 'rejected' && <VdfBadge variant="default">Thrown out</VdfBadge>}
+        </div>
+        <span className={s.lessonWhen}>{formatDateTime(lesson.proposed_at)}</span>
+      </div>
+
+      {editing ? (
+        <Area
+          label="Your wording" value={draft} minRows={3}
+          onEdit={setDraft}
+          hint="It has to be testable against a company brief. “Too small” cannot be; “single plant with no stated exports” can."
+        />
+      ) : (
+        <div className={s.lessonText}>{lesson.edited_lesson ?? lesson.lesson}</div>
+      )}
+
+      {lesson.edited_lesson && !editing && (
+        <div className={s.lessonOriginal}>
+          It originally said: &ldquo;{lesson.lesson}&rdquo;
+        </div>
+      )}
+
+      {lesson.evidence.length > 0 && (
+        <div className={s.lessonEvidence}>
+          <div className={s.detailLabel}>
+            Inferred from {lesson.evidence.length} of your decisions
+          </div>
+          {lesson.evidence.map((e, i) => (
+            <div key={i} className={s.lessonCase}>
+              <strong>{e.company}</strong>
+              {e.decision && <> — {STATUS_LABEL[e.decision] ?? e.decision}</>}
+              {e.offer && <> · {offerName(e.offer)}</>}
+              {e.note && <div className={s.lessonNote}>&ldquo;{e.note}&rdquo;</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {pending && (
+        <div className={s.actions}>
+          {editing ? (
+            <>
+              <VdfButton
+                variant="primary" disabled={busy || draft.trim().length < 20}
+                onClick={() => onDecide('accepted', draft.trim())}
+              >
+                Accept my wording
+              </VdfButton>
+              <VdfButton variant="ghost" onClick={() => setEditing(false)}>Cancel</VdfButton>
+            </>
+          ) : (
+            <>
+              <VdfButton variant="primary" disabled={busy} onClick={() => onDecide('accepted')}>
+                Accept
+              </VdfButton>
+              <VdfButton variant="outline" onClick={() => setEditing(true)}>
+                Reword it
+              </VdfButton>
+              <VdfButton variant="ghost" disabled={busy} onClick={() => onDecide('rejected')}>
+                Throw out
+              </VdfButton>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Brief detail ───────────────────────────────────────────────────── */
 
 function BriefDetail({
@@ -865,8 +1098,19 @@ function BriefDetail({
 
       <div className={s.detailField}>
         <div className={s.detailLabel}>
-          Fit — {offerName(brief.recommended_offer) ?? 'nothing fits'}
+          Fit — {offerName(brief.effective_offer ?? brief.recommended_offer) ?? 'nothing fits'}
         </div>
+
+        {/* The reviewer's own correction, kept visible. This pair — what the
+            agent proposed against what a human settled on — is what the
+            Learning Graph is built from, and it used to be overwritten. */}
+        {brief.human_offer && brief.human_offer !== brief.recommended_offer && (
+          <div className={s.ladder}>
+            You moved this from <strong>{offerName(brief.recommended_offer) ?? 'no fit'}</strong>
+            {' '}to <strong>{offerName(brief.human_offer)}</strong>. The agent&rsquo;s
+            proposal is kept below so the difference can be learned from.
+          </div>
+        )}
 
         {/* Both numbers, always, when the rule moved anything. Showing only
             the recommendation would hide the rule from the person being asked
@@ -936,7 +1180,9 @@ function BriefDetail({
       <div className={s.formRow}>
         <label className={s.formLabel}>Approve with a different offer</label>
         <select className={s.select} value={reassign} onChange={(e) => setReassign(e.target.value)}>
-          <option value="">Keep {offerName(brief.recommended_offer) ?? 'as no fit'}</option>
+          <option value="">
+            Keep {offerName(brief.effective_offer ?? brief.recommended_offer) ?? 'as no fit'}
+          </option>
           {offers.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
         </select>
       </div>
