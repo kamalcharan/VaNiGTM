@@ -227,6 +227,21 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
    onboarding model (see ux-references README).
 10. **Migrations manual + guarded + idempotent** (rule above).
 11. **No secrets in the repo** — connector credentials live in env/VPS only.
+13. **RESEARCH OUTPUT NEVER ENTERS THE COMMON POOL** (user ruling,
+    2026-07-29). `gt_account_briefs` is tenant-scoped and stays that way.
+    The pool holds what was DELIVERED to it (a load, a source, a supplier,
+    scored by source_tier × freshness × completeness × validity). Research
+    holds what a TENANT learned. Never the reverse — not the fit judgement
+    (it is scored against that tenant's offers and is meaningless to
+    anyone else), and not even the factual half (agent-derived facts have
+    a different reliability profile and would corrupt the pool's quality
+    model; and rich detail appearing in the pool for exactly the companies
+    one tenant researched IS that tenant's targeting, visible to all).
+    The schema enforces it today — `gt_account_briefs.prospect_id` is a FK
+    to the tenant-scoped `gt_prospects`, so a brief cannot attach to a
+    pool row. Do not add a path that changes this.
+    See `documents/design-notes-research.md` §2 R1.
+
 12. **NO SILENT FALLBACKS** (user ruling, 2026-07-27). A fallback that
     kicks in automatically hides the real issue and fakes a working
     system — the user can't tell degraded output from real output.

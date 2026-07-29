@@ -1,9 +1,15 @@
 # Execution Plan — Manufacturing Pilot
 
-> v1.0 · 2026-07-28 · Scoped test of the research-first thesis.
+> v1.1 · 2026-07-28 · Scoped test of the research-first thesis.
 > Supersedes nothing. Sits IN FRONT of `POA-VaNi-GTM.md` and the
 > Customer-Journey Agents spec — both stay unamended until this returns a
 > result.
+>
+> **Companion:** `documents/design-notes-research.md` — Research became a
+> platform capability while this pilot was being built. That note holds the
+> standing rulings (pool boundary, segments, sources, the dossier page) and
+> the NOW / NEXT / LATER split. This plan stays the record for the PILOT;
+> that note is the record for the CAPABILITY. Read both.
 
 ---
 
