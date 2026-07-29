@@ -50,7 +50,7 @@ export const ACCOUNT_RESEARCH_AGENT_NAME = 'ACCOUNT_RESEARCH_REQUESTED';
  * Small prompts, one per stage. A 2,500-char cap per page keeps the whole
  * extract call inside the VPS timeout on qwen3:8b; more text buys very
  * little, because what we want is on the first screen of an About page. */
-const MAX_SUBPAGES      = 4;
+const MAX_SUBPAGES      = 6;
 const PAGE_TEXT_CAP     = 2_500;
 const TOTAL_TEXT_CAP    = 8_000;
 const MIN_USABLE_TEXT   = 200;   // below this a page said nothing
@@ -61,6 +61,10 @@ const SUBPAGE_HINTS = [
   'about', 'about-us', 'company', 'profile',
   'products', 'product', 'services',
   'quality', 'certifications', 'accreditation', 'infrastructure',
+  // Hiring and news pay for themselves: several offer fit signals are about
+  // roles being hired, expansions and press. Careers was missing entirely,
+  // which meant "hiring IT/QA but no data lead" could never be evidenced.
+  'careers', 'career', 'jobs', 'news', 'press', 'media', 'investors',
   'contact', 'contact-us',
 ];
 
@@ -241,6 +245,10 @@ export class AccountResearchAgent {
       ? (payload.prospect_ids as unknown[]).map(Number).filter(Number.isFinite)
       : [];
     const limit = Number(payload.limit) > 0 ? Number(payload.limit) : 500;
+    // Re-running a batch used to re-crawl every company from scratch: the
+    // checkpoint only skips within ONE run. A company already researched is
+    // skipped unless the caller explicitly asks to refresh it.
+    const refresh = payload.refresh === true;
 
     if (!tagId && explicitIds.length === 0) {
       throw new Error(
@@ -261,13 +269,18 @@ export class AccountResearchAgent {
                 SELECT 1 FROM gt_prospect_tags pt
                  WHERE pt.prospect_id = p.id AND pt.tag_id = $tag_id::bigint))
           AND ($ids::bigint[] IS NULL OR p.id = ANY($ids::bigint[]))
+          AND ($refresh::boolean OR NOT EXISTS (
+                SELECT 1 FROM gt_account_briefs b
+                 WHERE b.prospect_id = p.id
+                   AND b.tenant_id   = $tenant_id
+                   AND b.is_live     = $is_live))
         ORDER BY p.completeness DESC NULLS LAST, p.id
         LIMIT $limit`,
       {
         tenant_id: tenantId, is_live: isLive,
         tag_id: tagId ?? null,
         ids: explicitIds.length > 0 ? explicitIds : null,
-        limit,
+        refresh, limit,
       },
     );
 
@@ -275,15 +288,23 @@ export class AccountResearchAgent {
 
     await appendStep(pool, runId, {
       step_name: 'cohort',
-      action: 'Selected the accounts to research',
-      output_summary: `${targets.rows.length} with a domain`
-        + (done.size > 0 ? `, ${queue.length} still to do` : ''),
+      action: refresh
+        ? 'Selected the accounts to research (refreshing existing briefs)'
+        : 'Selected the accounts to research (skipping any already researched)',
+      output_summary: `${targets.rows.length} to research`
+        + (done.size > 0 ? `, ${queue.length} still to do this run` : ''),
       status: 'ok',
     });
 
     if (queue.length === 0) {
       await setStatus(pool, runId, 'completed', {
-        output: { researched: 0, message: 'Nothing to research — no reachable accounts in the cohort.' },
+        output: {
+          researched: 0,
+          message: refresh
+            ? 'Nothing to research — no reachable accounts in the cohort.'
+            : 'Nothing new to research — every reachable company in this cohort '
+              + 'already has a brief. Re-run with refresh to redo them.',
+        },
       });
       return;
     }

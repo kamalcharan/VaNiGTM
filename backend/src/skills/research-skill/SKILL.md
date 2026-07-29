@@ -127,9 +127,9 @@ A human's ruling on one brief. Ruling a company out requires a reason.
 - Returns: { brief_id, decision, recipe: 'brief-card' }
 
 ### start_research
-Queue the research batch for the worker. Validates the offers first and reports how many companies are actually reachable.
-- Parameters: tag_id (optional, number), prospect_ids (optional, array), limit (optional, number)
-- Returns: { event_id, queued, reachable, recipe: 'research-queued' }
+Queue the research batch for the worker. Validates the offers first, and reports the whole split — selected, reachable, already researched, to do — before anything runs. preview answers without queueing.
+- Parameters: tag_id (optional, number), prospect_ids (optional, array), limit (optional, number), refresh (optional, boolean), preview (optional, boolean)
+- Returns: { selected, reachable, no_website, already_researched, to_research, queued, event_id, recipe: 'research-queued' }
 
 ### batch_status
 Whether the last batch is queued, running, finished — or sitting in a queue nobody is reading because the worker is down.

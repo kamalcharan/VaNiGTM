@@ -21,6 +21,10 @@ interface StartResearchParams {
   tag_id?: number;
   prospect_ids?: number[];
   limit?: number;
+  /** Redo companies that already have a brief. Default false. */
+  refresh?: boolean;
+  /** Report the split without queueing anything. */
+  preview?: boolean;
 }
 
 export async function start_research(params: StartResearchParams, ctx: SkillContext) {
@@ -45,13 +49,25 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
     throw new Error('Pick a cohort tag, or select the companies to research.');
   }
 
-  // How many companies this will actually touch, said out loud before it
-  // starts: only rows with a domain can be researched at all.
-  const reachable = await ctx.db.query<{ n: string }>(
-    `SELECT count(*)::text AS n
+  // The whole split, said out loud BEFORE anything starts. Re-running a
+  // batch used to silently re-crawl companies that already had a brief;
+  // now the caller sees "10 selected, 7 already researched, 3 to do" and
+  // decides, rather than discovering it from the bill.
+  const counts = await ctx.db.query<{
+    selected: string; reachable: string; researched: string;
+  }>(
+    `SELECT count(*)::text                                   AS selected,
+            count(*) FILTER (WHERE p.domain_normalized IS NOT NULL)::text
+                                                             AS reachable,
+            count(*) FILTER (WHERE p.domain_normalized IS NOT NULL
+                               AND EXISTS (
+                    SELECT 1 FROM gt_account_briefs b
+                     WHERE b.prospect_id = p.id
+                       AND b.tenant_id   = $tenant_id
+                       AND b.is_live     = $is_live))::text   AS researched
        FROM gt_prospects p
       WHERE p.tenant_id = $tenant_id AND p.is_live = $is_live
-        AND p.is_active AND p.domain_normalized IS NOT NULL
+        AND p.is_active
         AND ($tag_id::bigint IS NULL OR EXISTS (
               SELECT 1 FROM gt_prospect_tags pt
                WHERE pt.prospect_id = p.id AND pt.tag_id = $tag_id::bigint))
@@ -61,11 +77,36 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
       tag_id: tagId, ids: ids.length > 0 ? ids : null,
     },
   );
-  const reachableCount = Number(reachable.rows[0]?.n ?? 0);
+
+  const selected = Number(counts.rows[0]?.selected ?? 0);
+  const reachableCount = Number(counts.rows[0]?.reachable ?? 0);
+  const alreadyResearched = Number(counts.rows[0]?.researched ?? 0);
+  const refresh = params.refresh === true;
+  const todo = refresh ? reachableCount : reachableCount - alreadyResearched;
+
+  const split = {
+    selected,
+    reachable: reachableCount,
+    no_website: selected - reachableCount,
+    already_researched: alreadyResearched,
+    to_research: todo,
+  };
+
+  // Preview: answer the question, queue nothing.
+  if (params.preview === true) {
+    return { ...split, queued: 0, event_id: null, recipe: 'research-preview' as const };
+  }
+
   if (reachableCount === 0) {
     throw new Error(
       'None of those companies has a website, so there is nothing to research. '
       + 'Filter the cohort by "has domain" to see what is reachable.',
+    );
+  }
+  if (todo === 0) {
+    throw new Error(
+      `All ${reachableCount} reachable companies here already have a brief. `
+      + 'Tick "redo existing briefs" if you want them researched again.',
     );
   }
 
@@ -76,15 +117,16 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
     {
       is_live: ctx.is_live,
       limit,
+      refresh,
       ...(tagId ? { tag_id: tagId } : {}),
       ...(ids.length ? { prospect_ids: ids } : {}),
     },
   );
 
   return {
+    ...split,
     event_id: eventId,
-    queued: Math.min(limit, reachableCount),
-    reachable: reachableCount,
+    queued: Math.min(limit, todo),
     recipe: 'research-queued' as const,
   };
 }

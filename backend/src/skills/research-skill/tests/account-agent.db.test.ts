@@ -330,9 +330,11 @@ maybe('researching a cohort', () => {
       `UPDATE gt_account_briefs SET status='approved', decided_by=$1, decided_at=now(),
               decision_note='looks good' WHERE prospect_id = 1`, [A]);
 
+    // refresh: a company with a brief is skipped by default now, so redoing
+    // one has to be asked for.
     queueHealthyAccount('two units in Medak district', null);
     runId = await newRun();
-    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, runId);
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1], refresh: true }, runId);
 
     const rows = await briefs();
     expect(rows).toHaveLength(1);                 // replaced, not duplicated
@@ -406,5 +408,69 @@ maybe('tenant isolation', () => {
     const out = (await pool.query(`SELECT status, output FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
     expect(out.status).toBe('completed');
     expect(out.output.researched).toBe(0);
+  });
+});
+
+maybe('not researching the same company twice', () => {
+  beforeEach(async () => { await pool.query('DELETE FROM gt_account_briefs'); });
+
+  it('skips a company that already has a brief', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs'), 'https://beta.com': siteBody('bulk drugs') };
+
+    // First run does Alpha only.
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+    expect(fetched.some((u) => u.includes('alpha.com'))).toBe(true);
+
+    // Second run over BOTH must not touch Alpha again.
+    fetched.length = 0;
+    queueHealthyAccount('two units in Medak district', null);
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1, 2] }, await newRun());
+
+    expect(fetched.some((u) => u.includes('alpha.com'))).toBe(false);
+    expect(fetched.some((u) => u.includes('beta.com'))).toBe(true);
+    expect((await briefs()).map((r: any) => Number(r.prospect_id))).toEqual([1, 2]);
+  });
+
+  it('redoes it when refresh is asked for', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+
+    fetched.length = 0;
+    queueHealthyAccount('two units in Medak district', null);
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1], refresh: true }, await newRun());
+
+    expect(fetched.some((u) => u.includes('alpha.com'))).toBe(true);
+    const rows = await briefs();
+    expect(rows).toHaveLength(1);                       // replaced, not duplicated
+    expect(rows[0].recommended_offer).toBeNull();       // the newer verdict
+  });
+
+  it('completes cleanly, saying so, when everything is already done', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+
+    fetched.length = 0;
+    const runId = await newRun();
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, runId);
+
+    expect(fetched).toHaveLength(0);
+    const out = (await pool.query(`SELECT status, output FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
+    expect(out.status).toBe('completed');
+    expect(out.output.researched).toBe(0);
+    expect(out.output.message).toMatch(/already has a brief/i);
+  });
+
+  it('says in the step log which mode it ran in', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueHealthyAccount('two units in Medak district', null);
+    const runId = await newRun();
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, runId);
+
+    const steps = (await pool.query(`SELECT steps FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0].steps;
+    const cohort = steps.find((x: any) => x.step_name === 'cohort');
+    expect(cohort.action).toMatch(/skipping any already researched/i);
   });
 });

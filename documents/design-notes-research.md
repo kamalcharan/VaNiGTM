@@ -201,14 +201,14 @@ column now.
 
 ## 7. What we are doing NOW vs LATER
 
-### NOW — unblocks reading the first ten briefs
+### NOW — ✅ DONE 2026-07-29
 
-| # | Item | Why now |
+| # | Item | Outcome |
 |---|---|---|
-| 1 | **Offer form loses focus every keystroke** | My bug: `Area` is defined inside `OfferForm`, so React remounts the textarea on every render. Offers are currently unfillable except by paste |
-| 2 | Offer form → landscape / two-column | Same screen, same sitting |
-| 3 | **Do not re-research a company that already has a brief** | A second run re-crawls all ten from scratch. Show "10 selected · 7 already researched · 3 to do" BEFORE the button |
-| 4 | Widen website paths — careers, news, press, media, investors | One line; careers is where hiring signals live and it is not even in the list |
+| 1 | Offer form loses focus every keystroke | ✅ Two bugs, not one: `Area` was defined inside `OfferForm` (new component type every render → React remounts the textarea), AND every keystroke lifted state to the page. `Area` moved to module scope; the form owns its draft and reports it once, on save |
+| 2 | Offer form → landscape | ✅ Two columns — "what it is" and "how it gets matched" — with a live list of what is still missing in the footer |
+| 3 | Do not re-research an existing brief | ✅ Skipped by default, `refresh` to redo. The screen previews the whole split BEFORE the button: selected · no website · already researched · to research, with a "redo existing briefs" toggle that only appears when it applies |
+| 4 | Widen website paths | ✅ careers · career · jobs · news · press · media · investors added; MAX_SUBPAGES 4 → 6. Careers was missing entirely, which meant "hiring IT/QA but no data lead" could never be evidenced |
 
 **Then: run the ten, read them.** That gate decides everything below.
 

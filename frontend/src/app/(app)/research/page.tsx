@@ -50,6 +50,11 @@ interface Brief {
 
 interface Tag { id: number; label: string }
 
+interface Split {
+  selected: number; reachable: number; no_website: number;
+  already_researched: number; to_research: number;
+}
+
 interface BatchStatus {
   verdict: 'never_run' | 'queued' | 'running' | 'worker_down' | 'failed' | 'completed' | 'unknown';
   message: string;
@@ -74,6 +79,30 @@ const STATUS_LABEL: Record<string, string> = {
   rejected: 'Rejected', no_contact: 'Do not contact',
 };
 
+const lines = (xs: string[]) => xs.join('\n');
+const toLines = (v: string) => v.split('\n').map((x) => x.trim()).filter(Boolean);
+
+/**
+ * A labelled textarea. MODULE SCOPE, deliberately: defined inside a component
+ * it becomes a new type on every render, and React remounts it — which is
+ * exactly how the offer form lost focus on every keystroke.
+ */
+function Area({ label, value, hint, onEdit, rows = 3 }: {
+  label: string; value: string; hint?: string;
+  onEdit: (v: string) => void; rows?: number;
+}) {
+  return (
+    <div className={s.formRow}>
+      <label className={s.formLabel}>{label}</label>
+      <textarea
+        className={s.textarea} value={value} rows={rows}
+        onChange={(e) => onEdit(e.target.value)}
+      />
+      {hint && <div className={s.formHint}>{hint}</div>}
+    </div>
+  );
+}
+
 const emptyOffer = (): Offer => ({
   id: '', name: '', one_line: '', who_for: '', problem: '',
   what_we_do: [], signals: [], disqualifiers: [], price_band: '', proof: '',
@@ -94,6 +123,7 @@ export default function ResearchPage() {
   const [limit, setLimit] = useState(10);
   const [note, setNote] = useState('');
   const [reassign, setReassign] = useState('');
+  const [redoExisting, setRedoExisting] = useState(false);
 
   const offersQ = useSkillQuery<{ offers: Offer[]; problems: string[]; ready: boolean }>(
     'research-skill', 'get_offers', {},
@@ -114,6 +144,13 @@ export default function ResearchPage() {
   const statusQ = useSkillQuery<BatchStatus>(
     'research-skill', 'batch_status', {}, { refetchInterval: 5000 },
   );
+  // What this batch would actually do, answered before the button is pressed
+  // rather than discovered from the run. Queues nothing.
+  const previewQ = useSkillQuery<Split>(
+    'research-skill', 'start_research',
+    { tag_id: tagId || undefined, preview: true },
+    { enabled: tagId !== '' },
+  );
 
   const saveOffer = useSkillMutation('research-skill', 'save_offer');
   const startResearch = useSkillMutation('research-skill', 'start_research');
@@ -126,6 +163,8 @@ export default function ResearchPage() {
   const stats = briefsQ.data?.data.stats ?? {};
   const tags = (tagsQ.data?.data.facets?.tags ?? []) as Tag[];
   const batch = statusQ.data?.data;
+  const split = previewQ.data?.data;
+  const toResearch = redoExisting ? (split?.reachable ?? 0) : (split?.to_research ?? 0);
 
   const offerName = useMemo(() => {
     const m = new Map(offers.map((o) => [o.id, o.name]));
@@ -138,22 +177,21 @@ export default function ResearchPage() {
 
   /* ── Handlers ─────────────────────────────────────────────────────── */
 
-  const onSaveOffer = async () => {
-    if (!editing) return;
+  const onSaveOffer = async (draft: Offer) => {
     try {
       await saveOffer.mutateAsync({
-        offer_key: editing.id || undefined,
-        name: editing.name,
-        one_line: editing.one_line,
-        who_for: editing.who_for,
-        problem: editing.problem,
-        what_we_do: editing.what_we_do,
-        signals: editing.signals,
-        disqualifiers: editing.disqualifiers,
-        price_band: editing.price_band,
-        proof: editing.proof,
+        offer_key: draft.id || undefined,
+        name: draft.name,
+        one_line: draft.one_line,
+        who_for: draft.who_for,
+        problem: draft.problem,
+        what_we_do: draft.what_we_do,
+        signals: draft.signals,
+        disqualifiers: draft.disqualifiers,
+        price_band: draft.price_band,
+        proof: draft.proof,
       });
-      showToast({ type: 'success', message: `Saved “${editing.name}”` });
+      showToast({ type: 'success', message: `Saved “${draft.name}”` });
       setEditing(null);
       refresh();
     } catch (err) {
@@ -163,14 +201,16 @@ export default function ResearchPage() {
 
   const onStart = async () => {
     try {
-      const res = await startResearch.mutateAsync({ tag_id: tagId || undefined, limit });
-      const { queued, reachable } = (res.data ?? {}) as unknown as
-        { queued: number; reachable: number };
+      const res = await startResearch.mutateAsync({
+        tag_id: tagId || undefined, limit, refresh: redoExisting,
+      });
+      const { queued } = (res.data ?? {}) as unknown as { queued: number };
       showToast({
         type: 'success',
-        message: `Queued ${queued} of ${reachable} reachable companies. `
-          + 'The worker picks it up within a few seconds — each account takes 2-4 minutes.',
+        message: `Queued ${queued} compan${queued === 1 ? 'y' : 'ies'}. `
+          + 'The worker picks it up within a few seconds — each takes 2-4 minutes.',
       });
+      previewQ.refetch();
     } catch (err) {
       showToast({ type: 'error', message: err instanceof Error ? err.message : 'Could not start the batch' });
     }
@@ -308,14 +348,44 @@ export default function ResearchPage() {
             <VdfButton
               variant="primary"
               onClick={onStart}
-              disabled={!ready || !tagId || startResearch.isPending}
+              disabled={!ready || !tagId || toResearch === 0 || startResearch.isPending}
             >
-              {startResearch.isPending ? 'Queueing…' : 'Start research'}
+              {startResearch.isPending
+                ? 'Queueing…'
+                : `Research ${Math.min(limit, toResearch) || ''} compan${
+                    Math.min(limit, toResearch) === 1 ? 'y' : 'ies'}`.trim()}
             </VdfButton>
             {!ready && (
               <span className={s.formHint}>Finish your offers above first.</span>
             )}
           </div>
+
+          {split && (
+            <div className={s.split}>
+              <span><strong>{split.selected}</strong> in this cohort</span>
+              {split.no_website > 0 && (
+                <span className={s.splitMuted}>
+                  {split.no_website} with no website — nothing to read
+                </span>
+              )}
+              {split.already_researched > 0 && (
+                <span className={s.splitMuted}>
+                  {split.already_researched} already researched
+                </span>
+              )}
+              <span className={s.splitStrong}>{toResearch} to research</span>
+
+              {split.already_researched > 0 && (
+                <label className={s.redo}>
+                  <input
+                    type="checkbox" checked={redoExisting}
+                    onChange={(e) => setRedoExisting(e.target.checked)}
+                  />
+                  Redo existing briefs
+                </label>
+              )}
+            </div>
+          )}
 
           {batch && batch.verdict !== 'never_run' && (
             <div className={batch.healthy ? s.batchOk : s.batchBad}>
@@ -436,17 +506,15 @@ export default function ResearchPage() {
         title={editing?.id ? editing.name : 'New offer'}
         subtitle="Everything here is read by the agent — and some of it reaches a prospect."
         width="lg"
-        footer={
-          <div className={s.actions}>
-            <VdfButton variant="outline" onClick={() => setEditing(null)}>Cancel</VdfButton>
-            <VdfButton variant="primary" onClick={onSaveOffer} disabled={saveOffer.isPending}>
-              {saveOffer.isPending ? 'Saving…' : 'Save offer'}
-            </VdfButton>
-          </div>
-        }
       >
         {editing && (
-          <OfferForm offer={editing} onChange={setEditing} />
+          <OfferForm
+            key={editing.id || 'new'}
+            initial={editing}
+            saving={saveOffer.isPending}
+            onCancel={() => setEditing(null)}
+            onSave={onSaveOffer}
+          />
         )}
       </VdfModal>
 
@@ -487,67 +555,120 @@ export default function ResearchPage() {
 
 /* ── Offer form ─────────────────────────────────────────────────────── */
 
-function OfferForm({ offer, onChange }: { offer: Offer; onChange: (o: Offer) => void }) {
-  const set = (patch: Partial<Offer>) => onChange({ ...offer, ...patch });
-  const lines = (xs: string[]) => xs.join('\n');
-  const toLines = (v: string) => v.split('\n').map((x) => x.trim()).filter(Boolean);
+/**
+ * One offer, edited.
+ *
+ * ── WHY THIS OWNS ITS OWN STATE ───────────────────────────────────────
+ *
+ * The first version lifted every keystroke to the page and defined the
+ * textarea component INSIDE this function. Both are bugs, and together they
+ * made the form unusable — React saw a new component type on every render
+ * and remounted the textarea, so focus was lost after every single
+ * character. The only way to fill it in was to paste.
+ *
+ * So: `Field` and `Area` live at module scope, and the draft lives here.
+ * The page learns about it once, on save. Nothing re-renders while typing
+ * except this form.
+ */
+function OfferForm({
+  initial, onSave, onCancel, saving,
+}: {
+  initial: Offer;
+  onSave: (o: Offer) => void;
+  onCancel: () => void;
+  saving: boolean;
+}) {
+  // Keyed by offer id at the call site, so opening a different offer
+  // remounts with fresh state rather than showing the previous one.
+  const [draft, setDraft] = useState<Offer>(initial);
+  const set = (patch: Partial<Offer>) => setDraft((d) => ({ ...d, ...patch }));
 
-  const Area = ({ label, value, hint, onEdit, rows = 3 }: {
-    label: string; value: string; hint?: string; onEdit: (v: string) => void; rows?: number;
-  }) => (
-    <div className={s.formRow}>
-      <label className={s.formLabel}>{label}</label>
-      <textarea
-        className={s.textarea} value={value} rows={rows}
-        onChange={(e) => onEdit(e.target.value)}
-      />
-      {hint && <div className={s.formHint}>{hint}</div>}
-    </div>
-  );
+  const missing = [
+    !draft.price_band.trim() && 'price band',
+    !draft.proof.trim() && 'proof',
+    draft.signals.length === 0 && 'fit signals',
+    draft.disqualifiers.length === 0 && 'disqualifiers',
+  ].filter(Boolean) as string[];
 
   return (
     <>
-      <VdfInput
-        label="Name" value={offer.name} required
-        onChange={(e) => set({ name: e.target.value })}
-      />
-      <Area
-        label="One line" value={offer.one_line} rows={2}
-        onEdit={(v) => set({ one_line: v })}
-        hint="How you would describe it in a sentence."
-      />
-      <Area
-        label="Who it is for" value={offer.who_for} rows={2}
-        onEdit={(v) => set({ who_for: v })}
-      />
-      <Area
-        label="Problem it solves" value={offer.problem}
-        onEdit={(v) => set({ problem: v })}
-      />
-      <Area
-        label="What you do" value={lines(offer.what_we_do)}
-        onEdit={(v) => set({ what_we_do: toLines(v) })}
-        hint="One per line."
-      />
-      <Area
-        label="Fit signals" value={lines(offer.signals)}
-        onEdit={(v) => set({ signals: toLines(v) })}
-        hint="One per line. What on a company's website tells you this fits them — this is what the agent looks for."
-      />
-      <Area
-        label="Do NOT pitch this when" value={lines(offer.disqualifiers)}
-        onEdit={(v) => set({ disqualifiers: toLines(v) })}
-        hint="One per line. Without these the agent always finds a reason to say yes."
-      />
-      <Area
-        label="Price band" value={offer.price_band} rows={2}
-        onEdit={(v) => set({ price_band: v })}
-      />
-      <Area
-        label="Proof" value={offer.proof} rows={2}
-        onEdit={(v) => set({ proof: v })}
-        hint="What you can stand behind in writing. If you have no case study yet, say what is actually true — credentials, adjacent work. Never invent one; a real prospect can check."
-      />
+      <div className={s.offerForm}>
+        {/* Left: what the offer IS. */}
+        <div className={s.offerCol}>
+          <div className={s.colHead}>What it is</div>
+
+          <div className={s.formRow}>
+            <label className={s.formLabel}>Name</label>
+            <input
+              className={s.input} value={draft.name}
+              onChange={(e) => set({ name: e.target.value })}
+              placeholder="CDO as a Service"
+            />
+          </div>
+
+          <Area
+            label="One line" value={draft.one_line} rows={2}
+            onEdit={(v) => set({ one_line: v })}
+            hint="How you would describe it in a sentence."
+          />
+          <Area
+            label="Who it is for" value={draft.who_for} rows={3}
+            onEdit={(v) => set({ who_for: v })}
+          />
+          <Area
+            label="Problem it solves" value={draft.problem} rows={5}
+            onEdit={(v) => set({ problem: v })}
+          />
+          <Area
+            label="What you do" value={lines(draft.what_we_do)} rows={5}
+            onEdit={(v) => set({ what_we_do: toLines(v) })}
+            hint="One per line."
+          />
+        </div>
+
+        {/* Right: how a company gets matched to it. */}
+        <div className={s.offerCol}>
+          <div className={s.colHead}>How it gets matched</div>
+
+          <Area
+            label="Fit signals" value={lines(draft.signals)} rows={7}
+            onEdit={(v) => set({ signals: toLines(v) })}
+            hint="One per line. What on a company's website tells you this fits — this is what the agent actually looks for, so concrete beats descriptive."
+          />
+          <Area
+            label="Do NOT pitch this when" value={lines(draft.disqualifiers)} rows={5}
+            onEdit={(v) => set({ disqualifiers: toLines(v) })}
+            hint="One per line. Without these the agent always finds a reason to say yes."
+          />
+          <Area
+            label="Price band" value={draft.price_band} rows={2}
+            onEdit={(v) => set({ price_band: v })}
+            hint="What it costs. This is what makes “too small for this” a judgement rather than a guess."
+          />
+          <Area
+            label="Proof" value={draft.proof} rows={4}
+            onEdit={(v) => set({ proof: v })}
+            hint="What you can stand behind in writing. No case study yet? Say what is actually true — credentials, adjacent work. Never invent one; a real prospect can check."
+          />
+        </div>
+      </div>
+
+      <div className={s.offerFooter}>
+        <div className={s.formHint}>
+          {missing.length > 0
+            ? `Still needed before research can run: ${missing.join(', ')}.`
+            : 'Ready to score companies against.'}
+        </div>
+        <div className={s.actions}>
+          <VdfButton variant="outline" onClick={onCancel}>Cancel</VdfButton>
+          <VdfButton
+            variant="primary" disabled={saving || !draft.name.trim()}
+            onClick={() => onSave(draft)}
+          >
+            {saving ? 'Saving…' : 'Save offer'}
+          </VdfButton>
+        </div>
+      </div>
     </>
   );
 }

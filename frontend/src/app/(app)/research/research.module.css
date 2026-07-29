@@ -152,3 +152,50 @@
   font-size: 0.8rem; color: var(--color-text-muted);
   margin-top: 0.25rem; line-height: 1.5;
 }
+
+/* ── Offer form — landscape ──────────────────────────────────────────
+   Two columns because the fields split cleanly in two: what the offer IS,
+   and how a company gets matched to it. Stacks under 900px. */
+
+.offerForm {
+  display: grid; gap: 1.5rem;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .offerForm { grid-template-columns: 1fr; }
+}
+.offerCol { min-width: 0; }
+.colHead {
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.09em;
+  color: var(--color-text-muted); font-weight: 600;
+  padding-bottom: 0.5rem; margin-bottom: 0.9rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.input {
+  width: 100%; background: var(--color-surface); color: var(--color-text);
+  border: 1px solid var(--color-border); border-radius: 8px;
+  padding: 0.6rem 0.75rem; font: inherit; font-size: 0.85rem;
+}
+.input:focus { outline: none; border-color: var(--color-accent); }
+.offerFooter {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+  margin-top: 1.5rem; padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+/* ── The batch split ─────────────────────────────────────────────────
+   Answered before the button, not discovered from the run. */
+
+.split {
+  display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap;
+  font-size: 0.82rem; color: var(--color-text);
+  padding: 0.6rem 0; margin-top: -0.25rem;
+}
+.splitMuted { color: var(--color-text-muted); }
+.splitStrong { color: var(--color-accent); font-weight: 600; }
+.redo {
+  display: flex; align-items: center; gap: 0.4rem;
+  font-size: 0.78rem; color: var(--color-text-muted); cursor: pointer;
+}
