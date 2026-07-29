@@ -433,7 +433,7 @@ until there is a real customer to learn the next state from.
 | **D4** | Does `parked` auto-wake at `wake_at`? | Surface only. An automatic wake is a send nobody decided. |
 | **D5** | Bulk story approval — now or later? | Later |
 | **D6** | A journey for every cohort member, or only from `researched`? | Every member. The sourced→researched gap is a number worth seeing. |
-| **D7** | Generalise `gt_presentations` into the asset library (kind / arc / stages / body), or a new table beside it? | Generalise. Two content tables means two libraries and the nurture library forks. (§8.1) |
+| **D7** | ~~Generalise `gt_presentations`, or a new table beside it?~~ | **RULED.** Generalise, *and* `kind` is an open registry (`gt_content_kinds`), never a CHECK constraint — kinds arrive one at a time forever. See `POA-journey-campaign.md` §1. |
 | **D8** | Build Arc 2 states now? | No — declare the arc, build Arc 1 (§8.3) |
 
 ---
