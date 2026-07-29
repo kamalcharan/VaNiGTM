@@ -175,6 +175,13 @@ scores still look reasonable.
 | LinkedIn | **Do not scrape.** Against ToS, actively blocked, litigated. Legitimate routes: paid provider (Proxycurl/Coresignal), their gated API, search snippets, or `linkedin_url` as a link for a human. Pilot: the link |
 | Reddit / communities | Wrong source for Indian pharma B2B — no community discusses a bulk-drug maker's data governance. Would be excellent for a dev-tools segment, which is the argument FOR per-segment sources |
 
+**Landed 2026-07-29 — the first of these:** evidence carries `source`
+(`website` | `search`), set from the block the excerpt was actually verified
+against rather than guessed from the URL, and shown as a "third party" badge
+on the dossier and the brief. `account_extract` v2 (migration 220) labels each
+block and forbids blending two into one claim — without that the tier recorded
+against a merged claim is effectively random, which is worse than no tier.
+
 **Two things to build in from the start when sources land:**
 
 1. Evidence already carries `{claim, url, excerpt}`, so multi-source needs no
@@ -256,7 +263,7 @@ column now.
 | 5 | ~~Split facts from judgement~~ | ✅ **DONE 2026-07-29.** Migration 211. `facts_at` / `judged_at` / `offers_fingerprint` (hash of key + updated_at per active offer). Editing an offer stales every judgement and nothing else, so a re-score is ONE call per company and zero crawling. Also fixed a silent data loss: `certifications` were extracted, fed to the fit prompt, and never stored — for a pharma company those ARE the scale signal |
 | 5b | ~~Fit scores bunched — one offer won everything by 0.03~~ | ✅ **DONE 2026-07-29.** Migration 212. See §9 |
 | 5c | ~~Correction loop / Learning Graph~~ | ✅ **DONE 2026-07-29.** Migrations 213–215. The agent derives rules from your brief decisions; you ratify, reword or throw out each one; only ratified rules score anything. See §10 |
-| 6 | SearXNG as a second source | Fixes the unreachable fit signals. Deliberately after the first ten: if the briefs are already specific enough to write from, this is refinement not necessity |
+| 6 | ~~SearXNG as a second source~~ | ✅ **DONE 2026-07-29.** Runs for EVERY company, not only when the site fails — a source that appears only on failure is a fallback. Evidence now carries `source: website \| search`, the tier the design note said was mandatory before adding sources. A dead domain no longer ends a company: Aurobindo refused all four addresses and can still get a brief, marked as built from third parties |
 | 7 | ~~Prospect dossier page~~ | ✅ **DONE 2026-07-29.** `/prospects/<ref>` — a full page, addressable, `ref` not the PK. Facts → judgement → evidence → decision, in that order, because putting the recommendation first makes everything after it read as justification |
 | 8 | ~~`industry_sub` stored + filterable~~ | ✅ **DONE 2026-07-29.** Migration 218. Computed since 206 and thrown away for want of a column — which is why every segment question needed the CLI. Cluster + segment are now facets on `/prospects` |
 | 9 | ~~`gt_segments`~~ | ✅ **DONE 2026-07-29.** Migration 219. Stores the DEFINITION, not a member list. Built on `/prospects` (R4). Shows the saved count beside the live one, and flags `rules_moved` when the classification itself changed |

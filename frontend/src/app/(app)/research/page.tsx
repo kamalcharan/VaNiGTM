@@ -50,7 +50,11 @@ const COMMITMENT_SHORT: Record<Commitment, string> = {
   entry: 'entry ask', project: 'project', retainer: 'retainer',
 };
 
-interface Evidence { claim: string; url: string; excerpt: string }
+interface Evidence {
+  claim: string; url: string; excerpt: string;
+  /** 'website' = their own site · 'search' = a third party. */
+  source?: 'website' | 'search';
+}
 
 interface Brief {
   id: number; prospect_id: number; ref: string | null; name: string;
@@ -1527,7 +1531,12 @@ function BriefDetail({
         </div>
         {(brief.raw_evidence ?? []).map((e, i) => (
           <div key={i} className={s.evidence}>
-            <div className={s.evidenceClaim}>{e.claim}</div>
+            <div className={s.evidenceClaim}>
+              {e.claim}
+              {e.source === 'search' && (
+                <> <VdfBadge variant="default">third party</VdfBadge></>
+              )}
+            </div>
             <a className={s.evidenceUrl} href={e.url} target="_blank" rel="noreferrer">{e.url}</a>
             <div className={s.evidenceExcerpt}>&ldquo;{e.excerpt}&rdquo;</div>
           </div>

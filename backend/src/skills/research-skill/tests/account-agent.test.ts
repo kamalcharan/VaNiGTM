@@ -12,7 +12,8 @@
 
 import { meaningful, verifyEvidence, urlVariants, AccountResearchAgent, ExtractSchema } from '../account.agent';
 
-const page = (url: string, text: string) => ({ url, text });
+const page = (url: string, text: string, source: 'website' | 'search' = 'website') =>
+  ({ url, text, source });
 
 describe('meaningful', () => {
   it('keeps a real answer', () => {

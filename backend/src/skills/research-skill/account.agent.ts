@@ -45,6 +45,7 @@ import { appendStep, setStatus, saveCheckpoint, loadCheckpoint } from '../../age
 import { callLLMValidated, getTokenBudget } from '../../agent-core/llm.client';
 import { loadPrompt } from '../../agent-core/prompt.store';
 import { IngestionAgent } from '../ingestion-skill/ingestion.agent';
+import { searchWeb, searchConfigured } from '../../agent-core/search.client';
 import {
   loadOfferCatalogue, catalogueForPrompt, catalogueFingerprint, chooseOffer,
   FIT_MARGIN, type OfferCatalogue,
@@ -66,6 +67,8 @@ const PAGE_TEXT_CAP     = 2_500;
 const TOTAL_TEXT_CAP    = 8_000;
 const MIN_USABLE_TEXT   = 200;   // below this a page said nothing
 const EXCERPT_CAP       = 200;
+/** Search results kept per company, on top of the crawled pages. */
+const MAX_SEARCH_HITS   = 4;
 
 /* ── What a company costs ────────────────────────────────────────────────
  *
@@ -100,6 +103,20 @@ const EvidenceSchema = z.object({
   url: z.string(),
   excerpt: z.string(),
 });
+
+/**
+ * Where a piece of evidence came from.
+ *
+ * The design note's standing warning (§4): "without tiering, more sources make
+ * briefs longer without making them truer." A company's own homepage saying
+ * "we are a leading manufacturer" is marketing; the same claim in a trade
+ * journal is reporting. They are not interchangeable and a reviewer must be
+ * able to tell them apart at a glance.
+ *
+ * Two tiers today because we have two sources. Adding a third means adding a
+ * value here, not redesigning anything.
+ */
+export type EvidenceSource = 'website' | 'search';
 
 /**
  * "not stated" where a LIST was expected.
@@ -197,7 +214,7 @@ interface TargetRow {
   certifications: string[] | null;
 }
 
-interface PageText { url: string; text: string }
+interface PageText { url: string; text: string; source: EvidenceSource }
 
 /** The offer-independent half of a brief. */
 export interface BriefFacts {
@@ -235,14 +252,28 @@ export function meaningful(value: unknown): string | null {
 export function verifyEvidence(
   evidence: z.infer<typeof EvidenceSchema>[],
   pages: PageText[],
-): { kept: z.infer<typeof EvidenceSchema>[]; dropped: number } {
-  const haystack = pages.map((p) => p.text.toLowerCase().replace(/\s+/g, ' ')).join('\n');
-  const kept = evidence.filter((e) => {
+): {
+  kept: (z.infer<typeof EvidenceSchema> & { source: EvidenceSource })[];
+  dropped: number;
+} {
+  // Per page rather than one blob, so a surviving claim can say WHICH source
+  // carried it. Tiering is worthless if the tier has to be guessed afterwards
+  // from the URL.
+  const haystacks = pages.map((p) => ({
+    source: p.source,
+    text: p.text.toLowerCase().replace(/\s+/g, ' '),
+  }));
+
+  const kept: (z.infer<typeof EvidenceSchema> & { source: EvidenceSource })[] = [];
+  for (const e of evidence) {
     const needle = (e.excerpt ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
     // Too short to verify meaningfully — treat as unsupported.
-    if (needle.length < 15) return false;
-    return haystack.includes(needle.slice(0, 120));
-  });
+    if (needle.length < 15) continue;
+    const hit = haystacks.find((h) => h.text.includes(needle.slice(0, 120)));
+    // The company's own site wins ties: if a claim appears in both, the
+    // first-party page is the one a reviewer should be shown.
+    if (hit) kept.push({ ...e, source: hit.source });
+  }
   return { kept, dropped: evidence.length - kept.length };
 }
 
@@ -756,25 +787,30 @@ export class AccountResearchAgent {
     }
 
     if (!home) {
-      // A dead domain is a real, reportable finding about the company —
-      // every address we tried is named so it can be argued with.
-      return {
-        status: 'unreadable', domain,
-        error: `No address answered. Tried: ${attempts.join('; ')}`.slice(0, 500),
-      };
+      // A dead domain used to end the company here. It no longer does: a
+      // site that refuses us is a fact about their SERVER, not about whether
+      // anything is knowable about the business — and Aurobindo Pharma, a
+      // company with a market cap in the billions, failed on all four
+      // addresses. Search runs below and may still have plenty to say.
+      await appendStep(pool, runId, {
+        step_name: 'fetch_site',
+        action: `${target.name} — no address answered`,
+        output_summary: attempts.join('; ').slice(0, 200),
+        status: 'error',
+      });
     }
 
     const pages: PageText[] = [];
-    if (home.text.length >= MIN_USABLE_TEXT) {
-      pages.push({ url: reached, text: home.text.slice(0, PAGE_TEXT_CAP) });
-    } else if (IngestionAgent.renderConfigured()) {
+    if (home && home.text.length >= MIN_USABLE_TEXT) {
+      pages.push({ url: reached, text: home.text.slice(0, PAGE_TEXT_CAP), source: 'website' });
+    } else if (home && IngestionAgent.renderConfigured()) {
       // Escalation, not a fallback: visible as its own step, and a failure
       // here is reported rather than papered over.
       try {
         const html = await IngestionAgent.renderPageViaN8n(reached);
         const rendered = IngestionAgent.extractFromHtml(html);
         if (rendered.text.length >= MIN_USABLE_TEXT) {
-          pages.push({ url: reached, text: rendered.text.slice(0, PAGE_TEXT_CAP) });
+          pages.push({ url: reached, text: rendered.text.slice(0, PAGE_TEXT_CAP), source: 'website' });
         }
         await appendStep(pool, runId, {
           step_name: 'render_page',
@@ -792,44 +828,124 @@ export class AccountResearchAgent {
       }
     }
 
-    await appendStep(pool, runId, {
-      step_name: 'fetch_site',
-      action: `${target.name} — ${reached}`,
-      output_summary: home.health.summary
-        + (attempts.length > 0 ? ` · first ${attempts.length} address(es) did not answer` : ''),
-      status: pages.length > 0 ? 'ok' : 'error',
-    });
+    if (home) {
+      await appendStep(pool, runId, {
+        step_name: 'fetch_site',
+        action: `${target.name} — ${reached}`,
+        output_summary: home.health.summary
+          + (attempts.length > 0 ? ` · first ${attempts.length} address(es) did not answer` : ''),
+        status: pages.length > 0 ? 'ok' : 'error',
+      });
+    }
+
+    // 2b. SEARCH — the second source.
+    //
+    // ── WHY THIS IS NOT A FALLBACK ─────────────────────────────────────
+    //
+    // It runs for EVERY company, whether or not the site read. That matters
+    // for rule 12: a source that only appears when something else fails is a
+    // fallback, and a fallback quietly changes what a brief is made of
+    // without saying so. This is a second source, always, and every claim it
+    // produces is tagged `search` so a reviewer can weigh it differently.
+    //
+    // It is also what makes several offer signals reachable at all. "Recent
+    // expansion", "press coverage", "hiring a data lead" are news and hiring
+    // facts — a company's own About page will never carry them, so those
+    // signals were silently contributing nothing to every score.
+    //
+    // And it is the only thing that can say anything about a company whose
+    // site refuses us outright, which is a real cohort: Aurobindo Pharma
+    // failed on all four addresses.
+    if (searchConfigured()) {
+      try {
+        const hits = await searchWeb(`"${target.name}" ${domain}`, 6);
+        for (const hit of hits) {
+          if (!hit.snippet || hit.snippet.length < 40) continue;
+          // Never count their own site twice — it is already read in full,
+          // and a snippet of it would be weaker evidence wearing a second
+          // source's label.
+          if (hit.url.includes(domain.replace(/^www\./, ''))) continue;
+          pages.push({
+            url: hit.url,
+            text: `${hit.title}\n${hit.snippet}`.slice(0, PAGE_TEXT_CAP),
+            source: 'search',
+          });
+          if (pages.length >= MAX_SUBPAGES + MAX_SEARCH_HITS) break;
+        }
+        await appendStep(pool, runId, {
+          step_name: 'web_search',
+          action: `${target.name}: searched the web as a second source`,
+          output_summary: `${pages.filter((x) => x.source === 'search').length} `
+            + `usable result(s) of ${hits.length}`,
+          status: 'ok',
+        });
+      } catch (err) {
+        // A failed search does not fail the company — their own site is still
+        // the primary source. But it is never silent: a batch where every
+        // search failed produces briefs missing exactly the signals search was
+        // added to reach, and that has to be visible in the feed.
+        await appendStep(pool, runId, {
+          step_name: 'web_search',
+          action: `${target.name}: web search failed`,
+          output_summary: (err as Error).message.slice(0, 200),
+          status: 'error',
+        });
+      }
+    }
 
     // 2. CRAWL — a handful of paths that pay off for a manufacturer.
-    const linked = this.subpagesFrom(home.html, reached).slice(0, MAX_SUBPAGES);
+    const linked = home
+      ? this.subpagesFrom(home.html, reached).slice(0, MAX_SUBPAGES)
+      : [];
     for (const url of linked) {
       if (pages.reduce((n, p) => n + p.text.length, 0) >= TOTAL_TEXT_CAP) break;
       try {
         const sub = await IngestionAgent.fetchUrlText(url);
         if (sub.text.length >= MIN_USABLE_TEXT) {
-          pages.push({ url, text: sub.text.slice(0, PAGE_TEXT_CAP) });
+          pages.push({ url, text: sub.text.slice(0, PAGE_TEXT_CAP), source: 'website' });
         }
       } catch { /* one dead subpage is not worth a step of its own */ }
     }
 
+    // Nothing from EITHER source. Only now is the company unreadable, and the
+    // message names both failures — "their site is down" and "and nothing on
+    // the web mentions them" are different findings and a reviewer needs both.
     if (pages.length === 0) {
       return {
         status: 'unreadable', domain,
-        site_health: home.health.summary,
-        error: 'The site returned no readable text — nothing to research. '
-             + 'A brief invented from an empty page is worse than no brief.',
+        site_health: home?.health.summary,
+        error: home
+          ? 'The site returned no readable text and the web search found nothing '
+            + 'usable either. A brief invented from an empty page is worse than no '
+            + 'brief.'
+          // Every address is named, as it always was: a finding you cannot
+          // argue with is a finding nobody trusts.
+          : `No address answered. Tried: ${attempts.join('; ')}. `
+            + (searchConfigured()
+              ? 'A web search turned up nothing usable about them either.'
+              : 'Web search is not configured, so there was no second source to '
+                + 'try — set SEARXNG_URL (docs/searxng-setup.md).'),
       };
     }
 
+    const fromSite = pages.filter((p) => p.source === 'website').length;
+    const fromSearch = pages.length - fromSite;
+
     await appendStep(pool, runId, {
       step_name: 'crawl_pages',
-      action: `${target.name}: read ${pages.length} page(s)`,
-      output_summary: pages.map((p) => new URL(p.url).pathname).join(' · '),
+      action: `${target.name}: read ${pages.length} source(s)`,
+      output_summary: `${fromSite} page(s) of their site`
+        + (fromSearch > 0 ? ` · ${fromSearch} web result(s)` : ''),
       status: 'ok',
     });
 
+    // Every block says WHERE it came from, in words the model can repeat back.
+    // Without that it cannot tell a company's own claim from a third party's,
+    // and neither can the reviewer reading the evidence afterwards.
     const pageBlock = pages
-      .map((p) => `SOURCE: ${p.url}\n${p.text}`)
+      .map((p) => (p.source === 'website'
+        ? `SOURCE (their own website): ${p.url}\n${p.text}`
+        : `SOURCE (a web search result, NOT their own site): ${p.url}\n${p.text}`))
       .join('\n\n---\n\n');
 
     // 3. EXTRACT — facts, each carrying its source.
@@ -887,7 +1003,13 @@ export class AccountResearchAgent {
     return {
       status: 'facts',
       domain,
-      site_health: home.health.summary,
+      // When their site never answered, say so HERE rather than leaving the
+      // brief looking first-party. Everything in it came from third parties.
+      site_health: home
+        ? home.health.summary
+        : `Site did not answer (${attempts.length} address(es) tried) — this `
+          + `brief is built from ${fromSearch} web search result(s), not from `
+          + 'their own site.',
       pages_read: pages.length,
       what_they_make: meaningful(extracted.what_they_make),
       scale_signals: meaningful(extracted.scale_signals),

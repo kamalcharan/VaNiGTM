@@ -53,6 +53,19 @@ jest.mock('../../../agent-core/prompt.store', () => ({
   loadPrompt: jest.fn(async () => 'stub prompt'),
 }));
 
+// SearXNG: off by default, so every existing test still describes a
+// website-only run. A test that cares about the second source turns it on.
+let searchHits: { title: string; url: string; snippet: string }[] = [];
+let searchOn = false;
+let searchThrows: string | null = null;
+jest.mock('../../../agent-core/search.client', () => ({
+  searchConfigured: jest.fn(() => searchOn),
+  searchWeb: jest.fn(async () => {
+    if (searchThrows) throw new Error(searchThrows);
+    return searchHits;
+  }),
+}));
+
 let llmQueue: unknown[] = [];
 // Unmetered by default so existing tests are unaffected; a test that cares
 // about the budget sets `budget` and the agent sees a real limit.
@@ -181,6 +194,7 @@ afterAll(async () => { if (pool) await pool.end(); });
 
 beforeEach(() => {
   fetched.length = 0; llmQueue = []; siteText = {};
+  searchHits = []; searchOn = false; searchThrows = null;
   budget = { limit: null, used: 0, remaining: Number.POSITIVE_INFINITY,
              capped: false, tracked: true };
 });
@@ -1176,5 +1190,135 @@ maybe('a site that says nothing', () => {
     const row = (await briefs())[0];
     expect(row.status).toBe('drafted');
     expect(row.what_they_make).toBe('Active pharmaceutical ingredients');
+  });
+});
+
+/* ── SearXNG as a second source ─────────────────────────────────────── */
+
+maybe('the web as a second source', () => {
+  beforeEach(async () => { await pool.query('DELETE FROM gt_account_briefs'); });
+
+  const HIT = {
+    title: 'Alpha API commissions third unit',
+    url: 'https://pharmabiz.com/alpha-expansion',
+    snippet: 'Alpha API has commissioned a third manufacturing unit at Medak, '
+           + 'taking total capacity to 400 KL, the company said on Tuesday.',
+  };
+
+  // The reason search was added: Aurobindo Pharma refused all four addresses.
+  // A server that will not talk to us is a fact about their server, not about
+  // whether anything is knowable about the business.
+  it('still produces a brief when the site refuses every address', async () => {
+    siteText = {};                 // nothing answers
+    searchOn = true;
+    searchHits = [HIT];
+    llmQueue.push({
+      what_they_make: 'Active pharmaceutical ingredients',
+      scale_signals: 'Third unit at Medak, 400 KL',
+      certifications: [], named_contacts: [],
+      evidence: [{ claim: 'third unit', url: HIT.url, excerpt: 'commissioned a third manufacturing unit at Medak' }],
+    });
+    llmQueue.push({
+      scores: [{ offer_id: 'cdo-as-a-service', score: 0.7, reason: 'multi-site' }],
+      recommended_offer: 'cdo-as-a-service', reason: 'three units',
+    });
+    llmQueue.push({ hook: 'A third unit at Medak.' });
+
+    const runId = await newRun();
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, runId);
+
+    const row = (await briefs())[0];
+    expect(row.status).toBe('drafted');
+    expect(row.what_they_make).toBe('Active pharmaceutical ingredients');
+    // The brief must NOT read as first-party when their site never answered.
+    expect(row.site_health).toMatch(/did not answer/);
+    expect(row.raw_evidence[0].source).toBe('search');
+  });
+
+  it('tags evidence by which source actually carried it', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    searchOn = true;
+    searchHits = [HIT];
+    llmQueue.push({
+      what_they_make: 'APIs',
+      scale_signals: 'Two units in Medak',
+      certifications: [], named_contacts: [],
+      evidence: [
+        { claim: 'two units', url: 'https://alpha.com', excerpt: 'two units in Medak district' },
+        { claim: 'third unit', url: HIT.url, excerpt: 'commissioned a third manufacturing unit at Medak' },
+      ],
+    });
+    llmQueue.push({
+      scores: [{ offer_id: 'cdo-as-a-service', score: 0.7, reason: 'multi-site' }],
+      recommended_offer: 'cdo-as-a-service', reason: 'units',
+    });
+    llmQueue.push({ hook: 'Two units in Medak.' });
+
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+
+    const ev = (await briefs())[0].raw_evidence;
+    expect(ev.find((e: any) => e.claim === 'two units').source).toBe('website');
+    expect(ev.find((e: any) => e.claim === 'third unit').source).toBe('search');
+  });
+
+  // Their own pages are already read in full; a snippet of the same site would
+  // be weaker evidence wearing a second source's label.
+  it('does not count their own site as a search result', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    searchOn = true;
+    searchHits = [{
+      title: 'Alpha API', url: 'https://alpha.com/about',
+      snippet: 'Alpha API is a manufacturer of active pharmaceutical ingredients based in Medak.',
+    }];
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+
+    const runId = await newRun();
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, runId);
+
+    const { steps } = (await pool.query(
+      `SELECT steps FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
+    const search = steps.find((x: any) => x.step_name === 'web_search');
+    expect(search.output_summary).toMatch(/^0 usable/);
+  });
+
+  // A failed search must not fail the company — their own site is still the
+  // primary source — but a batch where every search failed produces briefs
+  // missing exactly the signals search was added to reach.
+  it('records a failed search without losing the company', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    searchOn = true;
+    searchThrows = 'SEARCH_FAILED: SearXNG returned 403 — the JSON API is disabled.';
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+
+    const runId = await newRun();
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, runId);
+
+    expect((await briefs())[0].status).toBe('drafted');
+    const { steps } = (await pool.query(
+      `SELECT steps FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
+    expect(steps.some((x: any) => x.step_name === 'web_search' && x.status === 'error')).toBe(true);
+  });
+
+  it('says search was never configured when both sources come up empty', async () => {
+    siteText = {};
+    searchOn = false;
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+    expect((await briefs())[0].error).toMatch(/SEARXNG_URL/);
+  });
+
+  // Not a fallback (CLAUDE.md rule 12): it runs for every company, not only
+  // when something else failed.
+  it('searches even when the site read perfectly well', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    searchOn = true;
+    searchHits = [HIT];
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+
+    const runId = await newRun();
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, runId);
+
+    const { steps } = (await pool.query(
+      `SELECT steps FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
+    expect(steps.some((x: any) => x.step_name === 'web_search' && x.status === 'ok')).toBe(true);
   });
 });

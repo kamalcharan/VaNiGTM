@@ -70,7 +70,11 @@ interface Brief {
   human_offer: string | null;
   fit_margin: string | number | null;
   fit_reason: string | null; hook: string | null;
-  raw_evidence: { claim: string; url: string; excerpt: string }[];
+  raw_evidence: {
+    claim: string; url: string; excerpt: string;
+    /** 'website' = their own site · 'search' = a third party. */
+    source?: 'website' | 'search';
+  }[];
   error: string | null; unevidenced: boolean;
   decision_note: string | null; decided_at: string | null;
   facts_at: string | null; judged_at: string | null; updated_at: string;
@@ -306,7 +310,16 @@ export default function DossierPage() {
                 </h2>
                 {(brief.raw_evidence ?? []).map((e, i) => (
                   <div key={i} className={s.evidence}>
-                    <div className={s.evidenceClaim}>{e.claim}</div>
+                    <div className={s.evidenceClaim}>
+                      {e.claim}
+                      {/* A company's own homepage saying "leading manufacturer"
+                          is marketing; a trade journal saying it is reporting.
+                          The tier has to be readable at a glance or more
+                          sources just make briefs longer. */}
+                      {e.source === 'search' && (
+                        <> <VdfBadge variant="default">third party</VdfBadge></>
+                      )}
+                    </div>
                     <a className={s.evidenceUrl} href={e.url} target="_blank" rel="noreferrer">
                       {e.url}
                     </a>
