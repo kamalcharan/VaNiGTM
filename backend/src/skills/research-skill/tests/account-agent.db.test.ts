@@ -87,7 +87,7 @@ CREATE TABLE gt_offers (id BIGSERIAL PRIMARY KEY, tenant_id UUID NOT NULL,
   signals TEXT[] NOT NULL DEFAULT '{}', disqualifiers TEXT[] NOT NULL DEFAULT '{}',
   price_band TEXT, proof TEXT, is_active BOOLEAN NOT NULL DEFAULT true,
   sort_order SMALLINT NOT NULL DEFAULT 0, created_by UUID,
-  created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now());
+  created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
 CREATE FUNCTION set_tenant_context(t UUID) RETURNS void AS $$
   BEGIN PERFORM set_config('app.current_tenant_id', t::text, true); END $$ LANGUAGE plpgsql;
 `;
@@ -110,7 +110,8 @@ beforeAll(async () => {
   await pool.query(BASE);
   // The real migrations, so the shipped constraints are what is tested —
   // including 210, which is what makes 'extract_failed' a legal status.
-  for (const m of ['207_gt_account_briefs.sql', '210_brief_extract_failed.sql']) {
+  for (const m of ['207_gt_account_briefs.sql', '210_brief_extract_failed.sql',
+                   '211_brief_facts_and_judgement.sql']) {
     await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
   }
 
@@ -514,13 +515,107 @@ maybe('a failed brief is not a researched company', () => {
     expect(fetched.some((u) => u.includes('alpha.com'))).toBe(true);
   });
 
-  it('still skips a real brief', async () => {
+  it('never re-crawls a real brief, whatever else it needs', async () => {
     siteText = { 'https://alpha.com': siteBody('APIs') };
+    // No fingerprint: judged against an unknown offer set, so it is stale
+    // and will be RE-SCORED — but it already has facts, so it must not be
+    // crawled again. That distinction is the whole point of the split.
     await pool.query(
-      `INSERT INTO gt_account_briefs (tenant_id, is_live, prospect_id, status, domain)
-       VALUES ($1, false, 1, 'drafted', 'alpha.com')`, [A]);
+      `INSERT INTO gt_account_briefs
+         (tenant_id, is_live, prospect_id, status, domain, what_they_make, facts_at)
+       VALUES ($1, false, 1, 'drafted', 'alpha.com', 'APIs', now())`, [A]);
 
+    llmQueue = [{ scores: [], recommended_offer: null, reason: 'rescored' }];
     await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
     expect(fetched).toHaveLength(0);
+  });
+});
+
+maybe('facts and judgement are separate halves', () => {
+  beforeEach(async () => { await pool.query('DELETE FROM gt_account_briefs'); });
+
+  /** Editing an offer is what makes every existing judgement stale. */
+  const touchOffer = () => pool.query(
+    `UPDATE gt_offers SET updated_at = now() + interval '1 second'
+      WHERE tenant_id = $1 AND offer_key = 'cdo-as-a-service'`, [A]);
+
+  it('re-scores against new offers WITHOUT crawling again', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+    expect(fetched.some((u) => u.includes('alpha.com'))).toBe(true);
+
+    // The offer wording moves. Judgement is stale; facts are not.
+    await touchOffer();
+    fetched.length = 0;
+    llmQueue = [{ scores: [], recommended_offer: null, reason: 'no longer a fit' }];
+
+    const runId = await newRun();
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, runId);
+
+    // THE assertion: no network at all, and only ONE call was needed.
+    expect(fetched).toHaveLength(0);
+    expect(llmQueue).toHaveLength(0);
+
+    const out = (await pool.query(`SELECT output FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
+    expect(out.output.rescored_without_crawling).toBe(1);
+
+    const steps = (await pool.query(`SELECT steps FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0].steps;
+    expect(steps.some((x: any) => x.step_name === 'reuse_facts')).toBe(true);
+  });
+
+  it('leaves the facts untouched when only re-scoring', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+
+    const before = (await briefs())[0];
+    await touchOffer();
+    llmQueue = [{ scores: [], recommended_offer: null, reason: 'changed my mind' }];
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+
+    const after = (await briefs())[0];
+    // The expensive half survives exactly.
+    expect(after.what_they_make).toBe(before.what_they_make);
+    expect(after.scale_signals).toBe(before.scale_signals);
+    expect(after.raw_evidence).toEqual(before.raw_evidence);
+    expect(after.pages_read).toBe(before.pages_read);
+    expect(after.facts_at.toISOString()).toBe(before.facts_at.toISOString());
+    // The cheap half moved.
+    expect(after.recommended_offer).toBeNull();
+    expect(after.judged_at.getTime()).toBeGreaterThan(before.judged_at.getTime());
+  });
+
+  it('does nothing at all when the offers have not moved', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+
+    fetched.length = 0;
+    llmQueue = [];
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+    expect(fetched).toHaveLength(0);   // and no LLM call, or the stub would throw
+  });
+
+  it('stores the certifications it extracts, which were being thrown away', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+    expect((await briefs())[0].certifications).toEqual(['WHO-GMP']);
+  });
+
+  it('refresh still redoes both halves', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+
+    fetched.length = 0;
+    queueHealthyAccount('two units in Medak district', null);
+    const runId = await newRun();
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1], refresh: true }, runId);
+
+    expect(fetched.some((u) => u.includes('alpha.com'))).toBe(true);
+    const out = (await pool.query(`SELECT output FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0];
+    expect(out.output.rescored_without_crawling).toBe(0);
   });
 });

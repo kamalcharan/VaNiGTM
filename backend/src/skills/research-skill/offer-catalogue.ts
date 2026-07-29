@@ -18,6 +18,7 @@
  * (CLAUDE.md rule 12).
  */
 
+import { createHash } from 'crypto';
 import type { SkillDb } from '../../types/skill.types';
 
 export interface Offer {
@@ -109,6 +110,7 @@ interface OfferRow {
   offer_key: string; name: string; one_line: string; who_for: string;
   problem: string; what_we_do: string[]; signals: string[];
   disqualifiers: string[]; price_band: string | null; proof: string | null;
+  updated_at: Date | string;
 }
 
 const toOffer = (r: OfferRow): Offer => ({
@@ -128,13 +130,42 @@ const toOffer = (r: OfferRow): Offer => ({
 export async function readOffers(db: SkillDb, tenantId: string): Promise<Offer[]> {
   const res = await db.query<OfferRow>(
     `SELECT offer_key, name, one_line, who_for, problem, what_we_do,
-            signals, disqualifiers, price_band, proof
+            signals, disqualifiers, price_band, proof, updated_at
        FROM gt_offers
       WHERE tenant_id = $tenant_id AND is_active = true
       ORDER BY sort_order, offer_key`,
     { tenant_id: tenantId },
   );
   return res.rows.map(toOffer);
+}
+
+/**
+ * Which offer set a judgement was made against.
+ *
+ * Key + updated_at per active offer, hashed. Edit one word of one offer and
+ * this changes, so every brief judged against the old set is stale and gets
+ * re-scored — WITHOUT being re-crawled (migration 211). Nothing has to
+ * remember to invalidate anything.
+ *
+ * Deliberately NOT a hash of the offer CONTENT: updated_at moves whenever
+ * the row is saved, which is the honest trigger. Hashing content would make
+ * a save that changed nothing look like a change, and hashing less would
+ * miss edits.
+ */
+export async function catalogueFingerprint(
+  db: SkillDb,
+  tenantId: string,
+): Promise<string> {
+  const res = await db.query<{ offer_key: string; updated_at: Date | string }>(
+    `SELECT offer_key, updated_at FROM gt_offers
+      WHERE tenant_id = $tenant_id AND is_active = true
+      ORDER BY offer_key`,
+    { tenant_id: tenantId },
+  );
+  const material = res.rows
+    .map((r) => `${r.offer_key}@${new Date(r.updated_at).toISOString()}`)
+    .join('|');
+  return createHash('sha256').update(material).digest('hex').slice(0, 64);
 }
 
 /**

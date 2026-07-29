@@ -216,7 +216,7 @@ column now.
 
 | # | Item | Why then |
 |---|---|---|
-| 5 | **Split facts from judgement** in the brief | Adding an offer currently redoes crawl + extract + fit + hook. Split, and it costs ONE call per company. Across 101 that is minutes vs hours — and offer wording is the thing that will be iterated constantly. Cheapest before 101 briefs exist |
+| 5 | ~~Split facts from judgement~~ | ✅ **DONE 2026-07-29.** Migration 211. `facts_at` / `judged_at` / `offers_fingerprint` (hash of key + updated_at per active offer). Editing an offer stales every judgement and nothing else, so a re-score is ONE call per company and zero crawling. Also fixed a silent data loss: `certifications` were extracted, fed to the fit prompt, and never stored — for a pharma company those ARE the scale signal |
 | 6 | SearXNG as a second source | Fixes the unreachable fit signals. Deliberately after the first ten: if the briefs are already specific enough to write from, this is refinement not necessity |
 | 7 | Prospect dossier page | Replaces both modals |
 | 8 | `industry_sub` stored + filterable on `/prospects` | Enables segments |

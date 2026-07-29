@@ -13,7 +13,7 @@
  */
 
 import { SkillContext } from '../../../shared/types';
-import { readOffers, catalogueProblems } from '../offer-catalogue';
+import { readOffers, catalogueProblems, catalogueFingerprint } from '../offer-catalogue';
 import { emitEvent } from '../../../agent-core/event.store';
 import { getPool } from '../../../db/pool';
 
@@ -59,7 +59,7 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
   // which would have written both off permanently.
   const counts = await ctx.db.query<{
     selected: string; reachable: string; researched: string;
-    retryable: string; unreadable: string;
+    retryable: string; unreadable: string; needs_rescore: string;
   }>(
     `SELECT count(*)::text                                   AS selected,
             count(*) FILTER (WHERE p.domain_normalized IS NOT NULL)::text
@@ -85,7 +85,19 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
                      WHERE b.prospect_id = p.id
                        AND b.tenant_id   = $tenant_id
                        AND b.is_live     = $is_live
-                       AND b.status = 'unreadable'))::text     AS unreadable
+                       AND b.status = 'unreadable'))::text     AS unreadable,
+            -- Facts already gathered, judgement made against a DIFFERENT
+            -- offer set. These cost one LLM call and no crawl at all.
+            count(*) FILTER (WHERE p.domain_normalized IS NOT NULL
+                               AND EXISTS (
+                    SELECT 1 FROM gt_account_briefs b
+                     WHERE b.prospect_id = p.id
+                       AND b.tenant_id   = $tenant_id
+                       AND b.is_live     = $is_live
+                       AND b.facts_at IS NOT NULL
+                       AND b.status NOT IN ('unreadable','extract_failed')
+                       AND b.offers_fingerprint IS DISTINCT FROM $fingerprint))::text
+                                                                   AS needs_rescore
        FROM gt_prospects p
       WHERE p.tenant_id = $tenant_id AND p.is_live = $is_live
         AND p.is_active
@@ -96,6 +108,7 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
     {
       tenant_id: ctx.tenant_id, is_live: ctx.is_live,
       tag_id: tagId, ids: ids.length > 0 ? ids : null,
+      fingerprint: await catalogueFingerprint(ctx.db, ctx.tenant_id),
     },
   );
 
@@ -104,22 +117,26 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
   const alreadyResearched = Number(counts.rows[0]?.researched ?? 0);
   const retryable = Number(counts.rows[0]?.retryable ?? 0);
   const unreadable = Number(counts.rows[0]?.unreadable ?? 0);
+  const needsRescore = Number(counts.rows[0]?.needs_rescore ?? 0);
   const refresh = params.refresh === true;
 
-  // Never researched, PLUS the ones our own pipeline failed on. A dead
-  // website is skipped unless refresh is asked for — it is a finding about
-  // them and will not change on a retry.
+  // Never researched, PLUS the ones our own pipeline failed on, PLUS the ones
+  // whose judgement predates the current offers. A dead website is skipped
+  // unless refresh is asked for — a finding about them, not a retryable bug.
   const todo = refresh
     ? reachableCount
-    : reachableCount - alreadyResearched - unreadable;
+    : reachableCount - alreadyResearched - unreadable + needsRescore;
 
   const split = {
     selected,
     reachable: reachableCount,
     no_website: selected - reachableCount,
-    already_researched: alreadyResearched,
+    // "Done" means judged against the CURRENT offers.
+    already_researched: alreadyResearched - needsRescore,
     extraction_failed: retryable,
     no_address_answered: unreadable,
+    // The cheap half: one call each, no crawling.
+    needs_rescore: refresh ? 0 : needsRescore,
     to_research: todo,
   };
 

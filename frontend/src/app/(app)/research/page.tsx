@@ -57,6 +57,8 @@ interface Split {
   extraction_failed: number;
   /** Their site did not answer — a finding about them, skipped by default. */
   no_address_answered: number;
+  /** Facts already gathered; only the offer judgement is out of date. */
+  needs_rescore: number;
   to_research: number;
 }
 
@@ -402,6 +404,11 @@ export default function ResearchPage() {
               {split.extraction_failed > 0 && !redoExisting && (
                 <span className={s.splitRetry}>
                   {split.extraction_failed} our extraction failed — retrying
+                </span>
+              )}
+              {split.needs_rescore > 0 && !redoExisting && (
+                <span className={s.splitRetry}>
+                  {split.needs_rescore} re-scoring against your current offers — no crawl
                 </span>
               )}
               {split.no_address_answered > 0 && !redoExisting && (

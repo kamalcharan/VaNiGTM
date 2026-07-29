@@ -42,7 +42,9 @@ import { appendStep, setStatus, saveCheckpoint, loadCheckpoint } from '../../age
 import { callLLMValidated } from '../../agent-core/llm.client';
 import { loadPrompt } from '../../agent-core/prompt.store';
 import { IngestionAgent } from '../ingestion-skill/ingestion.agent';
-import { loadOfferCatalogue, catalogueForPrompt, type OfferCatalogue } from './offer-catalogue';
+import {
+  loadOfferCatalogue, catalogueForPrompt, catalogueFingerprint, type OfferCatalogue,
+} from './offer-catalogue';
 
 export const ACCOUNT_RESEARCH_AGENT_NAME = 'ACCOUNT_RESEARCH_REQUESTED';
 
@@ -117,9 +119,25 @@ interface TargetRow {
   domain_normalized: string | null;
   website: string | null;
   industry_raw: string | null;
+  /** Set when this company already has usable facts — then no crawl is needed. */
+  facts_at: string | null;
+  what_they_make: string | null;
+  scale_signals: string | null;
+  service_signals: string | null;
+  digital_maturity: string | null;
+  certifications: string[] | null;
 }
 
 interface PageText { url: string; text: string }
+
+/** The offer-independent half of a brief. */
+export interface BriefFacts {
+  what_they_make: string | null;
+  scale_signals: string | null;
+  service_signals: string | null;
+  digital_maturity: string | null;
+  certifications: string[];
+}
 
 interface AccountCheckpoint {
   /** Prospect ids already written this run — a resume skips them. */
@@ -258,9 +276,19 @@ export class AccountResearchAgent {
 
     // Only rows with a domain: there is nothing to research without one, and
     // silently including them would make the batch look bigger than the work.
+    const fingerprint = await catalogueFingerprint(db, tenantId);
+
+    // Existing facts come back with the row, so a company that only needs
+    // re-scoring never touches the network.
     const targets = await db.query<TargetRow>(
-      `SELECT p.id, p.name, p.domain_normalized, p.website, p.industry_raw
+      `SELECT p.id, p.name, p.domain_normalized, p.website, p.industry_raw,
+              b.facts_at, b.what_they_make, b.scale_signals, b.service_signals,
+              b.digital_maturity, b.certifications
          FROM gt_prospects p
+         LEFT JOIN gt_account_briefs b
+                ON b.prospect_id = p.id
+               AND b.tenant_id   = $tenant_id
+               AND b.is_live     = $is_live
         WHERE p.tenant_id = $tenant_id
           AND p.is_live   = $is_live
           AND p.is_active = true
@@ -275,19 +303,20 @@ export class AccountResearchAgent {
           -- would be written off forever for a bug of ours. unreadable is
           -- a finding about them, so it is skipped unless refresh is asked
           -- for.
-          AND ($refresh::boolean OR NOT EXISTS (
-                SELECT 1 FROM gt_account_briefs b
-                 WHERE b.prospect_id = p.id
-                   AND b.tenant_id   = $tenant_id
-                   AND b.is_live     = $is_live
-                   AND b.status <> 'extract_failed'))
+          -- Selected when it needs EITHER half: no brief at all, our own
+          -- extraction failed, or the judgement was made against a different
+          -- offer set. The loop then works out which half to run.
+          AND ($refresh::boolean OR b.id IS NULL
+               OR b.status = 'extract_failed'
+               OR (b.status <> 'unreadable'
+                   AND b.offers_fingerprint IS DISTINCT FROM $fingerprint))
         ORDER BY p.completeness DESC NULLS LAST, p.id
         LIMIT $limit`,
       {
         tenant_id: tenantId, is_live: isLive,
         tag_id: tagId ?? null,
         ids: explicitIds.length > 0 ? explicitIds : null,
-        refresh, limit,
+        refresh, fingerprint, limit,
       },
     );
 
@@ -319,19 +348,77 @@ export class AccountResearchAgent {
     let written = 0;
     let unreadable = 0;
     let recommended = 0;
+    let rescoredOnly = 0;
 
     for (const target of queue) {
       const prospectId = Number(target.id);
       const domain = target.domain_normalized!;
 
       try {
-        const brief = await this.researchOne(
-          pool, tenantId, runId, target, catalogueText, validOfferIds,
+        // Does this company need the expensive half, or only the cheap one?
+        // Facts already gathered and still good = judge only, no network at
+        // all. That is the whole point of the split: editing an offer costs
+        // one call per company rather than a re-crawl.
+        const hasFacts = !refresh && target.facts_at !== null
+          && (target.what_they_make !== null || target.scale_signals !== null);
+
+        let facts: BriefFacts;
+        let factHalf: Record<string, unknown> | null = null;
+
+        if (hasFacts) {
+          facts = {
+            what_they_make: target.what_they_make,
+            scale_signals: target.scale_signals,
+            service_signals: target.service_signals,
+            digital_maturity: target.digital_maturity,
+            certifications: target.certifications ?? [],
+          };
+          rescoredOnly++;
+          await appendStep(pool, runId, {
+            step_name: 'reuse_facts',
+            action: `${target.name}: re-scoring against the current offers`,
+            output_summary: 'facts already gathered — no crawl',
+            status: 'ok',
+          });
+        } else {
+          factHalf = await this.researchOne(
+            pool, tenantId, runId, target, catalogueText, validOfferIds,
+          );
+          // Nothing readable: record the gap and move on — there is nothing
+          // to judge.
+          if (factHalf.status !== 'facts') {
+            await this.writeBrief(db, tenantId, isLive, prospectId, runId, factHalf);
+            unreadable++;
+            written++;
+            done.add(prospectId);
+            await saveCheckpoint(pool, runId, { done: [...done] });
+            continue;
+          }
+          facts = {
+            what_they_make: (factHalf.what_they_make as string | null) ?? null,
+            scale_signals: (factHalf.scale_signals as string | null) ?? null,
+            service_signals: (factHalf.service_signals as string | null) ?? null,
+            digital_maturity: (factHalf.digital_maturity as string | null) ?? null,
+            certifications: (factHalf.certifications as string[]) ?? [],
+          };
+        }
+
+        const verdict = await this.judge(
+          pool, tenantId, runId, target.name, facts,
+          target.industry_raw, catalogueText, validOfferIds,
         );
 
-        await this.writeBrief(db, tenantId, isLive, prospectId, runId, brief);
-        if (brief.status === 'unreadable' || brief.status === 'extract_failed') unreadable++;
-        else if (brief.recommended_offer) recommended++;
+        if (factHalf) {
+          await this.writeBrief(db, tenantId, isLive, prospectId, runId, {
+            ...factHalf, ...verdict, status: 'drafted', offers_fingerprint: fingerprint,
+          });
+        } else {
+          await this.writeJudgement(db, tenantId, isLive, prospectId, runId, {
+            ...verdict, offers_fingerprint: fingerprint,
+          });
+        }
+
+        if (verdict.recommended_offer) recommended++;
         written++;
       } catch (err) {
         // One account's failure is not the batch's. Record it AS the brief,
@@ -367,6 +454,9 @@ export class AccountResearchAgent {
     await setStatus(pool, runId, 'completed', {
       output: {
         researched: written,
+        // Companies whose facts were reused — no crawl, one LLM call. The
+        // number that shows what the facts/judgement split is worth.
+        rescored_without_crawling: rescoredOnly,
         unreadable,
         with_recommendation: recommended,
         no_fit: written - unreadable - recommended,
@@ -509,14 +599,47 @@ export class AccountResearchAgent {
       status: dropped > 0 ? 'error' : 'ok',
     });
 
+    // FACTS END HERE. Everything above is about the COMPANY and costs a
+    // crawl plus an extraction call; everything below is a judgement against
+    // OUR offers and costs one or two. Keeping the halves apart is what makes
+    // editing an offer cost one call per company instead of a re-crawl.
+    return {
+      status: 'facts',
+      domain,
+      site_health: home.health.summary,
+      pages_read: pages.length,
+      what_they_make: meaningful(extracted.what_they_make),
+      scale_signals: meaningful(extracted.scale_signals),
+      service_signals: meaningful(extracted.service_signals),
+      digital_maturity: meaningful(extracted.digital_maturity),
+      certifications: extracted.certifications ?? [],
+      named_contacts: extracted.named_contacts ?? [],
+      raw_evidence: kept.map((e) => ({ ...e, excerpt: e.excerpt.slice(0, EXCERPT_CAP) })),
+    };
+  }
+
+  /* ── Stage 2: judgement — cheap, and redone whenever offers move ───── */
+
+  private static async judge(
+    pool: Pool,
+    tenantId: string,
+    runId: string,
+    companyName: string,
+    facts: BriefFacts,
+    industryRaw: string | null,
+    catalogueText: string,
+    validOfferIds: Set<string>,
+  ): Promise<Record<string, unknown>> {
     const briefText = [
-      `What they make: ${meaningful(extracted.what_they_make) ?? 'not stated'}`,
-      `Scale: ${meaningful(extracted.scale_signals) ?? 'not stated'}`,
-      `Service/AMC: ${meaningful(extracted.service_signals) ?? 'not stated'}`,
-      `Digital maturity: ${meaningful(extracted.digital_maturity) ?? 'not stated'}`,
-      `Certifications: ${(extracted.certifications ?? []).join(', ') || 'not stated'}`,
-      `Industry as filed: ${target.industry_raw ?? 'not stated'}`,
+      `What they make: ${facts.what_they_make ?? 'not stated'}`,
+      `Scale: ${facts.scale_signals ?? 'not stated'}`,
+      `Service/AMC: ${facts.service_signals ?? 'not stated'}`,
+      `Digital maturity: ${facts.digital_maturity ?? 'not stated'}`,
+      `Certifications: ${(facts.certifications ?? []).join(', ') || 'not stated'}`,
+      `Industry as filed: ${industryRaw ?? 'not stated'}`,
     ].join('\n');
+
+    const target = { name: companyName };
 
     // 4. FIT — every offer scored; "none" is a real answer.
     const fit = await callLLMValidated(
@@ -578,29 +701,62 @@ export class AccountResearchAgent {
     }
 
     const fitMap: Record<string, { score: number; reason: string }> = {};
-    for (const s of fit.scores) {
-      if (validOfferIds.has(s.offer_id)) fitMap[s.offer_id] = { score: s.score, reason: s.reason };
+    for (const sc of fit.scores) {
+      if (validOfferIds.has(sc.offer_id)) fitMap[sc.offer_id] = { score: sc.score, reason: sc.reason };
     }
 
     return {
-      status: 'drafted',
-      domain,
-      site_health: home.health.summary,
-      pages_read: pages.length,
-      what_they_make: meaningful(extracted.what_they_make),
-      scale_signals: meaningful(extracted.scale_signals),
-      service_signals: meaningful(extracted.service_signals),
-      digital_maturity: meaningful(extracted.digital_maturity),
-      named_contacts: extracted.named_contacts ?? [],
       fit: fitMap,
       recommended_offer: chosen,
       fit_reason: meaningful(fit.reason),
       hook,
-      raw_evidence: kept.map((e) => ({ ...e, excerpt: e.excerpt.slice(0, EXCERPT_CAP) })),
     };
   }
 
   /* ── Persistence ───────────────────────────────────────────────────── */
+
+  /**
+   * Update ONLY the judgement half. Facts, evidence and site health are left
+   * exactly as they were — a re-score must never be able to damage the
+   * expensive half it did not gather.
+   */
+  private static async writeJudgement(
+    db: ReturnType<typeof createTenantDb>,
+    tenantId: string,
+    isLive: boolean,
+    prospectId: number,
+    runId: string,
+    verdict: Record<string, unknown>,
+  ): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.query(
+        `UPDATE gt_account_briefs
+            SET fit                = $fit::jsonb,
+                recommended_offer  = $recommended_offer,
+                fit_reason         = $fit_reason,
+                hook               = $hook,
+                offers_fingerprint = $offers_fingerprint,
+                judged_at          = now(),
+                run_id             = $run_id,
+                -- A row that only carried facts becomes a real brief now.
+                status             = CASE WHEN status IN ('extract_failed')
+                                         THEN 'drafted' ELSE status END,
+                updated_at         = now()
+          WHERE prospect_id = $prospect_id
+            AND tenant_id   = $tenant_id
+            AND is_live     = $is_live`,
+        {
+          prospect_id: prospectId, tenant_id: tenantId, is_live: isLive,
+          run_id: runId,
+          fit: JSON.stringify(verdict.fit ?? {}),
+          recommended_offer: verdict.recommended_offer ?? null,
+          fit_reason: verdict.fit_reason ?? null,
+          hook: verdict.hook ?? null,
+          offers_fingerprint: verdict.offers_fingerprint ?? null,
+        },
+      );
+    });
+  }
 
   private static async writeBrief(
     db: ReturnType<typeof createTenantDb>,
@@ -615,13 +771,16 @@ export class AccountResearchAgent {
         `INSERT INTO gt_account_briefs
            (tenant_id, is_live, prospect_id, run_id, domain, fetched_at, pages_read,
             site_health, what_they_make, scale_signals, service_signals,
-            digital_maturity, named_contacts, fit, recommended_offer, fit_reason,
-            hook, raw_evidence, error, status)
+            digital_maturity, certifications, named_contacts, fit, recommended_offer,
+            fit_reason, hook, raw_evidence, error, status,
+            facts_at, judged_at, offers_fingerprint)
          VALUES
            ($tenant_id, $is_live, $prospect_id, $run_id, $domain, now(), $pages_read,
             $site_health, $what_they_make, $scale_signals, $service_signals,
-            $digital_maturity, $named_contacts::jsonb, $fit::jsonb, $recommended_offer,
-            $fit_reason, $hook, $raw_evidence::jsonb, $error, $status)
+            $digital_maturity, $certifications::text[], $named_contacts::jsonb,
+            $fit::jsonb, $recommended_offer, $fit_reason, $hook,
+            $raw_evidence::jsonb, $error, $status,
+            $facts_at, $judged_at, $offers_fingerprint)
          ON CONFLICT (tenant_id, is_live, prospect_id) DO UPDATE SET
             run_id            = EXCLUDED.run_id,
             domain            = EXCLUDED.domain,
@@ -632,6 +791,7 @@ export class AccountResearchAgent {
             scale_signals     = EXCLUDED.scale_signals,
             service_signals   = EXCLUDED.service_signals,
             digital_maturity  = EXCLUDED.digital_maturity,
+            certifications    = EXCLUDED.certifications,
             named_contacts    = EXCLUDED.named_contacts,
             fit               = EXCLUDED.fit,
             recommended_offer = EXCLUDED.recommended_offer,
@@ -640,6 +800,9 @@ export class AccountResearchAgent {
             raw_evidence      = EXCLUDED.raw_evidence,
             error             = EXCLUDED.error,
             status            = EXCLUDED.status,
+            facts_at          = EXCLUDED.facts_at,
+            judged_at         = EXCLUDED.judged_at,
+            offers_fingerprint = EXCLUDED.offers_fingerprint,
             -- Re-researching replaces knowledge, so a human's earlier
             -- decision no longer applies to what the row now says.
             decided_by        = NULL,
@@ -655,6 +818,7 @@ export class AccountResearchAgent {
           scale_signals: brief.scale_signals ?? null,
           service_signals: brief.service_signals ?? null,
           digital_maturity: brief.digital_maturity ?? null,
+          certifications: (brief.certifications as string[]) ?? [],
           named_contacts: JSON.stringify(brief.named_contacts ?? []),
           fit: JSON.stringify(brief.fit ?? {}),
           recommended_offer: brief.recommended_offer ?? null,
@@ -663,6 +827,10 @@ export class AccountResearchAgent {
           raw_evidence: JSON.stringify(brief.raw_evidence ?? []),
           error: brief.error ?? null,
           status: brief.status ?? 'drafted',
+          // Facts only count as gathered when there was something to gather.
+          facts_at: brief.what_they_make || brief.scale_signals ? new Date() : null,
+          judged_at: brief.fit ? new Date() : null,
+          offers_fingerprint: brief.offers_fingerprint ?? null,
         },
       );
     });
