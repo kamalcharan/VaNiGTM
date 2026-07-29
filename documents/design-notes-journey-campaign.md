@@ -335,6 +335,85 @@ The scoreboard does not change. That is the point: these cycles go
 
 ---
 
+## 6b. Correction — the map, and the light on it
+
+Ruled after the agenda prototype, and it changes §1 rather than adding to it.
+Reconciled against `VaNiGTM_Customer_Journey_Agents_Spec.md` v0.1, which
+already specified most of the machinery this needs.
+
+### 6b.1 The agenda is a trigger, not the workspace
+
+The agenda is right, and it is a **live query over states + modifiers**
+(Agents Spec §4.2 — *"lists are live queries, never exports"*). It tells you
+something is owed. It is not where you decide what to say.
+
+That happens on the **opportunity page**: all the data, all the history, the
+whole argument, and only then a trigger. Prototype:
+`gtm-engine-ui/journey-opportunity.html`.
+
+### 6b.2 A journey is a mindmap, not only a ladder
+
+A ladder has one position. A real conversation is multi-threaded — interested
+in one thing, objected on a second, gone quiet on a third — and flattening
+that into a single state throws away the part you write from.
+
+**Two structures, orthogonal:**
+
+| | What it answers | Where it lives |
+|---|---|---|
+| **State** | Where does this opportunity stand? | `gt_journeys.state` |
+| **Map** | What is there to talk about? | nodes — Agents Spec §8.1 `node_type: pain_point \| value_prop` |
+
+A node carries its own evidence, its own status (`unraised / raised /
+engaged / objected / resolved`), and what has already been said at it.
+**A story is written AT a node**, and R-S2 ("cannot repeat a previous
+story's argument") becomes checkable rather than aspirational: it is the
+same node or it is not.
+
+### 6b.3 Freshness is the light source
+
+Agents Spec §8.3 already fixes the maths — every observation weighs
+`exp(-Δdays / half_life)`, half-life 60 days. What was missing was making it
+**visible and binding**:
+
+- A node is lit by its **freshest** evidence, not its average. One live fact
+  makes a topic openable however old its background is.
+- Seven months is ×0.03. That node goes dark on the map and **the trigger
+  refuses it** — not a warning, a block. An old fact is a footnote, never an
+  opening.
+- Bands: `≥.80` fed this month · `≥.50` inside the half-life · `≥.20` fading,
+  usable as support but weak as an opening · below that, stale.
+
+This is the same instinct as R-S1. R-S1 stops us asserting what we cannot
+evidence; this stops us opening with something that stopped being true.
+
+### 6b.4 Signals push — the trigger is not a timer
+
+Exchange filings (NSE/BSE), concall transcripts, site visits and replies
+arrive **dated**, so they land at full weight, attach to a node, relight it,
+and push the opportunity back onto the agenda. A filing is not a reminder to
+follow up. It is a new thing to say.
+
+These are `gt_event_log` rows (Agents Spec §7.3) with a node reference — no
+new substrate, and the story recompute already keys off them.
+
+### 6b.5 Two open questions this raises
+
+- **Q5 — the two state vocabularies.** Migration 222 ships an *operational*
+  ladder (`sourced → researched → qualified → addressed → ready → waiting →
+  answered → won`). The Agents Spec §4.1 defines a *behavioural* one
+  (`UNKNOWN → AWARE → CONSIDERING → QUALIFIED → COMMITTED → ACTIVE → DORMANT
+  / LOST / ADVOCATE`). These are not the same axis: mine says what WE owe,
+  the spec's says where THEY stand. My reading is that both are real and
+  should coexist — `state` and `posture` — but that has to be ruled on, not
+  assumed. Collapsing them would lose one of the two questions.
+- **Q6 — colour is spent on freshness, not node type.** The map cannot
+  colour-code both `pain_point` vs `value_prop` and hot vs stale without the
+  two fighting. Freshness won because it changes what you may do. Node type
+  is shown on selection instead. Worth confirming.
+
+---
+
 ## 7. Analytics' actual role
 
 The ruling says response and analytics decide whether another story is

@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VaNi GTM — The Opportunity (playable prototype)</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+  THE OPPORTUNITY — the workspace, not the queue.
+
+  The agenda (journey-cycle.html) is a TRIGGER surface: a live query over
+  states + modifiers, per the Agents Spec §4.2. It is where you find out
+  something is owed. It is not where you decide what to say.
+
+  You decide here: all the data, all the history, the whole argument map,
+  and only then a trigger.
+
+  ── THE JOURNEY IS A MINDMAP, NOT A LADDER ───────────────────────────
+  A ladder has one position. A real B2B conversation is multi-threaded:
+  they are interested in one thing, objected on a second, went quiet on a
+  third. Flattening that into a single state throws away the part you
+  actually write from.
+
+  So there are TWO structures and they are orthogonal:
+    · STATE  — where the opportunity stands (Agents Spec §4.1)
+    · MAP    — what there is to talk about, as nodes (Spec §8.1
+               node_type: pain_point, value_prop) with evidence on each
+  A story is written AT A NODE. The map is what tells you which.
+
+  ── FRESHNESS IS THE LIGHT SOURCE ────────────────────────────────────
+  Agents Spec §8.3 already specifies the decay: every observation weighs
+  exp(-Δdays / half_life), half-life 60d. This screen makes that visible
+  rather than internal — a node is lit by its freshest evidence, so
+  something from seven months ago is DARK on the map and cannot be the
+  thing you open with. At 210 days its weight is 0.03. It is not an
+  opening, it is a footnote.
+
+  ── SIGNALS PUSH ─────────────────────────────────────────────────────
+  Exchange filings, concall transcripts, site visits and replies arrive
+  dated. They land on a node, relight it, and that is what pushes the
+  opportunity back onto the agenda. The trigger is not a timer.
+
+  SYNTHETIC DATA ONLY — every company, person, filing and quote invented.
+  ═══════════════════════════════════════════════════════════════════════
+-->
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#0B0B0D; --s0:#101013; --s1:#15151A; --s2:#1C1C22; --s3:#24242C;
+  --gold:#C9A84C; --gold-dim:#A2853A; --gold-glow:rgba(201,168,76,.14); --gold-pulse:rgba(201,168,76,.06);
+  --text:#F0ECE2; --text-2:#9A9587; --text-3:#615D53; --text-ghost:#3A3833;
+  --line:rgba(240,236,226,.09); --line-2:rgba(240,236,226,.16);
+  --ok:#5FA97B; --warn:#D9A441; --bad:#C9615A; --cool:#7C8FB5; --live:#6FC49A;
+  --f-d:'Outfit',sans-serif; --f-b:'Instrument Sans',sans-serif; --f-m:'JetBrains Mono',monospace;
+  --e:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.4,.64,1);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--f-b);background:var(--void);color:var(--text);line-height:1.55;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 60% 40% at 20% 0%,rgba(201,168,76,.045),transparent 60%),
+             radial-gradient(ellipse 50% 40% at 85% 100%,rgba(124,143,181,.03),transparent 55%)}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+.wrap{max-width:1340px;margin:0 auto;padding:26px 34px 120px;position:relative;z-index:1}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+.crumb{font-size:12.5px;color:var(--text-3);margin-bottom:14px}
+.crumb a{color:var(--text-3);text-decoration:none}.crumb a:hover{color:var(--gold)}
+.hd{display:flex;justify-content:space-between;align-items:flex-start;gap:26px;flex-wrap:wrap;margin-bottom:22px}
+.eyebrow{font-family:var(--f-m);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin-bottom:6px}
+h1{font-family:var(--f-d);font-weight:300;font-size:31px;letter-spacing:-.02em}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+.chip{font-family:var(--f-m);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  padding:4px 9px;border-radius:5px;border:1px solid var(--line-2);color:var(--text-2)}
+.chip.gold{color:var(--gold);border-color:rgba(201,168,76,.32);background:var(--gold-pulse)}
+.chip.warn{color:var(--warn);border-color:rgba(217,164,65,.32);background:rgba(217,164,65,.07)}
+.chip.live{color:var(--live);border-color:rgba(111,196,154,.32);background:rgba(111,196,154,.07)}
+
+.gauges{display:flex;gap:22px}
+.gauge{text-align:right}
+.gauge-n{font-family:var(--f-d);font-size:25px;font-weight:300;line-height:1}
+.gauge-l{font-family:var(--f-m);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);margin-top:5px}
+.up{color:var(--live)}.down{color:var(--bad)}
+
+/* ── Layout ─────────────────────────────────────────────────────────── */
+.cols{display:grid;grid-template-columns:1fr 372px;gap:20px;align-items:start}
+@media(max-width:1080px){.cols{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:15px;background:var(--s1);overflow:hidden}
+.card-h{padding:13px 17px;border-bottom:1px solid var(--line);background:var(--s0);
+  display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.card-t{font-family:var(--f-m);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3)}
+.card-s{font-size:11.5px;color:var(--text-3)}
+.card-b{padding:16px 17px}
+
+/* ── THE MAP ────────────────────────────────────────────────────────── */
+.map{position:relative;height:470px;background:
+  radial-gradient(circle at 50% 50%,rgba(201,168,76,.035),transparent 62%)}
+.map svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:126px;height:126px;
+  border-radius:50%;border:1px solid rgba(201,168,76,.4);background:
+  radial-gradient(circle,rgba(201,168,76,.14),var(--s0) 72%);
+  display:grid;place-items:center;text-align:center;padding:14px;z-index:3}
+.hub-n{font-family:var(--f-d);font-size:13.5px;font-weight:500;line-height:1.25}
+.hub-s{font-family:var(--f-m);font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--gold);margin-top:5px}
+
+/* A node's LIGHT is its freshest evidence. Nothing else. */
+.node{position:absolute;transform:translate(-50%,-50%);width:152px;padding:9px 11px;border-radius:11px;
+  background:var(--s2);border:1px solid var(--line);cursor:pointer;z-index:2;
+  transition:.3s var(--e);text-align:left}
+.node:hover{border-color:var(--gold-dim);transform:translate(-50%,-50%) scale(1.04);z-index:5}
+.node.sel{border-color:var(--gold);background:var(--s3);box-shadow:0 0 0 3px var(--gold-pulse);z-index:5}
+.node-t{font-size:12.5px;font-weight:500;line-height:1.35}
+.node-m{font-family:var(--f-m);font-size:9.5px;color:var(--text-3);margin-top:5px;display:flex;
+  justify-content:space-between;gap:6px;align-items:center}
+.dot{width:6px;height:6px;border-radius:50%;flex:none}
+.node[data-lit="hot"]  {border-color:rgba(111,196,154,.5);box-shadow:0 0 18px rgba(111,196,154,.12)}
+.node[data-lit="hot"] .dot{background:var(--live);box-shadow:0 0 7px var(--live)}
+.node[data-lit="warm"] .dot{background:var(--gold)}
+.node[data-lit="cool"]{opacity:.72}
+.node[data-lit="cool"] .dot{background:var(--gold-dim)}
+.node[data-lit="dark"]{opacity:.42;border-style:dashed}
+.node[data-lit="dark"] .dot{background:var(--text-ghost)}
+.node[data-lit="dark"] .node-t{color:var(--text-2)}
+.badge{position:absolute;top:-7px;right:-7px;font-family:var(--f-m);font-size:8.5px;letter-spacing:.06em;
+  padding:2px 6px;border-radius:9px;background:var(--s3);border:1px solid var(--line-2);color:var(--text-2);text-transform:uppercase}
+.badge.obj{color:var(--bad);border-color:rgba(201,97,90,.4)}
+.badge.eng{color:var(--live);border-color:rgba(111,196,154,.4)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;padding:11px 17px;border-top:1px solid var(--line);
+  font-size:11px;color:var(--text-3);background:var(--s0)}
+.legend span{display:flex;align-items:center;gap:6px}
+
+/* ── Node detail ────────────────────────────────────────────────────── */
+.ev{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--s0)}
+.ev-c{font-size:12.5px;line-height:1.5}
+.ev-m{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-top:6px;
+  font-family:var(--f-m);font-size:10.5px;color:var(--text-3)}
+.ev-src{color:var(--cool)}
+.w{font-family:var(--f-m);font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid var(--line-2)}
+.w.hot{color:var(--live);border-color:rgba(111,196,154,.35)}
+.w.warm{color:var(--gold)}
+.w.cool{color:var(--text-2)}
+.w.dark{color:var(--bad);border-color:rgba(201,97,90,.3)}
+.ev[data-lit="dark"]{opacity:.55}
+.ev[data-lit="dark"] .ev-c{text-decoration:line-through;text-decoration-color:var(--text-ghost)}
+
+.sig{display:grid;grid-template-columns:52px 1fr;gap:11px;padding:11px 0;border-top:1px solid var(--line);cursor:pointer}
+.sig:first-child{border-top:none}
+.sig:hover .sig-c{color:var(--gold)}
+.sig-d{font-family:var(--f-m);font-size:10.5px;color:var(--text-3)}
+.sig-c{font-size:12.5px;line-height:1.5;transition:.2s}
+.sig-k{font-family:var(--f-m);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--cool);display:block;margin-bottom:3px}
+.sig.new .sig-k{color:var(--live)}
+.sig-to{font-family:var(--f-m);font-size:10px;color:var(--text-3);margin-top:4px}
+
+.thread{position:relative;padding-left:22px;margin-top:4px}
+.thread::before{content:'';position:absolute;left:4px;top:6px;bottom:8px;width:1px;background:var(--line-2)}
+.ent{position:relative;padding-bottom:15px}
+.ent::before{content:'';position:absolute;left:-22px;top:5px;width:9px;height:9px;border-radius:50%;
+  background:var(--s0);border:2px solid var(--text-ghost)}
+.ent.you::before{border-color:var(--gold);background:var(--gold)}
+.ent.agent::before{border-color:var(--cool)}
+.ent.them::before{border-color:var(--live);background:var(--live)}
+.ent-h{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
+.ent-d{font-family:var(--f-m);font-size:10.5px;color:var(--text-3);min-width:52px}
+.ent-t{font-size:12.5px;font-weight:500}
+.ent-b{font-size:12px;color:var(--text-2);padding-left:61px;line-height:1.55;margin-top:3px}
+.ent-b q{color:var(--text);font-style:italic}
+@media(max-width:640px){.ent-b{padding-left:0}}
+
+/* ── Trigger bar ────────────────────────────────────────────────────── */
+.trigger{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(180deg,transparent,var(--void) 26%);
+  padding:26px 34px 20px;z-index:40}
+.trigger-in{max-width:1340px;margin:0 auto;border:1px solid var(--line-2);border-radius:14px;
+  background:var(--s2);padding:13px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  box-shadow:0 12px 40px rgba(0,0,0,.55)}
+.trigger.armed .trigger-in{border-color:var(--gold-dim);background:linear-gradient(180deg,var(--gold-pulse),var(--s2))}
+.trigger-l{font-family:var(--f-m);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--text-3)}
+.trigger-v{font-size:14px;font-weight:500}
+.trigger-w{font-size:12px;color:var(--warn)}
+.grow{flex:1}
+.btn{padding:8px 15px;border-radius:9px;font-size:12.5px;font-weight:500;border:1px solid var(--line-2);
+  color:var(--text-2);transition:.2s var(--e)}
+.btn:hover{border-color:var(--gold-dim);color:var(--text);background:var(--gold-pulse)}
+.btn.pri{background:var(--gold);color:var(--void);border-color:var(--gold);font-weight:600}
+.btn.pri:hover{background:#dfbc5c}
+.btn:disabled{opacity:.32;cursor:not-allowed}
+.btn.ghost{border-color:transparent;color:var(--text-3)}
+.note{font-size:11.5px;color:var(--text-3);line-height:1.55;margin-top:9px}
+.empty{padding:26px 4px;color:var(--text-3);font-size:12.5px;line-height:1.6}
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--s3);
+  border:1px solid var(--line-2);border-radius:11px;padding:12px 20px;font-size:13px;opacity:0;
+  transition:.3s var(--e);z-index:200;pointer-events:none;max-width:min(620px,90vw)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast b{color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="crumb"><a href="journey-cycle.html">← the agenda</a> &nbsp;·&nbsp; the agenda tells you something is owed. This is where you decide what to say.</div>
+
+  <div class="hd">
+    <div>
+      <div class="eyebrow">Opportunity · Hyderabad · API manufacturing</div>
+      <h1>Sriveda Lifesciences</h1>
+      <div class="chips">
+        <span class="chip gold">considering</span>
+        <span class="chip warn">stalled 3d</span>
+        <span class="chip">caio-as-a-service</span>
+        <span class="chip">R. Menon · Head of Digital</span>
+        <span class="chip live" id="freshchip">2 nodes relit this week</span>
+      </div>
+    </div>
+    <div class="gauges">
+      <div class="gauge"><div class="gauge-n up">0.68</div><div class="gauge-l">intent</div></div>
+      <div class="gauge"><div class="gauge-n up">warming</div><div class="gauge-l">temperature</div></div>
+      <div class="gauge"><div class="gauge-n" id="mapw">—</div><div class="gauge-l">live evidence</div></div>
+    </div>
+  </div>
+
+  <div class="cols">
+    <div>
+      <section class="card">
+        <div class="card-h">
+          <span class="card-t">The argument map</span>
+          <span class="card-s">a node is lit by its freshest evidence · half-life 60 days</span>
+        </div>
+        <div class="map" id="map"><svg id="edges"></svg></div>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--live);box-shadow:0 0 7px var(--live)"></i> fed this month</span>
+          <span><i class="dot" style="background:var(--gold)"></i> within the half-life</span>
+          <span><i class="dot" style="background:var(--gold-dim)"></i> fading</span>
+          <span><i class="dot" style="background:var(--text-ghost)"></i> stale — cannot open with it</span>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:20px">
+        <div class="card-h"><span class="card-t">History</span><span class="card-s">every move, every answer</span></div>
+        <div class="card-b"><div class="thread" id="thread"></div></div>
+      </section>
+    </div>
+
+    <div>
+      <section class="card">
+        <div class="card-h"><span class="card-t" id="ndt">Pick a node</span><span class="card-s" id="nds"></span></div>
+        <div class="card-b" id="nd">
+          <div class="empty">Every claim you can make about them hangs off a node on the map.
+            Pick one and this shows what evidence supports it, how fresh that evidence is, and what has
+            already been said there.</div>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:20px">
+        <div class="card-h"><span class="card-t">Signals in</span><span class="card-s">what relit the map</span></div>
+        <div class="card-b" id="sigs"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="trigger" id="trigger"><div class="trigger-in">
+  <div>
+    <div class="trigger-l">Writing at</div>
+    <div class="trigger-v" id="tv">no node picked</div>
+    <div class="trigger-w" id="tw"></div>
+  </div>
+  <span class="grow"></span>
+  <button class="btn ghost" onclick="toast('Research refreshes the node — a stale claim becomes an openable one, or is confirmed dead.')">Refresh the evidence</button>
+  <button class="btn pri" id="tgo" disabled onclick="fire()">Write at this node</button>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   SYNTHETIC. Today is day 0; `age` is days since the evidence was observed.
+   ═══════════════════════════════════════════════════════════════════════ */
+const HALF_LIFE = 60;                       // Agents Spec §8.3
+const weight = age => Math.exp(-age / HALF_LIFE);
+/* Bands, and what each one means for whether you may OPEN with it.
+   0.50 is one half-life. 0.20 is ~2.3 half-lives — about five months, which
+   is where a fact stops being news and becomes background. */
+function lit(w){ return w>=.80?'hot' : w>=.50?'warm' : w>=.20?'cool' : 'dark'; }
+const ago = d => d<1?'today' : d<30?`${d}d ago` : d<365?`${Math.round(d/30)} months ago` : `${(d/365).toFixed(1)} years ago`;
+
+/* node_type per Agents Spec §8.1 — pain_point | value_prop.
+   status: unraised | raised | engaged | objected | resolved */
+const NODES = [
+  {id:'batch', t:'Batch record burden', kind:'pain_point', status:'engaged', ang:-90,
+   ev:[{c:'Hiring a QA documentation lead',age:11,src:'sriveda.example/careers'},
+       {c:'Two formulation units, Jeedimetla and Bollaram',age:17,src:'sriveda.example/about'}],
+   said:[{d:'19-Jul',w:'Story 1 opened here',b:'Opened on the Jeedimetla QA hire.'},
+         {d:'26-Jul',w:'They engaged',b:'<q>Sounds useful. What kind of investment are we looking at?</q>'}]},
+
+  {id:'cost', t:'Cost & payback', kind:'pain_point', status:'objected', ang:-30,
+   ev:[{c:'Asked what the investment looks like',age:3,src:'reply · 26-Jul'}],
+   said:[{d:'26-Jul',w:'They raised it',b:'The only thing they have asked us directly. Nothing said back yet.'}]},
+
+  {id:'capex', t:'Capex on digital', kind:'pain_point', status:'unraised', ang:30,
+   ev:[{c:'"…a meaningful allocation toward plant digitisation over the next two quarters"',age:6,src:'Q1 FY27 concall transcript'},
+       {c:'Board approved ₹18cr capital outlay',age:9,src:'exchange filing · outcome of board meeting'}],
+   said:[]},
+
+  {id:'gmp', t:'GMP / audit readiness', kind:'value_prop', status:'unraised', ang:90,
+   ev:[{c:'WHO-GMP and EU-GMP certified',age:212,src:'sriveda.example/quality'}],
+   said:[]},
+
+  {id:'expansion', t:'Third unit at Pashamylaram', kind:'pain_point', status:'raised', ang:150,
+   ev:[{c:'Announced intent to add a third unit',age:229,src:'trade press'}],
+   said:[{d:'19-Jul',w:'Mentioned in passing',b:'Story 1 referenced it. They did not pick it up.'}]},
+
+  {id:'people', t:'No data owner', kind:'value_prop', status:'unraised', ang:210,
+   ev:[{c:'No named technology or data leadership',age:17,src:'sriveda.example/leadership'},
+       {c:'Head of Digital appointed — R. Menon',age:24,src:'sriveda.example/leadership'}],
+   said:[]},
+];
+
+const SIGNALS = [
+  {d:'26-Jul',k:'reply',       to:'cost',   c:'R. Menon: “Sounds useful. What kind of investment are we looking at?”',neu:true},
+  {d:'23-Jul',k:'concall',     to:'capex',  c:'Q1 FY27 earnings call — MD flags “a meaningful allocation toward plant digitisation over the next two quarters”.',neu:true},
+  {d:'20-Jul',k:'exchange filing',to:'capex',c:'Outcome of board meeting: ₹18cr capital outlay approved.',neu:true},
+  {d:'18-Jul',k:'careers page',to:'batch',  c:'New listing — QA documentation lead, Jeedimetla.'},
+  {d:'05-Jul',k:'site visit',  to:'people', c:'Two visits to the CAIO page from a Hyderabad IP.'},
+];
+
+const HISTORY = [
+  {d:'26-Jul',w:'They replied',   who:'them', b:'Asked what the investment looks like. Logged against <b>Cost &amp; payback</b>.'},
+  {d:'19-Jul',w:'Story 1 sent',   who:'you',  b:'Written at <b>Batch record burden</b>. Logged as a researched send.'},
+  {d:'18-Jul',w:'Story 1 approved',who:'you', b:'3 claims traced, 0 unsupported.'},
+  {d:'15-Jul',w:'Person confirmed',who:'you', b:'R. Menon, Head of Digital — promoted from the brief.'},
+  {d:'14-Jul',w:'Offer chosen',   who:'you',  b:'CAIO-as-a-service. <q>Expanding, and nobody owns data.</q>'},
+  {d:'12-Jul',w:'Researched',     who:'agent',b:'Brief written from 6 pages. 4 claims evidenced, 1 dropped for want of a source.'},
+];
+
+/* Freshest evidence decides the node's light — not the average. One live
+   fact makes a topic openable however old its background is. */
+const best = n => n.ev.length ? Math.max(...n.ev.map(e=>weight(e.age))) : 0;
+let SEL = null;
+
+function drawMap(){
+  const map = document.getElementById('map');
+  const svg = document.getElementById('edges');
+  map.querySelectorAll('.node,.hub').forEach(el=>el.remove());
+
+  map.insertAdjacentHTML('beforeend',
+    `<div class="hub"><div><div class="hub-n">Sriveda<br>Lifesciences</div>
+     <div class="hub-s">considering</div></div></div>`);
+
+  const R = 178, cx = map.clientWidth/2, cy = map.clientHeight/2;
+  let lines = '';
+  NODES.forEach(n=>{
+    const w = best(n), L = lit(w);
+    const rad = n.ang*Math.PI/180;
+    const x = cx + Math.cos(rad)*R, y = cy + Math.sin(rad)*R;
+    // Edge opacity carries the same signal as the node — a dead branch
+    // should read as dead all the way back to the account.
+    const op = L==='hot'?.55 : L==='warm'?.34 : L==='cool'?.2 : .1;
+    lines += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="${L==='hot'?'#6FC49A':'#C9A84C'}"
+              stroke-opacity="${op}" stroke-width="${L==='hot'?1.6:1}" ${L==='dark'?'stroke-dasharray="3 4"':''}/>`;
+    const badge = n.status==='objected' ? '<span class="badge obj">they asked</span>'
+                : n.status==='engaged'  ? '<span class="badge eng">they engaged</span>'
+                : n.status==='raised'   ? '<span class="badge">raised</span>' : '';
+    map.insertAdjacentHTML('beforeend',
+      `<button class="node ${SEL===n.id?'sel':''}" data-lit="${L}" style="left:${x}px;top:${y}px"
+        onclick="pick('${n.id}')" title="${n.kind.replace('_',' ')}">
+        ${badge}<div class="node-t">${n.t}</div>
+        <div class="node-m"><span>${n.ev.length?ago(Math.min(...n.ev.map(e=>e.age))):'no evidence'}</span>
+        <i class="dot"></i></div></button>`);
+  });
+  svg.innerHTML = lines;
+
+  const live = NODES.filter(n=>lit(best(n))!=='dark').length;
+  document.getElementById('mapw').textContent = `${live}/${NODES.length}`;
+}
+
+function pick(id){
+  SEL = SEL===id ? null : id; drawMap(); detail(); armed();
+}
+
+function detail(){
+  const n = NODES.find(x=>x.id===SEL);
+  const t=document.getElementById('ndt'), s=document.getElementById('nds'), b=document.getElementById('nd');
+  if(!n){ t.textContent='Pick a node'; s.textContent='';
+    b.innerHTML=`<div class="empty">Every claim you can make about them hangs off a node on the map.
+      Pick one and this shows what evidence supports it, how fresh that evidence is, and what has
+      already been said there.</div>`; return; }
+
+  t.textContent = n.t;
+  s.textContent = n.kind.replace('_',' ');
+  const evs = [...n.ev].sort((a,b)=>a.age-b.age).map(e=>{
+    const w = weight(e.age), L = lit(w);
+    return `<div class="ev" data-lit="${L}"><div class="ev-c">${e.c}</div>
+      <div class="ev-m"><span class="ev-src">${e.src}</span>
+      <span><span style="margin-right:8px">${ago(e.age)}</span>
+      <span class="w ${L}">×${w.toFixed(2)}</span></span></div></div>`;
+  }).join('') || '<div class="empty" style="padding:8px 0">Nothing evidences this node yet. It cannot be written at.</div>';
+
+  const said = n.said.length ? `<div class="card-t" style="margin:16px 0 9px">Already said here</div>
+    <div class="thread">${n.said.map(x=>`<div class="ent you"><div class="ent-h">
+      <span class="ent-d">${x.d}</span><span class="ent-t">${x.w}</span></div>
+      <div class="ent-b">${x.b}</div></div>`).join('')}</div>`
+    : `<p class="note">Nothing has been said here yet. A story written at this node cannot repeat story 1.</p>`;
+
+  b.innerHTML = `<div class="card-t" style="margin-bottom:9px">Evidence · decayed at 60-day half-life</div>${evs}${said}`;
+}
+
+function armed(){
+  const n = NODES.find(x=>x.id===SEL);
+  const bar=document.getElementById('trigger'), v=document.getElementById('tv'),
+        w=document.getElementById('tw'), go=document.getElementById('tgo');
+  if(!n){ bar.classList.remove('armed'); v.textContent='no node picked'; w.textContent='';
+    go.disabled=true; return; }
+  const b = best(n), L = lit(b);
+  v.textContent = n.t;
+  bar.classList.toggle('armed', L!=='dark');
+  if(L==='dark'){
+    // The whole point: an old fact is not an opening.
+    const oldest = Math.min(...n.ev.map(e=>e.age));
+    w.textContent = `Freshest evidence here is ${ago(oldest)} — weight ×${b.toFixed(2)}. Too old to open with. Refresh it first.`;
+    go.disabled = true;
+  } else if(L==='cool'){
+    w.textContent = `Fading — weight ×${b.toFixed(2)}. Usable as support, weak as an opening.`;
+    go.disabled = false;
+  } else {
+    w.textContent = `${n.ev.filter(e=>weight(e.age)>=.5).length} live claim(s) would go with it.`;
+    go.disabled = false;
+  }
+}
+
+function drawSignals(){
+  document.getElementById('sigs').innerHTML = SIGNALS.map(s=>{
+    const n = NODES.find(x=>x.id===s.to);
+    return `<div class="sig ${s.neu?'new':''}" onclick="pick('${s.to}')">
+      <div class="sig-d">${s.d}</div>
+      <div><span class="sig-k">${s.k}</span><div class="sig-c">${s.c}</div>
+      <div class="sig-to">→ relit <b style="color:var(--text-2)">${n?n.t:'—'}</b></div></div></div>`;
+  }).join('') + `<p class="note">Exchange filings and concall transcripts land here dated, so they arrive
+    at full weight. A filing is not a reminder to follow up — it is a new thing to say.</p>`;
+}
+
+function drawHistory(){
+  document.getElementById('thread').innerHTML = HISTORY.map(h=>
+    `<div class="ent ${h.who}"><div class="ent-h"><span class="ent-d">${h.d}</span>
+      <span class="ent-t">${h.w}</span></div><div class="ent-b">${h.b}</div></div>`).join('');
+}
+
+function fire(){
+  const n = NODES.find(x=>x.id===SEL);
+  const live = n.ev.filter(e=>weight(e.age)>=.5);
+  toast(`Composing story 2 at <b>${n.t}</b> — carrying ${live.length} live claim${live.length===1?'':'s'}.
+    The editor will refuse anything this node cannot evidence, and will not let it repeat story 1.`);
+}
+let tt; function toast(h){ const t=document.getElementById('toast'); t.innerHTML=h; t.classList.add('show');
+  clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'),5200); }
+
+drawMap(); drawSignals(); drawHistory(); armed();
+addEventListener('resize', drawMap);
+</script>
+</body>
+</html>
