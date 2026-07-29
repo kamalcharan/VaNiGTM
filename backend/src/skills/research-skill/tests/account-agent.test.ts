@@ -10,7 +10,7 @@
  * account-agent.db.test.ts.
  */
 
-import { meaningful, verifyEvidence, urlVariants, AccountResearchAgent } from '../account.agent';
+import { meaningful, verifyEvidence, urlVariants, AccountResearchAgent, ExtractSchema } from '../account.agent';
 
 const page = (url: string, text: string) => ({ url, text });
 
@@ -165,5 +165,51 @@ describe('urlVariants — a site is not dead because one address refused', () =>
     // A website column carrying a full URL is a human's answer; do not
     // second-guess it with three variants.
     expect(urlVariants('https://shop.example.com/en')).toEqual(['https://shop.example.com/en']);
+  });
+});
+
+/* ── The model's "nothing" idiom in a list field ────────────────────── */
+
+describe('ExtractSchema', () => {
+  const base = { what_they_make: 'APIs' };
+
+  // The pilot failure, exactly: valid JSON, a string where an array belongs.
+  // It was reported as "Could not parse valid JSON", recorded as
+  // extract_failed, and would have failed identically forever.
+  it('reads "not stated" in a list field as an empty list', () => {
+    const parsed = ExtractSchema.parse({
+      ...base,
+      certifications: 'not stated',
+      named_contacts: 'not stated',
+      evidence: 'not stated',
+    });
+    expect(parsed.certifications).toEqual([]);
+    expect(parsed.named_contacts).toEqual([]);
+    expect(parsed.evidence).toEqual([]);
+  });
+
+  it('reads the other ways a model says nothing', () => {
+    for (const word of ['none', 'N/A', 'n/a', 'unknown', 'nil', '-', '', '  ']) {
+      expect(ExtractSchema.parse({ ...base, certifications: word }).certifications)
+        .toEqual([]);
+    }
+  });
+
+  it('leaves a real list alone', () => {
+    const parsed = ExtractSchema.parse({ ...base, certifications: ['WHO-GMP', 'USFDA'] });
+    expect(parsed.certifications).toEqual(['WHO-GMP', 'USFDA']);
+  });
+
+  // Narrow on purpose. Real content in the wrong shape is a genuine schema
+  // error and must stay loud — coercing it would silently discard facts.
+  it('still rejects real content sent as a string', () => {
+    expect(() => ExtractSchema.parse({ ...base, certifications: 'WHO-GMP and USFDA' }))
+      .toThrow();
+  });
+
+  it('names the field when it does reject', () => {
+    const r = ExtractSchema.safeParse({ ...base, certifications: 'WHO-GMP and USFDA' });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.error.issues[0].path).toContain('certifications');
   });
 });

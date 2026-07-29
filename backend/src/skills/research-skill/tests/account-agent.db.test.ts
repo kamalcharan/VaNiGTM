@@ -1107,3 +1107,74 @@ maybe('failures are non-destructive', () => {
     expect(row.facts_at).toBeNull();
   });
 });
+
+/* ── A site that reads fine and says nothing ────────────────────────── */
+
+maybe('a site that says nothing', () => {
+  beforeEach(async () => { await pool.query('DELETE FROM gt_account_briefs'); });
+
+  /**
+   * What the extraction stage yields for a content-free site, AFTER the
+   * schema has read the model's "not stated" idiom (that coercion is tested
+   * against the real schema in account-agent.test.ts — the LLM is stubbed
+   * here, so the schema never runs and asserting on it would only be testing
+   * the stub).
+   */
+  const queueNothingFound = () => {
+    llmQueue.push({
+      what_they_make: 'not stated',
+      scale_signals: 'not stated',
+      service_signals: 'not stated',
+      digital_maturity: 'not stated',
+      certifications: [],
+      named_contacts: [],
+      evidence: [],
+    });
+  };
+
+  // This used to be recorded as extract_failed — "our pipeline broke, retry
+  // me" — so the same empty pages would be crawled and the same nothing
+  // extracted on every future run, forever, at full cost.
+  it('records a finding about them, not a failure of ours', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueNothingFound();
+
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+
+    const row = (await briefs())[0];
+    expect(row.status).toBe('unreadable');
+    expect(row.error).toMatch(/found nothing to say about them/);
+    expect(row.facts_at).toBeNull();
+  });
+
+  // A finding about them, so it is not retried on its own — the same posture
+  // as a dead domain.
+  it('is not retried automatically the way our own failures are', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    queueNothingFound();
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+
+    fetched.length = 0;
+    llmQueue = [];
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+    expect(fetched).toHaveLength(0);   // and no LLM call, or the stub throws
+  });
+
+  it('keeps a brief when SOME facts came back', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    llmQueue.push({
+      what_they_make: 'Active pharmaceutical ingredients',
+      scale_signals: 'not stated',
+      certifications: [], named_contacts: [], evidence: [],
+    });
+    llmQueue.push({
+      scores: [{ offer_id: 'cdo-as-a-service', score: 0.4, reason: 'thin' }],
+      recommended_offer: null, reason: 'not enough to go on',
+    });
+
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+    const row = (await briefs())[0];
+    expect(row.status).toBe('drafted');
+    expect(row.what_they_make).toBe('Active pharmaceutical ingredients');
+  });
+});

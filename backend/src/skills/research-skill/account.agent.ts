@@ -101,19 +101,65 @@ const EvidenceSchema = z.object({
   excerpt: z.string(),
 });
 
-const ExtractSchema = z.object({
+/**
+ * "not stated" where a LIST was expected.
+ *
+ * ── THE FAILURE THIS FIXES ────────────────────────────────────────────
+ *
+ * A pilot company whose site said nothing extractable produced:
+ *
+ *   { "what_they_make": "not stated", ..., "certifications": "not stated",
+ *     "named_contacts": "not stated" }
+ *
+ * Perfectly valid JSON, and rejected — because `certifications` is an array
+ * of strings and `named_contacts` an array of objects. The brief was recorded
+ * as `extract_failed`, which means "our pipeline broke, retry me", so it would
+ * have failed identically on every future run forever.
+ *
+ * Nothing was broken. The model was asked to fill six fields, had nothing for
+ * any of them, and wrote its "nothing" idiom in all six — including the two
+ * that are lists. `meaningful()` already reads exactly that idiom for strings.
+ * This is the same reading for lists, and it is not a silent fallback
+ * (CLAUDE.md rule 12): the model said "nothing", and an empty list IS nothing.
+ * We are parsing its answer correctly, not substituting one.
+ *
+ * Deliberately narrow. Only the recognised "nothing" words coerce; any OTHER
+ * string where a list belongs is still a real schema error, still loud, and
+ * still worth seeing.
+ */
+export const NOTHING_WORDS = /^(not stated|not specified|not available|unknown|n\/?a|none|nil|null|-|)$/i;
+
+export function emptyListIfNothing(v: unknown): unknown {
+  if (typeof v === 'string' && NOTHING_WORDS.test(v.trim())) return [];
+  if (v === null || v === undefined) return [];
+  return v;
+}
+
+/**
+ * `inner`, but reading the model's "nothing" idiom as an empty list.
+ *
+ * The cast is because zod 3's `preprocess` widens its output to `unknown` —
+ * without it every downstream use of `evidence` and `named_contacts` loses its
+ * type, which is a far worse trade than one contained assertion. The runtime
+ * behaviour is exactly `inner`'s: anything that is not a recognised "nothing"
+ * word reaches `inner` untouched and is validated normally.
+ */
+const listOrNothing = <T extends z.ZodTypeAny>(inner: T) =>
+  z.preprocess(emptyListIfNothing, inner) as unknown as T;
+
+export const ExtractSchema = z.object({
   what_they_make: z.string().nullable().optional(),
   scale_signals: z.string().nullable().optional(),
   service_signals: z.string().nullable().optional(),
   digital_maturity: z.string().nullable().optional(),
-  certifications: z.array(z.string()).optional(),
-  named_contacts: z.array(z.object({
+  certifications: listOrNothing(z.array(z.string())).optional(),
+  named_contacts: listOrNothing(z.array(z.object({
     name: z.string().optional().nullable(),
     title: z.string().optional().nullable(),
     email: z.string().optional().nullable(),
     phone: z.string().optional().nullable(),
-  })).optional(),
-  evidence: z.array(EvidenceSchema).optional(),
+  }))).optional(),
+  evidence: listOrNothing(z.array(EvidenceSchema)).optional(),
 });
 export type ExtractResult = z.infer<typeof ExtractSchema>;
 
@@ -810,6 +856,29 @@ export class AccountResearchAgent {
         + (dropped > 0 ? ` · ${dropped} dropped as unsupported by any page read` : ''),
       status: dropped > 0 ? 'error' : 'ok',
     });
+
+    // A site that read fine and said NOTHING is a finding about them, not a
+    // failure of ours. It used to become extract_failed — which means "our
+    // pipeline broke, retry me" — so the same empty pages would be crawled and
+    // the same nothing extracted on every future run, forever, at full cost.
+    const nothingFound = meaningful(extracted.what_they_make) === null
+      && meaningful(extracted.scale_signals) === null
+      && meaningful(extracted.service_signals) === null
+      && meaningful(extracted.digital_maturity) === null
+      && (extracted.certifications ?? []).length === 0;
+
+    if (nothingFound) {
+      return {
+        status: 'unreadable',
+        domain,
+        site_health: home.health.summary,
+        pages_read: pages.length,
+        error: `Read ${pages.length} page(s) and found nothing to say about them — `
+             + 'no products, no scale, no certifications. Their site is up but it '
+             + 'carries no business detail. Not retried automatically; tick redo '
+             + 'if you think that is wrong.',
+      };
+    }
 
     // FACTS END HERE. Everything above is about the COMPANY and costs a
     // crawl plus an extraction call; everything below is a judgement against

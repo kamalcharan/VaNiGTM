@@ -3,7 +3,14 @@ import type { Config } from 'jest';
 const config: Config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src/skills', '<rootDir>/src/services', '<rootDir>/src/etl'],
+  // agent-core was outside the roots, so the event bus, the runner and the
+  // LLM client — the heart of the product — had no test the runner could even
+  // find. A diagnostic bug in llm.client cost two investigations before that
+  // was noticed.
+  roots: [
+    '<rootDir>/src/skills', '<rootDir>/src/services', '<rootDir>/src/etl',
+    '<rootDir>/src/agent-core',
+  ],
   testMatch: ['**/tests/**/*.test.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   transform: {

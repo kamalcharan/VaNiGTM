@@ -387,45 +387,137 @@ export async function callLLM(options: LLMCallOptions): Promise<LLMResult> {
  *   appended ("Your response was not valid JSON...").
  * - Throws LLM_VALIDATION_FAILED on second failure.
  */
+/**
+ * Why a validated call failed. The distinction is the whole point.
+ *
+ * ── THE DIAGNOSTIC THIS FIXES ─────────────────────────────────────────
+ *
+ * This used to be `catch { return null }`, which made a JSON SYNTAX error and
+ * a SCHEMA TYPE error indistinguishable — and then reported both as "Could
+ * not parse valid JSON".
+ *
+ * A real pilot failure read:
+ *
+ *   LLM_VALIDATION_FAILED: Could not parse valid JSON after retry.
+ *   Last response: { "what_they_make": "not stated", ... "named_contacts": "not s
+ *
+ * Everything about that message is misleading. The JSON parsed fine; the
+ * model had sent the string "not stated" where an ARRAY was expected. The
+ * response was not truncated either — `slice(0, 200)` in the error was doing
+ * that. So the message pointed at a token limit that was not the problem and
+ * hid the field that was.
+ */
+type ParseFailure =
+  | { stage: 'json'; detail: string }
+  | { stage: 'schema'; detail: string; fields: string[] };
+
+/**
+ * Both keys on both branches. TypeScript will not narrow a union whose
+ * generic appears in only one arm, so `if (r.ok) …` leaves `.failure`
+ * unreachable — and working around that with a cast would hide exactly the
+ * kind of mistake this type exists to prevent.
+ */
+type ParseResult<T> =
+  | { ok: true;  value: T;          failure?: undefined }
+  | { ok: false; value?: undefined; failure: ParseFailure };
+
+/** Zod issues as something a model — and a human — can act on. */
+function describeIssues(err: z.ZodError): { detail: string; fields: string[] } {
+  const issues = err.issues.slice(0, 6);
+  const fields = issues.map((i) => i.path.join('.') || '(root)');
+  const detail = issues
+    .map((i) => {
+      const where = i.path.join('.') || 'the response';
+      // "expected array, received string" is the sentence that would have
+      // ended the pilot failure in one read.
+      const what = 'expected' in i && 'received' in i
+        ? `expected ${(i as { expected: unknown }).expected}, got ${(i as { received: unknown }).received}`
+        : i.message;
+      return `${where}: ${what}`;
+    })
+    .join('; ');
+  return { detail, fields };
+}
+
 export async function callLLMValidated<T>(
   options: LLMCallOptions,
   schema: z.ZodSchema<T>,
   jsonPath?: string,
 ): Promise<T> {
-  const tryParse = (text: string): T | null => {
-    try {
-      let raw = text.replace(/```json|```/g, '').trim();
-      if (jsonPath) {
-        const re    = new RegExp(`<${jsonPath}>([\\s\\S]*?)<\\/${jsonPath}>`);
-        const match = raw.match(re);
-        if (match) raw = match[1].trim();
-      }
-      return schema.parse(JSON.parse(raw));
-    } catch {
-      return null;
+  const tryParse = (text: string): ParseResult<T> => {
+    let raw = text.replace(/```json|```/g, '').trim();
+    if (jsonPath) {
+      const re    = new RegExp(`<${jsonPath}>([\\s\\S]*?)<\\/${jsonPath}>`);
+      const match = raw.match(re);
+      if (match) raw = match[1].trim();
     }
+
+    let json: unknown;
+    try {
+      json = JSON.parse(raw);
+    } catch (err) {
+      return {
+        ok: false,
+        failure: {
+          stage: 'json',
+          detail: err instanceof Error ? err.message : String(err),
+        },
+      };
+    }
+
+    const result = schema.safeParse(json);
+    if (result.success) return { ok: true, value: result.data };
+    return { ok: false, failure: { stage: 'schema', ...describeIssues(result.error) } };
   };
 
-  const first  = await callLLM(options);
+  /**
+   * A correction the model can act on.
+   *
+   * The old one always said "your response was not valid JSON". When the JSON
+   * was valid and only the TYPES were wrong, the model read that, looked at
+   * its own perfectly-valid JSON, and sent the same thing back — so the retry
+   * was guaranteed to fail in exactly the same way. Naming the field and the
+   * expected type is the difference between a retry and a second identical
+   * attempt.
+   */
+  const correction = (f: ParseFailure): string =>
+    f.stage === 'json'
+      ? `Your response was not valid JSON (${f.detail}). Respond with ONLY the JSON `
+        + 'object. No explanation, no markdown fences, no trailing commas.'
+      : `Your JSON was valid but the types were wrong — ${f.detail}. Fix ONLY those `
+        + 'fields and resend the whole object. A field with nothing to report must '
+        + 'still use its declared type: an empty array [] for lists, null for text. '
+        + 'Never the string "not stated" where a list is expected.';
+
+  const first = await callLLM(options);
   const parsed = tryParse(first.text);
-  if (parsed !== null) return parsed;
+  if (parsed.ok) return parsed.value as T;
+  const firstFailure = parsed.failure!;
 
-  // Retry once with explicit correction.
-  const correctionMessages: LLMCallOptions['messages'] = [
-    ...options.messages,
-    { role: 'assistant', content: first.text },
-    {
-      role: 'user',
-      content: 'Your response was not valid JSON. Respond with ONLY valid JSON. No explanation, no markdown fences.',
-    },
-  ];
+  const retry = await callLLM({
+    ...options,
+    messages: [
+      ...options.messages,
+      { role: 'assistant', content: first.text },
+      { role: 'user', content: correction(firstFailure) },
+    ],
+  });
+  const parsedRetry = tryParse(retry.text);
+  if (parsedRetry.ok) return parsedRetry.value as T;
 
-  const retry        = await callLLM({ ...options, messages: correctionMessages });
-  const parsedRetry  = tryParse(retry.text);
-  if (parsedRetry !== null) return parsedRetry;
+  // Both attempts named, because "it failed twice the same way" and "it failed
+  // two different ways" call for different fixes — a prompt change versus a
+  // schema that does not match what the model can produce.
+  const f = parsedRetry.failure!;
+  const what = f.stage === 'json'
+    ? `the response was not valid JSON (${f.detail})`
+    : `the JSON was valid but did not match the expected shape — ${f.detail}`;
 
   throw new Error(
-    `LLM_VALIDATION_FAILED: Could not parse valid JSON after retry. ` +
-    `Last response: ${retry.text.slice(0, 200)}`,
+    `LLM_VALIDATION_FAILED: after a retry, ${what}. `
+    + `First attempt failed at the ${firstFailure.stage} stage. `
+    // 1,200, and labelled: the old 200-char slice looked exactly like the
+    // model truncating and sent the last investigation to the wrong place.
+    + `Response (first 1200 chars of ${retry.text.length}): ${retry.text.slice(0, 1200)}`,
   );
 }

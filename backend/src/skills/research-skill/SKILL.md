@@ -104,6 +104,44 @@ Three rules this agent will not break:
 One run covers the whole cohort and checkpoints after every account, so a
 crash at 60 of 100 keeps 59 briefs and a resume starts at 60.
 
+### "not stated" where a list belongs
+
+The model's idiom for having nothing to report is the string `"not stated"` —
+and it uses it for EVERY field it has nothing for, including the ones declared
+as arrays. That produced perfectly valid JSON that the schema rejected:
+
+```
+{ "what_they_make": "not stated", …, "certifications": "not stated",
+  "named_contacts": "not stated" }
+```
+
+Three things were wrong with what happened next:
+
+1. **The error lied.** `callLLMValidated` caught JSON errors and schema errors
+   in the same `catch { return null }`, then reported both as *"Could not parse
+   valid JSON"*. The JSON parsed fine. And the 200-char slice in the message
+   looked exactly like the model truncating, which sent the investigation at a
+   token limit that was not the problem. It now says which stage failed, names
+   the field and the expected type, and labels how much of the response it cut.
+2. **The retry could not work.** It always said "your response was not valid
+   JSON" — so a model looking at its own valid JSON returned the same thing.
+   The correction is now built from the failure: *"certifications: expected
+   array, got string. Fix ONLY those fields."*
+3. **The outcome was wrong.** It became `extract_failed`, meaning "our pipeline
+   broke, retry me", so the same empty pages would be crawled forever at full
+   cost.
+
+`ExtractSchema` now reads the recognised nothing-words in a list field as `[]`
+— the same reading `meaningful()` already applies to strings, and NOT a silent
+fallback: the model said nothing, and an empty list IS nothing. Deliberately
+narrow — `"WHO-GMP and USFDA"` in a list field is real content in the wrong
+shape and still fails loudly.
+
+And a site that reads fine but yields no facts at all is now recorded as
+`unreadable` with *"read N pages and found nothing to say about them"* — a
+finding about the company, skipped unless you ask for a redo, rather than a
+pipeline failure retried in perpetuity.
+
 ### A failure never deletes what an earlier run earned
 
 Failures used to go through `writeBrief`, whose `ON CONFLICT` sets every
