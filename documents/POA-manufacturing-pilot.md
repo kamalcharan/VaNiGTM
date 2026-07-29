@@ -1,9 +1,10 @@
 # Execution Plan — Manufacturing Pilot
 
-> v1.2 · 2026-07-29 · Scoped test of the research-first thesis.
-> **The build is done.** Steps 0–3 are shipped; Step 4 is the last piece of
-> code. What remains is running it, writing the messages, and reading the
-> result — see "Where this actually stands" below.
+> v1.3 · 2026-07-29 · Scoped test of the research-first thesis.
+> **The build is done — every step, including the touch log.** And the scope
+> narrowed: the user researched 12 companies and shortlisted **4**. That is
+> the pilot going forward, and it changes what this run can prove. Read
+> "What 4 sends can and cannot test" before anything else.
 > Supersedes nothing. Sits IN FRONT of `POA-VaNi-GTM.md` and the
 > Customer-Journey Agents spec — both stay unamended until this returns a
 > result.
@@ -47,36 +48,121 @@ Decided BEFORE the run, so no result can be rationalised afterwards.
 by side. If a researched message says roughly what a template would have said,
 the research did no work — that is a failure even at 10% reply.
 
+> ⚠️ **2026-07-29: the first run is 4 sends, so the table above cannot be
+> read.** The thresholds are UNCHANGED and remain the standard — they are
+> simply deferred to a cohort large enough to carry them. `verdictFor()` in
+> `touches.ts` was written from this table and refuses a verdict below 20
+> concluded sends. **Editing those numbers to fit a smaller n voids the
+> pre-registration** and turns the pilot into an exploration.
+
+## What 4 sends can and cannot test
+
+The cohort was sized at ~101 reachable companies and ~45 sends. The user ran
+12 and shortlisted **4**. That is a legitimate scope decision and it does not
+weaken the pilot — but it changes which of the two pre-registered gates this
+run can answer, and pretending otherwise would void the pre-registration.
+
+| Gate | At n=4 |
+|---|---|
+| **Reply rate** ≥8% / 3–8% / <3% | ❌ **Cannot be read.** One reply is 25%, zero is 0%. Neither is a signal. `pilot_result` returns `too_early` below 20 concluded sends and will refuse a verdict — that is the system working |
+| **Qualitative** — does a researched message say anything a template would not? | ✅ **Fully testable.** The plan states this gate is independent of reply rate and can fail the pilot on its own. At n=4 it is the only live gate, and it is the one that matters most |
+
+**So this run is a qualitative test and a dress rehearsal.** The reply-rate
+test is DEFERRED to a larger cohort — explicitly, in writing, rather than
+quietly redefined at 25% when one of four people answers.
+
+Three questions this run CAN answer, none of which needs a rate:
+
+1. Did any brief contain something the writer could not have known otherwise?
+2. Did any brief contain something **wrong**? One fabricated detail in a first
+   message is the failure the whole evidence system exists to prevent, and
+   four messages is enough to catch it.
+3. Was the recommended offer right, or was it overridden? Already recorded
+   per company.
+
+**A control is required for gate 2 to mean anything.** Before re-reading each
+brief, write the message you WOULD have sent knowing only the company name and
+industry. Keep it. Comparing afterwards without a control is judging your own
+work retrospectively, which is not a test. Nothing in the product enforces
+this — it is a discipline, and it is the single most important thing in this
+run.
+
 ## Where this actually stands  ·  2026-07-29
+
+### ✅ DONE — all of it
 
 | Step | State |
 |---|---|
-| 0 · Prove the import landed | ✅ 2,882 rows, reconciled with `scripts/verify-import.sql` |
-| 1 · Normalise the variants | ✅ **144 pharma manufacturers, 101 with a website** — and the CLI is no longer the only way to do it (migrations 218/219: cluster + segment are filters on `/prospects`, and a filter can be saved as a named segment) |
-| 2 · Account research brief | ✅ Built, and rebuilt four times against real failures — see "What Step 2 became" |
-| 3 · The Research screen | ✅ Offers, cohort, briefs, and the Learning Graph |
-| 4 · Touch log | ✅ Migration 221 + the scoreboard. `pilot_result` computes the pre-registered criteria; the verdict is withheld below 20 concluded sends |
-| 5 · Write and send | ⬜ Manual by design — log each touch on the dossier |
-| 6 · Read the result | ✅ Built — "Did it work" on `/research`. Reading it is what remains |
+| 0 · Prove the import landed | 2,882 rows, reconciled with `scripts/verify-import.sql` |
+| 1 · Normalise the variants | 144 pharma, 101 reachable. The CLI is no longer the only route — cluster and segment are filters on `/prospects`, and a filter can be saved as a named segment |
+| 2 · Account research brief | Built, then rebuilt four times against real failures — see "What Step 2 became" |
+| 3 · The Research screen | Offers, cohort, briefs, the Learning Graph, and every stat card a filter |
+| 4 · Touch log | Migration 221 + `pilot_result`, which computes the pre-registered criteria and withholds a verdict below 20 concluded sends |
+| 6 · Read the result | "Did it work" on `/research`. Built; reading it is what remains |
 
-**No code is left. Everything below is running it.**
+**Sixteen migrations (206–221).** Beyond the plan's `gt_account_briefs`:
+`gt_offers`, `gt_fit_lessons`, `gt_segments`, `gt_touch_log`,
+`industry_canonical` + `industry_sub`, and four prompt revisions.
 
-**Blocking the run, and neither is code:**
+### ⬜ LINED UP — the run itself, no code
 
-1. **Offer wording.** `caio-as-a-service` scored 0.12–0.15 on every company in
-   the first batch because all its signals were news, press and hiring — which
-   nothing read. Search now reaches those (migration 220), so rewriting those
-   signals will finally change scores. `cdo-as-a-service` has the opposite
-   problem: its signals describe the SEGMENT ("multi-site pharma with
-   exports"), so they fire on the whole cohort and carry no information.
+| # | What | Who |
+|---|---|---|
+| 1 | **Rule out the other 8 with reasons.** 4 decisions is below the Learning Graph's floor of 6; 12 clears it. The 8 rejections carry more information than the 4 approvals — they are where human judgement disagreed with the agent | user |
+| 2 | **Write the 4 control messages first** (see above) | user |
+| 3 | **Resolve a PERSON per company.** Research targets companies; sending needs a human. The dossier gives imported FTCCI contacts and site-found names, kept visually apart because one is verified and one is not. Fine by hand at 4; impossible at 45 | user |
+| 4 | Write and send the 4 real messages | user |
+| 5 | Log each touch on the dossier as it goes | user |
+| 6 | Two weeks, then mark outcomes. `not_interested` counts as a REPLY | user |
+| 7 | Read "Did it work" — expect `too_early`, and read the qualitative gate properly | both |
+
+### 🔶 BLOCKING, and neither is code
+
+1. **Offer wording.** `caio-as-a-service` scored 0.12–0.15 on every company
+   because all its signals were news, press and hiring — which nothing read
+   until migration 220. Rewriting them will now change scores.
+   `cdo-as-a-service` has the opposite problem: its signals describe the
+   SEGMENT ("multi-site pharma with exports"), so they fire on the whole
+   cohort and carry no information. **At n=4 this may not be visible** — if
+   all four came back on the same offer, that is the symptom, not a finding
+   about those companies.
 2. **Sending identity** — which mailbox, which domain.
+
+### ⏸️ ON HOLD — decided, not scheduled
+
+| Item | Why it is held |
+|---|---|
+| **Reply-rate gate** | Needs ~20+ concluded sends. Deferred to a larger cohort, NOT abandoned and NOT re-scored at a lower n |
+| **The 43 pharma companies with no website** | Since migration 220 search alone could brief them, and the agent's `domain_normalized IS NOT NULL` rule is a leftover from when the website was the only source. Held deliberately: adding ~43 probably-weak targets to a run measuring message quality would muddy it. Fix after the pilot |
+| **`gt_sources` — per-segment source repository** (R6) | Pharma's useful sources have nothing to do with textiles. Needs the pilot to prove the motion first |
+| **Uploaded documents as a research source** | The ingestion pipeline already exists; only segment-scoping is new |
+| **Industry rules as editable data** | They are a TS file. Changing one silently moves segment membership — `rules_version` makes that visible, which is enough for now |
+| **LinkedIn via a paid provider** | Only if the pilot proves the motion. Scraping is not on the table |
+| **Persona at job-title level** (R2) | Deferred by ruling. The UX reserves the space |
+| **KG loader while a batch runs** | The navbar indicator shipped; the graph animation did not |
+| **Segment-defined brief fields** | Brief fields are manufacturing-flavoured (`what_they_make`, `certifications`). Fine for one segment |
+| **Source tiering beyond two levels** | `website` vs `search` is enough while there are two sources |
+
+### ❓ UNDECIDED — needs a ruling
+
+| Question | Where it bites |
+|---|---|
+| **When the industry rules move, should a segment be re-countable in place, or re-approved?** | Today `rules_moved` is shown and `recount` is a manual click. That is deliberate but it is not a policy |
+| **Does a company with no website belong in a cohort at all, now that search can brief it?** | Blocks the "include search-only companies" option. Recommendation: offer it as a checkbox, off by default |
+| **What is the real cost per company?** | 14,000 tokens is my estimate. `tokens_used` after the next full batch gives the true number, and a cap set before knowing it would be a guess |
+| **Do accepted lessons decay?** | A rule accepted in month one still applies in month six even if every decision since contradicts it |
+| **Should a sandbox lesson carry to live?** | Answered "no" by construction; never actually decided |
 
 ## Scope — the cohort
 
+**As run (2026-07-29): 12 researched, 4 shortlisted.** The numbers below are
+the cohort the plan was sized on and remain the target for the deferred
+reply-rate test.
+
 - Source: `gt_prospects`, FTCCI import, manufacturing cluster (~200 rows before
   variant normalisation; likely ~370 after)
-- Researchable: those with a resolvable domain (~107 known, expect more after
-  normalisation)
+- Researchable: those with a resolvable domain (144 pharma matched, **101
+  reachable** — measured, not estimated)
 - **Segment: pharma** (user ruling, 2026-07-28). Hyderabad is India's
   bulk-drug capital, so it is the largest segment in the file, those companies
   have real websites to research, and the ACV justifies per-account research.
@@ -383,15 +469,24 @@ exploratory rather than a test.
 
 ## Timeline
 
+**This run (4 sends — qualitative gate only):**
+
 | | |
 |---|---|
-| ~~Build (steps 0–3)~~ | ✅ done |
-| Step 4 — touch log | ~0.5 day |
-| Offer wording (yours) | the real gate |
-| Research batch | overnight, ~5 hours for 101 |
-| Human review + message writing | 3–4 days |
+| ~~Build (steps 0–4, 6)~~ | ✅ done |
+| Rule out the other 8, write 4 controls, resolve 4 people | ~half a day |
+| Write and send 4 | ~half a day |
+| Response window | 2 weeks |
+| **Qualitative read** | **~2.5 weeks** |
+
+**The deferred reply-rate test**, once the offer wording is fixed:
+
+| | |
+|---|---|
+| Research the rest of the 101 | overnight, ~5 hours |
+| Review + write ~45 messages | 3–4 days |
 | Send + response window | 2 weeks |
-| **Result** | **~3 weeks from the offers being right** |
+| **Verdict against the pre-registered table** | **~4 weeks** |
 
 ## Explicitly NOT in this plan
 
@@ -437,4 +532,6 @@ self-deception this list guards against.
 | **Channel** | WhatsApp fits this audience but forbids cold outreach; listed emails are often `info@`. Reachability is the least-tested assumption in the whole thesis |
 | **Offer-market fit** | A 40-person unit is not buying a fractional CDO. Bad fit produces zero replies and the wrong lesson — that research-first failed. Two mitigations: pharma was chosen because the ACV supports these offers, and each offer carries `disqualifiers` so "no fit" is reachable rather than the model always finding a reason to pitch |
 | **Small n** | 45 sends yields a signal, not statistics. Do not A/B message angles at this volume; test one thing |
+| **n=4 is not a rate at all** (2026-07-29) | The first run cannot touch the reply-rate gate, and the danger is not the small number — it is the temptation to read one out of it. One reply reads as 25% and would look like a triumph. `pilot_result` refuses a verdict below 20 concluded sends, which is the mitigation; the other is that this is written down here, before the result exists |
+| **No control message** | The qualitative gate is the only live gate at n=4, and it is unanswerable if the "what a template would have said" version is written after seeing the brief. Nothing in the product enforces writing it first — this is discipline, and it is the weakest link in the run |
 | **Outcome capture** | Consultative deals close offline over months. Step 4 + phone follow-up are the mitigation, and both depend on human discipline |
