@@ -15,6 +15,14 @@ import { moveByProspect } from '../../journey-skill/journey.service';
 interface LogTouchParams {
   prospect_id: number;
   channel: string;
+  /**
+   * WHO was written to. Optional so existing callers keep working, but
+   * without it the cadence governor cannot see this send — fatigue belongs
+   * to a person, and an unattributed touch is invisible to the cap.
+   */
+  contact_id?: number;
+  /** Consume this held slot. Found by contact + channel when not given. */
+  reservation_id?: number;
   offer?: string;
   /** Defaults to now. Set it when logging something sent yesterday. */
   touched_at?: string;
@@ -47,17 +55,31 @@ export async function log_touch(params: LogTouchParams, ctx: SkillContext) {
     );
     if (owned.rows.length === 0) throw new Error('No such company.');
 
+    // The person must be ours too. Without this a valid contact id from
+    // another tenant would be written onto our touch log.
+    const contactId = Number.isFinite(Number(params.contact_id))
+      ? Number(params.contact_id) : null;
+    if (contactId !== null) {
+      const c = await tx.query(
+        `SELECT 1 FROM gt_contacts
+          WHERE id = $id AND tenant_id = $tenant_id AND is_live = $is_live`,
+        { id: contactId, tenant_id: ctx.tenant_id, is_live: ctx.is_live },
+      );
+      if (c.rows.length === 0) throw new Error('No such contact.');
+    }
+
     const res = await tx.query<{ id: number; had_brief: boolean }>(
       `INSERT INTO gt_touch_log
-         (tenant_id, is_live, prospect_id, offer, channel, touched_at,
+         (tenant_id, is_live, prospect_id, contact_id, offer, channel, touched_at,
           notes, had_brief, created_by)
        VALUES
-         ($tenant_id, $is_live, $prospect_id, $offer, $channel,
+         ($tenant_id, $is_live, $prospect_id, $contact_id::bigint, $offer, $channel,
           COALESCE($touched_at::timestamptz, now()),
           $notes, $had_brief, $user_id)
        RETURNING id, had_brief`,
       {
         tenant_id: ctx.tenant_id, is_live: ctx.is_live, prospect_id: prospectId,
+        contact_id: contactId,
         offer: String(params.offer ?? '').trim() || null,
         channel: params.channel,
         touched_at: params.touched_at ?? null,
@@ -69,6 +91,38 @@ export async function log_touch(params: LogTouchParams, ctx: SkillContext) {
         user_id: ctx.user_id,
       },
     );
+
+    // Consume the reservation this send was planned against, so the slot
+    // stops blocking the next one. Named id first; otherwise the earliest
+    // held slot for this person on this channel.
+    //
+    // A send with no reservation is NOT an error — somebody wrote by hand,
+    // which is legitimate. The touch still lands in gt_touch_log and so
+    // still counts against the cap; the governor sees it either way.
+    let consumed: number | null = null;
+    if (contactId !== null) {
+      const r = await tx.query<{ id: string }>(
+        `UPDATE gt_touch_reservations
+            SET status = 'sent', touch_id = $touch_id::bigint, updated_at = now()
+          WHERE id = (
+            SELECT id FROM gt_touch_reservations
+             WHERE tenant_id = $tenant_id AND is_live = $is_live
+               AND contact_id = $contact_id AND status = 'held'
+               AND ($reservation_id::bigint IS NULL OR id = $reservation_id::bigint)
+               AND ($reservation_id::bigint IS NOT NULL OR channel = $channel)
+             ORDER BY scheduled_at
+             LIMIT 1)
+          RETURNING id::text`,
+        {
+          tenant_id: ctx.tenant_id, is_live: ctx.is_live, contact_id: contactId,
+          reservation_id: Number.isFinite(Number(params.reservation_id))
+            ? Number(params.reservation_id) : null,
+          channel: params.channel,
+          touch_id: Number(res.rows[0].id),
+        },
+      );
+      consumed = r.rows[0] ? Number(r.rows[0].id) : null;
+    }
 
     // The journey moves with the touch, in the same transaction. A send that
     // committed while the journey stayed at `ready` would leave the ledger
@@ -90,6 +144,8 @@ export async function log_touch(params: LogTouchParams, ctx: SkillContext) {
     return {
       touch_id: Number(res.rows[0].id),
       had_brief: res.rows[0].had_brief,
+      contact_id: contactId,
+      reservation_consumed: consumed,
       journey_state: journey?.state ?? 'waiting',
       message: res.rows[0].had_brief
         ? 'Logged as a researched send — it counts toward the pilot criteria.'

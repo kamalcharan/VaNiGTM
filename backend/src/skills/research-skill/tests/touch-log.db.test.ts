@@ -67,7 +67,10 @@ beforeAll(async () => {
   await pool.query(BASE);
   for (const m of ['207_gt_account_briefs.sql', '210_brief_extract_failed.sql',
                    '211_brief_facts_and_judgement.sql', '213_brief_human_offer.sql',
-                   '221_gt_touch_log.sql', '222_gt_journeys.sql']) {
+                   '221_gt_touch_log.sql', '222_gt_journeys.sql',
+                   // The governor: log_touch now records WHO was touched and
+                   // consumes the reservation the send was planned against.
+                   '223_gt_cadence_governor.sql']) {
     await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
   }
 
