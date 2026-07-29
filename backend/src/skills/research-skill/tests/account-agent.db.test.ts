@@ -108,8 +108,11 @@ beforeAll(async () => {
     database: 'account_brief_test' });
 
   await pool.query(BASE);
-  // The real migration, so the shipped constraints are what is tested.
-  await pool.query(fs.readFileSync(path.join(MIGRATIONS, '207_gt_account_briefs.sql'), 'utf8'));
+  // The real migrations, so the shipped constraints are what is tested —
+  // including 210, which is what makes 'extract_failed' a legal status.
+  for (const m of ['207_gt_account_briefs.sql', '210_brief_extract_failed.sql']) {
+    await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
+  }
 
   await pool.query(`INSERT INTO vn_tenants (id,slug) VALUES ($1,'us'),($2,'them')`, [A, B]);
   await pool.query(`INSERT INTO gt_tags (id,tenant_id,label) VALUES (7,$1,'Pilot Pharma')`, [A]);
@@ -472,5 +475,52 @@ maybe('not researching the same company twice', () => {
     const steps = (await pool.query(`SELECT steps FROM gt_agent_runs WHERE id = $1`, [runId])).rows[0].steps;
     const cohort = steps.find((x: any) => x.step_name === 'cohort');
     expect(cohort.action).toMatch(/skipping any already researched/i);
+  });
+});
+
+maybe('a failed brief is not a researched company', () => {
+  beforeEach(async () => { await pool.query('DELETE FROM gt_account_briefs'); });
+
+  // The bug this covers: "4 already researched" was counting rows that
+  // FAILED — including one our own pipeline broke. Both would have been
+  // written off forever.
+  it('retries a company our own extraction failed on, without being asked', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    await pool.query(
+      `INSERT INTO gt_account_briefs (tenant_id, is_live, prospect_id, status, error, domain)
+       VALUES ($1, false, 1, 'extract_failed', 'LLM_VALIDATION_FAILED: truncated', 'alpha.com')`,
+      [A]);
+
+    queueHealthyAccount('two units in Medak district', 'cdo-as-a-service');
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+
+    expect(fetched.some((u) => u.includes('alpha.com'))).toBe(true);
+    const rows = await briefs();
+    expect(rows[0].status).toBe('drafted');       // recovered on its own
+  });
+
+  it('leaves a dead website alone unless refresh is asked for', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    await pool.query(
+      `INSERT INTO gt_account_briefs (tenant_id, is_live, prospect_id, status, error, domain)
+       VALUES ($1, false, 1, 'unreadable', 'No address answered', 'alpha.com')`,
+      [A]);
+
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+    expect(fetched).toHaveLength(0);              // a finding about them, not a bug
+
+    queueHealthyAccount('two units in Medak district', null);
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1], refresh: true }, await newRun());
+    expect(fetched.some((u) => u.includes('alpha.com'))).toBe(true);
+  });
+
+  it('still skips a real brief', async () => {
+    siteText = { 'https://alpha.com': siteBody('APIs') };
+    await pool.query(
+      `INSERT INTO gt_account_briefs (tenant_id, is_live, prospect_id, status, domain)
+       VALUES ($1, false, 1, 'drafted', 'alpha.com')`, [A]);
+
+    await AccountResearchAgent.run(pool, A, { prospect_ids: [1] }, await newRun());
+    expect(fetched).toHaveLength(0);
   });
 });

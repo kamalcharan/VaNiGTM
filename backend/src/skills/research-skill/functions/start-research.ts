@@ -53,8 +53,13 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
   // batch used to silently re-crawl companies that already had a brief;
   // now the caller sees "10 selected, 7 already researched, 3 to do" and
   // decides, rather than discovering it from the bill.
+  // Counted by what the brief actually SAYS, not merely that one exists.
+  // "4 already researched" was including two rows that failed — one because
+  // their site did not answer, one because our own extraction truncated —
+  // which would have written both off permanently.
   const counts = await ctx.db.query<{
     selected: string; reachable: string; researched: string;
+    retryable: string; unreadable: string;
   }>(
     `SELECT count(*)::text                                   AS selected,
             count(*) FILTER (WHERE p.domain_normalized IS NOT NULL)::text
@@ -64,7 +69,23 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
                     SELECT 1 FROM gt_account_briefs b
                      WHERE b.prospect_id = p.id
                        AND b.tenant_id   = $tenant_id
-                       AND b.is_live     = $is_live))::text   AS researched
+                       AND b.is_live     = $is_live
+                       AND b.status NOT IN ('extract_failed','unreadable')))::text
+                                                             AS researched,
+            count(*) FILTER (WHERE p.domain_normalized IS NOT NULL
+                               AND EXISTS (
+                    SELECT 1 FROM gt_account_briefs b
+                     WHERE b.prospect_id = p.id
+                       AND b.tenant_id   = $tenant_id
+                       AND b.is_live     = $is_live
+                       AND b.status = 'extract_failed'))::text AS retryable,
+            count(*) FILTER (WHERE p.domain_normalized IS NOT NULL
+                               AND EXISTS (
+                    SELECT 1 FROM gt_account_briefs b
+                     WHERE b.prospect_id = p.id
+                       AND b.tenant_id   = $tenant_id
+                       AND b.is_live     = $is_live
+                       AND b.status = 'unreadable'))::text     AS unreadable
        FROM gt_prospects p
       WHERE p.tenant_id = $tenant_id AND p.is_live = $is_live
         AND p.is_active
@@ -81,14 +102,24 @@ export async function start_research(params: StartResearchParams, ctx: SkillCont
   const selected = Number(counts.rows[0]?.selected ?? 0);
   const reachableCount = Number(counts.rows[0]?.reachable ?? 0);
   const alreadyResearched = Number(counts.rows[0]?.researched ?? 0);
+  const retryable = Number(counts.rows[0]?.retryable ?? 0);
+  const unreadable = Number(counts.rows[0]?.unreadable ?? 0);
   const refresh = params.refresh === true;
-  const todo = refresh ? reachableCount : reachableCount - alreadyResearched;
+
+  // Never researched, PLUS the ones our own pipeline failed on. A dead
+  // website is skipped unless refresh is asked for — it is a finding about
+  // them and will not change on a retry.
+  const todo = refresh
+    ? reachableCount
+    : reachableCount - alreadyResearched - unreadable;
 
   const split = {
     selected,
     reachable: reachableCount,
     no_website: selected - reachableCount,
     already_researched: alreadyResearched,
+    extraction_failed: retryable,
+    no_address_answered: unreadable,
     to_research: todo,
   };
 

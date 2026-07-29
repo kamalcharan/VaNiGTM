@@ -207,6 +207,8 @@
 }
 .splitMuted { color: var(--color-text-muted); }
 .splitStrong { color: var(--color-accent); font-weight: 600; }
+/* Our failure, not theirs — picked up again without being asked. */
+.splitRetry { color: var(--color-text); font-weight: 500; }
 .redo {
   display: flex; align-items: center; gap: 0.4rem;
   font-size: 0.78rem; color: var(--color-text-muted); cursor: pointer;

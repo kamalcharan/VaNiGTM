@@ -269,11 +269,18 @@ export class AccountResearchAgent {
                 SELECT 1 FROM gt_prospect_tags pt
                  WHERE pt.prospect_id = p.id AND pt.tag_id = $tag_id::bigint))
           AND ($ids::bigint[] IS NULL OR p.id = ANY($ids::bigint[]))
+          -- A brief only counts as "done" if it is actually a brief.
+          -- extract_failed is OUR pipeline falling over — it says nothing
+          -- about the company and is retried automatically, or those rows
+          -- would be written off forever for a bug of ours. unreadable is
+          -- a finding about them, so it is skipped unless refresh is asked
+          -- for.
           AND ($refresh::boolean OR NOT EXISTS (
                 SELECT 1 FROM gt_account_briefs b
                  WHERE b.prospect_id = p.id
                    AND b.tenant_id   = $tenant_id
-                   AND b.is_live     = $is_live))
+                   AND b.is_live     = $is_live
+                   AND b.status <> 'extract_failed'))
         ORDER BY p.completeness DESC NULLS LAST, p.id
         LIMIT $limit`,
       {

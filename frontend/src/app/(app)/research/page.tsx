@@ -52,7 +52,12 @@ interface Tag { id: number; label: string }
 
 interface Split {
   selected: number; reachable: number; no_website: number;
-  already_researched: number; to_research: number;
+  already_researched: number;
+  /** Our pipeline failed — retried automatically. */
+  extraction_failed: number;
+  /** Their site did not answer — a finding about them, skipped by default. */
+  no_address_answered: number;
+  to_research: number;
 }
 
 interface BatchStatus {
@@ -394,9 +399,19 @@ export default function ResearchPage() {
                   {split.already_researched} already researched
                 </span>
               )}
+              {split.extraction_failed > 0 && !redoExisting && (
+                <span className={s.splitRetry}>
+                  {split.extraction_failed} our extraction failed — retrying
+                </span>
+              )}
+              {split.no_address_answered > 0 && !redoExisting && (
+                <span className={s.splitMuted}>
+                  {split.no_address_answered} no address answered — tick redo to try again
+                </span>
+              )}
               <span className={s.splitStrong}>{toResearch} to research</span>
 
-              {split.already_researched > 0 && (
+              {(split.already_researched > 0 || split.no_address_answered > 0) && (
                 <label className={s.redo}>
                   <input
                     type="checkbox" checked={redoExisting}
