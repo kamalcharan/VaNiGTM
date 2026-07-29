@@ -14,7 +14,7 @@
  * who gets contacted — so the button stays disabled and says why.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
@@ -83,19 +83,40 @@ const lines = (xs: string[]) => xs.join('\n');
 const toLines = (v: string) => v.split('\n').map((x) => x.trim()).filter(Boolean);
 
 /**
- * A labelled textarea. MODULE SCOPE, deliberately: defined inside a component
- * it becomes a new type on every render, and React remounts it — which is
- * exactly how the offer form lost focus on every keystroke.
+ * A labelled textarea that GROWS to fit what is in it.
+ *
+ * MODULE SCOPE, deliberately: defined inside a component it becomes a new
+ * type on every render and React remounts it — which is exactly how this
+ * form lost focus on every keystroke.
+ *
+ * ── WHY IT AUTO-SIZES ─────────────────────────────────────────────────
+ *
+ * Fixed-height boxes gave every field its own scrollbar, nested inside the
+ * modal's scrollbar. Nine fields, nine scrollbars, three visible lines of a
+ * six-line value — you could never see one field whole, let alone compare
+ * two. Widening the modal did not touch that; only growing the box does.
  */
-function Area({ label, value, hint, onEdit, rows = 3 }: {
+function Area({ label, value, hint, onEdit, minRows = 3 }: {
   label: string; value: string; hint?: string;
-  onEdit: (v: string) => void; rows?: number;
+  onEdit: (v: string) => void; minRows?: number;
 }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  // Height follows content. Reset first — without it the box can only ever
+  // grow, never shrink when text is deleted.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+
   return (
     <div className={s.formRow}>
       <label className={s.formLabel}>{label}</label>
       <textarea
-        className={s.textarea} value={value} rows={rows}
+        ref={ref}
+        className={s.textarea} value={value} rows={minRows}
         onChange={(e) => onEdit(e.target.value)}
       />
       {hint && <div className={s.formHint}>{hint}</div>}
@@ -505,7 +526,7 @@ export default function ResearchPage() {
         onClose={() => setEditing(null)}
         title={editing?.id ? editing.name : 'New offer'}
         subtitle="Everything here is read by the agent — and some of it reaches a prospect."
-        width="lg"
+        width="xl"
       >
         {editing && (
           <OfferForm
@@ -607,20 +628,20 @@ function OfferForm({
           </div>
 
           <Area
-            label="One line" value={draft.one_line} rows={2}
+            label="One line" value={draft.one_line} minRows={2}
             onEdit={(v) => set({ one_line: v })}
             hint="How you would describe it in a sentence."
           />
           <Area
-            label="Who it is for" value={draft.who_for} rows={3}
+            label="Who it is for" value={draft.who_for} minRows={3}
             onEdit={(v) => set({ who_for: v })}
           />
           <Area
-            label="Problem it solves" value={draft.problem} rows={5}
+            label="Problem it solves" value={draft.problem} minRows={5}
             onEdit={(v) => set({ problem: v })}
           />
           <Area
-            label="What you do" value={lines(draft.what_we_do)} rows={5}
+            label="What you do" value={lines(draft.what_we_do)} minRows={5}
             onEdit={(v) => set({ what_we_do: toLines(v) })}
             hint="One per line."
           />
@@ -631,22 +652,22 @@ function OfferForm({
           <div className={s.colHead}>How it gets matched</div>
 
           <Area
-            label="Fit signals" value={lines(draft.signals)} rows={7}
+            label="Fit signals" value={lines(draft.signals)} minRows={7}
             onEdit={(v) => set({ signals: toLines(v) })}
             hint="One per line. What on a company's website tells you this fits — this is what the agent actually looks for, so concrete beats descriptive."
           />
           <Area
-            label="Do NOT pitch this when" value={lines(draft.disqualifiers)} rows={5}
+            label="Do NOT pitch this when" value={lines(draft.disqualifiers)} minRows={5}
             onEdit={(v) => set({ disqualifiers: toLines(v) })}
             hint="One per line. Without these the agent always finds a reason to say yes."
           />
           <Area
-            label="Price band" value={draft.price_band} rows={2}
+            label="Price band" value={draft.price_band} minRows={2}
             onEdit={(v) => set({ price_band: v })}
             hint="What it costs. This is what makes “too small for this” a judgement rather than a guess."
           />
           <Area
-            label="Proof" value={draft.proof} rows={4}
+            label="Proof" value={draft.proof} minRows={4}
             onEdit={(v) => set({ proof: v })}
             hint="What you can stand behind in writing. No case study yet? Say what is actually true — credentials, adjacent work. Never invent one; a real prospect can check."
           />

@@ -10,7 +10,7 @@ export interface VdfModalProps {
   subtitle?: string;
   children: ReactNode;
   footer?: ReactNode;
-  width?: 'sm' | 'md' | 'lg';
+  width?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 }
 
 export function VdfModal({

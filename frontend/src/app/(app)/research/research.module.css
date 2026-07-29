@@ -104,17 +104,24 @@
 }
 .fitReason { color: var(--color-text-muted); }
 
-.formRow { margin-bottom: 1rem; }
+.formRow { margin-bottom: 1.75rem; }
 .formLabel {
-  display: block; font-size: 0.78rem; font-weight: 500;
-  color: var(--color-text); margin-bottom: 0.35rem;
+  display: block; font-size: 0.8rem; font-weight: 600;
+  color: var(--color-text); margin-bottom: 0.6rem;
+  letter-spacing: 0.01em;
 }
-.formHint { font-size: 0.72rem; color: var(--color-text-muted); margin-top: 0.25rem; }
+.formHint {
+  font-size: 0.75rem; color: var(--color-text-muted);
+  margin-top: 0.5rem; line-height: 1.6; max-width: 60ch;
+}
 .textarea {
-  width: 100%; min-height: 72px; resize: vertical;
-  background: var(--color-surface); color: var(--color-text);
+  width: 100%; box-sizing: border-box;
+  /* No fixed height and no inner scrollbar: the box grows to its content
+     (see Area in page.tsx) so the modal is the ONLY thing that scrolls. */
+  resize: none; overflow: hidden;
+  background: var(--color-bg, var(--color-surface)); color: var(--color-text);
   border: 1px solid var(--color-border); border-radius: 8px;
-  padding: 0.6rem 0.75rem; font: inherit; font-size: 0.85rem; line-height: 1.5;
+  padding: 0.75rem 0.9rem; font: inherit; font-size: 0.875rem; line-height: 1.65;
 }
 .textarea:focus { outline: none; border-color: var(--color-accent); }
 
@@ -158,31 +165,36 @@
    and how a company gets matched to it. Stacks under 900px. */
 
 .offerForm {
-  display: grid; gap: 1.5rem;
+  display: grid; gap: 3rem; max-width: 100%;
   grid-template-columns: 1fr 1fr;
   align-items: start;
+  padding-top: 0.5rem;
 }
-@media (max-width: 900px) {
-  .offerForm { grid-template-columns: 1fr; }
+@media (max-width: 1000px) {
+  .offerForm { grid-template-columns: 1fr; gap: 1rem; }
 }
-.offerCol { min-width: 0; }
+.offerCol { min-width: 0; max-width: 100%; }
 .colHead {
-  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.09em;
-  color: var(--color-text-muted); font-weight: 600;
-  padding-bottom: 0.5rem; margin-bottom: 0.9rem;
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--color-accent); font-weight: 700;
+  padding-bottom: 0.75rem; margin-bottom: 1.75rem;
   border-bottom: 1px solid var(--color-border);
 }
 .input {
-  width: 100%; background: var(--color-surface); color: var(--color-text);
+  width: 100%; box-sizing: border-box;
+  background: var(--color-bg, var(--color-surface));
+  color: var(--color-text);
   border: 1px solid var(--color-border); border-radius: 8px;
-  padding: 0.6rem 0.75rem; font: inherit; font-size: 0.85rem;
+  padding: 0.75rem 0.9rem; font: inherit; font-size: 0.9rem;
 }
 .input:focus { outline: none; border-color: var(--color-accent); }
 .offerFooter {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 1rem; flex-wrap: wrap;
-  margin-top: 1.5rem; padding-top: 1rem;
+  gap: 1.5rem; flex-wrap: wrap;
+  margin-top: 2rem; padding-top: 1.25rem;
   border-top: 1px solid var(--color-border);
+  position: sticky; bottom: 0;
+  background: var(--color-surface);
 }
 
 /* ── The batch split ─────────────────────────────────────────────────

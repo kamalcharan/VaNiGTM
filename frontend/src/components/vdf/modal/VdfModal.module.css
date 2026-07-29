@@ -32,6 +32,11 @@
 .sm { width: 360px; max-width: 90vw; }
 .md { width: 480px; max-width: 90vw; }
 .lg { width: 640px; max-width: 90vw; }
+/* For modals that hold a real form rather than a confirmation. A two-column
+   editor in 640px gives each column ~300px, which is how the offer form
+   ended up cramped enough to be unusable. */
+.xl { width: 1100px; max-width: 94vw; }
+.full { width: 1440px; max-width: 96vw; }
 
 /* ── Header ─────────────────────────────────────────── */
 .header {
