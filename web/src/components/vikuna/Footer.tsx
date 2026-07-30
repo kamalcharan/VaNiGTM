@@ -131,11 +131,10 @@ const Footer: React.FC = () => {
           </Logo>
           
           <FooterNav>
-            <FooterLink href="#key-areas" theme={currentTheme}>Services</FooterLink>
-            <FooterLink href="#leadership-services" theme={currentTheme}>Our Approach</FooterLink>
-            <FooterLink href="#industries" theme={currentTheme}>Industries</FooterLink>
-            <FooterLink href="#case-studies" theme={currentTheme}>Success Stories</FooterLink>
-            <FooterLink href="#expert-network" theme={currentTheme}>Join Us</FooterLink>
+            <FooterLink href="#consulting-services" theme={currentTheme}>Services</FooterLink>
+            <FooterLink href="#how" theme={currentTheme}>How We Work</FooterLink>
+            <FooterLink href="#cases" theme={currentTheme}>Success Stories</FooterLink>
+            <FooterLink href="/mvp" theme={currentTheme}>MVP in 60–90 Days</FooterLink>
             <FooterLink href="#contact" theme={currentTheme}>Contact</FooterLink>
           </FooterNav>
         </FooterContent>
@@ -145,8 +144,8 @@ const Footer: React.FC = () => {
             © {new Date().getFullYear()} Vikuna Technologies. All rights reserved.
           </Copyright>
           <LegalLinks>
-            <LegalLink href="/privacy" theme={currentTheme}>Privacy Policy</LegalLink>
-            <LegalLink href="/terms" theme={currentTheme}>Terms of Service</LegalLink>
+            <LegalLink href="mailto:contact@vikuna.io" theme={currentTheme}>contact@vikuna.io</LegalLink>
+            <LegalLink href="tel:+917702864233" theme={currentTheme}>+91 77028 64233</LegalLink>
           </LegalLinks>
         </FooterBottom>
       </Container>

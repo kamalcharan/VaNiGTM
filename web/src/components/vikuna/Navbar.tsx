@@ -251,16 +251,22 @@ const Navbar: React.FC<NavbarProps> = ({ transparent = true }) => {
               </svg>
             </DropdownButton>
             <DropdownMenu $isOpen={isServicesOpen} theme={currentTheme}>
-              <DropdownItem href="#consulting-services" theme={currentTheme}>
-                Consulting Services
+              <DropdownItem href="/#consulting-services" theme={currentTheme}>
+                Fractional CDO / CAiO
               </DropdownItem>
-              <DropdownItem href="#product-development" theme={currentTheme}>
-                Product Development
+              <DropdownItem href="/#automation-sprint" theme={currentTheme}>
+                AI Automation Sprint
+              </DropdownItem>
+              <DropdownItem href="/#training" theme={currentTheme}>
+                Training &amp; Skill Building
+              </DropdownItem>
+              <DropdownItem href="/mvp" theme={currentTheme}>
+                MVP in 60–90 Days
               </DropdownItem>
             </DropdownMenu>
           </DropdownContainer>
 
-          <NavLink href="#case-studies" theme={currentTheme} $isScrolled={isScrolled}>Success Stories</NavLink>
+          <NavLink href="/#cases" theme={currentTheme} $isScrolled={isScrolled}>Success Stories</NavLink>
           <NavLink href="#contact" theme={currentTheme} $isScrolled={isScrolled}>Contact</NavLink>
 
           <ConsultButton
@@ -281,10 +287,11 @@ const Navbar: React.FC<NavbarProps> = ({ transparent = true }) => {
       </NavbarContent>
       
       <MobileMenu $isOpen={isMenuOpen} theme={currentTheme}>
-        <MobileNavLink href="#consulting-services" theme={currentTheme}>Consulting Services</MobileNavLink>
-        <MobileNavLink href="#product-development" theme={currentTheme}>Product Development</MobileNavLink>
-        <MobileNavLink href="#case-studies" theme={currentTheme}>Success Stories</MobileNavLink>
-        <MobileNavLink href="#contact" theme={currentTheme}>Contact</MobileNavLink>
+        <MobileNavLink href="/#consulting-services" theme={currentTheme}>Fractional CDO / CAiO</MobileNavLink>
+        <MobileNavLink href="/#automation-sprint" theme={currentTheme}>AI Automation Sprint</MobileNavLink>
+        <MobileNavLink href="/#training" theme={currentTheme}>Training</MobileNavLink>
+        <MobileNavLink href="/mvp" theme={currentTheme}>MVP in 60–90 Days</MobileNavLink>
+        <MobileNavLink href="/#contact" theme={currentTheme}>Contact</MobileNavLink>
         <MobileConsultButton
           href="https://calendly.com/connect-vikuna/30min"
           theme={currentTheme}

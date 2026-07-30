@@ -11,10 +11,10 @@ interface SEOHeadProps {
 
 const SEOHead: React.FC<SEOHeadProps> = ({
   title = "Fractional CDO & CAiO Services | AI Transformation | Vikuna Technologies",
-  description = "Get Fortune 500 AI leadership without the 7-figure salary. 200+ years experience. 70% success rate. Start with a free strategy session today.",
-  keywords = "fractional CDO, fractional CAiO, AI consulting, digital transformation, AI leadership, CDO as a service, AI strategy",
-  ogImage = "https://vikuna.com/og-image.jpg",
-  ogUrl = "https://vikuna.com"
+  description = "Get C-suite AI & digital leadership without the ₹1.5Cr+ salary. Fractional CDO/CAiO, AI automation sprints, and 60–90 day MVP builds for Indian SMEs.",
+  keywords = "fractional CDO, fractional CAiO, AI consulting, digital transformation, AI automation, MVP development, CDO as a service, AI strategy",
+  ogImage = "https://vikuna.io/og-image.jpg",
+  ogUrl = "https://vikuna.io"
 }) => {
   useEffect(() => {
     // Set page title
@@ -79,19 +79,14 @@ const SEOHead: React.FC<SEOHeadProps> = ({
       "name": "Vikuna Technologies",
       "description": description,
       "url": ogUrl,
-      "logo": "https://vikuna.com/logo.png",
+      "logo": "https://vikuna.io/logo.png",
       "telephone": "+91-7702864233",
-      "email": "contact@vikuna.com",
+      "email": "contact@vikuna.io",
       "address": {
         "@type": "PostalAddress",
         "addressCountry": "IN"
       },
       "priceRange": "$$$$",
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.9",
-        "reviewCount": "50"
-      },
       "sameAs": [
         "https://www.linkedin.com/company/vikuna",
         "https://twitter.com/vikuna"

@@ -271,7 +271,7 @@ const ExitIntentPopup: React.FC<ExitIntentPopupProps> = ({
           </IconWrapper>
           <Headline theme={currentTheme}>Before You Go...</Headline>
           <Subheadline theme={currentTheme}>
-            Discover Your AI Readiness Score in 2 Minutes
+            Discover Your AI Readiness Score in 8 Minutes
           </Subheadline>
         </PopupHeader>
 
@@ -279,7 +279,7 @@ const ExitIntentPopup: React.FC<ExitIntentPopupProps> = ({
           <BenefitsList>
             <BenefitItem theme={currentTheme}>
               <CheckCircle />
-              <span>Quick 2-minute assessment of your AI maturity</span>
+              <span>12 questions across 5 dimensions of AI maturity</span>
             </BenefitItem>
             <BenefitItem theme={currentTheme}>
               <CheckCircle />

@@ -11,6 +11,7 @@ import WhyWeExistSection from './components/vikuna/WhyWeExistSection';
 import WhatChangesSection from './components/vikuna/WhatChangesSection';
 import IndustriesBanner from './components/vikuna/IndustriesBanner';
 import ConsultingServices from './components/vikuna/ConsultingServices';
+import AutomationSprint from './components/vikuna/AutomationSprint';
 import TrainingSkillBuilding from './components/vikuna/TrainingSkillBuilding';
 import HowWeWorkSection from './components/vikuna/HowWeWorkSection';
 import CaseStudies from './components/vikuna/CaseStudies';
@@ -21,6 +22,7 @@ import ExitIntentPopup from './components/vikuna/ExitIntentPopup';
 import SEOHead from './components/vikuna/SEOHead';
 import AssessmentPage from './components/vikuna/AssessmentPage';
 import PreviewPage from './components/vikuna/PreviewPage';
+import MVPPage from './components/vikuna/MVPPage';
 
 function HomePage() {
   return (
@@ -32,6 +34,7 @@ function HomePage() {
       <WhatChangesSection />
       <IndustriesBanner />
       <ConsultingServices />
+      <AutomationSprint />
       <TrainingSkillBuilding />
       <HowWeWorkSection />
       {/* ProductDevelopmentServices hidden */}
@@ -53,6 +56,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/assessment" element={<AssessmentPage />} />
+          <Route path="/mvp" element={<MVPPage />} />
           <Route path="/preview" element={<PreviewPage />} />
           <Route path="/preview/:name" element={<PreviewPage />} />
         </Routes>

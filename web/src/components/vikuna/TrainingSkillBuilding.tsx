@@ -201,7 +201,7 @@ const TrainingSkillBuilding: React.FC = () => {
   return (
     <Section id="training">
       <Inner>
-        <SectionLabel>Service 02 — Training & Skill Building</SectionLabel>
+        <SectionLabel>Service 03 — Training & Skill Building</SectionLabel>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}

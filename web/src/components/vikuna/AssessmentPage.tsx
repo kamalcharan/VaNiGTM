@@ -754,6 +754,67 @@ const BtnRestart = styled.button`
   &:hover { color: rgba(255,255,255,0.6); }
 `;
 
+// ── LEAD GATE ──
+const GateWrap = styled.div`
+  position: relative;
+`;
+
+const GateBlur = styled.div<{ locked: boolean }>`
+  filter: ${(p) => (p.locked ? 'blur(10px)' : 'none')};
+  pointer-events: ${(p) => (p.locked ? 'none' : 'auto')};
+  user-select: ${(p) => (p.locked ? 'none' : 'auto')};
+  transition: filter 0.5s ease;
+`;
+
+const GateOverlay = styled.div`
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+`;
+
+const GateCard = styled.div`
+  background: rgba(10,15,30,0.92);
+  border: 1px solid rgba(201,151,58,0.35);
+  border-radius: 12px; padding: 32px;
+  max-width: 420px; width: 100%;
+  box-shadow: 0 16px 64px rgba(0,0,0,0.5);
+  h3 {
+    font-family: 'Fraunces', serif; font-size: 20px; font-weight: 700;
+    color: #fff; margin-bottom: 8px; letter-spacing: -0.3px;
+  }
+  p { font-size: 13px; line-height: 1.6; color: rgba(255,255,255,0.5); margin-bottom: 20px; }
+`;
+
+const GateInput = styled.input`
+  width: 100%; padding: 12px 14px; margin-bottom: 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid ${borderDim};
+  border-radius: 6px; color: #fff; font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+  &::placeholder { color: rgba(255,255,255,0.3); }
+  &:focus { outline: none; border-color: #C9973A; }
+`;
+
+const GateBtn = styled.button<{ busy: boolean }>`
+  width: 100%; padding: 13px;
+  background: ${(p) => (p.busy ? 'rgba(201,151,58,0.5)' : '#C9973A')};
+  color: #fff; border: none; border-radius: 6px;
+  font-size: 14px; font-weight: 700; cursor: ${(p) => (p.busy ? 'wait' : 'pointer')};
+  font-family: 'DM Sans', sans-serif; transition: background 0.2s;
+  &:hover { background: ${(p) => (p.busy ? 'rgba(201,151,58,0.5)' : '#E0B050')}; }
+`;
+
+const GateError = styled.div`
+  font-size: 12px; color: #E8420A; margin-bottom: 10px;
+`;
+
+const GateNote = styled.div`
+  font-size: 11px; color: rgba(255,255,255,0.3);
+  margin-top: 12px; text-align: center;
+`;
+
+const LEAD_WEBHOOK = 'https://n8n.srv1096269.hstgr.cloud/webhook/assessment-lead';
+
 // ── COMPONENT ──────────────────────────────────────────────────────────
 type Phase = 'landing' | 'quiz' | 'results';
 
@@ -764,6 +825,13 @@ export default function AssessmentPage() {
   const [leaving, setLeaving] = useState(false);
   const [dimBarWidths, setDimBarWidths] = useState<number[]>(new Array(DIMENSIONS.length).fill(0));
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Lead gate state
+  const [leadName, setLeadName] = useState('');
+  const [leadEmail, setLeadEmail] = useState('');
+  const [leadWhatsapp, setLeadWhatsapp] = useState('');
+  const [leadStatus, setLeadStatus] = useState<'locked' | 'submitting' | 'unlocked'>('locked');
+  const [leadError, setLeadError] = useState('');
 
   // Scroll to top on phase change
   useEffect(() => {
@@ -843,6 +911,44 @@ export default function AssessmentPage() {
     setPhase('landing');
   }
 
+  async function submitLead(e: React.FormEvent) {
+    e.preventDefault();
+    const name = leadName.trim();
+    const email = leadEmail.trim();
+    const whatsapp = leadWhatsapp.replace(/[^\d+]/g, '');
+
+    if (name.length < 2) { setLeadError('Please enter your name.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setLeadError('Please enter a valid email.'); return; }
+    if (!/^(\+91)?[6-9]\d{9}$/.test(whatsapp)) { setLeadError('Please enter a valid 10-digit WhatsApp number.'); return; }
+
+    setLeadError('');
+    setLeadStatus('submitting');
+
+    const scores = computeScores(answers);
+    const payload = {
+      source: 'ai-readiness-assessment',
+      name,
+      email,
+      whatsapp: whatsapp.startsWith('+91') ? whatsapp : `+91${whatsapp}`,
+      overallScore: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
+      tier: getOverallLabel(Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)).label,
+      dimensions: DIMENSIONS.map((d, i) => ({ id: d.id, label: d.label, score: scores[i] })),
+      page: window.location.href,
+      submittedAt: new Date().toISOString(),
+    };
+
+    try {
+      await fetch(LEAD_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      // Unlock regardless — never punish the visitor for our infra being down.
+    }
+    setLeadStatus('unlocked');
+  }
+
   const dimScores = computeScores(answers);
   const avg = Math.round(dimScores.reduce((a, b) => a + b, 0) / dimScores.length);
   const overall = getOverallLabel(avg);
@@ -870,7 +976,7 @@ export default function AssessmentPage() {
               <strong>with honest commentary on what your answers actually mean.</strong>
             </LandingP>
             <LandingMeta>
-              <span>12 questions</span>&middot;<span>No email required</span>&middot;<span>Results on screen</span>
+              <span>12 questions</span>&middot;<span>Score on screen instantly</span>&middot;<span>Email only for the full report</span>
             </LandingMeta>
             <BtnStart onClick={() => setPhase('quiz')}>Start Assessment &rarr;</BtnStart>
             <LandingDimensions>
@@ -972,15 +1078,56 @@ export default function AssessmentPage() {
             </ResultsGrid>
 
             <SectionTitle>What This Means For You</SectionTitle>
-            <InsightsGrid>
-              {insights.map((ins, i) => (
-                <InsightCard key={i}>
-                  <InsightType color={ins.typeColor}>{ins.type}</InsightType>
-                  <InsightTitle>{ins.title}</InsightTitle>
-                  <InsightText>{ins.text}</InsightText>
-                </InsightCard>
-              ))}
-            </InsightsGrid>
+            <GateWrap>
+              <GateBlur locked={leadStatus !== 'unlocked'}>
+                <InsightsGrid>
+                  {insights.map((ins, i) => (
+                    <InsightCard key={i}>
+                      <InsightType color={ins.typeColor}>{ins.type}</InsightType>
+                      <InsightTitle>{ins.title}</InsightTitle>
+                      <InsightText>{ins.text}</InsightText>
+                    </InsightCard>
+                  ))}
+                </InsightsGrid>
+              </GateBlur>
+              {leadStatus !== 'unlocked' && (
+                <GateOverlay>
+                  <GateCard>
+                    <h3>Unlock your personalised insights</h3>
+                    <p>
+                      Your score is yours to keep — the analysis of what it means for your
+                      business is where the value is. We'll also send the full report to
+                      your inbox and WhatsApp.
+                    </p>
+                    <form onSubmit={submitLead}>
+                      <GateInput
+                        type="text"
+                        placeholder="Your name"
+                        value={leadName}
+                        onChange={(e) => setLeadName(e.target.value)}
+                      />
+                      <GateInput
+                        type="email"
+                        placeholder="Work email"
+                        value={leadEmail}
+                        onChange={(e) => setLeadEmail(e.target.value)}
+                      />
+                      <GateInput
+                        type="tel"
+                        placeholder="WhatsApp number"
+                        value={leadWhatsapp}
+                        onChange={(e) => setLeadWhatsapp(e.target.value)}
+                      />
+                      {leadError && <GateError>{leadError}</GateError>}
+                      <GateBtn type="submit" busy={leadStatus === 'submitting'}>
+                        {leadStatus === 'submitting' ? 'Unlocking…' : 'Unlock My Full Report →'}
+                      </GateBtn>
+                    </form>
+                    <GateNote>🔒 100% confidential. No spam — one report, one follow-up.</GateNote>
+                  </GateCard>
+                </GateOverlay>
+              )}
+            </GateWrap>
 
             <ResultsCta>
               <CtaText>
@@ -988,7 +1135,7 @@ export default function AssessmentPage() {
                 <p>A 30-minute Transformation Assessment with a Vikuna senior expert will map these findings to your actual business — with a clear, honest view of where to start.</p>
               </CtaText>
               <CtaBtns>
-                <BtnBook href="/#contact">Book Free Strategy Call</BtnBook>
+                <BtnBook href="https://calendly.com/connect-vikuna/30min" target="_blank" rel="noopener noreferrer">Book Free Strategy Call</BtnBook>
                 <BtnRestart onClick={restart}>Retake assessment</BtnRestart>
               </CtaBtns>
             </ResultsCta>

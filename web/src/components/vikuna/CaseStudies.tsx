@@ -156,22 +156,6 @@ const StatLabel = styled.div`
   font-family: ${props => safeFont(props.theme, 'fontFamily')};
 `;
 
-const CaseLink = styled.a`
-  font-size: 13px;
-  font-weight: 600;
-  color: ${INK_SOFT};
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: color 0.2s, gap 0.2s;
-
-  &:hover {
-    color: ${INK};
-    gap: 10px;
-  }
-`;
-
 // ─── Data ────────────────────────────────────────────────────
 
 const cases = [
@@ -261,8 +245,6 @@ const CaseStudies: React.FC = () => {
                   </Stat>
                 ))}
               </StatsRow>
-
-              <CaseLink href="#">View Case Study →</CaseLink>
             </CaseCard>
           ))}
         </CasesGrid>

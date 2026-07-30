@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /preview
+Disallow: /bcl2025/
+Disallow: /bcl-offers/
+
+Sitemap: https://vikuna.io/sitemap.xml
