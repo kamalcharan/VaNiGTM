@@ -67,6 +67,29 @@ Campaign pipeline view (assignments joined with contact + channels).
 ### get_stats
 Dashboard stats: total_contacts, high_fit_contacts (score ≥ 60), distinct_companies.
 
+### list_brief_contacts
+The named_contacts array on an account brief, ready for the reviewer to
+rule on. Marks whether each entry has a name (R-C1), a reachable channel
+(R-C2), and whether it has already been promoted. This is the read side of
+the `addressed` gate — the screen calls it; the ruling calls
+`promote_from_brief`.
+
+### promote_from_brief
+Turn one named_contacts entry into a real gt_contacts row + channels,
+carrying the URL each address came from (source_url on the channel;
+brief_id on the contact). Idempotent on (brief_id, named_index) — a second
+call returns the row the first call made.
+
+R-C1 is enforced at the door: if the brief named nobody, refuses rather than
+accepting a fresh name in a field this function does not expose. Use
+`create_contact` (source='manual') for a hand-typed person; the two paths
+carry different provenance on purpose.
+
+`confirm_addressed: true` moves the journey to `addressed` in the same
+transaction, but only if the contact has at least one reachable channel
+(R-C2). Without it, the contact is written but the journey stays where it
+was — the reviewer's decision, not a side effect of writing a row.
+
 ## Removed in Phase 0 (MFD legacy)
 convert_to_client, generate_intake_token, snapshot functions
 (get/save/update/history/full), asset/goal/liability type lookups.

@@ -207,7 +207,9 @@ library — both landed in Phases 1 and 7 — are the whole preparation.
 |---|---|
 | D1–D8 | **ruled** — proceeding on the recommendations in the design note |
 | **Phase 1 — journey ledger** | ✅ **backend done.** Migration 222, `journey-skill` (states / service / 3 functions), and the four existing flows wired in. 409 tests pass. UI outstanding. |
-| Phase 2 — the person | next |
+| **Governor** (unblocks Phase 3, added mid-POA) | ✅ **backend done.** Migration 223, `cadence-skill` (governor / service / 5 functions). Contact-scoped, opportunity-agnostic; a moved slot is never silent. |
+| **Phase 2 — the person** | ✅ **backend done.** Migration 224, `contact-skill.list_brief_contacts` + `promote_from_brief`. R-C1 enforced at the door; R-C2 gates the `addressed` move. 480 tests pass. UI outstanding. |
+| Phase 3 — story (human-written, AI-recommended) | next |
 | Phase 3 — story (human-written, AI-recommended) | after 2 |
 | Phase 4 — campaign run | after 3 |
 | Phase 5 — stage decision | closes the cycle |
