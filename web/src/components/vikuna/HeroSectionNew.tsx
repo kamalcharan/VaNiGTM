@@ -26,17 +26,15 @@ const safeFont = (theme: any, key: 'fontFamily' | 'headingFontFamily'): string =
 // ─── Styled Components ─────────────────────────────────────────
 
 const HeroContainer = styled.section<{ theme: any }>`
-  min-height: 100vh;
   display: flex;
   align-items: center;
-  padding: 120px 60px 80px;
+  padding: 90px 60px 80px;
   position: relative;
   overflow: hidden;
   background: ${props => safeColor(props.theme, 'colors.primary.main', '#0A0F1E')};
 
   @media (max-width: 968px) {
-    padding: 100px 24px 60px;
-    min-height: auto;
+    padding: 60px 24px 60px;
   }
 `;
 
@@ -344,7 +342,7 @@ const HeroSectionNew: React.FC = () => {
   const { currentTheme } = useTheme();
 
   return (
-    <HeroContainer theme={currentTheme}>
+    <HeroContainer id="leadership-offer" theme={currentTheme}>
       <BgGrid theme={currentTheme} />
       <BgGlow theme={currentTheme} />
       <BgGlow2 theme={currentTheme} />

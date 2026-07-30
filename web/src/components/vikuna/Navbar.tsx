@@ -257,7 +257,7 @@ const Navbar: React.FC<NavbarProps> = ({ transparent = true }) => {
               <DropdownItem href="/#automation-sprint" theme={currentTheme}>
                 AI Automation Sprint
               </DropdownItem>
-              <DropdownItem href="/#training" theme={currentTheme}>
+              <DropdownItem href="/training" theme={currentTheme}>
                 Training &amp; Skill Building
               </DropdownItem>
               <DropdownItem href="/mvp" theme={currentTheme}>
@@ -289,7 +289,7 @@ const Navbar: React.FC<NavbarProps> = ({ transparent = true }) => {
       <MobileMenu $isOpen={isMenuOpen} theme={currentTheme}>
         <MobileNavLink href="/#consulting-services" theme={currentTheme}>Fractional CDO / CAiO</MobileNavLink>
         <MobileNavLink href="/#automation-sprint" theme={currentTheme}>AI Automation Sprint</MobileNavLink>
-        <MobileNavLink href="/#training" theme={currentTheme}>Training</MobileNavLink>
+        <MobileNavLink href="/training" theme={currentTheme}>Training</MobileNavLink>
         <MobileNavLink href="/mvp" theme={currentTheme}>MVP in 60–90 Days</MobileNavLink>
         <MobileNavLink href="/#contact" theme={currentTheme}>Contact</MobileNavLink>
         <MobileConsultButton
