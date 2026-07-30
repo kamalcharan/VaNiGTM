@@ -4,7 +4,7 @@ import { Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { getActiveTheme } from './config/theme/themeRegistry';
 import Navbar from './components/vikuna/Navbar';
-import HeroSectionNew from './components/vikuna/HeroSectionNew';
+import HeroCarousel from './components/vikuna/HeroCarousel';
 import ProblemSection from './components/vikuna/ProblemSection';
 import DifferentiatorSection from './components/vikuna/DifferentiatorSection';
 import WhyWeExistSection from './components/vikuna/WhyWeExistSection';
@@ -15,6 +15,7 @@ import AutomationSprint from './components/vikuna/AutomationSprint';
 import TrainingSkillBuilding from './components/vikuna/TrainingSkillBuilding';
 import HowWeWorkSection from './components/vikuna/HowWeWorkSection';
 import CaseStudies from './components/vikuna/CaseStudies';
+import PlaybooksSection from './components/vikuna/PlaybooksSection';
 import InlineLeadCapture from './components/vikuna/InlineLeadCapture';
 import Footer from './components/vikuna/Footer';
 import StickyCTABar from './components/vikuna/StickyCTABar';
@@ -27,7 +28,7 @@ import MVPPage from './components/vikuna/MVPPage';
 function HomePage() {
   return (
     <>
-      <HeroSectionNew />
+      <HeroCarousel />
       <ProblemSection />
       <DifferentiatorSection />
       <WhyWeExistSection />
@@ -39,6 +40,7 @@ function HomePage() {
       <HowWeWorkSection />
       {/* ProductDevelopmentServices hidden */}
       <CaseStudies />
+      <PlaybooksSection />
       <InlineLeadCapture />
       <Footer />
       <StickyCTABar />
