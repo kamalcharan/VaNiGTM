@@ -145,7 +145,7 @@ export function JourneyDrawer({
     { prospect_id: prospectId, limit: 1 }, { enabled },
   );
   const contactsRes = useSkillQuery<{ contacts: Contact[]; total: number }>(
-    'contact-skill', 'get_contacts',
+    'contact-skill', 'get_prospect_contacts',
     { prospect_id: prospectId }, { enabled },
   );
 
@@ -231,11 +231,29 @@ export function JourneyDrawer({
             </div>
           )}
 
-          {/* Section 1 — Rule on the brief, when there is one to rule on */}
-          {brief && state === 'researched' && (
+          {/* If a lookup fails, say so on screen rather than silently empty.
+              Silent empties are how "the drawer just shows a name" happens. */}
+          {journeyRes.error && (
+            <div className={s.errorNote}>Journey lookup failed: {journeyRes.error.message}</div>
+          )}
+          {briefsRes.error && (
+            <div className={s.errorNote}>Brief lookup failed: {briefsRes.error.message}</div>
+          )}
+          {!briefsRes.isLoading && !brief && !briefsRes.error && (
+            <div className={s.errorNote}>
+              No brief exists for this company yet. Research it first —
+              nothing in this drawer works without evidence.
+            </div>
+          )}
+
+          {/* Section 1 — The brief, always visible when it exists.
+              The buttons only render at `researched` — the ruling belongs
+              there — but the evidence is what every downstream section
+              reads from and hiding it silently made the drawer feel dead. */}
+          {brief && (
             <section className={s.section}>
               <div className={s.sectionH}>
-                <span>Rule on the brief</span>
+                <span>{state === 'researched' ? 'Rule on the brief' : 'The brief'}</span>
                 <span className={s.count}>{evidence.length} evidence line(s)</span>
               </div>
               <div className={s.sectionB}>
@@ -246,21 +264,29 @@ export function JourneyDrawer({
                     <span className={s.evUrl}>{e.url}</span>
                   </div>
                 ))}
-                <div className={s.actions}>
-                  <button className={`${s.btn} ${s.btnPrimary}`}
-                    disabled={decide.isPending}
-                    onClick={() => decide.mutateAsync({ brief_id: brief.id, decision: 'approved' })}>
-                    Approve this offer
-                  </button>
-                  <button className={s.btn} disabled={decide.isPending}
-                    onClick={() => {
-                      const note = window.prompt('Why not?', '');
-                      if (!note || note.length < 3) return;
-                      decide.mutateAsync({ brief_id: brief.id, decision: 'no_contact', note });
-                    }}>
-                    Rule out
-                  </button>
-                </div>
+                {state === 'researched' && (
+                  <div className={s.actions}>
+                    <button className={`${s.btn} ${s.btnPrimary}`}
+                      disabled={decide.isPending}
+                      onClick={() => decide.mutateAsync({ brief_id: brief.id, decision: 'approved' })}>
+                      Approve this offer
+                    </button>
+                    <button className={s.btn} disabled={decide.isPending}
+                      onClick={() => {
+                        const note = window.prompt('Why not?', '');
+                        if (!note || note.length < 3) return;
+                        decide.mutateAsync({ brief_id: brief.id, decision: 'no_contact', note });
+                      }}>
+                      Rule out
+                    </button>
+                  </div>
+                )}
+                {state !== 'researched' && (brief.human_offer || brief.recommended_offer) && (
+                  <p className={s.hint}>
+                    Ruled on this brief already · offer:{' '}
+                    <strong>{brief.human_offer ?? brief.recommended_offer}</strong>
+                  </p>
+                )}
               </div>
             </section>
           )}

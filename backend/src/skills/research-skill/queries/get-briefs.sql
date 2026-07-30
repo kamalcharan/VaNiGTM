@@ -52,6 +52,7 @@ JOIN   gt_prospects p
       AND p.is_live   = $is_live
 WHERE  b.tenant_id = $tenant_id
   AND  b.is_live   = $is_live
+  AND  ($prospect_id::bigint IS NULL OR b.prospect_id = $prospect_id::bigint)
   AND  ($status::text IS NULL OR b.status = $status::text)
   -- ── The stat cards, as filters ──────────────────────────────────────
   -- Every number on that row is a question ("which 5 were too close to

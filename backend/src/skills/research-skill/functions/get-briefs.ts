@@ -27,6 +27,12 @@ interface GetBriefsParams {
    */
   view?: string;
   search?: string;
+  /**
+   * The one filter the journey drawer needs: "the brief for THIS company".
+   * Without this the drawer would silently receive the first brief on the
+   * tenant, which is a lie of exactly the shape a reviewer would not catch.
+   */
+  prospect_id?: number;
   page?: number;
   limit?: number;
   offset?: number;
@@ -57,6 +63,8 @@ export async function get_briefs(params: GetBriefsParams, ctx: SkillContext) {
       offer: params.offer ?? null,
       view: view ?? null,
       search: params.search ?? null,
+      prospect_id: Number.isFinite(Number(params.prospect_id))
+        ? Number(params.prospect_id) : null,
       limit,
       offset,
     }),
