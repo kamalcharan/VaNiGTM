@@ -128,7 +128,7 @@ CREATE TABLE gt_offers (id BIGSERIAL PRIMARY KEY, tenant_id UUID NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
 CREATE TABLE gt_contacts (id BIGSERIAL PRIMARY KEY,
   tenant_id UUID NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
-  is_live BOOLEAN NOT NULL DEFAULT false, full_name VARCHAR(200),
+  is_live BOOLEAN NOT NULL DEFAULT false, name VARCHAR(300) NOT NULL,
   prospect_id BIGINT REFERENCES gt_prospects(id) ON DELETE SET NULL);
 CREATE FUNCTION set_tenant_context(t UUID) RETURNS void AS $$
   BEGIN PERFORM set_config('app.current_tenant_id', t::text, true); END $$ LANGUAGE plpgsql;

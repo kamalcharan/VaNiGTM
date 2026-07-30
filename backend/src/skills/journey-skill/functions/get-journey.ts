@@ -37,7 +37,7 @@ export async function get_journey(params: GetJourneyParams, ctx: SkillContext) {
             j.contact_id, j.story_count, j.created_at,
             (j.wake_at IS NOT NULL AND j.wake_at <= now()) AS is_due,
             p.ref, p.name, p.website, p.city, p.industry_raw,
-            c.full_name AS contact_name
+            c.name AS contact_name
        FROM gt_journeys j
        JOIN gt_prospects p ON p.id = j.prospect_id
        LEFT JOIN gt_contacts c ON c.id = j.contact_id

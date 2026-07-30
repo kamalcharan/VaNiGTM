@@ -53,7 +53,7 @@ CREATE TABLE gt_prospects (id BIGSERIAL PRIMARY KEY,
   completeness NUMERIC(4,3), created_at TIMESTAMPTZ NOT NULL DEFAULT now());
 CREATE TABLE gt_contacts (id BIGSERIAL PRIMARY KEY,
   tenant_id UUID NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,
-  is_live BOOLEAN NOT NULL DEFAULT false, full_name VARCHAR(200),
+  is_live BOOLEAN NOT NULL DEFAULT false, name VARCHAR(300) NOT NULL,
   prospect_id BIGINT REFERENCES gt_prospects(id) ON DELETE SET NULL);
 CREATE TABLE gt_offers (id BIGSERIAL PRIMARY KEY,
   tenant_id UUID NOT NULL, is_live BOOLEAN NOT NULL DEFAULT false,

@@ -28,7 +28,7 @@ SELECT j.id,
        p.website,
        p.city,
        p.industry_raw,
-       c.full_name  AS contact_name,
+       c.name       AS contact_name,
        b.id         AS brief_id,
        b.status     AS brief_status,
        b.hook       AS brief_hook
