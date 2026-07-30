@@ -5,7 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { getActiveTheme } from './config/theme/themeRegistry';
 import Navbar from './components/vikuna/Navbar';
 import WhyAIFailsHero from './components/vikuna/WhyAIFailsHero';
-import HeroSectionNew from './components/vikuna/HeroSectionNew';
+import BentoOffers from './components/vikuna/BentoOffers';
 import ProblemSection from './components/vikuna/ProblemSection';
 import DifferentiatorSection from './components/vikuna/DifferentiatorSection';
 import WhyWeExistSection from './components/vikuna/WhyWeExistSection';
@@ -31,7 +31,7 @@ function HomePage() {
   return (
     <>
       <WhyAIFailsHero />
-      <HeroSectionNew />
+      <BentoOffers />
       <ProblemSection />
       <ConsultingServices />
       <AlignmentCTA />

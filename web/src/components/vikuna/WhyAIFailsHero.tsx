@@ -13,13 +13,13 @@ const Hero = styled.section`
   min-height: 92vh;
   display: flex;
   align-items: center;
-  padding: 130px 60px 90px;
+  padding: 130px 60px 170px;
   position: relative;
   overflow: hidden;
   background: ${INK};
 
   @media (max-width: 968px) {
-    padding: 110px 24px 70px;
+    padding: 110px 24px 130px;
     min-height: auto;
   }
 `;
@@ -164,7 +164,7 @@ const WhyAIFailsHero: React.FC = () => {
             <BtnPrimary href="#playbooks">Get the 'Why AI Fails' Playbook</BtnPrimary>
             <BtnGhost href="/assessment">Take the Readiness Assessment</BtnGhost>
           </Ctas>
-          <ScrollHint href="#leadership-offer">Our approach to making it survive ↓</ScrollHint>
+          <ScrollHint href="#offers">Our approach to making it survive ↓</ScrollHint>
         </motion.div>
       </Inner>
     </Hero>
