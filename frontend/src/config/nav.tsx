@@ -100,6 +100,18 @@ export const NAV_ITEMS: NavItem[] = [
     recipe: 'brief-list',
   },
   {
+    // What is owed today, on which company. Debts, not statuses — the
+    // journey ledger's whole point (Phase 1).
+    id: 'journeys',
+    label: 'Journeys',
+    icon: <Icon><path d="M3 12h4l3 8 4-16 3 8h4" /></Icon>,
+    href: '/journeys',
+    section: 'main',
+    skill: 'journey-skill',
+    fn: 'list_journeys',
+    recipe: 'journey-board',
+  },
+  {
     id: 'campaigns',
     label: 'Campaigns',
     icon: <Icon><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></Icon>,

@@ -1,0 +1,508 @@
+'use client';
+
+/**
+ * The drawer that opens off one row of the journey board.
+ *
+ * ── WHAT IT SHOWS, IN THE ORDER THE PILOT NEEDS IT ────────────────────
+ *
+ *   1. WHAT IS OWED    — the state line the row was ranked by, made
+ *                        physical here so the reviewer knows why they
+ *                        opened this drawer
+ *   2. THE BRIEF       — the argument and its evidence, so R-S1 has
+ *                        something to trace against without a second tab
+ *   3. THE PERSON      — either the confirmed contact, or the promotable
+ *                        candidates from named_contacts (Phase 2's gate)
+ *   4. THE STORIES     — earlier ones visible for R-S2 as the writer
+ *                        composes; the new one is a form below
+ *   5. THE COMPOSE     — the writing surface with a LIVE claim tracer:
+ *                        R-S1 rendered as UI (design note §4). Approval
+ *                        is blocked while anything asserts something the
+ *                        brief cannot support.
+ *   6. THE LEDGER      — every state event on this journey, oldest first
+ *
+ * The trace runs in the browser — R-S1 is a UI check here, not a network
+ * round-trip. The approval THEN re-runs it on the server, so the guard is
+ * enforced in two places and the browser one is only for latency.
+ */
+
+import { useState, useMemo, useEffect } from 'react';
+import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
+import { useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/components/toast';
+import { VdfLoader } from '@/components/vdf';
+import s from './journeys.module.css';
+
+/* ── The tracer (mirrors backend trace.ts to the letter) ─────────────── */
+
+const OURS = /\b(we|we'd|we're|our|ours|us|i|i'd|i'm|my|happy|worth|minutes|call|chat|would you|shall|can i|let me)\b/i;
+const STOP = new Set([
+  'this','that','with','from','they','their','there','have','been','which',
+  'about','into','over','across','were','than','then','what','when','your',
+  'yours','after','before','while','because','would','could','should','will','shall',
+]);
+type Verdict = 'traced' | 'about_us' | 'neutral' | 'unsupported';
+
+function terms(str: string): string[] {
+  return str.toLowerCase().split(/[^a-z0-9]+/)
+    .filter((w) => w && (/\d/.test(w) || (w.length > 3 && !STOP.has(w))));
+}
+function isClaim(str: string): boolean {
+  if (/\d/.test(str)) return true;
+  const words = str.split(/\s+/).filter(Boolean);
+  if (words.length >= 4 && words.slice(1).some((w) => /^[A-Z][a-z]/.test(w))) return true;
+  return terms(str).length >= 5;
+}
+function sentences(text: string): string[] {
+  return text.split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim()).filter((x) => x.length > 4);
+}
+function traceOne(sentence: string, ev: EvidenceLine[]): EvidenceLine | null {
+  const t = terms(sentence);
+  const best = ev.map((e) => {
+    const et = terms(e.claim);
+    const shared = t.filter((w) => et.includes(w));
+    const num = shared.some((w) => /\d/.test(w));
+    return { e, score: shared.length + (num ? 2 : 0) };
+  }).filter((x) => x.score >= 2).sort((a, b) => b.score - a.score)[0];
+  return best?.e ?? null;
+}
+interface EvidenceLine { claim: string; url: string }
+interface TraceRow { sentence: string; verdict: Verdict; source_url?: string }
+
+function trace(subject: string, body: string, evidence: EvidenceLine[]): {
+  rows: TraceRow[]; ok: boolean; traced: number; unsupported: number; reason: string | null;
+} {
+  const lines: string[] = [];
+  if (subject.trim()) lines.push(subject.trim());
+  lines.push(...sentences(body));
+  const rows: TraceRow[] = [];
+  let tr = 0, bad = 0;
+  for (const line of lines) {
+    const hit = traceOne(line, evidence);
+    if (hit) { rows.push({ sentence: line, verdict: 'traced', source_url: hit.url }); tr++; }
+    else if (OURS.test(line)) rows.push({ sentence: line, verdict: 'about_us' });
+    else if (!isClaim(line)) rows.push({ sentence: line, verdict: 'neutral' });
+    else { rows.push({ sentence: line, verdict: 'unsupported' }); bad++; }
+  }
+  const nothingAboutThem = tr === 0 && bad === 0
+    && rows.some((r) => r.verdict === 'about_us');
+  const ok = bad === 0 && !nothingAboutThem;
+  const reason = bad > 0
+    ? `${bad} sentence${bad === 1 ? '' : 's'} the brief cannot support.`
+    : nothingAboutThem
+      ? 'Nothing here is about them — a template with a name on it will not go out.'
+      : null;
+  return { rows, ok, traced: tr, unsupported: bad, reason };
+}
+
+/* ── Types the drawer reads ──────────────────────────────────────────── */
+
+interface JourneyRow {
+  prospect_id: number; name: string; state: string; owed: string | null;
+  offer?: string | null; brief_id?: number | null;
+}
+interface Brief {
+  id: number; status: string; hook: string | null; recommended_offer: string | null;
+  human_offer: string | null; raw_evidence: Array<{ claim: string; url: string; excerpt?: string }>;
+  named_contacts: Array<{ name?: string | null; title?: string | null; email?: string | null; phone?: string | null }>;
+  domain: string | null;
+}
+interface Contact {
+  id: number; name: string; job_title: string | null; source: string;
+  channels?: Array<{ channel_type: string; channel_value: string; source_url: string | null }>;
+}
+
+/* ── The drawer ──────────────────────────────────────────────────────── */
+
+export function JourneyDrawer({
+  journey, open, onClose, onMoved,
+}: {
+  journey: JourneyRow | null;
+  open: boolean;
+  onClose: () => void;
+  onMoved: () => void;
+}) {
+  const toast = useToast();
+  const qc = useQueryClient();
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+
+  // Reset compose when the drawer switches to a different journey — a body
+  // from one company must never leak into another.
+  useEffect(() => { setSubject(''); setBody(''); }, [journey?.prospect_id]);
+
+  const prospectId = journey?.prospect_id ?? 0;
+  const enabled = open && !!journey;
+
+  // Pull the pieces the drawer needs. `get_journey` gives state + ledger,
+  // `get_briefs` gives the evidence + named_contacts for this account,
+  // `get_contacts` gives the promoted people, `list_stories` gives R-S2's
+  // "earlier stories" hint.
+  const journeyRes = useSkillQuery<{ journey: Record<string, unknown>; events: Array<Record<string, unknown>>; moves: Array<{ to: string; owed: string; reason_required: boolean }> }>(
+    'journey-skill', 'get_journey', { prospect_id: prospectId }, { enabled },
+  );
+  const briefsRes = useSkillQuery<{ briefs: Brief[] }>(
+    'research-skill', 'get_briefs',
+    { prospect_id: prospectId, limit: 1 }, { enabled },
+  );
+  const contactsRes = useSkillQuery<{ contacts: Contact[]; total: number }>(
+    'contact-skill', 'get_contacts',
+    { prospect_id: prospectId }, { enabled },
+  );
+
+  const brief = briefsRes.data?.data?.briefs?.[0];
+  const journeyId = journeyRes.data?.data?.journey?.id as number | undefined;
+
+  const briefContactsRes = useSkillQuery<{ entries: Array<{ named_index: number; name: string | null; title: string | null; email: string | null; phone: string | null; has_name: boolean; has_channel: boolean; addressable: boolean; promoted_contact_id: number | null; source_url: string | null }>; empty_reason: string | null }>(
+    'contact-skill', 'list_brief_contacts',
+    { brief_id: brief?.id ?? 0 }, { enabled: enabled && !!brief?.id },
+  );
+  const storiesRes = useSkillQuery<{ stories: Array<Record<string, unknown>> }>(
+    'story-skill', 'list_stories',
+    { journey_id: journeyId ?? 0 }, { enabled: enabled && !!journeyId },
+  );
+
+  const evidence: EvidenceLine[] = useMemo(() => (brief?.raw_evidence ?? [])
+    .filter((e) => e?.claim && e?.url)
+    .map((e) => ({ claim: e.claim, url: e.url })), [brief]);
+
+  // Live trace of the current draft. Memoised so every keystroke is not a
+  // full re-parse of the DOM tree above it.
+  const traceOut = useMemo(
+    () => trace(subject, body, evidence),
+    [subject, body, evidence],
+  );
+
+  /* ── The mutations ───────────────────────────────────────────────── */
+
+  const decide = useSkillMutation('research-skill', 'decide_brief', {
+    onSuccess: () => { toast.showToast({ message: 'Brief decided — journey moved.', type: 'success' }); qc.invalidateQueries({ queryKey: ['skill'] }); onMoved(); },
+    onError: (e) => toast.showToast({ message: e.message, type: 'error' }),
+  });
+  const promote = useSkillMutation('contact-skill', 'promote_from_brief', {
+    onSuccess: () => { toast.showToast({ message: 'Contact promoted.', type: 'success' }); qc.invalidateQueries({ queryKey: ['skill'] }); },
+    onError: (e) => toast.showToast({ message: e.message, type: 'error' }),
+  });
+  const createStory = useSkillMutation('story-skill', 'create_story', {
+    onSuccess: (r) => { toast.showToast({ message: `Draft saved (story ${r.data?.seq}).`, type: 'success' }); qc.invalidateQueries({ queryKey: ['skill'] }); setSubject(''); setBody(''); },
+    onError: (e) => toast.showToast({ message: e.message, type: 'error' }),
+  });
+  const approveStory = useSkillMutation('story-skill', 'approve_story', {
+    onSuccess: () => { toast.showToast({ message: 'Story approved — journey is ready.', type: 'success' }); qc.invalidateQueries({ queryKey: ['skill'] }); onMoved(); },
+    onError: (e) => toast.showToast({ message: e.message, type: 'error' }),
+  });
+  const logTouch = useSkillMutation('research-skill', 'log_touch', {
+    onSuccess: () => { toast.showToast({ message: 'Touch logged — waiting for an answer.', type: 'success' }); qc.invalidateQueries({ queryKey: ['skill'] }); onMoved(); },
+    onError: (e) => toast.showToast({ message: e.message, type: 'error' }),
+  });
+
+  if (!journey) return null;
+
+  const state = journey.state;
+  const briefContacts = briefContactsRes.data?.data?.entries ?? [];
+  const promotedContact = contactsRes.data?.data?.contacts?.[0];
+  const stories = storiesRes.data?.data?.stories ?? [];
+  const approvedStories = stories.filter((x) => x.status === 'approved');
+  const draftStories = stories.filter((x) => x.status === 'draft');
+
+  return (
+    <>
+      <div className={`${s.scrim} ${open ? s.open : ''}`} onClick={onClose} />
+      <aside className={`${s.drawer} ${open ? s.open : ''}`} role="dialog" aria-label="Journey detail">
+
+        <header className={s.drawerHead}>
+          <div>
+            <div className={s.drawerTitle}>{journey.name}</div>
+            <div className={s.drawerMeta}>
+              {state.replace('_', ' ')}
+              {journey.offer ? ` · ${journey.offer}` : ''}
+            </div>
+          </div>
+          <button className={s.close} onClick={onClose} aria-label="Close">✕</button>
+        </header>
+
+        <div className={s.drawerBody}>
+          {(journeyRes.isLoading || briefsRes.isLoading) && <VdfLoader message="Loading account" />}
+
+          {/* WHAT IS OWED — the reason this drawer opened */}
+          {journey.owed && !['ruled_out', 'parked', 'lost', 'won'].includes(state) && (
+            <div className={s.owedBanner}>
+              <div className={s.owedLabel}>Owed</div>
+              <div className={s.owedText}>{journey.owed}</div>
+            </div>
+          )}
+
+          {/* Section 1 — Rule on the brief, when there is one to rule on */}
+          {brief && state === 'researched' && (
+            <section className={s.section}>
+              <div className={s.sectionH}>
+                <span>Rule on the brief</span>
+                <span className={s.count}>{evidence.length} evidence line(s)</span>
+              </div>
+              <div className={s.sectionB}>
+                {brief.hook && <p style={{ marginBottom: '0.75rem' }}>{brief.hook}</p>}
+                {evidence.map((e, i) => (
+                  <div key={i} className={s.item}>
+                    <div className={s.itemHead}><span className={s.itemTitle}>{e.claim}</span></div>
+                    <span className={s.evUrl}>{e.url}</span>
+                  </div>
+                ))}
+                <div className={s.actions}>
+                  <button className={`${s.btn} ${s.btnPrimary}`}
+                    disabled={decide.isPending}
+                    onClick={() => decide.mutateAsync({ brief_id: brief.id, decision: 'approved' })}>
+                    Approve this offer
+                  </button>
+                  <button className={s.btn} disabled={decide.isPending}
+                    onClick={() => {
+                      const note = window.prompt('Why not?', '');
+                      if (!note || note.length < 3) return;
+                      decide.mutateAsync({ brief_id: brief.id, decision: 'no_contact', note });
+                    }}>
+                    Rule out
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Section 2 — The person */}
+          {brief && ['qualified', 'addressed', 'ready', 'waiting', 'answered'].includes(state) && (
+            <section className={s.section}>
+              <div className={s.sectionH}>
+                <span>The person</span>
+                <span className={s.count}>
+                  {promotedContact ? 'confirmed' : briefContacts.length ? `${briefContacts.length} candidate(s)` : ''}
+                </span>
+              </div>
+              <div className={s.sectionB}>
+                {promotedContact ? (
+                  <div className={s.item}>
+                    <div className={s.itemHead}>
+                      <span className={s.itemTitle}>{promotedContact.name}</span>
+                      {promotedContact.job_title && (
+                        <span className={s.itemMeta}>{promotedContact.job_title}</span>
+                      )}
+                    </div>
+                    <div className={s.itemBody}>
+                      source: {promotedContact.source}
+                      {(promotedContact.channels ?? []).map((c, i) => (
+                        <span key={i}> · {c.channel_type}: {c.channel_value}</span>
+                      ))}
+                    </div>
+                  </div>
+                ) : briefContactsRes.data?.data?.empty_reason ? (
+                  <p className={s.mut}>{briefContactsRes.data.data.empty_reason}</p>
+                ) : briefContacts.length === 0 ? (
+                  <p className={s.mut}>No named contacts on the brief. Add one by hand from the contacts page.</p>
+                ) : (
+                  briefContacts.filter((c) => !c.promoted_contact_id).map((c) => (
+                    <div key={c.named_index} className={s.item}>
+                      <div className={s.itemHead}>
+                        <span className={s.itemTitle}>{c.name || '(no name)'}</span>
+                        {c.title && <span className={s.itemMeta}>{c.title}</span>}
+                      </div>
+                      <div className={s.itemBody}>
+                        {c.email && <>{c.email} </>}
+                        {c.phone && <>· {c.phone}</>}
+                        {!c.has_channel && <span className={s.mut}> · no channel — cannot address</span>}
+                      </div>
+                      <div className={s.actions}>
+                        <button className={`${s.btn} ${s.btnPrimary}`}
+                          disabled={!c.addressable || promote.isPending}
+                          onClick={() => promote.mutateAsync({
+                            brief_id: brief.id,
+                            named_index: c.named_index,
+                            confirm_addressed: true,
+                          })}>
+                          Confirm — this is the person
+                        </button>
+                        <button className={s.btn} disabled={promote.isPending}
+                          onClick={() => promote.mutateAsync({
+                            brief_id: brief.id, named_index: c.named_index,
+                          })}>
+                          Promote as draft
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* Section 3 — Stories (earlier ones for R-S2 visibility) */}
+          {stories.length > 0 && (
+            <section className={s.section}>
+              <div className={s.sectionH}>
+                <span>Stories on this journey</span>
+                <span className={s.count}>{stories.length}</span>
+              </div>
+              <div className={s.sectionB}>
+                {stories.map((st, i) => (
+                  <div key={i} className={s.item}>
+                    <div className={s.itemHead}>
+                      <span className={s.itemTitle}>
+                        Story {String(st.seq)} · {String(st.status)}
+                        {st.subject ? ` — ${String(st.subject)}` : ''}
+                      </span>
+                      <span className={s.itemMeta}>{String(st.kind_key)}</span>
+                    </div>
+                    <div className={s.itemBody}>{String(st.body ?? '').slice(0, 220)}
+                      {String(st.body ?? '').length > 220 ? '…' : ''}</div>
+                    {st.status === 'draft' && (
+                      <div className={s.actions}>
+                        <button className={`${s.btn} ${s.btnPrimary}`}
+                          disabled={approveStory.isPending}
+                          onClick={() => approveStory.mutateAsync({ story_id: st.id })}>
+                          Approve this draft
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Section 4 — Compose (available at addressed, ready, answered) */}
+          {brief && ['addressed', 'ready', 'answered'].includes(state) && (
+            <section className={s.section}>
+              <div className={s.sectionH}>
+                <span>Write a story</span>
+                <span className={s.count}>R-S1 checks as you type</span>
+              </div>
+              <div className={s.sectionB}>
+                <div className={s.field}>
+                  <label className={s.label}>Evidence to cite</label>
+                  <div className={s.evPicker}>
+                    {evidence.map((e, i) => (
+                      <button key={i} className={s.evLine}
+                        onClick={() => setBody((b) => (b ? b + '\n\n' : '') + e.claim + '. ')}>
+                        <span>{e.claim}</span>
+                        <span className={s.use}>cite</span>
+                      </button>
+                    ))}
+                    {evidence.length === 0 && (
+                      <p className={s.mut} style={{ fontSize: '0.8rem' }}>
+                        No evidence lines yet. Research this company first.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className={s.field}>
+                  <label className={s.label}>Subject</label>
+                  <input className={s.input} value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    placeholder="A short subject line…" />
+                </div>
+                <div className={s.field}>
+                  <label className={s.label}>Body</label>
+                  <textarea className={s.textarea} value={body}
+                    onChange={(e) => setBody(e.target.value)}
+                    placeholder="Open on evidence. Say something a template could not." />
+                </div>
+
+                {(subject || body) && (
+                  <div className={s.trace}>
+                    <div className={s.traceHead}>
+                      <span>Claim trace</span>
+                      <span>{traceOut.traced} traced · {traceOut.unsupported} unsupported</span>
+                    </div>
+                    {traceOut.rows.map((r, i) => (
+                      <div key={i} className={`${s.sent} ${r.verdict === 'traced' ? s.ok
+                        : r.verdict === 'unsupported' ? s.no : s.own}`}>
+                        {r.sentence}
+                        <span className={s.sentTag}>{r.source_url ?? r.verdict.replace('_', ' ')}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {(subject || body) && (
+                  <div className={`${s.verdict} ${traceOut.ok ? s.good : s.bad}`}>
+                    {traceOut.ok
+                      ? `${traceOut.traced} claim(s) trace to their own site — this says something a template could not.`
+                      : traceOut.reason}
+                  </div>
+                )}
+
+                <div className={s.actions}>
+                  <button className={`${s.btn} ${s.btnPrimary}`}
+                    disabled={createStory.isPending || !body || body.length < 20
+                      || !journeyId || !traceOut.ok}
+                    onClick={() => journeyId && createStory.mutateAsync({
+                      journey_id: journeyId,
+                      subject: subject || null, body,
+                    })}>
+                    Save draft
+                  </button>
+                  {draftStories.length === 0 && (
+                    <span className={s.hint}>
+                      A saved draft is not sent. Approve it below and the journey moves to ready.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Section 5 — Send (available at ready) */}
+          {state === 'ready' && promotedContact && approvedStories.length > 0 && (
+            <section className={s.section}>
+              <div className={s.sectionH}>
+                <span>Log the send</span>
+                <span className={s.count}>
+                  {approvedStories.length} approved
+                </span>
+              </div>
+              <div className={s.sectionB}>
+                <p className={s.mut} style={{ fontSize: '0.82rem', marginBottom: '0.75rem' }}>
+                  Log a send once it has actually gone out. This flips the story to sent, moves
+                  the journey to waiting, and starts the response window.
+                </p>
+                {approvedStories.map((st, i) => (
+                  <div key={i} className={s.actions} style={{ borderTop: 'none', paddingTop: 0 }}>
+                    <button className={`${s.btn} ${s.btnPrimary}`}
+                      disabled={logTouch.isPending}
+                      onClick={() => logTouch.mutateAsync({
+                        prospect_id: journey.prospect_id,
+                        contact_id: promotedContact.id,
+                        story_id: st.id,
+                        channel: 'email',
+                      })}>
+                      Sent story {String(st.seq)} by email
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Section 6 — The ledger */}
+          <section className={s.section}>
+            <div className={s.sectionH}>
+              <span>The ledger</span>
+              <span className={s.count}>{journeyRes.data?.data?.events?.length ?? 0}</span>
+            </div>
+            <div className={s.sectionB}>
+              {(journeyRes.data?.data?.events ?? []).map((ev, i) => (
+                <div key={i} className={s.item}>
+                  <div className={s.itemHead}>
+                    <span className={s.itemTitle}>
+                      {ev.from_state ? `${String(ev.from_state).replace('_', ' ')} → ` : ''}
+                      {String(ev.to_state).replace('_', ' ')}
+                    </span>
+                    <span className={s.itemMeta}>
+                      {String(ev.actor)} · {new Date(String(ev.created_at)).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {ev.reason ? <div className={s.itemBody}>{String(ev.reason)}</div> : null}
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </aside>
+    </>
+  );
+}
