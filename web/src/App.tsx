@@ -26,6 +26,7 @@ import AssessmentPage from './components/vikuna/AssessmentPage';
 import PreviewPage from './components/vikuna/PreviewPage';
 import MVPPage from './components/vikuna/MVPPage';
 import TrainingPage from './components/vikuna/TrainingPage';
+import WhyAIFailsPlaybook from './components/vikuna/WhyAIFailsPlaybook';
 
 function HomePage() {
   return (
@@ -63,6 +64,7 @@ function App() {
           <Route path="/assessment" element={<AssessmentPage />} />
           <Route path="/mvp" element={<MVPPage />} />
           <Route path="/training" element={<TrainingPage />} />
+          <Route path="/playbooks/why-ai-fails" element={<WhyAIFailsPlaybook />} />
           <Route path="/preview" element={<PreviewPage />} />
           <Route path="/preview/:name" element={<PreviewPage />} />
         </Routes>

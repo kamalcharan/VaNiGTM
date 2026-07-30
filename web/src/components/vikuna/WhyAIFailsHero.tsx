@@ -161,7 +161,7 @@ const WhyAIFailsHero: React.FC = () => {
             we've watched go wrong in 24 years,</strong> and what actually fixes it.
           </P>
           <Ctas>
-            <BtnPrimary href="#playbooks">Get the 'Why AI Fails' Playbook</BtnPrimary>
+            <BtnPrimary href="/playbooks/why-ai-fails">Get the 'Why AI Fails' Playbook</BtnPrimary>
             <BtnGhost href="/assessment">Take the Readiness Assessment</BtnGhost>
           </Ctas>
           <ScrollHint href="#offers">Our approach to making it survive ↓</ScrollHint>

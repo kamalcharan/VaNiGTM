@@ -16,4 +16,8 @@
     <loc>https://vikuna.io/training</loc>
     <priority>0.8</priority>
   </url>
+  <url>
+    <loc>https://vikuna.io/playbooks/why-ai-fails</loc>
+    <priority>0.7</priority>
+  </url>
 </urlset>
