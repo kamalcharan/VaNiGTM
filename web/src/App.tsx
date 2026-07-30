@@ -20,6 +20,7 @@ import StickyCTABar from './components/vikuna/StickyCTABar';
 import ExitIntentPopup from './components/vikuna/ExitIntentPopup';
 import SEOHead from './components/vikuna/SEOHead';
 import AssessmentPage from './components/vikuna/AssessmentPage';
+import PreviewPage from './components/vikuna/PreviewPage';
 
 function HomePage() {
   return (
@@ -52,6 +53,8 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/assessment" element={<AssessmentPage />} />
+          <Route path="/preview" element={<PreviewPage />} />
+          <Route path="/preview/:name" element={<PreviewPage />} />
         </Routes>
       </div>
     </ThemeProvider>
