@@ -71,8 +71,16 @@ export async function list_journeys(params: ListJourneysParams, ctx: SkillContex
   );
 
   return {
+    // node-pg returns BIGINT as a STRING; the drawer passes prospect_id
+    // straight into other queries, and "1" instead of 1 is how the drawer
+    // originally could not find any brief. Coerce at the boundary so every
+    // consumer sees a number.
     journeys: rows.rows.map((r) => ({
       ...r,
+      id: r.id === null || r.id === undefined ? null : Number(r.id),
+      prospect_id: r.prospect_id === null || r.prospect_id === undefined ? null : Number(r.prospect_id),
+      brief_id: r.brief_id === null || r.brief_id === undefined ? null : Number(r.brief_id),
+      contact_id: r.contact_id === null || r.contact_id === undefined ? null : Number(r.contact_id),
       owed: OWED[r.state as JourneyState] ?? null,
     })),
     counts: byState,

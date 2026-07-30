@@ -10,7 +10,27 @@
  *   NODE_ENV          — "production" suppresses verbose logging
  */
 
-import { Pool, type PoolConfig, type PoolClient } from 'pg';
+import { Pool, type PoolConfig, type PoolClient, types } from 'pg';
+
+/* ── BIGINT as number ──────────────────────────────────
+ * node-pg's default: BIGINT (int8, OID 20) comes back as a STRING to
+ * avoid precision loss above Number.MAX_SAFE_INTEGER. Every function
+ * that returns a bigserial id — journey.id, prospect_id, brief.id,
+ * contact.id — inherited that decision and shipped "1" instead of 1 to
+ * the frontend, which then passed it back into the next query as a
+ * string and got zero rows.
+ *
+ * Registering a parser here fixes it once. Our ids come from BIGSERIAL
+ * sequences and will never reach 2^53 (that is nine quadrillion rows in
+ * ONE table on ONE tenant); the safety this trades away is not real for
+ * this product. The parser stays a Number.
+ *
+ * Cast-based OID 1700 (numeric) is deliberately left alone — numeric
+ * columns hold money, ratios, and other values where losing decimal
+ * precision would be a real bug. Those stay strings.
+ */
+const OID_INT8 = 20;
+types.setTypeParser(OID_INT8, (v) => v === null ? null : Number(v));
 
 /* ── Pool singleton ─────────────────────────────────── */
 
