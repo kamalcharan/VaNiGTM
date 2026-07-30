@@ -23,6 +23,12 @@ interface LogTouchParams {
   contact_id?: number;
   /** Consume this held slot. Found by contact + channel when not given. */
   reservation_id?: number;
+  /**
+   * The story this send is carrying. Must be `approved` for this journey.
+   * Recorded on the touch AND marks the story `sent`, so "reply rate per
+   * story" is a query and Phase 6's human-baseline comparison is possible.
+   */
+  story_id?: number;
   offer?: string;
   /** Defaults to now. Set it when logging something sent yesterday. */
   touched_at?: string;
@@ -68,19 +74,50 @@ export async function log_touch(params: LogTouchParams, ctx: SkillContext) {
       if (c.rows.length === 0) throw new Error('No such contact.');
     }
 
+    // The story, if given, must be an APPROVED one for this prospect. That
+    // check is what turns story_id from "any bigint the caller typed" into
+    // an audit trail — you cannot send a draft, and you cannot record a
+    // story that belongs to somebody else's journey.
+    const storyId = Number.isFinite(Number(params.story_id))
+      ? Number(params.story_id) : null;
+    let storyOffer: string | null = null;
+    if (storyId !== null) {
+      const s = await tx.query<{ offer: string | null }>(
+        `SELECT s.offer FROM gt_journey_stories s
+           JOIN gt_journeys j ON j.id = s.journey_id
+          WHERE s.id = $id AND s.tenant_id = $tenant_id AND s.is_live = $is_live
+            AND s.status = 'approved'
+            AND j.prospect_id = $prospect_id`,
+        {
+          id: storyId, tenant_id: ctx.tenant_id, is_live: ctx.is_live,
+          prospect_id: prospectId,
+        },
+      );
+      if (!s.rows[0]) {
+        throw new Error(
+          'The story does not belong to this journey, is not approved, or does not exist.',
+        );
+      }
+      storyOffer = s.rows[0].offer;
+    }
+
     const res = await tx.query<{ id: number; had_brief: boolean }>(
       `INSERT INTO gt_touch_log
-         (tenant_id, is_live, prospect_id, contact_id, offer, channel, touched_at,
+         (tenant_id, is_live, prospect_id, contact_id, story_id, offer, channel, touched_at,
           notes, had_brief, created_by)
        VALUES
-         ($tenant_id, $is_live, $prospect_id, $contact_id::bigint, $offer, $channel,
-          COALESCE($touched_at::timestamptz, now()),
+         ($tenant_id, $is_live, $prospect_id, $contact_id::bigint, $story_id::bigint,
+          $offer, $channel, COALESCE($touched_at::timestamptz, now()),
           $notes, $had_brief, $user_id)
        RETURNING id, had_brief`,
       {
         tenant_id: ctx.tenant_id, is_live: ctx.is_live, prospect_id: prospectId,
         contact_id: contactId,
-        offer: String(params.offer ?? '').trim() || null,
+        story_id: storyId,
+        // If a story is carrying, its offer is the record. Otherwise fall
+        // back to the caller — a phone note may name an offer even with no
+        // story artifact behind it.
+        offer: storyOffer ?? (String(params.offer ?? '').trim() || null),
         channel: params.channel,
         touched_at: params.touched_at ?? null,
         notes: String(params.notes ?? '').trim() || null,
@@ -124,6 +161,26 @@ export async function log_touch(params: LogTouchParams, ctx: SkillContext) {
       consumed = r.rows[0] ? Number(r.rows[0].id) : null;
     }
 
+    // Mark the story sent. The CHECK constraint on gt_journey_stories
+    // requires sent_as_touch and sent_at to move together, so this cannot
+    // become a half-written state even if it somehow rolled back after
+    // this line — the transaction is atomic, and the constraint refuses
+    // any other shape at row level.
+    if (storyId !== null) {
+      await tx.query(
+        `UPDATE gt_journey_stories
+            SET status = 'sent',
+                sent_as_touch = $touch_id::bigint,
+                sent_at = now(),
+                updated_at = now()
+          WHERE id = $id AND tenant_id = $tenant_id AND is_live = $is_live`,
+        {
+          id: storyId, touch_id: Number(res.rows[0].id),
+          tenant_id: ctx.tenant_id, is_live: ctx.is_live,
+        },
+      );
+    }
+
     // The journey moves with the touch, in the same transaction. A send that
     // committed while the journey stayed at `ready` would leave the ledger
     // quietly wrong, and the ledger is the thing everything downstream reads.
@@ -145,6 +202,7 @@ export async function log_touch(params: LogTouchParams, ctx: SkillContext) {
       touch_id: Number(res.rows[0].id),
       had_brief: res.rows[0].had_brief,
       contact_id: contactId,
+      story_id: storyId,
       reservation_consumed: consumed,
       journey_state: journey?.state ?? 'waiting',
       message: res.rows[0].had_brief

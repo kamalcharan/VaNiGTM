@@ -70,7 +70,9 @@ beforeAll(async () => {
                    '221_gt_touch_log.sql', '222_gt_journeys.sql',
                    // The governor: log_touch now records WHO was touched and
                    // consumes the reservation the send was planned against.
-                   '223_gt_cadence_governor.sql']) {
+                   '223_gt_cadence_governor.sql',
+                   // Stories: log_touch now takes an optional story_id.
+                   '225_gt_journey_stories.sql']) {
     await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
   }
 

@@ -95,7 +95,8 @@ beforeAll(async () => {
   for (const m of ['207_gt_account_briefs.sql', '210_brief_extract_failed.sql',
                    '211_brief_facts_and_judgement.sql', '213_brief_human_offer.sql',
                    '221_gt_touch_log.sql', '222_gt_journeys.sql',
-                   '223_gt_cadence_governor.sql']) {
+                   '223_gt_cadence_governor.sql',
+                   '225_gt_journey_stories.sql']) {
     await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
   }
 }, 60000);
