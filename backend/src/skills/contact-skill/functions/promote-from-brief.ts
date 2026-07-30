@@ -242,9 +242,13 @@ export async function promote_from_brief(params: PromoteParams, ctx: SkillContex
         },
       );
       if (r.rows[0] && c.source_url) {
+        // gt_contact_channels has NO updated_at (migration 187) — unlike
+        // gt_contacts, which does. Writing one would fail the whole
+        // transaction and leave the caller staring at a promoted contact
+        // with no channels attached.
         await tx.query(
           `UPDATE gt_contact_channels
-              SET source_url = COALESCE(source_url, $source_url), updated_at = now()
+              SET source_url = COALESCE(source_url, $source_url)
             WHERE id = $id`,
           { id: Number(r.rows[0].id), source_url: c.source_url },
         );

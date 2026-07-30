@@ -79,7 +79,9 @@ CREATE TABLE gt_contact_channels (
   channel_value   VARCHAR(255) NOT NULL,
   channel_subtype VARCHAR(50) NOT NULL DEFAULT 'personal',
   is_primary      BOOLEAN NOT NULL DEFAULT false,
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- No updated_at, on purpose. The production table (migration 187)
+  -- does not have one — this schema drifted and hid a real bug in
+  -- promote_from_brief. See the fix in that file for why.
   CONSTRAINT uq_gt_contact_channel UNIQUE (contact_id, channel_type, channel_value, is_live)
 );
 
