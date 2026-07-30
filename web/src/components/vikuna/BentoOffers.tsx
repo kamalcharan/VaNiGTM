@@ -36,7 +36,7 @@ const Section = styled.section`
 const ArrowRow = styled.div`
   max-width: 1200px;
   margin: 0 auto;
-  height: 84px;
+  height: 88px;
   position: relative;
 
   @media (max-width: 968px) {
@@ -46,10 +46,10 @@ const ArrowRow = styled.div`
 
 const ArrowSvg = styled.svg`
   position: absolute;
-  left: 38%;
-  top: 6px;
+  left: 44%;
+  top: 4px;
   width: 180px;
-  height: 76px;
+  height: 80px;
   overflow: visible;
 `;
 
@@ -240,7 +240,7 @@ const BentoOffers: React.FC = () => {
             </marker>
           </defs>
           <path
-            d="M12 6 C 26 54, 108 70, 164 40"
+            d="M10 8 C 46 34, 128 14, 154 68"
             fill="none"
             stroke={INK}
             strokeOpacity="0.55"
