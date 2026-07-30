@@ -6,7 +6,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 
 const INK = '#0A0F1E';
 const INK_SOFT = '#2D3450';
@@ -23,13 +23,34 @@ const CALENDLY = 'https://calendly.com/connect-vikuna/30min';
 
 const Section = styled.section`
   background: ${PAPER_WARM};
-  padding: 0 60px 72px;
+  padding: 24px 60px 72px;
   position: relative;
-  z-index: 3;
 
   @media (max-width: 768px) {
-    padding: 0 24px 48px;
+    padding: 32px 24px 48px;
   }
+`;
+
+// Gap between hero and grid, holding the hand-drawn guide arrow that
+// points from the hero down toward the fractional (C-Suite) card.
+const ArrowRow = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 84px;
+  position: relative;
+
+  @media (max-width: 968px) {
+    display: none;
+  }
+`;
+
+const ArrowSvg = styled.svg`
+  position: absolute;
+  left: 38%;
+  top: 6px;
+  width: 180px;
+  height: 76px;
+  overflow: visible;
 `;
 
 const Grid = styled.div`
@@ -41,7 +62,6 @@ const Grid = styled.div`
     'assess csuite csuite'
     'mvp sprint playbooks';
   gap: 20px;
-  margin-top: -90px;
 
   @media (max-width: 968px) {
     grid-template-columns: 1fr;
@@ -51,14 +71,29 @@ const Grid = styled.div`
       'sprint'
       'playbooks'
       'mvp';
-    margin-top: -60px;
+  }
+`;
+
+const floatBounce = keyframes`
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+`;
+
+// Wrapper owns the grid cell + bounce so it never fights framer-motion's
+// entrance transform on the Card inside.
+const FloatCell = styled.div`
+  grid-area: csuite;
+  animation: ${floatBounce} 3.4s ease-in-out infinite;
+
+  & > div {
+    height: 100%;
   }
 `;
 
 // ─── Card primitives ─────────────────────────────────────────
 
-const Card = styled(motion.div)<{ $area: string; $dark?: boolean }>`
-  grid-area: ${(p) => p.$area};
+const Card = styled(motion.div)<{ $area?: string; $dark?: boolean }>`
+  grid-area: ${(p) => p.$area || 'auto'};
   background: ${(p) => (p.$dark ? INK : WHITE)};
   border: 1px solid ${(p) => (p.$dark ? 'rgba(255,255,255,0.08)' : BORDER)};
   border-radius: 14px;
@@ -190,6 +225,32 @@ const BentoOffers: React.FC = () => {
 
   return (
     <Section id="offers">
+      <ArrowRow>
+        <ArrowSvg viewBox="0 0 180 76" aria-hidden="true">
+          <defs>
+            <marker
+              id="bento-arrowhead"
+              markerWidth="8"
+              markerHeight="8"
+              refX="6"
+              refY="4"
+              orient="auto"
+            >
+              <path d="M0,0 L8,4 L0,8 Z" fill={INK} fillOpacity="0.6" />
+            </marker>
+          </defs>
+          <path
+            d="M12 6 C 26 54, 108 70, 164 40"
+            fill="none"
+            stroke={INK}
+            strokeOpacity="0.55"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeDasharray="6 7"
+            markerEnd="url(#bento-arrowhead)"
+          />
+        </ArrowSvg>
+      </ArrowRow>
       <Grid>
         {/* Row 1 — Assessment (tall, dark) */}
         <Card $area="assess" $dark {...cardMotion(0)}>
@@ -208,8 +269,9 @@ const BentoOffers: React.FC = () => {
           </div>
         </Card>
 
-        {/* Row 1 — C-Suite offer (large anchor) */}
-        <Card $area="csuite" $dark {...cardMotion(0.08)}>
+        {/* Row 1 — C-Suite offer (large anchor, gentle bounce) */}
+        <FloatCell>
+        <Card $dark {...cardMotion(0.08)}>
           <Tag $color={ACCENT}>Fractional CDO · CAiO</Tag>
           <CardH $dark $size={34}>
             Get C-Suite AI &amp; Digital Leadership
@@ -236,6 +298,7 @@ const BentoOffers: React.FC = () => {
             <LinkArrow $dark href="/#consulting-services">Explore the service →</LinkArrow>
           </CtaRow>
         </Card>
+        </FloatCell>
 
         {/* Row 2 — MVP */}
         <Card $area="mvp" {...cardMotion(0.16)}>

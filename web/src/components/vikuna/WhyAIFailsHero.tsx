@@ -13,13 +13,13 @@ const Hero = styled.section`
   min-height: 92vh;
   display: flex;
   align-items: center;
-  padding: 130px 60px 170px;
+  padding: 130px 60px 90px;
   position: relative;
   overflow: hidden;
   background: ${INK};
 
   @media (max-width: 968px) {
-    padding: 110px 24px 130px;
+    padding: 110px 24px 70px;
     min-height: auto;
   }
 `;
