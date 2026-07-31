@@ -4,6 +4,26 @@
 **To:** next Claude Code session in this repo
 **State:** Phase A in progress · Gate G1 NOT yet passed · no application code written for VaNi AI
 
+**⚠️ Architecture direction changed 2026-07-31, after G1 rulings were already drafted
+into SQL — read this before touching `docs/sql/`.** `kamalcharan/VaNiGTM` (a separate,
+much larger, already-built product — multi-tenant GTM/prospecting/agent engine, Express +
+Next.js, migrations 001–192) was added as a git submodule at `vanigtm/`. It turns out to
+be the actual owner of `vani_gtm_db` — the `gt_`/`vn_`/`ki_` tables, the `admin`/
+`vikuna_admin` BYPASSRLS runtime, `set_tenant_context()`, all of it traces back to that
+repo's migrations, not to anything VaNi-AI-specific. **Correction: the relationship is
+VaNiGTM eventually integrates INTO VaNi AI, not VaNi AI becoming a skill inside VaNiGTM**
+(Charan, 2026-07-31) — I had it backwards in my first read of this. Charan wants this
+paced **deliberately slowly**, not rushed into a rebuild.
+
+**Current status: paused here, on purpose.** No code has been written or pushed to
+VaNiGTM. Session only has *read* access to it (added via `add_repo`, not push) — no
+branch chosen, nothing built. The `docs/sql/ws2.2–2.6` drafts from the G1 rulings
+earlier in this session are **not retired, but also not the final architecture** — they
+assumed a standalone `vani` schema + PostgREST instance, built with no knowledge that
+VaNiGTM's Express backend, JWT auth, and db layer already exist against the same
+database. Do not resume building against either design until Charan gives the next
+concrete instruction on pacing/scope. See §9 below for what's actually decided vs. open.
+
 ---
 
 ## 1. What VaNi AI is (one paragraph)
@@ -134,3 +154,38 @@ over the App Spec, so read it before treating anything above as final on auth mo
   blueprint tokens (indigo/cyan, Outfit/Inter) scoped to VaNi routes — do not mix.
 - Single Calendly everywhere: `calendly.com/connect-vikuna/30min`. Canonical domain
   `vikuna.io` (Vercel serves `www.vikuna.io` — apex/www alignment still to verify).
+
+## 8. VaNiGTM — what it is, and what changed because of it (2026-07-31)
+
+- Added as a git submodule at `vanigtm/` (`https://github.com/kamalcharan/VaNiGTM.git`,
+  pinned `c991984`), read-only access in this session. It is "Vikuna GTM Engine" — a
+  separate, unrelated-in-product-scope, much larger platform: multi-tenant onboarding,
+  prospecting, campaigns, an agent worker polling `gt_events`. Zero mentions of
+  "assessment," "ai-recovery," or the Pilot Pack anywhere in its docs — this is not the
+  VaNi AI project, it just happens to own the database VaNi AI was about to build against.
+- It is the actual source of `vani_gtm_db`'s schema: migrations 001–192 in
+  `vanigtm/backend/migrations/`, a working Express JWT auth stack
+  (`vanigtm/backend/src/auth/`: `auth.service.ts`, `login.service.ts`, `token.service.ts`),
+  a db layer with the `set_tenant_context()` transaction-wrapper convention
+  (`vanigtm/backend/src/db/pool.ts` / `query.ts`), and a skills pattern
+  (`vanigtm/backend/src/skills/<name>/`, registered at
+  `POST /api/v1/skills/:skill/:fn`). Its own `CLAUDE.md` documents the same facts WS2.1
+  found independently (RLS dormant, `admin`/`vikuna_admin` BYPASSRLS runtime, `gt_`/`vn_`
+  prefix convention, no Supabase) — confirms WS2.1's findings rather than contradicting
+  them.
+- **Direction (Charan, 2026-07-31): VaNiGTM eventually integrates INTO VaNi AI** — not
+  the other way around. Paced deliberately slowly. Concretely, as of this handover:
+  - Not decided: whether VaNi AI's eventual backend reuses VaNiGTM's Express
+    auth/db-layer/skill pattern, stays on the standalone `vani`-schema + PostgREST design
+    from `docs/sql/`, or something else entirely once "VaNiGTM integrates into VaNi AI"
+    is scoped concretely.
+  - Not started: no code, no migration, no branch in VaNiGTM. Session has read access
+    only (`add_repo` with `access: read`) — push access was explicitly not requested
+    given "slowly."
+  - `docs/sql/ws2.2-2.6` (the G1-ruled standalone design) stand as they are — not applied,
+    not retired, not confirmed as final. Written before this discovery, so treat as one
+    candidate rather than the settled plan.
+- **Next session: do not resume building either direction without a fresh, concrete
+  instruction from Charan on pacing/scope.** This section exists so that instruction can
+  be short — the context above is what a new session would otherwise have to
+  re-discover.
