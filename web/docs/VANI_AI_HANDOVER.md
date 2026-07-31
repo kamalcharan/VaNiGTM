@@ -2,27 +2,21 @@
 
 **From:** Claude Code website session (session ending 2026-07-31)
 **To:** next Claude Code session in this repo
-**State:** Phase A in progress · Gate G1 NOT yet passed · no application code written for VaNi AI
+**State:** Phase A in progress · Gate G1 NOT yet passed as a formal gate, but superseded
+in practice · first application code for VaNi AI now exists, in `kamalcharan/VaNiGTM`,
+not this repo.
 
-**⚠️ Architecture direction changed 2026-07-31, after G1 rulings were already drafted
-into SQL — read this before touching `docs/sql/`.** `kamalcharan/VaNiGTM` (a separate,
-much larger, already-built product — multi-tenant GTM/prospecting/agent engine, Express +
-Next.js, migrations 001–192) was added as a git submodule at `vanigtm/`. It turns out to
-be the actual owner of `vani_gtm_db` — the `gt_`/`vn_`/`ki_` tables, the `admin`/
-`vikuna_admin` BYPASSRLS runtime, `set_tenant_context()`, all of it traces back to that
-repo's migrations, not to anything VaNi-AI-specific. **Correction: the relationship is
-VaNiGTM eventually integrates INTO VaNi AI, not VaNi AI becoming a skill inside VaNiGTM**
-(Charan, 2026-07-31) — I had it backwards in my first read of this. Charan wants this
-paced **deliberately slowly**, not rushed into a rebuild.
-
-**Current status: paused here, on purpose.** No code has been written or pushed to
-VaNiGTM. Session only has *read* access to it (added via `add_repo`, not push) — no
-branch chosen, nothing built. The `docs/sql/ws2.2–2.6` drafts from the G1 rulings
-earlier in this session are **not retired, but also not the final architecture** — they
-assumed a standalone `vani` schema + PostgREST instance, built with no knowledge that
-VaNiGTM's Express backend, JWT auth, and db layer already exist against the same
-database. Do not resume building against either design until Charan gives the next
-concrete instruction on pacing/scope. See §9 below for what's actually decided vs. open.
+**⚠️ Architecture pivoted twice on 2026-07-31 — read this before touching `docs/sql/`.**
+`kamalcharan/VaNiGTM` (a separate, much larger, already-built product — multi-tenant
+GTM/prospecting/agent engine, Express + Next.js, migrations 001–227) was added as a git
+submodule at `vanigtm/`. It turns out to be the actual owner of `vani_gtm_db` — the
+`gt_`/`vn_`/`ki_` tables, the `admin`/`vikuna_admin` BYPASSRLS runtime,
+`set_tenant_context()`, all of it traces back to that repo's migrations. First pivot:
+VaNiGTM eventually integrates INTO VaNi AI, paced slowly (not the reverse). Second pivot,
+same day: Charan then explicitly told the session to reuse VaNiGTM's login/auth/db layer
+to "bring down the time" — so building started for real. **`docs/sql/ws2.2–2.6` in this
+repo are now superseded** by a working implementation in VaNiGTM — see §8 below for
+exactly what exists, where, and what's still open.
 
 ---
 
@@ -174,18 +168,61 @@ over the App Spec, so read it before treating anything above as final on auth mo
   prefix convention, no Supabase) — confirms WS2.1's findings rather than contradicting
   them.
 - **Direction (Charan, 2026-07-31): VaNiGTM eventually integrates INTO VaNi AI** — not
-  the other way around. Paced deliberately slowly. Concretely, as of this handover:
-  - Not decided: whether VaNi AI's eventual backend reuses VaNiGTM's Express
-    auth/db-layer/skill pattern, stays on the standalone `vani`-schema + PostgREST design
-    from `docs/sql/`, or something else entirely once "VaNiGTM integrates into VaNi AI"
-    is scoped concretely.
-  - Not started: no code, no migration, no branch in VaNiGTM. Session has read access
-    only (`add_repo` with `access: read`) — push access was explicitly not requested
-    given "slowly."
-  - `docs/sql/ws2.2-2.6` (the G1-ruled standalone design) stand as they are — not applied,
-    not retired, not confirmed as final. Written before this discovery, so treat as one
-    candidate rather than the settled plan.
-- **Next session: do not resume building either direction without a fresh, concrete
-  instruction from Charan on pacing/scope.** This section exists so that instruction can
-  be short — the context above is what a new session would otherwise have to
-  re-discover.
+  the other way around. First said to pace this slowly; same day, then said to reuse
+  VaNiGTM's login/auth/db layer directly ("it will bring down the time"). Building
+  started on that basis.
+
+### What's actually built (2026-07-31, branch `claude/vani-ai-assessment-skill` in VaNiGTM, pushed, not merged, no PR opened)
+
+- **Migration `228_gt_assessment.sql`** (`vanigtm/backend/migrations/`): six tables —
+  `gt_partner`, `gt_assessment_def`, `gt_lead`, `gt_assessment_response`, `gt_report`,
+  `gt_lead_event` — `gt_` prefix, `tenant_id` + `is_live` on every row, RLS
+  tenant-isolation policy matching migration 219's exact pattern. Creates the Vikuna
+  Consulting tenant (real UUID) if it doesn't exist. **Not applied to the database** —
+  written per this codebase's "migrations manual + guarded + idempotent" rule, applied
+  via `cd backend && npm run db:migrate` when Charan is ready.
+- **`assessment-skill`** (`vanigtm/backend/src/skills/assessment-skill/`) — two access
+  models:
+  - **Anonymous** (`assessment.routes.ts`, mounted at `/api/v1/assessment` in
+    `server.ts`, no JWT): `GET /:slug`, `POST /answer`, `POST /complete`,
+    `POST /capture`, `GET /report/:token`. Logic in `assessment.agent.ts`, same shape as
+    the existing `StorytellerAgent` (static methods over `pool` + a tenantId resolved
+    once from the `vikuna-consulting` slug, not from a JWT that doesn't exist for an
+    anonymous respondent).
+  - **Authenticated console** (normal `SkillContext` functions, via the existing
+    JWT-gated `POST /api/v1/skills/assessment-skill/:fn` executor): `get_leads`,
+    `get_lead`, `update_lead_status`, `add_lead_note`. Role (owner sees all leads in the
+    tenant; partner sees only their own) resolved from `gt_partner` by `ctx.user_id`
+    (`partner-context.ts`) — deliberately not coupled to `vn_roles`/`vn_user_roles`.
+  - **`scoring.ts`** — deterministic scoring reimplemented in TypeScript (the
+    `docs/sql/ws2.3` Postgres-function version is superseded), config-driven off any
+    `gt_assessment_def.definition` JSON, nothing hardcoded to the ai-recovery instrument.
+    Unit-tested against a hand-worked fixture: `tests/scoring.test.ts`, 5 tests, no DB
+    needed.
+- **Verified, not just written:** `npx tsc --noEmit` in `vanigtm/backend` is clean except
+  the pre-existing documented `campaign-skill` error; `npm test` passes 273/273 runnable
+  tests (261 skipped are DB-dependent, no live DB in this environment) including the 5
+  new scoring tests.
+
+### Deliberately not done this pass
+- **Report generation + email dispatch** — `capture_lead`'s job ends at "a lead row now
+  exists." `gt_report` rows are never created yet; `GET /report/:token` will 404 until
+  something writes one. This is the next concrete piece of work.
+- **Seeding the `ai-recovery` definition** — migration 228 creates the tables and the
+  tenant, but does not insert the assessment JSON. Source is still
+  `docs/vani-ai-recovery-assessment-definition.json` in *this* repo; someone still needs
+  to `INSERT INTO gt_assessment_def` with it.
+- **Partner CRUD** (creating/deactivating `gt_partner` rows) — manage by hand via SQL
+  until a console UI need justifies a function.
+- **The `vikunawebsite` frontend side** — nothing here changed to call the new API.
+  `docs/sql/ws2.2-2.6` in this repo are superseded by the above and should be treated as
+  historical (what G1's rulings looked like before VaNiGTM was in the picture), not
+  reapplied.
+
+### Next session
+- If continuing the build: read `vanigtm/backend/src/skills/assessment-skill/SKILL.md`
+  first, then pick up report generation or frontend wiring.
+- If reviewing before continuing: the branch is pushed but no PR was opened (not asked
+  for) — diff `claude/vani-ai-assessment-skill` against VaNiGTM's `main`.
+- Migration 228 has NOT been applied to `vani_gtm_db` — nothing in this section has
+  touched live data.
