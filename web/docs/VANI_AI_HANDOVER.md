@@ -18,15 +18,23 @@ approval)** — lazy-loaded routes inside THIS repo, deployed by Vercel.
 ## 2. Governing documents (Charan re-shares into new session as needed)
 
 Reading order (POA §Reading Order — precedence: POA > Addendum A > App Spec > Mentor Brief body > Blueprint):
-1. `VaNi_AI_App_Spec_v1.docx` — the contract (§4 partially superseded by Addendum A)
-2. `VANI_AI_MENTOR_BRIEF.md` + Addendum A — guardrails; `vani_gtm` directive; Supabase prohibition
-3. `vani-ai-ux-blueprint.html` v2 — design system; implement, don't reinterpret; reviewer nav + sample data excluded
-4. `email-report.html` / `email-report.txt` — report email templates (merge fields)
+1. `VaNi_AI_App_Spec_v1.docx` — the contract (§4 partially superseded by Addendum A).
+   **Received 2026-07-31**, saved at `docs/VaNi_AI_App_Spec_v1.docx`.
+2. `VANI_AI_MENTOR_BRIEF.md` + Addendum A — guardrails; `vani_gtm` directive; Supabase prohibition.
+   **Still not received — request it.**
+3. `vani-ai-ux-blueprint.html` v2 — design system; implement, don't reinterpret; reviewer nav + sample data excluded.
+   **Received 2026-07-31**, saved at `docs/vani-ai-ux-blueprint.html`.
+4. `email-report.html` / `email-report.txt` — report email templates (merge fields).
+   **Received 2026-07-31**, saved at `docs/email-report.html` / `docs/email-report.txt`.
 5. `AI_Failed_Initiatives_Audit_PilotPack_v1.docx` §3 — survey instrument, seed VERBATIM.
    **Received 2026-07-31**, saved verbatim at `docs/vani-ai-recovery-assessment-definition.json`
    (`service_slug: ai-recovery`, 12 questions, 10 failure modes, bands 71/41 — matches §3 guardrails).
    Not yet seeded into any DB row — WS2.5 is still gated on G1.
-6. `VaNi_AI_POA_v1.docx` — workstreams, gates, session protocol
+6. `VaNi_AI_POA_v1.docx` — workstreams, gates, session protocol.
+   **Received 2026-07-31**, saved at `docs/VaNi_AI_POA_v1.docx`.
+
+Only item 2 (Mentor Brief + Addendum A) remains outstanding — it carries guardrail precedence
+over the App Spec, so read it before treating anything above as final on auth model or scope.
 
 ## 3. Hard guardrails (never drift)
 
