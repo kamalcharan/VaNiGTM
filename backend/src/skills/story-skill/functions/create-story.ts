@@ -26,6 +26,13 @@ interface CreateStoryParams {
   kind_key?: string;
   offer?: string;
   asset_ids?: number[];
+  /**
+   * FK to gt_channel_types (migration 226). Optional so older callers
+   * that predate the picker still work; the compose surface makes it
+   * required. When passed, validated to be a known active row so a
+   * garbage id fails loudly instead of writing an FK violation.
+   */
+  channel_type_id?: number | null;
 }
 
 export async function create_story(params: CreateStoryParams, ctx: SkillContext) {
@@ -41,12 +48,29 @@ export async function create_story(params: CreateStoryParams, ctx: SkillContext)
   }
   const subject = String(params.subject ?? '').trim() || null;
   const kindKey = String(params.kind_key ?? 'email').trim();
+  const channelTypeId = params.channel_type_id == null ? null
+    : Number(params.channel_type_id);
+  if (channelTypeId !== null && !Number.isFinite(channelTypeId)) {
+    throw new Error('channel_type_id must be a number or null.');
+  }
 
   const scope = { tenant_id: ctx.tenant_id, is_live: ctx.is_live };
 
   return ctx.db.transaction(async (tx) => {
     if (!(await kindExists(tx, scope, kindKey))) {
       throw new Error(`No such content kind: "${kindKey}". See list_kinds.`);
+    }
+
+    // Validate the channel type up-front — a bad id would otherwise surface
+    // as a FK violation after the seq lock, which is expensive to debug.
+    if (channelTypeId !== null) {
+      const ct = await tx.query<{ id: number }>(
+        `SELECT id FROM gt_channel_types WHERE id = $id AND is_active = true`,
+        { id: channelTypeId },
+      );
+      if (!ct.rows[0]) throw new Error(
+        `No such channel type: id=${channelTypeId}. See channel-skill.get_channel_types.`,
+      );
     }
 
     // The journey must be ours. tenant_id in the WHERE is the authorisation.
@@ -91,16 +115,18 @@ export async function create_story(params: CreateStoryParams, ctx: SkillContext)
 
     const ins = await tx.query<{ id: string; seq: number }>(
       `INSERT INTO gt_journey_stories
-         (tenant_id, is_live, journey_id, seq, kind_key, author, author_id,
-          offer, subject, body, evidence_refs, asset_ids, status, created_by)
+         (tenant_id, is_live, journey_id, seq, kind_key, channel_type_id,
+          author, author_id, offer, subject, body, evidence_refs, asset_ids,
+          status, created_by)
        VALUES
-         ($tenant_id, $is_live, $journey_id, $seq, $kind_key, 'human',
-          $author_id::uuid, $offer, $subject, $body,
+         ($tenant_id, $is_live, $journey_id, $seq, $kind_key, $channel_type_id,
+          'human', $author_id::uuid, $offer, $subject, $body,
           $refs::text[], $assets::bigint[], 'draft', $author_id::uuid)
        RETURNING id::text, seq`,
       {
         tenant_id: ctx.tenant_id, is_live: ctx.is_live,
         journey_id: journeyId, seq, kind_key: kindKey,
+        channel_type_id: channelTypeId,
         author_id: ctx.user_id,
         offer: String(params.offer ?? '').trim() || bev.offer,
         subject, body,

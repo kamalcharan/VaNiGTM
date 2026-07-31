@@ -27,6 +27,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
+import { useChannelTypes } from '@/hooks/useChannelTypes';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/toast';
 import { VdfLoader } from '@/components/vdf';
@@ -125,6 +126,10 @@ export function JourneyDrawer({
   const qc = useQueryClient();
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  // The channel this story is going out on. Populated from gt_channel_types
+  // (migration 226). Default null — the reviewer must pick before saving so
+  // "email" doesn't get silently assumed for a WhatsApp send.
+  const [channelTypeId, setChannelTypeId] = useState<number | null>(null);
   // Manual-add form state. Kept in the drawer so opening/closing without
   // submitting does not silently drop what the reviewer typed.
   const [manualOpen, setManualOpen] = useState(false);
@@ -134,8 +139,14 @@ export function JourneyDrawer({
   const [manualPhone, setManualPhone] = useState('');
 
   // Reset compose when the drawer switches to a different journey — a body
-  // from one company must never leak into another.
-  useEffect(() => { setSubject(''); setBody(''); }, [journey?.prospect_id]);
+  // from one company must never leak into another. Channel resets too so
+  // the reviewer doesn't inherit the last account's medium.
+  useEffect(() => { setSubject(''); setBody(''); setChannelTypeId(null); }, [journey?.prospect_id]);
+
+  // Master list of channel types (email, whatsapp, linkedin, blog, …).
+  // Cached at hook level; one query per session.
+  const { channelTypes } = useChannelTypes();
+  const selectedChannel = channelTypes.find((c) => c.id === channelTypeId);
 
   const prospectId = journey?.prospect_id ?? 0;
   const enabled = open && !!journey;
@@ -218,7 +229,7 @@ export function JourneyDrawer({
     onError: (e) => toast.showToast({ message: e.message, type: 'error' }),
   });
   const createStory = useSkillMutation('story-skill', 'create_story', {
-    onSuccess: (r) => { toast.showToast({ message: `Draft saved (story ${r.data?.seq}).`, type: 'success' }); qc.invalidateQueries({ queryKey: ['skill'] }); setSubject(''); setBody(''); },
+    onSuccess: (r) => { toast.showToast({ message: `Draft saved (story ${r.data?.seq}).`, type: 'success' }); qc.invalidateQueries({ queryKey: ['skill'] }); setSubject(''); setBody(''); setChannelTypeId(null); },
     onError: (e) => toast.showToast({ message: e.message, type: 'error' }),
   });
   const approveStory = useSkillMutation('story-skill', 'approve_story', {
@@ -560,6 +571,37 @@ export function JourneyDrawer({
                     )}
                   </div>
                 </div>
+                {/* Channel picker — master data from gt_channel_types (mig 226).
+                    Grouped by kind so the reviewer sees direct/broadcast/asset
+                    as distinct affordances rather than one long list. */}
+                <div className={s.field}>
+                  <label className={s.label}>Channel</label>
+                  <select className={s.input}
+                    value={channelTypeId ?? ''}
+                    onChange={(e) => setChannelTypeId(e.target.value ? Number(e.target.value) : null)}>
+                    <option value="">Pick a channel…</option>
+                    {(['direct', 'broadcast', 'asset'] as const).map((k) => {
+                      const inKind = channelTypes.filter((c) => c.kind === k);
+                      if (inKind.length === 0) return null;
+                      const groupLabel = k === 'direct' ? '1:1 send'
+                        : k === 'broadcast' ? 'Public post' : 'Attached asset';
+                      return (
+                        <optgroup key={k} label={groupLabel}>
+                          {inKind.map((c) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </optgroup>
+                      );
+                    })}
+                  </select>
+                  {selectedChannel && selectedChannel.kind !== 'direct' && (
+                    <p className={s.hint} style={{ marginTop: '0.35rem' }}>
+                      {selectedChannel.kind === 'broadcast'
+                        ? 'A public post — the body below is the copy going out; subject may be a headline.'
+                        : 'An attached asset — pair with a direct-channel story that references it.'}
+                    </p>
+                  )}
+                </div>
                 <div className={s.field}>
                   <label className={s.label}>Subject</label>
                   <input className={s.input} value={subject}
@@ -600,13 +642,17 @@ export function JourneyDrawer({
                 <div className={s.actions}>
                   <button className={`${s.btn} ${s.btnPrimary}`}
                     disabled={createStory.isPending || !body || body.length < 20
-                      || !journeyId || !traceOut.ok}
-                    onClick={() => journeyId && createStory.mutateAsync({
+                      || !journeyId || !traceOut.ok || !channelTypeId}
+                    onClick={() => journeyId && channelTypeId && createStory.mutateAsync({
                       journey_id: journeyId,
+                      channel_type_id: channelTypeId,
                       subject: subject || null, body,
                     })}>
                     Save draft
                   </button>
+                  {!channelTypeId && (body.length >= 20) && (
+                    <span className={s.hint}>Pick a channel above — a story with no medium is unsent by definition.</span>
+                  )}
                   {draftStories.length === 0 && (
                     <span className={s.hint}>
                       A saved draft is not sent. Approve it below and the journey moves to ready.

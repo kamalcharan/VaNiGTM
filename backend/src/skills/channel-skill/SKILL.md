@@ -13,6 +13,11 @@ Manages outreach channel connections (email SMTP, WhatsApp Business API, LinkedI
 
 ## Functions
 
+### get_channel_types
+Master list of channel types (`email`, `whatsapp`, `linkedin`, `blog`, `facebook`, `twitter`, `instagram`, `reddit`, `playbook`, `survey`, `usecase_nurture`). Tenant-agnostic — every tenant sees the same set. Used by the compose surface to populate its channel picker and by the asset library to filter by target medium.
+- Parameters: `kind` (optional, one of `direct` | `broadcast` | `asset`)
+- Returns: `{ channel_types: [{ id, code, name, kind, sort_order }], recipe: 'channel-type-list' }`
+
 ### get_channels
 List all channels for the tenant.
 - Parameters: channel_type (optional, string)

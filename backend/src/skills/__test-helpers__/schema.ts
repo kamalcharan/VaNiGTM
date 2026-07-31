@@ -79,6 +79,7 @@ const CORE_MIGRATIONS = [
   '223_gt_cadence_governor.sql',
   '224_contact_evidence.sql',
   '225_gt_journey_stories.sql',
+  '226_gt_channel_types.sql',
 ];
 
 export interface TestSchema {
