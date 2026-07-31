@@ -56,19 +56,16 @@ over the App Spec, so read it before treating anything above as final on auth mo
 - ✅ Option A proposed with rationale (in-repo lazy routes; needs route-level code-splitting
   in `App.tsx` — currently one ~970KB chunk, must not ship on the VaNi path). **Awaiting
   Charan's approval at G1.**
-- ⚠️ WS2.1 schema inspection: **blocked in old session, unblock ready.** Direct 5432 is
-  unreachable (VPS firewall + sandbox egress). Solution installed: read-only MCP channel.
-  - `.mcp.json` at repo root → `gtm-postgres` (SSE, `https://mcp-db.dristiq.com/sse`).
-  - Host reachability CONFIRMED (nginx 401 challenge seen from this environment).
-  - Requires `GTM_MCP_BASIC` env var in the Claude environment settings (Charan sets it;
-    `base64("claude:<password>")`). It was NOT set as of handover.
-  - **Re-checked 2026-07-31 (new session):** still blocked. `curl` to
-    `https://mcp-db.dristiq.com/sse` returns 401 (host reachable, as before), but
-    `GTM_MCP_BASIC` is still unset in this environment and no `gtm-postgres` MCP tools
-    are exposed to the session. WS2.1 inspection queries (`SELECT current_database();`
-    etc.) could not be run. Still the one missing leg — needs Charan to set the env var,
-    then a fresh session/reconnect to pick it up.
+- ✅ WS2.1 schema inspection: **complete, 2026-07-31.** MCP channel (`gtm-postgres`) is
+  still not usable from inside a Claude session — `GTM_MCP_BASIC` remains unset, so the
+  server never connects — but Charan ran the inspection queries directly and pasted the
+  results back. Full findings, including three concrete open items for G1 (missing
+  `pgjwt` extension, RLS not enforced on `vn_*`/`gt_events`/`gt_prompts`, Supabase-style
+  role names needing confirmation), tenant #1 status, and table census: see
+  **`docs/WS2.1-schema-report.md`**.
 - ❌ WS2.2–2.5 (migrations, scoring fn, login RPC, seed): **not started — gated on G1.**
+  WS2.1's findings sharpen the G1 auth-model decision (see report §9) but don't
+  change the gate — nothing gets written to the DB until G1 signs off.
 
 ## 5. New session: do this first
 
