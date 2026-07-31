@@ -22,7 +22,10 @@ Reading order (POA §Reading Order — precedence: POA > Addendum A > App Spec >
 2. `VANI_AI_MENTOR_BRIEF.md` + Addendum A — guardrails; `vani_gtm` directive; Supabase prohibition
 3. `vani-ai-ux-blueprint.html` v2 — design system; implement, don't reinterpret; reviewer nav + sample data excluded
 4. `email-report.html` / `email-report.txt` — report email templates (merge fields)
-5. `AI_Failed_Initiatives_Audit_PilotPack_v1.docx` §3 — survey instrument, seed VERBATIM (**not yet provided — request it**)
+5. `AI_Failed_Initiatives_Audit_PilotPack_v1.docx` §3 — survey instrument, seed VERBATIM.
+   **Received 2026-07-31**, saved verbatim at `docs/vani-ai-recovery-assessment-definition.json`
+   (`service_slug: ai-recovery`, 12 questions, 10 failure modes, bands 71/41 — matches §3 guardrails).
+   Not yet seeded into any DB row — WS2.5 is still gated on G1.
 6. `VaNi_AI_POA_v1.docx` — workstreams, gates, session protocol
 
 ## 3. Hard guardrails (never drift)
@@ -51,6 +54,12 @@ Reading order (POA §Reading Order — precedence: POA > Addendum A > App Spec >
   - Host reachability CONFIRMED (nginx 401 challenge seen from this environment).
   - Requires `GTM_MCP_BASIC` env var in the Claude environment settings (Charan sets it;
     `base64("claude:<password>")`). It was NOT set as of handover.
+  - **Re-checked 2026-07-31 (new session):** still blocked. `curl` to
+    `https://mcp-db.dristiq.com/sse` returns 401 (host reachable, as before), but
+    `GTM_MCP_BASIC` is still unset in this environment and no `gtm-postgres` MCP tools
+    are exposed to the session. WS2.1 inspection queries (`SELECT current_database();`
+    etc.) could not be run. Still the one missing leg — needs Charan to set the env var,
+    then a fresh session/reconnect to pick it up.
 - ❌ WS2.2–2.5 (migrations, scoring fn, login RPC, seed): **not started — gated on G1.**
 
 ## 5. New session: do this first
