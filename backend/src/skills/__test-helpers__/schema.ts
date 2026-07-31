@@ -80,6 +80,7 @@ const CORE_MIGRATIONS = [
   '224_contact_evidence.sql',
   '225_gt_journey_stories.sql',
   '226_gt_channel_types.sql',
+  '227_channel_type_fk.sql',
 ];
 
 export interface TestSchema {
