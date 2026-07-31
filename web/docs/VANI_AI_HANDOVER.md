@@ -63,9 +63,26 @@ over the App Spec, so read it before treating anything above as final on auth mo
   `pgjwt` extension, RLS not enforced on `vn_*`/`gt_events`/`gt_prompts`, Supabase-style
   role names needing confirmation), tenant #1 status, and table census: see
   **`docs/WS2.1-schema-report.md`**.
-- ❌ WS2.2–2.5 (migrations, scoring fn, login RPC, seed): **not started — gated on G1.**
-  WS2.1's findings sharpen the G1 auth-model decision (see report §9) but don't
-  change the gate — nothing gets written to the DB until G1 signs off.
+- ✅ G1 auth-model reconciliation: **ruled by Charan, 2026-07-31**, directly off the
+  WS2.1 findings. Five rulings: (1) dedicated `vani` Postgres schema, not a
+  `gt_assessment_*` prefix in `public` — supersedes Addendum A on this point; (2) vendor
+  pgjwt's functions into the migration rather than install the extension; (3) the new
+  PostgREST instance connects as a fresh non-BYPASSRLS role scoped to `vani` — the
+  existing app's `admin`/`vikuna_admin` connection is untouched; (4) create a fresh
+  Vikuna Consulting tenant rather than reuse the zero-UUID `"vikuna"` sentinel row;
+  (5) VaNi's lead tables stay self-contained, no FK to `gt_prospects` — a sync is a later,
+  optional job. Supabase-naming question resolved: self-hosted `postgres:17-alpine` +
+  `postgrest/postgrest:v12.2.3` per the infra doc, not an actual Supabase project.
+- ✅ WS2.2–2.5 (migrations, scoring fn, login RPC, seed): **drafted, 2026-07-31, NOT
+  applied.** Reviewable SQL under `docs/sql/` (`ws2.2-schema-and-roles.sql` through
+  `ws2.5-seed.sql`, plus `ws2.6-isolation-test.sql` for verification) — see
+  `docs/sql/README.md` for apply order, operational prerequisites (JWT secret, role
+  password, the WS0.4 second-PostgREST-instance dependency), and the judgment calls made
+  beyond the five rulings. Nothing has been run against `vani_gtm_db`.
+- ❌ Still open, not blocking the SQL draft per Charan's ruling: WS0.1 (worker/
+  `AGENT_REGISTRY` deployed against `vani_gtm_db`? gates WS4.1, not schema), the CRO
+  branch sequencing call, and a one-line on-record Supabase-naming confirmation from
+  Charan (see `docs/sql/README.md` "What's still open").
 
 ## 5. New session: do this first
 
