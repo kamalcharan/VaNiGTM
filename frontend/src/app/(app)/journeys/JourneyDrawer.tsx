@@ -125,6 +125,13 @@ export function JourneyDrawer({
   const qc = useQueryClient();
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  // Manual-add form state. Kept in the drawer so opening/closing without
+  // submitting does not silently drop what the reviewer typed.
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualName, setManualName] = useState('');
+  const [manualTitle, setManualTitle] = useState('');
+  const [manualEmail, setManualEmail] = useState('');
+  const [manualPhone, setManualPhone] = useState('');
 
   // Reset compose when the drawer switches to a different journey — a body
   // from one company must never leak into another.
@@ -161,6 +168,24 @@ export function JourneyDrawer({
     { journey_id: journeyId ?? 0 }, { enabled: enabled && !!journeyId },
   );
 
+  // The recommender — the SHELL the human writes into. Only fires when
+  // the drawer would actually show the compose surface (addressed/ready/
+  // answered), so we don't burn a query on a brief nobody is about to
+  // write against.
+  const state = journey?.state ?? '';
+  const recRes = useSkillQuery<{
+    ready: boolean; reason?: string;
+    headline?: string; headline_url?: string; angle?: string; ask?: string;
+    suggested_subject?: string; story_seq?: number;
+    cited_evidence?: Array<{ claim: string; url: string }>;
+    already_said?: Array<{ seq: number; subject: string | null; snippet: string }>;
+  }>(
+    'story-skill', 'recommend_topic',
+    { journey_id: journeyId ?? 0 },
+    { enabled: enabled && !!journeyId && ['addressed', 'ready', 'answered'].includes(state) },
+  );
+  const rec = recRes.data?.data;
+
   const evidence: EvidenceLine[] = useMemo(() => (brief?.raw_evidence ?? [])
     .filter((e) => e?.claim && e?.url)
     .map((e) => ({ claim: e.claim, url: e.url })), [brief]);
@@ -182,6 +207,16 @@ export function JourneyDrawer({
     onSuccess: () => { toast.showToast({ message: 'Contact promoted.', type: 'success' }); qc.invalidateQueries({ queryKey: ['skill'] }); },
     onError: (e) => toast.showToast({ message: e.message, type: 'error' }),
   });
+  const addManual = useSkillMutation('contact-skill', 'add_contact_manually', {
+    onSuccess: () => {
+      toast.showToast({ message: 'Contact added — journey moved.', type: 'success' });
+      qc.invalidateQueries({ queryKey: ['skill'] });
+      setManualOpen(false);
+      setManualName(''); setManualTitle(''); setManualEmail(''); setManualPhone('');
+      onMoved();
+    },
+    onError: (e) => toast.showToast({ message: e.message, type: 'error' }),
+  });
   const createStory = useSkillMutation('story-skill', 'create_story', {
     onSuccess: (r) => { toast.showToast({ message: `Draft saved (story ${r.data?.seq}).`, type: 'success' }); qc.invalidateQueries({ queryKey: ['skill'] }); setSubject(''); setBody(''); },
     onError: (e) => toast.showToast({ message: e.message, type: 'error' }),
@@ -197,7 +232,6 @@ export function JourneyDrawer({
 
   if (!journey) return null;
 
-  const state = journey.state;
   const briefContacts = briefContactsRes.data?.data?.entries ?? [];
   const promotedContact = contactsRes.data?.data?.contacts?.[0];
   const stories = storiesRes.data?.data?.stories ?? [];
@@ -316,10 +350,68 @@ export function JourneyDrawer({
                       ))}
                     </div>
                   </div>
-                ) : briefContactsRes.data?.data?.empty_reason ? (
-                  <p className={s.mut}>{briefContactsRes.data.data.empty_reason}</p>
-                ) : briefContacts.length === 0 ? (
-                  <p className={s.mut}>No named contacts on the brief. Add one by hand from the contacts page.</p>
+                ) : (briefContactsRes.data?.data?.empty_reason || briefContacts.length === 0) ? (
+                  <>
+                    <p className={s.mut}>
+                      {briefContactsRes.data?.data?.empty_reason
+                        ?? 'No named contacts on the brief — the research flow found none.'}
+                    </p>
+                    {!manualOpen && (
+                      <div className={s.actions}>
+                        <button className={`${s.btn} ${s.btnPrimary}`} onClick={() => setManualOpen(true)}>
+                          Add a contact by hand
+                        </button>
+                      </div>
+                    )}
+                    {manualOpen && (
+                      <>
+                        <div className={s.field}>
+                          <label className={s.label}>Name</label>
+                          <input className={s.input} value={manualName}
+                            onChange={(e) => setManualName(e.target.value)}
+                            placeholder="Full name" />
+                        </div>
+                        <div className={s.field}>
+                          <label className={s.label}>Role (optional)</label>
+                          <input className={s.input} value={manualTitle}
+                            onChange={(e) => setManualTitle(e.target.value)}
+                            placeholder="e.g. Plant Head" />
+                        </div>
+                        <div className={s.field}>
+                          <label className={s.label}>Email or phone (at least one)</label>
+                          <input className={s.input} value={manualEmail}
+                            onChange={(e) => setManualEmail(e.target.value)}
+                            placeholder="email@company.com" style={{ marginBottom: '0.5rem' }} />
+                          <input className={s.input} value={manualPhone}
+                            onChange={(e) => setManualPhone(e.target.value)}
+                            placeholder="+91 …" />
+                        </div>
+                        <p className={s.hint}>
+                          This person will be recorded with <strong>source: manual</strong> —
+                          honestly not from the brief. R-C2 still applies: at least one channel
+                          or the journey cannot advance.
+                        </p>
+                        <div className={s.actions}>
+                          <button className={`${s.btn} ${s.btnPrimary}`}
+                            disabled={addManual.isPending || !manualName.trim()
+                              || (!manualEmail.trim() && !manualPhone.trim())}
+                            onClick={() => addManual.mutateAsync({
+                              prospect_id: journey.prospect_id,
+                              name: manualName.trim(),
+                              job_title: manualTitle.trim() || null,
+                              email: manualEmail.trim() || null,
+                              phone: manualPhone.trim() || null,
+                              confirm_addressed: true,
+                            })}>
+                            Add & confirm addressed
+                          </button>
+                          <button className={s.btn} onClick={() => setManualOpen(false)}>
+                            Cancel
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </>
                 ) : (
                   briefContacts.filter((c) => !c.promoted_contact_id).map((c) => (
                     <div key={c.named_index} className={s.item}>
@@ -395,9 +487,62 @@ export function JourneyDrawer({
             <section className={s.section}>
               <div className={s.sectionH}>
                 <span>Write a story</span>
-                <span className={s.count}>R-S1 checks as you type</span>
+                <span className={s.count}>
+                  VaNi recommends · you write · R-S1 checks
+                </span>
               </div>
               <div className={s.sectionB}>
+
+                {/* ── The recommender — the SHELL the human writes into ────
+                    "AI recommends topic and context, human writes the words."
+                    Deterministic at pilot scale; the same response shape a
+                    future LLM will fill. What the reviewer sees is: what to
+                    open on (with the source URL to click), the offer angle,
+                    the ask, and what NOT to repeat from earlier stories. */}
+                {rec?.ready && (
+                  <div className={s.owedBanner} style={{ marginBottom: '1rem' }}>
+                    <div className={s.owedLabel}>
+                      VaNi recommends · story {rec.story_seq}
+                    </div>
+                    <div style={{ fontSize: '0.95rem', marginBottom: '0.5rem' }}>
+                      Open on: <strong>{rec.headline}</strong>
+                    </div>
+                    {rec.headline_url && (
+                      <div className={s.itemMeta} style={{ marginBottom: '0.6rem' }}>
+                        <a href={`https://${rec.headline_url.replace(/^https?:\/\//, '')}`}
+                          target="_blank" rel="noreferrer"
+                          style={{ color: 'var(--color-accent)' }}>
+                          → {rec.headline_url}
+                        </a>
+                      </div>
+                    )}
+                    <div className={s.hint} style={{ marginTop: '0.5rem' }}>
+                      <strong>Angle:</strong> {rec.angle}
+                    </div>
+                    <div className={s.hint}>
+                      <strong>Ask:</strong> {rec.ask}
+                    </div>
+                    {rec.already_said && rec.already_said.length > 0 && (
+                      <div className={s.hint} style={{ marginTop: '0.5rem', color: 'var(--color-warning)' }}>
+                        <strong>Do not repeat:</strong> story{rec.already_said.length > 1 ? 'ies' : ''}{' '}
+                        {rec.already_said.map((x) => x.seq).join(', ')}
+                        {' '}already said this.
+                      </div>
+                    )}
+                    {rec.suggested_subject && (
+                      <div className={s.actions} style={{ marginTop: '0.75rem' }}>
+                        <button className={`${s.btn} ${s.btnPrimary}`}
+                          onClick={() => setSubject(rec.suggested_subject ?? '')}>
+                          Use this subject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {rec && !rec.ready && (
+                  <div className={s.errorNote}>{rec.reason}</div>
+                )}
+
                 <div className={s.field}>
                   <label className={s.label}>Evidence to cite</label>
                   <div className={s.evPicker}>

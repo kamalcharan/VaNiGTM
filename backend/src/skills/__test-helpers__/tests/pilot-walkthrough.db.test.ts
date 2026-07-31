@@ -36,8 +36,10 @@ import { get_journey } from '../../journey-skill/functions/get-journey';
 import { get_briefs } from '../../research-skill/functions/get-briefs';
 import { list_brief_contacts } from '../../contact-skill/functions/list-brief-contacts';
 import { promote_from_brief } from '../../contact-skill/functions/promote-from-brief';
+import { add_contact_manually } from '../../contact-skill/functions/add-contact-manually';
 import { get_prospect_contacts } from '../../contact-skill/functions/get-prospect-contacts';
 import { create_story } from '../../story-skill/functions/create-story';
+import { recommend_topic } from '../../story-skill/functions/recommend-topic';
 import { approve_story } from '../../story-skill/functions/approve-story';
 import { reserve_touch } from '../../cadence-skill/functions/reserve-touch';
 import { log_touch } from '../../research-skill/functions/log-touch';
@@ -219,5 +221,97 @@ d('the pilot cycle', () => {
     await expect(promote_from_brief({
       brief_id: Number(b.rows[0].id), named_index: 0,
     }, ctx())).rejects.toThrow(/named nobody/i);
+  });
+
+  it('unsticks a brief-with-no-contact by adding a person manually', async () => {
+    // The exact case that stopped 3 of the pilot's 4 companies. The brief
+    // has no named_contacts, so promote refuses. add_contact_manually
+    // takes over: source='manual' (not 'research'), still gates R-C2.
+    const p = await pool.query(
+      `INSERT INTO gt_prospects (tenant_id, is_live, name) VALUES ($1, false, 'Nallamala') RETURNING id`, [A]);
+    const prospect = Number(p.rows[0].id);
+    await pool.query(
+      `INSERT INTO gt_account_briefs
+         (tenant_id, is_live, prospect_id, status, named_contacts, raw_evidence, facts_at)
+       VALUES ($1, false, $2, 'approved', '[]'::jsonb, '[]'::jsonb, now())`, [A, prospect]);
+    const c = ctx();
+    // Journey has to be at qualified for addressed to be a legal move.
+    await moveByProspect(createTenantDb(pool, A), { tenant_id: A, is_live: false },
+      prospect, 'qualified', { actor: 'human' });
+
+    // No channel → R-C2 refuses.
+    await expect(add_contact_manually({
+      prospect_id: prospect, name: 'S. Rao', confirm_addressed: true,
+    }, c)).rejects.toThrow(/R-C2/i);
+
+    // With a channel → journey moves.
+    const added = await add_contact_manually({
+      prospect_id: prospect, name: 'S. Rao', job_title: 'Plant Head',
+      email: 's.rao@nallamala.example', confirm_addressed: true,
+    }, c);
+    expect(added.journey_state).toBe('addressed');
+
+    // And its source is 'manual', not 'research' — the two provenances
+    // stay honestly separate.
+    const src = await pool.query(
+      `SELECT source FROM gt_contacts WHERE id = $1`, [added.contact_id]);
+    expect(src.rows[0].source).toBe('manual');
+  });
+
+  it('recommends a topic the human can write against', async () => {
+    // The other blocker: "write a story" with no shell. Recommender picks
+    // an opener, an offer angle, an ask, and lists what NOT to repeat.
+    const { journeyId } = await seed();
+    const r = await recommend_topic({ journey_id: journeyId }, ctx());
+    expect(r.ready).toBe(true);
+    expect(r.headline).toBeTruthy();
+    expect(r.headline_url).toMatch(/sriveda\.example/);
+    // Offer angle written for the offer this brief was approved on.
+    expect(r.angle).toMatch(/CAIO/i);
+    // Nothing to avoid on story 1.
+    expect(r.already_said).toHaveLength(0);
+    expect(r.story_seq).toBe(1);
+  });
+
+  it('recommends against repeating an earlier story\'s argument', async () => {
+    const { prospect, journeyId } = await seed();
+    const c = ctx();
+    // Walk the journey to ready with story 1 approved.
+    await moveByProspect(createTenantDb(pool, A), { tenant_id: A, is_live: false },
+      prospect, 'addressed', { actor: 'human' });
+    const s1 = await create_story({
+      journey_id: journeyId,
+      body: 'Hiring a QA documentation lead — the batch-record work is '
+        + 'the obvious first cut. Worth fifteen minutes?',
+    }, c);
+    // Approve so it counts against the "already said" bag.
+    await (await import('../../story-skill/functions/approve-story')).approve_story(
+      { story_id: s1.story_id }, c);
+
+    const r = await recommend_topic({ journey_id: journeyId }, c);
+    expect(r.ready).toBe(true);
+    expect(r.story_seq).toBe(2);
+    expect(r.already_said).toHaveLength(1);
+    // The recommender should have picked a DIFFERENT opener the second time —
+    // ideally not the "QA documentation lead" line story 1 already used.
+    expect(r.headline).not.toMatch(/QA documentation/i);
+  });
+
+  it('refuses to recommend when the journey has no evidence', async () => {
+    // Same edge as create_story — a story with nothing to trace to is a
+    // template with a name on it. The recommender returns ready:false with
+    // a reason so the compose UI shows the empty-brief message.
+    const p = await pool.query(
+      `INSERT INTO gt_prospects (tenant_id, is_live, name) VALUES ($1, false, 'Empty') RETURNING id`, [A]);
+    const prospect = Number(p.rows[0].id);
+    // Journey exists but no brief.
+    await (await import('../../journey-skill/journey.service')).ensureJourney(
+      createTenantDb(pool, A), { tenant_id: A, is_live: false }, prospect);
+    const jid = Number((await pool.query(
+      `SELECT id FROM gt_journeys WHERE prospect_id = $1`, [prospect])).rows[0].id);
+
+    const r = await recommend_topic({ journey_id: jid }, ctx());
+    expect(r.ready).toBe(false);
+    expect(r.reason).toMatch(/no evidence/i);
   });
 });
