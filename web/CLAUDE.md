@@ -10,11 +10,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run lint` — ESLint over `.ts`/`.tsx` with `--max-warnings 0`; a single warning fails the run.
 - `npm run preview` — serve the built `dist/` locally.
 
-There is no test runner configured — the "test" step for changes is `npm run build` + `npm run lint`.
+There is no test runner configured — the "test" step for changes is `npm run build`. Note: `npm run lint` is currently broken (ESLint flat config invoked with the removed `--ext` flag, and `eslint.config.js` imports `typescript-eslint` which is not in `package.json`) — pre-existing, not gating.
+
+## VaNi AI (in progress)
+
+The VaNi AI assessment platform is being built into this repo (Option A, pending Gate G1). Before touching anything VaNi-related, read `docs/VANI_AI_HANDOVER.md` — it holds the phase status, guardrails (no Supabase for VaNi data, config-driven survey engine, deterministic SQL scoring), and next steps. `.mcp.json` configures the read-only `gtm-postgres` MCP channel to `vani_gtm_db` (requires the `GTM_MCP_BASIC` env var in the Claude environment settings).
 
 ## Architecture
 
-Single-page marketing site: React 18 + TypeScript + Vite, styled with Tailwind. `src/main.tsx` mounts `<App/>` inside `BrowserRouter`; `src/App.tsx` wires `ThemeProvider` around two routes — `/` (a composed `HomePage` made of section components from `src/components/vikuna/`) and `/assessment`. Deploy target is Vercel; `vercel.json` rewrites all non-asset paths to `/index.html` (SPA fallback) and holds outbound redirects for `/bcl-*` marketing links.
+Single-page marketing site: React 18 + TypeScript + Vite, styled with Tailwind. `src/main.tsx` mounts `<App/>` inside `BrowserRouter`; `src/App.tsx` wires `ThemeProvider` around the routes — `/` (a composed `HomePage` made of section components from `src/components/vikuna/`), `/assessment` (client-side AI readiness quiz with a soft-gate lead form), `/mvp`, `/training`, `/playbooks/why-ai-fails`, and `/preview[/:name]` (internal gallery of unmounted section components, noindexed). Deploy target is Vercel (production deploys from `main` to `www.vikuna.io`); `vercel.json` rewrites all non-asset paths to `/index.html` (SPA fallback) and holds outbound redirects for `/bcl-*` marketing links.
+
+Lead capture: client-side forms POST JSON to n8n webhooks on `n8n.srv1096269.hstgr.cloud` (`bcl2025-lead` live; `assessment-lead` and `playbook-lead` referenced by the React forms — workflows must exist in n8n for delivery to happen; the UI succeeds gracefully regardless). One Calendly link site-wide: `calendly.com/connect-vikuna/30min`.
 
 Import alias: `@/*` maps to `src/*` (declared in both `tsconfig.json` and `vite.config.ts` — keep them in sync).
 
