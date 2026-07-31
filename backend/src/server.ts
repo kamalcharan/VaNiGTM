@@ -11,6 +11,7 @@ import { createVaniRouter } from './skills/vani-skill/vani.routes';
 import { createIngestionRouter } from './skills/ingestion-skill/ingestion.routes';
 import { createProfileRouter } from './skills/profile-skill/profile.routes';
 import { createStorytellerRouter } from './skills/storyteller-skill/storyteller.routes';
+import { createAssessmentRouter } from './skills/assessment-skill/assessment.routes';
 import { verifyAccessToken } from './auth/token.service';
 import { resolveAuth } from './auth/auth-context';
 
@@ -69,7 +70,9 @@ async function main() {
   app.use('/api/v1/ingest', createIngestionRouter(pool));
   app.use('/api/v1/profile', createProfileRouter(pool));
   app.use('/api/v1/storyteller', createStorytellerRouter(pool));
-  console.log('[VaNi-GTM] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /vani, /ingest, /profile, /storyteller');
+  // Public (no JWT) — see assessment-skill/SKILL.md "Two halves, two access models".
+  app.use('/api/v1/assessment', createAssessmentRouter(pool));
+  console.log('[VaNi-GTM] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /vani, /ingest, /profile, /storyteller, /assessment');
 
   // Build skill registry
   const skillsDir = path.resolve(__dirname, 'skills');
