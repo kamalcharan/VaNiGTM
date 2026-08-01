@@ -86,3 +86,42 @@ describe('scoreResponse', () => {
     expect(a.health).toBe(b.health);
   });
 });
+
+describe('scoreResponse tie-break', () => {
+  // Three modes, each scored by exactly one question with weight 1.0, all
+  // answered to the same score -> identical exposure_pct for all three.
+  // A has a higher composite_weight than B/C (which are equal to each
+  // other) -> expected order: A (weight wins), then B, then C (key asc).
+  const TIE_FIXTURE: AssessmentDefinition = {
+    scoring: {
+      option_scale: [0, 1, 2],
+      top_modes_reported: 3,
+      bands: [{ key: 'x', label: 'X', min: 0, max: 100, color: 'grey', verdict: 'v', next_step: 'n' }],
+    },
+    modes: [
+      { key: 'A', name: 'Mode A', composite_weight: 2.0, symptom: 's', remediation: 'r', route_service: 'x', route_label: 'X', referral_line: 'l' },
+      { key: 'C', name: 'Mode C', composite_weight: 1.0, symptom: 's', remediation: 'r', route_service: 'x', route_label: 'X', referral_line: 'l' },
+      { key: 'B', name: 'Mode B', composite_weight: 1.0, symptom: 's', remediation: 'r', route_service: 'x', route_label: 'X', referral_line: 'l' },
+    ],
+    questions: [
+      { id: 'QA', modes: { A: 1.0 }, framing: 'f', text: 't', options: [{ label: 'a', score: 0 }, { label: 'b', score: 1 }, { label: 'c', score: 2 }] },
+      { id: 'QB', modes: { B: 1.0 }, framing: 'f', text: 't', options: [{ label: 'a', score: 0 }, { label: 'b', score: 1 }, { label: 'c', score: 2 }] },
+      { id: 'QC', modes: { C: 1.0 }, framing: 'f', text: 't', options: [{ label: 'a', score: 0 }, { label: 'b', score: 1 }, { label: 'c', score: 2 }] },
+    ],
+  };
+
+  it('breaks an exposure tie by composite_weight descending, then mode key ascending', () => {
+    const result = scoreResponse(TIE_FIXTURE, { QA: 2, QB: 2, QC: 2 });
+    // All three at the same exposure_pct — order must not be definition.modes'
+    // incidental array order (A, C, B), it must be the stated rule.
+    expect(result.all_modes.map((m) => m.exposure_pct)).toEqual([100, 100, 100]);
+    expect(result.all_modes.map((m) => m.key)).toEqual(['A', 'B', 'C']);
+    expect(result.top_modes.map((m) => m.key)).toEqual(['A', 'B', 'C']);
+  });
+
+  it('is stable across repeated calls on identical input (same order every time)', () => {
+    const runs = Array.from({ length: 5 }, () =>
+      scoreResponse(TIE_FIXTURE, { QA: 2, QB: 2, QC: 2 }).all_modes.map((m) => m.key));
+    expect(new Set(runs.map((r) => r.join(','))).size).toBe(1);
+  });
+});

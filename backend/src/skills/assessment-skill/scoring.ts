@@ -150,14 +150,33 @@ export function scoreResponse(
   const band = definition.scoring.bands.find((b) => health >= b.min && health <= b.max)
     ?? definition.scoring.bands[definition.scoring.bands.length - 1];
 
+  // Deterministic tie-break, applied to ONE canonical order that both
+  // top_modes and all_modes slice from (previously two separate .sort()
+  // calls — both stable, but on exposure_pct alone, so a tie fell back to
+  // whatever position the mode happened to occupy in definition.modes. That
+  // was reproducible but not a stated rule, and would have silently
+  // reordered ties the day someone reordered the modes array. Explicit rule
+  // now: exposure_pct desc, then composite_weight desc (the more severe
+  // failure mode wins a tie), then mode key ascending as a final,
+  // always-available tiebreaker. Note "F10" sorts before "F2" under plain
+  // string comparison — intentional (asked for "mode key asc", not
+  // numeric-aware), and harmless since ties this exact are rare and the key
+  // is never shown to the respondent.
+  const weightByKey = new Map(definition.modes.map((m) => [m.key, m.composite_weight]));
+  const orderedModes = [...scoredModes].sort((a, b) => {
+    if (b.exposure_pct !== a.exposure_pct) return b.exposure_pct - a.exposure_pct;
+    const wa = weightByKey.get(a.key) ?? 0;
+    const wb = weightByKey.get(b.key) ?? 0;
+    if (wb !== wa) return wb - wa;
+    return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+  });
+
   const topN = definition.scoring.top_modes_reported ?? 3;
-  const top_modes = [...scoredModes]
-    .sort((a, b) => b.exposure_pct - a.exposure_pct)
+  const top_modes = orderedModes
     .slice(0, topN)
     .map((m) => ({ ...m, exposure_pct: Math.round(m.exposure_pct) }));
 
-  const all_modes = [...scoredModes]
-    .sort((a, b) => b.exposure_pct - a.exposure_pct)
+  const all_modes = orderedModes
     .map((m) => ({ key: m.key, name: m.name, exposure_pct: Math.round(m.exposure_pct) }));
 
   return { health, band, top_modes, all_modes };

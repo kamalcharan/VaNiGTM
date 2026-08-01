@@ -145,6 +145,18 @@ async function main() {
   check(`narrative mentions top mode #1 name ("${expected.top_modes[0].name}")`, narrative.includes(expected.top_modes[0].name));
   console.log(`\n  Narrative: "${narrative}"`);
 
+  // Task A2 item 0: gt_report.top_modes is frozen at capture time (migration
+  // 229) so report + any future email read the SAME ordered list rather than
+  // each recomputing — check it's actually there, in the tie-broken order
+  // scoreResponse() produces, key-for-key.
+  const reportTopModes = (report as any)?.top_modes as Array<{ key: string }> | null;
+  check('gt_report.top_modes is populated (not left NULL)', Array.isArray(reportTopModes) && reportTopModes.length > 0);
+  check(
+    'gt_report.top_modes order matches scoreResponse()\'s tie-broken order, key-for-key',
+    JSON.stringify(reportTopModes?.map((m) => m.key)) === JSON.stringify(expected.top_modes.map((m) => m.key)),
+    `report=${JSON.stringify(reportTopModes?.map((m) => m.key))} expected=${JSON.stringify(expected.top_modes.map((m) => m.key))}`,
+  );
+
   console.log('\n[6] GET /report/:token with a garbage token (must not leak data)');
   const bogus = await AssessmentAgent.getReportByToken(pool, '00000000-0000-0000-0000-000000000000');
   check('unknown token returns null, not an error or someone else\'s report', bogus === null);

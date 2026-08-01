@@ -317,14 +317,18 @@ export class AssessmentAgent {
       const fallbackTemplate = definition.narrative_prompt?.fallback ?? '';
       const narrative = fallbackTemplate ? fillFallbackNarrative(fallbackTemplate, scored) : null;
 
+      // Ordered top-three frozen here, once — report rendering and any
+      // future email dispatch both read gt_report.top_modes, neither
+      // recomputes, so they can never disagree (migration 229).
       const reportResult = await tx.query<{ report_token: string; ref: string }>(
-        `INSERT INTO gt_report (tenant_id, assessment_response_id, ref, narrative, narrative_source)
-         VALUES ($tenant_id, $response_id, gt_next_seq($tenant_id::uuid, 'vani_report'), $narrative, 'fallback')
+        `INSERT INTO gt_report (tenant_id, assessment_response_id, ref, narrative, narrative_source, top_modes)
+         VALUES ($tenant_id, $response_id, gt_next_seq($tenant_id::uuid, 'vani_report'), $narrative, 'fallback', $top_modes::jsonb)
          RETURNING report_token, ref`,
         {
           tenant_id: tenantId,
           response_id: response.id,
           narrative,
+          top_modes: JSON.stringify(scored.top_modes),
         },
       );
       const report = reportResult.rows[0];
@@ -353,8 +357,12 @@ export class AssessmentAgent {
       health_score: number | null; band: string | null; top_modes: unknown;
       name: string; company: string;
     }>(
-      `SELECT r.ref, r.narrative, r.created_at,
-              resp.health_score, resp.band, resp.top_modes,
+      // top_modes comes from gt_report (frozen at capture time), NOT
+      // gt_assessment_response — see migration 229's comment. health_score/
+      // band are scalars with no ordering to disagree on, so they're still
+      // read from the response row rather than duplicated onto gt_report.
+      `SELECT r.ref, r.narrative, r.created_at, r.top_modes,
+              resp.health_score, resp.band,
               l.name, l.company
          FROM gt_report r
          JOIN gt_assessment_response resp ON resp.id = r.assessment_response_id
