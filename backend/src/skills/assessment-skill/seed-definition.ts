@@ -18,6 +18,12 @@ import { Pool } from 'pg';
 
 const DEFAULT_FILE = path.join(__dirname, '../../../migrations/ai-recovery-assessment-v1.json');
 
+// Must match the tenant the assessment writes leads under and the tenant
+// the console reads them from — assessment.agent.ts and seed-owner.ts read
+// the same variable. A definition seeded under a different tenant than the
+// one serving requests makes /a/:slug 404 with nothing obviously wrong.
+const TENANT_SLUG = process.env.VANI_TENANT_SLUG || 'vikuna-consulting';
+
 async function main(): Promise<void> {
   const filePath = process.argv[2] ? path.resolve(process.argv[2]) : DEFAULT_FILE;
   console.log(`[SeedAssessment] Reading ${filePath}`);
@@ -42,12 +48,12 @@ async function main(): Promise<void> {
 
   try {
     const tenantResult = await pool.query<{ id: string }>(
-      `SELECT id FROM vn_tenants WHERE slug = 'vikuna-consulting'`,
+      `SELECT id FROM vn_tenants WHERE slug = $1`, [TENANT_SLUG],
     );
     const tenant = tenantResult.rows[0];
     if (!tenant) {
       throw new Error(
-        "VIKUNA_CONSULTING_TENANT_NOT_FOUND: apply migration 228 first (creates the tenant)",
+        `VANI_TENANT_NOT_FOUND: no tenant with slug '${TENANT_SLUG}'. Apply migration 228, or set VANI_TENANT_SLUG.`,
       );
     }
 

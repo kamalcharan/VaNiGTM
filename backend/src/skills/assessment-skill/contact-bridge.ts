@@ -134,11 +134,12 @@ export async function bridgeLeadToContact(tx: SkillDb, input: BridgeInput): Prom
   // 'vani assessment' with a SPACE — gt_tags.slug is generated from label
   // and turns non-alphanumerics into spaces, so a hyphen is unreachable.
   // Matching on 'vani-assessment' would silently tag nothing.
+  // vani_ensure_tag creates it if this tenant has never had one (migration
+  // 232) — so pointing VANI_TENANT_SLUG at a different tenant needs no
+  // manual seeding.
   await tx.query(
     `INSERT INTO gt_contact_tags (contact_id, tag_id, tenant_id)
-     SELECT $contact_id, g.id, $tenant_id
-       FROM gt_tags g
-      WHERE g.tenant_id = $tenant_id AND g.slug = 'vani assessment'
+     VALUES ($contact_id, vani_ensure_tag($tenant_id::uuid), $tenant_id)
      ON CONFLICT (contact_id, tag_id) DO NOTHING`,
     { contact_id: contactId, tenant_id: input.tenantId },
   );

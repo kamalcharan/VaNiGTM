@@ -48,6 +48,11 @@ async function resolveTenantId(pool: Pool): Promise<string> {
       + 'Run migration 228 (creates vikuna-consulting), or set VANI_TENANT_SLUG to an existing tenant.',
     );
   }
+  // Ensure this tenant has the LEAD-/VN- sequence prefixes (migration 232).
+  // Runs once per process, since the id is cached below. Without it a tenant
+  // VaNi has never run under gets 'VANI' for both lead and report ids.
+  await pool.query(`SELECT vani_ensure_seq_prefixes($1::uuid)`, [row.id]);
+
   cachedTenantId = row.id;
   return cachedTenantId;
 }
