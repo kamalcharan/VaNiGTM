@@ -1,0 +1,58 @@
+# ============================================================
+# VaNi AI backend — Main VPS compose overlay
+#
+# One service, meant to be layered on top of the EXISTING Main VPS compose
+# setup (vikuna-postgres / vikuna-postgrest / vikuna-nginx /
+# kd-pipeline-api2) rather than replacing or editing it — I never saw that
+# file, so I'm not touching it. Run alongside it with:
+#
+#   docker compose \
+#     -f <path-to-existing-compose>.yml \
+#     -f deploy/vani-main-vps/docker-compose.vani.yml \
+#     up -d vani-backend
+#
+# GUESSED, confirm before applying (see RUNBOOK.md "What I had to guess"):
+#   - Container naming: vani-backend, following the vikuna-<name> pattern
+#     3 of the 4 existing containers use (kd-pipeline-api2 breaks it).
+#   - Network name below (REPLACE_WITH_EXISTING_NETWORK_NAME) — I don't
+#     know what network vikuna-postgres/-nginx actually share. Find it with
+#     `docker inspect vikuna-nginx --format '{{json .NetworkSettings.Networks}}'`
+#     and put the real name in .env (NETWORK_NAME=).
+#   - Build-on-host rather than pull-from-registry. ProKey pulls
+#     vikuna/prokey-backend from Docker Hub (build-push.sh); I don't know if
+#     the Main VPS's other containers follow that same registry convention
+#     or are built locally from a git checkout. This file builds locally
+#     (no registry credentials needed) — swap `build:` for `image:` if the
+#     Main VPS convention is actually push-and-pull.
+# ============================================================
+
+services:
+
+  vani-backend:
+    build:
+      context: ../../backend
+      dockerfile: ../deploy/vani-main-vps/Dockerfile
+    image: vani-backend:${IMAGE_TAG:-latest}
+    container_name: vani-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    # No `ports:` — internal only, reached through vikuna-nginx (or whatever
+    # the existing reverse proxy container is) over the shared network
+    # below, same pattern as ProKey's backend service.
+    networks:
+      - vikuna_shared
+    mem_limit: 450m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+networks:
+  vikuna_shared:
+    external: true
+    name: ${NETWORK_NAME:-REPLACE_WITH_EXISTING_NETWORK_NAME}
