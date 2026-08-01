@@ -99,3 +99,30 @@
 @media print {
   .noPrint { display: none !important; }
 }
+
+/* ============================================================
+ * Tokens ONLY — no background, no min-height, no full-page
+ * takeover. Used by the console, which lives inside VaNiGTM's app
+ * shell (sidebar + header) rather than replacing it. .vaniRoot above
+ * is for the standalone public pages (/a/:slug, /r/:token), which own
+ * the whole viewport; the console must sit in the app's content area
+ * like /prospects and /contacts do.
+ * ============================================================ */
+.vaniTokens {
+  --bg: #070b18;
+  --panel: rgba(255, 255, 255, 0.045);
+  --panel-solid: #0e1428;
+  --stroke: rgba(255, 255, 255, 0.09);
+  --stroke-hi: rgba(34, 211, 238, 0.55);
+  --ink: #e7eaf6;
+  --ink-2: #98a0bb;
+  --ink-3: #5d6580;
+  --cyan: #22d3ee;
+  --cyan-hi: #67e8f9;
+  --indigo: #6366f1;
+  --indigo-deep: #312e81;
+  --ok: #188a52;
+  --warn: #b26a00;
+  --crit: #b3261e;
+  --radius: 18px;
+}

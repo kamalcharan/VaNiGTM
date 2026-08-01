@@ -3,6 +3,15 @@
 /**
  * VaNi AI console — leads list, /console
  *
+ * Lives in the (app) route group, so it renders INSIDE VaNiGTM's shell —
+ * sidebar, header, the same canvas as /prospects and /contacts. It used to
+ * sit in (vani) with its own full-page chrome, which meant clicking
+ * "VaNi Leads" in the sidebar threw you out of the app into a standalone
+ * page. The blueprint specified standalone console chrome, but that
+ * assumed the console was its own product at vani.vikuna.io; once it is a
+ * tab in this app, matching the app is what "don't reinterpret" actually
+ * means. The blueprint's chips and table styling are kept.
+ *
  * Data comes from assessment-skill's get_leads. Role scoping is enforced
  * server-side (a partner's JWT simply yields fewer rows); this screen never
  * asks for "all leads" and never filters by partner client-side to fake
@@ -17,7 +26,7 @@ import { apiFetch, type ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { BandChip, StatusChip, ConsoleNav, relativeAge, STATUS_LABEL } from './console-shared';
 import s from './console.module.css';
-import v from '../vani-tokens.module.css';
+import v from '../../(vani)/vani-tokens.module.css';
 
 interface Lead {
   id: string;
@@ -99,14 +108,12 @@ export default function ConsoleLeadsPage() {
     return true;
   }), [leads, band, partner, search]);
 
-  if (authLoading || !isAuthenticated) {
-    return <div className={v.vaniRoot}><div className={v.darkStage} /></div>;
-  }
+  if (authLoading || !isAuthenticated) return <div className={v.vaniTokens} />;
 
   return (
-    <div className={v.vaniRoot}>
-      <div className={v.darkStage}>
-        <div className={v.wrap} style={{ paddingTop: 22 }}>
+    <div className={v.vaniTokens}>
+      <div>
+        <div>
           <ConsoleNav active="leads" isOwner={isOwner} />
 
           <div className={s.cFilters}>
