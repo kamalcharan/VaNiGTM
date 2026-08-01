@@ -1,0 +1,235 @@
+{
+  "_comment": "VaNi AI · assessment definition, seed-ready (WS2.5). Source of truth: AI_Failed_Initiatives_Audit_PilotPack_v1.docx §2-§3. This JSON is the verbatim instrument — seed it into the definition JSONB column as-is. Scoring is deterministic and computed in SQL from this file's weights; the LLM never scores.",
+  "service_slug": "ai-recovery",
+  "version": "1.0.0",
+  "title": "Why did your AI initiative stall?",
+  "short_title": "AI Recovery Audit",
+  "estimated_minutes": 7,
+  "public": true,
+  "hold_for_review": false,
+
+  "landing": {
+    "card_tag": "Live · Free",
+    "card_meta": "Scored against the ten failure modes of enterprise AI. Full report by email.",
+    "cta": "Start the assessment"
+  },
+
+  "scoring": {
+    "method": "weighted_mode_exposure",
+    "option_scale": [0, 1, 2, 3],
+    "exposure_formula": "exposure_m = 100 * SUM(w_qm * score_q) / SUM(w_qm * 3), over all questions q that carry mode m",
+    "health_formula": "health = round(100 - SUM(mode_weight_m * exposure_m) / SUM(mode_weight_m))",
+    "top_modes_reported": 3,
+    "bands": [
+      { "key": "situational", "label": "Situational", "min": 71, "max": 100, "color": "green",
+        "verdict": "Your failures are fixable at the initiative level — much is salvageable.",
+        "next_step": "Entry tier: Rapid Post-Mortem Review of one initiative" },
+      { "key": "structural", "label": "Structural", "min": 41, "max": 70, "color": "amber",
+        "verdict": "The pattern repeats across your initiatives — the causes are organizational, not technical.",
+        "next_step": "Mid tier: Portfolio Failure Audit" },
+      { "key": "systemic", "label": "Systemic", "min": 0, "max": 40, "color": "red",
+        "verdict": "Restarting without changing the operating model will reproduce the failure.",
+        "next_step": "Mid tier audit + CAIO-as-a-Service conversation" }
+    ]
+  },
+
+  "modes": [
+    { "key": "F1", "name": "Wrong use case", "composite_weight": 1.0,
+      "symptom": "Demo-driven or vendor-pitched selection; no baseline metric; a solution seeking a problem.",
+      "remediation": "Value-based use-case portfolio with baselines and testable success criteria.",
+      "route_service": "ai-audit-new", "route_label": "AI Audit — New Initiatives",
+      "referral_line": "Before the next build: a value-based re-selection of use cases with baselines and success criteria." },
+    { "key": "F2", "name": "Data not ready", "composite_weight": 1.0,
+      "symptom": "Quality, access or lineage gaps discovered mid-build; months lost to cleanup.",
+      "remediation": "A data readiness gate that must pass before any build is funded.",
+      "route_service": "data-governance-audit", "route_label": "Data / Data Governance Audit",
+      "referral_line": "Your AI failures are downstream of data failures. Fixing the initiatives without fixing the data reproduces the loss." },
+    { "key": "F3", "name": "POC-to-production gap", "composite_weight": 1.1,
+      "symptom": "The pilot impressed; production never arrived. No MLOps, integration or security path.",
+      "remediation": "Production-first architecture; pilots scoped with a deployment plan attached.",
+      "route_service": "ai-automation", "route_label": "AI Automation (rebuild)",
+      "referral_line": "The thinking was sound; the construction was not. A production-first rebuild recovers most of the sunk value." },
+    { "key": "F4", "name": "Ownership vacuum", "composite_weight": 1.2,
+      "symptom": "IT-owned, business disengaged; the sponsor moved on; nobody accountable for outcomes.",
+      "remediation": "A named business owner carrying outcome KPIs, with a governance cadence.",
+      "route_service": "caio-aas", "route_label": "CAIO as a Service",
+      "referral_line": "No single project fix addresses this — the gap is an operating model that selects, funds and owns AI correctly." },
+    { "key": "F5", "name": "Adoption failure", "composite_weight": 1.0,
+      "symptom": "The tool shipped; users bypass it. No workflow fit, no change management.",
+      "remediation": "User-in-the-loop design and a deliberate adoption program.",
+      "route_service": "ai-for-leaders", "route_label": "AI for Business Leaders",
+      "referral_line": "The organization was not prepared to receive what was built. Leadership literacy precedes the next attempt." },
+    { "key": "F6", "name": "Economics blowout", "composite_weight": 0.9,
+      "symptom": "Token, infra or licence costs surprised everyone; ROI never modeled at unit level.",
+      "remediation": "Unit-economics model before build; cost-aware architecture choices.",
+      "route_service": "caio-aas", "route_label": "CAIO as a Service",
+      "referral_line": "The next initiative needs a unit-economics gate before it is funded, not after it overruns." },
+    { "key": "F7", "name": "Governance & compliance gap", "composite_weight": 0.9,
+      "symptom": "Risk or legal blocked launch late; no explainability, privacy (DPDP) or audit trail.",
+      "remediation": "Governance-by-design with compliance checkpoints per phase.",
+      "route_service": "data-governance-audit", "route_label": "Data Governance Audit",
+      "referral_line": "Compliance arrived last and killed the launch. It belongs at the design stage, as a checkpoint per phase." },
+    { "key": "F8", "name": "Vendor & platform lock", "composite_weight": 0.7,
+      "symptom": "Black-box vendor; model deprecated; exit costly; roadmap hostage to a supplier.",
+      "remediation": "Portability review, exit clauses, an abstraction layer over the model provider.",
+      "route_service": "systems-audit", "route_label": "Systems Audit",
+      "referral_line": "Your AI roadmap is currently a supplier's roadmap. Portability is recoverable, but not for free." },
+    { "key": "F9", "name": "Capability gap", "composite_weight": 0.9,
+      "symptom": "Consultant-built then orphaned; no in-house skills to run or evolve it.",
+      "remediation": "A capability transfer plan with a hire/train/partner mix.",
+      "route_service": "ai-for-leaders", "route_label": "AI for Business Leaders",
+      "referral_line": "What was built outlived the people who could run it. Capability transfer is the missing deliverable." },
+    { "key": "F10", "name": "Expectation mismatch", "composite_weight": 1.0,
+      "symptom": "Hype-scoped; success never defined; 'AI will transform X' with no testable claim.",
+      "remediation": "Executive literacy and success criteria agreed before funding.",
+      "route_service": "ai-for-leaders", "route_label": "AI for Business Leaders",
+      "referral_line": "Success was never defined, so failure was never disproved. Definition precedes the next attempt." }
+  ],
+
+  "questions": [
+    { "id": "Q1", "context_only": true, "modes": {},
+      "framing": "VaNi · getting the shape of your AI portfolio",
+      "text": "How many AI initiatives has your organization started in the last three years?",
+      "options": [
+        { "label": "One", "score": 0 },
+        { "label": "Two to four", "score": 1 },
+        { "label": "Five to ten", "score": 2 },
+        { "label": "More than ten", "score": 3 } ] },
+
+    { "id": "Q2", "modes": { "F3": 0.7, "F5": 0.5 },
+      "framing": "VaNi · checking what actually survived to production",
+      "text": "How many of them run in production today and are actively used?",
+      "options": [
+        { "label": "All of them", "score": 0 },
+        { "label": "Most of them", "score": 1 },
+        { "label": "One or two", "score": 2 },
+        { "label": "None", "score": 3 } ] },
+
+    { "id": "Q3", "modes": { "F1": 1.0, "F10": 0.4 },
+      "framing": "VaNi · mapping how your use cases were chosen",
+      "text": "How were the use cases chosen?",
+      "options": [
+        { "label": "A joint business-value assessment", "score": 0 },
+        { "label": "The business demanded it", "score": 1 },
+        { "label": "IT or a vendor proposed it", "score": 2 },
+        { "label": "An experiment or hackathon that grew", "score": 3 } ] },
+
+    { "id": "Q4", "modes": { "F2": 1.0 },
+      "framing": "VaNi · checking whether the data was ready before the build",
+      "text": "Before building, was the underlying data profiled for quality and access?",
+      "options": [
+        { "label": "Thoroughly, with a readiness gate", "score": 0 },
+        { "label": "Partially", "score": 1 },
+        { "label": "Issues surfaced mid-build", "score": 2 },
+        { "label": "Not at all", "score": 3 } ] },
+
+    { "id": "Q5", "modes": { "F4": 1.0 },
+      "framing": "VaNi · finding out who carried the outcome",
+      "text": "Did each initiative have a named business owner accountable for outcomes — not IT?",
+      "options": [
+        { "label": "Yes, with outcome KPIs", "score": 0 },
+        { "label": "Yes, nominally", "score": 1 },
+        { "label": "IT owned it", "score": 2 },
+        { "label": "Nobody clearly owned it", "score": 3 } ] },
+
+    { "id": "Q6", "modes": { "F6": 1.0 },
+      "framing": "VaNi · reconstructing the economics",
+      "text": "Was a cost and ROI model built before development began?",
+      "options": [
+        { "label": "Detailed unit economics, tracked throughout", "score": 0 },
+        { "label": "A high-level estimate", "score": 1 },
+        { "label": "Assembled later, after questions arose", "score": 2 },
+        { "label": "Never", "score": 3 } ] },
+
+    { "id": "Q7", "modes": { "F5": 1.0 },
+      "framing": "VaNi · looking at how users met the system",
+      "text": "How were end users involved before rollout?",
+      "options": [
+        { "label": "Continuously, from design onward", "score": 0 },
+        { "label": "Periodic reviews", "score": 1 },
+        { "label": "A demo near the end", "score": 2 },
+        { "label": "Not at all", "score": 3 } ] },
+
+    { "id": "Q8", "modes": { "F3": 1.0 },
+      "framing": "VaNi · tracing the handover from pilot to production",
+      "text": "What happened when the pilot needed to become a production system?",
+      "options": [
+        { "label": "A smooth, planned transition", "score": 0 },
+        { "label": "Partial, with delays", "score": 1 },
+        { "label": "It stalled at handover", "score": 2 },
+        { "label": "It never got that far", "score": 3 } ] },
+
+    { "id": "Q9", "modes": { "F7": 1.0 },
+      "framing": "VaNi · testing what you could defend to a regulator",
+      "text": "If a regulator or auditor asked “what data trained this, and why did it decide X” — who could answer?",
+      "options": [
+        { "label": "We could, fully documented", "score": 0 },
+        { "label": "Partially, with effort", "score": 1 },
+        { "label": "Only the vendor", "score": 2 },
+        { "label": "No one", "score": 3 } ] },
+
+    { "id": "Q10", "modes": { "F8": 1.0 },
+      "framing": "VaNi · measuring how portable the work is",
+      "text": "How dependent were you on a single vendor or model for the initiative?",
+      "options": [
+        { "label": "Portable by design", "score": 0 },
+        { "label": "Manageable dependence", "score": 1 },
+        { "label": "Heavily dependent", "score": 2 },
+        { "label": "Entirely locked in", "score": 3 } ] },
+
+    { "id": "Q11", "modes": { "F9": 1.0 },
+      "framing": "VaNi · finding out who keeps it alive today",
+      "text": "Who maintains and evolves the solution today?",
+      "options": [
+        { "label": "An in-house team, confident", "score": 0 },
+        { "label": "In-house, but stretched", "score": 1 },
+        { "label": "The vendor only", "score": 2 },
+        { "label": "No one — it is orphaned", "score": 3 } ] },
+
+    { "id": "Q12", "modes": { "F10": 1.0, "F1": 0.4 },
+      "framing": "VaNi · comparing the promise with what was possible",
+      "text": "Looking back, how did the original expectations compare to what was technically realistic?",
+      "options": [
+        { "label": "Realistic and testable", "score": 0 },
+        { "label": "Somewhat optimistic", "score": 1 },
+        { "label": "Driven by hype", "score": 2 },
+        { "label": "Success was never defined", "score": 3 } ] }
+  ],
+
+  "teaser": {
+    "kicker": "VaNi’s initial read",
+    "score_caption": "AI Initiative Health Score / 100",
+    "locked_1": "Failure modes #2 and #3 — scored and explained in your full report",
+    "locked_2": "All ten modes profiled + your recommended next step",
+    "cta": "Get my full assessment"
+  },
+
+  "capture": {
+    "heading": "Where should I send it?",
+    "sub": "Ten failure modes scored, your top three explained, and the one next step I’d take first — reviewed by Charan Kamal Bommakanti before anything more happens.",
+    "fields": ["name", "email", "company", "role_title"],
+    "optional_fields": ["phone"],
+    "dpdp_note": "We store your responses and contact details securely in India, only to prepare and follow up on this assessment. No lists, no resale.",
+    "cta": "Send my assessment"
+  },
+
+  "report": {
+    "cta_label": "Book the review — 30 min scoping call",
+    "cta_url": "{{BOOKING_URL}}",
+    "signoff": "Assessed by VaNi AI · Reviewed by Charan Kamal Bommakanti, Founder & CEO, Vikuna Technologies"
+  },
+
+  "narrative_prompt": {
+    "_comment": "Passed to Qwen3 with /no_think. Prose only — all numbers, modes and routes are pre-computed and supplied. Template fallback on any failure.",
+    "system": "You are VaNi, Vikuna Technologies' assessment agent. Write in first person, precise, calm, evidence-first — an analyst, not a marketer. Never invent findings, numbers or causes beyond the supplied data. Never promise outcomes. 120-160 words. One paragraph. No headings, no lists, no emoji. /no_think",
+    "user_template": "Company: {{company}}. Health score: {{health}}/100. Band: {{band}} ({{band_verdict}}). Top three exposures with computed percentages and approved descriptions: {{top_modes_json}}. Lowest exposures: {{low_modes}}. Write my summary paragraph for the report: state what the pattern is, name the three exposures with their percentages, say plainly whether the causes are technical or organizational based on which modes dominate, and note that the recommended next step follows below. Do not restate the next step itself.",
+    "fallback": "I assessed your responses across the ten failure modes of enterprise AI. Your strongest exposures are {{mode1_name}} ({{mode1_pct}}%), {{mode2_name}} ({{mode2_pct}}%) and {{mode3_name}} ({{mode3_pct}}%), giving an AI Initiative Health Score of {{health}}/100 — band {{band}}. {{band_verdict}} Each of these failure modes is known and fixable, and in most cases part of the original investment remains recoverable. My recommended first move is below."
+  },
+
+  "calibration_notes": [
+    "Single-question modes (F2, F4, F6, F7, F8, F9) resolve to only four exposure values (0/33/67/100). This is acceptable for a 7-minute L1 instrument but makes those modes coarse — expected to be refined in v1.1 after WS6.2 (3-5 friendly prospects).",
+    "Q1 is context_only: it colors the narrative (portfolio size) and is stored, but contributes no score.",
+    "Band thresholds 71/41 are provisional and must be re-checked against the first ~10 real responses; if most land in Structural, widen the bands rather than reweighting modes.",
+    "composite_weight values are judgement-based severity weights, not empirical. Revisit once benchmark data exists (~30 datapoints)."
+  ]
+}

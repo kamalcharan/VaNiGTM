@@ -9,6 +9,8 @@
     "lint": "tsc --noEmit",
     "db:migrate": "tsx src/migrate.ts",
     "db:seed": "tsx src/seed.ts",
+    "db:seed-assessment": "tsx src/skills/assessment-skill/seed-definition.ts",
+    "verify:assessment": "tsx src/verify-assessment-flow.ts",
     "cohort": "tsx src/cohort.ts",
     "cohort:tenants": "tsx src/cohort.ts --list-tenants",
     "worker": "tsx watch src/agent-core/worker.ts",

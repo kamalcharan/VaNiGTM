@@ -34,11 +34,15 @@ export async function clear_demo_data(
     ];
 
     for (const table of tables) {
-      const res = await tx.query(
-        `DELETE FROM ${table} WHERE tenant_id = $tenant_id AND is_live = false`,
+      // SkillDb.query() only ever returns { rows } (db/query.ts), never
+      // rowCount — RETURNING id + rows.length gets the same count through
+      // the interface that's actually there, rather than reading a field
+      // this abstraction doesn't provide.
+      const res = await tx.query<{ id: unknown }>(
+        `DELETE FROM ${table} WHERE tenant_id = $tenant_id AND is_live = false RETURNING id`,
         { $tenant_id: ctx.tenant_id }
       );
-      counts[table] = res.rowCount ?? 0;
+      counts[table] = res.rows.length;
     }
   });
 
