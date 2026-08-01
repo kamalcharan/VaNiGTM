@@ -54,6 +54,29 @@ async function main(): Promise<void> {
       throw new Error('vikuna-consulting tenant not found — run npm run db:migrate first');
     }
     const tenantId = t.rows[0].id;
+
+    // A vn_users row belongs to exactly ONE tenant, and the console only
+    // shows leads from the tenant in the caller's JWT. So if this email
+    // already exists under a DIFFERENT tenant, granting access here would
+    // silently create a second account with the same address — two logins,
+    // and the one you'd naturally use shows nothing. Say so instead.
+    const elsewhere = await pool.query<{ slug: string }>(
+      `SELECT t.slug
+         FROM vn_users u JOIN vn_tenants t ON t.id = u.tenant_id
+        WHERE LOWER(u.email) = $1 AND u.tenant_id <> $2`,
+      [email, tenantId]);
+    if (elsewhere.rows[0]) {
+      console.error(`[SeedOwner] ${email} already exists under tenant '${elsewhere.rows[0].slug}',`);
+      console.error(`[SeedOwner] but VaNi's leads live under 'vikuna-consulting'.`);
+      console.error('[SeedOwner]');
+      console.error('[SeedOwner] Creating a second account with the same email would mean two');
+      console.error('[SeedOwner] logins, and signing in with the wrong one shows an empty console.');
+      console.error('[SeedOwner] Decide which tenant VaNi should belong to before re-running:');
+      console.error(`[SeedOwner]   - to reuse the existing account, VaNi's data must move to '${elsewhere.rows[0].slug}'`);
+      console.error('[SeedOwner]   - to keep them separate, use a different email here');
+      process.exit(1);
+    }
+
     const hash = await bcrypt.hash(password, 12);
 
     const client = await pool.connect();
