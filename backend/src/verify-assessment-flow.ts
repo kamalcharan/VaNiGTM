@@ -94,14 +94,23 @@ async function main() {
     true, // verified by saveAnswer not throwing above
   );
 
-  console.log('\n[3] POST /complete — score the response');
+  console.log('\n[3] POST /complete — score the response (teaser payload)');
   const completed = await AssessmentAgent.completeAssessment(pool, responseId!, anonToken!);
   check('health_score matches scoreResponse() directly', completed.health_score === expected.health,
     `persisted=${completed.health_score} expected=${expected.health}`);
-  check('band matches scoreResponse() directly', completed.band === expected.band.key,
-    `persisted=${completed.band} expected=${expected.band.key}`);
-  check('top_modes count matches definition.scoring.top_modes_reported',
-    Array.isArray(completed.top_modes) && (completed.top_modes as any[]).length === rawDefinition.scoring.top_modes_reported);
+  check('band key matches scoreResponse() directly', completed.band.key === expected.band.key,
+    `persisted=${completed.band.key} expected=${expected.band.key}`);
+  check('band carries label + verdict copy (frontend holds none of its own)',
+    completed.band.label === expected.band.label && completed.band.verdict === expected.band.verdict);
+  check('top_mode is the #1 exposure', completed.top_mode.key === expected.top_modes[0].key,
+    `got=${completed.top_mode.key} expected=${expected.top_modes[0].key}`);
+  // The teaser gate is only real if the gated content isn't in the response.
+  check('teaser payload does NOT leak modes #2/#3 (gate is real, not cosmetic)',
+    !JSON.stringify(completed).includes(expected.top_modes[1].name)
+    && !JSON.stringify(completed).includes(expected.top_modes[2].name),
+    'a locked mode name appeared in the /complete response');
+  check('teaser payload does NOT leak remediation/referral copy',
+    !JSON.stringify(completed).includes(expected.top_modes[0].referral_line));
 
   console.log('\n[3b] POST /complete a second time on the same response (idempotency check)');
   try {
@@ -136,7 +145,9 @@ async function main() {
   const report = await AssessmentAgent.getReportByToken(pool, captured.reportToken);
   check('report found by token', report !== null);
   check('report health_score matches expected', (report as any)?.health_score === expected.health);
-  check('report band matches expected', (report as any)?.band === expected.band.key);
+  check('report band key matches expected', (report as any)?.band?.key === expected.band.key);
+  check('report band carries label/verdict/next_step (frontend renders, never authors)',
+    !!(report as any)?.band?.label && !!(report as any)?.band?.verdict && !!(report as any)?.band?.next_step);
   check('narrative is the FALLBACK (no LLM call in this task)', (report as any)?.narrative?.length > 0);
 
   const narrative: string = (report as any)?.narrative ?? '';
@@ -156,6 +167,17 @@ async function main() {
     JSON.stringify(reportTopModes?.map((m) => m.key)) === JSON.stringify(expected.top_modes.map((m) => m.key)),
     `report=${JSON.stringify(reportTopModes?.map((m) => m.key))} expected=${JSON.stringify(expected.top_modes.map((m) => m.key))}`,
   );
+
+  // Migration 230 — the ten-mode profile the blueprint's report bar chart
+  // renders. Frontend computes none of it.
+  const reportAllModes = (report as any)?.all_modes as Array<{ key: string }> | null;
+  check('gt_report.all_modes is populated (feeds the ten-mode bar chart)',
+    Array.isArray(reportAllModes) && reportAllModes.length === rawDefinition.modes.length,
+    `got ${reportAllModes?.length} expected ${rawDefinition.modes.length}`);
+  check('gt_report.all_modes order matches scoreResponse() exactly',
+    JSON.stringify(reportAllModes?.map((m) => m.key)) === JSON.stringify(expected.all_modes.map((m) => m.key)));
+  check('report carries the CTA/signoff block from the definition',
+    !!(report as any)?.report?.cta_label && !!(report as any)?.report?.signoff);
 
   console.log('\n[6] GET /report/:token with a garbage token (must not leak data)');
   const bogus = await AssessmentAgent.getReportByToken(pool, '00000000-0000-0000-0000-000000000000');

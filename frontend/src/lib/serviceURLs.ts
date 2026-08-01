@@ -312,6 +312,41 @@ export const API = {
     },
   },
 
+  /* ── VaNi AI — public assessment (no auth on any of these) ─ */
+
+  assessment: {
+    definition: {
+      method: 'GET',
+      path: '/api/v1/assessment/:slug',
+      auth: false,
+      description: 'Public: fetch a published assessment definition by service slug',
+    },
+    answer: {
+      method: 'POST',
+      path: '/api/v1/assessment/answer',
+      auth: false,
+      description: 'Public: save one answer; first call creates the response row',
+    },
+    complete: {
+      method: 'POST',
+      path: '/api/v1/assessment/complete',
+      auth: false,
+      description: 'Public: score a completed response, returns the teaser payload',
+    },
+    capture: {
+      method: 'POST',
+      path: '/api/v1/assessment/capture',
+      auth: false,
+      description: 'Public: turn a completed response into a lead, returns the report token',
+    },
+    report: {
+      method: 'GET',
+      path: '/api/v1/assessment/report/:token',
+      auth: false,
+      description: 'Public: fetch a report by its unguessable token',
+    },
+  },
+
   /* ── ETL ──────────────────────────────────────────── */
 
   etl: {

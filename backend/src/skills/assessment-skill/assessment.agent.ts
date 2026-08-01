@@ -175,12 +175,26 @@ export class AssessmentAgent {
     return { responseId: row.id, anonToken: row.anon_token };
   }
 
-  /** Validates every scored question is answered, computes the score, persists it. */
+  /**
+   * Validates every scored question is answered, computes the score, persists it.
+   *
+   * Returns ONLY what the teaser screen may show: health score, the band
+   * (with its label/verdict copy, which the frontend must never hold its own
+   * copy of), and the #1 exposure. Modes #2 and #3 are deliberately NOT in
+   * this response — the blueprint gates them behind email capture, and a
+   * gate whose content is sitting in the network response is decoration,
+   * not a gate. They arrive with the report, after capture.
+   */
   static async completeAssessment(
     pool: Pool,
     responseId: string,
     anonToken: string,
-  ): Promise<{ health_score: number; band: string; top_modes: unknown }> {
+  ): Promise<{
+    health_score: number;
+    band: { key: string; label: string; color: string; verdict: string };
+    top_mode: { key: string; name: string; exposure_pct: number; symptom: string };
+    locked_modes: number;
+  }> {
     const tenantId = await resolveTenantId(pool);
     const db = createTenantDb(pool, tenantId);
 
@@ -235,7 +249,26 @@ export class AssessmentAgent {
       return scored;
     });
 
-    return { health_score: result.health, band: result.band.key, top_modes: result.top_modes };
+    const top = result.top_modes[0];
+    return {
+      health_score: result.health,
+      band: {
+        key: result.band.key,
+        label: result.band.label,
+        color: result.band.color,
+        verdict: result.band.verdict,
+      },
+      // #1 only, and only the fields the teaser card renders — symptom, not
+      // remediation/route/referral_line, which belong to the paid-by-email
+      // report.
+      top_mode: {
+        key: top.key,
+        name: top.name,
+        exposure_pct: top.exposure_pct,
+        symptom: top.symptom,
+      },
+      locked_modes: Math.max(0, result.top_modes.length - 1),
+    };
   }
 
   /**
@@ -321,14 +354,15 @@ export class AssessmentAgent {
       // future email dispatch both read gt_report.top_modes, neither
       // recomputes, so they can never disagree (migration 229).
       const reportResult = await tx.query<{ report_token: string; ref: string }>(
-        `INSERT INTO gt_report (tenant_id, assessment_response_id, ref, narrative, narrative_source, top_modes)
-         VALUES ($tenant_id, $response_id, gt_next_seq($tenant_id::uuid, 'vani_report'), $narrative, 'fallback', $top_modes::jsonb)
+        `INSERT INTO gt_report (tenant_id, assessment_response_id, ref, narrative, narrative_source, top_modes, all_modes)
+         VALUES ($tenant_id, $response_id, gt_next_seq($tenant_id::uuid, 'vani_report'), $narrative, 'fallback', $top_modes::jsonb, $all_modes::jsonb)
          RETURNING report_token, ref`,
         {
           tenant_id: tenantId,
           response_id: response.id,
           narrative,
           top_modes: JSON.stringify(scored.top_modes),
+          all_modes: JSON.stringify(scored.all_modes),
         },
       );
       const report = reportResult.rows[0];
@@ -354,22 +388,53 @@ export class AssessmentAgent {
   static async getReportByToken(pool: Pool, token: string) {
     const result = await pool.query<{
       ref: string | null; narrative: string | null; created_at: Date;
-      health_score: number | null; band: string | null; top_modes: unknown;
+      health_score: number | null; band_key: string | null;
+      top_modes: unknown; all_modes: unknown;
       name: string; company: string;
+      definition: AssessmentDefinition & {
+        short_title?: string;
+        report?: { cta_label?: string; cta_url?: string; signoff?: string };
+      };
     }>(
-      // top_modes comes from gt_report (frozen at capture time), NOT
-      // gt_assessment_response — see migration 229's comment. health_score/
-      // band are scalars with no ordering to disagree on, so they're still
-      // read from the response row rather than duplicated onto gt_report.
-      `SELECT r.ref, r.narrative, r.created_at, r.top_modes,
-              resp.health_score, resp.band,
-              l.name, l.company
+      // top_modes/all_modes come from gt_report (frozen at capture time),
+      // NOT gt_assessment_response — see migrations 229/230. health_score
+      // and the band KEY are scalars with no ordering to disagree on, so
+      // they're still read from the response row rather than duplicated.
+      `SELECT r.ref, r.narrative, r.created_at, r.top_modes, r.all_modes,
+              resp.health_score, resp.band AS band_key,
+              l.name, l.company,
+              d.definition
          FROM gt_report r
          JOIN gt_assessment_response resp ON resp.id = r.assessment_response_id
          JOIN gt_lead l ON l.id = resp.lead_id
+         JOIN gt_assessment_def d ON d.id = resp.assessment_def_id
         WHERE r.report_token = $1 AND r.revoked_at IS NULL`,
       [token],
     );
-    return result.rows[0] ?? null;
+    const row = result.rows[0];
+    if (!row) return null;
+
+    // Band descriptors (label/verdict/next_step/color) are CONFIG, looked up
+    // from the definition by the stored band key — not recomputed. The
+    // definition is immutable per version, so this can't drift the way
+    // re-running scoreResponse() could. The frontend is forbidden from
+    // holding any of this copy itself, so it has to arrive here.
+    const band = row.definition?.scoring?.bands?.find((b) => b.key === row.band_key) ?? null;
+
+    return {
+      ref: row.ref,
+      narrative: row.narrative,
+      created_at: row.created_at,
+      health_score: row.health_score,
+      band: band
+        ? { key: band.key, label: band.label, color: band.color, verdict: band.verdict, next_step: band.next_step }
+        : null,
+      top_modes: row.top_modes,
+      all_modes: row.all_modes,
+      name: row.name,
+      company: row.company,
+      assessment_title: row.definition?.short_title ?? null,
+      report: row.definition?.report ?? null,
+    };
   }
 }
