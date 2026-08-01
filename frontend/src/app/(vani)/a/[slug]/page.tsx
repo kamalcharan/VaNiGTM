@@ -124,6 +124,37 @@ const THINK_LINES = [
 
 type Screen = 'landing' | 'assessment' | 'analyzing' | 'teaser' | 'capture';
 
+/**
+ * Turns a definition-load failure into something a human can act on.
+ *
+ * The case worth separating is the API being unreachable. In dev that means
+ * the backend isn't running (or is on a different port than next.config.js
+ * proxies to), and Next.js answers the failed rewrite with its own HTML 500
+ * — which arrives here as a 500 with a non-JSON body. Reporting that as
+ * "this assessment isn't available" sends the reader looking at the
+ * assessment definition, which is the wrong place entirely. In production
+ * the same shape means the backend is down behind Nginx, which is likewise
+ * not a content problem.
+ */
+function describeLoadFailure(err: ApiError | undefined): string {
+  const status = err?.status ?? 0;
+  const message = err?.message ?? '';
+  const looksUnreachable =
+    status === 0 || status === 502 || status === 503 || status === 504 ||
+    (status === 500 && /non-JSON body/i.test(message));
+
+  if (looksUnreachable) {
+    return process.env.NODE_ENV === 'production'
+      ? 'The assessment service is temporarily unreachable. Please try again shortly.'
+      : 'The API is unreachable — is the backend running, and on the port next.config.js proxies to? '
+        + 'This repo\'s dev convention is 3002 (see CLAUDE.md); override with DEV_BACKEND_ORIGIN.';
+  }
+  if (status === 404) {
+    return 'This assessment does not exist, or is not published yet.';
+  }
+  return message || 'This assessment could not be loaded.';
+}
+
 export default function AssessmentPage() {
   const params = useParams<{ slug: string }>();
   const slug = params?.slug;
@@ -161,7 +192,7 @@ export default function AssessmentPage() {
         if (saved) setResumeOffer(saved);
       } catch (err) {
         if (cancelled) return;
-        setLoadError((err as ApiError)?.message || 'This assessment could not be loaded.');
+        setLoadError(describeLoadFailure(err as ApiError));
       }
     })();
     return () => { cancelled = true; };
