@@ -43,12 +43,22 @@ Reading order (POA §Reading Order — precedence: POA > Addendum A > App Spec >
 5. `AI_Failed_Initiatives_Audit_PilotPack_v1.docx` §3 — survey instrument, seed VERBATIM.
    **Received 2026-07-31**, saved verbatim at `docs/vani-ai-recovery-assessment-definition.json`
    (`service_slug: ai-recovery`, 12 questions, 10 failure modes, bands 71/41 — matches §3 guardrails).
-   Not yet seeded into any DB row — WS2.5 is still gated on G1.
+   **Canonical copy moved 2026-08-01** to `vanigtm/backend/migrations/ai-recovery-assessment-v1.json`
+   (branch `claude/vani-ai-assessment-skill`) — that's the one actually seeded into a database
+   (`npm run db:seed-assessment`). The copy in this repo is now a historical reference; edit the
+   VaNiGTM copy if the instrument itself ever changes.
 6. `VaNi_AI_POA_v1.docx` — workstreams, gates, session protocol.
-   **Received 2026-07-31**, saved at `docs/VaNi_AI_POA_v1.docx`.
+   **Received 2026-07-31**, saved at `docs/VaNi_AI_POA_v1.docx`. **Superseded by POA v1.1**
+   (referenced 2026-08-01 in a task description, not yet uploaded as a file — request it).
+7. `VaNi_Agent_Topology_v1.1.pdf` — agent decomposition, memory tiers (T0–T4), model tiering
+   (FAST/DEFAULT/ESCALATION), H1/H2 scaling triggers. **Received 2026-08-01**, saved at
+   `docs/VaNi_Agent_Topology_v1.1.pdf`. Governs anything agent-shaped in VaNiGTM's
+   `assessment-skill` — see §8 below for what's already built consistent with it (report
+   generation as a pure function of an event payload, template-fallback-always, no PII in any
+   future escalation payload).
 
-Only item 2 (Mentor Brief + Addendum A) remains outstanding — it carries guardrail precedence
-over the App Spec, so read it before treating anything above as final on auth model or scope.
+Outstanding: item 2 (Mentor Brief + Addendum A — still not received, and it carries guardrail
+precedence over the App Spec) and POA v1.1 itself (item 6, referenced but not uploaded).
 
 ## 3. Hard guardrails (never drift)
 
@@ -204,25 +214,69 @@ over the App Spec, so read it before treating anything above as final on auth mo
   tests (261 skipped are DB-dependent, no live DB in this environment) including the 5
   new scoring tests.
 
-### Deliberately not done this pass
-- **Report generation + email dispatch** — `capture_lead`'s job ends at "a lead row now
-  exists." `gt_report` rows are never created yet; `GET /report/:token` will 404 until
-  something writes one. This is the next concrete piece of work.
-- **Seeding the `ai-recovery` definition** — migration 228 creates the tables and the
-  tenant, but does not insert the assessment JSON. Source is still
-  `docs/vani-ai-recovery-assessment-definition.json` in *this* repo; someone still needs
-  to `INSERT INTO gt_assessment_def` with it.
+### Deliberately not done as of this build (superseded by §9 for report generation)
 - **Partner CRUD** (creating/deactivating `gt_partner` rows) — manage by hand via SQL
   until a console UI need justifies a function.
 - **The `vikunawebsite` frontend side** — nothing here changed to call the new API.
-  `docs/sql/ws2.2-2.6` in this repo are superseded by the above and should be treated as
-  historical (what G1's rulings looked like before VaNiGTM was in the picture), not
-  reapplied.
+  `docs/sql/ws2.2-2.6` in this repo are superseded and should be treated as historical
+  (what G1's rulings looked like before VaNiGTM was in the picture), not reapplied.
+
+## 9. Task A1 — local end-to-end proof (2026-08-01, per POA v1.1)
+
+Task, verbatim scope: prove the assessment flow end-to-end against a locally-run Postgres
+(sandbox cannot reach the VPS — 5432 times out, HTTP egress blocked, confirmed again this
+session), build the SYNCHRONOUS report path only (template fallback narrative, no LLM, no
+email — those are Phase B per the Agent Topology note), and report findings. Explicitly
+told to stop before Task A2 (deployment artifacts) — not started.
+
+**Result: all 24 checks pass.** Branch `claude/vani-ai-assessment-skill` in VaNiGTM,
+pushed (commit after the one referenced in §8 above), no PR opened.
+
+- **Local Postgres stood up in the sandbox** (not the VPS): system PostgreSQL 16, database
+  `vani_gtm_local`, role `vikuna_admin`. All 228 migrations applied cleanly
+  (`npm run db:migrate`) — this also validates the full pre-existing migration history
+  (001–227) runs standalone, not just migration 228.
+- **`ai-recovery-assessment-v1.json` moved into VaNiGTM**, `backend/migrations/`, alongside
+  migration 228 (see §2 item 5's updated pointer). Seeded via a new idempotent script,
+  `npm run db:seed-assessment` (`assessment-skill/seed-definition.ts`).
+- **Migration 228 had a real bug, found by actually running it**: the Vikuna Consulting
+  tenant `INSERT` listed `is_active` in its column list. `vn_tenants.is_active` is
+  `GENERATED ALWAYS AS (status = 'active') STORED` — precisely the mistake this same
+  VaNiGTM repo's own `CLAUDE.md` lesson #8 already warns about ("never INSERT into it").
+  The migration failed immediately in the local run with exactly that Postgres error.
+  Fixed by dropping `is_active` from the column list — `status = 'active'` alone makes it
+  compute correctly. This is the clearest possible argument for why Task A1 came before
+  A2: the bug would have hit the VPS on the first real apply otherwise.
+- **Synchronous report-on-capture, built and verified**: `captureLead` now writes a
+  `gt_report` row inside the same transaction as the lead, filling the assessment
+  definition's `narrative_prompt.fallback` template from the recomputed score (health,
+  band label/verdict, top three mode names/percentages) — no LLM call anywhere in this
+  path. `GET /report/:token` is live. New file: `assessment-skill/narrative.ts`.
+- **End-to-end proof script**: `backend/src/verify-assessment-flow.ts`
+  (`npm run verify:assessment`) exercises `GET /:slug` → `POST /answer` ×12 → `/complete`
+  → `/capture` → `GET /report/:token` directly against `AssessmentAgent` (same code path
+  the HTTP routes call). What it actually proves, precisely: `scoring.test.ts` (unit, no
+  DB) already proves the scoring *arithmetic*; this script proves the *DB round-trip*
+  doesn't corrupt that arithmetic — the persisted health score/band, after going through
+  JSONB storage, transaction handling and answer merging, is compared against
+  `scoreResponse()` called directly on the same definition + answers fetched fresh from
+  the DB. They matched. Also checked: re-completing or re-capturing an already-finished
+  response is rejected (idempotency), a garbage report token returns `null` rather than
+  leaking another response's report, and the rendered fallback narrative has no leftover
+  `{{merge_field}}` placeholders.
+- **Verified, not just written**: `tsc --noEmit` clean (only the pre-existing documented
+  `campaign-skill` error); full test suite still 273/273 runnable tests passing; migration
+  re-run confirms idempotency (`All migrations are up to date`).
 
 ### Next session
-- If continuing the build: read `vanigtm/backend/src/skills/assessment-skill/SKILL.md`
-  first, then pick up report generation or frontend wiring.
-- If reviewing before continuing: the branch is pushed but no PR was opened (not asked
-  for) — diff `claude/vani-ai-assessment-skill` against VaNiGTM's `main`.
-- Migration 228 has NOT been applied to `vani_gtm_db` — nothing in this section has
-  touched live data.
+- **Task A2 (deployment artifacts) is next**, if asked for: Dockerfile, docker-compose
+  service block matching the Main VPS stack, Nginx config for `api.vikuna.io`,
+  `.env.example` additions (names only), an apply runbook, and a smoke-test script —
+  Charan runs these, this session only authors them (sandbox cannot reach the VPS).
+- If continuing the build instead: read `vanigtm/backend/src/skills/assessment-skill/SKILL.md`
+  first. LLM narrative generation and email dispatch (Phase B) are the next real feature
+  work; the fallback path built in A1 stays as the permanent fallback, not a placeholder.
+- The branch is pushed but no PR was opened (not asked for) — diff
+  `claude/vani-ai-assessment-skill` against VaNiGTM's `main`.
+- **Nothing has touched the real VPS database** — migration 228 has only run against the
+  local sandbox Postgres described above.
