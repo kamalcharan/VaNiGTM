@@ -199,14 +199,19 @@ maybeDescribe('partner isolation (API level, real JWTs)', () => {
     expect(notes.rows[0].n).toBe(0);
   });
 
-  it('a user with no gt_partner row gets no console access at all', async () => {
+  it('a user with no gt_partner row is treated as OWNER (sees every lead)', async () => {
     const orphan = await pool.query<{ id: string }>(
       `INSERT INTO vn_users (tenant_id, email, password_hash, name, intake_code, is_active, is_email_verified)
        VALUES ($1, $2, 'x', 'Orphan', 'ISO-O', true, true) RETURNING id`,
       [tenantId, `orphan@${SUFFIX}.local`]);
 
+    // Being authenticated into the tenant IS the access control — see
+    // partner-context.ts. A gt_partner row is a RESTRICTION (scoping a
+    // referral partner down), not a permission. An owner therefore needs no
+    // row and sees both partners' leads.
     const res = await callSkill('get_leads', jwtFor(orphan.rows[0].id));
-    expect(res.body?.success).toBe(false);
-    expect(String(res.body?.error)).toMatch(/NO_VANI_CONSOLE_ACCESS/);
+    expect(res.body?.success).toBe(true);
+    const ids: string[] = (res.body.data?.leads ?? []).map((l: any) => l.id);
+    expect(ids).toEqual(expect.arrayContaining([leadA, leadB]));
   });
 });
