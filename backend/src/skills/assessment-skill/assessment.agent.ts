@@ -22,15 +22,30 @@ import { bridgeLeadToContact } from './contact-bridge';
 
 let cachedTenantId: string | null = null;
 
+/**
+ * Which tenant VaNi's leads belong to.
+ *
+ * Configurable because a vn_users row belongs to exactly one tenant, and
+ * the console only lists leads from the tenant in the caller's JWT — so if
+ * the person operating VaNi already has an account under another tenant,
+ * hardcoding this would mean two logins, with the obvious one showing an
+ * empty console. Set VANI_TENANT_SLUG to that tenant instead.
+ *
+ * db:seed-owner reads the same variable, so the tenant that owns the leads
+ * and the tenant that can see them cannot drift apart.
+ */
+const TENANT_SLUG = process.env.VANI_TENANT_SLUG || 'vikuna-consulting';
+
 async function resolveTenantId(pool: Pool): Promise<string> {
   if (cachedTenantId) return cachedTenantId;
   const result = await pool.query<{ id: string }>(
-    `SELECT id FROM vn_tenants WHERE slug = 'vikuna-consulting'`,
+    `SELECT id FROM vn_tenants WHERE slug = $1`, [TENANT_SLUG],
   );
   const row = result.rows[0];
   if (!row) {
     throw new Error(
-      'VIKUNA_CONSULTING_TENANT_NOT_FOUND: run migration 228 (creates the tenant) before using assessment-skill',
+      `VANI_TENANT_NOT_FOUND: no tenant with slug '${TENANT_SLUG}'. `
+      + 'Run migration 228 (creates vikuna-consulting), or set VANI_TENANT_SLUG to an existing tenant.',
     );
   }
   cachedTenantId = row.id;
