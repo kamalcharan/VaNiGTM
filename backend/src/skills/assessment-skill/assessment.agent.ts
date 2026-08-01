@@ -17,6 +17,7 @@
 import type { Pool } from 'pg';
 import { createTenantDb } from '../../db';
 import { scoreResponse, type AssessmentDefinition } from './scoring';
+import { fillFallbackNarrative } from './narrative';
 
 let cachedTenantId: string | null = null;
 
@@ -238,10 +239,17 @@ export class AssessmentAgent {
   }
 
   /**
-   * Turns a completed, uncaptured response into a lead. Report row creation
-   * and email dispatch are deliberately NOT done here — that's the next
-   * piece of work (report generation + n8n/worker dispatch), this function's
-   * job ends at "a lead row now exists, linked to its response."
+   * Turns a completed, uncaptured response into a lead AND, synchronously,
+   * writes the gt_report row using the definition's template FALLBACK
+   * narrative — no LLM call (Task A1 scope; the LLM/Qwen3 narrative path and
+   * email dispatch are Phase B, per the Topology note's Assessment Agent /
+   * ASSESSMENT_COMPLETED event and its "template fallback always" rule).
+   * Score is recomputed here (not read back from the stored health_score/
+   * band/top_modes columns) because the fallback template needs the band's
+   * full label+verdict text and each mode's name, which the response row
+   * only stores in abbreviated form (band KEY, not label/verdict).
+   * Recomputing is cheap and keeps this deterministic and re-derivable from
+   * source, same reasoning as scoring itself.
    */
   static async captureLead(
     pool: Pool,
@@ -254,13 +262,16 @@ export class AssessmentAgent {
       roleTitle: string;
       phone?: string;
     },
-  ): Promise<{ leadId: string; leadNo: string }> {
+  ): Promise<{ leadId: string; leadNo: string; reportToken: string; reportRef: string }> {
     const tenantId = await resolveTenantId(pool);
     const db = createTenantDb(pool, tenantId);
 
     return db.transaction(async (tx) => {
-      const respResult = await tx.query<{ id: string; lead_id: string | null; referred_by_partner_id: string | null; tenant_id: string }>(
-        `SELECT id, lead_id, referred_by_partner_id, tenant_id
+      const respResult = await tx.query<{
+        id: string; lead_id: string | null; referred_by_partner_id: string | null;
+        tenant_id: string; assessment_def_id: string; answers: Record<string, number>;
+      }>(
+        `SELECT id, lead_id, referred_by_partner_id, tenant_id, assessment_def_id, answers
            FROM gt_assessment_response
           WHERE id = $response_id AND anon_token = $anon_token AND status = 'completed'`,
         { response_id: params.responseId, anon_token: params.anonToken },
@@ -296,7 +307,38 @@ export class AssessmentAgent {
         { tenant_id: tenantId, response_id: response.id, lead_id: lead.id },
       );
 
-      return { leadId: lead.id, leadNo: lead.lead_no };
+      // ── Synchronous report, fallback narrative only (Task A1 scope) ──────
+      const defResult = await tx.query<{ definition: AssessmentDefinition & { narrative_prompt?: { fallback?: string } } }>(
+        `SELECT definition FROM gt_assessment_def WHERE id = $id`,
+        { id: response.assessment_def_id },
+      );
+      const definition = defResult.rows[0].definition;
+      const scored = scoreResponse(definition, response.answers);
+      const fallbackTemplate = definition.narrative_prompt?.fallback ?? '';
+      const narrative = fallbackTemplate ? fillFallbackNarrative(fallbackTemplate, scored) : null;
+
+      const reportResult = await tx.query<{ report_token: string; ref: string }>(
+        `INSERT INTO gt_report (tenant_id, assessment_response_id, ref, narrative, narrative_source)
+         VALUES ($tenant_id, $response_id, gt_next_seq($tenant_id::uuid, 'vani_report'), $narrative, 'fallback')
+         RETURNING report_token, ref`,
+        {
+          tenant_id: tenantId,
+          response_id: response.id,
+          narrative,
+        },
+      );
+      const report = reportResult.rows[0];
+
+      await tx.query(
+        `INSERT INTO gt_lead_event (tenant_id, assessment_response_id, lead_id, event_type, payload)
+         VALUES ($tenant_id, $response_id, $lead_id, 'report_ready', $payload::jsonb)`,
+        {
+          tenant_id: tenantId, response_id: response.id, lead_id: lead.id,
+          payload: JSON.stringify({ narrative_source: 'fallback', report_ref: report.ref }),
+        },
+      );
+
+      return { leadId: lead.id, leadNo: lead.lead_no, reportToken: report.report_token, reportRef: report.ref };
     });
   }
 

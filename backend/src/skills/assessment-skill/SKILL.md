@@ -59,9 +59,12 @@ Free-text timeline note. Ownership (partner can only note their own leads) is en
 - Returns: { note_id, created_at, recipe: 'confirmation' }
 
 ## Not in this pass (deliberately)
-- Report generation (narrative via LLM + fallback template) and email
-  dispatch (`gt_report` row creation) — `capture_lead`'s job ends at "a lead
-  now exists." Next piece of work, not this one.
+- LLM narrative generation and email dispatch — Phase B, per Agent Topology
+  v1.1 §5/§12 ("template fallback always"; report generation runs in-process
+  for v1, agent-shaped for later registration on the event bus). `capture_lead`
+  DOES synchronously write `gt_report` with the definition's template
+  FALLBACK narrative (no LLM call) — see `narrative.ts` and Task A1's local
+  end-to-end proof.
 - Partner CRUD (creating/deactivating `gt_partner` rows) — manage directly
   via SQL until console UI need justifies a function for it.
 - The `ai-recovery` assessment definition is not seeded by this migration —

@@ -16,9 +16,12 @@
  * normal JWT-gated skill executor (POST /api/v1/skills/assessment-skill/:fn)
  * — this file exists ONLY for the parts that structurally cannot have a JWT.
  *
- * NOTE: report generation (narrative, emailing) is not wired yet — GET
- * /report/:token will 404 until something creates a gt_report row. That's
- * the next piece of work, not this pass's scope.
+ * NOTE: report generation is synchronous and fallback-only (Task A1 scope)
+ * — POST /capture writes the gt_report row itself using the definition's
+ * template fallback narrative, no LLM call. LLM narrative generation and
+ * email dispatch are Phase B (Agent Topology note §5/§12: "template
+ * fallback always"). GET /report/:token works today for that fallback
+ * report.
  *
  * Mounted in server.ts, mirrors storyteller.routes.ts's public-route pattern.
  */
@@ -127,7 +130,13 @@ export function createAssessmentRouter(pool: Pool): Router {
         roleTitle: body.role_title,
         phone: body.phone,
       });
-      res.json({ lead_id: result.leadId, lead_no: result.leadNo });
+      res.json({
+        lead_id: result.leadId,
+        lead_no: result.leadNo,
+        report_token: result.reportToken,
+        report_ref: result.reportRef,
+        report_url: `/api/v1/assessment/report/${result.reportToken}`,
+      });
     } catch (err) {
       const msg = messageOf(err);
       if (msg.startsWith('RESPONSE_NOT_FOUND')) {

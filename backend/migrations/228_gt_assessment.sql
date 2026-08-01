@@ -54,8 +54,15 @@ BEGIN;
 -- Real UUID, not the all-zero "vikuna" sentinel tenant that already exists
 -- in vn_tenants (that row predates this product and is a bootstrap
 -- placeholder — never hang real lead data off it).
-INSERT INTO vn_tenants (id, slug, status, is_active, activated_at, customer_id_type_code, is_admin)
-SELECT gen_random_uuid(), 'vikuna-consulting', 'active', true, now(), 'IWELL_CODE', false
+--
+-- is_active is NOT in this column list on purpose — CLAUDE.md lesson #8:
+-- "vn_tenants.is_active is a generated column — never INSERT into it."
+-- (GENERATED ALWAYS AS (status = 'active') STORED.) The first draft of this
+-- migration violated that lesson anyway and failed exactly as documented
+-- when run locally (Task A1, 2026-07-31) — status='active' below is
+-- sufficient; is_active computes itself.
+INSERT INTO vn_tenants (id, slug, status, activated_at, customer_id_type_code, is_admin)
+SELECT gen_random_uuid(), 'vikuna-consulting', 'active', now(), 'IWELL_CODE', false
 WHERE NOT EXISTS (SELECT 1 FROM vn_tenants WHERE slug = 'vikuna-consulting');
 
 -- ── 1. gt_partner — console identity (owner or referral partner) ───────────
