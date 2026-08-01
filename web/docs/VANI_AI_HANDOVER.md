@@ -268,15 +268,53 @@ pushed (commit after the one referenced in §8 above), no PR opened.
   `campaign-skill` error); full test suite still 273/273 runnable tests passing; migration
   re-run confirms idempotency (`All migrations are up to date`).
 
+## 10. Task A2 — deployment artifacts (2026-08-01)
+
+Item 0 (small fix, done first): `scoring.ts`'s tie-break was already reproducible but
+relied on `definition.modes`' incidental array order — now an explicit rule (exposure
+desc, `composite_weight` desc, mode key asc). Migration 229 adds `gt_report.top_modes`,
+frozen at capture time, so report rendering and any future email dispatch read the same
+persisted value instead of each recomputing. Re-ran `verify:assessment`: 26/26 checks
+pass (up from 24 — added assertions for the freeze).
+
+Then `deploy/vani-main-vps/` in VaNiGTM: Dockerfile (tuned to the Topology note's ~400MB
+budget, not touching the shared ProKey Dockerfile), a compose overlay service
+(`vani-backend`, meant to layer onto the existing Main VPS compose file, never edited
+directly since it was never shared with this session), an Nginx config that
+**allowlists only** `/api/v1/assessment/`, `/api/v1/skills/assessment-skill/`, and
+`/api/v1/auth/` — everything else on `api.vikuna.io`, including this same backend's
+other skills, 404s at Nginx — with dynamic CORS for `vikuna.io`/`www.vikuna.io` plus the
+Vercel preview pattern, `.env.example`, a `RUNBOOK.md` (swap-first per the Topology
+note's hard rule, pg_dump backup, build/start/migrate/seed/deploy-nginx/verify, plus
+rollback), and a laptop-runnable `smoke-test.sh` (full flow + CORS preflight incl. a
+negative check + an allowlist-hole check).
+
+**A real, deployment-blocking bug was found and fixed along the way**: `npm run build`
+(plain `tsc`, not `--noEmit`) exits non-zero on the pre-existing `campaign-skill`
+type error this repo's own `CLAUDE.md` already documented as known — which would have
+made `docker build` fail outright before ever reaching VaNi AI's code. Fixed with a
+scoped change to that one query (`RETURNING id` + `rows.length` instead of a `rowCount`
+`SkillDb.query()` never actually provides) — didn't touch the shared `SkillDb` type.
+`tsc --noEmit` is now fully clean, not just "clean except the known error."
+
+Not executable in this sandbox: `docker build`, `nginx -t` (no Docker daemon, no
+installable nginx package here). Compensated: ran the Dockerfile's actual build recipe
+directly (`npm run build`, now exits 0; the SKILL.md/*.sql copy step simulated by hand
+and confirmed correct), parsed the compose YAML, manually reviewed the Nginx config.
+`RUNBOOK.md` gates on `nginx -t` before reload as the real check for what couldn't be
+run here.
+
+Full list of what was guessed (network name, build-vs-registry-pull, Nginx drop-in path,
+Vercel project slug, cert tooling) is in `RUNBOOK.md`'s own "What I had to guess"
+section — read that before running any step.
+
 ### Next session
-- **Task A2 (deployment artifacts) is next**, if asked for: Dockerfile, docker-compose
-  service block matching the Main VPS stack, Nginx config for `api.vikuna.io`,
-  `.env.example` additions (names only), an apply runbook, and a smoke-test script —
-  Charan runs these, this session only authors them (sandbox cannot reach the VPS).
-- If continuing the build instead: read `vanigtm/backend/src/skills/assessment-skill/SKILL.md`
-  first. LLM narrative generation and email dispatch (Phase B) are the next real feature
-  work; the fallback path built in A1 stays as the permanent fallback, not a placeholder.
-- The branch is pushed but no PR was opened (not asked for) — diff
-  `claude/vani-ai-assessment-skill` against VaNiGTM's `main`.
-- **Nothing has touched the real VPS database** — migration 228 has only run against the
-  local sandbox Postgres described above.
+- **Charan runs `RUNBOOK.md` on the Main VPS** — this session stops here per instruction.
+  Paste output back for debugging on anything that doesn't match what's expected.
+- After a successful deploy: LLM narrative generation and email dispatch (Phase B) are
+  the next real feature work; the fallback path built in A1 stays as the permanent
+  fallback, not a placeholder.
+- The branch (`claude/vani-ai-assessment-skill`) is pushed but no PR was opened (not
+  asked for) — diff it against VaNiGTM's `main` to review everything at once.
+- **Nothing has touched the real VPS** — all of Task A1 and A2 ran/was validated against
+  the local sandbox Postgres only.
