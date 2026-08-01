@@ -18,6 +18,7 @@ import type { Pool } from 'pg';
 import { createTenantDb } from '../../db';
 import { scoreResponse, type AssessmentDefinition } from './scoring';
 import { fillFallbackNarrative } from './narrative';
+import { bridgeLeadToContact } from './contact-bridge';
 
 let cachedTenantId: string | null = null;
 
@@ -299,7 +300,7 @@ export class AssessmentAgent {
     const tenantId = await resolveTenantId(pool);
     const db = createTenantDb(pool, tenantId);
 
-    return db.transaction(async (tx) => {
+    const captured = await db.transaction(async (tx) => {
       const respResult = await tx.query<{
         id: string; lead_id: string | null; referred_by_partner_id: string | null;
         tenant_id: string; assessment_def_id: string; answers: Record<string, number>;
@@ -340,9 +341,15 @@ export class AssessmentAgent {
         { tenant_id: tenantId, response_id: response.id, lead_id: lead.id },
       );
 
+      // The gt_contacts bridge deliberately runs AFTER this transaction
+      // commits — see below the transaction body.
+
       // ── Synchronous report, fallback narrative only (Task A1 scope) ──────
-      const defResult = await tx.query<{ definition: AssessmentDefinition & { narrative_prompt?: { fallback?: string } } }>(
-        `SELECT definition FROM gt_assessment_def WHERE id = $id`,
+      const defResult = await tx.query<{
+        definition: AssessmentDefinition & { narrative_prompt?: { fallback?: string } };
+        service_slug: string;
+      }>(
+        `SELECT definition, service_slug FROM gt_assessment_def WHERE id = $id`,
         { id: response.assessment_def_id },
       );
       const definition = defResult.rows[0].definition;
@@ -376,8 +383,75 @@ export class AssessmentAgent {
         },
       );
 
-      return { leadId: lead.id, leadNo: lead.lead_no, reportToken: report.report_token, reportRef: report.ref };
+      return {
+        leadId: lead.id, leadNo: lead.lead_no,
+        reportToken: report.report_token, reportRef: report.ref,
+        responseId: response.id, serviceSlug: defResult.rows[0].service_slug,
+      };
     });
+
+    // ── Bridge into gt_contacts (Phase C3) ─────────────────────────────────
+    // The lead is a person; gt_contacts is this codebase's person table.
+    // Bridging puts them in /contacts with channels and a tag, reachable by
+    // campaigns and sequences, while gt_lead keeps the assessment facts.
+    // See contact-bridge.ts and migration 231.
+    //
+    // AFTER the capture transaction, in its own — not inside it. Two
+    // reasons, and the first is a correctness bug I'd otherwise have
+    // shipped: a failed statement inside a Postgres transaction poisons the
+    // whole transaction, so a catch-and-log INSIDE it could not even record
+    // the failure — the logging INSERT would fail too and take the lead
+    // with it. Second, best-effort is the right semantics here: the
+    // prospect has answered twelve questions and handed over their email;
+    // losing that because a contact row could not be written would be the
+    // worst possible trade. The lead is committed and safe before this
+    // runs.
+    //
+    // A failure is logged and written to the timeline — visible and
+    // replayable, not swallowed. The caller still gets its report token.
+    try {
+      await db.transaction(async (tx) => {
+        const contactId = await bridgeLeadToContact(tx, {
+          tenantId,
+          isLive: true,
+          name: params.name,
+          email: params.email,
+          company: params.company,
+          roleTitle: params.roleTitle,
+          phone: params.phone,
+          serviceSlug: captured.serviceSlug,
+        });
+        await tx.query(
+          `UPDATE gt_lead SET contact_id = $contact_id, updated_at = now() WHERE id = $lead_id`,
+          { contact_id: contactId, lead_id: captured.leadId },
+        );
+        await tx.query(
+          `INSERT INTO gt_lead_event (tenant_id, assessment_response_id, lead_id, event_type, payload)
+           VALUES ($tenant_id, $response_id, $lead_id, 'contact_bridged', $payload::jsonb)`,
+          {
+            tenant_id: tenantId, response_id: captured.responseId, lead_id: captured.leadId,
+            payload: JSON.stringify({ contact_id: contactId }),
+          },
+        );
+      });
+    } catch (err) {
+      console.error('[Assessment] lead captured but gt_contacts bridge failed', err);
+      try {
+        await db.query(
+          `INSERT INTO gt_lead_event (tenant_id, assessment_response_id, lead_id, event_type, payload)
+           VALUES ($tenant_id, $response_id, $lead_id, 'contact_bridge_failed', $payload::jsonb)`,
+          {
+            tenant_id: tenantId, response_id: captured.responseId, lead_id: captured.leadId,
+            payload: JSON.stringify({ error: err instanceof Error ? err.message : String(err) }),
+          },
+        );
+      } catch { /* the console.error above is already the loud signal */ }
+    }
+
+    return {
+      leadId: captured.leadId, leadNo: captured.leadNo,
+      reportToken: captured.reportToken, reportRef: captured.reportRef,
+    };
   }
 
   /** GET /report/:token — bearer-capability model, same as
