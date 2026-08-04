@@ -18,20 +18,41 @@ import type { Pool } from 'pg';
 import { createTenantDb } from '../../db';
 import { scoreResponse, type AssessmentDefinition } from './scoring';
 import { fillFallbackNarrative } from './narrative';
+import { bridgeLeadToContact } from './contact-bridge';
 
 let cachedTenantId: string | null = null;
+
+/**
+ * Which tenant VaNi's leads belong to.
+ *
+ * Configurable because a vn_users row belongs to exactly one tenant, and
+ * the console only lists leads from the tenant in the caller's JWT — so if
+ * the person operating VaNi already has an account under another tenant,
+ * hardcoding this would mean two logins, with the obvious one showing an
+ * empty console. Set VANI_TENANT_SLUG to that tenant instead.
+ *
+ * db:seed-owner reads the same variable, so the tenant that owns the leads
+ * and the tenant that can see them cannot drift apart.
+ */
+const TENANT_SLUG = process.env.VANI_TENANT_SLUG || 'vikuna-consulting';
 
 async function resolveTenantId(pool: Pool): Promise<string> {
   if (cachedTenantId) return cachedTenantId;
   const result = await pool.query<{ id: string }>(
-    `SELECT id FROM vn_tenants WHERE slug = 'vikuna-consulting'`,
+    `SELECT id FROM vn_tenants WHERE slug = $1`, [TENANT_SLUG],
   );
   const row = result.rows[0];
   if (!row) {
     throw new Error(
-      'VIKUNA_CONSULTING_TENANT_NOT_FOUND: run migration 228 (creates the tenant) before using assessment-skill',
+      `VANI_TENANT_NOT_FOUND: no tenant with slug '${TENANT_SLUG}'. `
+      + 'Run migration 228 (creates vikuna-consulting), or set VANI_TENANT_SLUG to an existing tenant.',
     );
   }
+  // Ensure this tenant has the LEAD-/VN- sequence prefixes (migration 232).
+  // Runs once per process, since the id is cached below. Without it a tenant
+  // VaNi has never run under gets 'VANI' for both lead and report ids.
+  await pool.query(`SELECT vani_ensure_seq_prefixes($1::uuid)`, [row.id]);
+
   cachedTenantId = row.id;
   return cachedTenantId;
 }
@@ -175,12 +196,26 @@ export class AssessmentAgent {
     return { responseId: row.id, anonToken: row.anon_token };
   }
 
-  /** Validates every scored question is answered, computes the score, persists it. */
+  /**
+   * Validates every scored question is answered, computes the score, persists it.
+   *
+   * Returns ONLY what the teaser screen may show: health score, the band
+   * (with its label/verdict copy, which the frontend must never hold its own
+   * copy of), and the #1 exposure. Modes #2 and #3 are deliberately NOT in
+   * this response — the blueprint gates them behind email capture, and a
+   * gate whose content is sitting in the network response is decoration,
+   * not a gate. They arrive with the report, after capture.
+   */
   static async completeAssessment(
     pool: Pool,
     responseId: string,
     anonToken: string,
-  ): Promise<{ health_score: number; band: string; top_modes: unknown }> {
+  ): Promise<{
+    health_score: number;
+    band: { key: string; label: string; color: string; verdict: string };
+    top_mode: { key: string; name: string; exposure_pct: number; symptom: string };
+    locked_modes: number;
+  }> {
     const tenantId = await resolveTenantId(pool);
     const db = createTenantDb(pool, tenantId);
 
@@ -235,7 +270,26 @@ export class AssessmentAgent {
       return scored;
     });
 
-    return { health_score: result.health, band: result.band.key, top_modes: result.top_modes };
+    const top = result.top_modes[0];
+    return {
+      health_score: result.health,
+      band: {
+        key: result.band.key,
+        label: result.band.label,
+        color: result.band.color,
+        verdict: result.band.verdict,
+      },
+      // #1 only, and only the fields the teaser card renders — symptom, not
+      // remediation/route/referral_line, which belong to the paid-by-email
+      // report.
+      top_mode: {
+        key: top.key,
+        name: top.name,
+        exposure_pct: top.exposure_pct,
+        symptom: top.symptom,
+      },
+      locked_modes: Math.max(0, result.top_modes.length - 1),
+    };
   }
 
   /**
@@ -266,7 +320,7 @@ export class AssessmentAgent {
     const tenantId = await resolveTenantId(pool);
     const db = createTenantDb(pool, tenantId);
 
-    return db.transaction(async (tx) => {
+    const captured = await db.transaction(async (tx) => {
       const respResult = await tx.query<{
         id: string; lead_id: string | null; referred_by_partner_id: string | null;
         tenant_id: string; assessment_def_id: string; answers: Record<string, number>;
@@ -307,9 +361,15 @@ export class AssessmentAgent {
         { tenant_id: tenantId, response_id: response.id, lead_id: lead.id },
       );
 
+      // The gt_contacts bridge deliberately runs AFTER this transaction
+      // commits — see below the transaction body.
+
       // ── Synchronous report, fallback narrative only (Task A1 scope) ──────
-      const defResult = await tx.query<{ definition: AssessmentDefinition & { narrative_prompt?: { fallback?: string } } }>(
-        `SELECT definition FROM gt_assessment_def WHERE id = $id`,
+      const defResult = await tx.query<{
+        definition: AssessmentDefinition & { narrative_prompt?: { fallback?: string } };
+        service_slug: string;
+      }>(
+        `SELECT definition, service_slug FROM gt_assessment_def WHERE id = $id`,
         { id: response.assessment_def_id },
       );
       const definition = defResult.rows[0].definition;
@@ -321,14 +381,15 @@ export class AssessmentAgent {
       // future email dispatch both read gt_report.top_modes, neither
       // recomputes, so they can never disagree (migration 229).
       const reportResult = await tx.query<{ report_token: string; ref: string }>(
-        `INSERT INTO gt_report (tenant_id, assessment_response_id, ref, narrative, narrative_source, top_modes)
-         VALUES ($tenant_id, $response_id, gt_next_seq($tenant_id::uuid, 'vani_report'), $narrative, 'fallback', $top_modes::jsonb)
+        `INSERT INTO gt_report (tenant_id, assessment_response_id, ref, narrative, narrative_source, top_modes, all_modes)
+         VALUES ($tenant_id, $response_id, gt_next_seq($tenant_id::uuid, 'vani_report'), $narrative, 'fallback', $top_modes::jsonb, $all_modes::jsonb)
          RETURNING report_token, ref`,
         {
           tenant_id: tenantId,
           response_id: response.id,
           narrative,
           top_modes: JSON.stringify(scored.top_modes),
+          all_modes: JSON.stringify(scored.all_modes),
         },
       );
       const report = reportResult.rows[0];
@@ -342,8 +403,75 @@ export class AssessmentAgent {
         },
       );
 
-      return { leadId: lead.id, leadNo: lead.lead_no, reportToken: report.report_token, reportRef: report.ref };
+      return {
+        leadId: lead.id, leadNo: lead.lead_no,
+        reportToken: report.report_token, reportRef: report.ref,
+        responseId: response.id, serviceSlug: defResult.rows[0].service_slug,
+      };
     });
+
+    // ── Bridge into gt_contacts (Phase C3) ─────────────────────────────────
+    // The lead is a person; gt_contacts is this codebase's person table.
+    // Bridging puts them in /contacts with channels and a tag, reachable by
+    // campaigns and sequences, while gt_lead keeps the assessment facts.
+    // See contact-bridge.ts and migration 231.
+    //
+    // AFTER the capture transaction, in its own — not inside it. Two
+    // reasons, and the first is a correctness bug I'd otherwise have
+    // shipped: a failed statement inside a Postgres transaction poisons the
+    // whole transaction, so a catch-and-log INSIDE it could not even record
+    // the failure — the logging INSERT would fail too and take the lead
+    // with it. Second, best-effort is the right semantics here: the
+    // prospect has answered twelve questions and handed over their email;
+    // losing that because a contact row could not be written would be the
+    // worst possible trade. The lead is committed and safe before this
+    // runs.
+    //
+    // A failure is logged and written to the timeline — visible and
+    // replayable, not swallowed. The caller still gets its report token.
+    try {
+      await db.transaction(async (tx) => {
+        const contactId = await bridgeLeadToContact(tx, {
+          tenantId,
+          isLive: true,
+          name: params.name,
+          email: params.email,
+          company: params.company,
+          roleTitle: params.roleTitle,
+          phone: params.phone,
+          serviceSlug: captured.serviceSlug,
+        });
+        await tx.query(
+          `UPDATE gt_lead SET contact_id = $contact_id, updated_at = now() WHERE id = $lead_id`,
+          { contact_id: contactId, lead_id: captured.leadId },
+        );
+        await tx.query(
+          `INSERT INTO gt_lead_event (tenant_id, assessment_response_id, lead_id, event_type, payload)
+           VALUES ($tenant_id, $response_id, $lead_id, 'contact_bridged', $payload::jsonb)`,
+          {
+            tenant_id: tenantId, response_id: captured.responseId, lead_id: captured.leadId,
+            payload: JSON.stringify({ contact_id: contactId }),
+          },
+        );
+      });
+    } catch (err) {
+      console.error('[Assessment] lead captured but gt_contacts bridge failed', err);
+      try {
+        await db.query(
+          `INSERT INTO gt_lead_event (tenant_id, assessment_response_id, lead_id, event_type, payload)
+           VALUES ($tenant_id, $response_id, $lead_id, 'contact_bridge_failed', $payload::jsonb)`,
+          {
+            tenant_id: tenantId, response_id: captured.responseId, lead_id: captured.leadId,
+            payload: JSON.stringify({ error: err instanceof Error ? err.message : String(err) }),
+          },
+        );
+      } catch { /* the console.error above is already the loud signal */ }
+    }
+
+    return {
+      leadId: captured.leadId, leadNo: captured.leadNo,
+      reportToken: captured.reportToken, reportRef: captured.reportRef,
+    };
   }
 
   /** GET /report/:token — bearer-capability model, same as
@@ -354,22 +482,53 @@ export class AssessmentAgent {
   static async getReportByToken(pool: Pool, token: string) {
     const result = await pool.query<{
       ref: string | null; narrative: string | null; created_at: Date;
-      health_score: number | null; band: string | null; top_modes: unknown;
+      health_score: number | null; band_key: string | null;
+      top_modes: unknown; all_modes: unknown;
       name: string; company: string;
+      definition: AssessmentDefinition & {
+        short_title?: string;
+        report?: { cta_label?: string; cta_url?: string; signoff?: string };
+      };
     }>(
-      // top_modes comes from gt_report (frozen at capture time), NOT
-      // gt_assessment_response — see migration 229's comment. health_score/
-      // band are scalars with no ordering to disagree on, so they're still
-      // read from the response row rather than duplicated onto gt_report.
-      `SELECT r.ref, r.narrative, r.created_at, r.top_modes,
-              resp.health_score, resp.band,
-              l.name, l.company
+      // top_modes/all_modes come from gt_report (frozen at capture time),
+      // NOT gt_assessment_response — see migrations 229/230. health_score
+      // and the band KEY are scalars with no ordering to disagree on, so
+      // they're still read from the response row rather than duplicated.
+      `SELECT r.ref, r.narrative, r.created_at, r.top_modes, r.all_modes,
+              resp.health_score, resp.band AS band_key,
+              l.name, l.company,
+              d.definition
          FROM gt_report r
          JOIN gt_assessment_response resp ON resp.id = r.assessment_response_id
          JOIN gt_lead l ON l.id = resp.lead_id
+         JOIN gt_assessment_def d ON d.id = resp.assessment_def_id
         WHERE r.report_token = $1 AND r.revoked_at IS NULL`,
       [token],
     );
-    return result.rows[0] ?? null;
+    const row = result.rows[0];
+    if (!row) return null;
+
+    // Band descriptors (label/verdict/next_step/color) are CONFIG, looked up
+    // from the definition by the stored band key — not recomputed. The
+    // definition is immutable per version, so this can't drift the way
+    // re-running scoreResponse() could. The frontend is forbidden from
+    // holding any of this copy itself, so it has to arrive here.
+    const band = row.definition?.scoring?.bands?.find((b) => b.key === row.band_key) ?? null;
+
+    return {
+      ref: row.ref,
+      narrative: row.narrative,
+      created_at: row.created_at,
+      health_score: row.health_score,
+      band: band
+        ? { key: band.key, label: band.label, color: band.color, verdict: band.verdict, next_step: band.next_step }
+        : null,
+      top_modes: row.top_modes,
+      all_modes: row.all_modes,
+      name: row.name,
+      company: row.company,
+      assessment_title: row.definition?.short_title ?? null,
+      report: row.definition?.report ?? null,
+    };
   }
 }

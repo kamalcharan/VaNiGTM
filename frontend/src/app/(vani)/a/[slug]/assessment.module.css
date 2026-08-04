@@ -1,0 +1,245 @@
+/* ============================================================
+ * VaNi AI — public assessment flow styles.
+ * Ported from vani-ai-ux-blueprint.html: landing, assessment, analyzing,
+ * teaser, capture, plus the edge-state gallery's resume modal and inline
+ * error banner. Class names follow the blueprint's own naming, camelCased
+ * for CSS Modules (.a-card -> .aCard). Values unchanged.
+ * ============================================================ */
+
+/* ─── Top bar ───────────────────────────────────────────────── */
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 0;
+}
+.brand { display: flex; align-items: center; gap: 11px; }
+.orb {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, var(--cyan-hi), var(--indigo) 58%, var(--indigo-deep) 100%);
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.5);
+  animation: pulse 3.2s ease-in-out infinite;
+  flex: none;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(34, 211, 238, 0.38); }
+  50%      { box-shadow: 0 0 26px rgba(34, 211, 238, 0.72); }
+}
+.wordmark { font-size: 19px; font-weight: 600; letter-spacing: 0.02em; font-family: 'Outfit', system-ui, sans-serif; }
+.wordmark em { font-style: normal; color: var(--cyan); }
+.byline { font-size: 12px; color: var(--ink-3); letter-spacing: 0.06em; }
+
+/* ─── Landing ───────────────────────────────────────────────── */
+.hero { padding: 64px 0 30px; max-width: 700px; }
+.kicker {
+  font-size: 13px; letter-spacing: 0.22em; color: var(--cyan);
+  text-transform: uppercase; margin-bottom: 18px;
+}
+.hero h1 {
+  font-size: clamp(30px, 5.2vw, 50px); font-weight: 700;
+  line-height: 1.12; letter-spacing: -0.015em; margin: 0;
+}
+.hero h1 span { color: var(--cyan); }
+.hero p {
+  margin-top: 20px; font-size: 17px; line-height: 1.65;
+  color: var(--ink-2); max-width: 560px;
+}
+.cards {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px; padding: 34px 0 60px;
+}
+.aCard {
+  background: var(--panel); border: 1px solid var(--stroke);
+  border-radius: var(--radius); padding: 26px 24px;
+  transition: 0.25s; position: relative;
+}
+.aCard.live:hover {
+  border-color: var(--stroke-hi); transform: translateY(-3px);
+  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.45);
+}
+.aTag {
+  font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--cyan); margin-bottom: 12px;
+}
+.aCard h3 { font-size: 20px; font-weight: 600; line-height: 1.3; margin: 0; }
+.meta { margin: 12px 0 20px; font-size: 13px; color: var(--ink-3); }
+.meta b { color: var(--ink-2); font-weight: 500; }
+.footer {
+  border-top: 1px solid var(--stroke); padding: 26px 0 40px;
+  font-size: 12.5px; color: var(--ink-3); line-height: 1.7;
+}
+
+/* ─── Buttons ───────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-family: 'Outfit', system-ui, sans-serif; font-weight: 600; font-size: 15px;
+  color: #04121c; background: linear-gradient(120deg, var(--cyan-hi), var(--cyan));
+  border: none; border-radius: 12px; padding: 13px 22px;
+  cursor: pointer; transition: 0.2s;
+}
+.btn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btnGhost {
+  background: none; color: var(--ink-2);
+  border: 1px solid var(--stroke); font-weight: 500;
+}
+.btnGhost:hover:not(:disabled) { filter: none; }
+.btnSmall { padding: 9px 15px; font-size: 13px; border-radius: 10px; }
+
+/* ─── Screen transition ─────────────────────────────────────── */
+.screen { animation: screenIn 0.45s cubic-bezier(0.22, 0.9, 0.3, 1); }
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ─── Assessment ────────────────────────────────────────────── */
+.assessShell { max-width: 640px; margin: 0 auto; padding-top: 8px; }
+.progress {
+  height: 3px; background: rgba(255, 255, 255, 0.08);
+  border-radius: 99px; margin: 10px 0 8px; overflow: hidden;
+}
+.progress i {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, var(--indigo), var(--cyan));
+  border-radius: 99px; transition: width 0.45s cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+.pLabel { font-size: 12px; color: var(--ink-3); letter-spacing: 0.1em; text-align: right; }
+.framing {
+  display: flex; align-items: center; gap: 10px; margin: 42px 0 14px;
+  color: var(--cyan); font-size: 13.5px; letter-spacing: 0.04em;
+}
+.framing .orb { width: 18px; height: 18px; }
+.qText {
+  font-size: clamp(22px, 3.4vw, 29px); font-weight: 600;
+  line-height: 1.32; margin-bottom: 30px;
+  font-family: 'Outfit', system-ui, sans-serif;
+}
+.opts { display: grid; gap: 12px; }
+.opt {
+  display: flex; gap: 15px; align-items: center; text-align: left;
+  background: var(--panel); border: 1px solid var(--stroke); border-radius: 14px;
+  padding: 17px 18px; color: var(--ink); font-size: 15.5px; line-height: 1.45;
+  cursor: pointer; transition: 0.18s; width: 100%; font-family: inherit;
+}
+.opt:hover { border-color: var(--stroke-hi); background: rgba(34, 211, 238, 0.05); }
+.optSel { border-color: var(--cyan); background: rgba(34, 211, 238, 0.09); }
+.optKey {
+  flex: none; width: 30px; height: 30px; border-radius: 9px;
+  border: 1px solid var(--stroke); display: grid; place-items: center;
+  font-family: 'Outfit', system-ui, sans-serif; font-size: 13px; color: var(--ink-2);
+}
+.optSel .optKey { background: var(--cyan); color: #04121c; border-color: var(--cyan); }
+.assessFoot {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 34px; font-size: 13.5px; color: var(--ink-3);
+}
+.linky {
+  background: none; border: none; color: var(--ink-3);
+  cursor: pointer; font-size: 13.5px; font-family: inherit; padding: 0;
+}
+.linky:hover { color: var(--ink-2); }
+
+/* ─── Analyzing ─────────────────────────────────────────────── */
+.centerStage {
+  min-height: 72vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center;
+}
+.orbXl {
+  width: 92px; height: 92px; border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, var(--cyan-hi), var(--indigo) 58%, var(--indigo-deep) 100%);
+  box-shadow: 0 0 60px rgba(34, 211, 238, 0.55);
+  animation: pulse 1.5s ease-in-out infinite; margin-bottom: 36px;
+}
+.thinkLine {
+  font-family: 'Outfit', system-ui, sans-serif; font-size: 19px;
+  color: var(--ink-2); min-height: 28px; transition: opacity 0.3s;
+}
+
+/* ─── Teaser ────────────────────────────────────────────────── */
+.teaser { max-width: 640px; margin: 0 auto; padding: 44px 0; }
+.bandChip {
+  display: inline-flex; align-items: center; gap: 9px; border-radius: 999px;
+  padding: 8px 18px; font-family: 'Outfit', system-ui, sans-serif; font-weight: 600;
+  font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase;
+}
+/* Band colours are driven by the API's band.color value, mapped to the
+   blueprint's three chip treatments — never chosen by the frontend. */
+.bandGreen { background: rgba(74, 222, 128, 0.12); border: 1px solid rgba(74, 222, 128, 0.45); color: #4ade80; }
+.bandAmber { background: rgba(255, 179, 71, 0.12); border: 1px solid rgba(255, 179, 71, 0.45); color: #ffb347; }
+.bandRed   { background: rgba(248, 113, 113, 0.12); border: 1px solid rgba(248, 113, 113, 0.45); color: #f87171; }
+
+.scoreRow { display: flex; align-items: baseline; gap: 14px; margin: 26px 0 8px; }
+.scoreBig {
+  font-family: 'Outfit', system-ui, sans-serif; font-size: 74px; font-weight: 700;
+  line-height: 1; background: linear-gradient(120deg, var(--cyan-hi), var(--indigo));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.scoreCap { color: var(--ink-3); font-size: 14px; }
+.teaserVerdict { color: var(--ink-2); max-width: 540px; line-height: 1.65; }
+.modeCard {
+  background: var(--panel); border: 1px solid var(--stroke);
+  border-left: 3px solid var(--cyan); border-radius: 14px;
+  padding: 20px 22px; margin-top: 22px;
+}
+.mTag {
+  font-size: 11px; letter-spacing: 0.16em; color: var(--cyan);
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.modeCard h3 { font-size: 19px; margin: 0 0 8px; }
+.modeCard p { font-size: 14.5px; line-height: 1.6; color: var(--ink-2); margin: 0; }
+.locked {
+  display: flex; align-items: center; gap: 14px;
+  border: 1px dashed var(--stroke); border-radius: 14px;
+  padding: 16px 22px; margin-top: 12px; color: var(--ink-3); font-size: 14.5px;
+}
+.lockedN { font-family: 'Outfit', system-ui, sans-serif; color: var(--ink-2); }
+
+/* ─── Capture ───────────────────────────────────────────────── */
+.cap { max-width: 520px; margin: 0 auto; padding: 48px 0; }
+.cap h2 { font-size: 27px; font-weight: 600; line-height: 1.3; margin: 18px 0 10px; }
+.capSub { color: var(--ink-2); font-size: 15px; line-height: 1.6; margin-bottom: 28px; }
+.field { margin-bottom: 14px; }
+.field label {
+  display: block; font-size: 12.5px; letter-spacing: 0.06em;
+  color: var(--ink-3); margin-bottom: 7px;
+}
+.field input {
+  width: 100%; background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--stroke); border-radius: 12px;
+  padding: 13px 15px; color: var(--ink); font-size: 15px;
+  font-family: inherit; transition: 0.18s;
+}
+.field input:focus { outline: none; border-color: var(--cyan); }
+.dpdp { font-size: 12px; color: var(--ink-3); line-height: 1.6; margin: 16px 0 22px; }
+
+/* ─── Edge states (blueprint's states gallery) ──────────────── */
+.errBanner {
+  display: flex; gap: 12px; align-items: center;
+  background: rgba(248, 113, 113, 0.08); border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 12px; padding: 14px 16px; font-size: 13.5px;
+  color: var(--ink-2); margin-bottom: 18px;
+}
+.errBanner b { color: var(--ink); }
+.retryBtn {
+  background: none; border: none; color: var(--ink); font-weight: 600;
+  cursor: pointer; font-family: inherit; font-size: 13.5px; padding: 0;
+  text-decoration: underline;
+}
+.modalScrim {
+  position: fixed; inset: 0; z-index: 40; display: grid; place-items: center;
+  background: rgba(4, 8, 20, 0.72); padding: 20px;
+}
+.modalDemo {
+  max-width: 420px; width: 100%; background: var(--panel-solid);
+  border: 1px solid var(--stroke); border-radius: 16px; padding: 26px;
+  text-align: center; box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+}
+.modalDemo h3 { font-size: 18px; margin: 0 0 8px; }
+.modalDemo p { font-size: 13.5px; color: var(--ink-2); margin: 0 0 18px; }
+.actRow { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+@media (max-width: 560px) {
+  .hero { padding-top: 40px; }
+  .scoreBig { font-size: 58px; }
+}

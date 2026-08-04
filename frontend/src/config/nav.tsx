@@ -88,6 +88,26 @@ export const NAV_ITEMS: NavItem[] = [
     recipe: 'record-list',
   },
   {
+    // VaNi AI's assessment respondents — the assessment lens on people who
+    // ALSO appear in Contacts (assessment-skill bridges every captured lead
+    // into gt_contacts). Contacts holds who they are and how to reach them;
+    // this holds what the assessment found: band, health score, answers,
+    // report.
+    //
+    // Access is gated on a gt_partner row, not on this entry — a user
+    // without one lands on the console's own sign-in screen. It is listed
+    // here because a page with no way to navigate to it is a page nobody
+    // finds, which is exactly what happened before this line existed.
+    id: 'vani-leads',
+    label: 'VaNi Leads',
+    icon: <Icon><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></Icon>,
+    href: '/console',
+    section: 'main',
+    skill: 'assessment-skill',
+    fn: 'get_leads',
+    recipe: 'lead-list',
+  },
+  {
     // Read a company's own site before writing to them, and decide who is
     // not worth writing to at all.
     id: 'research',

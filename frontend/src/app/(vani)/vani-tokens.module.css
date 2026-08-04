@@ -1,0 +1,128 @@
+/* ============================================================
+ * VaNi AI — design tokens, ported VERBATIM from
+ * vani-ai-ux-blueprint.html's :root block.
+ *
+ * "The blueprint is law for anything visual. Its CSS custom properties are
+ * the design tokens." Names and values are unchanged — no renaming, no
+ * reinterpretation, no mapping onto the GTM app's --color-* system.
+ *
+ * Scoped to .vaniRoot rather than :root so these never leak into the rest
+ * of the app. Verified during Phase C1 recon: zero name collisions with the
+ * app's theme variables (--color-*, --font-*, --glass*, --gold-*) or with
+ * vdf-utilities.css, so the two systems coexist with nothing to reconcile.
+ * ============================================================ */
+
+.vaniRoot {
+  /* dark (assessment) surfaces */
+  --bg: #070b18;
+  --panel: rgba(255, 255, 255, 0.045);
+  --panel-solid: #0e1428;
+  --stroke: rgba(255, 255, 255, 0.09);
+  --stroke-hi: rgba(34, 211, 238, 0.55);
+  --ink: #e7eaf6;
+  --ink-2: #98a0bb;
+  --ink-3: #5d6580;
+  --cyan: #22d3ee;
+  --cyan-hi: #67e8f9;
+  --indigo: #6366f1;
+  --indigo-deep: #312e81;
+  /* light (report) surfaces */
+  --r-bg: #f6f7fb;
+  --r-card: #ffffff;
+  --r-ink: #141b2e;
+  --r-ink2: #5b6478;
+  --r-stroke: #e3e6ef;
+  --r-navy: #1f2e5c;
+  --r-indigo: #4f46e5;
+  --ok: #188a52;
+  --warn: #b26a00;
+  --crit: #b3261e;
+  --radius: 18px;
+
+  /* Blueprint's body rule. The app's root <body> sets DM Sans inline; this
+     re-establishes Inter for VaNi's subtree only, per "Inter added to VaNi's
+     layout only, never the shared root head." */
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.vaniRoot h1,
+.vaniRoot h2,
+.vaniRoot h3 {
+  font-family: 'Outfit', system-ui, sans-serif;
+}
+
+.vaniRoot *,
+.vaniRoot *::before,
+.vaniRoot *::after {
+  box-sizing: border-box;
+}
+
+/* Blueprint's ambient glow field (.dark-stage::before). Fixed-position
+   gradient wash behind the dark screens. */
+.darkStage {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.darkStage::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(720px 420px at 12% -6%, rgba(79, 70, 229, 0.22), transparent 62%),
+    radial-gradient(640px 420px at 96% 104%, rgba(34, 211, 238, 0.1), transparent 60%);
+}
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 22px;
+}
+
+/* Light (report) stage — blueprint's .report */
+.lightStage {
+  background: var(--r-bg);
+  color: var(--r-ink);
+  min-height: 100vh;
+  font-size: 15px;
+}
+
+@media print {
+  .noPrint { display: none !important; }
+}
+
+/* ============================================================
+ * Tokens ONLY — no background, no min-height, no full-page
+ * takeover. Used by the console, which lives inside VaNiGTM's app
+ * shell (sidebar + header) rather than replacing it. .vaniRoot above
+ * is for the standalone public pages (/a/:slug, /r/:token), which own
+ * the whole viewport; the console must sit in the app's content area
+ * like /prospects and /contacts do.
+ * ============================================================ */
+.vaniTokens {
+  --bg: #070b18;
+  --panel: rgba(255, 255, 255, 0.045);
+  --panel-solid: #0e1428;
+  --stroke: rgba(255, 255, 255, 0.09);
+  --stroke-hi: rgba(34, 211, 238, 0.55);
+  --ink: #e7eaf6;
+  --ink-2: #98a0bb;
+  --ink-3: #5d6580;
+  --cyan: #22d3ee;
+  --cyan-hi: #67e8f9;
+  --indigo: #6366f1;
+  --indigo-deep: #312e81;
+  --ok: #188a52;
+  --warn: #b26a00;
+  --crit: #b3261e;
+  --radius: 18px;
+}

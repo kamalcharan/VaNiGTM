@@ -53,6 +53,12 @@ Moves a lead through the pipeline. Logs the transition to the timeline.
 - Parameters: lead_id (required, string), status (required, string: 'new' | 'contacted' | 'l2_booked' | 'engaged' | 'closed_won' | 'closed_lost')
 - Returns: { lead: { id, status }, recipe: 'confirmation' }
 
+### get_partners
+Owner-only. Referral partners with lead counts, plus the published assessments their links can point at (so the console builds /a/<slug>?ref=<code> without hardcoding a slug).
+- Parameters: none
+- Returns: { partners: [{ id, ref_code, display_name, email, is_active, lead_count, last_lead_at, created_at }], assessments: [{ service_slug, short_title }], recipe: 'partner-list' }
+- Refuses a partner caller outright (OWNER_ONLY) — a partner has one link and none of anyone else's.
+
 ### add_lead_note
 Free-text timeline note. Ownership (partner can only note their own leads) is enforced inside the SQL, not just the application layer.
 - Parameters: lead_id (required, string), text (required, string)
