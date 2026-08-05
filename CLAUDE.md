@@ -333,12 +333,35 @@ dozen. `backend/migrations/233_ki_deprecate_orphans.sql` is written, tested,
 and ships with an empty candidate list (a safe no-op) until those numbers
 arrive. Never fill it from the doc's analysis table; fill it from production.
 
-Item 3 (make RLS real) is not yet done; this section gets its doc when it lands.
+`docs/db/rls-status.md` covers tenant isolation. **The runtime bypasses RLS
+because `vikuna_admin` is a SUPERUSER, not because of the `BYPASSRLS` flag** —
+it does not have that flag. Any application role must be `NOSUPERUSER
+NOBYPASSRLS` or the switch changes nothing.
+
+Migration 234 fixes the bug that would have broken the cutover on the second
+query: 68 policies cast `current_setting(...)::uuid` unguarded, and because
+`set_config(..., is_local := true)` leaves the GUC **defined and empty** after
+COMMIT (not undefined), the first tenant-scoped transaction on a pooled
+connection poisoned it with `invalid input syntax for type uuid: ""`. Policies
+now use `NULLIF(current_setting(...), '')::uuid`. This is lesson 1 below, whose
+other half — the policy, not just the caller — went unnoticed while RLS was
+dormant.
+
+`deploy/vani-main-vps/rls-two-tenant-test.sql` is the isolation test: run it as
+the app role, never as postgres. All 11 checks pass on the rebuilt schema, and
+it was verified to fail when RLS is disabled.
+
+**Outstanding before the cutover:** `etl/landing.ts` and `etl/etl.routes.ts`
+use raw `pool.query` against RLS-protected tables (`gt_contacts`,
+`gt_prospects`, `gt_tags`, …) and must move to `createTenantDb` first. The
+assessment funnel is already clean. Runbook in §8 of the doc.
 
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
    GUC dies before your query (surfaced as `invalid input syntax for type
-   uuid: ""` under RLS).
+   uuid: ""` under RLS). The wrap is only half the fix: after COMMIT the GUC is
+   **defined and empty**, not undefined, so any policy casting it without
+   `NULLIF` raises on the next query. Migration 234 fixed all 76.
 2. `jsonb_build_object($key, …)` needs `$key::text` — PG can't infer
    variadic arg types.
 3. Migration runner history can drift from schema reality (fresh bootstraps,
