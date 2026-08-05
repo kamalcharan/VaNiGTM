@@ -1,0 +1,1716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VaNi Org OS — interactive prototype</title>
+<style>
+:root{
+  --bg:#0A0C0D; --bg2:#101315; --surf:#14181A; --surf2:#191E21; --surf3:#1F2529;
+  --line:#242B2F; --line2:#2E373C;
+  --tx:#E9EDEE; --tx2:#9BA6AB; --tx3:#6B767C;
+  --ac:#2DD4BF; --ac-dim:#0F3C38; --ac-line:#1C6D64;
+  --gtm:#F59E0B; --dig:#A78BFA; --otc:#60A5FA; --orch:#2DD4BF;
+  --ok:#34D399; --warn:#FBBF24; --bad:#FB7185;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--tx);
+  font:14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:none;cursor:pointer}
+a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:5px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ---------- primitives ---------- */
+.mono{font-family:var(--mono)}
+.addr{font-family:var(--mono);font-size:11.5px;color:var(--ac);
+  background:var(--ac-dim);border:1px solid var(--ac-line);border-radius:5px;
+  padding:1.5px 6px;display:inline-block;white-space:nowrap}
+.addr.plain{color:var(--tx2);background:var(--surf3);border-color:var(--line)}
+.muted{color:var(--tx2)}.dim{color:var(--tx3)}
+.btn{background:var(--ac);color:#04211E;font-weight:640;border-radius:8px;
+  padding:9px 17px;font-size:13.5px;transition:.15s;white-space:nowrap}
+.btn:hover{filter:brightness(1.12)}
+.btn.ghost{background:transparent;color:var(--tx);border:1px solid var(--line2)}
+.btn.ghost:hover{background:var(--surf2);filter:none}
+.btn.sm{padding:6px 12px;font-size:12.5px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:var(--r)}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;
+  padding:3px 9px;border-radius:20px;background:var(--surf3);color:var(--tx2);
+  border:1px solid var(--line)}
+.pill.ok{color:var(--ok);border-color:#1B4D3E;background:#0D2B24}
+.pill.warn{color:var(--warn);border-color:#4D3F17;background:#2B2410}
+.pill.bad{color:var(--bad);border-color:#4D2229;background:#2B1418}
+.pill.ac{color:var(--ac);border-color:var(--ac-line);background:var(--ac-dim)}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+.h1{font-size:22px;font-weight:650;letter-spacing:-.02em}
+.h2{font-size:16px;font-weight:640;letter-spacing:-.01em}
+.lbl{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--tx3);font-weight:660}
+.field{display:block;margin-bottom:14px}
+.field span{display:block;font-size:12.5px;color:var(--tx2);margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;background:var(--bg2);
+  border:1px solid var(--line2);border-radius:8px;padding:10px 12px;font-size:13.5px;outline:none}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--ac-line)}
+.row{display:flex;gap:10px;align-items:center}
+.grow{flex:1}
+.sep{height:1px;background:var(--line);margin:16px 0}
+
+/* ---------- marketing ---------- */
+.nav{display:flex;align-items:center;justify-content:space-between;
+  padding:18px 34px;border-bottom:1px solid var(--line);position:sticky;top:0;
+  background:rgba(10,12,13,.86);backdrop-filter:blur(12px);z-index:50}
+.logo{display:flex;align-items:center;gap:9px;font-weight:660;letter-spacing:-.02em;font-size:15.5px}
+.logomark{width:22px;height:22px;border-radius:6px;
+  background:linear-gradient(140deg,var(--ac),#0E7C70);flex:none;
+  display:flex;align-items:center;justify-content:center;color:#04211E;font-size:11px;font-weight:800}
+.hero{max-width:1080px;margin:0 auto;padding:86px 34px 60px;text-align:center}
+.hero h1{font-size:48px;line-height:1.08;letter-spacing:-.035em;font-weight:680;
+  max-width:17ch;margin:0 auto 20px}
+.hero h1 em{font-style:normal;color:var(--ac)}
+.hero p{font-size:16.5px;color:var(--tx2);max-width:60ch;margin:0 auto 30px;line-height:1.6}
+.heroline{display:flex;gap:10px;justify-content:center;margin-bottom:54px}
+.stack{max-width:1000px;margin:0 auto;padding:0 34px 80px;display:grid;gap:9px}
+.slab{display:grid;grid-template-columns:1fr 116px;border:1px solid var(--line);
+  border-radius:var(--r);background:var(--surf);overflow:hidden}
+.slab.f{border-color:var(--ac-line);background:linear-gradient(180deg,#0E2A28,var(--surf))}
+.slab .sb{padding:15px 18px}
+.slab h4{font-size:14.5px;font-weight:640;margin-bottom:3px}
+.slab.f h4{color:var(--ac)}
+.slab p{font-size:12.5px;color:var(--tx2)}
+.slab .st{display:flex;align-items:center;justify-content:center;border-left:1px solid var(--line);
+  font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx3);font-weight:660}
+.slab.f .st{border-left-color:var(--ac-line);color:var(--ac)}
+.feat{max-width:1000px;margin:0 auto;padding:0 34px 90px;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.feat .card{padding:20px}
+.feat h4{font-size:14px;font-weight:640;margin-bottom:6px}
+.feat p{font-size:12.5px;color:var(--tx2);line-height:1.6}
+.feat .ic{width:30px;height:30px;border-radius:8px;background:var(--ac-dim);
+  border:1px solid var(--ac-line);display:flex;align-items:center;justify-content:center;
+  margin-bottom:12px;font-size:14px}
+
+/* ---------- auth ---------- */
+.authwrap{min-height:100vh;display:grid;place-items:center;padding:40px 20px}
+.authbox{width:100%;max-width:420px}
+.authbox .card{padding:28px}
+.authhead{text-align:center;margin-bottom:24px}
+.authhead h2{font-size:21px;font-weight:650;letter-spacing:-.02em;margin-bottom:6px}
+.authhead p{font-size:13px;color:var(--tx2)}
+.steps{display:flex;gap:6px;margin-bottom:22px}
+.steps i{height:3px;flex:1;border-radius:2px;background:var(--line2)}
+.steps i.on{background:var(--ac)}
+.prov{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.prov button{border:1px solid var(--line2);border-radius:8px;padding:13px 8px;
+  font-size:12.5px;font-weight:600;color:var(--tx2);background:var(--bg2);transition:.15s}
+.prov button:hover{border-color:var(--line2);color:var(--tx)}
+.prov button.on{border-color:var(--ac-line);background:var(--ac-dim);color:var(--ac)}
+
+/* ---------- app shell ---------- */
+.app{display:grid;grid-template-columns:224px 1fr;min-height:100vh}
+.side{background:var(--bg2);border-right:1px solid var(--line);padding:16px 12px;
+  display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.orgpick{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;
+  background:var(--surf2);border:1px solid var(--line);margin-bottom:16px}
+.orgpick .av{width:26px;height:26px;border-radius:7px;background:linear-gradient(140deg,var(--ac),#0E7C70);
+  display:flex;align-items:center;justify-content:center;color:#04211E;font-weight:800;font-size:11px;flex:none}
+.orgpick b{font-size:13px;font-weight:620;display:block;line-height:1.25}
+.orgpick small{font-size:10.5px;color:var(--tx3);font-family:var(--mono)}
+.nvlbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);
+  font-weight:660;padding:14px 10px 5px}
+.nv{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;
+  font-size:13px;color:var(--tx2);transition:.12s;cursor:pointer}
+.nv:hover{background:var(--surf2);color:var(--tx)}
+.nv.on{background:var(--surf3);color:var(--tx);font-weight:600}
+.nv .ic{width:16px;text-align:center;font-size:13px;flex:none}
+.nv .bdg{margin-left:auto;font-size:10px;background:var(--ac-dim);color:var(--ac);
+  border:1px solid var(--ac-line);border-radius:10px;padding:0 6px;font-weight:700}
+.main{padding:26px 32px 60px;max-width:1180px}
+.phead{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:22px}
+.phead p{font-size:13px;color:var(--tx2);margin-top:5px;max-width:70ch}
+
+/* ---------- generic app bits ---------- */
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.stat{padding:15px 16px}
+.stat b{display:block;font-size:25px;font-weight:660;letter-spacing:-.02em;line-height:1.15}
+.stat span{font-size:11.5px;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;font-weight:620}
+.stat i{font-style:normal;font-size:11.5px;color:var(--ok);font-weight:600}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--tx3);font-weight:660;padding:0 12px 9px;border-bottom:1px solid var(--line)}
+.tbl td{padding:11px 12px;border-bottom:1px solid var(--line)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr.clk{cursor:pointer}
+.tbl tr.clk:hover td{background:var(--surf2)}
+.sect{margin-bottom:26px}
+.sect>h3{font-size:13.5px;font-weight:640;margin-bottom:11px;display:flex;
+  align-items:center;justify-content:between;gap:8px}
+.empty{padding:34px;text-align:center;color:var(--tx3);font-size:13px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.tabs button{padding:9px 14px;font-size:13px;color:var(--tx2);border-bottom:2px solid transparent;
+  margin-bottom:-1px;transition:.12s}
+.tabs button:hover{color:var(--tx)}
+.tabs button.on{color:var(--ac);border-bottom-color:var(--ac);font-weight:600}
+.bar{height:5px;background:var(--surf3);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ac);border-radius:3px;transition:width .5s}
+
+/* ---------- object workspace ---------- */
+.sugg{display:flex;gap:11px;align-items:flex-start;padding:12px 14px;border-radius:9px;
+  background:var(--surf2);border:1px solid var(--line);margin-bottom:8px}
+.sugg .ic{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;
+  justify-content:center;font-size:13px;flex:none}
+.contrib{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:700;
+  letter-spacing:.05em;text-transform:uppercase;padding:1px 5px;border-radius:4px;margin-left:6px}
+.jrow{display:flex;gap:0;overflow-x:auto;padding:4px 0 10px}
+.jstage{flex:1 0 178px;min-width:178px;border:1px solid var(--line);border-radius:10px;
+  background:var(--surf);padding:13px;margin-right:10px;position:relative}
+.jstage:last-child{margin-right:0}
+.jstage.on{border-color:var(--gtm);background:linear-gradient(180deg,#2A1F0C,var(--surf))}
+.jstage.past{opacity:.62}
+.jstage h5{font-size:12.5px;font-weight:640;margin-bottom:2px}
+.jstage .rule{font-size:10.5px;color:var(--tx3);line-height:1.45;margin-bottom:10px;min-height:30px}
+.jact{display:flex;align-items:center;gap:6px;font-size:11.5px;padding:5px 7px;border-radius:6px;
+  background:var(--bg2);border:1px solid var(--line);margin-bottom:5px}
+.jact .ch{width:14px;text-align:center;flex:none;font-size:11px}
+.jact .stt{margin-left:auto;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.jconn{position:absolute;right:-11px;top:50%;color:var(--line2);font-size:12px;z-index:2}
+.tl{position:relative;padding-left:20px}
+.tl:before{content:'';position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:var(--line)}
+.tli{position:relative;padding:9px 0}
+.tli:before{content:'';position:absolute;left:-18px;top:15px;width:7px;height:7px;border-radius:50%;
+  background:var(--surf);border:1.5px solid var(--line2)}
+.tli.hot:before{background:var(--gtm);border-color:var(--gtm)}
+
+@media(max-width:900px){
+  .app{grid-template-columns:1fr}
+  .side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;overflow:visible}
+  .g3,.g4,.feat{grid-template-columns:1fr 1fr}
+  .hero h1{font-size:34px}
+  .main{padding:20px}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* =========================================================
+   VaNi Org OS — prototype state
+   ========================================================= */
+const S = {
+  screen:'landing', org:'Vikuna Technologies', slug:'vikuna',
+  provider:'anthropic', signupStep:0,
+  profileStep:0, profileDone:false,
+  knowledge:[
+    {id:1,name:'Vikuna Services Catalogue.pdf',kind:'pdf',facts:47,status:'done',src:'upload'},
+    {id:2,name:'contacts_master.csv',kind:'csv',facts:312,status:'done',src:'upload'},
+    {id:3,name:'HubSpot CRM',kind:'api',facts:1840,status:'live',src:'connector'},
+    {id:4,name:'Sriveda MSA 2026.pdf',kind:'pdf',facts:63,status:'done',src:'upload'}
+  ],
+  kgFilter:'all', kgNode:'acc-sriveda',
+  agentTab:'overview', openRun:null, approved:false, toast:null
+};
+
+const AGENTS = [
+  {id:'orchestrator',name:'Dean',role:'Org Orchestrator',color:'#2DD4BF',icon:'◉',
+   scope:'org://vikuna/**',status:'active',runs:184,tools:4,facts:'—',
+   desc:'Thin router. Intake, resolve, route, policy, close. Owns no domain reasoning.'},
+  {id:'gtm',name:'Aria',role:'GTM Agent',color:'#F59E0B',icon:'▲',
+   scope:'org://vikuna/accounts/** · contacts/**',status:'active',runs:96,tools:11,facts:2140,
+   desc:'Journey-stage acquisition and LTV. Owns nurture, outreach, stage movement.'},
+  {id:'digital',name:'Nova',role:'Digital Agent',color:'#A78BFA',icon:'◆',
+   scope:'org://vikuna/web/** · content/**',status:'active',runs:71,tools:9,facts:880,
+   desc:'Digital estate — site, content, SEO, analytics. Reports drift against brand policy.'},
+  {id:'otc',name:'Ledger',role:'Order-to-Cash Agent',color:'#60A5FA',icon:'■',
+   scope:'org://vikuna/orders/** · invoices/**',status:'attention',runs:53,tools:8,facts:1290,
+   desc:'Quote to cash. Order validation, invoicing, dunning, collections reconciliation.'}
+];
+
+const money = n => '₹' + n.toLocaleString('en-IN');
+const el = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function go(screen,extra){ Object.assign(S,{screen},extra||{}); window.scrollTo(0,0); render(); }
+function toast(msg){ S.toast=msg; render(); setTimeout(()=>{S.toast=null;render();},2200); }
+
+/* =========================================================
+   MARKETING + AUTH
+   ========================================================= */
+function vLanding(){
+  return `
+  <div class="nav">
+    <div class="logo"><div class="logomark">V</div> VaNi <span class="dim" style="font-weight:500">Org OS</span></div>
+    <div class="row">
+      <button class="btn ghost sm" data-go="login">Log in</button>
+      <button class="btn sm" data-go="signup">Create organization</button>
+    </div>
+  </div>
+
+  <div class="hero">
+    <h1>Your organization, <em>addressable</em>.</h1>
+    <p>Not another automation tool. A context layer for your whole organization — every person,
+    document, deal and system given one stable address — and a team of agents that work on top of it.
+    Deployed inside your own cloud.</p>
+    <div class="heroline">
+      <button class="btn" data-go="signup">Create your organization</button>
+      <button class="btn ghost" data-go="login">See the demo org</button>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="slab"><div class="sb"><h4>Agents</h4>
+      <p>Orchestrator plus domain agents — GTM, Digital, Order-to-Cash. They pass addresses, never prose.</p></div>
+      <div class="st">Layer 4</div></div>
+    <div class="slab"><div class="sb"><h4>Organization model</h4>
+      <p>Units, roles, objectives, policies — grown from evidence, never designed up front.</p></div>
+      <div class="st">Layer 3</div></div>
+    <div class="slab"><div class="sb"><h4>Ingest &amp; act</h4>
+      <p>Ingesters turn systems, PDFs and CSVs into facts. Tools act on addresses. No agent calls an API directly.</p></div>
+      <div class="st">Layer 2</div></div>
+    <div class="slab f"><div class="sb"><h4>Foundation — namespace, facts, permissions</h4>
+      <p>Every reference resolves to one address. Every fact carries provenance, valid time and confidence.
+      Permissions attach to the address tree; agents inherit them.</p></div>
+      <div class="st">Core</div></div>
+  </div>
+
+  <div class="feat">
+    <div class="card"><div class="ic">⌘</div><h4>Unified namespace</h4>
+      <p>An email, a CRM row and a CSV column describing the same company resolve to one address —
+      reversibly, with an audit trail.</p></div>
+    <div class="card"><div class="ic">◈</div><h4>Contextual memory</h4>
+      <p>Facts, not records. Each one knows where it came from, when it was true, and how confident we are.</p></div>
+    <div class="card"><div class="ic">⎔</div><h4>Your cloud, your model</h4>
+      <p>Runs in your VPC. Connect your own Claude, OpenAI or in-house model. Nothing leaves your perimeter.</p></div>
+  </div>`;
+}
+
+function vLogin(){
+  return `<div class="authwrap"><div class="authbox">
+    <div class="authhead">
+      <div class="logo" style="justify-content:center;margin-bottom:16px"><div class="logomark">V</div> VaNi Org OS</div>
+      <h2>Welcome back</h2><p>Sign in to ${esc(S.org)}</p>
+    </div>
+    <div class="card">
+      <label class="field"><span>Work email</span><input id="li-email" value="charan@vikuna.io"></label>
+      <label class="field"><span>Password</span><input type="password" value="demo-password"></label>
+      <button class="btn" style="width:100%" data-go="dashboard">Sign in</button>
+      <div class="sep"></div>
+      <div style="text-align:center;font-size:12.5px" class="muted">
+        No organization yet? <a data-go="signup" style="color:var(--ac);cursor:pointer">Create one</a>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:16px"><button class="btn ghost sm" data-go="landing">← Back</button></div>
+  </div></div>`;
+}
+
+function vSignup(){
+  const st=S.signupStep;
+  const provs=[['anthropic','Claude'],['openai','OpenAI'],['local','In-house']];
+  let body='';
+  if(st===0){ body=`
+    <label class="field"><span>Organization name</span><input id="su-org" value="${esc(S.org)}"></label>
+    <label class="field"><span>Namespace slug</span>
+      <input id="su-slug" value="${esc(S.slug)}">
+      <small class="dim mono" style="font-size:11px;display:block;margin-top:6px">
+        every object will live under org://${esc(S.slug)}/…</small></label>
+    <label class="field"><span>Industry</span><select>
+      <option>Technology &amp; consulting</option><option>Manufacturing</option>
+      <option>Pharma &amp; life sciences</option><option>Financial services</option></select></label>
+    <button class="btn" style="width:100%" data-act="su-next">Continue</button>`;
+  } else if(st===1){ body=`
+    <div class="lbl" style="margin-bottom:9px">Bring your own model</div>
+    <p class="muted" style="font-size:12.5px;margin-bottom:14px">
+      VaNi never ships a model. Connect the provider you already have a contract with —
+      keys stay in your VPC.</p>
+    <div class="prov">${provs.map(([k,n])=>
+      `<button class="${S.provider===k?'on':''}" data-act="prov" data-v="${k}">${n}</button>`).join('')}</div>
+    <label class="field"><span>API key</span><input type="password" value="sk-••••••••••••••••••••"></label>
+    <div class="card" style="padding:12px;background:var(--bg2);margin-bottom:14px">
+      <div class="lbl" style="margin-bottom:8px">Model tier by agent role</div>
+      <div class="row" style="justify-content:space-between;font-size:12.5px;margin-bottom:6px">
+        <span class="muted">Orchestrator &amp; planning</span><span class="pill ac">strong</span></div>
+      <div class="row" style="justify-content:space-between;font-size:12.5px;margin-bottom:6px">
+        <span class="muted">Extraction &amp; classification</span><span class="pill">cheap</span></div>
+      <div class="row" style="justify-content:space-between;font-size:12.5px">
+        <span class="muted">Embeddings</span><span class="pill">cheap</span></div>
+    </div>
+    <button class="btn" style="width:100%" data-act="su-next">Continue</button>`;
+  } else { body=`
+    <div class="lbl" style="margin-bottom:9px">Deployment target</div>
+    <p class="muted" style="font-size:12.5px;margin-bottom:14px">
+      One container image. It runs where your data already lives.</p>
+    <label class="field"><span>Environment</span><select>
+      <option>AWS — your VPC (ap-south-1)</option><option>Azure — your subscription</option>
+      <option>GCP — your project</option><option>Self-managed Kubernetes</option></select></label>
+    <label class="field"><span>Postgres</span><select>
+      <option>Provision new (recommended)</option><option>Use existing instance</option></select></label>
+    <div class="card" style="padding:12px 13px;background:var(--bg2);margin-bottom:15px">
+      <div class="row" style="gap:8px;font-size:12.5px"><span class="pill ok"><i class="dot"></i>ready</span>
+        <span class="muted">Install is scripted — one command, ~6 minutes.</span></div>
+    </div>
+    <button class="btn" style="width:100%" data-go="profile">Create organization</button>`;
+  }
+  return `<div class="authwrap"><div class="authbox">
+    <div class="authhead">
+      <div class="logo" style="justify-content:center;margin-bottom:16px"><div class="logomark">V</div> VaNi Org OS</div>
+      <h2>${['Create your organization','Connect your model','Where it runs'][st]}</h2>
+      <p>Step ${st+1} of 3</p>
+    </div>
+    <div class="card">
+      <div class="steps">${[0,1,2].map(i=>`<i class="${i<=st?'on':''}"></i>`).join('')}</div>
+      ${body}
+    </div>
+    <div style="text-align:center;margin-top:16px">
+      <button class="btn ghost sm" data-act="su-back">← Back</button></div>
+  </div></div>`;
+}
+
+/* =========================================================
+   APP SHELL
+   ========================================================= */
+const NAV = [
+  {grp:'Organization', items:[
+    {k:'dashboard', ic:'▦', t:'Dashboard'},
+    {k:'profile',   ic:'◈', t:'Smart Profile'},
+    {k:'knowledge', ic:'▤', t:'Knowledge'},
+    {k:'kg',        ic:'⁂', t:'Knowledge Graph'}
+  ]},
+  {grp:'Workspace', items:[
+    {k:'accounts', ic:'▣', t:'Accounts', bdg:'46'},
+    {k:'contacts', ic:'▢', t:'Contacts'},
+    {k:'orders',   ic:'▥', t:'Orders & Invoices'},
+    {k:'content',  ic:'▧', t:'Content'}
+  ]},
+  {grp:'Agents', items:[
+    {k:'agents', ic:'◉', t:'All Agents', bdg:'4'},
+    {k:'a-gtm',     ic:'▲', t:'Aria · GTM'},
+    {k:'a-digital', ic:'◆', t:'Nova · Digital'},
+    {k:'a-otc',     ic:'■', t:'Ledger · O2C'},
+    {k:'market',    ic:'＋', t:'Add agent'}
+  ]},
+  {grp:'System', items:[
+    {k:'runs',     ic:'⟳', t:'Runs & Traces', bdg:'2'},
+    {k:'settings', ic:'⚙', t:'Settings'}
+  ]}
+];
+
+function vApp(){
+  const cur=S.screen;
+  const side = `
+  <div class="side">
+    <div class="logo" style="padding:2px 8px 14px"><div class="logomark">V</div> VaNi <span class="dim" style="font-weight:500">Org OS</span></div>
+    <div class="orgpick">
+      <div class="av">${esc(S.org.slice(0,1))}</div>
+      <div style="min-width:0">
+        <b>${esc(S.org)}</b>
+        <small>org://${esc(S.slug)}</small>
+      </div>
+    </div>
+    ${NAV.map(g=>`<div class="nvlbl">${g.grp}</div>`+
+      g.items.map(i=>`<div class="nv ${cur===i.k||(cur==='run'&&i.k==='runs')||(cur==='account'&&i.k==='accounts')?'on':''}" data-go="${i.k}">
+        <span class="ic">${i.ic}</span>${i.t}${i.bdg?`<span class="bdg">${i.bdg}</span>`:''}</div>`).join('')
+    ).join('')}
+    <div style="margin-top:auto;padding-top:16px">
+      <div class="card" style="padding:11px 12px;background:var(--surf2)">
+        <div class="row" style="gap:7px;margin-bottom:5px">
+          <span class="pill ok" style="padding:2px 7px"><i class="dot"></i>VPC</span>
+          <span class="dim" style="font-size:10.5px">ap-south-1</span></div>
+        <div class="dim mono" style="font-size:10.5px">${S.provider==='anthropic'?'claude · your key':S.provider==='openai'?'openai · your key':'in-house model'}</div>
+      </div>
+      <div class="nv" style="margin-top:6px" data-go="landing"><span class="ic">⏻</span>Sign out</div>
+    </div>
+  </div>`;
+  const pages = {dashboard:pDash, agents:pAgents, profile:pProfile, knowledge:pKnowledge,
+                 kg:pKG, runs:pRuns, run:pRun, settings:pSettings, market:pMarket,
+                 accounts:pAccounts, account:pAccount,
+                 contacts:()=>pSpace('contacts'), orders:()=>pSpace('orders'), content:()=>pSpace('content'),
+                 'a-gtm':()=>pAgent('gtm'), 'a-digital':()=>pAgent('digital'), 'a-otc':()=>pAgent('otc')};
+  const fn = pages[cur] || pDash;
+  return `<div class="app">${side}<div class="main">${fn()}</div></div>`;
+}
+
+/* =========================================================
+   DASHBOARD
+   ========================================================= */
+const ACTIVITY = [
+  {t:'2m',  a:'gtm', txt:'Moved <b>Sriveda Lifesciences</b> to <b>Evaluation</b> — 3 new behaviour signals', run:'run_8f3a91'},
+  {t:'14m', a:'otc', txt:'Flagged invoice <b>INV-2291</b> — 46 days overdue, escalation drafted', run:'run_8f3a72'},
+  {t:'38m', a:'digital', txt:'Detected brand-voice drift on 2 published pages', run:'run_8f3a55'},
+  {t:'1h',  a:'orchestrator', txt:'Routed “prepare renewal pack for ContractNest” → Ledger + Aria', run:'run_8f3a40'},
+  {t:'2h',  a:'gtm', txt:'Ingested 41 facts from <b>HubSpot CRM</b>, resolved 6 duplicate contacts', run:'run_8f39e8'}
+];
+function agentBy(id){ return AGENTS.find(a=>a.id===id); }
+
+function pDash(){
+  return `
+  <div class="phead">
+    <div><div class="h1">Good evening, Charan</div>
+      <p>${esc(S.org)} · 4 agents active · 4,310 facts under management · 2 approvals waiting on you.</p></div>
+    <button class="btn" data-act="ask">Ask the organization</button>
+  </div>
+
+  <div class="grid g4 sect">
+    <div class="card stat"><span>Facts</span><b>4,310</b><i>+126 today</i></div>
+    <div class="card stat"><span>Addresses</span><b>1,847</b><i>+38 resolved</i></div>
+    <div class="card stat"><span>Runs today</span><b>67</b><i>94% clean</i></div>
+    <div class="card stat"><span>Model spend</span><b>₹412</b><span class="dim" style="text-transform:none;letter-spacing:0"> your key</span></div>
+  </div>
+
+  <div class="grid g2 sect" style="align-items:start">
+    <div class="card" style="padding:0">
+      <div class="row" style="padding:14px 16px;border-bottom:1px solid var(--line)">
+        <h3 class="h2 grow">Waiting on you</h3><span class="pill warn"><i class="dot"></i>2 gates</span></div>
+      <div style="padding:6px 8px">
+        ${[['otc','Approve ₹4,20,000 credit note for Sriveda','Order-to-Cash · step 4 of 6'],
+           ['gtm','Send 12-contact outreach sequence','GTM · step 3 of 5']].map(([a,t,s])=>`
+          <div class="row" style="padding:11px 8px;border-radius:8px;gap:11px">
+            <span style="color:${agentBy(a).color};font-size:15px">${agentBy(a).icon}</span>
+            <div class="grow"><div style="font-size:13px;font-weight:600">${t}</div>
+              <div class="dim" style="font-size:11.5px">${s}</div></div>
+            <button class="btn sm" data-go="run">Review</button>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="card" style="padding:0">
+      <div class="row" style="padding:14px 16px;border-bottom:1px solid var(--line)">
+        <h3 class="h2 grow">Knowledge coverage</h3>
+        <button class="btn ghost sm" data-go="knowledge">Add</button></div>
+      <div style="padding:14px 16px">
+        ${[['Accounts &amp; contacts',92],['Contracts &amp; orders',78],['Digital estate',64],['Process &amp; policy',31]].map(([n,v])=>`
+          <div style="margin-bottom:13px">
+            <div class="row" style="justify-content:space-between;font-size:12.5px;margin-bottom:5px">
+              <span>${n}</span><span class="dim mono">${v}%</span></div>
+            <div class="bar"><i style="width:${v}%"></i></div>
+          </div>`).join('')}
+        <div class="dim" style="font-size:11.5px;margin-top:2px">
+          Process &amp; policy is thin — Dean has flagged 3 questions it cannot answer.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sect">
+    <div class="row" style="margin-bottom:11px"><h3 class="h2 grow">Recent activity</h3>
+      <button class="btn ghost sm" data-go="runs">All runs</button></div>
+    <div class="card" style="padding:6px 8px">
+      ${ACTIVITY.map(r=>{const a=agentBy(r.a);return `
+        <div class="row" style="padding:10px 8px;gap:11px;border-radius:8px">
+          <span style="color:${a.color};font-size:14px;width:16px;text-align:center">${a.icon}</span>
+          <div class="grow" style="font-size:13px">${r.txt}
+            <div class="dim" style="font-size:11.5px;margin-top:2px">
+              <span style="color:${a.color}">${a.name}</span> · <span class="mono">${r.run}</span></div></div>
+          <span class="dim" style="font-size:11.5px">${r.t}</span>
+        </div>`}).join('')}
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   MULTI-AGENT VIEW
+   ========================================================= */
+function pAgents(){
+  const dom = AGENTS.filter(a=>a.id!=='orchestrator');
+  const orch = agentBy('orchestrator');
+  return `
+  <div class="phead">
+    <div><div class="h1">Agents</div>
+      <p>One thin orchestrator, three domain agents. Each declares a scope in the namespace, a tool set,
+      and its own skill memory. They hand each other addresses — never prose.</p></div>
+    <button class="btn ghost" data-act="hire">+ Add agent</button>
+  </div>
+
+  <div class="card" style="padding:20px;margin-bottom:16px;
+      background:linear-gradient(180deg,#0E2A28,var(--surf));border-color:var(--ac-line)">
+    <div class="row" style="gap:14px;align-items:flex-start">
+      <div style="width:42px;height:42px;border-radius:11px;background:var(--ac-dim);
+        border:1px solid var(--ac-line);display:flex;align-items:center;justify-content:center;
+        color:var(--ac);font-size:19px;flex:none">${orch.icon}</div>
+      <div class="grow">
+        <div class="row" style="gap:9px;margin-bottom:3px">
+          <span class="h2">${orch.name}</span>
+          <span class="pill ac">${orch.role}</span>
+          <span class="pill ok"><i class="dot"></i>active</span></div>
+        <p class="muted" style="font-size:12.5px;margin-bottom:10px">${orch.desc}</p>
+        <div class="row" style="gap:7px;flex-wrap:wrap">
+          <span class="addr">${orch.scope}</span>
+          ${['intake','resolve','route','policy','close'].map(x=>`<span class="pill">${x}</span>`).join('')}
+        </div>
+      </div>
+      <div style="text-align:right"><b style="font-size:21px">${orch.runs}</b>
+        <div class="dim" style="font-size:11px">runs routed</div></div>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:center;color:var(--line2);font-size:18px;margin:2px 0 10px">⋁</div>
+
+  <div class="grid g3">
+    ${dom.map(a=>`
+      <div class="card" style="padding:18px;cursor:pointer" data-go="a-${a.id}">
+        <div class="row" style="gap:11px;margin-bottom:12px">
+          <div style="width:34px;height:34px;border-radius:9px;background:${a.color}1A;
+            border:1px solid ${a.color}44;display:flex;align-items:center;justify-content:center;
+            color:${a.color};font-size:15px;flex:none">${a.icon}</div>
+          <div class="grow"><div style="font-weight:640;font-size:14.5px">${a.name}</div>
+            <div class="dim" style="font-size:11.5px">${a.role}</div></div>
+          <span class="pill ${a.status==='active'?'ok':'warn'}"><i class="dot"></i>${a.status}</span>
+        </div>
+        <p class="muted" style="font-size:12.5px;min-height:52px;line-height:1.55">${a.desc}</p>
+        <div class="sep" style="margin:12px 0"></div>
+        <div class="lbl" style="margin-bottom:6px">Scope</div>
+        <div class="addr" style="margin-bottom:12px;white-space:normal">${a.scope}</div>
+        <div class="card" style="padding:10px 12px;background:var(--bg2);margin-bottom:12px">
+          <div class="row" style="margin-bottom:4px">
+            <span class="lbl grow" style="padding:0">Business model</span>
+            <span class="pill" style="font-size:10px;border-color:${a.color}55;color:${a.color};
+              background:${a.color}14">${AGENTX[a.id].price.model}</span></div>
+          <div style="font-size:12px;color:var(--tx2)">${AGENTX[a.id].price.head}</div>
+        </div>
+        <div class="row" style="justify-content:space-between;font-size:12px">
+          <span class="dim">${a.tools} tools</span>
+          <span class="dim">${a.facts} facts in view</span>
+          <span class="dim">${a.runs} runs</span>
+        </div>
+      </div>`).join('')}
+  </div>
+
+  <div class="sect" style="margin-top:26px">
+    <h3 class="h2" style="margin-bottom:11px">Capability graph</h3>
+    <div class="card" style="padding:16px">
+      <p class="muted" style="font-size:12.5px;margin-bottom:14px">
+        Routing is a query, not a config file. Dean asks “who holds a tool that can act on this address type?”
+        Register a capability and routing updates itself.</p>
+      <table class="tbl">
+        <thead><tr><th>Address type</th><th>Can read</th><th>Can act</th><th>Requires approval</th></tr></thead>
+        <tbody>
+          ${[['accounts/*','Aria, Dean','Aria','stage change → owner'],
+             ['contacts/*','Aria, Nova, Dean','Aria','outbound send'],
+             ['orders/*','Ledger, Dean','Ledger','credit note > ₹1L'],
+             ['invoices/*','Ledger, Dean','Ledger','write-off'],
+             ['content/*','Nova, Aria, Dean','Nova','publish']].map(r=>`
+            <tr><td><span class="addr plain">${r[0]}</span></td>
+              <td class="muted">${r[1]}</td><td class="muted">${r[2]}</td>
+              <td><span class="pill warn">${r[3]}</span></td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   SMART PROFILE — conversational, one question at a time
+   ========================================================= */
+const QA = [
+  {q:'In one line — what does your organization actually do?',
+   a:'We help Indian SME and mid-market companies fix digital and AI initiatives that stalled, then run them.',
+   learned:[['org://vikuna','type','Organization · consulting'],
+            ['org://vikuna','serves','Indian SME &amp; mid-market']]},
+  {q:'Who buys from you, and who signs?',
+   a:'Founders and COOs at 50–500 person companies. Signature usually sits with the founder, sometimes a CFO.',
+   learned:[['org://vikuna/icp/primary','role','Founder, COO'],
+            ['org://vikuna/icp/primary','size','50–500 employees'],
+            ['org://vikuna/icp/primary','signer','Founder · CFO']]},
+  {q:'What are you trying to move over the next two quarters?',
+   a:'Turn ad hoc consulting into repeatable service lines, and get the AI Audit offering to five paying customers.',
+   learned:[['org://vikuna/objectives/q3','goal','Productise service lines'],
+            ['org://vikuna/objectives/q4','goal','5 paying AI Audit customers']]},
+  {q:'Which systems hold the truth about your customers today?',
+   a:'HubSpot for pipeline, Google Workspace for documents and mail, Razorpay for invoicing, and a lot of spreadsheets.',
+   learned:[['org://vikuna/systems/hubspot','authoritative_for','accounts · contacts'],
+            ['org://vikuna/systems/gworkspace','authoritative_for','documents'],
+            ['org://vikuna/systems/razorpay','authoritative_for','invoices']]},
+  {q:'Anything an agent must never do without asking you first?',
+   a:'Never send anything to a customer unreviewed, and never issue a credit note above one lakh.',
+   learned:[['org://vikuna/policy/outbound','gate','human approval before send'],
+            ['org://vikuna/policy/credit','gate','&gt; ₹1,00,000 requires approval']]}
+];
+
+function pProfile(){
+  const st=S.profileStep, done=st>=QA.length;
+  const learned = QA.slice(0,st).flatMap(x=>x.learned);
+  const transcript = QA.slice(0,st).map(x=>`
+    <div style="margin-bottom:18px">
+      <div class="row" style="gap:9px;align-items:flex-start;margin-bottom:9px">
+        <div style="width:24px;height:24px;border-radius:7px;background:var(--ac-dim);
+          border:1px solid var(--ac-line);color:var(--ac);display:flex;align-items:center;
+          justify-content:center;font-size:11px;flex:none">◉</div>
+        <div style="font-size:13.5px;padding-top:2px">${x.q}</div></div>
+      <div style="margin-left:33px;background:var(--surf3);border:1px solid var(--line);
+        border-radius:9px;padding:10px 13px;font-size:13px;color:var(--tx2)">${x.a}</div>
+    </div>`).join('');
+
+  const asking = done ? `
+    <div class="card" style="padding:18px;border-color:var(--ac-line);background:var(--ac-dim)">
+      <div class="row" style="gap:9px;margin-bottom:8px">
+        <span style="color:var(--ac)">◉</span>
+        <b style="font-size:13.5px;color:var(--ac)">Profile complete</b></div>
+      <p style="font-size:13px;color:var(--tx2);margin-bottom:14px">
+        ${learned.length} facts written to the graph, each addressed and attributed to this conversation.
+        Every agent can now read them — you will not be asked these again.</p>
+      <div class="row" style="gap:8px">
+        <button class="btn sm" data-go="knowledge">Add knowledge →</button>
+        <button class="btn ghost sm" data-act="prof-reset">Run again</button></div>
+    </div>` : `
+    <div class="card" style="padding:18px">
+      <div class="row" style="gap:9px;align-items:flex-start;margin-bottom:13px">
+        <div style="width:24px;height:24px;border-radius:7px;background:var(--ac-dim);
+          border:1px solid var(--ac-line);color:var(--ac);display:flex;align-items:center;
+          justify-content:center;font-size:11px;flex:none">◉</div>
+        <div style="font-size:14px;font-weight:600;padding-top:2px">${QA[st].q}</div></div>
+      <textarea id="prof-a" rows="3" style="width:100%;background:var(--bg2);border:1px solid var(--line2);
+        border-radius:9px;padding:11px 13px;font-size:13px;outline:none;resize:vertical;
+        margin-bottom:12px">${QA[st].a}</textarea>
+      <div class="row" style="justify-content:space-between">
+        <span class="dim" style="font-size:11.5px">Question ${st+1} of ${QA.length}</span>
+        <button class="btn sm" data-act="prof-next">Answer</button></div>
+    </div>`;
+
+  return `
+  <div class="phead">
+    <div><div class="h1">Smart Profile</div>
+      <p>Dean interviews you once. Answers become addressed facts in the graph — the organization model
+      is grown from what you say, not designed up front.</p></div>
+    <span class="pill ${done?'ok':'warn'}"><i class="dot"></i>${done?'complete':`${st}/${QA.length}`}</span>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1.25fr 1fr;align-items:start">
+    <div>
+      <div class="bar" style="margin-bottom:22px"><i style="width:${(st/QA.length)*100}%"></i></div>
+      ${transcript}${asking}
+    </div>
+    <div class="card" style="padding:16px;position:sticky;top:22px">
+      <div class="row" style="margin-bottom:12px">
+        <div class="lbl grow">What VaNi learned</div>
+        <span class="pill ac">${learned.length} facts</span></div>
+      ${learned.length?learned.map(([addr,pred,val])=>`
+        <div style="padding:9px 0;border-bottom:1px solid var(--line)">
+          <div class="addr" style="margin-bottom:5px;white-space:normal">${addr}</div>
+          <div style="font-size:12.5px"><span class="dim mono">${pred}</span>
+            <span style="margin:0 5px;color:var(--line2)">→</span>${val}</div>
+          <div class="dim" style="font-size:10.5px;margin-top:4px">
+            stated by charan@vikuna.io · confidence 1.0 · valid from today</div>
+        </div>`).join(''):`<div class="empty">Nothing yet. Answer the first question.</div>`}
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   KNOWLEDGE
+   ========================================================= */
+const NEWFACTS = [
+  ['org://vikuna/accounts/sriveda','legal_name','Sriveda Lifesciences Pvt Ltd','MSA p.1','1.0'],
+  ['org://vikuna/accounts/sriveda','contract_value','₹18,00,000 / year','MSA p.4 §3.2','0.96'],
+  ['org://vikuna/accounts/sriveda','renewal_date','2027-03-31','MSA p.4 §3.5','0.98'],
+  ['org://vikuna/accounts/sriveda','notice_period','60 days','MSA p.9 §11.1','0.91'],
+  ['org://vikuna/contacts/r-menon','title','Chief Operating Officer','MSA signature block','0.88']
+];
+const KSTAGES=['Queued','Extracting','Resolving addresses','Writing facts','Done'];
+
+function pKnowledge(){
+  const ing=S.ingest;
+  return `
+  <div class="phead">
+    <div><div class="h1">Knowledge</div>
+      <p>Anything carrying knowledge goes through ingestion — never through an ad hoc agent read.
+      Documents become facts, facts resolve to addresses, and every claim keeps its citation.</p></div>
+  </div>
+
+  <div class="grid g3 sect">
+    ${[['▤','Upload a document','PDF, DOCX, CSV, XLSX','pdf'],
+       ['⇄','Connect a system','HubSpot, Razorpay, Drive','api'],
+       ['⌘','Point at a URL','Site, docs, knowledge base','url']].map(([i,t,s,k])=>`
+      <div class="card" style="padding:18px;cursor:pointer;text-align:center" data-act="ingest" data-v="${k}">
+        <div style="font-size:19px;color:var(--ac);margin-bottom:9px">${i}</div>
+        <div style="font-weight:620;font-size:13.5px;margin-bottom:3px">${t}</div>
+        <div class="dim" style="font-size:11.5px">${s}</div></div>`).join('')}
+  </div>
+
+  ${ing?`
+  <div class="card sect" style="padding:18px;border-color:var(--ac-line)">
+    <div class="row" style="margin-bottom:14px">
+      <div class="grow"><b style="font-size:13.5px">Sriveda_Renewal_Addendum.pdf</b>
+        <div class="dim" style="font-size:11.5px">14 pages · ingesting</div></div>
+      <span class="pill ac"><i class="dot"></i>${KSTAGES[ing.stage]}</span></div>
+    <div class="bar" style="margin-bottom:16px"><i style="width:${(ing.stage/4)*100}%"></i></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:${ing.stage>=3?'16px':'0'}">
+      ${KSTAGES.map((s,i)=>`<span class="pill ${i<ing.stage?'ok':i===ing.stage?'ac':''}">${
+        i<ing.stage?'✓ ':''}${s}</span>`).join('')}
+    </div>
+    ${ing.stage>=3?`
+      <div class="lbl" style="margin-bottom:9px">Facts extracted</div>
+      <table class="tbl">
+        <thead><tr><th>Address</th><th>Predicate</th><th>Value</th><th>Provenance</th><th>Conf.</th></tr></thead>
+        <tbody>${NEWFACTS.slice(0,ing.stage>=4?5:3).map(f=>`
+          <tr><td><span class="addr">${f[0].replace('org://vikuna/','')}</span></td>
+            <td class="mono dim" style="font-size:12px">${f[1]}</td>
+            <td>${f[2]}</td>
+            <td class="dim" style="font-size:12px">${f[3]}</td>
+            <td class="mono" style="font-size:12px;color:var(--ok)">${f[4]}</td></tr>`).join('')}
+        </tbody></table>
+      ${ing.stage>=4?`<div class="row" style="gap:8px;margin-top:14px">
+        <span class="pill ok"><i class="dot"></i>63 facts written</span>
+        <span class="pill warn">1 conflict — contract_value disagrees with HubSpot</span>
+        <button class="btn ghost sm" data-go="kg">View in graph</button></div>`:''}
+    `:''}
+  </div>`:''}
+
+  <div class="sect">
+    <h3 class="h2" style="margin-bottom:11px">Sources</h3>
+    <div class="card" style="padding:6px 10px">
+      <table class="tbl">
+        <thead><tr><th>Source</th><th>Type</th><th>Facts</th><th>Status</th><th></th></tr></thead>
+        <tbody>${S.knowledge.map(k=>`
+          <tr><td><b style="font-weight:600">${esc(k.name)}</b></td>
+            <td><span class="pill">${k.kind}</span></td>
+            <td class="mono">${k.facts.toLocaleString()}</td>
+            <td><span class="pill ${k.status==='live'?'ac':'ok'}"><i class="dot"></i>${k.status}</span></td>
+            <td style="text-align:right"><button class="btn ghost sm" data-go="kg">Graph</button></td></tr>`).join('')}
+        </tbody></table>
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   KNOWLEDGE GRAPH
+   ========================================================= */
+const KTYPES={entity:['Entity','#2DD4BF'],structure:['Structure','#60A5FA'],
+  behaviour:['Behaviour','#F59E0B'],knowledge:['Knowledge','#A78BFA'],capability:['Capability','#FB7185']};
+const NODES={
+  'org-vikuna':{x:360,y:52,r:22,t:'structure',lbl:'Vikuna',addr:'org://vikuna',kind:'Organization'},
+  'unit-cons':{x:196,y:130,r:16,t:'structure',lbl:'Consulting',addr:'org://vikuna/units/consulting',kind:'Business unit'},
+  'unit-prod':{x:524,y:130,r:16,t:'structure',lbl:'Products',addr:'org://vikuna/units/products',kind:'Business unit'},
+  'agent-aria':{x:78,y:246,r:15,t:'capability',lbl:'Aria',addr:'org://vikuna/agents/aria',kind:'Agent · GTM'},
+  'agent-ledger':{x:648,y:246,r:15,t:'capability',lbl:'Ledger',addr:'org://vikuna/agents/ledger',kind:'Agent · O2C'},
+  'acc-sriveda':{x:300,y:222,r:20,t:'entity',lbl:'Sriveda',addr:'org://vikuna/accounts/sriveda',kind:'Account'},
+  'con-menon':{x:186,y:330,r:15,t:'entity',lbl:'R. Menon',addr:'org://vikuna/contacts/r-menon',kind:'Contact'},
+  'opp-audit':{x:406,y:312,r:17,t:'entity',lbl:'AI Audit',addr:'org://vikuna/opportunities/op-118',kind:'Opportunity'},
+  'doc-msa':{x:536,y:318,r:15,t:'knowledge',lbl:'MSA 2026',addr:'org://vikuna/documents/msa-2026',kind:'Document'},
+  'ord-118':{x:618,y:392,r:14,t:'entity',lbl:'ORD-118',addr:'org://vikuna/orders/ord-118',kind:'Order'},
+  'inv-2291':{x:474,y:418,r:14,t:'entity',lbl:'INV-2291',addr:'org://vikuna/invoices/inv-2291',kind:'Invoice'},
+  'ev-visit':{x:296,y:412,r:12,t:'behaviour',lbl:'Pricing visit',addr:'org://vikuna/events/ev-9d21',kind:'Behaviour'},
+  'ev-mail':{x:150,y:428,r:12,t:'behaviour',lbl:'Replied',addr:'org://vikuna/events/ev-9d18',kind:'Behaviour'}
+};
+const EDGES=[['org-vikuna','unit-cons','has_unit'],['org-vikuna','unit-prod','has_unit'],
+  ['unit-cons','acc-sriveda','owns'],['acc-sriveda','con-menon','employs'],
+  ['acc-sriveda','opp-audit','has_opportunity'],['opp-audit','doc-msa','governed_by'],
+  ['acc-sriveda','ord-118','placed'],['ord-118','inv-2291','billed_as'],
+  ['con-menon','ev-mail','actor'],['con-menon','ev-visit','actor'],
+  ['ev-visit','opp-audit','influences'],['agent-aria','acc-sriveda','can_act'],
+  ['agent-ledger','inv-2291','can_act'],['doc-msa','acc-sriveda','describes']];
+
+const NODEFACTS={
+  'acc-sriveda':[['legal_name','Sriveda Lifesciences Pvt Ltd','MSA 2026 p.1','1.0','valid from 2026-04-01'],
+    ['stage','Evaluation','behaviour signals · Aria','0.82','valid from today'],
+    ['contract_value','₹18,00,000 / year','MSA 2026 p.4','0.96','valid from 2026-04-01'],
+    ['contract_value','₹16,50,000 / year','HubSpot CRM','0.55','superseded · conflict'],
+    ['renewal_date','2027-03-31','MSA 2026 p.4','0.98','valid from 2026-04-01']],
+  'con-menon':[['title','Chief Operating Officer','MSA signature block','0.88','valid from 2026-04-01'],
+    ['prefers','email over calls','3 behaviour events · Aria','0.74','valid from 2026-06-11'],
+    ['employed_by','org://vikuna/accounts/sriveda','HubSpot CRM','0.99','valid from 2025-11-02']],
+  'inv-2291':[['amount','₹4,50,000','Razorpay','1.0','valid from 2026-06-18'],
+    ['due_date','2026-07-18','Razorpay','1.0','valid from 2026-06-18'],
+    ['status','overdue 46 days','Ledger · derived','0.99','valid from today']],
+  'opp-audit':[['service_line','AI Audit — failed initiatives','stated by charan@vikuna.io','1.0','valid from 2026-07-02'],
+    ['value','₹6,00,000','HubSpot CRM','0.9','valid from 2026-07-02'],
+    ['stage','Evaluation','Aria · stage rule','0.82','valid from today']]
+};
+const DEFFACTS=[['type','—','organization profile','1.0','valid from 2026-07-01']];
+
+function pKG(){
+  const f=S.kgFilter, sel=NODES[S.kgNode]?S.kgNode:'acc-sriveda';
+  const on = k => f==='all'||NODES[k].t===f;
+  const edges = EDGES.map(([a,b,l])=>{
+    const A=NODES[a],B=NODES[b], live=on(a)&&on(b);
+    const hot = a===sel||b===sel;
+    return `<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}"
+      stroke="${hot?'var(--ac)':'#2E373C'}" stroke-width="${hot?1.6:1}"
+      opacity="${live?(hot?.95:.5):.08}"/>`;
+  }).join('');
+  const nodes = Object.entries(NODES).map(([k,n])=>{
+    const c=KTYPES[n.t][1], live=on(k), isSel=k===sel;
+    return `<g class="kgn" data-act="kgnode" data-v="${k}" style="cursor:pointer;opacity:${live?1:.16}">
+      <circle cx="${n.x}" cy="${n.y}" r="${n.r+7}" fill="${c}" opacity="${isSel?.22:0}"/>
+      <circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="${c}1F" stroke="${c}"
+        stroke-width="${isSel?2.2:1.2}"/>
+      <text x="${n.x}" y="${n.y+n.r+14}" text-anchor="middle" fill="${isSel?'#E9EDEE':'#9BA6AB'}"
+        font-size="10.5" font-weight="${isSel?700:500}">${n.lbl}</text></g>`;
+  }).join('');
+
+  const facts = NODEFACTS[sel]||DEFFACTS;
+  const nbrs = EDGES.filter(([a,b])=>a===sel||b===sel)
+    .map(([a,b,l])=>[l, a===sel?b:a, a===sel?'→':'←']);
+
+  return `
+  <div class="phead">
+    <div><div class="h1">Knowledge Graph</div>
+      <p>Five graphs, one substrate. Same nodes, different edge types — entity, structure, behaviour,
+      knowledge and capability. Click any node to see its facts and where each one came from.</p></div>
+  </div>
+
+  <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:14px">
+    <button class="pill ${f==='all'?'ac':''}" data-act="kgf" data-v="all"
+      style="cursor:pointer">All ${Object.keys(NODES).length}</button>
+    ${Object.entries(KTYPES).map(([k,[n,c]])=>`
+      <button class="pill ${f===k?'ac':''}" data-act="kgf" data-v="${k}" style="cursor:pointer">
+        <i class="dot" style="background:${c}"></i>${n}</button>`).join('')}
+  </div>
+
+  <div class="grid" style="grid-template-columns:1.5fr 1fr;align-items:start">
+    <div class="card" style="padding:6px;overflow:hidden">
+      <svg viewBox="0 0 720 470" style="width:100%;height:auto;display:block">
+        ${edges}${nodes}
+      </svg>
+    </div>
+    <div class="card" style="padding:17px;position:sticky;top:22px">
+      <div class="lbl" style="margin-bottom:7px">${NODES[sel].kind}</div>
+      <div class="h2" style="margin-bottom:8px">${NODES[sel].lbl}</div>
+      <div class="addr" style="margin-bottom:15px;white-space:normal">${NODES[sel].addr}</div>
+
+      <div class="lbl" style="margin-bottom:8px">Facts &amp; provenance</div>
+      ${facts.map(x=>`
+        <div style="padding:9px 0;border-bottom:1px solid var(--line)">
+          <div class="row" style="gap:7px;align-items:baseline;margin-bottom:3px">
+            <span class="mono dim" style="font-size:11.5px">${x[0]}</span>
+            <span style="color:var(--line2)">→</span>
+            <span style="font-size:12.5px;font-weight:560">${x[1]}</span></div>
+          <div class="row" style="gap:6px;flex-wrap:wrap">
+            <span class="pill" style="font-size:10px">${x[2]}</span>
+            <span class="pill ${+x[3]>=.9?'ok':+x[3]>=.7?'warn':'bad'}" style="font-size:10px">
+              conf ${x[3]}</span>
+            <span class="dim" style="font-size:10px">${x[4]}</span></div>
+        </div>`).join('')}
+
+      <div class="lbl" style="margin:15px 0 8px">Connections</div>
+      <div class="row" style="gap:6px;flex-wrap:wrap">
+        ${nbrs.map(([l,k,d])=>`<button class="pill" data-act="kgnode" data-v="${k}"
+          style="cursor:pointer"><span class="dim">${d} ${l}</span> ${NODES[k].lbl}</button>`).join('')}
+      </div>
+
+      <div class="lbl" style="margin:15px 0 8px">Who can see this</div>
+      <div class="row" style="gap:6px;flex-wrap:wrap">
+        <span class="pill ac">Dean</span>
+        ${sel.startsWith('inv')||sel.startsWith('ord')?'<span class="pill">Ledger</span>':'<span class="pill">Aria</span>'}
+        <span class="pill">charan@vikuna.io</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   WORKSPACE — object-centric, views contributed by agents
+   ========================================================= */
+const ACCOUNTS=[
+  ['Sriveda Lifesciences','Evaluation','₹18.0L','Aria','3 pricing visits in 48h','gtm'],
+  ['Kadamba Foods','Engaged','₹4.5L','Aria','Replied to nurture #2','gtm'],
+  ['Nirvaan Systems','Proposal','₹8.0L','human','SOW requested','gtm'],
+  ['ContractNest Pilot','Won','₹12.0L','Ledger','Renewal in 61 days','otc'],
+  ['Trupti Logistics','Aware','—','Aria','Downloaded audit guide','gtm']
+];
+function contribChip(id){const a=agentBy(id);
+  return `<span class="contrib" style="background:${a.color}1A;color:${a.color};
+    border:1px solid ${a.color}3A">${a.icon} ${a.name}</span>`;}
+
+function pAccounts(){
+  return `
+  <div class="phead">
+    <div><div class="h1">Accounts</div>
+      <p>An address space, not an agent's screen. <span class="addr plain">org://${esc(S.slug)}/accounts/*</span>
+      — every agent with scope here contributes views and suggestions onto the same object.</p></div>
+    <div class="row" style="gap:7px">${['gtm','otc','digital'].map(i=>contribChip(i)).join('')}</div>
+  </div>
+  <div class="card" style="padding:6px 10px">
+    <table class="tbl">
+      <thead><tr><th>Account</th><th>Stage</th><th>Value</th><th>Next move</th><th>Owner</th><th></th></tr></thead>
+      <tbody>${ACCOUNTS.map((r,i)=>`
+        <tr class="clk" ${i===0?'data-go="account"':'data-act="noop"'}>
+          <td><b style="font-weight:600">${r[0]}</b>
+            ${i===0?'<span class="pill ac" style="margin-left:7px;font-size:9.5px">open</span>':''}</td>
+          <td><span class="pill">${r[1]}</span></td>
+          <td class="mono">${r[2]}</td>
+          <td class="muted" style="font-size:12.5px">${r[4]}</td>
+          <td><span style="color:${r[5]==='gtm'?'#F59E0B':'#60A5FA'}">${agentBy(r[5]).icon}</span>
+            <span class="dim">${r[3]}</span></td>
+          <td style="text-align:right"><span class="dim">→</span></td></tr>`).join('')}
+      </tbody></table>
+  </div>
+  <div class="card" style="padding:16px;margin-top:14px">
+    <div class="row" style="gap:9px;align-items:flex-start"><span class="pill ac">pattern</span>
+      <span class="muted" style="font-size:12.5px">You navigate by <b>object</b>, never by agent.
+      The Agents section is where you manage agents; this is where you work. Adding an agent adds views and
+      suggestions to places that already exist — it never opens a new silo.</span></div>
+  </div>`;
+}
+
+const JSTAGES=[
+  {n:'Aware',st:'past',rule:'First identified touch',acts:[['▤','Blog — agent org charts','done'],['◈','Audit guide downloaded','done']]},
+  {n:'Engaged',st:'past',rule:'2+ touches in 14 days, or any reply',acts:[['✉','Nurture #1','done'],['✉','Nurture #2 — replied','done']]},
+  {n:'Evaluation',st:'on',rule:'Pricing intent or demo request',acts:[['◈','Pharma case study','queued'],['☎','Founder call','suggested'],['⌾','WhatsApp check-in','suggested']]},
+  {n:'Proposal',st:'next',rule:'SOW requested by buyer',acts:[['◈','SOW draft','locked'],['☎','Commercial call','locked']]},
+  {n:'Won',st:'next',rule:'MSA signed',acts:[['⇄','Handoff to Ledger','locked']]}
+];
+const STTC={done:'var(--ok)',queued:'var(--ac)',suggested:'var(--gtm)',locked:'var(--tx3)'};
+
+const BEHAV=[
+  ['2h','Pricing page — 3rd visit in 48h','web · GA4','hot'],
+  ['1d','Opened “Nurture #2”, clicked case-study link','email','hot'],
+  ['2d','R. Menon replied — “send the pharma example”','email',''],
+  ['6d','Downloaded AI audit guide','web · form',''],
+  ['14d','First touch — LinkedIn article','social','']
+];
+
+function pAccount(){
+  const tab=S.acctTab||'overview';
+  const TABS=[['overview','Overview',null],['journey','Journey','gtm'],['behaviour','Behaviour','gtm'],
+              ['financials','Financials','otc'],['digital','Digital','digital'],['facts','Facts',null]];
+  const sugg=`
+    <div class="sect">
+      ${[['gtm','Move to <b>Evaluation</b> — 3 pricing-page visits in 48h clears the stage rule','Accept'],
+         ['otc','<b>INV-2291</b> is 46 days overdue. Draft a reminder in the tone this account replies to?','Draft']]
+        .map(([id,txt,cta])=>{const a=agentBy(id);return `
+        <div class="sugg">
+          <div class="ic" style="background:${a.color}1A;border:1px solid ${a.color}3A;color:${a.color}">${a.icon}</div>
+          <div class="grow" style="font-size:12.5px;padding-top:3px">${txt}
+            <div class="dim" style="font-size:11px;margin-top:3px">${a.name} · ${a.role} · suggestion, not an action</div></div>
+          <button class="btn sm" data-act="accept">${cta}</button>
+          <button class="btn ghost sm" data-act="dismiss">Dismiss</button>
+        </div>`}).join('')}
+    </div>`;
+
+  let body='';
+  if(tab==='overview'){ body=`
+    <div class="grid g4 sect">
+      ${[['Stage','Evaluation'],['Contract','₹18.0L / yr'],['Renewal','2027-03-31'],['Health','Watch']]
+        .map(([l,v])=>`<div class="card stat"><span>${l}</span><b style="font-size:17px">${v}</b></div>`).join('')}
+    </div>
+    <div class="grid g2" style="align-items:start">
+      <div class="card" style="padding:17px">
+        <h3 class="h2" style="margin-bottom:13px">People</h3>
+        ${[['R. Menon','Chief Operating Officer','prefers email'],['A. Iyer','Head of Quality','—']].map(([n,r,p])=>`
+          <div class="row" style="padding:9px 0;border-bottom:1px solid var(--line);gap:10px">
+            <div class="grow"><div style="font-size:13px;font-weight:600">${n}</div>
+              <div class="dim" style="font-size:11.5px">${r}</div></div>
+            <span class="pill" style="font-size:10px">${p}</span></div>`).join('')}
+      </div>
+      <div class="card" style="padding:17px">
+        <h3 class="h2" style="margin-bottom:13px">Open work</h3>
+        ${[['Credit note ₹4,20,000','waiting on you','warn'],['Pharma case study','queued by Aria','ac'],
+           ['Renewal pack','not started','']].map(([t,s,c])=>`
+          <div class="row" style="padding:9px 0;border-bottom:1px solid var(--line)">
+            <span class="grow" style="font-size:13px">${t}</span>
+            <span class="pill ${c}">${s}</span></div>`).join('')}
+        <button class="btn ghost sm" style="width:100%;margin-top:12px" data-go="run">Open the credit-note run →</button>
+      </div>
+    </div>`;
+  } else if(tab==='journey'){ body=`
+    <div class="card" style="padding:17px;margin-bottom:14px">
+      <div class="row" style="margin-bottom:4px">
+        <h3 class="h2 grow">Journey × nourishment</h3>
+        <span class="pill" style="border-color:#F59E0B55;color:#F59E0B;background:#F59E0B14">
+          view contributed by Aria</span></div>
+      <p class="muted" style="font-size:12.5px;margin-bottom:16px">
+        The journey map and the drip are the same object. Stages carry entry rules; each stage holds the
+        nourishment for it. Aria proposes; the delivery toggle decides whether it sends or waits for you.</p>
+      <div class="jrow">
+        ${JSTAGES.map((s,i)=>`
+          <div class="jstage ${s.st==='on'?'on':s.st==='past'?'past':''}">
+            ${i<JSTAGES.length-1?'<span class="jconn">›</span>':''}
+            <div class="row" style="margin-bottom:3px">
+              <h5 class="grow">${s.n}</h5>
+              ${s.st==='on'?'<span class="pill warn" style="font-size:9px">here</span>':
+                s.st==='past'?'<span class="dim" style="font-size:11px">✓</span>':''}</div>
+            <div class="rule">${s.rule}</div>
+            ${s.acts.map(([c,t,st])=>`
+              <div class="jact"><span class="ch">${c}</span>
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t}</span>
+                <span class="stt" style="color:${STTC[st]}">${st}</span></div>`).join('')}
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="grid g3">
+      <div class="card" style="padding:15px"><div class="lbl" style="margin-bottom:6px">Delivery autonomy</div>
+        <div class="row" style="gap:8px"><span class="pill warn">VaNi drafts · you send</span></div>
+        <div class="dim" style="font-size:11px;margin-top:8px">Per-account toggle. Flip it and Aria sends without asking.</div></div>
+      <div class="card" style="padding:15px"><div class="lbl" style="margin-bottom:6px">Stage rule fired</div>
+        <div style="font-size:12.5px">3 pricing visits / 48h</div>
+        <div class="dim" style="font-size:11px;margin-top:8px">Movement is by rule here — some accounts are moved manually.</div></div>
+      <div class="card" style="padding:15px"><div class="lbl" style="margin-bottom:6px">Next re-plan</div>
+        <div style="font-size:12.5px">On next behaviour signal</div>
+        <div class="dim" style="font-size:11px;margin-top:8px">Analytics between stages re-plan the nourishment.</div></div>
+    </div>`;
+  } else if(tab==='behaviour'){ body=`
+    <div class="card" style="padding:19px">
+      <div class="row" style="margin-bottom:15px"><h3 class="h2 grow">Behaviour stream</h3>
+        <span class="pill" style="border-color:#F59E0B55;color:#F59E0B;background:#F59E0B14">Aria</span></div>
+      <div class="tl">${BEHAV.map(([t,txt,src,hot])=>`
+        <div class="tli ${hot}">
+          <div style="font-size:13px;margin-bottom:2px">${txt}</div>
+          <div class="dim" style="font-size:11.5px">${t} ago · ${src}</div></div>`).join('')}</div>
+      <div class="row" style="gap:8px;margin-top:13px">
+        <span class="pill ac">every event is a fact</span>
+        <span class="dim" style="font-size:11.5px">written to
+        <span class="addr plain">events/*</span> and linked to this account — Nova and Ledger can read the same stream.</span></div>
+    </div>`;
+  } else if(tab==='financials'){ body=`
+    <div class="grid g4 sect">
+      ${[['Billed YTD','₹13.5L'],['Outstanding','₹4.5L'],['Overdue','46 days'],['Credit pending','₹4.2L']]
+        .map(([l,v])=>`<div class="card stat"><span>${l}</span><b style="font-size:17px">${v}</b></div>`).join('')}
+    </div>
+    <div class="card" style="padding:6px 10px">
+      <div class="row" style="padding:12px 12px 6px"><h3 class="h2 grow">Orders &amp; invoices</h3>
+        <span class="pill" style="border-color:#60A5FA55;color:#60A5FA;background:#60A5FA14">
+          view contributed by Ledger</span></div>
+      <table class="tbl"><thead><tr><th>Document</th><th>Amount</th><th>Raised</th><th>State</th><th></th></tr></thead>
+      <tbody>${[['ORD-118','₹4,20,000','2026-06-02','credit note pending','warn'],
+                ['INV-2291','₹4,50,000','2026-06-18','overdue 46d','bad'],
+                ['INV-2240','₹4,50,000','2026-03-18','paid','ok'],
+                ['ORD-096','₹9,00,000','2026-03-02','fulfilled','ok']].map(r=>`
+        <tr class="clk" data-go="run"><td><span class="addr plain">${r[0]}</span></td>
+          <td class="mono">${r[1]}</td><td class="dim mono" style="font-size:12px">${r[2]}</td>
+          <td><span class="pill ${r[4]}"><i class="dot"></i>${r[3]}</span></td>
+          <td style="text-align:right"><span class="dim">→</span></td></tr>`).join('')}
+      </tbody></table>
+    </div>
+    <div class="card" style="padding:15px;margin-top:14px">
+      <div class="row" style="gap:9px"><span class="pill bad">conflict</span>
+        <span class="muted" style="font-size:12.5px">Contract value disagrees between the MSA (₹18.0L, conf 0.96)
+        and HubSpot (₹16.5L, conf 0.55). Ledger is using the MSA — authoritative-source rule.</span>
+        <button class="btn ghost sm" data-go="kg">Inspect</button></div>
+    </div>`;
+  } else if(tab==='digital'){ body=`
+    <div class="card" style="padding:19px">
+      <div class="row" style="margin-bottom:15px"><h3 class="h2 grow">Digital touchpoints</h3>
+        <span class="pill" style="border-color:#A78BFA55;color:#A78BFA;background:#A78BFA14">Nova</span></div>
+      <table class="tbl"><thead><tr><th>Asset</th><th>Engagement</th><th>Last</th><th>Attribution</th></tr></thead>
+      <tbody>${[['/pricing','3 sessions · 4m 12s','2h ago','direct'],
+                ['/services/ai-audit','2 sessions','6d ago','LinkedIn article'],
+                ['Audit guide (PDF)','downloaded','6d ago','organic'],
+                ['/blog/agent-org-chart','1 session','14d ago','LinkedIn']].map(r=>`
+        <tr><td><span class="addr plain">${r[0]}</span></td><td>${r[1]}</td>
+          <td class="dim">${r[2]}</td><td class="muted">${r[3]}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="row" style="gap:8px;margin-top:14px"><span class="pill warn">note</span>
+        <span class="muted" style="font-size:12.5px">/services/ai-audit still carries a speed claim that
+        violates positioning policy — Nova has a rewrite drafted.</span></div>
+    </div>`;
+  } else { body=`
+    <div class="card" style="padding:19px">
+      <div class="row" style="margin-bottom:15px"><h3 class="h2 grow">Facts on this object</h3>
+        <button class="btn ghost sm" data-go="kg">Open in graph →</button></div>
+      ${NODEFACTS['acc-sriveda'].map(x=>`
+        <div style="padding:10px 0;border-bottom:1px solid var(--line)">
+          <div class="row" style="gap:7px;align-items:baseline;margin-bottom:4px">
+            <span class="mono dim" style="font-size:11.5px">${x[0]}</span>
+            <span style="color:var(--line2)">→</span>
+            <span style="font-size:13px;font-weight:560">${x[1]}</span></div>
+          <div class="row" style="gap:6px;flex-wrap:wrap">
+            <span class="pill" style="font-size:10px">${x[2]}</span>
+            <span class="pill ${+x[3]>=.9?'ok':+x[3]>=.7?'warn':'bad'}" style="font-size:10px">conf ${x[3]}</span>
+            <span class="dim" style="font-size:10px">${x[4]}</span></div></div>`).join('')}
+    </div>`;
+  }
+
+  return `
+  <div class="phead">
+    <div>
+      <div class="row" style="gap:10px;align-items:center;margin-bottom:5px">
+        <span class="h1">Sriveda Lifesciences</span>
+        <span class="pill warn">Evaluation</span></div>
+      <div class="addr">org://${esc(S.slug)}/accounts/sriveda</div>
+    </div>
+    <button class="btn ghost" data-go="accounts">← Accounts</button>
+  </div>
+  ${sugg}
+  <div class="tabs">
+    ${TABS.map(([k,t,ag])=>`<button class="${tab===k?'on':''}" data-act="acctab" data-v="${k}">
+      ${t}${ag?contribChip(ag):'<span class="contrib" style="background:var(--surf3);color:var(--tx3)">core</span>'}
+    </button>`).join('')}
+  </div>
+  ${body}`;
+}
+
+const SPACES={
+  contacts:{t:'Contacts',a:'contacts',cols:['Contact','Account','Role','Signal'],
+    rows:[['R. Menon','Sriveda Lifesciences','COO','replied 1d ago'],
+          ['A. Iyer','Sriveda Lifesciences','Head of Quality','—'],
+          ['S. Bhat','Kadamba Foods','Founder','opened 2d ago'],
+          ['V. Rao','Nirvaan Systems','CTO','requested SOW']],
+    views:['gtm','digital']},
+  orders:{t:'Orders & Invoices',a:'orders',cols:['Document','Account','Amount','State'],
+    rows:[['INV-2291','Sriveda Lifesciences','₹4,50,000','overdue 46d'],
+          ['INV-2288','Kadamba Foods','₹2,10,000','overdue 12d'],
+          ['ORD-118','Sriveda Lifesciences','₹4,20,000','credit pending'],
+          ['ORD-121','Nirvaan Systems','₹8,00,000','awaiting PO']],
+    views:['otc']},
+  content:{t:'Content',a:'content',cols:['Asset','Type','State','Performance'],
+    rows:[['/services/ai-audit','Landing','drift flagged','—'],
+          ['LinkedIn series 3/5','Post','queued','—'],
+          ['/blog/agent-org-chart','Article','live','p.2 · 3 terms'],
+          ['Pharma case study','Asset','requested by Aria','—']],
+    views:['digital','gtm']}
+};
+function pSpace(k){
+  const s=SPACES[k];
+  return `
+  <div class="phead">
+    <div><div class="h1">${s.t}</div>
+      <p>Address space <span class="addr plain">org://${esc(S.slug)}/${s.a}/*</span> —
+      views and suggestions here are contributed by the agents scoped to it.</p></div>
+    <div class="row" style="gap:7px">${s.views.map(i=>contribChip(i)).join('')}</div>
+  </div>
+  <div class="card" style="padding:6px 10px">
+    <table class="tbl"><thead><tr>${s.cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+    <tbody>${s.rows.map(r=>`<tr><td><b style="font-weight:600">${r[0]}</b></td>
+      <td class="muted">${r[1]}</td><td>${r[2]}</td>
+      <td><span class="pill">${r[3]}</span></td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function pSettings(){
+  return `
+  <div class="phead"><div><div class="h1">Settings</div>
+    <p>Everything customer-specific is configuration. Nothing here required a code change.</p></div></div>
+  <div class="grid g2" style="align-items:start">
+    <div class="card" style="padding:18px">
+      <h3 class="h2" style="margin-bottom:14px">Model gateway</h3>
+      <p class="muted" style="font-size:12.5px;margin-bottom:14px">
+        Your keys, your provider, your bill. Tiers map to agent role, not to the install.</p>
+      ${[['Orchestrator &amp; planning','claude-opus · strong','ac'],
+         ['Domain agents','claude-sonnet · strong','ac'],
+         ['Extraction','claude-haiku · cheap',''],
+         ['Embeddings','voyage-3 · cheap','']].map(([a,b,c])=>`
+        <div class="row" style="justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)">
+          <span style="font-size:13px">${a}</span><span class="pill ${c}">${b}</span></div>`).join('')}
+      <div class="row" style="gap:8px;margin-top:14px">
+        <span class="pill ok"><i class="dot"></i>capability floor met</span>
+        <span class="dim" style="font-size:11.5px">tool use · 200k ctx · structured output</span></div>
+    </div>
+    <div class="card" style="padding:18px">
+      <h3 class="h2" style="margin-bottom:14px">Deployment</h3>
+      ${[['Environment','AWS · your VPC · ap-south-1'],['Image','vani-core:2.4.1'],
+         ['Database','Postgres 16 · in-VPC'],['Upgrade channel','push · you approve'],
+         ['Telemetry','playbook shapes only · no facts leave']].map(([a,b])=>`
+        <div class="row" style="justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)">
+          <span class="muted" style="font-size:12.5px">${a}</span>
+          <span class="mono" style="font-size:12px">${b}</span></div>`).join('')}
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   AGENT DETAIL — GTM · Digital · Order-to-Cash
+   ========================================================= */
+const AGENTX = {
+  gtm:{
+    kpi:[['Accounts in view','46'],['In evaluation','6'],['Stage moves (7d)','19'],['Reply rate','31%']],
+    vizTitle:'Customer journey', viz:[['Aware',24],['Engaged',11],['Evaluation',6],['Proposal',3],['Won',2]],
+    tblHead:['Account','Stage','Signal that moved it','Owner'],
+    tbl:[['Sriveda Lifesciences','Evaluation','Pricing page · 3 visits in 48h','Aria'],
+         ['Kadamba Foods','Engaged','Replied to nurture #2','Aria'],
+         ['Nirvaan Systems','Proposal','Requested SOW','human'],
+         ['Trupti Logistics','Aware','Downloaded audit guide','Aria']],
+    tools:[['crm.read','HubSpot accounts &amp; contacts','',''],
+           ['journey.stage_move','Move an account between stages','warn','owner sign-off'],
+           ['outreach.draft','Draft email / WhatsApp sequence','',''],
+           ['outreach.send','Send to a contact','warn','human approval'],
+           ['content.request','Ask Nova for an asset','','']],
+    skill:[['First drafts run ~30% long — trim before send','14 human edits'],
+           ['“Audit” outperforms “assessment” in subject lines','A/B over 9 sends'],
+           ['Do not chase within 48h of a pricing visit — let them come','6 lost threads']],
+    price:{model:'Outcome-based',head:'₹9,999 / mo &nbsp;+&nbsp; ₹499 per qualified opportunity',
+      meter:'Qualified opportunities created',used:14,incl:20,unit:'opportunities',
+      over:'₹499 each beyond 20',gate:'Warn at 100% · block at 120%',
+      mtd:'₹9,999',var:'₹0',why:'Aria only bills when an opportunity clears the qualification rule — a machine-checkable outcome, not activity.'}
+  },
+  digital:{
+    kpi:[['Pages tracked','48'],['Brand drift','2'],['Queue','5'],['Organic (30d)','4,120']],
+    vizTitle:'Digital estate health', viz:[['Compliant',41],['Drifted',2],['Thin',3],['Stale',2]],
+    tblHead:['Asset','Type','Finding','Action'],
+    tbl:[['/services/ai-audit','Landing','Claims “in a day” — violates positioning policy','rewrite drafted'],
+         ['/blog/agent-org-chart','Article','Ranking p.2 for 3 target terms','internal links proposed'],
+         ['LinkedIn series 3/5','Post','Scheduled, awaiting review','queued'],
+         ['/case-studies','Index','Empty — 0 published','flagged to Dean']],
+    tools:[['site.crawl','Read the digital estate','',''],
+           ['content.draft','Draft page, post or article','',''],
+           ['content.publish','Publish live','warn','human approval'],
+           ['analytics.read','GA4 &amp; Search Console','',''],
+           ['brand.check','Score against brand policy','','']],
+    skill:[['Publishing before 11:00 IST doubles first-day reads','21 posts'],
+           ['Speed claims get flagged by brand.check every time — stop drafting them','9 rejections'],
+           ['Founder-voice posts outperform company-voice 3:1','LinkedIn 30d']],
+    price:{model:'Subscription',head:'₹14,999 / mo &nbsp;·&nbsp; up to 100 pages under management',
+      meter:'Pages under management',used:48,incl:100,unit:'pages',
+      over:'₹120 / page / mo',gate:'Auto-approve to 150% · then block',
+      mtd:'₹14,999',var:'₹0',why:'Digital estate is a stock, not a flow — flat pricing on assets under management is what the buyer already understands.'}
+  },
+  otc:{
+    kpi:[['Open orders','9'],['Unbilled','₹6.2L'],['Overdue','₹11.4L'],['DSO','58 days']],
+    vizTitle:'Order to cash', viz:[['Quoted',12],['Ordered',9],['Invoiced',8],['Collected',5]],
+    tblHead:['Document','Account','Amount','State'],
+    tbl:[['INV-2291','Sriveda Lifesciences','₹4,50,000','overdue 46d'],
+         ['INV-2288','Kadamba Foods','₹2,10,000','overdue 12d'],
+         ['ORD-118','Sriveda Lifesciences','₹4,20,000','credit note pending'],
+         ['ORD-121','Nirvaan Systems','₹8,00,000','awaiting PO']],
+    tools:[['orders.read','Read orders &amp; quotes','',''],
+           ['invoice.issue','Raise an invoice','',''],
+           ['dunning.send','Send a payment reminder','warn','human approval'],
+           ['credit_note.issue','Issue a credit note','warn','&gt; ₹1L approval'],
+           ['ledger.reconcile','Match receipts to invoices','','']],
+    skill:[['Reminders sent Tuesday get 2x the replies of Friday','40 sends'],
+           ['This account always pays 10 days after the second reminder — do not escalate early','4 cycles'],
+           ['PO number missing is the top cause of disputed invoices','7 disputes']],
+    price:{model:'Value-share',head:'0.4% of collections recovered &nbsp;·&nbsp; floor ₹7,999 / mo',
+      meter:'Collections recovered this cycle',used:56,incl:80,unit:'₹ lakh recovered',
+      over:'no cap',gate:'Blocks on unpaid platform invoice',
+      mtd:'₹7,999',var:'₹22,400',why:'Ledger is paid from money it brings in. The floor covers the seat; the share aligns it with the outcome you actually care about.'}
+  }
+};
+
+const MARKET=[
+  {n:'Support Agent',r:'Ticket triage &amp; resolution',c:'#34D399',i:'✦',
+   m:'Per resolved ticket',p:'₹29 / resolved ticket · no base',
+   needs:'tickets/** · contacts/**',why:'Deflection is countable, so the buyer only pays for deflection.'},
+  {n:'Procurement Agent',r:'Vendor &amp; PO management',c:'#FBBF24',i:'❖',
+   m:'Value-share on savings',p:'8% of verified savings · floor ₹9,999 / mo',
+   needs:'vendors/** · orders/**',why:'Savings are measurable against a baseline, so the share is auditable.'},
+  {n:'Compliance Agent',r:'Policy &amp; audit evidence',c:'#F87171',i:'⬢',
+   m:'Subscription',p:'₹24,999 / mo · per framework',
+   needs:'policy/** · documents/**',why:'Compliance is continuous and non-negotiable — usage pricing would be perverse.'},
+  {n:'Hiring Agent',r:'Sourcing &amp; screening',c:'#818CF8',i:'◐',
+   m:'Per outcome',p:'₹2,999 per shortlist accepted',
+   needs:'roles/** · candidates/**',why:'Only the accepted shortlist counts, which keeps volume honest.'}
+];
+
+function pMarket(){
+  return `
+  <div class="phead">
+    <div><div class="h1">Add an agent</div>
+      <p>Each agent carries its own business model. The gateway meters it, enforces entitlement before a run
+      starts, and bills separately from your model spend — which stays on your own provider key.</p></div>
+    <button class="btn ghost" data-go="agents">← Agents</button>
+  </div>
+  <div class="grid g2">
+    ${MARKET.map(a=>`
+      <div class="card" style="padding:18px">
+        <div class="row" style="gap:11px;margin-bottom:12px">
+          <div style="width:34px;height:34px;border-radius:9px;background:${a.c}1A;
+            border:1px solid ${a.c}44;display:flex;align-items:center;justify-content:center;
+            color:${a.c};font-size:15px;flex:none">${a.i}</div>
+          <div class="grow"><div style="font-weight:640;font-size:14.5px">${a.n}</div>
+            <div class="dim" style="font-size:11.5px">${a.r}</div></div>
+          <span class="pill">${a.m}</span>
+        </div>
+        <div class="card" style="padding:11px 13px;background:var(--bg2);margin-bottom:11px">
+          <div class="lbl" style="margin-bottom:4px">Business model</div>
+          <div style="font-size:13.5px;font-weight:600;color:var(--ac)">${a.p}</div>
+        </div>
+        <p class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:11px">${a.why}</p>
+        <div class="lbl" style="margin-bottom:5px">Needs access to</div>
+        <div class="addr" style="margin-bottom:13px;white-space:normal">${a.needs}</div>
+        <button class="btn sm" style="width:100%" data-act="subscribe" data-v="${a.n}">Subscribe</button>
+      </div>`).join('')}
+  </div>
+  <div class="card" style="padding:16px;margin-top:16px">
+    <div class="row" style="gap:9px;align-items:flex-start"><span class="pill ac">note</span>
+      <span class="muted" style="font-size:12.5px">Subscribing writes an entitlement fact against
+      <span class="addr plain">org://${esc(S.slug)}/entitlements/*</span> and registers the agent's tools in the
+      capability graph. Routing picks it up on the next run — nothing is deployed, nothing is rebuilt.</span></div>
+  </div>`;
+}
+
+const VIEWS={
+  gtm:[['accounts/*','Journey','journey-canvas · core component'],
+       ['accounts/*','Behaviour','timeline · core component'],
+       ['contacts/*','Journey position','timeline · core component'],
+       ['workspace','Pipeline board','board · core component']],
+  digital:[['content/*','Asset health','table + score · core component'],
+           ['accounts/*','Digital touchpoints','table · core component'],
+           ['workspace','Estate map','tree · core component']],
+  otc:[['accounts/*','Financials','table + stats · core component'],
+       ['orders/*','Document detail','record · core component'],
+       ['workspace','Aging report','table · core component']]
+};
+
+function pAgent(id){
+  const a=agentBy(id), x=AGENTX[id], tab=S.agentTab;
+  const maxv=Math.max(...x.viz.map(v=>v[1]));
+  const head = `
+  <div class="phead">
+    <div class="row" style="gap:13px;align-items:flex-start">
+      <div style="width:44px;height:44px;border-radius:12px;background:${a.color}1A;
+        border:1px solid ${a.color}44;display:flex;align-items:center;justify-content:center;
+        color:${a.color};font-size:20px;flex:none">${a.icon}</div>
+      <div>
+        <div class="row" style="gap:9px"><span class="h1">${a.name}</span>
+          <span class="pill ${a.status==='active'?'ok':'warn'}"><i class="dot"></i>${a.status}</span></div>
+        <p>${a.role} · ${a.desc}</p>
+        <div class="addr" style="margin-top:8px">${a.scope}</div>
+      </div>
+    </div>
+    <button class="btn ghost" data-go="runs">View runs</button>
+  </div>
+  <div class="tabs">
+    ${[['overview','Overview'],['tools','Tools'],['memory','Memory'],['pricing','Pricing &amp; metering'],['runs','Recent runs']]
+      .map(([k,t])=>`<button class="${tab===k?'on':''}" data-act="atab" data-v="${k}">${t}</button>`).join('')}
+  </div>`;
+
+  let body='';
+  if(tab==='overview'){ body=`
+    <div class="grid g4 sect">
+      ${x.kpi.map(([l,v])=>`<div class="card stat"><span>${l}</span><b>${v}</b></div>`).join('')}
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 1.4fr;align-items:start">
+      <div class="card" style="padding:17px">
+        <h3 class="h2" style="margin-bottom:15px">${x.vizTitle}</h3>
+        ${x.viz.map(([n,v])=>`
+          <div style="margin-bottom:13px">
+            <div class="row" style="justify-content:space-between;font-size:12.5px;margin-bottom:5px">
+              <span>${n}</span><span class="mono dim">${v}</span></div>
+            <div class="bar"><i style="width:${(v/maxv)*100}%;background:${a.color}"></i></div>
+          </div>`).join('')}
+      </div>
+      <div class="card" style="padding:6px 10px">
+        <table class="tbl"><thead><tr>${x.tblHead.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>${x.tbl.map(r=>`<tr class="clk" data-go="run">
+          <td><b style="font-weight:600">${r[0]}</b></td>
+          <td><span class="pill">${r[1]}</span></td>
+          <td class="muted" style="font-size:12.5px">${r[2]}</td>
+          <td class="dim" style="font-size:12.5px">${r[3]}</td></tr>`).join('')}</tbody></table>
+      </div>
+    </div>`;
+  } else if(tab==='tools'){ body=`
+    <div class="card" style="padding:6px 10px;margin-bottom:14px">
+      <table class="tbl">
+        <thead><tr><th>Tool</th><th>Does</th><th>Gate</th></tr></thead>
+        <tbody>${x.tools.map(t=>`<tr>
+          <td><span class="addr plain">${t[0]}</span></td>
+          <td class="muted">${t[1]}</td>
+          <td>${t[3]?`<span class="pill ${t[2]}">${t[3]}</span>`:`<span class="dim" style="font-size:12px">autonomous</span>`}</td>
+        </tr>`).join('')}</tbody></table>
+    </div>
+    <div class="card" style="padding:6px 10px;margin-bottom:14px">
+      <div class="row" style="padding:12px 12px 6px"><h3 class="h2 grow">Registered views</h3>
+        <span class="pill ac">contributed to the shell</span></div>
+      <table class="tbl">
+        <thead><tr><th>Mounts on</th><th>View</th><th>Renders as</th></tr></thead>
+        <tbody>${(VIEWS[id]||[]).map(v=>`<tr>
+          <td><span class="addr plain">${v[0]}</span></td>
+          <td><b style="font-weight:600">${v[1]}</b></td>
+          <td class="muted" style="font-size:12.5px">${v[2]}</td></tr>`).join('')}</tbody></table>
+      <div style="padding:11px 12px 13px" class="dim" style="font-size:11.5px">
+        The shell owns chrome, routing and permissions. ${a.name} only declares which views exist and
+        what goes in them — which is why adding an agent never touches core navigation.</div>
+    </div>
+    <div class="card" style="padding:15px 17px">
+      <div class="row" style="gap:9px"><span class="pill ac">rule</span>
+      <span class="muted" style="font-size:12.5px">${a.name} never calls an external API directly.
+      Every one of these is a registered tool invoked through Core with a run-scoped token —
+      which is why every action above appears in a trace.</span></div>
+    </div>`;
+  } else if(tab==='memory'){ body=`
+    <div class="grid g2" style="align-items:start">
+      <div class="card" style="padding:17px">
+        <div class="row" style="margin-bottom:6px"><h3 class="h2 grow">Org memory</h3>
+          <span class="pill ac">shared</span></div>
+        <p class="muted" style="font-size:12.5px;margin-bottom:14px">
+          Facts about the world. Lives in the graph, not in the agent. If another agent would benefit
+          from knowing it, it belongs here.</p>
+        <div class="row" style="justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)">
+          <span class="muted" style="font-size:12.5px">Facts in scope</span><b class="mono">${a.facts}</b></div>
+        <div class="row" style="justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)">
+          <span class="muted" style="font-size:12.5px">Addresses readable</span><b class="mono">612</b></div>
+        <div class="row" style="justify-content:space-between;padding:9px 0">
+          <span class="muted" style="font-size:12.5px">Written back this week</span><b class="mono">88</b></div>
+        <button class="btn ghost sm" style="width:100%;margin-top:13px" data-go="kg">Open in graph</button>
+      </div>
+      <div class="card" style="padding:17px">
+        <div class="row" style="margin-bottom:6px"><h3 class="h2 grow">Skill memory</h3>
+          <span class="pill">private</span></div>
+        <p class="muted" style="font-size:12.5px;margin-bottom:14px">
+          Not facts about the world — facts about doing the job. Useless to other agents,
+          which is exactly the test for what belongs here.</p>
+        ${x.skill.map(([s,e])=>`
+          <div style="padding:10px 0;border-bottom:1px solid var(--line)">
+            <div style="font-size:12.5px;margin-bottom:4px">${s}</div>
+            <div class="dim" style="font-size:11px">learned from ${e}</div></div>`).join('')}
+      </div>
+    </div>`;
+  } else if(tab==='pricing'){
+    const p=x.price, pct=Math.round((p.used/p.incl)*100);
+    body=`
+    <div class="grid" style="grid-template-columns:1.35fr 1fr;align-items:start">
+      <div>
+        <div class="card" style="padding:19px;margin-bottom:14px;border-color:${a.color}44;
+          background:linear-gradient(180deg,${a.color}0F,var(--surf))">
+          <div class="row" style="margin-bottom:9px">
+            <span class="pill" style="border-color:${a.color}55;color:${a.color};background:${a.color}14">
+              ${p.model}</span>
+            <span class="grow"></span>
+            <span class="pill ok"><i class="dot"></i>entitled</span></div>
+          <div style="font-size:19px;font-weight:640;letter-spacing:-.02em;margin-bottom:9px">${p.head}</div>
+          <p class="muted" style="font-size:12.5px;line-height:1.6">${p.why}</p>
+        </div>
+
+        <div class="card" style="padding:18px;margin-bottom:14px">
+          <div class="row" style="margin-bottom:13px">
+            <h3 class="h2 grow">Metering</h3>
+            <span class="pill ${pct>=100?'bad':pct>=80?'warn':'ac'}">${pct}% of included</span></div>
+          <div class="row" style="justify-content:space-between;font-size:12.5px;margin-bottom:6px">
+            <span class="muted">${p.meter}</span>
+            <span class="mono">${p.used} / ${p.incl} ${p.unit}</span></div>
+          <div class="bar" style="height:7px;margin-bottom:16px">
+            <i style="width:${Math.min(100,pct)}%;background:${a.color}"></i></div>
+          ${[['Overage rate',p.over],['Entitlement gate',p.gate],
+             ['Meter resets','1st of each month'],['Verified by','run outcomes · not self-reported']]
+            .map(([k,v])=>`<div class="row" style="justify-content:space-between;padding:8px 0;
+              border-bottom:1px solid var(--line)">
+              <span class="muted" style="font-size:12.5px">${k}</span>
+              <span style="font-size:12.5px">${v}</span></div>`).join('')}
+        </div>
+
+        <div class="card" style="padding:16px">
+          <div class="row" style="gap:9px;align-items:flex-start">
+            <span class="pill ac">how it enforces</span>
+            <span class="muted" style="font-size:12.5px">Entitlement is checked as the first step of every run,
+            through the same policy engine as the approval gates. An unentitled or over-cap agent never starts —
+            it does not fail halfway and leave a half-finished job in your data.</span></div>
+          <button class="btn ghost sm" style="margin-top:12px" data-go="run">See it in a run trace →</button>
+        </div>
+      </div>
+
+      <div class="card" style="padding:18px;position:sticky;top:22px">
+        <div class="lbl" style="margin-bottom:12px">This cycle</div>
+        <div style="margin-bottom:14px">
+          <div class="row" style="justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)">
+            <span class="muted" style="font-size:12.5px">Base</span><b class="mono">${p.mtd}</b></div>
+          <div class="row" style="justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)">
+            <span class="muted" style="font-size:12.5px">Variable</span><b class="mono">${p.var}</b></div>
+          <div class="row" style="justify-content:space-between;padding:11px 0">
+            <span style="font-size:13px;font-weight:620">VaNi total</span>
+            <b class="mono" style="font-size:15px;color:var(--ac)">${
+              p.var==='₹0'?p.mtd:'₹30,399'}</b></div>
+        </div>
+        <div class="card" style="padding:12px 13px;background:var(--bg2)">
+          <div class="lbl" style="margin-bottom:6px">Model spend — not billed by VaNi</div>
+          <div class="row" style="justify-content:space-between">
+            <span class="muted" style="font-size:12.5px">${a.name}'s tokens</span>
+            <b class="mono">₹${a.id==='gtm'?'186':a.id==='digital'?'142':'84'}</b></div>
+          <div class="dim" style="font-size:11px;margin-top:6px">
+            Charged directly to your ${S.provider==='anthropic'?'Anthropic':S.provider==='openai'?'OpenAI':'in-house'}
+            account. VaNi never resells tokens — no margin, no markup, no lock-in.</div>
+        </div>
+        <div class="sep"></div>
+        <div class="lbl" style="margin-bottom:8px">Change plan</div>
+        <div class="row" style="gap:6px;flex-wrap:wrap">
+          ${['Outcome','Subscription','Value-share','Per-seat'].map(m=>`
+            <button class="pill ${p.model.startsWith(m.slice(0,5))?'ac':''}"
+              style="cursor:pointer" data-act="plan" data-v="${m}">${m}</button>`).join('')}
+        </div>
+        <div class="dim" style="font-size:11px;margin-top:9px">
+          Pricing model is configuration on the agent — not a code change, not a redeploy.</div>
+      </div>
+    </div>`;
+  } else { body = runTable(); }
+  return head+body;
+}
+
+/* =========================================================
+   RUNS + TRACE
+   ========================================================= */
+const RUNS=[
+  ['run_8f3a91','otc','Issue credit note · Sriveda','waiting','4/6','₹1.20','2m'],
+  ['run_8f3a72','otc','Dunning · INV-2291','waiting','3/5','₹0.80','14m'],
+  ['run_8f3a55','digital','Brand drift sweep','done','6/6','₹2.40','38m'],
+  ['run_8f3a40','orchestrator','Renewal pack · ContractNest','done','8/8','₹4.10','1h'],
+  ['run_8f39e8','gtm','Ingest + resolve · HubSpot','done','5/5','₹0.60','2h'],
+  ['run_8f39c1','gtm','Nurture sequence · 12 contacts','failed','2/5','₹0.30','3h']
+];
+function runTable(){
+  return `<div class="card" style="padding:6px 10px">
+    <table class="tbl">
+      <thead><tr><th>Run</th><th>Agent</th><th>Outcome</th><th>Status</th><th>Steps</th><th>Cost</th><th></th></tr></thead>
+      <tbody>${RUNS.map(r=>{const a=agentBy(r[1]);return `
+        <tr class="clk" data-go="run"><td><span class="mono" style="font-size:12px;color:var(--ac)">${r[0]}</span></td>
+        <td><span style="color:${a.color}">${a.icon}</span> <span class="muted">${a.name}</span></td>
+        <td>${r[2]}</td>
+        <td><span class="pill ${r[3]==='done'?'ok':r[3]==='failed'?'bad':'warn'}"><i class="dot"></i>${r[3]}</span></td>
+        <td class="mono dim">${r[4]}</td><td class="mono dim">${r[5]}</td>
+        <td class="dim" style="text-align:right">${r[6]}</td></tr>`}).join('')}
+      </tbody></table></div>`;
+}
+function pRuns(){
+  return `<div class="phead"><div><div class="h1">Runs &amp; traces</div>
+    <p>Every job leaves a trace. Each run cites the addresses it read and wrote, the tools it called,
+    and what it cost — on your own model key.</p></div></div>${runTable()}`;
+}
+
+function pRun(){
+  const ap=S.approved;
+  const steps=[
+    ['1','Entitlement gate','Dean','done',`<b>Ledger</b> is entitled — value-share plan, floor paid,
+      no outstanding platform invoice. Metered against
+      <span class="addr plain">entitlements/ledger</span>. Run may proceed.`,'pricing gateway · 0 tok'],
+    ['2','Intake','Dean','done',`Parsed “issue a credit note for the Sriveda overbilling”.
+      Resolved subject → <span class="addr">accounts/sriveda</span>`,'claude-opus · 1.4k tok'],
+    ['3','Resolve','Dean','done',`Matched 1 open order <span class="addr">orders/ord-118</span>
+      and 1 invoice <span class="addr">invoices/inv-2291</span>. No ambiguity.`,'resolver · 0 tok'],
+    ['4','Route','Dean','done',`Capability query: who can act on <span class="addr plain">invoices/*</span>?
+      → <b>Ledger</b>. Handed off by address.`,'capability graph'],
+    ['5','Compute','Ledger','done',`Read 11 facts. Billed ₹4,50,000 against contracted ₹4,20,000
+      (MSA p.4 §3.2, conf 0.96). Delta <b>₹30,000</b>… widened to full re-issue: <b>₹4,20,000</b>.`,'claude-sonnet · 6.2k tok'],
+    ['6','Approval gate','Ledger',ap?'done':'waiting',
+      `Policy <span class="addr plain">policy/credit</span> — credit note above ₹1,00,000 requires a human.
+      ${ap?'Approved by charan@vikuna.io.':'<b style="color:var(--warn)">Blocked, waiting on you.</b>'}`,'policy engine'],
+    ['7','Issue','Ledger',ap?'done':'blocked',
+      ap?`Credit note <b>CN-0042</b> raised in Razorpay. 3 facts written back to the graph.
+        Meter updated — this run is not billable, no collection recovered.`
+        :'Not started — gated by step 6.','tool: credit_note.issue']
+  ];
+  return `
+  <div class="phead">
+    <div><div class="row" style="gap:10px;align-items:baseline">
+        <span class="h1">Issue credit note</span>
+        <span class="mono" style="color:var(--ac);font-size:13px">run_8f3a91</span></div>
+      <p>Triggered by Charan · routed by Dean · executed by Ledger · ${ap?'completed':'waiting on approval'}</p></div>
+    <button class="btn ghost" data-go="runs">← All runs</button>
+  </div>
+
+  <div class="grid g4 sect">
+    <div class="card stat"><span>Status</span><b style="font-size:17px;color:${ap?'var(--ok)':'var(--warn)'}">
+      ${ap?'Completed':'Waiting'}</b></div>
+    <div class="card stat"><span>Steps</span><b>${ap?'7/7':'5/7'}</b></div>
+    <div class="card stat"><span>Model cost</span><b>₹1.20</b><span class="dim" style="text-transform:none;letter-spacing:0"> your key</span></div>
+    <div class="card stat"><span>Facts touched</span><b>${ap?'14':'11'}</b></div>
+  </div>
+
+  <div class="card" style="padding:8px 4px">
+    ${steps.map(s=>`
+      <div class="row" style="gap:13px;align-items:flex-start;padding:13px 16px;
+        border-bottom:1px solid var(--line)">
+        <div style="width:24px;height:24px;border-radius:50%;flex:none;display:flex;
+          align-items:center;justify-content:center;font-size:11px;font-weight:700;
+          background:${s[3]==='done'?'#0D2B24':s[3]==='waiting'?'#2B2410':'var(--surf3)'};
+          border:1px solid ${s[3]==='done'?'#1B4D3E':s[3]==='waiting'?'#4D3F17':'var(--line)'};
+          color:${s[3]==='done'?'var(--ok)':s[3]==='waiting'?'var(--warn)':'var(--tx3)'}">
+          ${s[3]==='done'?'✓':s[0]}</div>
+        <div class="grow">
+          <div class="row" style="gap:8px;margin-bottom:4px">
+            <b style="font-size:13.5px">${s[1]}</b>
+            <span class="pill" style="font-size:10px">${s[2]}</span>
+            <span class="pill ${s[3]==='done'?'ok':s[3]==='waiting'?'warn':''}" style="font-size:10px">${s[3]}</span>
+          </div>
+          <div class="muted" style="font-size:12.5px;line-height:1.6">${s[4]}</div>
+          <div class="dim mono" style="font-size:10.5px;margin-top:5px">${s[5]}</div>
+        </div>
+      </div>`).join('')}
+    ${!ap?`
+      <div style="padding:16px;background:var(--surf2);margin:4px;border-radius:8px">
+        <div class="row" style="gap:12px">
+          <div class="grow">
+            <b style="font-size:13.5px">Approve ₹4,20,000 credit note?</b>
+            <div class="muted" style="font-size:12.5px;margin-top:3px">
+              Ledger will issue CN-0042 in Razorpay and write 3 facts back to the graph.</div></div>
+          <button class="btn ghost sm" data-act="reject">Reject</button>
+          <button class="btn sm" data-act="approve">Approve</button>
+        </div>
+      </div>`:`
+      <div style="padding:15px 16px">
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <span class="pill ok"><i class="dot"></i>closed clean</span>
+          <span class="dim" style="font-size:12px">Outcome fed to Ledger's eval set — this path is now
+          a candidate for crystallisation into a playbook.</span></div>
+      </div>`}
+  </div>`;
+}
+
+/* =========================================================
+   ROUTER
+   ========================================================= */
+const MARKETING = ['landing','login','signup'];
+function render(){
+  const app = el('app');
+  let html='';
+  if(S.screen==='landing') html=vLanding();
+  else if(S.screen==='login') html=vLogin();
+  else if(S.screen==='signup') html=vSignup();
+  else html=vApp();
+  if(S.toast) html += `<div style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);
+    background:var(--surf3);border:1px solid var(--ac-line);color:var(--ac);padding:10px 18px;
+    border-radius:9px;font-size:13px;font-weight:600;z-index:99;box-shadow:0 8px 30px #0008">
+    ${esc(S.toast)}</div>`;
+  app.innerHTML = html;
+}
+
+document.addEventListener('click', e=>{
+  const g = e.target.closest('[data-go]');
+  if(g){ handleGo(g.dataset.go); return; }
+  const a = e.target.closest('[data-act]');
+  if(a){ handleAct(a.dataset.act, a.dataset); return; }
+});
+
+function handleGo(to){
+  if(to==='signup'){ S.signupStep=0; }
+  if(to==='profile'){ S.profileStep=0; S.profileDone=false; }
+  if(to==='dashboard'){ S.profileDone=true; }
+  go(to);
+}
+
+function handleAct(act,d){
+  switch(act){
+    case 'su-next':
+      if(S.signupStep===0){
+        const o=el('su-org'), s=el('su-slug');
+        if(o&&o.value.trim()) S.org=o.value.trim();
+        if(s&&s.value.trim()) S.slug=s.value.trim().toLowerCase().replace(/\s+/g,'-');
+      }
+      S.signupStep=Math.min(2,S.signupStep+1); render(); break;
+    case 'su-back':
+      if(S.signupStep===0) go('landing'); else { S.signupStep--; render(); } break;
+    case 'prov': S.provider=d.v; render(); break;
+    default: appAct(act,d);
+  }
+}
+function appAct(act,d){
+  switch(act){
+    case 'prof-next':{
+      const t=el('prof-a'); if(t) QA[S.profileStep].a = t.value.trim()||QA[S.profileStep].a;
+      S.profileStep++; render();
+      if(S.profileStep>=QA.length) toast('Organization profile written to the graph');
+      break;
+    }
+    case 'prof-reset': S.profileStep=0; render(); break;
+    case 'atab': S.agentTab=d.v; render(); break;
+    case 'acctab': S.acctTab=d.v; render(); break;
+    case 'accept': toast('Accepted — Aria moved the account and logged run_8f3ab2'); break;
+    case 'dismiss': toast('Dismissed — Aria will not re-suggest this for 14 days'); break;
+    case 'noop': toast('Demo uses Sriveda — open that one'); break;
+    case 'kgf': S.kgFilter=d.v; render(); break;
+    case 'kgnode': S.kgNode=d.v; render(); break;
+    case 'approve': S.approved=true; render(); toast('Approved — Ledger issued CN-0042'); break;
+    case 'reject': toast('Rejected — Ledger notified, run closed'); break;
+    case 'ask': toast('Dean: routing to Aria and Ledger…'); break;
+    case 'hire': go('market'); break;
+    case 'subscribe': toast(d.v+' entitled — tools registered, routing updated'); break;
+    case 'plan': toast('Pricing model changed to '+d.v+' — config only, no redeploy'); break;
+    case 'ingest':{
+      S.ingest={stage:0}; render();
+      const tick=()=>{ if(!S.ingest) return;
+        if(S.ingest.stage<4){ S.ingest.stage++; render(); setTimeout(tick,850); }
+        else toast('63 facts written · 1 conflict flagged'); };
+      setTimeout(tick,700); break;
+    }
+  }
+}
+
+render();
+</script>
+</body>
+</html>

@@ -300,6 +300,24 @@ awaiting auth. If the connector still fails, check in this order:
    GTM its **own** vhost, so confirm this one is not pointed at another
    product's database before trusting what it returns.
 
+## What lives in the database (Phase 0)
+`docs/db/triggers-and-functions.md` is the inventory of DB-resident logic:
+29 triggers, 75 functions, 9 generated columns — described, classified, and
+cross-referenced to call sites. Read it before changing schema, retiring
+`ki_*` tables, or touching the RLS role. Headlines:
+- 28 of 29 triggers only stamp `updated_at`. The one exception,
+  `ki_set_session_limit` on `vn_subscriptions`, silently floors `max_sessions`
+  at 5 on INSERT (not on UPDATE).
+- 46 of the 75 functions come from `pgcrypto`/`uuid-ossp`. Only 29 are ours,
+  and only 4 of those are called at runtime: `set_tenant_context`,
+  `gt_next_seq`, `vani_ensure_seq_prefixes`, `vani_ensure_tag`.
+- Migration 180 dropped ten MFD tables but `CASCADE` does not read plpgsql
+  bodies, so six functions still reference relations that no longer exist.
+  Listed as candidates in §5 — **nothing has been deleted**.
+
+Items 2 (`ki_*` disposition) and 3 (make RLS real) are not yet done; this
+section gets their docs when they land.
+
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
    GUC dies before your query (surfaced as `invalid input syntax for type
@@ -317,7 +335,8 @@ awaiting auth. If the connector still fails, check in this order:
 6. `.env` changes need hard restarts — tsx watch reloads code, not env.
 7. Store tokens in BOTH sessionStorage and localStorage; call storeTokens()
    in component onSuccess (React batching can defer hook callbacks).
-8. `vn_tenants.is_active` is a generated column — never INSERT into it.
+8. `vn_tenants.is_active` is a generated column — never INSERT into it. There
+   are **nine** generated columns, all listed in `docs/db/triggers-and-functions.md` §4.
 9. PowerShell mangles inline JSON — use Postman or `curl.exe --data @file`.
 10. Every list endpoint MUST have a tenant filter — verify the WHERE clause,
     never assume.
