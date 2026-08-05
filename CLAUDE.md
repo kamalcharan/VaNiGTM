@@ -315,8 +315,25 @@ cross-referenced to call sites. Read it before changing schema, retiring
   bodies, so six functions still reference relations that no longer exist.
   Listed as candidates in §5 — **nothing has been deleted**.
 
-Items 2 (`ki_*` disposition) and 3 (make RLS real) are not yet done; this
-section gets their docs when they land.
+`docs/db/ki-disposition.md` classifies every `ki_*` table. **Retained: nine
+live** — the ETL import pipeline (`ki_import_staging`, `ki_import_sessions`,
+`ki_file_uploads`) and the pulse cluster (`ki_pulse_config`, `ki_pulses`,
+`ki_pulse_sessions`, `ki_pulse_session_actions`, `ki_pulse_session_gaps`,
+`ki_pulse_session_observations`). **Four more are pinned** by a foreign key
+from a live table and cannot be renamed: `ki_clients`, `ki_contacts`,
+`ki_contact_snapshots`, `ki_ext_ref_types`. Note
+`vn_tenants.ext_ref_type_code → ki_ext_ref_types(code)` — the only FK from the
+`gt_*`/`vn_*` side into `ki_*` anywhere in the schema, and the one thing that
+stops "move all `ki_*` out" from being a clean cut. Phase 1 item.
+
+The other 29 are rename candidates. **The rename has not run**: it needs live
+row counts and a production table list, and production does not match the
+migration files — locally there are 42 `ki_*` tables, production looks like a
+dozen. `backend/migrations/233_ki_deprecate_orphans.sql` is written, tested,
+and ships with an empty candidate list (a safe no-op) until those numbers
+arrive. Never fill it from the doc's analysis table; fill it from production.
+
+Item 3 (make RLS real) is not yet done; this section gets its doc when it lands.
 
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
