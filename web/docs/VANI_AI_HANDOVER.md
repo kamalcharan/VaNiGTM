@@ -3,15 +3,19 @@
 **From:** Claude Code website session (last updated 2026-08-10)
 **To:** next Claude Code session in this repo
 **State:** the assessment funnel is **built and merged** in `kamalcharan/VaNiGTM`
-(public flow + console, §11) and Phase 0 database hygiene is **complete to the limit
-of what a sandbox can reach** (§12). Gate G1 was never passed as a formal gate but was
-superseded in practice. Almost nothing about VaNi AI lives in this repo any more —
-this document and the governing PDFs are the exception.
+(public flow + console, §11); Phase 0 database hygiene is **deployed**, with one
+verification step outstanding (§12); two GTM app work orders — the navigation
+restructure and G3 `/today` — are **built and pushed but unmerged** (§13). Gate G1
+was never passed as a formal gate but was superseded in practice. Almost nothing
+about VaNi AI lives in this repo any more — this document and the governing PDFs
+are the exception.
 
-**Where the work actually is:** `kamalcharan/VaNiGTM`, branch
-`claude/vani-phase-0-db-hygiene` (Phase 0, open) on top of `main` (everything else,
-merged). Read `vanigtm/CLAUDE.md` and `vanigtm/docs/db/*.md` before touching the
-database.
+**Where the work actually is:** `kamalcharan/VaNiGTM`. Phase 0 is merged to `main`.
+Open branches, in dependency order: `claude/nav-pathways`, then
+`claude/today-attention` stacked on it (`/today` exists only on the first). Read
+`vanigtm/CLAUDE.md` and `vanigtm/docs/db/*.md` before touching the database, and
+`vanigtm/docs/gtm/attention-query.md` before touching anything that asks when an
+account was last touched.
 
 **⚠️ Architecture pivoted twice on 2026-07-31 — read this before touching `docs/sql/`.**
 `kamalcharan/VaNiGTM` (a separate, much larger, already-built product — multi-tenant
@@ -481,7 +485,7 @@ against a scratch copy surfaced an order-dependence bug (a table renamed earlier
 loop looked like a live blocker to candidates processed later); rollback verified,
 7 renamed and 7 restored.
 
-### Item 3 — make RLS real (proven locally, cutover NOT performed)
+### Item 3 — make RLS real (deployed 2026-08-10; post-switch verification outstanding)
 
 **A correction I got wrong, then corrected back.** Mid-phase this section claimed
 `vikuna_admin` does not hold `BYPASSRLS` and bypasses RLS purely by being a
@@ -542,15 +546,26 @@ failure the pre-existing `story-skill` schema drift.
 
 ### What Phase 0 is waiting on
 
-*Item 2's two blocking queries were run on 2026-08-10 and resolved it. What is left:*
+*Item 2's two blocking queries were run on 2026-08-10 and resolved it. Migrations
+235, 236 and 237 were deployed the same day and `post-deploy-check.sql` returned
+7/7 OK; `DB_PRIMARY` has since been repointed at `vanigtm_app`. The list below is
+what survives that.*
 
-**Charan, on the VPS:**
-1. Full backup, **and verify it restores** into a scratch database
-   (`ki-disposition.md` §6.1). Still required for Item 3.
-2. Deploy **migration 235** — required, prevents a live regression. 234 is optional
-   (no-op in production) but harmless. Both are inert under the current superuser.
-3. Run `scripts/grant-vanigtm-app.sql` and follow `docs/rls-cutover-checklist.md`.
-   Do **not** create a new role — `vanigtm_app` already exists.
+**Charan, on the VPS — the one thing still standing between this and done:**
+
+1. **Post-switch verification.** Re-run `rls-two-tenant-test.sql` against
+   production under the restricted role, then exercise **signup, login, the
+   assessment flow and the skills executor**. Those auth paths have never run
+   under `vanigtm_app`; every other path was exercised or converted deliberately.
+   Rollback is repointing `DB_PRIMARY` at `vikuna_admin` — no migration reverses.
+
+Two findings from the deployment are worth carrying forward, both in
+`docs/db/PHASE-0-REPORT.md`: **eighteen tables had correct policies that were
+completely inert** because a table's owner is exempt from its own RLS without
+`FORCE ROW LEVEL SECURITY` (migration 236 closes seventeen; `gt_agent_runs` is a
+registered exemption), and the isolation test **wrote to production twice** before
+it was made to roll back — consuming a sequence number and self-seeding
+`gt_seq_counters` with the wrong prefix, repaired by `realign-vani-sequences.sql`.
 
 **Still open as tasks:**
 - The storyteller `gt_presentations` `/share/:token` route breaks under a restricted
@@ -563,7 +578,7 @@ failure the pre-existing `story-skill` schema drift.
   rows all tenants can see; it needs a maintenance role, a `SECURITY DEFINER` function,
   or an `app.is_admin` GUC.
 - Signup, login and the skills executor have **not** been exercised under the restricted
-  role. That needs the restored copy from step 1.
+  role. That is the post-switch verification above.
 
 ### Still open from earlier phases
 
@@ -571,3 +586,81 @@ Unchanged by Phase 0: the Main VPS deploy (§10) has not run; LLM narrative gene
 and email dispatch (Phase B) are the next real feature work, with A1's fallback staying
 as the permanent fallback; `{{BOOKING_URL}}` is unresolved; the `assessment-lead` and
 `playbook-lead` n8n workflows still need to exist for delivery to happen.
+
+---
+
+## 13. After Phase 0 — the GTM app work orders (2026-08-10)
+
+Two work orders followed Phase 0 on the same day. **Both are branches in VaNiGTM,
+pushed, unmerged, no PR opened.** Neither touches `(public)` or `(vani)`, so the
+assessment funnel is unaffected by either.
+
+### Navigation restructure — pathways (`claude/nav-pathways`)
+
+Eleven flat nav destinations became five groups expressing pathways versus
+reference surfaces. Routes consolidated with permanent (308) redirects covering
+both the bare paths and their dynamic children — an exact redirect on
+`/prospects` does not catch `/prospects/acme-ltd`, and `:path*` also matches zero
+segments, so the wildcards must come after the exact rules. `PathwayShell` was
+extracted from the Mission Wizard and G1 wrapped in it.
+
+Two things worth knowing before touching it:
+
+- **The brief's redirect table lists nav labels, not routes.** `/mission-wizard`,
+  `/teach-vani`, `/vani-leads` and `/follow-ups` do not exist in the app; the real
+  paths are `/onboarding`, `/knowledge`, `/console` and `/pulses`. Following the
+  table literally would have redirected URLs nobody holds while leaving the four
+  people actually have bookmarked to 404. Both sets are in
+  `frontend/src/config/route-map.js`, which records why.
+- **Research, Prospects and VaNi Leads lost their nav entries** in the five-group
+  structure and were restored as `kind: 'reference'`. Nothing was deleted — the
+  files moved 1:1 and the backend `research-skill` was untouched — but the brief's
+  G1 mapping flattens what those pages are: Research is three workflows, Prospects
+  is a records browser rather than a "qualify" action, and VaNi Leads is the
+  assessment funnel console.
+
+### G3 · `/today` — quiet accounts (`claude/today-attention`, branched off the above)
+
+The gap query, the decision log behind it, and the screen. `/today` exists only on
+the nav branch, so this one is stacked on it: **merge `claude/nav-pathways` first,
+or merge them together.**
+
+**The source-of-truth question was answered differently than the brief expected.**
+It named `gt_touch_reservations`, `gt_activity_feed` and `gt_journey_events` and
+warned that a wrong answer makes every item wrong. None of the three is right —
+the authoritative record of an outbound touch is **`gt_touch_log`**, which the
+brief did not list. Reservations are *prospective* (a claim on a future slot, keyed
+on the contact, blind to manual sends) and are read only to suppress accounts
+already queued. `gt_journey_events` records state transitions, only some of which
+are touches. Argued in full in `vanigtm/docs/gtm/attention-query.md`.
+
+**`gt_activity_feed`'s only writer in the entire codebase is the demo seeder.**
+Which means the War Room's "live activity feed" and the analytics `meeting_booked`
+counter have been reading demo data since migration 162. Out of G3's scope, not
+fixed, recorded so it stops being a surprise.
+
+**`wake_at` had never been read.** Migration 222 said a wake date would be seen
+only because "the parked list is scanned for it"; nothing scanned it. Every
+"remind me in three weeks" set since then has been sitting in the database, due,
+invisible. `/today` is that scan.
+
+Migration **238 · `gt_attention_decision`** is append-only with no status column —
+current state is the tail of the log, folded in SQL. RLS enabled **and forced** at
+creation, which is Phase 0's eighteen-table lesson applied rather than
+re-learned. Append-only is enforced by a trigger, not by `DO INSTEAD NOTHING`
+rules: the rules were written first and testing killed them, because a DELETE rule
+also swallows the delete PostgreSQL's referential-integrity machinery issues, so
+one dismissed account would have made that prospect — and through the tenant
+cascade, that tenant — permanently undeletable.
+
+Fifteen db tests. Two bugs they caught that reading did not: the cascade breakage
+above, and a `LEFT JOIN` producing `NULL` rather than `false` for
+`is_dismissed`, so `WHERE NOT is_dismissed` silently dropped every account nobody
+had decided about — a new tenant's screen was empty *because* nothing had been
+decided yet.
+
+**Not done:** `deploy/vani-main-vps/attention-source-disagreement.sql` is a
+read-only check that the source-of-truth conclusions hold against production
+(they were derived from schema and call sites, which is checkable in the repo;
+row counts are not). It has not been run. Phase 0's standing lesson is that a
+local rebuild is not production.
