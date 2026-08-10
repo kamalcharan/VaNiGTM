@@ -10,11 +10,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run lint` — ESLint over `.ts`/`.tsx` with `--max-warnings 0`; a single warning fails the run.
 - `npm run preview` — serve the built `dist/` locally.
 
-There is no test runner configured — the "test" step for changes is `npm run build`. Note: `npm run lint` is currently broken (ESLint flat config invoked with the removed `--ext` flag, and `eslint.config.js` imports `typescript-eslint` which is not in `package.json`) — pre-existing, not gating.
+There is no test runner configured — the "test" step for changes is `npm run build`. It passes on a clean tree (verified 2026-08-10, ~6.5s, with a chunk-size warning that is expected).
+
+**Run `npm install` first.** A fresh clone of this repo has no `node_modules`, and `npx tsc` then downloads a *newer* TypeScript than the one pinned here — which fails on `tsconfig.json`'s `baseUrl` with `TS5101: Option 'baseUrl' is deprecated`. That error is an artifact of the missing install, not a real problem with the code; `--ignoreDeprecations 6.0` is not a valid workaround either (the pinned compiler rejects the value). Install, then build.
+
+Note: `npm run lint` is genuinely broken (ESLint flat config invoked with the removed `--ext` flag, and `eslint.config.js` imports `typescript-eslint` which is not in `package.json`) — pre-existing, not gating.
 
 ## VaNi AI (in progress)
 
-The VaNi AI assessment platform is being built into this repo (Option A, pending Gate G1). Before touching anything VaNi-related, read `docs/VANI_AI_HANDOVER.md` — it holds the phase status, guardrails (no Supabase for VaNi data, config-driven survey engine, deterministic SQL scoring), and next steps. `.mcp.json` configures the read-only `gtm-postgres` MCP channel to `vani_gtm_db` (requires the `GTM_MCP_BASIC` env var in the Claude environment settings).
+**VaNi AI is NOT built in this repo.** The plan changed on 2026-07-31 (Option A, in-repo lazy routes, was superseded twice on the same day). The assessment funnel — public flow, report, console, backend, database — lives in `kamalcharan/VaNiGTM`, attached here as a submodule at `vanigtm/`. This repo now holds only the handover record and the governing documents.
+
+Before touching anything VaNi-related, read `docs/VANI_AI_HANDOVER.md` — phase status, guardrails (no Supabase for VaNi data, config-driven survey engine, deterministic SQL scoring), and what is waiting on whom. For code or database work, read `vanigtm/CLAUDE.md` and `vanigtm/docs/db/*.md` instead; the latter document what the schema does behind the application's back, and exist so the next session does not rediscover it the hard way.
+
+`.mcp.json` configures the read-only `gtm-postgres` MCP channel to `vani_gtm_db`, but **it has never once connected from inside a Claude session** — `GTM_MCP_BASIC` is unset in the Claude environment settings. Every database result on record came either from Charan running SQL and pasting it back, or from a local rebuild of the schema from VaNiGTM's migration files. Do not plan around live DB access.
 
 ## Architecture
 
