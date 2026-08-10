@@ -181,3 +181,50 @@ export function createTenantDb(pool: Pool, tenantId: string): SkillDb {
 
   return { query, transaction };
 }
+
+/* ── Raw-client escape hatch, still tenant-scoped ───────────────────────── */
+
+/**
+ * Run `fn` against a client that has tenant context set, inside one
+ * transaction. COMMITs on success, ROLLBACKs and rethrows on error, always
+ * releases.
+ *
+ * `createTenantDb` is the right tool for skills: named params, one query or
+ * one transaction, no client handling. This is for the code that cannot use
+ * it — the ETL pipeline runs positional-param SQL, batched multi-row VALUES
+ * updates and per-row SAVEPOINTs against a client it holds for the duration.
+ * Rewriting that to named params would be a large diff for no isolation gain.
+ *
+ * Why a callback and not "give me a client with context set": set_tenant_context
+ * uses set_config(..., is_local := true), so the GUC lives exactly as long as
+ * the surrounding transaction. A helper that returns a client after setting the
+ * GUC outside a transaction hands back a client whose context has ALREADY
+ * expired — the caller then runs tenant-scoped queries that quietly match
+ * nothing under RLS. That is precisely what the previous `getClientWithTenant`
+ * did, and it is why it was replaced rather than kept: the callback shape makes
+ * the transaction boundary impossible to omit.
+ *
+ * Callers must NOT issue their own BEGIN/COMMIT inside `fn`. SAVEPOINTs are
+ * fine and are what the ETL row loop uses.
+ */
+export async function withTenantClient<T>(
+  pool: Pool,
+  tenantId: string,
+  fn: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT set_tenant_context($1)', [tenantId]);
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {
+      // ROLLBACK failed — connection may be broken, pool will discard it
+    });
+    throw err;
+  } finally {
+    client.release();
+  }
+}

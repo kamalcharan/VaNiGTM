@@ -114,6 +114,51 @@ safe to deploy ahead of the cutover.
 
 ---
 
+## 3.1 The second bug: platform rows disappear
+
+Migration 234 made the policies safe. It also made a latent problem visible.
+
+Two tables use `tenant_id IS NULL` to mean *"belongs to the platform, everyone
+sees it"*:
+
+| Table | Platform rows | Effect under 234's policy |
+|---|---|---|
+| `gt_tags` | platform tags naming common-pool deliveries | platform tags vanish; `GET /etl/tags` selects `tenant_id IS NULL OR tenant_id = $1` and loses the first half |
+| `gt_content_kinds` | **all 8 rows** | the entire table becomes invisible to every tenant |
+
+`tenant_id = <uuid>` is NULL for a NULL `tenant_id`, so those rows are filtered
+out. Measured: superuser sees 3 `gt_tags` rows including 1 platform row;
+`vani_app` under tenant context saw 1 row and 0 platform rows.
+
+This one would **not have raised an error**. Rows would simply have stopped
+appearing — the failure mode that gets shipped.
+
+**`backend/migrations/235_rls_platform_rows.sql`** splits each into two
+policies:
+
+```sql
+<t>_platform_read  FOR SELECT USING (tenant_id IS NULL OR tenant_id = ctx)
+<t>_tenant_write   FOR ALL    USING (tenant_id = ctx) WITH CHECK (tenant_id = ctx)
+```
+
+Permissive policies OR together, so reads see own + platform while INSERT,
+UPDATE and DELETE stay confined to the tenant's own rows. A single
+`FOR ALL USING (tenant_id IS NULL OR …)` would have used that same expression
+as the INSERT check and let **any tenant mint a row every other tenant can
+see** — turning a read bug into privilege escalation. Verified after applying:
+platform tag visible, `gt_content_kinds` back to 8, cross-tenant tag still
+invisible, and `INSERT … (NULL, 'x')` refused.
+
+> **Open decision before cutover.** `POST /etl/tags` lets an admin tenant
+> create a platform tag (`is_platform: true`, guarded by `auth.is_admin`).
+> Under the write policy that INSERT is refused, because it requires
+> `tenant_id = ` the caller's tenant. Left refused deliberately — the
+> alternatives are letting every tenant write NULL-tenant rows, or keying a
+> policy off an `app.is_admin` GUC that `set_tenant_context` does not set
+> (a new mechanism, and Phase 0 is explicit about not designing). Admin
+> platform-tag creation needs a separate maintenance role, a `SECURITY DEFINER`
+> function, or that GUC. It still works today under the superuser.
+
 ## 4. What enforcement actually buys — measured, not asserted
 
 Same database, same statements, two roles.
@@ -163,21 +208,60 @@ force. What is new here is that it is now *written down* rather than accidental.
 That is the whole point of the item: exceptions that are explicit, few, and
 justified.
 
-### 5.2 Must be converted before the cutover (2 files) ⚠️
+### 5.2 Converted ✅
 
-| Path | Tables | Problem |
+Both ETL files now route their RLS-touching queries through
+`withTenantClient(pool, tenantId, fn)` (§5.4). Only six RLS-protected tables
+were ever involved, not the whole 96-call surface:
+
+| Path | RLS tables reached | Change |
 |---|---|---|
-| `etl/landing.ts` | `gt_contacts`, `gt_prospects`, `gt_contact_assignments`, `gt_contact_channels`, `gt_source_loads`, `gt_universe_company_sources`, `ki_import_staging`, `ki_import_sessions` | `gt_contacts`, `gt_prospects`, `gt_contact_assignments` and `gt_contact_channels` **have RLS**. Raw `pool.query` against them returns nothing under a restricted role. ETL breaks. |
-| `etl/etl.routes.ts` | `gt_source_loads`, `gt_tags`, `gt_data_sources`, `gt_load_tags`, `ki_file_uploads`, `ki_import_sessions`, `ki_import_staging` | `gt_tags` has RLS — and `vani_ensure_tag()` writes it on the VaNi lead path. Same problem. |
+| `etl/landing.ts` | `gt_prospects`, `gt_contacts`, `gt_contact_assignments`, `gt_campaigns` (reads); `gt_prospects`, `gt_contacts`, `gt_contact_channels` (writes) | Read phase wrapped in one tenant-scoped transaction; the write loop now runs inside `withTenantClient` instead of its own hand-rolled BEGIN/COMMIT. Per-row SAVEPOINTs are unaffected — a SAVEPOINT nests inside the surrounding transaction. |
+| `etl/etl.routes.ts` | `gt_tags` ×3, `gt_load_tags`+`gt_tags` ×1 | Each wrapped. `POST /tags` runs its INSERT and its ON-CONFLICT fallback SELECT in one transaction so the fallback can see the row it conflicted with. |
 
-These are the work order's third category: **queries that should have been
-tenant-scoped and were not.** Under a superuser each one is a latent
-cross-tenant read. They fail closed rather than open under RLS, so the cutover
-degrades ETL rather than leaking — but ETL is a live path and this must be
-converted to `createTenantDb` first. **This is the one piece of code work Item 3
-leaves outstanding.**
+Two latent cross-tenant bugs were fixed in passing — both the work order's
+third category, *"a query that should have been tenant-scoped and wasn't;
+flag these loudly, each one was a latent leak"*:
 
-### 5.3 Already correct
+- `gt_source_loads` was read by `id` alone in `landSession`. Ids are
+  enumerable, so one tenant could read another's load row by guessing.
+- `ki_import_sessions` was updated by `id` alone at the end of `landSession`,
+  letting one tenant rewrite another's session counters. That table has no RLS
+  policy, so nothing else was stopping it.
+
+### 5.3 The public report route — found by testing, not by reading
+
+`AssessmentAgent.getReportByToken` is the `/r/:token` page: public, no auth,
+and its comment explicitly said *"Uses the RAW pool, no tenant context."* That
+reasoning is right about authorisation — the unguessable token is the
+capability — but wrong about RLS. The query joins **four** policy-protected
+tables (`gt_report`, `gt_assessment_response`, `gt_lead`, `gt_assessment_def`),
+so under a restricted role it matched nothing and **every report link would
+have rendered "This report link isn't valid."**
+
+Capture succeeded; only the read failed. A smoke test that stopped at "lead
+created" would have called the cutover clean.
+
+Fixed by resolving the tenant the same way `getPublicDefinition` already does
+(`resolveTenantId` — every VaNi assessment runs under `VANI_TENANT_SLUG`,
+partner-referred ones included, since `gt_partner` rows are themselves
+tenant-scoped) and keeping the token as the authorisation.
+
+### 5.4 `getClientWithTenant` was removed, not fixed
+
+`db/pool.ts` exported a helper that acquired a client, called
+`set_tenant_context()` on it, and returned it. It could not work:
+`is_local := true` scopes the GUC to the surrounding transaction, and outside
+an explicit BEGIN that one statement *is* the transaction, so the context was
+already gone when the caller got the client. Verified against a restricted
+role — the pattern returns 0 rows.
+
+It had **no callers**, so nothing was broken in practice, but it read as though
+tenant context were handled. Replaced by `withTenantClient(pool, tenantId, fn)`
+in `db/query.ts`, whose callback shape makes the transaction boundary
+impossible to omit.
+
+### 5.5 Already correct
 
 `skills/assessment-skill/assessment.agent.ts` — the live funnel. Only 3 raw
 `pool.query` calls, and the single one without a `tenant_id` filter is
@@ -292,16 +376,17 @@ Ordered. Do not reorder; step 2 is what makes step 4 survivable.
 
 1. **Backup and verify the restore.** `docs/db/ki-disposition.md` §6.1. Keep the
    scratch database — steps 3 and 5 run against it.
-2. **Deploy migration 234 to production.** Inert under the current superuser, so
-   this is a normal deploy with no behaviour change. Verify:
+2. **Deploy migrations 234 and 235 to production**, in that order, together
+   with the code changes. All are inert under the current superuser, so this is
+   a normal deploy with no behaviour change. Verify:
    ```sql
    SELECT count(*) FILTER (WHERE qual LIKE '%NULLIF%') AS guarded, count(*) AS total
      FROM pg_policies WHERE schemaname = 'public';
-   -- expect guarded = total - 1  (the one read-all lookup policy reads no setting)
+   -- 235 splits gt_tags and gt_content_kinds into 2 policies each, so total
+   -- grows by 2 and one policy per table reads no setting.
    ```
-3. **Convert `etl/landing.ts` and `etl/etl.routes.ts`** to `createTenantDb`
-   (§5.2). This is the outstanding code work and the only reason the cutover
-   cannot happen today.
+3. ~~Convert the ETL files~~ — **done** (§5.2), along with the public report
+   route (§5.3). No outstanding code work blocks the cutover.
 4. **Create the application role.** Not in a migration — it is cluster-level and
    carries a password that must not be in git.
    ```sql
@@ -358,12 +443,22 @@ only as the documented rollback in step 8.
 
 | Condition | Status |
 |---|---|
-| App runs normally on a non-bypass role | ⚠️ **Not yet.** Assessment flow verified; ETL needs the §5.2 conversion first. |
-| Two-tenant test passes | ✅ Passes, and verified to fail when isolation is broken. |
+| App runs normally on a non-bypass role | ✅ **Locally.** The full assessment flow passes end to end under `vani_app` (`NOSUPERUSER NOBYPASSRLS`) — all checks including the public report page. ETL converted (§5.2); its 16 DB-backed landing tests pass. Signup/login and the skills executor are **not** yet exercised under the restricted role. |
+| Two-tenant test passes | ✅ 11/11, and verified to fail when isolation is broken. |
 | `docs/db/rls-status.md` lists every exemption with a justification | ✅ §9. |
 | Production switched | ❌ Not performed. Runbook in §8. |
 
-The item is not complete. What is complete is everything that could be done
-without production access, plus the discovery that the cutover as originally
-scoped would have failed on the second query — which is the finding that
-mattered most.
+**Backwards compatible.** Everything here — migrations 234 and 235 and the code
+changes — was verified to pass under *both* `vani_app` and the current
+`vikuna_admin` superuser. It can ship before the cutover, which is what makes
+the cutover a connection-string change rather than a big-bang deploy.
+
+Regression check: the full backend suite is 510 passed / 19 failed / 11 skipped
+both with and without these changes. Every failure is the pre-existing
+`story-skill` suite, which fails on `column "channel_type_id" of relation
+"gt_journey_stories" does not exist` — test-schema drift (its helper does not
+apply migration 227), unrelated to RLS.
+
+What remains before production: exercise signup, login and the skills executor
+under the restricted role (§8 step 6), and settle the admin platform-tag
+question (§3.1).

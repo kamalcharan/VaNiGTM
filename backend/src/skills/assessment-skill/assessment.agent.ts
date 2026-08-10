@@ -15,7 +15,7 @@
  */
 
 import type { Pool } from 'pg';
-import { createTenantDb } from '../../db';
+import { createTenantDb, withTenantClient } from '../../db';
 import { scoreResponse, type AssessmentDefinition } from './scoring';
 import { fillFallbackNarrative } from './narrative';
 import { bridgeLeadToContact } from './contact-bridge';
@@ -36,7 +36,7 @@ let cachedTenantId: string | null = null;
  */
 const TENANT_SLUG = process.env.VANI_TENANT_SLUG || 'vikuna-consulting';
 
-async function resolveTenantId(pool: Pool): Promise<string> {
+export async function resolveTenantId(pool: Pool): Promise<string> {
   if (cachedTenantId) return cachedTenantId;
   const result = await pool.query<{ id: string }>(
     `SELECT id FROM vn_tenants WHERE slug = $1`, [TENANT_SLUG],
@@ -477,10 +477,24 @@ export class AssessmentAgent {
   /** GET /report/:token — bearer-capability model, same as
    * gt_presentations.share_token (storyteller-skill): security is token
    * unguessability, not row filtering. revoked_at is the one thing enforced
-   * beyond the token match. Uses the RAW pool, no tenant context — same
-   * reasoning as storyteller's public share route. */
+   * beyond the token match.
+   *
+   * It used to run on the RAW pool with no tenant context, on the reasoning
+   * that a public route has no tenant to scope to. That holds for
+   * authorisation but not for RLS: gt_report, gt_assessment_response, gt_lead
+   * and gt_assessment_def all carry policies, so under a non-superuser role
+   * this join matched nothing and every report link rendered "This report
+   * link isn't valid". Found by running verify-assessment-flow against a
+   * restricted role — capture succeeded, then step 5 returned null.
+   *
+   * The tenant is resolvable without the caller: every VaNi assessment runs
+   * under VANI_TENANT_SLUG, including partner-referred ones (gt_partner rows
+   * are themselves tenant-scoped). So this resolves the tenant the same way
+   * getPublicDefinition does, and keeps the token as the actual
+   * authorisation. */
   static async getReportByToken(pool: Pool, token: string) {
-    const result = await pool.query<{
+    const tenantId = await resolveTenantId(pool);
+    const result = await withTenantClient(pool, tenantId, (client) => client.query<{
       ref: string | null; narrative: string | null; created_at: Date;
       health_score: number | null; band_key: string | null;
       top_modes: unknown; all_modes: unknown;
@@ -502,9 +516,10 @@ export class AssessmentAgent {
          JOIN gt_assessment_response resp ON resp.id = r.assessment_response_id
          JOIN gt_lead l ON l.id = resp.lead_id
          JOIN gt_assessment_def d ON d.id = resp.assessment_def_id
-        WHERE r.report_token = $1 AND r.revoked_at IS NULL`,
-      [token],
-    );
+        WHERE r.report_token = $1 AND r.revoked_at IS NULL
+          AND r.tenant_id = $2`,
+      [token, tenantId],
+    ));
     const row = result.rows[0];
     if (!row) return null;
 

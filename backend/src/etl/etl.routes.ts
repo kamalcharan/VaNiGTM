@@ -20,6 +20,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
+import { withTenantClient } from '../db/query';
 import { parseExcelHeaders, parseExcelRows } from './excel-parser';
 import { mapCustomerRow, CUSTOMER_FIELD_MAP } from './customer-processor';
 import { mapCompanyRow, COMPANY_FIELD_MAP } from './company-processor';
@@ -361,14 +362,20 @@ export function createEtlRouter(pool: Pool): Router {
       const auth = extractAuth(req);
       if (!auth) { res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } }); return; }
 
-      const result = await pool.query(
-        `SELECT id, tenant_id, label, slug, (tenant_id IS NULL) AS is_platform
-         FROM   gt_tags
-         WHERE  is_active = true
-           AND  (tenant_id IS NULL OR tenant_id = $1)
-         ORDER BY (tenant_id IS NULL) DESC, label ASC`,
-        [auth.tenant_id],
-      );
+      // gt_tags carries an RLS policy, so this needs tenant context on the
+      // same connection inside the same transaction. The platform half of the
+      // predicate below (tenant_id IS NULL) only works because migration 235
+      // added a SELECT policy that admits platform rows — under 234's policy
+      // alone they were filtered out and this endpoint quietly lost them.
+      const result = await withTenantClient(pool, auth.tenant_id, (client) =>
+        client.query(
+          `SELECT id, tenant_id, label, slug, (tenant_id IS NULL) AS is_platform
+           FROM   gt_tags
+           WHERE  is_active = true
+             AND  (tenant_id IS NULL OR tenant_id = $1)
+           ORDER BY (tenant_id IS NULL) DESC, label ASC`,
+          [auth.tenant_id],
+        ));
 
       res.json({ tags: result.rows });
     } catch (err: any) {
@@ -403,26 +410,40 @@ export function createEtlRouter(pool: Pool): Router {
 
       // Creating a tag that already exists returns the existing one — the
       // user asked for a tag with that name, and they now have it.
-      const result = await pool.query(
-        `INSERT INTO gt_tags (tenant_id, label, created_by)
-         VALUES ($1, $2, $3)
-         ON CONFLICT DO NOTHING
-         RETURNING id, tenant_id, label, slug`,
-        [owner, label, auth.user_id],
-      );
+      // Both statements share one tenant-scoped transaction: gt_tags is
+      // RLS-protected, and the fallback SELECT must see the row the INSERT
+      // conflicted with.
+      //
+      // NOTE for the RLS cutover: creating a PLATFORM tag (owner === null) is
+      // refused by the write policy from migration 235, which requires
+      // tenant_id = the caller's tenant. That is deliberate — the alternative
+      // is letting any tenant mint rows every other tenant can see. Admin
+      // platform-tag creation needs its own mechanism before the cutover; see
+      // docs/db/rls-status.md. Under today's superuser role it still works.
+      const { created, existing } = await withTenantClient(pool, auth.tenant_id, async (client) => {
+        const result = await client.query(
+          `INSERT INTO gt_tags (tenant_id, label, created_by)
+           VALUES ($1, $2, $3)
+           ON CONFLICT DO NOTHING
+           RETURNING id, tenant_id, label, slug`,
+          [owner, label, auth.user_id],
+        );
+        if (result.rows.length > 0) return { created: result.rows[0], existing: null };
 
-      if (result.rows.length > 0) {
-        res.status(201).json({ tag: result.rows[0] });
+        const found = await client.query(
+          `SELECT id, tenant_id, label, slug FROM gt_tags
+           WHERE slug = LOWER(BTRIM(REGEXP_REPLACE(REGEXP_REPLACE($1, '[^A-Za-z0-9]+', ' ', 'g'), '\\s+', ' ', 'g')))
+             AND tenant_id IS NOT DISTINCT FROM $2`,
+          [label, owner],
+        );
+        return { created: null, existing: found.rows[0] ?? null };
+      });
+
+      if (created) {
+        res.status(201).json({ tag: created });
         return;
       }
-
-      const existing = await pool.query(
-        `SELECT id, tenant_id, label, slug FROM gt_tags
-         WHERE slug = LOWER(BTRIM(REGEXP_REPLACE(REGEXP_REPLACE($1, '[^A-Za-z0-9]+', ' ', 'g'), '\\s+', ' ', 'g')))
-           AND tenant_id IS NOT DISTINCT FROM $2`,
-        [label, owner],
-      );
-      res.json({ tag: existing.rows[0] ?? null, existing: true });
+      res.json({ tag: existing, existing: true });
     } catch (err: any) {
       console.error('[ETL:create-tag]', err);
       res.status(500).json({ error: { code: 'TAG_FAILED', message: err.message || 'Failed to create tag' } });
@@ -578,16 +599,21 @@ export function createEtlRouter(pool: Pool): Router {
       // inherits them through load_id. A tenant may only apply their own tags
       // or platform ones — the filter is the authorisation.
       if (Array.isArray(tag_ids) && tag_ids.length > 0) {
-        await pool.query(
-          `INSERT INTO gt_load_tags (load_id, tag_id, created_by)
-           SELECT $1, t.id, $2
-           FROM   gt_tags t
-           WHERE  t.id = ANY($3::bigint[])
-             AND  t.is_active = true
-             AND  (t.tenant_id IS NULL OR t.tenant_id = $4)
-           ON CONFLICT DO NOTHING`,
-          [loadId, auth.user_id, tag_ids, tenantId],
-        );
+        // The SELECT reads RLS-protected gt_tags, so it needs tenant context.
+        // The `t.tenant_id IS NULL` half depends on migration 235's SELECT
+        // policy; without it, platform tags silently drop out of this insert
+        // and the load quietly loses the tags the user picked.
+        await withTenantClient(pool, auth.tenant_id, (client) =>
+          client.query(
+            `INSERT INTO gt_load_tags (load_id, tag_id, created_by)
+             SELECT $1, t.id, $2
+             FROM   gt_tags t
+             WHERE  t.id = ANY($3::bigint[])
+               AND  t.is_active = true
+               AND  (t.tenant_id IS NULL OR t.tenant_id = $4)
+             ON CONFLICT DO NOTHING`,
+            [loadId, auth.user_id, tag_ids, tenantId],
+          ));
       }
 
       // The plan the human confirmed at the review step wins; fall back to

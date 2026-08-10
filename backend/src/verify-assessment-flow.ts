@@ -30,8 +30,8 @@
 
 import 'dotenv/config';
 import { Pool } from 'pg';
-import { getPool } from './db';
-import { AssessmentAgent } from './skills/assessment-skill/assessment.agent';
+import { getPool, withTenantClient } from './db';
+import { AssessmentAgent, resolveTenantId } from './skills/assessment-skill/assessment.agent';
 import { scoreResponse } from './skills/assessment-skill/scoring';
 
 const SLUG = 'ai-recovery';
@@ -69,10 +69,20 @@ async function main() {
   // Independently score the same answers via the pure function, against the
   // FULL definition (fetched raw from the DB, not the client-stripped one
   // above) — this is the "expected" side of the comparison.
-  const rawDefResult = await pool.query<{ definition: any }>(
-    `SELECT definition FROM gt_assessment_def WHERE service_slug = $1 ORDER BY version DESC LIMIT 1`,
-    [SLUG],
-  );
+  //
+  // gt_assessment_def is RLS-protected, so this needs tenant context. As a
+  // plain pool.query it returned zero rows the moment the runtime was pointed
+  // at a non-superuser role, and this script died on `rows[0].definition` of
+  // undefined — which is precisely the failure this script exists to catch,
+  // so it must not be the script's own blind spot.
+  const tenantId = await resolveTenantId(pool);
+  const rawDefResult = await withTenantClient(pool, tenantId, (client) =>
+    client.query<{ definition: any }>(
+      `SELECT definition FROM gt_assessment_def
+       WHERE  service_slug = $1 AND tenant_id = $2
+       ORDER  BY version DESC LIMIT 1`,
+      [SLUG, tenantId],
+    ));
   const rawDefinition = rawDefResult.rows[0].definition;
   const expected = scoreResponse(rawDefinition, ANSWERS);
   console.log(`\n[Expected, via scoreResponse() directly] health=${expected.health} band=${expected.band.key} top_modes=${expected.top_modes.map((m) => `${m.key}:${m.exposure_pct}%`).join(', ')}`);

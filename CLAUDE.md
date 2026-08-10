@@ -351,10 +351,25 @@ dormant.
 the app role, never as postgres. All 11 checks pass on the rebuilt schema, and
 it was verified to fail when RLS is disabled.
 
-**Outstanding before the cutover:** `etl/landing.ts` and `etl/etl.routes.ts`
-use raw `pool.query` against RLS-protected tables (`gt_contacts`,
-`gt_prospects`, `gt_tags`, …) and must move to `createTenantDb` first. The
-assessment funnel is already clean. Runbook in §8 of the doc.
+Migration 235 fixes the second bug: `gt_tags` and `gt_content_kinds` use
+`tenant_id IS NULL` for platform rows, and `tenant_id = <uuid>` never matches
+NULL — so platform tags vanished and `gt_content_kinds` (all 8 rows platform)
+became invisible entirely. Each table now has a `FOR SELECT` policy admitting
+platform rows plus a `FOR ALL` write policy confined to the caller's tenant,
+so no tenant can mint a row every other tenant sees. **Known gap:** admin
+platform-tag creation via `POST /etl/tags` is refused under that write policy
+and needs its own mechanism before the cutover.
+
+**Reaching the DB outside a skill:** use `withTenantClient(pool, tenantId, fn)`
+from `db/query.ts`. Raw `pool.query` against an RLS table returns nothing.
+`getClientWithTenant` was removed — it set the GUC outside a transaction, so
+the context had already expired by the time the caller got the client.
+
+The ETL pipeline and the public `/r/:token` report route are converted and
+verified; the full assessment flow passes end to end under a restricted role,
+and under the superuser too, so all of this ships safely before the cutover.
+Still to exercise under the restricted role: signup, login, skills executor.
+Runbook in §8 of the doc.
 
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the

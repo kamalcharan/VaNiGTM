@@ -152,6 +152,22 @@ CREATE TABLE ki_import_staging (id SERIAL PRIMARY KEY,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE(session_id, row_number),
   validity NUMERIC(4,3), completeness NUMERIC(4,3),
   reject_reasons JSONB NOT NULL DEFAULT '[]'::jsonb, dedup_key TEXT);
+
+-- landSession runs its reads and its writes through withTenantClient, which
+-- opens a transaction and calls set_tenant_context() before anything else.
+-- Production gets that function from migration 001; these tests build their
+-- schema by hand, so it is declared here — same shape as
+-- src/skills/__test-helpers__/schema.ts, but taking TEXT to match the real
+-- signature.
+--
+-- Without it every landSession test fails with
+-- "function set_tenant_context(unknown) does not exist", which is how the
+-- missing declaration was found.
+CREATE OR REPLACE FUNCTION set_tenant_context(t TEXT) RETURNS void AS $$
+BEGIN
+  PERFORM set_config('app.current_tenant_id', t, true);
+  PERFORM set_config('app.tenant_id', t, true);
+END $$ LANGUAGE plpgsql;
 `;
 
 let pool: Pool | null = null;

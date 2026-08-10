@@ -35,6 +35,7 @@
  */
 
 import type { Pool, PoolClient } from 'pg';
+import { withTenantClient } from '../db/query';
 import { normalizePersonName, normalizeCompanyName } from './field-normalizers';
 
 /* ── Types ────────────────────────────────────────────────────────────── */
@@ -177,80 +178,107 @@ export async function landSession(
   // upload does not: they already buy.
   const prospectRelationship = relationship === 'customers' ? 'customer' : 'prospect';
 
-  const load = await pool.query(
-    'SELECT id, source_id, as_of FROM gt_source_loads WHERE id = $1',
-    [session.load_id],
-  );
-  const loadRow = load.rows[0] as any | undefined;
-  const sourceAsOf: string | null = loadRow?.as_of ?? null;
-  const incomingWeight = freshnessWeight(sourceAsOf);
-
-  const staged = await pool.query<StagedRow>(
-    `SELECT id, row_number, raw_data, mapped_data, completeness, validity, dedup_key
-     FROM   ki_import_staging
-     WHERE  session_id = $1
-       AND  processing_status IN ('pending', 'failed', 'conflict')
-     ORDER  BY row_number`,
-    [sessionId],
-  );
-  const rows = staged.rows;
-
   const counts = { successful: 0, failed: 0, duplicate: 0, conflict: 0, campaignLocked: 0 };
   const landed = { companies: 0, people: 0, channels: 0 };
 
-  // ── Pre-load every record that could collide, in one query per entity ──
-
-  const companyKeys = rows.map((r) => r.dedup_key).filter(Boolean) as string[];
-  const peopleKeys: string[] = [];
-  for (const r of rows) {
-    for (const p of (r.mapped_data?.people ?? [])) {
-      const k = personKeyOf(p);
-      if (k) peopleKeys.push(k);
-    }
-  }
+  // ── Read phase: pre-load every record that could collide ───────────────
+  //
+  // One tenant-scoped transaction for all of it. gt_prospects, gt_contacts,
+  // gt_contact_assignments and gt_campaigns all carry RLS policies, so these
+  // reads return nothing at all unless set_tenant_context() has run on this
+  // same connection inside this same transaction. Plain pool.query() cannot
+  // satisfy that: the GUC is set with is_local := true and dies with the
+  // statement that set it. See withTenantClient.
+  //
+  // The tenant_id predicates below are kept even though RLS now enforces the
+  // same thing — belt and braces, per CLAUDE.md, and they are what makes the
+  // queries correct under the superuser role the runtime still uses today.
 
   const existingCompanies = new Map<string, any>();
-  if (!isPool && companyKeys.length > 0) {
-    const r = await pool.query(
-      `SELECT * FROM gt_prospects
-       WHERE tenant_id = $1 AND is_live = $2 AND is_active = true`,
-      [auth.tenant_id, auth.is_live],
-    );
-    for (const row of r.rows as any[]) {
-      const key = row.domain_normalized
-        ? `d:${row.domain_normalized}`
-        : `n:${row.name_key}|${(row.pin ?? '').replace(/\D/g, '')}`;
-      existingCompanies.set(key, row);
-    }
-  }
-
   const existingPeople = new Map<string, any>();
-  if (peopleKeys.length > 0) {
-    const r = await pool.query(
-      `SELECT * FROM gt_contacts
-       WHERE tenant_id = $1 AND is_live = $2 AND is_active = true`,
-      [auth.tenant_id, auth.is_live],
-    );
-    for (const row of r.rows as any[]) {
-      if (row.person_key) existingPeople.set(row.person_key, row);
-    }
-  }
-
-  // Which existing contacts are mid-campaign. One query, not one per row.
   const lockedContacts = new Set<number>();
-  if (existingPeople.size > 0) {
-    const r = await pool.query(
-      `SELECT DISTINCT a.contact_id
-       FROM   gt_contact_assignments a
-       JOIN   gt_campaigns c ON c.id = a.campaign_id
-       WHERE  a.tenant_id = $1
-         AND  a.is_live = $2
-         AND  a.stage NOT IN ('converted', 'lost')
-         AND  c.status IN ('active', 'running', 'live')`,
-      [auth.tenant_id, auth.is_live],
+
+  const { loadRow, rows } = await withTenantClient(pool, auth.tenant_id, async (client) => {
+    // gt_source_loads is tenant-scoped. Looking it up by id alone let one
+    // tenant read another's load row by guessing an id; the predicate closes
+    // that.
+    //
+    // The `IS NULL` arm is not slack: a common-pool load is deliberately
+    // written with tenant_id NULL (etl.routes.ts, `dest === 'universe_companies'
+    // ? null : tenantId`) because the pool belongs to no tenant. A bare
+    // `tenant_id = $2` therefore matched nothing for pool imports and silently
+    // landed zero companies — caught by the "common pool" landing test, which
+    // is the only reason this arm is here rather than discovered in
+    // production. Same shape as the checksum guard in etl.routes.ts.
+    const load = await client.query(
+      `SELECT id, source_id, as_of FROM gt_source_loads
+       WHERE  id = $1 AND (tenant_id = $2 OR tenant_id IS NULL)`,
+      [session.load_id, auth.tenant_id],
     );
-    for (const row of r.rows as any[]) lockedContacts.add(Number(row.contact_id));
-  }
+
+    const staged = await client.query<StagedRow>(
+      `SELECT id, row_number, raw_data, mapped_data, completeness, validity, dedup_key
+       FROM   ki_import_staging
+       WHERE  session_id = $1
+         AND  processing_status IN ('pending', 'failed', 'conflict')
+       ORDER  BY row_number`,
+      [sessionId],
+    );
+
+    const companyKeys = staged.rows.map((r) => r.dedup_key).filter(Boolean) as string[];
+    const peopleKeys: string[] = [];
+    for (const r of staged.rows) {
+      for (const p of (r.mapped_data?.people ?? [])) {
+        const k = personKeyOf(p);
+        if (k) peopleKeys.push(k);
+      }
+    }
+
+    if (!isPool && companyKeys.length > 0) {
+      const r = await client.query(
+        `SELECT * FROM gt_prospects
+         WHERE tenant_id = $1 AND is_live = $2 AND is_active = true`,
+        [auth.tenant_id, auth.is_live],
+      );
+      for (const row of r.rows as any[]) {
+        const key = row.domain_normalized
+          ? `d:${row.domain_normalized}`
+          : `n:${row.name_key}|${(row.pin ?? '').replace(/\D/g, '')}`;
+        existingCompanies.set(key, row);
+      }
+    }
+
+    if (peopleKeys.length > 0) {
+      const r = await client.query(
+        `SELECT * FROM gt_contacts
+         WHERE tenant_id = $1 AND is_live = $2 AND is_active = true`,
+        [auth.tenant_id, auth.is_live],
+      );
+      for (const row of r.rows as any[]) {
+        if (row.person_key) existingPeople.set(row.person_key, row);
+      }
+    }
+
+    // Which existing contacts are mid-campaign. One query, not one per row.
+    if (existingPeople.size > 0) {
+      const r = await client.query(
+        `SELECT DISTINCT a.contact_id
+         FROM   gt_contact_assignments a
+         JOIN   gt_campaigns c ON c.id = a.campaign_id
+         WHERE  a.tenant_id = $1
+           AND  a.is_live = $2
+           AND  a.stage NOT IN ('converted', 'lost')
+           AND  c.status IN ('active', 'running', 'live')`,
+        [auth.tenant_id, auth.is_live],
+      );
+      for (const row of r.rows as any[]) lockedContacts.add(Number(row.contact_id));
+    }
+
+    return { loadRow: load.rows[0] as any | undefined, rows: staged.rows };
+  });
+
+  const sourceAsOf: string | null = loadRow?.as_of ?? null;
+  const incomingWeight = freshnessWeight(sourceAsOf);
 
   // Keys already consumed by an earlier row of THIS file.
   const seenCompanyKeys = new Set<string>();
@@ -260,10 +288,15 @@ export async function landSession(
 
   const pendingUpdates: PendingUpdate[] = [];
 
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-
+  // withTenantClient owns BEGIN / set_tenant_context / COMMIT / ROLLBACK /
+  // release. The writes below hit gt_prospects, gt_contacts and
+  // gt_contact_channels, all of which carry RLS policies — without the tenant
+  // context every INSERT is refused outright ("new row violates row-level
+  // security policy"), not silently dropped.
+  //
+  // The per-row SAVEPOINTs still work inside it: a SAVEPOINT is nested within
+  // the surrounding transaction, which is exactly what this loop needs.
+  await withTenantClient(pool, auth.tenant_id, async (client) => {
     for (const row of rows) {
       // A SAVEPOINT per row, not a bare try/catch.
       //
@@ -413,25 +446,23 @@ export async function landSession(
     }
 
     await flushUpdates(client, pendingUpdates);
-    await client.query('COMMIT');
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
 
   const status = counts.conflict > 0
     ? 'needs_review'
     : counts.failed > 0 ? 'completed_with_errors' : 'completed';
 
+  // ki_import_sessions is tenant-scoped. Updating by id alone let one tenant
+  // rewrite another's session counters by guessing an id — the table has no
+  // RLS policy today, so nothing else was stopping it.
   await pool.query(
     `UPDATE ki_import_sessions
      SET status = $2, processed_records = $3, successful_records = $4,
          failed_records = $5, duplicate_records = $6,
          processing_completed_at = now()
-     WHERE id = $1`,
-    [sessionId, status, rows.length, counts.successful, counts.failed, counts.duplicate],
+     WHERE id = $1 AND tenant_id = $7`,
+    [sessionId, status, rows.length, counts.successful, counts.failed, counts.duplicate,
+     auth.tenant_id],
   );
 
   return {
