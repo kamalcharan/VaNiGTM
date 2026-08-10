@@ -75,13 +75,19 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
   (resolved from JWT, never the request body).
 
 ### RLS — current reality (important)
-- Policies exist on tenant-data `gt_` tables, but the runtime currently
-  connects as `vikuna_admin` (BYPASSRLS) — **RLS is dormant**; isolation
+- Policies exist on tenant-data `gt_` tables, but the runtime still connects as
+  `vikuna_admin` (SUPERUSER **and** BYPASSRLS) — **RLS is dormant**; isolation
   rests on application-layer `WHERE tenant_id = $tenant_id` filters.
-- The least-privilege cutover to `vanigtm_app` is drafted in
-  `scripts/grant-vanigtm-app.sql` + `docs/rls-cutover-checklist.md` and is a
-  REQUIRED pre-production task (includes the SECURITY DEFINER fix for the
-  public deck share route).
+- **Phase 0 finished the preparation (2026-08-10).** Migrations 234–237 are
+  deployed, every known code blocker is fixed, and the two-tenant isolation
+  test passes 13/13. The only step left is operational: run
+  `scripts/grant-vanigtm-app.sql`, point `DB_PRIMARY` at `vanigtm_app`,
+  restart, re-run `deploy/vani-main-vps/rls-two-tenant-test.sql`. Rollback is
+  putting `DB_PRIMARY` back. Full detail in `docs/db/rls-status.md` §8.
+- A table's OWNER bypasses its own policies unless `FORCE ROW LEVEL SECURITY`
+  is set. 18 tables were owned by `vanigtm_app` — migration 236 forced 17.
+- Reaching the DB outside a skill: `withTenantClient(pool, tenantId, fn)` from
+  `db/query.ts`. Raw `pool.query` against an RLS table returns nothing.
 - `gt_events` has RLS **disabled by design** (migration 185) — it is the
   cross-tenant bus the worker polls. `gt_prompts` has no RLS — system prompts
   are readable by all tenants.
@@ -300,10 +306,98 @@ awaiting auth. If the connector still fails, check in this order:
    GTM its **own** vhost, so confirm this one is not pointed at another
    product's database before trusting what it returns.
 
+## What lives in the database (Phase 0)
+`docs/db/triggers-and-functions.md` is the inventory of DB-resident logic:
+29 triggers, 75 functions, 9 generated columns — described, classified, and
+cross-referenced to call sites. Read it before changing schema, retiring
+`ki_*` tables, or touching the RLS role. Headlines:
+- 28 of 29 triggers only stamp `updated_at`. The one exception,
+  `ki_set_session_limit` on `vn_subscriptions`, silently floors `max_sessions`
+  at 5 on INSERT (not on UPDATE).
+- 46 of the 75 functions come from `pgcrypto`/`uuid-ossp`. Only 29 are ours,
+  and only 4 of those are called at runtime: `set_tenant_context`,
+  `gt_next_seq`, `vani_ensure_seq_prefixes`, `vani_ensure_tag`.
+- Migration 180 dropped ten MFD tables but `CASCADE` does not read plpgsql
+  bodies, so six functions still reference relations that no longer exist.
+  Listed as candidates in §5 — **nothing has been deleted**.
+
+`docs/db/ki-disposition.md` — **RESOLVED, nothing to rename.** Production has
+exactly **nine** `ki_*` tables and all nine are live: the ETL import pipeline
+(`ki_import_staging`, `ki_import_sessions`, `ki_file_uploads`) and the pulse
+cluster (`ki_pulse_config`, `ki_pulses`, `ki_pulse_sessions`,
+`ki_pulse_session_actions`, `ki_pulse_session_gaps`,
+`ki_pulse_session_observations`). No orphans, no KI-Prime data to export, no
+two-week rename clock. `233_ki_deprecate_orphans.sql` stays a no-op; leave it.
+
+**Production is NOT the migration files.** Rebuilding locally from
+`migrations/*.sql` yields 42 `ki_*` tables and 114 total; production has 9 and
+81. `gt_*` (58) and `vn_*` (14) match exactly — the whole divergence is `ki_*`.
+Anything measured on a local rebuild is a hypothesis about production until
+checked. `deploy/vani-main-vps/verify-phase0-findings.sql` is the read-only
+script that checks it.
+
+`docs/db/rls-status.md` covers tenant isolation. **Migrations 235 and 236 are
+DEPLOYED to production (2026-08-10) and verified.** A table's OWNER bypasses
+its own RLS policies unless `FORCE ROW LEVEL SECURITY` is set — 18 tables were
+owned by `vanigtm_app`, so their correct-looking policies did not apply to the
+role the cutover points at. 236 forced 17; `gt_agent_runs` is deliberately left
+until `agent-core` moves onto `withTenantClient`. Found by running the
+isolation test, not by reading anything. In production `vikuna_admin`
+is **both** `SUPERUSER` and `BYPASSRLS`, so any replacement role must be
+`NOSUPERUSER NOBYPASSRLS` — dropping one attribute alone changes nothing.
+(An earlier draft claimed the role lacked `BYPASSRLS`; that was read off a
+local rebuild and was wrong about production.)
+
+**Do not create a new app role without looking first.** Production already has
+`vanigtm_app`, `vn_app`, `ki_app`, `fk_app`, `kd_app`, `kd_readonly` and
+`vikuna_api`, all non-superuser and non-bypassrls. `vanigtm_app` is probably
+the intended one; check its grants before minting another.
+
+Migration 234 — **a no-op against production; keep it for fresh builds.**
+Production's policies already use the `NULLIF` form (unguarded=0, guarded=54 of
+55) and no policy there reads the legacy `app.tenant_id` GUC. The bug is real in
+the migration files, so any database built from them needs the fix; the running
+database does not. It fixes: 68 policies cast `current_setting(...)::uuid` unguarded, and because
+`set_config(..., is_local := true)` leaves the GUC **defined and empty** after
+COMMIT (not undefined), the first tenant-scoped transaction on a pooled
+connection poisoned it with `invalid input syntax for type uuid: ""`. Policies
+now use `NULLIF(current_setting(...), '')::uuid`. This is lesson 1 below, whose
+other half — the policy, not just the caller — went unnoticed while RLS was
+dormant.
+
+`deploy/vani-main-vps/rls-two-tenant-test.sql` is the isolation test: run it as
+the app role, never as postgres. All 11 checks pass on the rebuilt schema, and
+it was verified to fail when RLS is disabled.
+
+Migration 235 — **this is the one production actually needs.** Confirmed live:
+`gt_tags` holds 1 platform row of 4, and `gt_content_kinds` holds 8 of 8, so
+that whole table goes dark for every tenant the moment RLS is enforced without
+it. The bug: `gt_tags` and `gt_content_kinds` use
+`tenant_id IS NULL` for platform rows, and `tenant_id = <uuid>` never matches
+NULL — so platform tags vanished and `gt_content_kinds` (all 8 rows platform)
+became invisible entirely. Each table now has a `FOR SELECT` policy admitting
+platform rows plus a `FOR ALL` write policy confined to the caller's tenant,
+so no tenant can mint a row every other tenant sees. **Known gap:** admin
+platform-tag creation via `POST /etl/tags` is refused under that write policy
+and needs its own mechanism before the cutover.
+
+**Reaching the DB outside a skill:** use `withTenantClient(pool, tenantId, fn)`
+from `db/query.ts`. Raw `pool.query` against an RLS table returns nothing.
+`getClientWithTenant` was removed — it set the GUC outside a transaction, so
+the context had already expired by the time the caller got the client.
+
+The ETL pipeline and the public `/r/:token` report route are converted and
+verified; the full assessment flow passes end to end under a restricted role,
+and under the superuser too, so all of this ships safely before the cutover.
+Still to exercise under the restricted role: signup, login, skills executor.
+Runbook in §8 of the doc.
+
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
    GUC dies before your query (surfaced as `invalid input syntax for type
-   uuid: ""` under RLS).
+   uuid: ""` under RLS). The wrap is only half the fix: after COMMIT the GUC is
+   **defined and empty**, not undefined, so any policy casting it without
+   `NULLIF` raises on the next query. Migration 234 fixed all 76.
 2. `jsonb_build_object($key, …)` needs `$key::text` — PG can't infer
    variadic arg types.
 3. Migration runner history can drift from schema reality (fresh bootstraps,
@@ -317,7 +411,8 @@ awaiting auth. If the connector still fails, check in this order:
 6. `.env` changes need hard restarts — tsx watch reloads code, not env.
 7. Store tokens in BOTH sessionStorage and localStorage; call storeTokens()
    in component onSuccess (React batching can defer hook callbacks).
-8. `vn_tenants.is_active` is a generated column — never INSERT into it.
+8. `vn_tenants.is_active` is a generated column — never INSERT into it. There
+   are **nine** generated columns, all listed in `docs/db/triggers-and-functions.md` §4.
 9. PowerShell mangles inline JSON — use Postman or `curl.exe --data @file`.
 10. Every list endpoint MUST have a tenant filter — verify the WHERE clause,
     never assume.

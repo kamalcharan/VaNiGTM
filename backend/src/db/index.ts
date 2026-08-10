@@ -24,5 +24,5 @@
  *   await closePool();
  */
 
-export { getPool, getClientWithTenant, closePool, healthCheck } from './pool';
-export { createTenantDb, translateParams } from './query';
+export { getPool, closePool, healthCheck } from './pool';
+export { createTenantDb, translateParams, withTenantClient } from './query';

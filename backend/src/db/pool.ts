@@ -10,7 +10,7 @@
  *   NODE_ENV          — "production" suppresses verbose logging
  */
 
-import { Pool, type PoolConfig, type PoolClient, types } from 'pg';
+import { Pool, type PoolConfig, types } from 'pg';
 
 /* ── BIGINT as number ──────────────────────────────────
  * node-pg's default: BIGINT (int8, OID 20) comes back as a STRING to
@@ -89,28 +89,23 @@ export function getPool(): Pool {
   return pool;
 }
 
-/**
- * Acquire a client with tenant context set for RLS.
+/*
+ * `getClientWithTenant(tenantId)` used to live here. It acquired a client,
+ * called set_tenant_context() on it, and returned it.
  *
- * CRITICAL: Every connection checkout sets app.current_tenant_id
- * via set_tenant_context(). This is the RLS safety net.
- * Application code ALSO filters by tenant_id in every query (belt + suspenders).
+ * It could not work. set_tenant_context() uses set_config(..., is_local := true),
+ * so the setting is scoped to the surrounding transaction — and outside an
+ * explicit BEGIN, that single statement IS the transaction. The GUC was
+ * therefore gone before the caller ran anything, and every tenant-scoped query
+ * on the returned client would match nothing once RLS is enforced. Verified
+ * against a restricted role: the pattern returns 0 rows.
+ *
+ * It had no callers, so nothing was broken in practice — but it was a trap for
+ * the next one, and it read as though tenant context were handled. Use
+ * `withTenantClient(pool, tenantId, fn)` from ./query instead: the callback
+ * shape keeps the transaction open across the caller's work, which is the part
+ * that actually matters.
  */
-export async function getClientWithTenant(tenantId: string): Promise<PoolClient> {
-  const p = getPool();
-  const client = await p.connect();
-
-  try {
-    await client.query('SELECT set_tenant_context($1)', [tenantId]);
-  } catch (err) {
-    client.release();
-    throw new Error(
-      `[DB] Failed to set tenant context for ${tenantId}: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-
-  return client;
-}
 
 /**
  * Health check — verify pool can connect and query.

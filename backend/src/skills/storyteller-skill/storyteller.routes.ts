@@ -179,13 +179,23 @@ export function createStorytellerRouter(pool: Pool): Router {
   router.get('/share/:token', async (req: Request, res: Response) => {
     try {
       const token = String(req.params.token);
-      // Raw pool, NO tenant context — intentionally cross-tenant, scoped by the
-      // unguessable share_token AND status='approved'. Returns ONLY the public
-      // fields; never id, tenant_id, status, or share_token.
+      // Intentionally cross-tenant, scoped by the unguessable share_token AND
+      // status='approved'. Returns ONLY the public fields; never id,
+      // tenant_id, status, or share_token.
+      //
+      // This was an inline SELECT on the raw pool. Correct about authorisation
+      // — the token IS the capability — but wrong about RLS: gt_presentations
+      // carries a policy, so with no tenant context the query matches nothing
+      // under a non-bypass role and every shared link 404s. Invisible today
+      // only because the runtime connects as a superuser.
+      //
+      // get_shared_deck() is SECURITY DEFINER (migration 237) and is the
+      // narrowest of the three options the cutover checklist weighed: it can
+      // only return title and slides, only for an approved deck, only on an
+      // exact token match. It cannot enumerate and cannot reach a deck still
+      // awaiting approval.
       const result = await pool.query<{ title: string | null; slides: unknown }>(
-        `SELECT title, slides
-           FROM gt_presentations
-          WHERE share_token = $1 AND status = 'approved'`,
+        `SELECT title, slides FROM get_shared_deck($1)`,
         [token],
       );
 

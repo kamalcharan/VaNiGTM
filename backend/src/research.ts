@@ -240,7 +240,7 @@ async function main() {
       return;
     }
 
-    const run = await getRun(pool, runId);
+    const run = await getRun(pool, runId, tenantId);
     const { rows } = await pool.query<BriefRow>(
       `SELECT p.name, b.* FROM gt_account_briefs b
        JOIN   gt_prospects p ON p.id = b.prospect_id
