@@ -20,7 +20,8 @@
 -- wrong reason, so check 0 either downgrades or refuses.
 --
 -- Results come back as a RESULT GRID, not as NOTICE messages — many GUI clients
--- hide notices. Every row must read PASS. Copy the grid back.
+-- hide notices. Every PASS/FAIL row must read PASS. Rows marked INFO are for
+-- your judgement, not graded. Copy the whole grid back.
 --
 -- SAFE against a database with real data. Every write is inside a transaction
 -- that is rolled back, and the single INSERT attempted is expected to be
@@ -58,10 +59,13 @@ DECLARE
     v_bypass    BOOLEAN;
     v_orig      TEXT;
     v_target    TEXT;
+    v_table     TEXT;
+    v_rows      INT;
     t           RECORD;
+    v_cand      RECORD;
     a_id        UUID;   a_slug TEXT;   a_leads BIGINT;
     b_id        UUID;   b_slug TEXT;   b_leads BIGINT;
-    b_row       UUID;
+    b_row       TEXT;   -- TEXT, not UUID: candidate tables use uuid or bigserial ids
     c           BIGINT;
     d           BIGINT;
     f           BIGINT;
@@ -119,46 +123,92 @@ BEGIN
     END IF;
 
     ---------------------------------------------------------------- check 1
-    -- Two tenants that actually hold leads. Counted inside each tenant's own
-    -- context, because a cross-tenant count is exactly what RLS forbids.
+    -- Find a table that genuinely holds rows for two different tenants.
+    --
+    -- Counted per tenant, INSIDE each tenant's own context, never with a
+    -- cross-tenant GROUP BY. Two reasons, both learned the hard way:
+    --   * under the restricted role a cross-tenant query returns nothing, so
+    --     discovery silently finds no fixtures and every later check is a lie;
+    --   * doing discovery before the role switch instead means a superuser
+    --     reads counts RLS would have filtered, so the expected numbers in
+    --     checks 4 and 5 are wrong.
+    -- Running it after the switch, per tenant, is correct for both entry paths.
+    --
+    -- gt_lead is preferred but not assumed: production holds a single lead in
+    -- a single tenant, so a test hardcoded to gt_lead cannot run there at all.
     CREATE TEMP TABLE IF NOT EXISTS _rls_scratch (tenant_id UUID, slug TEXT, leads BIGINT);
     GRANT ALL ON _rls_scratch TO PUBLIC;
-    DELETE FROM _rls_scratch;
 
-    FOR t IN SELECT id, slug FROM vn_tenants LOOP
-        PERFORM set_tenant_context(t.id::text);
-        SELECT count(*) INTO c FROM gt_lead;
-        INSERT INTO _rls_scratch VALUES (t.id, t.slug, c);
+    FOR v_cand IN
+        SELECT c2.relname AS tbl
+          FROM pg_class c2
+          JOIN pg_namespace n2 ON n2.oid = c2.relnamespace
+         WHERE n2.nspname = 'public' AND c2.relkind = 'r' AND c2.relrowsecurity
+           AND EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c2.oid
+                        AND a.attname = 'tenant_id' AND NOT a.attisdropped)
+           AND EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c2.oid
+                        AND a.attname = 'id' AND NOT a.attisdropped)
+         ORDER BY CASE c2.relname
+                    WHEN 'gt_lead'      THEN 1
+                    WHEN 'gt_contacts'  THEN 2
+                    WHEN 'gt_prospects' THEN 3
+                    WHEN 'gt_campaigns' THEN 4
+                    ELSE 9 END, c2.relname
+    LOOP
+        DELETE FROM _rls_scratch;
+        BEGIN
+            FOR t IN SELECT id, slug FROM vn_tenants LOOP
+                PERFORM set_tenant_context(t.id::text);
+                EXECUTE format('SELECT count(*) FROM public.%I', v_cand.tbl) INTO c;
+                IF c > 0 THEN
+                    INSERT INTO _rls_scratch VALUES (t.id, t.slug, c);
+                END IF;
+            END LOOP;
+        EXCEPTION WHEN OTHERS THEN
+            CONTINUE;   -- unreadable for any reason: try the next candidate
+        END;
+
+        IF (SELECT count(*) FROM _rls_scratch) >= 2 THEN
+            v_table := v_cand.tbl;
+            EXIT;
+        END IF;
     END LOOP;
 
-    SELECT tenant_id, slug, leads INTO a_id, a_slug, a_leads
-      FROM _rls_scratch WHERE leads > 0 ORDER BY leads DESC, slug LIMIT 1;
-    SELECT tenant_id, slug, leads INTO b_id, b_slug, b_leads
-      FROM _rls_scratch WHERE leads > 0 AND tenant_id <> a_id
-      ORDER BY leads DESC, slug LIMIT 1;
-
-    IF a_id IS NULL OR b_id IS NULL THEN
-        INSERT INTO _rls_results VALUES (1, 'two tenants with data', 'FAIL',
-            'Need two tenants that each hold at least one gt_lead row. Found: '
-            || coalesce((SELECT string_agg(slug || '=' || leads, ', ' ORDER BY slug)
-                           FROM _rls_scratch), 'none')
-            || '. Seed a second tenant, or point this at a restore that has one.');
+    IF v_table IS NULL THEN
+        INSERT INTO _rls_results VALUES (1, 'a table with two tenants of data', 'FAIL',
+            'No RLS-protected table has rows for two different tenants, so '
+            || 'cross-tenant isolation cannot be demonstrated here. This is a '
+            || 'property of the DATA, not a failure of RLS — the policies may be '
+            || 'perfect. Point the test at a restore with two populated tenants.');
         RETURN;
     END IF;
-    INSERT INTO _rls_results VALUES (1, 'two tenants with data', 'PASS',
-        'A=' || a_slug || ' (' || a_leads || ' leads),  B=' || b_slug || ' (' || b_leads || ' leads)');
+
+    SELECT tenant_id, slug, leads INTO a_id, a_slug, a_leads
+      FROM _rls_scratch ORDER BY leads DESC, slug LIMIT 1;
+    SELECT tenant_id, slug, leads INTO b_id, b_slug, b_leads
+      FROM _rls_scratch WHERE tenant_id <> a_id ORDER BY leads DESC, slug LIMIT 1;
+
+    PERFORM set_tenant_context(b_id::text);
+    EXECUTE format('SELECT id::text FROM public.%I ORDER BY id LIMIT 1', v_table)
+        INTO b_row;
+
+    INSERT INTO _rls_results VALUES (1, 'a table with two tenants of data', 'PASS',
+        'using ' || v_table || ':  A=' || coalesce(a_slug, a_id::text)
+        || ' (' || a_leads || ' rows),  B=' || coalesce(b_slug, b_id::text)
+        || ' (' || b_leads || ' rows)');
 
     ---------------------------------------------------------------- check 2
     BEGIN
         PERFORM set_config('app.current_tenant_id', NULL, true);
         PERFORM set_config('app.tenant_id', NULL, true);
-        SELECT count(*) INTO c FROM gt_lead;
+        EXECUTE format('SELECT count(*) FROM public.%I', v_table) INTO c;
         IF c = 0 THEN
             INSERT INTO _rls_results VALUES (2, 'no tenant context -> nothing visible',
-                'PASS', '0 rows');
+                'PASS', '0 rows in ' || v_table);
         ELSE
             INSERT INTO _rls_results VALUES (2, 'no tenant context -> nothing visible',
-                'FAIL', c || ' rows visible with NO tenant context; RLS is not enforcing');
+                'FAIL', c || ' rows of ' || v_table
+                || ' visible with NO tenant context; RLS is not enforcing');
         END IF;
     EXCEPTION WHEN OTHERS THEN
         INSERT INTO _rls_results VALUES (2, 'no tenant context -> nothing visible',
@@ -166,12 +216,12 @@ BEGIN
     END;
 
     ---------------------------------------------------------------- check 3
-    -- The pooled-connection case: after a tenant transaction COMMITs, the GUC
+    -- The pooled-connection case: after a tenant transaction COMMITs the GUC
     -- is DEFINED AND EMPTY, not unset. An unguarded ''::uuid cast raises here.
     BEGIN
         PERFORM set_config('app.current_tenant_id', '', true);
         PERFORM set_config('app.tenant_id', '', true);
-        SELECT count(*) INTO c FROM gt_lead;
+        EXECUTE format('SELECT count(*) FROM public.%I', v_table) INTO c;
         IF c = 0 THEN
             INSERT INTO _rls_results VALUES (3, 'empty (expired) context -> nothing visible',
                 'PASS', '0 rows');
@@ -191,14 +241,16 @@ BEGIN
     ---------------------------------------------------------------- checks 4,5
     BEGIN
         PERFORM set_tenant_context(a_id::text);
-        SELECT count(*), count(DISTINCT tenant_id), count(*) FILTER (WHERE tenant_id <> a_id)
-          INTO c, d, f FROM gt_lead;
+        EXECUTE format(
+            'SELECT count(*), count(DISTINCT tenant_id), count(*) FILTER (WHERE tenant_id <> %L) '
+            'FROM public.%I', a_id, v_table) INTO c, d, f;
         IF c = a_leads AND d = 1 AND f = 0 THEN
             INSERT INTO _rls_results VALUES (4, 'tenant A sees only A', 'PASS',
                 c || ' rows, all tenant A');
         ELSE
             INSERT INTO _rls_results VALUES (4, 'tenant A sees only A', 'FAIL',
-                c || ' rows across ' || d || ' tenants (' || f || ' foreign)');
+                c || ' rows across ' || d || ' tenants (' || f || ' foreign); expected '
+                || a_leads || ' from tenant A only');
         END IF;
     EXCEPTION WHEN OTHERS THEN
         INSERT INTO _rls_results VALUES (4, 'tenant A sees only A', 'FAIL', SQLERRM);
@@ -206,15 +258,16 @@ BEGIN
 
     BEGIN
         PERFORM set_tenant_context(b_id::text);
-        SELECT count(*), count(DISTINCT tenant_id), count(*) FILTER (WHERE tenant_id <> b_id)
-          INTO c, d, f FROM gt_lead;
-        SELECT id INTO b_row FROM gt_lead ORDER BY created_at LIMIT 1;
+        EXECUTE format(
+            'SELECT count(*), count(DISTINCT tenant_id), count(*) FILTER (WHERE tenant_id <> %L) '
+            'FROM public.%I', b_id, v_table) INTO c, d, f;
         IF c = b_leads AND d = 1 AND f = 0 THEN
             INSERT INTO _rls_results VALUES (5, 'tenant B sees only B', 'PASS',
                 c || ' rows, all tenant B');
         ELSE
             INSERT INTO _rls_results VALUES (5, 'tenant B sees only B', 'FAIL',
-                c || ' rows across ' || d || ' tenants (' || f || ' foreign)');
+                c || ' rows across ' || d || ' tenants (' || f || ' foreign); expected '
+                || b_leads || ' from tenant B only');
         END IF;
     EXCEPTION WHEN OTHERS THEN
         INSERT INTO _rls_results VALUES (5, 'tenant B sees only B', 'FAIL', SQLERRM);
@@ -225,10 +278,11 @@ BEGIN
     -- hide a single leaked row; an IDOR is exactly a targeted fetch.
     BEGIN
         PERFORM set_tenant_context(a_id::text);
-        SELECT count(*) INTO c FROM gt_lead WHERE id = b_row;
+        EXECUTE format('SELECT count(*) FROM public.%I WHERE id = %L', v_table, b_row)
+            INTO c;
         IF c = 0 THEN
             INSERT INTO _rls_results VALUES (6, 'A cannot fetch a known B row by id',
-                'PASS', 'row ' || b_row || ' unreachable from tenant A');
+                'PASS', v_table || ' row ' || b_row || ' unreachable from tenant A');
         ELSE
             INSERT INTO _rls_results VALUES (6, 'A cannot fetch a known B row by id',
                 'FAIL', 'tenant-B row ' || b_row || ' was readable from tenant A');
@@ -239,19 +293,43 @@ BEGIN
     END;
 
     ---------------------------------------------------------------- check 7
-    -- The write side. Today, as vikuna_admin, this INSERT SUCCEEDS.
+    -- The WRITE side, and the reason this is an UPDATE rather than an INSERT.
+    --
+    -- An earlier version INSERTed a row owned by tenant B and recorded FAIL if
+    -- it succeeded. But a successful INSERT was never undone — the DO block
+    -- commits at the end — so the very case the test is designed to catch
+    -- would have left a real row behind, on production, while claiming
+    -- "nothing is committed". That was a genuine bug.
+    --
+    -- Now: attempt a no-op UPDATE of a known tenant-B row, capture the row
+    -- count, then ALWAYS raise a sentinel so the savepoint rolls the write
+    -- back. plpgsql variables survive the rollback; database changes do not.
+    v_rows := NULL;
     BEGIN
         PERFORM set_tenant_context(a_id::text);
         BEGIN
-            INSERT INTO gt_lead (tenant_id, lead_no, name, email, company, role_title)
-            VALUES (b_id, 'RLS-TEST-001', 'rls test', 'rls-test@example.invalid',
-                    'RLS Test Co', 'Tester');
-            INSERT INTO _rls_results VALUES (7, 'A cannot WRITE a row owned by B',
-                'FAIL', 'cross-tenant INSERT succeeded; RLS is not enforcing writes');
-        EXCEPTION WHEN insufficient_privilege THEN
+            EXECUTE format('UPDATE public.%I SET tenant_id = tenant_id WHERE id = %L',
+                           v_table, b_row);
+            GET DIAGNOSTICS v_rows = ROW_COUNT;
+            RAISE EXCEPTION 'ROLLBACK_SENTINEL';
+        EXCEPTION
+            WHEN insufficient_privilege THEN
+                v_rows := -1;                     -- refused outright by policy
+            WHEN raise_exception THEN
+                NULL;                             -- our sentinel; v_rows is set
+        END;
+
+        IF v_rows = -1 THEN
             INSERT INTO _rls_results VALUES (7, 'A cannot WRITE a row owned by B',
                 'PASS', 'refused by row-level security');
-        END;
+        ELSIF v_rows = 0 THEN
+            INSERT INTO _rls_results VALUES (7, 'A cannot WRITE a row owned by B',
+                'PASS', 'matched 0 rows — the foreign row is invisible to the write');
+        ELSE
+            INSERT INTO _rls_results VALUES (7, 'A cannot WRITE a row owned by B',
+                'FAIL', 'UPDATE touched ' || v_rows
+                || ' foreign row(s); RLS is not enforcing writes (rolled back)');
+        END IF;
     EXCEPTION WHEN OTHERS THEN
         INSERT INTO _rls_results VALUES (7, 'A cannot WRITE a row owned by B',
             'FAIL', SQLERRM);
@@ -320,6 +398,34 @@ BEGIN
     EXCEPTION WHEN OTHERS THEN
         INSERT INTO _rls_results VALUES (11, 'platform rows still visible', 'FAIL', SQLERRM);
     END;
+
+    ---------------------------------------------------------------- check 12
+    -- Coverage, not correctness. Checks 2-7 prove RLS works on ONE table; this
+    -- lists every tenant-scoped table where it is switched off entirely.
+    --
+    -- It exists because of a gap found while testing: with RLS disabled on
+    -- gt_lead, the fixture discovery quietly moved to gt_contacts and the run
+    -- still reported 12/12. A table with a tenant_id and no policy is not
+    -- protected, and nothing else here would have said so.
+    --
+    -- Some of these are deliberate — gt_events is the cross-tenant bus, the
+    -- vn_* auth tables must be readable before a tenant is known. Compare the
+    -- list against the exemption register in docs/db/rls-status.md section 9.
+    -- INFO, not FAIL: judgement required, so it is reported rather than graded.
+    SELECT count(*), string_agg(x.relname, ', ' ORDER BY x.relname)
+      INTO c, txt
+      FROM (SELECT cl.relname FROM pg_class cl
+              JOIN pg_namespace nn ON nn.oid = cl.relnamespace
+             WHERE nn.nspname = 'public' AND cl.relkind = 'r'
+               AND NOT cl.relrowsecurity
+               AND EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = cl.oid
+                            AND a.attname = 'tenant_id' AND NOT a.attisdropped)) x;
+
+    INSERT INTO _rls_results VALUES (12, 'tenant-scoped tables with RLS OFF', 'INFO',
+        CASE WHEN c = 0 THEN 'none — every table with a tenant_id has RLS enabled'
+             ELSE c || ' table(s): ' || txt
+                  || '   <- check each against the exemption register'
+        END);
 
     DROP TABLE IF EXISTS _rls_scratch;
 
