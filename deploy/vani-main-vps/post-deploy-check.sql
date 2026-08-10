@@ -1,5 +1,5 @@
 -- ============================================================================
--- Post-deploy check for migrations 235, 236 and realign-vani-sequences.sql
+-- Post-deploy check for migrations 235, 236, 237 and realign-vani-sequences.sql
 --
 -- READ ONLY. One plain SELECT — paste into any client and run.
 -- Every row should read OK. Anything else is a deployment that did not land.
@@ -43,7 +43,40 @@ SELECT * FROM (
             AND l.lead_no ~ ('^' || s.prefix || '-[0-9]+$')) AS x(issued)
       WHERE s.sequence_type LIKE 'vani%'), 'no vani counters found')
 
-  UNION ALL SELECT 4, 'no duplicate lead_no',
+  UNION ALL SELECT 4, '237 public deck lookup',
+    (SELECT CASE WHEN count(*) = 0
+                 THEN 'NOT APPLIED — get_shared_deck() does not exist; '
+                      || 'GET /share/:token will 404 for every deck after the cutover'
+                 WHEN bool_and(p.prosecdef)
+                 THEN 'OK — get_shared_deck() present and SECURITY DEFINER'
+                 ELSE 'WRONG — get_shared_deck() exists but is NOT SECURITY DEFINER, '
+                      || 'so it will not see past RLS' END
+       FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.proname = 'get_shared_deck')
+
+  UNION ALL SELECT 5, '237 gt_agent_runs exemption is explicit',
+    (SELECT CASE WHEN c.relrowsecurity
+                 THEN 'NOT APPLIED — RLS still enabled; the worker will stop '
+                      || 'recording runs once the app role is not the owner'
+                 ELSE 'OK — RLS disabled, exemption visible rather than hidden '
+                      || 'behind table ownership' END
+       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND c.relname = 'gt_agent_runs')
+
+  UNION ALL SELECT 6, 'ready for cutover?',
+    (SELECT CASE WHEN count(*) = 0
+                 THEN 'YES on the schema side — no table lets its owner escape '
+                      || 'its own policy. Remaining work is operational: '
+                      || 'grant-vanigtm-app.sql, switch DB_PRIMARY, re-run the '
+                      || 'isolation test.'
+                 ELSE 'NO — ' || count(*) || ' table(s) still bypass: '
+                      || string_agg(c.relname, ', ' ORDER BY c.relname) END
+       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND c.relkind = 'r'
+        AND c.relrowsecurity AND NOT c.relforcerowsecurity
+        AND pg_get_userbyid(c.relowner) <> 'vikuna_admin')
+
+  UNION ALL SELECT 7, 'no duplicate lead_no',
     (SELECT CASE WHEN count(*) = 0 THEN 'OK — every lead_no is unique per tenant'
                  ELSE 'DUPLICATES: ' || string_agg(lead_no, ', ') END
        FROM (SELECT lead_no FROM gt_lead
