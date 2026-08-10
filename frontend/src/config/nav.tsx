@@ -154,6 +154,52 @@ export const NAV_GROUPS: NavGroup[] = [
         fn: 'get_campaigns',
         recipe: 'campaign-list',
       },
+      // ── Reference surfaces ──────────────────────────────────────────
+      // Research, Prospects and VaNi Leads are ALSO steps of the audience
+      // pathway, and they are listed here as well. That is deliberate.
+      //
+      // The brief mapped them to G1 steps 1-3 ("Find", "Qualify", "Find
+      // people"), which flattens what they actually are. Research is three
+      // workflows — what you sell, research a cohort, read the briefs.
+      // Prospects is the tenant's imported record set. VaNi Leads is the
+      // assessment funnel's console, whose leads arrive from LinkedIn traffic
+      // and have nothing to do with researching companies.
+      //
+      // Reachable ONLY as pathway steps, they became invisible: three
+      // substantial surfaces with no entry of their own. By this file's own
+      // model they are reference — nouns you look at — so they are listed as
+      // reference, exactly like People and Journeys. The pathway keeps the
+      // ordered walk; these give the direct route back.
+      {
+        id: 'gtm-research',
+        label: 'Research',
+        icon: <Icon><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /><path d="M11 8v6M8 11h6" /></Icon>,
+        href: '/gtm/audience/find',
+        kind: 'reference',
+        skill: 'research-skill',
+        fn: 'get_briefs',
+        recipe: 'brief-list',
+      },
+      {
+        id: 'gtm-prospects',
+        label: 'Prospects',
+        icon: <Icon><path d="M3 21h18" /><path d="M5 21V7l7-4 7 4v14" /><path d="M9 21v-6h6v6" /></Icon>,
+        href: '/gtm/audience/qualify',
+        kind: 'reference',
+        skill: 'prospect-skill',
+        fn: 'get_records',
+        recipe: 'record-list',
+      },
+      {
+        id: 'gtm-leads',
+        label: 'VaNi Leads',
+        icon: <Icon><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></Icon>,
+        href: '/gtm/audience/people',
+        kind: 'reference',
+        skill: 'assessment-skill',
+        fn: 'get_leads',
+        recipe: 'lead-list',
+      },
       {
         id: 'gtm-people',
         label: 'People',
