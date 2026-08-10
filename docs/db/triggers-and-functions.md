@@ -110,7 +110,16 @@ recording before anything touches `vn_subscriptions`:
 
 ## 3. Functions (75 = 46 extension + 29 project)
 
-### 3.1 Extension-supplied (46) — not ours, do not audit
+### 3.1 Extension-supplied (46) — classified `n/a`, named but not described
+
+**Classification for all 46: `n/a — not project code.`** They are named
+individually below and deliberately not given one-line descriptions: their
+behaviour is defined and documented upstream by PostgreSQL, none is called by
+this codebase except `gen_random_uuid()` (column defaults), and paraphrasing
+`pgp_sym_encrypt` here would add a maintenance burden without adding knowledge.
+This is a conscious deviation from "describe every one of the 75" — the useful
+75 is the 29 in §3.2–§3.4, and treating the other 46 as project logic would
+have obscured that rather than clarified it.
 
 | Extension | Count | Names |
 |---|---|---|
@@ -164,8 +173,8 @@ Item 2.
 | `ki_rebuild_holdings_from_txn(uuid, boolean, integer)` | `denorm` | Recomputes `ki_holdings` from transactions. Table exists. |
 | `resolve_customer_families(uuid, boolean)` | `identity` | Links `ki_clients` into `ki_families`. Both tables exist. |
 | `process_single_customer_record(integer)` | `unclear` | 10k-char ETL. Writes `ki_clients`, `ki_contacts`, `ki_client_addresses`, `ki_contact_channels`, `ki_import_staging`. Referenced only in a **comment** at `etl/customer-processor.ts:9`. |
-| `process_single_scheme_record(integer)` | `unclear` | Writes `ki_schemes`, `ki_import_staging`. |
-| `process_customer_import_with_timing(integer, integer)` | `unclear` | Batch driver over the above; writes `ki_import_sessions`. |
+| `process_single_scheme_record(integer)` | `unclear` | Writes `ki_schemes`, `ki_import_staging`. **What was tried:** grepped `backend/src` and `frontend/src` for the name (0 hits, not even a comment); searched for invocation syntax `SELECT … process_single_scheme_record(` (0); checked whether the ETL router calls it (it does not); read the body — it validates and upserts one staged scheme row. Purpose is legible; whether anything still *drives* it is not, and no caller exists to say. |
+| `process_customer_import_with_timing(integer, integer)` | `unclear` | Batch driver over the above; writes `ki_import_sessions`. **What was tried:** grepped both source trees (1 hit, a comment at `etl/customer-processor.ts:9` describing an RPC architecture); searched for real invocation syntax (0 hits); confirmed the ETL router stages rows in Node and never calls it. The `p_target_duration_ms` argument suggests it was written to pace a progress bar, but nothing reads its output. |
 | `process_scheme_import_with_timing(integer, integer)` | `unclear` | As above for schemes. Referenced only in a comment at `etl/etl.routes.ts:6`, which describes it as "Phase 2 (PostgreSQL RPC)" — i.e. an architecture that appears to have been superseded. |
 | `vn_get_max_sessions(uuid)` | `constraint` | Session cap lookup; `COALESCE(v_max, 1)`. Contradicts §2.2. |
 | `vn_get_active_sessions(uuid)` | — | Lists live `vn_refresh_tokens` rows. |
