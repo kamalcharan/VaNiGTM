@@ -8,6 +8,7 @@ import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/components/toast';
 import { VdfPageHeader, VdfCard, VdfReadinessRing, VdfButton } from '@/components/vdf';
 import { PulseWidget } from '@/components/pulses/PulseWidget';
+import { AttentionQueue } from '@/components/today/AttentionQueue';
 import s from './dashboard-page.module.css';
 
 /* ── ICP profile summary (only the fields this page needs) ──────────────── */
@@ -84,13 +85,19 @@ export default function DashboardPage() {
   return (
     <div className={s.page}>
       <VdfPageHeader
-        eyebrow="DASHBOARD"
+        eyebrow="TODAY"
         title={greeting()}
         titleEm={user?.name ?? tenant?.name ?? ''}
         meta={<span className={s.headerDate}>{today}</span>}
       />
 
       <div className={s.body}>
+
+        {/* ── Quiet accounts (G3) ──
+            First on the page because it is the only section that is about
+            what to do next. Everything below is standing state, which is
+            worth seeing and never worth leading with. */}
+        <AttentionQueue />
 
         {/* ── ICP Foundation ── */}
         <VdfCard hoverLift={false} className={s.icpCard}>
