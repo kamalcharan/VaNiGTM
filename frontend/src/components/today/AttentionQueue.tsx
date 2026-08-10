@@ -205,10 +205,6 @@ export function AttentionQueue() {
     }
   }
 
-  if (isLoading) {
-    return <div className={s.loading}><VdfLoader /></div>;
-  }
-
   if (isError) {
     return (
       <VdfEmptyState
@@ -220,8 +216,21 @@ export function AttentionQueue() {
     );
   }
 
-  const d = data!.data;
-  const { items, context: ctx, empty_state: state, tuning } = d;
+  // Gate on the DATA, not on isLoading.
+  //
+  // useSkillQuery sets `enabled: !!getAccessToken()`, and a disabled query in
+  // react-query v5 is `pending` but NOT fetching — so isLoading is false while
+  // data is still undefined. That is the state on first paint before the token
+  // is readable, and an `isLoading` guard walks straight past it. The `data!`
+  // that used to follow asserted away the one case that actually occurs.
+  //
+  // isLoading stays in the condition so a genuine refetch still shows the
+  // loader rather than flashing stale-empty.
+  if (isLoading || !data) {
+    return <div className={s.loading}><VdfLoader /></div>;
+  }
+
+  const { items, context: ctx, empty_state: state, tuning } = data.data;
 
   return (
     <section className={s.wrap}>
