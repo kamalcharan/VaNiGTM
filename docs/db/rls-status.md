@@ -4,9 +4,29 @@
 *make the bypass role unnecessary for normal operation, and make the remaining
 exceptions explicit, few, and documented.*
 
-**Status: mechanism proven, code fixes done, cutover not performed.** The work
-was done in a local rebuild — which is what step 1 of the work order requires
-("work in a restored copy, never production").
+**Status: schema work DEPLOYED and verified on production (2026-08-10).
+Cutover not performed — three code fixes remain.**
+
+Migrations 235 and 236 and the sequence realignment are live in `vani_gtm_db`,
+confirmed by `deploy/vani-main-vps/post-deploy-check.sql`:
+
+```
+235 platform-row policies       OK — split into SELECT + ALL on both tables
+236 ownership bypass closed     OK — only gt_agent_runs remains, as intended
+sequence counters vs issued     all ok
+no duplicate lead_no            OK
+```
+
+All three were inert under the current `vikuna_admin` superuser runtime, so
+nothing changed behaviourally on deploy — they take effect at cutover.
+
+**Before `DB_PRIMARY` moves to `vanigtm_app`, three code fixes**, all the same
+shape (a raw `pool.query` against an RLS-protected table):
+1. `agent-core` → `withTenantClient`, then force `gt_agent_runs` (§3.2)
+2. Storyteller `GET /share/:token` → `SECURITY DEFINER get_shared_deck(token)`
+   (predates Phase 0; see `docs/rls-cutover-checklist.md`)
+3. Then the cutover itself — `scripts/grant-vanigtm-app.sql`, switch, re-run
+   `rls-two-tenant-test.sql`
 
 > **Read §1, §2 and §3 first.** Production numbers arrived on 2026-08-10 and
 > disproved three things this document originally asserted, including its

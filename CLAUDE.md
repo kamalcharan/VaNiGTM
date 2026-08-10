@@ -330,7 +330,13 @@ Anything measured on a local rebuild is a hypothesis about production until
 checked. `deploy/vani-main-vps/verify-phase0-findings.sql` is the read-only
 script that checks it.
 
-`docs/db/rls-status.md` covers tenant isolation. In production `vikuna_admin`
+`docs/db/rls-status.md` covers tenant isolation. **Migrations 235 and 236 are
+DEPLOYED to production (2026-08-10) and verified.** A table's OWNER bypasses
+its own RLS policies unless `FORCE ROW LEVEL SECURITY` is set — 18 tables were
+owned by `vanigtm_app`, so their correct-looking policies did not apply to the
+role the cutover points at. 236 forced 17; `gt_agent_runs` is deliberately left
+until `agent-core` moves onto `withTenantClient`. Found by running the
+isolation test, not by reading anything. In production `vikuna_admin`
 is **both** `SUPERUSER` and `BYPASSRLS`, so any replacement role must be
 `NOSUPERUSER NOBYPASSRLS` — dropping one attribute alone changes nothing.
 (An earlier draft claimed the role lacked `BYPASSRLS`; that was read off a
