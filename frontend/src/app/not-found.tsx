@@ -18,7 +18,7 @@ export default function NotFound() {
         title="Page Not Found"
         description="The page you're looking for doesn't exist or has been moved."
         action={
-          <Link href="/dashboard" className={s.homeLink}>
+          <Link href="/today" className={s.homeLink}>
             Go to Dashboard
           </Link>
         }

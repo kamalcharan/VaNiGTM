@@ -33,7 +33,7 @@ import {
   COLUMNS, DEFAULT_COLUMNS,
   type RecordRow, type RecordTag, type Freshness,
 } from './RecordTable';
-import s from '@/app/(app)/prospects/records.module.css';
+import s from '@/app/(app)/gtm/audience/qualify/records.module.css';
 
 export type Scope = 'mine' | 'pool';
 
@@ -574,7 +574,7 @@ export function RecordsPage({
               // decision at once, and a decision made in a box you have to
               // scroll inside is a decision made on half the information.
               // Pool rows have no ref and no brief, so they keep the modal.
-              if (!isPool && full?.ref) { router.push(`/prospects/${full.ref}`); return; }
+              if (!isPool && full?.ref) { router.push(`/gtm/audience/qualify/${full.ref}`); return; }
               setDetail(full);
             }}
             onTagClick={setTagId}

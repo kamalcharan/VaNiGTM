@@ -11,7 +11,7 @@
 import { useAuth } from '@/context/auth-provider';
 import { VdfPageHeader, VdfEmptyState } from '@/components/vdf';
 import { RecordsPage } from '@/components/records/RecordsPage';
-import s from '../prospects/records.module.css';
+import s from '../gtm/audience/qualify/records.module.css';
 
 export default function CommonPoolPage() {
   const { isAdmin } = useAuth();

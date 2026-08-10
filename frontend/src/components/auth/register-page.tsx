@@ -101,7 +101,7 @@ export default function RegisterPage() {
             if (prefs?.color_mode) localStorage.setItem('pk-color-mode', String(prefs.color_mode));
           } catch {}
           showToast({ message: 'Account created successfully!', type: 'success' });
-          window.location.href = '/onboarding';
+          window.location.href = '/brain/mission';
         },
         onError: (err: ApiError) => {
           if (err.code === 'EMAIL_EXISTS') {

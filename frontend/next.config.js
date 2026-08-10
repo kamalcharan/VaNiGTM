@@ -25,8 +25,22 @@
 // If you see that, check what port the backend actually logged on startup.
 const BACKEND_ORIGIN = process.env.DEV_BACKEND_ORIGIN || 'http://localhost:3002';
 
+// Every URL the navigation restructure moved. The list lives in one file so it
+// is obvious what changed and why — see src/config/route-map.js.
+const { ROUTE_REDIRECTS } = require('./src/config/route-map.js');
+
 const nextConfig = {
   experimental: {},
+
+  // Permanent (308) so browsers and crawlers stop asking, and so a bookmarked
+  // /dashboard or an emailed /console link keeps resolving indefinitely.
+  async redirects() {
+    return ROUTE_REDIRECTS.map(({ from, to }) => ({
+      source: from,
+      destination: to,
+      permanent: true,
+    }));
+  },
 
   async rewrites() {
     if (process.env.NODE_ENV === 'production') return [];

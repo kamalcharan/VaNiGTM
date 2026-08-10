@@ -1,0 +1,135 @@
+/* ══ VdfPathwayShell ══════════════════════════════════════════════════════
+ *
+ * Lifted verbatim from mission-wizard.module.css. Values are unchanged on
+ * purpose: the acceptance test for this extraction is that the Mission Wizard
+ * looks and behaves exactly as it did, so anything "improved" in passing would
+ * make that impossible to verify.
+ *
+ * What stayed behind in the wizard: every class describing STEP CONTENT
+ * (.domainRow, .stepFeed, .lockedCard, .findingsEyebrow …). This module owns
+ * only the frame.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-lg) var(--space-xl) var(--space-2xl);
+  max-width: 1240px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── Header ── */
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xl);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.mission {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.missionLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.missionName {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-fg);
+}
+
+.railWrap {
+  flex: 1;
+  min-width: 320px;
+}
+
+/* ── Layout ── */
+
+.layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: var(--space-2xl);
+  padding-top: var(--space-xl);
+  flex: 1;
+  align-items: start;
+}
+
+.left {
+  position: sticky;
+  top: var(--space-lg);
+}
+
+.main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* ── Findings rail (optional, right) ── */
+
+.findings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--color-warning) 35%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--color-warning) 4%, transparent);
+  position: sticky;
+  top: var(--space-lg);
+  min-width: 0;
+  animation: findings-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+
+@keyframes findings-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Responsive ── */
+
+/* Widen to three columns only when a findings rail is actually present.
+   :has() lets the layout adapt without threading a prop through — which is
+   why the shell renders the aside itself rather than accepting a wrapped
+   node: the selector matches this module's own hashed class name. */
+@media (min-width: 1100px) {
+  .layout:has(.findings) {
+    grid-template-columns: 240px 1fr 240px;
+  }
+}
+
+@media (max-width: 1099px) {
+  .findings {
+    position: static;
+    order: 3;
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .left {
+    position: static;
+    order: 2;
+  }
+}

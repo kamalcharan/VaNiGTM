@@ -21,7 +21,7 @@ const TABS: BottomTab[] = [
   {
     id: 'dashboard',
     label: 'Home',
-    href: '/dashboard',
+    href: '/today',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
         strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
@@ -33,7 +33,7 @@ const TABS: BottomTab[] = [
   {
     id: 'contacts',
     label: 'Contacts',
-    href: '/contacts',
+    href: '/gtm/people',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
         strokeLinecap="round" strokeLinejoin="round" width="22" height="22">

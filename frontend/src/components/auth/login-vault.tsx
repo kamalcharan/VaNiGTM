@@ -36,7 +36,7 @@ export default function LoginVault() {
   // trigger during the bootstrap phase before the token is confirmed.
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      window.location.href = '/dashboard';
+      window.location.href = '/today';
     }
   }, [isLoading, isAuthenticated]);
 
@@ -69,7 +69,7 @@ export default function LoginVault() {
           showToast({ message: 'Welcome back!', type: 'success' });
 
           // Brief pause so the toast renders before full-page navigation replaces the document.
-          const dest = tenant?.onboarding_complete === true ? '/dashboard' : '/onboarding';
+          const dest = tenant?.onboarding_complete === true ? '/today' : '/brain/mission';
           setTimeout(() => { window.location.href = dest; }, 800);
         },
         onError: (err: ApiError) => {

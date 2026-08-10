@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { NAV_ITEMS, getActiveNavId, type NavItem } from '@/config/nav';
+import { NAV_GROUPS, getActiveNavId, type NavItem } from '@/config/nav';
 import { useMe, useLogout } from '@/hooks';
 import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/components/toast';
@@ -66,9 +66,43 @@ export function VdfSidebar({ activeId, mobileOpen = false, onMobileClose }: VdfS
 
   const currentId = activeId || getActiveNavId(pathname);
   const visible = (item: NavItem) => !item.adminOnly || isAdmin;
-  const mainItems   = NAV_ITEMS.filter((item) => item.section === 'main'   && visible(item));
-  const dataItems   = NAV_ITEMS.filter((item) => item.section === 'data'   && visible(item));
-  const systemItems = NAV_ITEMS.filter((item) => item.section === 'system' && visible(item));
+  const groups = NAV_GROUPS
+    .map((g) => ({ ...g, items: g.items.filter(visible) }))
+    .filter((g) => g.items.length > 0);
+
+  /**
+   * One nav row. `kind` drives the treatment: pathways are things you DO and
+   * get full weight; reference surfaces are things you LOOK AT and are
+   * indented and smaller, so the difference is visible without explanation.
+   * A `coming` item has a route and an entry but no surface yet — it is shown
+   * dimmed with a tag rather than hidden, because an empty group that says
+   * what is coming beats a surprise reorganisation later.
+   */
+  function renderItem(item: NavItem) {
+    const active = currentId === item.id;
+    const cls = [
+      s.navItem,
+      item.kind === 'reference' ? s.navItemReference : '',
+      item.coming ? s.navItemComing : '',
+      active ? s.navItemActive : '',
+    ].filter(Boolean).join(' ');
+
+    return (
+      <button
+        key={item.id}
+        className={cls}
+        onClick={() => navigate(item)}
+        title={showExpanded ? undefined : item.label}
+        aria-label={item.coming ? `${item.label} (coming soon)` : item.label}
+        aria-current={active ? 'page' : undefined}
+      >
+        {active && <div className={s.activeBar} />}
+        <span className={s.navIcon}>{item.icon}</span>
+        {showExpanded && <span className={s.navLabel}>{item.label}</span>}
+        {showExpanded && item.coming && <span className={s.comingTag}>coming</span>}
+      </button>
+    );
+  }
 
   const user = me?.user;
   const initials = user?.name
@@ -100,7 +134,7 @@ export function VdfSidebar({ activeId, mobileOpen = false, onMobileClose }: VdfS
     try {
       await switchEnv(switchTarget);
       setSwitchTarget(null);
-      router.push('/dashboard');
+      router.push('/today');
     } catch {
       showToast({ message: 'Failed to switch environment', type: 'error' });
     } finally {
@@ -128,7 +162,7 @@ export function VdfSidebar({ activeId, mobileOpen = false, onMobileClose }: VdfS
         onMouseLeave={!isMobile ? () => { setExpanded(false); setUserMenuOpen(false); } : undefined}
       >
         {/* Logo + Env toggle */}
-        <div className={s.logoArea} onClick={() => router.push('/dashboard')}>
+        <div className={s.logoArea} onClick={() => router.push('/today')}>
           <div className={s.logoIcon}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="20" height="20">
               <path d="M12 2L2 7l10 5 10-5-10-5z" />
@@ -149,71 +183,44 @@ export function VdfSidebar({ activeId, mobileOpen = false, onMobileClose }: VdfS
           )}
         </div>
 
-        {/* Scrollable nav area */}
+        {/* Scrollable nav area — five groups, driven entirely by config */}
         <div className={s.navScroll}>
-          {/* Main nav items */}
-          <nav className={s.nav}>
-            {mainItems.map((item) => {
-              const active = currentId === item.id;
-              return (
-                <button
-                  key={item.id}
-                  className={`${s.navItem} ${active ? s.navItemActive : ''}`}
-                  onClick={() => navigate(item)}
-                  title={showExpanded ? undefined : item.label}
-                  aria-label={item.label}
-                >
-                  {active && <div className={s.activeBar} />}
-                  <span className={s.navIcon}>{item.icon}</span>
-                  {showExpanded && <span className={s.navLabel}>{item.label}</span>}
-                </button>
-              );
-            })}
-          </nav>
+          {groups.map((group, gi) => {
+            // A group that is itself a destination (Today) renders as one row,
+            // not a heading with a single child under it.
+            const isSingleton = Boolean(group.href) && group.items.length === 1;
+            const pathways  = group.items.filter((i) => i.kind === 'pathway');
+            const reference = group.items.filter((i) => i.kind === 'reference');
 
-          {/* Data & Operations */}
-          <div className={s.separator} />
-          {showExpanded && <div className={s.sectionLabel}>Data</div>}
-          <div className={s.sectionNav}>
-            {dataItems.map((item) => {
-              const active = currentId === item.id;
-              return (
-                <button
-                  key={item.id}
-                  className={`${s.navItem} ${active ? s.navItemActive : ''}`}
-                  onClick={() => navigate(item)}
-                  title={showExpanded ? undefined : item.label}
-                  aria-label={item.label}
-                >
-                  {active && <div className={s.activeBar} />}
-                  <span className={s.navIcon}>{item.icon}</span>
-                  {showExpanded && <span className={s.navLabel}>{item.label}</span>}
-                </button>
-              );
-            })}
-          </div>
+            return (
+              <div key={group.id} className={s.navGroup}>
+                {gi > 0 && <div className={s.separator} />}
 
-          {/* System */}
-          <div className={s.separator} />
-          {showExpanded && <div className={s.sectionLabel}>System</div>}
-          <div className={s.sectionNav}>
-            {systemItems.map((item) => {
-              const active = currentId === item.id;
-              return (
-                <button
-                  key={item.id}
-                  className={`${s.navItem} ${active ? s.navItemActive : ''}`}
-                  onClick={() => navigate(item)}
-                  title={showExpanded ? undefined : item.label}
-                  aria-label={item.label}
-                >
-                  {active && <div className={s.activeBar} />}
-                  <span className={s.navIcon}>{item.icon}</span>
-                  {showExpanded && <span className={s.navLabel}>{item.label}</span>}
-                </button>
-              );
-            })}
-          </div>
+                {!isSingleton && showExpanded && (
+                  <div className={s.sectionLabel}>
+                    {group.label}
+                    {group.caption && <span className={s.sectionCaption}>{group.caption}</span>}
+                  </div>
+                )}
+
+                <nav className={s.sectionNav} aria-label={group.label}>
+                  {isSingleton
+                    ? group.items.map(renderItem)
+                    : (
+                      <>
+                        {pathways.map(renderItem)}
+                        {/* The divider is the visible boundary between doing
+                            and looking. Only drawn when both kinds exist. */}
+                        {pathways.length > 0 && reference.length > 0 && (
+                          <div className={s.kindDivider} aria-hidden="true" />
+                        )}
+                        {reference.map(renderItem)}
+                      </>
+                    )}
+                </nav>
+              </div>
+            );
+          })}
         </div>
 
         {/* What the agents are doing, and what today has cost. Above the
@@ -222,7 +229,7 @@ export function VdfSidebar({ activeId, mobileOpen = false, onMobileClose }: VdfS
             Research page while it runs. */}
         <VdfAgentActivity
           compact={!showExpanded}
-          onOpenResearch={() => router.push('/research')}
+          onOpenResearch={() => router.push('/gtm/audience/find')}
         />
 
         {/* Environment badge */}

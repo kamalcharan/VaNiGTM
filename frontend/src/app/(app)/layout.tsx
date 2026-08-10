@@ -10,7 +10,7 @@ import { VdfBottomNav } from '@/components/vdf/bottom-nav/VdfBottomNav';
 import s from './app-shell.module.css';
 
 /** Routes that render full-screen without the sidebar */
-const FULL_SCREEN_ROUTES = ['/onboarding'];
+const FULL_SCREEN_ROUTES = ['/brain/mission'];
 
 /**
  * Authenticated app shell — VdfSidebar + content area.
@@ -32,7 +32,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { tenant, isLoading, isAuthenticated } = useAuth();
 
   const isFullScreen  = FULL_SCREEN_ROUTES.some((r) => pathname?.startsWith(r) ?? false);
-  const isOnboarding  = pathname?.startsWith('/onboarding') ?? false;
+  const isOnboarding  = pathname?.startsWith('/brain/mission') ?? false;
 
   // Hydration safety: both server and initial client render agree on false
   useEffect(() => { setClientReady(true); }, []);
@@ -51,7 +51,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading || !tenant) return;
     if (!tenant.onboarding_complete && !isOnboarding) {
-      router.replace('/onboarding');
+      router.replace('/brain/mission');
     }
   }, [isLoading, tenant, isOnboarding, router]);
 
