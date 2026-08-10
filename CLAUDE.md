@@ -79,8 +79,9 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
   `vikuna_admin` (SUPERUSER **and** BYPASSRLS) — **RLS is dormant**; isolation
   rests on application-layer `WHERE tenant_id = $tenant_id` filters.
 - **Phase 0 finished the preparation (2026-08-10).** Migrations 234–237 are
-  deployed, every known code blocker is fixed, and the two-tenant isolation
-  test passes 13/13. The only step left is operational: run
+  deployed **and verified on production** (post-deploy-check.sql: all seven
+  rows OK, "ready for cutover? YES on the schema side"), every known code
+  blocker is fixed, and the two-tenant isolation test passes 13/13 locally. The only step left is operational: run
   `scripts/grant-vanigtm-app.sql`, point `DB_PRIMARY` at `vanigtm_app`,
   restart, re-run `deploy/vani-main-vps/rls-two-tenant-test.sql`. Rollback is
   putting `DB_PRIMARY` back. Full detail in `docs/db/rls-status.md` §8.

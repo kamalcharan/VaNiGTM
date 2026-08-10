@@ -7,14 +7,17 @@ exceptions explicit, few, and documented.*
 **Status: all code and schema work COMPLETE. One operational step remains —
 switching `DB_PRIMARY`, which only the VPS can do.**
 
-Migrations 235 and 236 and the sequence realignment are live in `vani_gtm_db`,
-confirmed by `deploy/vani-main-vps/post-deploy-check.sql`:
+Migrations 234–237 and the sequence realignment are live in `vani_gtm_db`,
+confirmed by `deploy/vani-main-vps/post-deploy-check.sql` on 2026-08-10:
 
 ```
-235 platform-row policies       OK — split into SELECT + ALL on both tables
-236 ownership bypass closed     OK — only gt_agent_runs remains, as intended
-sequence counters vs issued     all ok
-no duplicate lead_no            OK
+235 platform-row policies                OK — split into SELECT + ALL on both tables
+236 ownership bypass closed              OK — no app-owned table escapes its policy
+sequence counters vs issued ids          all ok
+237 public deck lookup                   OK — get_shared_deck() present and SECURITY DEFINER
+237 gt_agent_runs exemption is explicit  OK — RLS disabled, visible not hidden
+ready for cutover?                       YES on the schema side
+no duplicate lead_no                     OK
 ```
 
 All three were inert under the current `vikuna_admin` superuser runtime, so
