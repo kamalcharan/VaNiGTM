@@ -7,16 +7,17 @@
 --
 -- ── HOW TO RUN ─────────────────────────────────────────────────────────────
 --
--- AS THE APPLICATION ROLE, NOT AS postgres:
+-- Connect however you normally do — including as vikuna_admin. If the role you
+-- arrive as bypasses RLS, the script SETs ROLE to vanigtm_app itself and RESETs
+-- at the end, so you do not need the app role's password.
 --
---   psql:  PGPASSWORD=<pw> psql -h <host> -U vanigtm_app -d <db> \
---              -f rls-two-tenant-test.sql
+--   psql:  psql -d vani_gtm_db -f rls-two-tenant-test.sql
 --   GUI:   paste the whole file and use "Execute script" / "Run all"
---          (NOT "execute current statement" — this is two statements:
---           a DO block that runs the checks, then a SELECT that shows them)
+--          (NOT "execute current statement" — this is three statements:
+--           a DO block, a RESET ROLE, and the SELECT that shows the results)
 --
--- Running it as a superuser is worse than not running it: every assertion
--- passes for the wrong reason. Check 0 catches that and marks everything FAIL.
+-- Running the checks as a bypassing role would pass every assertion for the
+-- wrong reason, so check 0 either downgrades or refuses.
 --
 -- Results come back as a RESULT GRID, not as NOTICE messages — many GUI clients
 -- hide notices. Every row must read PASS. Copy the grid back.
@@ -55,6 +56,8 @@ DO $test$
 DECLARE
     v_super     BOOLEAN;
     v_bypass    BOOLEAN;
+    v_orig      TEXT;
+    v_target    TEXT;
     t           RECORD;
     a_id        UUID;   a_slug TEXT;   a_leads BIGINT;
     b_id        UUID;   b_slug TEXT;   b_leads BIGINT;
@@ -66,26 +69,60 @@ DECLARE
 BEGIN
     CREATE TEMP TABLE IF NOT EXISTS _rls_results
         (n INT, check_name TEXT, result TEXT, detail TEXT);
+    -- The block may SET ROLE below (check 0). The temp table stays owned by
+    -- the CONNECTING role, so without this grant every INSERT after the switch
+    -- fails with "permission denied for table _rls_results".
+    GRANT ALL ON _rls_results TO PUBLIC;
     DELETE FROM _rls_results;
 
     ---------------------------------------------------------------- check 0
+    -- The test is meaningless unless the role it runs as is subject to RLS.
+    -- If you connected as vikuna_admin (super + bypassrls, as production is),
+    -- the block downgrades itself with SET ROLE rather than making you find
+    -- the app role's password. A superuser may SET ROLE to anything, and RLS
+    -- is evaluated against the CURRENT role — verified: 15 rows as superuser,
+    -- 0 after SET ROLE with no tenant context.
+    v_orig := current_user;
     SELECT rolsuper, rolbypassrls INTO v_super, v_bypass
       FROM pg_roles WHERE rolname = current_user;
 
     IF v_super OR v_bypass THEN
-        INSERT INTO _rls_results VALUES (0, 'role bypasses RLS', 'FAIL',
-            current_user || ' has super=' || v_super || ' bypassrls=' || v_bypass
-            || ' — it bypasses RLS, so every check below would pass for the wrong '
-            || 'reason. Re-run as the application role (e.g. vanigtm_app).');
-        RETURN;   -- refuse to report a meaningless green
+        -- Prefer vanigtm_app; otherwise any login role that RLS applies to.
+        SELECT rolname INTO v_target FROM pg_roles
+         WHERE rolcanlogin AND NOT rolsuper AND NOT rolbypassrls
+         ORDER BY (rolname = 'vanigtm_app') DESC, rolname
+         LIMIT 1;
+
+        IF v_target IS NULL THEN
+            INSERT INTO _rls_results VALUES (0, 'role bypasses RLS', 'FAIL',
+                v_orig || ' has super=' || v_super || ' bypassrls=' || v_bypass
+                || ', and no non-bypassing login role exists to switch to. '
+                || 'Create the app role first (scripts/grant-vanigtm-app.sql).');
+            RETURN;
+        END IF;
+
+        BEGIN
+            EXECUTE format('SET ROLE %I', v_target);
+        EXCEPTION WHEN OTHERS THEN
+            INSERT INTO _rls_results VALUES (0, 'role bypasses RLS', 'FAIL',
+                v_orig || ' bypasses RLS and SET ROLE ' || v_target
+                || ' failed: ' || SQLERRM);
+            RETURN;
+        END;
+
+        INSERT INTO _rls_results VALUES (0, 'role is restricted', 'PASS',
+            'connected as ' || v_orig || ' (super=' || v_super || ' bypassrls=' || v_bypass
+            || '), switched to ' || v_target || ' for the test');
+    ELSE
+        INSERT INTO _rls_results VALUES (0, 'role is restricted', 'PASS',
+            current_user || ' (no superuser, no bypassrls)');
     END IF;
-    INSERT INTO _rls_results VALUES (0, 'role is restricted', 'PASS',
-        current_user || ' (no superuser, no bypassrls)');
 
     ---------------------------------------------------------------- check 1
     -- Two tenants that actually hold leads. Counted inside each tenant's own
     -- context, because a cross-tenant count is exactly what RLS forbids.
     CREATE TEMP TABLE IF NOT EXISTS _rls_scratch (tenant_id UUID, slug TEXT, leads BIGINT);
+    GRANT ALL ON _rls_scratch TO PUBLIC;
     DELETE FROM _rls_scratch;
 
     FOR t IN SELECT id, slug FROM vn_tenants LOOP
@@ -285,8 +322,14 @@ BEGIN
     END;
 
     DROP TABLE IF EXISTS _rls_scratch;
+
+    -- Back to the connecting role, so the SELECT below can read the temp table
+    -- it created and the session is left as it was found.
+    RESET ROLE;
 END
 $test$;
+
+RESET ROLE;   -- no-op if the block already did it; guards an early RETURN
 
 -- Nothing above is committed: every write happened inside the DO block's
 -- transaction and the one cross-tenant INSERT was refused.
