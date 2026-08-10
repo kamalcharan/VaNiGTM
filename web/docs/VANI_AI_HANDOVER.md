@@ -17,9 +17,8 @@ database.
 `kamalcharan/VaNiGTM` (a separate, much larger, already-built product — multi-tenant
 GTM/prospecting/agent engine, Express + Next.js, migrations 001–227) was added as a git
 submodule at `vanigtm/`. It turns out to be the actual owner of `vani_gtm_db` — the
-`gt_`/`vn_`/`ki_` tables, the `admin`/`vikuna_admin` runtime that bypasses RLS
-(**as a SUPERUSER, not via `BYPASSRLS` — see §12**), `set_tenant_context()`, all of it
-traces back to that repo's migrations. First pivot:
+`gt_`/`vn_`/`ki_` tables, the `admin`/`vikuna_admin` BYPASSRLS runtime,
+`set_tenant_context()`, all of it traces back to that repo's migrations. First pivot:
 VaNiGTM eventually integrates INTO VaNi AI, paced slowly (not the reverse). Second pivot,
 same day: Charan then explicitly told the session to reuse VaNiGTM's login/auth/db layer
 to "bring down the time" — so building started for real. **`docs/sql/ws2.2–2.6` in this
@@ -152,11 +151,11 @@ the migration files. Do not plan around having live DB access.
   `translateParams`. Under Option A the frontend uses PostgREST, not the pool.
 - `vani_gtm_db` = KI-Prime/GTM engine DB: `vn_*` auth framework, `gt_*` tenant-scoped
   product tables, `ki_*` legacy (create no new `ki_*`), 235 migrations in VaNiGTM.
-  Runtime today connects as `vikuna_admin`, which bypasses RLS **because it is a
-  SUPERUSER — it does not hold `BYPASSRLS`.** That distinction matters: a replacement
-  role must be `NOSUPERUSER NOBYPASSRLS` or the switch changes nothing. Superseded by
-  §12 and `vanigtm/docs/db/rls-status.md`; the old `grant-vanigtm-app.sql` draft predates
-  all of it.
+  Runtime connects as `vikuna_admin`, which in production is **both `SUPERUSER` and
+  `BYPASSRLS`** — so a replacement role must be `NOSUPERUSER NOBYPASSRLS`; dropping
+  one attribute alone changes nothing. The least-privilege role `vanigtm_app` and its
+  grant script (`scripts/grant-vanigtm-app.sql`) plus `docs/rls-cutover-checklist.md`
+  ALREADY EXIST in VaNiGTM and are the cutover procedure — see §12.
 - Infra (from Infrastructure Doc v3, May 2026): Main VPS 187.127.136.65 (PG17, PostgREST
   v12 at `/db/*` serving kaala_dristi, Nginx, no SSL yet on Nginx, zero swap), LLM VPS
   72.60.222.136 (Qwen3 4B llama.cpp at llm.dristiq.io, n8n at n8n.srv1096269.hstgr.cloud
@@ -437,7 +436,24 @@ equivalent is correct, so **VaNi is unaffected**. Separately,
 `vn_refresh_tokens` likely grows without bound — the one finding with a live
 operational cost.
 
-### Item 2 — `ki_*` disposition (analysis complete, rename NOT run)
+### Item 2 — `ki_*` disposition — **RESOLVED, nothing to rename**
+
+Production's table list arrived on 2026-08-10 and closed this item outright:
+**nine `ki_*` tables, all nine live** (the ETL import pipeline and the pulse
+cluster). No orphans, no KI-Prime data to export, no two-week rename clock.
+Migration 233 stays a tested no-op.
+
+The 29 "candidates" and the 4 "FK-pinned" tables in the analysis below **do not
+exist in production at all** — they are artifacts of rebuilding from migration
+files production was never fully built from (local: 42 `ki_*`, 114 tables;
+production: 9 and 81; `gt_*` 58 and `vn_*` 14 match exactly). Two specific
+claims died with them: the inference that production "must hold at least twelve"
+`ki_*` tables because the pulse tables carry FKs onto `ki_clients`/`ki_contacts`
+(production's pulse tables simply do not carry those constraints), and
+`ki_ext_ref_types` pinning `vn_tenants` — that table does not exist there, so
+the Phase 1 clean cut is available after all.
+
+The original analysis, for the record:
 
 9 live (the ETL import pipeline and the pulse cluster), 4 pinned by a foreign key from
 a live table, 29 candidates, **zero confirmed orphans** — confirming one needs row
@@ -467,9 +483,28 @@ loop looked like a live blocker to candidates processed later); rollback verifie
 
 ### Item 3 — make RLS real (proven locally, cutover NOT performed)
 
-**The premise needed correcting.** `vikuna_admin` does not hold `BYPASSRLS`. It is a
-**SUPERUSER**, and superusers bypass RLS unconditionally. A role created `NOBYPASSRLS`
-but left superuser would have changed nothing.
+**A correction I got wrong, then corrected back.** Mid-phase this section claimed
+`vikuna_admin` does not hold `BYPASSRLS` and bypasses RLS purely by being a
+`SUPERUSER`. That was read off the local rebuild. Production says
+`super=true bypassrls=true` — the original brief was right. The practical point
+survives: a replacement role needs `NOSUPERUSER` **and** `NOBYPASSRLS`.
+
+**Production also disproved the migration-234 bug.** Its policies already use the
+`NULLIF` form (unguarded=0, guarded=54 of 55) and no policy there reads the legacy
+`app.tenant_id` GUC. So 234 is a no-op against the live database — real in the
+migration files, and therefore worth keeping for any fresh build, but not a
+production hazard. **Migration 235 is the one production actually needs**: it holds
+1 platform tag of 4, and all 8 `gt_content_kinds` rows are platform rows, so that
+whole table goes dark for every tenant the moment RLS enforces without it.
+
+**And the role and grant script already existed.** `vanigtm_app` (non-superuser,
+non-bypassrls) is live in production alongside six siblings, and VaNiGTM already
+carries `scripts/grant-vanigtm-app.sql` + `docs/rls-cutover-checklist.md` — both of
+which correctly described `vikuna_admin` as `rolsuper=true, rolbypassrls=true`.
+Phase 0's runbook now defers to those rather than duplicating them. The checklist
+had also already flagged the storyteller `gt_presentations` share route as breaking
+under RLS — the same bug class as VaNi's `/r/:token`, which Phase 0 found
+independently and fixed. **The storyteller one is still open.**
 
 Switching to a genuinely restricted role broke the assessment flow on the **second
 query**. 68 policies cast `current_setting(...)::uuid` unguarded, and because
@@ -507,14 +542,20 @@ failure the pre-existing `story-skill` schema drift.
 
 ### What Phase 0 is waiting on
 
+*Item 2's two blocking queries were run on 2026-08-10 and resolved it. What is left:*
+
 **Charan, on the VPS:**
 1. Full backup, **and verify it restores** into a scratch database
-   (`ki-disposition.md` §6.1). Keep the scratch copy — Item 3 needs it.
-2. Two queries against production: the real `ki_*` table list and per-table row counts
-   (`ki-disposition.md` §6.2). These are all that stand between Item 2's analysis and
-   the rename.
-3. Deploy migrations 234 and 235 whenever convenient — inert under the current
-   superuser, so no behaviour change.
+   (`ki-disposition.md` §6.1). Still required for Item 3.
+2. Deploy **migration 235** — required, prevents a live regression. 234 is optional
+   (no-op in production) but harmless. Both are inert under the current superuser.
+3. Run `scripts/grant-vanigtm-app.sql` and follow `docs/rls-cutover-checklist.md`.
+   Do **not** create a new role — `vanigtm_app` already exists.
+
+**Still open as tasks:**
+- The storyteller `gt_presentations` `/share/:token` route breaks under a restricted
+  role. The checklist recommends a `SECURITY DEFINER get_shared_deck(token)`; VaNi's
+  fix does not transfer, because any tenant can own a deck.
 
 **Still open as decisions, not tasks:**
 - Admin platform-tag creation (`POST /etl/tags` with `is_platform: true`) is refused by
