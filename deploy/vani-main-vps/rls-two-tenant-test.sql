@@ -5,21 +5,28 @@
 -- tenant's rows. Not a unit test: it is the check that must pass before
 -- DB_PRIMARY is pointed at a non-superuser role, and again after.
 --
--- ── RUN IT AS THE APPLICATION ROLE, NOT AS postgres ────────────────────────
+-- ── HOW TO RUN ─────────────────────────────────────────────────────────────
 --
---   PGPASSWORD=<pw> psql -h <host> -U vanigtm_app -d vani_gtm_db \
---        -f rls-two-tenant-test.sql
+-- AS THE APPLICATION ROLE, NOT AS postgres:
+--
+--   psql:  PGPASSWORD=<pw> psql -h <host> -U vanigtm_app -d <db> \
+--              -f rls-two-tenant-test.sql
+--   GUI:   paste the whole file and use "Execute script" / "Run all"
+--          (NOT "execute current statement" — this is two statements:
+--           a DO block that runs the checks, then a SELECT that shows them)
 --
 -- Running it as a superuser is worse than not running it: every assertion
--- passes for the wrong reason. Check 0 refuses to continue in that case.
+-- passes for the wrong reason. Check 0 catches that and marks everything FAIL.
 --
--- Safe against a database with real data: every write happens inside a
--- transaction that is ROLLBACKed, and the one INSERT that is attempted is
--- expected to be refused. Nothing is committed.
+-- Results come back as a RESULT GRID, not as NOTICE messages — many GUI clients
+-- hide notices. Every row must read PASS. Copy the grid back.
 --
--- Output is NOTICE lines. Every one must read PASS.
+-- SAFE against a database with real data. Every write is inside a transaction
+-- that is rolled back, and the single INSERT attempted is expected to be
+-- REFUSED. Nothing is committed. No DDL except a TEMP table, which disappears
+-- when your session ends.
 --
--- ── HOW THIS TEST IS BUILT, AND TWO MISTAKES IT ALREADY MADE ───────────────
+-- ── HOW THIS TEST IS BUILT, AND THE MISTAKES IT ALREADY MADE ───────────────
 --
 -- 1. The tenant list is read from vn_tenants, which carries no tenant_id and
 --    no RLS. An earlier version built it from gt_lead — which correctly
@@ -33,183 +40,259 @@
 --    design). Picking the two oldest instead gave a tenant with no rows and a
 --    "pass" that proved nothing.
 --
--- The cross-tenant INSERT is checked by catching the exception rather than by
--- letting psql fall through, because with ON_ERROR_STOP off a failed statement
--- still lets the following SELECT run and print a contradictory verdict.
+-- 3. It originally used psql meta-commands (\set, \pset) and reported through
+--    RAISE NOTICE. Both fail outside psql: the backslash lines raise
+--    "syntax error at or near \", and notices are invisible in several GUI
+--    clients. Hence the temp table and the closing SELECT.
+--
+-- Each check catches its own exception and records a row, so one failure does
+-- not hide the checks after it. That is also why the cross-tenant INSERT is
+-- verified by catching insufficient_privilege rather than by letting the
+-- script fall over.
 -- ============================================================================
 
-\set ON_ERROR_STOP on
-\pset pager off
-\timing off
-
--- ── Check 0: the role itself ────────────────────────────────────────────────
-DO $$
-DECLARE r RECORD;
+DO $test$
+DECLARE
+    v_super     BOOLEAN;
+    v_bypass    BOOLEAN;
+    t           RECORD;
+    a_id        UUID;   a_slug TEXT;   a_leads BIGINT;
+    b_id        UUID;   b_slug TEXT;   b_leads BIGINT;
+    b_row       UUID;
+    c           BIGINT;
+    d           BIGINT;
+    f           BIGINT;
+    txt         TEXT;
 BEGIN
-    SELECT rolsuper, rolbypassrls INTO r FROM pg_roles WHERE rolname = current_user;
-    IF r.rolsuper THEN
-        RAISE EXCEPTION 'FAIL (0) — % is SUPERUSER; it bypasses RLS unconditionally '
-                        'and every check below would pass for the wrong reason', current_user;
-    ELSIF r.rolbypassrls THEN
-        RAISE EXCEPTION 'FAIL (0) — % has BYPASSRLS', current_user;
+    CREATE TEMP TABLE IF NOT EXISTS _rls_results
+        (n INT, check_name TEXT, result TEXT, detail TEXT);
+    DELETE FROM _rls_results;
+
+    ---------------------------------------------------------------- check 0
+    SELECT rolsuper, rolbypassrls INTO v_super, v_bypass
+      FROM pg_roles WHERE rolname = current_user;
+
+    IF v_super OR v_bypass THEN
+        INSERT INTO _rls_results VALUES (0, 'role bypasses RLS', 'FAIL',
+            current_user || ' has super=' || v_super || ' bypassrls=' || v_bypass
+            || ' — it bypasses RLS, so every check below would pass for the wrong '
+            || 'reason. Re-run as the application role (e.g. vanigtm_app).');
+        RETURN;   -- refuse to report a meaningless green
     END IF;
-    RAISE NOTICE 'PASS (0) — running as % (no superuser, no bypassrls)', current_user;
-END $$;
+    INSERT INTO _rls_results VALUES (0, 'role is restricted', 'PASS',
+        current_user || ' (no superuser, no bypassrls)');
 
--- ── Pick two tenants that actually hold leads ───────────────────────────────
-CREATE TEMP TABLE _t (n int, tenant_id uuid, slug text, leads bigint);
-
-DO $$
-DECLARE t RECORD; c BIGINT; i INT := 0;
-BEGIN
-    CREATE TEMP TABLE _scratch (tenant_id uuid, slug text, leads bigint) ON COMMIT DROP;
+    ---------------------------------------------------------------- check 1
+    -- Two tenants that actually hold leads. Counted inside each tenant's own
+    -- context, because a cross-tenant count is exactly what RLS forbids.
+    CREATE TEMP TABLE IF NOT EXISTS _rls_scratch (tenant_id UUID, slug TEXT, leads BIGINT);
+    DELETE FROM _rls_scratch;
 
     FOR t IN SELECT id, slug FROM vn_tenants LOOP
         PERFORM set_tenant_context(t.id::text);
         SELECT count(*) INTO c FROM gt_lead;
-        INSERT INTO _scratch VALUES (t.id, t.slug, c);
+        INSERT INTO _rls_scratch VALUES (t.id, t.slug, c);
     END LOOP;
 
-    INSERT INTO _t
-    SELECT row_number() OVER (ORDER BY leads DESC, slug), tenant_id, slug, leads
-      FROM _scratch WHERE leads > 0
-     ORDER BY leads DESC, slug LIMIT 2;
+    SELECT tenant_id, slug, leads INTO a_id, a_slug, a_leads
+      FROM _rls_scratch WHERE leads > 0 ORDER BY leads DESC, slug LIMIT 1;
+    SELECT tenant_id, slug, leads INTO b_id, b_slug, b_leads
+      FROM _rls_scratch WHERE leads > 0 AND tenant_id <> a_id
+      ORDER BY leads DESC, slug LIMIT 1;
 
-    SELECT count(*) INTO i FROM _t;
-    IF i < 2 THEN
-        RAISE EXCEPTION 'FAIL (1) — need two tenants that each hold at least one '
-                        'gt_lead row; found %. Seed a second tenant before testing.', i;
+    IF a_id IS NULL OR b_id IS NULL THEN
+        INSERT INTO _rls_results VALUES (1, 'two tenants with data', 'FAIL',
+            'Need two tenants that each hold at least one gt_lead row. Found: '
+            || coalesce((SELECT string_agg(slug || '=' || leads, ', ' ORDER BY slug)
+                           FROM _rls_scratch), 'none')
+            || '. Seed a second tenant, or point this at a restore that has one.');
+        RETURN;
     END IF;
+    INSERT INTO _rls_results VALUES (1, 'two tenants with data', 'PASS',
+        'A=' || a_slug || ' (' || a_leads || ' leads),  B=' || b_slug || ' (' || b_leads || ' leads)');
 
-    RAISE NOTICE 'PASS (1) — testing with % and %',
-        (SELECT slug || ' (' || leads || ' leads)' FROM _t WHERE n = 1),
-        (SELECT slug || ' (' || leads || ' leads)' FROM _t WHERE n = 2);
-END $$;
-
--- ── Checks 2 and 3: fail-closed with no context, and after context expires ──
-DO $$
-DECLARE c BIGINT;
-BEGIN
-    -- RESET, not just "never set": this is the state of a pooled connection
-    -- that has already served one tenant-scoped transaction. set_config with
-    -- is_local := true leaves the setting DEFINED and EMPTY after COMMIT, not
-    -- undefined — which is what makes an unguarded ''::uuid cast raise.
-    RESET app.current_tenant_id;
-    RESET app.tenant_id;
-    SELECT count(*) INTO c FROM gt_lead;
-    IF c <> 0 THEN
-        RAISE EXCEPTION 'FAIL (2) — % rows visible with NO tenant context', c;
-    END IF;
-    RAISE NOTICE 'PASS (2) — 0 rows visible with no tenant context';
-
-    PERFORM set_config('app.current_tenant_id', '', true);
-    PERFORM set_config('app.tenant_id', '', true);
-    SELECT count(*) INTO c FROM gt_lead;   -- raises 22P02 if migration 234 is missing
-    IF c <> 0 THEN
-        RAISE EXCEPTION 'FAIL (3) — % rows leaked with an empty tenant context', c;
-    END IF;
-    RAISE NOTICE 'PASS (3) — 0 rows visible with an empty (expired) tenant context';
-EXCEPTION WHEN invalid_text_representation THEN
-    RAISE EXCEPTION 'FAIL (3) — empty GUC raised "%". Migration 234 has not been '
-                    'applied to this database.', SQLERRM;
-END $$;
-
--- ── Checks 4 and 5: each tenant sees only its own rows ──────────────────────
-DO $$
-DECLARE t RECORD; total BIGINT; distinct_tenants BIGINT; foreign_rows BIGINT;
-BEGIN
-    FOR t IN SELECT * FROM _t ORDER BY n LOOP
-        PERFORM set_tenant_context(t.tenant_id::text);
-
-        SELECT count(*), count(DISTINCT tenant_id),
-               count(*) FILTER (WHERE tenant_id <> t.tenant_id)
-          INTO total, distinct_tenants, foreign_rows
-          FROM gt_lead;
-
-        IF total <> t.leads OR distinct_tenants <> 1 OR foreign_rows <> 0 THEN
-            RAISE EXCEPTION 'FAIL (%) — tenant % saw % rows across % tenants (% foreign)',
-                            3 + t.n, t.slug, total, distinct_tenants, foreign_rows;
+    ---------------------------------------------------------------- check 2
+    BEGIN
+        PERFORM set_config('app.current_tenant_id', NULL, true);
+        PERFORM set_config('app.tenant_id', NULL, true);
+        SELECT count(*) INTO c FROM gt_lead;
+        IF c = 0 THEN
+            INSERT INTO _rls_results VALUES (2, 'no tenant context -> nothing visible',
+                'PASS', '0 rows');
+        ELSE
+            INSERT INTO _rls_results VALUES (2, 'no tenant context -> nothing visible',
+                'FAIL', c || ' rows visible with NO tenant context; RLS is not enforcing');
         END IF;
-        RAISE NOTICE 'PASS (%) — tenant % sees exactly its own % rows',
-                     3 + t.n, t.slug, total;
-    END LOOP;
-END $$;
+    EXCEPTION WHEN OTHERS THEN
+        INSERT INTO _rls_results VALUES (2, 'no tenant context -> nothing visible',
+            'FAIL', SQLERRM);
+    END;
 
--- ── Check 6: a targeted fetch of a known foreign row by primary key ─────────
--- count() would hide a single leaked row; an IDOR is exactly a targeted fetch.
-DO $$
-DECLARE b_id uuid; c BIGINT;
-BEGIN
-    -- Learn a tenant-B row id from inside tenant B's own context. There is no
-    -- other way to obtain one without a superuser.
-    PERFORM set_tenant_context((SELECT tenant_id::text FROM _t WHERE n = 2));
-    SELECT id INTO b_id FROM gt_lead ORDER BY created_at LIMIT 1;
+    ---------------------------------------------------------------- check 3
+    -- The pooled-connection case: after a tenant transaction COMMITs, the GUC
+    -- is DEFINED AND EMPTY, not unset. An unguarded ''::uuid cast raises here.
+    BEGIN
+        PERFORM set_config('app.current_tenant_id', '', true);
+        PERFORM set_config('app.tenant_id', '', true);
+        SELECT count(*) INTO c FROM gt_lead;
+        IF c = 0 THEN
+            INSERT INTO _rls_results VALUES (3, 'empty (expired) context -> nothing visible',
+                'PASS', '0 rows');
+        ELSE
+            INSERT INTO _rls_results VALUES (3, 'empty (expired) context -> nothing visible',
+                'FAIL', c || ' rows leaked with an empty tenant context');
+        END IF;
+    EXCEPTION WHEN invalid_text_representation THEN
+        INSERT INTO _rls_results VALUES (3, 'empty (expired) context -> nothing visible',
+            'FAIL', 'empty GUC raised "' || SQLERRM
+            || '" — migration 234 has not been applied to this database');
+    WHEN OTHERS THEN
+        INSERT INTO _rls_results VALUES (3, 'empty (expired) context -> nothing visible',
+            'FAIL', SQLERRM);
+    END;
 
-    PERFORM set_tenant_context((SELECT tenant_id::text FROM _t WHERE n = 1));
-    SELECT count(*) INTO c FROM gt_lead WHERE id = b_id;
-
-    IF c <> 0 THEN
-        RAISE EXCEPTION 'FAIL (6) — tenant-B row % fetched by id from tenant A', b_id;
-    END IF;
-    RAISE NOTICE 'PASS (6) — known tenant-B row unreachable by id from tenant A';
-END $$;
-
--- ── Check 7: a cross-tenant write must be refused ──────────────────────────
-DO $$
-DECLARE b_tenant uuid;
-BEGIN
-    SELECT tenant_id INTO b_tenant FROM _t WHERE n = 2;
-    PERFORM set_tenant_context((SELECT tenant_id::text FROM _t WHERE n = 1));
+    ---------------------------------------------------------------- checks 4,5
+    BEGIN
+        PERFORM set_tenant_context(a_id::text);
+        SELECT count(*), count(DISTINCT tenant_id), count(*) FILTER (WHERE tenant_id <> a_id)
+          INTO c, d, f FROM gt_lead;
+        IF c = a_leads AND d = 1 AND f = 0 THEN
+            INSERT INTO _rls_results VALUES (4, 'tenant A sees only A', 'PASS',
+                c || ' rows, all tenant A');
+        ELSE
+            INSERT INTO _rls_results VALUES (4, 'tenant A sees only A', 'FAIL',
+                c || ' rows across ' || d || ' tenants (' || f || ' foreign)');
+        END IF;
+    EXCEPTION WHEN OTHERS THEN
+        INSERT INTO _rls_results VALUES (4, 'tenant A sees only A', 'FAIL', SQLERRM);
+    END;
 
     BEGIN
-        INSERT INTO gt_lead (tenant_id, lead_no, name, email, company, role_title)
-        VALUES (b_tenant, 'RLS-TEST-001', 'rls test', 'rls-test@example.invalid',
-                'RLS Test Co', 'Tester');
-        RAISE EXCEPTION 'FAIL (7) — cross-tenant INSERT succeeded; RLS is not '
-                        'enforcing writes';
-    EXCEPTION WHEN insufficient_privilege THEN
-        RAISE NOTICE 'PASS (7) — cross-tenant INSERT refused by row-level security';
+        PERFORM set_tenant_context(b_id::text);
+        SELECT count(*), count(DISTINCT tenant_id), count(*) FILTER (WHERE tenant_id <> b_id)
+          INTO c, d, f FROM gt_lead;
+        SELECT id INTO b_row FROM gt_lead ORDER BY created_at LIMIT 1;
+        IF c = b_leads AND d = 1 AND f = 0 THEN
+            INSERT INTO _rls_results VALUES (5, 'tenant B sees only B', 'PASS',
+                c || ' rows, all tenant B');
+        ELSE
+            INSERT INTO _rls_results VALUES (5, 'tenant B sees only B', 'FAIL',
+                c || ' rows across ' || d || ' tenants (' || f || ' foreign)');
+        END IF;
+    EXCEPTION WHEN OTHERS THEN
+        INSERT INTO _rls_results VALUES (5, 'tenant B sees only B', 'FAIL', SQLERRM);
     END;
-END $$;
 
--- ── Checks 8 and 9: the two functions on the live lead-capture path ─────────
--- gt_next_seq is the highest-risk one: not SECURITY DEFINER, and it INSERTs
--- and UPDATEs gt_seq_counters. See docs/db/triggers-and-functions.md.
-DO $$
-DECLARE a uuid; seq TEXT; tag BIGINT;
-BEGIN
-    SELECT tenant_id INTO a FROM _t WHERE n = 1;
-    PERFORM set_tenant_context(a::text);
+    ---------------------------------------------------------------- check 6
+    -- A targeted fetch of a KNOWN foreign row by primary key. count() would
+    -- hide a single leaked row; an IDOR is exactly a targeted fetch.
+    BEGIN
+        PERFORM set_tenant_context(a_id::text);
+        SELECT count(*) INTO c FROM gt_lead WHERE id = b_row;
+        IF c = 0 THEN
+            INSERT INTO _rls_results VALUES (6, 'A cannot fetch a known B row by id',
+                'PASS', 'row ' || b_row || ' unreachable from tenant A');
+        ELSE
+            INSERT INTO _rls_results VALUES (6, 'A cannot fetch a known B row by id',
+                'FAIL', 'tenant-B row ' || b_row || ' was readable from tenant A');
+        END IF;
+    EXCEPTION WHEN OTHERS THEN
+        INSERT INTO _rls_results VALUES (6, 'A cannot fetch a known B row by id',
+            'FAIL', SQLERRM);
+    END;
 
-    seq := gt_next_seq(a, 'vani_lead');
-    IF seq !~ '^[A-Z]+-[0-9]+$' THEN
-        RAISE EXCEPTION 'FAIL (8) — gt_next_seq returned %', seq;
-    END IF;
-    RAISE NOTICE 'PASS (8) — gt_next_seq returned % under the restricted role', seq;
+    ---------------------------------------------------------------- check 7
+    -- The write side. Today, as vikuna_admin, this INSERT SUCCEEDS.
+    BEGIN
+        PERFORM set_tenant_context(a_id::text);
+        BEGIN
+            INSERT INTO gt_lead (tenant_id, lead_no, name, email, company, role_title)
+            VALUES (b_id, 'RLS-TEST-001', 'rls test', 'rls-test@example.invalid',
+                    'RLS Test Co', 'Tester');
+            INSERT INTO _rls_results VALUES (7, 'A cannot WRITE a row owned by B',
+                'FAIL', 'cross-tenant INSERT succeeded; RLS is not enforcing writes');
+        EXCEPTION WHEN insufficient_privilege THEN
+            INSERT INTO _rls_results VALUES (7, 'A cannot WRITE a row owned by B',
+                'PASS', 'refused by row-level security');
+        END;
+    EXCEPTION WHEN OTHERS THEN
+        INSERT INTO _rls_results VALUES (7, 'A cannot WRITE a row owned by B',
+            'FAIL', SQLERRM);
+    END;
 
-    tag := vani_ensure_tag(a);
-    IF tag IS NULL THEN
-        RAISE EXCEPTION 'FAIL (9) — vani_ensure_tag returned NULL';
-    END IF;
-    RAISE NOTICE 'PASS (9) — vani_ensure_tag resolved tag id % under the restricted role', tag;
-END $$;
+    ---------------------------------------------------------------- checks 8,9
+    -- The two functions on the live lead-capture path. gt_next_seq is the
+    -- risky one: NOT security definer, and it writes gt_seq_counters. If the
+    -- app role lacks INSERT/UPDATE there, VaNi stops capturing leads.
+    BEGIN
+        PERFORM set_tenant_context(a_id::text);
+        txt := gt_next_seq(a_id, 'vani_lead');
+        IF txt ~ '^[A-Z]+-[0-9]+$' THEN
+            INSERT INTO _rls_results VALUES (8, 'gt_next_seq works as the app role',
+                'PASS', 'returned ' || txt);
+        ELSE
+            INSERT INTO _rls_results VALUES (8, 'gt_next_seq works as the app role',
+                'FAIL', 'returned ' || coalesce(txt, 'NULL'));
+        END IF;
+    EXCEPTION WHEN OTHERS THEN
+        INSERT INTO _rls_results VALUES (8, 'gt_next_seq works as the app role',
+            'FAIL', SQLERRM || '  <- likely a missing grant on gt_seq_counters');
+    END;
 
--- ── Check 10: no policy still carries the unguarded cast ───────────────────
-DO $$
-DECLARE c INT;
-BEGIN
+    BEGIN
+        PERFORM set_tenant_context(a_id::text);
+        SELECT vani_ensure_tag(a_id) INTO c;
+        IF c IS NOT NULL THEN
+            INSERT INTO _rls_results VALUES (9, 'vani_ensure_tag works as the app role',
+                'PASS', 'tag id ' || c);
+        ELSE
+            INSERT INTO _rls_results VALUES (9, 'vani_ensure_tag works as the app role',
+                'FAIL', 'returned NULL');
+        END IF;
+    EXCEPTION WHEN OTHERS THEN
+        INSERT INTO _rls_results VALUES (9, 'vani_ensure_tag works as the app role',
+            'FAIL', SQLERRM);
+    END;
+
+    ---------------------------------------------------------------- check 10
     SELECT count(*) INTO c FROM pg_policies
      WHERE schemaname = 'public' AND qual LIKE '%current_setting%'
        AND qual LIKE '%::uuid%' AND qual NOT LIKE '%NULLIF%';
-    IF c <> 0 THEN
-        RAISE EXCEPTION 'FAIL (10) — % policies cast without NULLIF; apply migration 234', c;
+    IF c = 0 THEN
+        INSERT INTO _rls_results VALUES (10, 'no policy has an unguarded ::uuid cast',
+            'PASS', 'all guarded');
+    ELSE
+        INSERT INTO _rls_results VALUES (10, 'no policy has an unguarded ::uuid cast',
+            'FAIL', c || ' policies cast without NULLIF — apply migration 234');
     END IF;
-    RAISE NOTICE 'PASS (10) — no policy carries an unguarded ::uuid cast';
-END $$;
 
-DROP TABLE _t;
+    ---------------------------------------------------------------- check 11
+    -- Platform rows (tenant_id IS NULL) must still be readable. Without
+    -- migration 235 these vanish silently rather than erroring.
+    BEGIN
+        PERFORM set_tenant_context(a_id::text);
+        SELECT count(*) INTO c FROM gt_content_kinds;
+        SELECT count(*) INTO d FROM gt_tags WHERE tenant_id IS NULL;
+        IF c > 0 THEN
+            INSERT INTO _rls_results VALUES (11, 'platform rows still visible', 'PASS',
+                'gt_content_kinds=' || c || ' visible, gt_tags platform=' || d);
+        ELSE
+            INSERT INTO _rls_results VALUES (11, 'platform rows still visible', 'FAIL',
+                'gt_content_kinds returned 0 rows — migration 235 has not been applied');
+        END IF;
+    EXCEPTION WHEN OTHERS THEN
+        INSERT INTO _rls_results VALUES (11, 'platform rows still visible', 'FAIL', SQLERRM);
+    END;
 
-\echo ''
-\echo 'All checks passed. (ON_ERROR_STOP is on, so any FAIL aborts the script'
-\echo 'at that point — reaching this line means every check above passed.)'
-\echo ''
+    DROP TABLE IF EXISTS _rls_scratch;
+END
+$test$;
+
+-- Nothing above is committed: every write happened inside the DO block's
+-- transaction and the one cross-tenant INSERT was refused.
+SELECT n,
+       check_name AS "check",
+       result,
+       detail
+FROM _rls_results
+ORDER BY n;
