@@ -4,8 +4,8 @@
 *make the bypass role unnecessary for normal operation, and make the remaining
 exceptions explicit, few, and documented.*
 
-**Status: schema work DEPLOYED and verified on production (2026-08-10).
-Cutover not performed — three code fixes remain.**
+**Status: all code and schema work COMPLETE. One operational step remains —
+switching `DB_PRIMARY`, which only the VPS can do.**
 
 Migrations 235 and 236 and the sequence realignment are live in `vani_gtm_db`,
 confirmed by `deploy/vani-main-vps/post-deploy-check.sql`:
@@ -20,13 +20,19 @@ no duplicate lead_no            OK
 All three were inert under the current `vikuna_admin` superuser runtime, so
 nothing changed behaviourally on deploy — they take effect at cutover.
 
-**Before `DB_PRIMARY` moves to `vanigtm_app`, three code fixes**, all the same
-shape (a raw `pool.query` against an RLS-protected table):
-1. `agent-core` → `withTenantClient`, then force `gt_agent_runs` (§3.2)
-2. Storyteller `GET /share/:token` → `SECURITY DEFINER get_shared_deck(token)`
-   (predates Phase 0; see `docs/rls-cutover-checklist.md`)
-3. Then the cutover itself — `scripts/grant-vanigtm-app.sql`, switch, re-run
-   `rls-two-tenant-test.sql`
+The three outstanding code fixes are **done** (migration 237):
+1. ✅ Storyteller `GET /share/:token` now calls `SECURITY DEFINER
+   get_shared_deck(token)` — the option the cutover checklist recommended.
+2. ✅ `gt_agent_runs` is an **explicit** cross-tenant exemption rather than an
+   accidental owner bypass (§3.3), and `getRun()` no longer fetches by a bare
+   enumerable id.
+3. ✅ Isolation test now returns **13/13**, including check 13 "ownership does
+   not bypass any policy".
+
+**What is left is not code.** On the VPS: run
+`scripts/grant-vanigtm-app.sql`, point `DB_PRIMARY` at `vanigtm_app`, restart,
+re-run `rls-two-tenant-test.sql` against production. Rollback is putting
+`DB_PRIMARY` back — no migration reverses.
 
 > **Read §1, §2 and §3 first.** Production numbers arrived on 2026-08-10 and
 > disproved three things this document originally asserted, including its
@@ -264,6 +270,33 @@ invisible, and `INSERT … (NULL, 'x')` refused.
 > (a new mechanism, and Phase 0 is explicit about not designing). Admin
 > platform-tag creation needs a separate maintenance role, a `SECURITY DEFINER`
 > function, or that GUC. It still works today under the superuser.
+
+## 3.3 `gt_agent_runs` — the last exemption, now named
+
+Migration 236 deliberately skipped it; migration 237 settles it.
+
+The worker is genuinely cross-tenant: it polls `gt_events` for every tenant and
+drives runs for all of them, and deep inside an agent `setStatus()` and
+`appendStep()` hold a `runId` and no tenant. Threading `tenant_id` through some
+twenty call sites across five agent files is exactly the "rewriting queries for
+elegance" this phase puts out of scope.
+
+So RLS is **disabled** on it, mirroring `gt_events` (migration 185). The effect
+on the running system is nil — the owner bypassed the policy anyway. What
+changes is that the exemption is now visible in `pg_class` and listed by check
+12 of the isolation test, instead of hiding behind table ownership where it was
+found only by accident.
+
+The one genuinely unscoped read is closed in the same change: `getRun(runId)`
+had no tenant filter and fetched by an enumerable `BIGSERIAL` on a row carrying
+`output` and `error_trace`. CLI-only today — but that is not a property that
+stays true on its own.
+
+**To remove this exemption later**: thread `tenantId` into `setStatus` /
+`appendStep` / `saveCheckpoint` / `loadCheckpoint`, then `ENABLE` + `FORCE ROW
+LEVEL SECURITY`. Not Phase 0 work.
+
+---
 
 ## 3.2 The third bug, and the one a document could not have found
 
@@ -623,6 +656,8 @@ when" condition.
 | Migration bookkeeping | `vn_migrations` | The migration runner's own table; runs before any application context. |
 | Operator scripts iterate tenants | `cohort.ts` | Deliberate cross-tenant tool; already sets tenant context per tenant rather than reading across them. |
 | `vn_audit_log`, `vn_error_log` | logging | Written from paths that may have no tenant context (e.g. a failed login). Revisit if either is ever exposed in a tenant-facing UI. |
+| **`gt_agent_runs` cross-tenant** | `gt_agent_runs` | The worker drives runs for every tenant, and `setStatus`/`appendStep` hold only a `runId`. RLS disabled explicitly (migration 237) rather than left as an implicit owner bypass. Tenant-facing reads filter on `tenant_id` in the app; `getRun` now requires it. §3.3 records how to remove the exemption. |
+| **Public deck viewer** | `gt_presentations` via `get_shared_deck(token)` | `GET /share/:token` is anonymous, so there is no tenant to scope to. A `SECURITY DEFINER` function is the narrowest fix: title and slides only, `status='approved'` only, exact token match only — it cannot enumerate and cannot reach an unapproved deck. Migration 237. |
 
 No exemption below is a *global* bypass. The `BYPASSRLS`/superuser role remains
 only as the documented rollback in step 8.
@@ -633,10 +668,10 @@ only as the documented rollback in step 8.
 
 | Condition | Status |
 |---|---|
-| App runs normally on a non-bypass role | ✅ **Locally.** The full assessment flow passes end to end under a `NOSUPERUSER NOBYPASSRLS` role — all checks including the public report page. ETL converted (§5.2); its 16 DB-backed landing tests pass. Signup/login and the skills executor are **not** yet exercised under the restricted role. |
-| Two-tenant test passes | ✅ 11/11, and verified to fail when isolation is broken. |
+| App runs normally on a non-bypass role | ✅ **Every known blocker fixed.** Assessment flow passes end to end under a `NOSUPERUSER NOBYPASSRLS` role; ETL converted (§5.2); public report route (§5.3); public deck viewer and `gt_agent_runs` (§3.3). Signup/login and the skills executor are still **not** exercised under the restricted role — do that against the scratch restore at cutover. |
+| Two-tenant test passes | ✅ **13/13**, including "ownership does not bypass any policy". Verified to fail when isolation is broken. Last production run was pre-236 and found the ownership hole; re-run after the cutover. |
 | `docs/db/rls-status.md` lists every exemption with a justification | ✅ §9. |
-| Production switched | ❌ Not performed. Runbook in §8. |
+| Production switched | ❌ Not performed — the one remaining step, and it is operational, not code. Runbook in §8. |
 
 **Backwards compatible.** Everything here — migrations 234 and 235 and the code
 changes — was verified to pass under *both* `vani_app` and the current

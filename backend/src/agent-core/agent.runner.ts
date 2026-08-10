@@ -237,10 +237,19 @@ export async function findResumableRun(
 
 /**
  * Get a single run by id. Returns null when not found.
+ *
+ * tenantId is REQUIRED. gt_agent_runs is an explicit cross-tenant exemption
+ * from RLS (migration 237 — the worker drives runs for every tenant), which
+ * means the database will not catch a missing tenant filter here the way it
+ * does elsewhere. Fetching by a bare BIGSERIAL id was the shape of an IDOR:
+ * enumerable, and the row carries output and error_trace. Only a CLI calls it
+ * today, so closing it cost nothing — but "only a CLI calls it today" is not a
+ * property that stays true on its own.
  */
 export async function getRun(
   pool: Pool,
   runId: string | number,
+  tenantId: string,
 ): Promise<AgentRun | null> {
   const result = await pool.query<AgentRun>(
     `SELECT id::text, tenant_id, event_id, agent_name, status, steps,
@@ -248,8 +257,8 @@ export async function getRun(
             error_trace, token_usage, duration_ms,
             started_at, completed_at, created_at
        FROM gt_agent_runs
-      WHERE id = $1`,
-    [runId],
+      WHERE id = $1 AND tenant_id = $2`,
+    [runId, tenantId],
   );
   return result.rows[0] ?? null;
 }

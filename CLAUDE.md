@@ -75,13 +75,19 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
   (resolved from JWT, never the request body).
 
 ### RLS — current reality (important)
-- Policies exist on tenant-data `gt_` tables, but the runtime currently
-  connects as `vikuna_admin` (BYPASSRLS) — **RLS is dormant**; isolation
+- Policies exist on tenant-data `gt_` tables, but the runtime still connects as
+  `vikuna_admin` (SUPERUSER **and** BYPASSRLS) — **RLS is dormant**; isolation
   rests on application-layer `WHERE tenant_id = $tenant_id` filters.
-- The least-privilege cutover to `vanigtm_app` is drafted in
-  `scripts/grant-vanigtm-app.sql` + `docs/rls-cutover-checklist.md` and is a
-  REQUIRED pre-production task (includes the SECURITY DEFINER fix for the
-  public deck share route).
+- **Phase 0 finished the preparation (2026-08-10).** Migrations 234–237 are
+  deployed, every known code blocker is fixed, and the two-tenant isolation
+  test passes 13/13. The only step left is operational: run
+  `scripts/grant-vanigtm-app.sql`, point `DB_PRIMARY` at `vanigtm_app`,
+  restart, re-run `deploy/vani-main-vps/rls-two-tenant-test.sql`. Rollback is
+  putting `DB_PRIMARY` back. Full detail in `docs/db/rls-status.md` §8.
+- A table's OWNER bypasses its own policies unless `FORCE ROW LEVEL SECURITY`
+  is set. 18 tables were owned by `vanigtm_app` — migration 236 forced 17.
+- Reaching the DB outside a skill: `withTenantClient(pool, tenantId, fn)` from
+  `db/query.ts`. Raw `pool.query` against an RLS table returns nothing.
 - `gt_events` has RLS **disabled by design** (migration 185) — it is the
   cross-tenant bus the worker polls. `gt_prompts` has no RLS — system prompts
   are readable by all tenants.
