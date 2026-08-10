@@ -245,6 +245,61 @@ invisible, and `INSERT … (NULL, 'x')` refused.
 > platform-tag creation needs a separate maintenance role, a `SECURITY DEFINER`
 > function, or that GUC. It still works today under the superuser.
 
+## 3.2 The third bug, and the one a document could not have found
+
+**Found 2026-08-10 by running the isolation test against production.** It is
+the reason that test exists.
+
+`gt_campaigns` failed checks 2, 3, 4, 6 and 7 — one row was visible and
+writable from the wrong tenant, and visible with no tenant context at all —
+while its policy read perfectly and check 10 confirmed every policy is guarded.
+
+**A table's OWNER is exempt from its own RLS policies unless the table is set
+to `FORCE ROW LEVEL SECURITY`.** `gt_campaigns` is owned by `vanigtm_app`. So
+the policies are correct, enabled, and simply do not apply to the one role that
+matters.
+
+Reproduced locally to confirm the mechanism rather than infer it:
+
+| `gt_campaigns` owned by | rows visible, no tenant context |
+|---|---|
+| `vikuna_admin` | denied |
+| **`vanigtm_app`** | **2 — policy bypassed** |
+| `vanigtm_app` + `FORCE ROW LEVEL SECURITY` | 0 |
+
+This was already half-known: `scripts/grant-vanigtm-app.sql` notes in passing
+that "gt_agent_runs is already owned by vanigtm_app". What was not noticed is
+what ownership *does* to RLS.
+
+### Find them all
+
+```sql
+SELECT c.relname, pg_get_userbyid(c.relowner) AS owner,
+       c.relrowsecurity AS rls, c.relforcerowsecurity AS forced
+FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' AND c.relkind = 'r'
+  AND c.relrowsecurity AND NOT c.relforcerowsecurity
+  AND pg_get_userbyid(c.relowner) <> 'vikuna_admin'
+ORDER BY 1;
+```
+
+### Fix
+
+Either is sufficient; prefer the second for consistency with every other table.
+
+```sql
+ALTER TABLE gt_campaigns FORCE ROW LEVEL SECURITY;   -- keeps ownership
+ALTER TABLE gt_campaigns OWNER TO vikuna_admin;      -- preferred
+```
+
+Reassigning ownership drops the app role's grants, so re-run
+`scripts/grant-vanigtm-app.sql` afterwards.
+
+**This is now check 13 of the isolation test**, so it cannot be reintroduced
+silently by a future migration that creates a table as the wrong role.
+
+---
+
 ## 4. What enforcement actually buys — measured, not asserted
 
 Same database, same statements, two roles.

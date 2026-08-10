@@ -339,30 +339,53 @@ BEGIN
     -- The two functions on the live lead-capture path. gt_next_seq is the
     -- risky one: NOT security definer, and it writes gt_seq_counters. If the
     -- app role lacks INSERT/UPDATE there, VaNi stops capturing leads.
+    --
+    -- BOTH WRITE, so both are wrapped in the sentinel-rollback pattern. An
+    -- earlier version did not, and running it against production consumed a
+    -- real sequence number — worse, it SELF-SEEDED a gt_seq_counters row with
+    -- the auto-derived prefix VANI instead of LEAD, which vani_ensure_seq_
+    -- prefixes (ON CONFLICT DO NOTHING) then cannot correct. A test must not
+    -- change the thing it is measuring.
+    v_rows := NULL;
     BEGIN
         PERFORM set_tenant_context(a_id::text);
-        txt := gt_next_seq(a_id, 'vani_lead');
+        BEGIN
+            txt := gt_next_seq(a_id, 'vani_lead');
+            RAISE EXCEPTION 'ROLLBACK_SENTINEL';
+        EXCEPTION
+            WHEN raise_exception THEN NULL;          -- sentinel; txt is set
+            WHEN OTHERS THEN txt := 'ERR: ' || SQLERRM;
+        END;
+
         IF txt ~ '^[A-Z]+-[0-9]+$' THEN
             INSERT INTO _rls_results VALUES (8, 'gt_next_seq works as the app role',
-                'PASS', 'returned ' || txt);
+                'PASS', 'returned ' || txt || ' (rolled back, no number consumed)');
         ELSE
             INSERT INTO _rls_results VALUES (8, 'gt_next_seq works as the app role',
-                'FAIL', 'returned ' || coalesce(txt, 'NULL'));
+                'FAIL', coalesce(txt, 'NULL')
+                || '  <- likely a missing grant on gt_seq_counters');
         END IF;
     EXCEPTION WHEN OTHERS THEN
         INSERT INTO _rls_results VALUES (8, 'gt_next_seq works as the app role',
-            'FAIL', SQLERRM || '  <- likely a missing grant on gt_seq_counters');
+            'FAIL', SQLERRM);
     END;
 
     BEGIN
         PERFORM set_tenant_context(a_id::text);
-        SELECT vani_ensure_tag(a_id) INTO c;
+        BEGIN
+            SELECT vani_ensure_tag(a_id) INTO c;
+            RAISE EXCEPTION 'ROLLBACK_SENTINEL';
+        EXCEPTION
+            WHEN raise_exception THEN NULL;          -- sentinel; c is set
+            WHEN OTHERS THEN c := NULL; txt := SQLERRM;
+        END;
+
         IF c IS NOT NULL THEN
             INSERT INTO _rls_results VALUES (9, 'vani_ensure_tag works as the app role',
-                'PASS', 'tag id ' || c);
+                'PASS', 'tag id ' || c || ' (rolled back if it had to create one)');
         ELSE
             INSERT INTO _rls_results VALUES (9, 'vani_ensure_tag works as the app role',
-                'FAIL', 'returned NULL');
+                'FAIL', coalesce(txt, 'returned NULL'));
         END IF;
     EXCEPTION WHEN OTHERS THEN
         INSERT INTO _rls_results VALUES (9, 'vani_ensure_tag works as the app role',
@@ -426,6 +449,35 @@ BEGIN
              ELSE c || ' table(s): ' || txt
                   || '   <- check each against the exemption register'
         END);
+
+    ---------------------------------------------------------------- check 13
+    -- A table's OWNER is exempt from its own RLS policies unless FORCE ROW
+    -- LEVEL SECURITY is set. So a table owned by the application role has
+    -- perfect-looking policies that never apply to the only role that matters.
+    --
+    -- This check exists because the run against production found exactly that:
+    -- gt_campaigns is owned by vanigtm_app, and checks 2-7 all failed on it
+    -- while every policy read correctly. Reproduced locally — owned by the app
+    -- role, 2 rows visible with no context; add FORCE, 0 rows.
+    SELECT count(*), string_agg(x.relname || ' (owner ' || x.own || ')', ', ' ORDER BY x.relname)
+      INTO c, txt
+      FROM (SELECT cl.relname, pg_get_userbyid(cl.relowner) AS own
+              FROM pg_class cl
+              JOIN pg_namespace nn ON nn.oid = cl.relnamespace
+             WHERE nn.nspname = 'public' AND cl.relkind = 'r'
+               AND cl.relrowsecurity AND NOT cl.relforcerowsecurity
+               AND pg_get_userbyid(cl.relowner) = current_user) x;
+
+    IF c = 0 THEN
+        INSERT INTO _rls_results VALUES (13, 'no RLS table is owned by this role',
+            'PASS', 'ownership does not bypass any policy');
+    ELSE
+        INSERT INTO _rls_results VALUES (13, 'no RLS table is owned by this role',
+            'FAIL', c || ' table(s) owned by ' || current_user
+            || ' with RLS but not FORCED, so its policies do not apply: ' || txt
+            || '   <- fix with ALTER TABLE ... FORCE ROW LEVEL SECURITY, '
+            || 'or reassign ownership to vikuna_admin');
+    END IF;
 
     DROP TABLE IF EXISTS _rls_scratch;
 
