@@ -1,12 +1,21 @@
 # RLS Cutover Checklist — switch the app from `vikuna_admin` → `vanigtm_app`
 
-> **Status:** DRAFT / artifact. Do **not** execute until after Phase 4.
-> **Why:** The app/worker currently connects as `vikuna_admin`
-> (`rolsuper=true`, `rolbypassrls=true`), so every RLS policy is bypassed at
-> runtime. Tenant isolation rests entirely on the app-layer `WHERE tenant_id`.
-> Switching `DB_PRIMARY` to the least-privilege `vanigtm_app`
-> (`rolsuper=false`, `rolbypassrls=false`) makes RLS actually enforce, giving
-> back the "both layers required" safety net CLAUDE.md mandates.
+> **Status: EXECUTED on production, 2026-08-10.** `DB_PRIMARY` points at
+> `vanigtm_app` and login has been confirmed working under it. This is no
+> longer a draft — it is the record of a cutover that happened, kept for the
+> remaining verification (below), for other environments, and for the rollback.
+>
+> **Why:** the app/worker used to connect as `vikuna_admin`
+> (`rolsuper=true`, `rolbypassrls=true`), so every RLS policy was bypassed at
+> runtime and tenant isolation rested entirely on the app-layer
+> `WHERE tenant_id`. `vanigtm_app` (`rolsuper=false`, `rolbypassrls=false`)
+> makes RLS actually enforce, giving back the "both layers required" safety net
+> CLAUDE.md mandates.
+>
+> **Still outstanding after the switch:** re-run
+> `deploy/vani-main-vps/rls-two-tenant-test.sql` under the restricted role, and
+> exercise **signup**, the **assessment flow** and the **skills executor**.
+> Login is done. Those three have still never run as `vanigtm_app`.
 
 ---
 
@@ -27,8 +36,103 @@
       Review its post-grant output — `vanigtm_app` should show
       SELECT/INSERT/UPDATE/DELETE on the sampled tables and EXECUTE on
       `set_tenant_context`.
+- [ ] **Give `vanigtm_app` a password, and prove it before you need it.**
+      This step was missing until 2026-08-10 and cost a blocked morning.
+      `scripts/grant-vanigtm-app.sql` does **not** create the role or set a
+      password — it only issues GRANTs, and refuses to run if the role is
+      absent. Nothing else in this repo sets one either, so the role can exist,
+      be correctly configured, and still be unable to log in.
+
+      Check what it actually has:
+      ```sql
+      SELECT rolname, rolcanlogin, rolvaliduntil FROM pg_roles
+       WHERE rolname = 'vanigtm_app';
+      SELECT rolname, rolpassword IS NOT NULL AS has_password,
+             left(rolpassword, 14)            AS hash_kind
+        FROM pg_authid WHERE rolname = 'vanigtm_app';
+      ```
+      `rolcanlogin` must be true, `rolvaliduntil` null or in the future, and
+      `hash_kind` must match what `pg_hba.conf` demands.
+
+      **The encryption trap.** If `password_encryption` is `md5` while
+      `pg_hba.conf` requires `scram-sha-256` (or the reverse), setting a
+      password stores a hash the server will not accept — and the failure is
+      `28P01 invalid_password`, indistinguishable from typing it wrong. Pin it
+      in the same session:
+      ```sql
+      SHOW password_encryption;
+      SELECT line_number, type, database, user_name, address, auth_method
+        FROM pg_hba_file_rules ORDER BY line_number;
+
+      SET password_encryption = 'scram-sha-256';   -- match pg_hba
+      ALTER ROLE vanigtm_app WITH LOGIN PASSWORD '<strong password>';
+      ```
+
 - [ ] Prepare a `vanigtm_app` connection string. Keep the `vikuna_admin`
       string as `DB_PRIMARY_ADMIN` — migrations still run as admin.
+
+- [ ] **Test the connection string before it goes anywhere near `.env`.**
+      `DB_PRIMARY` is parsed as a URI (`backend/src/db/pool.ts`), so any of
+      `@ : / ? # [ ] %` in the password must be percent-encoded or the parse
+      splits in the wrong place — which also surfaces as `28P01`, with a
+      perfectly correct password. From the machine that runs the backend:
+      ```bash
+      psql "postgresql://vanigtm_app:<encoded-pw>@<host>:5432/vani_gtm_db?sslmode=require" \
+           -c "SELECT current_database(), current_user"
+      ```
+      Only when this returns `vanigtm_app` should the string go into `.env`.
+
+---
+
+## Reading a failure at cutover
+
+Two error codes, two completely different problems. Telling them apart first
+saves an hour of looking in the wrong place:
+
+| Code | Means | Look at |
+|---|---|---|
+| `28P01` `invalid_password` | a `pg_hba.conf` rule **matched** and the password check failed | the password, its encryption, and URI escaping — pre-flight above |
+| `28000` `invalid_authorization_specification` | **no** `pg_hba.conf` rule matched this host/user/database | `pg_hba_file_rules`, then reload |
+
+And one that looks like RLS but is not. If login returns *"Invalid email or
+password"* **with an attempt counter** (`N attempt(s) remaining`), the lookup
+on `vn_users` **succeeded** — `login.service.ts` only reaches the counter after
+finding the row, passing `is_active`, and passing the lockout check. RLS
+blocking the lookup returns zero rows and a message with **no** counter. So a
+counter means reads *and* writes on `vn_users` are working under the restricted
+role, and the failure is `bcrypt.compare`, not the cutover.
+
+When that happens, the likely cause is one the auth code has independently:
+`login.service.ts` looks up `WHERE LOWER(u.email) = $1` with **no tenant
+filter** and takes `rows[0]`. If the same email exists under two tenants, which
+row you get is not stable — every failed attempt updates
+`failed_login_count`, rewriting the tuple and moving it, so a sequential scan
+can return the other row next time. `seed-owner.ts` refuses to run in this
+situation for exactly this reason. Check for it before suspecting anything else:
+
+```sql
+SELECT count(*) OVER () AS rows_for_this_email,
+       id, tenant_id, is_active, failed_login_count,
+       length(password_hash) AS hash_len, left(password_hash, 4) AS hash_prefix
+  FROM vn_users WHERE lower(email) = lower('<email>');
+```
+
+`hash_len` must be 60 and `hash_prefix` one of `$2a$` / `$2b$` / `$2y$`.
+Clear a burnt counter with:
+
+```sql
+UPDATE vn_users SET failed_login_count = 0, locked_until = NULL, updated_at = now()
+ WHERE lower(email) = lower('<email>');
+```
+
+**For the record: the `vn_*` auth tables carry no RLS at all.** No migration in
+this repo enables it on `vn_users`, and migration 236 could not have — its
+selection is `WHERE c.relrowsecurity AND NOT c.relforcerowsecurity AND
+owner <> 'vikuna_admin'`, so a table with RLS off is invisible to it. This is
+deliberate and registered in `docs/db/rls-status.md` §9: authentication must
+resolve which tenant a user belongs to *before* a tenant context can exist, so
+scoping those tables is circular. Login failing after the cutover is therefore
+never an RLS problem — check it against this section, not against the policies.
 
 ---
 
