@@ -254,6 +254,20 @@ the reason that test exists.
 writable from the wrong tenant, and visible with no tenant context at all —
 while its policy read perfectly and check 10 confirmed every policy is guarded.
 
+**It is not one table. It is eighteen**, all owned by `vanigtm_app`:
+
+```
+gt_activity_feed   gt_agent_runs      gt_campaign_metrics   gt_campaigns
+gt_channels        gt_contact_assignments   gt_persona_signals   gt_personas
+gt_sequence_steps  gt_sequences       gt_stage_log          gt_step_templates
+ki_pulse_config    ki_pulses          ki_pulse_sessions
+ki_pulse_session_actions   ki_pulse_session_gaps   ki_pulse_session_observations
+```
+
+That is the campaign/sequence/persona cluster and the entire pulse cluster —
+six of the nine live `ki_*` tables. Every one of them would be a cross-tenant
+leak the moment `DB_PRIMARY` points at `vanigtm_app`.
+
 **A table's OWNER is exempt from its own RLS policies unless the table is set
 to `FORCE ROW LEVEL SECURITY`.** `gt_campaigns` is owned by `vanigtm_app`. So
 the policies are correct, enabled, and simply do not apply to the one role that
@@ -283,17 +297,23 @@ WHERE n.nspname = 'public' AND c.relkind = 'r'
 ORDER BY 1;
 ```
 
-### Fix
+### Fix — `backend/migrations/236_rls_force_on_app_owned.sql`
 
-Either is sufficient; prefer the second for consistency with every other table.
+Forces RLS on every table owned by a role other than `vikuna_admin`. `FORCE`
+rather than reassigning ownership, because a change of owner drops the app
+role's grants and needs `scripts/grant-vanigtm-app.sql` re-run. Superusers
+still bypass, so `vikuna_admin` is unaffected and this is safe to deploy ahead
+of the cutover. Idempotent.
 
-```sql
-ALTER TABLE gt_campaigns FORCE ROW LEVEL SECURITY;   -- keeps ownership
-ALTER TABLE gt_campaigns OWNER TO vikuna_admin;      -- preferred
-```
+**It deliberately skips `gt_agent_runs`.** The worker writes that table through
+the raw pool with no tenant context (`agent.runner.ts`, 8 raw `pool.query`
+sites, `UPDATE gt_agent_runs SET … WHERE id = $1`). Forcing RLS there makes
+those writes match zero rows under `vanigtm_app` and the agent-run lifecycle
+silently stops recording. Same class of fix as the ETL pipeline and the report
+route: move it onto `withTenantClient` first, then force it.
 
-Reassigning ownership drops the app role's grants, so re-run
-`scripts/grant-vanigtm-app.sql` afterwards.
+**So `gt_agent_runs` is the one remaining known bypass**, and the third item on
+the pre-cutover code list alongside the storyteller share route.
 
 **This is now check 13 of the isolation test**, so it cannot be reintroduced
 silently by a future migration that creates a table as the wrong role.
