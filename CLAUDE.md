@@ -315,31 +315,37 @@ cross-referenced to call sites. Read it before changing schema, retiring
   bodies, so six functions still reference relations that no longer exist.
   Listed as candidates in §5 — **nothing has been deleted**.
 
-`docs/db/ki-disposition.md` classifies every `ki_*` table. **Retained: nine
-live** — the ETL import pipeline (`ki_import_staging`, `ki_import_sessions`,
-`ki_file_uploads`) and the pulse cluster (`ki_pulse_config`, `ki_pulses`,
-`ki_pulse_sessions`, `ki_pulse_session_actions`, `ki_pulse_session_gaps`,
-`ki_pulse_session_observations`). **Four more are pinned** by a foreign key
-from a live table and cannot be renamed: `ki_clients`, `ki_contacts`,
-`ki_contact_snapshots`, `ki_ext_ref_types`. Note
-`vn_tenants.ext_ref_type_code → ki_ext_ref_types(code)` — the only FK from the
-`gt_*`/`vn_*` side into `ki_*` anywhere in the schema, and the one thing that
-stops "move all `ki_*` out" from being a clean cut. Phase 1 item.
+`docs/db/ki-disposition.md` — **RESOLVED, nothing to rename.** Production has
+exactly **nine** `ki_*` tables and all nine are live: the ETL import pipeline
+(`ki_import_staging`, `ki_import_sessions`, `ki_file_uploads`) and the pulse
+cluster (`ki_pulse_config`, `ki_pulses`, `ki_pulse_sessions`,
+`ki_pulse_session_actions`, `ki_pulse_session_gaps`,
+`ki_pulse_session_observations`). No orphans, no KI-Prime data to export, no
+two-week rename clock. `233_ki_deprecate_orphans.sql` stays a no-op; leave it.
 
-The other 29 are rename candidates. **The rename has not run**: it needs live
-row counts and a production table list, and production does not match the
-migration files — locally there are 42 `ki_*` tables, production looks like a
-dozen. `backend/migrations/233_ki_deprecate_orphans.sql` is written, tested,
-and ships with an empty candidate list (a safe no-op) until those numbers
-arrive. Never fill it from the doc's analysis table; fill it from production.
+**Production is NOT the migration files.** Rebuilding locally from
+`migrations/*.sql` yields 42 `ki_*` tables and 114 total; production has 9 and
+81. `gt_*` (58) and `vn_*` (14) match exactly — the whole divergence is `ki_*`.
+Anything measured on a local rebuild is a hypothesis about production until
+checked. `deploy/vani-main-vps/verify-phase0-findings.sql` is the read-only
+script that checks it.
 
-`docs/db/rls-status.md` covers tenant isolation. **The runtime bypasses RLS
-because `vikuna_admin` is a SUPERUSER, not because of the `BYPASSRLS` flag** —
-it does not have that flag. Any application role must be `NOSUPERUSER
-NOBYPASSRLS` or the switch changes nothing.
+`docs/db/rls-status.md` covers tenant isolation. In production `vikuna_admin`
+is **both** `SUPERUSER` and `BYPASSRLS`, so any replacement role must be
+`NOSUPERUSER NOBYPASSRLS` — dropping one attribute alone changes nothing.
+(An earlier draft claimed the role lacked `BYPASSRLS`; that was read off a
+local rebuild and was wrong about production.)
 
-Migration 234 fixes the bug that would have broken the cutover on the second
-query: 68 policies cast `current_setting(...)::uuid` unguarded, and because
+**Do not create a new app role without looking first.** Production already has
+`vanigtm_app`, `vn_app`, `ki_app`, `fk_app`, `kd_app`, `kd_readonly` and
+`vikuna_api`, all non-superuser and non-bypassrls. `vanigtm_app` is probably
+the intended one; check its grants before minting another.
+
+Migration 234 — **a no-op against production; keep it for fresh builds.**
+Production's policies already use the `NULLIF` form (unguarded=0, guarded=54 of
+55) and no policy there reads the legacy `app.tenant_id` GUC. The bug is real in
+the migration files, so any database built from them needs the fix; the running
+database does not. It fixes: 68 policies cast `current_setting(...)::uuid` unguarded, and because
 `set_config(..., is_local := true)` leaves the GUC **defined and empty** after
 COMMIT (not undefined), the first tenant-scoped transaction on a pooled
 connection poisoned it with `invalid input syntax for type uuid: ""`. Policies
@@ -351,7 +357,10 @@ dormant.
 the app role, never as postgres. All 11 checks pass on the rebuilt schema, and
 it was verified to fail when RLS is disabled.
 
-Migration 235 fixes the second bug: `gt_tags` and `gt_content_kinds` use
+Migration 235 — **this is the one production actually needs.** Confirmed live:
+`gt_tags` holds 1 platform row of 4, and `gt_content_kinds` holds 8 of 8, so
+that whole table goes dark for every tenant the moment RLS is enforced without
+it. The bug: `gt_tags` and `gt_content_kinds` use
 `tenant_id IS NULL` for platform rows, and `tenant_id = <uuid>` never matches
 NULL — so platform tags vanished and `gt_content_kinds` (all 8 rows platform)
 became invisible entirely. Each table now has a `FOR SELECT` policy admitting

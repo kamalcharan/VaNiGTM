@@ -7,7 +7,7 @@
 --
 -- ── RUN IT AS THE APPLICATION ROLE, NOT AS postgres ────────────────────────
 --
---   PGPASSWORD=<pw> psql -h <host> -U vani_app -d <db> \
+--   PGPASSWORD=<pw> psql -h <host> -U vanigtm_app -d vani_gtm_db \
 --        -f rls-two-tenant-test.sql
 --
 -- Running it as a superuser is worse than not running it: every assertion

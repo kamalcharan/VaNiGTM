@@ -3,17 +3,83 @@
 **Phase 0, Item 2.** Classify every `ki_*` table as live, KI-Prime data, or
 orphaned; rename orphans to `_deprecated_ki_*`; drop nothing.
 
-**Status: analysis complete, rename NOT executed.** Three of the four signals
-are gathered and settled below. The fourth (rows written in the last 90 days)
-and the production table list both require the production database, which this
-sandbox cannot reach. §6 carries the SQL to finish it and §7 the migration to
-run afterwards.
+---
+
+## 0. RESOLVED — there is nothing to rename (2026-08-10)
+
+The production table list arrived. It settles this item:
+
+```
+ki_file_uploads(-1)   ki_import_sessions(-1)   ki_import_staging(5945)
+ki_pulse_config(-1)   ki_pulses(-1)            ki_pulse_sessions(-1)
+ki_pulse_session_actions(-1)  ki_pulse_session_gaps(-1)
+ki_pulse_session_observations(-1)
+```
+
+**Nine tables. Exactly the nine classified "live" in §3.1.** Every candidate in
+§3.3 — all 29 of them — and every FK-pinned table in §3.2 **does not exist in
+production.** They are artifacts of rebuilding the schema from migration files
+that production was never fully built from.
+
+So:
+
+| Outcome | |
+|---|---|
+| Orphans to rename | **none** |
+| KI-Prime data to export | **none** |
+| Live `ki_*` tables to keep | **9** — the ETL import pipeline and the pulse cluster |
+| Action required from migration 233 | **none.** It stays a no-op. |
+
+**Migration 233 should not be run and does not need a candidate list.** Leave it
+in the tree as the tested mechanism if a future environment ever does carry the
+orphans; against this database it has no work to do. There is no two-week
+rename-and-wait clock to start.
+
+### Three claims in this document that production disproved
+
+Recorded rather than deleted, because the reasoning is a useful warning:
+
+1. **"Production holds at least twelve `ki_*` tables."** §1.1 inferred this from
+   foreign keys: the live pulse tables carry FKs onto `ki_clients`,
+   `ki_contacts` and `ki_contact_snapshots` in the rebuilt schema, and an FK
+   cannot reference an absent table. Production has nine and none of those three
+   exist — so the production pulse tables simply **do not carry those
+   constraints**. The inference was sound about the rebuild and wrong about
+   production. A constraint observed locally is not evidence about a database
+   built by a different path.
+2. **`ki_ext_ref_types` pins `vn_tenants`.** §3.2 called
+   `vn_tenants.ext_ref_type_code → ki_ext_ref_types(code)` "the only FK from the
+   `gt_*`/`vn_*` side into `ki_*` anywhere in the schema" and flagged it as the
+   one thing blocking a clean Phase 1 cut. **That table does not exist in
+   production, so neither does the coupling.** The clean cut is available.
+3. **The near-duplicate pairs** (`ki_contact_snapshot` vs `ki_contact_snapshots`,
+   `ki_scheduler_configs` vs `ki_job_scheduler_configs`) exist only in the
+   rebuild. Nothing to reconcile.
+
+`ki_import_staging` is the only `ki_*` table production has bothered to analyze
+(5,945 rows); the rest show `-1`, meaning never analyzed — consistent with the
+pulse cluster being provisioned but lightly used.
+
+Everything from §1 onward is the original analysis against the local rebuild.
+It is kept because §3.1's live-table reasoning is what the production list
+confirms, and because the signal methodology in §1.2 is reusable. **Read §0
+first and treat the rest as working.**
+
+---
+
+**Status: RESOLVED (§0). No rename needed.** The original analysis below reached
+"29 candidates pending row counts"; the production list showed those 29 tables
+do not exist there at all.
 
 ---
 
 ## 1. Two blocking corrections to the work order's premise
 
-### 1.1 There are 42 tables, not 41 — and production almost certainly has far fewer
+### 1.1 There are 42 tables, not 41 — and production has 9
+
+> **Superseded by §0.** Production has exactly the nine tables the WS2.1
+> snapshot listed. The "at least twelve" inference below was wrong — see §0.
+> Kept for the reasoning.
 
 The work order says "41 tables — roughly a third of the schema." The schema
 rebuilt from `backend/migrations/*.sql` (all 125 files applied) has **42**

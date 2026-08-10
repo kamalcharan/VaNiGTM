@@ -273,8 +273,15 @@ migration, not a one-line change.
 
 `vn_cleanup_expired_sessions(p_retention_days)` exists, is correct, and has no
 caller and no scheduler entry. Unless cleanup happens elsewhere, expired refresh
-tokens accumulate indefinitely. Confirm against production row counts — this is
-the one finding in this document with a live operational cost.
+tokens accumulate indefinitely.
+
+**Confirmed against production, 2026-08-10:** `vn_refresh_tokens` holds **334
+rows, of which 24 are expired but still flagged `is_active`**. So the function
+genuinely never runs. The scale is small — this is housekeeping, not an
+incident — but the 24 stale-active rows are the part worth noting: any logic
+that trusts `is_active` without also checking `expires_at` is reading 24 rows
+as live sessions that are not. Cheapest fix is a cron calling the function that
+already exists.
 
 ---
 

@@ -4,45 +4,93 @@
 *make the bypass role unnecessary for normal operation, and make the remaining
 exceptions explicit, few, and documented.*
 
-**Status: the mechanism is proven, the blocking bug is found and fixed, the
-cutover has not been performed.** Production cannot be reached from this
-sandbox; the work was done in a local rebuild, which is also what step 1 of the
-work order requires ("work in a restored copy, never production"). §8 is the
-cutover runbook.
+**Status: mechanism proven, code fixes done, cutover not performed.** The work
+was done in a local rebuild — which is what step 1 of the work order requires
+("work in a restored copy, never production").
+
+> **Read §1, §2 and §3 first.** Production numbers arrived on 2026-08-10 and
+> disproved three things this document originally asserted, including its
+> headline "correction to the premise", which was itself the thing that needed
+> correcting. Where local and production disagree, production wins. The net
+> effect is that the cutover is **less** dangerous than this document first
+> claimed: the policy bug does not exist in production, the role and grant
+> script already exist, and only migration 235 is actually required.
 
 ---
 
-## 1. A correction to the premise
+## 1. The role — the work order was right, an earlier draft of this doc was not
 
-The work order says the policies do nothing "because the runtime connects as a
-`BYPASSRLS` role." The attribute is not the cause.
+**Corrected 2026-08-10 against production.** An earlier version of this section
+claimed `vikuna_admin` does *not* hold `BYPASSRLS` and bypasses RLS purely by
+being a `SUPERUSER`, and called that "a correction to the premise." That was
+read off a **locally rebuilt** schema, where the role happens to be created
+without the attribute. Production says otherwise:
 
 ```
-rolname       | rolsuper | rolbypassrls
-vikuna_admin  | t        | f
+vikuna_admin   super=true   bypassrls=true      <- production
+vikuna_admin   super=true   bypassrls=false     <- local rebuild (the artifact)
 ```
 
-`vikuna_admin` does **not** have `BYPASSRLS`. It is a **SUPERUSER**, and
-superusers bypass row-level security unconditionally, regardless of that flag.
+The work order's original wording was accurate. There was no premise to correct.
 
-This matters practically: creating a role with `NOBYPASSRLS` and stopping there
-would change nothing if the role were still `SUPERUSER`. The application role
-must be **`NOSUPERUSER NOBYPASSRLS`**, and the test in §6 checks both before it
-asserts anything else.
+The **practical** guidance is unchanged and still worth stating, because
+production holds *both* attributes: dropping `BYPASSRLS` alone would leave the
+role a superuser and change nothing. The application role must be
+**`NOSUPERUSER NOBYPASSRLS`**, and check 0 of the isolation test (§6) verifies
+both before asserting anything else.
+
+### Application roles already exist — do not create a new one blind
+
+Production also has seven non-superuser, non-bypassrls login roles that the
+local rebuild does not:
+
+```
+vanigtm_app   vn_app   ki_app   fk_app   kd_app   kd_readonly   vikuna_api
+      all: super=false  bypassrls=false
+```
+
+`vanigtm_app` is the role this cutover was always meant to use — the repo
+already carries `scripts/grant-vanigtm-app.sql` and
+`docs/rls-cutover-checklist.md` for exactly that, both of which correctly
+describe `vikuna_admin` as `rolsuper=true, rolbypassrls=true`. **Do not create
+a new role; see §8.**
 
 ---
 
 ## 2. Where the schema stands
 
-| | Count |
+**Two columns, because they disagree.** Everything in this document below §2
+was measured on the local rebuild. Production is consistently *smaller* — it
+was evidently bootstrapped from a subset rather than by replaying every
+migration, even though `vn_migrations` records the same 125 filenames in both.
+Trust the production column.
+
+| | Local rebuild | **Production** |
+|---|---|---|
+| Base tables in `public` | 114 | **81** |
+| — `ki_*` | 42 | **9** |
+| — `gt_*` | 58 | 58 |
+| — `vn_*` | 14 | 14 |
+| Tables with RLS enabled | 76 | **53** |
+| Policies total | 77 | **55** |
+| Triggers | 29 | **22** |
+| Project-authored functions | 29 | **29** ✅ |
+| `GENERATED ALWAYS` columns | 9 | **8** |
+
+The `gt_*` and `vn_*` counts match exactly; the entire divergence is `ki_*` and
+what hangs off it. The missing generated column is `ki_contacts.normalized_name`
+— the table does not exist in production, so the bug in §6.1 of
+`triggers-and-functions.md` has no data to affect there.
+
+Local-rebuild breakdown, retained because the `gt_*`/`vn_*` half of it holds:
+
+| | Count (local) |
 |---|---|
-| Base tables in `public` | 114 |
 | — with a `tenant_id` column | 94 |
 |  · with RLS enabled | **75** |
 |  · **without RLS** | **19** ⚠️ |
 | — with no `tenant_id` column | 20 |
 |  · with RLS enabled | 1 (`gt_channel_types`, read-all) |
-| Policies total | 77 |
 
 Policies by GUC — `set_tenant_context()` sets **both** names, and both are in
 live use:
@@ -59,7 +107,31 @@ already reads.
 
 ---
 
-## 3. The bug that would have taken the site down
+## 3. The bug that would have taken the site down — but not in production
+
+> **Verified 2026-08-10: production is already safe from this one.**
+>
+> ```
+> unguarded=0   guarded=54   total=55      <- production
+> unguarded=68  guarded=0    total=77      <- local rebuild
+> ```
+>
+> Every policy in production already uses the `NULLIF` form, and the legacy
+> `app.tenant_id` GUC is used by **zero** policies there (54 of 55 read
+> `app.current_tenant_id`; the remaining one is the read-all lookup). So
+> **migration 234 is a no-op against production** — it rewrites 54 policies to
+> definitions identical to what they already are. It stays in the tree because
+> it is idempotent, because it is what makes a *fresh* database from these
+> migration files correct, and because the migration files are what any new
+> environment is built from.
+>
+> The bug below is therefore real in the **migration files**, not in the running
+> database. Keep it fixed; stop treating it as a production hazard.
+>
+> This also removes the one thing that made the cutover look dangerous. Combined
+> with §1, the picture is much better than this document originally painted.
+
+
 
 Switching to a non-superuser role broke the assessment flow on the **second
 query**, with:
@@ -114,7 +186,21 @@ safe to deploy ahead of the cutover.
 
 ---
 
-## 3.1 The second bug: platform rows disappear
+## 3.1 The second bug: platform rows disappear — CONFIRMED in production
+
+> **Verified 2026-08-10. This one is real on the live database.**
+>
+> ```
+> gt_tags:           1 platform row of 4      <- production
+> gt_content_kinds:  8 platform rows of 8     <- production
+> ```
+>
+> All eight `gt_content_kinds` rows are platform rows, so **that entire table
+> goes dark for every tenant** the moment RLS is enforced without migration 235.
+> `gt_tags` loses one row — the platform tag naming common-pool deliveries.
+>
+> Of the two migrations, **235 is the one production actually needs.** 234 is
+> housekeeping for the migration files (§3); 235 prevents a live regression.
 
 Migration 234 made the policies safe. It also made a latent problem visible.
 
@@ -282,7 +368,7 @@ cutover.
 against a restored copy, then again after the production cutover:
 
 ```bash
-PGPASSWORD=<pw> psql -h <host> -U vani_app -d <db> -f rls-two-tenant-test.sql
+PGPASSWORD=<pw> psql -h <host> -U vanigtm_app -d vani_gtm_db -f rls-two-tenant-test.sql
 ```
 
 Result against the rebuilt schema with migration 234 applied:
@@ -370,51 +456,60 @@ not doing work for elegance.
 
 ---
 
-## 8. Cutover runbook — not yet performed
+## 8. Cutover runbook — defer to the checklist that already exists
 
-Ordered. Do not reorder; step 2 is what makes step 4 survivable.
+**Corrected 2026-08-10.** An earlier version of this section told you to
+`CREATE ROLE vani_app`. That was wrong, and it duplicated work already done:
 
-1. **Backup and verify the restore.** `docs/db/ki-disposition.md` §6.1. Keep the
-   scratch database — steps 3 and 5 run against it.
-2. **Deploy migrations 234 and 235 to production**, in that order, together
-   with the code changes. All are inert under the current superuser, so this is
-   a normal deploy with no behaviour change. Verify:
-   ```sql
-   SELECT count(*) FILTER (WHERE qual LIKE '%NULLIF%') AS guarded, count(*) AS total
-     FROM pg_policies WHERE schemaname = 'public';
-   -- 235 splits gt_tags and gt_content_kinds into 2 policies each, so total
-   -- grows by 2 and one policy per table reads no setting.
-   ```
-3. ~~Convert the ETL files~~ — **done** (§5.2), along with the public report
-   route (§5.3). No outstanding code work blocks the cutover.
-4. **Create the application role.** Not in a migration — it is cluster-level and
-   carries a password that must not be in git.
-   ```sql
-   CREATE ROLE vani_app LOGIN PASSWORD '<from the secret store>'
-       NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
-   GRANT CONNECT ON DATABASE vani_gtm_db TO vani_app;
-   GRANT USAGE  ON SCHEMA public TO vani_app;
-   GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES    IN SCHEMA public TO vani_app;
-   GRANT USAGE, SELECT                  ON ALL SEQUENCES IN SCHEMA public TO vani_app;
-   -- so future migrations do not silently create tables vani_app cannot read
-   ALTER DEFAULT PRIVILEGES IN SCHEMA public
-       GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO vani_app;
-   ALTER DEFAULT PRIVILEGES IN SCHEMA public
-       GRANT USAGE, SELECT ON SEQUENCES TO vani_app;
-   ```
-   `NOSUPERUSER` is not optional — see §1.
-5. **Run the isolation test against the scratch restore** as `vani_app` (§6).
-   All checks must pass.
-6. **Exercise the live paths by hand** against the scratch restore: signup,
-   login, the assessment flow end to end, an ETL import, a skills-executor call.
-   The work order's step 3. Only the assessment flow has been exercised so far,
-   and only against the rebuilt schema.
-7. **Switch production**: point `DB_PRIMARY` at `vani_app`, deploy, re-run the
-   isolation test against production, then smoke-test the funnel
-   (`deploy/vani-main-vps/smoke-test.sh`).
-8. **Keep `vikuna_admin` available.** Rollback is a connection-string change and
-   a restart: pointing `DB_PRIMARY` back at the superuser makes every policy
-   inert again regardless of how it is written. No migration needs reversing.
+- **`scripts/grant-vanigtm-app.sql`** already grants a least-privilege role
+  `vanigtm_app` everything it needs — tables, sequences, EXECUTE on functions
+  (including the `SECURITY DEFINER` `set_tenant_context`), plus
+  `ALTER DEFAULT PRIVILEGES` so future migrations do not silently create tables
+  the app cannot read. It is idempotent, refuses to run as anyone but
+  `vikuna_admin`, and grants no DDL.
+- **`docs/rls-cutover-checklist.md`** is the ordered cutover procedure, with
+  pre-flight, required fixes, proof steps and rollback.
+- **`vanigtm_app` already exists in production**, non-superuser and
+  non-bypassrls, along with six sibling roles.
+
+Both files also state `vikuna_admin` is `rolsuper=true, rolbypassrls=true` —
+which production confirms and this document previously got wrong (§1).
+
+**Use those two artifacts as the runbook.** What Phase 0 adds on top:
+
+| Step | Source | Phase 0 change |
+|---|---|---|
+| Backup + verified restore | `ki-disposition.md` §6.1 | unchanged — still first |
+| Grant the role | `scripts/grant-vanigtm-app.sql` | unchanged. Do **not** create a new role. |
+| Deploy migration 235 | new | **Required.** Platform rows go dark without it (§3.1) — confirmed live. |
+| Deploy migration 234 | new | Optional against production (already-guarded policies, §3) but harmless and keeps fresh builds correct. |
+| Required pre-cutover code fixes | checklist "REQUIRED pre-cutover fixes" | ETL and VaNi's `/r/:token` are **done** (§5.2, §5.3). The storyteller `gt_presentations` share route is **still open** — see below. |
+| Proof | checklist Tests 1–3, plus `deploy/vani-main-vps/rls-two-tenant-test.sql` | The Phase 0 test is stricter: 11 checks, run as the app role, verified to fail when RLS is off. Run both. |
+| Rollback | checklist | unchanged — point `DB_PRIMARY` back at `vikuna_admin`. |
+
+### The one code fix still outstanding
+
+The checklist flagged it before Phase 0 existed, and it is still unfixed:
+**`GET /share/:token` on `gt_presentations`** (storyteller-skill) reads the raw
+pool with no tenant context, so under `vanigtm_app` it returns 404 for every
+valid token.
+
+This is the *same bug* as VaNi's `/r/:token` (§5.3) — unsurprising, since
+`getReportByToken` was written to mirror `gt_presentations.share_token`. The
+VaNi one is fixed; the storyteller one is not. The fix used for VaNi is a
+fourth option beyond the checklist's (a)/(b)/(c): **resolve the owning tenant,
+then query inside `withTenantClient`, keeping the token as the authorisation.**
+That works for VaNi because every assessment runs under one known tenant. It
+does **not** transfer to `gt_presentations`, where any tenant can own a deck —
+so the checklist's recommendation (a), a `SECURITY DEFINER`
+`get_shared_deck(token)` scoped to `status = 'approved'`, remains the right
+answer there.
+
+### Still to exercise under the restricted role
+
+Signup, login and the skills executor. Only the assessment flow has been run
+end to end (against a local rebuild, passing). Do this against the scratch
+restore before switching production.
 
 ---
 
@@ -443,7 +538,7 @@ only as the documented rollback in step 8.
 
 | Condition | Status |
 |---|---|
-| App runs normally on a non-bypass role | ✅ **Locally.** The full assessment flow passes end to end under `vani_app` (`NOSUPERUSER NOBYPASSRLS`) — all checks including the public report page. ETL converted (§5.2); its 16 DB-backed landing tests pass. Signup/login and the skills executor are **not** yet exercised under the restricted role. |
+| App runs normally on a non-bypass role | ✅ **Locally.** The full assessment flow passes end to end under a `NOSUPERUSER NOBYPASSRLS` role — all checks including the public report page. ETL converted (§5.2); its 16 DB-backed landing tests pass. Signup/login and the skills executor are **not** yet exercised under the restricted role. |
 | Two-tenant test passes | ✅ 11/11, and verified to fail when isolation is broken. |
 | `docs/db/rls-status.md` lists every exemption with a justification | ✅ §9. |
 | Production switched | ❌ Not performed. Runbook in §8. |
