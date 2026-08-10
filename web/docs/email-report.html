@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Your assessment is ready</title>
+<!--
+  VaNi AI · report-delivery email (WS1.2)
+  Table-based, inline styles, no webfonts, no JS — Outlook/Gmail-safe.
+  Merge fields: {{name}} {{company}} {{score}} {{band}} {{band_color}}
+  {{band_bg}} {{mode1_name}} {{mode1_pct}} {{mode1_line}} {{mode2_name}}
+  {{mode2_pct}} {{mode3_name}} {{mode3_pct}} {{report_url}} {{ref}}
+  Sample values shown. Plain-text alternative: email-report.txt
+-->
+</head>
+<body style="margin:0;padding:0;background-color:#eef0f6;">
+<div style="display:none;max-height:0;overflow:hidden;">Your AI initiative assessment: 54/100, band Structural — top exposure: Ownership vacuum. Full report inside.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#eef0f6;">
+<tr><td align="center" style="padding:28px 12px;">
+  <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:100%;">
+
+    <!-- header -->
+    <tr><td style="background-color:#1f2e5c;border-radius:12px 12px 0 0;padding:20px 32px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="font-family:Arial,Helvetica,sans-serif;font-size:17px;font-weight:bold;color:#ffffff;">
+          Va<span style="color:#67e8f9;">N</span>i AI &nbsp;<span style="font-weight:normal;font-size:12px;color:#b8c2e0;">by Vikuna Technologies</span></td>
+        <td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#b8c2e0;">Ref {{ref}}</td>
+      </tr></table>
+    </td></tr>
+
+    <!-- body -->
+    <tr><td style="background-color:#ffffff;padding:36px 32px 8px 32px;">
+      <p style="margin:0 0 18px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:24px;color:#141b2e;">
+        Hello {{name}},</p>
+      <p style="margin:0 0 24px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:24px;color:#141b2e;">
+        I finished assessing {{company}}'s AI initiatives against the ten failure modes of enterprise AI. Here is your result:</p>
+
+      <!-- score block -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f6f7fb;border:1px solid #e3e6ef;border-radius:10px;">
+      <tr>
+        <td style="padding:22px 26px;width:150px;" valign="middle">
+          <span style="font-family:Arial,Helvetica,sans-serif;font-size:42px;font-weight:bold;color:#1f2e5c;">{{score}}</span>
+          <span style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#5b6478;">/100</span><br>
+          <span style="display:inline-block;margin-top:8px;padding:4px 12px;border-radius:20px;background-color:{{band_bg}};font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:bold;letter-spacing:1px;color:{{band_color}};">{{band}}</span>
+        </td>
+        <td style="padding:22px 26px 22px 0;" valign="middle">
+          <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;color:#5b6478;">
+            AI Initiative Health Score. Band <strong style="color:#141b2e;">{{band}}</strong> — {{mode1_line}}</p>
+        </td>
+      </tr></table>
+
+      <!-- top modes -->
+      <p style="margin:26px 0 12px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:bold;letter-spacing:1.5px;color:#4f46e5;">YOUR TOP THREE EXPOSURES</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr><td style="padding:9px 0;border-bottom:1px solid #eceef5;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#141b2e;"><strong>1. {{mode1_name}}</strong></td>
+            <td align="right" style="border-bottom:1px solid #eceef5;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#4f46e5;">{{mode1_pct}}%</td></tr>
+        <tr><td style="padding:9px 0;border-bottom:1px solid #eceef5;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#141b2e;">2. {{mode2_name}}</td>
+            <td align="right" style="border-bottom:1px solid #eceef5;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#4f46e5;">{{mode2_pct}}%</td></tr>
+        <tr><td style="padding:9px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#141b2e;">3. {{mode3_name}}</td>
+            <td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#4f46e5;">{{mode3_pct}}%</td></tr>
+      </table>
+
+      <!-- CTA -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td align="center" style="padding:30px 0 10px 0;">
+          <a href="{{report_url}}" style="display:inline-block;background-color:#1f2e5c;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;text-decoration:none;padding:14px 34px;border-radius:10px;">View my full report &rarr;</a>
+        </td></tr>
+        <tr><td align="center" style="padding:0 0 24px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#5b6478;">
+          All ten modes scored, with the one next step I'd take first.</td></tr>
+      </table>
+    </td></tr>
+
+    <!-- sign-off -->
+    <tr><td style="background-color:#ffffff;border-radius:0 0 12px 12px;padding:0 32px 30px 32px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #e3e6ef;"><tr>
+        <td style="padding-top:18px;font-family:Arial,Helvetica,sans-serif;font-size:12.5px;line-height:19px;color:#5b6478;">
+          Assessed by <strong style="color:#1f2e5c;">VaNi AI</strong> &middot; Reviewed by <strong style="color:#1f2e5c;">Charan Kamal Bommakanti</strong>, Founder &amp; CEO, Vikuna Technologies</td>
+      </tr></table>
+    </td></tr>
+
+    <!-- footer -->
+    <tr><td style="padding:18px 12px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:17px;color:#8a90a6;" align="center">
+      Vikuna Technologies, Hyderabad, India &middot; You received this because you completed an assessment at vani.vikuna.io.<br>
+      Your responses are stored securely in India and used only for this assessment. Reply to this email to reach us.
+    </td></tr>
+  </table>
+</td></tr>
+</table>
+</body>
+</html>

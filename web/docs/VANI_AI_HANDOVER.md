@@ -1,8 +1,29 @@
 # VaNi AI — Session Handover
 
-**From:** Claude Code website session (session ending 2026-07-31)
+**From:** Claude Code website session (last updated 2026-08-10)
 **To:** next Claude Code session in this repo
-**State:** Phase A in progress · Gate G1 NOT yet passed · no application code written for VaNi AI
+**State:** the assessment funnel is **built and merged** in `kamalcharan/VaNiGTM`
+(public flow + console, §11) and Phase 0 database hygiene is **complete to the limit
+of what a sandbox can reach** (§12). Gate G1 was never passed as a formal gate but was
+superseded in practice. Almost nothing about VaNi AI lives in this repo any more —
+this document and the governing PDFs are the exception.
+
+**Where the work actually is:** `kamalcharan/VaNiGTM`, branch
+`claude/vani-phase-0-db-hygiene` (Phase 0, open) on top of `main` (everything else,
+merged). Read `vanigtm/CLAUDE.md` and `vanigtm/docs/db/*.md` before touching the
+database.
+
+**⚠️ Architecture pivoted twice on 2026-07-31 — read this before touching `docs/sql/`.**
+`kamalcharan/VaNiGTM` (a separate, much larger, already-built product — multi-tenant
+GTM/prospecting/agent engine, Express + Next.js, migrations 001–227) was added as a git
+submodule at `vanigtm/`. It turns out to be the actual owner of `vani_gtm_db` — the
+`gt_`/`vn_`/`ki_` tables, the `admin`/`vikuna_admin` BYPASSRLS runtime,
+`set_tenant_context()`, all of it traces back to that repo's migrations. First pivot:
+VaNiGTM eventually integrates INTO VaNi AI, paced slowly (not the reverse). Second pivot,
+same day: Charan then explicitly told the session to reuse VaNiGTM's login/auth/db layer
+to "bring down the time" — so building started for real. **`docs/sql/ws2.2–2.6` in this
+repo are now superseded** by a working implementation in VaNiGTM — see §8 below for
+exactly what exists, where, and what's still open.
 
 ---
 
@@ -18,12 +39,33 @@ approval)** — lazy-loaded routes inside THIS repo, deployed by Vercel.
 ## 2. Governing documents (Charan re-shares into new session as needed)
 
 Reading order (POA §Reading Order — precedence: POA > Addendum A > App Spec > Mentor Brief body > Blueprint):
-1. `VaNi_AI_App_Spec_v1.docx` — the contract (§4 partially superseded by Addendum A)
-2. `VANI_AI_MENTOR_BRIEF.md` + Addendum A — guardrails; `vani_gtm` directive; Supabase prohibition
-3. `vani-ai-ux-blueprint.html` v2 — design system; implement, don't reinterpret; reviewer nav + sample data excluded
-4. `email-report.html` / `email-report.txt` — report email templates (merge fields)
-5. `AI_Failed_Initiatives_Audit_PilotPack_v1.docx` §3 — survey instrument, seed VERBATIM (**not yet provided — request it**)
-6. `VaNi_AI_POA_v1.docx` — workstreams, gates, session protocol
+1. `VaNi_AI_App_Spec_v1.docx` — the contract (§4 partially superseded by Addendum A).
+   **Received 2026-07-31**, saved at `docs/VaNi_AI_App_Spec_v1.docx`.
+2. `VANI_AI_MENTOR_BRIEF.md` + Addendum A — guardrails; `vani_gtm` directive; Supabase prohibition.
+   **Still not received — request it.**
+3. `vani-ai-ux-blueprint.html` v2 — design system; implement, don't reinterpret; reviewer nav + sample data excluded.
+   **Received 2026-07-31**, saved at `docs/vani-ai-ux-blueprint.html`.
+4. `email-report.html` / `email-report.txt` — report email templates (merge fields).
+   **Received 2026-07-31**, saved at `docs/email-report.html` / `docs/email-report.txt`.
+5. `AI_Failed_Initiatives_Audit_PilotPack_v1.docx` §3 — survey instrument, seed VERBATIM.
+   **Received 2026-07-31**, saved verbatim at `docs/vani-ai-recovery-assessment-definition.json`
+   (`service_slug: ai-recovery`, 12 questions, 10 failure modes, bands 71/41 — matches §3 guardrails).
+   **Canonical copy moved 2026-08-01** to `vanigtm/backend/migrations/ai-recovery-assessment-v1.json`
+   (branch `claude/vani-ai-assessment-skill`) — that's the one actually seeded into a database
+   (`npm run db:seed-assessment`). The copy in this repo is now a historical reference; edit the
+   VaNiGTM copy if the instrument itself ever changes.
+6. `VaNi_AI_POA_v1.docx` — workstreams, gates, session protocol.
+   **Received 2026-07-31**, saved at `docs/VaNi_AI_POA_v1.docx`. **Superseded by POA v1.1**
+   (referenced 2026-08-01 in a task description, not yet uploaded as a file — request it).
+7. `VaNi_Agent_Topology_v1.1.pdf` — agent decomposition, memory tiers (T0–T4), model tiering
+   (FAST/DEFAULT/ESCALATION), H1/H2 scaling triggers. **Received 2026-08-01**, saved at
+   `docs/VaNi_Agent_Topology_v1.1.pdf`. Governs anything agent-shaped in VaNiGTM's
+   `assessment-skill` — see §8 below for what's already built consistent with it (report
+   generation as a pure function of an event payload, template-fallback-always, no PII in any
+   future escalation payload).
+
+Outstanding: item 2 (Mentor Brief + Addendum A — still not received, and it carries guardrail
+precedence over the App Spec) and POA v1.1 itself (item 6, referenced but not uploaded).
 
 ## 3. Hard guardrails (never drift)
 
@@ -45,27 +87,58 @@ Reading order (POA §Reading Order — precedence: POA > Addendum A > App Spec >
 - ✅ Option A proposed with rationale (in-repo lazy routes; needs route-level code-splitting
   in `App.tsx` — currently one ~970KB chunk, must not ship on the VaNi path). **Awaiting
   Charan's approval at G1.**
-- ⚠️ WS2.1 schema inspection: **blocked in old session, unblock ready.** Direct 5432 is
-  unreachable (VPS firewall + sandbox egress). Solution installed: read-only MCP channel.
-  - `.mcp.json` at repo root → `gtm-postgres` (SSE, `https://mcp-db.dristiq.com/sse`).
-  - Host reachability CONFIRMED (nginx 401 challenge seen from this environment).
-  - Requires `GTM_MCP_BASIC` env var in the Claude environment settings (Charan sets it;
-    `base64("claude:<password>")`). It was NOT set as of handover.
-- ❌ WS2.2–2.5 (migrations, scoring fn, login RPC, seed): **not started — gated on G1.**
+- ✅ WS2.1 schema inspection: **complete, 2026-07-31.** MCP channel (`gtm-postgres`) is
+  still not usable from inside a Claude session — `GTM_MCP_BASIC` remains unset, so the
+  server never connects — but Charan ran the inspection queries directly and pasted the
+  results back. Full findings, including three concrete open items for G1 (missing
+  `pgjwt` extension, RLS not enforced on `vn_*`/`gt_events`/`gt_prompts`, Supabase-style
+  role names needing confirmation), tenant #1 status, and table census: see
+  **`docs/WS2.1-schema-report.md`**.
+- ✅ G1 auth-model reconciliation: **ruled by Charan, 2026-07-31**, directly off the
+  WS2.1 findings. Five rulings: (1) dedicated `vani` Postgres schema, not a
+  `gt_assessment_*` prefix in `public` — supersedes Addendum A on this point; (2) vendor
+  pgjwt's functions into the migration rather than install the extension; (3) the new
+  PostgREST instance connects as a fresh non-BYPASSRLS role scoped to `vani` — the
+  existing app's `admin`/`vikuna_admin` connection is untouched; (4) create a fresh
+  Vikuna Consulting tenant rather than reuse the zero-UUID `"vikuna"` sentinel row;
+  (5) VaNi's lead tables stay self-contained, no FK to `gt_prospects` — a sync is a later,
+  optional job. Supabase-naming question resolved: self-hosted `postgres:17-alpine` +
+  `postgrest/postgrest:v12.2.3` per the infra doc, not an actual Supabase project.
+- ✅ WS2.2–2.5 (migrations, scoring fn, login RPC, seed): **drafted, 2026-07-31, NOT
+  applied.** Reviewable SQL under `docs/sql/` (`ws2.2-schema-and-roles.sql` through
+  `ws2.5-seed.sql`, plus `ws2.6-isolation-test.sql` for verification) — see
+  `docs/sql/README.md` for apply order, operational prerequisites (JWT secret, role
+  password, the WS0.4 second-PostgREST-instance dependency), and the judgment calls made
+  beyond the five rulings. Nothing has been run against `vani_gtm_db`.
+- ❌ Still open, not blocking the SQL draft per Charan's ruling: WS0.1 (worker/
+  `AGENT_REGISTRY` deployed against `vani_gtm_db`? gates WS4.1, not schema), the CRO
+  branch sequencing call, and a one-line on-record Supabase-naming confirmation from
+  Charan (see `docs/sql/README.md` "What's still open").
 
 ## 5. New session: do this first
 
-1. Confirm MCP works: `SELECT current_database();` — MUST return `vani_gtm_db` (the host was
-   shared during setup; verify it's not another product's DB). Then `SELECT count(*) FROM gt_contacts;`.
-2. Run full WS2.1 inspection → short written report (G1 input):
-   table census (`gt_*` / `vn_*` / `ki_*`), columns of `vn_tenants`, `vn_users`, `gt_events`,
-   `gt_prompts`, `gt_prospects` + master data tables, `set_tenant_context()` definition,
-   `pg_policies`, roles (+ BYPASSRLS), extensions (pgjwt? pgcrypto?), `vn_tenants` rows
-   (does Vikuna Consulting exist → tenant #1 plan).
-3. Resolve at G1 with Charan: auth model reconciliation — spec's PostgREST+pgjwt
-   (`vn_login`, web_anon/partner/owner DB roles) vs GTM engine's JWT + `set_tenant_context()`
-   GUC RLS. Inspect live policies before proposing.
-4. Only after G1 approval: write WS2.2–2.5 as reviewable SQL files. Apply nothing until told.
+*Rewritten 2026-08-10. The previous version told a new session to run the WS2.1
+inspection and wait for G1 — both long finished. Steps 1–4 below replace it.*
+
+1. **Read the code repo, not this one.** `vanigtm/CLAUDE.md` is the operative
+   guide. Then `vanigtm/docs/db/triggers-and-functions.md`, `ki-disposition.md` and
+   `rls-status.md` before any schema or database work — they exist precisely so the
+   next session does not rediscover the same traps.
+2. **Check what Charan has run.** Several deliverables are staged and waiting on him,
+   not on a session: the Main VPS deploy (`RUNBOOK.md`, §10), the production backup
+   and two queries that unblock the `ki_*` rename (§12), and the RLS cutover (§12).
+   Ask before assuming any of them happened.
+3. **Do not trust a local rebuild as production.** Production does not match the
+   migration files — locally there are 42 `ki_*` tables, production looks like a
+   dozen. Anything derived from a sandbox rebuild is a hypothesis until re-run
+   against a restore. This is the single most load-bearing caveat in §12.
+4. **Nothing in this session's history has touched the real VPS.** Every result
+   recorded in §9–§12 came from a local sandbox Postgres.
+
+The MCP channel (`gtm-postgres`) has never once connected from inside a Claude
+session — `GTM_MCP_BASIC` is still unset. Every database result in this document was
+produced either by Charan running SQL and pasting it back, or by a local rebuild from
+the migration files. Do not plan around having live DB access.
 
 ## 6. Known facts for later phases (no secrets here — Charan holds credentials)
 
@@ -77,8 +150,12 @@ Reading order (POA §Reading Order — precedence: POA > Addendum A > App Spec >
   JS + cast in SQL, tenant_id/is_live from JWT never from client, named params via
   `translateParams`. Under Option A the frontend uses PostgREST, not the pool.
 - `vani_gtm_db` = KI-Prime/GTM engine DB: `vn_*` auth framework, `gt_*` tenant-scoped
-  product tables, `ki_*` legacy (create no new `ki_*`), ~227 migrations in the KI-Prime repo.
-  Runtime today connects as admin (BYPASSRLS); RLS cutover drafted (`grant-vanigtm-app.sql`).
+  product tables, `ki_*` legacy (create no new `ki_*`), 235 migrations in VaNiGTM.
+  Runtime connects as `vikuna_admin`, which in production is **both `SUPERUSER` and
+  `BYPASSRLS`** — so a replacement role must be `NOSUPERUSER NOBYPASSRLS`; dropping
+  one attribute alone changes nothing. The least-privilege role `vanigtm_app` and its
+  grant script (`scripts/grant-vanigtm-app.sql`) plus `docs/rls-cutover-checklist.md`
+  ALREADY EXIST in VaNiGTM and are the cutover procedure — see §12.
 - Infra (from Infrastructure Doc v3, May 2026): Main VPS 187.127.136.65 (PG17, PostgREST
   v12 at `/db/*` serving kaala_dristi, Nginx, no SSL yet on Nginx, zero swap), LLM VPS
   72.60.222.136 (Qwen3 4B llama.cpp at llm.dristiq.io, n8n at n8n.srv1096269.hstgr.cloud
@@ -103,3 +180,394 @@ Reading order (POA §Reading Order — precedence: POA > Addendum A > App Spec >
   blueprint tokens (indigo/cyan, Outfit/Inter) scoped to VaNi routes — do not mix.
 - Single Calendly everywhere: `calendly.com/connect-vikuna/30min`. Canonical domain
   `vikuna.io` (Vercel serves `www.vikuna.io` — apex/www alignment still to verify).
+
+## 8. VaNiGTM — what it is, and what changed because of it (2026-07-31)
+
+- Added as a git submodule at `vanigtm/` (`https://github.com/kamalcharan/VaNiGTM.git`,
+  pinned `c991984`), read-only access in this session. It is "Vikuna GTM Engine" — a
+  separate, unrelated-in-product-scope, much larger platform: multi-tenant onboarding,
+  prospecting, campaigns, an agent worker polling `gt_events`. Zero mentions of
+  "assessment," "ai-recovery," or the Pilot Pack anywhere in its docs — this is not the
+  VaNi AI project, it just happens to own the database VaNi AI was about to build against.
+- It is the actual source of `vani_gtm_db`'s schema: migrations 001–192 in
+  `vanigtm/backend/migrations/`, a working Express JWT auth stack
+  (`vanigtm/backend/src/auth/`: `auth.service.ts`, `login.service.ts`, `token.service.ts`),
+  a db layer with the `set_tenant_context()` transaction-wrapper convention
+  (`vanigtm/backend/src/db/pool.ts` / `query.ts`), and a skills pattern
+  (`vanigtm/backend/src/skills/<name>/`, registered at
+  `POST /api/v1/skills/:skill/:fn`). Its own `CLAUDE.md` documents the same facts WS2.1
+  found independently (RLS dormant, `admin`/`vikuna_admin` BYPASSRLS runtime, `gt_`/`vn_`
+  prefix convention, no Supabase) — confirms WS2.1's findings rather than contradicting
+  them.
+- **Direction (Charan, 2026-07-31): VaNiGTM eventually integrates INTO VaNi AI** — not
+  the other way around. First said to pace this slowly; same day, then said to reuse
+  VaNiGTM's login/auth/db layer directly ("it will bring down the time"). Building
+  started on that basis.
+
+### What's actually built (2026-07-31, branch `claude/vani-ai-assessment-skill` in VaNiGTM, pushed, not merged, no PR opened)
+
+- **Migration `228_gt_assessment.sql`** (`vanigtm/backend/migrations/`): six tables —
+  `gt_partner`, `gt_assessment_def`, `gt_lead`, `gt_assessment_response`, `gt_report`,
+  `gt_lead_event` — `gt_` prefix, `tenant_id` + `is_live` on every row, RLS
+  tenant-isolation policy matching migration 219's exact pattern. Creates the Vikuna
+  Consulting tenant (real UUID) if it doesn't exist. **Not applied to the database** —
+  written per this codebase's "migrations manual + guarded + idempotent" rule, applied
+  via `cd backend && npm run db:migrate` when Charan is ready.
+- **`assessment-skill`** (`vanigtm/backend/src/skills/assessment-skill/`) — two access
+  models:
+  - **Anonymous** (`assessment.routes.ts`, mounted at `/api/v1/assessment` in
+    `server.ts`, no JWT): `GET /:slug`, `POST /answer`, `POST /complete`,
+    `POST /capture`, `GET /report/:token`. Logic in `assessment.agent.ts`, same shape as
+    the existing `StorytellerAgent` (static methods over `pool` + a tenantId resolved
+    once from the `vikuna-consulting` slug, not from a JWT that doesn't exist for an
+    anonymous respondent).
+  - **Authenticated console** (normal `SkillContext` functions, via the existing
+    JWT-gated `POST /api/v1/skills/assessment-skill/:fn` executor): `get_leads`,
+    `get_lead`, `update_lead_status`, `add_lead_note`. Role (owner sees all leads in the
+    tenant; partner sees only their own) resolved from `gt_partner` by `ctx.user_id`
+    (`partner-context.ts`) — deliberately not coupled to `vn_roles`/`vn_user_roles`.
+  - **`scoring.ts`** — deterministic scoring reimplemented in TypeScript (the
+    `docs/sql/ws2.3` Postgres-function version is superseded), config-driven off any
+    `gt_assessment_def.definition` JSON, nothing hardcoded to the ai-recovery instrument.
+    Unit-tested against a hand-worked fixture: `tests/scoring.test.ts`, 5 tests, no DB
+    needed.
+- **Verified, not just written:** `npx tsc --noEmit` in `vanigtm/backend` is clean except
+  the pre-existing documented `campaign-skill` error; `npm test` passes 273/273 runnable
+  tests (261 skipped are DB-dependent, no live DB in this environment) including the 5
+  new scoring tests.
+
+### Deliberately not done as of this build (superseded by §9 for report generation)
+- **Partner CRUD** (creating/deactivating `gt_partner` rows) — manage by hand via SQL
+  until a console UI need justifies a function.
+- **The `vikunawebsite` frontend side** — nothing here changed to call the new API.
+  `docs/sql/ws2.2-2.6` in this repo are superseded and should be treated as historical
+  (what G1's rulings looked like before VaNiGTM was in the picture), not reapplied.
+
+## 9. Task A1 — local end-to-end proof (2026-08-01, per POA v1.1)
+
+Task, verbatim scope: prove the assessment flow end-to-end against a locally-run Postgres
+(sandbox cannot reach the VPS — 5432 times out, HTTP egress blocked, confirmed again this
+session), build the SYNCHRONOUS report path only (template fallback narrative, no LLM, no
+email — those are Phase B per the Agent Topology note), and report findings. Explicitly
+told to stop before Task A2 (deployment artifacts) — not started.
+
+**Result: all 24 checks pass.** Branch `claude/vani-ai-assessment-skill` in VaNiGTM,
+pushed (commit after the one referenced in §8 above), no PR opened.
+
+- **Local Postgres stood up in the sandbox** (not the VPS): system PostgreSQL 16, database
+  `vani_gtm_local`, role `vikuna_admin`. All 228 migrations applied cleanly
+  (`npm run db:migrate`) — this also validates the full pre-existing migration history
+  (001–227) runs standalone, not just migration 228.
+- **`ai-recovery-assessment-v1.json` moved into VaNiGTM**, `backend/migrations/`, alongside
+  migration 228 (see §2 item 5's updated pointer). Seeded via a new idempotent script,
+  `npm run db:seed-assessment` (`assessment-skill/seed-definition.ts`).
+- **Migration 228 had a real bug, found by actually running it**: the Vikuna Consulting
+  tenant `INSERT` listed `is_active` in its column list. `vn_tenants.is_active` is
+  `GENERATED ALWAYS AS (status = 'active') STORED` — precisely the mistake this same
+  VaNiGTM repo's own `CLAUDE.md` lesson #8 already warns about ("never INSERT into it").
+  The migration failed immediately in the local run with exactly that Postgres error.
+  Fixed by dropping `is_active` from the column list — `status = 'active'` alone makes it
+  compute correctly. This is the clearest possible argument for why Task A1 came before
+  A2: the bug would have hit the VPS on the first real apply otherwise.
+- **Synchronous report-on-capture, built and verified**: `captureLead` now writes a
+  `gt_report` row inside the same transaction as the lead, filling the assessment
+  definition's `narrative_prompt.fallback` template from the recomputed score (health,
+  band label/verdict, top three mode names/percentages) — no LLM call anywhere in this
+  path. `GET /report/:token` is live. New file: `assessment-skill/narrative.ts`.
+- **End-to-end proof script**: `backend/src/verify-assessment-flow.ts`
+  (`npm run verify:assessment`) exercises `GET /:slug` → `POST /answer` ×12 → `/complete`
+  → `/capture` → `GET /report/:token` directly against `AssessmentAgent` (same code path
+  the HTTP routes call). What it actually proves, precisely: `scoring.test.ts` (unit, no
+  DB) already proves the scoring *arithmetic*; this script proves the *DB round-trip*
+  doesn't corrupt that arithmetic — the persisted health score/band, after going through
+  JSONB storage, transaction handling and answer merging, is compared against
+  `scoreResponse()` called directly on the same definition + answers fetched fresh from
+  the DB. They matched. Also checked: re-completing or re-capturing an already-finished
+  response is rejected (idempotency), a garbage report token returns `null` rather than
+  leaking another response's report, and the rendered fallback narrative has no leftover
+  `{{merge_field}}` placeholders.
+- **Verified, not just written**: `tsc --noEmit` clean (only the pre-existing documented
+  `campaign-skill` error); full test suite still 273/273 runnable tests passing; migration
+  re-run confirms idempotency (`All migrations are up to date`).
+
+## 10. Task A2 — deployment artifacts (2026-08-01)
+
+Item 0 (small fix, done first): `scoring.ts`'s tie-break was already reproducible but
+relied on `definition.modes`' incidental array order — now an explicit rule (exposure
+desc, `composite_weight` desc, mode key asc). Migration 229 adds `gt_report.top_modes`,
+frozen at capture time, so report rendering and any future email dispatch read the same
+persisted value instead of each recomputing. Re-ran `verify:assessment`: 26/26 checks
+pass (up from 24 — added assertions for the freeze).
+
+Then `deploy/vani-main-vps/` in VaNiGTM: Dockerfile (tuned to the Topology note's ~400MB
+budget, not touching the shared ProKey Dockerfile), a compose overlay service
+(`vani-backend`, meant to layer onto the existing Main VPS compose file, never edited
+directly since it was never shared with this session), an Nginx config that
+**allowlists only** `/api/v1/assessment/`, `/api/v1/skills/assessment-skill/`, and
+`/api/v1/auth/` — everything else on `api.vikuna.io`, including this same backend's
+other skills, 404s at Nginx — with dynamic CORS for `vikuna.io`/`www.vikuna.io` plus the
+Vercel preview pattern, `.env.example`, a `RUNBOOK.md` (swap-first per the Topology
+note's hard rule, pg_dump backup, build/start/migrate/seed/deploy-nginx/verify, plus
+rollback), and a laptop-runnable `smoke-test.sh` (full flow + CORS preflight incl. a
+negative check + an allowlist-hole check).
+
+**A real, deployment-blocking bug was found and fixed along the way**: `npm run build`
+(plain `tsc`, not `--noEmit`) exits non-zero on the pre-existing `campaign-skill`
+type error this repo's own `CLAUDE.md` already documented as known — which would have
+made `docker build` fail outright before ever reaching VaNi AI's code. Fixed with a
+scoped change to that one query (`RETURNING id` + `rows.length` instead of a `rowCount`
+`SkillDb.query()` never actually provides) — didn't touch the shared `SkillDb` type.
+`tsc --noEmit` is now fully clean, not just "clean except the known error."
+
+Not executable in this sandbox: `docker build`, `nginx -t` (no Docker daemon, no
+installable nginx package here). Compensated: ran the Dockerfile's actual build recipe
+directly (`npm run build`, now exits 0; the SKILL.md/*.sql copy step simulated by hand
+and confirmed correct), parsed the compose YAML, manually reviewed the Nginx config.
+`RUNBOOK.md` gates on `nginx -t` before reload as the real check for what couldn't be
+run here.
+
+Full list of what was guessed (network name, build-vs-registry-pull, Nginx drop-in path,
+Vercel project slug, cert tooling) is in `RUNBOOK.md`'s own "What I had to guess"
+section — read that before running any step.
+
+### Next session
+- **Charan runs `RUNBOOK.md` on the Main VPS** — this session stops here per instruction.
+  Paste output back for debugging on anything that doesn't match what's expected.
+- After a successful deploy: LLM narrative generation and email dispatch (Phase B) are
+  the next real feature work; the fallback path built in A1 stays as the permanent
+  fallback, not a placeholder.
+- The branch (`claude/vani-ai-assessment-skill`) is pushed but no PR was opened (not
+  asked for) — diff it against VaNiGTM's `main` to review everything at once.
+- **Nothing has touched the real VPS** — all of Task A1 and A2 ran/was validated against
+  the local sandbox Postgres only.
+
+---
+
+## 11. Phases C1–C3 — the funnel got built (2026-08-02 → 08-09)
+
+Recorded late: these ran after §10 and were never written up here. All of it is in
+VaNiGTM, merged to `main` at **`a229ea4`**.
+
+**C1 — frontend reconnaissance.** Report only, no code, per instruction. Established
+that VaNiGTM's frontend is Next.js 16.2.1 App Router + React 19, with a `VdfSidebar`
+shell driven by `src/config/nav.tsx`.
+
+**C2 — the public flow.** Four decisions were given up front and shaped everything:
+no middleware or host routing; **same-origin** (so no custom Dockerfile, no
+`NEXT_PUBLIC_API_URL`, no CORS work); a `(vani)` route group with its own layout and
+zero VDF chrome; blueprint design tokens copied verbatim. Built `/a/[slug]` (the
+assessment) and `/r/[token]` (the report), scoped to `.vaniRoot`.
+
+**C3 — the console.** Login, leads list, lead detail, partners, plus an API-level
+partner-isolation test. Deliberately broken once to confirm the test actually catches
+a leak.
+
+### What went wrong, and what it cost
+
+Worth reading — most of these were caught by Charan using the thing, not by a test:
+
+- **The console had no way in.** It was built with no nav entry, so it could only be
+  reached by typing the URL. *"you created something and it has no access to menu and
+  i was going round as a headless checking."* Fixed by adding `VaNi Leads` to
+  `nav.tsx`.
+- **A silent partial failure.** Lead capture reported success while the contact bridge
+  had failed. *"if details are not saved -- why did the UX layer did not raise hands,
+  it shown sucess."* Root cause: the bridge ran inside the capture transaction, and in
+  Postgres one failed statement poisons the whole transaction — so the catch-and-log
+  INSERT failed too and took the lead down with it. The bridge now runs in its own
+  transaction *after* capture commits.
+- **The access model was backwards.** The console gated on the presence of a
+  `gt_partner` row, so the owner — who has no such row — was refused from their own
+  leads. *"when i am using my own space, my own leads.....what is this console
+  restriction about?"* Inverted: no row = owner, `role='partner'` = a restriction.
+- **The console opened outside the product shell.** *"this page opens in its own
+  design, it does not confirm inside canvas of VaNiGTMl."* Moved from the `(vani)`
+  route group to `(app)`.
+- **The teaser gate was cosmetic.** `/complete` returned all three top modes while the
+  UI only displayed one — anyone reading the network tab got the gated content free.
+  Now returns only #1.
+- **`gt_tags.slug` is a generated column** that maps non-alphanumerics to **spaces**,
+  not hyphens, so the tag was `'vani assessment'`, not `'vani-assessment'`. Cost real
+  time before it was spotted.
+- **A Jest test that could never run.** `maybe()` was evaluated at collection time, so
+  the suite always skipped while reporting green. Fixed with a synchronous
+  availability check.
+- Plus: a dev proxy pointed at port 3001 when the backend runs on **3002**, and an
+  `is_live` filter that locked sandbox-mode users out with a permissions-shaped error.
+
+**Migration-readiness audit** (read-only, no code) followed: a structured assessment of
+moving to a unified namespace, an append-only fact store, and registered tools. It is
+what led to the Phase 0 work order.
+
+---
+
+## 12. Phase 0 — clear the ground (2026-08-10)
+
+Three items from the mentor: inventory the hidden database logic, settle the `ki_*`
+tables, make RLS real. Branch **`claude/vani-phase-0-db-hygiene`** in VaNiGTM, four
+commits, pushed, no PR opened. Standing constraint throughout: the assessment funnel is
+live and taking LinkedIn traffic, and nothing may break `api.vikuna.io`.
+
+Deliverables: `vanigtm/docs/db/triggers-and-functions.md`, `ki-disposition.md`,
+`rls-status.md`; migrations 233–235; `deploy/vani-main-vps/rls-two-tenant-test.sql`.
+
+### Item 1 — inventory (complete)
+
+Far less hidden logic than the brief assumed. **28 of the 29 triggers do nothing but
+stamp `updated_at`**, using five redundant copies of the same three lines. Only one
+trigger has behaviour: `ki_set_session_limit` silently floors
+`vn_subscriptions.max_sessions` at 5 on INSERT but not on UPDATE — and contradicts
+`vn_get_max_sessions`, which documents a default of 1.
+
+**46 of the 75 "stored functions" belong to `pgcrypto` and `uuid-ossp`.** Only 29 are
+ours, and only four run at runtime: `set_tenant_context`, `gt_next_seq`,
+`vani_ensure_seq_prefixes`, `vani_ensure_tag`.
+
+Migration 180 dropped ten MFD-era tables with `CASCADE`, which does not parse plpgsql
+bodies — so six functions survived pointing at relations that no longer exist, and
+`ki_alias_before_upsert` is a trigger function with no trigger. Listed as candidates;
+**nothing was deleted.**
+
+Two bugs found and reproduced: `ki_contacts.normalized_name` and
+`ki_normalize_contact_name()` apply `[^A-Z0-9\s]` *before* `upper()`, so lowercase input
+is deleted rather than uppercased — `'Kamal Charan'` normalises to `'K C'`. The `gt_`
+equivalent is correct, so **VaNi is unaffected**. Separately,
+`vn_cleanup_expired_sessions` has no caller and no scheduler entry, so
+`vn_refresh_tokens` likely grows without bound — the one finding with a live
+operational cost.
+
+### Item 2 — `ki_*` disposition — **RESOLVED, nothing to rename**
+
+Production's table list arrived on 2026-08-10 and closed this item outright:
+**nine `ki_*` tables, all nine live** (the ETL import pipeline and the pulse
+cluster). No orphans, no KI-Prime data to export, no two-week rename clock.
+Migration 233 stays a tested no-op.
+
+The 29 "candidates" and the 4 "FK-pinned" tables in the analysis below **do not
+exist in production at all** — they are artifacts of rebuilding from migration
+files production was never fully built from (local: 42 `ki_*`, 114 tables;
+production: 9 and 81; `gt_*` 58 and `vn_*` 14 match exactly). Two specific
+claims died with them: the inference that production "must hold at least twelve"
+`ki_*` tables because the pulse tables carry FKs onto `ki_clients`/`ki_contacts`
+(production's pulse tables simply do not carry those constraints), and
+`ki_ext_ref_types` pinning `vn_tenants` — that table does not exist there, so
+the Phase 1 clean cut is available after all.
+
+The original analysis, for the record:
+
+9 live (the ETL import pipeline and the pulse cluster), 4 pinned by a foreign key from
+a live table, 29 candidates, **zero confirmed orphans** — confirming one needs row
+counts from production.
+
+Two corrections to the brief's premise:
+
+- **Production does not match the migration files.** 42 `ki_*` tables locally; the
+  production snapshot listed nine. That snapshot is itself provably incomplete (its own
+  `COUNT` said 81 while 76 names survive the paste, and the live pulse tables carry FKs
+  onto `ki_clients`/`ki_contacts`/`ki_contact_snapshots`, which cannot reference absent
+  tables). So the rename list must come from a fresh production listing.
+- **The brief's fourth signal does not discriminate.** "Touched by a trigger or
+  function" would have marked thirteen dead tables as live, because the triggers are
+  `updated_at` stamps and every function touching a `ki_*` table has zero call sites.
+  This is where Item 1 paid for itself.
+
+Also found: `vn_tenants.ext_ref_type_code → ki_ext_ref_types(code)` is the **only**
+foreign key from the `gt_*`/`vn_*` side into `ki_*` anywhere in the schema — the one
+thing stopping "move all `ki_*` out" from being a clean cut. A Phase 1 item.
+
+Migration 233 renames orphans to `_deprecated_ki_*`, drops nothing, and **ships with an
+empty candidate list so it is a safe no-op** until real numbers arrive. Testing it
+against a scratch copy surfaced an order-dependence bug (a table renamed earlier in the
+loop looked like a live blocker to candidates processed later); rollback verified,
+7 renamed and 7 restored.
+
+### Item 3 — make RLS real (proven locally, cutover NOT performed)
+
+**A correction I got wrong, then corrected back.** Mid-phase this section claimed
+`vikuna_admin` does not hold `BYPASSRLS` and bypasses RLS purely by being a
+`SUPERUSER`. That was read off the local rebuild. Production says
+`super=true bypassrls=true` — the original brief was right. The practical point
+survives: a replacement role needs `NOSUPERUSER` **and** `NOBYPASSRLS`.
+
+**Production also disproved the migration-234 bug.** Its policies already use the
+`NULLIF` form (unguarded=0, guarded=54 of 55) and no policy there reads the legacy
+`app.tenant_id` GUC. So 234 is a no-op against the live database — real in the
+migration files, and therefore worth keeping for any fresh build, but not a
+production hazard. **Migration 235 is the one production actually needs**: it holds
+1 platform tag of 4, and all 8 `gt_content_kinds` rows are platform rows, so that
+whole table goes dark for every tenant the moment RLS enforces without it.
+
+**And the role and grant script already existed.** `vanigtm_app` (non-superuser,
+non-bypassrls) is live in production alongside six siblings, and VaNiGTM already
+carries `scripts/grant-vanigtm-app.sql` + `docs/rls-cutover-checklist.md` — both of
+which correctly described `vikuna_admin` as `rolsuper=true, rolbypassrls=true`.
+Phase 0's runbook now defers to those rather than duplicating them. The checklist
+had also already flagged the storyteller `gt_presentations` share route as breaking
+under RLS — the same bug class as VaNi's `/r/:token`, which Phase 0 found
+independently and fixed. **The storyteller one is still open.**
+
+Switching to a genuinely restricted role broke the assessment flow on the **second
+query**. 68 policies cast `current_setting(...)::uuid` unguarded, and because
+`set_config(..., is_local := true)` leaves the GUC **defined and empty** after COMMIT
+rather than undefined, the first tenant-scoped transaction poisons a pooled connection
+with `invalid input syntax for type uuid: ""`. This is CLAUDE.md's lesson 1 — but only
+half of it had been diagnosed, because RLS was dormant and the policy side never
+showed. **Migration 234** rewrites all 76 policies onto
+`NULLIF(current_setting(...), '')::uuid`.
+
+**Migration 235** fixes a second, quieter failure: `gt_tags` and `gt_content_kinds` use
+`tenant_id IS NULL` for platform rows, and `tenant_id = <uuid>` never matches NULL — so
+platform tags vanished and `gt_content_kinds` (all 8 rows platform) became invisible
+entirely. That one would not have raised an error; rows would simply have stopped
+appearing.
+
+What enforcement buys, measured on the same database with the same statements — as
+`vikuna_admin`, a cross-tenant INSERT **succeeds** and a contextless read returns 14
+leads across 2 tenants; as the restricted role, both are refused.
+
+Then the code work: the ETL pipeline and the public `/r/:token` report route were
+converted. `getReportByToken` ran on the raw pool by design ("a public route has no
+tenant to scope to" — true of authorisation, false of RLS), joining four
+policy-protected tables, so **every report link would have rendered "This report link
+isn't valid."** Capture succeeded and only the read failed, so a smoke test stopping at
+"lead created" would have passed the cutover as clean. Also removed
+`getClientWithTenant`, which set the GUC outside a transaction and so returned a client
+whose context had already expired — no callers, but a trap.
+
+The full assessment flow now passes end to end under `vani_app`
+(`NOSUPERUSER NOBYPASSRLS`), **and** under the current superuser — so all of it deploys
+safely *before* the cutover. Two-tenant isolation test: 11/11, verified to fail when RLS
+is disabled. Full backend suite unchanged at 510 passed / 19 failed / 11 skipped, every
+failure the pre-existing `story-skill` schema drift.
+
+### What Phase 0 is waiting on
+
+*Item 2's two blocking queries were run on 2026-08-10 and resolved it. What is left:*
+
+**Charan, on the VPS:**
+1. Full backup, **and verify it restores** into a scratch database
+   (`ki-disposition.md` §6.1). Still required for Item 3.
+2. Deploy **migration 235** — required, prevents a live regression. 234 is optional
+   (no-op in production) but harmless. Both are inert under the current superuser.
+3. Run `scripts/grant-vanigtm-app.sql` and follow `docs/rls-cutover-checklist.md`.
+   Do **not** create a new role — `vanigtm_app` already exists.
+
+**Still open as tasks:**
+- The storyteller `gt_presentations` `/share/:token` route breaks under a restricted
+  role. The checklist recommends a `SECURITY DEFINER get_shared_deck(token)`; VaNi's
+  fix does not transfer, because any tenant can own a deck.
+
+**Still open as decisions, not tasks:**
+- Admin platform-tag creation (`POST /etl/tags` with `is_platform: true`) is refused by
+  235's write policy. Left refused deliberately rather than letting every tenant mint
+  rows all tenants can see; it needs a maintenance role, a `SECURITY DEFINER` function,
+  or an `app.is_admin` GUC.
+- Signup, login and the skills executor have **not** been exercised under the restricted
+  role. That needs the restored copy from step 1.
+
+### Still open from earlier phases
+
+Unchanged by Phase 0: the Main VPS deploy (§10) has not run; LLM narrative generation
+and email dispatch (Phase B) are the next real feature work, with A1's fallback staying
+as the permanent fallback; `{{BOOKING_URL}}` is unresolved; the `assessment-lead` and
+`playbook-lead` n8n workflows still need to exist for delivery to happen.

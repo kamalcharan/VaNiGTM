@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VaNi AI — UX Blueprint v1</title>
+<!--
+  ══════════════════════════════════════════════════════════════════
+  VaNi AI · UX BLUEPRINT v1 — for Claude Code implementation
+  Interactive prototype of the full public flow:
+  landing → assessment (3 of 12 sample questions) → analyzing →
+  teaser → email capture → report (light mode).
+  RULE: implement this, don't reinterpret it. CSS custom properties
+  below are the design system. All data below is sample data; in
+  production everything renders from gt_assessment_def config.
+
+  V2 (WS1 complete) — adds console (login, leads list, lead detail,
+  partner links), edge-states gallery, expired-link page, and the
+  reviewer nav (bottom-right; mock chrome, NOT part of the product).
+  Companion file: email-report.html + email-report.txt (WS1.2).
+
+  HANDOFF NOTES (WS1.4)
+  Tokens: every color/radius lives in :root — dark set (--bg/--panel/
+  --ink*/--cyan/--indigo) and light report set (--r-*). Bands:
+  Situational=green, Structural=amber, Systemic=red (.b-sit/.b-str/
+  .b-sys). Statuses: .st-new/.st-con/.st-l2/.st-eng/.st-cls.
+  Component inventory: .btn(+.ghost/.small/.navy), .a-card, .opt,
+  .progress, .framing, .orb(+.orb-xl), .band-chip, .mode-card,
+  .locked, .field, .r-card, .r-mode, .bar-row, .c-nav, .c-table,
+  .chip, .p-block, .mini-bar, .tl, .pl-card, .link-row, .modal-demo,
+  .err-banner. Fonts: Outfit (display) + Inter (body), ALWAYS with
+  system-ui fallbacks. Reviewer nav (.mock-nav) and sample data are
+  excluded from implementation.
+  ══════════════════════════════════════════════════════════════════
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ─── Design tokens ─────────────────────────────────────────── */
+  :root{
+    /* dark (assessment) surfaces */
+    --bg:#070b18; --panel:rgba(255,255,255,.045); --panel-solid:#0e1428;
+    --stroke:rgba(255,255,255,.09); --stroke-hi:rgba(34,211,238,.55);
+    --ink:#e7eaf6; --ink-2:#98a0bb; --ink-3:#5d6580;
+    --cyan:#22d3ee; --cyan-hi:#67e8f9; --indigo:#6366f1; --indigo-deep:#312e81;
+    /* light (report) surfaces */
+    --r-bg:#f6f7fb; --r-card:#ffffff; --r-ink:#141b2e; --r-ink2:#5b6478;
+    --r-stroke:#e3e6ef; --r-navy:#1f2e5c; --r-indigo:#4f46e5;
+    --ok:#188a52; --warn:#b26a00; --crit:#b3261e;
+    --radius:18px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);
+    min-height:100vh;-webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.wordmark,.q-text{font-family:'Outfit',system-ui,sans-serif}
+  /* ambient glow field on dark screens */
+  .dark-stage{position:relative;min-height:100vh;overflow:hidden}
+  .dark-stage::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(720px 420px at 12% -6%, rgba(79,70,229,.22), transparent 62%),
+      radial-gradient(640px 420px at 96% 104%, rgba(34,211,238,.10), transparent 60%);}
+  .wrap{position:relative;z-index:1;max-width:980px;margin:0 auto;padding:0 22px}
+
+  /* ─── Top bar ───────────────────────────────────────────────── */
+  .top{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+  .brand{display:flex;align-items:center;gap:11px;cursor:pointer}
+  .orb{width:30px;height:30px;border-radius:50%;
+    background:radial-gradient(circle at 32% 30%, var(--cyan-hi), var(--indigo) 58%, var(--indigo-deep) 100%);
+    box-shadow:0 0 18px rgba(34,211,238,.5);animation:pulse 3.2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 14px rgba(34,211,238,.38)}50%{box-shadow:0 0 26px rgba(34,211,238,.72)}}
+  .wordmark{font-size:19px;font-weight:600;letter-spacing:.02em}
+  .wordmark em{font-style:normal;color:var(--cyan)}
+  .byline{font-size:12px;color:var(--ink-3);letter-spacing:.06em}
+  .mock-chip{font-size:11px;letter-spacing:.14em;color:var(--ink-3);border:1px solid var(--stroke);
+    border-radius:999px;padding:5px 12px}
+
+  /* ─── Landing ───────────────────────────────────────────────── */
+  .hero{padding:64px 0 30px;max-width:700px}
+  .kicker{font-size:13px;letter-spacing:.22em;color:var(--cyan);text-transform:uppercase;margin-bottom:18px}
+  .hero h1{font-size:clamp(30px,5.2vw,50px);font-weight:700;line-height:1.12;letter-spacing:-.015em}
+  .hero h1 span{color:var(--cyan)}
+  .hero p{margin-top:20px;font-size:17px;line-height:1.65;color:var(--ink-2);max-width:560px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;padding:34px 0 60px}
+  .a-card{background:var(--panel);border:1px solid var(--stroke);border-radius:var(--radius);
+    padding:26px 24px;transition:.25s;position:relative}
+  .a-card.live:hover{border-color:var(--stroke-hi);transform:translateY(-3px);
+    box-shadow:0 14px 42px rgba(0,0,0,.45)}
+  .a-tag{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:12px}
+  .a-card h3{font-size:20px;font-weight:600;line-height:1.3}
+  .a-card .meta{margin:12px 0 20px;font-size:13px;color:var(--ink-3)}
+  .a-card .meta b{color:var(--ink-2);font-weight:500}
+  .btn{display:inline-flex;align-items:center;gap:9px;font-family:'Outfit',system-ui,sans-serif;font-weight:600;font-size:15px;
+    color:#04121c;background:linear-gradient(120deg,var(--cyan-hi),var(--cyan));border:none;border-radius:12px;
+    padding:13px 22px;cursor:pointer;transition:.2s}
+  .btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+  .btn.ghost{background:none;color:var(--ink-2);border:1px solid var(--stroke);font-weight:500}
+  .a-card.soon{opacity:.42}
+  .soon-chip{position:absolute;top:20px;right:20px;font-size:10px;letter-spacing:.14em;color:var(--ink-3);
+    border:1px solid var(--stroke);border-radius:999px;padding:4px 10px}
+  footer{border-top:1px solid var(--stroke);padding:26px 0 40px;font-size:12.5px;color:var(--ink-3);line-height:1.7}
+
+  /* ─── Screens & transitions ─────────────────────────────────── */
+  .screen{display:none;animation:in .45s cubic-bezier(.22,.9,.3,1)}
+  .screen.on{display:block}
+  @keyframes in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+  /* ─── Assessment ────────────────────────────────────────────── */
+  .assess-shell{max-width:640px;margin:0 auto;padding-top:8px}
+  .progress{height:3px;background:rgba(255,255,255,.08);border-radius:99px;margin:10px 0 8px;overflow:hidden}
+  .progress i{display:block;height:100%;background:linear-gradient(90deg,var(--indigo),var(--cyan));
+    border-radius:99px;transition:width .45s cubic-bezier(.22,.9,.3,1)}
+  .p-label{font-size:12px;color:var(--ink-3);letter-spacing:.1em;text-align:right}
+  .framing{display:flex;align-items:center;gap:10px;margin:42px 0 14px;color:var(--cyan);
+    font-size:13.5px;letter-spacing:.04em}
+  .framing .orb{width:18px;height:18px}
+  .q-text{font-size:clamp(22px,3.4vw,29px);font-weight:600;line-height:1.32;margin-bottom:30px}
+  .opts{display:grid;gap:12px}
+  .opt{display:flex;gap:15px;align-items:center;text-align:left;background:var(--panel);
+    border:1px solid var(--stroke);border-radius:14px;padding:17px 18px;color:var(--ink);
+    font-size:15.5px;line-height:1.45;cursor:pointer;transition:.18s;width:100%}
+  .opt:hover{border-color:var(--stroke-hi);background:rgba(34,211,238,.05)}
+  .opt.sel{border-color:var(--cyan);background:rgba(34,211,238,.09)}
+  .opt .key{flex:none;width:30px;height:30px;border-radius:9px;border:1px solid var(--stroke);
+    display:grid;place-items:center;font-family:'Outfit',system-ui,sans-serif;font-size:13px;color:var(--ink-2)}
+  .opt.sel .key{background:var(--cyan);color:#04121c;border-color:var(--cyan)}
+  .assess-foot{display:flex;justify-content:space-between;align-items:center;margin-top:34px;
+    font-size:13.5px;color:var(--ink-3)}
+  .linky{background:none;border:none;color:var(--ink-3);cursor:pointer;font-size:13.5px}
+  .linky:hover{color:var(--ink-2)}
+
+  /* ─── Analyzing ─────────────────────────────────────────────── */
+  .center-stage{min-height:72vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  .orb-xl{width:92px;height:92px;border-radius:50%;
+    background:radial-gradient(circle at 32% 30%, var(--cyan-hi), var(--indigo) 58%, var(--indigo-deep) 100%);
+    box-shadow:0 0 60px rgba(34,211,238,.55);animation:pulse 1.5s ease-in-out infinite;margin-bottom:36px}
+  .think-line{font-family:'Outfit',system-ui,sans-serif;font-size:19px;color:var(--ink-2);min-height:28px;transition:opacity .3s}
+
+  /* ─── Teaser ────────────────────────────────────────────────── */
+  .teaser{max-width:640px;margin:0 auto;padding:44px 0}
+  .band-chip{display:inline-flex;align-items:center;gap:9px;border-radius:999px;padding:8px 18px;
+    font-family:'Outfit',system-ui,sans-serif;font-weight:600;font-size:14px;letter-spacing:.12em;text-transform:uppercase;
+    background:rgba(255,179,71,.12);border:1px solid rgba(255,179,71,.45);color:#ffb347}
+  .score-row{display:flex;align-items:baseline;gap:14px;margin:26px 0 8px}
+  .score-big{font-family:'Outfit',system-ui,sans-serif;font-size:74px;font-weight:700;line-height:1;
+    background:linear-gradient(120deg,var(--cyan-hi),var(--indigo));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .score-cap{color:var(--ink-3);font-size:14px}
+  .mode-card{background:var(--panel);border:1px solid var(--stroke);border-left:3px solid var(--cyan);
+    border-radius:14px;padding:20px 22px;margin-top:22px}
+  .mode-card .m-tag{font-size:11px;letter-spacing:.16em;color:var(--cyan);text-transform:uppercase;margin-bottom:8px}
+  .mode-card h3{font-size:19px;margin-bottom:8px}
+  .mode-card p{font-size:14.5px;line-height:1.6;color:var(--ink-2)}
+  .locked{display:flex;align-items:center;gap:14px;border:1px dashed var(--stroke);border-radius:14px;
+    padding:16px 22px;margin-top:12px;color:var(--ink-3);font-size:14.5px}
+  .locked .n{font-family:'Outfit',system-ui,sans-serif;color:var(--ink-2)}
+
+  /* ─── Capture ───────────────────────────────────────────────── */
+  .cap{max-width:520px;margin:0 auto;padding:48px 0}
+  .cap h2{font-size:27px;font-weight:600;line-height:1.3;margin:18px 0 10px}
+  .cap .sub{color:var(--ink-2);font-size:15px;line-height:1.6;margin-bottom:28px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12.5px;letter-spacing:.06em;color:var(--ink-3);margin-bottom:7px}
+  .field input{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--stroke);border-radius:12px;
+    padding:13px 15px;color:var(--ink);font-size:15px;font-family:inherit;transition:.18s}
+  .field input:focus{outline:none;border-color:var(--cyan)}
+  .dpdp{font-size:12px;color:var(--ink-3);line-height:1.6;margin:16px 0 22px}
+
+  /* ─── Report (light) ────────────────────────────────────────── */
+  .report{background:var(--r-bg);color:var(--r-ink);min-height:100vh;font-size:15px}
+  .r-head{background:var(--r-navy);color:#fff;padding:20px 0}
+  .r-head .wrap,.report .wrap{max-width:860px}
+  .r-head-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+  .r-brand{display:flex;align-items:center;gap:10px;font-family:'Outfit',system-ui,sans-serif;font-weight:600;font-size:17px}
+  .r-brand .orb{width:24px;height:24px;box-shadow:none}
+  .r-meta{font-size:12.5px;opacity:.75}
+  .r-body{padding:38px 0 60px}
+  .r-card{background:var(--r-card);border:1px solid var(--r-stroke);border-radius:16px;
+    padding:28px 30px;margin-bottom:20px;box-shadow:0 1px 3px rgba(20,27,46,.05)}
+  .r-kicker{font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--r-indigo);margin-bottom:10px;font-weight:600}
+  .r-hero{display:flex;gap:34px;align-items:center;flex-wrap:wrap}
+  .r-score{font-family:'Outfit',system-ui,sans-serif;font-size:64px;font-weight:700;color:var(--r-navy);line-height:1}
+  .r-band{display:inline-flex;border-radius:999px;padding:6px 16px;font-family:'Outfit',system-ui,sans-serif;font-weight:600;
+    font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;background:#fdf3e3;color:var(--warn);
+    border:1px solid #f0d9ae;margin-top:10px}
+  .r-hero p{flex:1;min-width:260px;color:var(--r-ink2);line-height:1.7;font-size:15px}
+  .r-summary{font-size:16px;line-height:1.75}
+  .r-summary b{color:var(--r-navy)}
+  .r-h2{font-family:'Outfit',system-ui,sans-serif;font-size:21px;font-weight:600;color:var(--r-navy);margin:0 0 16px}
+  .r-mode{border-left:3px solid var(--r-indigo);padding:4px 0 4px 18px;margin-bottom:22px}
+  .r-mode h4{font-family:'Outfit',system-ui,sans-serif;font-size:16.5px;margin-bottom:6px}
+  .r-mode .pct{color:var(--r-indigo);font-weight:600;margin-left:8px}
+  .r-mode p{color:var(--r-ink2);line-height:1.65;font-size:14.5px}
+  .r-mode .route{margin-top:8px;font-size:13px;color:var(--r-navy);font-weight:500}
+  /* profile bars: single-hue magnitude, direct labels, ink text */
+  .bar-row{display:grid;grid-template-columns:190px 1fr 44px;gap:12px;align-items:center;margin-bottom:9px}
+  .bar-row .b-label{font-size:13px;color:var(--r-ink2);text-align:right;line-height:1.25}
+  .bar-row.hi .b-label{color:var(--r-ink);font-weight:600}
+  .b-track{height:14px;background:#edeff6;border-radius:0 4px 4px 0}
+  .b-fill{height:100%;background:#a5b4fc;border-radius:0 4px 4px 0;min-width:2px}
+  .bar-row.hi .b-fill{background:var(--r-indigo)}
+  .b-val{font-size:13px;font-weight:600;color:var(--r-ink)}
+  .r-next{background:linear-gradient(120deg,#eef2ff,#e0f5fb);border:1px solid #dbe3f8}
+  .r-next p{color:var(--r-ink2);line-height:1.7;margin:8px 0 18px}
+  .btn.navy{background:var(--r-navy);color:#fff}
+  .sign{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;
+    font-size:13px;color:var(--r-ink2);border-top:1px solid var(--r-stroke);padding-top:22px}
+  .sign b{color:var(--r-navy)}
+  /* ─── Console (dark, dense) ─────────────────────────────────── */
+  .login-stage{min-height:78vh;display:flex;align-items:center;justify-content:center}
+  .login-card{width:min(400px,92vw);background:var(--panel);border:1px solid var(--stroke);
+    border-radius:var(--radius);padding:34px 30px;text-align:center}
+  .login-card .orb{margin:0 auto 16px;width:44px;height:44px}
+  .login-card h2{font-size:21px;margin-bottom:4px}
+  .login-card .sub{font-size:13px;color:var(--ink-3);margin-bottom:24px}
+  .login-card .field{text-align:left}
+  .c-nav{display:flex;gap:22px;align-items:center;border-bottom:1px solid var(--stroke);
+    padding-bottom:14px;margin-bottom:20px;font-size:14px}
+  .c-nav a{color:var(--ink-3);text-decoration:none;cursor:pointer}
+  .c-nav a.on{color:var(--cyan);font-weight:600}
+  .c-nav .who{margin-left:auto;font-size:12px;color:var(--ink-3)}
+  .owner-chip{font-size:10.5px;letter-spacing:.12em;color:var(--cyan);border:1px solid rgba(34,211,238,.4);
+    border-radius:999px;padding:3px 10px;margin-left:10px}
+  .c-filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .c-filters select,.c-filters input{background:rgba(255,255,255,.05);border:1px solid var(--stroke);
+    border-radius:10px;color:var(--ink-2);font-size:13px;padding:8px 12px;font-family:inherit}
+  .c-table{width:100%;border-collapse:collapse;font-size:13.5px}
+  .c-table th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);
+    text-align:left;padding:10px 12px;border-bottom:1px solid var(--stroke)}
+  .c-table td{padding:12px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:middle}
+  .c-table tr:hover td{background:rgba(34,211,238,.04);cursor:pointer}
+  .c-table .who-cell b{display:block;font-weight:600;color:var(--ink)}
+  .c-table .who-cell span{font-size:12px;color:var(--ink-3)}
+  .chip{display:inline-block;border-radius:999px;padding:3px 11px;font-size:11px;
+    font-weight:600;letter-spacing:.06em;text-transform:uppercase;border:1px solid}
+  .b-sit{color:#4ade80;border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.08)}
+  .b-str{color:#ffb347;border-color:rgba(255,179,71,.4);background:rgba(255,179,71,.08)}
+  .b-sys{color:#f87171;border-color:rgba(248,113,113,.4);background:rgba(248,113,113,.08)}
+  .st-new{color:var(--cyan);border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.07)}
+  .st-con{color:#a5b4fc;border-color:rgba(165,180,252,.4);background:rgba(165,180,252,.07)}
+  .st-l2{color:#ffb347;border-color:rgba(255,179,71,.4);background:rgba(255,179,71,.08)}
+  .st-eng{color:#4ade80;border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.08)}
+  .st-cls{color:var(--ink-3);border-color:var(--stroke);background:none}
+  .score-cell{font-family:'Outfit',system-ui,sans-serif;font-weight:600}
+  /* lead detail */
+  .lead-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:20px}
+  .lead-head h2{font-size:24px}
+  .lead-head .sub{font-size:13.5px;color:var(--ink-3);margin-top:4px}
+  .lead-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}
+  @media(max-width:760px){.lead-grid{grid-template-columns:1fr}}
+  .p-block{background:var(--panel);border:1px solid var(--stroke);border-radius:14px;padding:20px 22px;margin-bottom:16px}
+  .p-block h4{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}
+  .tl{font-size:13px;color:var(--ink-2);line-height:1.5}
+  .tl li{list-style:none;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);display:flex;gap:10px}
+  .tl .t{color:var(--ink-3);flex:none;width:78px;font-size:12px}
+  .mini-bar{display:grid;grid-template-columns:150px 1fr 34px;gap:10px;align-items:center;margin-bottom:7px;font-size:12.5px;color:var(--ink-2)}
+  .mini-bar .trk{height:9px;background:rgba(255,255,255,.07);border-radius:0 3px 3px 0}
+  .mini-bar .fil{height:100%;background:rgba(99,102,241,.75);border-radius:0 3px 3px 0}
+  .mini-bar.hi .fil{background:linear-gradient(90deg,var(--indigo),var(--cyan))}
+  .mini-bar.hi{color:var(--ink);font-weight:500}
+  .ans{font-size:13.5px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .ans .q{color:var(--ink-3);font-size:12px;margin-bottom:3px}
+  .act-row{display:flex;gap:10px;flex-wrap:wrap}
+  .btn.small{padding:9px 15px;font-size:13px;border-radius:10px}
+  /* partner links */
+  .pl-card{background:var(--panel);border:1px solid var(--stroke);border-radius:14px;padding:20px 22px;margin-bottom:14px}
+  .pl-card h3{font-size:17px;margin-bottom:2px}
+  .pl-card .sub{font-size:12.5px;color:var(--ink-3);margin-bottom:14px}
+  .link-row{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.04);border:1px solid var(--stroke);
+    border-radius:10px;padding:10px 14px;margin-bottom:8px;font-size:13px}
+  .link-row code{color:var(--cyan);font-family:ui-monospace,monospace;font-size:12.5px;overflow-wrap:anywhere}
+  .link-row .cp{margin-left:auto;flex:none}
+  /* edge states gallery */
+  .state-frame{border:1px dashed var(--stroke);border-radius:14px;padding:24px;margin-bottom:22px;position:relative}
+  .state-label{position:absolute;top:-9px;left:16px;background:var(--bg);padding:0 10px;
+    font-size:10.5px;letter-spacing:.16em;color:var(--ink-3);text-transform:uppercase}
+  .modal-demo{max-width:420px;margin:0 auto;background:var(--panel-solid);border:1px solid var(--stroke);
+    border-radius:16px;padding:26px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.55)}
+  .err-banner{display:flex;gap:12px;align-items:center;background:rgba(248,113,113,.08);
+    border:1px solid rgba(248,113,113,.35);border-radius:12px;padding:14px 16px;font-size:13.5px;color:var(--ink-2)}
+  /* reviewer navigation (mock chrome, not part of product) */
+  .mock-nav{position:fixed;bottom:16px;right:16px;z-index:50;background:#0c1226;border:1px solid var(--stroke);
+    border-radius:12px;padding:10px 12px;font-size:11.5px;display:flex;gap:4px;flex-wrap:wrap;max-width:340px;
+    box-shadow:0 10px 34px rgba(0,0,0,.5)}
+  .mock-nav b{width:100%;color:var(--ink-3);letter-spacing:.12em;font-size:9.5px;font-weight:500}
+  .mock-nav a{color:var(--ink-2);cursor:pointer;padding:3px 8px;border-radius:7px;border:1px solid transparent}
+  .mock-nav a:hover{color:var(--cyan);border-color:var(--stroke)}
+  @media print{.r-head{-webkit-print-color-adjust:exact}.no-print{display:none!important}.mock-nav{display:none}}
+  @media (max-width:560px){
+    .bar-row{grid-template-columns:120px 1fr 40px}
+    .r-card{padding:22px 18px}.hero{padding-top:40px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ DARK STAGES ═══ -->
+<div class="dark-stage" id="darkRoot">
+  <div class="wrap">
+    <div class="top">
+      <div class="brand" onclick="go('landing')">
+        <div class="orb"></div>
+        <div><div class="wordmark">VaNi <em>AI</em></div><div class="byline">BY VIKUNA TECHNOLOGIES</div></div>
+      </div>
+      <div class="mock-chip">UX BLUEPRINT · V2</div>
+    </div>
+
+    <!-- Landing -->
+    <section class="screen on" id="landing">
+      <div class="hero">
+        <div class="kicker">AI Business Assessments</div>
+        <h1>Your AI pilot didn’t fail because AI doesn’t work. <span>VaNi finds out why.</span></h1>
+        <p>I’m VaNi — Vikuna’s analysis agent. I assess how organizations select, build and run AI, score the result against ten known failure modes, and tell you exactly what to fix first. Precise, evidence-first, seven minutes.</p>
+      </div>
+      <div class="cards">
+        <div class="a-card live">
+          <div class="a-tag">Live · Free</div>
+          <h3>Why did your AI initiative stall?</h3>
+          <div class="meta"><b>12 questions · ~7 minutes</b><br>Scored against the ten failure modes of enterprise AI. Full report by email.</div>
+          <button class="btn" onclick="startAssess()">Start the assessment →</button>
+        </div>
+        <div class="a-card soon"><div class="soon-chip">SOON</div>
+          <div class="a-tag">Assessment</div><h3>Is your data ready for AI?</h3>
+          <div class="meta">Data &amp; governance readiness, scored.</div></div>
+        <div class="a-card soon"><div class="soon-chip">SOON</div>
+          <div class="a-tag">Assessment</div><h3>V-ORC resilience readiness</h3>
+          <div class="meta">Operational resilience posture, scored.</div></div>
+      </div>
+      <footer>
+        VaNi AI is built and operated by Vikuna Technologies, Hyderabad. Your responses are stored securely in India and used only to prepare your assessment — see the privacy note. · vikuna.io
+      </footer>
+    </section>
+
+    <!-- Assessment -->
+    <section class="screen" id="assess">
+      <div class="assess-shell">
+        <div class="progress"><i id="pbar" style="width:8%"></i></div>
+        <div class="p-label" id="plabel">QUESTION 1 OF 12</div>
+        <div class="framing"><div class="orb"></div><span id="framing"></span></div>
+        <div class="q-text" id="qtext"></div>
+        <div class="opts" id="opts"></div>
+        <div class="assess-foot">
+          <button class="linky" id="backBtn" onclick="prevQ()">← Back</button>
+          <span>Answers are saved as you go</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Analyzing -->
+    <section class="screen" id="analyzing">
+      <div class="center-stage">
+        <div class="orb-xl"></div>
+        <div class="think-line" id="thinkLine">Reading your responses…</div>
+      </div>
+    </section>
+
+    <!-- Teaser -->
+    <section class="screen" id="teaser">
+      <div class="teaser">
+        <div class="kicker">VaNi’s initial read</div>
+        <span class="band-chip">◆ Structural</span>
+        <div class="score-row"><div class="score-big">54</div><div class="score-cap">AI Initiative<br>Health Score / 100</div></div>
+        <p style="color:var(--ink-2);max-width:540px;line-height:1.65">The pattern I see repeats across your initiatives — the causes are organizational, not technical. Your strongest exposure:</p>
+        <div class="mode-card">
+          <div class="m-tag">#1 failure mode · 78% exposure</div>
+          <h3>Ownership vacuum</h3>
+          <p>Your answers indicate initiatives owned by IT with no business owner accountable for outcomes. In my experience of this pattern, sponsorship drifts and the initiative quietly stalls after the pilot.</p>
+        </div>
+        <div class="locked"><span>🔒</span><span><span class="n">Failure modes #2 and #3</span> — scored and explained in your full report</span></div>
+        <div class="locked"><span>🔒</span><span><span class="n">All ten modes profiled</span> + your recommended next step</span></div>
+        <div style="margin-top:28px"><button class="btn" onclick="go('capture')">Get my full assessment →</button></div>
+      </div>
+    </section>
+
+    <!-- Capture -->
+    <section class="screen" id="capture">
+      <div class="cap">
+        <div class="framing"><div class="orb"></div><span>VaNi · your report is ready</span></div>
+        <h2>Where should I send it?</h2>
+        <p class="sub">Ten failure modes scored, your top three explained, and the one next step I’d take first — reviewed by Charan Kamal Bommakanti before anything more happens.</p>
+        <div class="field"><label>NAME</label><input placeholder="Your name" value="Ananya Rao"></div>
+        <div class="field"><label>WORK EMAIL</label><input placeholder="you@company.com" value="ananya@meditech.example"></div>
+        <div class="field"><label>COMPANY</label><input placeholder="Company" value="MediTech Diagnostics"></div>
+        <div class="field"><label>ROLE</label><input placeholder="Role" value="Chief Operating Officer"></div>
+        <p class="dpdp">We store your responses and contact details securely in India, only to prepare and follow up on this assessment. No lists, no resale. (DPDP-conscious by design.)</p>
+        <button class="btn" onclick="go('report')">Send my assessment →</button>
+      </div>
+    </section>
+
+    <!-- ═══ CONSOLE · Login ═══ -->
+    <section class="screen" id="login">
+      <div class="login-stage">
+        <div class="login-card">
+          <div class="orb"></div>
+          <h2>VaNi <em style="font-style:normal;color:var(--cyan)">AI</em> Console</h2>
+          <div class="sub">Owner &amp; partner access only</div>
+          <div class="field"><label>EMAIL</label><input value="charan@vikuna.io"></div>
+          <div class="field"><label>PASSWORD</label><input type="password" value="••••••••••"></div>
+          <button class="btn" style="width:100%;justify-content:center;margin-top:8px" onclick="go('console')">Sign in →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ CONSOLE · Leads list ═══ -->
+    <section class="screen" id="console">
+      <div class="c-nav">
+        <a class="on">Leads</a><a onclick="go('partners')">Partner links</a>
+        <span class="who">charan@vikuna.io<span class="owner-chip">OWNER · ALL PARTNERS</span></span>
+      </div>
+      <div class="c-filters">
+        <select><option>All assessments</option><option>AI Recovery Audit</option></select>
+        <select><option>All bands</option><option>Situational</option><option>Structural</option><option>Systemic</option></select>
+        <select><option>All statuses</option><option>New</option><option>Contacted</option><option>L2 booked</option><option>Engaged</option><option>Closed</option></select>
+        <select><option>All partners</option><option>Direct</option><option>rk-associates</option><option>meera-c</option></select>
+        <input placeholder="Search name / company…" style="flex:1;min-width:160px">
+      </div>
+      <table class="c-table">
+        <thead><tr><th>Lead</th><th>Band</th><th>Score</th><th>Top mode</th><th>Partner</th><th>Status</th><th>Age</th></tr></thead>
+        <tbody>
+          <tr onclick="go('lead')"><td class="who-cell"><b>Ananya Rao</b><span>MediTech Diagnostics · COO</span></td>
+            <td><span class="chip b-str">Structural</span></td><td class="score-cell">54</td><td>F4 · Ownership vacuum</td>
+            <td>Direct</td><td><span class="chip st-new">New</span></td><td>2h</td></tr>
+          <tr><td class="who-cell"><b>Suresh Iyer</b><span>Kalyan Textiles · MD</span></td>
+            <td><span class="chip b-sys">Systemic</span></td><td class="score-cell">31</td><td>F10 · Expectation mismatch</td>
+            <td>rk-associates</td><td><span class="chip st-con">Contacted</span></td><td>1d</td></tr>
+          <tr><td class="who-cell"><b>Farah Khan</b><span>Nimbus Finserv · Head of Ops</span></td>
+            <td><span class="chip b-str">Structural</span></td><td class="score-cell">47</td><td>F2 · Data not ready</td>
+            <td>Direct</td><td><span class="chip st-l2">L2 booked</span></td><td>3d</td></tr>
+          <tr><td class="who-cell"><b>Vikram Shetty</b><span>Coastal Pharma · CIO</span></td>
+            <td><span class="chip b-sit">Situational</span></td><td class="score-cell">76</td><td>F3 · POC-to-prod gap</td>
+            <td>meera-c</td><td><span class="chip st-eng">Engaged</span></td><td>6d</td></tr>
+          <tr><td class="who-cell"><b>Deepa Nair</b><span>GreenGrid Energy · CDO</span></td>
+            <td><span class="chip b-str">Structural</span></td><td class="score-cell">52</td><td>F6 · Economics blowout</td>
+            <td>rk-associates</td><td><span class="chip st-cls">Closed · won</span></td><td>12d</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:14px;font-size:12px;color:var(--ink-3)">Partner view shows the same screen scoped to that partner’s leads only (RLS). Abandoned responses live under a secondary tab (P4).</p>
+    </section>
+
+    <!-- ═══ CONSOLE · Lead detail ═══ -->
+    <section class="screen" id="lead">
+      <div class="c-nav"><a onclick="go('console')">← Leads</a>
+        <span class="who">charan@vikuna.io<span class="owner-chip">OWNER</span></span></div>
+      <div class="lead-head">
+        <div><h2>Ananya Rao</h2>
+          <div class="sub">MediTech Diagnostics · Chief Operating Officer · ananya@meditech.example · Ref VN-2026-0147 · Source: Direct</div></div>
+        <div class="act-row">
+          <button class="btn small" onclick="go('report')">Open report</button>
+          <button class="btn small ghost">Resend email</button>
+          <button class="btn small ghost">Copy report link</button>
+        </div>
+      </div>
+      <div class="lead-grid">
+        <div>
+          <div class="p-block"><h4>Assessment result</h4>
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+              <span style="font-family:'Outfit',system-ui,sans-serif;font-size:38px;font-weight:700">54</span>
+              <span class="chip b-str">Structural</span>
+              <span style="font-size:12px;color:var(--ink-3)">Completed 31 Jul, 14:22 IST · 6m 40s</span></div>
+            <div class="mini-bar hi"><span>F4 · Ownership vacuum</span><div class="trk"><div class="fil" style="width:78%"></div></div><span>78</span></div>
+            <div class="mini-bar hi"><span>F3 · POC-to-prod gap</span><div class="trk"><div class="fil" style="width:64%"></div></div><span>64</span></div>
+            <div class="mini-bar hi"><span>F6 · Economics blowout</span><div class="trk"><div class="fil" style="width:57%"></div></div><span>57</span></div>
+            <div class="mini-bar"><span>F5 · Adoption failure</span><div class="trk"><div class="fil" style="width:46%"></div></div><span>46</span></div>
+            <div class="mini-bar"><span>F10 · Expectation mismatch</span><div class="trk"><div class="fil" style="width:41%"></div></div><span>41</span></div>
+          </div>
+          <div class="p-block"><h4>Responses (12)</h4>
+            <div class="ans"><div class="q">Q3 · How were your AI use cases chosen?</div>C — IT or a vendor proposed it</div>
+            <div class="ans"><div class="q">Q4 · Was the data profiled before building?</div>C — Issues surfaced mid-build</div>
+            <div class="ans"><div class="q">Q5 · Named business owner accountable?</div>D — Nobody clearly owned it</div>
+            <div class="ans" style="border:none;color:var(--ink-3);font-size:12.5px">…all 12 responses listed in production</div>
+          </div>
+        </div>
+        <div>
+          <div class="p-block"><h4>Pipeline</h4>
+            <div class="field"><label>STATUS</label>
+              <select style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--stroke);border-radius:12px;padding:12px;color:var(--ink);font-size:14px">
+                <option>New</option><option>Contacted</option><option>L2 booked</option><option>Engaged</option><option>Closed · won</option><option>Closed · lost</option></select></div>
+            <div class="field"><label>ADD NOTE</label><input placeholder="e.g., Called — asked for the one-pager"></div>
+            <button class="btn small ghost" style="width:100%;justify-content:center">Save note</button>
+          </div>
+          <div class="p-block"><h4>Timeline</h4>
+            <ul class="tl">
+              <li><span class="t">31 Jul 14:24</span><span>Report emailed · delivered</span></li>
+              <li><span class="t">31 Jul 14:22</span><span>Assessment completed · lead captured</span></li>
+              <li><span class="t">31 Jul 14:15</span><span>Assessment started (Direct link)</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ CONSOLE · Partner links ═══ -->
+    <section class="screen" id="partners">
+      <div class="c-nav"><a onclick="go('console')">Leads</a><a class="on">Partner links</a>
+        <span class="who">charan@vikuna.io<span class="owner-chip">OWNER</span></span></div>
+      <div class="pl-card"><h3>RK Associates</h3><div class="sub">rk-associates · partner since Aug 2026 · 2 leads · rk@rkassociates.example</div>
+        <div class="link-row"><span>AI Recovery Audit</span><code>vani.vikuna.io/a/ai-recovery?ref=rk-associates</code><button class="btn small ghost cp">Copy</button></div>
+      </div>
+      <div class="pl-card"><h3>Meera Consulting</h3><div class="sub">meera-c · partner since Aug 2026 · 1 lead</div>
+        <div class="link-row"><span>AI Recovery Audit</span><code>vani.vikuna.io/a/ai-recovery?ref=meera-c</code><button class="btn small ghost cp">Copy</button></div>
+      </div>
+      <p style="font-size:12.5px;color:var(--ink-3)">Owner-only view. Partners see this screen with only their own links and lead counts. Adding a partner = insert row + credentials (P4; no self-signup in v1).</p>
+    </section>
+
+    <!-- ═══ Edge states gallery ═══ -->
+    <section class="screen" id="states">
+      <h2 style="font-size:22px;margin:6px 0 24px">Edge states</h2>
+      <div class="state-frame"><span class="state-label">Resume prompt · shown on return visit with an incomplete response</span>
+        <div class="modal-demo">
+          <div class="orb" style="margin:0 auto 14px"></div>
+          <h3 style="font-size:18px;margin-bottom:8px">Welcome back — pick up where you left off?</h3>
+          <p style="font-size:13.5px;color:var(--ink-2);margin-bottom:18px">Your assessment is saved at question 5 of 12.</p>
+          <div class="act-row" style="justify-content:center">
+            <button class="btn small">Resume →</button><button class="btn small ghost">Start over</button></div>
+        </div>
+      </div>
+      <div class="state-frame"><span class="state-label">Inline error · any API failure on the public path</span>
+        <div class="err-banner"><span>⚠</span><span>I couldn’t save that answer — your connection may have dropped. <b style="color:var(--ink)">Tap to retry.</b> Your previous answers are safe.</span></div>
+      </div>
+      <div class="state-frame"><span class="state-label">Invalid / expired report link · light page, report side — see screen via nav → “Expired link”</span>
+        <p style="font-size:13.5px;color:var(--ink-2)">Full-page state implemented as the “Expired” screen: VaNi mark, “This report link isn’t valid — it may have been revoked or mistyped.” One CTA: “Take the assessment” + contact line. No error codes shown to prospects.</p>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ═══ REPORT (LIGHT) ═══ -->
+<section class="screen report" id="report">
+  <div class="r-head">
+    <div class="wrap r-head-row">
+      <div class="r-brand"><div class="orb"></div>VaNi AI · Assessment Report</div>
+      <div class="r-meta">AI Recovery Audit · 31 July 2026 · Ref VN-2026-0147</div>
+    </div>
+  </div>
+  <div class="wrap r-body">
+
+    <div class="r-card r-hero">
+      <div><div class="r-kicker">AI Initiative Health</div>
+        <div class="r-score">54<span style="font-size:22px;color:var(--r-ink2)">/100</span></div>
+        <span class="r-band">Structural</span>
+      </div>
+      <p><b>MediTech Diagnostics</b> — assessed from 12 responses on how AI initiatives were selected, built, owned and run. Band <b>Structural</b>: the failure pattern repeats across initiatives, which means the causes sit in the operating model, not in any single project.</p>
+    </div>
+
+    <div class="r-card">
+      <div class="r-kicker">VaNi’s summary</div>
+      <p class="r-summary">I assessed your responses across the ten failure modes of enterprise AI. Your initiatives did not fail for technical reasons — the model-side answers are among your healthiest. The pattern I found is organizational: <b>no business owner carried the outcome</b> (78% exposure), <b>the pilot had no path to production</b> (64%), and <b>costs were never modeled at unit level</b> (57%). Each of these is known, fixable, and — importantly — your sunk investment is partly recoverable. My recommended first move is below.</p>
+    </div>
+
+    <div class="r-card">
+      <h3 class="r-h2">Your top three exposures</h3>
+      <div class="r-mode"><h4>F4 · Ownership vacuum<span class="pct">78%</span></h4>
+        <p>Initiatives were owned by IT while business sponsors disengaged after kickoff. Nobody was accountable for the outcome, so when the sponsor moved on, the initiative stalled without a decision ever being taken.</p>
+        <div class="route">Fix direction: a named business owner with outcome KPIs — the operating-model change a fractional Chief AI Officer installs.</div></div>
+      <div class="r-mode"><h4>F3 · POC-to-production gap<span class="pct">64%</span></h4>
+        <p>Your pilots impressed and then never shipped. The answers indicate no production architecture, integration or security path was planned at pilot stage — the classic “demo that was never deployable.”</p>
+        <div class="route">Fix direction: production-first rebuild of the strongest pilot; much of the sunk value is salvageable.</div></div>
+      <div class="r-mode" style="margin-bottom:4px"><h4>F6 · Economics blowout<span class="pct">57%</span></h4>
+        <p>ROI was estimated at a high level, never at unit level. Costs surprised the team mid-build, which eroded sponsor confidence at exactly the moment ownership was already weak.</p>
+        <div class="route">Fix direction: unit-economics gate before the next build is funded.</div></div>
+    </div>
+
+    <div class="r-card">
+      <h3 class="r-h2">All ten failure modes</h3>
+      <div id="profile"></div>
+      <p style="margin-top:14px;font-size:12.5px;color:var(--r-ink2)">Exposure 0–100 per mode, computed deterministically from your responses. Highlighted rows are your top three.</p>
+    </div>
+
+    <div class="r-card r-next">
+      <div class="r-kicker">Recommended next step</div>
+      <h3 class="r-h2" style="margin-bottom:4px">A Rapid Post-Mortem Review of your strongest stalled initiative</h3>
+      <p>One week, blame-free, evidence-based: I prepare the ground, Vikuna’s practice leads the interviews and verdict — Salvage, Restructure, Restart or Retire — with the first corrective step for each finding. Your Structural band means fixing one initiative without touching the operating model will reproduce the failure; the review scopes both.</p>
+      <button class="btn navy no-print">Book the review — 30 min scoping call</button>
+    </div>
+
+    <div class="sign wrap" style="padding-left:0;padding-right:0">
+      <div>Assessed by <b>VaNi AI</b> · Reviewed by <b>Charan Kamal Bommakanti</b>, Founder &amp; CEO, Vikuna Technologies</div>
+      <div class="no-print"><button class="btn ghost" style="border-color:var(--r-stroke);color:var(--r-ink2)" onclick="window.print()">Print / PDF</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ EXPIRED LINK (LIGHT) ═══ -->
+<section class="screen report" id="expired">
+  <div class="r-head"><div class="wrap r-head-row">
+    <div class="r-brand"><div class="orb"></div>VaNi AI</div></div></div>
+  <div class="wrap r-body" style="max-width:560px;text-align:center;padding-top:70px">
+    <h3 class="r-h2" style="font-size:24px">This report link isn’t valid</h3>
+    <p style="color:var(--r-ink2);line-height:1.7;margin:10px 0 26px">It may have been revoked or mistyped. If you received it by email, use the button in that email — or take the assessment again in seven minutes.</p>
+    <button class="btn navy" onclick="go('landing')">Take the assessment →</button>
+    <p style="font-size:12.5px;color:var(--r-ink2);margin-top:26px">Need help? hello@vikuna.io</p>
+  </div>
+</section>
+
+<!-- Reviewer navigation — mock chrome, NOT part of the product -->
+<nav class="mock-nav">
+  <b>BLUEPRINT SCREENS</b>
+  <a onclick="go('landing')">Landing</a><a onclick="startAssess()">Assessment</a>
+  <a onclick="go('teaser')">Teaser</a><a onclick="go('capture')">Capture</a>
+  <a onclick="go('report')">Report</a><a onclick="go('login')">Login</a>
+  <a onclick="go('console')">Console</a><a onclick="go('lead')">Lead detail</a>
+  <a onclick="go('partners')">Partners</a><a onclick="go('states')">States</a>
+  <a onclick="go('expired')">Expired link</a>
+</nav>
+
+<script>
+/* ── sample data (production: renders from gt_assessment_def JSONB) ── */
+const QUESTIONS = [
+  { framing:"VaNi · mapping how your use cases were chosen",
+    q:"How were your AI use cases chosen?",
+    opts:["A joint business-value assessment","The business demanded it","IT or a vendor proposed it","An experiment or hackathon that grew"] },
+  { framing:"VaNi · checking whether the data was ready before the build",
+    q:"Before building, was the underlying data profiled for quality and access?",
+    opts:["Thoroughly, with a readiness gate","Partially","Issues surfaced mid-build","Not at all"] },
+  { framing:"VaNi · finding out who carried the outcome",
+    q:"Did each initiative have a named business owner accountable for outcomes — not IT?",
+    opts:["Yes, with outcome KPIs","Yes, nominally","IT owned it","Nobody clearly owned it"] },
+];
+const THINK = ["Reading your responses…","Scoring against ten failure modes…","Comparing the pattern across initiatives…","Preparing your read…"];
+const PROFILE = [
+  ["F4 · Ownership vacuum",78,1],["F3 · POC-to-production gap",64,1],["F6 · Economics blowout",57,1],
+  ["F5 · Adoption failure",46,0],["F10 · Expectation mismatch",41,0],["F1 · Wrong use case",35,0],
+  ["F9 · Capability gap",31,0],["F2 · Data not ready",24,0],["F7 · Governance gap",22,0],["F8 · Vendor lock",15,0],
+];
+let qi = 0; const answers = {};   // in-memory only
+
+const LIGHT_SCREENS = ['report','expired'];
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  const light = LIGHT_SCREENS.includes(id);
+  document.getElementById('darkRoot').style.display = light ? 'none' : 'block';
+  document.body.style.background = light ? '#f6f7fb' : 'var(--bg)';
+  window.scrollTo({top:0});
+}
+function startAssess(){ qi=0; renderQ(); go('assess'); }
+function renderQ(){
+  const Q = QUESTIONS[qi];
+  document.getElementById('pbar').style.width = ((qi+1)/12*100)+'%';
+  document.getElementById('plabel').textContent = `QUESTION ${qi+1} OF 12`;
+  document.getElementById('framing').textContent = Q.framing;
+  document.getElementById('qtext').textContent = Q.q;
+  document.getElementById('backBtn').style.visibility = qi===0?'hidden':'visible';
+  const box = document.getElementById('opts'); box.innerHTML='';
+  Q.opts.forEach((o,i)=>{
+    const b=document.createElement('button'); b.className='opt'+(answers[qi]===i?' sel':'');
+    b.innerHTML=`<span class="key">${'ABCD'[i]}</span><span>${o}</span>`;
+    b.onclick=()=>{ answers[qi]=i;
+      box.querySelectorAll('.opt').forEach(x=>x.classList.remove('sel')); b.classList.add('sel');
+      setTimeout(nextQ,260); };
+    box.appendChild(b);
+  });
+}
+function nextQ(){
+  if(qi < QUESTIONS.length-1){ qi++; renderQ(); }
+  else analyze();   // mockup: 3 sample questions, then the beat
+}
+function prevQ(){ if(qi>0){ qi--; renderQ(); } }
+function analyze(){
+  go('analyzing'); let i=0;
+  const el=document.getElementById('thinkLine');
+  const t=setInterval(()=>{ i++;
+    if(i>=THINK.length){ clearInterval(t); go('teaser'); return; }
+    el.style.opacity=0; setTimeout(()=>{el.textContent=THINK[i];el.style.opacity=1},250);
+  },850);
+}
+/* report profile bars */
+(function(){
+  const host=document.getElementById('profile');
+  PROFILE.forEach(([label,v,hi])=>{
+    const r=document.createElement('div'); r.className='bar-row'+(hi?' hi':'');
+    r.innerHTML=`<div class="b-label">${label}</div>
+      <div class="b-track"><div class="b-fill" style="width:${v}%"></div></div>
+      <div class="b-val">${v}</div>`;
+    host.appendChild(r);
+  });
+})();
+</script>
+</body>
+</html>
