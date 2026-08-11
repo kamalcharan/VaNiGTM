@@ -17,12 +17,22 @@ const MAX_ASK_LENGTH = 600;
 // response, including error paths, has to be a valid { render, data, prose }
 // payload, or the UI shows a broken card instead of a clear message.
 //
-// _proxyFallback marks a card as proxy-authored rather than model-authored —
-// without it, a rate-limit or bad-model-output message is indistinguishable
-// from a genuine Qwen answer, since both arrive as ordinary 200-shaped JSON
-// and neither trips the client's existing DEMO-mode fallback path.
-function fallback(html, prose) {
-  return { render: 'prose', data: { html }, prose: prose || '', _proxyFallback: true };
+// _useLocalDemo tells the client to silently compose this card with its own
+// local demoAdvisor(), the same as true DEMO MODE, and tag it DEMO — never
+// show a "could not respond" message in a live session. html/prose here are
+// only the safety net if that client-side substitution somehow fails too.
+// debugReason/debugDetail ride along for our own inspection via "VIEW THE
+// PROMPT" — never surfaced to a viewer, just not thrown away either.
+function fallback(html, prose, debug) {
+  return {
+    render: 'prose',
+    data: { html },
+    prose: prose || '',
+    _proxyFallback: true,
+    _useLocalDemo: true,
+    _debugReason: debug?.reason || null,
+    _debugDetail: debug?.detail || null,
+  };
 }
 
 export default async function handler(req, res) {
@@ -38,7 +48,8 @@ export default async function handler(req, res) {
     res.status(429).json(
       fallback(
         '<b>This session has hit its request limit for now.</b> Give it a few minutes and try again.',
-        'Rate limit reached.'
+        'Rate limit reached.',
+        { reason: 'rate_limit' }
       )
     );
     return;
@@ -66,7 +77,13 @@ export default async function handler(req, res) {
   for (const k of LEVER_KEYS) {
     const v = Number(state?.levers?.[k]);
     if (!Number.isInteger(v) || v < 1 || v > 5) {
-      res.status(400).json(fallback('Something in this scenario did not reach the advisor correctly. Try adjusting a lever and asking again.'));
+      res.status(400).json(
+        fallback(
+          'Something in this scenario did not reach the advisor correctly. Try adjusting a lever and asking again.',
+          undefined,
+          { reason: 'bad_levers' }
+        )
+      );
       return;
     }
     levers[k] = v;
@@ -105,18 +122,20 @@ export default async function handler(req, res) {
     { role: 'user', content: userContent },
   ];
 
-  const payload = await callQwen(messages);
-  if (!payload) {
+  const qwenResult = await callQwen(messages);
+  if (!qwenResult.payload) {
     // 502 for server logs/monitoring; body is still a valid render payload
     // since the client doesn't check status, only .json()s the response.
     res.status(502).json(
       fallback(
         '<b>The advisor could not form a response to that.</b> Try rephrasing, or pick one of the framework chips.',
-        'No usable response from the model.'
+        'No usable response from the model.',
+        { reason: qwenResult.reason, detail: qwenResult.detail }
       )
     );
     return;
   }
+  const payload = qwenResult.payload;
 
   // --- post-validate: numbers must match the engine, always ---
   // delta is only trustworthy when the proxy itself computed the "after"
@@ -225,10 +244,22 @@ async function callQwen(messages) {
       return { payload: null, reason: 'network', detail: 'non-JSON response from model host' };
     }
 
-    const content = out?.choices?.[0]?.message?.content;
+    const choice = out?.choices?.[0];
+    const content = choice?.message?.content;
     if (!content) return { payload: null, reason: 'empty' };
     const parsed = extractJson(content);
-    if (!parsed) return { payload: null, reason: 'parse' };
+    if (!parsed) {
+      // Snippet of the actual output, plus llama.cpp's own finish_reason —
+      // 'length' means max_tokens cut it off mid-generation (truncation),
+      // anything else means the model produced malformed JSON on its own.
+      // This is what actually lets us tell those two failure modes apart
+      // instead of guessing from the outside.
+      return {
+        payload: null,
+        reason: 'parse',
+        detail: `finish_reason=${choice?.finish_reason || 'unknown'}; content(first 300 chars)="${String(content).slice(0, 300)}"`,
+      };
+    }
 
     // Numbers are read-only (doctrine §6.1) — scan every text field the
     // model wrote for an invented percentage, not just the prose footnote.
@@ -258,7 +289,9 @@ async function callQwen(messages) {
     const note = (RETRY_NOTES[result.reason] || RETRY_NOTES.parse)(result.detail);
     result = await requestOnce(note, 14000);
   }
-  return result.payload;
+  // Full {payload, reason, detail} so a final failure can carry a real
+  // diagnosis up to the client instead of a bare null.
+  return result;
 }
 
 // Recursively scans a parsed response for a bare "<digits>%" pattern in any
