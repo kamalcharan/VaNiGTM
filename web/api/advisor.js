@@ -15,8 +15,13 @@ const MAX_ASK_LENGTH = 400;
 // on whatever comes back and renders it as an advisor response. So every
 // response, including error paths, has to be a valid { render, data, prose }
 // payload, or the UI shows a broken card instead of a clear message.
+//
+// _proxyFallback marks a card as proxy-authored rather than model-authored —
+// without it, a rate-limit or bad-model-output message is indistinguishable
+// from a genuine Qwen answer, since both arrive as ordinary 200-shaped JSON
+// and neither trips the client's existing DEMO-mode fallback path.
 function fallback(html, prose) {
-  return { render: 'prose', data: { html }, prose: prose || '' };
+  return { render: 'prose', data: { html }, prose: prose || '', _proxyFallback: true };
 }
 
 export default async function handler(req, res) {
@@ -116,15 +121,15 @@ export default async function handler(req, res) {
   }
 
   if (!RENDERS.includes(payload.render) || typeof payload.data !== 'object' || payload.data === null) {
-    const salvaged = fallback(
-      typeof payload.prose === 'string' && payload.prose
-        ? `<b>${payload.prose}</b>`
-        : 'The advisor returned a response outside the expected format.',
-      typeof payload.prose === 'string' ? payload.prose : ''
-    );
-    payload.render = salvaged.render;
-    payload.data = salvaged.data;
-    payload.prose = payload.prose || salvaged.prose;
+    const hasModelProse = typeof payload.prose === 'string' && payload.prose.trim().length > 0;
+    payload.render = 'prose';
+    payload.data = { html: hasModelProse ? `<b>${payload.prose}</b>` : 'The advisor returned a response outside the expected format.' };
+    // The model's own words survived the reshape — that's still its content,
+    // not proxy boilerplate, so it does not get the _proxyFallback marker.
+    if (!hasModelProse) {
+      payload._proxyFallback = true;
+      payload.prose = 'The advisor returned a response outside the expected format.';
+    }
   }
 
   if (payload.render === 'bars') {
