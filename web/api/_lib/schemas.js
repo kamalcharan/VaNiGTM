@@ -4,14 +4,20 @@
 // Also used as response_format / guided-decoding hints and for post-parse
 // validation of the model's JSON.
 
-export const RENDERS = ['bars', 'tension', 'checklist', 'delta', 'memo', 'prose'];
+export const RENDERS = ['bars', 'tension', 'checklist', 'delta', 'memo', 'handling', 'prose'];
 
-const BASE_CONTRACT = `You always return a single JSON object. Nothing before it, nothing after it — no prose
+// Parameterized so the stated enum always matches what's actually being
+// offered — a hardcoded list here previously excluded "handling" even when
+// composing the handling contract, telling the model to return a render
+// value its own instructions said didn't exist.
+function baseContract(renderList) {
+  return `You always return a single JSON object. Nothing before it, nothing after it — no prose
 wrapper, no code fence.
 
-{ "render": "<one of: bars | tension | checklist | delta | memo | prose>",
+{ "render": "<one of: ${renderList.join(' | ')}>",
   "data":   { ... the contract for that render type ... },
   "prose":  "One to three sentences of advisory footnote. Plain text, no markup." }`;
+}
 
 const CONTRACT_BODY = {
   bars: `### \`bars\` — the framework read
@@ -50,6 +56,17 @@ The "after" scores are supplied to you already computed by the proxy — copy th
 
   prose: `### \`prose\` — everything else
 { "html": "<2-4 sentences. Only <b> and <span class='hl'> permitted. No other tags.>" }`,
+
+  handling: `### \`handling\` — coaching the learner through one stakeholder's pushback
+{ "question": "<the stakeholder's question, verbatim — you will not receive this back from the proxy>",
+  "who":      "<the stakeholder's name>",
+  "role":     "<their role>",
+  "subtext":  "<what they are actually protecting — one or two sentences>",
+  "answer":   ["<2-4 coaching items; <b> permitted, no other tags; ground them in the injected lever values>"],
+  "trap":     "<what not to say, and why it costs the learner>" }
+The proxy overwrites question/who/role/subtext/trap with the authored profile after you respond —
+write them anyway so the JSON is complete, but put your real effort into "answer". That is the only
+field of this card that is actually yours.`,
 };
 
 const SELECTION_TABLE = `Choose the render type by what the answer *is*, not by what was asked:
@@ -70,17 +87,21 @@ would move, without stating a number you were not given.`;
 
 // Natural-language contract per render type — the "Section 8 output contract
 // for the requested render type" system message the architecture calls for.
+// Each single-type contract states only its own render value in the enum,
+// so the model is never shown a value it's then told not to use.
 export const RENDER_CONTRACT = {
-  bars: `${BASE_CONTRACT}\n\n${CONTRACT_BODY.bars}`,
-  tension: `${BASE_CONTRACT}\n\n${CONTRACT_BODY.tension}`,
-  checklist: `${BASE_CONTRACT}\n\n${CONTRACT_BODY.checklist}`,
-  delta: `${BASE_CONTRACT}\n\n${CONTRACT_BODY.delta}`,
-  memo: `${BASE_CONTRACT}\n\n${CONTRACT_BODY.memo}`,
-  prose: `${BASE_CONTRACT}\n\n${CONTRACT_BODY.prose}`,
+  bars: `${baseContract(['bars'])}\n\n${CONTRACT_BODY.bars}`,
+  tension: `${baseContract(['tension'])}\n\n${CONTRACT_BODY.tension}`,
+  checklist: `${baseContract(['checklist'])}\n\n${CONTRACT_BODY.checklist}`,
+  delta: `${baseContract(['delta'])}\n\n${CONTRACT_BODY.delta}`,
+  memo: `${baseContract(['memo'])}\n\n${CONTRACT_BODY.memo}`,
+  prose: `${baseContract(['prose'])}\n\n${CONTRACT_BODY.prose}`,
+  handling: `${baseContract(['handling'])}\n\n${CONTRACT_BODY.handling}`,
   // 'free' chip: the model chooses the render type, so it gets the routing
-  // table plus every contract body except delta — delta is only ever
-  // proxy-initiated via the dedicated what-if controls, never model-chosen.
-  free: `${BASE_CONTRACT}\n\n${SELECTION_TABLE}\n\n${['bars', 'tension', 'checklist', 'memo', 'prose']
+  // table plus every contract body except delta and handling — delta is
+  // only ever proxy-initiated via the what-if controls, and handling only
+  // ever fires with a persona profile injected; neither is a free choice.
+  free: `${baseContract(['bars', 'tension', 'checklist', 'memo', 'prose'])}\n\n${SELECTION_TABLE}\n\n${['bars', 'tension', 'checklist', 'memo', 'prose']
     .map((k) => CONTRACT_BODY[k])
     .join('\n\n')}`,
 };
@@ -247,6 +268,26 @@ export const JSON_SCHEMAS = {
         type: 'object',
         properties: { html: { type: 'string' } },
         required: ['html'],
+      },
+      prose: { type: 'string' },
+    },
+    required: ['render', 'data', 'prose'],
+  },
+  handling: {
+    type: 'object',
+    properties: {
+      render: { const: 'handling' },
+      data: {
+        type: 'object',
+        properties: {
+          question: { type: 'string' },
+          who: { type: 'string' },
+          role: { type: 'string' },
+          subtext: { type: 'string' },
+          answer: { type: 'array', items: { type: 'string' } },
+          trap: { type: 'string' },
+        },
+        required: ['question', 'who', 'role', 'subtext', 'answer', 'trap'],
       },
       prose: { type: 'string' },
     },

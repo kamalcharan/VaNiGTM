@@ -242,13 +242,110 @@ b{font-weight:700;}
 .chip .ct{font-size:11.3px;font-weight:600;color:var(--ink);}
 .chip.pulse{animation:chipPulse 1.6s ease-in-out infinite;border-color:var(--gold);}
 @keyframes chipPulse{0%,100%{box-shadow:0 0 0 0 rgba(169,123,47,.35);}50%{box-shadow:0 0 0 6px rgba(169,123,47,0);}}
-.askrow{display:flex;gap:9px;margin-top:10px;}
-.askrow input{flex:1;border:1px solid var(--line);border-radius:5px;padding:10px 14px;font-family:'Inter',sans-serif;font-size:12.5px;background:#fff;color:var(--ink);}
-.askrow input:focus{outline:none;border-color:var(--gold);}
-.askrow button{border:none;background:var(--gold);color:#fff;font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.08em;border-radius:5px;padding:10px 22px;cursor:pointer;}
-.askrow button:hover{background:var(--golds);}
+.askrow{display:flex;gap:10px;margin-top:11px;align-items:stretch;}
+.askwrap{flex:1;position:relative;}
+.askrow textarea{width:100%;display:block;border:1px solid var(--line);border-radius:6px;padding:13px 16px 22px;
+  font-family:'Inter',sans-serif;font-size:14px;line-height:1.55;background:#fff;color:var(--ink);
+  resize:none;overflow-y:auto;min-height:76px;max-height:190px;transition:border-color .18s,box-shadow .18s;}
+.askrow textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(169,123,47,.1);}
+.askrow textarea::placeholder{color:#9aa2ad;}
+.askhint{position:absolute;right:13px;bottom:7px;font-size:9px;letter-spacing:.1em;color:#aeb5bf;pointer-events:none;}
+.askbtn{border:none;background:var(--gold);color:#fff;font-family:'Inter',sans-serif;font-weight:700;font-size:12px;
+  letter-spacing:.1em;border-radius:6px;padding:0 26px;cursor:pointer;align-self:stretch;min-width:92px;}
+.askbtn:hover{background:var(--golds);}
 .docknote{font-size:9.3px;color:var(--muted);margin-top:8px;letter-spacing:.03em;}
 .docknote .dm{color:var(--gold);font-weight:700;}
+
+/* ---------- THE ROOM · drawer ---------- */
+.roomtab{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:40;
+  background:var(--navy);color:var(--paper);border:1px solid rgba(199,154,75,.45);border-right:none;
+  border-radius:6px 0 0 6px;padding:16px 11px;cursor:pointer;writing-mode:vertical-rl;
+  font-family:'Inter',sans-serif;font-size:10px;font-weight:700;letter-spacing:.22em;
+  box-shadow:-3px 0 14px rgba(16,20,27,.18);transition:background .2s,padding .2s;}
+.roomtab:hover{background:var(--navyd);padding-right:14px;}
+.roomtab .rc{color:var(--golds);}
+/* scrim covers the trail only — the rail stays live so levers can be moved
+   with the drawer open and the stance seen changing */
+.scrim{position:fixed;top:56px;left:348px;right:0;bottom:0;background:rgba(13,22,38,.34);
+  opacity:0;pointer-events:none;transition:opacity .3s;z-index:45;}
+.scrim.open{opacity:1;pointer-events:auto;}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:474px;max-width:94vw;z-index:50;background:var(--paper);
+  border-left:1px solid var(--line);box-shadow:-10px 0 40px rgba(16,20,27,.2);
+  transform:translateX(100%);transition:transform .34s cubic-bezier(.2,.7,.3,1);display:flex;flex-direction:column;}
+.drawer.open{transform:none;}
+.dhead{background:var(--navyd);color:var(--paper);padding:16px 20px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.dhead .dt{font-family:'Fraunces',serif;font-weight:900;font-size:19px;}
+.dhead .ds{font-size:10px;letter-spacing:.13em;color:rgba(251,249,244,.6);margin-top:4px;line-height:1.5;}
+.dclose{background:none;border:1px solid rgba(251,249,244,.3);color:var(--paper);border-radius:4px;
+  width:26px;height:26px;cursor:pointer;font-size:14px;line-height:1;flex-shrink:0;font-family:'Inter',sans-serif;}
+.dclose:hover{border-color:var(--golds);color:var(--golds);}
+.dtabs{display:flex;background:var(--navy);border-bottom:1px solid rgba(199,154,75,.25);}
+.dtab{flex:1;padding:9px 4px 8px;text-align:center;cursor:pointer;border-bottom:2px solid transparent;transition:background .18s;}
+.dtab:hover{background:rgba(251,249,244,.05);}
+.dtab.on{border-bottom-color:var(--golds);background:rgba(199,154,75,.12);}
+.dtab .dm{width:29px;height:29px;border-radius:50%;background:rgba(251,249,244,.14);color:var(--paper);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 4px;
+  font-family:'Fraunces',serif;font-weight:600;font-size:11.5px;letter-spacing:.03em;}
+.dtab.on .dm{background:var(--gold);}
+.dtab .dr{font-size:8px;letter-spacing:.1em;color:rgba(251,249,244,.62);font-weight:700;}
+.dtab.on .dr{color:var(--golds);}
+.dbody{flex:1;overflow-y:auto;padding:20px 22px 30px;}
+.dbody::-webkit-scrollbar{width:8px;}
+.dbody::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+.pcard{animation:cardIn .32s ease both;}
+.pid{display:flex;gap:13px;align-items:flex-start;}
+.pav{width:52px;height:52px;border-radius:50%;background:var(--navy);color:var(--golds);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:900;font-size:17px;letter-spacing:.04em;}
+.pnm{font-family:'Fraunces',serif;font-weight:900;font-size:18px;line-height:1.2;}
+.prl{font-size:10px;letter-spacing:.14em;color:var(--gold);font-weight:700;margin-top:3px;}
+.stance{display:inline-block;margin-top:7px;font-size:8.6px;letter-spacing:.15em;font-weight:700;padding:3.5px 9px;border-radius:3px;}
+.stance.aligned{background:#E4EFE8;color:var(--ok);}
+.stance.opposed{background:#F3E3DF;color:var(--risk);}
+.stance.exposed{background:#F6ECD9;color:var(--gold);}
+.stancewhy{font-size:11px;line-height:1.55;color:var(--muted);margin-top:7px;font-style:italic;}
+.pquote{border-left:3px solid var(--gold);background:#fff;padding:12px 15px;margin:14px 0;
+  font-family:'Fraunces',serif;font-size:14.5px;line-height:1.5;}
+.ptraits{display:flex;flex-wrap:wrap;gap:5px;margin:11px 0 4px;}
+.ptrait{font-size:8.8px;letter-spacing:.1em;font-weight:700;background:var(--warm);color:var(--muted);padding:4px 8px;border-radius:3px;}
+.psec{margin-top:15px;}
+.pl{font-size:8.8px;letter-spacing:.2em;font-weight:700;color:var(--gold);margin-bottom:5px;}
+.pt{font-size:12.2px;line-height:1.6;}
+.plist{list-style:none;}
+.plist li{font-size:12.2px;line-height:1.55;padding-left:13px;position:relative;margin:4px 0;}
+.plist li::before{content:'';position:absolute;left:1px;top:7px;width:4px;height:4px;border-radius:50%;background:var(--navy);}
+.mrow2{display:flex;align-items:center;gap:9px;margin:5px 0;}
+.mrow2 .mn{width:98px;font-size:10px;letter-spacing:.04em;color:var(--muted);}
+.mrow2 .mt2{flex:1;height:7px;background:var(--warm);border-radius:4px;overflow:hidden;}
+.mrow2 .mt2{display:block;}
+.mrow2 .mf2{display:block;height:100%;background:var(--gold);border-radius:4px;width:0;transition:width .7s cubic-bezier(.2,.7,.3,1);}
+.pq{border:1px solid var(--line);border-radius:6px;background:#fff;padding:13px 15px;margin-top:9px;transition:border-color .18s;}
+.pq:hover{border-color:var(--gold);}
+.pqt{font-family:'Fraunces',serif;font-size:13.5px;line-height:1.45;}
+.pqa{display:flex;gap:7px;margin-top:10px;}
+.pqb{border:1px solid var(--line);background:var(--paper);border-radius:4px;padding:6px 11px;cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:9.4px;letter-spacing:.13em;font-weight:700;color:var(--muted);}
+.pqb:hover{border-color:var(--gold);color:var(--gold);}
+.pqb.prime{background:var(--gold);border-color:var(--gold);color:#fff;}
+.pqb.prime:hover{background:var(--golds);border-color:var(--golds);color:#fff;}
+.pqb.done{border-color:var(--ok);color:var(--ok);}
+.dnote{font-size:10px;line-height:1.6;color:var(--muted);border-top:1px solid var(--line);margin-top:20px;padding-top:12px;}
+.dsoon{text-align:center;padding:50px 24px;color:var(--muted);}
+.dsoon .dst{font-family:'Fraunces',serif;font-weight:900;font-size:17px;color:var(--ink);margin-bottom:8px;}
+.dsoon p{font-size:12px;line-height:1.65;}
+
+/* --- visual: handling --- */
+.vhand .hq{border-left:3px solid var(--navy);background:var(--warm);padding:13px 16px;
+  font-family:'Fraunces',serif;font-size:15.5px;line-height:1.45;}
+.vhand .hattr{font-size:9.4px;letter-spacing:.14em;font-weight:700;color:var(--muted);margin-top:7px;}
+.vhand .hsec{margin-top:15px;}
+.vhand .hl2{font-size:8.8px;letter-spacing:.2em;font-weight:700;color:var(--gold);margin-bottom:5px;}
+.vhand .hsub{font-size:12.8px;line-height:1.65;font-style:italic;color:var(--navy);}
+.vhand .hans{list-style:none;}
+.vhand .hans li{font-size:12.8px;line-height:1.65;padding-left:16px;position:relative;margin:7px 0;}
+.vhand .hans li::before{content:'';position:absolute;left:2px;top:8px;width:5px;height:5px;border-radius:50%;background:var(--gold);}
+.vhand .htrap{border:1px solid var(--risk);border-radius:6px;padding:12px 15px;background:#FBF2F0;margin-top:15px;}
+.vhand .htl{font-size:8.8px;letter-spacing:.2em;font-weight:700;color:var(--risk);margin-bottom:4px;}
+.vhand .htt{font-size:12.4px;line-height:1.6;}
 
 @media (max-width:1020px){
   body{overflow:auto;}
@@ -335,13 +432,31 @@ b{font-weight:700;}
   <div class="dock">
     <div class="chips" id="chips"></div>
     <div class="askrow">
-      <input type="text" id="askbox" placeholder="Ask the advisor anything about this scenario…" maxlength="240">
-      <button id="askbtn">ASK</button>
+      <div class="askwrap">
+        <textarea id="askbox" rows="3" maxlength="1200"
+          placeholder="Describe your actual situation, or insert a question from The Room and edit it before you ask…"></textarea>
+        <span class="askhint">ENTER TO ASK · SHIFT+ENTER FOR A NEW LINE</span>
+      </div>
+      <button class="askbtn" id="askbtn">ASK</button>
     </div>
     <div class="docknote" id="docknote"></div>
   </div>
 </main>
 </div>
+
+<button class="roomtab" id="roomtab">THE ROOM <span class="rc" id="roomcount">· 4</span></button>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="The Room — stakeholder personas">
+  <div class="dhead">
+    <div>
+      <div class="dt">The Room</div>
+      <div class="ds">THE DOCK IS WHAT YOU ASK THE ADVISOR ·<br>THE ROOM IS WHAT THEY WILL ASK YOU</div>
+    </div>
+    <button class="dclose" id="dclose" aria-label="Close">✕</button>
+  </div>
+  <div class="dtabs" id="dtabs"></div>
+  <div class="dbody" id="dbody"></div>
+</aside>
 
 <script>
 (function(){
@@ -378,12 +493,15 @@ var cardCount = 0, anatOn = false, dirty = false;
 
 var PRESETS = {
   bank:   { name:'Kanara First Bank', tag:'Retail lender · 12M customers',
+    desc:'a mid-size retail lender',
     cap:'an AI assistant that drafts the credit memo’s risk section',
     sit:'The decision on the table: <b>an AI assistant that drafts the credit memo’s risk section</b>. The CTO wants to build, the COO wants to buy, and the vendor just offered a partnership that expires at month-end.' },
   pharma: { name:'Suvarna Life Sciences', tag:'Pharma · regulated to the bone',
+    desc:'a mid-size pharmaceutical company',
     cap:'AI extraction of adverse-event data into the safety database',
     sit:'The decision on the table: <b>AI extraction of adverse-event data from intake emails into the safety database</b>. IT says GxP means control — build. Ops wants a validated platform. A CRO offers to run it as a service, trained partly on your cases.' },
   retail: { name:'Meru Retail Group', tag:'800 stores · thin margins',
+    desc:'an 800-store retail group',
     sit:'The decision on the table: <b>AI demand-forecast narratives for 800 stores</b>. The young data team nearly can build it. The CFO read that forecasting is solved — buy. The ERP vendor bundles it “free” with the renewal you’re about to sign.',
     cap:'AI demand-forecast narratives for 800 stores' }
 };
@@ -395,6 +513,549 @@ var LEVERS = [
   { k:'speed', short:'Urgency',         axis:'URGENCY',         q:'How badly does the business need it now?' },
   { k:'exit',  short:'Exit clarity',    axis:'EXIT',            q:'Will the partner negotiate a real exit?' }
 ];
+
+/* =========================================================================
+   THE ROOM — stakeholder personas.
+   Not advisor voices. These are the people who will question your call.
+   Each prompt is a real question, with what sits underneath it and the
+   trap most advisors fall into when answering.
+   ========================================================================= */
+function scenarioLine(){
+  var p = S.levers, P = PRESETS[S.preset];
+  return 'I’m advising ' + P.desc + ' on ' + P.cap + '. ' +
+         'Differentiation ' + p.diff + '/5, half-life ' + p.hl + '/5, engineering bench ' + p.bench +
+         '/5, urgency ' + p.speed + '/5, exit clarity ' + p.exit + '/5.';
+}
+
+var ROOM = {
+bank: [
+  { key:'cto', mono:'PR', short:'CTO', name:'Priya Raghavan', role:'Chief Technology Officer',
+    quote:'We don’t outsource our brain. The day we can’t build it, we can’t govern it either.',
+    traits:['Builder','Protects her team','Governance-minded','Long horizon'],
+    protecting:'Her team’s relevance — and her own credibility if the build fails.',
+    goals:['Keep the capability, and the judgment inside it, in-house',
+           'Grow the team’s standing rather than shrink it to vendor management',
+           'Be able to explain how the system reaches a conclusion'],
+    frustrations:['Decisions arriving after finance has already priced them',
+                  'Vendors who demo confidently and will not show error rates',
+                  '"Buy" framed as a cost decision when it is a capability decision'],
+    motiv:{ Control:5, Speed:2, Cost:2, 'Risk exposure':4, 'Career exposure':4 },
+    stance:function(p,w){
+      if (w==='build' && p.bench<=2) return ['exposed','She wins the argument and inherits a build her bench cannot staff.'];
+      if (w==='build') return ['aligned','The framework backs her — and she will be held to it.'];
+      if (p.diff>=4 || p.hl>=4) return ['exposed','Her instinct has real support in the levers, but not enough to carry the call.'];
+      return ['opposed','The levers do not support the build she is arguing for.'];
+    },
+    prompts:[
+      { id:'cto1', q:'If we buy this, what exactly is left for my team to own?',
+        ask:'Our CTO is asking what is left for her team to own if we buy. How do I answer her without losing her?',
+        subtext:'She is not arguing architecture. She is asking whether she still matters after this decision.',
+        answer:function(p){ return [
+          'Answer the question she actually asked: name the layer she owns. The policy that decides what a risk section must contain, the data that trains it on your book, the override rules, the audit trail. That is not leftovers — it is the part that cannot be bought.',
+          'Then say the harder half out loud: what you are taking off her plate is the plumbing, and the plumbing is where vendors compete, not where the bank does.',
+          p.hl>=3 ? 'At half-life ' + p.hl + '/5 there is a genuine proprietary layer here to hand her. Be specific about it — vagueness will read as consolation.'
+                  : 'At half-life ' + p.hl + '/5 the proprietary layer is thin today. Say so, and frame her job as building it, not defending it.'
+        ]; },
+        trap:'Answering with a cost comparison. She never asked about cost, and a cost answer confirms her fear that this was decided in a spreadsheet without her.' },
+      { id:'cto2', q:'Why would we hand our credit judgment to someone else’s model?',
+        ask:'Our CTO asks why we would hand our credit judgment to someone else’s model. How should I answer?',
+        subtext:'A legitimate governance point wearing an emotional coat. She is conflating the engine with the judgment — but she is right that the judgment must stay yours.',
+        answer:function(){ return [
+          'Concede the principle immediately — the judgment does not move. What moves is the drafting.',
+          'Draw the line explicitly: the vendor’s model composes language; your policy layer decides what must be considered, what thresholds apply, and what a human must sign. The model never holds the judgment; it holds the typing.',
+          'Then give her the governance she is really asking for: your error rates, on your portfolio, reviewed on your cadence.'
+        ]; },
+        trap:'Treating it as resistance to be managed. The governance concern is real, and dismissing it costs you the person you most need on side during implementation.' },
+      { id:'cto3', q:'Give me six months and my team will match anything the vendor has.',
+        ask:'Our CTO says give her six months and her team will match the vendor. How do I respond?',
+        subtext:'A capability claim being used as a schedule claim. She is probably right about the first and wrong about the second.',
+        answer:function(p){ return [
+          'Do not argue about whether they can. Assume they can — then ask what stops while they do it.',
+          'Bench at ' + p.bench + '/5 is not the constraint people think it is. The constraint is that the same people are the only ones who can also keep BAU running.',
+          p.speed>=4 ? 'At urgency ' + p.speed + '/5, six months is not a schedule — it is two quarters of manual memo drafting, and someone will count them.'
+                     : 'At urgency ' + p.speed + '/5 there is genuine room to consider it. Ask what the six months buys that buying does not.'
+        ]; },
+        trap:'Debating her team’s competence. You will lose the room even if you win the point — and competence was never the question.' } ] },
+
+  { key:'coo', mono:'AM', short:'COO', name:'Arun Menon', role:'Chief Operating Officer',
+    quote:'Every month we debate this, branch teams write those memos by hand. That is the cost nobody puts in the deck.',
+    traits:['Clock-watcher','Outcome-first','Pragmatist','Impatient with architecture'],
+    protecting:'Delivery, branch throughput, and the commitments he has already made this year.',
+    goals:['Something live inside this quarter','Memo turnaround measurably down','An end to the debate'],
+    frustrations:['Architecture arguments with no end date','Pilots that never leave pilot','Being answered with "it depends"'],
+    motiv:{ Control:2, Speed:5, Cost:3, 'Risk exposure':2, 'Career exposure':4 },
+    stance:function(p,w){
+      if (w==='buy') return ['aligned','The framework lands where he already is — use him to carry it.'];
+      if (w==='build' && p.speed>=4) return ['opposed','He will read this as another two quarters of manual drafting.'];
+      if (w==='partner') return ['exposed','He gets speed, but inherits a dependency he has not priced.'];
+      return ['opposed','He wanted a date and the framework gave him a build.'];
+    },
+    prompts:[
+      { id:'coo1', q:'The vendor is live in eight weeks. What does building cost us in time?',
+        ask:'Our COO wants to know what building costs us in time when the vendor is live in eight weeks. How do I frame the answer?',
+        subtext:'He is not asking for a schedule. He is asking you to put a number on delay so he can defend the decision upward.',
+        answer:function(p){ return [
+          'Give him the delay in his own currency — memos drafted by hand per month, not engineering weeks.',
+          'Then complicate it honestly: eight weeks is time to first output, not time to trusted output. Add validation on your own book, policy configuration, and the first regulator conversation.',
+          p.speed>=4 ? 'At urgency ' + p.speed + '/5 the delay cost is real and he is right to press it.'
+                     : 'At urgency ' + p.speed + '/5 the pressure may be inherited from the vendor’s calendar rather than the business’s. Worth testing where the deadline came from.'
+        ]; },
+        trap:'Matching his urgency with your own. If you sound as rushed as he does, nobody in the room is holding the long view.' },
+      { id:'coo2', q:'Why can’t we start with the vendor and build later if we need to?',
+        ask:'Our COO asks why we cannot start with the vendor and build later. What is the honest answer?',
+        subtext:'The best question anyone in the room will ask you — and it is nearly right. What he is missing is that "later" gets more expensive every month.',
+        answer:function(){ return [
+          'Say yes, and then say the condition. Starting with the vendor is correct — provided the proprietary layer is built alongside from day one, not deferred.',
+          'The reason is switching costs. Every month of running on the vendor’s stack moves the accumulated data, workflow, and habit onto their side of the line. "Build later" is a real option only if you deliberately keep it cheap.',
+          'Concretely: your policy and data layer stays yours, exports are tested quarterly, and no configuration lives only in their console.'
+        ]; },
+        trap:'Simply agreeing. "Yes, we can always build later" is technically true and practically false, and he will quote you on it in eighteen months.' },
+      { id:'coo3', q:'You keep saying "it depends". Give me a date.',
+        ask:'Our COO is pushing me for a date and I keep saying it depends. How do I answer him properly?',
+        subtext:'Fair pressure. He has been given analysis where he asked for a commitment, and he is losing patience with advisory language.',
+        answer:function(){ return [
+          'Give him a date — for the decision, not for the outcome. Decisions can be dated; deliveries under uncertainty cannot.',
+          'Then give him gates instead of a plan: a date for vendor evidence on your own data, a date for the exit terms conversation, a date for go/no-go. Each gate has an owner and a name.',
+          'That is not evasion. It is the difference between a schedule you will hit and a schedule you will apologise for.'
+        ]; },
+        trap:'Producing a delivery date to end the discomfort. You will own that date long after this meeting, and it was invented to make a conversation stop.' } ] },
+
+  { key:'cro', mono:'NI', short:'RISK', name:'Nandita Iyer', role:'Chief Risk Officer',
+    quote:'I do not need it fast. I need to explain it in a room where nobody is on our side.',
+    traits:['Evidence-driven','Explainability first','Sceptical of accuracy claims','Institutional memory'],
+    protecting:'The bank’s licence to operate, and the audit trail that defends it.',
+    goals:['Decisions that can be explained after the fact','Error rates measured on the bank’s own portfolio','A fallback that has actually been tested'],
+    frustrations:['Accuracy claims with no false-negative data','Models validated on someone else’s book','"The system flagged it" offered as an explanation'],
+    motiv:{ Control:4, Speed:1, Cost:2, 'Risk exposure':5, 'Career exposure':3 },
+    stance:function(p,w){
+      if (w==='partner' && p.exit<=2) return ['opposed','A partnership with no exit is the one outcome she cannot sign.'];
+      if (p.speed>=4) return ['exposed','Urgency at ' + p.speed + '/5 is exactly the condition under which her controls get skipped.'];
+      if (w==='build') return ['aligned','Control stays inside — her preferred posture, if the bench holds.'];
+      return ['aligned','Workable for her, provided the evidence conversation happens before signature.'];
+    },
+    prompts:[
+      { id:'cro1', q:'Show me the false-negative rate on our own portfolio, not their benchmark.',
+        ask:'Our Chief Risk Officer wants the false-negative rate on our own portfolio rather than the vendor’s benchmark. How do I take this forward?',
+        subtext:'The sharpest question in the room, and the one most likely to be answered with marketing material. She is testing whether anyone has looked past the accuracy headline.',
+        answer:function(){ return [
+          'Back her completely, and make the distinction explicit: a false positive costs review time; a false negative is a risk that went unwritten. They are not interchangeable, and vendors quote the blended number because it flatters.',
+          'Then name the deeper problem — the vendor trained on someone else’s data. The question is not how much data, but how far its <b>Data DNA</b> matches your book: your segments, your documentation quality, your borrower mix.',
+          'Ask for the confusion matrix on a sample of your own cases, run before signature. If they will not run it, that refusal is your evidence.'
+        ]; },
+        trap:'Accepting a single accuracy percentage as an answer. One number cannot describe two failure modes with completely different consequences.' },
+      { id:'cro2', q:'When this drafts a risk section that is wrong, who signs it?',
+        ask:'Our Chief Risk Officer asks who signs when the assistant drafts a risk section that turns out wrong. How should I answer?',
+        subtext:'She already knows the answer. She is checking whether the room knows it, and whether accountability has quietly gone missing in the enthusiasm.',
+        answer:function(){ return [
+          'Answer in one sentence, with a name: the credit officer signs, exactly as today. Nothing about accountability changes.',
+          'Then be honest about what does change — the cost of critical thinking. A well-drafted section is harder to disagree with than a blank page. Reviewers under time pressure will approve fluent text they would have questioned if they had written it themselves.',
+          'So the control is not the model. It is the guardrail: which sections require independent evidence before sign-off, regardless of how good the draft reads.'
+        ]; },
+        trap:'Reassuring her that a human stays in the loop and stopping there. Being in the loop is not the same as being able to disagree with it.' },
+      { id:'cro3', q:'If the vendor disappears in eighteen months, what happens to the memos already written?',
+        ask:'Our Chief Risk Officer asks what happens to memos already written if the vendor disappears in eighteen months. How do I answer?',
+        subtext:'She is asking about continuity of the record, not continuity of the service. Regulators examine what you wrote, not what tool you used.',
+        answer:function(p){ return [
+          'Separate the two: the service can be replaced; the record cannot be recreated. Outputs, versions, and the reasoning attached to them must live in your systems from day one — not exportable on request, resident by default.',
+          p.exit<=2 ? 'At exit clarity ' + p.exit + '/5 this is unresolved, and it is the strongest argument in the room against the partnership as offered.'
+                    : 'At exit clarity ' + p.exit + '/5 you have room to get this in writing. Do it before signature, not at renewal.',
+          'Test it once a year the way you test a disaster-recovery plan. An untested exit is a clause, not a capability.'
+        ]; },
+        trap:'Answering about service continuity — uptime, SLAs, support. She asked about the audit record, which survives the vendor by years.' } ] },
+
+  { key:'vendor', mono:'VS', short:'VENDOR', name:'Vikram Shah', role:'Account Director · the vendor',
+    quote:'I can hold this pricing till month-end. After that it goes back to the standard sheet — that is not me, that is my board.',
+    traits:['Warm','Deadline-maker','Reference-rich','Evasive on endings'],
+    protecting:'The deal, his quarter, and the depth of the dependency he can build.',
+    goals:['Signature before quarter close','A multi-year term','Access to your data for model improvement'],
+    frustrations:['Procurement cycles','Requests for error rates on client data','Exit clauses raised early'],
+    motiv:{ Control:4, Speed:5, Cost:2, 'Risk exposure':1, 'Career exposure':5 },
+    stance:function(p,w){
+      if (w==='partner' && p.exit>=4) return ['aligned','He is negotiating in good faith and the framework can meet him.'];
+      if (p.exit<=2) return ['opposed','He is deflecting on endings — and that deflection is your answer.'];
+      if (w==='buy') return ['exposed','He gets the business but not the entanglement he wanted.'];
+      return ['opposed','Neither the levers nor the exit terms support what he is proposing.'];
+    },
+    prompts:[
+      { id:'ven1', q:'Why complicate it with an exit clause when we are just getting started?',
+        ask:'The vendor is pushing back on discussing exit terms this early. How do I handle that?',
+        subtext:'The most informative sentence he will say all quarter. How a partner discusses endings tells you what the partnership is.',
+        answer:function(p){ return [
+          'Do not argue. Observe, out loud and pleasantly: "We always agree endings at the beginning — it is easier while everyone is friendly."',
+          'Then hold the line and watch. A partner who intends a long relationship finds this reasonable. A partner monetising dependency will reframe, delay, or make it feel unusual.',
+          p.exit<=2 ? 'At exit clarity ' + p.exit + '/5 you already have your reading. Record it and price it into the decision.'
+                    : 'At exit clarity ' + p.exit + '/5 he is willing to engage. Get it in writing while that is true.'
+        ]; },
+        trap:'Letting it slide to keep goodwill early. Exit terms never get easier to negotiate — leverage only moves one way after signature.' },
+      { id:'ven2', q:'We have trained on forty million credit documents. Isn’t that enough evidence?',
+        ask:'The vendor cites forty million training documents as evidence of accuracy. How do I test that claim?',
+        subtext:'Volume offered as a substitute for relevance. It is the most common vendor trap, and it usually works.',
+        answer:function(){ return [
+          'Ask the only question volume cannot answer: how much of that data resembles ours? Segments, documentation quality, borrower mix, language. That is the <b>Data DNA</b> question, and forty million of the wrong thing is not evidence.',
+          'Then ask for the shape of the errors, not the size of the corpus — false positives and false negatives separately, on a sample of your cases.',
+          'If the answer stays at the level of volume, you have learned that the evidence you need does not exist yet.'
+        ]; },
+        trap:'Being impressed by the number. Corpus size is the easiest metric to publish and the least connected to how the system will perform on your book.' },
+      { id:'ven3', q:'Co-build with us — our engineers at half rate. Why wouldn’t you?',
+        ask:'The vendor is offering a co-build with their engineers at half rate. How do I evaluate that offer?',
+        subtext:'A genuinely attractive offer with the expensive part unstated: who owns what you build together.',
+        answer:function(p){ return [
+          'Take the offer seriously — subsidised engineering is real value, and the pattern knowledge is real too.',
+          'Then settle ownership before a line is written: co-created IP with a buy-out formula agreed now, your data used for your models only, and a tested exit path. Those three, in writing, or the discount is a deposit on dependency.',
+          p.bench<=2 ? 'At bench ' + p.bench + '/5 this is more attractive than it looks — you cannot staff the alternative. Which is also why your negotiating position is weaker than it feels.'
+                     : 'At bench ' + p.bench + '/5 you have a credible alternative. Say so, pleasantly, before discussing rates.'
+        ]; },
+        trap:'Negotiating the rate. The rate is the cheap part of the offer; ownership of what gets built is the expensive part, and it is not on the table unless you put it there.' } ] }
+],
+pharma: [
+  { key:'it', mono:'MK', short:'IT', name:'Meera Krishnan', role:'Head of Digital & IT',
+    quote:'In a validated system, “the vendor handles it” is not an answer. Control is the deliverable.',
+    traits:['Validation-literate','Control first','Protects the platform','Wary of black boxes'],
+    protecting:'The validated state of the platform — and her signature on every change that touches it.',
+    goals:['Keep the system inside a validation boundary she controls',
+           'Avoid a vendor release cycle she cannot pause',
+           'Own the audit trail from intake to database, end to end'],
+    frustrations:['Vendors who ship model updates without change notice',
+                  'Being told a system is validated without being shown the evidence',
+                  'Business teams treating validation as paperwork rather than as the product'],
+    motiv:{ Control:5, Speed:2, Cost:2, 'Risk exposure':5, 'Career exposure':4 },
+    stance:function(p,w){
+      if (w==='build') return ['aligned','The framework backs her — and hands her the validation burden with it.'];
+      if (w==='partner') return ['opposed','Extraction running on someone else’s models puts the validated boundary outside her control.'];
+      if (p.hl>=4) return ['exposed','Her control argument has real support in the levers, but not enough to carry the call.'];
+      return ['opposed','Buying moves the release cycle outside her change control.'];
+    },
+    prompts:[
+      { id:'ph_it1', q:'If the vendor retrains their model, does our validation still hold?',
+        ask:'Our Head of IT asks whether our validation still holds if the vendor retrains their model. How do I handle this?',
+        subtext:'She is not questioning model quality. She is asking who controls the change cycle — and in a validated environment that is the whole question.',
+        answer:function(){ return [
+          'Treat this as the discriminator it is. In a build, model changes happen on your change-control calendar. In a buy, they happen on theirs — and you find out in a release note.',
+          'So the contractual ask is specific: advance notice of model changes, the right to defer a version, and a validation package per release. If a vendor cannot offer version pinning, they are not selling into a validated environment — they are selling into a website.',
+          'Your quality function decides what evidence is sufficient. Your job is making sure the contract can produce it at all.'
+        ]; },
+        trap:'Answering with accuracy figures. She asked about change control, and an accuracy answer tells her nobody has thought about the release cycle.' },
+      { id:'ph_it2', q:'Who owns the audit trail when extraction happens on their infrastructure?',
+        ask:'Our Head of IT asks who owns the audit trail when extraction runs on the vendor’s infrastructure. How should I answer?',
+        subtext:'A continuity question, not a hosting question. She is thinking about what survives the vendor relationship by several years.',
+        answer:function(p){ return [
+          'The record must be resident in your systems by design, not exportable on request. Source document, extracted values, model version, confidence, reviewer, timestamp — yours, continuously.',
+          p.exit<=2 ? 'At exit clarity ' + p.exit + '/5 this is unresolved, and it is the strongest technical objection in the room.'
+                    : 'At exit clarity ' + p.exit + '/5 you can get this written in. Do it before signature.',
+          'The test is simple and worth running out loud: if the vendor went dark tomorrow, could you reconstruct why any single case was coded the way it was?'
+        ]; },
+        trap:'Accepting “we provide full audit logs” as the answer. Logs on their platform are their logs, and they end when the contract does.' },
+      { id:'ph_it3', q:'We can build this in-house. Why import someone else’s risk?',
+        ask:'Our Head of IT argues we should build in-house rather than import the vendor’s risk. How do I test that?',
+        subtext:'A real argument, but it hides a swap: building does not remove risk, it exchanges vendor risk for delivery and key-person risk. She may prefer that trade — she should say so explicitly.',
+        answer:function(p){ return [
+          'Agree that risk is not being removed, only relocated — then ask which risk the organisation is better at carrying.',
+          'Bench at ' + p.bench + '/5 is the honest input here. Building means your team owns extraction quality, model drift, and the validation package forever, alongside everything else they own.',
+          'Then apply the split: the extraction engine is increasingly commodity; the coding rules, the medical judgment, and the audit trail are not. Build those, and rent the rest.'
+        ]; },
+        trap:'Framing it as build risk versus buy risk. Both paths carry risk — the decision is which failure your organisation can actually absorb and explain.' } ] },
+
+  { key:'pv', mono:'AP', short:'SAFETY', name:'Dr. Anand Pillai', role:'Head of Pharmacovigilance',
+    quote:'Case volume doubled in two years. My team is triaging at eleven at night. I need help this quarter, not a platform strategy.',
+    traits:['Under volume pressure','Patient-safety first','Pragmatic','Impatient with IT timelines'],
+    protecting:'Case-processing timelines, and the people burning out inside them.',
+    goals:['Reduce manual intake triage this quarter','Hold timeline compliance without adding headcount','Stop losing experienced case processors'],
+    frustrations:['Build timelines measured in quarters','Being asked to wait for the platform roadmap','Solutions designed by people who have never watched intake for an afternoon'],
+    motiv:{ Control:2, Speed:5, Cost:3, 'Risk exposure':4, 'Career exposure':4 },
+    stance:function(p,w){
+      if (w==='buy') return ['aligned','Speed and validated tooling — exactly where he already is.'];
+      if (w==='build' && p.speed>=4) return ['opposed','He reads a build as two more quarters of night-shift triage.'];
+      if (w==='partner') return ['aligned','He gets capacity now; the terms are someone else’s problem until they are not.'];
+      return ['opposed','He asked for relief and the framework handed him a project.'];
+    },
+    prompts:[
+      { id:'ph_pv1', q:'My best case processors are leaving. Does your framework price that?',
+        ask:'Our Head of Pharmacovigilance says his best case processors are leaving and asks whether the framework prices that. How do I answer?',
+        subtext:'He is naming a cost that never appears in either column of the comparison — and he is right that it should.',
+        answer:function(p){ return [
+          'Say plainly that it belongs in the cost of delay, not in the cost of either option. Attrition is what the current state costs, and the current state is what continues while the decision is debated.',
+          'Then make it concrete enough to defend: months of delay multiplied by replacement and requalification of trained case processors. That figure usually surprises the room.',
+          p.speed>=4 ? 'At urgency ' + p.speed + '/5 this is the strongest argument in his favour, and it is not a soft one.'
+                     : 'At urgency ' + p.speed + '/5 the framework does not see the pressure he is living with. Worth revisiting whether that lever is honestly set.'
+        ]; },
+        trap:'Treating it as an HR issue outside the decision. Experienced processors are the control that catches what the model misses — losing them changes the risk profile of every option on the table.' },
+      { id:'ph_pv2', q:'The vendor is validated for eleven other sponsors. Why isn’t that enough for us?',
+        ask:'Our Head of Pharmacovigilance points out the vendor is validated for eleven other sponsors. Why is that not sufficient evidence for us?',
+        subtext:'Reasonable-sounding, and the most common way validated status gets borrowed rather than earned.',
+        answer:function(){ return [
+          'Their validation covers their system in their configuration against their sponsors’ data. Yours covers your intended use, your data, your process. The first does not transfer to the second.',
+          'The substantive gap is the <b>Data DNA</b> question: their intake streams, source formats, languages, and product mix are not yours. Extraction performance is a function of the documents, not just the model.',
+          'So the ask is a performance run on a sample of your own historical cases, error rates reported separately, before signature.'
+        ]; },
+        trap:'Accepting the reference list as evidence. Eleven satisfied sponsors tell you the vendor is real. They tell you nothing about performance on your intake.' },
+      { id:'ph_pv3', q:'Can we start with the vendor for intake only, and keep assessment in-house?',
+        ask:'Our Head of Pharmacovigilance asks whether we can use the vendor for intake only and keep assessment in-house. Is that the right shape?',
+        subtext:'He has independently arrived at the split rule. This is the best question in the room and deserves to be recognised as such.',
+        answer:function(){ return [
+          'Yes — and say so clearly, because he found the right line himself. Extraction is mechanical and commoditising. Causality, seriousness, and expectedness are medical judgment and stay yours.',
+          'Then protect the line: the extracted output lands in your systems in your schema, the coding rules are yours, and the human review point is defined by what the case is, not by what the model’s confidence score says.',
+          'Keep switching costs on your side — if the vendor holds the schema and the rules, the line quietly moves.'
+        ]; },
+        trap:'Improving his idea before acknowledging it. He is right; refining it before agreeing costs you the ally who just made your argument for you.' } ] },
+
+  { key:'qa', mono:'RD', short:'QUALITY', name:'Rukmini Desai', role:'Head of Quality Assurance',
+    quote:'I am not the department that says no. I am the department that asks what you will show an inspector — and most people have not thought about it.',
+    traits:['Evidence first','Slow by design','Institutional memory','Unmoved by urgency'],
+    protecting:'The inspection record, and the company’s ability to defend every automated decision in it.',
+    goals:['A documented validation approach agreed before build or buy','Traceability from source document to database field','A human review point that is real rather than nominal'],
+    frustrations:['Being brought in after the vendor is chosen','"The model is 98% accurate" offered as validation evidence','Pilots that quietly became production'],
+    motiv:{ Control:4, Speed:1, Cost:1, 'Risk exposure':5, 'Career exposure':3 },
+    stance:function(p,w){
+      if (p.speed>=4) return ['exposed','Urgency at ' + p.speed + '/5 is precisely the condition under which her controls get compressed.'];
+      if (w==='partner' && p.exit<=2) return ['opposed','A service she cannot inspect, on terms with no ending, is the one shape she cannot sign.'];
+      if (w==='build') return ['aligned','Control inside the validated boundary — her preferred posture.'];
+      return ['aligned','Workable, provided the evidence conversation happens before the contract rather than after.'];
+    },
+    prompts:[
+      { id:'ph_qa1', q:'When the model misses an adverse event, what did we have in place to catch it?',
+        ask:'Our Head of Quality asks what catches a missed adverse event when the model does not extract it. How do I answer?',
+        subtext:'The most serious question anyone will ask about this project. A false positive costs review time; a false negative is a safety signal that was never seen.',
+        answer:function(){ return [
+          'Separate the two failure modes out loud, because vendors blend them. Here they are not comparable at all — one wastes an hour, the other is the reason the system exists.',
+          'So the design has to be asymmetric: the model may accelerate, never filter. Nothing gets dropped on a confidence score. Low-confidence and unrecognised content routes to a human by default, and the sampling rate on “clean” extractions is set by quality, not by throughput targets.',
+          'Ask the vendor for false-negative rates specifically, measured on your own historical cases. If they only publish a blended accuracy figure, you have learned the evidence you need does not exist yet.'
+        ]; },
+        trap:'Answering with overall accuracy. One number describing two failure modes with completely different consequences is not evidence — it is an average hiding the only figure that matters.' },
+      { id:'ph_qa2', q:'Show me traceability from the intake email to the field in the safety database.',
+        ask:'Our Head of Quality wants traceability from the intake email through to the field in the safety database. How do I take this forward?',
+        subtext:'She is describing the artefact the whole system will be judged on. If traceability is retrofitted, it will not exist when it is needed.',
+        answer:function(){ return [
+          'Make the trace a requirement in the selection, not a feature to be discovered later: source document, extracted value, model version, confidence, reviewer identity, and timestamp — one linked record per field.',
+          'Ask each option to demonstrate it on a real case during evaluation rather than describe it in a response. Demonstrations separate the vendors quickly.',
+          'And keep it resident in your systems. A trace that lives only in the vendor’s platform is a trace with an expiry date.'
+        ]; },
+        trap:'Deferring traceability to the implementation phase. Retrofitting an audit trail costs more than building the extraction did, and it is discovered at the worst possible moment.' },
+      { id:'ph_qa3', q:'You keep calling it a pilot. At what point does it become a system I have to qualify?',
+        ask:'Our Head of Quality is asking when the pilot becomes a system she has to qualify. How should I answer?',
+        subtext:'She has seen pilots become production by momentum rather than by decision, and she is refusing to let this one do it quietly.',
+        answer:function(){ return [
+          'Answer with a defined ladder rather than a date. Shadow: the model runs alongside, output influences nothing. Assisted: output is shown to a reviewer who still does the work. Integrated: output enters the record.',
+          'Qualification is owed before the step into integrated, and she names the evidence needed to take it. That is a decision with a gate, not a drift.',
+          'Say the uncomfortable part too — most organisations skip shadow because it feels like duplicated effort. It is the only stage that measures the model against reality without consequences.'
+        ]; },
+        trap:'Answering “when we go live”. Live is not a threshold anyone can point to afterwards, and that vagueness is exactly what she is objecting to.' } ] },
+
+  { key:'cro_p', mono:'TA', short:'CRO', name:'Thomas Abraham', role:'Partnership Director · the CRO',
+    quote:'We already process intake for eleven sponsors. Let us run yours — you get our models, our people, and our learning curve on day one.',
+    traits:['Credible','Well referenced','Fluent in your language','Vague about your data'],
+    protecting:'A recurring service line, and the data that keeps his models ahead.',
+    goals:['A multi-year services contract','Access to your case data for model improvement','Becoming the default when the next therapy area comes'],
+    frustrations:['Sponsors who ask where the training data came from','Data-use clauses','Being compared against software pricing'],
+    motiv:{ Control:4, Speed:4, Cost:2, 'Risk exposure':2, 'Career exposure':5 },
+    stance:function(p,w){
+      if (w==='partner' && p.exit>=4) return ['aligned','He is negotiating in good faith and the framework can meet him.'];
+      if (p.exit<=2) return ['opposed','He is deflecting on endings, and that deflection is your answer.'];
+      if (w==='buy') return ['exposed','He may win the work without the data access he actually came for.'];
+      return ['opposed','Neither the levers nor the terms support the arrangement he is proposing.'];
+    },
+    prompts:[
+      { id:'ph_cro1', q:'Our models learn from every sponsor we serve. Isn’t that an advantage for you?',
+        ask:'The CRO says their models learn from every sponsor they serve, framed as an advantage. How do I evaluate that?',
+        subtext:'The most important sentence in the pitch, delivered as a benefit. Every sponsor is being told the same thing — including your competitors.',
+        answer:function(){ return [
+          'Follow the logic to its end and say it evenly: if your cases improve their models, your cases improve the service they sell to companies you compete with.',
+          'The contractual position is unambiguous — your data trains your models only, no cross-sponsor learning, and it survives the contract ending. This is standard to ask and revealing to watch.',
+          'Note also that pooled learning is exactly what makes the <b>Data DNA</b> problem worse, not better: their model is tuned to an average of eleven sponsors, and your intake is not the average.'
+        ]; },
+        trap:'Hearing it as a technical advantage and moving on. It is a data-rights question wearing a capability costume, and it is the single most expensive clause in the agreement.' },
+      { id:'ph_cro2', q:'Why would you build what we already run at scale?',
+        ask:'The CRO asks why we would build what they already run at scale. What is the honest answer?',
+        subtext:'A fair challenge. The honest answer is that you would not build the part they run — but that is not the part that was at stake.',
+        answer:function(p){ return [
+          'Concede the engine immediately. Nobody should rebuild extraction infrastructure to prove a point.',
+          'Then draw the line where it belongs: the coding rules, the medical judgment, the audit trail, and the case history are the capability. Those are not scale problems, and they are not his to run.',
+          p.hl>=4 ? 'At half-life ' + p.hl + '/5 that layer is genuinely durable and should never sit inside a services contract.'
+                  : 'At half-life ' + p.hl + '/5 the layer is thinner than the room assumes — which is an argument for building it deliberately, not for handing it over.'
+        ]; },
+        trap:'Defending a full build. He has framed it as all-or-nothing because all-or-nothing is the framing he wins.' },
+      { id:'ph_cro3', q:'We can be live in six weeks. What would you build in six months?',
+        ask:'The CRO contrasts six weeks live against a six-month build. How do I handle the comparison?',
+        subtext:'A real advantage, compared against the wrong thing. Six weeks to running is not six weeks to qualified.',
+        answer:function(p){ return [
+          'Accept the six weeks — then extend the timeline to the point that matters. Add performance evidence on your own cases, validation, the traceability demonstration, and the first inspection question. The gap narrows considerably.',
+          'Then ask what happens in month eighteen, because that is the horizon the levers are actually about.',
+          p.speed>=4 ? 'At urgency ' + p.speed + '/5 his speed advantage is real and should be weighed honestly rather than argued away.'
+                     : 'At urgency ' + p.speed + '/5 the deadline may be his rather than yours. Worth establishing whose calendar set it.'
+        ]; },
+        trap:'Competing on timeline. You will lose that comparison, and it is the wrong axis — the question is what state you are in when the inspector arrives, not who started first.' } ] }
+],
+
+retail: [
+  { key:'ds', mono:'KB', short:'DATA', name:'Kiran Bhatt', role:'Head of Data Science',
+    quote:'We have the data, the models, and two people who have done this before. What we do not have is permission.',
+    traits:['Capable','Underestimated','Eager','Untested at scale'],
+    protecting:'His team’s ambition — and the case that data science is a capability, not a service desk.',
+    goals:['Ship something the business genuinely depends on','Keep forecasting logic in-house where it can be tuned weekly','Stop being the dashboard team'],
+    frustrations:['Being scoped out of decisions about models','Vendors selling what his team already prototyped','"Buy" decided before the build option was examined'],
+    motiv:{ Control:4, Speed:3, Cost:3, 'Risk exposure':2, 'Career exposure':5 },
+    stance:function(p,w){
+      if (w==='build') return ['aligned','The framework backs him — and the delivery risk becomes his to carry.'];
+      if (p.bench>=4) return ['exposed','His team is strong enough that the loss will sting, and strong enough to be a retention risk after it.'];
+      return ['opposed','The levers do not support the build he has already half-started.'];
+    },
+    prompts:[
+      { id:'rt_ds1', q:'We prototyped this in three weeks. Why are we paying a vendor for it?',
+        ask:'Our data science lead prototyped this in three weeks and asks why we would pay a vendor. How do I answer without dismissing him?',
+        subtext:'The prototype is real and he is right to be proud of it. What he has not priced is the distance between a prototype and something 800 stores depend on at 7am.',
+        answer:function(p){ return [
+          'Credit the prototype properly and specifically — it is evidence, and dismissing it costs you the person you need for the layer you are going to build.',
+          'Then name the gap without condescension: monitoring, retraining cadence, on-call, seasonality edge cases, the week the promotion calendar breaks the model. Production is a commitment, not a milestone.',
+          p.bench>=4 ? 'At bench ' + p.bench + '/5 the team could carry it. The question is what stops while they do — and whether this is the thing worth their year.'
+                     : 'At bench ' + p.bench + '/5 the prototype proves capability, not capacity. Those are different arguments and only one of them is on the table.'
+        ]; },
+        trap:'Comparing the prototype to the vendor’s product. He will win that comparison on features and lose the point entirely, and everyone will leave more confused.' },
+      { id:'rt_ds2', q:'If we buy, my best people leave. Does that go in the cost table?',
+        ask:'Our data science lead says buying will cost us our best people. Should that be in the cost comparison?',
+        subtext:'Partly a real retention risk and partly leverage. Both are worth taking seriously, and they need separating.',
+        answer:function(){ return [
+          'Yes, it belongs in the table — and then be honest about what actually causes the departure. People rarely leave because the company bought software. They leave because the interesting work disappeared.',
+          'Which makes it a design constraint rather than a veto: buying the engine only works if the team gets the proprietary layer — the store-level judgment, the exception logic, the feedback loop from operations.',
+          'Say that out loud in the room. It answers his real question, which was whether he is being decommissioned.'
+        ]; },
+        trap:'Reading it purely as a threat. Retention risk from work that stops being interesting is real, common, and entirely avoidable if the split is designed properly.' },
+      { id:'rt_ds3', q:'What would we have to prove to earn the build?',
+        ask:'Our data science lead asks what his team would need to prove to earn the build. How do I structure that answer?',
+        subtext:'The best question a build advocate can ask, and it deserves a real answer rather than a soft one.',
+        answer:function(p){ return [
+          'Give him gates, not encouragement. Forecast accuracy against the vendor on a held-out period. A defined retraining cadence with an owner. An on-call rota that survives someone’s holiday. A named second person for every critical component.',
+          'Then the honest condition on top: differentiation at ' + p.diff + '/5 is the actual constraint. Even a team that passes every gate should not build a commodity.',
+          'Passing the gates earns the proprietary layer. It does not automatically earn the engine.'
+        ]; },
+        trap:'Answering with encouragement instead of criteria. He asked for a bar; a warm non-answer converts an ally into someone who thinks the decision was rigged.' } ] },
+
+  { key:'cfo', mono:'SN', short:'CFO', name:'Suresh Nair', role:'Chief Financial Officer',
+    quote:'Forecasting is a solved problem. I am not paying to solve it again, with our own people, at our own risk.',
+    traits:['Cost-disciplined','Sceptical of internal estimates','Reads the analyst notes','Allergic to run-rate creep'],
+    protecting:'Margin, and a capex line he has already defended once this year.',
+    goals:['Lowest defensible total cost over three years','No open-ended internal build','Nothing the auditors will query'],
+    frustrations:['Internal build estimates that double','"Strategic" used to justify unbudgeted spend','Vendors who price the licence and hide the integration'],
+    motiv:{ Control:2, Speed:4, Cost:5, 'Risk exposure':3, 'Career exposure':4 },
+    stance:function(p,w){
+      if (w==='buy') return ['aligned','The framework lands where he already is — use him to carry it.'];
+      if (w==='build') return ['opposed','He reads a build as an open-ended internal cost with no ceiling.'];
+      return ['exposed','A bundled partnership looks cheap on his sheet and is not.'];
+    },
+    prompts:[
+      { id:'rt_cfo1', q:'The ERP vendor bundles it free with the renewal. Why would we pay for anything?',
+        ask:'Our CFO points out the ERP vendor bundles this free with the renewal. How do I test whether free is actually free?',
+        subtext:'The hardest argument in the room to counter, because the price really is zero — on the line item he is looking at.',
+        answer:function(){ return [
+          'Do not dispute the price. Ask what it costs to leave. Bundled capability is priced into the renewal, and the renewal gets harder to walk away from with every module inside it.',
+          'Then ask the unbundling question directly, in front of him: what is the standalone price, and what does the renewal cost without it? A vendor who will not answer has just told you what the bundle is for.',
+          'And test the capability on its merits. Bundled forecasting is rarely best-in-class; it is adequate and adjacent, which is a different purchase from the one being discussed.'
+        ]; },
+        trap:'Arguing that free is a trick. It is not a trick, it is a strategy — and calling it one loses a CFO who is looking at a real number on a real sheet.' },
+      { id:'rt_cfo2', q:'Give me the three-year number for building versus buying.',
+        ask:'Our CFO wants the three-year total cost for build versus buy. How do I structure it so it is honest?',
+        subtext:'A fair and answerable request. The risk is producing a confident table where half the entries are guesses of very different quality.',
+        answer:function(){ return [
+          'Give him the table with the confidence marked per line. Licence and implementation are knowable. Internal build cost is an estimate with a well-documented tendency to double. Say which is which rather than presenting one number.',
+          'Then add the lines that usually go missing on both sides: integration, monitoring and retraining, change management across 800 stores, and switching cost at year three.',
+          'And put the cost of delay next to it — the current state has a running cost too, and it is the only column that is definitely accruing.'
+        ]; },
+        trap:'Producing a clean comparison. A tidy table with false precision is worse than an honest one with ranges, because he will hold you to the precision.' },
+      { id:'rt_cfo3', q:'Everyone says “hidden costs”. Name them.',
+        ask:'Our CFO wants the hidden costs named rather than gestured at. What is the specific list?',
+        subtext:'Reasonable impatience with advisory vagueness. He will respect a specific list far more than a caution.',
+        answer:function(p){ return [
+          'Build: monitoring and retraining as a standing commitment, on-call, key-person risk, and the BAU work that stops while the team builds.',
+          'Buy: integration, data preparation, the internal owner nobody budgets for, and switching cost that grows every month you run on their stack.',
+          'Partner: IP entanglement, exit asymmetry, and the renegotiation that happens once they know how dependent you are.',
+          p.speed>=4 ? 'And across all three at urgency ' + p.speed + '/5 — the premium you pay for deciding on someone else’s calendar.'
+                     : 'And across all three — the cost of the current state continuing while this is debated.'
+        ]; },
+        trap:'Listing costs without owners or timing. An unowned risk register reads as hedging; the same list with a name and a date against each line reads as control.' } ] },
+
+  { key:'ops', mono:'LG', short:'STORES', name:'Latha Gopal', role:'Head of Store Operations',
+    quote:'Eight hundred store managers will either use this or route around it. Nobody in this room has asked which.',
+    traits:['Closest to the user','Sceptical of head office','Change-realistic','Quietly decisive'],
+    protecting:'The trust of 800 managers who have been given tools before.',
+    goals:['A forecast narrative managers actually read','No extra steps at 7am','A way to disagree with the system that gets heard'],
+    frustrations:['Rollouts announced as training','Head-office pilots run in three flagship stores','Systems that cannot be overridden — and systems where overrides are ignored'],
+    motiv:{ Control:3, Speed:2, Cost:2, 'Risk exposure':3, 'Career exposure':3 },
+    stance:function(p,w){
+      if (p.speed>=4) return ['exposed','Urgency at ' + p.speed + '/5 means adoption gets treated as training, which is how these fail.'];
+      if (w==='build') return ['aligned','A build can be changed when stores say it is wrong — if anyone commits to listening.'];
+      return ['exposed','Whatever is chosen, nobody has yet asked what a store manager does at seven in the morning.'];
+    },
+    prompts:[
+      { id:'rt_ops1', q:'What happens the first time the forecast is wrong and a manager is blamed?',
+        ask:'Our Head of Store Operations asks what happens the first time the forecast is wrong and a store manager is blamed. How do I answer?',
+        subtext:'She is describing the exact moment adoption is won or lost, and she has watched it go wrong before.',
+        answer:function(){ return [
+          'Settle accountability before launch, not after the first incident: the manager owns the decision, the system owns the suggestion, and overriding it is a normal act rather than an exception requiring justification.',
+          'Then build the return path — overrides are captured with a reason and reviewed, and managers see what changed because they pushed back. A feedback loop that visibly does nothing teaches everyone to stop using it.',
+          'Say the awkward part in the room: if the first wrong forecast is handled badly, no amount of accuracy recovers the trust.'
+        ]; },
+        trap:'Answering with accuracy rates. She is asking about blame and trust; an accuracy answer confirms that nobody has thought about the human consequence of being wrong.' },
+      { id:'rt_ops2', q:'Nobody has asked what a store manager does at 7am. Should that change the decision?',
+        ask:'Our Head of Store Operations says nobody has asked what a store manager does at 7am. Should that change the build-buy-partner decision?',
+        subtext:'Not a process complaint. She is pointing out that the requirements have not been written from the place the value is realised.',
+        answer:function(){ return [
+          'Yes, and it changes the criteria more than the option. Where the narrative appears, how long it takes to read, and whether it fits inside an existing routine will decide adoption regardless of which path is chosen.',
+          'It also becomes a hard evaluation requirement: a vendor who cannot show the output inside the manager’s actual morning workflow has not been evaluated, only demonstrated.',
+          'And it points at the proprietary layer — the last mile into store routine is where your advantage lives, and it is never the vendor’s to build.'
+        ]; },
+        trap:'Promising to consult stores during implementation. Consultation after selection cannot change what was selected, and she has heard that promise before.' },
+      { id:'rt_ops3', q:'Build or buy — which one lets us change it when the stores tell us it is wrong?',
+        ask:'Our Head of Store Operations asks which option lets us change the system when stores say it is wrong. How do I answer that?',
+        subtext:'She has reframed the decision around adaptability, and it may be the most useful criterion anyone has offered.',
+        answer:function(p){ return [
+          'Answer honestly: neither, automatically. Builds can be changed in principle and often are not, because the team has moved on. Vendors change on their roadmap, not yours.',
+          'What actually determines it is where the adjustable layer sits. If store-level rules, thresholds, and narrative templates are yours, you can respond in days on either path. If they live in the vendor’s console, you file a request.',
+          p.hl>=3 ? 'At half-life ' + p.hl + '/5 that layer is durable enough to be worth owning deliberately.'
+                  : 'At half-life ' + p.hl + '/5 the layer is thin today — which is an argument for designing it now, before the engine choice makes it harder.'
+        ]; },
+        trap:'Answering “build, obviously”. Build gives you the right to change it, not the capacity — and the capacity is what she is actually asking about.' } ] },
+
+  { key:'erp', mono:'DR', short:'VENDOR', name:'Deepak Rao', role:'Account Director · the ERP vendor',
+    quote:'It comes with the renewal. Think of it as included — nothing to approve, nothing to procure, nothing to explain.',
+    traits:['Incumbent','Bundling','Low-friction','Deeply embedded'],
+    protecting:'The renewal, and the account’s dependence on his platform.',
+    goals:['A signed multi-year renewal','One more module inside the estate','Making every alternative look like work'],
+    frustrations:['Being unbundled','Line-item pricing requests','Data-portability questions'],
+    motiv:{ Control:5, Speed:4, Cost:1, 'Risk exposure':1, 'Career exposure':5 },
+    stance:function(p,w){
+      if (p.exit<=2) return ['opposed','Bundled, unpriced, and with no exit — the arrangement he wants is the one you cannot audit.'];
+      if (w==='partner' && p.exit>=4) return ['aligned','With real terms on the table he can be dealt with straight.'];
+      return ['exposed','He keeps the renewal but not the lock-in he was counting on.'];
+    },
+    prompts:[
+      { id:'rt_erp1', q:'It is included in the renewal. Why would you evaluate alternatives?',
+        ask:'The ERP vendor asks why we would evaluate alternatives when the capability is included in our renewal. How do I handle that?',
+        subtext:'He is not selling a forecasting module. He is buying three more years of the estate, and the module is the instrument.',
+        answer:function(){ return [
+          'Answer pleasantly and factually: because “included” is a pricing decision, not a capability assessment, and the two get conflated exactly once per renewal cycle.',
+          'Then make the request that changes the conversation — the standalone price and the renewal price without it. Whatever comes back, you have learned what the bundle is worth to him.',
+          'Evaluate it on merit alongside the others. It may genuinely win, and it is much stronger to choose it than to accept it.'
+        ]; },
+        trap:'Declining to evaluate the bundle out of suspicion. Incumbents sometimes have the best answer, and refusing to look costs credibility with the CFO you need later.' },
+      { id:'rt_erp2', q:'Why introduce a second vendor into an estate that already works?',
+        ask:'The ERP vendor asks why we would introduce a second vendor into an estate that already works. What is the real answer?',
+        subtext:'Integration risk is real, and it is also the incumbent’s most reliable argument for never being compared to anything.',
+        answer:function(p){ return [
+          'Concede the point that is true: another integration is genuine cost and genuine risk, and it belongs in the comparison.',
+          'Then name the other side of it. A single-vendor estate has one price-setter and one roadmap, and every additional module raises the cost of ever disagreeing with either.',
+          p.exit<=2 ? 'At exit clarity ' + p.exit + '/5 that concentration is already unpriced. This decision either reduces it or deepens it.'
+                    : 'At exit clarity ' + p.exit + '/5 you have room to accept concentration deliberately — with terms — rather than by default.'
+        ]; },
+        trap:'Treating consolidation as self-evidently good. It is a real benefit and a real dependency, and only one of those two usually gets said out loud.' },
+      { id:'rt_erp3', q:'You will need our data model anyway. Why not keep it all in one place?',
+        ask:'The ERP vendor argues we will need their data model anyway, so we should keep everything in one place. How do I respond?',
+        subtext:'The most consequential sentence he will say, phrased as convenience. Whoever holds the data model holds the switching cost.',
+        answer:function(){ return [
+          'Separate access from ownership. You need data out of his system; you do not need your forecasting logic, your store rules, or your history to live inside it.',
+          'So the requirement is structural: a documented, exportable schema with tested extracts on your side of the line, whichever option wins. That is not hostility — it is what makes the relationship renewable rather than automatic.',
+          'Watch the response carefully. This is the same test as the exit clause, asked in the language of architecture.'
+        ]; },
+        trap:'Accepting the convenience argument. Convenience today is switching cost tomorrow, and this is the precise moment the line gets drawn or quietly conceded.' } ] }
+]
+};
 
 var NAMES = { build:'BUILD', buy:'BUY the engine — BUILD the layer', partner:'PARTNER — with eyes open' };
 var SHORTNAMES = { build:'BUILD', buy:'BUY + BUILD THE LAYER', partner:'PARTNER, EYES OPEN' };
@@ -446,6 +1107,7 @@ Object.keys(PRESETS).forEach(function(k){
     d.classList.add('sel');
     document.getElementById('sit').innerHTML = p.sit;
     markDirty();
+    curPersona = 0; refreshRoom();
   };
   ptabs.appendChild(d);
 });
@@ -609,6 +1271,7 @@ function drawVerdict(flash){
     var b = document.getElementById('vbadge');
     b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash');
   }
+  if (typeof updateStance === 'function') updateStance();
 }
 function markDirty(){
   dirty = true;
@@ -663,9 +1326,10 @@ function stateJSON(){
   }, null, 2);
 }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function payloadJSON(chipId, askText){
+function payloadJSON(chipId, askText, personaKey){
   return JSON.stringify({
     chip: chipId || 'free',
+    persona: personaKey || null,
     ask: askText || '',
     state: JSON.parse(stateJSON())
   }, null, 2);
@@ -675,7 +1339,7 @@ var DOCTRINE = 'You are the Vikuna senior advisor. You reason ONLY inside the Bu
 /* ---------- card factory ---------- */
 var trail = document.getElementById('trail');
 function card(spec){
-  /* spec: { role, provs:[], title, visual(html), prose, ask, isLive, isFallback, raw } */
+  /* spec: { role, provs:[], title, visual(html), prose, ask, chipId, personaKey, isLive, isFallback, raw } */
   cardCount++;
   var el = document.createElement('div');
   el.className = 'card';
@@ -705,7 +1369,7 @@ function card(spec){
       '<div class="aseg"><div class="al">STATE INJECTION · COMPUTED, READ-ONLY</div><div class="astate">'+esc(stateJSON())+'</div></div>' +
       '<div class="aseg"><div class="al">THE ASK</div><div class="aask">'+spec.ask+'</div></div>' +
       '<div class="aseg"><div class="al">WHAT THE BROWSER ACTUALLY POSTS → INTEGRATION[ai-endpoint]</div>' +
-        '<div class="astate">'+esc(payloadJSON(spec.chipId, spec.ask))+'</div>' +
+        '<div class="astate">'+esc(payloadJSON(spec.chipId, spec.ask, spec.personaKey))+'</div>' +
         '<div class="ad" style="margin-top:6px;color:var(--muted);font-size:10.3px;">The doctrine is <b>not</b> in this payload by design — the proxy prepends it server-side, so it can never be read from the browser or overridden by what a learner types.</div></div>' +
       rawSeg +
     '</div>';
@@ -798,6 +1462,17 @@ var RENDER = {
 
   prose: function(d){
     return '<div class="vprose">'+d.html+'</div>';
+  },
+
+  handling: function(d){
+    return '<div class="vhand">' +
+      '<div class="hq">“'+d.question+'”</div>' +
+      '<div class="hattr">— '+d.who+', '+d.role+'</div>' +
+      '<div class="hsec"><div class="hl2">WHAT THEY ARE ACTUALLY PROTECTING</div><div class="hsub">'+d.subtext+'</div></div>' +
+      '<div class="hsec"><div class="hl2">YOUR ANSWER — GROUNDED IN YOUR LEVERS</div>' +
+        '<ul class="hans">'+d.answer.map(function(a){ return '<li>'+a+'</li>'; }).join('')+'</ul></div>' +
+      '<div class="htrap"><div class="htl">THE TRAP</div><div class="htt">'+d.trap+'</div></div>' +
+    '</div>';
   }
 };
 
@@ -848,8 +1523,22 @@ var CONSULT_Q = {
   exit:  'Have you asked for exit terms in writing yet? What happened when you asked?'
 };
 
-function demoAdvisor(chipId, askText){
+function demoAdvisor(chipId, askText, personaKey){
   var sc = scores(), w = winner(sc), p = S.levers;
+
+  /* persona prompts route to the handling card */
+  if (personaKey){
+    var found = null, person = null;
+    (ROOM[S.preset]||[]).forEach(function(x){
+      x.prompts.forEach(function(q){ if (q.id === personaKey){ found = q; person = x; } });
+    });
+    if (found){
+      return { render:'handling',
+        data:{ question:found.q, who:person.name, role:person.role,
+               subtext:found.subtext, answer:found.answer(p, w), trap:found.trap },
+        prose:'This is rehearsal, not theory. ' + person.name.split(' ')[0] + ' will ask some version of this, and the answer has to hold in the room — which is why the trap matters as much as the answer.' };
+    }
+  }
 
   if (chipId === 'read'){
     clearDirty();
@@ -962,13 +1651,14 @@ var CHIPS = [
 var ROLETITLES = {
   read:'The framework read', challenge:'The steelman', interrogate:'The evidence audit',
   'whatif-exit':'What-if — a real exit clause', 'whatif-speed':'What-if — urgency relaxes',
-  memo:'The CEO memo', free:'The advisor responds'
+  memo:'The CEO memo', persona:'Handling the room', free:'The advisor responds'
 };
 var PROVS = {
   bars:[['comp','COMPUTED']], delta:[['comp','COMPUTED']],
   checklist:[['comp','COMPUTED'],['adv','ADVISOR']],
   tension:[['comp','COMPUTED'],['adv','ADVISOR']],
   memo:[['comp','COMPUTED'],['adv','ADVISOR']],
+  handling:[['comp','COMPUTED'],['adv','ADVISOR']],
   prose:[['adv','ADVISOR']]
 };
 
@@ -991,13 +1681,13 @@ function showLoader(){
   trail.scrollTop = 0;
   return el;
 }
-function askAdvisor(chipId, askText, roleLabel){
+function askAdvisor(chipId, askText, roleLabel, personaKey){
   if (pending) return;
   var finish = function(resp, isLive){
     var renderFn = RENDER[resp.render] || RENDER.prose;
     var visual = renderFn(resp.data);
     card({ role: roleLabel, provs: PROVS[resp.render] || PROVS.prose,
-           title: ROLETITLES[chipId] || ROLETITLES.free, chipId: chipId,
+           title: ROLETITLES[chipId] || ROLETITLES.free, chipId: chipId, personaKey: personaKey,
            visual: visual, prose: resp.prose, ask: askText,
            isLive: isLive, isFallback: !!resp._proxyFallback, raw: resp });
     setPending(false);
@@ -1008,12 +1698,12 @@ function askAdvisor(chipId, askText, roleLabel){
     /* INTEGRATION[ai-endpoint] — live path. Same contract as demoAdvisor. */
     fetch(AI.endpoint, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ chip:chipId, ask:askText, state: JSON.parse(stateJSON()) })
+      body: JSON.stringify({ chip:chipId, persona:personaKey || null, ask:askText, state: JSON.parse(stateJSON()) })
     }).then(function(r){ return r.json(); })
       .then(function(resp){ loaderEl.remove(); finish(resp, true); })
-      .catch(function(){ loaderEl.remove(); AI.live=false; setLamp('demo'); finish(demoAdvisor(chipId, askText), false); });
+      .catch(function(){ loaderEl.remove(); AI.live=false; setLamp('demo'); finish(demoAdvisor(chipId, askText, personaKey), false); });
   } else {
-    setTimeout(function(){ finish(demoAdvisor(chipId, askText), false); }, 260);
+    setTimeout(function(){ finish(demoAdvisor(chipId, askText, personaKey), false); }, 260);
   }
 }
 
@@ -1026,18 +1716,160 @@ CHIPS.forEach(function(c){
   b.onclick = function(){ askAdvisor(c.id, c.text, c.role); };
   chipsBox.appendChild(b);
 });
+var askbox = document.getElementById('askbox');
 document.getElementById('askbtn').addEventListener('click', fireFree);
-document.getElementById('askbox').addEventListener('keydown', function(e){ if (e.key==='Enter') fireFree(); });
+askbox.addEventListener('keydown', function(e){
+  if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); fireFree(); }
+});
+askbox.addEventListener('input', autogrow);
+function autogrow(){
+  askbox.style.height = 'auto';
+  askbox.style.height = Math.min(190, Math.max(76, askbox.scrollHeight)) + 'px';
+}
 function fireFree(){
-  var box = document.getElementById('askbox');
-  var v = box.value.trim();
+  var v = askbox.value.trim();
   if (!v) return;
-  box.value = '';
-  askAdvisor('free', v, 'YOU ASKED');
+  askbox.value = ''; autogrow();
+  askAdvisor(pendingChip || 'free', v, pendingRole || 'YOU ASKED', pendingPersona);
+  pendingChip = null; pendingRole = null; pendingPersona = null;
+}
+/* set when a persona prompt is inserted, so ASK routes to the handling card */
+var pendingChip = null, pendingRole = null, pendingPersona = null;
+window.insertPrompt = function(text, chipId, role, personaKey){
+  askbox.value = text; autogrow(); askbox.focus();
+  askbox.setSelectionRange(text.length, text.length);
+  pendingChip = chipId; pendingRole = role; pendingPersona = personaKey;
+};
+
+/* =========================================================================
+   THE ROOM — drawer
+   ========================================================================= */
+var drawer = document.getElementById('drawer'),
+    scrim  = document.getElementById('scrim'),
+    dtabs  = document.getElementById('dtabs'),
+    dbody  = document.getElementById('dbody');
+var curPersona = 0, usedPrompts = {};
+
+function roomList(){ return ROOM[S.preset] || []; }
+
+function openRoom(){
+  drawer.classList.add('open'); scrim.classList.add('open');
+  document.getElementById('roomtab').style.display = 'none';
+}
+function closeRoom(){
+  drawer.classList.remove('open'); scrim.classList.remove('open');
+  document.getElementById('roomtab').style.display = '';
+}
+document.getElementById('roomtab').addEventListener('click', openRoom);
+document.getElementById('dclose').addEventListener('click', closeRoom);
+scrim.addEventListener('click', closeRoom);
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeRoom(); });
+
+function drawTabs(){
+  var list = roomList();
+  document.getElementById('roomcount').textContent = list.length ? '· ' + list.length : '';
+  dtabs.innerHTML = list.map(function(x, i){
+    return '<div class="dtab'+(i===curPersona?' on':'')+'" data-i="'+i+'">' +
+      '<div class="dm">'+x.mono+'</div><div class="dr">'+x.short+'</div></div>';
+  }).join('');
+  dtabs.querySelectorAll('.dtab').forEach(function(t){
+    t.addEventListener('click', function(){ curPersona = parseInt(t.dataset.i,10); drawTabs(); drawPersona(); });
+  });
+}
+
+function drawPersona(){
+  var list = roomList();
+  if (!list.length){
+    dbody.innerHTML = '<div class="dsoon"><div class="dst">The room is still being cast.</div>' +
+      '<p>Stakeholder personas for <b>'+PRESETS[S.preset].name+'</b> are in development. ' +
+      'Switch to Kanara First Bank to see the completed room — four stakeholders, twelve questions, ' +
+      'each with what sits underneath it and the trap most advisors fall into.</p></div>';
+    return;
+  }
+  if (curPersona >= list.length) curPersona = 0;
+  var x = list[curPersona], p = S.levers, w = winner(scores());
+  var st = x.stance(p, w);
+
+  var motiv = Object.keys(x.motiv).map(function(k){
+    return '<div class="mrow2"><span class="mn">'+k+'</span><span class="mt2">' +
+      '<span class="mf2" data-w="'+(x.motiv[k]/5*100)+'"></span></span></div>';
+  }).join('');
+
+  var qs = x.prompts.map(function(q){
+    var done = usedPrompts[q.id];
+    return '<div class="pq"><div class="pqt">“'+q.q+'”</div><div class="pqa">' +
+      '<button class="pqb prime" data-act="insert" data-id="'+q.id+'">↳ INSERT</button>' +
+      '<button class="pqb'+(done?' done':'')+'" data-act="copy" data-id="'+q.id+'">⧉ '+(done?'COPIED':'COPY PROMPT')+'</button>' +
+      '</div></div>';
+  }).join('');
+
+  dbody.innerHTML = '<div class="pcard">' +
+    '<div class="pid"><div class="pav">'+x.mono+'</div><div>' +
+      '<div class="pnm">'+x.name+'</div><div class="prl">'+x.role.toUpperCase()+'</div>' +
+      '<span class="stance '+st[0]+'">'+st[0].toUpperCase()+' · AGAINST YOUR CURRENT LEVERS</span>' +
+      '<div class="stancewhy">'+st[1]+'</div>' +
+    '</div></div>' +
+    '<div class="pquote">'+x.quote+'</div>' +
+    '<div class="ptraits">'+x.traits.map(function(t){ return '<span class="ptrait">'+t+'</span>'; }).join('')+'</div>' +
+    '<div class="psec"><div class="pl">WHAT THEY ARE PROTECTING</div><div class="pt">'+x.protecting+'</div></div>' +
+    '<div class="psec"><div class="pl">GOALS</div><ul class="plist">'+x.goals.map(function(g){ return '<li>'+g+'</li>'; }).join('')+'</ul></div>' +
+    '<div class="psec"><div class="pl">FRUSTRATIONS</div><ul class="plist">'+x.frustrations.map(function(f){ return '<li>'+f+'</li>'; }).join('')+'</ul></div>' +
+    '<div class="psec"><div class="pl">WHAT DRIVES THEM</div>'+motiv+'</div>' +
+    '<div class="psec"><div class="pl">WHAT THEY WILL ASK YOU</div>'+qs+'</div>' +
+    '<div class="dnote"><b>Insert</b> drops the full prompt — your scenario included — into the ask box, ' +
+      'where you can edit it before sending. <b>Copy</b> puts the same prompt on your clipboard, ' +
+      'so it works in any AI tool you use. The doctrine never travels with it; only your scenario and the question.</div>' +
+  '</div>';
+
+  setTimeout(function(){
+    dbody.querySelectorAll('.mf2').forEach(function(f){ f.style.width = f.dataset.w+'%'; });
+  }, 60);
+
+  dbody.querySelectorAll('.pqb').forEach(function(b){
+    b.addEventListener('click', function(){
+      var q = null;
+      x.prompts.forEach(function(pp){ if (pp.id === b.dataset.id) q = pp; });
+      if (!q) return;
+      var full = scenarioLine() + ' ' + q.ask;
+      if (b.dataset.act === 'insert'){
+        insertPrompt(full, 'persona', 'THE ROOM · ' + x.name.toUpperCase(), q.id);
+        usedPrompts[q.id] = true;
+        closeRoom();
+      } else {
+        var done = function(){
+          usedPrompts[q.id] = true;
+          b.classList.add('done'); b.textContent = '⧉ COPIED';
+          setTimeout(function(){ b.textContent = '⧉ COPY PROMPT'; }, 1800);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(full).then(done, done);
+        } else {
+          var ta = document.createElement('textarea');
+          ta.value = full; document.body.appendChild(ta); ta.select();
+          try { document.execCommand('copy'); } catch(e){}
+          document.body.removeChild(ta); done();
+        }
+      }
+    });
+  });
+}
+
+function refreshRoom(){ drawTabs(); drawPersona(); }
+
+/* light patch on lever change — the card stays, the stance moves */
+function updateStance(){
+  var list = roomList();
+  if (!list.length || curPersona >= list.length) return;
+  var badge = dbody.querySelector('.stance'), why = dbody.querySelector('.stancewhy');
+  if (!badge || !why) return;
+  var st = list[curPersona].stance(S.levers, winner(scores()));
+  badge.className = 'stance ' + st[0];
+  badge.textContent = st[0].toUpperCase() + ' · AGAINST YOUR CURRENT LEVERS';
+  why.textContent = st[1];
 }
 
 /* ---------- init ---------- */
-drawRadar(); drawReads(); drawVerdict(false);
+drawRadar(); drawReads(); drawVerdict(false); refreshRoom();
 })();
 </script>
 </body>

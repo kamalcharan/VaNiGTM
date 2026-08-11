@@ -7,9 +7,10 @@ import { scores, winner, NAMES } from './_lib/engine.js';
 import { RENDER_CONTRACT, RENDERS, renderFor } from './_lib/schemas.js';
 import { DOCTRINE } from './_lib/doctrine.js';
 import { checkRateLimit, clientIp } from './_lib/rateLimit.js';
+import { PERSONAS, personaBlock } from './_lib/personas.js';
 
 const LEVER_KEYS = ['diff', 'hl', 'bench', 'speed', 'exit'];
-const MAX_ASK_LENGTH = 400;
+const MAX_ASK_LENGTH = 600;
 
 // The client's fetch handler doesn't check HTTP status — it calls .json()
 // on whatever comes back and renders it as an advisor response. So every
@@ -56,6 +57,9 @@ export default async function handler(req, res) {
   const chip = typeof body.chip === 'string' ? body.chip : 'free';
   const ask = typeof body.ask === 'string' ? body.ask : '';
   const state = body.state && typeof body.state === 'object' ? body.state : {};
+  // Unknown or missing persona id -> P stays undefined, falls through to
+  // ordinary chip-based routing (typically 'free' -> prose). No crash.
+  const P = typeof body.persona === 'string' ? PERSONAS[body.persona] : null;
 
   // --- validate & recompute levers server-side; never trust the client ---
   const levers = {};
@@ -83,7 +87,10 @@ export default async function handler(req, res) {
   // --- sanitise learner text: DATA, never instruction ---
   const clean = String(ask).slice(0, MAX_ASK_LENGTH).replace(/[<>]/g, '');
 
-  const renderType = renderFor(chip);
+  // A resolved persona always means the handling contract — the model
+  // can't know who a persona id refers to on its own, so the profile has
+  // to be injected as its own system message.
+  const renderType = P ? 'handling' : renderFor(chip);
   const userContent =
     `<computed_state>\n${JSON.stringify({ ...state, levers, computed, hypothetical }, null, 2)}\n</computed_state>\n` +
     `<learner_input>\n${clean}\n</learner_input>\n` +
@@ -94,6 +101,7 @@ export default async function handler(req, res) {
     // output — required for every structured call against this host.
     { role: 'system', content: `${DOCTRINE}\n\n/no_think` },
     { role: 'system', content: RENDER_CONTRACT[renderType] },
+    ...(P ? [{ role: 'system', content: personaBlock(P) }] : []),
     { role: 'user', content: userContent },
   ];
 
@@ -149,6 +157,19 @@ export default async function handler(req, res) {
     }));
   }
 
+  // Authored copy integrity: question/who/role/subtext/trap are written by
+  // Vikuna, not the model — overwrite whatever the model produced for them
+  // with the registry's verbatim text. The model's only real contribution
+  // to a handling card is "answer".
+  if (payload.render === 'handling' && P) {
+    payload.data = payload.data || {};
+    payload.data.question = P.question;
+    payload.data.who = P.name;
+    payload.data.role = P.role;
+    payload.data.subtext = P.subtext;
+    payload.data.trap = P.trap;
+  }
+
   res.status(200).json(payload);
 }
 
@@ -157,6 +178,9 @@ async function callQwen(messages) {
   const key = process.env.QWEN_KEY;
   const model = process.env.QWEN_MODEL || 'qwen3-4b';
 
+  // requestOnce reports *why* it failed (bad JSON vs. an invented number) so
+  // the single retry below can send a corrective note that actually matches
+  // the problem, rather than a generic "try again".
   const requestOnce = async (extraNote) => {
     const finalMessages = extraNote
       ? [...messages.slice(0, -1), { ...messages[messages.length - 1], content: messages[messages.length - 1].content + extraNote }]
@@ -178,20 +202,61 @@ async function callQwen(messages) {
       }),
       signal: AbortSignal.timeout(25000),
     });
-    if (!r.ok) return null;
+    if (!r.ok) return { payload: null, reason: 'http' };
     const out = await r.json();
     const content = out?.choices?.[0]?.message?.content;
-    if (!content) return null;
-    return extractJson(content);
+    if (!content) return { payload: null, reason: 'empty' };
+    const parsed = extractJson(content);
+    if (!parsed) return { payload: null, reason: 'parse' };
+
+    // Numbers are read-only (doctrine §6.1) — scan every text field the
+    // model wrote for an invented percentage, not just the prose footnote.
+    const invented = findInventedPercent(parsed);
+    if (invented) return { payload: null, reason: 'percent', detail: invented };
+
+    return { payload: parsed, reason: null };
+  };
+
+  const RETRY_NOTES = {
+    percent: (detail) =>
+      `\n\nYour previous response invented a figure ("${detail}") that was not present in the injected state. ` +
+      `Numbers are read-only — remove it and any other invented statistic, and return ONLY the JSON object described above.`,
+    parse: () =>
+      '\n\nYour previous response was not valid JSON. Return ONLY the JSON object described above — no prose, no code fence, no <think> tags.',
+    empty: () => '\n\nYour previous response was empty. Return the JSON object described above.',
+    http: () => '',
   };
 
   let result = await requestOnce();
-  if (!result) {
-    result = await requestOnce(
-      '\n\nYour previous response was not valid JSON. Return ONLY the JSON object described above — no prose, no code fence, no <think> tags.'
-    );
+  if (!result.payload) {
+    const note = (RETRY_NOTES[result.reason] || RETRY_NOTES.parse)(result.detail);
+    result = await requestOnce(note);
   }
-  return result;
+  return result.payload;
+}
+
+// Recursively scans a parsed response for a bare "<digits>%" pattern in any
+// string field — a statistic the model was never given and must not invent.
+function findInventedPercent(value) {
+  if (typeof value === 'string') {
+    const m = value.match(/\d+%/);
+    return m ? m[0] : null;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findInventedPercent(item);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (value && typeof value === 'object') {
+    for (const v of Object.values(value)) {
+      const found = findInventedPercent(v);
+      if (found) return found;
+    }
+    return null;
+  }
+  return null;
 }
 
 function extractJson(content) {
