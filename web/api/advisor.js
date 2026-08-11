@@ -222,8 +222,9 @@ async function callModel(system, messages) {
           model,
           system,
           messages: finalMessages,
+          // temperature and top_p can't both be set for this model — the
+          // Messages API rejects it with a 400 (invalid_request_error).
           temperature: 0.3,
-          top_p: 0.9,
           max_tokens: 700,
         }),
         signal: AbortSignal.timeout(timeoutMs),
