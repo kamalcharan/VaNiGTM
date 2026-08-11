@@ -280,14 +280,28 @@ async function callQwen(messages) {
     network: () => '',
   };
 
-  // Budgeted to fit inside vercel.json's maxDuration:60 for this function
-  // with a few seconds of margin for cold start and serialization — 42s to
-  // let a genuinely slow CPU generation finish, 14s for the retry, since a
-  // retry is asking for a reformat, not fresh reasoning.
-  let result = await requestOnce(undefined, 42000);
+  // Budgeted to fit inside vercel.json's maxDuration:60 for this function,
+  // with margin for cold start/serialization. The first attempt gets most
+  // of that budget, since this host's CPU inference is the actual
+  // bottleneck, not the model second-guessing its own formatting.
+  const FUNCTION_BUDGET_MS = 55000;
+  const MIN_RETRY_MS = 8000; // not worth attempting below this
+  const startedAt = Date.now();
+
+  let result = await requestOnce(undefined, 47000);
   if (!result.payload) {
-    const note = (RETRY_NOTES[result.reason] || RETRY_NOTES.parse)(result.detail);
-    result = await requestOnce(note, 14000);
+    const elapsed = Date.now() - startedAt;
+    const remaining = FUNCTION_BUDGET_MS - elapsed - 2000; // 2s margin for the retry's own overhead
+    // A timeout means generation itself didn't finish in time — retrying
+    // with whatever's left almost never succeeds where a longer first
+    // attempt didn't, so it only delays the (already graceful) fallback.
+    // Format failures (parse/percent) are different: the model DID
+    // respond, just wrong, and a real reformat pass is worth the time
+    // if there's enough of the budget left to plausibly finish one.
+    if (result.reason !== 'network' && remaining >= MIN_RETRY_MS) {
+      const note = (RETRY_NOTES[result.reason] || RETRY_NOTES.parse)(result.detail);
+      result = await requestOnce(note, remaining);
+    }
   }
   // Full {payload, reason, detail} so a final failure can carry a real
   // diagnosis up to the client instead of a bare null.
