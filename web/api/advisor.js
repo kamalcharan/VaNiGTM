@@ -280,15 +280,17 @@ async function callQwen(messages) {
     network: () => '',
   };
 
-  // Budgeted to fit inside vercel.json's maxDuration:60 for this function,
-  // with margin for cold start/serialization. The first attempt gets most
-  // of that budget, since this host's CPU inference is the actual
-  // bottleneck, not the model second-guessing its own formatting.
-  const FUNCTION_BUDGET_MS = 55000;
+  // Budgeted well under vercel.json's maxDuration:60 for this function —
+  // wider margin than the nominal ceiling suggests, since cold start,
+  // routing, and serialization overhead aren't fully knowable from inside
+  // the function itself. The first attempt still gets most of the budget,
+  // since this host's CPU inference is the actual bottleneck, not the
+  // model second-guessing its own formatting.
+  const FUNCTION_BUDGET_MS = 40000;
   const MIN_RETRY_MS = 8000; // not worth attempting below this
   const startedAt = Date.now();
 
-  let result = await requestOnce(undefined, 47000);
+  let result = await requestOnce(undefined, 32000);
   if (!result.payload) {
     const elapsed = Date.now() - startedAt;
     const remaining = FUNCTION_BUDGET_MS - elapsed - 2000; // 2s margin for the retry's own overhead
