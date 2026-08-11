@@ -511,9 +511,12 @@ var AUTH = {
     if (this.openPillars.indexOf(pillar) === -1) {
       return { ok: false, reason: 'closed' };
     }
-    // temp rule: any valid email + this placeholder code unlocks Pillar 1
+    // temp rule: any valid email + the general code, OR the reviewer's exact
+    // email + code pair, unlocks Pillar 1. Other pillars stay closed above.
     var okEmail = /.+@.+\..+/.test(email);
-    var okCode = (code === 'tingutaka');
+    var isGeneralCode = (code === 'tingutaka');
+    var isReviewerCredential = (email.toLowerCase() === 'review@vikuna.io' && code === 'review@08621');
+    var okCode = isGeneralCode || isReviewerCredential;
     return { ok: okEmail && okCode, reason: okCode ? (okEmail ? '' : 'email') : 'code' };
   },
 
