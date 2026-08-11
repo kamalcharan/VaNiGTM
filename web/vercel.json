@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/((?!assets|favicon|.*\\..*).*)", "destination": "/index.html" }
+    { "source": "/((?!api|assets|favicon|.*\\..*).*)", "destination": "/index.html" }
   ],
   "redirects": [
     {
