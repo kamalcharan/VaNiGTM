@@ -225,7 +225,12 @@ async function callModel(system, messages) {
           // temperature and top_p can't both be set for this model — the
           // Messages API rejects it with a 400 (invalid_request_error).
           temperature: 0.3,
-          max_tokens: 700,
+          // 700 was tuned tight for the old CPU-bound host, where a longer
+          // cap risked blowing the timeout budget. Anthropic's API doesn't
+          // have that problem — 700 was cutting off memo/handling responses
+          // mid-generation (stop_reason: max_tokens) before reaching every
+          // required field. Room to spare now costs latency, not reliability.
+          max_tokens: 1500,
         }),
         signal: AbortSignal.timeout(timeoutMs),
       });
