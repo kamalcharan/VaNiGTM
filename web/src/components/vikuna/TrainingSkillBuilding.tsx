@@ -20,6 +20,7 @@ const GOLD = '#C9973A';
 const WHITE = '#FFFFFF';
 const BORDER = 'rgba(10,15,30,0.1)';
 const TEAL = '#12A090';
+const ACCENT = '#E8420A';
 
 // ─── Styled Components ──────────────────────────────────────
 
@@ -135,6 +136,19 @@ const CardDesc = styled.p`
   font-family: ${props => safeFont(props.theme, 'fontFamily')};
 `;
 
+const CardCta = styled.a`
+  display: inline-block;
+  margin-top: 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: ${ACCENT};
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
 // ─── Note Bar ────────────────────────────────────────────────
 
 const NoteBar = styled(motion.div)`
@@ -173,8 +187,9 @@ const NoteText = styled.p`
 const programmes = [
   {
     icon: '🎯',
-    title: 'Executive AI Leadership',
+    title: 'AI for Business Leaders',
     desc: 'Strategic AI understanding for C-suite and senior leaders. Designed to move leadership from AI-curious to AI-confident — with governance frameworks and decision-making models they can use immediately.',
+    href: '/ai-for-business-leaders.html',
   },
   {
     icon: '📊',
@@ -233,6 +248,11 @@ const TrainingSkillBuilding: React.FC = () => {
               <CardIcon>{prog.icon}</CardIcon>
               <CardTitle theme={theme}>{prog.title}</CardTitle>
               <CardDesc theme={theme}>{prog.desc}</CardDesc>
+              {prog.href && (
+                <CardCta href={prog.href} target="_blank" rel="noopener noreferrer">
+                  Explore the programme →
+                </CardCta>
+              )}
             </TrainingCard>
           ))}
         </TrainingGrid>
