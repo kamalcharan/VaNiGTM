@@ -84,10 +84,6 @@ const floatBounce = keyframes`
 const FloatCell = styled.div`
   grid-area: csuite;
   animation: ${floatBounce} 3.4s ease-in-out infinite;
-
-  & > div {
-    height: 100%;
-  }
 `;
 
 // ─── Card primitives ─────────────────────────────────────────
