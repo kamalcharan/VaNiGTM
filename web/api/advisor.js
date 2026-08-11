@@ -178,32 +178,53 @@ async function callQwen(messages) {
   const key = process.env.QWEN_KEY;
   const model = process.env.QWEN_MODEL || 'qwen3-4b';
 
-  // requestOnce reports *why* it failed (bad JSON vs. an invented number) so
-  // the single retry below can send a corrective note that actually matches
-  // the problem, rather than a generic "try again".
-  const requestOnce = async (extraNote) => {
+  // requestOnce reports *why* it failed (bad JSON, an invented number, a
+  // timed-out or unreachable host) so the single retry below can send a
+  // corrective note that matches the problem, and so a slow/unreachable
+  // model degrades to the normal fallback response instead of crashing the
+  // function outright. This host runs CPU-only inference (no GPU) — a
+  // longer coaching answer can genuinely take tens of seconds to generate,
+  // so a network-level failure here is an expected case to handle, not an
+  // edge case to let throw.
+  const requestOnce = async (extraNote, timeoutMs) => {
     const finalMessages = extraNote
       ? [...messages.slice(0, -1), { ...messages[messages.length - 1], content: messages[messages.length - 1].content + extraNote }]
       : messages;
 
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        model,
-        messages: finalMessages,
-        temperature: 0.3,
-        top_p: 0.9,
-        max_tokens: 900,
-        // Best-effort structured-output hint. llama.cpp server's grammar
-        // support varies by build; the parse-retry below is the real
-        // safety net regardless of whether this field is honoured.
-        response_format: { type: 'json_object' },
-      }),
-      signal: AbortSignal.timeout(25000),
-    });
-    if (!r.ok) return { payload: null, reason: 'http' };
-    const out = await r.json();
+    let r;
+    try {
+      r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model,
+          messages: finalMessages,
+          temperature: 0.3,
+          top_p: 0.9,
+          max_tokens: 700,
+          // Best-effort structured-output hint. llama.cpp server's grammar
+          // support varies by build; the parse-retry below is the real
+          // safety net regardless of whether this field is honoured.
+          response_format: { type: 'json_object' },
+        }),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (err) {
+      // Timeout (AbortError) or a genuine network failure — both used to
+      // propagate uncaught and crash the function with a non-JSON error
+      // page, which is what actually flipped the browser to DEMO MODE.
+      return { payload: null, reason: 'network', detail: err?.name || String(err) };
+    }
+
+    if (!r.ok) return { payload: null, reason: 'http', detail: `HTTP ${r.status}` };
+
+    let out;
+    try {
+      out = await r.json();
+    } catch {
+      return { payload: null, reason: 'network', detail: 'non-JSON response from model host' };
+    }
+
     const content = out?.choices?.[0]?.message?.content;
     if (!content) return { payload: null, reason: 'empty' };
     const parsed = extractJson(content);
@@ -225,12 +246,17 @@ async function callQwen(messages) {
       '\n\nYour previous response was not valid JSON. Return ONLY the JSON object described above — no prose, no code fence, no <think> tags.',
     empty: () => '\n\nYour previous response was empty. Return the JSON object described above.',
     http: () => '',
+    network: () => '',
   };
 
-  let result = await requestOnce();
+  // Budgeted to fit inside vercel.json's maxDuration:60 for this function
+  // with a few seconds of margin for cold start and serialization — 42s to
+  // let a genuinely slow CPU generation finish, 14s for the retry, since a
+  // retry is asking for a reformat, not fresh reasoning.
+  let result = await requestOnce(undefined, 42000);
   if (!result.payload) {
     const note = (RETRY_NOTES[result.reason] || RETRY_NOTES.parse)(result.detail);
-    result = await requestOnce(note);
+    result = await requestOnce(note, 14000);
   }
   return result.payload;
 }

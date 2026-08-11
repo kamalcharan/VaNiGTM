@@ -1,4 +1,8 @@
 {
+  "functions": {
+    "api/advisor.js": { "maxDuration": 60 },
+    "api/health.js": { "maxDuration": 30 }
+  },
   "rewrites": [
     { "source": "/((?!api|assets|favicon|.*\\..*).*)", "destination": "/index.html" }
   ],
