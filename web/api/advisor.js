@@ -235,7 +235,10 @@ async function callModel(system, messages) {
       return { payload: null, reason: 'network', detail: err?.name || String(err) };
     }
 
-    if (!r.ok) return { payload: null, reason: 'http', detail: `HTTP ${r.status}` };
+    if (!r.ok) {
+      const bodyText = await r.text().catch(() => '');
+      return { payload: null, reason: 'http', detail: `HTTP ${r.status}${bodyText ? `: ${bodyText.slice(0, 300)}` : ''}` };
+    }
 
     let out;
     try {
