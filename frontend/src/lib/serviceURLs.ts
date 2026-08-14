@@ -211,6 +211,30 @@ export const API = {
       auth: true,
       description: 'Ratify the market vocabulary (edits + removals, then approve)',
     },
+    generateBrand: {
+      method: 'POST',
+      path: '/api/v1/profile/brand/generate',
+      auth: true,
+      description: 'Draft the brand Brain object from the profile + a fresh site fetch',
+    },
+    getBrand: {
+      method: 'GET',
+      path: '/api/v1/profile/brand',
+      auth: true,
+      description: 'Current brand draft/confirmed state',
+    },
+    updateBrand: {
+      method: 'PUT',
+      path: '/api/v1/profile/brand',
+      auth: true,
+      description: 'Human edits to brand fields',
+    },
+    approveBrand: {
+      method: 'POST',
+      path: '/api/v1/profile/brand/approve',
+      auth: true,
+      description: 'Ratify the brand',
+    },
   },
 
   /* ── VaNi (knowledge graph) ───────────────────────── */

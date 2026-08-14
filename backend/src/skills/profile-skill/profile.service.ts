@@ -2,8 +2,12 @@
  * profile-skill — service layer
  *
  * Reads/writes gt_tenant_profile and gt_tenant_profile_history.
- * Computes a weighted completion_score (product 0-40 / icp 0-30 /
- * gtm 0-20 / vision 0-10) — is_complete is generated from this in SQL.
+ * Computes a weighted completion_score against the wizard's 5 real steps —
+ * research 15 / vocabulary 15 / competitors 20 / ideal customer 25 / brand 25
+ * (Complete the Mission Wizard, 2026-08-14) — is_complete is generated from
+ * this in SQL. research/icp score field PRESENCE; vocabulary/competitors/
+ * brand score CONFIRMED state only (their own tables already gate on
+ * approval/confirmation, so an unconfirmed draft earns nothing).
  *
  * Every write uses createTenantDb (RLS context set per connection) and
  * is wrapped in a transaction so the upsert + history insert succeed or
@@ -16,14 +20,17 @@ import type { Pool } from 'pg';
 import { createTenantDb } from '../../db';
 import { getNodes } from '../../agent-core/kg.store';
 import { emitEvent } from '../../agent-core/event.store';
+import { getBrand, type TenantBrand, type BrandVisual } from './brand.service';
+import { listClusters } from './cluster.service';
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
 export interface CompletionDetail {
-  product: number;  // 0-40
-  icp: number;      // 0-30
-  gtm: number;      // 0-20
-  vision: number;   // 0-10
+  research: number;     // 0-15
+  vocabulary: number;   // 0-15
+  competitors: number;  // 0-20
+  icp: number;           // 0-25
+  brand: number;          // 0-25
 }
 
 export interface TenantProfile {
@@ -94,45 +101,127 @@ function hasValue(v: unknown): boolean {
   return false;
 }
 
-/* ── 1. calculateCompletionScore ────────────────────────────────────────── */
+/* ── 1. calculateProfileScoreV2 ─────────────────────────────────────────── */
 
-export function calculateCompletionScore(
-  profile: Partial<TenantProfile>,
+export interface ScoreInputs {
+  profile: Partial<TenantProfile>;
+  approvedClusterCount: number;
+  confirmedCompetitorCount: number;
+  brand: Partial<TenantBrand> | null;
+}
+
+export function calculateProfileScoreV2(
+  inputs: ScoreInputs,
 ): { score: number; detail: CompletionDetail } {
-  // PRODUCT — 40 max, 5 pts each
-  let product = 0;
-  if (hasValue(profile.product_name))        product += 5;
-  if (hasValue(profile.product_description)) product += 5;
-  if (hasValue(profile.core_problem))        product += 5;
-  if (hasValue(profile.product_tagline))     product += 5;
-  if (hasValue(profile.product_category))    product += 5;
-  if (hasValue(profile.pricing_model))       product += 5;
-  if (hasValue(profile.key_differentiators)) product += 5;
-  if (hasValue(profile.pricing_range))       product += 5;
+  const { profile, approvedClusterCount, confirmedCompetitorCount, brand } = inputs;
 
-  // ICP — 30 max, 5 pts each
-  let icp = 0;
-  if (hasValue(profile.icp_role))            icp += 5;
-  if (hasValue(profile.icp_company_type))    icp += 5;
-  if (hasValue(profile.icp_industry))        icp += 5;
-  if (hasValue(profile.icp_geography))       icp += 5;
-  if (hasValue(profile.icp_company_size))    icp += 5;
-  if (hasValue(profile.primary_pain_points)) icp += 5;
+  // RESEARCH — 15 max, scaled from the same 8 product fields step 1 fills
+  let filledResearch = 0;
+  if (hasValue(profile.product_name))        filledResearch++;
+  if (hasValue(profile.product_description)) filledResearch++;
+  if (hasValue(profile.core_problem))        filledResearch++;
+  if (hasValue(profile.product_tagline))     filledResearch++;
+  if (hasValue(profile.product_category))    filledResearch++;
+  if (hasValue(profile.pricing_model))       filledResearch++;
+  if (hasValue(profile.key_differentiators)) filledResearch++;
+  if (hasValue(profile.pricing_range))       filledResearch++;
+  const research = Math.round(15 * filledResearch / 8);
 
-  // GTM — 20 max, 5 pts each
-  let gtm = 0;
-  if (hasValue(profile.gtm_stage))           gtm += 5;
-  if (hasValue(profile.active_channels))     gtm += 5;
-  if (hasValue(profile.current_mrr))         gtm += 5;
-  if (hasValue(profile.team_size))           gtm += 5;
+  // VOCABULARY — 15 max, 5 pts per approved cluster (3 clusters = full credit).
+  // Draft-only clusters earn nothing — confirmation is the gate, same as the
+  // wizard's own propose/confirm step.
+  const vocabulary = Math.min(15, approvedClusterCount * 5);
 
-  // VISION — 10 max, 5 pts each
-  let vision = 0;
-  if (hasValue(profile.vision_statement))    vision += 5;
-  if (hasValue(profile.target_market_size))  vision += 5;
+  // COMPETITORS — 20 max, 5 pts per confirmed competitor (4 = full credit).
+  const competitors = Math.min(20, confirmedCompetitorCount * 5);
 
-  const score = Math.min(100, product + icp + gtm + vision);
-  return { score, detail: { product, icp, gtm, vision } };
+  // IDEAL CUSTOMER — 25 max: 20 base across the 6 ICP fields + up to 5
+  // richness bonus for how many pain points were actually captured — a
+  // confirmed ICP with one pain point should not score the same as one
+  // with five.
+  let filledIcp = 0;
+  if (hasValue(profile.icp_role))            filledIcp++;
+  if (hasValue(profile.icp_company_type))    filledIcp++;
+  if (hasValue(profile.icp_industry))        filledIcp++;
+  if (hasValue(profile.icp_geography))       filledIcp++;
+  if (hasValue(profile.icp_company_size))    filledIcp++;
+  if (hasValue(profile.primary_pain_points)) filledIcp++;
+  const icpBase = Math.round(20 * filledIcp / 6);
+  const painRichness = Math.min(5, profile.primary_pain_points?.length ?? 0);
+  const icp = Math.min(25, icpBase + painRichness);
+
+  // BRAND — 25 max, gated on approval (an unconfirmed draft earns nothing).
+  // 5 pts per section, prorated by how much was actually captured in each —
+  // richness inside the section, same idea as the ICP pain-point bonus.
+  let brandScore = 0;
+  if (brand?.approved_at) {
+    const voice   = Math.min(5, Math.round(5 * (brand.voice_tone?.length ?? 0) / 3));
+    const always  = Math.min(5, Math.round(5 * (brand.always_say?.length ?? 0) / 2));
+    const never   = Math.min(5, Math.round(5 * (brand.never_say?.length ?? 0) / 2));
+    const visual  = (brand.visual ?? {}) as BrandVisual;
+    const visualHits = [Boolean(visual.logo_url), Boolean(visual.colors?.length)].filter(Boolean).length;
+    const visualPts = Math.round(5 * visualHits / 2);
+    const proofPts  = (brand.proof?.length ?? 0) > 0 ? 5 : 0;
+    brandScore = voice + always + never + visualPts + proofPts;
+  }
+
+  const score = Math.min(100, research + vocabulary + competitors + icp + brandScore);
+  return { score, detail: { research, vocabulary, competitors, icp, brand: brandScore } };
+}
+
+/** Gathers the 4 inputs calculateProfileScoreV2 needs. `profile` is passed in
+ *  by callers that already have it (e.g. upsertProfile's merged fields)
+ *  rather than re-fetched, so a profile write and its score reflect the
+ *  exact same in-flight data. */
+async function gatherScoreInputs(
+  pool: Pool,
+  tenantId: string,
+  profile: Partial<TenantProfile>,
+): Promise<ScoreInputs> {
+  const db = createTenantDb(pool, tenantId);
+  const [approvedClusters, competitorCountResult, brand] = await Promise.all([
+    listClusters(pool, tenantId, { approvedOnly: true }),
+    db.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+         FROM gt_kg_nodes
+        WHERE tenant_id = $tenant_id AND label = 'Competitor'
+          AND properties->>'confirmed' = 'true'`,
+      { tenant_id: tenantId },
+    ),
+    getBrand(pool, tenantId),
+  ]);
+  return {
+    profile,
+    approvedClusterCount: approvedClusters.length,
+    confirmedCompetitorCount: parseInt(competitorCountResult.rows[0]?.count ?? '0', 10),
+    brand,
+  };
+}
+
+/** Public: recompute and persist the score without touching profile fields —
+ *  for call sites that changed something OTHER than gt_tenant_profile
+ *  (vocabulary approval, competitor confirmation, brand approval). */
+export async function recomputeProfileScore(
+  pool: Pool,
+  tenantId: string,
+): Promise<{ score: number; detail: CompletionDetail }> {
+  const profile = await getProfile(pool, tenantId);
+  if (!profile) {
+    return { score: 0, detail: { research: 0, vocabulary: 0, competitors: 0, icp: 0, brand: 0 } };
+  }
+
+  const inputs = await gatherScoreInputs(pool, tenantId, profile);
+  const { score, detail } = calculateProfileScoreV2(inputs);
+
+  const db = createTenantDb(pool, tenantId);
+  await db.query(
+    `UPDATE gt_tenant_profile
+        SET completion_score = $score, completion_detail = $detail::jsonb
+      WHERE tenant_id = $tenant_id`,
+    { score, detail: JSON.stringify(detail), tenant_id: tenantId },
+  );
+
+  return { score, detail };
 }
 
 /* ── 2. getProfile ──────────────────────────────────────────────────────── */
@@ -157,10 +246,14 @@ export async function upsertProfile(
   changedBy: string,
   changeNote?: string,
 ): Promise<TenantProfile> {
-  // STEP 1 — merge with existing, compute score on the merged result
+  // STEP 1 — merge with existing, compute the full 5-section score on the
+  // merged result (vocabulary/competitors/brand come from their own tables —
+  // see gatherScoreInputs — so a profile-only edit still reflects their
+  // current confirmed state).
   const existing = await getProfile(pool, tenantId);
   const merged: Partial<TenantProfile> = { ...(existing ?? {}), ...fields };
-  const { score, detail } = calculateCompletionScore(merged);
+  const inputs = await gatherScoreInputs(pool, tenantId, merged);
+  const { score, detail } = calculateProfileScoreV2(inputs);
 
   // STEP 2 + 3 — upsert + history snapshot in one transaction
   const db = createTenantDb(pool, tenantId);

@@ -7,6 +7,10 @@
  *   GET  /history   paginated version history (JWT)
  *   GET  /clusters          market vocabulary (JWT)
  *   POST /clusters/approve  ratify the vocabulary (JWT)
+ *   POST /brand/generate    draft the brand Brain object (JWT)
+ *   GET  /brand              current brand draft/confirmed state (JWT)
+ *   PUT  /brand               human edits to brand fields (JWT)
+ *   POST /brand/approve       ratify the brand (JWT)
  *
  * Auth: every endpoint requires a valid JWT; tenant_id is read from the
  * token, never from the body.
@@ -19,12 +23,20 @@ import type { Pool } from 'pg';
 import { verifyAccessToken, type JwtPayload } from '../../auth/token.service';
 import { createTenantDb } from '../../db';
 import { emitEvent } from '../../agent-core/event.store';
+import { createRun, setStatus } from '../../agent-core/agent.runner';
 import {
   getProfile,
   upsertProfile,
   type TenantProfile,
 } from './profile.service';
 import { listClusters, approveClusters } from './cluster.service';
+import {
+  getBrand,
+  generateBrand,
+  upsertBrandFields,
+  approveBrand,
+  type TenantBrand,
+} from './brand.service';
 
 /* ── SQL files (loaded once at module init) ─────────────────────────────── */
 
@@ -52,6 +64,10 @@ const EDITABLE_FIELDS = [
   'vision_statement', 'target_market_size',
   'source',
 ] as const satisfies readonly (keyof TenantProfile)[];
+
+const BRAND_EDITABLE_FIELDS = [
+  'voice_tone', 'always_say', 'never_say', 'proof',
+] as const satisfies readonly (keyof Pick<TenantBrand, 'voice_tone' | 'always_say' | 'never_say' | 'proof'>)[];
 
 /* ── Required-for-approval fields ───────────────────────────────────────── */
 
@@ -254,6 +270,99 @@ export function createProfileRouter(pool: Pool): Router {
       res.json({ success: true, clusters });
     } catch (err) {
       console.error('[Profile:POST /clusters/approve]', err);
+      res.status(500).json({
+        error: { code: 'INTERNAL_ERROR', message: messageOf(err) },
+      });
+    }
+  });
+
+  // ── POST /brand/generate ─────────────────────────────────────────────
+  // Drafts the brand Brain object from the profile + a fresh fetch of the
+  // tenant's own site (never from the ingestion pipeline's stripped text —
+  // see brand.service.ts). Triggered by the wizard on entering step 5, same
+  // shape as competitors' step-entry auto-start.
+  router.post('/brand/generate', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    const runId = await createRun(pool, jwt.tenant_id, 'brand-skill.generate');
+    await setStatus(pool, runId, 'running');
+    try {
+      const brand = await generateBrand(pool, jwt.tenant_id, runId);
+      await setStatus(pool, runId, 'completed');
+      res.json({ brand });
+    } catch (err) {
+      await setStatus(pool, runId, 'failed', { error_trace: messageOf(err) });
+      console.error('[Profile:POST /brand/generate]', err);
+      res.status(500).json({
+        error: { code: 'INTERNAL_ERROR', message: messageOf(err) },
+      });
+    }
+  });
+
+  // ── GET /brand ────────────────────────────────────────────────────────
+  router.get('/brand', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    try {
+      const brand = await getBrand(pool, jwt.tenant_id);
+      if (!brand) {
+        res.status(404).json({
+          error: { code: 'BRAND_NOT_FOUND', message: 'No brand draft exists yet for this tenant' },
+        });
+        return;
+      }
+      res.json({ brand });
+    } catch (err) {
+      console.error('[Profile:GET /brand]', err);
+      res.status(500).json({
+        error: { code: 'INTERNAL_ERROR', message: messageOf(err) },
+      });
+    }
+  });
+
+  // ── PUT /brand ────────────────────────────────────────────────────────
+  router.put('/brand', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const fields: Partial<Pick<TenantBrand, 'voice_tone' | 'always_say' | 'never_say' | 'proof'>> = {};
+    for (const key of BRAND_EDITABLE_FIELDS) {
+      if (key in body) {
+        (fields as Record<string, unknown>)[key] = body[key];
+      }
+    }
+
+    if (Object.keys(fields).length === 0) {
+      res.status(400).json({
+        error: { code: 'EMPTY_UPDATE', message: 'No fields provided' },
+      });
+      return;
+    }
+
+    try {
+      const brand = await upsertBrandFields(pool, jwt.tenant_id, fields);
+      res.json({ brand });
+    } catch (err) {
+      console.error('[Profile:PUT /brand]', err);
+      res.status(500).json({
+        error: { code: 'INTERNAL_ERROR', message: messageOf(err) },
+      });
+    }
+  });
+
+  // ── POST /brand/approve ───────────────────────────────────────────────
+  router.post('/brand/approve', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    try {
+      const brand = await approveBrand(pool, jwt.tenant_id);
+      res.json({ success: true, brand });
+    } catch (err) {
+      console.error('[Profile:POST /brand/approve]', err);
       res.status(500).json({
         error: { code: 'INTERNAL_ERROR', message: messageOf(err) },
       });
