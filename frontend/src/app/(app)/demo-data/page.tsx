@@ -170,7 +170,7 @@ export default function DemoDataPage() {
               Where to check
             </h3>
             <div className={s.previewGrid}>
-              <a href="/campaigns" className={s.previewCard} style={{ textDecoration: 'none' }}>
+              <a href="/gtm/motion" className={s.previewCard} style={{ textDecoration: 'none' }}>
                 <div className={s.previewValue}>🎯</div>
                 <div className={s.previewLabel}>Campaigns</div>
               </a>
@@ -186,7 +186,7 @@ export default function DemoDataPage() {
                 <div className={s.previewValue}>📊</div>
                 <div className={s.previewLabel}>Analytics</div>
               </a>
-              <a href="/contacts" className={s.previewCard} style={{ textDecoration: 'none' }}>
+              <a href="/gtm/people" className={s.previewCard} style={{ textDecoration: 'none' }}>
                 <div className={s.previewValue}>👥</div>
                 <div className={s.previewLabel}>Contacts</div>
               </a>

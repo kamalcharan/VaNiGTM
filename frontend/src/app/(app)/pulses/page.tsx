@@ -203,7 +203,7 @@ function QueueEmpty() {
         title="No contacts in queue"
         description="Set up follow-up schedules on contact profiles to see them here."
         action={
-          <VdfButton variant="outline" size="sm" onClick={() => router.push('/contacts')}>
+          <VdfButton variant="outline" size="sm" onClick={() => router.push('/gtm/people')}>
             Go to Clients →
           </VdfButton>
         }

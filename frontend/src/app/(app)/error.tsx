@@ -39,7 +39,7 @@ export default function AppError({ error, reset }: ErrorProps) {
           <button className={s.retryBtn} onClick={reset}>
             Try again
           </button>
-          <button className={s.homeBtn} onClick={() => router.push('/dashboard')}>
+          <button className={s.homeBtn} onClick={() => router.push('/today')}>
             Go to Dashboard
           </button>
         </div>

@@ -1,0 +1,176 @@
+/* /today — quiet accounts. Theme tokens only, Mission Wizard vocabulary:
+   mono small-caps eyebrows, display face for headings, glass cards, the
+   0.16/1/0.3/1 easing used across the wizard. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+/* ── Header ── */
+
+.head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 6px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 500;
+  color: var(--color-fg);
+  margin: 0;
+  line-height: 1.25;
+}
+
+/* ── The list ── */
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 18px;
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* A reopened-from-dismissed row reads as recovered, not as ordinary work. */
+.itemDismissed {
+  opacity: 0.55;
+}
+
+.itemMain {
+  min-width: 0;
+  flex: 1;
+}
+
+.itemTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.company {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  color: var(--color-fg);
+  /* The company is the thing being scanned; nothing else on the row should
+     compete with it. */
+  font-weight: 500;
+}
+
+.ref,
+.city {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-muted);
+}
+
+.why {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+/* ── Actions ── */
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Footer note ── */
+
+.foot {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--color-muted);
+  letter-spacing: 0.02em;
+}
+
+/* ── Modals ── */
+
+.snoozeRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.modalNote {
+  margin: 0 0 14px;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+
+.reasonInput {
+  width: 100%;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  color: var(--color-fg);
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reasonInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-glow);
+}
+
+.reasonInput::placeholder {
+  color: var(--color-muted);
+  opacity: 0.5;
+}
+
+/* ── Narrow ── */
+
+@media (max-width: 720px) {
+  .item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actions {
+    justify-content: flex-start;
+  }
+}
