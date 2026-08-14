@@ -1,21 +1,25 @@
 # VaNi AI — Session Handover
 
-**From:** Claude Code website session (last updated 2026-08-10)
+**From:** Claude Code website session (last updated 2026-08-11)
 **To:** next Claude Code session in this repo
 **State:** the assessment funnel is **built and merged** in `kamalcharan/VaNiGTM`
-(public flow + console, §11); Phase 0 database hygiene is **deployed**, with one
-verification step outstanding (§12); two GTM app work orders — the navigation
-restructure and G3 `/today` — are **built and pushed but unmerged** (§13). Gate G1
-was never passed as a formal gate but was superseded in practice. Almost nothing
-about VaNi AI lives in this repo any more — this document and the governing PDFs
-are the exception.
+(public flow + console, §11); Phase 0 database hygiene is **deployed and the RLS
+cutover is live** — the app runs as `vanigtm_app` and login is confirmed under it,
+with three verification paths still outstanding (§12); the navigation restructure
+and G3 `/today` are **merged to `VaNiGTM/main`**, partly unverified by design
+(§13); a half-day `vikuna_admin` lockout on 08-11 is **resolved with nothing lost**
+(§14). Gate G1 was never passed as a formal gate but was superseded in practice.
+Almost nothing about VaNi AI lives in this repo any more — this document and the
+governing PDFs are the exception.
 
-**Where the work actually is:** `kamalcharan/VaNiGTM`. Phase 0 is merged to `main`.
-Open branches, in dependency order: `claude/nav-pathways`, then
-`claude/today-attention` stacked on it (`/today` exists only on the first). Read
-`vanigtm/CLAUDE.md` and `vanigtm/docs/db/*.md` before touching the database, and
+**Where the work actually is:** `kamalcharan/VaNiGTM`. Everything from this
+session is merged to `main` (`e494974`); no open branches. Read
+`vanigtm/CLAUDE.md` and `vanigtm/docs/db/*.md` before touching the database,
 `vanigtm/docs/gtm/attention-query.md` before touching anything that asks when an
-account was last touched.
+account was last touched, and `vanigtm/docs/rls-cutover-checklist.md` before
+anything credential-shaped.
+
+**§15 is the pick-up list.** Start there.
 
 **⚠️ Architecture pivoted twice on 2026-07-31 — read this before touching `docs/sql/`.**
 `kamalcharan/VaNiGTM` (a separate, much larger, already-built product — multi-tenant
@@ -589,13 +593,14 @@ as the permanent fallback; `{{BOOKING_URL}}` is unresolved; the `assessment-lead
 
 ---
 
-## 13. After Phase 0 — the GTM app work orders (2026-08-10)
+## 13. After Phase 0 — the GTM app work orders (2026-08-10 → 08-11)
 
-Two work orders followed Phase 0 on the same day. **Both are branches in VaNiGTM,
-pushed, unmerged, no PR opened.** Neither touches `(public)` or `(vani)`, so the
-assessment funnel is unaffected by either.
+Two work orders followed Phase 0. **Both are now merged to `VaNiGTM/main`**
+(`08d09e3`, 2026-08-11) along with two documentation branches from the incident
+in §14. Neither touches `(public)` or `(vani)`, so the assessment funnel was
+never affected.
 
-### Navigation restructure — pathways (`claude/nav-pathways`)
+### Navigation restructure — pathways (was `claude/nav-pathways`)
 
 Eleven flat nav destinations became five groups expressing pathways versus
 reference surfaces. Routes consolidated with permanent (308) redirects covering
@@ -619,11 +624,10 @@ Two things worth knowing before touching it:
   is a records browser rather than a "qualify" action, and VaNi Leads is the
   assessment funnel console.
 
-### G3 · `/today` — quiet accounts (`claude/today-attention`, branched off the above)
+### G3 · `/today` — quiet accounts (was `claude/today-attention`)
 
-The gap query, the decision log behind it, and the screen. `/today` exists only on
-the nav branch, so this one is stacked on it: **merge `claude/nav-pathways` first,
-or merge them together.**
+The gap query, the decision log behind it, and the screen. Was stacked on the nav
+branch because `/today` only existed there; both went in together.
 
 **The source-of-truth question was answered differently than the brief expected.**
 It named `gt_touch_reservations`, `gt_activity_feed` and `gt_journey_events` and
@@ -659,8 +663,174 @@ above, and a `LEFT JOIN` producing `NULL` rather than `false` for
 had decided about — a new tenant's screen was empty *because* nothing had been
 decided yet.
 
-**Not done:** `deploy/vani-main-vps/attention-source-disagreement.sql` is a
-read-only check that the source-of-truth conclusions hold against production
-(they were derived from schema and call sites, which is checkable in the repo;
-row counts are not). It has not been run. Phase 0's standing lesson is that a
-local rebuild is not production.
+**Merged partly unverified, deliberately.** What is covered: 15 db tests over
+every reason, both directions of every suppression, the decision fold, tenant
+and environment isolation; backend `tsc` and the frontend build clean on the
+merge commit. What is **not**:
+
+- **The list and the three actions have never rendered against real data.** Only
+  the `all_current` empty state has been seen. To exercise the rest, set
+  `quiet_after_days: 1` in `backend/src/config/attention.config.ts`, restart,
+  work through Take it on / Later / Dismiss / Reopen, then set it back to 14.
+- **`deploy/vani-main-vps/attention-source-disagreement.sql` has not been run.**
+  It is read-only and checks the `gt_touch_log` conclusion against production —
+  the schema and call-site evidence is checkable in the repo, the row counts are
+  not, and Phase 0's standing lesson is that a local rebuild is not production.
+  If grid 1 shows any `is_live` rows in `gt_activity_feed`, something outside
+  the repo writes to it and §3 of `attention-query.md` is wrong.
+- **Three of the five reasons have only ever fired in fixtures** — `wake_due`,
+  `owed_reply`, `story_unsent`.
+
+**Migration 238 must be applied as `vikuna_admin`, not `vanigtm_app`.**
+`backend/src/migrate.ts` reads `DB_PRIMARY`, which now points at the app role.
+On PG15+ it fails outright (no `CREATE` on schema `public`); on PG14 or earlier
+`PUBLIC` still holds `CREATE`, so it would succeed and leave the table owned by
+the app role — the exact shape of the bug Phase 0 spent a day on. Verify after:
+
+```sql
+SELECT relname, pg_get_userbyid(relowner) AS owner,
+       relrowsecurity, relforcerowsecurity
+  FROM pg_class WHERE relname = 'gt_attention_decision';
+-- want: vikuna_admin / t / t
+```
+
+**One open design question I raised and Charan has not ruled on.** `never_touched`
+fires at the same 14-day threshold as `gone_quiet`, which is wrong: an account
+you have just decided is worth pursuing should not go unmentioned for a
+fortnight. Live data surfaced it — all four in-play accounts are qualified and
+never contacted, and `/today` says "Everything is current". The fix is a
+per-reason threshold map instead of one scalar, which also *simplifies* the SQL
+(the `reason IN ('wake_due','owed_reply')` special case collapses into a
+threshold of 0). Small: the config type, one predicate in `_candidates.sql`, and
+the empty-state copy. It changes how aggressive the queue is, so it is a product
+call, not a code call.
+
+---
+
+## 14. The `vikuna_admin` lockout (2026-08-11) — resolved, nothing was lost
+
+Half a day went to this. It is recorded because almost every wrong turn in it
+was reasonable, and the host's shape is not discoverable under pressure.
+
+### What happened
+
+After the RLS cutover, `vikuna_admin` stopped authenticating **across all six
+databases**. It looked like the role had been damaged or deleted.
+
+**It had not.** The role was intact the entire time:
+
+```
+vikuna_admin | rolsuper=t | rolbypassrls=t | rolcanlogin=t | rolvaliduntil=null
+             | SCRAM-SHA-256$ hash | owner of 142 objects in vani_gtm_db
+```
+
+Only the **password value** had drifted out of sync with what the clients were
+sending. Roles are cluster-wide (`pg_authid` is shared), which is exactly why it
+presented as all six databases failing at once — one credential, every database.
+One `ALTER ROLE ... PASSWORD` restored all six simultaneously.
+
+### The proof that costs ten seconds
+
+**PostgreSQL refuses to drop a role that owns objects.** So:
+
+```sql
+SELECT pg_get_userbyid(c.relowner) AS owner, count(*)
+  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+ WHERE n.nspname = 'public' AND c.relkind IN ('r','S','v','m','p')
+ GROUP BY 1 ORDER BY 2 DESC;
+```
+
+If this still names `vikuna_admin`, the role exists. A dropped role would leave
+`unknown (OID=…)`. Runs from any connection, including a non-superuser one.
+
+### How to get in — the part that is not obvious
+
+**There is no OS user `postgres` and no Postgres role `postgres` on this host.**
+`sudo -u postgres psql` fails with `unknown user`; `psql -U postgres` fails with
+`role "postgres" does not exist`. Postgres runs in a container and the cluster
+was initialised with `POSTGRES_USER=vikuna_admin`, so **`vikuna_admin` is the
+bootstrap superuser**:
+
+```bash
+docker exec -it vikuna-postgres psql -U vikuna_admin -d vani_gtm_db
+```
+
+`pg_hba` line 117 is `local all all trust`, so the container's socket needs no
+password. That is the unconditional way back in, whatever any password is.
+
+Then, as superuser at *that* prompt (not in a GUI client):
+
+```sql
+SELECT current_user;                      -- confirm before continuing
+SET password_encryption = 'scram-sha-256';
+ALTER ROLE vikuna_admin PASSWORD '<strong password>';
+```
+
+### Wrong turns worth not repeating
+
+- **A `permission denied for table pg_authid` was read as "the role lost
+  SUPERUSER".** It was actually a query run in Beekeeper as `vanigtm_app`. Always
+  `SELECT current_user, current_database();` first — an assertion about a role,
+  made from the wrong session, sent the diagnosis sideways for two exchanges.
+  `pg_roles` is readable by everyone and answers the same question; `pg_authid`
+  needs superuser and only adds the hash.
+- **The placeholder got pasted literally.** `ALTER ROLE vikuna_admin PASSWORD
+  'your-new-password'` ran verbatim, briefly giving a SUPERUSER + BYPASSRLS role
+  a trivial password on a server whose `pg_hba` line 128 is `host all all all`.
+  Corrected immediately. Generate with `openssl rand -base64 48 | tr -dc
+  'A-Za-z0-9' | head -c 32` — alphanumeric only, so no percent-encoding is
+  needed in `DB_PRIMARY`, which is parsed as a URI.
+- **`28P01` vs `28000`.** `28P01` means a `pg_hba` rule matched and the password
+  failed. `28000` means no rule matched. Reading the code first saves an hour.
+
+### Still open from this incident
+
+- **What changed the password is unknown.** The role list (`anon`,
+  `authenticated`, `service_role`, `admin`, `user`) plus a `vikuna-postgrest`
+  container means this is a Supabase/PostgREST-shaped stack, and some such
+  stacks re-apply role passwords from environment variables on every container
+  start. If a VPS-side `.env` still holds the old value, the next restart undoes
+  the fix. Check `docker inspect vikuna-postgres` env and the compose `.env`.
+  Note `POSTGRES_PASSWORD` alone cannot do this — it only applies at initdb.
+- **`backend/.env`'s `vikuna_admin` string** must carry the new password or the
+  next `npm run db:migrate` fails with the same `28P01` and reads as a new
+  incident.
+- **`pg_hba` line 128 is `host all all all scram-sha-256`** — a superuser
+  reachable from anywhere. Today only made it visible. Restricting it, or moving
+  Postgres behind the Docker network, is its own piece of careful work: getting
+  `pg_hba` wrong locks everything out at once.
+- **The eighteen-table ownership question.** A query showed only `vikuna_admin`
+  owning objects where Phase 0 found eighteen owned by `vanigtm_app` — but it
+  was run as `vanigtm_app`, so it may be visibility rather than a real change.
+  Re-run as `vikuna_admin`. If they genuinely moved, their grants went with them
+  (an owner change drops grants — migration 236 chose `FORCE ROW LEVEL SECURITY`
+  precisely to avoid that) and `scripts/grant-vanigtm-app.sql` needs a re-run.
+
+`deploy/vani-main-vps/restore-vikuna-admin.sql` carries all of this as a runnable
+runbook, diagnosis first. Its Part 3 warns against the obvious wrong move: a
+blanket `REASSIGN OWNED BY vanigtm_app TO vikuna_admin` would undo Phase 0's
+deliberate design and drop grants the app depends on.
+
+---
+
+## 15. Where to pick up
+
+**Nothing is blocked.** In rough priority:
+
+1. **Finish the Phase 0 post-switch verification.** Login is confirmed under
+   `vanigtm_app`. Still never run as that role: `rls-two-tenant-test.sql`,
+   **signup**, the **assessment flow**, and the **skills executor**. Do the
+   isolation test first — it is read-mostly and tells you whether enforcement is
+   real before you exercise anything that writes. Note it now needs a superuser
+   to `SET ROLE`, which `vikuna_admin` still is.
+2. **Apply migration 238 as `vikuna_admin`** and verify ownership (§13).
+3. **Verify G3** — the `quiet_after_days: 1` pass, and
+   `attention-source-disagreement.sql` (read-only, safe any time).
+4. **Rule on the `never_touched` threshold** (§13).
+5. **Close the incident's loose ends** (§14): the VPS `.env`, `backend/.env`,
+   the ownership re-check.
+
+Out of scope but recorded: the War Room activity feed and the analytics
+`meeting_booked` counter read demo data (§13); `story-skill`'s db tests fail on a
+pre-existing schema drift — `story.db.test.ts` hand-lists migrations and stops at
+225 while `create-story.ts` writes `channel_type_id`, added by 226.
