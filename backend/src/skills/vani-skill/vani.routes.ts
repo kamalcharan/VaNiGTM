@@ -18,6 +18,7 @@ import { createTenantDb } from '../../db';
 import { emitEvent } from '../../agent-core/event.store';
 import { getRuns, findResumableRun } from '../../agent-core/agent.runner';
 import { VaniAgent } from './vani.agent';
+import { recomputeProfileScore } from '../profile-skill/profile.service';
 
 /* ── Auth guard ─────────────────────────────────────────────────────────── */
 
@@ -382,6 +383,11 @@ export function createVaniRouter(pool: Pool): Router {
           );
         }
       });
+
+      // The wizard's competitors section of profile_score is gated on
+      // confirmed nodes (see profile.service.ts calculateProfileScoreV2) —
+      // recompute now that the confirmation just landed.
+      await recomputeProfileScore(pool, jwt.tenant_id);
 
       res.json({ success: true, kept: keep.length, dismissed: remove.length });
     } catch (err) {

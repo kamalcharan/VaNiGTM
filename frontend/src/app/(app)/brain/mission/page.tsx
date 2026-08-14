@@ -4,15 +4,19 @@
  * /onboarding — the agent-led mission wizard (LIVE, replaces form-first
  * onboarding per the approved PLG direction).
  *
- * Steps 1–4 are wired to the real backend (GTM pipeline v2):
+ * FIVE real steps, all wired to the real backend (Complete the Mission
+ * Wizard, 2026-08-14 — steps 5-7 of the old 7-step stepper were never setup
+ * steps; they're what becomes available AFTER setup, and now live in
+ * /today's Agent Launchpad instead):
  *   1. Research company    → POST /ingest/url → poll source → poll profile
  *   2. Confirm vocabulary  → GET /profile/clusters → POST /profile/clusters/approve
  *   3. Confirm competitors → GET /vani/competitors → POST /vani/competitors/confirm
  *   4. Confirm ICP & pains → PUT /profile (blur-save) → POST /profile/approve
- * Confirming the ICP configures the mission and enters mission control.
- * Steps 5–7 (Storytelling / Campaigns / Follow-ups) are visible but
- * locked — Storytelling unlocks in mission control (dashboard), the rest
- * as those agents ship. See documents/design-notes-gtm-pipeline-v2.md.
+ *   5. Confirm brand       → POST /profile/brand/generate → PUT /profile/brand (blur-save) → POST /profile/brand/approve
+ * Confirming brand is what configures the mission and enters mission
+ * control — Storytelling/Outreach/Sequences unlock there once the score
+ * clears the threshold; ICP confirm now just hands off to step 5 like every
+ * other step.
  *
  * STEP 2 EXISTS BECAUSE OF AN ORDERING BUG. The market vocabulary
  * (gt_semantic_clusters) is drafted at the end of ingestion and used by
@@ -141,6 +145,15 @@ interface SemanticCluster {
   approved_at: string | null;
 }
 
+interface TenantBrand {
+  voice_tone: string[] | null;
+  always_say: string[] | null;
+  never_say: string[] | null;
+  visual: { logo_url?: string; colors?: string[]; typography?: string };
+  proof: string[] | null;
+  approved_at: string | null;
+}
+
 /** Cluster type → what it means for the tenant, in plain words. */
 const CLUSTER_TYPE_LABEL: Record<string, string> = {
   category: 'category',
@@ -174,27 +187,23 @@ function firstLine(trace: string | null | undefined): string {
   return (trace ?? '').split('\n')[0].trim();
 }
 
-/* ── Wizard steps — GTM pipeline v2 ─────────────────────────────────────
-   Onboarding = research → vocabulary → competitors → ICP → mission
+/* ── Wizard steps — 5 real steps ─────────────────────────────────────────
+   Onboarding = research → vocabulary → competitors → ICP → brand → mission
    configured. Vocabulary sits ahead of competitors on purpose: it is the
-   input that frames the search (see the header note).
-   Storytelling deliberately LEAVES the wizard (design-notes-gtm-pipeline-v2:
-   a shareable deck from thin inputs is a landmine); it unlocks in mission
-   control once the ICP is confirmed. */
+   input that frames the search (see the header note). Storytelling,
+   Campaigns and Follow-ups are NOT setup steps — they're what becomes
+   available after setup, and live in /today's Agent Launchpad instead. */
 
 const STEPS = [
-  { id: 'company', label: 'Research company', locked: false },
-  { id: 'vocabulary', label: 'Market vocabulary', locked: false },
-  { id: 'competitors', label: 'Competitors', locked: false },
-  { id: 'icp', label: 'Ideal customer', locked: false },
-  { id: 'story', label: 'Storytelling', locked: true, lockedTag: 'Unlocks in mission control' },
-  { id: 'campaigns', label: 'Campaigns', locked: true, lockedTag: 'Agent coming soon' },
-  { id: 'pulse', label: 'Follow-ups', locked: true, lockedTag: 'Agent coming soon' },
+  { id: 'company', label: 'Research company' },
+  { id: 'vocabulary', label: 'Market vocabulary' },
+  { id: 'competitors', label: 'Competitors' },
+  { id: 'icp', label: 'Ideal customer' },
+  { id: 'brand', label: 'Brand' },
 ];
 
-/** Steps that file a durable artifact into mission memory. Everything else
-    files its separator only — see VdfMissionMemory. */
-const ARTIFACT_STEPS = new Set(['company', 'vocabulary', 'competitors', 'icp']);
+/** Steps that file a durable artifact into mission memory. */
+const ARTIFACT_STEPS = new Set(['company', 'vocabulary', 'competitors', 'icp', 'brand']);
 
 const ICP_FIELDS: { key: keyof GtmProfile & string; label: string; required: boolean; multiline?: boolean; list?: boolean }[] = [
   { key: 'product_name', label: 'Product name', required: true },
@@ -203,6 +212,13 @@ const ICP_FIELDS: { key: keyof GtmProfile & string; label: string; required: boo
   { key: 'icp_role', label: 'Buyer role', required: true },
   { key: 'icp_company_type', label: 'Company type', required: false },
   { key: 'primary_pain_points', label: 'Primary pain points (one per line)', required: true, multiline: true, list: true },
+];
+
+const BRAND_FIELDS: { key: keyof TenantBrand & string; label: string; required: boolean; multiline?: boolean; list?: boolean }[] = [
+  { key: 'voice_tone', label: 'Voice & tone (one adjective per line)', required: false, multiline: true, list: true },
+  { key: 'always_say', label: 'What we always say (one per line)', required: false, multiline: true, list: true },
+  { key: 'never_say', label: 'What we never say (one per line)', required: false, multiline: true, list: true },
+  { key: 'proof', label: 'Proof — case studies, testimonials, clients (one per line)', required: false, multiline: true, list: true },
 ];
 
 /** Auto-confirm window on a ready step (user ruling: 6–8s, interruptible).
@@ -296,6 +312,13 @@ export default function MissionWizardPage() {
   const [vocabWaiting, setVocabWaiting] = useState(false);
   const vocabTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Step 5 — brand (same agent-proposes/human-confirms pattern as ICP).
+  const [brand, setBrand] = useState<TenantBrand | null>(null);
+  const [brandEdits, setBrandEdits] = useState<Record<string, string>>({});
+  const [generatingBrand, setGeneratingBrand] = useState(false);
+  const [approvingBrand, setApprovingBrand] = useState(false);
+  const brandPendingSaves = useRef<Set<Promise<void>>>(new Set());
+
   const [finishing, setFinishing] = useState(false);
 
   /* ── Boot: resume from wherever the tenant already is ─────────────── */
@@ -307,9 +330,10 @@ export default function MissionWizardPage() {
         const domainHint = typeof window !== 'undefined' ? sessionStorage.getItem('gtm-domain-hint') : null;
         if (domainHint) setDomain(domainHint);
 
-        // Existing profile? → research is done. Approved profile means the
-        // whole mission was configured (flow order guarantees competitors
-        // were ruled on before approval).
+        // Existing profile? → research is done. Approved profile means ICP
+        // is done and step 5 (brand) is next — flow order guarantees
+        // competitors were ruled on before approval. Approved brand means
+        // the whole mission was configured.
         //
         // RESTORING THE MISSION, not just the profile. The wizard used to
         // rebuild itself from gt_tenant_profile alone, so everything else the
@@ -333,9 +357,13 @@ export default function MissionWizardPage() {
           }
           if (res.profile.approved_at) {
             setConfirmed((prev) => new Set(prev).add('vocabulary').add('competitors').add('icp'));
-            setStepIndex(3);
+            setStepIndex(4);
             void loadCompetitors(true);
             void loadClusters();
+            const existingBrand = await loadBrand();
+            if (existingBrand?.approved_at) {
+              setConfirmed((prev) => new Set(prev).add('brand'));
+            }
           }
         } catch {
           // 404 PROFILE_NOT_FOUND — fresh tenant, start at step 1
@@ -838,7 +866,7 @@ export default function MissionWizardPage() {
     }
   }, [competitors, removedIds, handoff, showToast]);
 
-  /* ── Step 3: confirm ICP — the mission's finish line ──────────────── */
+  /* ── Step 4: confirm ICP — hands off to brand, the real finish line ── */
 
   const finishOnboarding = useCallback(async () => {
     setFinishing(true);
@@ -876,9 +904,8 @@ export default function MissionWizardPage() {
       // the search that consumes it.
       await apiFetch(API.gtmProfile.approve);
       await refreshProfile();
-      setConfirmed((prev) => new Set(prev).add('icp'));
+      handoff('icp', 4);
       showToast({ message: 'Ideal customer confirmed — every agent now builds on it', type: 'success' });
-      await finishOnboarding();
     } catch (err) {
       const apiErr = err as ApiError;
       const missing = (apiErr.details?.missing as string[] | undefined) ?? [];
@@ -892,7 +919,85 @@ export default function MissionWizardPage() {
     } finally {
       setApproving(false);
     }
-  }, [finishOnboarding, refreshProfile, showToast]);
+  }, [handoff, refreshProfile, showToast]);
+
+  /* ── Step 5: confirm brand — the mission's actual finish line ───────
+     Same agent-proposes/human-confirms pattern as ICP: pre-filled from the
+     step-1 site crawl (re-fetched independently — see brand.service.ts),
+     editable, confirmed with one Confirm button. */
+
+  const loadBrand = useCallback(async (): Promise<TenantBrand | null> => {
+    try {
+      const res = await apiFetch<{ brand: TenantBrand }>(API.gtmProfile.getBrand);
+      setBrand(res.brand);
+      return res.brand;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Entering the brand step: draft it if nothing exists yet — mirrors the
+  // competitors step's auto-start-on-entry pattern.
+  useEffect(() => {
+    if (booting || STEPS[stepIndex]?.id !== 'brand' || confirmed.has('brand')) return;
+    let cancelled = false;
+    (async () => {
+      const existing = await loadBrand();
+      if (cancelled || existing) return;
+      setGeneratingBrand(true);
+      try {
+        const res = await apiFetch<{ brand: TenantBrand }>(API.gtmProfile.generateBrand);
+        if (!cancelled) setBrand(res.brand);
+      } catch (err) {
+        if (!cancelled) {
+          showToast({ message: (err as ApiError).message || 'Could not draft your brand', type: 'error' });
+        }
+      } finally {
+        if (!cancelled) setGeneratingBrand(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booting, stepIndex, confirmed]);
+
+  const brandFieldValue = (key: string): string => {
+    if (key in brandEdits) return brandEdits[key];
+    const v = brand?.[key as keyof TenantBrand];
+    if (Array.isArray(v)) return v.join('\n');
+    return '';
+  };
+
+  const saveBrandField = useCallback(async (key: string) => {
+    if (!(key in brandEdits)) return;
+    const value = brandEdits[key].split('\n').map((x) => x.trim()).filter(Boolean);
+    const save = (async () => {
+      try {
+        const res = await apiFetch<{ brand: TenantBrand }>(API.gtmProfile.updateBrand, { body: { [key]: value } });
+        setBrand(res.brand);
+      } catch (err) {
+        showToast({ message: (err as ApiError).message || `Failed to save ${key}`, type: 'error' });
+      }
+    })();
+    brandPendingSaves.current.add(save);
+    save.finally(() => brandPendingSaves.current.delete(save));
+    await save;
+  }, [brandEdits, showToast]);
+
+  const approveBrand = useCallback(async () => {
+    setApprovingBrand(true);
+    try {
+      await Promise.all([...brandPendingSaves.current]);
+      await apiFetch(API.gtmProfile.approveBrand);
+      await loadBrand();
+      setConfirmed((prev) => new Set(prev).add('brand'));
+      showToast({ message: 'Brand confirmed — every agent now builds on it', type: 'success' });
+      await finishOnboarding();
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Could not confirm the brand', type: 'error' });
+    } finally {
+      setApprovingBrand(false);
+    }
+  }, [finishOnboarding, loadBrand, showToast]);
 
   /* ── Mission rail ─────────────────────────────────────────────────── */
 
@@ -985,17 +1090,29 @@ export default function MissionWizardPage() {
       );
     }
 
+    if (done && step.id === 'brand') {
+      const voiceChips = (brand?.voice_tone ?? []).slice(0, 4);
+      artifact = (
+        <VdfMissionSection label="Brand">
+          {voiceChips.length > 0 && (
+            <VdfMissionChips chips={voiceChips.map((v, n) => ({ id: `voice-${n}`, label: v }))} />
+          )}
+          <VdfMissionRows
+            rows={(brand?.proof ?? []).slice(0, 3).map((p, n) => ({ id: `proof-${n}`, label: p }))}
+          />
+        </VdfMissionSection>
+      );
+    }
+
     return {
       id: step.id,
       step: i + 1,
-      title: step.locked ? `${step.label} · soon` : step.label,
-      state: done ? 'done' : (!step.locked && i === stepIndex) ? 'active' : 'pending',
+      title: step.label,
+      state: done ? 'done' : i === stepIndex ? 'active' : 'pending',
       artifact,
-      // steps 1–3 are definitional and file an artifact; the locked steps
-      // beyond them are operational and file only their separator
       expectsArtifact: ARTIFACT_STEPS.has(step.id),
     } as VdfMissionMemoryItem;
-  }), [confirmed, stepIndex, profile, domain, competitors, competitorsKnown, removedIds, clusters, removedClusters]);
+  }), [confirmed, stepIndex, profile, domain, competitors, competitorsKnown, removedIds, clusters, removedClusters, brand]);
 
   const current = STEPS[stepIndex];
 
@@ -1017,7 +1134,7 @@ export default function MissionWizardPage() {
       steps={STEPS.map(({ id, label }) => ({ id, label }))}
       currentIndex={stepIndex}
       completedSteps={confirmed}
-      onStepClick={(i) => { if (!STEPS[i].locked && (confirmed.has(STEPS[i].id) || i <= stepIndex)) setStepIndex(i); }}
+      onStepClick={(i) => { if (confirmed.has(STEPS[i].id) || i <= stepIndex) setStepIndex(i); }}
       artefacts={<VdfMissionMemory items={railItems} />}
       findings={parseSiteHealth(researchSteps) ? (
         <>
@@ -1466,15 +1583,15 @@ export default function MissionWizardPage() {
             </VdfApprovalCard>
           )}
 
-          {/* ── STEP 3 — Confirm ICP: the mission's finish line ───── */}
+          {/* ── STEP 4 — Confirm ICP: hands off to brand ───────────── */}
           {current.id === 'icp' && (
             <VdfApprovalCard
               eyebrow={`VaNi · profile score ${profile?.completion_score ?? 0}/100`}
               title="Confirm your ideal customer &amp; their pains"
-              subtitle="Who you sell to, and what hurts them — the foundation every agent builds on. Confirming completes your mission; Storytelling unlocks in mission control."
+              subtitle="Who you sell to, and what hurts them — the foundation every agent builds on."
               status={confirmed.has('icp') ? 'confirmed' : 'draft'}
               onConfirm={approveIcp}
-              confirmLabel="Confirm &amp; enter mission control →"
+              confirmLabel="Confirm &amp; continue →"
               loading={approving || finishing}
             >
               <div className={s.icpFields}>
@@ -1507,6 +1624,53 @@ export default function MissionWizardPage() {
             </VdfApprovalCard>
           )}
 
+          {/* ── STEP 5 — Confirm brand: the mission's finish line ──── */}
+          {current.id === 'brand' && (
+            <VdfApprovalCard
+              eyebrow={`VaNi · profile score ${profile?.completion_score ?? 0}/100`}
+              title="Confirm your brand"
+              subtitle="How you sound, what you claim, what you never claim — pre-filled from your site. Confirming completes your mission; Storytelling unlocks in mission control."
+              status={confirmed.has('brand') ? 'confirmed' : 'draft'}
+              onConfirm={approveBrand}
+              confirmLabel="Confirm &amp; enter mission control →"
+              loading={generatingBrand || approvingBrand || finishing}
+            >
+              {generatingBrand && !brand && (
+                <p className={s.memoryLine}>Reading your site for voice, claims and proof…</p>
+              )}
+              {(brand?.visual?.logo_url || brand?.visual?.colors?.length) ? (
+                <div className={s.icpField}>
+                  <label className={s.fieldLabel}>Visual — read from your site</label>
+                  <div className={s.brandVisualRow}>
+                    {brand?.visual?.logo_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={brand.visual.logo_url} alt="" className={s.brandLogo} />
+                    )}
+                    {(brand?.visual?.colors ?? []).map((c) => (
+                      <span key={c} className={s.brandSwatch} style={{ background: c }} title={c} />
+                    ))}
+                    {brand?.visual?.typography && <span className={s.memoryLine}>{brand.visual.typography}</span>}
+                  </div>
+                </div>
+              ) : null}
+              <div className={s.icpFields}>
+                {BRAND_FIELDS.map((f) => (
+                  <div key={f.key} className={s.icpField}>
+                    <label className={s.fieldLabel} htmlFor={`brand-${f.key}`}>{f.label}</label>
+                    <textarea
+                      id={`brand-${f.key}`}
+                      className={s.input}
+                      rows={4}
+                      value={brandFieldValue(f.key)}
+                      onChange={(e) => setBrandEdits((p) => ({ ...p, [f.key]: e.target.value }))}
+                      onBlur={() => saveBrandField(f.key)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </VdfApprovalCard>
+          )}
+
           {/* The enrichment loop lives at /knowledge (Teach VaNi) — user
               ruling: onboarding is a sprint to quick results, loops are a
               return activity. Pointer only, once the mission is configured. */}
@@ -1519,16 +1683,6 @@ export default function MissionWizardPage() {
               <VdfButton variant="ghost" size="sm" href="/brain/teach">Teach VaNi →</VdfButton>
             </div>
           )}
-
-          {/* Locked steps preview */}
-          <div className={s.lockedRow}>
-            {STEPS.filter((st) => st.locked).map((st) => (
-              <div key={st.id} className={s.lockedCard}>
-                <span className={s.lockedName}>{st.label}</span>
-                <span className={s.lockedTag}>{st.lockedTag}</span>
-              </div>
-            ))}
-          </div>
       </div>
     </VdfPathwayShell>
   );

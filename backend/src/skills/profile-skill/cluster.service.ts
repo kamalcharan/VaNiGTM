@@ -22,6 +22,7 @@ import { z } from 'zod';
 import { createTenantDb } from '../../db';
 import { callLLMValidated } from '../../agent-core/llm.client';
 import { loadPrompt } from '../../agent-core/prompt.store';
+import { recomputeProfileScore } from './profile.service';
 
 export const CLUSTER_TYPES = ['category', 'offering', 'buyer', 'pain', 'outcome'] as const;
 export type ClusterType = (typeof CLUSTER_TYPES)[number];
@@ -260,6 +261,11 @@ export async function approveClusters(
       { tenant_id: tenantId },
     );
   });
+
+  // The wizard's vocabulary section of profile_score is gated on approved
+  // clusters (see profile.service.ts calculateProfileScoreV2) — recompute now
+  // that the approval just landed.
+  await recomputeProfileScore(pool, tenantId);
 
   return listClusters(pool, tenantId);
 }
