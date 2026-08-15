@@ -64,7 +64,23 @@ export async function getBrand(pool: Pool, tenantId: string): Promise<TenantBran
   return result.rows[0] ?? null;
 }
 
-/* ── Visual hints (no LLM — best-effort HTML parse) ───────────────────── */
+/* ── Visual hints (no LLM — best-effort HTML/CSS parse) ────────────────
+ * Logo is a straight <link rel=icon> read — no upload/storage involved,
+ * it's just a URL reference back to the tenant's own site, same as
+ * every other agent-derived field here: shown for confirmation, never
+ * downloaded or re-hosted.
+ *
+ * Colors need more than the HTML alone — inline <style> blocks rarely
+ * carry a modern site's palette; the real colors live in linked
+ * stylesheets (Tailwind/Next.js/Vite all compile to those). So this
+ * fetches up to 2 same-origin-ish stylesheets too, best-effort, and
+ * scans BOTH sources — preferring CSS custom properties that look
+ * brand-related (--primary, --accent, --brand, --theme-*) over a raw
+ * frequency count, since a compiled stylesheet has hundreds of
+ * incidental colors and only a few are actually "the brand". Near-white/
+ * near-black/grayscale hits are filtered out either way — never useful
+ * as "the brand color".
+ */
 
 function resolveUrl(raw: string, baseUrl: string): string | undefined {
   try {
@@ -74,9 +90,91 @@ function resolveUrl(raw: string, baseUrl: string): string | undefined {
   }
 }
 
-/** Best-effort logo/colors/typography from raw HTML. Never guesses — an
- *  absent signal stays absent rather than being filled with a plausible one. */
-export function extractVisualHints(html: string, baseUrl: string): BrandVisual {
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  let h = hex.replace('#', '');
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  if (h.length < 6) return null;
+  const n = parseInt(h.slice(0, 6), 16);
+  if (Number.isNaN(n)) return null;
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+/** Grayscale, near-white, or near-black — never "the brand color". */
+function isNearNeutral(hex: string): boolean {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return true;
+  const { r, g, b } = rgb;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max - min < 12) return true;
+  if (min > 235) return true;
+  if (max < 20) return true;
+  return false;
+}
+
+/** CSS custom properties first (high-confidence — the site's own design
+ *  system naming its brand colors), frequency-ranked hex as a fallback. */
+function extractColorsFromCss(css: string): string[] {
+  const branded = new Set<string>();
+  const varRe = /--[\w-]*(?:brand|primary|accent|theme)[\w-]*\s*:\s*(#[0-9a-fA-F]{3,8})\b/gi;
+  let m: RegExpExecArray | null;
+  while ((m = varRe.exec(css))) {
+    const hex = m[1].toLowerCase().slice(0, 7);
+    if (!isNearNeutral(hex)) branded.add(hex);
+    if (branded.size >= 5) break;
+  }
+  if (branded.size > 0) return Array.from(branded);
+
+  const counts = new Map<string, number>();
+  const hexRe = /#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g;
+  let hm: RegExpExecArray | null;
+  while ((hm = hexRe.exec(css))) {
+    const hex = hm[0].toLowerCase();
+    if (isNearNeutral(hex)) continue;
+    counts.set(hex, (counts.get(hex) ?? 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([hex]) => hex);
+}
+
+const FONT_CDN_HOSTS = /fonts\.googleapis\.com|fonts\.gstatic\.com|use\.typekit\.net/i;
+
+function extractStylesheetLinks(html: string, baseUrl: string, limit = 2): string[] {
+  const linkRe = /<link[^>]+rel=["']stylesheet["'][^>]*>/gi;
+  const urls: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = linkRe.exec(html)) && urls.length < limit) {
+    const hrefMatch = m[0].match(/href=["']([^"']+)["']/i);
+    if (!hrefMatch) continue;
+    const resolved = resolveUrl(hrefMatch[1], baseUrl);
+    if (!resolved || FONT_CDN_HOSTS.test(resolved)) continue;
+    urls.push(resolved);
+  }
+  return urls;
+}
+
+/** Best-effort — a stylesheet that's slow, blocked, or 404s just means one
+ *  fewer color source, never a hard failure for the whole brand draft. */
+async function fetchCssText(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) VaNiGTM-Brand/1.0' },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!res.ok) return '';
+    return (await res.text()).slice(0, 300_000);
+  } catch {
+    return '';
+  }
+}
+
+/** Best-effort logo/colors/typography from raw HTML + up to 2 linked
+ *  stylesheets. Never guesses — an absent signal stays absent rather than
+ *  being filled with a plausible one. */
+export async function extractVisualHints(html: string, baseUrl: string): Promise<BrandVisual> {
   const visual: BrandVisual = {};
 
   const iconRe = /<link[^>]+rel=["'](?:apple-touch-icon|icon|shortcut icon)["'][^>]*>/gi;
@@ -92,22 +190,21 @@ export function extractVisualHints(html: string, baseUrl: string): BrandVisual {
   }
   if (bestIcon) visual.logo_url = bestIcon;
 
-  const themeColorMatch = html.match(/<meta[^>]+name=["']theme-color["'][^>]+content=["'](#[0-9a-fA-F]{3,6})["']/i);
-  const colors = new Set<string>();
-  if (themeColorMatch) colors.add(themeColorMatch[1].toLowerCase());
+  const inlineStyle = (html.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) ?? []).join('\n');
+  const stylesheetUrls = extractStylesheetLinks(html, baseUrl);
+  const fetchedCss = (await Promise.all(stylesheetUrls.map(fetchCssText))).join('\n');
+  const cssCorpus = `${inlineStyle}\n${fetchedCss}`;
 
-  const styleBlocks = html.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) ?? [];
-  for (const block of styleBlocks) {
-    const hexes = block.match(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g) ?? [];
-    for (const hex of hexes) {
-      colors.add(hex.toLowerCase());
-      if (colors.size >= 5) break;
-    }
+  const colors = new Set<string>();
+  const themeColorMatch = html.match(/<meta[^>]+name=["']theme-color["'][^>]+content=["'](#[0-9a-fA-F]{3,6})["']/i);
+  if (themeColorMatch) colors.add(themeColorMatch[1].toLowerCase());
+  for (const hex of extractColorsFromCss(cssCorpus)) {
+    colors.add(hex);
     if (colors.size >= 5) break;
   }
   if (colors.size > 0) visual.colors = Array.from(colors).slice(0, 5);
 
-  const fontMatch = html.match(/font-family:\s*['"]?([A-Za-z0-9 ,\-]+?)['";,]/i);
+  const fontMatch = `${html}\n${cssCorpus}`.match(/font-family:\s*['"]?([A-Za-z0-9 ,\-]+?)['";,]/i);
   if (fontMatch) {
     const primary = fontMatch[1].split(',')[0].trim();
     if (primary && !/^(inherit|sans-serif|serif|monospace|arial|helvetica)$/i.test(primary)) {
@@ -147,7 +244,7 @@ export async function generateBrand(
     try {
       const fetched = await IngestionAgent.fetchUrlText(siteUrl);
       siteText = fetched.text;
-      visual = extractVisualHints(fetched.html, siteUrl);
+      visual = await extractVisualHints(fetched.html, siteUrl);
     } catch (err) {
       // Best-effort — a stale/unreachable site must not block brand drafting
       // from the profile alone (no fabricated visual data either way), but
