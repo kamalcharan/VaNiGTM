@@ -12,6 +12,44 @@ lightweight Skills.md convention — no framework dependency.
 UX blueprints: `documents/gtm-engine-ui/` + `documents/ux-references/`
 (internal-only, see its README).
 
+## Product model — pathways, not destinations
+
+Three layers:
+
+```
+BRAIN     what VaNi knows about a tenant — ICP, competitors, market vocabulary,
+          brand, offers, knowledge. Tenant-level. Agents READ it; no agent owns it.
+          If an agent stores its own copy of contacts, offers or brand, that is a bug.
+AGENTS    GTM (audience, journeys) · Nova (digital marketing, not yet built)
+PATHWAYS  a named outcome, ordered steps, an artefact per step, a definition of done.
+          The Mission Wizard is the reference implementation.
+```
+
+Five pathways:
+
+```
+G1  Build the audience      find → qualify → find people → enrich
+G2  Put them in motion      segment → journey → fill stages → activate
+G3  Work the queue          /today — what's gone quiet, ranked by cost of inaction
+N1  Fix the digital estate  audit → prioritise → fix → verify        (not built)
+N2  Run a campaign          intent → story → render → ship → measure (not built)
+```
+
+Navigation (restructured 2026-08):
+
+```
+TODAY      the daily queue                                    G3
+BRAIN      Mission Wizard · Teach VaNi · Knowledge
+GTM        Build the audience · Put them in motion
+           People · Journeys              ← reference surfaces, visually distinct
+NOVA       Fix the digital estate · Run a campaign   ← visible, marked coming
+SETTINGS
+```
+
+Pathways read as verbs and are things you DO. Reference surfaces read as nouns and
+are things you LOOK AT. Do not add a top-level destination — extend a pathway or
+add a drill-down. Old routes redirect; do not add paths outside this hierarchy.
+
 ## Architecture
 - **Two processes:** Express API (`backend/`, port 3002 in dev) + Next.js 16
   App Router (`frontend/`, port 3000). Not a single custom server.
@@ -81,10 +119,14 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
 - **Phase 0 finished the preparation (2026-08-10).** Migrations 234–237 are
   deployed **and verified on production** (post-deploy-check.sql: all seven
   rows OK, "ready for cutover? YES on the schema side"), every known code
-  blocker is fixed, and the two-tenant isolation test passes 13/13 locally. The only step left is operational: run
-  `scripts/grant-vanigtm-app.sql`, point `DB_PRIMARY` at `vanigtm_app`,
-  restart, re-run `deploy/vani-main-vps/rls-two-tenant-test.sql`. Rollback is
-  putting `DB_PRIMARY` back. Full detail in `docs/db/rls-status.md` §8.
+  blocker is fixed, and the two-tenant isolation test passes 13/13 locally.
+  Full detail in `docs/db/rls-status.md` §8.
+- **Cutover is DONE.** `DB_PRIMARY` points at `vanigtm_app`; the app runs on a
+  non-BYPASSRLS role. `vikuna_admin` is retained only as an emergency rollback.
+- **Outstanding:** signup, login and the skills executor have never been
+  exercised under the restricted role. Run `rls-two-tenant-test.sql` against
+  production and walk those three paths. Until that is done, treat them as
+  unverified.
 - A table's OWNER bypasses its own policies unless `FORCE ROW LEVEL SECURITY`
   is set. 18 tables were owned by `vanigtm_app` — migration 236 forced 17.
 - Reaching the DB outside a skill: `withTenantClient(pool, tenantId, fn)` from
@@ -232,6 +274,15 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
 9. **UX: glassmorphic, premium, no safe/generic design** — match
    `documents/gtm-engine-ui/` quality; agent-produces-human-confirms
    onboarding model (see ux-references README).
+9b. **Every empty state carries a next action.** No screen may show only zeros
+    or "no data yet". If there is nothing, say what to do about it and link
+    there. (The old War Room showed seven zeros and a flat funnel — that is
+    the failure mode this rule exists to prevent.)
+9c. **Reuse `PathwayShell`.** Extracted from the Mission Wizard: stepper,
+    artefact rail, findings rail. Do not invent another stepper.
+9d. **Never fabricate brand or profile content.** If it cannot be derived
+    from a crawl or a document, leave it blank and say so. Same rule the
+    ai-product-photographer skill already states for brand guidelines.
 10. **Migrations manual + guarded + idempotent** (rule above).
 11. **No secrets in the repo** — connector credentials live in env/VPS only.
 13. **RESEARCH OUTPUT NEVER ENTERS THE COMMON POOL** (user ruling,
@@ -367,7 +418,7 @@ other half — the policy, not just the caller — went unnoticed while RLS was
 dormant.
 
 `deploy/vani-main-vps/rls-two-tenant-test.sql` is the isolation test: run it as
-the app role, never as postgres. All 11 checks pass on the rebuilt schema, and
+the app role, never as postgres. All 13 checks pass on the rebuilt schema, and
 it was verified to fail when RLS is disabled.
 
 Migration 235 — **this is the one production actually needs.** Confirmed live:
@@ -419,3 +470,33 @@ Runbook in §8 of the doc.
     never assume.
 11. Phone numbers: separate `country_code` + `mobile` fields, never
     concatenate-and-parse.
+
+## Deliberately not being built
+
+Do not start any of these. Push back if asked without an explicit decision:
+
+agent marketplace · per-agent pricing UI · marketing asset gallery or template
+library · knowledge graph as a product surface · unified namespace / resolver ·
+email sending · Storytelling / Campaigns / Follow-ups agents · any new agent
+framework (Hermes and similar — evaluated 2026-08, parked)
+
+**Sending is gated.** It happens when the brain is good enough: ICP confirmed,
+brand captured, at least one offer defined. Not before.
+
+## Current phase
+
+1. Mission Wizard completion — five steps; brand added as step 5; Storytelling /
+   Campaigns / Follow-ups removed from the stepper (they were never setup steps,
+   which is why the profile score could never reach 100)
+2. Intelligent Add Offers — derived from the site crawl, confirmed not typed.
+   Offers are a BRAIN object, not a step inside a GTM pathway.
+3. Nova N1 — digital audit remediation
+
+## Working method
+
+- Every piece of work changes something visible within about a week. If it cannot,
+  it rides underneath something that can. Invisible infrastructure gets no phase
+  of its own.
+- Run it, don't read it. Phase 0's highest-value finding — 18 tables whose policies
+  were inert — came from executing the isolation test, not from reading schema.
+- Findings go in the repo, not in chat. docs/db/ and docs/gtm/ already hold several.
