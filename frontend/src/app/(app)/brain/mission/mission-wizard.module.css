@@ -392,11 +392,127 @@ textarea.input {
   border: 1px solid var(--color-border);
 }
 
-.brandSwatch {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
+/* ── Brand colors — named roles (step 5) ──
+   Mirrors the reviewed mockup: a palette strip showing the three as one
+   system, then a card per role with a real clickable swatch as the
+   control, a hex field beside it, and the same status tag language as
+   every other field on this step. */
+
+.paletteStrip {
+  display: flex;
+  height: 32px;
+  border-radius: 8px;
+  overflow: hidden;
   border: 1px solid var(--color-border);
+}
+
+.paletteSwatch {
+  flex: 1;
+}
+
+.paletteSwatchEmpty {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-surface) 70%, transparent) 0 8px,
+    var(--color-border) 8px 16px
+  );
+}
+
+.colorRoles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.colorRole {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+}
+
+.colorRoleFilled { border-color: color-mix(in srgb, var(--color-success) 35%, transparent); }
+.colorRoleEmpty  { border-color: color-mix(in srgb, var(--color-warning) 40%, transparent); }
+
+.colorRoleTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.colorRoleName {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.colorRoleDesc {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  color: var(--color-muted);
+  min-height: 30px;
+}
+
+.swatchRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.swatchWrap {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.colorPicker {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  border: 1px solid var(--color-border);
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+}
+
+.colorPicker::-webkit-color-swatch-wrapper { padding: 0; }
+.colorPicker::-webkit-color-swatch { border: none; border-radius: 8px; }
+.colorPicker::-moz-color-swatch { border: none; border-radius: 8px; }
+
+.swatchPlus {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-warning);
+  font-size: 16px;
+  pointer-events: none;
+}
+
+.hexInput {
+  flex: 1;
+  min-width: 0;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--color-fg);
+}
+
+.hexInput:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
 }
 
 /* One persistent completeness signal for the whole brand step — replaces a
@@ -456,6 +572,10 @@ textarea.input {
   .domainRow {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .colorRoles {
+    grid-template-columns: 1fr;
   }
 }
 

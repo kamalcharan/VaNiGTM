@@ -25,7 +25,9 @@ import { getProfile, recomputeProfileScore } from './profile.service';
 
 export interface BrandVisual {
   logo_url?: string;
-  colors?: string[];
+  primary_color?: string;
+  secondary_color?: string;
+  accent_color?: string;
   typography?: string;
 }
 
@@ -113,18 +115,37 @@ function isNearNeutral(hex: string): boolean {
   return false;
 }
 
-/** CSS custom properties first (high-confidence — the site's own design
- *  system naming its brand colors), frequency-ranked hex as a fallback. */
-function extractColorsFromCss(css: string): string[] {
-  const branded = new Set<string>();
-  const varRe = /--[\w-]*(?:brand|primary|accent|theme)[\w-]*\s*:\s*(#[0-9a-fA-F]{3,8})\b/gi;
-  let m: RegExpExecArray | null;
-  while ((m = varRe.exec(css))) {
-    const hex = m[1].toLowerCase().slice(0, 7);
-    if (!isNearNeutral(hex)) branded.add(hex);
-    if (branded.size >= 5) break;
+export interface RoleColors {
+  primary?: string;
+  secondary?: string;
+  accent?: string;
+}
+
+/**
+ * Role-aware, not a flat list — downstream (Storyteller, campaign templates)
+ * needs to know WHICH color is the CTA-button color, not just that three
+ * hex codes exist somewhere. Two passes:
+ *  1. Named CSS custom properties — `--primary-color`, `--secondary`,
+ *     `--accent-*` — mapped straight to their role. High confidence: the
+ *     site's own design system is telling us what each color is for.
+ *  2. Fallback: the most-repeated non-neutral hex anywhere in the CSS is
+ *     almost always the dominant brand color (buttons, links, nav) → primary;
+ *     the next two distinct ones fill secondary/accent. A guess, which is
+ *     exactly why each role still carries its own "needs input" affordance
+ *     in the UI rather than being presented as fact.
+ */
+function extractRoleColors(css: string): RoleColors {
+  const roles: RoleColors = {};
+  const roleRe: [keyof RoleColors, RegExp][] = [
+    ['primary', /--[\w-]*primary[\w-]*\s*:\s*(#[0-9a-fA-F]{3,8})\b/i],
+    ['secondary', /--[\w-]*secondary[\w-]*\s*:\s*(#[0-9a-fA-F]{3,8})\b/i],
+    ['accent', /--[\w-]*accent[\w-]*\s*:\s*(#[0-9a-fA-F]{3,8})\b/i],
+  ];
+  for (const [role, re] of roleRe) {
+    const m = css.match(re);
+    if (m && !isNearNeutral(m[1])) roles[role] = m[1].toLowerCase().slice(0, 7);
   }
-  if (branded.size > 0) return Array.from(branded);
+  if (roles.primary || roles.secondary || roles.accent) return roles;
 
   const counts = new Map<string, number>();
   const hexRe = /#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g;
@@ -134,10 +155,11 @@ function extractColorsFromCss(css: string): string[] {
     if (isNearNeutral(hex)) continue;
     counts.set(hex, (counts.get(hex) ?? 0) + 1);
   }
-  return Array.from(counts.entries())
+  const ranked = Array.from(counts.entries())
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
     .map(([hex]) => hex);
+
+  return { primary: ranked[0], secondary: ranked[1], accent: ranked[2] };
 }
 
 const FONT_CDN_HOSTS = /fonts\.googleapis\.com|fonts\.gstatic\.com|use\.typekit\.net/i;
@@ -197,14 +219,17 @@ export async function extractVisualHints(html: string, baseUrl: string): Promise
   const fetchedCss = fetchedSheets.join('\n');
   const cssCorpus = `${inlineStyle}\n${fetchedCss}`;
 
-  const colors = new Set<string>();
   const themeColorMatch = html.match(/<meta[^>]+name=["']theme-color["'][^>]+content=["'](#[0-9a-fA-F]{3,6})["']/i);
-  if (themeColorMatch) colors.add(themeColorMatch[1].toLowerCase());
-  for (const hex of extractColorsFromCss(cssCorpus)) {
-    colors.add(hex);
-    if (colors.size >= 5) break;
+  const roles = extractRoleColors(cssCorpus);
+  // A <meta theme-color> is a strong, deliberate single-value signal (the
+  // browser chrome color) — use it for primary only when the CSS scan found
+  // nothing better to say primary is.
+  if (!roles.primary && themeColorMatch && !isNearNeutral(themeColorMatch[1])) {
+    roles.primary = themeColorMatch[1].toLowerCase();
   }
-  if (colors.size > 0) visual.colors = Array.from(colors).slice(0, 5);
+  if (roles.primary) visual.primary_color = roles.primary;
+  if (roles.secondary) visual.secondary_color = roles.secondary;
+  if (roles.accent) visual.accent_color = roles.accent;
 
   // Diagnostic trail — color extraction has 4 independent failure points
   // (no stylesheet links found, fetch blocked/timed out, fetched but empty,
@@ -215,9 +240,9 @@ export async function extractVisualHints(html: string, baseUrl: string): Promise
     + `stylesheets=${stylesheetUrls.length} (${stylesheetUrls.join(', ') || 'none found'}) `
     + `fetchedBytes=${fetchedSheets.map((s) => s.length).join(',') || 'n/a'} `
     + `themeColorMeta=${themeColorMatch ? themeColorMatch[1] : 'none'} `
-    + `colorsFound=${colors.size}`,
+    + `roles=primary:${roles.primary ?? 'none'},secondary:${roles.secondary ?? 'none'},accent:${roles.accent ?? 'none'}`,
   );
-  if (fetchedSheets.some((s) => s.length > 0) && colors.size === 0) {
+  if (fetchedSheets.some((s) => s.length > 0) && !roles.primary) {
     // Small enough to log in full when this diagnostic path is hit at all —
     // "fetched something, found no colors" has stayed ambiguous across every
     // round so far (redirect/block page mistaken for real CSS? non-hex color
@@ -283,12 +308,12 @@ export async function generateBrand(
     // way, success or failure).
     const renderReady = IngestionAgent.renderConfigured();
     console.log(
-      `[Brand:generateBrand] colors so far: ${visual.colors?.length ?? 0} — `
+      `[Brand:generateBrand] primary color so far: ${visual.primary_color ?? 'none'} — `
       + `render escalation ${renderReady ? 'WILL fire' : 'will NOT fire'} `
       + `(N8N_RENDER_URL ${process.env.N8N_RENDER_URL ? 'set' : 'MISSING'}, `
       + `N8N_RENDER_SECRET ${process.env.N8N_RENDER_SECRET ? 'set' : 'MISSING'})`,
     );
-    if (!visual.colors?.length && renderReady) {
+    if (!visual.primary_color && renderReady) {
       await appendStep(pool, runId, {
         step_name: 'render_escalation',
         action: 'Static fetch found no colors — rendering the page with JS to look again',
@@ -299,13 +324,15 @@ export async function generateBrand(
         const renderedVisual = await extractVisualHints(renderedHtml, siteUrl);
         visual = {
           logo_url: visual.logo_url ?? renderedVisual.logo_url,
-          colors: renderedVisual.colors?.length ? renderedVisual.colors : visual.colors,
+          primary_color: visual.primary_color ?? renderedVisual.primary_color,
+          secondary_color: visual.secondary_color ?? renderedVisual.secondary_color,
+          accent_color: visual.accent_color ?? renderedVisual.accent_color,
           typography: visual.typography ?? renderedVisual.typography,
         };
         await appendStep(pool, runId, {
           step_name: 'render_escalation_complete',
-          action: renderedVisual.colors?.length
-            ? `Found ${renderedVisual.colors.length} color(s) in the rendered page`
+          action: renderedVisual.primary_color
+            ? `Found colors in the rendered page (primary: ${renderedVisual.primary_color})`
             : 'Rendered the page but still found no colors',
           status: 'ok',
         });
@@ -382,10 +409,13 @@ export async function generateBrand(
 const EDITABLE_LIST_FIELDS = ['voice_tone', 'always_say', 'never_say', 'proof'] as const;
 type EditableListField = (typeof EDITABLE_LIST_FIELDS)[number];
 
+const EDITABLE_COLOR_ROLES = ['primary_color', 'secondary_color', 'accent_color'] as const;
+type EditableColorRole = (typeof EDITABLE_COLOR_ROLES)[number];
+
 export async function upsertBrandFields(
   pool: Pool,
   tenantId: string,
-  fields: Partial<Pick<TenantBrand, EditableListField>> & { colors?: string[] },
+  fields: Partial<Pick<TenantBrand, EditableListField>> & Partial<Record<EditableColorRole, string | null>>,
 ): Promise<TenantBrand> {
   const db = createTenantDb(pool, tenantId);
 
@@ -399,14 +429,19 @@ export async function upsertBrandFields(
     }
   }
 
-  // Colors live under the visual JSONB blob alongside logo_url/typography —
-  // a plain column assignment would clobber those, so merge just this key.
-  // Not gated behind auto-detection at all: a site that needs JS execution
-  // to reveal its real palette (no headless renderer configured) still
-  // needs a way to capture brand colors, same as every other field here.
-  if (fields.colors !== undefined) {
-    setClauses.push(`visual = jsonb_set(coalesce(visual, '{}'::jsonb), '{colors}', $colors::jsonb, true)`);
-    params.colors = JSON.stringify(fields.colors ?? []);
+  // Each color role lives under the visual JSONB blob alongside logo_url/
+  // typography — a plain column assignment would clobber those and the
+  // other two roles, so merge one key at a time. Not gated behind
+  // auto-detection at all: a site that needs JS execution to reveal its
+  // real palette (no headless renderer configured) still needs a way to
+  // capture brand colors by hand, same as every other field here. Passing
+  // an empty string clears that role (jsonb_set with a JSON null removes
+  // ambiguity between "not provided" and "explicitly cleared").
+  for (const role of EDITABLE_COLOR_ROLES) {
+    if (fields[role] === undefined) continue;
+    const value = fields[role] ? fields[role] : null;
+    setClauses.push(`visual = jsonb_set(coalesce(visual, '{}'::jsonb), '{${role}}', $${role}::jsonb, true)`);
+    params[role] = JSON.stringify(value);
   }
 
   if (setClauses.length === 2) {

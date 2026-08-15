@@ -159,7 +159,10 @@ export function calculateProfileScoreV2(
     const always  = Math.min(5, Math.round(5 * (brand.always_say?.length ?? 0) / 2));
     const never   = Math.min(5, Math.round(5 * (brand.never_say?.length ?? 0) / 2));
     const visual  = (brand.visual ?? {}) as BrandVisual;
-    const visualHits = [Boolean(visual.logo_url), Boolean(visual.colors?.length)].filter(Boolean).length;
+    // Primary is the one role that gates credit — secondary/accent are
+    // genuinely optional (not every brand has three distinct colors), so
+    // requiring them would penalize a legitimately two-color brand.
+    const visualHits = [Boolean(visual.logo_url), Boolean(visual.primary_color)].filter(Boolean).length;
     const visualPts = Math.round(5 * visualHits / 2);
     const proofPts  = (brand.proof?.length ?? 0) > 0 ? 5 : 0;
     brandScore = voice + always + never + visualPts + proofPts;
