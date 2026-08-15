@@ -128,6 +128,17 @@ export const NAV_GROUPS: NavGroup[] = [
         kind: 'reference',
         coming: true,
       },
+      {
+        // A Brain object (Intelligent Add Offers, 2026-08-15), not a step
+        // inside the mission stepper — no fixed order, no single "done": a
+        // tenant maintains N offers, each confirmed independently. Same
+        // shape as Knowledge, not Mission Wizard.
+        id: 'brain-offers',
+        label: 'Offers',
+        icon: <Icon><path d="M20.59 13.41 12 22l-9-9V4a1 1 0 011-1h9l9 9a2 2 0 010 2.83z" /><circle cx="7.5" cy="7.5" r="1.5" /></Icon>,
+        href: '/brain/offers',
+        kind: 'reference',
+      },
     ],
   },
 
