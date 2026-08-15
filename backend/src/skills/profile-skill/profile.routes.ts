@@ -338,11 +338,14 @@ export function createProfileRouter(pool: Pool): Router {
     if (!jwt) return;
 
     const body = (req.body ?? {}) as Record<string, unknown>;
-    const fields: Partial<Pick<TenantBrand, 'voice_tone' | 'always_say' | 'never_say' | 'proof'>> = {};
+    const fields: Partial<Pick<TenantBrand, 'voice_tone' | 'always_say' | 'never_say' | 'proof'>> & { colors?: string[] } = {};
     for (const key of BRAND_EDITABLE_FIELDS) {
       if (key in body) {
         (fields as Record<string, unknown>)[key] = body[key];
       }
+    }
+    if ('colors' in body && Array.isArray(body.colors)) {
+      fields.colors = body.colors.filter((c): c is string => typeof c === 'string');
     }
 
     if (Object.keys(fields).length === 0) {

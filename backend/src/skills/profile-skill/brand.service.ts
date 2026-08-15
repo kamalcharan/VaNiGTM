@@ -332,7 +332,7 @@ type EditableListField = (typeof EDITABLE_LIST_FIELDS)[number];
 export async function upsertBrandFields(
   pool: Pool,
   tenantId: string,
-  fields: Partial<Pick<TenantBrand, EditableListField>>,
+  fields: Partial<Pick<TenantBrand, EditableListField>> & { colors?: string[] },
 ): Promise<TenantBrand> {
   const db = createTenantDb(pool, tenantId);
 
@@ -344,6 +344,16 @@ export async function upsertBrandFields(
       setClauses.push(`${key} = $${key}::text[]`);
       params[key] = fields[key] ?? null;
     }
+  }
+
+  // Colors live under the visual JSONB blob alongside logo_url/typography —
+  // a plain column assignment would clobber those, so merge just this key.
+  // Not gated behind auto-detection at all: a site that needs JS execution
+  // to reveal its real palette (no headless renderer configured) still
+  // needs a way to capture brand colors, same as every other field here.
+  if (fields.colors !== undefined) {
+    setClauses.push(`visual = jsonb_set(coalesce(visual, '{}'::jsonb), '{colors}', $colors::jsonb, true)`);
+    params.colors = JSON.stringify(fields.colors ?? []);
   }
 
   if (setClauses.length === 2) {
