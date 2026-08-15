@@ -27,6 +27,8 @@ import PreviewPage from './components/vikuna/PreviewPage';
 import MVPPage from './components/vikuna/MVPPage';
 import TrainingPage from './components/vikuna/TrainingPage';
 import WhyAIFailsPlaybook from './components/vikuna/WhyAIFailsPlaybook';
+import VaNiPage from './components/vikuna/VaNiPage';
+import VaNiLogin from './components/vikuna/VaNiLogin';
 
 function HomePage() {
   return (
@@ -68,6 +70,10 @@ function App() {
           <Route path="/products" element={<MVPPage />} />
           <Route path="/training" element={<TrainingPage />} />
           <Route path="/playbooks/why-ai-fails" element={<WhyAIFailsPlaybook />} />
+          {/* VaNi framework — destined for vani.vikuna.io, served here until
+              that subdomain exists. Sign-in is not wired to auth yet. */}
+          <Route path="/vani" element={<VaNiPage />} />
+          <Route path="/vani/login" element={<VaNiLogin />} />
           <Route path="/preview" element={<PreviewPage />} />
           <Route path="/preview/:name" element={<PreviewPage />} />
         </Routes>
