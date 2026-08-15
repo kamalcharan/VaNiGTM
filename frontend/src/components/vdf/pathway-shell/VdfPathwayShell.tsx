@@ -29,7 +29,7 @@
  * shell's own hashed class name, so the wrapper has to come from this module.
  */
 
-import { type ReactNode } from 'react';
+import { type CSSProperties, type ReactNode } from 'react';
 import { VdfWizard } from '../wizard/VdfWizard';
 import s from './VdfPathwayShell.module.css';
 
@@ -66,6 +66,14 @@ export interface VdfPathwayShellProps {
    */
   done?: boolean;
 
+  /**
+   * Escape hatch for page-level CSS custom properties — e.g. a consumer with
+   * more vertical room than the default can raise the artefact rail's
+   * `--mission-rail-max` (see VdfMissionMemory.module.css) without every
+   * other consumer of this shell inheriting the change.
+   */
+  style?: CSSProperties;
+
   /** The current step's content. */
   children: ReactNode;
 }
@@ -81,13 +89,14 @@ export function VdfPathwayShell({
   artefacts,
   findings,
   done = false,
+  style,
   children,
 }: VdfPathwayShellProps) {
   const completed = completedSteps
     ?? (done ? new Set(steps.map((st) => st.id)) : new Set<string>());
 
   return (
-    <div className={s.page}>
+    <div className={s.page} style={style}>
       <header className={s.top}>
         <div className={s.mission}>
           <span className={s.missionLabel}>{eyebrow}</span>

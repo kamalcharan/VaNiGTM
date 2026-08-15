@@ -30,7 +30,7 @@
  * /onboarding/icp-builder remains the post-onboarding refine surface.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiFetch, type ApiError } from '@/lib/api-client';
@@ -1155,6 +1155,7 @@ export default function MissionWizardPage() {
       currentIndex={stepIndex}
       completedSteps={confirmed}
       onStepClick={(i) => { if (confirmed.has(STEPS[i].id) || i <= stepIndex) setStepIndex(i); }}
+      style={{ '--mission-rail-max': 'calc(100vh - 180px)' } as CSSProperties}
       artefacts={<VdfMissionMemory items={railItems} />}
       findings={parseSiteHealth(researchSteps) ? (
         <>
