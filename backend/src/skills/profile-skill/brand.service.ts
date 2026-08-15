@@ -18,6 +18,7 @@ import { createTenantDb } from '../../db';
 import { callLLMValidated } from '../../agent-core/llm.client';
 import { loadPrompt } from '../../agent-core/prompt.store';
 import { IngestionAgent } from '../ingestion-skill/ingestion.agent';
+import { appendStep } from '../../agent-core/agent.runner';
 import { getProfile, recomputeProfileScore } from './profile.service';
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
@@ -265,6 +266,43 @@ export async function generateBrand(
       // server-side trail is what made an earlier version of this look
       // broken with no way to tell why.
       console.error('[Brand:generateBrand] site fetch failed, drafting from profile alone', err);
+    }
+
+    // A client-rendered site's real styling only exists after the browser
+    // runs its JS — a plain fetch sees the empty shell. Escalate to the same
+    // n8n headless-render webhook step 1 already uses (rule 12: never a
+    // silent fallback — appendStep makes this visible in the run feed either
+    // way, success or failure).
+    if (!visual.colors?.length && IngestionAgent.renderConfigured()) {
+      await appendStep(pool, runId, {
+        step_name: 'render_escalation',
+        action: 'Static fetch found no colors — rendering the page with JS to look again',
+        status: 'ok',
+      });
+      try {
+        const renderedHtml = await IngestionAgent.renderPageViaN8n(siteUrl);
+        const renderedVisual = await extractVisualHints(renderedHtml, siteUrl);
+        visual = {
+          logo_url: visual.logo_url ?? renderedVisual.logo_url,
+          colors: renderedVisual.colors?.length ? renderedVisual.colors : visual.colors,
+          typography: visual.typography ?? renderedVisual.typography,
+        };
+        await appendStep(pool, runId, {
+          step_name: 'render_escalation_complete',
+          action: renderedVisual.colors?.length
+            ? `Found ${renderedVisual.colors.length} color(s) in the rendered page`
+            : 'Rendered the page but still found no colors',
+          status: 'ok',
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[Brand:generateBrand] render escalation failed', err);
+        await appendStep(pool, runId, {
+          step_name: 'render_escalation_failed',
+          action: `Headless render failed — ${msg}`,
+          status: 'error',
+        });
+      }
     }
   }
 
