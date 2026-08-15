@@ -125,6 +125,9 @@ CREATE TABLE gt_offers (id BIGSERIAL PRIMARY KEY, tenant_id UUID NOT NULL,
   signals TEXT[] NOT NULL DEFAULT '{}', disqualifiers TEXT[] NOT NULL DEFAULT '{}',
   price_band TEXT, proof TEXT, is_active BOOLEAN NOT NULL DEFAULT true,
   sort_order SMALLINT NOT NULL DEFAULT 0, created_by UUID,
+  -- source/confirmed_at: migration 239 (Intelligent Add Offers, 2026-08-15)
+  -- — readOffers selects both unconditionally.
+  source VARCHAR(20) NOT NULL DEFAULT 'human', confirmed_at TIMESTAMPTZ DEFAULT now(),
   created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
 CREATE TABLE gt_contacts (id BIGSERIAL PRIMARY KEY,
   tenant_id UUID NOT NULL REFERENCES vn_tenants(id) ON DELETE CASCADE,

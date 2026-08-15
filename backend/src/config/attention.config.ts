@@ -46,10 +46,11 @@ export const IN_PLAY_STATES = [
 /** Why an account is on the list. Ordering here is deliberate: it is the
  *  tiebreak when two items score identically, most-owed first. */
 export type AttentionReason =
-  | 'wake_due'      // you asked to be reminded, and the date has passed
-  | 'owed_reply'    // they answered; we have not come back
-  | 'story_unsent'  // an approved story exists and was never sent
-  | 'gone_quiet'    // touched, no answer, past the window
+  | 'wake_due'       // you asked to be reminded, and the date has passed
+  | 'owed_reply'     // they answered; we have not come back
+  | 'story_unsent'   // an approved story exists and was never sent
+  | 'follow_up_due'  // touched, no answer, past the follow-up window
+  | 'gone_quiet'     // in play with a stale touch, but not `waiting` — rare
   | 'never_touched'; // in play, never contacted
 
 export interface AttentionConfig {
@@ -58,6 +59,18 @@ export interface AttentionConfig {
    *  migration 223) and /today would ask for a touch the governor would then
    *  refuse — the screen must not generate work the system will veto. */
   quiet_after_days: number;
+
+  /** How long a logged touch gets before its silence counts as "follow up?"
+   *  — a SEPARATE, shorter clock than quiet_after_days. Close the loop item
+   *  1/2: a touch that just went out is not the same kind of quiet as an
+   *  account nobody has ever written to, and burying it in the same 14-day
+   *  window is exactly the "invisible middle" the work order named — a
+   *  touched account vanishes from the screen entirely until it happens to
+   *  cross the generic threshold, with no visibility in between. This is
+   *  the cadence governor's own default window (migration 223's
+   *  gt_cadence_policy.window_days), so /today and the governor agree on
+   *  what "you've given this enough time" means. */
+  follow_up_after_days: number;
 
   /** Above this, more silence stops meaning more urgency. Without a cap, a
    *  prospect uploaded eighteen months ago and never contacted outranks a
@@ -94,14 +107,21 @@ export interface AttentionConfig {
 
 export const ATTENTION_CONFIG: AttentionConfig = {
   quiet_after_days: 14,
+  follow_up_after_days: 7,
   max_days_counted: 90,
 
   reason_weight: {
-    wake_due:      1000,
-    owed_reply:     800,
-    story_unsent:   600,
-    gone_quiet:     400,
-    never_touched:  200,
+    wake_due:       1000,
+    owed_reply:      800,
+    story_unsent:    600,
+    // Between story_unsent and gone_quiet: a follow-up that's come due is a
+    // known, specific debt (you touched them, on purpose, and it's been a
+    // week) — more actionable than the generic gone_quiet catch-all, but a
+    // silent account you already tried is not as urgent as an approved
+    // story nobody has sent yet.
+    follow_up_due:   500,
+    gone_quiet:      400,
+    never_touched:   200,
   },
 
   per_day_weight: 1,

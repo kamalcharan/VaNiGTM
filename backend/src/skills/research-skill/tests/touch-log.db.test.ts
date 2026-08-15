@@ -184,6 +184,31 @@ maybe('log_touch', () => {
     await expect(log_touch({ prospect_id: theirs, channel: 'email' }, ctxFor(A)))
       .rejects.toThrow(/No such company/);
   });
+
+  // Regression: answered -> waiting is BACKWARD on the journey ladder
+  // (states.ts ranks 'answered' above 'waiting'), so journey-skill's
+  // reasonRequired() demands a state_reason there. moveByProspect used to be
+  // called with no reason at all, which made this an entirely ordinary
+  // action — "mark as contacted" on an account that already replied — throw
+  // REASON_REQUIRED instead of logging the touch.
+  it('logs a touch on an already-answered journey without throwing', async () => {
+    const id = await company('Delta', true);
+    await pool.query(
+      `INSERT INTO gt_journeys (tenant_id, is_live, prospect_id, state)
+       VALUES ($1, false, $2, 'answered')`,
+      [A, id],
+    );
+
+    const res = await log_touch({ prospect_id: id, channel: 'email' }, ctxFor()) as
+      { journey_state: string };
+    expect(res.journey_state).toBe('waiting');
+
+    const row = (await pool.query(
+      `SELECT state, state_reason FROM gt_journeys WHERE prospect_id = $1`, [id],
+    )).rows[0];
+    expect(row.state).toBe('waiting');
+    expect(row.state_reason).toMatch(/logged a touch/i);
+  });
 });
 
 maybe('set_touch_outcome', () => {

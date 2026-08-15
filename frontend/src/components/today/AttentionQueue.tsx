@@ -24,7 +24,8 @@ import s from './attention-queue.module.css';
 /* ── What the skill returns ─────────────────────────────────────────── */
 
 type Reason =
-  | 'wake_due' | 'owed_reply' | 'story_unsent' | 'gone_quiet' | 'never_touched';
+  | 'wake_due' | 'owed_reply' | 'story_unsent' | 'follow_up_due'
+  | 'gone_quiet' | 'never_touched';
 
 interface AttentionItem {
   journey_id: string;
@@ -34,8 +35,12 @@ interface AttentionItem {
   city: string | null;
   journey_state: string;
   offer: string | null;
+  contact_id: string | null;
   reason: Reason;
   days_quiet: number;
+  /** What a recorded reply attaches its outcome to. Null when there is no
+   *  earlier touch — "they replied" has nothing to mean there. */
+  last_touch_id: string | null;
   last_touch_at: string | null;
   last_outcome: string | null;
   last_channel: string | null;
@@ -54,6 +59,12 @@ interface AttentionContext {
   surfaced: number;
   next_snooze_due: string | null;
   in_play_never_touched: number;
+  /** Touched, waiting on a reply, not yet due for a nudge — never in
+   *  `items`, only counted here. */
+  awaiting_reply: number;
+  /** Subset of `surfaced` already counted there — broken out so the screen
+   *  can say the loop closed, not just that the account is still listed. */
+  replied_awaiting_response: number;
 }
 
 type EmptyState =
@@ -63,7 +74,40 @@ interface AttentionData {
   items: AttentionItem[];
   context: AttentionContext;
   empty_state: EmptyState;
-  tuning: { quiet_after_days: number; page_size: number; offset: number };
+  tuning: { quiet_after_days: number; follow_up_after_days: number; page_size: number; offset: number };
+}
+
+/* ── Contacting (Close the loop) ───────────────────────────────────────
+ * "Mark as contacted" writes through the exact same path the cadence
+ * governor reads — research-skill.log_touch — and nothing else. A reply is
+ * the same action with a different backend primitive underneath
+ * (set_touch_outcome on the last touch), because a reply is an OUTCOME on
+ * a send that already happened, not a new send. */
+
+const CHANNEL_OPTIONS: { value: string; label: string }[] = [
+  { value: 'email', label: 'Email' },
+  { value: 'phone', label: 'Call' },
+  { value: 'linkedin', label: 'LinkedIn' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'other', label: 'Other' },
+];
+
+/** Not a real touch channel (touches.ts's CHANNELS has no such value) — this
+ *  routes to set_touch_outcome instead of log_touch. See the module note. */
+const REPLY_CHANNEL = 'they_replied';
+
+interface ProspectContact {
+  id: number;
+  name: string;
+  job_title: string | null;
+}
+
+/** `datetime-local`'s value has no timezone — treated as local time, which
+ *  is what "when did this happen" means to whoever is typing it. */
+function toDatetimeLocal(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    + `T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 /* ── Presentation of the reasons ────────────────────────────────────── */
@@ -91,6 +135,12 @@ const REASON: Record<Reason, {
     tone: 'info',
     line: (i) => `An approved story has been sitting unsent for ${ago(i.days_quiet)}${
       i.offer ? ` — ${i.offer}` : ''}.`,
+  },
+  follow_up_due: {
+    label: 'Follow up?',
+    tone: 'warning',
+    line: (i) => `Contacted ${ago(i.days_quiet)}${
+      i.last_channel ? ` by ${i.last_channel}` : ''}, no reply.`,
   },
   gone_quiet: {
     label: 'Gone quiet',
@@ -136,11 +186,30 @@ export function AttentionQueue() {
   const [dismissing, setDismissing] = useState<AttentionItem | null>(null);
   const [dismissReason, setDismissReason] = useState('');
 
+  const [contacting, setContacting] = useState<AttentionItem | null>(null);
+  const [channel, setChannel] = useState('email');
+  const [contactChoice, setContactChoice] = useState('');   // existing contact id, or ''
+  const [newContactName, setNewContactName] = useState('');
+  const [when, setWhen] = useState('');
+  const [note, setNote] = useState('');
+
   const params = { include_dismissed: includeDismissed };
   const { data, isLoading, isError, error } =
     useSkillQuery<AttentionData>('attention-skill', 'get_attention', params);
 
   const decide = useSkillMutation('attention-skill', 'decide_attention');
+  const logTouch = useSkillMutation('research-skill', 'log_touch');
+  const setOutcome = useSkillMutation('research-skill', 'set_touch_outcome');
+  const addContact = useSkillMutation('contact-skill', 'add_contact_manually');
+
+  // Fetched only while the modal is open, for the one company it is open on
+  // — every other row's contacts are irrelevant until its own modal opens.
+  const contactsQ = useSkillQuery<{ contacts: ProspectContact[] }>(
+    'contact-skill', 'get_prospect_contacts',
+    { prospect_id: contacting ? Number(contacting.prospect_id) : 0 },
+    { enabled: contacting !== null },
+  );
+  const existingContacts = contactsQ.data?.data.contacts ?? [];
 
   const refresh = () =>
     qc.invalidateQueries({ queryKey: ['skill', 'attention-skill', 'get_attention'] });
@@ -182,6 +251,67 @@ export function AttentionQueue() {
     // the queue quietly forgot they were ever here.
     if (!(await record(item, 'acted'))) return;
     router.push(item.ref ? `/gtm/audience/qualify/${item.ref}` : '/gtm/journeys');
+  }
+
+  function openContacting(item: AttentionItem) {
+    setContacting(item);
+    setChannel('email');
+    setContactChoice('');
+    setNewContactName('');
+    setWhen(toDatetimeLocal(new Date()));
+    setNote('');
+  }
+
+  function closeContacting() {
+    setContacting(null);
+  }
+
+  async function submitContacted() {
+    if (!contacting) return;
+    const item = contacting;
+    const touchedAt = when ? new Date(when).toISOString() : undefined;
+
+    try {
+      if (channel === REPLY_CHANNEL) {
+        if (!item.last_touch_id) {
+          throw new Error('No earlier touch on this account to attach a reply to.');
+        }
+        await setOutcome.mutateAsync({
+          touch_id: Number(item.last_touch_id),
+          outcome: 'replied',
+          outcome_at: touchedAt,
+          notes: note.trim() || undefined,
+        });
+        showToast({ message: `${item.company} — reply recorded`, type: 'success' });
+      } else {
+        // Resolve who was touched: an existing pick wins outright; a typed
+        // name creates the contact first (contact-skill.add_contact_manually
+        // already handles the prospect_id linkage and won't rewind the
+        // journey). Neither is required — a send with nobody named is
+        // legitimate, same as log_touch has always allowed.
+        let contactId: number | undefined = contactChoice ? Number(contactChoice) : undefined;
+        if (!contactId && newContactName.trim()) {
+          const created = await addContact.mutateAsync({
+            prospect_id: Number(item.prospect_id),
+            name: newContactName.trim(),
+          });
+          contactId = Number((created.data as { contact_id: number }).contact_id);
+        }
+
+        await logTouch.mutateAsync({
+          prospect_id: Number(item.prospect_id),
+          channel,
+          contact_id: contactId,
+          touched_at: touchedAt,
+          notes: note.trim() || undefined,
+        });
+        showToast({ message: `${item.company} — marked as contacted`, type: 'success' });
+      }
+      closeContacting();
+      await refresh();
+    } catch (e) {
+      showToast({ message: (e as Error).message || 'Could not record that', type: 'error' });
+    }
   }
 
   async function confirmSnooze(days: number) {
@@ -242,6 +372,26 @@ export function AttentionQueue() {
               ? `${ctx.surfaced} ${ctx.surfaced === 1 ? 'account' : 'accounts'} waiting on you`
               : 'Nothing waiting on you'}
           </h2>
+          {/* The first time the screen reflects work having happened, not
+              just work being absent — Close the loop, item 3. Only the
+              segments with something to say render; a permanent "0 replied"
+              would be exactly the kind of noise this line exists to avoid. */}
+          {(ctx.awaiting_reply > 0 || ctx.replied_awaiting_response > 0) && (
+            <p className={s.breakdown}>
+              {ctx.awaiting_reply > 0 && (
+                <button
+                  type="button"
+                  className={s.breakdownLink}
+                  onClick={() => router.push('/gtm/journeys')}
+                >
+                  {ctx.awaiting_reply} contacted, awaiting reply
+                </button>
+              )}
+              {ctx.replied_awaiting_response > 0 && (
+                <span>{ctx.replied_awaiting_response} replied</span>
+              )}
+            </p>
+          )}
         </div>
         {(ctx.suppressed_dismissed > 0 || includeDismissed) && (
           <VdfButton
@@ -283,7 +433,10 @@ export function AttentionQueue() {
                         </VdfButton>
                       ) : (
                         <>
-                          <VdfButton variant="primary" size="sm" onClick={() => act(i)}>
+                          <VdfButton variant="primary" size="sm" onClick={() => openContacting(i)}>
+                            Mark as contacted
+                          </VdfButton>
+                          <VdfButton variant="outline" size="sm" onClick={() => act(i)}>
                             Take it on
                           </VdfButton>
                           <VdfButton variant="ghost" size="sm" onClick={() => setSnoozeFor(i)}>
@@ -365,6 +518,87 @@ export function AttentionQueue() {
           autoFocus
         />
       </VdfModal>
+
+      {/* ── Mark as contacted (Close the loop) ──────────────────────── */}
+      <VdfModal
+        isOpen={contacting !== null}
+        onClose={closeContacting}
+        title={channel === REPLY_CHANNEL ? 'Record their reply' : 'Mark as contacted'}
+        subtitle={contacting?.company}
+        footer={
+          <>
+            <VdfButton variant="ghost" onClick={closeContacting}>Cancel</VdfButton>
+            <VdfButton
+              variant="primary"
+              disabled={logTouch.isPending || setOutcome.isPending || addContact.isPending}
+              onClick={submitContacted}
+            >
+              {logTouch.isPending || setOutcome.isPending || addContact.isPending
+                ? 'Saving…' : 'Save'}
+            </VdfButton>
+          </>
+        }
+      >
+        <div className={s.formRow}>
+          <label className={s.formLabel}>Channel</label>
+          <select className={s.select} value={channel} onChange={(e) => setChannel(e.target.value)}>
+            {CHANNEL_OPTIONS.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+            {contacting?.last_touch_id && (
+              <option value={REPLY_CHANNEL}>They replied</option>
+            )}
+          </select>
+        </div>
+
+        {channel !== REPLY_CHANNEL && (
+          <div className={s.formRow}>
+            <label className={s.formLabel}>Who</label>
+            <select
+              className={s.select}
+              value={contactChoice}
+              onChange={(e) => { setContactChoice(e.target.value); setNewContactName(''); }}
+            >
+              <option value="">
+                {contactsQ.isLoading ? 'Loading contacts…' : 'No one specific'}
+              </option>
+              {existingContacts.map((c) => (
+                <option key={c.id} value={String(c.id)}>
+                  {c.name}{c.job_title ? ` — ${c.job_title}` : ''}
+                </option>
+              ))}
+            </select>
+            <input
+              className={s.input}
+              value={newContactName}
+              onChange={(e) => { setNewContactName(e.target.value); setContactChoice(''); }}
+              placeholder="Or type a new name — creates the contact"
+            />
+          </div>
+        )}
+
+        <div className={s.formRow}>
+          <label className={s.formLabel}>When</label>
+          <input
+            className={s.input}
+            type="datetime-local"
+            value={when}
+            onChange={(e) => setWhen(e.target.value)}
+          />
+        </div>
+
+        <div className={s.formRow}>
+          <label className={s.formLabel}>Note (optional)</label>
+          <input
+            className={s.input}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={channel === REPLY_CHANNEL
+              ? 'What they said, if anything worth remembering'
+              : 'Sent the pharma case study'}
+          />
+        </div>
+      </VdfModal>
     </section>
   );
 }
@@ -420,6 +654,7 @@ function Empty({ state, ctx, quietAfter, router }: {
               ? `${ctx.suppressed_snoozed} snoozed${ctx.next_snooze_due ? `, next back ${fmtDate(ctx.next_snooze_due)}` : ''}`
               : '',
             ctx.suppressed_dismissed > 0 ? `${ctx.suppressed_dismissed} dismissed` : '',
+            ctx.awaiting_reply > 0 ? `${ctx.awaiting_reply} contacted, awaiting reply` : '',
           ].filter(Boolean).join(' · ')}
         />
       );
@@ -433,6 +668,10 @@ function Empty({ state, ctx, quietAfter, router }: {
           description={`${ctx.journeys_in_play} ${ctx.journeys_in_play === 1 ? 'relationship' : 'relationships'} in play, none quiet for more than ${quietAfter} days.${
             ctx.in_play_never_touched > 0
               ? ` ${ctx.in_play_never_touched} have never been contacted — they appear here once they have been in play for ${quietAfter} days.`
+              : ''
+          }${
+            ctx.awaiting_reply > 0
+              ? ` ${ctx.awaiting_reply} more ${ctx.awaiting_reply === 1 ? 'has' : 'have'} been contacted recently and ${ctx.awaiting_reply === 1 ? 'is' : 'are'} still waiting on a reply.`
               : ''
           }`}
         />

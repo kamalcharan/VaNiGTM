@@ -42,6 +42,37 @@
   line-height: 1.25;
 }
 
+/* ── The breakdown line — Close the loop item 3 ── */
+
+.breakdown {
+  margin: 4px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--color-muted);
+}
+
+.breakdown span + span::before,
+.breakdown button + span::before {
+  content: '·';
+  margin-right: 6px;
+  opacity: 0.6;
+}
+
+.breakdownLink {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* ── The list ── */
 
 .list {
@@ -160,6 +191,48 @@
 .reasonInput::placeholder {
   color: var(--color-muted);
   opacity: 0.5;
+}
+
+/* ── Mark as contacted form ── */
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.formLabel {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.select,
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.select:focus,
+.input:focus {
+  border-color: var(--color-primary);
+}
+
+.input::placeholder {
+  color: var(--color-muted);
+  opacity: 0.6;
 }
 
 /* ── Narrow ── */

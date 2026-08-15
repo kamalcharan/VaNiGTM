@@ -9,6 +9,7 @@ SELECT
     contact_id::text,
     reason,
     days_quiet,
+    last_touch_id::text,
     last_touch_at,
     last_outcome,
     last_channel,

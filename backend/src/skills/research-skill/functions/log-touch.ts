@@ -188,11 +188,20 @@ export async function log_touch(params: LogTouchParams, ctx: SkillContext) {
     // Forward skips are legal here on purpose: somebody who emailed a company
     // without walking it through the states still moved that relationship,
     // and refusing the move would only make the record lie about it.
+    //
+    // `reason` is always supplied, not just when required: answered → waiting
+    // is BACKWARD on the ladder (states.ts's LADDER ranks answered above
+    // waiting — "another round" costs ground the same way any other retreat
+    // does), so states.reasonRequired() demands one there, and a touch logged
+    // on a replied-to account is an entirely ordinary "Mark as contacted"
+    // action, not an edge case that should throw. Harmless to pass on the
+    // forward moves too — it lands in state_reason either way and reads fine.
     const journey = await moveByProspect(
       tx, { tenant_id: ctx.tenant_id, is_live: ctx.is_live }, prospectId, 'waiting',
       {
         actor: 'human',
         actor_id: ctx.user_id,
+        reason: `Logged a touch via ${params.channel}`,
         offer: String(params.offer ?? '').trim() || null,
         payload: { touch_id: Number(res.rows[0].id), channel: params.channel },
       },
