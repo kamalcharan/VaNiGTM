@@ -217,6 +217,14 @@ export async function extractVisualHints(html: string, baseUrl: string): Promise
     + `themeColorMeta=${themeColorMatch ? themeColorMatch[1] : 'none'} `
     + `colorsFound=${colors.size}`,
   );
+  if (fetchedSheets.some((s) => s.length > 0) && colors.size === 0) {
+    // Small enough to log in full when this diagnostic path is hit at all —
+    // "fetched something, found no colors" has stayed ambiguous across every
+    // round so far (redirect/block page mistaken for real CSS? non-hex color
+    // syntax my regex doesn't know? genuinely colorless reset styles?). See
+    // the actual bytes instead of continuing to guess which.
+    console.log(`[Brand:extractVisualHints] fetched CSS content: ${JSON.stringify(fetchedCss.slice(0, 2000))}`);
+  }
 
   const fontMatch = `${html}\n${cssCorpus}`.match(/font-family:\s*['"]?([A-Za-z0-9 ,\-]+?)['";,]/i);
   if (fontMatch) {
