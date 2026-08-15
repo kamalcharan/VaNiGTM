@@ -999,6 +999,26 @@ export default function MissionWizardPage() {
     }
   }, [finishOnboarding, loadBrand, showToast]);
 
+  // A thin/unreachable site (or a transient fetch failure — see
+  // brand.service.ts) can draft an all-empty brand. Retrying used to mean
+  // abandoning the whole wizard, since nothing re-triggered generation once
+  // the step-entry effect had already run once. Regenerate right here
+  // instead — any in-progress human edits are discarded on purpose, since
+  // "regenerate" means "throw away the draft and read the site again".
+  const regenerateBrand = useCallback(async () => {
+    setGeneratingBrand(true);
+    setBrandEdits({});
+    try {
+      const res = await apiFetch<{ brand: TenantBrand }>(API.gtmProfile.generateBrand);
+      setBrand(res.brand);
+      showToast({ message: 'Redrafted from your site', type: 'success' });
+    } catch (err) {
+      showToast({ message: (err as ApiError).message || 'Could not redraft the brand', type: 'error' });
+    } finally {
+      setGeneratingBrand(false);
+    }
+  }, [showToast]);
+
   /* ── Mission rail ─────────────────────────────────────────────────── */
 
   // Mission memory: a finished step files its REAL ARTIFACT into the rail —
@@ -1632,11 +1652,20 @@ export default function MissionWizardPage() {
               subtitle="How you sound, what you claim, what you never claim — pre-filled from your site. Confirming completes your mission; Storytelling unlocks in mission control."
               status={confirmed.has('brand') ? 'confirmed' : 'draft'}
               onConfirm={approveBrand}
+              onEdit={regenerateBrand}
+              editLabel="Regenerate from site"
               confirmLabel="Confirm &amp; enter mission control →"
               loading={generatingBrand || approvingBrand || finishing}
             >
               {generatingBrand && !brand && (
                 <p className={s.memoryLine}>Reading your site for voice, claims and proof…</p>
+              )}
+              {!generatingBrand && brand && !brand.voice_tone?.length && !brand.always_say?.length
+                && !brand.never_say?.length && !brand.proof?.length && (
+                <p className={s.memoryLine}>
+                  Nothing came back grounded in your site text — type it in below, or hit
+                  &quot;Regenerate from site&quot; to try the fetch again.
+                </p>
               )}
               {(brand?.visual?.logo_url || brand?.visual?.colors?.length) ? (
                 <div className={s.icpField}>

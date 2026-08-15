@@ -148,9 +148,13 @@ export async function generateBrand(
       const fetched = await IngestionAgent.fetchUrlText(siteUrl);
       siteText = fetched.text;
       visual = extractVisualHints(fetched.html, siteUrl);
-    } catch {
+    } catch (err) {
       // Best-effort — a stale/unreachable site must not block brand drafting
-      // from the profile alone. No fabricated visual data either way.
+      // from the profile alone (no fabricated visual data either way), but
+      // the failure must still be traceable — a silently empty draft with no
+      // server-side trail is what made an earlier version of this look
+      // broken with no way to tell why.
+      console.error('[Brand:generateBrand] site fetch failed, drafting from profile alone', err);
     }
   }
 
