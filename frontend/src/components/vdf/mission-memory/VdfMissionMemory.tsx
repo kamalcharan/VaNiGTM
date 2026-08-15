@@ -20,13 +20,19 @@
  *     an empty slot beneath it. That pre-announced slot is what the handoff
  *     animation measures and flies into — which is why the motion reads as
  *     filing rather than appearing.
- *  5. The rail scrolls and follows its tail as the mission grows.
+ *  5. The rail grows to its natural height inside its `position: sticky`
+ *     container (owned by VdfPathwayShell) and lets the PAGE scroll —
+ *     no internal max-height/overflow, no JS deciding when to auto-scroll.
+ *     Two earlier attempts here tried to cap the rail's height and then
+ *     paper over the cap with a scrollIntoView effect; every variant of that
+ *     was a new way to guess wrong about which container needed to move.
+ *     Native sticky positioning already does the right thing for a tall
+ *     pinned sidebar with zero custom code — this is that, and only that.
  *
  * Pending steps are not rendered at all: memory holds what happened, and
  * the top rail already says what is coming.
  */
 
-import { useEffect, useRef } from 'react';
 import s from './VdfMissionMemory.module.css';
 
 export interface VdfMissionMemoryItem {
@@ -61,45 +67,13 @@ export function VdfMissionMemory({
   label = 'Mission memory',
   className,
 }: VdfMissionMemoryProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const tailRef = useRef<HTMLDivElement>(null);
-
-  // Memory grows downward past the fold — keep the newest entry in view the
-  // way the reference does. Only when the tail actually changes, so a user
-  // reading back through the rail isn't yanked to the bottom.
   const reached = items.filter((i) => i.state !== 'pending');
-  const tailId = reached[reached.length - 1]?.id;
-
-  useEffect(() => {
-    const el = tailRef.current;
-    if (!el) return;
-
-    // Checking the INNER box's own overflow (scrollHeight vs clientHeight)
-    // used to be enough, back when the rail was always short enough to
-    // overflow it internally. Once the rail is tall enough to fit its
-    // content without its own scrollbar, that guard goes permanently true
-    // and skips scrolling — even though the OUTER page can still need to
-    // scroll to reveal a tall, not-yet-stuck sticky sidebar on first paint.
-    // Check the element's actual on-screen position instead, so this fires
-    // whenever it's needed regardless of which container has to move.
-    const rect = el.getBoundingClientRect();
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    const fullyVisible = rect.top >= 0 && rect.bottom <= viewportHeight;
-    if (fullyVisible) return;
-
-    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'end' });
-  }, [tailId]);
 
   return (
     <nav className={`${s.rail} ${className || ''}`} aria-label={label}>
-      <div className={s.scroll} ref={scrollRef}>
-        {reached.map((item, i) => (
-          <div
-            key={item.id}
-            className={s.entry}
-            ref={i === reached.length - 1 ? tailRef : undefined}
-          >
+      <div className={s.scroll}>
+        {reached.map((item) => (
+          <div key={item.id} className={s.entry}>
             <div className={`${s.separator} ${item.state === 'active' ? s.separatorActive : ''}`}>
               <span className={s.sepMark} aria-hidden>√</span>
               <span className={s.sepText}>

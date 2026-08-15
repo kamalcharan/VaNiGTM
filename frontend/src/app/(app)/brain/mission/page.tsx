@@ -30,7 +30,7 @@
  * /onboarding/icp-builder remains the post-onboarding refine surface.
  */
 
-import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiFetch, type ApiError } from '@/lib/api-client';
@@ -185,6 +185,16 @@ const COMPETITOR_STEP_LABELS: Record<string, string> = {
 /** First line of a server error trace — the real cause, not the stack. */
 function firstLine(trace: string | null | undefined): string {
   return (trace ?? '').split('\n')[0].trim();
+}
+
+/** Same visual language on every brand field — no per-field prose explaining
+    itself differently each time. */
+function FieldStatusTag({ filled }: { filled: boolean }) {
+  return (
+    <span className={`${s.fieldTag} ${filled ? s.fieldTagOk : s.fieldTagMissing}`}>
+      {filled ? 'from your site' : 'needs input'}
+    </span>
+  );
 }
 
 /* ── Wizard steps — 5 real steps ─────────────────────────────────────────
@@ -967,6 +977,11 @@ export default function MissionWizardPage() {
     return '';
   };
 
+  const brandFieldFilled = (key: string): boolean => {
+    const v = brand?.[key as keyof TenantBrand];
+    return Array.isArray(v) && v.length > 0;
+  };
+
   const saveBrandField = useCallback(async (key: string) => {
     if (!(key in brandEdits)) return;
     const value = brandEdits[key].split('\n').map((x) => x.trim()).filter(Boolean);
@@ -1192,6 +1207,19 @@ export default function MissionWizardPage() {
     } as VdfMissionMemoryItem;
   }), [confirmed, stepIndex, profile, domain, competitors, competitorsKnown, removedIds, clusters, removedClusters, brand]);
 
+  // One completeness signal, visible the whole time you're on the brand
+  // step — not a toast that vanishes and has to be remembered. Colors get
+  // their own entry since they live under visual, not a top-level array
+  // field like the rest.
+  const brandSections = useMemo(() => ([
+    { key: 'colors', label: 'Brand colors', filled: (brand?.visual?.colors?.length ?? 0) > 0 },
+    { key: 'voice_tone', label: 'Voice & tone', filled: (brand?.voice_tone?.length ?? 0) > 0 },
+    { key: 'always_say', label: 'What we always say', filled: (brand?.always_say?.length ?? 0) > 0 },
+    { key: 'never_say', label: 'What we never say', filled: (brand?.never_say?.length ?? 0) > 0 },
+    { key: 'proof', label: 'Proof', filled: (brand?.proof?.length ?? 0) > 0 },
+  ]), [brand]);
+  const brandMissing = brandSections.filter((sec) => !sec.filled);
+
   const current = STEPS[stepIndex];
 
   /* ── Render ───────────────────────────────────────────────────────── */
@@ -1213,7 +1241,6 @@ export default function MissionWizardPage() {
       currentIndex={stepIndex}
       completedSteps={confirmed}
       onStepClick={(i) => { if (confirmed.has(STEPS[i].id) || i <= stepIndex) setStepIndex(i); }}
-      style={{ '--mission-rail-max': 'calc(100vh - 180px)' } as CSSProperties}
       artefacts={<VdfMissionMemory items={railItems} />}
       findings={parseSiteHealth(researchSteps) ? (
         <>
@@ -1731,12 +1758,23 @@ export default function MissionWizardPage() {
               {generatingBrand && !brand && (
                 <p className={s.memoryLine}>Reading your site for voice, claims and proof…</p>
               )}
-              {!generatingBrand && brand && !brand.voice_tone?.length && !brand.always_say?.length
-                && !brand.never_say?.length && !brand.proof?.length && (
-                <p className={s.memoryLine}>
-                  Nothing came back grounded in your site text — type it in below, or hit
-                  &quot;Regenerate from site&quot; to try the fetch again.
-                </p>
+              {/* Persistent completeness signal — replaces a one-time success
+                  toast that couldn't tell you WHICH fields still needed you.
+                  This stays visible the whole time you're on this step, same
+                  place, same wording, no re-reading a toast that already
+                  vanished. */}
+              {!generatingBrand && brand && (
+                <div className={s.completenessStrip}>
+                  <span className={s.completenessCount}>
+                    {brandSections.filter((sec) => sec.filled).length} of {brandSections.length} captured
+                  </span>
+                  {brandMissing.length > 0 && (
+                    <span className={s.completenessMissing}>
+                      {' '}· {brandMissing.map((sec) => sec.label).join(', ')}{' '}
+                      {brandMissing.length === 1 ? 'needs' : 'need'} your input
+                    </span>
+                  )}
+                </div>
               )}
               {(brand?.visual?.logo_url || brand?.visual?.colors?.length) ? (
                 <div className={s.icpField}>
@@ -1754,13 +1792,10 @@ export default function MissionWizardPage() {
                 </div>
               ) : null}
               <div className={s.icpField}>
-                <label className={s.fieldLabel} htmlFor="brand-colors">Brand colors (hex, comma-separated)</label>
-                {!brand?.visual?.colors?.length && (
-                  <p className={s.memoryLine}>
-                    Couldn&apos;t read these automatically — some sites only render their real
-                    styling via JavaScript, which a plain fetch can&apos;t see. Type them in below.
-                  </p>
-                )}
+                <label className={s.fieldLabel} htmlFor="brand-colors">
+                  Brand colors (hex, comma-separated)
+                  <FieldStatusTag filled={(brand?.visual?.colors?.length ?? 0) > 0} />
+                </label>
                 <input
                   id="brand-colors"
                   className={s.input}
@@ -1773,7 +1808,10 @@ export default function MissionWizardPage() {
               <div className={s.icpFields}>
                 {BRAND_FIELDS.map((f) => (
                   <div key={f.key} className={s.icpField}>
-                    <label className={s.fieldLabel} htmlFor={`brand-${f.key}`}>{f.label}</label>
+                    <label className={s.fieldLabel} htmlFor={`brand-${f.key}`}>
+                      {f.label}
+                      <FieldStatusTag filled={brandFieldFilled(f.key)} />
+                    </label>
                     <textarea
                       id={`brand-${f.key}`}
                       className={s.input}

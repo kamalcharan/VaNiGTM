@@ -17,41 +17,18 @@
   min-height: 0;
 }
 
-/* The rail grows past the fold as the mission accumulates; it scrolls and
-   follows its tail. Height is overridable by the page that owns the layout. */
+/* The rail grows to its natural height as the mission accumulates — no cap,
+   no internal scroll. It lives inside a `position: sticky` container (the
+   page that owns the layout), so native sticky-scroll behavior handles a
+   rail taller than the viewport correctly on its own: pinned while you
+   scroll past it, then scrolls away with the page once you pass its end.
+   Two earlier versions of this file tried to cap the height and paper over
+   the cap with a JS scrollIntoView effect — both were fragile in different
+   ways. This is the version with nothing left to get wrong. */
 .scroll {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  max-height: var(--mission-rail-max, 68vh);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
-  /* room for the scrollbar so chips don't sit under it */
-  padding-right: 6px;
-  /* Soften both cut edges so a scrolled rail reads as scrolled rather than as
-     a card clipped mid-header. */
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    black 14px,
-    black calc(100% - 14px),
-    transparent 100%
-  );
-}
-
-.scroll::-webkit-scrollbar {
-  width: 4px;
-}
-
-.scroll::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 2px;
-}
-
-.scroll::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 .entry {

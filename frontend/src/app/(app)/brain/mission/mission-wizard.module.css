@@ -399,6 +399,57 @@ textarea.input {
   border: 1px solid var(--color-border);
 }
 
+/* One persistent completeness signal for the whole brand step — replaces a
+   success toast that couldn't say WHICH fields still needed input, and
+   per-field prose that repeated the same idea in different words each time. */
+
+.completenessStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 45%, transparent);
+  font-size: 0.8rem;
+}
+
+.completenessCount {
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.completenessMissing {
+  color: var(--color-warning);
+}
+
+/* Same visual language on every brand field label — a small pill, not a
+   different sentence of explanation per field. */
+
+.fieldTag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  vertical-align: middle;
+}
+
+.fieldTagOk {
+  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+}
+
+.fieldTagMissing {
+  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+}
+
 /* ── Responsive ── */
 
 @media (max-width: 900px) {
