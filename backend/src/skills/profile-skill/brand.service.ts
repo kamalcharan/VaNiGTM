@@ -273,7 +273,14 @@ export async function generateBrand(
     // n8n headless-render webhook step 1 already uses (rule 12: never a
     // silent fallback — appendStep makes this visible in the run feed either
     // way, success or failure).
-    if (!visual.colors?.length && IngestionAgent.renderConfigured()) {
+    const renderReady = IngestionAgent.renderConfigured();
+    console.log(
+      `[Brand:generateBrand] colors so far: ${visual.colors?.length ?? 0} — `
+      + `render escalation ${renderReady ? 'WILL fire' : 'will NOT fire'} `
+      + `(N8N_RENDER_URL ${process.env.N8N_RENDER_URL ? 'set' : 'MISSING'}, `
+      + `N8N_RENDER_SECRET ${process.env.N8N_RENDER_SECRET ? 'set' : 'MISSING'})`,
+    );
+    if (!visual.colors?.length && renderReady) {
       await appendStep(pool, runId, {
         step_name: 'render_escalation',
         action: 'Static fetch found no colors — rendering the page with JS to look again',
