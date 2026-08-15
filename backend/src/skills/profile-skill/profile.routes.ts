@@ -11,6 +11,7 @@
  *   GET  /brand              current brand draft/confirmed state (JWT)
  *   PUT  /brand               human edits to brand fields (JWT)
  *   POST /brand/approve       ratify the brand (JWT)
+ *   POST /brand/reopen        "Edit again" on a just-confirmed brand (JWT)
  *
  * Auth: every endpoint requires a valid JWT; tenant_id is read from the
  * token, never from the body.
@@ -35,6 +36,7 @@ import {
   generateBrand,
   upsertBrandFields,
   approveBrand,
+  reopenBrand,
   type TenantBrand,
 } from './brand.service';
 
@@ -371,6 +373,25 @@ export function createProfileRouter(pool: Pool): Router {
       res.json({ success: true, brand });
     } catch (err) {
       console.error('[Profile:POST /brand/approve]', err);
+      res.status(500).json({
+        error: { code: 'INTERNAL_ERROR', message: messageOf(err) },
+      });
+    }
+  });
+
+  // ── POST /brand/reopen ────────────────────────────────────────────────
+  // "Edit again" on a just-confirmed brand, same wizard session — clears
+  // approval so a fresh "Regenerate from site" actually overwrites instead
+  // of no-op'ing against the approved-row guard.
+  router.post('/brand/reopen', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    try {
+      const brand = await reopenBrand(pool, jwt.tenant_id);
+      res.json({ brand });
+    } catch (err) {
+      console.error('[Profile:POST /brand/reopen]', err);
       res.status(500).json({
         error: { code: 'INTERNAL_ERROR', message: messageOf(err) },
       });

@@ -368,3 +368,30 @@ export async function approveBrand(pool: Pool, tenantId: string): Promise<Tenant
 
   return brand;
 }
+
+/**
+ * Reopen a confirmed brand for the same wizard session ("Edit again"). Clears
+ * approved_at so generateBrand's upsert guard (`WHEN approved_at IS NULL AND
+ * source='agent'`) allows a fresh draft to actually overwrite it again —
+ * without this, "Regenerate from site" after a confirm would silently no-op
+ * against an already-approved row. profile_score's brand section is gated on
+ * approval too, so it drops back to 0 until re-confirmed — correct, since an
+ * unconfirmed draft has already earned nothing everywhere else in the score.
+ */
+export async function reopenBrand(pool: Pool, tenantId: string): Promise<TenantBrand> {
+  const db = createTenantDb(pool, tenantId);
+  const result = await db.query<TenantBrand>(
+    `UPDATE gt_tenant_brand
+        SET approved_at = NULL, updated_at = now()
+      WHERE tenant_id = $tenant_id
+      RETURNING id, tenant_id, voice_tone, always_say, never_say, visual, proof,
+                source, approved_at, version, created_at, updated_at`,
+    { tenant_id: tenantId },
+  );
+  const brand = result.rows[0];
+  if (!brand) throw new Error('BRAND_NOT_FOUND: nothing to reopen');
+
+  await recomputeProfileScore(pool, tenantId);
+
+  return brand;
+}

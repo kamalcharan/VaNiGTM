@@ -235,6 +235,12 @@ export const API = {
       auth: true,
       description: 'Ratify the brand',
     },
+    reopenBrand: {
+      method: 'POST',
+      path: '/api/v1/profile/brand/reopen',
+      auth: true,
+      description: '"Edit again" on a just-confirmed brand',
+    },
   },
 
   /* ── VaNi (knowledge graph) ───────────────────────── */
