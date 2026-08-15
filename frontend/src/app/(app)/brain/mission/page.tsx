@@ -149,10 +149,24 @@ interface TenantBrand {
   voice_tone: string[] | null;
   always_say: string[] | null;
   never_say: string[] | null;
-  visual: { logo_url?: string; colors?: string[]; typography?: string };
+  visual: {
+    logo_url?: string;
+    primary_color?: string;
+    secondary_color?: string;
+    accent_color?: string;
+    typography?: string;
+  };
   proof: string[] | null;
   approved_at: string | null;
 }
+
+type ColorRole = 'primary_color' | 'secondary_color' | 'accent_color';
+
+const COLOR_ROLES: { key: ColorRole; label: string; desc: string }[] = [
+  { key: 'primary_color', label: 'Primary', desc: 'Your main color — buttons, links, primary actions.' },
+  { key: 'secondary_color', label: 'Secondary', desc: 'Supporting color — backgrounds, secondary elements.' },
+  { key: 'accent_color', label: 'Accent', desc: 'Highlight color — badges, callouts, emphasis.' },
+];
 
 /** Cluster type → what it means for the tenant, in plain words. */
 const CLUSTER_TYPE_LABEL: Record<string, string> = {
@@ -998,35 +1012,41 @@ export default function MissionWizardPage() {
     await save;
   }, [brandEdits, showToast]);
 
-  // Colors live under brand.visual (a JSONB blob, not a top-level TenantBrand
-  // field), so they need their own read/save pair rather than reusing
-  // brandFieldValue/saveBrandField. A site that only renders its real
-  // styling via client-side JS (no headless renderer configured — see the
-  // extractVisualHints diagnostic log) can't be auto-detected at all, so
-  // this is a plain manual field, same as typing in any other brand fact.
-  const colorsFieldValue = (): string => {
-    if ('colors' in brandEdits) return brandEdits.colors;
-    return (brand?.visual?.colors ?? []).join(', ');
+  // Each color role lives under brand.visual (a JSONB blob, not a top-level
+  // TenantBrand field), so it needs its own read/save rather than reusing
+  // brandFieldValue/saveBrandField. Roles named (primary/secondary/accent),
+  // not one flat list — downstream needs to know WHICH color is the CTA
+  // color, not just that three hex codes exist. A site that only renders
+  // its real styling via client-side JS falls back to n8n render escalation
+  // server-side (see extractVisualHints); if even that finds nothing, this
+  // is a plain manual field, same as typing in any other brand fact.
+  const colorRoleValue = (role: ColorRole): string => {
+    if (role in brandEdits) return brandEdits[role];
+    return brand?.visual?.[role] ?? '';
   };
 
-  const saveBrandColors = useCallback(async () => {
-    if (!('colors' in brandEdits)) return;
-    const colors = brandEdits.colors
-      .split(',')
-      .map((c) => c.trim())
-      .filter((c) => /^#[0-9a-fA-F]{3,8}$/.test(c));
+  const saveColorRole = useCallback(async (role: ColorRole, rawValue: string) => {
+    const clean = rawValue.trim();
+    const value = /^#[0-9a-fA-F]{6}$/.test(clean) ? clean.toLowerCase() : null;
     const save = (async () => {
       try {
-        const res = await apiFetch<{ brand: TenantBrand }>(API.gtmProfile.updateBrand, { body: { colors } });
+        const res = await apiFetch<{ brand: TenantBrand }>(API.gtmProfile.updateBrand, { body: { [role]: value } });
         setBrand(res.brand);
       } catch (err) {
-        showToast({ message: (err as ApiError).message || 'Failed to save colors', type: 'error' });
+        showToast({ message: (err as ApiError).message || `Failed to save ${role}`, type: 'error' });
       }
     })();
     brandPendingSaves.current.add(save);
     save.finally(() => brandPendingSaves.current.delete(save));
     await save;
-  }, [brandEdits, showToast]);
+  }, [showToast]);
+
+  // Picking from the color wheel is one deliberate action, not a typing
+  // session — commit it immediately rather than waiting for blur.
+  const pickColorRole = useCallback((role: ColorRole, value: string) => {
+    setBrandEdits((p) => ({ ...p, [role]: value }));
+    void saveColorRole(role, value);
+  }, [saveColorRole]);
 
   const approveBrand = useCallback(async () => {
     setApprovingBrand(true);
@@ -1212,7 +1232,7 @@ export default function MissionWizardPage() {
   // their own entry since they live under visual, not a top-level array
   // field like the rest.
   const brandSections = useMemo(() => ([
-    { key: 'colors', label: 'Brand colors', filled: (brand?.visual?.colors?.length ?? 0) > 0 },
+    { key: 'colors', label: 'Brand colors', filled: Boolean(brand?.visual?.primary_color) },
     { key: 'voice_tone', label: 'Voice & tone', filled: (brand?.voice_tone?.length ?? 0) > 0 },
     { key: 'always_say', label: 'What we always say', filled: (brand?.always_say?.length ?? 0) > 0 },
     { key: 'never_say', label: 'What we never say', filled: (brand?.never_say?.length ?? 0) > 0 },
@@ -1776,7 +1796,7 @@ export default function MissionWizardPage() {
                   )}
                 </div>
               )}
-              {(brand?.visual?.logo_url || brand?.visual?.colors?.length) ? (
+              {(brand?.visual?.logo_url || brand?.visual?.typography) ? (
                 <div className={s.icpField}>
                   <label className={s.fieldLabel}>Visual — read from your site</label>
                   <div className={s.brandVisualRow}>
@@ -1784,26 +1804,65 @@ export default function MissionWizardPage() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={brand.visual.logo_url} alt="" className={s.brandLogo} />
                     )}
-                    {(brand?.visual?.colors ?? []).map((c) => (
-                      <span key={c} className={s.brandSwatch} style={{ background: c }} title={c} />
-                    ))}
                     {brand?.visual?.typography && <span className={s.memoryLine}>{brand.visual.typography}</span>}
                   </div>
                 </div>
               ) : null}
+
+              {/* Named roles, not a flat list — a downstream agent needs to
+                  know WHICH color is the CTA-button color, not just that
+                  three hex codes exist somewhere. */}
               <div className={s.icpField}>
-                <label className={s.fieldLabel} htmlFor="brand-colors">
-                  Brand colors (hex, comma-separated)
-                  <FieldStatusTag filled={(brand?.visual?.colors?.length ?? 0) > 0} />
-                </label>
-                <input
-                  id="brand-colors"
-                  className={s.input}
-                  placeholder="#1a73e8, #ff6b35"
-                  value={colorsFieldValue()}
-                  onChange={(e) => setBrandEdits((p) => ({ ...p, colors: e.target.value }))}
-                  onBlur={saveBrandColors}
-                />
+                <label className={s.fieldLabel}>Brand colors</label>
+                <div className={s.paletteStrip}>
+                  {COLOR_ROLES.map((role) => {
+                    const value = colorRoleValue(role.key);
+                    const filled = /^#[0-9a-fA-F]{6}$/.test(value);
+                    return (
+                      <span
+                        key={role.key}
+                        className={`${s.paletteSwatch} ${filled ? '' : s.paletteSwatchEmpty}`}
+                        style={filled ? { background: value } : undefined}
+                      />
+                    );
+                  })}
+                </div>
+                <div className={s.colorRoles}>
+                  {COLOR_ROLES.map((role) => {
+                    const value = colorRoleValue(role.key);
+                    const filled = /^#[0-9a-fA-F]{6}$/.test(value);
+                    return (
+                      <div key={role.key} className={`${s.colorRole} ${filled ? s.colorRoleFilled : s.colorRoleEmpty}`}>
+                        <div className={s.colorRoleTop}>
+                          <span className={s.colorRoleName}>{role.label}</span>
+                          <FieldStatusTag filled={filled} />
+                        </div>
+                        <p className={s.colorRoleDesc}>{role.desc}</p>
+                        <div className={s.swatchRow}>
+                          <div className={s.swatchWrap}>
+                            <input
+                              type="color"
+                              className={s.colorPicker}
+                              value={filled ? value : '#8a8a8a'}
+                              onChange={(e) => pickColorRole(role.key, e.target.value)}
+                              aria-label={`${role.label} color picker`}
+                            />
+                            {!filled && <span className={s.swatchPlus} aria-hidden>+</span>}
+                          </div>
+                          <input
+                            type="text"
+                            className={s.hexInput}
+                            placeholder="Not found — add it"
+                            value={value}
+                            onChange={(e) => setBrandEdits((p) => ({ ...p, [role.key]: e.target.value }))}
+                            onBlur={(e) => saveColorRole(role.key, e.target.value)}
+                            aria-label={`${role.label} hex value`}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
               <div className={s.icpFields}>
                 {BRAND_FIELDS.map((f) => (
