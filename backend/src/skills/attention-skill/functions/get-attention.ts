@@ -37,6 +37,10 @@ export interface AttentionItem {
   contact_id: string | null;
   reason: AttentionReason;
   days_quiet: number;
+  /** The touch `reason: 'follow_up_due' | 'gone_quiet'` is silent about —
+   *  what a "they replied" action (set_touch_outcome) attaches its outcome
+   *  to. Null when there has never been a touch to attach one to. */
+  last_touch_id: string | null;
   last_touch_at: string | null;
   last_outcome: string | null;
   last_channel: string | null;
@@ -60,6 +64,13 @@ interface AttentionContext {
   surfaced: number;
   next_snooze_due: string | null;
   in_play_never_touched: number;
+  /** Touched, waiting on a reply, not yet due for a follow-up nudge — never
+   *  in `items`, only counted here. Close the loop item 2/3. */
+  awaiting_reply: number;
+  /** Subset of `surfaced` already counted there — accounts on the list
+   *  because they replied. Broken out so the screen can say the loop
+   *  closed, not just that the account is still on the list. */
+  replied_awaiting_response: number;
 }
 
 /**
@@ -112,16 +123,17 @@ export async function get_attention(params: GetAttentionParams, ctx: SkillContex
   const offset = Number.isFinite(offsetIn) && offsetIn > 0 ? Math.floor(offsetIn) : 0;
 
   const bound = {
-    $tenant_id:         ctx.tenant_id,
-    $is_live:           ctx.is_live,
-    $in_play_states:    [...IN_PLAY_STATES],
-    $quiet_after_days:  cfg.quiet_after_days,
-    $max_days_counted:  cfg.max_days_counted,
-    $per_day_weight:    cfg.per_day_weight,
-    $reason_weights:    JSON.stringify(cfg.reason_weight),
-    $limit:             limit,
-    $offset:            offset,
-    $include_dismissed: params.include_dismissed === true,
+    $tenant_id:            ctx.tenant_id,
+    $is_live:              ctx.is_live,
+    $in_play_states:       [...IN_PLAY_STATES],
+    $quiet_after_days:     cfg.quiet_after_days,
+    $follow_up_after_days: cfg.follow_up_after_days,
+    $max_days_counted:     cfg.max_days_counted,
+    $per_day_weight:       cfg.per_day_weight,
+    $reason_weights:       JSON.stringify(cfg.reason_weight),
+    $limit:                limit,
+    $offset:               offset,
+    $include_dismissed:    params.include_dismissed === true,
   };
 
   // Two round trips rather than one query returning both shapes. The counts
@@ -143,8 +155,9 @@ export async function get_attention(params: GetAttentionParams, ctx: SkillContex
     // days") without hardcoding a number that would then drift from the one
     // the query actually used.
     tuning: {
-      quiet_after_days: cfg.quiet_after_days,
-      page_size:        limit,
+      quiet_after_days:     cfg.quiet_after_days,
+      follow_up_after_days: cfg.follow_up_after_days,
+      page_size:            limit,
       offset,
     },
     recipe: 'attention-queue' as const,

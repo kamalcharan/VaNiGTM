@@ -36,9 +36,10 @@ WITH
 last_touch AS (
     SELECT DISTINCT ON (tl.prospect_id)
            tl.prospect_id,
-           tl.touched_at   AS last_touch_at,
-           tl.outcome      AS last_outcome,
-           tl.channel      AS last_channel
+           tl.id            AS last_touch_id,
+           tl.touched_at    AS last_touch_at,
+           tl.outcome       AS last_outcome,
+           tl.channel       AS last_channel
       FROM gt_touch_log tl
      WHERE tl.tenant_id = $tenant_id
        AND tl.is_live   = $is_live
@@ -93,6 +94,7 @@ candidate AS (
         p.name              AS company,
         p.ref,
         p.city,
+        lt.last_touch_id,
         lt.last_touch_at,
         lt.last_outcome,
         lt.last_channel,
@@ -148,6 +150,17 @@ classified AS (
               OR c.last_outcome IN ('replied', 'meeting')          THEN 'owed_reply'
             WHEN c.journey_state = 'ready'                         THEN 'story_unsent'
             WHEN c.last_touch_at IS NULL                           THEN 'never_touched'
+            -- Touched, sitting in `waiting`, no reply yet — the by-far most
+            -- common shape of "quiet". Its own reason and its own (shorter)
+            -- clock, so it stops being indistinguishable from an account
+            -- nobody has ever written to (Close the loop, item 2).
+            WHEN c.journey_state = 'waiting'                       THEN 'follow_up_due'
+            -- Left for the genuine edge case: an in-play journey with a
+            -- stale touch sitting outside `waiting` (e.g. moved backward to
+            -- `qualified`/`addressed` for re-work after an old, unanswered
+            -- send). Rare — log_touch always lands on `waiting` — but the
+            -- ledger can get here, and it should not masquerade as either
+            -- of the more specific reasons above.
             ELSE                                                        'gone_quiet'
         END AS reason
       FROM candidate c
@@ -166,9 +179,15 @@ scored AS (
         -- urgent on day one. Waiting out a fortnight before mentioning
         -- either would be the screen actively hiding the thing it exists
         -- to surface.
-        --
-        -- Gap-based reasons need the threshold, or /today shows every
-        -- account every day and stops meaning anything.
         cl.reason IN ('wake_due', 'owed_reply')
-        OR cl.days_quiet >= $quiet_after_days::int
+        -- follow_up_due gets its OWN, shorter clock — the whole point of
+        -- separating it from gone_quiet is that "give a touch a week" is a
+        -- different question from "how long is too long to have never
+        -- written at all".
+        OR (cl.reason = 'follow_up_due' AND cl.days_quiet >= $follow_up_after_days::int)
+        -- Everything else (gone_quiet, story_unsent, never_touched) needs
+        -- the generic threshold, or /today shows every account every day
+        -- and stops meaning anything.
+        OR (cl.reason NOT IN ('wake_due', 'owed_reply', 'follow_up_due')
+            AND cl.days_quiet >= $quiet_after_days::int)
 )

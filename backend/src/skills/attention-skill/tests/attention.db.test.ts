@@ -129,7 +129,9 @@ d('attention-skill · /today', () => {
   /* ── 1 + 2 · reasons and the quiet window ────────────────────────── */
 
   it('surfaces each reason, and only the accounts that earn it', async () => {
-    await touch(A, await mkAccount(A, 'gone quiet', 'waiting', 60), 40);
+    // 'waiting' + touched + past follow_up_after_days (7) — the by-far most
+    // common shape of quiet, and the one Close the loop gave its own reason.
+    await touch(A, await mkAccount(A, 'follow up due', 'waiting', 60), 40);
     await touch(A, await mkAccount(A, 'too recent', 'waiting', 60), 3);
     await touch(A, await mkAccount(A, 'owed reply', 'waiting', 60), 2, 'replied');
     await mkAccount(A, 'never touched', 'qualified', 30);
@@ -138,15 +140,22 @@ d('attention-skill · /today', () => {
     await mkAccount(A, 'wake due', 'parked', 90, { wakeInDays: -1 });
     await mkAccount(A, 'wake later', 'parked', 90, { wakeInDays: 10 });
     await touch(A, await mkAccount(A, 'ruled out', 'ruled_out', 400), 400);
+    // The genuine gone_quiet case: in play, a stale touch on file, but NOT
+    // sitting in `waiting` — e.g. pulled back to `addressed` for re-work
+    // after an old, unanswered send. log_touch never leaves an account here
+    // (it always lands on `waiting`), so this only happens by a later,
+    // separate move — rare, and still has to classify as something.
+    await touch(A, await mkAccount(A, 'stale rework', 'addressed', 60), 40);
 
     const res = await get_attention({}, ctxFor(A));
     const names = byCompany(res.items);
 
-    expect(names).toContain('gone quiet');
+    expect(names).toContain('follow up due');
     expect(names).toContain('owed reply');
     expect(names).toContain('never touched');
     expect(names).toContain('story unsent');
     expect(names).toContain('wake due');
+    expect(names).toContain('stale rework');
 
     // The window holds gap-based reasons back...
     expect(names).not.toContain('too recent');
@@ -160,8 +169,21 @@ d('attention-skill · /today', () => {
     expect(reason('wake due')).toBe('wake_due');
     expect(reason('owed reply')).toBe('owed_reply');
     expect(reason('story unsent')).toBe('story_unsent');
-    expect(reason('gone quiet')).toBe('gone_quiet');
+    expect(reason('follow up due')).toBe('follow_up_due');
     expect(reason('never touched')).toBe('never_touched');
+    expect(reason('stale rework')).toBe('gone_quiet');
+  });
+
+  it('gives follow_up_due its own, shorter clock — separate from quiet_after_days', async () => {
+    // follow_up_after_days defaults to 7, quiet_after_days to 14. A touch 10
+    // days old is past the FIRST but not the second — proving the query
+    // reads the new threshold and not the old one.
+    const pid = await mkAccount(A, 'ten days quiet', 'waiting', 60);
+    await touch(A, pid, 10);
+
+    const res = await get_attention({}, ctxFor(A));
+    expect(byCompany(res.items)).toEqual(['ten days quiet']);
+    expect(res.items[0].reason).toBe('follow_up_due');
   });
 
   it('lets a reply through on day one — it does not wait out the window', async () => {
@@ -283,6 +305,35 @@ d('attention-skill · /today', () => {
     expect(c.surfaced).toBe(res.items.length);
     expect(c.matched).toBe(
       c.surfaced + c.suppressed_handled + c.suppressed_snoozed + c.suppressed_dismissed);
+  });
+
+  it('counts the invisible middle — touched, not yet due for a follow-up', async () => {
+    // Inside follow_up_after_days (7): never appears in items, only here.
+    const fresh = await mkAccount(A, 'fresh touch', 'waiting', 60);
+    await touch(A, fresh, 2);
+    // Past it: appears in items AND is not double-counted here.
+    const due = await mkAccount(A, 'due for follow-up', 'waiting', 60);
+    await touch(A, due, 10);
+
+    const res = await get_attention({}, ctxFor(A));
+    expect(byCompany(res.items)).toEqual(['due for follow-up']);
+    expect(res.context.awaiting_reply).toBe(1);
+  });
+
+  it('breaks out replied accounts as a highlight of surfaced, not an addition', async () => {
+    const replied = await mkAccount(A, 'they replied', 'waiting', 60);
+    await touch(A, replied, 5, 'replied');
+    const quiet = await mkAccount(A, 'plain quiet', 'waiting', 60);
+    await touch(A, quiet, 40);
+
+    const res = await get_attention({}, ctxFor(A));
+    expect(res.context.surfaced).toBe(2);
+    expect(res.context.replied_awaiting_response).toBe(1);
+    // A highlight, not an extra bucket — it does not change the arithmetic
+    // the counts test already guards.
+    expect(res.context.matched).toBe(
+      res.context.surfaced + res.context.suppressed_handled
+      + res.context.suppressed_snoozed + res.context.suppressed_dismissed);
   });
 
   it('names the right empty state for each kind of empty', async () => {

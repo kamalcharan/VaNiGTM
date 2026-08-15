@@ -58,4 +58,24 @@ SELECT
     (SELECT count(*) FROM classified
       WHERE last_touch_at IS NULL
         AND journey_state = ANY($in_play_states::text[]))::int
-        AS in_play_never_touched
+        AS in_play_never_touched,
+
+    -- The "invisible middle" Close the loop item 2/3 asks to be surfaced:
+    -- touched, waiting on a reply, not yet due for a follow-up nudge. These
+    -- never appear in `scored` (the follow_up_after_days gate excludes
+    -- them) — this is the only place they are counted at all.
+    (SELECT count(*) FROM classified
+      WHERE reason = 'follow_up_due'
+        AND days_quiet < $follow_up_after_days::int)::int
+        AS awaiting_reply,
+
+    -- A highlight, not an additional bucket: how many of the accounts
+    -- already counted in `surfaced` are there because they replied. Callers
+    -- already answered by them-having-replied outrank everything except an
+    -- explicit reminder (reason_weight), so this is a subset of `surfaced`
+    -- worth naming on screen — "the loop closed" is worth saying even
+    -- though the account was never hidden.
+    (SELECT count(*) FROM scored
+      WHERE NOT is_handled AND NOT is_snoozed AND NOT is_dismissed
+        AND reason = 'owed_reply')::int
+        AS replied_awaiting_response

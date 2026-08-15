@@ -38,9 +38,23 @@ Read that document before changing anything in `queries/`.
 |---|---|---|
 | `wake_due` | a parked journey's `wake_at` has passed | no — due is due |
 | `owed_reply` | they answered and we have not come back | no — urgent on day one |
-| `story_unsent` | an approved story exists and was never sent | yes |
-| `gone_quiet` | touched, no answer, past the window | yes |
-| `never_touched` | in play, never contacted | yes |
+| `story_unsent` | an approved story exists and was never sent | yes — `quiet_after_days` |
+| `follow_up_due` | touched, sitting in `waiting`, no reply | yes — its own, shorter `follow_up_after_days` |
+| `gone_quiet` | in play with a stale touch, outside `waiting` | yes — `quiet_after_days` |
+| `never_touched` | in play, never contacted | yes — `quiet_after_days` |
+
+`follow_up_due` (Close the loop, 2026-08-15) is the by-far most common shape
+of "quiet" — a touch went out, nothing came back. It gets its own reason and
+its own clock (`follow_up_after_days`, default 7, matching the cadence
+governor's own default window) precisely so it stops being invisible: before
+this, a touched account fell out of the queue the moment its `days_quiet`
+dropped below the 14-day general threshold and did not reappear until it
+happened to cross that same threshold again — with nothing on screen in
+between. `get_attention`'s `context.awaiting_reply` is that "in between"
+count, made visible instead of silent. `gone_quiet` is now the rarer
+fallback: an in-play journey with a stale touch that is NOT sitting in
+`waiting` (log_touch always lands there; getting elsewhere with a touch on
+file means something moved it back for re-work).
 
 `wake_due` is new behaviour, not a re-skin. Migration 222 said only the parked
 list would be scanned for `wake_at` and nothing has ever scanned it — every
@@ -68,12 +82,26 @@ the story sent and moves the journey. Recency on the next render always comes
 from `gt_touch_log`, so an `acted` row with no touch behind it correctly
 leaves the account quiet.
 
+**"Mark as contacted" on `/today` is `log_touch`, not `decide_attention`.**
+This screen does not gain a second way to record that a touch happened —
+it calls the same function `research-skill.log_touch` already uses
+everywhere else, with `contact_id` resolved first (an existing pick, or
+`contact-skill.add_contact_manually` for a free-text name). That single
+write is what makes the account leave the queue: `gt_touch_log.touched_at`
+moves, `days_quiet` recomputes to ~0 on the next render, and the journey
+lands on `waiting`. Nothing in `gt_attention_decision` has to know a touch
+happened for the queue to reflect it. Recording a reply is the same
+principle applied to `research-skill.set_touch_outcome` — it sets
+`outcome='replied'` on `last_touch_id`, which reclassifies the account as
+`owed_reply` (urgent, day one) instead of leaving it to resurface as
+`follow_up_due` a week later.
+
 ## Functions
 
 ### get_attention
 A page of quiet accounts, ranked, plus the counts the empty states need.
 - Parameters: limit (optional, number, default 15), offset (optional, number, default 0), include_dismissed (optional, boolean, default false)
-- Returns: { items: [{ prospect_id, company, ref, journey_state, reason, days_quiet, last_touch_at, last_outcome, score, wake_at, offer }], context: { prospects_total, journeys_in_play, matched, surfaced, suppressed_handled, suppressed_snoozed, suppressed_dismissed, next_snooze_due, in_play_never_touched }, empty_state, tuning, recipe: 'attention-queue' }
+- Returns: { items: [{ prospect_id, company, ref, journey_state, reason, days_quiet, last_touch_id, last_touch_at, last_outcome, score, wake_at, offer, contact_id }], context: { prospects_total, journeys_in_play, matched, surfaced, suppressed_handled, suppressed_snoozed, suppressed_dismissed, next_snooze_due, in_play_never_touched, awaiting_reply, replied_awaiting_response }, empty_state, tuning: { quiet_after_days, follow_up_after_days, page_size, offset }, recipe: 'attention-queue' }
 
 ### decide_attention
 Append one decision about one account.
