@@ -285,14 +285,22 @@ export function createProfileRouter(pool: Pool): Router {
     const jwt = requireAuth(req, res);
     if (!jwt) return;
 
-    const runId = await createRun(pool, jwt.tenant_id, 'brand-skill.generate');
-    await setStatus(pool, runId, 'running');
+    // Every step from here on must be inside the try — an uncaught rejection
+    // in an async Express handler has no default JSON error response, so a
+    // failure in createRun/setStatus (before generateBrand's own try/catch
+    // took over) surfaced to the client as a non-JSON body instead of a
+    // structured error.
+    let runId: string | undefined;
     try {
+      runId = await createRun(pool, jwt.tenant_id, 'brand-skill.generate');
+      await setStatus(pool, runId, 'running');
       const brand = await generateBrand(pool, jwt.tenant_id, runId);
       await setStatus(pool, runId, 'completed');
       res.json({ brand });
     } catch (err) {
-      await setStatus(pool, runId, 'failed', { error_trace: messageOf(err) });
+      if (runId) {
+        await setStatus(pool, runId, 'failed', { error_trace: messageOf(err) }).catch(() => {});
+      }
       console.error('[Profile:POST /brand/generate]', err);
       res.status(500).json({
         error: { code: 'INTERNAL_ERROR', message: messageOf(err) },
