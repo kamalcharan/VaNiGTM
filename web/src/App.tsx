@@ -63,6 +63,9 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/assessment" element={<AssessmentPage />} />
           <Route path="/mvp" element={<MVPPage />} />
+          {/* Same page, second door: "Products" is the better nav word and SEO
+              target, while every existing /mvp link keeps working. */}
+          <Route path="/products" element={<MVPPage />} />
           <Route path="/training" element={<TrainingPage />} />
           <Route path="/playbooks/why-ai-fails" element={<WhyAIFailsPlaybook />} />
           <Route path="/preview" element={<PreviewPage />} />

@@ -5,6 +5,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import Footer from './Footer';
+import ProductPortfolio from './ProductPortfolio';
 
 // ─── Color tokens (dark editorial, matches Hero) ─────────────
 const INK = '#0A0F1E';
@@ -386,7 +387,7 @@ const steps = [
     num: '03',
     title: 'Build in the Open',
     duration: '60–90 days',
-    desc: 'Weekly working demos from week two — running software, not status decks. AI-native architecture on the same VaNi approach that powers our own products.',
+    desc: 'Weekly working demos from week two — running software, not status decks. AI-native architecture on the same VaNi AI framework that powers our own products.',
   },
   {
     num: '04',
@@ -430,6 +431,8 @@ const MVPPage: React.FC = () => {
           </motion.div>
         </HeroInner>
       </Hero>
+
+      <ProductPortfolio />
 
       <Section id="mvp-process">
         <Inner>
@@ -486,9 +489,10 @@ const MVPPage: React.FC = () => {
           >
             <ProofIcon>🛠</ProofIcon>
             <p>
-              <strong>We eat our own cooking.</strong> ContractNest and FamilyKnows — our own
-              AI products — are built on the same VaNi approach and the same delivery
-              discipline we'll use on yours. Ask us to show you, live, on the scoping call.
+              <strong>We eat our own cooking.</strong> ContractNest, DristiQ and the VaNi App
+              were built by this same team, on this same process — fixed scope, weekly
+              demos, outcomes measured before anything scaled. Ask us to walk you through
+              any of them, live, on the scoping call.
             </p>
           </ProofStrip>
         </Inner>

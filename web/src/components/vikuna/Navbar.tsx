@@ -266,6 +266,7 @@ const Navbar: React.FC<NavbarProps> = ({ transparent = true }) => {
             </DropdownMenu>
           </DropdownContainer>
 
+          <NavLink href="/products" theme={currentTheme} $isScrolled={isScrolled}>Products</NavLink>
           <NavLink href="/#cases" theme={currentTheme} $isScrolled={isScrolled}>Success Stories</NavLink>
           <NavLink href="#contact" theme={currentTheme} $isScrolled={isScrolled}>Contact</NavLink>
 
@@ -291,6 +292,7 @@ const Navbar: React.FC<NavbarProps> = ({ transparent = true }) => {
         <MobileNavLink href="/#automation-sprint" theme={currentTheme}>AI Automation Sprint</MobileNavLink>
         <MobileNavLink href="/training" theme={currentTheme}>Training</MobileNavLink>
         <MobileNavLink href="/mvp" theme={currentTheme}>MVP in 60–90 Days</MobileNavLink>
+        <MobileNavLink href="/products" theme={currentTheme}>Products</MobileNavLink>
         <MobileNavLink href="/#contact" theme={currentTheme}>Contact</MobileNavLink>
         <MobileConsultButton
           href="https://calendly.com/connect-vikuna/30min"
