@@ -1205,8 +1205,18 @@ export default function MissionWizardPage() {
 
     if (done && step.id === 'brand') {
       const voiceChips = (brand?.voice_tone ?? []).slice(0, 4);
+      const roleColors = COLOR_ROLES
+        .map((role) => brand?.visual?.[role.key])
+        .filter((v): v is string => Boolean(v) && /^#[0-9a-fA-F]{6}$/.test(v as string));
       artifact = (
         <VdfMissionSection label="Brand">
+          {roleColors.length > 0 && (
+            <div className={s.railSwatches}>
+              {roleColors.map((c) => (
+                <span key={c} className={s.railSwatch} style={{ background: c }} title={c} />
+              ))}
+            </div>
+          )}
           {voiceChips.length > 0 && (
             <VdfMissionChips chips={voiceChips.map((v, n) => ({ id: `voice-${n}`, label: v }))} />
           )}
