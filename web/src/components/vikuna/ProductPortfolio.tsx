@@ -345,7 +345,7 @@ type Product = {
 const products: Product[] = [
   {
     name: 'ContractNest',
-    status: 'Private Beta',
+    status: 'Now Open to the Public',
     statusColor: TEAL,
     line: 'Contract & SLA operations, WhatsApp-native',
     desc: (
@@ -394,10 +394,15 @@ const products: Product[] = [
     name: 'VaNi App',
     status: 'In Development',
     statusColor: ACCENT,
-    line: 'Exam preparation for NEET and CUET aspirants',
+    line: 'NEET & CUET preparation in English, Hindi and Telugu',
     // NOTE: copy deliberately minimal — awaiting product detail, launch status
     // and store links from Charan. Do not invent feature claims here.
-    desc: <>A mobile app for students preparing for NEET and CUET.</>,
+    desc: (
+      <>
+        A mobile app for students preparing for NEET and CUET —{' '}
+        <strong>in English, Hindi and Telugu</strong>, not English alone.
+      </>
+    ),
     features: [],
     pending: 'Landing page in progress',
   },
@@ -425,7 +430,7 @@ const stories: Story[] = [
     ),
   },
   {
-    sector: 'Industrial OEM · Seller side',
+    sector: 'Equipment Manufacturer · Seller side',
     stat: '39% → 74%',
     statCaption: 'Service compliance',
     before: '400 machines lived across the service engineers’ WhatsApp threads.',
@@ -473,7 +478,7 @@ const stories: Story[] = [
     ),
   },
   {
-    sector: 'Outsourced Services · Buyer side',
+    sector: 'Garments Company · Buyer side',
     stat: '45',
     statCaption: 'Vendor contracts tracked end to end',
     before: 'Invoices landed before the work was done — paying blind, no evidence.',
@@ -605,8 +610,9 @@ const ProductPortfolio: React.FC = () => {
           </StoryGrid>
 
           <Disclaimer>
-            Deployments running on ContractNest during private beta, shown by sector rather
-            than by name. We&rsquo;ll walk you through any of them, live, on a call.
+            Results from ContractNest&rsquo;s private beta, shown by sector rather than by name.
+            ContractNest is now open to the public. We&rsquo;ll walk you through any of these,
+            live, on a call.
           </Disclaimer>
         </Inner>
       </Section>
