@@ -192,7 +192,8 @@ export async function extractVisualHints(html: string, baseUrl: string): Promise
 
   const inlineStyle = (html.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) ?? []).join('\n');
   const stylesheetUrls = extractStylesheetLinks(html, baseUrl);
-  const fetchedCss = (await Promise.all(stylesheetUrls.map(fetchCssText))).join('\n');
+  const fetchedSheets = await Promise.all(stylesheetUrls.map(fetchCssText));
+  const fetchedCss = fetchedSheets.join('\n');
   const cssCorpus = `${inlineStyle}\n${fetchedCss}`;
 
   const colors = new Set<string>();
@@ -203,6 +204,18 @@ export async function extractVisualHints(html: string, baseUrl: string): Promise
     if (colors.size >= 5) break;
   }
   if (colors.size > 0) visual.colors = Array.from(colors).slice(0, 5);
+
+  // Diagnostic trail — color extraction has 4 independent failure points
+  // (no stylesheet links found, fetch blocked/timed out, fetched but empty,
+  // fetched fine but nothing color-like matched) and "no colors" looks
+  // identical from the outside in all 4 cases. Log which one it actually was.
+  console.log(
+    `[Brand:extractVisualHints] logo=${bestIcon ? 'found' : 'none'} `
+    + `stylesheets=${stylesheetUrls.length} (${stylesheetUrls.join(', ') || 'none found'}) `
+    + `fetchedBytes=${fetchedSheets.map((s) => s.length).join(',') || 'n/a'} `
+    + `themeColorMeta=${themeColorMatch ? themeColorMatch[1] : 'none'} `
+    + `colorsFound=${colors.size}`,
+  );
 
   const fontMatch = `${html}\n${cssCorpus}`.match(/font-family:\s*['"]?([A-Za-z0-9 ,\-]+?)['";,]/i);
   if (fontMatch) {

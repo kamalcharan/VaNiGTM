@@ -72,9 +72,20 @@ export function VdfMissionMemory({
 
   useEffect(() => {
     const el = tailRef.current;
-    const box = scrollRef.current;
-    if (!el || !box) return;
-    if (box.scrollHeight <= box.clientHeight) return;
+    if (!el) return;
+
+    // Checking the INNER box's own overflow (scrollHeight vs clientHeight)
+    // used to be enough, back when the rail was always short enough to
+    // overflow it internally. Once the rail is tall enough to fit its
+    // content without its own scrollbar, that guard goes permanently true
+    // and skips scrolling — even though the OUTER page can still need to
+    // scroll to reveal a tall, not-yet-stuck sticky sidebar on first paint.
+    // Check the element's actual on-screen position instead, so this fires
+    // whenever it's needed regardless of which container has to move.
+    const rect = el.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const fullyVisible = rect.top >= 0 && rect.bottom <= viewportHeight;
+    if (fullyVisible) return;
 
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'end' });
