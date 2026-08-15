@@ -1019,6 +1019,34 @@ export default function MissionWizardPage() {
     }
   }, [showToast]);
 
+  // "Edit again" — un-seals whichever step is currently in view, scoped to
+  // the same wizard session (no reopening a step you've already navigated
+  // past and whose output a LATER confirmed step may already depend on —
+  // see the vocabulary/competitors ordering note above). Brand needs an
+  // extra backend call: its approved_at gates BOTH the score section and
+  // generateBrand's overwrite guard, so without clearing it first
+  // "Regenerate from site" would silently no-op against the approved row.
+  const [reopening, setReopening] = useState(false);
+  const reopenCurrentStep = useCallback(async (stepId: string) => {
+    if (stepId === 'brand') {
+      setReopening(true);
+      try {
+        const res = await apiFetch<{ brand: TenantBrand }>(API.gtmProfile.reopenBrand);
+        setBrand(res.brand);
+      } catch (err) {
+        showToast({ message: (err as ApiError).message || 'Could not reopen the brand', type: 'error' });
+        return;
+      } finally {
+        setReopening(false);
+      }
+    }
+    setConfirmed((prev) => {
+      const next = new Set(prev);
+      next.delete(stepId);
+      return next;
+    });
+  }, [showToast]);
+
   /* ── Mission rail ─────────────────────────────────────────────────── */
 
   // Mission memory: a finished step files its REAL ARTIFACT into the rail —
@@ -1181,6 +1209,18 @@ export default function MissionWizardPage() {
         className={`${s.stage} ${handingOff ? s.mainFlying : ''}`}
         key={current.id}
       >
+
+        {/* Confirmed cards seal their action row (VdfApprovalCard) — this is
+            the only way back in, and only while this step is still the one
+            in view. Navigate away and it seals again for good this session. */}
+        {confirmed.has(current.id) && (
+          <div className={s.reopenRow}>
+            <span className={s.memoryLine}>This step is confirmed.</span>
+            <VdfButton variant="ghost" size="sm" loading={reopening} onClick={() => reopenCurrentStep(current.id)}>
+              Edit again
+            </VdfButton>
+          </div>
+        )}
 
         {/* ── STEP 1 — Research ─────────────────────────────────── */}
           {current.id === 'company' && research !== 'done' && (
