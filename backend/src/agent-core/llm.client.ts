@@ -439,6 +439,45 @@ function describeIssues(err: z.ZodError): { detail: string; fields: string[] } {
   return { detail, fields };
 }
 
+/**
+ * Trims trailing garbage after a syntactically complete top-level JSON
+ * value. Small/fast models occasionally tack one stray character (a quote,
+ * a period, a repeated closing brace) onto an otherwise-valid object — the
+ * JSON itself is complete, only JSON.parse's strict "nothing after the
+ * value" rule rejects it. Depth-count only the bracket type the value opens
+ * with; brackets of the other type nested inside are self-balancing and
+ * never affect that count, so this correctly finds the real end of the
+ * value regardless of nesting. Unbalanced/truncated input falls through
+ * unchanged — that is a real failure, not this one.
+ */
+function trimToJsonValue(text: string): string {
+  const start = text.search(/[{[]/);
+  if (start === -1) return text;
+
+  const open = text[start];
+  const close = open === '{' ? '}' : ']';
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') { inString = true; continue; }
+    if (ch === open) depth++;
+    else if (ch === close) {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return text;
+}
+
 export async function callLLMValidated<T>(
   options: LLMCallOptions,
   schema: z.ZodSchema<T>,
@@ -454,7 +493,7 @@ export async function callLLMValidated<T>(
 
     let json: unknown;
     try {
-      json = JSON.parse(raw);
+      json = JSON.parse(trimToJsonValue(raw));
     } catch (err) {
       return {
         ok: false,
