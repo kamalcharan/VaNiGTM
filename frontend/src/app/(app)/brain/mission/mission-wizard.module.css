@@ -515,6 +515,22 @@ textarea.input {
   border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
 }
 
+/* Mission-rail echo of the same three colors — the rail's job is to show
+   what a confirmed step actually captured, so it needs this too, not just
+   the voice/proof text. */
+
+.railSwatches {
+  display: flex;
+  gap: 6px;
+}
+
+.railSwatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+}
+
 /* One persistent completeness signal for the whole brand step — replaces a
    success toast that couldn't say WHICH fields still needed input, and
    per-field prose that repeated the same idea in different words each time. */
