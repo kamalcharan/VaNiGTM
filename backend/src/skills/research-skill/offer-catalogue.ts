@@ -58,6 +58,13 @@ export interface Offer {
    * choose the smallest sane first ask among offers that fit equally well.
    */
   commitment: Commitment;
+  /** 'agent' = drafted from the site/documents, awaiting review. 'human' =
+   *  typed or reviewed directly. Migration 239. */
+  source: 'agent' | 'human';
+  /** NULL = agent draft not yet reviewed — earns no profile_score credit
+   *  and is not fit-scored (offerIsReady does not gate on this; readiness
+   *  and confirmation are separate axes). */
+  confirmed_at: string | null;
 }
 
 export interface OfferCatalogue {
@@ -142,6 +149,7 @@ interface OfferRow {
   problem: string; what_we_do: string[]; signals: string[];
   disqualifiers: string[]; price_band: string | null; proof: string | null;
   commitment: string | null;
+  source: string; confirmed_at: Date | string | null;
   updated_at: Date | string;
 }
 
@@ -161,13 +169,20 @@ const toOffer = (r: OfferRow): Offer => ({
   // value is reported by catalogueProblems rather than quietly treated as
   // one of the three.
   commitment: isCommitment(r.commitment) ? r.commitment : (r.commitment as Commitment),
+  source: r.source === 'agent' ? 'agent' : 'human',
+  confirmed_at: r.confirmed_at ? new Date(r.confirmed_at).toISOString() : null,
 });
 
-/** Every active offer for a tenant, validated or not. */
+/** Every active offer for a tenant, validated or not — confirmed and
+ *  unconfirmed drafts alike. Confirmation gates profile_score credit
+ *  (profile.service.ts), not fit-scoring inclusion — those are deliberately
+ *  separate axes; wiring confirmation into what research-skill scores
+ *  against is out of scope here (Intelligent Add Offers, 2026-08-15). */
 export async function readOffers(db: SkillDb, tenantId: string): Promise<Offer[]> {
   const res = await db.query<OfferRow>(
     `SELECT offer_key, name, one_line, who_for, problem, what_we_do,
-            signals, disqualifiers, price_band, proof, commitment, updated_at
+            signals, disqualifiers, price_band, proof, commitment,
+            source, confirmed_at, updated_at
        FROM gt_offers
       WHERE tenant_id = $tenant_id AND is_active = true
       ORDER BY sort_order, offer_key`,

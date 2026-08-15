@@ -15,6 +15,7 @@
  */
 
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery, useSkillMutation } from '@/hooks/useSkill';
 import { useToast } from '@/components/toast';
@@ -248,12 +249,6 @@ function Area({ label, value, hint, onEdit, minRows = 3 }: {
   );
 }
 
-const emptyOffer = (): Offer => ({
-  id: '', name: '', one_line: '', who_for: '', problem: '',
-  what_we_do: [], signals: [], disqualifiers: [], price_band: '', proof: '',
-  commitment: 'project', is_ready: false,
-});
-
 /** NUMERIC comes back from pg as a string. Never trust it to be a number. */
 const num = (v: string | number | null | undefined): number | null => {
   if (v === null || v === undefined) return null;
@@ -267,10 +262,10 @@ const FIT_MARGIN = 0.15;
 /* ── Page ───────────────────────────────────────────────────────────── */
 
 export default function ResearchPage() {
+  const router = useRouter();
   const qc = useQueryClient();
   const { showToast } = useToast();
 
-  const [editing, setEditing] = useState<Offer | null>(null);
   const [openBrief, setOpenBrief] = useState<Brief | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
   /** Which stat card is acting as the filter, if any. */
@@ -339,7 +334,6 @@ export default function ResearchPage() {
     { enabled: picking },
   );
 
-  const saveOffer = useSkillMutation('research-skill', 'save_offer');
   const setBudget = useSkillMutation('research-skill', 'set_budget');
   const deleteBriefs = useSkillMutation('research-skill', 'delete_briefs');
   const proposeLessons = useSkillMutation('research-skill', 'propose_lessons');
@@ -377,29 +371,6 @@ export default function ResearchPage() {
   };
 
   /* ── Handlers ─────────────────────────────────────────────────────── */
-
-  const onSaveOffer = async (draft: Offer) => {
-    try {
-      await saveOffer.mutateAsync({
-        offer_key: draft.id || undefined,
-        name: draft.name,
-        one_line: draft.one_line,
-        who_for: draft.who_for,
-        problem: draft.problem,
-        what_we_do: draft.what_we_do,
-        signals: draft.signals,
-        disqualifiers: draft.disqualifiers,
-        price_band: draft.price_band,
-        proof: draft.proof,
-        commitment: draft.commitment,
-      });
-      showToast({ type: 'success', message: `Saved “${draft.name}”` });
-      setEditing(null);
-      refresh();
-    } catch (err) {
-      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Could not save the offer' });
-    }
-  };
 
   const onStart = async () => {
     try {
@@ -559,12 +530,12 @@ export default function ResearchPage() {
             <div>
               <div className={s.sectionTitle}>1. What you sell</div>
               <div className={s.sectionNote}>
-                Every company&rsquo;s website is scored against these. The signals decide
-                who fits; the disqualifiers are the only reason anything is ever ruled out.
+                Every company&rsquo;s website is scored against these. Offers now live in
+                the Brain, alongside brand and ideal customer — manage them there.
               </div>
             </div>
-            <VdfButton variant="outline" onClick={() => setEditing(emptyOffer())}>
-              Add an offer
+            <VdfButton variant="outline" onClick={() => router.push('/brain/offers')}>
+              Manage offers →
             </VdfButton>
           </div>
 
@@ -583,42 +554,46 @@ export default function ResearchPage() {
             </div>
           )}
 
-          <div className={s.offerGrid}>
-            {offers.map((o) => (
-              <div
-                key={o.id} className={s.offerCard} role="button" tabIndex={0}
-                onClick={() => setEditing(o)}
-                onKeyDown={(e) => e.key === 'Enter' && setEditing(o)}
-              >
-                <div className={s.offerHead}>
-                  <span className={s.offerName}>{o.name}</span>
-                  <div className={s.badges}>
-                    <VdfBadge variant="default">{COMMITMENT_SHORT[o.commitment]}</VdfBadge>
-                    <VdfBadge variant={o.is_ready ? 'success' : 'gold'}>
-                      {o.is_ready ? 'Ready' : 'Incomplete'}
-                    </VdfBadge>
+          {offers.length === 0 ? (
+            <VdfEmptyState
+              title="Nothing to sell yet"
+              description="Add what you offer in the Brain, and research can start scoring companies against it."
+              action={<VdfButton variant="primary" onClick={() => router.push('/brain/offers')}>
+                Add an offer
+              </VdfButton>}
+            />
+          ) : (
+            <div className={s.offerGrid}>
+              {offers.map((o) => (
+                <div
+                  key={o.id} className={s.offerCard} role="button" tabIndex={0}
+                  onClick={() => router.push('/brain/offers')}
+                  onKeyDown={(e) => e.key === 'Enter' && router.push('/brain/offers')}
+                >
+                  <div className={s.offerHead}>
+                    <span className={s.offerName}>{o.name}</span>
+                    <div className={s.badges}>
+                      <VdfBadge variant="default">{COMMITMENT_SHORT[o.commitment]}</VdfBadge>
+                      <VdfBadge variant={o.is_ready ? 'success' : 'gold'}>
+                        {o.is_ready ? 'Ready' : 'Incomplete'}
+                      </VdfBadge>
+                    </div>
                   </div>
+                  <div className={s.offerLine}>{o.one_line}</div>
+                  {!o.is_ready && (
+                    <div className={s.offerMissing}>
+                      Missing: {[
+                        !o.price_band && 'price band',
+                        !o.proof && 'proof',
+                        o.signals.length === 0 && 'fit signals',
+                        o.disqualifiers.length === 0 && 'disqualifiers',
+                      ].filter(Boolean).join(', ')}
+                    </div>
+                  )}
                 </div>
-                <div className={s.offerLine}>{o.one_line}</div>
-                {!o.is_ready && (
-                  <div className={s.offerMissing}>
-                    Missing: {[
-                      !o.price_band && 'price band',
-                      !o.proof && 'proof',
-                      o.signals.length === 0 && 'fit signals',
-                      o.disqualifiers.length === 0 && 'disqualifiers',
-                    ].filter(Boolean).join(', ')}
-                  </div>
-                )}
-              </div>
-            ))}
-            {offers.length === 0 && (
-              <VdfEmptyState
-                title="Nothing to sell yet"
-                description="Add what you offer, and research can start scoring companies against it."
-              />
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* 2 ── RESEARCH A COHORT ─────────────────────────────────── */}
@@ -1236,25 +1211,6 @@ export default function ResearchPage() {
         )}
       </VdfModal>
 
-      {/* ── Offer editor ───────────────────────────────────────────── */}
-      <VdfModal
-        isOpen={editing !== null}
-        onClose={() => setEditing(null)}
-        title={editing?.id ? editing.name : 'New offer'}
-        subtitle="Everything here is read by the agent — and some of it reaches a prospect."
-        width="xl"
-      >
-        {editing && (
-          <OfferForm
-            key={editing.id || 'new'}
-            initial={editing}
-            saving={saveOffer.isPending}
-            onCancel={() => setEditing(null)}
-            onSave={onSaveOffer}
-          />
-        )}
-      </VdfModal>
-
       {/* ── Brief detail + decision ────────────────────────────────── */}
       <VdfModal
         isOpen={openBrief !== null}
@@ -1293,140 +1249,6 @@ export default function ResearchPage() {
 
 /* ── Offer form ─────────────────────────────────────────────────────── */
 
-/**
- * One offer, edited.
- *
- * ── WHY THIS OWNS ITS OWN STATE ───────────────────────────────────────
- *
- * The first version lifted every keystroke to the page and defined the
- * textarea component INSIDE this function. Both are bugs, and together they
- * made the form unusable — React saw a new component type on every render
- * and remounted the textarea, so focus was lost after every single
- * character. The only way to fill it in was to paste.
- *
- * So: `Field` and `Area` live at module scope, and the draft lives here.
- * The page learns about it once, on save. Nothing re-renders while typing
- * except this form.
- */
-function OfferForm({
-  initial, onSave, onCancel, saving,
-}: {
-  initial: Offer;
-  onSave: (o: Offer) => void;
-  onCancel: () => void;
-  saving: boolean;
-}) {
-  // Keyed by offer id at the call site, so opening a different offer
-  // remounts with fresh state rather than showing the previous one.
-  const [draft, setDraft] = useState<Offer>(initial);
-  const set = (patch: Partial<Offer>) => setDraft((d) => ({ ...d, ...patch }));
-
-  const missing = [
-    !draft.price_band.trim() && 'price band',
-    !draft.proof.trim() && 'proof',
-    draft.signals.length === 0 && 'fit signals',
-    draft.disqualifiers.length === 0 && 'disqualifiers',
-  ].filter(Boolean) as string[];
-
-  return (
-    <>
-      <div className={s.offerForm}>
-        {/* Left: what the offer IS. */}
-        <div className={s.offerCol}>
-          <div className={s.colHead}>What it is</div>
-
-          <div className={s.formRow}>
-            <label className={s.formLabel}>Name</label>
-            <input
-              className={s.input} value={draft.name}
-              onChange={(e) => set({ name: e.target.value })}
-              placeholder="CDO as a Service"
-            />
-          </div>
-
-          <Area
-            label="One line" value={draft.one_line} minRows={2}
-            onEdit={(v) => set({ one_line: v })}
-            hint="How you would describe it in a sentence."
-          />
-          <Area
-            label="Who it is for" value={draft.who_for} minRows={3}
-            onEdit={(v) => set({ who_for: v })}
-          />
-          <Area
-            label="Problem it solves" value={draft.problem} minRows={5}
-            onEdit={(v) => set({ problem: v })}
-          />
-          <Area
-            label="What you do" value={lines(draft.what_we_do)} minRows={5}
-            onEdit={(v) => set({ what_we_do: toLines(v) })}
-            hint="One per line."
-          />
-        </div>
-
-        {/* Right: how a company gets matched to it. */}
-        <div className={s.offerCol}>
-          <div className={s.colHead}>How it gets matched</div>
-
-          <Area
-            label="Fit signals" value={lines(draft.signals)} minRows={7}
-            onEdit={(v) => set({ signals: toLines(v) })}
-            hint="One per line. What on a company's website tells you this fits — this is what the agent actually looks for, so concrete beats descriptive."
-          />
-          <Area
-            label="Do NOT pitch this when" value={lines(draft.disqualifiers)} minRows={5}
-            onEdit={(v) => set({ disqualifiers: toLines(v) })}
-            hint="One per line. Without these the agent always finds a reason to say yes."
-          />
-          <div className={s.formRow}>
-            <label className={s.formLabel}>How big an ask is it</label>
-            <select
-              className={s.select} value={draft.commitment}
-              onChange={(e) => set({ commitment: e.target.value as Commitment })}
-            >
-              {COMMITMENT_OPTIONS.map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </select>
-            <div className={s.formHint}>
-              {COMMITMENT_OPTIONS.find((c) => c.value === draft.commitment)?.hint}
-              {' '}The agent scores fit without seeing this — then, among the offers
-              that fit a company equally well, it opens with the smallest ask.
-            </div>
-          </div>
-
-          <Area
-            label="Price band" value={draft.price_band} minRows={2}
-            onEdit={(v) => set({ price_band: v })}
-            hint="What it costs. This is what makes “too small for this” a judgement rather than a guess."
-          />
-          <Area
-            label="Proof" value={draft.proof} minRows={4}
-            onEdit={(v) => set({ proof: v })}
-            hint="What you can stand behind in writing. No case study yet? Say what is actually true — credentials, adjacent work. Never invent one; a real prospect can check."
-          />
-        </div>
-      </div>
-
-      <div className={s.offerFooter}>
-        <div className={s.formHint}>
-          {missing.length > 0
-            ? `Still needed before research can run: ${missing.join(', ')}.`
-            : 'Ready to score companies against.'}
-        </div>
-        <div className={s.actions}>
-          <VdfButton variant="outline" onClick={onCancel}>Cancel</VdfButton>
-          <VdfButton
-            variant="primary" disabled={saving || !draft.name.trim()}
-            onClick={() => onSave(draft)}
-          >
-            {saving ? 'Saving…' : 'Save offer'}
-          </VdfButton>
-        </div>
-      </div>
-    </>
-  );
-}
 
 /* ── A number you can click ─────────────────────────────────────────── */
 

@@ -28,25 +28,25 @@
   opacity: 0.7;
 }
 
-/* ── ICP Foundation card ──────────────────────────────── */
-.icpCard {
+/* ── Brain completeness card ──────────────────────────── */
+.brainCard {
   padding: 24px 28px;
 }
 
-.icpRow {
+.brainRow {
   display: flex;
   align-items: center;
   gap: 20px;
 }
 
-.icpInfo {
+.brainInfo {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.icpEyebrow {
+.brainEyebrow {
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -54,14 +54,14 @@
   color: var(--color-muted);
 }
 
-.icpStatus {
+.brainStatus {
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--color-fg);
   font-family: var(--font-display, serif);
 }
 
-.icpScore {
+.brainScore {
   font-size: 0.8rem;
   color: var(--color-muted);
 }
@@ -127,7 +127,7 @@
 
 @media (max-width: 900px) {
   .launchpadGrid { grid-template-columns: 1fr; }
-  .icpRow { flex-wrap: wrap; }
+  .brainRow { flex-wrap: wrap; }
 }
 
 @media (max-width: 768px) {

@@ -241,6 +241,18 @@ export const API = {
       auth: true,
       description: '"Edit again" on a just-confirmed brand',
     },
+    generateOfferDrafts: {
+      method: 'POST',
+      path: '/api/v1/profile/offers/generate',
+      auth: true,
+      description: 'Draft 1-3 offers from the profile + cached ingestion text',
+    },
+    confirmOffer: {
+      method: 'POST',
+      path: '/api/v1/profile/offers/:offerKey/confirm',
+      auth: true,
+      description: 'Confirm one offer — counts toward the Brain-completeness score',
+    },
   },
 
   /* ── VaNi (knowledge graph) ───────────────────────── */

@@ -12,9 +12,16 @@
  *   PUT  /brand               human edits to brand fields (JWT)
  *   POST /brand/approve       ratify the brand (JWT)
  *   POST /brand/reopen        "Edit again" on a just-confirmed brand (JWT)
+ *   POST /offers/generate           draft 1-3 offers from what VaNi knows (JWT)
+ *   POST /offers/:offerKey/confirm  confirm one offer — counts toward the score (JWT)
  *
  * Auth: every endpoint requires a valid JWT; tenant_id is read from the
  * token, never from the body.
+ *
+ * Everyday offer CRUD (list/create/edit) stays on the research-skill skill
+ * functions (get_offers/save_offer) — these two routes are only the parts
+ * that touch the Brain-completeness score or draft from the LLM, same split
+ * as brand/clusters above.
  */
 
 import { Router, type Request, type Response } from 'express';
@@ -39,6 +46,7 @@ import {
   reopenBrand,
   type TenantBrand,
 } from './brand.service';
+import { generateOfferDrafts, confirmOffer } from './offer-draft.service';
 
 /* ── SQL files (loaded once at module init) ─────────────────────────────── */
 
@@ -400,6 +408,50 @@ export function createProfileRouter(pool: Pool): Router {
       console.error('[Profile:POST /brand/reopen]', err);
       res.status(500).json({
         error: { code: 'INTERNAL_ERROR', message: messageOf(err) },
+      });
+    }
+  });
+
+  // ── POST /offers/generate ────────────────────────────────────────────
+  // Drafts 1-3 offers from the profile + cached ingestion text (no re-crawl
+  // — see offer-draft.service.ts). Never touches an existing offer_key.
+  router.post('/offers/generate', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    let runId: string | undefined;
+    try {
+      runId = await createRun(pool, jwt.tenant_id, 'profile-skill.offers.generate');
+      await setStatus(pool, runId, 'running');
+      const drafted = await generateOfferDrafts(pool, jwt.tenant_id, runId);
+      await setStatus(pool, runId, 'completed');
+      res.json({ drafted });
+    } catch (err) {
+      if (runId) {
+        await setStatus(pool, runId, 'failed', { error_trace: messageOf(err) }).catch(() => {});
+      }
+      console.error('[Profile:POST /offers/generate]', err);
+      res.status(500).json({
+        error: { code: 'INTERNAL_ERROR', message: messageOf(err) },
+      });
+    }
+  });
+
+  // ── POST /offers/:offerKey/confirm ───────────────────────────────────
+  // Human gate on one offer — stamps confirmed_at and recomputes the score.
+  // Editing an offer's fields (save_offer skill function) never does this.
+  router.post('/offers/:offerKey/confirm', async (req: Request, res: Response) => {
+    const jwt = requireAuth(req, res);
+    if (!jwt) return;
+
+    try {
+      await confirmOffer(pool, jwt.tenant_id, String(req.params.offerKey));
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[Profile:POST /offers/:offerKey/confirm]', err);
+      const notFound = messageOf(err).startsWith('OFFER_NOT_FOUND');
+      res.status(notFound ? 404 : 500).json({
+        error: { code: notFound ? 'OFFER_NOT_FOUND' : 'INTERNAL_ERROR', message: messageOf(err) },
       });
     }
   });

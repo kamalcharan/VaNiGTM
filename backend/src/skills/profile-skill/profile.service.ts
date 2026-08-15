@@ -2,12 +2,15 @@
  * profile-skill — service layer
  *
  * Reads/writes gt_tenant_profile and gt_tenant_profile_history.
- * Computes a weighted completion_score against the wizard's 5 real steps —
- * research 15 / vocabulary 15 / competitors 20 / ideal customer 25 / brand 25
- * (Complete the Mission Wizard, 2026-08-14) — is_complete is generated from
- * this in SQL. research/icp score field PRESENCE; vocabulary/competitors/
- * brand score CONFIRMED state only (their own tables already gate on
- * approval/confirmation, so an unconfirmed draft earns nothing).
+ * Computes completion_score as a composite of independently-weighted Brain
+ * objects (Intelligent Add Offers, 2026-08-15) — icp 25 / brand 20 /
+ * offers 20 / competitors 15 / vocabulary 10 / research 10 — is_complete is
+ * generated from this in SQL. research/icp score field PRESENCE;
+ * vocabulary/competitors/brand/offers score CONFIRMED state only (their own
+ * tables already gate on approval/confirmation, so an unconfirmed draft
+ * earns nothing). Each object's score is computed by its own function in
+ * BRAIN_SCORERS below — adding a new Brain object to the score means adding
+ * one entry there, not re-deriving the whole formula.
  *
  * Every write uses createTenantDb (RLS context set per connection) and
  * is wrapped in a transaction so the upsert + history insert succeed or
@@ -26,11 +29,12 @@ import { listClusters } from './cluster.service';
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
 export interface CompletionDetail {
-  research: number;     // 0-15
-  vocabulary: number;   // 0-15
-  competitors: number;  // 0-20
+  research: number;     // 0-10
+  vocabulary: number;   // 0-10
+  competitors: number;  // 0-15
   icp: number;           // 0-25
-  brand: number;          // 0-25
+  brand: number;          // 0-20
+  offers: number;         // 0-20
 }
 
 export interface TenantProfile {
@@ -107,69 +111,114 @@ export interface ScoreInputs {
   profile: Partial<TenantProfile>;
   approvedClusterCount: number;
   confirmedCompetitorCount: number;
+  confirmedOfferCount: number;
   brand: Partial<TenantBrand> | null;
 }
+
+/**
+ * One Brain object's slice of the score. `weight` is the max this scorer can
+ * contribute; `score` returns 0..weight. Adding a Brain object to the score
+ * means adding one entry to BRAIN_SCORERS — nothing else in this file
+ * changes shape.
+ */
+interface BrainScorer {
+  key: keyof CompletionDetail;
+  weight: number;
+  score: (inputs: ScoreInputs) => number;
+}
+
+// RESEARCH — scaled from the same 8 product fields step 1 fills.
+function scoreResearch(inputs: ScoreInputs, weight: number): number {
+  const { profile } = inputs;
+  let filled = 0;
+  if (hasValue(profile.product_name))        filled++;
+  if (hasValue(profile.product_description)) filled++;
+  if (hasValue(profile.core_problem))        filled++;
+  if (hasValue(profile.product_tagline))     filled++;
+  if (hasValue(profile.product_category))    filled++;
+  if (hasValue(profile.pricing_model))       filled++;
+  if (hasValue(profile.key_differentiators)) filled++;
+  if (hasValue(profile.pricing_range))       filled++;
+  return Math.round(weight * filled / 8);
+}
+
+// VOCABULARY — 3 approved clusters = full credit. Draft-only clusters earn
+// nothing — confirmation is the gate, same as the wizard's own propose/
+// confirm step.
+function scoreVocabulary(inputs: ScoreInputs, weight: number): number {
+  return Math.min(weight, Math.round(inputs.approvedClusterCount * weight / 3));
+}
+
+// COMPETITORS — 4 confirmed competitors = full credit.
+function scoreCompetitors(inputs: ScoreInputs, weight: number): number {
+  return Math.min(weight, Math.round(inputs.confirmedCompetitorCount * weight / 4));
+}
+
+// OFFERS — 4 confirmed offers = full credit. Same shape as competitors: an
+// agent-drafted, unconfirmed offer earns nothing (gt_offers.confirmed_at,
+// migration 239).
+function scoreOffers(inputs: ScoreInputs, weight: number): number {
+  return Math.min(weight, Math.round(inputs.confirmedOfferCount * weight / 4));
+}
+
+// IDEAL CUSTOMER — 80% across the 6 ICP fields + up to 20% richness bonus
+// for how many pain points were actually captured — a confirmed ICP with
+// one pain point should not score the same as one with five.
+function scoreIcp(inputs: ScoreInputs, weight: number): number {
+  const { profile } = inputs;
+  let filled = 0;
+  if (hasValue(profile.icp_role))            filled++;
+  if (hasValue(profile.icp_company_type))    filled++;
+  if (hasValue(profile.icp_industry))        filled++;
+  if (hasValue(profile.icp_geography))       filled++;
+  if (hasValue(profile.icp_company_size))    filled++;
+  if (hasValue(profile.primary_pain_points)) filled++;
+  const base = Math.round(weight * 0.8 * filled / 6);
+  const richnessCap = weight - Math.round(weight * 0.8);
+  const richness = Math.min(richnessCap, profile.primary_pain_points?.length ?? 0);
+  return Math.min(weight, base + richness);
+}
+
+// BRAND — gated on approval (an unconfirmed draft earns nothing). 5 equal
+// sub-sections, each prorated by how much was actually captured — richness
+// inside the section, same idea as the ICP pain-point bonus.
+function scoreBrand(inputs: ScoreInputs, weight: number): number {
+  const { brand } = inputs;
+  if (!brand?.approved_at) return 0;
+  const per = weight / 5;
+  const voice  = Math.min(per, Math.round(per * (brand.voice_tone?.length ?? 0) / 3));
+  const always = Math.min(per, Math.round(per * (brand.always_say?.length ?? 0) / 2));
+  const never  = Math.min(per, Math.round(per * (brand.never_say?.length ?? 0) / 2));
+  const visual = (brand.visual ?? {}) as BrandVisual;
+  // Primary is the one role that gates credit — secondary/accent are
+  // genuinely optional (not every brand has three distinct colors), so
+  // requiring them would penalize a legitimately two-color brand.
+  const visualHits = [Boolean(visual.logo_url), Boolean(visual.primary_color)].filter(Boolean).length;
+  const visualPts = Math.round(per * visualHits / 2);
+  const proofPts  = (brand.proof?.length ?? 0) > 0 ? per : 0;
+  return Math.min(weight, Math.round(voice + always + never + visualPts + proofPts));
+}
+
+const BRAIN_SCORERS: BrainScorer[] = [
+  { key: 'icp',         weight: 25, score: (i) => scoreIcp(i, 25) },
+  { key: 'brand',       weight: 20, score: (i) => scoreBrand(i, 20) },
+  { key: 'offers',      weight: 20, score: (i) => scoreOffers(i, 20) },
+  { key: 'competitors', weight: 15, score: (i) => scoreCompetitors(i, 15) },
+  { key: 'vocabulary',  weight: 10, score: (i) => scoreVocabulary(i, 10) },
+  { key: 'research',    weight: 10, score: (i) => scoreResearch(i, 10) },
+];
 
 export function calculateProfileScoreV2(
   inputs: ScoreInputs,
 ): { score: number; detail: CompletionDetail } {
-  const { profile, approvedClusterCount, confirmedCompetitorCount, brand } = inputs;
-
-  // RESEARCH — 15 max, scaled from the same 8 product fields step 1 fills
-  let filledResearch = 0;
-  if (hasValue(profile.product_name))        filledResearch++;
-  if (hasValue(profile.product_description)) filledResearch++;
-  if (hasValue(profile.core_problem))        filledResearch++;
-  if (hasValue(profile.product_tagline))     filledResearch++;
-  if (hasValue(profile.product_category))    filledResearch++;
-  if (hasValue(profile.pricing_model))       filledResearch++;
-  if (hasValue(profile.key_differentiators)) filledResearch++;
-  if (hasValue(profile.pricing_range))       filledResearch++;
-  const research = Math.round(15 * filledResearch / 8);
-
-  // VOCABULARY — 15 max, 5 pts per approved cluster (3 clusters = full credit).
-  // Draft-only clusters earn nothing — confirmation is the gate, same as the
-  // wizard's own propose/confirm step.
-  const vocabulary = Math.min(15, approvedClusterCount * 5);
-
-  // COMPETITORS — 20 max, 5 pts per confirmed competitor (4 = full credit).
-  const competitors = Math.min(20, confirmedCompetitorCount * 5);
-
-  // IDEAL CUSTOMER — 25 max: 20 base across the 6 ICP fields + up to 5
-  // richness bonus for how many pain points were actually captured — a
-  // confirmed ICP with one pain point should not score the same as one
-  // with five.
-  let filledIcp = 0;
-  if (hasValue(profile.icp_role))            filledIcp++;
-  if (hasValue(profile.icp_company_type))    filledIcp++;
-  if (hasValue(profile.icp_industry))        filledIcp++;
-  if (hasValue(profile.icp_geography))       filledIcp++;
-  if (hasValue(profile.icp_company_size))    filledIcp++;
-  if (hasValue(profile.primary_pain_points)) filledIcp++;
-  const icpBase = Math.round(20 * filledIcp / 6);
-  const painRichness = Math.min(5, profile.primary_pain_points?.length ?? 0);
-  const icp = Math.min(25, icpBase + painRichness);
-
-  // BRAND — 25 max, gated on approval (an unconfirmed draft earns nothing).
-  // 5 pts per section, prorated by how much was actually captured in each —
-  // richness inside the section, same idea as the ICP pain-point bonus.
-  let brandScore = 0;
-  if (brand?.approved_at) {
-    const voice   = Math.min(5, Math.round(5 * (brand.voice_tone?.length ?? 0) / 3));
-    const always  = Math.min(5, Math.round(5 * (brand.always_say?.length ?? 0) / 2));
-    const never   = Math.min(5, Math.round(5 * (brand.never_say?.length ?? 0) / 2));
-    const visual  = (brand.visual ?? {}) as BrandVisual;
-    // Primary is the one role that gates credit — secondary/accent are
-    // genuinely optional (not every brand has three distinct colors), so
-    // requiring them would penalize a legitimately two-color brand.
-    const visualHits = [Boolean(visual.logo_url), Boolean(visual.primary_color)].filter(Boolean).length;
-    const visualPts = Math.round(5 * visualHits / 2);
-    const proofPts  = (brand.proof?.length ?? 0) > 0 ? 5 : 0;
-    brandScore = voice + always + never + visualPts + proofPts;
+  const detail = {} as CompletionDetail;
+  let score = 0;
+  for (const scorer of BRAIN_SCORERS) {
+    const pts = Math.max(0, Math.min(scorer.weight, scorer.score(inputs)));
+    detail[scorer.key] = pts;
+    score += pts;
   }
-
-  const score = Math.min(100, research + vocabulary + competitors + icp + brandScore);
-  return { score, detail: { research, vocabulary, competitors, icp, brand: brandScore } };
+  return { score: Math.min(100, score), detail };
 }
 
 /** Gathers the 4 inputs calculateProfileScoreV2 needs. `profile` is passed in
@@ -182,7 +231,7 @@ async function gatherScoreInputs(
   profile: Partial<TenantProfile>,
 ): Promise<ScoreInputs> {
   const db = createTenantDb(pool, tenantId);
-  const [approvedClusters, competitorCountResult, brand] = await Promise.all([
+  const [approvedClusters, competitorCountResult, offerCountResult, brand] = await Promise.all([
     listClusters(pool, tenantId, { approvedOnly: true }),
     db.query<{ count: string }>(
       `SELECT count(*)::text AS count
@@ -191,12 +240,19 @@ async function gatherScoreInputs(
           AND properties->>'confirmed' = 'true'`,
       { tenant_id: tenantId },
     ),
+    db.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+         FROM gt_offers
+        WHERE tenant_id = $tenant_id AND is_active = true AND confirmed_at IS NOT NULL`,
+      { tenant_id: tenantId },
+    ),
     getBrand(pool, tenantId),
   ]);
   return {
     profile,
     approvedClusterCount: approvedClusters.length,
     confirmedCompetitorCount: parseInt(competitorCountResult.rows[0]?.count ?? '0', 10),
+    confirmedOfferCount: parseInt(offerCountResult.rows[0]?.count ?? '0', 10),
     brand,
   };
 }
@@ -210,7 +266,10 @@ export async function recomputeProfileScore(
 ): Promise<{ score: number; detail: CompletionDetail }> {
   const profile = await getProfile(pool, tenantId);
   if (!profile) {
-    return { score: 0, detail: { research: 0, vocabulary: 0, competitors: 0, icp: 0, brand: 0 } };
+    return {
+      score: 0,
+      detail: { research: 0, vocabulary: 0, competitors: 0, icp: 0, brand: 0, offers: 0 },
+    };
   }
 
   const inputs = await gatherScoreInputs(pool, tenantId, profile);
