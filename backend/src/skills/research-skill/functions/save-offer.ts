@@ -13,6 +13,8 @@
 
 import { SkillContext } from '../../../shared/types';
 import { isCommitment, COMMITMENTS, type Commitment } from '../offer-catalogue';
+import { getPool } from '../../../db';
+import { recomputeProfileScore } from '../../profile-skill/profile.service';
 
 interface SaveOfferParams {
   offer_key?: string;
@@ -60,16 +62,28 @@ export async function save_offer(
     commitment = params.commitment;
   }
 
-  return ctx.db.transaction(async (tx) => {
+  // A brand-new hand-typed offer has no agent draft to distrust — it
+  // confirms itself on creation (user ruling, 2026-08-15, same as the
+  // migration 239 backfill for pre-existing rows). Editing an offer that
+  // already exists — confirmed or an untouched agent draft — never changes
+  // confirmed_at here; only the explicit confirm action does.
+  const existing = await ctx.db.query<{ offer_key: string }>(
+    `SELECT offer_key FROM gt_offers WHERE tenant_id = $tenant_id AND offer_key = $offer_key`,
+    { tenant_id: ctx.tenant_id, offer_key: key },
+  );
+  const isNew = existing.rows.length === 0;
+
+  await ctx.db.transaction(async (tx) => {
     await tx.query(
       `INSERT INTO gt_offers
          (tenant_id, offer_key, name, one_line, who_for, problem,
           what_we_do, signals, disqualifiers, price_band, proof,
-          commitment, created_by)
+          commitment, created_by, source, confirmed_at)
        VALUES
          ($tenant_id, $offer_key, $name, $one_line, $who_for, $problem,
           $what_we_do::text[], $signals::text[], $disqualifiers::text[],
-          $price_band, $proof, COALESCE($commitment::text, 'project'), $user_id)
+          $price_band, $proof, COALESCE($commitment::text, 'project'), $user_id,
+          'human', now())
        ON CONFLICT (tenant_id, offer_key) DO UPDATE SET
           commitment    = COALESCE($commitment::text, gt_offers.commitment),
           name          = EXCLUDED.name,
@@ -96,6 +110,15 @@ export async function save_offer(
         user_id: ctx.user_id,
       },
     );
-    return { offer_key: key, recipe: 'offer-card' as const };
   });
+
+  // Only a newly-created offer changes the confirmed count this function can
+  // affect — recompute here since skill functions have no other hook for it
+  // (recomputeProfileScore needs the raw pool, which SkillContext does not
+  // carry; getPool() is the same singleton every request already uses).
+  if (isNew) {
+    await recomputeProfileScore(getPool(), ctx.tenant_id);
+  }
+
+  return { offer_key: key, recipe: 'offer-card' as const };
 }

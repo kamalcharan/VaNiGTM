@@ -24,6 +24,8 @@ const offer = (over: Partial<Offer> = {}): Offer => ({
   disqualifiers: ['Trading or distribution only, with no manufacturing'],
   price_band: 'INR 3-6 lakh per month, 6 month engagement',
   proof: 'Delivered for two Hyderabad API manufacturers in 2025.',
+  source: 'human',
+  confirmed_at: '2026-08-15T00:00:00.000Z',
   ...over,
 });
 

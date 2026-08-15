@@ -1,0 +1,119 @@
+/* Offers — what the tenant sells, as a Brain object.
+   Theme variables only; no hardcoded colours (CLAUDE.md rule 4). */
+
+.sectionHead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;
+}
+.sectionNote { font-size: 0.8rem; color: var(--color-text-muted); max-width: 62ch; }
+
+/* ── The blocking checklist ─────────────────────────────────────────── */
+
+.blocker {
+  border: 1px solid var(--color-warning, var(--color-border));
+  background: var(--color-surface);
+  border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem;
+}
+.blockerTitle {
+  font-size: 0.9rem; font-weight: 600; color: var(--color-text);
+  margin-bottom: 0.5rem;
+}
+.blockerList { margin: 0.25rem 0 0.75rem; padding-left: 1.1rem; }
+.blockerList li {
+  font-size: 0.82rem; color: var(--color-text-muted); margin-bottom: 0.25rem;
+}
+.blockerWhy { font-size: 0.78rem; color: var(--color-text-muted); font-style: italic; }
+
+/* ── Offers ─────────────────────────────────────────────────────────── */
+
+.offerGrid {
+  display: grid; gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+.offerCard {
+  border: 1px solid var(--color-border); background: var(--color-surface);
+  border-radius: 12px; padding: 1rem 1.1rem; cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+  display: flex; flex-direction: column; gap: 0.5rem;
+}
+.offerCard:hover { border-color: var(--color-accent); transform: translateY(-2px); }
+.offerHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
+.offerName { font-size: 0.95rem; font-weight: 600; color: var(--color-text); }
+.offerLine { font-size: 0.8rem; color: var(--color-text-muted); line-height: 1.45; }
+.badges { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+
+/* ── Form ───────────────────────────────────────────────────────────── */
+
+.formRow { margin-bottom: 1.75rem; }
+.formLabel {
+  display: block; font-size: 0.8rem; font-weight: 600;
+  color: var(--color-text); margin-bottom: 0.6rem;
+  letter-spacing: 0.01em;
+}
+.formHint {
+  font-size: 0.75rem; color: var(--color-text-muted);
+  margin-top: 0.5rem; line-height: 1.6; max-width: 60ch;
+}
+.textarea {
+  width: 100%; box-sizing: border-box;
+  resize: none; overflow: hidden;
+  background: var(--color-bg, var(--color-surface)); color: var(--color-text);
+  border: 1px solid var(--color-border); border-radius: 8px;
+  padding: 0.75rem 0.9rem; font: inherit; font-size: 0.875rem; line-height: 1.65;
+}
+.textarea:focus { outline: none; border-color: var(--color-accent); }
+.input {
+  width: 100%; box-sizing: border-box;
+  background: var(--color-bg, var(--color-surface));
+  color: var(--color-text);
+  border: 1px solid var(--color-border); border-radius: 8px;
+  padding: 0.75rem 0.9rem; font: inherit; font-size: 0.9rem;
+}
+.input:focus { outline: none; border-color: var(--color-accent); }
+.select {
+  background: var(--color-surface); color: var(--color-text);
+  border: 1px solid var(--color-border); border-radius: 8px;
+  padding: 0.45rem 0.7rem; font: inherit; font-size: 0.82rem;
+}
+.actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+/* Quick-pick chips under "Who it is for" — the tenant's own past phrasing,
+   not a fixed taxonomy. Free text stays free text; these are a shortcut. */
+.chipRow { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.chip {
+  background: var(--color-surface-2, var(--color-surface));
+  border: 1px solid var(--color-border); border-radius: 999px;
+  padding: 0.3rem 0.7rem; font-size: 0.75rem; color: var(--color-text-muted);
+  cursor: pointer; transition: border-color 0.15s ease, color 0.15s ease;
+}
+.chip:hover { border-color: var(--color-accent); color: var(--color-text); }
+
+.offerForm {
+  display: grid; gap: 3rem; max-width: 100%;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  padding-top: 0.5rem;
+}
+@media (max-width: 1000px) {
+  .offerForm { grid-template-columns: 1fr; gap: 1rem; }
+}
+.offerCol { min-width: 0; max-width: 100%; }
+.colHead {
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--color-accent); font-weight: 700;
+  padding-bottom: 0.75rem; margin-bottom: 1.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.offerFooter {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1.5rem; flex-wrap: wrap;
+  margin-top: 2rem; padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+  position: sticky; bottom: 0;
+  background: var(--color-surface);
+}
+
+.empty {
+  border: 1px dashed var(--color-border); border-radius: 12px;
+  padding: 2rem; text-align: center; color: var(--color-text-muted);
+}
