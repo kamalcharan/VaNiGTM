@@ -983,6 +983,36 @@ export default function MissionWizardPage() {
     await save;
   }, [brandEdits, showToast]);
 
+  // Colors live under brand.visual (a JSONB blob, not a top-level TenantBrand
+  // field), so they need their own read/save pair rather than reusing
+  // brandFieldValue/saveBrandField. A site that only renders its real
+  // styling via client-side JS (no headless renderer configured — see the
+  // extractVisualHints diagnostic log) can't be auto-detected at all, so
+  // this is a plain manual field, same as typing in any other brand fact.
+  const colorsFieldValue = (): string => {
+    if ('colors' in brandEdits) return brandEdits.colors;
+    return (brand?.visual?.colors ?? []).join(', ');
+  };
+
+  const saveBrandColors = useCallback(async () => {
+    if (!('colors' in brandEdits)) return;
+    const colors = brandEdits.colors
+      .split(',')
+      .map((c) => c.trim())
+      .filter((c) => /^#[0-9a-fA-F]{3,8}$/.test(c));
+    const save = (async () => {
+      try {
+        const res = await apiFetch<{ brand: TenantBrand }>(API.gtmProfile.updateBrand, { body: { colors } });
+        setBrand(res.brand);
+      } catch (err) {
+        showToast({ message: (err as ApiError).message || 'Failed to save colors', type: 'error' });
+      }
+    })();
+    brandPendingSaves.current.add(save);
+    save.finally(() => brandPendingSaves.current.delete(save));
+    await save;
+  }, [brandEdits, showToast]);
+
   const approveBrand = useCallback(async () => {
     setApprovingBrand(true);
     try {
@@ -1723,6 +1753,23 @@ export default function MissionWizardPage() {
                   </div>
                 </div>
               ) : null}
+              <div className={s.icpField}>
+                <label className={s.fieldLabel} htmlFor="brand-colors">Brand colors (hex, comma-separated)</label>
+                {!brand?.visual?.colors?.length && (
+                  <p className={s.memoryLine}>
+                    Couldn&apos;t read these automatically — some sites only render their real
+                    styling via JavaScript, which a plain fetch can&apos;t see. Type them in below.
+                  </p>
+                )}
+                <input
+                  id="brand-colors"
+                  className={s.input}
+                  placeholder="#1a73e8, #ff6b35"
+                  value={colorsFieldValue()}
+                  onChange={(e) => setBrandEdits((p) => ({ ...p, colors: e.target.value }))}
+                  onBlur={saveBrandColors}
+                />
+              </div>
               <div className={s.icpFields}>
                 {BRAND_FIELDS.map((f) => (
                   <div key={f.key} className={s.icpField}>
