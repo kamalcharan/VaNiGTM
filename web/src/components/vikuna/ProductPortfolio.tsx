@@ -605,8 +605,8 @@ const ProductPortfolio: React.FC = () => {
           </StoryGrid>
 
           <Disclaimer>
-            Deployments running on ContractNest during private beta. Customer names withheld
-            at their request — we&rsquo;ll walk you through any of them, live, on a call.
+            Deployments running on ContractNest during private beta, shown by sector rather
+            than by name. We&rsquo;ll walk you through any of them, live, on a call.
           </Disclaimer>
         </Inner>
       </Section>
