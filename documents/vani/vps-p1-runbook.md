@@ -14,7 +14,88 @@ starts by resolving the six unknowns that runbook flagged as guesses.
 
 ---
 
-## Step 0 · Discovery — run these and paste the output back
+## Step 0 · Discovery — RESOLVED 2026-08-16
+
+Ran against the Main VPS (`srv1528480`, `187.127.136.65`). The six unknowns
+VaNiGTM's runbook flagged as guesses are now facts:
+
+| Unknown | Answer |
+|---|---|
+| Shared Docker network | **`vikuna-net`** — put this in `deploy/vani-main-vps/.env` as `NETWORK_NAME=vikuna-net` |
+| nginx conf.d drop-in path | **`/opt/vikuna/docker/docker/config/nginx/conf.d/`** on the host, mounted **read-only** at `/etc/nginx/conf.d` |
+| nginx main config | `/opt/vikuna/docker/docker/config/nginx/nginx.conf` (host), read-only |
+| Certificates | `/etc/letsencrypt` is **already bind-mounted read-only** into `vikuna-nginx`, and certs already exist for **`api.vikuna.io`** *and* **`vani.vikuna.io`** |
+| certbot | present at `/usr/bin/certbot` |
+| Backend | `vani-backend` (`vikuna/vani-backend:latest`) **up 2 weeks, healthy**, listening on 3001, no published port — reached through nginx over `vikuna-net` |
+
+DNS today — **both** already resolve to the VPS:
+
+```
+api.vikuna.io   → 187.127.136.65
+vani.vikuna.io  → 187.127.136.65
+```
+
+Other containers on the box: `vikuna-postgres` (17-alpine), `vikuna-postgrest`,
+`vikuna-llm` (llama.cpp), and the KaalaDristi stack (`kd-pipeline-api2`,
+`kd-frontend`, `kd-mcp-db`).
+
+### What this changes
+
+- **Step 2 (certificate issuance) is essentially done.** No webroot dance, no
+  ACME challenge location, no new mount. The cert exists and nginx can already
+  read it.
+- **`vani.vikuna.io` currently points at the VPS, not Vercel.** That is the one
+  real obstacle: the console needs that name served by Vercel. Whatever is
+  answering on it today has to be identified before the record moves.
+- **The `snippets/` path in `vani-cors.conf` does not exist.** Only `conf.d` is
+  mounted, so `include /etc/nginx/snippets/vani-cors.conf;` would fail to load.
+  Either inline the CORS block into each location, or ship the snippet as
+  `conf.d/vani-cors.inc` (a non-`.conf` extension so nginx's `conf.d/*.conf`
+  glob does not auto-load it as a server block) and include that path instead.
+- **Config is mounted read-only.** Edit on the host under
+  `/opt/vikuna/docker/docker/config/nginx/conf.d/`, never inside the container.
+
+### ⚠ Separate finding — publicly exposed data services
+
+`docker ps` shows these published on **all interfaces**:
+
+```
+vikuna-postgres    0.0.0.0:5432->5432
+vikuna-postgrest   0.0.0.0:3000->3000
+vikuna-llm         0.0.0.0:8080->8080
+```
+
+Unless a host firewall is blocking them, Postgres 17 and PostgREST are reachable
+from the public internet, and the whole nginx allowlist — which exists to keep 17
+skills off the internet — is bypassable by connecting to 5432 directly. Nothing
+in the VaNi UI plan requires any of these to be published; `vani-backend` itself
+correctly publishes nothing and is reached over `vikuna-net`.
+
+Worth checking `sudo ufw status` / `sudo iptables -S` and, if they are genuinely
+open, binding them to `127.0.0.1:` instead. Out of scope for P1, but it is a
+bigger exposure than anything P1 introduces.
+
+---
+
+## Step 0b · Three things still to confirm
+
+```bash
+# a) What is already deployed, and what serves vani.vikuna.io today?
+ls -la /opt/vikuna/docker/docker/config/nginx/conf.d/
+grep -rl "vani.vikuna.io" /opt/vikuna/docker/docker/config/nginx/conf.d/
+
+# b) How does nginx include conf.d? (decides the .inc trick above)
+docker exec vikuna-nginx nginx -T 2>/dev/null | grep -nE "include .*conf" | head
+
+# c) Is the API already answering over TLS?
+curl -sI https://api.vikuna.io/health | head -3
+```
+
+---
+
+## Step 0 (original) · Discovery — for reference
+
+
 
 Nothing is changed by any of this. It answers the runbook's open guesses.
 
