@@ -21,23 +21,22 @@ npm run build
 npm run lint    # tsc --noEmit
 ```
 
-## ⚠ VANI_API_ORIGIN is required for auth to work
+## NEXT_PUBLIC_API_ORIGIN
 
-`next.config.ts` proxies `/api/*` to the VPS. This is not a convenience — it is
-load-bearing. VaNiGTM issues its refresh token as an httpOnly cookie with
-`SameSite=Strict`, which a browser will not send on a cross-site request. Proxy
-it and the cookie stays first-party, Strict keeps working, and the VPS needs no
-public CORS surface.
+The browser calls `api.vikuna.io` **directly**. `vani.vikuna.io` and
+`api.vikuna.io` share the registrable domain, so they are same-site and the
+`SameSite=Strict` refresh cookie is sent without any proxy.
 
-Set it in the Vercel project (and `.env.local` for local work):
+An earlier draft proxied `/api/*` through Vercel; that was rejected on review
+because it replaces the browser origin with Vercel's, defeating the origin
+allowlist in `deploy/vani-main-vps/api.vikuna.io.conf`.
 
 ```
-VANI_API_ORIGIN=https://api.vikuna.io
+NEXT_PUBLIC_API_ORIGIN=https://api.vikuna.io
 ```
 
-Unset, no rewrite is registered and auth calls fail closed with "The VaNi
-service is not configured for this deployment" rather than leaking to a wrong
-host.
+Requires on the VPS side: an SSL cert on `api.vikuna.io`, and `vani.vikuna.io`
+added to that config's `map $http_origin` allowlist.
 
 ## Vercel setup
 
@@ -48,9 +47,23 @@ host.
 
 ## What exists (P0)
 
-Login, logout, session restore across reloads, a guarded shell, a placeholder
-home. No business functionality — that arrives one skill at a time, each
-bringing its own endpoints into `src/lib/serviceURLs.ts`.
+The UX layer on mock data. No auth yet — P1 adds it.
+
+- `platform/registry.ts` — the four Org OS nav groups. The shell renders from
+  it and holds no hardcoded destinations.
+- `lib/useSkill.ts` — the generic transport, ported from VaNiGTM's
+  `useSkillQuery`, with `lib/mock-transport.ts` behind it.
+- Live screens: Dashboard, All Agents, Runs & Traces.
+- Planned routes render an honest not-yet state from a catch-all — **no page
+  file needed**.
+- Login exists but is not wired into the console until P1.
+
+### Adding a skill
+
+One folder under `src/skills/` and one line in `src/skills/index.ts`. Nothing in
+`src/platform/` changes — that is the test, and it is verified rather than
+assumed. A *live* screen additionally needs a thin `page.tsx` under
+`app/(console)/` re-exporting it; a *planned* one needs nothing.
 
 ## Conventions carried over from VaNiGTM
 
