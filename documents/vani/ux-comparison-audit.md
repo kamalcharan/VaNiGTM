@@ -84,21 +84,21 @@ Do not discard these when moving to the new IA:
 - **Honest empty states.** `/today` already ships "coming soon" tiles rather than
   pretending. Keep that habit.
 
-## 5. Three conflicts to settle before the nav is built
+## 5. The agent model (settled), and two conflicts that remain
 
-**Agent names disagree across every source.**
+**Settled:** VaNi is the head — the orchestrator. Each agent sits under it with its
+own goals, its own role catalog and its own metering. **Vara is the first agent;
+others are built later.**
 
-| Source | Agents |
-|---|---|
-| Org OS prototype | Dean (Orchestrator), Aria (GTM), Nova (**Digital**), Ledger (O2C) |
-| Platform spec | Vara (Talent) first, Nova (**Marketing**) next |
-| VaNiGTM nav | GTM, Nova |
-| Build plan | Vara is P3 |
+That resolves what looked like a naming clash. The prototype's four agents were
+illustrative, not a commitment — its "Dean · Org Orchestrator" is VaNi itself,
+and Aria / Nova / Ledger are placeholders for agents not yet built. Vara's
+absence from the prototype was never a contradiction.
 
-Nova exists in two of them with different roles, and **Vara — the agent with a
-full specification, data model and migrations — does not appear in the prototype
-at all.** The Agents group is the spine of the new navigation; it cannot be built
-on names that disagree.
+So the Agents group is buildable now: **VaNi** at the head, **Vara** beneath it,
+and an **Add agent** row for what follows. Only one naming question is left, and
+it is cosmetic rather than blocking — whether the orchestrator row reads "VaNi"
+or carries a separate name of its own.
 
 **Onboarding is two different products.** VaNiGTM's Mission Wizard teaches an
 agent. The spec's platform lane declares an organisation — profile, domains,
@@ -127,8 +127,11 @@ and take VaNiGTM's responsive patterns with you.
 4. **Every other nav item registered but rendering an honest "not yet"** — the
    habit `/today` already has.
 
+**Also in, now that the agent model is settled:** the Agents group — VaNi at the
+head, Vara beneath it, Add agent below. Vara's own screens stay at P3; this is
+the group and its frames only.
+
 **Out of the first delivery:**
-- The Agents group beyond a placeholder, until the naming is settled.
 - Signup, until the operator-provisioned question is answered.
 - Onboarding — it is P2, and it needs the platform lane decided first.
 
