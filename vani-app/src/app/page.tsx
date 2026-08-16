@@ -1,22 +1,16 @@
 'use client';
 
 /**
- * Root gate. Sends people to the shell or to login once the bootstrap refresh
- * has settled — never before, or a reload would bounce an authenticated user
- * out to the login screen for a frame.
+ * Root gate. P0 has no auth, so this lands straight on the console. P1 replaces
+ * this with the authenticated redirect (dashboard when signed in, login when not).
  */
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/auth-provider';
 
 export default function IndexPage() {
-  const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-
   useEffect(() => {
-    if (isLoading) return;
-    router.replace(isAuthenticated ? '/home' : '/login');
-  }, [isAuthenticated, isLoading, router]);
-
+    router.replace('/dashboard');
+  }, [router]);
   return null;
 }

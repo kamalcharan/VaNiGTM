@@ -3,26 +3,18 @@ import type { NextConfig } from 'next';
 /**
  * The API and database live on the VPS; only this UI deploys to Vercel.
  *
- * Rather than calling the VPS cross-origin, we proxy /api/* through this
- * origin. That is deliberate and load-bearing: VaNiGTM sets its refresh token
- * as an httpOnly cookie with SameSite=Strict
- * (backend/src/auth/auth.routes.ts). A cross-site request would not carry that
- * cookie, so login would appear to succeed and then silently drop the session
- * on the next reload. Proxying keeps the cookie first-party, keeps Strict
- * intact, and means the VPS needs no public CORS surface at all.
+ * The browser calls api.vikuna.io DIRECTLY — see src/lib/api-client.ts. An
+ * earlier draft proxied /api/* through Vercel to keep the refresh cookie
+ * first-party; that was rejected on review. vani.vikuna.io and api.vikuna.io
+ * share the registrable domain, so they are same-site and SameSite=Strict
+ * already sends the cookie without a proxy — and proxying would have replaced
+ * the browser origin with Vercel's, defeating the origin allowlist in
+ * deploy/vani-main-vps/api.vikuna.io.conf.
  *
- * VANI_API_ORIGIN is the VPS origin, e.g. https://api.vikuna.io — set it in the
- * Vercel project, not here. With it unset (local UI work), no rewrite is
- * registered and auth calls fail closed rather than leaking to a wrong host.
+ * Set NEXT_PUBLIC_API_ORIGIN in the Vercel project, not here.
  */
-const apiOrigin = process.env.VANI_API_ORIGIN;
-
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  async rewrites() {
-    if (!apiOrigin) return [];
-    return [{ source: '/api/:path*', destination: `${apiOrigin}/api/:path*` }];
-  },
 };
 
 export default nextConfig;

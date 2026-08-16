@@ -21,25 +21,25 @@ export const API = {
   auth: {
     login: {
       method: 'POST',
-      path: '/api/auth/login',
+      path: '/api/v1/auth/login',
       auth: false,
       description: 'Exchange credentials for an access token; sets the refresh cookie.',
     },
     refresh: {
       method: 'POST',
-      path: '/api/auth/refresh',
+      path: '/api/v1/auth/refresh',
       auth: false,
       description: 'Rotate the session. The httpOnly cookie carries the refresh token.',
     },
     logout: {
       method: 'POST',
-      path: '/api/auth/logout',
+      path: '/api/v1/auth/logout',
       auth: true,
       description: 'Revoke the server session and clear the refresh cookie.',
     },
     me: {
       method: 'GET',
-      path: '/api/auth/me',
+      path: '/api/v1/auth/me',
       auth: true,
       description: 'Hydrate the current user and tenant.',
     },

@@ -8,12 +8,26 @@
  *     readable cookie — an XSS that can read storage should not walk away with
  *     a session.
  *   - The refresh token is an httpOnly cookie the browser holds and we never
- *     see. It is sent automatically because every call uses
- *     credentials:'include' and the API is same-origin via the Vercel proxy.
+ *     see. Calls go DIRECTLY to api.vikuna.io with credentials:'include' —
+ *     vani.vikuna.io and api.vikuna.io share the registrable domain, so they
+ *     are same-site and SameSite=Strict still sends the cookie. Proxying
+ *     through Vercel was rejected deliberately: it would replace the browser
+ *     origin with Vercel's, defeating the nginx origin allowlist.
  *   - A 401 triggers exactly one silent refresh and one retry. Never a loop.
  */
 
 import { API, type ServiceEndpoint } from './serviceURLs';
+
+/**
+ * Origin of the VaNi API on the VPS, e.g. https://api.vikuna.io. Public because
+ * the browser calls it directly. Unset, requests fail closed rather than
+ * resolving against this app and 404-ing confusingly.
+ */
+const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? '';
+
+function url(endpoint: ServiceEndpoint): string {
+  return `${API_ORIGIN}${endpoint.path}`;
+}
 
 let accessToken: string | null = null;
 
@@ -63,7 +77,7 @@ async function readError(res: Response): Promise<string> {
  */
 export async function silentRefresh(): Promise<boolean> {
   try {
-    const res = await fetch(API.auth.refresh.path, {
+    const res = await fetch(url(API.auth.refresh), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -95,7 +109,7 @@ export async function apiFetch<T>(
 
   let res: Response;
   try {
-    res = await fetch(endpoint.path, {
+    res = await fetch(url(endpoint), {
       method: endpoint.method,
       headers,
       credentials: 'include',
