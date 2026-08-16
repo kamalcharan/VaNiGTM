@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VaNi Platform — Specification v0.1</title>
+<style>
+:root{
+  --paper:#faf9f6; --card:#ffffff; --ink:#1c1b19; --ink2:#4c4a45; --muted:#8a8780;
+  --line:#e6e4dd; --line2:#d5d2c8;
+  --accent:#2a5fae; --accent2:#4a3aa7; --warm:#b8501e; --good:#1d7a1d; --crit:#b03030; --gold:#9a6b00;
+  --grad:linear-gradient(120deg,#2a5fae,#4a3aa7 60%,#199e70);
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --serif:Georgia,'Times New Roman',serif;
+  --mono:ui-monospace,'Cascadia Code','SF Mono',Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:14.5px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.page{max-width:1060px;margin:0 auto;padding:0 36px 120px}
+.cover{padding:80px 0 44px;border-bottom:3px solid var(--ink)}
+.cover .brand{font-size:13px;letter-spacing:.28em;text-transform:uppercase;font-weight:700;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:20px}
+.cover h1{font-family:var(--serif);font-size:50px;line-height:1.08;font-weight:400;max-width:840px}
+.cover h1 b{font-weight:700}
+.cover .meta{display:flex;gap:24px;margin-top:28px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+.cover .meta b{color:var(--ink2);font-weight:600}
+.creed{margin-top:24px;font-family:var(--serif);font-size:19px;font-style:italic;color:var(--ink2)}
+.creed b{color:var(--accent);font-style:normal}
+.toc{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 40px;padding:28px 0;border-bottom:1px solid var(--line);counter-reset:toc}
+.toc a{text-decoration:none;color:var(--ink2);font-size:13px;padding:5px 0;display:flex;gap:10px}
+.toc a:hover{color:var(--accent)}
+.toc a::before{counter-increment:toc;content:counter(toc,decimal-leading-zero);color:var(--muted);font-weight:700;font-size:11px;padding-top:2px}
+section{padding-top:60px}
+.sec-tag{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:800;margin-bottom:8px}
+h2{font-family:var(--serif);font-size:30px;font-weight:400;margin-bottom:16px}
+h3{font-size:16px;font-weight:800;margin:32px 0 12px}
+h4{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:800;margin:22px 0 10px}
+p{max-width:820px;margin-bottom:12px}
+.lead{font-size:16.5px;color:var(--ink2)}
+em.term{font-style:normal;background:rgba(42,95,174,.08);padding:1px 6px;border-radius:5px;font-weight:600}
+code{font-family:var(--mono);font-size:12.5px}
+.callout{border-left:4px solid var(--accent);background:var(--card);border-radius:0 12px 12px 0;padding:16px 20px;margin:18px 0;max-width:860px;box-shadow:0 2px 10px rgba(28,27,25,.04)}
+.callout.warn{border-color:var(--warm)}
+.personas{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:18px}
+.pcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:0 2px 12px rgba(28,27,25,.04)}
+.pcard .p-id{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.1em;padding:3px 10px;border-radius:99px;color:#fff;background:var(--accent);margin-bottom:9px}
+.pcard.p2 .p-id{background:var(--accent2)}
+.pcard.p3 .p-id{background:var(--warm)}
+.pcard.p4 .p-id{background:var(--good)}
+.pcard h3{margin:0 0 5px;font-size:16px}
+.pcard .p-sub{font-size:12px;color:var(--muted);margin-bottom:10px}
+.pcard p{font-size:13px;margin:0}
+.pcard .p-cares{margin-top:11px;font-size:12.5px;color:var(--ink2)}
+.pcard .p-cares b{color:var(--accent)}
+.epic{margin-top:28px;border:1px solid var(--line);border-radius:16px;background:var(--card);overflow:hidden;box-shadow:0 2px 14px rgba(28,27,25,.04)}
+.epic-h{padding:15px 22px;border-bottom:1px solid var(--line);background:linear-gradient(120deg,rgba(42,95,174,.05),rgba(25,158,112,.05));display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.epic-h .e-id{font-weight:800;color:var(--accent);font-size:13px}
+.epic-h h3{margin:0;font-size:16px}
+.epic-h .e-sub{font-size:12px;color:var(--muted);margin-left:auto}
+.story{padding:15px 22px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:88px 1fr;gap:16px}
+.story:last-child{border-bottom:none}
+.story .s-id{font-weight:800;font-size:12px;color:var(--muted)}
+.story .s-id .who{display:block;margin-top:6px;font-size:10px;letter-spacing:.06em;font-weight:800;color:#fff;background:var(--accent);border-radius:99px;padding:2px 8px;text-align:center}
+.story .s-id .who.p2{background:var(--accent2)}.story .s-id .who.p3{background:var(--warm)}.story .s-id .who.p4{background:var(--good)}
+.story .s-txt{font-size:13.5px}
+.story .s-txt>b{font-size:14px}
+.ac{margin-top:8px;font-size:12.5px;color:var(--ink2)}
+.ac span{display:block;padding:3px 0 3px 22px;position:relative}
+.ac span::before{content:'✓';position:absolute;left:2px;color:var(--good);font-weight:800}
+.flow{margin:20px 0;padding:22px;background:var(--card);border:1px solid var(--line);border-radius:16px;overflow-x:auto;box-shadow:0 2px 14px rgba(28,27,25,.04)}
+.flow-title{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:16px}
+.frow{display:flex;align-items:stretch;gap:0;min-width:640px}
+.fnode{flex:1;border:1.5px solid var(--line2);border-radius:11px;padding:11px 13px;font-size:12px;line-height:1.45;background:var(--paper);min-width:104px}
+.fnode b{display:block;font-size:12.5px;margin-bottom:2px}
+.fnode .fn-s{color:var(--muted);font-size:11px}
+.fnode.start{border-color:var(--accent);background:rgba(42,95,174,.06)}
+.fnode.gate{border-color:var(--gold);background:rgba(154,107,0,.06)}
+.fnode.agent{border-color:var(--warm);background:rgba(184,80,30,.06)}
+.fnode.term{border-color:var(--good);background:rgba(29,122,29,.06)}
+.fnode.bad{border-color:var(--crit);background:rgba(176,48,48,.05)}
+.farr{display:flex;align-items:center;padding:0 7px;color:var(--muted);font-weight:800;font-size:15px;flex-shrink:0}
+.flabel{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);align-self:center;padding:0 8px;flex-shrink:0}
+.fnote{font-size:11.5px;color:var(--muted);margin-top:12px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:14px 0;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:11px 16px;border-bottom:2px solid var(--line);font-weight:800;background:var(--paper)}
+td{padding:11px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td:first-child{font-weight:700;white-space:nowrap}
+.chip{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:99px;border:1px solid var(--line2);color:var(--ink2);margin:1px 2px}
+.chip.must{border-color:rgba(29,122,29,.45);color:var(--good);background:rgba(29,122,29,.05)}
+.chip.never{border-color:rgba(176,48,48,.45);color:var(--crit);background:rgba(176,48,48,.05)}
+footer{margin-top:80px;padding-top:22px;border-top:3px solid var(--ink);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+@media (max-width:820px){.personas,.toc{grid-template-columns:1fr}.cover h1{font-size:36px}}
+@media print{.flow,.epic{break-inside:avoid}section{padding-top:32px}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="cover">
+  <div class="brand">VaNi Platform · The layer every agent stands on</div>
+  <h1><b>VaNi Platform</b> — Specification <span style="color:var(--muted)">v0.1</span></h1>
+  <div class="meta">
+    <span>Status <b>Draft for review</b></span>
+    <span>Owner <b>Charan · Vikuna</b></span>
+    <span>Date <b>16 Aug 2026</b></span>
+    <span>First consumer <b>Vara (Talent)</b> · next <b>Nova (Marketing)</b></span>
+    <span>Schema <b>vani_ · validated · see Vara Data Model v1.0</b></span>
+  </div>
+  <div class="creed">The platform owns what never changes per agent: <b>identity, orchestration fabric, org context, shared services.</b> Agents extend it; they never modify it.</div>
+</div>
+
+<div class="toc">
+  <a href="#p1">Positioning &amp; invariants</a>
+  <a href="#p2">Personas</a>
+  <a href="#p3">The agent integration contract</a>
+  <a href="#p4">Shared services</a>
+  <a href="#p5">Key flows</a>
+  <a href="#p6">Epics &amp; user stories</a>
+  <a href="#p7">Non-functional requirements</a>
+  <a href="#p8">Legacy &amp; naming</a>
+  <a href="#p9">Schema reference &amp; next step</a>
+</div>
+
+<!-- ============ 1 ============ -->
+<section id="p1">
+  <div class="sec-tag">Section 1</div>
+  <h2>Positioning &amp; invariants</h2>
+  <p class="lead">VaNi Platform is the tenant-facing foundation of the Org OS direction: the layer that holds an organisation's identity, people, structure and shared services, on which individually-priced agents (Vara, Nova, and those after them) are activated. It is the concrete first slice of the invariant core — <b>core auth, core orchestration, knowledge building</b> — that was settled as the product boundary: only the data changes per customer; this layer does not.</p>
+  <table>
+    <tr><th style="width:240px">Invariant</th><th>What it means in the build</th></tr>
+    <tr><td>Agents extend, never modify</td><td>Platform tables never grow agent-specific columns. An agent ships as its own prefixed tables hanging off platform keys, plus declarations into the platform's registries. Activating an agent adds rows; deactivating removes them; the organisation is untouched either way.</td></tr>
+    <tr><td>One declaration, N projections</td><td>A tenant states each fact about itself once — industry, people, families, provider — at the platform. Every agent receives a delegation and activates its own slice. No agent ever re-asks a platform question.</td></tr>
+    <tr><td>Vikuna is tenant #1</td><td>vikuna.io runs as a real tenant row through the same provisioning, gates and metering as any subscriber. A behaviour that only works for the home tenant is a bug.</td></tr>
+    <tr><td>Shared services are the platform's voice</td><td>Comms (MSG91, sender “vani”), metering, audit and embed tokens are platform services with per-agent accounting. Agents call them; they never re-implement them.</td></tr>
+    <tr><td>The audit spine is singular</td><td>One vani_audit_log across all agents. “What happened to this entity” is answerable from one table, with actor_type ∈ human | rule | timer | system — <b>“model” is never a legal actor</b>, platform-wide.</td></tr>
+    <tr><td>Per-agent commerce</td><td>Every agent carries its own commercial gateway and metering units, per the family's pricing model. The platform aggregates; it does not bundle.</td></tr>
+  </table>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="p2">
+  <div class="sec-tag">Section 2</div>
+  <h2>Personas</h2>
+  <p>The platform has four personas — and one of them is not human. Treating the agent as a persona is what makes the integration contract (Section 3) a first-class product surface rather than tribal knowledge.</p>
+  <div class="personas">
+    <div class="pcard p1">
+      <div class="p-id">O1 · OPERATOR</div>
+      <h3>Vikuna platform team</h3>
+      <div class="p-sub">Runs VaNi as a product across tenants and agents.</div>
+      <p>Provisions and suspends tenants, registers agents, authors and publishes domain packs, watches fleet health and the commercial gateway.</p>
+      <div class="p-cares">Cares about: <b>tenant isolation, unit economics, one platform serving every agent.</b></div>
+    </div>
+    <div class="pcard p2">
+      <div class="p-id">O2 · TENANT ADMIN</div>
+      <h3>The organisation's owner-operator</h3>
+      <div class="p-sub">Completes the platform lane once; owns org-level state forever.</div>
+      <p>Declares the org profile and industry binding, manages domains, users, memberships, role families, per-agent role assignments and the LLM provider.</p>
+      <div class="p-cares">Cares about: <b>declaring things once, controlling who can act where, no surprises on the invoice.</b></div>
+    </div>
+    <div class="pcard p3">
+      <div class="p-id">O3 · AGENT</div>
+      <h3>Vara, Nova, and successors</h3>
+      <div class="p-sub">A software persona with a contract, not a privileged insider.</div>
+      <p>Registers into the fabric, declares its roles and metering units, consumes identity/context/services through the contract, and extends the org through its own prefixed tables.</p>
+      <div class="p-cares">Cares about: <b>a stable contract, everything it needs available at activation, nothing platform-side to build.</b></div>
+    </div>
+    <div class="pcard p4">
+      <div class="p-id">O4 · MEMBER</div>
+      <h3>The tenant's people</h3>
+      <div class="p-sub">One identity, many agent roles.</div>
+      <p>Logs in once (bridged auth), holds platform membership, and acts inside each agent only through the roles granted per agent — an HM in Vara, nothing in Nova.</p>
+      <div class="p-cares">Cares about: <b>one login, seeing only what their roles allow, their actions being attributed correctly.</b></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="p3">
+  <div class="sec-tag">Section 3</div>
+  <h2>The agent integration contract</h2>
+  <p class="lead">The centerpiece. Any agent — Vara today, Nova next, an O2C agent later — plugs into the platform through exactly this contract. If a capability is not in the contract, the agent builds it in its own prefix or requests a platform change; it never reaches into vani_ directly.</p>
+
+  <h4>An agent MUST DECLARE (writes into platform registries, at registration)</h4>
+  <table>
+    <tr><th style="width:250px">Declaration</th><th>Where · example (Vara)</th></tr>
+    <tr><td>Identity &amp; version</td><td><code>vani_agent</code> — code <code>vara</code>, name, version. One row per agent, platform-wide.</td></tr>
+    <tr><td>Role catalog</td><td><code>vani_agent_role</code> — <code>ta</code>, <code>hm</code>, <code>calibration_approver</code>. The tenant assigns people to these; the agent only reads assignments.</td></tr>
+    <tr><td>Metering unit types</td><td>Registered with the gateway — <code>candidate_scored</code>, <code>knockout_close</code>. Every unit the agent will ever bill must be declared before first emission.</td></tr>
+    <tr><td>Template set</td><td><code>vani_template</code> codes + channels the agent sends with — Vara's six (ACK-01 … POOL-02). Instantiated per tenant at activation.</td></tr>
+    <tr><td>Pack namespace</td><td>The key under which the agent reads <code>vani_domain_pack.payload</code> — e.g. <code>payload.vara</code> (question banks, knockout templates, signal adapters).</td></tr>
+    <tr><td>Activation checklist</td><td>The agent's own readiness gate items, machine-checkable, evaluated by the platform's activation flow (Flow F1).</td></tr>
+  </table>
+
+  <h4>An agent MUST CONSUME (reads/calls, never re-implements)</h4>
+  <table>
+    <tr><th style="width:250px">Capability</th><th>Contract</th></tr>
+    <tr><td>Identity &amp; membership</td><td>Users come from <code>vani_user</code>/<code>vani_membership</code>; authorisation inside the agent comes from <code>vani_user_agent_role</code>. <span class="chip never">never</span> an agent-local user table.</td></tr>
+    <tr><td>Org context</td><td><code>vani_role_family</code> read-only; agent-specific behaviour hangs on a 1:1 extension row in the agent's prefix (the vara_family_profile pattern).</td></tr>
+    <tr><td>Pack binding</td><td><code>vani_tenant_pack_binding</code> is the tenant's single industry declaration; the agent activates its namespace, asks nothing again.</td></tr>
+    <tr><td>LLM provider</td><td>Per-tenant credentials via <code>vani_llm_provider</code>. <span class="chip never">never</span> pooled, <span class="chip never">never</span> agent-stored.</td></tr>
+    <tr><td>Comms</td><td>Sends only via the platform comms service (MSG91, sender “vani”) referencing declared template codes; every send lands in <code>vani_comms_log</code>.</td></tr>
+    <tr><td>Metering</td><td>Emits <code>vani_metering_event</code> rows (agent = self) at the declared unit moments — ideally from triggers, as Vara does at snapshot time.</td></tr>
+    <tr><td>Audit</td><td>Every state change writes <code>vani_audit_log</code> in the same transaction, actor_type from the legal set, payloads id-referencing (no PII).</td></tr>
+    <tr><td>Embed tokens</td><td>Public surfaces are served under <code>vani_tenant_domain</code> entries through the platform's origin-bound token service (Flow F3).</td></tr>
+  </table>
+
+  <h4>An agent MUST NEVER</h4>
+  <p><span class="chip never">alter vani_ tables</span> <span class="chip never">store users or credentials</span> <span class="chip never">send comms around the platform service</span> <span class="chip never">read another agent's prefix</span> <span class="chip never">touch another tenant's rows</span> <span class="chip never">use “model” as an audit actor</span> — the first and last are enforced in the database; the rest by code review against this contract.</p>
+
+  <div class="callout"><b>The test of the contract:</b> Nova's activation should require <b>zero</b> platform DDL — a vani_agent row, its role catalog, its unit types, its template set, its pack namespace, and its own nova_ tables. If Nova needs more than that, the gap is a platform change request, not a workaround.</div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="p4">
+  <div class="sec-tag">Section 4</div>
+  <h2>Shared services</h2>
+  <table>
+    <tr><th style="width:230px">Service</th><th>Specification</th></tr>
+    <tr><td>Identity &amp; tenancy</td><td>Tenant records, domains with verification, users with <code>auth_ref</code> bridging the existing auth stack (Supabase or successor — authentication stays where it is; the platform owns identity, not login). Memberships carry platform roles; agent roles are separate and per-agent.</td></tr>
+    <tr><td>Agent fabric</td><td>Registry of agents and their role catalogs; subscriptions per tenant with lifecycle provisioned → activating → live → suspended. Deactivation deletes agent-prefix rows and role assignments; org state survives untouched.</td></tr>
+    <tr><td>Org context</td><td>Role families as an agent-neutral graph (with hierarchy). The platform guarantees stability of family ids so agent extension rows never dangle; family deletion is blocked while any agent extension references it.</td></tr>
+    <tr><td>Domain packs</td><td>Platform-authored, versioned artifacts (code + version unique) with per-agent namespaces in the payload. Publishing is append-only — a new version, never an edit. Tenants bind once; agents read their namespace at activation and on pack upgrade (explicit tenant-approved upgrade, no silent rebinding).</td></tr>
+    <tr><td>Comms (MSG91)</td><td>One delivery infrastructure — the MSG91 integration proven in ContractNest, sender identity “vani”, tenant identity in template content. The service owns template registration, WhatsApp approval tracking, sends, provider status callbacks, opt-outs, and the append-only log. Agents pass template code + variables + recipient ref; nothing else.</td></tr>
+    <tr><td>Metering &amp; gateway</td><td>Append-only events, per agent per tenant, aggregated by the commercial gateway into per-agent statements. Guarantee: every event reconciles 1:1 with a referenced row (ref_table, ref_id) — an invoice line is always traceable to the exact snapshot or close that earned it.</td></tr>
+    <tr><td>Audit spine</td><td>One append-only log, agents attributed, actor rules platform-wide, payloads id-referencing by policy (this is what lets DPDP purge leave audit intact). Query surface: by entity, by tenant, by agent, by actor.</td></tr>
+    <tr><td>Embed &amp; tokens</td><td>Origin-bound tokens issued per tenant domain for public surfaces (candidate chat, status pages — and whatever Nova exposes later). Validation at the edge against <code>embed_origins</code>; rejects are audited. Tokens are scoped (tenant, agent, surface) and revocable.</td></tr>
+    <tr><td>LLM provider</td><td>BYO per tenant: encrypted credentials, verified by test call, health-checked. Provider outage is surfaced to agents as a capability flag so each degrades by its own plan (Vara: web-form intake + queued extraction).</td></tr>
+  </table>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="p5">
+  <div class="sec-tag">Section 5</div>
+  <h2>Key flows</h2>
+
+  <div class="flow">
+    <div class="flow-title">Flow F1 · Agent activation — the contract in motion</div>
+    <div class="frow">
+      <div class="fnode start"><b>1 · Register</b><span class="fn-s">operator adds vani_agent + role catalog + unit types + template codes + pack namespace</span></div>
+      <div class="farr">→</div>
+      <div class="fnode"><b>2 · Subscribe</b><span class="fn-s">vani_tenant_agent (provisioned) · gateway ref assigned</span></div>
+      <div class="farr">→</div>
+      <div class="fnode agent"><b>3 · Activation lane</b><span class="fn-s">the agent's own wizard (Vara: comms, compliance, overlays) · status = activating</span></div>
+      <div class="farr">→</div>
+      <div class="fnode gate"><b>4 · Readiness gate</b><span class="fn-s">agent's declared checklist, platform-evaluated</span></div>
+      <div class="farr">→</div>
+      <div class="fnode term"><b>5 · Live</b><span class="fn-s">embed tokens issued · metering active</span></div>
+      <div class="farr">→</div>
+      <div class="fnode bad"><b>Deactivate</b><span class="fn-s">agent-prefix rows + role assignments removed · org untouched · statements survive</span></div>
+    </div>
+  </div>
+
+  <div class="flow">
+    <div class="flow-title">Flow F2 · Domain pack lifecycle — author once, delegate everywhere</div>
+    <div class="frow">
+      <div class="fnode start"><b>Author</b><span class="fn-s">operator drafts pack: per-agent namespaces (vara.*, nova.*)</span></div>
+      <div class="farr">→</div>
+      <div class="fnode"><b>Publish vN</b><span class="fn-s">append-only — a new version, never an edit</span></div>
+      <div class="farr">→</div>
+      <div class="fnode"><b>Tenant binds</b><span class="fn-s">once, at the platform lane</span></div>
+      <div class="farr">→</div>
+      <div class="fnode agent"><b>Agents activate their slice</b><span class="fn-s">Vara reads payload.vara · Nova reads payload.nova · no duplicate industry step</span></div>
+      <div class="farr">→</div>
+      <div class="fnode gate"><b>Upgrade</b><span class="fn-s">new version offered · tenant approves · agents re-read — never silent</span></div>
+    </div>
+  </div>
+
+  <div class="flow">
+    <div class="flow-title">Flow F3 · Embed token — public surfaces in the tenant's environment</div>
+    <div class="frow">
+      <div class="fnode start"><b>Issue</b><span class="fn-s">at agent go-live: token scoped (tenant, agent, surface) bound to vani_tenant_domain.embed_origins</span></div>
+      <div class="farr">→</div>
+      <div class="fnode"><b>Load</b><span class="fn-s">candidate opens careers.vikuna.io — tenant brand, tenant domain</span></div>
+      <div class="farr">→</div>
+      <div class="fnode gate"><b>Edge check</b><span class="fn-s">origin ∈ allowlist? token live? agent live?</span></div>
+      <div class="farr">→</div>
+      <div class="fnode term"><b>Serve</b><span class="fn-s">surface renders · session scoped to tenant</span></div>
+    </div>
+    <div class="frow" style="margin-top:12px">
+      <div class="flabel">deny</div>
+      <div class="fnode bad"><b>Reject + audit</b><span class="fn-s">non-allowlisted origin or revoked token → refused at the edge, vani_audit_log row written</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="p6">
+  <div class="sec-tag">Section 6</div>
+  <h2>Epics &amp; user stories</h2>
+  <p class="lead">Platform stories are numbered VN-xx. Vara's stories (V-xx, Specification v0.2) consume these; none duplicate them.</p>
+
+  <div class="epic">
+    <div class="epic-h"><span class="e-id">PE1</span><h3>Tenant lifecycle</h3><span class="e-sub">operator-owned</span></div>
+    <div class="story"><div class="s-id">VN-01<span class="who">O1</span></div><div class="s-txt"><b>Provision a tenant.</b> As the operator, I create a tenant — Vikuna included — with its RLS scope, domains and data region, before any admin logs in.
+      <div class="ac"><span>vani_tenant + vani_tenant_domain rows; every later row RLS-scoped; no home-tenant special case.</span><span>Wizard link issued to the named Tenant Admin.</span></div></div></div>
+    <div class="story"><div class="s-id">VN-02<span class="who">O1</span></div><div class="s-txt"><b>Suspend and resume.</b> As the operator, suspending a tenant freezes every agent surface without losing a row.
+      <div class="ac"><span>Suspension cascades to all vani_tenant_agent rows and revokes embed tokens; resume restores exact prior state.</span><span>Both actions audited with actor.</span></div></div></div>
+  </div>
+
+  <div class="epic">
+    <div class="epic-h"><span class="e-id">PE2</span><h3>Platform lane — the once-per-tenant declarations</h3><span class="e-sub">Tenant Admin</span></div>
+    <div class="story"><div class="s-id">VN-10<span class="who p2">O2</span></div><div class="s-txt"><b>Declare the organisation once.</b> As Tenant Admin, I set the org profile, verify domains, and bind our industry's domain pack — for every agent, forever.
+      <div class="ac"><span>Domain verification precedes any public surface; embed_origins editable with audit.</span><span>Pack binding is single-declaration; agents receive delegation, never re-ask.</span></div></div></div>
+    <div class="story"><div class="s-id">VN-11<span class="who p2">O2</span></div><div class="s-txt"><b>Manage people and structure.</b> As Tenant Admin, I manage users, memberships, and the role-family graph in one place.
+      <div class="ac"><span>Users bridge to existing auth via auth_ref on first login — no migration required to start.</span><span>Family deletion is blocked while any agent extension row references it.</span></div></div></div>
+    <div class="story"><div class="s-id">VN-12<span class="who p2">O2</span></div><div class="s-txt"><b>Grant roles per agent.</b> As Tenant Admin, I assign each person their roles within each agent, from the agent's declared catalog.
+      <div class="ac"><span>Assignments live in vani_user_agent_role; an HM in Vara is nothing in Nova unless granted.</span><span>Grants/revocations audited; agents read assignments, never write them.</span></div></div></div>
+    <div class="story"><div class="s-id">VN-13<span class="who p2">O2</span></div><div class="s-txt"><b>Connect our model provider.</b> As Tenant Admin, I connect BYO LLM credentials once; every agent uses them.
+      <div class="ac"><span>Encrypted at rest, verified by test call, never pooled across tenants.</span><span>Provider health exposed to agents as a capability flag for their own degradation plans.</span></div></div></div>
+  </div>
+
+  <div class="epic">
+    <div class="epic-h"><span class="e-id">PE3</span><h3>Agent fabric</h3><span class="e-sub">the contract, operationally (Flow F1)</span></div>
+    <div class="story"><div class="s-id">VN-20<span class="who">O1</span></div><div class="s-txt"><b>Register an agent.</b> As the operator, I register an agent with its full declaration set — identity, roles, unit types, templates, pack namespace, activation checklist.
+      <div class="ac"><span>Registration is complete or rejected — no partially-declared agents.</span><span>Nova's registration requires zero platform DDL (the contract test).</span></div></div></div>
+    <div class="story"><div class="s-id">VN-21<span class="who p3">O3</span></div><div class="s-txt"><b>Activate per tenant through the gate.</b> As an agent, my activation lane runs after subscription, and the platform evaluates my declared checklist before flipping me live.
+      <div class="ac"><span>Status transitions provisioned → activating → live are platform-owned and audited.</span><span>Going live triggers embed-token issuance and metering activation atomically.</span></div></div></div>
+    <div class="story"><div class="s-id">VN-22<span class="who">O1</span></div><div class="s-txt"><b>Deactivate cleanly.</b> As the operator, deactivating an agent for a tenant removes the agent's world and nothing else.
+      <div class="ac"><span>Agent-prefix rows and role assignments removed; families, users, packs, statements and audit survive.</span><span>Re-activation later starts a fresh activation lane; history in audit remains queryable.</span></div></div></div>
+  </div>
+
+  <div class="epic">
+    <div class="epic-h"><span class="e-id">PE4</span><h3>Domain packs</h3><span class="e-sub">Flow F2</span></div>
+    <div class="story"><div class="s-id">VN-30<span class="who">O1</span></div><div class="s-txt"><b>Author and publish packs.</b> As the operator, I author packs with per-agent namespaces and publish append-only versions.
+      <div class="ac"><span>code+version unique; published payloads immutable; no tenant data ever inside a pack.</span><span>A pack validates against each declared agent namespace schema before publish.</span></div></div></div>
+    <div class="story"><div class="s-id">VN-31<span class="who p2">O2</span></div><div class="s-txt"><b>Upgrade deliberately.</b> As Tenant Admin, a new pack version is an offer I approve — never a silent rebinding.
+      <div class="ac"><span>Diff of namespace changes shown per agent before approval.</span><span>Approval re-delegates; agents re-read their slice; the previous binding stays in audit.</span></div></div></div>
+  </div>
+
+  <div class="epic">
+    <div class="epic-h"><span class="e-id">PE5</span><h3>Shared services in operation</h3><span class="e-sub">comms · metering · audit · tokens</span></div>
+    <div class="story"><div class="s-id">VN-40<span class="who p3">O3</span></div><div class="s-txt"><b>Send through one voice.</b> As an agent, I send candidate/customer comms by template code + variables; the platform does the rest on MSG91 as “vani”.
+      <div class="ac"><span>WhatsApp approval status tracked per template; unapproved templates unsendable.</span><span>Every send, delivery callback and opt-out lands in vani_comms_log, append-only.</span></div></div></div>
+    <div class="story"><div class="s-id">VN-41<span class="who p2">O2</span></div><div class="s-txt"><b>An invoice I can audit.</b> As Tenant Admin, every statement line traces to metering events, and every event to the exact row that earned it.
+      <div class="ac"><span>Per-agent statements from vani_metering_event aggregation; 1:1 ref reconciliation surfaced in the UI.</span><span>Operator sees the same numbers fleet-wide.</span></div></div></div>
+    <div class="story"><div class="s-id">VN-42<span class="who">O1</span></div><div class="s-txt"><b>One answer to “what happened”.</b> As the operator (or any admin), I query the audit spine across agents by entity, actor, or time.
+      <div class="ac"><span>Cross-agent timeline per entity id; actor_type never “model”, enforced at the database.</span><span>Payloads are id-referencing — purge-safe by construction.</span></div></div></div>
+    <div class="story"><div class="s-id">VN-43<span class="who p3">O3</span></div><div class="s-txt"><b>Public surfaces on tenant domains.</b> As an agent, my public surfaces are served through origin-bound tokens on the tenant's verified domains.
+      <div class="ac"><span>Non-allowlisted origins refused at the edge and audited (Flow F3).</span><span>Tokens are scoped (tenant, agent, surface), revocable, and die with suspension.</span></div></div></div>
+  </div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="p7">
+  <div class="sec-tag">Section 7</div>
+  <h2>Non-functional requirements</h2>
+  <table>
+    <tr><th style="width:230px">Requirement</th><th>Target · v1</th></tr>
+    <tr><td>Isolation</td><td>RLS on every tenant-scoped table (validated: cross-tenant sessions are blind); per-tenant LLM credentials never pooled; agent prefixes mutually unreadable by contract.</td></tr>
+    <tr><td>Availability &amp; degradation</td><td>Platform services degrade independently: comms outage queues sends with SLA alerting; LLM outage flips the capability flag; embed edge fails closed. No degradation path loses a row.</td></tr>
+    <tr><td>Immutability</td><td>Audit, comms log, metering and pack versions are append-only, database-enforced. The DPDP purge function is the single sanctioned bypass, itself audited.</td></tr>
+    <tr><td>Key management</td><td>LLM and provider credentials encrypted at rest; embed tokens signed, scoped and revocable; JWT secrets per deployment as per existing VaNi practice.</td></tr>
+    <tr><td>Observability</td><td>Fleet view for the operator: per tenant × agent — activation state, metering run-rate, comms delivery rates, audit anomalies (e.g. edge rejects).</td></tr>
+    <tr><td>Scale posture</td><td>Sized for the family's near-term reality: tens of tenants, a handful of agents, thousands of metering events/day — with nothing in the design that caps an order of magnitude more.</td></tr>
+  </table>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="p8">
+  <div class="sec-tag">Section 8</div>
+  <h2>Legacy &amp; naming</h2>
+  <p>This platform layer is the concrete first slice of the <b>VaNi Core</b> direction settled earlier — kernel-as-dependency rather than copy-the-template — arrived at bottom-up: Vara needed the spine, so the spine got built first. Legacy VN_ and GTM tables coexist untouched; existing auth stays where it is, bridged by <code>vani_user.auth_ref</code>; nothing is renamed or migrated (“let history be history”). The open naming question (VaNi Core v0.1 vs VaNiBase v3.0) remains open — this document calls the layer simply <b>VaNi Platform</b> and is compatible with either answer.</p>
+  <div class="callout warn"><b>Deliberately out of scope · v1:</b> platform-level workflow/orchestration engine (agents orchestrate themselves for now — the org orchestration agent is a later phase of the Org OS roadmap) · cross-agent knowledge graph / UNS (roadmapped after knowledge maturity) · self-serve public tenant signup (operator-provisioned in v1) · billing execution (the gateway produces statements; payment collection is external).</div>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="p9">
+  <div class="sec-tag">Section 9</div>
+  <h2>Schema reference &amp; next step</h2>
+  <p>The platform schema — 16 <code>vani_</code> tables across identity, fabric, org context and shared services — is fully specified, DDL'd and <b>validated on PostgreSQL 16</b> in the <b>Vara Data Model v1.0</b> document (migration <code>001_vani_platform.sql</code>). It is not repeated here; that file is the single source of truth for structure.</p>
+  <div class="callout"><b>Next step on go-ahead:</b> the build plan across both documents — migration execution in VaNiGTM (001 → 003), the platform service seams as code modules (comms adapter over MSG91, token service, gateway aggregation), then Vara's skills against the contract. One Claude Code hand-off brief covers the sequence.</div>
+</section>
+
+<footer>
+  <span><b>VaNi Platform Specification v0.1</b> · Vikuna</span>
+  <span>agents extend · never modify</span>
+</footer>
+</div>
+</body>
+</html>

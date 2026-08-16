@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vara — Product Specification &amp; Schema v0.2</title>
+<style>
+:root{
+  --paper:#faf9f6; --card:#ffffff; --ink:#1c1b19; --ink2:#4c4a45; --muted:#8a8780;
+  --line:#e6e4dd; --line2:#d5d2c8;
+  --accent:#4a3aa7; --accent2:#2a5fae; --warm:#b8501e; --good:#1d7a1d; --crit:#b03030; --gold:#9a6b00;
+  --grad:linear-gradient(120deg,#2a5fae,#4a3aa7 60%,#8d3f76);
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --serif:Georgia,'Times New Roman',serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:14.5px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.page{max-width:1060px;margin:0 auto;padding:0 36px 120px}
+
+/* cover */
+.cover{padding:84px 0 46px;border-bottom:3px solid var(--ink)}
+.cover .brand{font-size:13px;letter-spacing:.28em;text-transform:uppercase;font-weight:700;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:20px}
+.cover h1{font-family:var(--serif);font-size:52px;line-height:1.08;font-weight:400;max-width:820px}
+.cover h1 b{font-weight:700}
+.cover .meta{display:flex;gap:26px;margin-top:30px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+.cover .meta b{color:var(--ink2);font-weight:600}
+.creed{margin-top:26px;font-family:var(--serif);font-size:19px;font-style:italic;color:var(--ink2)}
+.creed b{color:var(--accent);font-style:normal}
+
+/* toc */
+.toc{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 40px;padding:30px 0;border-bottom:1px solid var(--line);counter-reset:toc}
+.toc a{text-decoration:none;color:var(--ink2);font-size:13px;padding:5px 0;display:flex;gap:10px;border-bottom:1px dashed transparent}
+.toc a:hover{color:var(--accent)}
+.toc a::before{counter-increment:toc;content:counter(toc,decimal-leading-zero);color:var(--muted);font-weight:700;font-size:11px;padding-top:2px}
+
+/* sections */
+section{padding-top:64px}
+.sec-tag{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:800;margin-bottom:8px}
+h2{font-family:var(--serif);font-size:31px;font-weight:400;margin-bottom:16px}
+h3{font-size:16px;font-weight:800;margin:34px 0 12px}
+h4{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:800;margin:24px 0 10px}
+p{max-width:820px;margin-bottom:12px}
+p b{font-weight:700}
+.lead{font-size:16.5px;color:var(--ink2)}
+em.term{font-style:normal;background:rgba(74,58,167,.08);padding:1px 6px;border-radius:5px;font-weight:600}
+
+/* callout */
+.callout{border-left:4px solid var(--accent);background:var(--card);border-radius:0 12px 12px 0;padding:16px 20px;margin:18px 0;max-width:860px;box-shadow:0 2px 10px rgba(28,27,25,.04)}
+.callout.warn{border-color:var(--warm)}
+.callout b{font-weight:700}
+
+/* persona cards */
+.personas{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:18px}
+.pcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:0 2px 12px rgba(28,27,25,.04)}
+.pcard .p-id{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.1em;padding:3px 10px;border-radius:99px;color:#fff;background:var(--accent);margin-bottom:9px}
+.pcard.p2 .p-id{background:var(--accent2)}
+.pcard.p3 .p-id{background:#8d3f76}
+.pcard.p4 .p-id{background:var(--good)}
+.pcard.p5 .p-id{background:var(--gold)}
+.pcard h3{margin:0 0 5px;font-size:16px}
+.pcard .p-sub{font-size:12px;color:var(--muted);margin-bottom:10px}
+.pcard p{font-size:13px;margin:0}
+.pcard .p-cares{margin-top:11px;font-size:12.5px;color:var(--ink2)}
+.pcard .p-cares b{color:var(--accent)}
+
+/* story cards */
+.epic{margin-top:30px;border:1px solid var(--line);border-radius:16px;background:var(--card);overflow:hidden;box-shadow:0 2px 14px rgba(28,27,25,.04)}
+.epic-h{padding:16px 22px;border-bottom:1px solid var(--line);background:linear-gradient(120deg,rgba(42,95,174,.05),rgba(74,58,167,.05));display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.epic-h .e-id{font-weight:800;color:var(--accent);font-size:13px}
+.epic-h h3{margin:0;font-size:16px}
+.epic-h .e-sub{font-size:12px;color:var(--muted);margin-left:auto}
+.story{padding:16px 22px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:88px 1fr;gap:16px}
+.story:last-child{border-bottom:none}
+.story .s-id{font-weight:800;font-size:12px;color:var(--muted)}
+.story .s-id .who{display:block;margin-top:6px;font-size:10px;letter-spacing:.06em;font-weight:800;color:#fff;background:var(--accent);border-radius:99px;padding:2px 8px;text-align:center}
+.story .s-id .who.p2{background:var(--accent2)}.story .s-id .who.p3{background:#8d3f76}
+.story .s-id .who.p4{background:var(--good)}.story .s-id .who.p5{background:var(--gold)}
+.story .s-txt{font-size:13.5px}
+.story .s-txt>b{font-size:14px}
+.ac{margin-top:8px;font-size:12.5px;color:var(--ink2)}
+.ac span{display:block;padding:3px 0 3px 22px;position:relative}
+.ac span::before{content:'✓';position:absolute;left:2px;color:var(--good);font-weight:800}
+
+/* flows */
+.flow{margin:20px 0;padding:22px;background:var(--card);border:1px solid var(--line);border-radius:16px;overflow-x:auto;box-shadow:0 2px 14px rgba(28,27,25,.04)}
+.flow-title{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:16px}
+.frow{display:flex;align-items:stretch;gap:0;min-width:640px}
+.fnode{flex:1;border:1.5px solid var(--line2);border-radius:11px;padding:11px 13px;font-size:12px;line-height:1.45;background:var(--paper);position:relative;min-width:108px}
+.fnode b{display:block;font-size:12.5px;margin-bottom:2px}
+.fnode .fn-s{color:var(--muted);font-size:11px}
+.fnode.start{border-color:var(--accent2);background:rgba(42,95,174,.06)}
+.fnode.gate{border-color:var(--gold);background:rgba(154,107,0,.06)}
+.fnode.human{border-color:#8d3f76;background:rgba(141,63,118,.06)}
+.fnode.term{border-color:var(--good);background:rgba(29,122,29,.06)}
+.fnode.bad{border-color:var(--crit);background:rgba(176,48,48,.05)}
+.farr{display:flex;align-items:center;padding:0 7px;color:var(--muted);font-weight:800;font-size:15px;flex-shrink:0}
+.fbranch{display:grid;gap:12px;margin-top:12px}
+.fnote{font-size:11.5px;color:var(--muted);margin-top:12px}
+.flabel{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);align-self:center;padding:0 8px;flex-shrink:0}
+
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:13px;margin:14px 0;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:11px 16px;border-bottom:2px solid var(--line);font-weight:800;background:var(--paper)}
+td{padding:11px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td b{font-weight:700}
+td:first-child{font-weight:700;white-space:nowrap}
+
+.chip{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:99px;border:1px solid var(--line2);color:var(--ink2);margin:1px 2px}
+.chip.a{border-color:rgba(74,58,167,.4);color:var(--accent);background:rgba(74,58,167,.05)}
+.chip.g{border-color:rgba(29,122,29,.4);color:var(--good);background:rgba(29,122,29,.05)}
+.chip.w{border-color:rgba(184,80,30,.4);color:var(--warm);background:rgba(184,80,30,.05)}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+footer{margin-top:80px;padding-top:22px;border-top:3px solid var(--ink);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+@media (max-width:820px){.personas,.two,.toc{grid-template-columns:1fr}.cover h1{font-size:36px}}
+@media print{body{font-size:11.5px}.cover{padding-top:30px}section{padding-top:30px}.flow{break-inside:avoid}.epic{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ============ COVER ============ -->
+<div class="cover">
+  <div class="brand">VARA · “The Chosen One” · VaNi Talent Agent</div>
+  <h1><b>Vara</b> — Product Specification &amp; Schema <span style="color:var(--muted)">v0.2</span></h1>
+  <div class="meta">
+    <span>Status <b>Draft for review</b></span>
+    <span>Owner <b>Charan · Vikuna</b></span>
+    <span>Date <b>16 Aug 2026</b></span>
+    <span>Framework <b>VaNi · GTM codebase · tagged “Talent”</b></span>
+    <span>Follows <b>UX prototype v2 (approved direction)</b></span>
+  </div>
+  <div class="meta" style="margin-top:10px">
+    <span>v0.2 changes <b>platform/agent split (users, roles, families, packs at VaNi) · two-lane onboarding · MSG91 comms · tenant-environment surfaces · Vikuna as tenant #1 · mobile posture · full vani_/vara_ schema (D1–D7 settled)</b></span>
+  </div>
+  <div class="creed">Vara is <b>not an ATS</b>. It is an intelligent enabler: <b>rules reject, models rank, humans decide.</b></div>
+</div>
+
+<!-- ============ TOC ============ -->
+<div class="toc">
+  <a href="#s1">Positioning &amp; principles</a>
+  <a href="#s2">Personas</a>
+  <a href="#s3">Multi-tenancy &amp; subscription</a>
+  <a href="#s4">Tenant onboarding</a>
+  <a href="#s5">Concept glossary</a>
+  <a href="#s6">Application lifecycle</a>
+  <a href="#s7">Epics &amp; user stories</a>
+  <a href="#s8">Ingestion pipeline</a>
+  <a href="#s9">Calibration loop</a>
+  <a href="#s10">Domain independence</a>
+  <a href="#s11">Comms &amp; compliance</a>
+  <a href="#s12">Non-functional requirements</a>
+  <a href="#s13">Out of scope · v1</a>
+  <a href="#s14">Schema — platform (vani_)</a>
+  <a href="#s15">Schema — agent (vara_)</a>
+  <a href="#s16">Open questions &amp; next step</a>
+</div>
+
+<!-- ============ 1 POSITIONING ============ -->
+<section id="s1">
+  <div class="sec-tag">Section 1</div>
+  <h2>Positioning &amp; principles</h2>
+  <p class="lead">Vara is a subscription agent in the VaNi family that runs the front half of talent acquisition for a tenant: it composes job definitions, converses with candidates, ingests whatever they share, screens with evidence, ranks by probability, and hands humans a decision that is already prepared — never already made.</p>
+  <p>Vara lives inside the VaNiGTM codebase, tagged <em class="term">Talent</em>, reusing the GTM funnel spine (intake → enrich → score → route → communicate). Like Nova, it carries its own name, its own commercial gateway, and its own metering. First tenant: Vikuna internal; then externalised.</p>
+  <h3>Principles (each one is testable in the product)</h3>
+  <table>
+    <tr><th style="width:220px">Principle</th><th>What it means in the build</th></tr>
+    <tr><td>Rules reject, models rank, humans decide</td><td>Only deterministic knockout rules can close an application without a human. Model scores order candidates; they never terminate anyone. Every decision of record has a human name on it.</td></tr>
+    <tr><td>Nothing closes instantly</td><td>Every below-threshold candidate enters a <b>closing window</b> (default 3 days, per-JD configurable). The rejection message fires only when the timer expires untouched. Humans can Rescue, Hold, or Close-now at any point inside the window.</td></tr>
+    <tr><td>Evidence, not adjectives</td><td>Every score component cites its source — a chat answer, a resume line, a public signal. If a number cannot show its evidence, it does not ship.</td></tr>
+    <tr><td>Learning is gated</td><td>Vara proposes calibration changes; a named human approves. A threshold can never rise without explicit approval. Every scoring config is versioned and immutable.</td></tr>
+    <tr><td>No black holes</td><td>Every applicant is acknowledged on application and informed on decision — on their channel (email + WhatsApp), within a stated SLA, including rejections.</td></tr>
+    <tr><td>Consent-clean data only</td><td>Candidate data enters via the candidate’s own hand (upload, link, chat). No scraping. Consent, retention, and deletion are product features, not policy documents.</td></tr>
+    <tr><td>Attention compresses at volume</td><td>At 250 applications, the human sees the ~9 above the line and Vara’s picks below it. Everything else is reachable (search, ranked lists, bulk actions) but never demanded.</td></tr>
+    <tr><td>Vikuna is tenant #1, not a special case</td><td>vikuna.io is a real tenant row — its own tenant_id, onboarding record, embed config and metering — even though it shares the folder structure. Any feature that works for Vikuna only because it is “the home tenant” is a bug. Dogfooding <b>is</b> the multi-tenant test.</td></tr>
+    <tr><td>Agents extend, never modify</td><td>Platform tables (vani_) never grow agent-specific columns. An agent ships as its own prefixed tables (vara_) hanging off platform keys. Activating an agent adds rows; deactivating removes them; the org’s structure is untouched either way.</td></tr>
+  </table>
+</section>
+
+<!-- ============ 2 PERSONAS ============ -->
+<section id="s2">
+  <div class="sec-tag">Section 2</div>
+  <h2>Personas</h2>
+  <div class="personas">
+    <div class="pcard p1">
+      <div class="p-id">P1 · TENANT ADMIN</div>
+      <h3>Head of HR / Ops lead</h3>
+      <div class="p-sub">Owns the subscription. Onboards the organisation. Sets policy.</div>
+      <p>Configures comms channels, compliance posture, role families and defaults. Approves calibration proposals. Watches metering and loop health.</p>
+      <div class="p-cares">Cares about: <b>defensibility, cost, brand of the candidate experience.</b></div>
+    </div>
+    <div class="pcard p2">
+      <div class="p-id">P2 · TA PROFESSIONAL</div>
+      <h3>Recruiter / Talent acquisition</h3>
+      <div class="p-sub">Daily driver. The human in “humans decide”.</div>
+      <p>Composes JDs with Vara, watches the probability map, works the closing window (rescue/hold/close), advances candidates, hands over to hiring managers.</p>
+      <div class="p-cares">Cares about: <b>time-to-shortlist, not missing a good one, defensible closes.</b></div>
+    </div>
+    <div class="pcard p3">
+      <div class="p-id">P3 · HIRING MANAGER</div>
+      <h3>The role’s owner</h3>
+      <div class="p-sub">Occasional user. Receives a prepared decision.</div>
+      <p>Reviews a ranked, evidence-backed shortlist. Verdicts: Interview or Pass-with-reason. Never touches the pipeline mechanics.</p>
+      <div class="p-cares">Cares about: <b>quality of the top 5, zero admin, his verdict being heard.</b></div>
+    </div>
+    <div class="pcard p4">
+      <div class="p-id">P4 · CANDIDATE</div>
+      <h3>Applicant — any domain</h3>
+      <div class="p-sub">Engineer, salesperson, nurse, delivery lead. Applies once, remembered respectfully.</div>
+      <p>Applies through a conversation, not a form. Told the rules up front (band, notice, knockouts). Gets status honestly, on their channel, whatever the outcome.</p>
+      <div class="p-cares">Cares about: <b>respect, speed, honesty, control of their data.</b></div>
+    </div>
+    <div class="pcard p5" style="grid-column:1/-1">
+      <div class="p-id">P5 · VANI OPERATOR</div>
+      <h3>Vikuna platform team</h3>
+      <div class="p-sub">Runs Vara as a product across tenants.</div>
+      <p>Provisions tenants, monitors agent health and loop-health circuit breakers across the fleet, manages domain packs, operates the commercial gateway (per-candidate metering, invoicing).</p>
+      <div class="p-cares">Cares about: <b>tenant isolation, unit economics, one codebase serving every domain.</b></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3 MULTI-TENANCY ============ -->
+<section id="s3">
+  <div class="sec-tag">Section 3</div>
+  <h2>Multi-tenancy &amp; subscription</h2>
+  <p class="lead">Vara is multi-tenant by construction. A tenant is an organisation that subscribes to the Vara agent; nothing works for a tenant until onboarding completes.</p>
+  <table>
+    <tr><th style="width:230px">Decision</th><th>Specification</th></tr>
+    <tr><td>Tenancy model</td><td>Single deployment, shared schema, row-level security on <b>tenant_id</b> everywhere (consistent with the VaNi base-framework decision: same domain, different config — no per-tenant tables).</td></tr>
+    <tr><td>Subscription unit</td><td>The tenant subscribes to <b>the Vara agent</b> — not to VaNiGTM as a whole. Vara carries its own commercial gateway, consistent with the per-agent pricing model of the VaNi family.</td></tr>
+    <tr><td>Metering unit</td><td><b>Per candidate processed</b> (scored past knockouts). Knockout-only closes meter at a reduced rate. JD creation, comms, and pool storage are inclusive. Metering events are written at score time — the same moment the score snapshot is stored.</td></tr>
+    <tr><td>Tenant isolation</td><td>Candidates, JDs, scores, comms, calibration history: all tenant-scoped. The talent pool is <b>per tenant</b> — candidates are never shared or matched across tenants. Domain packs and the platform code are the only shared artifacts.</td></tr>
+    <tr><td>LLM provider</td><td>Bring-your-own per tenant (Org OS thesis): tenant connects their provider credentials during onboarding; extraction and conversation run against the tenant’s provider. Scoring composition and knockouts are deterministic and provider-free.</td></tr>
+    <tr><td>Tenant environment</td><td>Candidate-facing surfaces (chat apply, status page, infographic JD) render <b>in the tenant’s environment</b> — tenant domain (e.g. careers.vikuna.io), tenant branding, served via a tenant-scoped embed token bound to an origin allowlist. The TA/HM workspace lives on the platform origin.</td></tr>
+    <tr><td>Usage gate</td><td>No JD can be published, and no candidate link goes live, until the tenant passes the <b>onboarding readiness checklist</b> (Section 4).</td></tr>
+  </table>
+
+  <h3>Platform vs agent — who owns what</h3>
+  <table>
+    <tr><th style="width:250px">Concern</th><th style="width:200px">Owner</th><th>Vara’s relationship to it</th></tr>
+    <tr><td>Tenant identity, domains, embed origins</td><td><span class="chip a">VaNi platform</span></td><td>Consumes. Vara’s surfaces are served under vani_tenant_domain entries.</td></tr>
+    <tr><td>Users, memberships, platform roles</td><td><span class="chip a">VaNi platform</span></td><td>Consumes. Vara never stores a user.</td></tr>
+    <tr><td>Agent roles (TA, HM, calibration approver)</td><td><span class="chip a">VaNi platform</span> — catalog per agent</td><td>Vara <b>declares</b> its role codes in vani_agent_role; assignment per user per tenant lives in vani_user_agent_role (“roles filtered per agent”).</td></tr>
+    <tr><td>Role families</td><td><span class="chip a">VaNi platform</span> — org context</td><td>Vara extends each family with a 1:1 <b>vara_family_profile</b> (weights, thresholds, scoring config). Definition is the org’s; talent behaviour is Vara’s.</td></tr>
+    <tr><td>Domain packs &amp; industry binding</td><td><span class="chip a">VaNi platform</span> — declared once</td><td>Delegated. Vara activates its slice (question banks, knockout templates, signal adapters) from the tenant’s existing binding. No duplicate “pick your industry”.</td></tr>
+    <tr><td>LLM provider (BYO)</td><td><span class="chip a">VaNi platform</span></td><td>Consumes per tenant for chat + extraction.</td></tr>
+    <tr><td>Comms (templates, sends)</td><td><span class="chip a">VaNi platform</span> — via <b>MSG91</b></td><td>Reuses the MSG91 infrastructure already integrated in ContractNest; sender identity “vani”, tenant identity carried in template content. Vara references template codes; every send logs to vani_comms_log.</td></tr>
+    <tr><td>Metering &amp; commercial gateway</td><td><span class="chip a">VaNi platform</span></td><td>Vara emits vani_metering_event rows (agent=vara) at score time; the gateway aggregates per agent.</td></tr>
+    <tr><td>Audit spine</td><td><span class="chip a">VaNi platform</span> — one log</td><td>Vara writes every transition to vani_audit_log with agent=vara. One place answers “what happened to this person” across agents.</td></tr>
+    <tr><td>JDs, candidates, applications, scores, windows, calibration</td><td><span class="chip w">Vara agent</span></td><td>Owned outright — the vara_ tables of Section 15.</td></tr>
+  </table>
+</section>
+
+<!-- ============ 4 ONBOARDING ============ -->
+<section id="s4">
+  <div class="sec-tag">Section 4</div>
+  <h2>Tenant onboarding</h2>
+  <p class="lead">Onboarding is <b>two lanes</b>. The platform lane belongs to VaNi and happens once per tenant — it serves every agent the tenant will ever subscribe to. The activation lane belongs to Vara and ends in a hard readiness gate, because Vara speaks to candidates in the tenant’s name — comms, consent, and policy must be right <b>before</b> the first conversation.</p>
+
+  <div class="flow">
+    <div class="flow-title">Flow D1 · Two-lane onboarding — VaNi platform lane, then Vara activation lane</div>
+    <div class="frow">
+      <div class="flabel">VaNi<br>lane</div>
+      <div class="fnode start"><b>1 · Tenant provisioned</b><span class="fn-s">vani_tenant + RLS scope · commercial gateway ready · Vikuna itself is a row here</span></div>
+      <div class="farr">→</div>
+      <div class="fnode"><b>2 · Org profile &amp; pack binding</b><span class="fn-s">brand, locations, domains · industry declared <b>once</b> → vani_tenant_pack_binding, delegated to all agents</span></div>
+      <div class="farr">→</div>
+      <div class="fnode"><b>3 · Users, roles, families</b><span class="fn-s">users + memberships · role families (org context) · agent-role assignments</span></div>
+      <div class="farr">→</div>
+      <div class="fnode"><b>4 · LLM provider</b><span class="fn-s">BYO credentials · test call verified</span></div>
+    </div>
+    <div class="frow" style="margin-top:12px">
+      <div class="flabel">Vara<br>lane</div>
+      <div class="fnode"><b>5 · Subscribe to Vara</b><span class="fn-s">vani_tenant_agent (agent=vara) · metering active</span></div>
+      <div class="farr">→</div>
+      <div class="fnode"><b>6 · Comms activation</b><span class="fn-s">MSG91 (ContractNest infra, sender “vani”) · Vara template set instantiated · WhatsApp approvals tracked</span></div>
+      <div class="farr">→</div>
+      <div class="fnode"><b>7 · Compliance + talent overlays</b><span class="fn-s">consent text, retention, DPDP · vara_family_profile per family (weights, thresholds)</span></div>
+      <div class="farr">→</div>
+      <div class="fnode gate"><b>8 · Readiness gate</b><span class="fn-s">checklist enforced in code</span></div>
+      <div class="farr">→</div>
+      <div class="fnode term"><b>Live</b><span class="fn-s">embed token issued for tenant domain · guided pilot JD</span></div>
+    </div>
+    <div class="fnote">Readiness checklist (all required): platform lane complete · ≥1 approved WhatsApp template via MSG91 (or email-only explicitly chosen) · consent text + retention configured · ≥1 family with a vara_family_profile · ≥1 TA + 1 named calibration approver in vani_user_agent_role · LLM test passed · embed origin allowlisted for candidate surfaces. Partial onboarding saves and resumes; nothing is public until the gate passes. A second agent (Nova) reuses the whole VaNi lane and adds only its own activation lane.</div>
+  </div>
+</section>
+
+<!-- ============ 5 GLOSSARY ============ -->
+<section id="s5">
+  <div class="sec-tag">Section 5</div>
+  <h2>Concept glossary</h2>
+  <p>The nouns of the system. The schema (next deliverable) derives from this table — one concept, one entity.</p>
+  <table>
+    <tr><th style="width:190px">Concept</th><th>Definition</th></tr>
+    <tr><td>Tenant</td><td>Subscribing organisation. Isolation boundary for all data below.</td></tr>
+    <tr><td>Domain pack</td><td>Platform-level bundle that makes Vara domain-independent: question banks, JD templates, knockout templates, signal-adapter set, vocabulary. Tenants select and override; packs never contain tenant data.</td></tr>
+    <tr><td>Role family</td><td>Tenant grouping of similar roles (“Backend Engineering”, “Field Sales”). The unit of calibration and of default thresholds/weights.</td></tr>
+    <tr><td>JD</td><td>Structured job definition: role facts, weighted must-haves, nice-to-haves, <b>knockout rules</b>, per-JD threshold (defaulted from role family), renderable as text or infographic. Versioned on edit.</td></tr>
+    <tr><td>Candidate</td><td><b>Durable person entity</b>, tenant-scoped, alive across JDs and years. Owns consent, retention, artifacts, and history. The talent pool is the set of candidates.</td></tr>
+    <tr><td>Application</td><td>One candidate × one JD × one attempt — unique on (candidate, jd, attempt_no). A candidate applies to many roles, and to the same role again after a configurable per-JD cooldown (default 90 days, never a hard block); prior attempts stay visible during screening. A close (rejection) is <b>not an entity</b> — it is the application’s terminal state plus its audit and comms rows.</td></tr>
+    <tr><td>Artifact</td><td>Anything the candidate provided: docx/pdf resume, LinkedIn export, links. Stored raw + parsed + provenance.</td></tr>
+    <tr><td>Score snapshot</td><td>Immutable result of scoring one application under one scoring-config version: composite, per-axis scores, evidence citations, flags. Re-scoring creates a new snapshot; never overwrites.</td></tr>
+    <tr><td>Scoring config</td><td>Versioned per role family: axis weights, component mappings, threshold default. Changes only via the human-gated calibration flow.</td></tr>
+    <tr><td>Closing window</td><td>Timed state for below-threshold applications. Timer default 3 days (per-JD configurable). Human moves: Rescue, Hold (freeze), Close-now. Expiry ⇒ close + message.</td></tr>
+    <tr><td>Consistency flag</td><td>Human-facing note of a contradiction between sources (resume vs chat vs signals). Never affects the score.</td></tr>
+    <tr><td>Calibration signal</td><td>Any human action that teaches: rescue, hold, close-now, HM verdict, hire outcome, audit-sample review.</td></tr>
+  </table>
+</section>
+
+<!-- ============ 6 LIFECYCLE ============ -->
+<section id="s6">
+  <div class="sec-tag">Section 6</div>
+  <h2>Application lifecycle</h2>
+  <p>The single state machine every application follows. Only two paths end an application: a deterministic rule, or a human. A score alone never can.</p>
+
+  <div class="flow">
+    <div class="flow-title">Flow D2 · Application lifecycle — states &amp; transitions</div>
+    <div class="frow">
+      <div class="fnode start"><b>Applied</b><span class="fn-s">chat or web · consent recorded · ack sent (email + WhatsApp)</span></div>
+      <div class="farr">→</div>
+      <div class="fnode"><b>Knockouts</b><span class="fn-s">deterministic rules from the JD · rule + answer logged</span></div>
+      <div class="farr">→</div>
+      <div class="fnode"><b>Scored</b><span class="fn-s">snapshot under config vN · evidence attached · metered here</span></div>
+      <div class="farr">→</div>
+      <div class="fnode human"><b>Routed by threshold</b><span class="fn-s">≥ T or &lt; T — the line is the tenant’s policy knob</span></div>
+    </div>
+    <div class="fbranch">
+      <div class="frow">
+        <div class="flabel">≥ T</div>
+        <div class="fnode"><b>Handover queue</b><span class="fn-s">ranked, evidence-first</span></div>
+        <div class="farr">→</div>
+        <div class="fnode human"><b>TA advances</b><span class="fn-s">or holds / closes politely</span></div>
+        <div class="farr">→</div>
+        <div class="fnode human"><b>HM verdict</b><span class="fn-s">Interview → schedule (v2) · Pass → back to TA with reason</span></div>
+        <div class="farr">→</div>
+        <div class="fnode term"><b>Outcome</b><span class="fn-s">hired / not · feeds calibration</span></div>
+      </div>
+      <div class="frow">
+        <div class="flabel">&lt; T</div>
+        <div class="fnode gate"><b>Closing window</b><span class="fn-s">3-day timer · visible list + Vara’s picks</span></div>
+        <div class="farr">→</div>
+        <div class="fnode human"><b>Human moves</b><span class="fn-s">Rescue ↑ (→ handover) · Hold ⏸ (freeze) · Close now</span></div>
+        <div class="farr">→</div>
+        <div class="fnode bad"><b>Closed</b><span class="fn-s">on expiry or close-now · decision message with reason · logged</span></div>
+        <div class="farr">→</div>
+        <div class="fnode term"><b>Talent pool</b><span class="fn-s">future-fit tags · resurfaces on later JDs</span></div>
+      </div>
+      <div class="frow">
+        <div class="flabel">rule fail</div>
+        <div class="fnode bad"><b>Knockout close</b><span class="fn-s">the only no-human close · rule + tripping answer stored · polite message · reduced metering</span></div>
+        <div class="farr">→</div>
+        <div class="fnode term"><b>Talent pool</b><span class="fn-s">unless consent declined</span></div>
+      </div>
+    </div>
+    <div class="fnote">Invariants: a model score never transitions an application to Closed · every transition writes an audit row (who/what/when) · Hold freezes the timer indefinitely and survives threshold changes · a candidate crossing the line after a threshold change is re-routed automatically, never re-scored silently.</div>
+  </div>
+</section>
+<!-- ============ 7 EPICS ============ -->
+<section id="s7">
+  <div class="sec-tag">Section 7</div>
+  <h2>Epics &amp; user stories</h2>
+  <p class="lead">Stories are numbered V-xx and tagged with their primary persona. Acceptance criteria are the testable contract — anything not listed is a design freedom.</p>
+
+  <div class="epic">
+    <div class="epic-h"><span class="e-id">E1</span><h3>Onboarding — platform lane + Vara activation</h3><span class="e-sub">two lanes, one gate (Flow D1) · platform-lane stories are VaNi capabilities Vara consumes</span></div>
+    <div class="story"><div class="s-id">V-01<span class="who p5">P5</span></div><div class="s-txt"><b>Provision a tenant.</b> <span class="chip a">VaNi lane</span> As the operator, I provision a subscribing organisation — including Vikuna itself as tenant #1 — so the workspace exists before any agent activates.
+      <div class="ac"><span>vani_tenant row created; every subsequent row is RLS-scoped to tenant_id — no code path special-cases the home tenant.</span><span>Tenant domains registered and verified in vani_tenant_domain with embed-origin allowlist.</span></div></div></div>
+    <div class="story"><div class="s-id">V-02<span class="who">P1</span></div><div class="s-txt"><b>Declare the organisation once.</b> <span class="chip a">VaNi lane</span> As Tenant Admin, I complete the org profile and bind our industry’s domain pack once — every agent inherits the delegation.
+      <div class="ac"><span>vani_tenant_pack_binding is platform state; Vara activates only its slice (question banks, knockout templates, signal adapters) — no duplicate industry step in any agent wizard.</span><span>Brand name, locations and domains flow into every candidate-facing surface.</span></div></div></div>
+    <div class="story"><div class="s-id">V-03<span class="who">P1</span></div><div class="s-txt"><b>People, roles and families live at VaNi.</b> <span class="chip a">VaNi lane</span> As Tenant Admin, I manage users, role families and per-agent role assignments in one place.
+      <div class="ac"><span>Role families are org context in vani_role_family — visible to any agent; Vara never creates or deletes a family, only extends it.</span><span>Vara declares its role codes (TA, HM, calibration approver) in the platform catalog; assignment per user per agent lives in vani_user_agent_role — an HM in Vara can be nothing in Nova.</span><span>LLM provider (BYO) connected and test-passed at this lane.</span></div></div></div>
+    <div class="story"><div class="s-id">V-04<span class="who">P1</span></div><div class="s-txt"><b>Activate comms on MSG91.</b> <span class="chip w">Vara lane</span> As Tenant Admin, Vara’s template set is instantiated on the MSG91 infrastructure already proven in ContractNest, sender identity “vani”.
+      <div class="ac"><span>Vara’s six templates (Section 11) instantiate into vani_template with per-template WhatsApp approval status visible.</span><span>Tenant identity is carried in template content; email-only mode is a legitimate explicit choice.</span></div></div></div>
+    <div class="story"><div class="s-id">V-05<span class="who">P1</span></div><div class="s-txt"><b>Set my compliance posture.</b> <span class="chip w">Vara lane</span> As Tenant Admin, I configure consent text, retention period and DPDP notice so every candidate interaction is defensible from day one.
+      <div class="ac"><span>Consent text and retention are mandatory; defaults offered (12 months).</span><span>Consent text changes version it; a candidate’s stored consent always references the version they accepted.</span></div></div></div>
+    <div class="story"><div class="s-id">V-06<span class="who">P1</span></div><div class="s-txt"><b>Overlay talent behaviour on the org’s families.</b> <span class="chip w">Vara lane</span> As Tenant Admin, each role family we hire for gets a vara_family_profile: default axis weights and threshold.
+      <div class="ac"><span>Profiles are 1:1 extensions of vani_role_family — deleting Vara’s rows leaves the org structure untouched.</span><span>Per-JD overrides never mutate the family default.</span></div></div></div>
+    <div class="story"><div class="s-id">V-07<span class="who">P1</span></div><div class="s-txt"><b>Pass the gate, go live in our environment.</b> <span class="chip w">Vara lane</span> As Tenant Admin, I complete the readiness checklist; the embed token for our domain is issued and the guided pilot JD publishes.
+      <div class="ac"><span>The Flow D1 checklist is enforced in code — no public JD or apply link before it passes.</span><span>Candidate surfaces render on the tenant domain (e.g. careers.vikuna.io) via the origin-bound embed token; the wizard is resumable.</span></div></div></div>
+  </div>
+
+  <div class="epic">
+    <div class="epic-h"><span class="e-id">E2</span><h3>JD Studio</h3><span class="e-sub">say it → structured, weighted, ruled, published</span></div>
+    <div class="story"><div class="s-id">V-10<span class="who p2">P2</span></div><div class="s-txt"><b>Compose by conversation.</b> As a TA pro, I describe the role in my words and Vara structures it — facts, weighted must-haves, nice-to-haves, knockouts, threshold.
+      <div class="ac"><span>Every element Vara sets is visibly editable; nothing is locked behind the conversation.</span><span>Vara explains any weight or rule on demand, citing evidence (“your last two hires…”), and yields to a manual override without argument.</span></div></div></div>
+    <div class="story"><div class="s-id">V-11<span class="who p2">P2</span></div><div class="s-txt"><b>Author knockouts as rules.</b> As a TA pro, I declare knockouts (notice ≤ N, band ≤ X, mandatory credential) knowing they are the only thing that can auto-close.
+      <div class="ac"><span>Knockouts are deterministic expressions over intake answers — no model in the path.</span><span>Editing a knockout warns about in-flight candidates; rules apply to new applicants only unless explicitly re-run.</span></div></div></div>
+    <div class="story"><div class="s-id">V-12<span class="who p2">P2</span></div><div class="s-txt"><b>Own the threshold.</b> As a TA pro, I see the JD’s threshold defaulted from its role family and set my own line for this JD.
+      <div class="ac"><span>Threshold changes re-route in-flight applications live (map + closing window) and are audit-logged.</span><span>A live preview shows the split (“closing: N / handover: M”) before I commit.</span></div></div></div>
+    <div class="story"><div class="s-id">V-13<span class="who p2">P2</span></div><div class="s-txt"><b>Publish everywhere from one schema.</b> As a TA pro, I render the same JD as text or infographic and publish the chat-apply link/QR.
+      <div class="ac"><span>Infographic is a render of the JD schema — no second source of truth.</span><span>Apply link is tenant-branded and live only post-readiness-gate.</span></div></div></div>
+    <div class="story"><div class="s-id">V-14<span class="who p2">P2</span></div><div class="s-txt"><b>Version, don’t mutate.</b> As a TA pro, when I edit a published JD, existing scores stay honest.
+      <div class="ac"><span>Material edits (weights, knockouts, threshold default) create a JD version; existing snapshots keep the version that scored them.</span><span>Optional re-score is explicit, creates new snapshots, and notifies no candidate automatically.</span></div></div></div>
+  </div>
+
+  <div class="epic">
+    <div class="epic-h"><span class="e-id">E3</span><h3>Candidate intake</h3><span class="e-sub">a conversation, not a form — any domain</span></div>
+    <div class="story"><div class="s-id">V-20<span class="who p4">P4</span></div><div class="s-txt"><b>Apply by chatting.</b> As a candidate, I apply through a short conversation whose questions come from the JD itself.
+      <div class="ac"><span>Questions are generated from must-haves and knockouts — JD and evaluation share one schema.</span><span>Target ≤ 5 minutes; progress (“profile strength”) is visible; resumable if interrupted.</span></div></div></div>
+    <div class="story"><div class="s-id">V-21<span class="who p4">P4</span></div><div class="s-txt"><b>Know the rules up front.</b> As a candidate, I see the band and hard limits before investing time, and I’m told when an answer trips a limit.
+      <div class="ac"><span>Comp band and knockout limits are stated in-chat, not hidden.</span><span>A tripping answer triggers an honest explanation and an offer to record a negotiable value instead (e.g., notice “90 → negotiable 45”).</span></div></div></div>
+    <div class="story"><div class="s-id">V-22<span class="who p4">P4</span></div><div class="s-txt"><b>Share what shows me best.</b> As a candidate, I upload a resume (docx/pdf), or share LinkedIn export, portfolio, GitHub, publications — whatever fits my field.
+      <div class="ac"><span>Accepted artifact types come from the JD’s domain pack; a resume-only application is first-class and never penalised for absent signals.</span><span>Every artifact is stored raw with provenance before any parsing.</span></div></div></div>
+    <div class="story"><div class="s-id">V-23<span class="who p4">P4</span></div><div class="s-txt"><b>Control my data.</b> As a candidate, I give informed consent in the conversation and can exercise my rights from the same channel.
+      <div class="ac"><span>Consent (versioned text) recorded before artifacts are processed.</span><span>“Delete my data” in chat triggers the purge flow; status link shows what is held and until when.</span></div></div></div>
+    <div class="story"><div class="s-id">V-24<span class="who p4">P4</span></div><div class="s-txt"><b>Never a black hole.</b> As a candidate, I am acknowledged immediately and told the decision within the stated SLA, whatever it is.
+      <div class="ac"><span>Ack on email + WhatsApp within minutes of applying; live status page per application.</span><span>Rejection messages carry feedback themes, not silence; sent only after the closing window or a human/rule decision.</span></div></div></div>
+  </div>
+
+  <div class="epic">
+    <div class="epic-h"><span class="e-id">E4</span><h3>Ingestion</h3><span class="e-sub">the ETL spine, generalised — see Flow D3</span></div>
+    <div class="story"><div class="s-id">V-30<span class="who p5">P5</span></div><div class="s-txt"><b>One spine, many adapters.</b> As the platform, ingestion reuses the existing ETL pipeline shape — source → staging → normalise → validate → commit — with per-source adapters.
+      <div class="ac"><span>docx, pdf, LinkedIn-export, GitHub-API, URL/blog and CSV are all adapters on the same spine; adding an adapter touches no downstream stage.</span><span>Document parsing is deterministic (libraries, not LLM).</span></div></div></div>
+    <div class="story"><div class="s-id">V-31<span class="who p5">P5</span></div><div class="s-txt"><b>Extract with evidence.</b> As the platform, one fenced LLM stage maps parsed text to the candidate schema.
+      <div class="ac"><span>Every extracted field carries an evidence span (source + location) and a confidence value.</span><span>Low-confidence fields are marked, never silently guessed; schema validation rejects malformed extractions back through retry.</span></div></div></div>
+    <div class="story"><div class="s-id">V-32<span class="who p5">P5</span></div><div class="s-txt"><b>Recognise returning people.</b> As the platform, entity resolution matches a new application to an existing pool candidate.
+      <div class="ac"><span>High-confidence matches merge automatically with history preserved; ambiguous matches queue for TA confirmation.</span><span>A merge never deletes either side’s artifacts or audit rows.</span></div></div></div>
+  </div>
+
+  <div class="epic">
+    <div class="epic-h"><span class="e-id">E5</span><h3>Screening &amp; scoring</h3><span class="e-sub">rules first, then ranked evidence</span></div>
+    <div class="story"><div class="s-id">V-40<span class="who p2">P2</span></div><div class="s-txt"><b>Rules run first.</b> As a TA pro, knockouts evaluate before any scoring, and a knockout close records exactly which rule and which answer.
+      <div class="ac"><span>Knockout closes are the only human-free closes; message uses the polite template with the rule’s public phrasing.</span><span>“Why was this person closed?” is answerable from stored data in one click.</span></div></div></div>
+    <div class="story"><div class="s-id">V-41<span class="who p2">P2</span></div><div class="s-txt"><b>Score with citations.</b> As a TA pro, every score is a snapshot: composite, three axes (capability / availability / expectations), each component citing its evidence.
+      <div class="ac"><span>Snapshots are immutable and stamped with scoring-config version; re-scoring appends, never overwrites.</span><span>The metering event writes at snapshot time.</span></div></div></div>
+    <div class="story"><div class="s-id">V-42<span class="who p2">P2</span></div><div class="s-txt"><b>Flag contradictions, don’t punish them.</b> As a TA pro, I see consistency flags (resume vs chat vs signals) as questions to ask, with zero score impact.
+      <div class="ac"><span>Flags render on map, profile and handover card; each states both sources verbatim.</span><span>Flag logic never feeds the composite.</span></div></div></div>
+    <div class="story"><div class="s-id">V-43<span class="who p2">P2</span></div><div class="s-txt"><b>See the whole field, move the line.</b> As a TA pro, the probability map shows every scored applicant by fitment; dragging the threshold re-routes live.
+      <div class="ac"><span>Counters, zones and the closing window respond in real time; the drag is audit-logged as a policy change.</span><span>Every dot opens the full profile.</span></div></div></div>
+    <div class="story"><div class="s-id">V-44<span class="who p2">P2</span></div><div class="s-txt"><b>Stay usable at 250.</b> As a TA pro with a heavy JD, the UX compresses my attention instead of my data.
+      <div class="ac"><span>Map stays readable and interactive at 250+ applicants (dense mode).</span><span>Lists are ranked with picks on top, searchable, and bulk-actionable; nothing requires reading top-to-bottom.</span></div></div></div>
+  </div>
+
+  <div class="epic">
+    <div class="epic-h"><span class="e-id">E6</span><h3>Closing window</h3><span class="e-sub">nothing closes instantly</span></div>
+    <div class="story"><div class="s-id">V-50<span class="who p2">P2</span></div><div class="s-txt"><b>Timer, not trapdoor.</b> As a TA pro, every below-line application enters a visible window (default 3 days, per-JD configurable) before any message fires.
+      <div class="ac"><span>Ack goes out immediately; the decision message only on expiry or explicit close.</span><span>Window length is a JD field; changing it affects new entries only.</span></div></div></div>
+    <div class="story"><div class="s-id">V-51<span class="who p2">P2</span></div><div class="s-txt"><b>Vara’s picks.</b> As a TA pro, Vara surfaces the below-line candidates worth a second look, with the reason the composite hid them.
+      <div class="ac"><span>Each pick states its strongest axis and the dragging factor in one line.</span><span>Picks are recommendations — the full ranked window list is always one glance below.</span></div></div></div>
+    <div class="story"><div class="s-id">V-52<span class="who p2">P2</span></div><div class="s-txt"><b>Three moves, all mine.</b> As a TA pro, I can Rescue (→ handover), Hold (freeze the timer), or Close-now on any window candidate — singly or in bulk.
+      <div class="ac"><span>Holds freeze indefinitely and survive threshold changes; resume restarts the remaining time.</span><span>Every move is logged as a calibration signal with who/when.</span></div></div></div>
+    <div class="story"><div class="s-id">V-53<span class="who p2">P2</span></div><div class="s-txt"><b>Expiry closes honestly.</b> As a TA pro, an untouched expiry closes the application with the reason recorded and the feedback-themed message sent.
+      <div class="ac"><span>Close reason = below threshold T under config vN, stored verbatim.</span><span>The candidate lands in the talent pool with future-fit tags unless consent was declined.</span></div></div></div>
+  </div>
+
+  <div class="epic">
+    <div class="epic-h"><span class="e-id">E7</span><h3>Handover, profile &amp; HM review</h3><span class="e-sub">probability handed over, decision handed back</span></div>
+    <div class="story"><div class="s-id">V-60<span class="who p2">P2</span></div><div class="s-txt"><b>Hand over a prepared decision.</b> As a TA pro, I advance candidates to a ranked, evidence-first HM queue.
+      <div class="ac"><span>Queue is ordered by fitment but presents evidence, not adjectives.</span><span>Advancing is reversible until the HM verdict lands.</span></div></div></div>
+    <div class="story"><div class="s-id">V-61<span class="who p2">P2</span></div><div class="s-txt"><b>The whole person, one page.</b> As a TA pro or HM, the full profile shows Overview (scores + evidence), Resume (original beside parsed timeline, gaps visible), Signals (with “what this tells us”), Conversation, History (applications, pool status, audit trail).
+      <div class="ac"><span>Gap detection annotates, tone is “worth one question, not a judgement”.</span><span>Every profile fact traces to an artifact or a chat turn.</span></div></div></div>
+    <div class="story"><div class="s-id">V-62<span class="who p3">P3</span></div><div class="s-txt"><b>Verdict in minutes.</b> As an HM, I work a card queue: Interview, or Pass with a mandatory reason.
+      <div class="ac"><span>Interview queues the invite comms; Pass returns the candidate to the TA with the reason attached.</span><span>Verdicts and reasons are calibration signals.</span></div></div></div>
+  </div>
+
+  <div class="epic">
+    <div class="epic-h"><span class="e-id">E8</span><h3>Communications</h3><span class="e-sub">templated, approved, honest</span></div>
+    <div class="story"><div class="s-id">V-70<span class="who">P1</span></div><div class="s-txt"><b>Templates as managed assets.</b> As Tenant Admin, all candidate comms are fixed templates + variables, with WhatsApp templates tracked through Meta approval.
+      <div class="ac"><span>No free-form generated messages to candidates; template changes re-enter approval where the channel requires it.</span><span>Every send is logged (template id, channel, timestamp) on the application.</span></div></div></div>
+    <div class="story"><div class="s-id">V-71<span class="who p4">P4</span></div><div class="s-txt"><b>Decisions come from humans (or rules), never scores.</b> As a candidate, a decision message reaches me only after a human decision, a rule close, or window expiry — with feedback themes on rejection.
+      <div class="ac"><span>Positive-path messages (interview invite) fire only on HM verdict.</span><span>STOP/opt-out honoured per channel; opt-out never blocks legally-useful status access via the web status page.</span></div></div></div>
+  </div>
+
+  <div class="epic">
+    <div class="epic-h"><span class="e-id">E9</span><h3>Calibration</h3><span class="e-sub">self-calibrating with a human gate — see Flow D4</span></div>
+    <div class="story"><div class="s-id">V-80<span class="who">P1</span></div><div class="s-txt"><b>Loop health I can trust.</b> As the calibration approver, I see per-role-family rescue rate, conversion by score band, and the audit-sample results.
+      <div class="ac"><span>Rescue rate &gt; 10% for a family trips the circuit breaker: Vara stops proposing and says its scoring is broken for that family.</span><span>A ~5% random audit sample of window candidates is surfaced for human glance — the selection-bias guard.</span></div></div></div>
+    <div class="story"><div class="s-id">V-81<span class="who">P1</span></div><div class="s-txt"><b>Proposals, not drift.</b> As the calibration approver, Vara proposes changes (threshold, weights) per role family with its evidence, and I approve or decline by name.
+      <div class="ac"><span>Approval creates scoring-config vN+1 with changelog; declines are logged too.</span><span>A threshold can never rise without explicit approval; batch cadence (monthly), never online learning.</span><span>New config applies to new JDs; live JDs keep their line unless the TA adopts it.</span></div></div></div>
+  </div>
+
+  <div class="epic">
+    <div class="epic-h"><span class="e-id">E10</span><h3>Talent pool &amp; history</h3><span class="e-sub">where Vara stops being an ATS</span></div>
+    <div class="story"><div class="s-id">V-90<span class="who p2">P2</span></div><div class="s-txt"><b>People persist, applications don’t.</b> As a TA pro, a candidate is one durable person across every JD and year, with full history.
+      <div class="ac"><span>Candidate ↔ applications ↔ snapshots ↔ comms ↔ decisions all navigable from the profile History tab.</span><span>Pool is strictly tenant-scoped.</span></div></div></div>
+    <div class="story"><div class="s-id">V-91<span class="who p2">P2</span></div><div class="s-txt"><b>Silver medalists resurface.</b> As a TA pro, when I publish a JD, Vara searches the pool before I source, and tells me who would score differently now.
+      <div class="ac"><span>Resurfacing states the old score, the old reason, and the projected relevance to this JD (“notice period story — she’d clear your current line”).</span><span>Contacting a pool candidate uses a dedicated re-engagement template.</span></div></div></div>
+    <div class="story"><div class="s-id">V-92<span class="who">P1</span></div><div class="s-txt"><b>Retention with a spine.</b> As Tenant Admin, retention runs itself: re-consent before expiry, purge for non-consenters, audit surviving PII-redacted.
+      <div class="ac"><span>Automated “may we keep you in our pool?” at retention minus 30 days; silence ⇒ purge on schedule.</span><span>Candidate-initiated deletion honoured within SLA; redacted audit rows prove process without holding PII.</span></div></div></div>
+    <div class="story"><div class="s-id">V-93<span class="who">P1</span></div><div class="s-txt"><b>See the meter.</b> As Tenant Admin, I see candidates processed, by JD and month, priced — no surprise invoices.
+      <div class="ac"><span>Metering view reconciles 1:1 with score snapshots and knockout closes.</span><span>Operator (P5) sees the same numbers fleet-wide.</span></div></div></div>
+  </div>
+
+  <div class="epic">
+    <div class="epic-h"><span class="e-id">E11</span><h3>Mobile &amp; tenant-environment surfaces</h3><span class="e-sub">three of four human personas are phone-shaped</span></div>
+    <div class="story"><div class="s-id">V-95<span class="who p4">P4</span></div><div class="s-txt"><b>Apply from a phone, on the tenant’s site.</b> As a candidate, the chat apply, status page and infographic JD are mobile-first and load on the tenant’s own domain.
+      <div class="ac"><span>Candidate surfaces are designed at 360px first; desktop is the adaptation.</span><span>Served via the tenant’s embed token on allowlisted origins; tenant branding end to end.</span></div></div></div>
+    <div class="story"><div class="s-id">V-96<span class="who p2">P2</span></div><div class="s-txt"><b>Work the window from anywhere.</b> As a TA pro, expiring timers reach me as nudges and every window action works one-handed on a phone.
+      <div class="ac"><span>Nudge (“2 picks expire today”) via WhatsApp/push deep-links into the closing list; Rescue / Hold / Close-now are single-tap with undo.</span><span>The probability map adapts on small screens to a ranked strip with the threshold as a draggable divider — same data, list-shaped.</span></div></div></div>
+    <div class="story"><div class="s-id">V-97<span class="who p3">P3</span></div><div class="s-txt"><b>Verdicts on the commute.</b> As an HM, the card queue is fully usable on mobile — swipe or tap Interview / Pass, reason capture included.
+      <div class="ac"><span>Card stack, evidence bullets and mandatory pass-reason all function at 360px.</span><span>JD Studio and Calibration remain desktop-primary (responsive, not crippled) — they are sit-down work by nature.</span></div></div></div>
+  </div>
+</section>
+
+<!-- ============ 8 INGESTION ============ -->
+<section id="s8">
+  <div class="sec-tag">Section 8</div>
+  <h2>Ingestion pipeline</h2>
+  <p>The existing ETL skill’s spine, generalised. CSV import becomes one adapter among peers; exactly one LLM stage exists, fenced between deterministic stages.</p>
+  <div class="flow">
+    <div class="flow-title">Flow D3 · Ingestion — adapters fan into one spine</div>
+    <div class="frow">
+      <div class="fnode start"><b>Source adapters</b><span class="fn-s">docx · pdf · LinkedIn export · GitHub API · URL/blog · CSV — each independent, deterministic parsing</span></div>
+      <div class="farr">→</div>
+      <div class="fnode"><b>Staging</b><span class="fn-s">raw artifact stored first · provenance stamped (who, when, which adapter)</span></div>
+      <div class="farr">→</div>
+      <div class="fnode gate"><b>Extraction · LLM</b><span class="fn-s">the one model stage: text → candidate schema · evidence spans · per-field confidence</span></div>
+      <div class="farr">→</div>
+      <div class="fnode"><b>Validate</b><span class="fn-s">schema-checked · low confidence marked · malformed → retry</span></div>
+      <div class="farr">→</div>
+      <div class="fnode human"><b>Entity resolution</b><span class="fn-s">match vs pool · auto-merge high confidence · ambiguity → TA confirm</span></div>
+      <div class="farr">→</div>
+      <div class="fnode term"><b>Commit</b><span class="fn-s">candidate + artifacts + parse, all linked · ready to score</span></div>
+    </div>
+    <div class="fnote">Rules: raw before parsed, always · no scraping — candidate-provided artifacts only (LinkedIn = the candidate’s own PDF export) · adapters are the domain-pack extension point (portfolio, certification-registry, publication adapters plug in here) · GitHub is a public-API adapter used only when the candidate offers the link.</div>
+  </div>
+</section>
+
+<!-- ============ 9 CALIBRATION ============ -->
+<section id="s9">
+  <div class="sec-tag">Section 9</div>
+  <h2>Calibration loop</h2>
+  <p>Vara v1 is <b>self-calibrating with a human gate</b> — deliberately not self-learning. Learning happens at role-family level (per-JD volumes are statistically nothing), in monthly batches, through proposals a named human approves.</p>
+  <div class="flow">
+    <div class="flow-title">Flow D4 · Calibration — signals to config version, through a human</div>
+    <div class="frow">
+      <div class="fnode start"><b>Signals accumulate</b><span class="fn-s">rescues · holds · close-nows · HM verdicts + reasons · hire outcomes · audit-sample reviews</span></div>
+      <div class="farr">→</div>
+      <div class="fnode"><b>Monthly batch</b><span class="fn-s">per role family: rescue rate · band conversion · threshold fit</span></div>
+      <div class="farr">→</div>
+      <div class="fnode bad"><b>Circuit breaker</b><span class="fn-s">rescue rate &gt; 10% ⇒ “my scoring is broken here” — no proposals, flag the family</span></div>
+    </div>
+    <div class="frow" style="margin-top:12px">
+      <div class="flabel">healthy</div>
+      <div class="fnode gate"><b>Proposal</b><span class="fn-s">e.g. threshold 30 → 27 · evidence attached · confidence stated</span></div>
+      <div class="farr">→</div>
+      <div class="fnode human"><b>Human gate</b><span class="fn-s">named approver: approve / decline · thresholds never rise silently</span></div>
+      <div class="farr">→</div>
+      <div class="fnode term"><b>Config vN+1</b><span class="fn-s">changelog entry · applies to new JDs · live JDs keep their line</span></div>
+      <div class="farr">→</div>
+      <div class="fnode"><b>Back to scoring</b><span class="fn-s">new snapshots stamp the new version — the loop closes</span></div>
+    </div>
+    <div class="fnote">Named trap: selection bias — closed candidates generate no outcomes, so an ungoverned threshold only drifts up. Mitigations are structural: the rescue/hold signals and the 5% audit sample create labels below the line.</div>
+  </div>
+</section>
+
+<!-- ============ 10 DOMAIN INDEPENDENCE ============ -->
+<section id="s10">
+  <div class="sec-tag">Section 10</div>
+  <h2>Domain independence</h2>
+  <p class="lead">Vara hires for any function, not just technology. The invariant core is domain-blind; everything domain-specific lives in a <em class="term">domain pack</em> — the same pack pattern already adopted for vertical variance in VaNi.</p>
+  <div class="two">
+    <div>
+      <h4>Invariant core (never forks per domain)</h4>
+      <table>
+        <tr><td>Three axes</td><td>Capability fit · Availability · Expectations — universal across functions; only the components inside them change.</td></tr>
+        <tr><td>Lifecycle</td><td>The Flow D2 state machine, closing window, handover — identical everywhere.</td></tr>
+        <tr><td>Scoring &amp; calibration</td><td>Weighted components, snapshots, config versions, human gate — domain-blind mathematics.</td></tr>
+        <tr><td>Comms &amp; compliance</td><td>Templates, consent, retention — per tenant, not per domain.</td></tr>
+      </table>
+    </div>
+    <div>
+      <h4>Domain pack supplies</h4>
+      <table>
+        <tr><td>Question banks</td><td>Intake questions per role family — quota history for sales, patient-ratio experience for nursing, RLS for backend.</td></tr>
+        <tr><td>Signal adapters</td><td>GitHub for engineers · portfolio for designers · certification-registry checks for healthcare · publications for research · <b>none</b> is a valid set (resume-only domains are first-class).</td></tr>
+        <tr><td>Knockout templates</td><td>Licence/credential checks, shift eligibility, territory, language.</td></tr>
+        <tr><td>JD templates &amp; vocabulary</td><td>Role scaffolds and the words the chat uses — “portfolio”, not “repo”, for a designer.</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="callout"><b>Test of domain independence:</b> onboarding a hospital tenant to hire staff nurses must require <b>zero</b> code changes — a domain pack (nursing question bank, registration-number knockout via registry adapter, no public-signal adapters) and tenant configuration only. This test case ships with v1 even if the tenant is hypothetical.</div>
+</section>
+
+<!-- ============ 11 COMMS & COMPLIANCE ============ -->
+<section id="s11">
+  <div class="sec-tag">Section 11</div>
+  <h2>Comms &amp; compliance</h2>
+  <table>
+    <tr><th style="width:230px">Area</th><th>Specification</th></tr>
+    <tr><td>Provider</td><td><b>MSG91</b> — the same infrastructure already integrated and proven in ContractNest, reused as-is. Sender identity “vani”; tenant identity carried in template content. WhatsApp template approvals flow through the existing MSG91 account.</td></tr>
+    <tr><td>Channels</td><td>Email + WhatsApp via MSG91 (SMS available if a tenant needs it). Per-candidate channel preference respected; email-only tenants supported.</td></tr>
+    <tr><td>Template set · v1</td><td><span class="chip a">ACK-01</span> application received · <span class="chip a">INV-01</span> interview invite · <span class="chip w">REJ-01</span> knockout close (rule phrasing) · <span class="chip w">REJ-02</span> window close (feedback themes) · <span class="chip g">POOL-01</span> re-consent · <span class="chip g">POOL-02</span> resurfacing re-engagement.</td></tr>
+    <tr><td>DPDP posture</td><td>Versioned consent at intake · declared retention with automated re-consent · candidate-initiated deletion from chat · purge with PII-redacted audit survival · data-region choice at onboarding.</td></tr>
+    <tr><td>Auditability</td><td>Every state transition, score, policy change (threshold drag included), send, and calibration decision writes an audit row: actor (human/rule/timer — never “model”), timestamp, before/after.</td></tr>
+    <tr><td>Candidate data sources</td><td>Candidate-provided only. No scraping of LinkedIn or any third-party profile. Public-API signals (GitHub) only when the candidate volunteers the link.</td></tr>
+  </table>
+</section>
+
+<!-- ============ 12 NFR ============ -->
+<section id="s12">
+  <div class="sec-tag">Section 12</div>
+  <h2>Non-functional requirements</h2>
+  <table>
+    <tr><th style="width:230px">Requirement</th><th>Target · v1</th></tr>
+    <tr><td>Volume per JD</td><td>250 concurrent applications, fully interactive map and lists (proven in prototype stress mode). Design headroom to 1,000.</td></tr>
+    <tr><td>Pool size per tenant</td><td>5,000 candidates with sub-second search; resurfacing query &lt; 5 s per new JD.</td></tr>
+    <tr><td>Scoring latency</td><td>Ack instant · knockouts &lt; 10 s · score snapshot &lt; 2 min from artifact commit.</td></tr>
+    <tr><td>Isolation</td><td>RLS on every tenant-scoped table; cross-tenant reads structurally impossible; per-tenant LLM credentials never pooled.</td></tr>
+    <tr><td>Immutability</td><td>Score snapshots, scoring configs, consent records and audit rows are append-only.</td></tr>
+    <tr><td>Degradation</td><td>LLM provider down ⇒ chat falls back to web form, extraction queues; comms provider down ⇒ sends queue with SLA alerting. No path loses an application.</td></tr>
+    <tr><td>Observability</td><td>Per-tenant loop-health metrics (rescue rate, window expiry rate, time-to-shortlist) exposed to P1; fleet view for P5.</td></tr>
+    <tr><td>Mobile posture</td><td>Candidate surfaces: <b>mobile-first</b> (360px design origin). HM queue + closing window + notifications: <b>mobile-primary</b>. Probability map: responsive adaptation to ranked strip. JD Studio + Calibration: desktop-primary, responsive. No surface is desktop-only-broken on mobile.</td></tr>
+    <tr><td>Tenant environment</td><td>Candidate surfaces load on tenant domains via origin-bound embed tokens; token misuse from a non-allowlisted origin is rejected at the edge and audit-logged.</td></tr>
+  </table>
+</section>
+
+<!-- ============ 13 OUT OF SCOPE ============ -->
+<section id="s13">
+  <div class="sec-tag">Section 13</div>
+  <h2>Out of scope · v1</h2>
+  <p>Named so nobody builds them by accident: <b>interview scheduling</b> (calendar integration — v2, the slot is reserved in INV-01’s design) · <b>offer management and negotiation</b> · <b>employee onboarding</b> after acceptance · <b>job-board auto-posting integrations</b> (v1 publishes a link/QR/infographic; boards are manual) · <b>multilingual candidate chat</b> (v1 English; the template layer is language-ready) · <b>cross-tenant talent marketplace</b> (explicitly never, under current positioning) · <b>true self-learning</b> (v1 is gated calibration by design, not by shortcut).</p>
+</section>
+
+<!-- ============ 14 SCHEMA VANI ============ -->
+<section id="s14">
+  <div class="sec-tag">Section 14</div>
+  <h2>Schema — platform level · <span style="font-family:monospace;font-size:24px">vani_</span></h2>
+  <p class="lead">Naming: physical identifiers are lowercase (<b>vani_</b> / <b>vara_</b>) — Postgres folds unquoted identifiers, and history is history (VN_ legacy stays where it is). Convention: agent name as prefix; platform tables never grow agent columns. All ids are <b>uuid</b>, all timestamps <b>timestamptz</b>; every tenant-scoped table carries <b>tenant_id</b> with the RLS policy at the end of Section 15.</p>
+
+  <h4>Identity &amp; tenancy</h4>
+  <table>
+    <tr><th style="width:210px">Table</th><th>Columns (key → purpose)</th></tr>
+    <tr><td>vani_tenant</td><td><b>id</b> pk · slug unique · name · status <i>(active | suspended)</i> · data_region · created_at. <b>Vikuna is a row here — tenant #1, no code special-case.</b></td></tr>
+    <tr><td>vani_tenant_domain</td><td><b>id</b> pk · tenant_id fk · domain <i>(careers.vikuna.io)</i> · purpose <i>(candidate | workspace)</i> · verified_at · embed_origins text[] — the allowlist behind the origin-bound embed token.</td></tr>
+    <tr><td>vani_user</td><td><b>id</b> pk · email unique · name · status · created_at. Platform identity — agents never store users.</td></tr>
+    <tr><td>vani_membership</td><td><b>id</b> pk · tenant_id fk · user_id fk · platform_role <i>(admin | member)</i> · unique (tenant_id, user_id).</td></tr>
+  </table>
+
+  <h4>Agent fabric</h4>
+  <table>
+    <tr><th style="width:210px">Table</th><th>Columns</th></tr>
+    <tr><td>vani_agent</td><td><b>id</b> pk · code unique <i>(vara, nova)</i> · name · version · status. Platform registry — no tenant column.</td></tr>
+    <tr><td>vani_tenant_agent</td><td><b>id</b> pk · tenant_id fk · agent_id fk · status <i>(provisioned | activating | live | suspended)</i> · activated_at · gateway_ref — the subscription row; per-agent commercial gateway hangs here · unique (tenant_id, agent_id).</td></tr>
+    <tr><td>vani_agent_role</td><td><b>id</b> pk · agent_id fk · code <i>(Vara declares: ta, hm, calibration_approver)</i> · name · unique (agent_id, code). The per-agent role catalog.</td></tr>
+    <tr><td>vani_user_agent_role</td><td><b>id</b> pk · tenant_id fk · user_id fk · agent_id fk · agent_role_id fk · granted_by · granted_at · unique (tenant_id, user_id, agent_id, agent_role_id). “Roles filtered per agent” — an HM in Vara can be nothing in Nova.</td></tr>
+  </table>
+
+  <h4>Org context &amp; packs</h4>
+  <table>
+    <tr><th style="width:210px">Table</th><th>Columns</th></tr>
+    <tr><td>vani_role_family</td><td><b>id</b> pk · tenant_id fk · name · description · parent_id fk self-nullable · created_at. Org structure — agent-neutral; Vara extends via vara_family_profile, never modifies.</td></tr>
+    <tr><td>vani_domain_pack</td><td><b>id</b> pk · code · version · domain <i>(technology, sales, healthcare…)</i> · payload jsonb <i>(question banks, JD/knockout templates, signal-adapter manifest, vocabulary — namespaced per agent)</i> · published_at · unique (code, version). Platform artifact — no tenant data, ever.</td></tr>
+    <tr><td>vani_tenant_pack_binding</td><td><b>id</b> pk · tenant_id fk · pack_id fk · bound_by · bound_at. Industry declared once at the platform lane; each agent activates its namespace of the payload.</td></tr>
+  </table>
+
+  <h4>Shared services</h4>
+  <table>
+    <tr><th style="width:210px">Table</th><th>Columns</th></tr>
+    <tr><td>vani_llm_provider</td><td><b>id</b> pk · tenant_id fk · provider_code · credentials_enc <i>(encrypted at rest, never pooled)</i> · last_test_at · test_status.</td></tr>
+    <tr><td>vani_metering_event</td><td><b>id</b> pk · tenant_id fk · agent_id fk · unit_type <i>(candidate_scored | knockout_close)</i> · ref_table · ref_id · qty · occurred_at. <b>Append-only.</b> Emitted at score-snapshot / knockout-close time; the gateway aggregates per agent per tenant.</td></tr>
+    <tr><td>vani_template</td><td><b>id</b> pk · tenant_id fk · agent_id fk · code <i>(ACK-01, INV-01, REJ-01, REJ-02, POOL-01, POOL-02)</i> · channel <i>(email | whatsapp | sms)</i> · body · variables jsonb · provider <i>(msg91)</i> · approval_status <i>(draft | pending | approved | rejected)</i> · version. Delivery rides the ContractNest MSG91 integration, sender “vani”.</td></tr>
+    <tr><td>vani_comms_log</td><td><b>id</b> pk · tenant_id fk · agent_id fk · template_id fk · channel · recipient_ref · ref_entity · ref_id · provider_msg_id · status <i>(queued | sent | delivered | failed | opted_out)</i> · sent_at. <b>Append-only</b> — every candidate touch is provable.</td></tr>
+    <tr><td>vani_audit_log</td><td><b>id</b> pk · tenant_id fk · agent_id fk nullable <i>(null = platform event)</i> · actor_type <i>(human | rule | timer | system — <b>never “model”</b>)</i> · actor_id · entity · entity_id · action · before jsonb · after jsonb · at. <b>Append-only.</b> The one spine (D3): “what happened to this person” is answerable across agents from one table.</td></tr>
+  </table>
+</section>
+
+<!-- ============ 15 SCHEMA VARA ============ -->
+<section id="s15">
+  <div class="sec-tag">Section 15</div>
+  <h2>Schema — agent level · <span style="font-family:monospace;font-size:24px">vara_</span></h2>
+  <p class="lead">Everything below is tenant-scoped under RLS. Activating Vara adds these rows; deactivating removes them; nothing in vani_ changes either way.</p>
+
+  <div class="flow">
+    <div class="flow-title">Flow D5 · Schema spine — how the entities hang together</div>
+    <div class="frow">
+      <div class="fnode start"><b>vani_role_family</b><span class="fn-s">org context</span></div>
+      <div class="farr">→ 1:1</div>
+      <div class="fnode"><b>vara_family_profile</b><span class="fn-s">talent overlay</span></div>
+      <div class="farr">→ 1:n</div>
+      <div class="fnode"><b>vara_jd → vara_jd_version</b><span class="fn-s">head + immutable versions</span></div>
+      <div class="farr">→ 1:n</div>
+      <div class="fnode human"><b>vara_application</b><span class="fn-s">candidate × jd × attempt · the state lives here</span></div>
+      <div class="farr">→ 1:n</div>
+      <div class="fnode term"><b>vara_score_snapshot</b><span class="fn-s">immutable · cites evidence · emits metering</span></div>
+    </div>
+    <div class="frow" style="margin-top:12px">
+      <div class="fnode"><b>vara_candidate (+ _pii, _consent)</b><span class="fn-s">durable person · the talent pool</span></div>
+      <div class="farr">→ 1:n</div>
+      <div class="fnode"><b>vara_artifact → vara_extraction</b><span class="fn-s">raw first, parsed second</span></div>
+      <div class="farr">·</div>
+      <div class="fnode"><b>vara_chat_turn</b><span class="fn-s">evidence cites turn_id</span></div>
+      <div class="farr">·</div>
+      <div class="fnode gate"><b>vara_calibration_signal → _proposal</b><span class="fn-s">→ vara_scoring_config vN+1 via human gate</span></div>
+    </div>
+  </div>
+
+  <h4>Config</h4>
+  <table>
+    <tr><th style="width:220px">Table</th><th>Columns</th></tr>
+    <tr><td>vara_family_profile</td><td><b>id</b> pk · tenant_id fk · family_id fk → vani_role_family, unique · axis_weights jsonb <i>({skill:55, avail:25, exp:20})</i> · default_threshold int · active_config_id fk. The D6 split: definition is the org’s, talent behaviour is Vara’s.</td></tr>
+    <tr><td>vara_scoring_config</td><td><b>id</b> pk · tenant_id fk · family_id fk · version int · weights jsonb · components jsonb · threshold_default int · created_from fk → proposal nullable · approved_by fk → vani_user · created_at · unique (tenant_id, family_id, version). <b>Append-only</b> — calibration’s only output.</td></tr>
+  </table>
+
+  <h4>Definition</h4>
+  <table>
+    <tr><th style="width:220px">Table</th><th>Columns</th></tr>
+    <tr><td>vara_jd</td><td><b>id</b> pk · tenant_id fk · family_id fk · title · status <i>(draft | published | closed)</i> · current_version_id fk · created_by · created_at.</td></tr>
+    <tr><td>vara_jd_version</td><td><b>id</b> pk · jd_id fk · version int · facts jsonb <i>(band, location, team…)</i> · must_haves jsonb <i>(weighted, nice-to-have flagged)</i> · knockouts jsonb <i>(deterministic expressions)</i> · threshold int · window_days int <i>(default 3)</i> · reapply_cooldown_days int <i>(default 90)</i> · created_by · created_at · unique (jd_id, version). <b>Immutable</b> — applications pin the version that scored them.</td></tr>
+  </table>
+
+  <h4>People — the talent pool</h4>
+  <table>
+    <tr><th style="width:220px">Table</th><th>Columns</th></tr>
+    <tr><td>vara_candidate</td><td><b>id</b> pk · tenant_id fk · display_name · pool_tags text[] <i>(silver_medalist, future_fit…)</i> · current_consent_id fk · retention_until date · created_at. Durable person; strictly per-tenant — never matched across tenants.</td></tr>
+    <tr><td>vara_candidate_pii</td><td><b>candidate_id</b> pk fk · email · phone · whatsapp · location · links jsonb. The D4 split: DPDP purge deletes this row; the skeleton, scores and redacted audit survive.</td></tr>
+    <tr><td>vara_consent</td><td><b>id</b> pk · tenant_id fk · candidate_id fk · consent_version · granted_at · channel · withdrawn_at nullable. <b>Append-only</b>; always references the consent-text version accepted.</td></tr>
+  </table>
+
+  <h4>Pursuit</h4>
+  <table>
+    <tr><th style="width:220px">Table</th><th>Columns</th></tr>
+    <tr><td>vara_application</td><td><b>id</b> pk · tenant_id fk · candidate_id fk · jd_id fk · jd_version_id fk · attempt_no int · state <i>(applied | knockout_closed | scored | closing | held | handover | advanced | closed | hired)</i> · window_expires_at · held_by/held_at · advanced_by/advanced_at · <b>closed_by_type</b> <i>(human | rule | timer)</i> · closed_by · close_reason_code <i>(knockout:&lt;rule_id&gt; | below_threshold | hm_pass | withdrew)</i> · decision_reason text · closed_at · unique (candidate_id, jd_id, attempt_no). <b>The D7 answer: a rejection is these columns + the audit row + the comms row — not a table, not JSON.</b></td></tr>
+    <tr><td>vara_artifact</td><td><b>id</b> pk · tenant_id fk · candidate_id fk · application_id fk nullable · adapter <i>(docx | pdf | linkedin_export | github_api | url | csv)</i> · kind · storage_ref · content_hash · provided_at. <b>Immutable</b> — raw before parsed, always.</td></tr>
+    <tr><td>vara_extraction</td><td><b>id</b> pk · artifact_id fk · extractor_version · fields jsonb <i>(each field: value, evidence span, confidence)</i> · status <i>(ok | low_confidence | rejected)</i> · created_at.</td></tr>
+    <tr><td>vara_chat_turn</td><td><b>id</b> pk · tenant_id fk · application_id fk · turn_no int · speaker <i>(vara | candidate)</i> · content · maps_to_component nullable · created_at · unique (application_id, turn_no). The D5 decision: evidence cites turn_id, not offsets in a blob.</td></tr>
+    <tr><td>vara_score_snapshot</td><td><b>id</b> pk · tenant_id fk · application_id fk · config_id fk → vara_scoring_config · composite int · axes jsonb <i>(per component: score, weight, evidence refs → turn_id | artifact_id | extraction field)</i> · flags_count int · created_at. <b>Immutable</b>; re-scoring appends; writing this row emits vani_metering_event.</td></tr>
+    <tr><td>vara_flag</td><td><b>id</b> pk · tenant_id fk · application_id fk · kind <i>(consistency)</i> · source_a jsonb · source_b jsonb <i>(both verbatim)</i> · status <i>(open | discussed | dismissed)</i> · raised_at. Never feeds the composite.</td></tr>
+  </table>
+
+  <h4>Learning</h4>
+  <table>
+    <tr><th style="width:220px">Table</th><th>Columns</th></tr>
+    <tr><td>vara_calibration_signal</td><td><b>id</b> pk · tenant_id fk · family_id fk · application_id fk · signal <i>(rescue | hold | resume | close_now | hm_interview | hm_pass | hire | audit_review)</i> · actor_id · payload jsonb · at. <b>Append-only</b> — every human move teaches.</td></tr>
+    <tr><td>vara_calibration_proposal</td><td><b>id</b> pk · tenant_id fk · family_id fk · change jsonb <i>(e.g. threshold 30→27)</i> · evidence jsonb · confidence · status <i>(proposed | approved | declined)</i> · decided_by fk → vani_user · decided_at · resulting_config_id fk nullable. Approval creates config vN+1; declines are logged too.</td></tr>
+  </table>
+
+  <h4>Derived, not stored</h4>
+  <p><b>vara_candidate_history</b> is a database <b>view</b> joining applications + snapshots + comms + signals per candidate — it powers the profile History tab. Candidate-centric history is always computed, never duplicated into a blob (the D7 reasoning: calibration queries, defensibility joins, and resurfacing searches all need real rows).</p>
+
+  <h4>Cross-cutting patterns (apply mechanically)</h4>
+  <table>
+    <tr><th style="width:220px">Pattern</th><th>Rule</th></tr>
+    <tr><td>RLS — every tenant-scoped table</td><td><span style="font-family:monospace;font-size:12px">ALTER TABLE t ENABLE ROW LEVEL SECURITY;<br>CREATE POLICY tenant_isolation ON t USING (tenant_id = current_setting('app.tenant_id')::uuid);</span><br>Applies to all vani_ tenant-scoped and all vara_ tables. Platform artifacts (vani_agent, vani_agent_role, vani_domain_pack) carry no tenant_id and no policy.</td></tr>
+    <tr><td>Append-only enforcement</td><td>vara_score_snapshot, vara_scoring_config, vara_jd_version, vara_consent, vara_artifact, vara_calibration_signal, vani_audit_log, vani_comms_log, vani_metering_event: <span style="font-family:monospace;font-size:12px">REVOKE UPDATE, DELETE</span> from the app role + a BEFORE UPDATE OR DELETE trigger raising an exception. Purge (DPDP) is the single sanctioned exception, implemented as a SECURITY DEFINER function that deletes vara_candidate_pii and redacts audit payloads.</td></tr>
+    <tr><td>State transitions</td><td>vara_application.state changes only through a transition function that validates the Flow D2 edges, writes vani_audit_log in the same transaction, and rejects any transition where actor_type would be “model”.</td></tr>
+    <tr><td>Keys &amp; indexes</td><td>FKs as noted; hot paths indexed: application (tenant_id, jd_id, state), (tenant_id, candidate_id) · snapshot (application_id, created_at desc) · signal (tenant_id, family_id, at) · comms_log (ref_entity, ref_id).</td></tr>
+  </table>
+</section>
+
+<!-- ============ 16 NEXT ============ -->
+<section id="s16">
+  <div class="sec-tag">Section 16</div>
+  <h2>Open questions &amp; next step</h2>
+  <table>
+    <tr><th style="width:56px">#</th><th>Open question</th><th style="width:280px">Leaning</th></tr>
+    <tr><td>Q1</td><td>Window expiry semantics on weekends/holidays — calendar days or business days?</td><td>Business days, tenant-configurable calendar.</td></tr>
+    <tr><td>Q2</td><td>Metering price points and the reduced knockout-close rate.</td><td>Commercial call — outside this spec.</td></tr>
+    <tr><td>Q3</td><td>Does the TA see other tenants’ anonymised benchmark stats (time-to-shortlist etc.)?</td><td>Not in v1; revisit with ≥5 tenants.</td></tr>
+    <tr><td>Q4</td><td>Candidate chat on WhatsApp itself (apply inside WhatsApp, not just notified there)?</td><td>Strong v2 candidate for India volume hiring.</td></tr>
+  </table>
+  <div class="callout"><b>Schema is in this document</b> (Sections 14–15, decisions D1–D7 settled). <b>Next step on go-ahead:</b> the build plan — migration order (vani_ spine first, vara_ on top), the state-transition function, the MSG91 adapter mapping, and the Claude Code hand-off brief that turns this spec into the first migration set inside VaNiGTM.</div>
+</section>
+
+<footer>
+  <span><b>Vara Specification v0.1</b> · VaNi Talent Agent · Vikuna</span>
+  <span>Rules reject · models rank · humans decide</span>
+</footer>
+</div>
+</body>
+</html>
