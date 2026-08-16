@@ -112,16 +112,41 @@ Three conclusions, all of which shrink the remaining work:
    included explicitly. (`dristiq.conf.bak-20260710` is already relying on this —
    it does not end in `.conf`, so nginx ignores it.)
 
+### VPS work — COMPLETE 2026-08-16
+
+`conf.d/vani-cors.inc` created and `conf.d/api.vikuna.io.conf` rewritten with the
+origin map and three includes. `nginx -t` clean, reloaded. Verified:
+
+| Test | Result |
+|---|---|
+| `Origin: https://vani.vikuna.io` on `/api/v1/auth/login` | echoes `https://vani.vikuna.io` |
+| `Origin: https://www.vikuna.io` on `/api/v1/assessment/` | echoes `https://www.vikuna.io` |
+| `Origin: https://evil.example` | **no header at all** |
+| `Access-Control-Allow-Origin` count on a proxied POST | **1** — `proxy_hide_header` works |
+| `/api/v1/skills/contact-skill/x` | **404** — allowlist holds |
+
+**This also fixed a live breakage.** Before the change, every response carried
+`Access-Control-Allow-Origin: http://localhost:3000` — `CORS_ORIGIN` was never
+set on the container, so `server.ts` was falling back to its hardcoded
+development default. Browser calls to this API from `www.vikuna.io` were being
+rejected. They now work.
+
+`CORS_ORIGIN` in the backend env is now inert: nginx strips whatever Express
+emits and substitutes the map's value. Leave it, or remove it — it no longer
+affects behaviour.
+
 ### What is actually left
 
-| # | Task | Where |
-|---|---|---|
-| 1 | Point `vani.vikuna.io` at Vercel (CNAME `cname.vercel-dns.com`) | DNS provider |
-| 2 | Add `vani.vikuna.io` + the Vercel preview pattern to the CORS map | `conf.d/api.vikuna.io.conf` |
-| 3 | Reload nginx and run the four verification calls | VPS |
+| # | Task | Where | Status |
+|---|---|---|---|
+| 1 | CORS map + includes | `conf.d/` on the VPS | **done** |
+| 2 | Point `vani.vikuna.io` at Vercel (CNAME `cname.vercel-dns.com`) | DNS provider | outstanding |
+| 3 | Create the Vercel project, Root Directory `vani-app` | Vercel | outstanding |
+| 4 | `NEXT_PUBLIC_API_ORIGIN=https://api.vikuna.io` | Vercel env | outstanding |
+| 5 | Confirm the preview slug matches `vani-app-*.vercel.app`, or narrow the regex | both | outstanding |
 
-Nothing else. The certificate, the backend, the allowlist and TLS are all in
-place already.
+Nothing further is needed on the VPS. Certificate, backend, TLS, allowlist and
+CORS are all in place.
 
 ---
 
