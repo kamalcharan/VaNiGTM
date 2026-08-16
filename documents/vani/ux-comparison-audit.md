@@ -114,9 +114,39 @@ template for how each agent onboards.
 
 So Vara's onboarding is part of Vara's phase, not part of P2.
 
-**Signup contradicts the spec.** The prototype has a signup view, VaNiGTM ships
-`/register`, and the platform spec says v1 is operator-provisioned with no
-self-serve signup. Three sources, two answers.
+**Signup — two conflicts, and the second is the serious one.**
+
+*Policy.* The spec's out-of-scope callout says "self-serve public tenant signup
+(operator-provisioned in v1)", and VN-01 has the operator creating the tenant and
+issuing a wizard link to the named Tenant Admin. `/api/v1/auth/register` does the
+opposite: unauthenticated, takes `tenant_name`, creates tenant + profile + user in
+one transaction and returns tokens — the caller is logged straight in. There is no
+invite code, no allowlist, no domain check and no approval step; the tenant is
+written `status: 'active'` with `activated_at: now()`.
+
+*Schema — the one that bites.* `register()` inserts into **`vn_tenants`** /
+`vn_tenant_profiles`, the legacy schema. The platform spec's tenant is
+**`vani_tenant`**, net-new in `001_vani_platform.sql`, whose header states it
+"coexists with legacy VN_/GTM tables; no history is migrated". They are unrelated
+tables.
+
+So a signup screen built against `/register` today succeeds, and lands the user in
+a tenant the platform layer cannot see. `vani_tenant_agent` has a foreign key to
+`vani_tenant(id)`, so **no agent could ever be subscribed to that tenant** — no
+pack binding, no role families, no per-agent grants, no audit spine rows. The
+failure is invisible until someone tries to activate Vara.
+
+That is a wiring gap, not a preference. Either `/register` also creates the
+`vani_tenant` row, or registration moves to the platform layer — both backend work
+in VaNiGTM, which would put P1's critical path on the VPS side.
+
+*Recommendation:* operator-provisioned for v1. Not because self-serve is wrong
+long-term, but because the tenant record has to be reconciled either way, and
+under deadline pressure from a signup screen is the worst moment to decide which
+table is the source of truth.
+
+*(Smaller tell of the same lineage: `register()` hardcodes tenant type `'mfd'` —
+mutual fund distributor, left over from the KI-Prime/ProKey era.)*
 
 ---
 
