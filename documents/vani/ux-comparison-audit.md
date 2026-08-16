@@ -84,7 +84,7 @@ Do not discard these when moving to the new IA:
 - **Honest empty states.** `/today` already ships "coming soon" tiles rather than
   pretending. Keep that habit.
 
-## 5. The agent model (settled), and two conflicts that remain
+## 5. Settled decisions, and the one conflict that remains
 
 **Settled:** VaNi is the head — the orchestrator. Each agent sits under it with its
 own goals, its own role catalog and its own metering. **Vara is the first agent;
@@ -100,11 +100,19 @@ and an **Add agent** row for what follows. Only one naming question is left, and
 it is cosmetic rather than blocking — whether the orchestrator row reads "VaNi"
 or carries a separate name of its own.
 
-**Onboarding is two different products.** VaNiGTM's Mission Wizard teaches an
-agent. The spec's platform lane declares an organisation — profile, domains,
-industry pack binding, users, role families, per-agent grants, LLM provider.
-The spec's version is the one the architecture requires; the Mission Wizard is
-an agent-level step that should sit *after* it.
+**Settled — onboarding is two tiers, not two products.** The onboarding built
+now is the **VaNi tenant lane**: the once-per-tenant declarations in the platform
+spec (VN-10 … VN-13) — org profile, domain verification, industry pack binding,
+users and memberships, the role-family graph, per-agent role grants, and the BYO
+LLM provider.
+
+**Every agent then carries its own onboarding**, which is exactly Flow F1 step 3
+in the spec: subscribe, run the agent's own activation lane, pass its declared
+readiness gate, go live. VaNiGTM's Mission Wizard is not a rival to the platform
+lane — it is an agent-level lane that belongs *after* it, and it becomes the
+template for how each agent onboards.
+
+So Vara's onboarding is part of Vara's phase, not part of P2.
 
 **Signup contradicts the spec.** The prototype has a signup view, VaNiGTM ships
 `/register`, and the platform spec says v1 is operator-provisioned with no

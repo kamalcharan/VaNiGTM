@@ -86,10 +86,14 @@ true. Decide which before a signup screen is designed.
 revokes server-side, and a wrong password is indistinguishable from an unknown
 account.
 
-## P2 · Onboarding
+## P2 · Onboarding — the VaNi tenant lane
 
-The platform lane from the spec — the once-per-tenant declarations (stories
-VN-10 … VN-13):
+Onboarding is **two tiers**. This phase builds only the first: the VaNi tenant
+lane, declared once per organisation. Each agent brings its own activation lane
+later, inside that agent's own phase (spec Flow F1 step 3) — so Vara's
+onboarding is P3's work, not this one's.
+
+The once-per-tenant declarations (stories VN-10 … VN-13):
 
 - Org profile and domain verification.
 - Industry / domain-pack binding — declared once, delegated to every agent.
@@ -97,8 +101,9 @@ VN-10 … VN-13):
 - Per-agent role grants from each agent's declared catalog.
 - BYO LLM provider credentials, verified by test call.
 
-**Exit criteria:** a tenant is declared once and an agent activating afterwards
-re-asks none of it.
+**Exit criteria:** a tenant is declared once, and an agent activating afterwards
+re-asks none of it — the spec's "one declaration, N projections" invariant, made
+observable.
 
 ## P3 · Vara
 
@@ -107,6 +112,8 @@ works.
 
 - Agent registration: role catalog (`ta`, `hm`, `calibration_approver`), metering
   unit types, template set, pack namespace, activation checklist.
+- **Vara's own onboarding** — its activation lane and readiness gate, the second
+  tier of onboarding and the template every later agent follows.
 - Screens: JD and versions, candidates, applications, the ranked shortlist, the
   probability map, calibration.
 - State changes go through `vara_transition()` — the guarded function is the only
