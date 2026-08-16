@@ -55,25 +55,73 @@ Other containers on the box: `vikuna-postgres` (17-alpine), `vikuna-postgrest`,
 - **Config is mounted read-only.** Edit on the host under
   `/opt/vikuna/docker/docker/config/nginx/conf.d/`, never inside the container.
 
-### ⚠ Separate finding — publicly exposed data services
+### Ports — checked, and my earlier alarm was wrong
 
-`docker ps` shows these published on **all interfaces**:
+`ufw status` shows the box is not as exposed as `docker ps` implied:
 
 ```
-vikuna-postgres    0.0.0.0:5432->5432
-vikuna-postgrest   0.0.0.0:3000->3000
-vikuna-llm         0.0.0.0:8080->8080
+22, 80, 443/tcp   ALLOW  Anywhere
+5432/tcp          ALLOW  only 3 specific IPs + one IPv6 /64
+3000, 8080        not allowed at all
 ```
 
-Unless a host firewall is blocking them, Postgres 17 and PostgREST are reachable
-from the public internet, and the whole nginx allowlist — which exists to keep 17
-skills off the internet — is bypassable by connecting to 5432 directly. Nothing
-in the VaNi UI plan requires any of these to be published; `vani-backend` itself
-correctly publishes nothing and is reached over `vikuna-net`.
+Postgres is restricted to named addresses, and PostgREST and the LLM server have
+no ufw rule, so the default policy drops them. The `0.0.0.0:` bindings in
+`docker ps` are the Docker publish addresses, not evidence of public reach.
 
-Worth checking `sudo ufw status` / `sudo iptables -S` and, if they are genuinely
-open, binding them to `127.0.0.1:` instead. Out of scope for P1, but it is a
-bigger exposure than anything P1 introduces.
+**One caveat worth a single check.** Docker writes its own iptables rules and
+commonly bypasses ufw's INPUT chain for published ports — a known behaviour, not
+a misconfiguration on this box. If you want certainty, test from *outside* the
+VPS rather than from it:
+
+```bash
+nc -zv 187.127.136.65 3000   # PostgREST — expect refused/timeout
+nc -zv 187.127.136.65 8080   # llama.cpp — expect refused/timeout
+```
+
+If either connects, the fix is to bind them to `127.0.0.1:3000:3000` in compose
+rather than to add ufw rules, since ufw is the layer being bypassed.
+
+---
+
+## Step 0c · Second discovery pass — RESOLVED
+
+```
+conf.d/            .gitkeep, api.vikuna.io.conf (Aug 1, 2064 B),
+                   dristiq.conf, dristiq.conf.bak-20260710,
+                   mcp-db.conf, mcp.htpasswd
+include pattern    include /etc/nginx/conf.d/*.conf;
+grep vani.vikuna.io in conf.d   → no match
+curl -sI https://api.vikuna.io/health → HTTP/1.1 200 OK (nginx/1.29.7)
+```
+
+Three conclusions, all of which shrink the remaining work:
+
+1. **`api.vikuna.io` is already live over TLS.** The config is deployed, the cert
+   is in use, and `/health` answers 200. Steps 1 and 2 of this runbook are done
+   for the API. Note the deployed file is 2 064 bytes — smaller than the version
+   in `VaNiGTM/deploy/vani-main-vps/`, so **the two are not identical** and the
+   repo copy must not be assumed authoritative.
+2. **Nothing is served on `vani.vikuna.io`.** No server block references it, so
+   requests fall through to whichever block nginx treats as default. The cert
+   exists and DNS points here, but there is no site. **Repointing that record to
+   Vercel therefore breaks nothing** — the obstacle flagged earlier does not
+   exist.
+3. **The include is `conf.d/*.conf`**, so a CORS snippet shipped as
+   `conf.d/vani-cors.inc` will not be auto-loaded as a server block and can be
+   included explicitly. (`dristiq.conf.bak-20260710` is already relying on this —
+   it does not end in `.conf`, so nginx ignores it.)
+
+### What is actually left
+
+| # | Task | Where |
+|---|---|---|
+| 1 | Point `vani.vikuna.io` at Vercel (CNAME `cname.vercel-dns.com`) | DNS provider |
+| 2 | Add `vani.vikuna.io` + the Vercel preview pattern to the CORS map | `conf.d/api.vikuna.io.conf` |
+| 3 | Reload nginx and run the four verification calls | VPS |
+
+Nothing else. The certificate, the backend, the allowlist and TLS are all in
+place already.
 
 ---
 
