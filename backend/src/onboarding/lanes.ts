@@ -103,22 +103,27 @@ const VANI_LANE: Lane = {
       story: 'VN-10',
       enabled: true,
     },
-    // ── Declared, not yet required ──────────────────────────────────────
-    // These three write to the vani_ platform spine — vani_tenant_domain,
-    // vani_membership, vani_llm_provider. Those migrations live in the website
-    // repo (docs/vani/sql/001_vani_platform.sql) and it is NOT confirmed that
-    // they have been applied to vani_gtm_db; there is no live DB access from a
-    // Claude session to check. Enabling a step whose table may not exist would
-    // trap every tenant behind a step they cannot complete.
+    // ── The vani_ platform spine steps ──────────────────────────────────
+    // The spine is in the migration set as of 240_vani_platform.sql (applied
+    // 2026-08-17). vani:domain is live: its writer in applyStepPayload bridges
+    // the vn_ tenant to vani_tenant by slug (provisioning it on first write —
+    // V-01 semantics) and upserts vani_tenant_domain.
     //
-    // Flip `enabled` to true once the spine is confirmed applied. That is the
-    // whole change — the engine, the UI and the gate already handle them.
+    // A lane step stays disabled while nothing implements it:
+    //   - vani:team — the People surface already reads and writes the vn_
+    //     spine (/auth/team, /auth/invite) and is finished there. This step is
+    //     the unused vani_membership route to the same outcome; enable it only
+    //     if membership moves to the platform spine.
+    //   - vani:llm_provider — a default provider is in force server-side. BYOK
+    //     needs vani_llm_provider.credentials_enc and an encryption path,
+    //     which nothing implements yet. Enabling it now would gate tenants
+    //     behind an input that saves nowhere.
     {
       step_id: 'vani:domain',
       title: 'Your domain',
       summary: 'The domain your workspace runs on, so agents can address it.',
       story: 'VN-10',
-      enabled: false,
+      enabled: true,
     },
     {
       step_id: 'vani:team',
