@@ -7,7 +7,27 @@ already cost something, or because breaking it costs data.
 
 ---
 
-## 0. Two local gotchas, so they cost nobody a second hour
+## 0. Where development happens
+
+**Skeleton phase: develop and test against the deployed stack —
+`vani.vikuna.io` → `api.vikuna.io`. Local-first development is deliberately
+deferred.** The decision is Charan's, taken 2026-08-17 after a local-backend
+attempt cost most of a session: the backend was up (`/health` ok, VPS Postgres
+at 129ms) and the CORS preflight passed with the right origin, and the browser
+still failed the login `fetch` at the network layer. While the surface is this
+thin, the deployed path works and the local path costs more than it returns.
+
+What that means in practice:
+
+- Ship to the branch, merge, let Vercel and the VPS rebuild, test there.
+- The **mock transport** (no `.env.local`) remains the right mode for pure UI
+  work — states, layout, the onboarding pathway — and needs no backend at all.
+- Do not spend session time on the localhost↔VPS path unless asked. When it is
+  picked up again, everything below is still accurate and still applies.
+
+---
+
+## 0b. Local gotchas, for when local development is picked back up
 
 **`next-env.d.ts` flips between dev and build.** `next dev` rewrites its imports
 to `./.next/dev/types/…`; `next build` writes `./.next/types/…`. The committed
