@@ -14,8 +14,8 @@
 
 import type { OnboardingLane } from '../lane';
 import { PRODUCT_LANE_ID } from '../lane';
-import UserProfileStep from '../steps/UserProfileStep';
-import BusinessProfileStep from '../steps/BusinessProfileStep';
+import UserProfileStep, { UserProfileArtefact } from '../steps/UserProfileStep';
+import BusinessProfileStep, { BusinessProfileArtefact } from '../steps/BusinessProfileStep';
 
 export const productLane: OnboardingLane = {
   id: PRODUCT_LANE_ID,
@@ -27,16 +27,20 @@ export const productLane: OnboardingLane = {
     {
       step_id: 'user_profile',
       title: 'Your profile',
+      shortLabel: 'You',
       summary:
         'So VaNi knows who is acting, and how to reach you when an agent needs a person.',
       Screen: UserProfileStep,
+      Artefact: UserProfileArtefact,
     },
     {
       step_id: 'business_profile',
       title: 'Your organisation',
+      shortLabel: 'Organisation',
       summary:
         'What the organisation is and what it works on. This binds the domain pack every agent inherits.',
       Screen: BusinessProfileStep,
+      Artefact: BusinessProfileArtefact,
     },
   ],
 };

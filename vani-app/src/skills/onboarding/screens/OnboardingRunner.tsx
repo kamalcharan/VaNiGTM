@@ -3,20 +3,38 @@
 /**
  * The engine. Give it a lane id; it runs the lane.
  *
- * It knows nothing about what is being onboarded. The product lane and Vara's
- * activation lane are the same code path — which is the test that "onboarding
- * is an agent" is real rather than a label on two hardcoded wizards.
+ * It knows nothing about what is being onboarded — the product lane and Vara's
+ * future activation lane are the same code path. That is the test that
+ * "onboarding is an agent" is real rather than a label on two hardcoded wizards.
+ *
+ * ── THE SHAPE, AND WHY ────────────────────────────────────────────────────
+ *
+ * A confirmed step REDUCES and moves into the left rail; the next step runs in
+ * the centre. So the pathway accumulates a visible record of what it produced
+ * instead of discarding each step the moment it passes. That arrangement is
+ * PathwayShell's, ported from VaNiGTM's mission wizard, and the reduction shape
+ * is each step's own editorial choice (see lane.ts `Artefact`).
  *
  * The server decides which step is next, always. The client renders what it is
- * told and re-reads after every completion. A local guess about ordering is a
- * bug that only shows up on reload, in front of someone else.
+ * told and re-reads after every completion — a local guess about ordering is a
+ * bug that surfaces on reload, in front of someone else.
+ *
+ * ── ONE HONEST LIMITATION ─────────────────────────────────────────────────
+ *
+ * Artefact detail is session-scoped: it renders the values THIS session
+ * confirmed. After a reload the rail shows a confirmed marker without the
+ * detail, because `/onboarding/status` returns step state, not step contents.
+ * That is deliberate over two alternatives — duplicating the values into the
+ * step's JSONB (which the DB rules forbid) or fabricating them (which rule 9d
+ * forbids). It resolves when the profile read lands with the research step.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-provider';
 import { DataBoundary, SkeletonRows, useToast } from '@/platform/feedback';
-import { getLane, type OnboardingStep } from '../lane';
+import { ArtefactSection, PathwayShell, type PathwayStep } from '@/platform/pathway';
+import { getLane, type OnboardingLane, type OnboardingStep } from '../lane';
 // Load-bearing: registers every lane in the CLIENT bundle. The engine resolves
 // lanes at render time, so a registration that only ran on the server would
 // leave it with nothing — which is exactly what happened before this import.
@@ -33,19 +51,23 @@ interface Props {
 export default function OnboardingRunner({ laneId, done }: Props) {
   const status = useOnboardingStatus(laneId);
   const { complete, isSaving } = useCompleteStep(laneId);
-  const { logout, refresh, user, tenant } = useAuth();
+  const { logout, refresh, tenant } = useAuth();
   const toast = useToast();
   const router = useRouter();
   const lane = getLane(laneId);
 
+  /** Values confirmed this session, per step id. Feeds the rail and reopens. */
+  const [confirmed, setConfirmed] = useState<Record<string, Record<string, unknown>>>({});
+  /** Set when the user reopens a done step, overriding the server's "next". */
+  const [reopened, setReopened] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
 
   // Leaving is the only escape from a gated lane, so it must always work — a
   // wizard that can trap someone is worse than no wizard.
-  async function signOut() {
+  const signOut = useCallback(async () => {
     await logout();
     router.replace('/');
-  }
+  }, [logout, router]);
 
   /**
    * Release the user into the console.
@@ -56,10 +78,10 @@ export default function OnboardingRunner({ laneId, done }: Props) {
    * believes they are un-onboarded, and it bounces them right back here. That
    * was a real loop, caught in test; do not remove the await.
    */
-  async function enterConsole() {
+  const enterConsole = useCallback(async () => {
     await refresh();
     router.replace(done);
-  }
+  }, [refresh, router, done]);
 
   if (!lane) {
     return (
@@ -71,130 +93,145 @@ export default function OnboardingRunner({ laneId, done }: Props) {
   }
 
   return (
-    <div className={s.screen}>
-      <div className={s.glow} />
-
-      <header className={s.head}>
-        <svg className={s.mark} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <circle cx="16" cy="16" r="3.2" fill="var(--gold)" />
-          <circle cx="16" cy="5.5" r="2.4" fill="none" stroke="var(--gold)" strokeWidth="1.5" />
-          <circle cx="25" cy="21.5" r="2.4" fill="none" stroke="var(--gold)" strokeWidth="1.5" />
-          <circle cx="7" cy="21.5" r="2.4" fill="none" stroke="var(--gold)" strokeWidth="1.5" />
-          <circle cx="16" cy="16" r="12.5" stroke="var(--gold)" strokeWidth="1" strokeOpacity="0.22" />
-        </svg>
-        <span className={s.brand}>VaNi</span>
-        <span className={s.headMeta}>{tenant?.name ?? user?.email ?? ''}</span>
-        <button type="button" className={s.signOut} onClick={signOut}>Sign out</button>
-      </header>
-
-      <div className={s.body}>
-        <DataBoundary
-          query={status}
-          label="your setup"
-          skeleton={<SkeletonRows rows={4} lines={1} />}
-        >
-          {(data) => (
-            <Lane
-              data={data}
-              lane={lane}
-              finished={finished}
-              isSaving={isSaving}
-              onComplete={async (step, payload) => {
-                const ok = await complete(step.step_id, payload);
-                if (!ok) return;
-                // Was this the last one? The server's answer arrives with the
-                // refetch, but the toast should fire on the action, not after a
-                // round trip the user did not ask to wait for.
-                const remaining = data.steps.filter(
-                  (x) => x.status !== 'completed' && x.step_id !== step.step_id,
-                );
-                if (remaining.length === 0) {
-                  setFinished(true);
-                  toast.success('Setup complete.', 'VaNi has what it needs to start.');
-                }
-              }}
-              onEnter={enterConsole}
-            />
-          )}
-        </DataBoundary>
-      </div>
-    </div>
+    <DataBoundary
+      query={status}
+      label="your setup"
+      skeleton={
+        <div style={{ padding: 24 }}>
+          <SkeletonRows rows={4} lines={1} />
+        </div>
+      }
+    >
+      {(data) => (
+        <Lane
+          data={data}
+          lane={lane}
+          confirmed={confirmed}
+          reopened={reopened}
+          finished={finished}
+          isSaving={isSaving}
+          orgName={tenant?.name}
+          onReopen={setReopened}
+          onSignOut={signOut}
+          onEnter={enterConsole}
+          onComplete={async (step, payload) => {
+            const ok = await complete(step.step_id, payload);
+            if (!ok) return;
+            setConfirmed((prev) => ({ ...prev, [step.step_id]: payload }));
+            setReopened(null);
+            // Was that the last one? The server's answer arrives with the
+            // refetch, but the toast should fire on the action rather than
+            // after a round trip nobody asked to wait for.
+            const remaining = data.steps.filter(
+              (x) => x.status !== 'completed' && x.step_id !== step.step_id,
+            );
+            if (remaining.length === 0) {
+              setFinished(true);
+              toast.success('Setup complete.', 'VaNi has what it needs to start.');
+            }
+          }}
+        />
+      )}
+    </DataBoundary>
   );
 }
 
 function Lane({
   data,
   lane,
+  confirmed,
+  reopened,
   finished,
   isSaving,
-  onComplete,
+  orgName,
+  onReopen,
+  onSignOut,
   onEnter,
+  onComplete,
 }: {
   data: OnboardingStatus;
-  lane: NonNullable<ReturnType<typeof getLane>>;
+  lane: OnboardingLane;
+  confirmed: Record<string, Record<string, unknown>>;
+  reopened: string | null;
   finished: boolean;
   isSaving: boolean;
-  onComplete: (step: OnboardingStep, payload: Record<string, unknown>) => Promise<void>;
+  orgName?: string;
+  onReopen: (stepId: string | null) => void;
+  onSignOut: () => void;
   onEnter: () => void | Promise<void>;
+  onComplete: (step: OnboardingStep, payload: Record<string, unknown>) => Promise<void>;
 }) {
-  const doneCount = data.steps.filter((x) => x.status === 'completed').length;
-  const total = data.steps.length;
-
-  // The server names the next step; we look up the screen the client declared
-  // for it. A step the server requires but the client has no screen for is a
-  // deployment skew, and is surfaced rather than skipped.
-  const currentId = data.next_incomplete_step;
-  const current = useMemo(
-    () => lane.steps.find((x) => x.step_id === currentId),
-    [lane.steps, currentId],
+  const doneIds = useMemo(
+    () => new Set(data.steps.filter((x) => x.status === 'completed').map((x) => x.step_id)),
+    [data.steps],
   );
-  const currentStatus = data.steps.find((x) => x.step_id === currentId);
 
-  // Complete and the user is still here — go on in. Effect, not render, so the
+  // The stepper follows the SERVER's step list, not the client lane's, so a
+  // step the API requires still appears even if this build has no screen for it.
+  const steps: PathwayStep[] = data.steps.map((st) => ({
+    id: st.step_id,
+    label: lane.steps.find((x) => x.step_id === st.step_id)?.shortLabel ?? st.title,
+  }));
+
+  // A reopen overrides the server's "next"; otherwise the server decides.
+  const activeId = reopened ?? data.next_incomplete_step;
+  const activeIndex = Math.max(0, data.steps.findIndex((x) => x.step_id === activeId));
+  const current = lane.steps.find((x) => x.step_id === activeId);
+  const currentStatus = data.steps.find((x) => x.step_id === activeId);
+
+  const isComplete = data.complete && !reopened;
+
+  // Complete and the user is still here — go in. Effect, not render, so the
   // navigation is not a side effect of drawing.
   useEffect(() => {
-    if (data.complete && finished) {
+    if (isComplete && finished) {
       const t = setTimeout(() => void onEnter(), 900);
       return () => clearTimeout(t);
     }
-  }, [data.complete, finished, onEnter]);
+  }, [isComplete, finished, onEnter]);
+
+  /**
+   * The rail: every confirmed step, in lane order, reduced to its own shape.
+   * Steps still to come are absent — the rail is a record, not a preview.
+   */
+  const artefacts = lane.steps
+    .filter((st) => doneIds.has(st.step_id) && st.step_id !== reopened)
+    .map((st) => {
+      const values = confirmed[st.step_id];
+      const reopen = isComplete ? undefined : () => onReopen(st.step_id);
+      if (st.Artefact && values) {
+        return <st.Artefact key={st.step_id} values={values} onReopen={reopen} />;
+      }
+      // No detail for this step in this session (a reload, or a step with no
+      // declared reduction). Say that, rather than invent a card.
+      return (
+        <ArtefactSection key={st.step_id} label={st.shortLabel} onReopen={reopen}>
+          <p className={s.railConfirmed}>Confirmed earlier.</p>
+        </ArtefactSection>
+      );
+    });
 
   return (
-    <>
-      <aside className={s.rail}>
-        <div className={s.railTitle}>{lane.title}</div>
-        <p className={s.railIntro}>{lane.intro}</p>
-
-        <div className={s.progressText}>{doneCount} of {total} done</div>
-        <div className={s.bar}>
-          <div className={s.barFill} style={{ width: `${total ? (doneCount / total) * 100 : 0}%` }} />
+    <PathwayShell
+      eyebrow={`VaNi · ${lane.scope === 'product' ? 'Onboarding' : 'Activation'}`}
+      name={lane.title}
+      trailing={
+        <div className={s.headActions}>
+          {orgName && <span className={s.headOrg}>{orgName}</span>}
+          <button type="button" className={s.signOut} onClick={onSignOut}>
+            Sign out
+          </button>
         </div>
-
-        <ol className={s.steps}>
-          {data.steps.map((step, i) => {
-            const isDone = step.status === 'completed';
-            const isCurrent = step.step_id === currentId;
-            return (
-              <li
-                key={step.step_id}
-                className={`${s.step} ${isCurrent ? s.stepCurrent : ''} ${isDone ? s.stepDone : ''}`}
-                aria-current={isCurrent ? 'step' : undefined}
-              >
-                <span className={`${s.dot} ${isDone ? s.dotDone : ''} ${isCurrent ? s.dotCurrent : ''}`}>
-                  {isDone ? '✓' : i + 1}
-                </span>
-                {/* The spec story (VN-10 …) stays in the catalog for
-                    traceability and out of the rail. A tenant admin setting up
-                    their org does not need our backlog ids. */}
-                <span className={s.stepLabel}>{step.title}</span>
-              </li>
-            );
-          })}
-        </ol>
-      </aside>
-
-      <main className={s.card}>
-        {data.complete ? (
+      }
+      steps={steps}
+      currentIndex={activeIndex}
+      completedSteps={doneIds}
+      onStepClick={isComplete ? undefined : (i) => onReopen(data.steps[i].step_id)}
+      artefacts={artefacts.length ? <>{artefacts}</> : undefined}
+      done={isComplete}
+    >
+      {isComplete ? (
+        <div className={s.card}>
           <div className={s.done}>
             <div className={s.doneMark} aria-hidden="true">✓</div>
             <div className={s.h}>You&rsquo;re set up.</div>
@@ -206,34 +243,35 @@ function Lane({
               Go to the console →
             </button>
           </div>
-        ) : !current ? (
-          <div role="alert">
-            <div className={s.eyebrow}>// STEP UNAVAILABLE</div>
-            <div className={s.h}>{currentStatus?.title ?? currentId}</div>
-            <p className={s.sub}>
-              The server requires this step but this build has no screen for it —
-              the console and the API are on different versions. Reload; if it
-              persists, this needs a deploy, not a retry.
-            </p>
+        </div>
+      ) : !current ? (
+        <div className={s.card} role="alert">
+          <div className={s.eyebrow}>// STEP UNAVAILABLE</div>
+          <div className={s.h}>{currentStatus?.title ?? activeId}</div>
+          <p className={s.sub}>
+            The server requires this step but this build has no screen for it —
+            the console and the API are on different versions. Reload; if it
+            persists, this needs a deploy, not a retry.
+          </p>
+        </div>
+      ) : (
+        <div className={s.card}>
+          <div className={s.eyebrow}>
+            // STEP {activeIndex + 1} OF {steps.length}
+            {reopened && ' · REOPENED'}
           </div>
-        ) : (
-          <>
-            <div className={s.eyebrow}>
-              // STEP {doneCount + 1} OF {total}
-            </div>
-            <h1 className={s.h}>{current.title}</h1>
-            <p className={s.sub}>{current.summary}</p>
-            <current.Screen
-              initial={{}}
-              isSaving={isSaving}
-              save={async (payload) => {
-                await onComplete(current, payload);
-                return true;
-              }}
-            />
-          </>
-        )}
-      </main>
-    </>
+          <h1 className={s.h}>{current.title}</h1>
+          <p className={s.sub}>{current.summary}</p>
+          <current.Screen
+            initial={confirmed[current.step_id] ?? {}}
+            isSaving={isSaving}
+            save={async (payload) => {
+              await onComplete(current, payload);
+              return true;
+            }}
+          />
+        </div>
+      )}
+    </PathwayShell>
   );
 }

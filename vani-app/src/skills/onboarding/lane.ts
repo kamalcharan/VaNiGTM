@@ -25,7 +25,10 @@ export type LaneScope = 'product' | 'agent';
 
 /** What a step screen is handed. `save` is the only way it writes. */
 export interface StepScreenProps {
-  /** Values already known for this step, from the server. */
+  /**
+   * Values to prefill. On a first pass this is empty; on a reopen it is what
+   * the step confirmed last time, so "Edit again" edits rather than retypes.
+   */
   initial: Record<string, unknown>;
   /**
    * Completes the step. One call: the payload and the completion mark commit
@@ -35,12 +38,30 @@ export interface StepScreenProps {
   isSaving: boolean;
 }
 
+/** What an artefact renderer is handed: the values this step confirmed. */
+export interface StepArtefactProps {
+  values: Record<string, unknown>;
+  /** Present only while the pathway is still running. */
+  onReopen?: () => void;
+}
+
 export interface OnboardingStep {
   /** Must match the server catalog exactly — it is the storage key. */
   step_id: string;
   title: string;
+  /** Short form for the stepper, which has no room for a sentence. */
+  shortLabel: string;
   summary: string;
   Screen: ComponentType<StepScreenProps>;
+  /**
+   * How this step reduces into the artefact rail once confirmed.
+   *
+   * Editorial, per step: the step decides WHAT survives, the primitives own the
+   * LOOK. Omit it and the rail shows a plain confirmed marker — which is the
+   * honest fallback, and better than inventing a shape for data the step never
+   * decided how to summarise.
+   */
+  Artefact?: ComponentType<StepArtefactProps>;
 }
 
 export interface OnboardingLane {

@@ -7,7 +7,8 @@
  */
 
 import { useState, type FormEvent } from 'react';
-import type { StepScreenProps } from '../lane';
+import type { StepArtefactProps, StepScreenProps } from '../lane';
+import { ArtefactCard, ArtefactSection } from '@/platform/pathway';
 import { InlineLoader } from '@/platform/feedback';
 import s from '../onboarding.module.css';
 
@@ -96,5 +97,25 @@ export default function BusinessProfileStep({ initial, save, isSaving }: StepScr
         <span className={s.note}>Changeable later, but agents read it from the moment it is set.</span>
       </div>
     </form>
+  );
+}
+
+/**
+ * What survives: the organisation as every agent will inherit it. Industry is
+ * kept even though it is one word, because it binds the domain pack — it is the
+ * highest-consequence value on this card.
+ */
+export function BusinessProfileArtefact({ values, onReopen }: StepArtefactProps) {
+  return (
+    <ArtefactSection label="Your organisation" onReopen={onReopen}>
+      <ArtefactCard
+        fields={[
+          { label: 'Name', value: values.display_name as string },
+          { label: 'Industry', value: values.industry as string },
+          { label: 'Website', value: values.website as string },
+          { label: 'What it does', value: values.description as string },
+        ]}
+      />
+    </ArtefactSection>
   );
 }

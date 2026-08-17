@@ -6,7 +6,8 @@
  */
 
 import { useState, type FormEvent } from 'react';
-import type { StepScreenProps } from '../lane';
+import type { StepArtefactProps, StepScreenProps } from '../lane';
+import { ArtefactCard, ArtefactSection } from '@/platform/pathway';
 import { InlineLoader } from '@/platform/feedback';
 import s from '../onboarding.module.css';
 
@@ -89,5 +90,26 @@ export default function UserProfileStep({ initial, save, isSaving }: StepScreenP
         <span className={s.note}>You can change any of this later in Settings.</span>
       </div>
     </form>
+  );
+}
+
+/**
+ * What survives into the rail: who is acting, and how to reach them. The
+ * country code is folded into the number — two fields for one fact is noise in
+ * a 240px column.
+ */
+export function UserProfileArtefact({ values, onReopen }: StepArtefactProps) {
+  const cc = (values.country_code as string) ?? '';
+  const mobile = (values.mobile as string) ?? '';
+  return (
+    <ArtefactSection label="You" onReopen={onReopen}>
+      <ArtefactCard
+        fields={[
+          { label: 'Name', value: values.name as string },
+          { label: 'Role', value: values.designation as string },
+          { label: 'Mobile', value: mobile ? `${cc} ${mobile}`.trim() : null },
+        ]}
+      />
+    </ArtefactSection>
   );
 }
