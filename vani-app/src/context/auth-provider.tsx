@@ -43,6 +43,16 @@ export interface VaniTenant {
   id: string;
   name: string;
   slug?: string;
+  /**
+   * From /api/v1/auth/me. NOTE: this is VaNiGTM's legacy count across ALL of a
+   * tenant's onboarding rows, so it is not the VaNi product lane's answer. The
+   * lane's own status comes from GET /onboarding/status?lane=vani.
+   *
+   * It is still the right thing to gate on at bootstrap: it is already in the
+   * payload we fetch anyway, so the gate costs no extra round trip, and the
+   * runner corrects itself against the lane the moment it loads.
+   */
+  onboarding_complete?: boolean;
 }
 
 interface MeResponse {
@@ -64,6 +74,8 @@ interface AuthContextValue {
   tenant: VaniTenant | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  /** Signed in, but the product lane is not finished. Drives the gate. */
+  needsOnboarding: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (input: SignupInput) => Promise<void>;
   logout: () => Promise<void>;
@@ -162,6 +174,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         tenant,
         isAuthenticated: !!user,
         isLoading: bootstrapping,
+        // Absent means "not reported" — treat as done. A missing field must
+        // never lock a tenant out of the product.
+        needsOnboarding: !!user && tenant?.onboarding_complete === false,
         login,
         signup,
         logout,

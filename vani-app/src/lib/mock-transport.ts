@@ -92,6 +92,33 @@ const RUNS: RunRow[] = [
   { id: 'run_8f3982', agent: 'VaNi', trigger: 'comms.send', started: '07:12:03', duration: '0.9s', steps: 2, status: 'failed', actor: 'system' },
 ];
 
+/**
+ * Onboarding progress, held in memory so the wizard can actually be walked
+ * end to end against the mock. Resets on reload, which is what you want when
+ * testing the flow repeatedly.
+ */
+const ONBOARDING_DONE = new Set<string>();
+
+const ONBOARDING_CATALOG = [
+  { step_id: 'user_profile', title: 'Your profile', summary: 'Your name and how VaNi should reach you.', story: 'VN-11' },
+  { step_id: 'business_profile', title: 'Your organisation', summary: 'What the organisation is and which industry it works in.', story: 'VN-10' },
+];
+
+function onboardingStatus() {
+  const steps = ONBOARDING_CATALOG.map((s) => ({
+    ...s,
+    status: ONBOARDING_DONE.has(s.step_id) ? 'completed' : 'pending',
+    completed_at: null,
+  }));
+  const next = steps.find((s) => s.status !== 'completed');
+  return {
+    lane: { id: 'vani', title: 'Set up VaNi', scope: 'product' },
+    complete: !next,
+    steps,
+    next_incomplete_step: next ? next.step_id : null,
+  };
+}
+
 const HANDLERS: Record<string, () => unknown> = {
   'agents.list': () => ({ agents: AGENTS }),
   'dashboard.activity': () => ({ activity: ACTIVITY }),
@@ -102,15 +129,50 @@ const HANDLERS: Record<string, () => unknown> = {
     handovers: 1,
   }),
   'runs.list': () => ({ runs: RUNS }),
+  'onboarding.status': () => onboardingStatus(),
+};
+
+/** Writes need the params, so they are handled separately from the read table. */
+const WRITE_HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
+  'onboarding.complete_step': (p) => {
+    const stepId = String(p.step_id ?? '');
+    if (!ONBOARDING_CATALOG.some((s) => s.step_id === stepId)) {
+      throw new Error(`Step "${stepId}" is not a step of this lane`);
+    }
+    // Idempotent by construction, exactly like the server: a Set, so replaying
+    // the same completion cannot produce a second anything.
+    ONBOARDING_DONE.add(stepId);
+    const next = ONBOARDING_CATALOG.find((s) => !ONBOARDING_DONE.has(s.step_id));
+    return {
+      step: { step_id: stepId, status: 'completed' },
+      lane: 'vani',
+      next_step: next ? next.step_id : null,
+      onboarding_complete: !next,
+    };
+  },
 };
 
 /** Small delay so loading states are exercised rather than skipped. */
 export const mockTransport: SkillTransport = async (skill, fn, params) => {
   await new Promise((r) => setTimeout(r, 220));
-  const handler = HANDLERS[`${skill}.${fn}`];
-  const result: SkillResult = handler
-    ? { success: true, skill, function: fn, data: handler() }
-    : { success: false, skill, function: fn, data: null, error: `No mock for ${skill}.${fn}` };
+  const key = `${skill}.${fn}`;
+  const write = WRITE_HANDLERS[key];
+  const read = HANDLERS[key];
+
+  let result: SkillResult;
+  try {
+    if (write) result = { success: true, skill, function: fn, data: write(params) };
+    else if (read) result = { success: true, skill, function: fn, data: read() };
+    else result = { success: false, skill, function: fn, data: null, error: `No mock for ${key}` };
+  } catch (err) {
+    result = {
+      success: false,
+      skill,
+      function: fn,
+      data: null,
+      error: err instanceof Error ? err.message : 'Mock failed',
+    };
+  }
   if (process.env.NODE_ENV !== 'production') {
     console.debug('[mock-transport]', skill, fn, params, result.success ? 'ok' : result.error);
   }
