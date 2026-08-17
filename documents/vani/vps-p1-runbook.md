@@ -1,7 +1,12 @@
 # VPS runbook — unblocking P1 (auth for vani.vikuna.io)
 
+> **CLOSED 2026-08-17.** Everything this runbook set out to do is done and
+> verified from outside the VPS. Keep it for the verification commands and the
+> record of what was found; do not read it as open work. Live tasks are in
+> `vani-app-build-plan.md`.
+
 **Goal:** `vani.vikuna.io` (Vercel) can call `api.vikuna.io` (VPS) and hold a
-session. Three things are missing: DNS, an SSL certificate, and a CORS entry.
+session. Three things were missing: DNS, an SSL certificate, and a CORS entry.
 
 This does **not** repeat `VaNiGTM/deploy/vani-main-vps/RUNBOOK.md` — that covers
 building and starting the backend. This covers only what P1 needs on top, and it
@@ -142,10 +147,19 @@ affects behaviour.
 | 1 | CORS map + includes | `conf.d/` on the VPS | **done** |
 | 2 | Point `vani.vikuna.io` at Vercel | Vercel DNS | **done** |
 | 3 | Vercel project, Root Directory `vani-app` | Vercel | **done** — live at vani.vikuna.io/dashboard |
-| 4 | `NEXT_PUBLIC_API_ORIGIN=https://api.vikuna.io` | Vercel env | confirm |
-| 5 | Ignored Build Steps on both projects | Vercel | outstanding |
-| 6 | Delete the now-stale `vani.vikuna.io` cert on the VPS | VPS | outstanding |
-| 7 | Preview slug is `vani-iota`, not `vani-app` — CORS map does not match it | VPS | optional |
+| 4 | `NEXT_PUBLIC_API_ORIGIN=https://api.vikuna.io` | Vercel env | **done** |
+| 5 | Ignored Build Steps on both projects | Vercel | **done** |
+| 6 | Delete the now-stale `vani.vikuna.io` cert on the VPS | VPS | **done** |
+| 7 | Preview slug vs the CORS map pattern | VPS | **done** |
+
+**This runbook is closed as of 2026-08-17.** Everything in the table above is
+resolved: DNS, certificate, TLS chain, origin allowlist, CORS, both Vercel
+projects and their build scoping. Nothing infrastructural stands between here
+and P1 — the remaining work is application wiring in `vani-app`, tracked in the
+build plan, not here.
+
+The sections below are kept as the record of how it was done and how to verify
+it again if something regresses. They are history, not a task list.
 
 ### Verified externally 2026-08-17
 
@@ -168,8 +182,8 @@ without `-k` would have refused), the origin is echoed exactly, and credentials
 are permitted. The `204` is the tell that nginx answers preflight itself — Express
 never sees it, so its stale single-origin default cannot contradict the map.
 
-**P1 is unblocked on infrastructure.** The only remaining gate is the signup
-decision, and login/logout do not depend on it.
+**P1 is unblocked on infrastructure.** The signup question is settled too
+(operator-provisioned), so nothing gates the auth wiring but the wiring itself.
 
 ### Notes on the remaining items
 

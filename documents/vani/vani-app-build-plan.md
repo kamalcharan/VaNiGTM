@@ -4,6 +4,25 @@
 
 Sequence: **core UX layer → auth/signup → onboarding → Vara → the rest, slowly.**
 
+---
+
+## Where we are — 2026-08-17
+
+| Phase | Status |
+|---|---|
+| **Infrastructure** | **Done.** `vani.vikuna.io` on Vercel, `api.vikuna.io` on the VPS with TLS, nginx origin allowlist and CORS verified end to end from the public internet. Closed — see the VPS runbook. |
+| **P0 · Core UX layer** | **Done.** Shell renders from the registry, generic transport with a mock adapter, 15 routes declared (3 live, 12 planned), zero-platform-change test proven. |
+| **Consolidation** | **Done** (unplanned, added because the seam leaked). One VaNi surface: the story, sign-in and console all live at `vani.vikuna.io`. Marketing `/vani` and `vani-page.html` deleted and redirected. |
+| **P1 · Auth** | **Next.** Code is written but not connected — see the gap list below. |
+| P2 · Onboarding (VaNi tenant lane) | Not started |
+| P3 · Vara | Not started |
+
+Two things changed the plan as written below: the theme decision (the console
+carries vikuna.io's palette and fonts, not the Org OS teal that P0 specified),
+and the consolidation (the public VaNi story moved *into* the console app, so
+`vani-app` is no longer console-only).
+
+
 Settled architecture: the UX layer lives in this repo under `vani-app/`, deploys
 to Vercel as `vani.vikuna.io`. Backend, worker and database stay on the VPS.
 VaNiGTM's frontend is discarded; its backend is the API.
@@ -48,12 +67,15 @@ keeping it intact.
 
 ---
 
-## P0 · Core UX layer
+## P0 · Core UX layer — DONE
 
 The shell and nothing else. No business functionality, no auth.
 
-- Design tokens from the Org OS prototype — teal on near-black, distinct from
-  the marketing site.
+- ~~Design tokens from the Org OS prototype — teal on near-black, distinct from
+  the marketing site.~~ **Superseded.** The console carries vikuna.io's palette
+  and three faces instead: one brand across both domains, because the move from
+  site to console has to be invisible. Accent rule: orange is the action, gold
+  identifies VaNi.
 - App shell: nav, layout, routing, error and empty states, toasts.
 - `platform/registry.ts` — skills declare routes, nav entries and required roles
   into it; the shell renders *from* the registry, never a hardcoded list.
@@ -64,18 +86,29 @@ The shell and nothing else. No business functionality, no auth.
 **Exit criteria:** a throwaway demo skill can be added as one folder plus one
 registry line and appears in the nav, with no diff inside `platform/`.
 
-## P1 · Auth (login / logout)
+## P1 · Auth (login / logout) — NEXT
 
-- Port `api-client`: access token in memory only, refresh token in the httpOnly
-  cookie, `silentRefresh()` on mount, exactly one 401 retry.
-- Login, logout, session restore across reload and cold tab.
-- Remove the dev-only switch from P0 in the same slice it becomes redundant.
+**The code is written; it is not connected.** `api-client.ts`, `auth-provider.tsx`
+and `login-form.tsx` all exist and are correct in shape — token in memory,
+refresh cookie httpOnly, `silentRefresh()` on mount, exactly one 401 retry,
+generic error on every failure. What is missing is the wiring between them and
+the console, and each gap is small and specific:
 
-**Prerequisites on the VPS — none of these are optional:**
-- SSL certificate on `api.vikuna.io`. The config is HTTP-only today, and the
-  refresh cookie is `secure` in production, so it will not set over HTTP.
-- `vani.vikuna.io` added to the `map $http_origin` allowlist.
-- `/api/v1/auth/` allowlisted (already present in the config as written).
+| # | Gap | Where | Why it matters |
+|---|---|---|---|
+| 1 | Login redirects to `/home`, a route that does not exist | `components/auth/login-form.tsx` | A correct password currently lands on a 404. The registry has `/dashboard`, not `/home`. |
+| 2 | No route guard on the console | `app/(console)/layout.tsx` | `/dashboard` renders for anyone. An unauthenticated visitor should be sent to `/login`, and a signed-in one arriving at `/login` sent on to `/dashboard`. |
+| 3 | Sign out does not sign out | `app/(console)/layout.tsx` | `onSignOut` pushes to `/` without calling `logout()`, so the server session and the refresh cookie both survive. |
+| 4 | Transport is still hardwired to the mock | `app/(console)/layout.tsx` | `setSkillTransport(mockTransport)` at module scope. Needs a live transport posting to the skill endpoint, selected by config — the swap the seam exists for. |
+| 5 | Bootstrap has no loading state | `context/auth-provider.tsx` | `isLoading` is computed and never consumed. Without it the console flashes signed-out on every reload before the silent refresh resolves. |
+
+Order matters: 1–3 make the loop closeable, 5 makes it not flicker, 4 is the
+first real use of the transport and can follow.
+
+**Prerequisites on the VPS — all met.** TLS on `api.vikuna.io`, `vani.vikuna.io`
+in the `map $http_origin` allowlist, `/api/v1/auth/` allowlisted. Verified
+externally over the public internet; preflight returns `204` with the origin
+echoed exactly. Nothing infrastructural blocks this phase.
 
 **Settled — operator-provisioned, no signup screen in v1.** The platform spec's
 position stands (VN-01: the operator creates the tenant and issues a wizard link
@@ -89,9 +122,14 @@ that until someone tried to activate Vara. Reconciling those two tenant records
 is real backend work in VaNiGTM, and it is now sequenced deliberately rather
 than forced by a half-built screen.
 
+**A live credential is needed to finish this phase.** Because signup is
+operator-provisioned, there is no way to create an account from the UI — the
+exit criteria cannot be demonstrated until one user exists in the VaNi tenant on
+the VPS and its password is known to whoever verifies.
+
 **Exit criteria:** reload keeps the session, a cold tab keeps the session, logout
-revokes server-side, and a wrong password is indistinguishable from an unknown
-account.
+revokes server-side, a wrong password is indistinguishable from an unknown
+account, and no console route renders without a session.
 
 ## P2 · Onboarding — the VaNi tenant lane
 
@@ -143,6 +181,9 @@ declaration and its own folder. `ls skills/` answers what has moved.
 |---|---|---|
 | ~~SSL + CORS entry on `api.vikuna.io`~~ | — | **Done** — verified externally, see the VPS runbook |
 | ~~Signup vs operator-provisioned~~ | — | **Settled: operator-provisioned.** No signup in v1 |
+| ~~Where the VaNi story lives~~ | — | **Settled: in `vani-app`.** Two copies drifted; the marketing route and static page are deleted and redirected |
+| A live VaNi credential on the VPS | P1 exit criteria | Operator-provisioned means no account can be made from the UI. One user in the VaNi tenant, password known to the verifier |
+| Which tenant table is authoritative | P2 | `vn_tenants` (what `register()` writes) vs `vani_tenant` (what the platform reads). Backend work in VaNiGTM; P1 does not touch it |
 | Which Vara UX prototype is canonical | P3 | Two in `docs/vani/`, same screens |
 | Where the public funnel lives | Deleting `frontend/` | `/a/[slug]` and `/r/[token]` have live users and are the only reason VaNiGTM's frontend is still deployed |
 
