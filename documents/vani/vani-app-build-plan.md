@@ -17,7 +17,7 @@ Sequence: **core UX layer → auth/signup → onboarding → Vara → the rest, 
 | **P1 · Auth** | **Done for the console path, one gap left.** Login, session restore, guard and sign-out all verified against the live API in a browser. The live skill transport works (requests reach the backend and return 200). Remaining: a first **registration** against the real API. A session-loss race in refresh was found and fixed (`api-client.ts`, single-flight). |
 | **P2 · Onboarding (VaNi tenant lane)** | **Merged and live.** `main` now carries `vani-app/`. Product lane: **2 of 5 steps enabled** (`user_profile`, `business_profile`); `vani:domain`, `vani:team`, `vani:llm_provider` sit at `enabled: false` awaiting the `vani_` spine decision — which is now **a decision, not a blocker** (see below). |
 | **Smart Profile (8 steps)** | **4 of 8 working** (1 Company, 4 Ideal customer, 5 Brand, 7 People). 2 Market vocabulary **failing**. 3 Competitors research fails (`SEARXNG_URL` unset) but the step is confirmable. 6 Domain not built. 8 Model read-only, BYOK not built. |
-| P3 · Vara | Not started |
+| P3 · Vara | **Foundation on a branch.** VaNiGTM is now writable from sessions (added to scope 2026-08-17). `claude/vara-foundation` in VaNiGTM carries migrations 240–242 (Charan's spine + agent DDL, verbatim) and 243 (state-column guard from the readiness review). All four verified against the full local schema. **To go live: merge that branch, run `npm run db:migrate` on the VPS, then flip the three `enabled` flags in `lanes.ts` — in that order.** |
 
 ### What changed on 2026-08-17 (later session)
 
