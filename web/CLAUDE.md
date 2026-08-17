@@ -24,6 +24,33 @@ Before touching anything VaNi-related, read `docs/VANI_AI_HANDOVER.md` — phase
 
 `.mcp.json` configures the read-only `gtm-postgres` MCP channel to `vani_gtm_db`, but **it has never once connected from inside a Claude session** — `GTM_MCP_BASIC` is unset in the Claude environment settings. Every database result on record came either from Charan running SQL and pasting it back, or from a local rebuild of the schema from VaNiGTM's migration files. Do not plan around live DB access.
 
+## Database changes require approval — repo-wide
+
+**No new tables, columns, enums or indexes anywhere in this project without
+Charan's explicit approval.** Not a helper table, not "only one column", and not
+structured data smuggled into an existing JSONB field. Build against what the
+specs and the running system already define: `docs/vani/sql/*.sql`,
+`docs/vani/vara-data-model-v1.0.html`, and VaNiGTM's `vn_*` schema. If the model
+cannot carry what you are building, say what is missing and wait — that is a
+schema change request, not a blocker to route around.
+
+There is no live database access from a Claude session (see the VaNi note
+below), so every schema claim must trace to a migration file or a spec.
+
+## VaNi console engineering standards
+
+Work under `vani-app/` is governed by **`vani-app/CLAUDE.md`** — read it before
+touching that folder. It is mandatory, not advisory, and covers: the five states
+every screen owes the user (loading, error, empty, content, outcome) via
+`<DataBoundary>` and `useToast`, the loader taxonomy, writes through
+`useSkillMutation` with double-submit guards and idempotency keys, race
+conditions, what two-phase commit does and does not mean in a UI, and the
+registry boundary.
+
+Loader and toast APIs there are deliberately identical to VaNiGTM's
+(`FullPageLoader`, `InlineLoader`, `sm|md|lg`, `showToast({message, type})`), so
+code moves between the repos without edits. Keep them aligned.
+
 ## Architecture
 
 Single-page marketing site: React 18 + TypeScript + Vite, styled with Tailwind. `src/main.tsx` mounts `<App/>` inside `BrowserRouter`; `src/App.tsx` wires `ThemeProvider` around the routes — `/` (a composed `HomePage` made of section components from `src/components/vikuna/`), `/assessment` (client-side AI readiness quiz with a soft-gate lead form), `/mvp`, `/training`, `/playbooks/why-ai-fails`, and `/preview[/:name]` (internal gallery of unmounted section components, noindexed). Deploy target is Vercel (production deploys from `main` to `www.vikuna.io`); `vercel.json` rewrites all non-asset paths to `/index.html` (SPA fallback) and holds outbound redirects for `/bcl-*` marketing links.

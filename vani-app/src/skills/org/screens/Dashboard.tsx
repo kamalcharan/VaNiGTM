@@ -2,6 +2,7 @@
 
 import { useSkillQuery } from '@/lib/useSkill';
 import type { ActivityItem, AgentSummary } from '@/lib/mock-transport';
+import { DataBoundary, SkeletonCounters, SkeletonRows } from '@/platform/feedback';
 import u from '@/platform/shell/ui.module.css';
 
 interface Counters {
@@ -11,12 +12,17 @@ interface Counters {
   handovers: number;
 }
 
+const LABELS: [keyof Counters, string][] = [
+  ['agents_active', 'Agents active'],
+  ['runs_today', 'Runs today'],
+  ['handovers', 'Human handovers'],
+  ['attention', 'Needs attention'],
+];
+
 export default function Dashboard() {
-  const counters = useSkillQuery<{ agents_active: number; runs_today: number; attention: number; handovers: number }>('dashboard', 'counters');
+  const counters = useSkillQuery<Counters>('dashboard', 'counters');
   const activity = useSkillQuery<{ activity: ActivityItem[] }>('dashboard', 'activity');
   const agents = useSkillQuery<{ agents: AgentSummary[] }>('agents', 'list');
-
-  const c = counters.data?.data as Counters | undefined;
 
   return (
     <div>
@@ -27,24 +33,27 @@ export default function Dashboard() {
         run, and every run to an entry on the audit spine.
       </p>
 
-      <div className={u.counters}>
-        <div className={u.counter}>
-          <div className={u.cVal}>{c ? c.agents_active : '—'}</div>
-          <div className={u.cLbl}>Agents active</div>
-        </div>
-        <div className={u.counter}>
-          <div className={u.cVal}>{c ? c.runs_today : '—'}</div>
-          <div className={u.cLbl}>Runs today</div>
-        </div>
-        <div className={u.counter}>
-          <div className={u.cVal}>{c ? c.handovers : '—'}</div>
-          <div className={u.cLbl}>Human handovers</div>
-        </div>
-        <div className={u.counter}>
-          <div className={u.cVal}>{c ? c.attention : '—'}</div>
-          <div className={u.cLbl}>Needs attention</div>
-        </div>
-      </div>
+      {/*
+        These used to render an em-dash for both "still loading" and "the value
+        is genuinely unknown", which are different things a reader cannot tell
+        apart. The boundary makes the wait visible and the failure loud.
+      */}
+      <DataBoundary
+        query={counters}
+        label="counters"
+        skeleton={<SkeletonCounters count={LABELS.length} />}
+      >
+        {(c) => (
+          <div className={u.counters}>
+            {LABELS.map(([key, label]) => (
+              <div key={key} className={u.counter}>
+                <div className={u.cVal}>{c[key]}</div>
+                <div className={u.cLbl}>{label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </DataBoundary>
 
       <div className={u.grid2}>
         <section className={u.card}>
@@ -53,17 +62,25 @@ export default function Dashboard() {
             <span className={u.cardMeta}>live stream</span>
           </div>
           <div className={u.cardBody}>
-            {activity.isLoading && <div className={u.loading}>Loading activity…</div>}
-            {activity.isError && <div className={u.error}>Could not load activity.</div>}
-            {activity.data?.data?.activity.map((a) => (
-              <div key={a.id} className={u.act}>
-                <div className={u.actAt}>{a.at}</div>
-                <div>
-                  <div className={u.actTxt} dangerouslySetInnerHTML={{ __html: a.text }} />
-                  {a.run && <span className={u.actRun}>{a.run}</span>}
-                </div>
-              </div>
-            ))}
+            <DataBoundary
+              query={activity}
+              label="activity"
+              skeleton={<SkeletonRows rows={4} lines={2} />}
+              isEmpty={(d) => !d?.activity?.length}
+              empty="Nothing has run yet. Activity appears here the moment it does."
+            >
+              {(d) =>
+                d.activity.map((a) => (
+                  <div key={a.id} className={u.act}>
+                    <div className={u.actAt}>{a.at}</div>
+                    <div>
+                      <div className={u.actTxt} dangerouslySetInnerHTML={{ __html: a.text }} />
+                      {a.run && <span className={u.actRun}>{a.run}</span>}
+                    </div>
+                  </div>
+                ))
+              }
+            </DataBoundary>
           </div>
         </section>
 
@@ -73,33 +90,42 @@ export default function Dashboard() {
             <span className={u.cardMeta}>VaNi is the head</span>
           </div>
           <div className={u.cardBody}>
-            {agents.isLoading && <div className={u.loading}>Loading agents…</div>}
-            {agents.data?.data?.agents.map((a) => (
-              <div key={a.id} className={u.agent}>
-                <span
-                  className={u.agIc}
-                  style={{ background: `${a.color}1f`, color: a.color, border: `1px solid ${a.color}55` }}
-                  aria-hidden="true"
-                >
-                  {a.icon}
-                </span>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span className={u.agName}>{a.name}</span>
+            <DataBoundary
+              query={agents}
+              label="agents"
+              skeleton={<SkeletonRows rows={3} lines={3} />}
+              isEmpty={(d) => !d?.agents?.length}
+              empty="No agents are registered against this tenant yet."
+            >
+              {(d) =>
+                d.agents.map((a) => (
+                  <div key={a.id} className={u.agent}>
                     <span
-                      className={`${u.tag} ${
-                        a.status === 'active' ? u.tagOk : a.status === 'attention' ? u.tagWarn : u.tagDim
-                      }`}
+                      className={u.agIc}
+                      style={{ background: `${a.color}1f`, color: a.color, border: `1px solid ${a.color}55` }}
+                      aria-hidden="true"
                     >
-                      {a.status === 'not_activated' ? 'Not activated' : a.status}
+                      {a.icon}
                     </span>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span className={u.agName}>{a.name}</span>
+                        <span
+                          className={`${u.tag} ${
+                            a.status === 'active' ? u.tagOk : a.status === 'attention' ? u.tagWarn : u.tagDim
+                          }`}
+                        >
+                          {a.status === 'not_activated' ? 'Not activated' : a.status}
+                        </span>
+                      </div>
+                      <div className={u.agRole}>{a.role}</div>
+                      <div className={u.agDesc}>{a.desc}</div>
+                      <div className={u.agScope}>{a.scope}</div>
+                    </div>
                   </div>
-                  <div className={u.agRole}>{a.role}</div>
-                  <div className={u.agDesc}>{a.desc}</div>
-                  <div className={u.agScope}>{a.scope}</div>
-                </div>
-              </div>
-            ))}
+                ))
+              }
+            </DataBoundary>
           </div>
         </section>
       </div>

@@ -13,6 +13,7 @@ import { useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuth } from '@/context/auth-provider';
+import { useToast } from '@/platform/feedback';
 import { RequireSession } from '@/platform/shell/RequireSession';
 import { Shell } from '@/platform/shell/Shell';
 import { SKILLS } from '@/skills';
@@ -24,6 +25,7 @@ setSkillTransport(mockTransport);
 export default function ConsoleLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { tenant, logout } = useAuth();
+  const toast = useToast();
   const [qc] = useState(
     () =>
       new QueryClient({
@@ -37,6 +39,7 @@ export default function ConsoleLayout({ children }: { children: ReactNode }) {
     // user's data. logout() never throws; it clears locally either way.
     await logout();
     qc.clear();
+    toast.info('Signed out.');
     router.replace('/');
   }
 

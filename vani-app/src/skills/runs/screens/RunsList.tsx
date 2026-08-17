@@ -2,6 +2,7 @@
 
 import { useSkillQuery } from '@/lib/useSkill';
 import type { RunRow } from '@/lib/mock-transport';
+import { DataBoundary, SkeletonTable } from '@/platform/feedback';
 import u from '@/platform/shell/ui.module.css';
 
 /**
@@ -27,50 +28,56 @@ export default function RunsList() {
           Recent runs
           <span className={u.cardMeta}>append-only</span>
         </div>
-        {q.isLoading && <div className={u.loading}>Loading runs…</div>}
-        {q.isError && <div className={u.error}>Could not load runs.</div>}
-        {q.data?.data && (
-          <div className={u.tableWrap}>
-            <table className={u.table}>
-              <thead>
-                <tr>
-                  <th>Run</th>
-                  <th>Agent</th>
-                  <th>Trigger</th>
-                  <th>Actor</th>
-                  <th>Started</th>
-                  <th>Steps</th>
-                  <th>Duration</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {q.data.data.runs.map((r) => (
-                  <tr key={r.id}>
-                    <td className={u.mono}>{r.id}</td>
-                    <td>{r.agent}</td>
-                    <td className={u.mono}>{r.trigger}</td>
-                    <td>
-                      <span className={`${u.tag} ${u.tagDim}`}>{r.actor}</span>
-                    </td>
-                    <td className={u.mono}>{r.started}</td>
-                    <td>{r.steps}</td>
-                    <td className={u.mono}>{r.duration}</td>
-                    <td>
-                      <span
-                        className={`${u.tag} ${
-                          r.status === 'ok' ? u.tagOk : r.status === 'running' ? u.tagWarn : u.tagBad
-                        }`}
-                      >
-                        {r.status}
-                      </span>
-                    </td>
+        <DataBoundary
+          query={q}
+          label="runs"
+          skeleton={<SkeletonTable rows={6} cols={8} />}
+          isEmpty={(d) => !d?.runs?.length}
+          empty="No runs have been recorded for this tenant yet."
+        >
+          {(d) => (
+            <div className={u.tableWrap}>
+              <table className={u.table}>
+                <thead>
+                  <tr>
+                    <th>Run</th>
+                    <th>Agent</th>
+                    <th>Trigger</th>
+                    <th>Actor</th>
+                    <th>Started</th>
+                    <th>Steps</th>
+                    <th>Duration</th>
+                    <th>Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {d.runs.map((r) => (
+                    <tr key={r.id}>
+                      <td className={u.mono}>{r.id}</td>
+                      <td>{r.agent}</td>
+                      <td className={u.mono}>{r.trigger}</td>
+                      <td>
+                        <span className={`${u.tag} ${u.tagDim}`}>{r.actor}</span>
+                      </td>
+                      <td className={u.mono}>{r.started}</td>
+                      <td>{r.steps}</td>
+                      <td className={u.mono}>{r.duration}</td>
+                      <td>
+                        <span
+                          className={`${u.tag} ${
+                            r.status === 'ok' ? u.tagOk : r.status === 'running' ? u.tagWarn : u.tagBad
+                          }`}
+                        >
+                          {r.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DataBoundary>
       </section>
     </div>
   );

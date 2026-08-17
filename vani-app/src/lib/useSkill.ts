@@ -37,6 +37,11 @@ export function setSkillTransport(t: SkillTransport): void {
   transport = t;
 }
 
+/** For writes, which go through useSkillMutation rather than useQuery. */
+export function getSkillTransport(): SkillTransport | null {
+  return transport;
+}
+
 export function useSkillQuery<T = unknown>(
   skill: string,
   fn: string,

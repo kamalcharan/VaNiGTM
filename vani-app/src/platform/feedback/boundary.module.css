@@ -1,0 +1,66 @@
+.state {
+  padding: 30px 20px 26px;
+  text-align: center;
+}
+
+.stateIcon {
+  font-family: var(--mono);
+  font-size: 17px;
+  color: var(--tx3);
+  margin-bottom: 9px;
+}
+
+.state[role='alert'] .stateIcon { color: var(--bad); }
+
+.stateTitle {
+  font-size: 13.5px;
+  color: var(--tx2);
+  line-height: 1.6;
+}
+
+.stateDetail {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.7;
+  color: var(--tx3);
+  margin-top: 7px;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+  word-break: break-word;
+}
+
+.retry {
+  margin-top: 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surf3);
+  border: 1px solid var(--line2);
+  color: var(--tx);
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.retry:hover:not(:disabled) {
+  border-color: var(--ac-line);
+  color: var(--ac-light);
+}
+
+.retry:disabled { opacity: 0.6; cursor: default; }
+
+.refreshing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--tx3);
+}

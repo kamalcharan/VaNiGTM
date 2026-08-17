@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { AuthProvider } from '@/context/auth-provider';
+import { ToastProvider } from '@/platform/feedback';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
@@ -23,7 +24,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        {/* Toasts wrap auth too: a failed sign-in is exactly the kind of
+            outcome that must never be silent. */}
+        <ToastProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </ToastProvider>
       </body>
     </html>
   );

@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-provider';
 import { ApiError } from '@/lib/api-client';
 import { isGatePassed } from '@/lib/gate';
+import { useToast } from '@/platform/feedback';
 import VaniMark from './vani-mark';
 import styles from './auth-card.module.css';
 
@@ -29,6 +30,7 @@ const RULES: { label: string; test: (pw: string) => boolean }[] = [
 
 export default function SignupForm() {
   const { signup } = useAuth();
+  const toast = useToast();
   const router = useRouter();
 
   // Null until the gate has been checked — rendering the form before then
@@ -82,6 +84,12 @@ export default function SignupForm() {
         tenant_name: org.trim() || undefined,
       });
       // Registration returns a session, so go straight in. No second login.
+      // The toast outlives the navigation — the form that would have shown this
+      // inline is about to unmount.
+      toast.success(
+        'Organisation created.',
+        `Signed in as ${email.trim()}. You are its owner.`,
+      );
       router.replace('/dashboard');
     } catch (err) {
       setPassword('');
