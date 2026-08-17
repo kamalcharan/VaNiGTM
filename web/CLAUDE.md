@@ -51,6 +51,20 @@ Loader and toast APIs there are deliberately identical to VaNiGTM's
 (`FullPageLoader`, `InlineLoader`, `sm|md|lg`, `showToast({message, type})`), so
 code moves between the repos without edits. Keep them aligned.
 
+**We own the UI and the backend, so features land on both sides in one slice.**
+Two rules follow and are enforced, not aspirational:
+
+- **Idempotency** — the client mints and sends `Idempotency-Key`; the VaNiGTM
+  handler **stores the key with its result and replays it** on a repeat, in the
+  same transaction as the write. A write endpoint shipped with only the client
+  half is unfinished, and a key nothing honours is worse than no key: the UI
+  then looks safe to retry when it is not.
+- **Two-phase commit** — multi-step writes that must not half-apply are **one
+  transaction in VaNiGTM**, not a sequence the UI orchestrates. One endpoint per
+  atomic outcome. Where an external system genuinely sits in the middle, model
+  it as prepare → confirm with staged rows that are never visible as committed.
+  The UI never reports success until the whole operation confirms.
+
 ## Architecture
 
 Single-page marketing site: React 18 + TypeScript + Vite, styled with Tailwind. `src/main.tsx` mounts `<App/>` inside `BrowserRouter`; `src/App.tsx` wires `ThemeProvider` around the routes — `/` (a composed `HomePage` made of section components from `src/components/vikuna/`), `/assessment` (client-side AI readiness quiz with a soft-gate lead form), `/mvp`, `/training`, `/playbooks/why-ai-fails`, and `/preview[/:name]` (internal gallery of unmounted section components, noindexed). Deploy target is Vercel (production deploys from `main` to `www.vikuna.io`); `vercel.json` rewrites all non-asset paths to `/index.html` (SPA fallback) and holds outbound redirects for `/bcl-*` marketing links.

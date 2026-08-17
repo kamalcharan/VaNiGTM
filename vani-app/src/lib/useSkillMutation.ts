@@ -13,12 +13,13 @@
  *    retries of that attempt. A network timeout that actually succeeded must
  *    not become two rows when the user presses the button again.
  *
- *    The key is sent as `Idempotency-Key`. VaNiGTM's backend does not honour it
- *    yet — the header is inert until a write path stores and replays it. This
- *    is deliberate: the client half is the half that has to exist first, and
- *    shipping it now means the backend change is a backend change only. Until
- *    then, treat idempotency as CLIENT-SIDE ONLY and do not describe a write as
- *    safe to retry. Tracked in the build plan.
+ *    The key is sent as `Idempotency-Key`. This is HALF the contract: the
+ *    server handler must store the key with its result and replay that result
+ *    on a repeat, inside the same transaction as the write. We own both repos,
+ *    so a write path is not finished until both halves exist — see CLAUDE.md.
+ *
+ *    No VaNiGTM endpoint honours the header yet. Until the first one does, do
+ *    not describe a write as safe to retry and do not auto-retry.
  *
  * 3. NO STALE WRITES. A response that arrives after a newer attempt started, or
  *    after the component unmounted, is dropped rather than applied. Late

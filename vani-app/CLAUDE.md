@@ -74,29 +74,51 @@ which supplies four guarantees you would otherwise have to remember every time:
    after unmount, is dropped. Late responses silently resurrect old state.
 4. **It always says something** — success and failure both raise a toast.
 
-### Idempotency is CLIENT-SIDE ONLY today
+### Idempotency — enforce it on BOTH sides
 
-The header is sent. **VaNiGTM's backend does not honour it yet.** Until a write
-path stores and replays keys server-side, a retried write can still produce two
-rows.
+We own the UI and the backend. A write path is **not finished** until both
+halves exist:
 
-Consequences, and they are not optional:
-- Do **not** tell a user a write is safe to retry.
-- Do **not** auto-retry a mutation. `retry()` exists for a person to press.
-- Any new write endpoint should land with server-side key handling, not after.
+- **Client** — `useSkillMutation` mints one key per logical attempt, reuses it
+  across retries of that attempt, and sends it as `Idempotency-Key`. Free; you
+  get it by using the hook.
+- **Server** — the handler in VaNiGTM must **store the key with its result and
+  replay that result** on a repeat, inside the same transaction as the write.
+  Not a uniqueness check bolted on afterwards: store-and-replay, so the second
+  call returns the first call's answer rather than a conflict error.
 
-### Two-phase commit
+Do not ship a write endpoint with only the client half. A key that nothing
+honours is worse than no key, because the UI then looks safe to retry when it
+is not. If you are adding a write, the backend change lands in the same slice.
 
-Multi-step writes that must not half-apply are the **database's** job, in a
-single transaction, in VaNiGTM. The UI cannot make two calls atomic and must
-not pretend otherwise.
+**Current state:** the client half is in; **VaNiGTM does not honour the header
+on any endpoint yet.** So until the first server-side implementation lands,
+still do not tell a user a write is safe to retry, and do not auto-retry.
+Retrofitting the existing write paths is tracked in the build plan.
 
-What this repo owes:
-- Never report success until the *whole* operation confirms. A per-step toast
+### Two-phase commit — enforce it in the database
+
+Multi-step writes that must not half-apply are **one transaction in VaNiGTM**.
+`BEGIN`, all of it, `COMMIT`. The UI cannot make two HTTP calls atomic, so it
+must never be asked to: if a flow needs four things to happen together, that is
+one endpoint and one transaction, not four calls the UI sequences.
+
+When you are writing the backend:
+- One endpoint per atomic outcome. Do not expose the steps separately and hope
+  the client calls them in order.
+- Use `withTenantClient` so `set_config(..., is_local := true)` stays inside the
+  transaction — it is transaction-scoped on purpose and survives pgBouncer
+  transaction pooling.
+- Where a genuine two-phase shape is needed (an external system in the middle),
+  model it explicitly: a **prepare** call that stages and returns something
+  inspectable, then a **confirm** call that commits. Staged rows carry their own
+  status; they are never visible as committed.
+
+When you are writing the UI:
+- Never report success until the whole operation confirms. A per-step toast
   during a multi-step write reads as a commit that has not happened.
-- Where a flow genuinely needs staging, model it as **prepare → confirm**: the
-  prepare call returns something inspectable, the confirm call commits, and the
-  UI shows what is about to happen before it happens.
+- Show what is about to happen before it happens, wherever prepare → confirm
+  applies.
 - If a step fails mid-flow, say precisely what did and did not happen. "Failed"
   after three of five steps sends people looking in the wrong place.
 
