@@ -14,7 +14,7 @@ Sequence: **core UX layer → auth/signup → onboarding → Vara → the rest, 
 | **P0 · Core UX layer** | **Done.** Shell renders from the registry, generic transport with a mock adapter, 15 routes declared (3 live, 12 planned), zero-platform-change test proven. |
 | **Consolidation** | **Done** (unplanned, added because the seam leaked). One VaNi surface: the story, sign-in and console all live at `vani.vikuna.io`. Marketing `/vani` and `vani-page.html` deleted and redirected. |
 | **P1 · Auth** | **In progress.** Gated signup, login redirect, session guard and real sign-out are in and verified. Remaining: the live skill transport, and a first registration against the real API. |
-| P2 · Onboarding (VaNi tenant lane) | Not started |
+| **P2 · Onboarding (VaNi tenant lane)** | **Built, not merged.** Onboarding is an agent — one engine, product and agent lanes. Product lane: 2 of 5 steps live, gate enforcing, verified on the mock. See `onboarding-architecture.md`. Held off `main` pending the live transport and the nginx entries |
 | P3 · Vara | Not started |
 
 Two things changed the plan as written below: the theme decision (the console
@@ -132,7 +132,7 @@ someone learns the rules.
 | 1 | Login redirected to `/home`, a route that does not exist | **fixed** — goes to `/dashboard`; a correct password used to land on a 404 |
 | 2 | No route guard on the console | **fixed** — `RequireSession` waits for the bootstrap to resolve, then redirects. Stands down when `NEXT_PUBLIC_API_ORIGIN` is unset, so UX work continues without a backend |
 | 3 | Sign out did not sign out | **fixed** — calls `logout()`, revokes server-side, clears the query cache, then leaves |
-| 4 | Transport hardwired to the mock | **open** — the last piece of P1. Touches `(console)/layout.tsx` only, which is the seam working |
+| 4 | Transport hardwired to the mock | **open, and now a PREREQUISITE.** The onboarding gate cannot ship to production on the mock: the mock cannot persist a completion, so `/me` would keep reporting the lane incomplete and every new signup would loop back into the wizard. Merging onboarding to `main` is blocked on this |
 | 5 | `isLoading` computed and never consumed | **fixed** — consumed by the guard, which is what stops a signed-in user being bounced on every reload |
 | 6 | Response-shape mismatches (above) | **fixed** |
 | 7 | Org name and slug hardcoded in the shell | **fixed** — from `/api/v1/auth/me`, falling back while unauthenticated |
@@ -168,20 +168,41 @@ revokes server-side, a wrong password is indistinguishable from an unknown
 account, no console route renders without a session, and a gated signup produces
 a working tenant.
 
-## P2 · Onboarding — the VaNi tenant lane
+## P2 · Onboarding — BUILT, NOT MERGED
 
-Onboarding is **two tiers**. This phase builds only the first: the VaNi tenant
-lane, declared once per organisation. Each agent brings its own activation lane
-later, inside that agent's own phase (spec Flow F1 step 3) — so Vara's
-onboarding is P3's work, not this one's.
+Onboarding is an **agent**: one engine, and lanes declared by their subjects.
+Full design and the reasoning behind every storage choice is in
+**`onboarding-architecture.md`** — read that before touching it. Summary:
 
-The once-per-tenant declarations (stories VN-10 … VN-13):
+- **Two tiers, one mechanism.** `?lane=` selects the subject. Product lane for
+  the organisation; an agent's lane when that agent activates. Adding an agent's
+  lane is a `registerLane()` line — no diff in the engine, none in `platform/`.
+- **No new tables.** The lane lives in `step_id` (`vani:`, `<agent>:`), which is
+  what migration 005 says that column is for.
+- **Nothing seeded.** GTM's login routes on `onboarding_complete`, which counts
+  every pending row — so pending `vani:` rows would trap live GTM users in their
+  mission wizard. Reconcile on read, insert on complete. `/me` untouched.
+- **One transaction per step.** Payload and completion commit together.
+- **Idempotent by construction.** Upsert on `(tenant_id, step_id)`; no key store
+  needed for this endpoint, and the code says why that does not generalise.
+- **The gate has no skip.** Sign-out is the escape, and the runner always offers it.
 
-- Org profile and domain verification.
-- Industry / domain-pack binding — declared once, delegated to every agent.
-- Users, memberships, role families.
-- Per-agent role grants from each agent's declared catalog.
-- BYO LLM provider credentials, verified by test call.
+Live: `user_profile` (VN-11), `business_profile` (VN-10). Declared but disabled:
+`vani:domain`, `vani:team`, `vani:llm_provider` — they write to the `vani_` spine
+and it is not confirmed that spine is applied to `vani_gtm_db`. VN-12 belongs to
+an agent lane, not here.
+
+### Blocked on two things before it can merge to `main`
+
+1. **The live skill transport** (P1 gap 4). On the mock a completion cannot
+   persist, so `/me` keeps saying the lane is incomplete and a new signup loops
+   back into the wizard. This is why gap 4 stopped being optional.
+2. **nginx allowlist** — `/api/v1/onboarding/` and `/api/v1/tenant/`. Already in
+   `docs/vani/nginx/api.vikuna.io.conf`; needs applying on the VPS. Without them
+   the browser gets the catch-all 404.
+
+Backend lives on `kamalcharan/VaNiGTM` branch **`claude/onboarding-agent`** — not
+merged there either, since it is a live backend.
 
 **Exit criteria:** a tenant is declared once, and an agent activating afterwards
 re-asks none of it — the spec's "one declaration, N projections" invariant, made
