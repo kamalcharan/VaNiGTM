@@ -1,10 +1,10 @@
 .eyebrow { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ac); margin-bottom: 11px; }
-.h1 { font-size: clamp(21px, 2.6vw, 28px); font-weight: 700; letter-spacing: -0.7px; line-height: 1.15; margin-bottom: 9px; }
+.h1 { font-family: var(--display); font-size: clamp(21px, 2.6vw, 28px); font-weight: 700; letter-spacing: -0.7px; line-height: 1.15; margin-bottom: 9px; }
 .lede { font-size: 14px; line-height: 1.75; color: var(--tx2); max-width: 620px; margin-bottom: 26px; }
 
 .counters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 26px; }
 .counter { background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; }
-.cVal { font-size: 25px; font-weight: 700; letter-spacing: -0.8px; line-height: 1.1; margin-bottom: 4px; }
+.cVal { font-family: var(--display); font-size: 25px; font-weight: 700; letter-spacing: -0.8px; line-height: 1.1; margin-bottom: 4px; }
 .cLbl { font-family: var(--mono); font-size: 10px; letter-spacing: 0.11em; text-transform: uppercase; color: var(--tx3); }
 
 .grid2 { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 18px; align-items: start; }
@@ -29,15 +29,15 @@
 .agent { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .agent:last-child { border-bottom: none; }
 .agIc { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; font-size: 14px; flex-shrink: 0; }
-.agName { font-size: 14px; font-weight: 600; }
+.agName { font-family: var(--display); font-size: 15px; font-weight: 700; }
 .agRole { font-family: var(--mono); font-size: 10px; color: var(--tx3); margin-top: 2px; }
 .agDesc { font-size: 12.5px; line-height: 1.6; color: var(--tx2); margin-top: 7px; }
 .agScope { font-family: var(--mono); font-size: 10px; color: var(--tx3); margin-top: 7px; word-break: break-all; }
 
 .tag { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.09em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; white-space: nowrap; }
-.tagOk { color: var(--ok); background: rgba(52, 211, 153, 0.12); border: 1px solid rgba(52, 211, 153, 0.3); }
-.tagWarn { color: var(--warn); background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.3); }
-.tagBad { color: var(--bad); background: rgba(251, 113, 133, 0.12); border: 1px solid rgba(251, 113, 133, 0.3); }
+.tagOk { color: var(--teal-light); background: rgba(18, 160, 144, 0.14); border: 1px solid rgba(18, 160, 144, 0.35); }
+.tagWarn { color: var(--gold-light); background: rgba(201, 151, 58, 0.14); border: 1px solid rgba(201, 151, 58, 0.35); }
+.tagBad { color: #f08a8a; background: rgba(224, 82, 82, 0.14); border: 1px solid rgba(224, 82, 82, 0.35); }
 .tagDim { color: var(--tx3); background: var(--surf3); border: 1px solid var(--line2); }
 
 .tableWrap { overflow-x: auto; }

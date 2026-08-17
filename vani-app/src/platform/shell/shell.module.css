@@ -7,10 +7,10 @@
   display: flex; flex-direction: column; padding: 16px 12px;
   position: sticky; top: 0; height: 100vh; overflow-y: auto;
 }
-.logo { display: flex; align-items: center; gap: 9px; padding: 2px 8px 14px; font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+.logo { display: flex; align-items: center; gap: 9px; padding: 2px 8px 14px; font-family: var(--display); font-size: 17px; font-weight: 800; letter-spacing: -0.5px; }
 .logomark {
   width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
-  background: var(--ac); color: #04211e;
+  background: var(--gold); color: #0a0f1e;
   display: grid; place-items: center; font-size: 14px; font-weight: 800;
 }
 .logoDim { color: var(--tx3); font-weight: 500; font-size: 12px; }
@@ -38,7 +38,7 @@
   transition: background 0.14s, color 0.14s;
 }
 .nv:hover { background: var(--surf); color: var(--tx); }
-.nvOn { background: var(--ac-dim); color: var(--ac); }
+.nvOn { background: var(--ac-dim); color: var(--ac-light); }
 .ic { width: 16px; text-align: center; flex-shrink: 0; font-size: 13px; }
 .bdg {
   margin-left: auto; font-family: var(--mono); font-size: 10px;
@@ -100,6 +100,6 @@
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 3px; font-size: 10px; color: var(--tx3); text-decoration: none;
   }
-  .tabOn { color: var(--ac); }
+  .tabOn { color: var(--ac-light); }
   .tabIc { font-size: 15px; }
 }

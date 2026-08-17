@@ -64,7 +64,7 @@ The shell and nothing else. No business functionality, no auth.
 **Exit criteria:** a throwaway demo skill can be added as one folder plus one
 registry line and appears in the nav, with no diff inside `platform/`.
 
-## P1 · Auth / signup
+## P1 · Auth (login / logout)
 
 - Port `api-client`: access token in memory only, refresh token in the httpOnly
   cookie, `silentRefresh()` on mount, exactly one 401 retry.
@@ -77,10 +77,17 @@ registry line and appears in the nav, with no diff inside `platform/`.
 - `vani.vikuna.io` added to the `map $http_origin` allowlist.
 - `/api/v1/auth/` allowlisted (already present in the config as written).
 
-**Open conflict to settle before building signup:** VaNiGTM exposes
-`/api/v1/auth/register`, but the VaNi Platform spec says v1 is
-operator-provisioned with no self-serve tenant signup. Those cannot both be
-true. Decide which before a signup screen is designed.
+**Settled — operator-provisioned, no signup screen in v1.** The platform spec's
+position stands (VN-01: the operator creates the tenant and issues a wizard link
+to the named Tenant Admin). `/api/v1/auth/register` is not wired into the UI.
+
+That was the right call for a reason beyond policy: `register()` writes to
+`vn_tenants`/`vn_tenant_profiles`, while the platform layer reads `vani_tenant`.
+`vani_tenant_agent` has a foreign key to `vani_tenant(id)`, so a self-signed-up
+tenant could never have an agent subscribed to it — and nothing would surface
+that until someone tried to activate Vara. Reconciling those two tenant records
+is real backend work in VaNiGTM, and it is now sequenced deliberately rather
+than forced by a half-built screen.
 
 **Exit criteria:** reload keeps the session, a cold tab keeps the session, logout
 revokes server-side, and a wrong password is indistinguishable from an unknown
@@ -134,8 +141,8 @@ declaration and its own folder. `ls skills/` answers what has moved.
 
 | Decision | Blocks | Note |
 |---|---|---|
-| SSL + CORS entry on `api.vikuna.io` | P1 | Infrastructure, not code |
-| Signup vs operator-provisioned | P1 | Spec and code currently disagree |
+| ~~SSL + CORS entry on `api.vikuna.io`~~ | — | **Done** — verified externally, see the VPS runbook |
+| ~~Signup vs operator-provisioned~~ | — | **Settled: operator-provisioned.** No signup in v1 |
 | Which Vara UX prototype is canonical | P3 | Two in `docs/vani/`, same screens |
 | Where the public funnel lives | Deleting `frontend/` | `/a/[slug]` and `/r/[token]` have live users and are the only reason VaNiGTM's frontend is still deployed |
 

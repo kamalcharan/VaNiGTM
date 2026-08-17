@@ -84,7 +84,7 @@ Do not discard these when moving to the new IA:
 - **Honest empty states.** `/today` already ships "coming soon" tiles rather than
   pretending. Keep that habit.
 
-## 5. Settled decisions, and the one conflict that remains
+## 5. Settled decisions
 
 **Settled:** VaNi is the head — the orchestrator. Each agent sits under it with its
 own goals, its own role catalog and its own metering. **Vara is the first agent;
@@ -140,10 +140,10 @@ That is a wiring gap, not a preference. Either `/register` also creates the
 `vani_tenant` row, or registration moves to the platform layer — both backend work
 in VaNiGTM, which would put P1's critical path on the VPS side.
 
-*Recommendation:* operator-provisioned for v1. Not because self-serve is wrong
-long-term, but because the tenant record has to be reconciled either way, and
-under deadline pressure from a signup screen is the worst moment to decide which
-table is the source of truth.
+**Settled: operator-provisioned for v1.** No signup screen is built. Not because
+self-serve is wrong long-term, but because the two tenant records have to be
+reconciled either way, and under deadline pressure from a signup screen is the
+worst moment to decide which table is the source of truth.
 
 *(Smaller tell of the same lineage: `register()` hardcodes tenant type `'mfd'` —
 mutual fund distributor, left over from the KI-Prime/ProKey era.)*
@@ -170,7 +170,6 @@ head, Vara beneath it, Add agent below. Vara's own screens stay at P3; this is
 the group and its frames only.
 
 **Out of the first delivery:**
-- Signup, until the operator-provisioned question is answered.
 - Onboarding — it is P2, and it needs the platform lane decided first.
 
 **Already done and reusable:** the `/vani` marketing landing page and the login
