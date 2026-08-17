@@ -1,0 +1,369 @@
+/* ═══════════════════════════════════════════════════════
+   VDF MISSION ARTIFACT — the three rail reduction shapes
+   Theme-compliant: ALL colors via --color-* CSS variables
+   ═══════════════════════════════════════════════════════ */
+
+/* There is no global border-box reset in this app, and every box here is a
+   padded, bordered `width: 100%` child of a fixed-width rail — without this
+   they overflow the rail by exactly their padding + border. */
+.section,
+.card,
+.cardHead,
+.cardBody,
+.chipGrid,
+.chip,
+.rows,
+.row {
+  box-sizing: border-box;
+}
+
+/* ── Section header: `COMPETITORS 14 ⚙` ─────────────────────────────── */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sectionLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.sectionCount {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-muted);
+  opacity: 0.75;
+}
+
+.gear {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.gear:hover {
+  opacity: 1;
+  color: var(--color-fg);
+  background: var(--color-surface);
+}
+
+.gear svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ── The company card, narrow ───────────────────────────────────────── */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.cardHeadStatic {
+  cursor: default;
+}
+
+.cardLogo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.cardLogo img,
+.cardLogo svg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cardLogoFallback {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.cardName {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+  max-width: 55%;
+}
+
+.cardDomain {
+  font-size: 0.74rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.chevron {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--color-muted);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  min-width: 0;
+}
+
+/* The reference keeps the description paragraph WHOLE — it is the artifact,
+   not a preview of one. No line clamp here on purpose. */
+.cardDesc {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--color-fg);
+  opacity: 0.88;
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 0.72rem;
+  color: var(--color-fg);
+  white-space: nowrap;
+}
+
+/* ── Chip grid (competitors) ────────────────────────────────────────── */
+
+.chipGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 6px 7px;
+  border-radius: 7px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 0.72rem;
+  color: var(--color-fg);
+  text-decoration: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+a.chip:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+
+.chipIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.chipIcon img,
+.chipIcon svg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.chipDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-border);
+}
+
+.chipLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chipLink {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--color-muted);
+  opacity: 0.7;
+}
+
+.more {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 0 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--color-muted);
+  transition: color 0.2s ease;
+}
+
+.more:hover {
+  color: var(--color-fg);
+}
+
+.moreChevron {
+  width: 11px;
+  height: 11px;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── List rows (campaigns) ──────────────────────────────────────────── */
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font: inherit;
+  text-align: left;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+button.row {
+  cursor: pointer;
+}
+
+button.row:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+}
+
+.rowActive {
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
+  box-shadow: inset 2px 0 0 var(--color-primary);
+}
+
+.rowIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--color-muted);
+}
+
+.rowIcon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.rowLabel {
+  min-width: 0;
+  font-size: 0.76rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowMetric {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--color-muted);
+}
+
+.rowActive .rowMetric {
+  color: var(--color-primary);
+}

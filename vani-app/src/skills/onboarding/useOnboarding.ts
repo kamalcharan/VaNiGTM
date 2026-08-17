@@ -13,6 +13,7 @@ import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSkillQuery } from '@/lib/useSkill';
 import { useSkillMutation } from '@/lib/useSkillMutation';
+import { PRODUCT_LANE_ID } from './lane';
 
 export interface OnboardingStepStatus {
   step_id: string;
@@ -67,4 +68,21 @@ export function useCompleteStep(lane: string) {
   );
 
   return { complete, isSaving: m.isPending };
+}
+
+/**
+ * The shape VaNiGTM's `useOnboardingStatus()` returns, for ported screens.
+ *
+ * The mission wizard reads `onboardingStatus.data?.complete` and
+ * `.data.steps`. Here, status arrives wrapped in the transport's
+ * `{ success, data }` envelope and is keyed by lane. This unwraps it rather
+ * than editing ~1900 lines of ported screen — and it drops `success: false` to
+ * `undefined` so a refused call can never read as "complete".
+ */
+export function useMissionOnboarding() {
+  const q = useOnboardingStatus(PRODUCT_LANE_ID);
+  const envelope = q.data;
+  const data =
+    envelope?.success === true && envelope.data ? envelope.data : undefined;
+  return { ...q, data };
 }

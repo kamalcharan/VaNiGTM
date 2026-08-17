@@ -41,10 +41,17 @@ export function clearTokens(): void {
 
 export class ApiError extends Error {
   readonly status: number;
-  constructor(message: string, status: number) {
+  /**
+   * Structured payload from `{ error: { code, message, details } }`. Ported
+   * screens read it — the mission wizard's ICP approval surfaces
+   * `details.missing` as "Still needed: …" instead of a generic failure.
+   */
+  readonly details?: Record<string, unknown>;
+  constructor(message: string, status: number, details?: Record<string, unknown>) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.details = details;
   }
 }
 
@@ -72,6 +79,40 @@ async function readError(res: Response): Promise<string> {
   // Say so plainly; the generic message sends people hunting in the wrong place.
   if (res.status === 404) return 'The VaNi service is not configured for this deployment.';
   if (res.status >= 500) return 'The VaNi service is unavailable. Please try again shortly.';
+  return 'Something went wrong. Please try again.';
+}
+
+/**
+ * `readError` reads the body, and a body can only be read once — so the details
+ * have to come out of the same pass. Kept beside it rather than folded in, so
+ * the existing single-string callers are untouched.
+ */
+async function readErrorPayload(
+  res: Response,
+): Promise<{ message: string; details?: Record<string, unknown> }> {
+  let parsed: unknown;
+  try {
+    parsed = await res.json();
+  } catch {
+    return { message: fallbackErrorMessage(res.status) };
+  }
+  const data = parsed as Record<string, any>;
+  const errObj = typeof data?.error === 'object' && data.error !== null ? data.error : null;
+  const msg = (errObj ? errObj.message : data?.error) ?? data?.message;
+  const details =
+    errObj && typeof errObj.details === 'object' && errObj.details !== null
+      ? (errObj.details as Record<string, unknown>)
+      : undefined;
+  if (typeof msg === 'string' && msg.trim()) return { message: msg, details };
+  return { message: fallbackErrorMessage(res.status), details };
+}
+
+function fallbackErrorMessage(status: number): string {
+  if (status === 401) return 'Email and password do not match.';
+  // A 404 on an /api path means the request was served by this app rather than
+  // proxied — i.e. the API origin is unset.
+  if (status === 404) return 'The VaNi service is not configured for this deployment.';
+  if (status >= 500) return 'The VaNi service is unavailable. Please try again shortly.';
   return 'Something went wrong. Please try again.';
 }
 
@@ -115,10 +156,31 @@ export async function silentRefresh(): Promise<boolean> {
 interface FetchOptions {
   body?: unknown;
   signal?: AbortSignal;
+  /**
+   * `:id`-style placeholders in the endpoint's path. Kept name-for-name with
+   * VaNiGTM's apiFetch so ported screens need no edits — the mission wizard
+   * calls `API.ingest.getSource` with `{ pathParams: { id } }`.
+   */
+  pathParams?: Record<string, string>;
+  /** Appended as a query string. Same reason as pathParams. */
+  queryParams?: Record<string, string>;
   /** Sent as `Idempotency-Key`. Minted per logical attempt by useSkillMutation. */
   idempotencyKey?: string;
   /** Internal: prevents a refresh/retry loop. */
   _retried?: boolean;
+}
+
+/**
+ * Substitute `:name` placeholders. Ported from VaNiGTM's api-client so a screen
+ * moved between the repos resolves paths identically.
+ */
+function resolvePath(path: string, pathParams?: Record<string, string>): string {
+  if (!pathParams) return path;
+  let resolved = path;
+  for (const [key, value] of Object.entries(pathParams)) {
+    resolved = resolved.replace(`:${key}`, encodeURIComponent(value));
+  }
+  return resolved;
 }
 
 /**
@@ -139,7 +201,12 @@ export async function apiRequest<T>(
 
   let res: Response;
   try {
-    res = await fetch(`${API_ORIGIN}${path}`, {
+    let url = `${API_ORIGIN}${resolvePath(path, options.pathParams)}`;
+    if (options.queryParams) {
+      const qs = new URLSearchParams(options.queryParams).toString();
+      if (qs) url += `?${qs}`;
+    }
+    res = await fetch(url, {
       method,
       headers,
       credentials: 'include',
@@ -157,7 +224,10 @@ export async function apiRequest<T>(
     clearTokens();
   }
 
-  if (!res.ok) throw new ApiError(await readError(res), res.status);
+  if (!res.ok) {
+    const { message, details } = await readErrorPayload(res);
+    throw new ApiError(message, res.status, details);
+  }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
