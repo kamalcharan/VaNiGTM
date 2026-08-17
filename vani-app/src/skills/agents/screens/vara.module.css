@@ -1,5 +1,71 @@
 /* Vara landing — console theme (one theme across the product), Vara's UX. */
 
+.hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.heroText {
+  flex: 1 1 480px;
+  min-width: 0;
+}
+
+.activateBox {
+  flex: 0 0 auto;
+  padding: 14px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: var(--glass);
+  max-width: 320px;
+}
+
+.gateForm {
+  display: flex;
+  gap: 8px;
+}
+
+.gateInput {
+  background: var(--color-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--color-fg);
+  padding: 8px 10px;
+  font-size: 13px;
+  width: 170px;
+}
+
+.stubNote {
+  font-size: 13px;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.stubNote p {
+  margin: 8px 0 0;
+}
+
+.demoWrap {
+  margin: 22px 0;
+}
+
+.demoFrame {
+  width: 100%;
+  height: 720px;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  background: #0b0b10; /* the demo document's own ground, so no white flash */
+}
+
+.demoCaption {
+  font-size: 12px;
+  color: var(--color-muted);
+  margin-top: 8px;
+  text-align: center;
+}
+
 .principle {
   display: inline-flex;
   align-items: center;
