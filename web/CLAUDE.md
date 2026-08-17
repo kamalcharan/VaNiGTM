@@ -37,6 +37,25 @@ schema change request, not a blocker to route around.
 There is no live database access from a Claude session (see the VaNi note
 below), so every schema claim must trace to a migration file or a spec.
 
+## Scope discipline for VaNi work
+
+The current focus is **tenant (product-level) onboarding**. VaNiGTM's GTM
+pipeline — competitor research, semantic vocabulary clusters, ICP personas,
+SearXNG — is **not on that path**. GTM reads from the Smart Profile later; it
+does not need to work for tenant onboarding to ship.
+
+Environmental failures found on the Main VPS while scoping this are recorded in
+**`vanigtm/CLAUDE.md`** under "Main VPS — known broken, DEFERRED", including one
+genuine open bug (the event queue has no stale-row reclaim, so a dying worker
+orphans its in-flight events — which can trap a user behind a blocking UI).
+Note and move on; do not fix those while onboarding is unfinished.
+
+One decision is pending on Charan: the pre-2026-08-17 `vani-backend` image was
+built from an uncommitted working tree, so code referencing `gt_tenant_brand`
+exists in no branch. It survives only as the
+`vikuna/vani-backend:pre-onboarding-20260817` image tag on the VPS. Commit it
+from local before the next rebuild, or it is gone.
+
 ## VaNi console engineering standards
 
 Work under `vani-app/` is governed by **`vani-app/CLAUDE.md`** — read it before
