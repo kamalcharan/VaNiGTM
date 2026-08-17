@@ -6,16 +6,18 @@
  * Step ids must match the server catalog in VaNiGTM's
  * backend/src/onboarding/lanes.ts exactly; they are the storage key, not labels.
  *
- * `vani:domain`, `vani:team` and `vani:llm_provider` are declared in the server
- * catalog but disabled there until the vani_ platform spine is confirmed applied
- * to vani_gtm_db. Their screens land here when they are turned on — the engine,
- * the rail and the gate already handle them.
+ * `vani:domain` is live — the spine was applied 2026-08-17 (VaNiGTM migration
+ * 240) and its writer bridges the vn_ tenant to `vani_tenant` by slug.
+ * `vani:team` and `vani:llm_provider` remain disabled in the server catalog:
+ * People is already served by the vn_ spine (/auth/team, /auth/invite), and
+ * BYOK has no encryption path yet. Their screens land here when they turn on.
  */
 
 import type { OnboardingLane } from '../lane';
 import { PRODUCT_LANE_ID } from '../lane';
 import UserProfileStep, { UserProfileArtefact } from '../steps/UserProfileStep';
 import BusinessProfileStep, { BusinessProfileArtefact } from '../steps/BusinessProfileStep';
+import DomainStep, { DomainArtefact } from '../steps/DomainStep';
 
 export const productLane: OnboardingLane = {
   id: PRODUCT_LANE_ID,
@@ -41,6 +43,14 @@ export const productLane: OnboardingLane = {
         'What the organisation is and what it works on. This binds the domain pack every agent inherits.',
       Screen: BusinessProfileStep,
       Artefact: BusinessProfileArtefact,
+    },
+    {
+      step_id: 'vani:domain',
+      title: 'Your domain',
+      shortLabel: 'Domain',
+      summary: 'The domain your workspace runs on, so agents can address it.',
+      Screen: DomainStep,
+      Artefact: DomainArtefact,
     },
   ],
 };

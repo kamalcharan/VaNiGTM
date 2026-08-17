@@ -28,10 +28,12 @@ import {
   useVocabularyRead,
   useCompetitorsRead,
   useBrandRead,
+  useDomainsRead,
   type GtmProfile,
   type SemanticCluster,
   type Competitor,
   type TenantBrand,
+  type TenantDomain,
 } from '../useSmartProfile';
 import { PeopleSection } from './PeopleSection';
 import s from '../smart-profile.module.css';
@@ -44,6 +46,7 @@ function Section({
   title,
   what,
   editStep,
+  editHref,
   editLabel,
   query,
   isEmpty,
@@ -55,6 +58,8 @@ function Section({
   /** Why this section exists, in the tenant's terms — not a field list. */
   what: string;
   editStep: string;
+  /** Overrides the wizard deep link for sections whose step lives elsewhere. */
+  editHref?: string;
   editLabel: string;
   query: UseQueryResult<SkillResult<any>, Error>;
   isEmpty: (d: any) => boolean;
@@ -69,7 +74,7 @@ function Section({
           <h2 className={s.sectionTitle}>{title}</h2>
           <p className={s.sectionWhat}>{what}</p>
         </div>
-        <Link href={EDIT(editStep)} className={s.sectionEdit}>
+        <Link href={editHref ?? EDIT(editStep)} className={s.sectionEdit}>
           {editLabel}
         </Link>
       </header>
@@ -130,6 +135,7 @@ export default function SmartProfileView() {
   const vocab = useVocabularyRead();
   const competitors = useCompetitorsRead();
   const brand = useBrandRead();
+  const domains = useDomainsRead();
 
   const score = profile.data?.data?.completion_score ?? 0;
 
@@ -270,7 +276,31 @@ export default function SmartProfileView() {
         )}
       </Section>
 
-      <NotYet n={6} title="Domain" what="The domain your workspace runs on, so agents can address it." />
+      <Section
+        n={6}
+        title="Domain"
+        what="The domain your workspace runs on, so agents can address it."
+        editStep="vani:domain"
+        editHref="/onboarding/declare"
+        editLabel="Edit"
+        query={domains}
+        isEmpty={(d: TenantDomain[]) => !d?.length}
+        empty="No domain declared yet. Declare it once and every agent can address your workspace."
+      >
+        {(d: TenantDomain[]) => (
+          <ul className={s.rows}>
+            {d.map((row) => (
+              <li key={row.domain} className={s.row}>
+                <span className={s.rowName}>
+                  {row.domain}
+                  <span className={s.rowTag}>{row.purpose === 'candidate' ? 'candidates' : 'workspace'}</span>
+                </span>
+                {row.verified_at && <span className={s.rowDetail}>verified</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
 
       <PeopleSection n={7} />
 

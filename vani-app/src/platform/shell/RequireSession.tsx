@@ -82,6 +82,18 @@ export function RequireSession({ children, allowIncompleteOnboarding = false }: 
 
   const blocked = !allowIncompleteOnboarding && (needsOnboarding || laneIncomplete);
 
+  // Which onboarding surface is owed. `/onboarding` is the mission wizard
+  // (registration + research steps); `/onboarding/declare` runs the lane's
+  // declaration steps (vani:domain today). If everything still pending is a
+  // declaration step, the wizard has nothing left to offer — sending the
+  // tenant there would strand them in front of a locked rail. This is what
+  // lets the wizard's finish line simply route to the console: the gate
+  // forwards to the surface that can actually complete what remains.
+  const pending = lane.data?.data?.steps?.filter((st) => st.status !== 'completed') ?? [];
+  const onlyDeclarationsPending =
+    pending.length > 0 && pending.every((st) => st.step_id.startsWith('vani:'));
+  const target = onlyDeclarationsPending ? '/onboarding/declare' : '/onboarding';
+
   useEffect(() => {
     if (!API_CONFIGURED) return;
     if (isLoading) return;
@@ -90,8 +102,8 @@ export function RequireSession({ children, allowIncompleteOnboarding = false }: 
       return;
     }
     if (laneUndecided) return;
-    if (blocked) router.replace('/onboarding');
-  }, [isAuthenticated, isLoading, laneUndecided, blocked, router]);
+    if (blocked) router.replace(target);
+  }, [isAuthenticated, isLoading, laneUndecided, blocked, target, router]);
 
   if (!API_CONFIGURED) return <>{children}</>;
   // Render nothing rather than a spinner: the bootstrap is one request against

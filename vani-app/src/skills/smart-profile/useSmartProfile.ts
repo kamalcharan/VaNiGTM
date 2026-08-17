@@ -99,3 +99,13 @@ export const useCompetitorsRead = () =>
 
 export const useBrandRead = () =>
   useWrappedRead<TenantBrand | undefined>('brand', API.gtmProfile.getBrand, (r) => r?.brand);
+
+export interface TenantDomain {
+  domain: string;
+  purpose: 'workspace' | 'candidate';
+  verified_at: string | null;
+  created_at: string;
+}
+
+export const useDomainsRead = () =>
+  useWrappedRead<TenantDomain[]>('domains', API.tenant.domains, (r) => r?.domains ?? []);

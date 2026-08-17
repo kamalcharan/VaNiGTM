@@ -85,6 +85,17 @@ export const API = {
     },
   },
 
+  /** The tenant's rows in the vani_ platform spine. */
+  tenant: {
+    domains: {
+      method: 'GET',
+      path: '/api/v1/tenant/domains',
+      auth: true,
+      description:
+        'Domains declared for this workspace (vani_tenant_domain, bridged from the vn_ tenant by slug). Empty before the vani:domain step completes.',
+    },
+  },
+
   /**
    * Ingestion — the mission wizard's first step submits the tenant's website
    * here, and polls the source for its agent run steps.
