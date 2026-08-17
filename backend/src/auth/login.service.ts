@@ -68,15 +68,20 @@ export async function login(
   input: LoginInput,
   req: Request,
 ): Promise<LoginResult | SessionLimitResult> {
-  const email = input.email.trim().toLowerCase();
-  const device = parseDeviceInfo(req);
-
-  if (!email || !input.password) {
+  // Validate BEFORE touching the input. This guard used to sit one line below
+  // `input.email.trim()`, so a POST with no email threw a TypeError and the
+  // route returned 500 with a stack trace instead of the 400 written here.
+  // /api/v1/auth/login is public and gets probed, so the logs filled with
+  // crashes for what is simply a malformed request.
+  if (typeof input.email !== 'string' || !input.email.trim() || !input.password) {
     const err = new Error('Email and password are required');
     (err as any).status = 400;
     (err as any).code = 'VALIDATION_ERROR';
     throw err;
   }
+
+  const email = input.email.trim().toLowerCase();
+  const device = parseDeviceInfo(req);
 
   // 1. Lookup user by email
   const userResult = await pool.query(
