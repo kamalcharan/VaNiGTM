@@ -143,11 +143,27 @@ export function readAccessToken(data: unknown): string | null {
 }
 
 /**
- * Restore a session from the httpOnly refresh cookie. Runs on every app mount,
- * which is what makes reloads and new tabs survive. Resolves false rather than
- * throwing — a failed refresh is the normal "logged out" path.
+ * In-flight refresh, shared by every concurrent caller. Null when idle.
+ *
+ * This is not an optimisation — it is required for correctness. VaNiGTM's
+ * `refreshSession` (`backend/src/auth/token.service.ts`) ROTATES the refresh
+ * token on every use: it marks the presented one
+ * `is_active = false, revoked_reason = 'rotated'` and issues a replacement,
+ * with no reuse grace window. So a second concurrent refresh presents a token
+ * that the first one already killed, gets a hard 401, and — because a failed
+ * refresh is the "logged out" path — calls `clearTokens()` and ends a session
+ * that was perfectly valid.
+ *
+ * There are two callers, and both can fire at once:
+ *   - `AuthProvider`'s bootstrap effect, which React StrictMode deliberately
+ *     double-invokes in development.
+ *   - the 401 handler in `apiRequest`, once per concurrent request.
+ *
+ * Symptom this fixes: reloading `/onboarding` logged the tenant out.
  */
-export async function silentRefresh(): Promise<boolean> {
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function performRefresh(): Promise<boolean> {
   try {
     const res = await fetch(`${API_ORIGIN}${API.auth.refresh.path}`, {
       method: 'POST',
@@ -164,6 +180,26 @@ export async function silentRefresh(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Restore a session from the httpOnly refresh cookie. Runs on every app mount,
+ * which is what makes reloads and new tabs survive. Resolves false rather than
+ * throwing — a failed refresh is the normal "logged out" path.
+ *
+ * Concurrent callers share ONE request and all receive its result. Never issue
+ * a bare `performRefresh()` — see `refreshInFlight` above for why a second
+ * simultaneous rotation destroys the session.
+ */
+export function silentRefresh(): Promise<boolean> {
+  if (refreshInFlight) return refreshInFlight;
+  // Cleared in a `finally` so the next genuine expiry starts a fresh request,
+  // and so a rejection cannot wedge the slot shut. Assigned before the await
+  // resolves, which is what makes a caller arriving mid-flight join this one.
+  refreshInFlight = performRefresh().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
 }
 
 interface FetchOptions {
@@ -212,6 +248,10 @@ export async function apiRequest<T>(
   // server half — store the key with its result and replay it — is per handler.
   if (options.idempotencyKey) headers['Idempotency-Key'] = options.idempotencyKey;
 
+  // The token this request actually went out with. Compared after the response
+  // so a 401 that raced a refresh is retried rather than triggering another one.
+  const tokenAtSend = accessToken;
+
   let res: Response;
   try {
     let url = `${API_ORIGIN}${resolvePath(path, options.pathParams)}`;
@@ -232,6 +272,12 @@ export async function apiRequest<T>(
   }
 
   if (res.status === 401 && options.authenticated !== false && !options._retried) {
+    // A refresh already landed while we were in flight, so this 401 is stale —
+    // it was answered against the previous token. Retry on the new one instead
+    // of refreshing again; every extra refresh is another rotation.
+    if (accessToken && accessToken !== tokenAtSend) {
+      return apiRequest<T>(method, path, { ...options, _retried: true });
+    }
     const refreshed = await silentRefresh();
     if (refreshed) return apiRequest<T>(method, path, { ...options, _retried: true });
     clearTokens();
