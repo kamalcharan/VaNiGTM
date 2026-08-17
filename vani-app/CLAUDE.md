@@ -16,16 +16,28 @@ dirty after running the dev server, `git checkout -- vani-app/next-env.d.ts` —
 do not commit the dev variant, and do not "fix" the file, which says not to edit
 it.
 
-**Localhost cannot hold a session against the live API.** The refresh cookie is
-`sameSite: 'strict'` and `secure` (VaNiGTM `auth.routes.ts`), so from
-`http://localhost:3000` to `https://api.vikuna.io` the browser will not send it
-and could not receive it over http. Three modes, and only one needs no setup:
+**The variable is `NEXT_PUBLIC_API_ORIGIN`, and getting the name wrong fails
+silently.** VaNiGTM's frontend uses `NEXT_PUBLIC_API_URL`; this app reads
+neither that nor anything else. With the wrong name nothing throws —
+`transport.ts` selects the **mock** transport and `RequireSession` stands down —
+so the app looks like it is running against the API when it is talking to
+nobody. If live data is not appearing, check the name before anything else.
+
+**Localhost cannot hold a session against the live API — and that is about the
+domain, not the port.** The refresh cookie is `sameSite: 'strict'` and `secure`
+(VaNiGTM `auth.routes.ts`). `vani.vikuna.io` → `api.vikuna.io` share the
+registrable domain `vikuna.io`, so they are same-site and Strict sends the
+cookie. `localhost` → `vikuna.io` is cross-site: the browser will not send the
+cookie, and cannot store it over `http://` because of `secure`. Separately,
+nginx's `map $http_origin $cors_origin` defaults to `""`, so `localhost` is not
+in the allowlist at all. Ports are irrelevant to SameSite — `localhost:3000` ↔
+`localhost:3002` is same-site.
 
 | Mode | Setup | What you get |
 |---|---|---|
 | **Mock** (default) | no `.env.local` | Whole UI including the onboarding pathway. No backend, no session. The right mode for UI work |
-| Live API, session-less | `NEXT_PUBLIC_API_ORIGIN` + `http://localhost:3000` in nginx's `map $http_origin` | Real data, but logged out on every reload — `silentRefresh()` cannot see the cookie |
-| Full local stack | backend on `localhost:3001` + local Postgres | Same-site, so auth genuinely works |
+| **Local backend, VPS database** | `NEXT_PUBLIC_API_ORIGIN=http://localhost:3002`; run `vani-backend` locally with `NODE_ENV=development`, `CORS_ORIGIN=http://localhost:3000`, `DB_PRIMARY` pointed at the VPS Postgres | **Everything, auth included.** Same-site, and `development` drops `secure` off the cookie. The mode to develop in |
+| Live API, session-less | `NEXT_PUBLIC_API_ORIGIN=https://api.vikuna.io` + `"~^http://localhost(:\d+)?$"` added to nginx's `map $http_origin` | Real data on the in-memory token, but logged out on every reload — `silentRefresh()` cannot see the cookie. Making it persist would mean env-gating `sameSite`/`secure` in VaNiGTM, i.e. weakening the production cookie for a dev convenience. Decide that deliberately, do not drift into it |
 
 If `npm run dev` reports `'next' is not recognized`, run `npm install` inside
 `vani-app/` — it has its own lockfile, separate from the repo root.
