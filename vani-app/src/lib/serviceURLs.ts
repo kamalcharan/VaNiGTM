@@ -50,6 +50,24 @@ export const API = {
       auth: true,
       description: 'Hydrate the current user and tenant.',
     },
+    team: {
+      method: 'GET',
+      path: '/api/v1/auth/team',
+      auth: true,
+      description: 'Everyone in the tenant, from vn_users.',
+    },
+    invite: {
+      method: 'POST',
+      path: '/api/v1/auth/invite',
+      auth: true,
+      description: 'Invite people by email and role. Body: { invitations: [{ email, role_id }] }.',
+    },
+    invitations: {
+      method: 'GET',
+      path: '/api/v1/auth/invitations',
+      auth: true,
+      description: 'Pending invitations for the tenant.',
+    },
   },
 
   onboarding: {

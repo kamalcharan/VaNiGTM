@@ -50,6 +50,14 @@ const PLATFORM_ROUTES: Record<string, (params: Record<string, unknown>) => Platf
       data: p.data ?? {},
     },
   }),
+  // Auth is the one non-generic surface (CLAUDE.md §6), so its writes are
+  // declared here rather than routed to the generic skill runner, which would
+  // 404 on /api/v1/skills/auth/invite.
+  'auth.invite': (p) => ({
+    method: 'POST',
+    path: '/api/v1/auth/invite',
+    body: { invitations: p.invitations },
+  }),
 };
 
 export const liveTransport: SkillTransport = async (skill, fn, params) => {

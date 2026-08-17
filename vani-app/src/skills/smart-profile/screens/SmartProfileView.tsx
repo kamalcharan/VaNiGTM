@@ -33,6 +33,7 @@ import {
   type Competitor,
   type TenantBrand,
 } from '../useSmartProfile';
+import { PeopleSection } from './PeopleSection';
 import s from '../smart-profile.module.css';
 
 /** Deep link into the build flow at the step that owns a section. */
@@ -270,8 +271,31 @@ export default function SmartProfileView() {
       </Section>
 
       <NotYet n={6} title="Domain" what="The domain your workspace runs on, so agents can address it." />
-      <NotYet n={7} title="People" what="Who else is in the organisation, and what they can do." />
-      <NotYet n={8} title="Model" what="Which model answers. A default is in place; bring your own key later." />
+
+      <PeopleSection n={7} />
+
+      {/* Model: the default provider is configured server-side and in force for
+          every tenant. Stating it is honest and useful; BYOK needs
+          vani_llm_provider.credentials_enc and an encryption path, so it is
+          named as coming rather than shown as an input that saves nowhere. */}
+      <section className={s.section}>
+        <header className={s.sectionHead}>
+          <span className={s.sectionNum}>8</span>
+          <div className={s.sectionTitles}>
+            <h2 className={s.sectionTitle}>Model</h2>
+            <p className={s.sectionWhat}>Which model answers when an agent needs one.</p>
+          </div>
+          <span className={s.sectionSoon}>Default</span>
+        </header>
+        <div className={s.sectionBody}>
+          <p className={s.modelNote}>
+            A provider is configured for your workspace and in force for every
+            agent. Bringing your own key becomes a field on this step; until then
+            nothing here needs your attention.
+          </p>
+          <span className={s.modelTag}>Workspace default</span>
+        </div>
+      </section>
     </div>
   );
 }

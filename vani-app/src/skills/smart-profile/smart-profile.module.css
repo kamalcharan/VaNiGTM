@@ -233,3 +233,81 @@
   .sectionHead { flex-wrap: wrap; }
   .sectionEdit, .sectionSoon { margin-left: 40px; }
 }
+
+/* ── People: invite row ───────────────────────────────────────────────── */
+
+.inviteRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.inviteInput {
+  flex: 1 1 220px;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  font-size: 0.86rem;
+  color: var(--tx);
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: 7px;
+}
+.inviteInput::placeholder { color: var(--tx3); }
+.inviteInput:focus { outline: none; border-color: var(--gold); }
+
+.inviteRole {
+  height: 38px;
+  padding: 0 10px;
+  font-size: 0.82rem;
+  color: var(--tx);
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: 7px;
+}
+
+.inviteSend {
+  height: 38px;
+  padding: 0 16px;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  color: var(--bg);
+  background: var(--gold);
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.inviteSend:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.rowTag, .rowTagMuted {
+  margin-left: 8px;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+.rowTag { color: var(--gold); border: 1px solid var(--ac-line); }
+.rowTagMuted { color: var(--tx3); border: 1px dashed var(--line2); }
+
+/* ── Model: the provider in force ─────────────────────────────────────── */
+
+.modelNote {
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--tx2);
+}
+
+.modelTag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--tx);
+  background: var(--surf2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 3px 9px;
+  margin-top: 8px;
+}
