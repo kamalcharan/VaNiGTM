@@ -39,10 +39,41 @@ below), so every schema claim must trace to a migration file or a spec.
 
 ## Scope discipline for VaNi work
 
-The current focus is **tenant (product-level) onboarding**. VaNiGTM's GTM
-pipeline — competitor research, semantic vocabulary clusters, ICP personas,
-SearXNG — is **not on that path**. GTM reads from the Smart Profile later; it
-does not need to work for tenant onboarding to ship.
+The current focus is **tenant (product-level) onboarding**.
+
+**Corrected 2026-08-17 — the previous version of this section was wrong**, and it
+misdirected a session. It said the mission wizard was off the onboarding path
+because "GTM reads from the Smart Profile later". The actual architecture, from
+Charan:
+
+> The mission wizard **is step 1 of the Smart Profile.** GTM picks *from* the
+> Smart Profile afterwards, as and when it wants.
+
+So the Smart Profile is, in order:
+
+1. **Mission wizard** — company research, market vocabulary, competitors, ideal
+   customer, brand. This is the substance: what the product is, the problem it
+   solves, the buyer, the pain, the voice, the proof.
+2. **Domain** → `vani_tenant_domain`
+3. **People** → `vani_membership`
+4. **Model** → `vani_llm_provider`. A default provider already exists; BYOK is a
+   later field on the same step, not a later step.
+
+**`user_profile` and `business_profile` are NOT the Smart Profile.** They capture
+name, mobile, designation, industry — registration detail. Useful, required, and
+completely separate. Do not report onboarding progress as though they were part
+of it; that was the specific mistake, and it read as "half done" when the half
+that carries meaning had not started.
+
+Competitor research, vocabulary clusters and SearXNG are therefore **on** the
+path, as sub-steps of mission wizard — not off it. What remains true is that they
+are blocked on infrastructure (LLM reachability, the worker, headless crawl for
+JS sites, the `gt_tenant_brand` migration), so they are expensive, not optional.
+
+Steps 2–4 cost almost nothing by comparison: pure declarations, no LLM, no
+worker, no queue. Their screens, writers, engine and gate are built and sit
+behind `enabled: false` in `backend/src/onboarding/lanes.ts`, waiting on one
+`\dt vani_*` to confirm the `vani_` spine is applied.
 
 Environmental failures found on the Main VPS while scoping this are recorded in
 **`vanigtm/CLAUDE.md`** under "Main VPS — known broken, DEFERRED", including one
