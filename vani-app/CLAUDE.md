@@ -98,6 +98,17 @@ skill can refuse while the request itself is fine. Checking only `isError`
 renders an empty screen and calls it success. The boundary checks both. So
 must anything that does not use it.
 
+**Ported screens need VaNiGTM's tokens defined, or their loaders vanish.** The
+mission wizard and everything under `platform/vdf/` is written against
+VaNiGTM's `--color-*` / `--font-*` names, injected there at runtime by a
+ThemeScript this app does not have. Undefined custom properties do not fall
+back — the browser discards the whole declaration. That shipped once: the
+live-progress spinner is `border: 2px solid var(--color-primary-dim)` with
+`border-top-color: var(--color-primary)`, so both being undefined meant no
+border, an invisible spinner, and four minutes of research that looked frozen.
+The aliases live in `src/styles/globals.css`; after porting any screen, check
+every `var(--…)` it uses resolves before judging how it looks.
+
 Loaders come in three kinds, and picking the wrong one is a real defect:
 
 - **Known shape** (list, table, counters) → `Skeleton*`. No layout jump.
