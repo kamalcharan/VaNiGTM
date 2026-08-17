@@ -90,6 +90,38 @@ async function readinessChecklist(pool: Pool, vaniTenantId: string) {
 export function createVaraRouter(pool: Pool): Router {
   const router = Router();
 
+  /* ── GET /api/v1/vara/status ───────────────────────────────────────────
+   * Workspace. What the landing page renders: subscription state + the
+   * readiness checklist. Deliberately separate from /embed — reading state
+   * must not mint a year-long token as a side effect. */
+  router.get('/status', async (req, res) => {
+    try {
+      const auth = extractJwt(req);
+      if (!auth) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+      const vani = await vaniTenantFor(pool, auth.tenant_id);
+      if (!vani) {
+        res.status(409).json({
+          error: { code: 'TENANT_NOT_PROVISIONED', message: 'Complete the Domain step first' },
+        });
+        return;
+      }
+      const checklist = await readinessChecklist(pool, vani.id);
+      const sub = await pool.query(
+        `SELECT ta.status FROM vani_tenant_agent ta
+           JOIN vani_agent a ON a.id = ta.agent_id AND a.code = 'vara'
+          WHERE ta.tenant_id = $1`,
+        [vani.id],
+      );
+      res.json({ subscription: sub.rows[0]?.status ?? 'none', checklist });
+    } catch (err: any) {
+      console.error('[Vara:status]', err);
+      res.status(500).json({ error: { code: 'FETCH_FAILED', message: 'Could not read Vara state' } });
+    }
+  });
+
   /* ── POST /api/v1/vara/activate ────────────────────────────────────────
    * Workspace, admin. Runs the readiness checklist; if it passes, the
    * subscription row goes live. Idempotent: activating a live agent re-answers
@@ -120,7 +152,12 @@ export function createVaraRouter(pool: Pool): Router {
 
       const checklist = await readinessChecklist(pool, vani.id);
       if (!checklist.ready) {
-        res.status(409).json({ error: { code: 'NOT_READY', message: 'The readiness checklist has open items' }, checklist });
+        // The checklist travels in error.details — that is the field the
+        // console's ApiError surfaces to screens, so this is the difference
+        // between "refused, here is what is open" and a blank failure.
+        res.status(409).json({
+          error: { code: 'NOT_READY', message: 'The readiness checklist has open items', details: checklist },
+        });
         return;
       }
 
