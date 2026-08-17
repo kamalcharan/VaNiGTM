@@ -1329,11 +1329,26 @@ export default function MissionWizardPage() {
     <VdfPathwayShell
       eyebrow="Smart Profile"
       name="What VaNi knows about you"
-      headerAction={onboardingStatus.data?.complete ? (
-        <button type="button" className={s.backLink} onClick={() => router.push('/dashboard')}>
+      /* ALWAYS an exit. This used to render only when the lane reported
+       * complete, which meant a tenant part-way through had no way out of this
+       * screen at all — no nav (the route sits outside the console shell, by
+       * design, so the gate cannot be clicked past) and no link. The only
+       * escape was signing out. That is a trap, and it is why the Smart
+       * Profile view went unseen: you could not get to it from here.
+       *
+       * Leaving is safe to offer unconditionally. If onboarding really is
+       * incomplete, RequireSession returns the tenant here — the gate still
+       * holds, it just holds in the guard where it belongs rather than by
+       * removing the door. */
+      headerAction={
+        <button
+          type="button"
+          className={s.backLink}
+          onClick={() => router.push(onboardingStatus.data?.complete ? '/smart-profile' : '/dashboard')}
+        >
           ← Back to the console
         </button>
-      ) : undefined}
+      }
       steps={[...STEPS.map(({ id, label }) => ({ id, label })), ...DECLARATION_STEPS]}
       currentIndex={stepIndex}
       completedSteps={confirmed}
