@@ -87,6 +87,20 @@ interface KbSource {
 }
 
 /** Friendly labels for the agent's real pipeline steps (gt_agent_runs.steps). */
+/**
+ * Steps the pipeline records for US, never for the tenant.
+ *
+ * `llm_failover` is written by agent-core whenever the local model is
+ * unreachable and the call is retried on Claude, and it carries the raw VPS
+ * error in its action text. That belongs in gt_agent_runs, not on a customer's
+ * screen: which model answered is our operational detail, and surfacing it
+ * turns "VaNi is analysing your site" into a visible internal wobble.
+ *
+ * Hidden from the FEED only — the row is still stored, still auditable, and
+ * still shows in the run history. Nothing is swallowed.
+ */
+const INTERNAL_STEPS = new Set(['llm_failover']);
+
 const RESEARCH_STEP_LABELS: Record<string, string> = {
   parse: 'Connected — reading your website',
   parse_complete: 'Website read',
@@ -1253,6 +1267,10 @@ export default function MissionWizardPage() {
   ]), [brand]);
   const brandMissing = brandSections.filter((sec) => !sec.filled);
 
+  // See INTERNAL_STEPS: the tenant sees VaNi working, not which model answered.
+
+  const visibleSteps = researchSteps.filter((st) => !INTERNAL_STEPS.has(st.step_name));
+
   const current = STEPS[stepIndex];
 
   /* ── Render ───────────────────────────────────────────────────────── */
@@ -1334,7 +1352,7 @@ export default function MissionWizardPage() {
                 </VdfButton>
               </div>
 
-              {research === 'running' && researchSteps.length === 0 && (
+              {research === 'running' && visibleSteps.length === 0 && (
                 <VdfKgLoader
                   subject={domain.trim() || undefined}
                   message={researchNote || 'Reading your website'}
@@ -1342,10 +1360,10 @@ export default function MissionWizardPage() {
                 />
               )}
 
-              {research === 'running' && researchSteps.length > 0 && (
+              {research === 'running' && visibleSteps.length > 0 && (
                 <ol className={s.stepFeed} aria-label="VaNi's live progress">
-                  {researchSteps.map((st, i) => {
-                    const isLast = i === researchSteps.length - 1;
+                  {visibleSteps.map((st, i) => {
+                    const isLast = i === visibleSteps.length - 1;
                     const failed = st.status === 'error';
                     return (
                       <li
@@ -1789,7 +1807,7 @@ export default function MissionWizardPage() {
               loading={generatingBrand || approvingBrand || finishing}
             >
               {generatingBrand && !brand && (
-                <p className={s.memoryLine}>Reading your site for voice, claims and proof…</p>
+                <VdfKgLoader message="Reading your site for voice, claims and proof" />
               )}
               {/* Persistent completeness signal — replaces a one-time success
                   toast that couldn't tell you WHICH fields still needed you.

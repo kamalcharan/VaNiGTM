@@ -72,17 +72,20 @@
   --color-fg: var(--tx);
   --color-muted: var(--tx2);
 
-  --color-primary: var(--ac);
-  /* VaNiGTM appends `dd` to primary for hover; same ~87% here. */
-  --color-primary-hover: rgba(232, 66, 10, 0.87);
-  /* Same alpha steps as VaNiGTM's dark vikuna-black: .38 / .16 / .07 */
-  --color-primary-dim: rgba(232, 66, 10, 0.38);
-  --color-primary-glow: rgba(232, 66, 10, 0.16);
-  --color-primary-subtle: rgba(232, 66, 10, 0.07);
-  /* VaNiGTM sets this to the page background (dark text on gold). On this
-   * saturated orange that fails contrast, so it is white — the one place the
-   * mapping deviates, and deliberately. */
-  --color-primary-fg: #ffffff;
+  /* GOLD, not the marketing site's orange. `--gold` is annotated above as
+   * "GOLD — VaNi itself", and VaNiGTM's own vikuna-black theme runs a gold
+   * primary (#C9A84C dark). The orange `--ac` is www.vikuna.io's action
+   * colour; using it here dressed the console in the wrong product's brand. */
+  --color-primary: var(--gold);
+  /* VaNiGTM appends `dd` to primary for hover; --gold-light is the same move. */
+  --color-primary-hover: var(--gold-light);
+  /* VaNiGTM's dark alpha steps, exactly: .38 / .16 / .07 */
+  --color-primary-dim: rgba(201, 151, 58, 0.38);
+  --color-primary-glow: rgba(201, 151, 58, 0.16);
+  --color-primary-subtle: rgba(201, 151, 58, 0.07);
+  /* Dark text on gold, as VaNiGTM does it — gold carries dark text well, which
+   * is why the earlier white-on-orange deviation is no longer needed. */
+  --color-primary-fg: var(--bg);
 
   --color-success: var(--ok);
   --color-warning: var(--warn);
@@ -96,10 +99,10 @@
   /* dark-mode semantic info, from VaNiGTM's vikunaBlack theme */
   --color-info: #5eaaf0;
 
-  /* Glass surfaces — VaNiGTM's alphas (.07 / .12 / .24), on VaNi's accent. */
-  --glass: rgba(232, 66, 10, 0.07);
-  --glass-strong: rgba(232, 66, 10, 0.12);
-  --glass-border: rgba(232, 66, 10, 0.24);
+  /* Glass surfaces — VaNiGTM's alphas (.07 / .12 / .24), on the gold primary. */
+  --glass: rgba(201, 151, 58, 0.07);
+  --glass-strong: rgba(201, 151, 58, 0.12);
+  --glass-border: rgba(201, 151, 58, 0.24);
 
   /* Control metrics, verbatim from VaNiGTM's ThemeScript. These are fixed
    * measurements rather than palette, so they are copied, not remapped —
