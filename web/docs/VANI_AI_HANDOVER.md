@@ -834,3 +834,58 @@ Out of scope but recorded: the War Room activity feed and the analytics
 `meeting_booked` counter read demo data (§13); `story-skill`'s db tests fail on a
 pre-existing schema drift — `story.db.test.ts` hand-lists migrations and stops at
 225 while `create-story.ts` writes `channel_type_id`, added by 226.
+
+---
+
+## Main VPS — the actual deploy paths (verified 2026-08-17)
+
+Discovered from `docker inspect vani-backend` after two rounds of wrong
+guesses. The repo's own runbook and compose file **do not match production**,
+so read this first.
+
+| Thing | Value |
+|---|---|
+| Source checkout | `/opt/vikuna/src/vanigtm` (on `main`) |
+| Compose file — the whole config | `/opt/vikuna/docker/vani/docker-compose.vani.yml` |
+| Compose working dir | `/opt/vikuna/docker/vani` |
+| **Image name in production** | **`vikuna/vani-backend:latest`** |
+| Port inside the container | **3001**, with no host `ports:` mapping |
+
+Three traps, each of which has already cost a round:
+
+- **The image name differs from the repo.**
+  `deploy/vani-main-vps/docker-compose.vani.yml` declares
+  `image: vani-backend:${IMAGE_TAG:-latest}`; production uses the `vikuna/`
+  prefix. Building `-t vani-backend:latest` produces an image nothing deploys,
+  and the build succeeds, so nothing warns you.
+- **Nothing listens on a host port.** `PORT=3001` inside the container, on the
+  `vikuna_shared` network, reached by nginx via the container name. `curl
+  localhost:3002` on the VPS returning `000` is correct, not a fault. Probe with
+  `docker exec vani-backend wget -qO- http://localhost:3001/health`.
+- **The root `Dockerfile` is a signpost, not a build file** — comments only.
+  The real one is `deploy/vani-main-vps/Dockerfile`, and it takes `backend/` as
+  its context.
+
+Rebuild and recreate:
+```
+cd /opt/vikuna/src/vanigtm
+docker build -f deploy/vani-main-vps/Dockerfile -t vikuna/vani-backend:latest backend/
+cd /opt/vikuna/docker/vani
+docker compose -f docker-compose.vani.yml up -d --force-recreate vani-backend
+```
+Tag a rollback first (`docker tag vikuna/vani-backend:latest
+vikuna/vani-backend:rollback-$(date +%Y%m%d)`); restoring is the same tag in
+reverse plus one `--force-recreate`.
+
+### Do not use a 401 to tell the versions apart
+
+`GET /api/v1/onboarding/status` returns 401 unauthenticated on **both** the old
+and new builds — `e494974` mounted `/api/v1/onboarding` too, from a router
+inside `auth/auth.routes.ts`. The lane work only *moved* it to
+`backend/src/onboarding/`. So the version check is the module's presence, not an
+HTTP status:
+
+```
+docker exec vani-backend ls dist/onboarding/
+```
+`lanes.js  onboarding.routes.js` = the lane-aware build. Absent = pre-lane.
