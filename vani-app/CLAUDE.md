@@ -250,6 +250,35 @@ integration contract.
 
 ---
 
+### The onboarding gate asks the lane, not `/me`
+
+`/me` derives `onboarding_complete` from
+`count(*) FROM vn_tenant_onboarding WHERE status != 'completed') = 0`. That
+counts **rows**, so a tenant with **no rows counts as complete**. The lane's
+`/api/v1/onboarding/status` reconciles the catalog instead, where an **absent row
+is a pending step**. They disagree precisely where it matters, and it reached
+production: a tenant created before registration began seeding steps signed in
+and landed in the console with nothing onboarded.
+
+`RequireSession` therefore gates on **either** signal saying incomplete — `/me`
+as a free fast pre-signal (a fresh signup has two seeded `pending` rows and is
+blocked with no extra request), the lane as the authority.
+
+**Do not "fix" `/me`'s count to match.** It is shared with the GTM frontend, and
+`GTM_LANE` carries the same two bare step ids, so making that count
+catalog-aware would abruptly gate live GTM tenants who have no rows. Lane
+awareness belongs per lane, in the lane's own endpoint — that is the point of
+the lane model.
+
+Two states the gate must keep separate, both learned the hard way:
+
+- **Undecided.** While the lane query is in flight the answer is not "complete".
+  Rendering children there is what let an un-onboarded tenant see the console
+  for a beat before the redirect.
+- **Refused.** `success: false` arrives with HTTP 200. The gate fails **open** to
+  `/me`'s answer on an error or refusal, rather than trapping every user behind
+  a transient 500.
+
 ## 6. Auth surface
 
 - Access token **in memory only** — never `localStorage`, never a readable

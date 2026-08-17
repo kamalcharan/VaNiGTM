@@ -30,8 +30,13 @@ export interface OnboardingStatus {
   next_incomplete_step: string | null;
 }
 
-export function useOnboardingStatus(lane: string) {
-  return useSkillQuery<OnboardingStatus>('onboarding', 'status', { lane });
+/**
+ * `enabled` exists so RequireSession can hold the request until a session is
+ * known. Firing it before the silent refresh resolves would 401, and a 401 on
+ * the gate's own query is indistinguishable from "not onboarded".
+ */
+export function useOnboardingStatus(lane: string, enabled = true) {
+  return useSkillQuery<OnboardingStatus>('onboarding', 'status', { lane }, { enabled });
 }
 
 export function useCompleteStep(lane: string) {
