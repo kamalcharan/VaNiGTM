@@ -147,6 +147,30 @@ affects behaviour.
 | 6 | Delete the now-stale `vani.vikuna.io` cert on the VPS | VPS | outstanding |
 | 7 | Preview slug is `vani-iota`, not `vani-app` — CORS map does not match it | VPS | optional |
 
+### Verified externally 2026-08-17
+
+Preflight from a developer machine outside the VPS, over the public internet:
+
+```
+> OPTIONS https://api.vikuna.io/api/v1/auth/login
+> Origin: https://vani.vikuna.io
+
+HTTP/1.1 204 No Content
+Access-Control-Allow-Origin: https://vani.vikuna.io
+Access-Control-Allow-Credentials: true
+Access-Control-Allow-Methods: GET, POST, PATCH, PUT, DELETE, OPTIONS
+Access-Control-Allow-Headers: Authorization, Content-Type
+Vary: Origin
+```
+
+Confirms four things at once: public DNS resolves, the TLS chain is trusted (curl
+without `-k` would have refused), the origin is echoed exactly, and credentials
+are permitted. The `204` is the tell that nginx answers preflight itself — Express
+never sees it, so its stale single-origin default cannot contradict the map.
+
+**P1 is unblocked on infrastructure.** The only remaining gate is the signup
+decision, and login/logout do not depend on it.
+
 ### Notes on the remaining items
 
 **DNS was managed by Vercel, not GoDaddy.** GoDaddy holds registration only and
