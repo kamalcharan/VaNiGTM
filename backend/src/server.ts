@@ -15,6 +15,7 @@ import { createIngestionRouter } from './skills/ingestion-skill/ingestion.routes
 import { createProfileRouter } from './skills/profile-skill/profile.routes';
 import { createStorytellerRouter } from './skills/storyteller-skill/storyteller.routes';
 import { createAssessmentRouter } from './skills/assessment-skill/assessment.routes';
+import { createVaraRouter } from './vara/vara.routes';
 import { verifyAccessToken } from './auth/token.service';
 import { resolveAuth } from './auth/auth-context';
 
@@ -75,7 +76,11 @@ async function main() {
   app.use('/api/v1/storyteller', createStorytellerRouter(pool));
   // Public (no JWT) — see assessment-skill/SKILL.md "Two halves, two access models".
   app.use('/api/v1/assessment', createAssessmentRouter(pool));
-  console.log('[VaNi-GTM] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /vani, /ingest, /profile, /storyteller, /assessment');
+  // Vara: activation + embed are workspace-authed; /vara/embed/boot is public
+  // by design — it serves the widget inside the TENANT'S site, where no
+  // platform session exists. See vara/vara.routes.ts for the threat model.
+  app.use('/api/v1/vara', createVaraRouter(pool));
+  console.log('[VaNi-GTM] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /vani, /ingest, /profile, /storyteller, /assessment, /vara');
 
   // Build skill registry
   const skillsDir = path.resolve(__dirname, 'skills');
