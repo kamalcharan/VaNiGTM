@@ -164,9 +164,9 @@ export default function VaraLanding() {
           className={s.demoFrame}
         />
         <p className={s.demoCaption}>
-          This is the real product flow — the candidate&rsquo;s conversation on
-          the left, what they see and receive on the right. It replays
-          continuously.
+          The real product flow, playing itself — the candidate&rsquo;s
+          conversation on the left, what your talent team sees for that same
+          candidate on the right. It replays continuously.
         </p>
       </div>
 

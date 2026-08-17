@@ -1394,30 +1394,75 @@ animatePulse();
 </script>
 <script>
 /* ── Autoplay (?autoplay=1) — the landing page's living demo ───────────────
-   Drives the EXISTING candidate flow; owns no content of its own. Hides the
-   shell chrome, opens the candidate view, and plays the conversation by
-   clicking the same quick-reply buttons a person would — deliberately picking
-   the 90-day notice, so Vara's honest "hard rule, stated up front" push-back
-   is part of every loop. On finish it waits, then reloads: the flow replays
-   for as long as the page is open. */
+   Charan's sketch, 2026-08-17: the stage is TWO HALVES with a line between.
+   Left — the candidate's chatbot experience, playing itself. Right — what
+   the TALENT TEAM sees for the same candidate: first the JD the questions
+   come from, then the probability map the score lands on, then the pulse
+   briefing. All panels are the prototype's own views, moved — not copies.
+
+   The chat clicks the same quick-reply buttons a person would, deliberately
+   picking the 90-day notice so Vara's honest hard-rule push-back is in every
+   loop. At the end it waits, then reloads: it plays for as long as the page
+   is open. */
 (function(){
   if (new URLSearchParams(location.search).get('autoplay') !== '1') return;
 
   var css = document.createElement('style');
-  css.textContent = '.topbar{display:none!important}#recNav{display:none!important}';
+  css.textContent = [
+    '.topbar,#recNav{display:none!important}',
+    '.ap-stage{display:grid;grid-template-columns:390px 1px 1fr;gap:26px;padding:22px 26px;align-items:start;min-height:100vh;box-sizing:border-box}',
+    '.ap-col{min-width:0}',
+    '.ap-divider{background:var(--border-strong);align-self:stretch}',
+    '.ap-h{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}',
+    '.ap-sub{font-size:13px;color:var(--ink-2);margin:0 0 14px;min-height:34px}',
+    '.ap-right{position:relative}.ap-right .view{display:none}.ap-right .view.on{display:block;position:static!important;inset:auto!important;width:auto!important;padding:0!important;animation:none!important}',
+    '.ap-right .view{padding:0!important}',
+  ].join('');
   document.head.appendChild(css);
 
-  showView('cand');
+  var stage = document.createElement('div');
+  stage.className = 'ap-stage';
+  stage.innerHTML =
+    '<div class="ap-col"><p class="ap-h">The candidate</p>' +
+    '<p class="ap-sub">On your website. A conversation, not a form — rules stated up front.</p>' +
+    '<div id="apPhone"></div></div>' +
+    '<div class="ap-divider"></div>' +
+    '<div class="ap-col ap-right"><p class="ap-h">Your talent team</p>' +
+    '<p class="ap-sub" id="apPhase"></p><div id="apViews"></div></div>';
+  document.body.appendChild(stage);
+
+  /* Move the real elements — no copies, no drift. */
+  document.getElementById('apPhone').appendChild(document.querySelector('.phone'));
+  var right = document.getElementById('apViews');
+  ['view-jd', 'view-map', 'view-pulse'].forEach(function(id){
+    right.appendChild(document.getElementById(id));
+  });
+  /* Everything needed has been moved into the stage — hide the rest of the
+     original shell wholesale, whatever wraps it. */
+  Array.prototype.forEach.call(document.body.children, function(el){
+    if (el !== stage && el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE') el.style.display = 'none';
+  });
+
+  function phase(id, label){
+    ['view-jd','view-map','view-pulse'].forEach(function(v){
+      document.getElementById(v).classList.toggle('on', v === id);
+    });
+    document.getElementById('apPhase').textContent = label;
+    if (id === 'view-jd') animateInfoBars();
+    if (id === 'view-pulse') animatePulse();
+  }
+
+  /* Phase 1 — while the chat runs: the JD the questions come from. */
+  phase('view-jd', 'The JD this conversation is built from — every question maps to a must-have or a knockout rule.');
   startCandChat();
 
-  /* Picks by SCRIPT step: ready -> 3-5 yrs -> RLS in production ->
-     90 days (honest push-back) -> in-band CTC -> resume. */
   var PICKS = [0, 1, 0, 3, 1, 0];
   var pickIdx = 0;
   var busy = false;
+  var done = false;
 
   setInterval(function(){
-    if (busy) return;
+    if (busy || done) return;
     var quick = document.getElementById('phQuick');
     if (!quick) return;
     var buttons = quick.querySelectorAll('.quick');
@@ -1427,8 +1472,16 @@ animatePulse();
       pickIdx++;
       setTimeout(function(){ b.click(); busy = false; }, 1100);
     } else if (quick.textContent.indexOf('submitted') !== -1) {
-      busy = true;
-      setTimeout(function(){ location.reload(); }, 7000);
+      done = true;
+      /* Phase 2 — the application lands on the team's probability map. */
+      setTimeout(function(){
+        phase('view-map', 'Scored with evidence, placed on the map. The threshold line is your policy — drag it, and nothing below it is auto-rejected.');
+      }, 2500);
+      /* Phase 3 — the next-morning pulse briefing. */
+      setTimeout(function(){
+        phase('view-pulse', 'Next morning: Vara reports what it did — who applied, who cleared rules, who is ranked. Every decision left to a human.');
+      }, 11000);
+      setTimeout(function(){ location.reload(); }, 20000);
     }
   }, 600);
 })();
