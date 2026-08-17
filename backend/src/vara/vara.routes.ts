@@ -150,17 +150,6 @@ export function createVaraRouter(pool: Pool): Router {
         return;
       }
 
-      const checklist = await readinessChecklist(pool, vani.id);
-      if (!checklist.ready) {
-        // The checklist travels in error.details — that is the field the
-        // console's ApiError surfaces to screens, so this is the difference
-        // between "refused, here is what is open" and a blank failure.
-        res.status(409).json({
-          error: { code: 'NOT_READY', message: 'The readiness checklist has open items', details: checklist },
-        });
-        return;
-      }
-
       const agent = await pool.query(`SELECT id FROM vani_agent WHERE code = 'vara'`);
       const agentId = agent.rows[0]?.id;
       if (!agentId) {
@@ -168,23 +157,28 @@ export function createVaraRouter(pool: Pool): Router {
         return;
       }
 
+      // Decision 2026-08-17: a correct activation code marks the subscription
+      // `activating` — code accepted, Vara onboarding pending. Going `live` is
+      // the ONBOARDING lane's finish line (flow being designed), not this
+      // call's. The readiness checklist moves there with it; an already-live
+      // subscription is left alone.
       const row = await pool.query(
-        `INSERT INTO vani_tenant_agent (tenant_id, agent_id, status, activated_at)
-         VALUES ($1, $2, 'live', now())
+        `INSERT INTO vani_tenant_agent (tenant_id, agent_id, status)
+         VALUES ($1, $2, 'activating')
          ON CONFLICT (tenant_id, agent_id) DO UPDATE
-           SET status = 'live',
-               activated_at = COALESCE(vani_tenant_agent.activated_at, now())
+           SET status = CASE WHEN vani_tenant_agent.status = 'live'
+                             THEN 'live' ELSE 'activating' END
          RETURNING status, activated_at`,
         [vani.id, agentId],
       );
 
       await pool.query(
         `INSERT INTO vani_audit_log (tenant_id, agent_id, actor_type, actor_id, entity, entity_id, action, before, after)
-         VALUES ($1, $2, 'human', $3, 'vani_tenant_agent', $2, 'activate', '{}'::jsonb, $4::jsonb)`,
-        [vani.id, agentId, auth.user_id, JSON.stringify({ status: 'live' })],
+         VALUES ($1, $2, 'human', $3, 'vani_tenant_agent', $2, 'activation_code_accepted', '{}'::jsonb, $4::jsonb)`,
+        [vani.id, agentId, auth.user_id, JSON.stringify({ status: row.rows[0]?.status })],
       );
 
-      res.json({ agent: 'vara', ...row.rows[0], checklist });
+      res.json({ agent: 'vara', ...row.rows[0], onboarding: 'pending-design' });
     } catch (err: any) {
       console.error('[Vara:activate]', err);
       res.status(500).json({ error: { code: 'ACTIVATE_FAILED', message: 'Could not activate Vara' } });
