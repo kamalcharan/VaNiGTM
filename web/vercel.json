@@ -16,6 +16,11 @@
   ],
   "redirects": [
     {
+      "source": "/vani/login",
+      "destination": "https://vani.vikuna.io/login",
+      "permanent": false
+    },
+    {
       "source": "/bcl-contractnest",
       "destination": "https://drive.google.com/uc?export=download&id=1qYeHYkq0VP3RzEDKfgFgJnTcRyd9LKf9",
       "permanent": false

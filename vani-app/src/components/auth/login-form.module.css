@@ -178,3 +178,18 @@
   color: var(--tx3);
   text-align: center;
 }
+
+.back {
+  display: block;
+  margin-top: 14px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--tx3);
+  text-decoration: none;
+}
+
+.back:hover {
+  color: var(--gold);
+}

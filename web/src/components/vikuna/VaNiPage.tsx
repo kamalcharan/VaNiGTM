@@ -9,7 +9,6 @@
 // Destined for vani.vikuna.io; lives at /vani until that subdomain is stood up.
 import React, { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Link } from 'react-router-dom';
 import styled, { keyframes, css } from 'styled-components';
 import Footer from './Footer';
 
@@ -233,7 +232,9 @@ const Ctas = styled.div`
   margin-bottom: 30px;
 `;
 
-const BtnGold = styled(Link)`
+// Leaves the marketing site for the console on vani.vikuna.io — an anchor, not
+// a router Link, because it crosses origins.
+const BtnGold = styled.a`
   background: ${GOLD};
   color: ${INK_DEEP};
   font-family: ${MONO};
@@ -982,7 +983,7 @@ const VaNiPage: React.FC = () => {
               licence VaNi; you see it working in the products it runs.
             </HeroBody>
             <Ctas>
-              <BtnGold to="/vani/login">Sign in to VaNi →</BtnGold>
+              <BtnGold href="https://vani.vikuna.io/login">Sign in to VaNi →</BtnGold>
               <BtnGhost href="#where">See where it runs ↓</BtnGhost>
             </Ctas>
             <MetaRow>
@@ -1151,7 +1152,7 @@ const VaNiPage: React.FC = () => {
             partners on active engagements — there is no public sign-up.
           </FinalP>
           <FinalCtas>
-            <BtnGold to="/vani/login">Sign in to VaNi →</BtnGold>
+            <BtnGold href="https://vani.vikuna.io/login">Sign in to VaNi →</BtnGold>
             <BtnGhost href={CALENDLY} target="_blank" rel="noopener noreferrer">
               Talk to us about an engagement
             </BtnGhost>

@@ -134,6 +134,12 @@ export default function LoginForm() {
           VaNi is an internal platform. Accounts are issued by the Vikuna team —
           there is no public registration.
         </p>
+
+        {/* The way back out. Someone landing here cold has no other way to find
+            out what VaNi is; the public story lives on the marketing site. */}
+        <a className={styles.back} href="https://www.vikuna.io/vani">
+          What is VaNi? →
+        </a>
       </div>
     </div>
   );
