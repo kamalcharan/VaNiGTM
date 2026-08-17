@@ -7,6 +7,31 @@ already cost something, or because breaking it costs data.
 
 ---
 
+## 0. Two local gotchas, so they cost nobody a second hour
+
+**`next-env.d.ts` flips between dev and build.** `next dev` rewrites its imports
+to `./.next/dev/types/…`; `next build` writes `./.next/types/…`. The committed
+form is the BUILD one, because that is what Vercel produces. If it shows up
+dirty after running the dev server, `git checkout -- vani-app/next-env.d.ts` —
+do not commit the dev variant, and do not "fix" the file, which says not to edit
+it.
+
+**Localhost cannot hold a session against the live API.** The refresh cookie is
+`sameSite: 'strict'` and `secure` (VaNiGTM `auth.routes.ts`), so from
+`http://localhost:3000` to `https://api.vikuna.io` the browser will not send it
+and could not receive it over http. Three modes, and only one needs no setup:
+
+| Mode | Setup | What you get |
+|---|---|---|
+| **Mock** (default) | no `.env.local` | Whole UI including the onboarding pathway. No backend, no session. The right mode for UI work |
+| Live API, session-less | `NEXT_PUBLIC_API_ORIGIN` + `http://localhost:3000` in nginx's `map $http_origin` | Real data, but logged out on every reload — `silentRefresh()` cannot see the cookie |
+| Full local stack | backend on `localhost:3001` + local Postgres | Same-site, so auth genuinely works |
+
+If `npm run dev` reports `'next' is not recognized`, run `npm install` inside
+`vani-app/` — it has its own lockfile, separate from the repo root.
+
+---
+
 ## 1. Every screen carries the same five
 
 A screen is not done until all five are handled. Four of them are handled *for*
