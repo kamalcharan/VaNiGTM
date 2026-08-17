@@ -1,0 +1,67 @@
+.card {
+  padding: 32px;
+  border-radius: 20px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Accent top-line on hover */
+.card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--card-accent, var(--color-primary)), transparent);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.hoverLift:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 64px color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.hoverLift:hover::after {
+  opacity: 1;
+}
+
+/* ── Glass ── */
+.glass {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.glass:hover {
+  border-color: var(--color-primary-glow);
+}
+
+/* ── Glass Strong ── */
+.glassStrong {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+/* ── Featured ── */
+.featured {
+  background: var(--color-bg);
+  border: 1px solid var(--color-primary-dim);
+}
+
+.featured::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--color-primary-dim), transparent 40%);
+  z-index: -1;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  padding: 1px;
+}

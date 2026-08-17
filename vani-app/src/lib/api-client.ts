@@ -47,11 +47,23 @@ export class ApiError extends Error {
    * `details.missing` as "Still needed: …" instead of a generic failure.
    */
   readonly details?: Record<string, unknown>;
-  constructor(message: string, status: number, details?: Record<string, unknown>) {
+  /**
+   * The server's machine-readable code from `{ error: { code, … } }`. Ported
+   * screens branch on it — icp-builder treats `PROFILE_NOT_FOUND` as "nothing
+   * built yet" rather than a failure, which is a different screen entirely.
+   */
+  readonly code?: string;
+  constructor(
+    message: string,
+    status: number,
+    details?: Record<string, unknown>,
+    code?: string,
+  ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.details = details;
+    this.code = code;
   }
 }
 
@@ -89,7 +101,7 @@ async function readError(res: Response): Promise<string> {
  */
 async function readErrorPayload(
   res: Response,
-): Promise<{ message: string; details?: Record<string, unknown> }> {
+): Promise<{ message: string; details?: Record<string, unknown>; code?: string }> {
   let parsed: unknown;
   try {
     parsed = await res.json();
@@ -103,8 +115,9 @@ async function readErrorPayload(
     errObj && typeof errObj.details === 'object' && errObj.details !== null
       ? (errObj.details as Record<string, unknown>)
       : undefined;
-  if (typeof msg === 'string' && msg.trim()) return { message: msg, details };
-  return { message: fallbackErrorMessage(res.status), details };
+  const code = typeof errObj?.code === 'string' ? errObj.code : undefined;
+  if (typeof msg === 'string' && msg.trim()) return { message: msg, details, code };
+  return { message: fallbackErrorMessage(res.status), details, code };
 }
 
 function fallbackErrorMessage(status: number): string {
@@ -225,8 +238,8 @@ export async function apiRequest<T>(
   }
 
   if (!res.ok) {
-    const { message, details } = await readErrorPayload(res);
-    throw new ApiError(message, res.status, details);
+    const { message, details, code } = await readErrorPayload(res);
+    throw new ApiError(message, res.status, details, code);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;

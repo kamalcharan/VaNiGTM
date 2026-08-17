@@ -1,0 +1,213 @@
+/* ═══════════════════════════════════════════════════════
+   ICP BUILDER — page layout (editable, auto-save-on-blur stage)
+   ═══════════════════════════════════════════════════════ */
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  min-height: 100%;
+}
+
+.body {
+  padding: 20px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Completion KPI ──────────────────────────────────── */
+.kpiRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.kpiScore {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-fg);
+  font-family: var(--font-mono, monospace);
+}
+
+.kpiHint {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  margin-top: 2px;
+}
+
+/* ── Wizard ──────────────────────────────────────────── */
+.wizardWrap {
+  padding: 8px 0 4px;
+}
+
+/* ── Section Card ────────────────────────────────────── */
+.sectionCard {
+  scroll-margin-top: 90px;
+  border-radius: 20px;
+  transition: box-shadow 200ms;
+}
+
+.sectionActive {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+/* Wins over .sectionActive when both apply — a section reported missing on
+   approve should read as an error state, not just "currently focused". */
+.sectionMissing {
+  box-shadow: 0 0 0 2px var(--color-danger);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-fg);
+}
+
+/* ── Field Grid ───────────────────────────────────────
+   Editable fields laid out 2-up; textarea/array fields span
+   full width (mirrors business-tab.tsx's address-block pattern). ── */
+.fieldGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 24px;
+}
+
+.fieldFull {
+  grid-column: 1 / -1;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.fieldLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: var(--label-margin-bottom, 6px);
+}
+
+.fieldLabelText {
+  margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+  .body { padding: 16px 20px 24px; }
+  .fieldGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .body { padding: 12px 14px 20px; }
+}
+
+/* ── Array Field Editor ──────────────────────────────── */
+.arrayList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.arrayRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.arrayInput {
+  composes: input from '../../../../styles/forms.module.css';
+  flex: 1;
+}
+
+.arrayRemove {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.arrayRemove:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.arrayAdd {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px dashed var(--color-border);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.arrayAdd:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+/* ── Save Status Indicator ────────────────────────────── */
+.saveStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+.saveStatusSaving {
+  color: var(--color-muted);
+}
+
+.saveStatusSaved {
+  color: var(--color-success);
+}
+
+.saveStatusError {
+  color: var(--color-danger);
+  cursor: pointer;
+}
+.saveStatusError:hover {
+  text-decoration: underline;
+}
+
+/* ── Confirm ICP ──────────────────────────────────────── */
+.confirmBar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 24px 0 8px;
+}
+
+.confirmHint {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+
+.confirmErrorText {
+  font-size: 0.8rem;
+  color: var(--color-danger);
+}

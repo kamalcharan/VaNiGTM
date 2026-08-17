@@ -24,6 +24,16 @@ export interface OnboardingStepStatus {
   completed_at: string | null;
 }
 
+/**
+ * The step shape PATCH /onboarding/step returns. Named as VaNiGTM names it, so
+ * ported screens type their responses without edits. Distinct from
+ * OnboardingStepStatus, which is the richer catalog-reconciled read.
+ */
+export interface OnboardingStep {
+  step_id: string;
+  status: string;
+}
+
 export interface OnboardingStatus {
   lane: { id: string; title: string; scope: 'product' | 'agent' };
   complete: boolean;

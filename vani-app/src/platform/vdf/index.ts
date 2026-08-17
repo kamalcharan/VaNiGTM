@@ -37,3 +37,12 @@ export type {
   VdfMissionChipsProps,
   VdfMissionRow,
 } from './VdfMissionArtifact';
+
+/* ── Also needed by the icp-builder refine surface ───────────────────────── */
+export { VdfPageHeader } from './VdfPageHeader';
+export { VdfWizard } from './VdfWizard';
+export { VdfCard } from './VdfCard';
+export { VdfReadinessRing } from './VdfReadinessRing';
+export { VdfKpiCard } from './VdfKpiCard';
+export { VdfErrorScreen } from './VdfErrorScreen';
+export { VdfInput } from './VdfInput';

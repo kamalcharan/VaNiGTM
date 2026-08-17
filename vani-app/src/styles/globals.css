@@ -93,6 +93,38 @@
   --font-mono: var(--mono);
 
   --space-lg: 24px;
+  /* dark-mode semantic info, from VaNiGTM's vikunaBlack theme */
+  --color-info: #5eaaf0;
+
+  /* Glass surfaces — VaNiGTM's alphas (.07 / .12 / .24), on VaNi's accent. */
+  --glass: rgba(232, 66, 10, 0.07);
+  --glass-strong: rgba(232, 66, 10, 0.12);
+  --glass-border: rgba(232, 66, 10, 0.24);
+
+  /* Control metrics, verbatim from VaNiGTM's ThemeScript. These are fixed
+   * measurements rather than palette, so they are copied, not remapped —
+   * a ported input that is 44px there must be 44px here or the forms it sits
+   * in stop lining up. */
+  --input-height: 44px;
+  --input-padding: 13px 16px;
+  --input-radius: 8px;
+  --input-font-size: 0.9rem;
+  --input-border-width: 1px;
+  --input-focus-ring-size: 3px;
+  --input-focus-ring-opacity: 12%;
+  --input-placeholder-opacity: 0.35;
+  --label-font-size: 0.65rem;
+  --label-font-weight: 500;
+  --label-letter-spacing: 0.12em;
+  --label-margin-bottom: 6px;
+  --btn-height: 44px;
+  --btn-padding: 14px;
+  --btn-radius: 8px;
+  --btn-font-size: 0.85rem;
+  --btn-font-weight: 700;
+  --btn-letter-spacing: 0.08em;
+  --form-group-gap: 16px;
+  --form-row-gap: 12px;
 }
 
 *,
