@@ -6,16 +6,35 @@ Sequence: **core UX layer → auth/signup → onboarding → Vara → the rest, 
 
 ---
 
-## Where we are — 2026-08-17
+## Where we are — 2026-08-17 (updated end of day)
 
 | Phase | Status |
 |---|---|
 | **Infrastructure** | **Done.** `vani.vikuna.io` on Vercel, `api.vikuna.io` on the VPS with TLS, nginx origin allowlist and CORS verified end to end from the public internet. Closed — see the VPS runbook. |
-| **P0 · Core UX layer** | **Done.** Shell renders from the registry, generic transport with a mock adapter, 15 routes declared (3 live, 12 planned), zero-platform-change test proven. |
+| **P0 · Core UX layer** | **Done.** Shell renders from the registry, generic transport with a mock adapter, 15 routes declared, zero-platform-change test proven. |
 | **Consolidation** | **Done** (unplanned, added because the seam leaked). One VaNi surface: the story, sign-in and console all live at `vani.vikuna.io`. Marketing `/vani` and `vani-page.html` deleted and redirected. |
-| **P1 · Auth** | **In progress.** Gated signup, login redirect, session guard and real sign-out are in and verified. Remaining: the live skill transport, and a first registration against the real API. |
-| **P2 · Onboarding (VaNi tenant lane)** | **Built, not merged.** Onboarding is an agent — one engine, product and agent lanes. Product lane: 2 of 5 steps live, gate enforcing, verified on the mock. See `onboarding-architecture.md`. Held off `main` pending the live transport and the nginx entries |
+| **Local development** | **Done — was blocked, now closed.** Full local stack verified end to end in a browser. The blocker was a documented `CORS_ORIGIN` port (3000 vs the real 3100). Recipe: `HANDOVER-2026-08-17.md` §5. |
+| **P1 · Auth** | **Done for the console path, one gap left.** Login, session restore, guard and sign-out all verified against the live API in a browser. The live skill transport works (requests reach the backend and return 200). Remaining: a first **registration** against the real API. A session-loss race in refresh was found and fixed (`api-client.ts`, single-flight). |
+| **P2 · Onboarding (VaNi tenant lane)** | **Merged and live.** `main` now carries `vani-app/`. Product lane: **2 of 5 steps enabled** (`user_profile`, `business_profile`); `vani:domain`, `vani:team`, `vani:llm_provider` sit at `enabled: false` awaiting the `vani_` spine decision — which is now **a decision, not a blocker** (see below). |
+| **Smart Profile (8 steps)** | **4 of 8 working** (1 Company, 4 Ideal customer, 5 Brand, 7 People). 2 Market vocabulary **failing**. 3 Competitors research fails (`SEARXNG_URL` unset) but the step is confirmable. 6 Domain not built. 8 Model read-only, BYOK not built. |
 | P3 · Vara | Not started |
+
+### What changed on 2026-08-17 (later session)
+
+- **The `vani_` spine question is answered.** `vani_gtm_db` was rebuilt from
+  VaNiGTM's migrations — 133 apply clean and produce **zero `vani_` tables**. No
+  migration creates the spine; it exists only as `docs/vani/sql/001_vani_platform.sql`
+  in this repo. So steps 6 and 8 are gated on a *decision* (apply that file by
+  hand, outside the migration system, or drop Domain and let
+  `business_profile.website` carry it), not on an unknown.
+- **Two dashboard reads are unimplemented server-side.**
+  `dashboard.counters`, `dashboard.activity` and `agents.list` return HTTP 200
+  with `No handler registered`. The dashboard renders empty for that reason, not
+  because of a transport or auth fault.
+- **Worker concurrency is not tenant-fair.** `gt_events` is claimed global-FIFO
+  with no per-tenant cap, and the poll timer re-arms after *dispatch* rather than
+  completion — so in-flight work grows unbounded under slow LLM calls. Details in
+  `HANDOVER-2026-08-17.md`. VaNiGTM change; needs that repo in scope.
 
 Two things changed the plan as written below: the theme decision (the console
 carries vikuna.io's palette and fonts, not the Org OS teal that P0 specified),
