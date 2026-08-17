@@ -29,13 +29,13 @@ const onboarding: SkillModule = {
   routes: [
     {
       id: 'mission',
-      label: 'Mission',
+      label: 'Smart Profile',
       href: '/onboarding',
       group: 'organization',
       icon: '◈',
       status: 'live',
       summary:
-        'What VaNi knows about your business — product, market vocabulary, competitors, ideal customer and brand. Revisit any step to change it.',
+        'What VaNi knows about your business — product, market vocabulary, competitors, ideal customer and brand. Every step reopens, so this is also where you re-run any of it.',
     },
   ],
 };
