@@ -263,7 +263,7 @@ const Navbar: React.FC<NavbarProps> = ({ transparent = true }) => {
               <DropdownItem href="/mvp" theme={currentTheme}>
                 MVP in 60–90 Days
               </DropdownItem>
-              <DropdownItem href="/vani" theme={currentTheme}>
+              <DropdownItem href="https://vani.vikuna.io" theme={currentTheme}>
                 VaNi — Our AI Framework
               </DropdownItem>
             </DropdownMenu>
@@ -296,7 +296,7 @@ const Navbar: React.FC<NavbarProps> = ({ transparent = true }) => {
         <MobileNavLink href="/training" theme={currentTheme}>Training</MobileNavLink>
         <MobileNavLink href="/mvp" theme={currentTheme}>MVP in 60–90 Days</MobileNavLink>
         <MobileNavLink href="/products" theme={currentTheme}>Products</MobileNavLink>
-        <MobileNavLink href="/vani" theme={currentTheme}>VaNi Framework</MobileNavLink>
+        <MobileNavLink href="https://vani.vikuna.io" theme={currentTheme}>VaNi Framework</MobileNavLink>
         <MobileNavLink href="/#contact" theme={currentTheme}>Contact</MobileNavLink>
         <MobileConsultButton
           href="https://calendly.com/connect-vikuna/30min"

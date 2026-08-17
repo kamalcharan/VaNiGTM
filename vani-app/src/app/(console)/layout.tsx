@@ -10,6 +10,7 @@
  */
 
 import { useState, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Shell } from '@/platform/shell/Shell';
 import { SKILLS } from '@/skills';
@@ -19,6 +20,7 @@ import { mockTransport } from '@/lib/mock-transport';
 setSkillTransport(mockTransport);
 
 export default function ConsoleLayout({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [qc] = useState(
     () =>
       new QueryClient({
@@ -28,7 +30,14 @@ export default function ConsoleLayout({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={qc}>
-      <Shell skills={SKILLS} org="Vikuna Technologies" slug="vikuna">
+      {/* P0 has no session to end, so sign-out returns to the public story.
+          P1 replaces this with the real logout, which revokes server-side. */}
+      <Shell
+        skills={SKILLS}
+        org="Vikuna Technologies"
+        slug="vikuna"
+        onSignOut={() => router.push('/')}
+      >
         {children}
       </Shell>
     </QueryClientProvider>

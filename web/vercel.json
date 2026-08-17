@@ -16,8 +16,18 @@
   ],
   "redirects": [
     {
-      "source": "/vani/login",
-      "destination": "https://vani.vikuna.io/login",
+      "source": "/vani",
+      "destination": "https://vani.vikuna.io",
+      "permanent": false
+    },
+    {
+      "source": "/vani/:path*",
+      "destination": "https://vani.vikuna.io/:path*",
+      "permanent": false
+    },
+    {
+      "source": "/vani-page.html",
+      "destination": "https://vani.vikuna.io",
       "permanent": false
     },
     {

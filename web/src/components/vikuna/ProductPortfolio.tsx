@@ -34,7 +34,7 @@ const BORDER_LIGHT = 'rgba(10,15,30,0.1)';
 const BORDER_DARK = 'rgba(255,255,255,0.12)';
 const MONO = "'JetBrains Mono', ui-monospace, monospace";
 
-const VANI_HREF = '/vani';
+const VANI_HREF = 'https://vani.vikuna.io';
 
 // ─── Shared scaffolding ──────────────────────────────────────
 
@@ -1193,7 +1193,7 @@ const ProductPortfolio: React.FC = () => {
               <strong>VaNi AI</strong>: use cases mapped to ROI before anything is built,
               event-driven architecture over a unified data layer, humans kept in the loop by
               design, and outcomes measured before anything is scaled.{' '}
-              <a href={VANI_HREF}>
+              <a href={VANI_HREF} target="_blank" rel="noopener noreferrer">
                 How VaNi works →
               </a>
             </p>

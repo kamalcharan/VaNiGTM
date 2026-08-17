@@ -12,6 +12,7 @@
  */
 
 import { useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-provider';
 import { ApiError } from '@/lib/api-client';
@@ -137,9 +138,9 @@ export default function LoginForm() {
 
         {/* The way back out. Someone landing here cold has no other way to find
             out what VaNi is; the public story lives on the marketing site. */}
-        <a className={styles.back} href="https://www.vikuna.io/vani">
-          What is VaNi? →
-        </a>
+        <Link className={styles.back} href="/">
+          ← What is VaNi?
+        </Link>
       </div>
     </div>
   );

@@ -27,7 +27,6 @@ import PreviewPage from './components/vikuna/PreviewPage';
 import MVPPage from './components/vikuna/MVPPage';
 import TrainingPage from './components/vikuna/TrainingPage';
 import WhyAIFailsPlaybook from './components/vikuna/WhyAIFailsPlaybook';
-import VaNiPage from './components/vikuna/VaNiPage';
 
 function HomePage() {
   return (
@@ -69,10 +68,9 @@ function App() {
           <Route path="/products" element={<MVPPage />} />
           <Route path="/training" element={<TrainingPage />} />
           <Route path="/playbooks/why-ai-fails" element={<WhyAIFailsPlaybook />} />
-          {/* VaNi framework — the PUBLIC story. The product itself lives at
-              vani.vikuna.io; sign-in links there rather than being duplicated
-              here. /vani/login is redirected in vercel.json for old bookmarks. */}
-          <Route path="/vani" element={<VaNiPage />} />
+          {/* No /vani route: the VaNi story lives at vani.vikuna.io, which is
+              also where sign-in is. Keeping a second copy here is what made the
+              two drift apart. vercel.json redirects /vani and /vani/* across. */}
           <Route path="/preview" element={<PreviewPage />} />
           <Route path="/preview/:name" element={<PreviewPage />} />
         </Routes>

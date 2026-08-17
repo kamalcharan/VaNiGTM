@@ -252,7 +252,7 @@ const teasers: TeaserDef[] = [
       </>
     ),
     primary: { label: 'Get the VaNi Playbook', href: '#playbooks' },
-    secondary: { label: 'How VaNi Works', href: '/vani' },
+    secondary: { label: 'How VaNi Works', href: 'https://vani.vikuna.io', newTab: true },
   },
   {
     eyebrow: 'The Uncomfortable Truth',
