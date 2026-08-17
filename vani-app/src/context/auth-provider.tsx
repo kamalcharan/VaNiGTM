@@ -23,12 +23,15 @@ import {
 } from 'react';
 import { API } from '@/lib/serviceURLs';
 import {
+  ApiError,
   apiFetch,
   clearTokens,
   getAccessToken,
+  readAccessToken,
   setAccessToken,
   silentRefresh,
 } from '@/lib/api-client';
+import { clearGate } from '@/lib/gate';
 
 export interface VaniUser {
   id: string;
@@ -47,12 +50,22 @@ interface MeResponse {
   tenant: VaniTenant | null;
 }
 
+/** What the caller collects on the signup form. Mirrors validateRegisterInput. */
+export interface SignupInput {
+  name: string;
+  email: string;
+  password: string;
+  /** Optional. Unset, the backend names the tenant "<name>'s Workspace". */
+  tenant_name?: string;
+}
+
 interface AuthContextValue {
   user: VaniUser | null;
   tenant: VaniTenant | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  signup: (input: SignupInput) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -90,10 +103,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const result = await apiFetch<{ access_token: string }>(API.auth.login, {
+      const result = await apiFetch<unknown>(API.auth.login, {
         body: { email, password },
       });
-      setAccessToken(result.access_token);
+      const token = readAccessToken(result);
+      if (!token) throw new ApiError('Sign-in did not return a session.', 0);
+      setAccessToken(token);
+      await hydrate();
+    },
+    [hydrate],
+  );
+
+  /**
+   * Register a tenant and its first user, then sign them straight in — the
+   * backend issues tokens and sets the refresh cookie on 201, so there is no
+   * reason to bounce a new user to the login screen to retype what they typed
+   * ten seconds ago.
+   *
+   * The signup gate is consumed on success: one passage, one account.
+   */
+  const signup = useCallback(
+    async (input: SignupInput) => {
+      const body: Record<string, string> = {
+        name: input.name,
+        email: input.email,
+        password: input.password,
+      };
+      if (input.tenant_name) body.tenant_name = input.tenant_name;
+
+      const result = await apiFetch<unknown>(API.auth.register, { body });
+      const token = readAccessToken(result);
+      if (!token) throw new ApiError('Registration did not return a session.', 0);
+      setAccessToken(token);
+      clearGate();
       await hydrate();
     },
     [hydrate],
@@ -121,6 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         isLoading: bootstrapping,
         login,
+        signup,
         logout,
       }}
     >

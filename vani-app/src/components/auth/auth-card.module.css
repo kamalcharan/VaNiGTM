@@ -193,3 +193,79 @@
 .back:hover {
   color: var(--gold);
 }
+
+/* ── Additions for the gate and signup screens ── */
+
+.lead {
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--tx2);
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.wide {
+  max-width: 460px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+.hint {
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--tx3);
+}
+
+/* Live password rules. Each turns teal the moment it is satisfied, so the
+   backend's 400 is never the first time someone learns what it wanted. */
+.rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: -6px 0 15px;
+}
+
+.rule {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--tx3);
+  transition: color 0.15s;
+}
+
+.ruleMet {
+  color: var(--teal-light);
+}
+
+.alt {
+  margin-top: 16px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--tx3);
+}
+
+.altLink {
+  color: var(--ac-light);
+  text-decoration: none;
+  margin-left: 6px;
+}
+
+.altLink:hover {
+  color: var(--ac);
+  text-decoration: underline;
+}

@@ -52,11 +52,20 @@ export class ApiError extends Error {
   }
 }
 
-/** Best-effort message extraction; never leaks a raw body to the UI. */
+/**
+ * Best-effort message extraction; never leaks a raw body to the UI.
+ *
+ * VaNiGTM's shape is `{ error: { code, message } }` on every failure path —
+ * verified against backend/src/auth/auth.routes.ts, not assumed. The bare
+ * `{ error: string }` and `{ message }` forms are tolerated in case an older
+ * handler is still deployed.
+ */
 async function readError(res: Response): Promise<string> {
   try {
     const data = await res.json();
-    const msg = data?.error ?? data?.message;
+    const msg =
+      (typeof data?.error === 'object' ? data.error?.message : data?.error) ??
+      data?.message;
     if (typeof msg === 'string' && msg.trim()) return msg;
   } catch {
     /* non-JSON error body — fall through */
@@ -68,6 +77,19 @@ async function readError(res: Response): Promise<string> {
   if (res.status === 404) return 'The VaNi service is not configured for this deployment.';
   if (res.status >= 500) return 'The VaNi service is unavailable. Please try again shortly.';
   return 'Something went wrong. Please try again.';
+}
+
+/**
+ * Pull the access token out of an auth response.
+ *
+ * /login, /register and /refresh all answer `{ tokens: { access_token, ... } }`
+ * — the token is nested, not top-level. Reading `data.access_token` directly
+ * yields undefined and the session silently never starts, which is exactly the
+ * bug this function exists to prevent recurring.
+ */
+export function readAccessToken(data: unknown): string | null {
+  const token = (data as { tokens?: { access_token?: unknown } })?.tokens?.access_token;
+  return typeof token === 'string' && token ? token : null;
 }
 
 /**
@@ -85,8 +107,9 @@ export async function silentRefresh(): Promise<boolean> {
     });
     if (!res.ok) return false;
     const data = await res.json();
-    if (typeof data?.access_token !== 'string') return false;
-    setAccessToken(data.access_token);
+    const token = readAccessToken(data);
+    if (!token) return false;
+    setAccessToken(token);
     return true;
   } catch {
     return false;

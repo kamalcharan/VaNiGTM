@@ -16,7 +16,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-provider';
 import { ApiError } from '@/lib/api-client';
-import styles from './login-form.module.css';
+import VaniMark from './vani-mark';
+import styles from './auth-card.module.css';
 
 export default function LoginForm() {
   const { login } = useAuth();
@@ -41,7 +42,7 @@ export default function LoginForm() {
     setBusy(true);
     try {
       await login(email.trim(), password);
-      router.replace('/home');
+      router.replace('/dashboard');
     } catch (err) {
       setPassword('');
       setError(
@@ -60,16 +61,7 @@ export default function LoginForm() {
 
       <div className={styles.card}>
         <div className={styles.brand}>
-          <svg className={styles.mark} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-            <circle cx="16" cy="16" r="3.2" fill="var(--gold)" />
-            <circle cx="16" cy="5.5" r="2.4" fill="none" stroke="var(--gold)" strokeWidth="1.5" />
-            <circle cx="25" cy="21.5" r="2.4" fill="none" stroke="var(--gold)" strokeWidth="1.5" />
-            <circle cx="7" cy="21.5" r="2.4" fill="none" stroke="var(--gold)" strokeWidth="1.5" />
-            <line x1="16" y1="8" x2="16" y2="12.8" stroke="var(--gold)" strokeWidth="1" strokeOpacity="0.6" />
-            <line x1="23" y1="19.8" x2="18.9" y2="17.6" stroke="var(--gold)" strokeWidth="1" strokeOpacity="0.6" />
-            <line x1="9" y1="19.8" x2="13.1" y2="17.6" stroke="var(--gold)" strokeWidth="1" strokeOpacity="0.6" />
-            <circle cx="16" cy="16" r="12.5" stroke="var(--gold)" strokeWidth="1" strokeOpacity="0.22" />
-          </svg>
+          <VaniMark className={styles.mark} />
           <div className={styles.word}>VaNi</div>
           <div className={styles.kicker}>Vikuna AI Platform</div>
         </div>
@@ -132,12 +124,19 @@ export default function LoginForm() {
         </form>
 
         <p className={styles.foot}>
-          VaNi is an internal platform. Accounts are issued by the Vikuna team —
-          there is no public registration.
+          VaNi is not open to the public. Creating an organisation needs an
+          access phrase from the Vikuna team.
         </p>
 
+        <div className={styles.alt}>
+          Have an access phrase?
+          <Link className={styles.altLink} href="/gate">
+            Create an organisation
+          </Link>
+        </div>
+
         {/* The way back out. Someone landing here cold has no other way to find
-            out what VaNi is; the public story lives on the marketing site. */}
+            out what VaNi is; the story is the console's own landing page. */}
         <Link className={styles.back} href="/">
           ← What is VaNi?
         </Link>

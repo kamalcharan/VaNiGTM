@@ -1,17 +1,19 @@
 'use client';
 
 /**
- * Console layout. Wires the query client and the skill transport, then renders
- * the shell from the registry.
+ * Console layout. Guards the session, wires the query client and the skill
+ * transport, then renders the shell from the registry.
  *
- * P0 runs on the mock transport and a stand-in tenant — auth arrives in P1, at
- * which point the transport swaps to live and the org details come from
- * /api/v1/auth/me. Neither change should require touching a screen.
+ * Still on the mock transport: swapping it for a live one is the last piece of
+ * P1 and touches this file only, which is the seam working as intended. The org
+ * name and slug now come from /api/v1/auth/me rather than being hardcoded.
  */
 
 import { useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useAuth } from '@/context/auth-provider';
+import { RequireSession } from '@/platform/shell/RequireSession';
 import { Shell } from '@/platform/shell/Shell';
 import { SKILLS } from '@/skills';
 import { setSkillTransport } from '@/lib/useSkill';
@@ -21,6 +23,7 @@ setSkillTransport(mockTransport);
 
 export default function ConsoleLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const { tenant, logout } = useAuth();
   const [qc] = useState(
     () =>
       new QueryClient({
@@ -28,18 +31,27 @@ export default function ConsoleLayout({ children }: { children: ReactNode }) {
       }),
   );
 
+  async function handleSignOut() {
+    // Revoke server-side first, then clear the client's cached queries — a
+    // stale cache surviving a sign-out is how the next user sees the last
+    // user's data. logout() never throws; it clears locally either way.
+    await logout();
+    qc.clear();
+    router.replace('/');
+  }
+
   return (
     <QueryClientProvider client={qc}>
-      {/* P0 has no session to end, so sign-out returns to the public story.
-          P1 replaces this with the real logout, which revokes server-side. */}
-      <Shell
-        skills={SKILLS}
-        org="Vikuna Technologies"
-        slug="vikuna"
-        onSignOut={() => router.push('/')}
-      >
-        {children}
-      </Shell>
+      <RequireSession>
+        <Shell
+          skills={SKILLS}
+          org={tenant?.name || 'Vikuna Technologies'}
+          slug={tenant?.slug || 'vikuna'}
+          onSignOut={handleSignOut}
+        >
+          {children}
+        </Shell>
+      </RequireSession>
     </QueryClientProvider>
   );
 }

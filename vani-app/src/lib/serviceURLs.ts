@@ -5,9 +5,9 @@
  * slice. Same rule applies here: no component ever builds a URL by hand, and
  * an endpoint only appears once the functionality that uses it has moved.
  *
- * VaNiGTM declares 19 auth endpoints. These four are the login/logout base;
- * register, invite, team, sessions, forgot/reset-password, switch-env,
- * onboarding and profile come later, with their features.
+ * VaNiGTM declares 19 auth endpoints. These five are the account base;
+ * invite, team, sessions, forgot/reset-password, switch-env, onboarding and
+ * profile come later, with their features.
  */
 
 export interface ServiceEndpoint {
@@ -19,6 +19,13 @@ export interface ServiceEndpoint {
 
 export const API = {
   auth: {
+    register: {
+      method: 'POST',
+      path: '/api/v1/auth/register',
+      auth: false,
+      description:
+        'Create a tenant and its first user, then sign them in. Gated in the UI; open on the API.',
+    },
     login: {
       method: 'POST',
       path: '/api/v1/auth/login',

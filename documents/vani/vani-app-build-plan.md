@@ -13,7 +13,7 @@ Sequence: **core UX layer → auth/signup → onboarding → Vara → the rest, 
 | **Infrastructure** | **Done.** `vani.vikuna.io` on Vercel, `api.vikuna.io` on the VPS with TLS, nginx origin allowlist and CORS verified end to end from the public internet. Closed — see the VPS runbook. |
 | **P0 · Core UX layer** | **Done.** Shell renders from the registry, generic transport with a mock adapter, 15 routes declared (3 live, 12 planned), zero-platform-change test proven. |
 | **Consolidation** | **Done** (unplanned, added because the seam leaked). One VaNi surface: the story, sign-in and console all live at `vani.vikuna.io`. Marketing `/vani` and `vani-page.html` deleted and redirected. |
-| **P1 · Auth** | **Next.** Code is written but not connected — see the gap list below. |
+| **P1 · Auth** | **In progress.** Gated signup, login redirect, session guard and real sign-out are in and verified. Remaining: the live skill transport, and a first registration against the real API. |
 | P2 · Onboarding (VaNi tenant lane) | Not started |
 | P3 · Vara | Not started |
 
@@ -86,50 +86,87 @@ The shell and nothing else. No business functionality, no auth.
 **Exit criteria:** a throwaway demo skill can be added as one folder plus one
 registry line and appears in the nav, with no diff inside `platform/`.
 
-## P1 · Auth (login / logout) — NEXT
+## P1 · Auth (login / logout / signup) — IN PROGRESS
 
-**The code is written; it is not connected.** `api-client.ts`, `auth-provider.tsx`
-and `login-form.tsx` all exist and are correct in shape — token in memory,
-refresh cookie httpOnly, `silentRefresh()` on mount, exactly one 401 retry,
-generic error on every failure. What is missing is the wiring between them and
-the console, and each gap is small and specific:
+**Signup is in, behind a gate.** Operator-provisioned was never the same thing
+as operator-typed. Whoever is given the shared access phrase creates their own
+tenant from the UI; whoever is not never sees the form. That keeps provisioning
+deliberate without putting a person in the middle of every account.
 
-| # | Gap | Where | Why it matters |
-|---|---|---|---|
-| 1 | Login redirects to `/home`, a route that does not exist | `components/auth/login-form.tsx` | A correct password currently lands on a 404. The registry has `/dashboard`, not `/home`. |
-| 2 | No route guard on the console | `app/(console)/layout.tsx` | `/dashboard` renders for anyone. An unauthenticated visitor should be sent to `/login`, and a signed-in one arriving at `/login` sent on to `/dashboard`. |
-| 3 | Sign out does not sign out | `app/(console)/layout.tsx` | `onSignOut` pushes to `/` without calling `logout()`, so the server session and the refresh cookie both survive. |
-| 4 | Transport is still hardwired to the mock | `app/(console)/layout.tsx` | `setSkillTransport(mockTransport)` at module scope. Needs a live transport posting to the skill endpoint, selected by config — the swap the seam exists for. |
-| 5 | Bootstrap has no loading state | `context/auth-provider.tsx` | `isLoading` is computed and never consumed. Without it the console flashes signed-out on every reload before the silent refresh resolves. |
+The flow: `/login` → "Create an organisation" → `/gate` → phrase → `/signup` →
+201 with a session → `/dashboard`. Registration returns tokens and sets the
+refresh cookie, so a new user is signed in on the spot rather than bounced back
+to the login screen to retype what they typed ten seconds ago.
 
-Order matters: 1–3 make the loop closeable, 5 makes it not flicker, 4 is the
-first real use of the transport and can follow.
+**What the gate is not: a security boundary.** The check runs in the browser and
+the guard on `/signup` is client-side, so the phrase is stored as a SHA-256
+digest — enough that reading the bundle does not hand it over, not enough to
+stop someone determined. `POST /api/v1/auth/register` is open on the API
+regardless of what the UI does. It is a front door, not a lock. The real fix is
+a server-issued invite code checked inside `register()`, which is backend work
+in VaNiGTM and is logged below rather than faked in the client.
 
-**Prerequisites on the VPS — all met.** TLS on `api.vikuna.io`, `vani.vikuna.io`
-in the `map $http_origin` allowlist, `/api/v1/auth/` allowlisted. Verified
-externally over the public internet; preflight returns `204` with the origin
-echoed exactly. Nothing infrastructural blocks this phase.
+### Contract, read from source not assumed
 
-**Settled — operator-provisioned, no signup screen in v1.** The platform spec's
-position stands (VN-01: the operator creates the tenant and issues a wizard link
-to the named Tenant Admin). `/api/v1/auth/register` is not wired into the UI.
+Verified against `backend/src/auth/auth.routes.ts` and `auth.service.ts` in
+`kamalcharan/VaNiGTM`. Two mismatches were found in the ported client and fixed;
+either one alone would have made a correct password fail silently:
 
-That was the right call for a reason beyond policy: `register()` writes to
-`vn_tenants`/`vn_tenant_profiles`, while the platform layer reads `vani_tenant`.
-`vani_tenant_agent` has a foreign key to `vani_tenant(id)`, so a self-signed-up
-tenant could never have an agent subscribed to it — and nothing would surface
-that until someone tried to activate Vara. Reconciling those two tenant records
-is real backend work in VaNiGTM, and it is now sequenced deliberately rather
-than forced by a half-built screen.
+- `/login`, `/register` and `/refresh` answer `{ tokens: { access_token, … } }`.
+  The client read `data.access_token` — top-level, where nothing is. Now read
+  through one `readAccessToken()` so the shape lives in a single place.
+- Errors are `{ error: { code, message } }`, an object. The client expected
+  `error` to be a string, so every server message was discarded and replaced by
+  the generic fallback.
 
-**A live credential is needed to finish this phase.** Because signup is
-operator-provisioned, there is no way to create an account from the UI — the
-exit criteria cannot be demonstrated until one user exists in the VaNi tenant on
-the VPS and its password is known to whoever verifies.
+`register` creates a **new tenant per signup**: `vn_tenants` row, profile,
+owner/admin/planner roles, first user as owner, and a `TENANT_REGISTERED` event.
+Validation is name 2–100, valid email, password 8–128 with at least one
+uppercase and one digit — mirrored live on the form so a 400 is never how
+someone learns the rules.
+
+### Gap ledger
+
+| # | Gap | Status |
+|---|---|---|
+| 1 | Login redirected to `/home`, a route that does not exist | **fixed** — goes to `/dashboard`; a correct password used to land on a 404 |
+| 2 | No route guard on the console | **fixed** — `RequireSession` waits for the bootstrap to resolve, then redirects. Stands down when `NEXT_PUBLIC_API_ORIGIN` is unset, so UX work continues without a backend |
+| 3 | Sign out did not sign out | **fixed** — calls `logout()`, revokes server-side, clears the query cache, then leaves |
+| 4 | Transport hardwired to the mock | **open** — the last piece of P1. Touches `(console)/layout.tsx` only, which is the seam working |
+| 5 | `isLoading` computed and never consumed | **fixed** — consumed by the guard, which is what stops a signed-in user being bounced on every reload |
+| 6 | Response-shape mismatches (above) | **fixed** |
+| 7 | Org name and slug hardcoded in the shell | **fixed** — from `/api/v1/auth/me`, falling back while unauthenticated |
+
+### Verified
+
+Fifteen checks against the production build: the login → gate → signup path;
+`/signup` typed directly bounces to `/gate`; a wrong phrase is rejected without
+navigating and clears the field; the phrase tolerates case and surrounding
+space; password rules light up as they are met; name and email are validated
+before any network call; the gate persists within a tab and a new session is
+re-gated; the console still renders with no API origin; 390px does not overflow.
+
+Not verified, and cannot be from here: an actual signup against the live API.
+The sandbox proxy blocks `api.vikuna.io`, so the first real registration is
+yours to run.
+
+### Settled — operator-provisioned, now with a gated UI
+
+The platform spec's position (VN-01) is unchanged in substance: accounts are not
+public. What changed is who does the typing.
+
+The `vn_tenants` / `vani_tenant` split is **not resolved by this** and is now
+more visible, not less. `register()` writes `vn_tenants`/`vn_tenant_profiles`;
+the platform layer reads `vani_tenant`, and `vani_tenant_agent` has a foreign
+key to it. A tenant created through the gate can sign in and use the console,
+but cannot have an agent subscribed to it — nothing surfaces that until someone
+tries to activate Vara. Reconciling the two is backend work in VaNiGTM and is
+P2's blocker.
 
 **Exit criteria:** reload keeps the session, a cold tab keeps the session, logout
 revokes server-side, a wrong password is indistinguishable from an unknown
-account, and no console route renders without a session.
+account, no console route renders without a session, and a gated signup produces
+a working tenant.
 
 ## P2 · Onboarding — the VaNi tenant lane
 
@@ -182,7 +219,8 @@ declaration and its own folder. `ls skills/` answers what has moved.
 | ~~SSL + CORS entry on `api.vikuna.io`~~ | — | **Done** — verified externally, see the VPS runbook |
 | ~~Signup vs operator-provisioned~~ | — | **Settled: operator-provisioned.** No signup in v1 |
 | ~~Where the VaNi story lives~~ | — | **Settled: in `vani-app`.** Two copies drifted; the marketing route and static page are deleted and redirected |
-| A live VaNi credential on the VPS | P1 exit criteria | Operator-provisioned means no account can be made from the UI. One user in the VaNi tenant, password known to the verifier |
+| ~~A live VaNi credential on the VPS~~ | — | **Resolved by the gate.** Accounts are now created from the UI by anyone holding the access phrase |
+| Server-side invite codes | Nothing yet | The gate is client-side and `/register` is open on the API. Backend work in VaNiGTM; worth doing before the phrase circulates widely |
 | Which tenant table is authoritative | P2 | `vn_tenants` (what `register()` writes) vs `vani_tenant` (what the platform reads). Backend work in VaNiGTM; P1 does not touch it |
 | Which Vara UX prototype is canonical | P3 | Two in `docs/vani/`, same screens |
 | Where the public funnel lives | Deleting `frontend/` | `/a/[slug]` and `/r/[token]` have live users and are the only reason VaNiGTM's frontend is still deployed |
