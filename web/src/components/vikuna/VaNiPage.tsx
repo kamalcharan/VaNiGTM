@@ -16,6 +16,7 @@ import Footer from './Footer';
 const INK = '#0A0F1E';
 const INK_DEEP = '#070B16';
 const WHITE = '#FFFFFF';
+const ACCENT = '#E8420A';
 const ACCENT_LIGHT = '#FF8A3D';
 const TEAL = '#12A090';
 const GOLD = '#C9973A';
@@ -232,35 +233,35 @@ const Ctas = styled.div`
   margin-bottom: 30px;
 `;
 
-// Leaves the marketing site for the console on vani.vikuna.io — an anchor, not
-// a router Link, because it crosses origins.
-const BtnGold = styled.a`
-  background: ${GOLD};
-  color: ${INK_DEEP};
-  font-family: ${MONO};
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  padding: 14px 30px;
-  border-radius: 5px;
+// One rule across every Vikuna surface: ACCENT is the action, GOLD identifies
+// VaNi. This page previously used gold mono buttons, which made the journey
+// from the homepage into /vani read as two different design systems even though
+// the tokens matched. Matches MVPPage's BtnPrimary exactly.
+//
+// An anchor rather than a router Link: it crosses origins to the console.
+const BtnPrimary = styled.a`
+  background: ${ACCENT};
+  color: ${WHITE};
+  padding: 16px 36px;
+  border-radius: 4px;
+  font-size: 15px;
+  font-weight: 700;
   text-decoration: none;
   transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 0 28px rgba(201, 151, 58, 0.26);
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 0 44px rgba(201, 151, 58, 0.4);
+    box-shadow: 0 8px 32px rgba(232, 66, 10, 0.35);
   }
 `;
 
 const BtnGhost = styled.a`
   border: 1px solid ${BORDER};
-  color: rgba(255, 255, 255, 0.78);
-  font-family: ${MONO};
-  font-size: 13px;
-  letter-spacing: 0.04em;
-  padding: 14px 26px;
-  border-radius: 5px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 16px 36px;
+  border-radius: 4px;
   text-decoration: none;
   transition: border-color 0.2s, color 0.2s;
 
@@ -983,7 +984,7 @@ const VaNiPage: React.FC = () => {
               licence VaNi; you see it working in the products it runs.
             </HeroBody>
             <Ctas>
-              <BtnGold href="https://vani.vikuna.io/login">Sign in to VaNi →</BtnGold>
+              <BtnPrimary href="https://vani.vikuna.io/login">Sign in to VaNi →</BtnPrimary>
               <BtnGhost href="#where">See where it runs ↓</BtnGhost>
             </Ctas>
             <MetaRow>
@@ -1152,7 +1153,7 @@ const VaNiPage: React.FC = () => {
             partners on active engagements — there is no public sign-up.
           </FinalP>
           <FinalCtas>
-            <BtnGold href="https://vani.vikuna.io/login">Sign in to VaNi →</BtnGold>
+            <BtnPrimary href="https://vani.vikuna.io/login">Sign in to VaNi →</BtnPrimary>
             <BtnGhost href={CALENDLY} target="_blank" rel="noopener noreferrer">
               Talk to us about an engagement
             </BtnGhost>
