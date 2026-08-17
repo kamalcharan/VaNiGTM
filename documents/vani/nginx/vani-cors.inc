@@ -25,7 +25,11 @@ if ($request_method = OPTIONS) {
     add_header Access-Control-Allow-Origin      $cors_origin always;
     add_header Access-Control-Allow-Credentials 'true' always;
     add_header Access-Control-Allow-Methods     'GET, POST, PATCH, PUT, DELETE, OPTIONS' always;
-    add_header Access-Control-Allow-Headers     'Authorization, Content-Type' always;
+    # Idempotency-Key is load-bearing, not decoration: useSkillMutation sends it
+    # on every write. A header the preflight does not allow is a header the
+    # browser refuses to send the request with at all — so omitting it here does
+    # not degrade idempotency, it blocks the write outright.
+    add_header Access-Control-Allow-Headers     'Authorization, Content-Type, Idempotency-Key' always;
     add_header Access-Control-Max-Age           86400 always;
     add_header Vary                             'Origin' always;
     add_header Content-Length                   0;
