@@ -5,7 +5,10 @@ import cookieParser from 'cookie-parser';
 import path from 'path';
 import { buildRegistry } from './services/skill-registry';
 import { getPool, createTenantDb, closePool, healthCheck } from './db';
-import { createAuthRouter, createOnboardingRouter, createTenantRouter } from './auth/auth.routes';
+import { createAuthRouter, createTenantRouter } from './auth/auth.routes';
+// Onboarding moved out of auth.routes: it is its own agent now, running lanes
+// for the product tier and for each agent, rather than a pair of helpers.
+import { createOnboardingRouter } from './onboarding/onboarding.routes';
 import { createEtlRouter } from './etl/etl.routes';
 import { createVaniRouter } from './skills/vani-skill/vani.routes';
 import { createIngestionRouter } from './skills/ingestion-skill/ingestion.routes';

@@ -444,6 +444,49 @@ and under the superuser too, so all of this ships safely before the cutover.
 Still to exercise under the restricted role: signup, login, skills executor.
 Runbook in §8 of the doc.
 
+## Main VPS — known broken, DEFERRED (recorded 2026-08-17)
+
+Found while scoping VaNi's tenant onboarding, from `gt_events` on the Main VPS.
+**None of these are being fixed now.** They are recorded so the next session does
+not rediscover them, and so nobody plans a feature on a pipeline that is not
+running. Every one is environmental — no code defect among them.
+
+| Symptom in `gt_events.error` | Count | Cause |
+|---|---|---|
+| `LLM_VPS_UNREACHABLE: Cannot reach http://localhost:11434` | 8 | Ollama's port, but `localhost` inside a container is the container. The LLM URL was never set for containerised deployment |
+| `LLM_VPS_UNREACHABLE: Cannot reach https://llm.dristiq.com` (timeout) | 4 | A later remote model that timed out |
+| `URL_EMPTY_CONTENT: https://vikuna.io/ yielded 6 chars` | 4 | vikuna.io is a Vite SPA. The static crawl gets nothing; the n8n headless escalation is the only path for JS sites |
+| `SEARCH_NOT_CONFIGURED: SEARXNG_URL is not set` | 1 | Competitor search was never deployed |
+| `relation "gt_tenant_brand" does not exist` | 1 | Latest failure, 2026-08-15. The brand pull queries a table that exists in NO branch of this repo — see below |
+
+### Two things that need a decision, not a fix
+
+**1. The worker is not running, and never was a service.** `ps` and `docker ps -a`
+on the Main VPS find nothing. `agent-core/worker.ts` says "Separate process", and
+`deploy/vani-main-vps/docker-compose.vani.yml` defines only `vani-backend`. The
+queue has been drained by hand at some point. Anything event-driven is dead on
+that box until the worker becomes a compose service (~400MB; the box had 4.3Gi
+available on 2026-08-17).
+
+**2. `gt_tenant_brand` is referenced by code that is not in this repo.** Not in
+`backend/src`, not in `backend/migrations`, not on any remote branch. The image
+running before 2026-08-17 was therefore built from an uncommitted working tree.
+Commit that work before the next rebuild, or it is lost — the pre-rebuild image
+was preserved as `vikuna/vani-backend:pre-onboarding-20260817` on the VPS, which
+is the only remaining copy.
+
+### The queue has no stale-row reclaim — a real bug, still open
+
+`agent-core/event.store.ts` claims work with
+`UPDATE ... SET status='processing' WHERE status='pending' ... FOR UPDATE SKIP LOCKED`.
+Nothing ever returns a stale `processing` row to `pending`. A worker that dies
+mid-run orphans its in-flight events permanently — 9 rows were stuck this way on
+2026-08-17 (8 `ACCOUNT_RESEARCH_REQUESTED`, 1 `URL_SUBMITTED`).
+
+This one matters beyond tidiness: any UI that blocks on an event completing can
+trap a user forever. Fix before building on the queue — a `started_at` timeout
+back to `pending`, with a retry cap so a poison event cannot loop.
+
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
    GUC dies before your query (surfaced as `invalid input syntax for type
