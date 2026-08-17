@@ -5,6 +5,7 @@
  */
 import type { SkillModule } from '@/platform/registry';
 import onboarding from './onboarding';
+import smartProfile from './smart-profile';
 import org from './org';
 import workspace from './workspace';
 import agents from './agents';
@@ -12,4 +13,4 @@ import runs from './runs';
 import settings from './settings';
 import demo from './demo';
 
-export const SKILLS: SkillModule[] = [onboarding, org, workspace, agents, runs, settings, demo];
+export const SKILLS: SkillModule[] = [onboarding, smartProfile, org, workspace, agents, runs, settings, demo];

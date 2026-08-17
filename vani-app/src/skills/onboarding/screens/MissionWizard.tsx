@@ -929,6 +929,28 @@ export default function MissionWizardPage() {
     }
   }, [competitors, removedIds, handoff, showToast]);
 
+  /* ── Deep link: /onboarding?step=brand opens that step directly ────────
+   *
+   * The Smart Profile record links here per section, so "Regenerate" on Brand
+   * must land ON Brand, not wherever the restore logic decided. Runs once,
+   * after boot, so it overrides the restored position rather than fighting it.
+   *
+   * Read from window.location rather than useSearchParams: this route is
+   * statically rendered, and useSearchParams would force a Suspense boundary
+   * around the whole wizard for one optional query param.
+   */
+  const deepLinked = useRef(false);
+  useEffect(() => {
+    if (booting || deepLinked.current) return;
+    deepLinked.current = true;
+    const want = new URLSearchParams(window.location.search).get('step');
+    if (!want) return;
+    const i = STEPS.findIndex((st) => st.id === want);
+    // Only into a step already reachable — a deep link must not skip the gate.
+    if (i >= 0 && (confirmed.has(STEPS[i].id) || i <= stepIndex)) setStepIndex(i);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booting]);
+
   /* ── Step 4: confirm ICP — hands off to brand, the real finish line ── */
 
   const finishOnboarding = useCallback(async () => {

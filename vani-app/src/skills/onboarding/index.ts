@@ -6,19 +6,12 @@
  * `registerLane()` in lanes/index.ts, so activating Vara later touches neither
  * the engine nor platform/.
  *
- * ONE nav entry, and only because the wizard is also the Smart Profile's only
- * view. VaNiGTM does the same: there is no separate "here is what VaNi knows"
- * screen — `brain/knowledge` is still a ComingSoon stub — because revisiting
- * the wizard already shows it. It restores the whole mission on load (profile,
- * vocabulary, competitors, brand, and the research run's steps) and renders it
- * as the accumulated left rail.
+ * No nav entry. Onboarding is not a place you visit; it is a thing required of
+ * you, and the gate decides when. Its route lives outside the console shell so
+ * a gated tenant cannot click past it into the app.
  *
- * Without the entry the profile was unreachable: the wizard finishes by
- * replacing the route with /dashboard, and nothing linked back — so a tenant who
- * had just built a Smart Profile had no way to look at it.
- *
- * The route still lives OUTSIDE the console shell, which is what stops a gated
- * tenant clicking past onboarding into the app. The nav entry only points at it.
+ * The destination in the nav is `smart-profile` — the record. This is the build
+ * flow, reached from there when a section needs changing (`/onboarding?step=…`).
  */
 
 import type { SkillModule } from '@/platform/registry';
@@ -26,18 +19,7 @@ import type { SkillModule } from '@/platform/registry';
 const onboarding: SkillModule = {
   id: 'onboarding',
   name: 'Onboarding',
-  routes: [
-    {
-      id: 'mission',
-      label: 'Smart Profile',
-      href: '/onboarding',
-      group: 'organization',
-      icon: '◈',
-      status: 'live',
-      summary:
-        'What VaNi knows about your business — product, market vocabulary, competitors, ideal customer and brand. Every step reopens, so this is also where you re-run any of it.',
-    },
-  ],
+  routes: [],
 };
 
 export default onboarding;
