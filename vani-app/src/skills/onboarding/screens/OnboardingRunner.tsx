@@ -33,7 +33,7 @@ interface Props {
 export default function OnboardingRunner({ laneId, done }: Props) {
   const status = useOnboardingStatus(laneId);
   const { complete, isSaving } = useCompleteStep(laneId);
-  const { logout, user, tenant } = useAuth();
+  const { logout, refresh, user, tenant } = useAuth();
   const toast = useToast();
   const router = useRouter();
   const lane = getLane(laneId);
@@ -45,6 +45,20 @@ export default function OnboardingRunner({ laneId, done }: Props) {
   async function signOut() {
     await logout();
     router.replace('/');
+  }
+
+  /**
+   * Release the user into the console.
+   *
+   * The refresh is load-bearing. `needsOnboarding` comes from the tenant
+   * snapshot taken at bootstrap — when this lane was still incomplete — so
+   * navigating without re-reading /me sends the user to a gate that still
+   * believes they are un-onboarded, and it bounces them right back here. That
+   * was a real loop, caught in test; do not remove the await.
+   */
+  async function enterConsole() {
+    await refresh();
+    router.replace(done);
   }
 
   if (!lane) {
@@ -99,7 +113,7 @@ export default function OnboardingRunner({ laneId, done }: Props) {
                   toast.success('Setup complete.', 'VaNi has what it needs to start.');
                 }
               }}
-              onEnter={() => router.replace(done)}
+              onEnter={enterConsole}
             />
           )}
         </DataBoundary>
@@ -121,7 +135,7 @@ function Lane({
   finished: boolean;
   isSaving: boolean;
   onComplete: (step: OnboardingStep, payload: Record<string, unknown>) => Promise<void>;
-  onEnter: () => void;
+  onEnter: () => void | Promise<void>;
 }) {
   const doneCount = data.steps.filter((x) => x.status === 'completed').length;
   const total = data.steps.length;
@@ -140,7 +154,7 @@ function Lane({
   // navigation is not a side effect of drawing.
   useEffect(() => {
     if (data.complete && finished) {
-      const t = setTimeout(onEnter, 900);
+      const t = setTimeout(() => void onEnter(), 900);
       return () => clearTimeout(t);
     }
   }, [data.complete, finished, onEnter]);
@@ -188,7 +202,7 @@ function Lane({
               Everything VaNi needs is declared. Agents you activate from here
               inherit it and will not ask again.
             </p>
-            <button type="button" className={s.primary} onClick={onEnter}>
+            <button type="button" className={s.primary} onClick={() => void onEnter()}>
               Go to the console →
             </button>
           </div>

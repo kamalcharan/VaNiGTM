@@ -11,10 +11,9 @@
 import { useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RequireSession } from '@/platform/shell/RequireSession';
-import { setSkillTransport } from '@/lib/useSkill';
-import { mockTransport } from '@/lib/mock-transport';
+import { installSkillTransport } from '@/lib/transport';
 
-setSkillTransport(mockTransport);
+installSkillTransport();
 
 export default function OnboardingLayout({ children }: { children: ReactNode }) {
   const [qc] = useState(

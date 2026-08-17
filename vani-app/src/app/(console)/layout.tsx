@@ -4,9 +4,10 @@
  * Console layout. Guards the session, wires the query client and the skill
  * transport, then renders the shell from the registry.
  *
- * Still on the mock transport: swapping it for a live one is the last piece of
- * P1 and touches this file only, which is the seam working as intended. The org
- * name and slug now come from /api/v1/auth/me rather than being hardcoded.
+ * The transport is selected by config — live when NEXT_PUBLIC_API_ORIGIN is set,
+ * mock otherwise. That swap touched this file and one new module, and no screen,
+ * which is the seam working as intended. Org name and slug come from
+ * /api/v1/auth/me.
  */
 
 import { useState, type ReactNode } from 'react';
@@ -17,10 +18,9 @@ import { useToast } from '@/platform/feedback';
 import { RequireSession } from '@/platform/shell/RequireSession';
 import { Shell } from '@/platform/shell/Shell';
 import { SKILLS } from '@/skills';
-import { setSkillTransport } from '@/lib/useSkill';
-import { mockTransport } from '@/lib/mock-transport';
+import { installSkillTransport } from '@/lib/transport';
 
-setSkillTransport(mockTransport);
+installSkillTransport();
 
 export default function ConsoleLayout({ children }: { children: ReactNode }) {
   const router = useRouter();

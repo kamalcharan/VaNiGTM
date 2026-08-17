@@ -79,6 +79,15 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   signup: (input: SignupInput) => Promise<void>;
   logout: () => Promise<void>;
+  /**
+   * Re-read /api/v1/auth/me.
+   *
+   * Required, not a convenience. `needsOnboarding` is derived from the tenant
+   * snapshot taken at bootstrap, so anything that changes onboarding state must
+   * refresh it before navigating — otherwise the gate acts on a stale answer and
+   * bounces the user straight back to the wizard they just finished.
+   */
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -172,6 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         tenant,
+        refresh: hydrate,
         isAuthenticated: !!user,
         isLoading: bootstrapping,
         // Absent means "not reported" — treat as done. A missing field must

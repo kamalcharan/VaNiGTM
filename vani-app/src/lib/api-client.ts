@@ -23,11 +23,7 @@ import { API, type ServiceEndpoint } from './serviceURLs';
  * the browser calls it directly. Unset, requests fail closed rather than
  * resolving against this app and 404-ing confusingly.
  */
-const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? '';
-
-function url(endpoint: ServiceEndpoint): string {
-  return `${API_ORIGIN}${endpoint.path}`;
-}
+export const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? '';
 
 let accessToken: string | null = null;
 
@@ -99,7 +95,7 @@ export function readAccessToken(data: unknown): string | null {
  */
 export async function silentRefresh(): Promise<boolean> {
   try {
-    const res = await fetch(url(API.auth.refresh), {
+    const res = await fetch(`${API_ORIGIN}${API.auth.refresh.path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -119,21 +115,32 @@ export async function silentRefresh(): Promise<boolean> {
 interface FetchOptions {
   body?: unknown;
   signal?: AbortSignal;
+  /** Sent as `Idempotency-Key`. Minted per logical attempt by useSkillMutation. */
+  idempotencyKey?: string;
   /** Internal: prevents a refresh/retry loop. */
   _retried?: boolean;
 }
 
-export async function apiFetch<T>(
-  endpoint: ServiceEndpoint,
-  options: FetchOptions = {},
+/**
+ * The one request path. Everything — declared endpoints and the dynamic skill
+ * transport alike — goes through here, so the token handling, the single 401
+ * retry and the error shaping exist in exactly one place.
+ */
+export async function apiRequest<T>(
+  method: ServiceEndpoint['method'],
+  path: string,
+  options: FetchOptions & { authenticated?: boolean } = {},
 ): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  // Where the client half of the idempotency contract goes on the wire. The
+  // server half — store the key with its result and replay it — is per handler.
+  if (options.idempotencyKey) headers['Idempotency-Key'] = options.idempotencyKey;
 
   let res: Response;
   try {
-    res = await fetch(url(endpoint), {
-      method: endpoint.method,
+    res = await fetch(`${API_ORIGIN}${path}`, {
+      method,
       headers,
       credentials: 'include',
       signal: options.signal,
@@ -144,13 +151,23 @@ export async function apiFetch<T>(
     throw new ApiError('Cannot reach the VaNi service. Check your connection.', 0);
   }
 
-  if (res.status === 401 && endpoint.auth && !options._retried) {
+  if (res.status === 401 && options.authenticated !== false && !options._retried) {
     const refreshed = await silentRefresh();
-    if (refreshed) return apiFetch<T>(endpoint, { ...options, _retried: true });
+    if (refreshed) return apiRequest<T>(method, path, { ...options, _retried: true });
     clearTokens();
   }
 
   if (!res.ok) throw new ApiError(await readError(res), res.status);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
+}
+
+export async function apiFetch<T>(
+  endpoint: ServiceEndpoint,
+  options: FetchOptions = {},
+): Promise<T> {
+  return apiRequest<T>(endpoint.method, endpoint.path, {
+    ...options,
+    authenticated: endpoint.auth,
+  });
 }
