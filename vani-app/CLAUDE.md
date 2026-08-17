@@ -50,13 +50,24 @@ registrable domain `vikuna.io`, so they are same-site and Strict sends the
 cookie. `localhost` → `vikuna.io` is cross-site: the browser will not send the
 cookie, and cannot store it over `http://` because of `secure`. Separately,
 nginx's `map $http_origin $cors_origin` defaults to `""`, so `localhost` is not
-in the allowlist at all. Ports are irrelevant to SameSite — `localhost:3000` ↔
+in the allowlist at all. Ports are irrelevant to SameSite — `localhost:3100` ↔
 `localhost:3002` is same-site.
+
+> **`CORS_ORIGIN` must be `http://localhost:3100`.** This table said `:3000` and
+> that one wrong digit cost a full session's debugging. `npm run dev` here is
+> `next dev --port 3100`, and VaNiGTM matches `CORS_ORIGIN` as an **exact
+> string** (`backend/src/server.ts:25`), so `:3000` silently fails every browser
+> preflight. It is not detectable by curl: `cors` with a string origin always
+> returns 204 and echoes the *configured* value, so a probe that sends
+> `Origin: http://localhost:3000` always looks like a pass. Compare the ACAO
+> against the origin the browser really sends. Full write-up:
+> `docs/vani/HANDOVER-2026-08-17.md` §5.
 
 | Mode | Setup | What you get |
 |---|---|---|
 | **Mock** (default) | no `.env.local` | Whole UI including the onboarding pathway. No backend, no session. The right mode for UI work |
-| **Local backend, VPS database** | `NEXT_PUBLIC_API_ORIGIN=http://localhost:3002`; run `vani-backend` locally with `NODE_ENV=development`, `CORS_ORIGIN=http://localhost:3000`, `DB_PRIMARY` pointed at the VPS Postgres | **Everything, auth included.** Same-site, and `development` drops `secure` off the cookie. The mode to develop in |
+| **Local backend, local database** | `NEXT_PUBLIC_API_ORIGIN=http://localhost:3002`; run `vani-backend` locally with `NODE_ENV=development`, `CORS_ORIGIN=http://localhost:3100`, `DB_PRIMARY` → a local Postgres migrated with `npm run db:migrate` + `npm run db:seed` | **Everything, auth included** — verified end-to-end in a browser. The mode to develop in. Recipe in §5 of the handover |
+| Local backend, VPS database | as above but `DB_PRIMARY` → the VPS Postgres | Same, *if* you can reach port 5432. **Not possible from a Claude web session** — outbound 5432 is blocked by the network policy |
 | Live API, session-less | `NEXT_PUBLIC_API_ORIGIN=https://api.vikuna.io` + `"~^http://localhost(:\d+)?$"` added to nginx's `map $http_origin` | Real data on the in-memory token, but logged out on every reload — `silentRefresh()` cannot see the cookie. Making it persist would mean env-gating `sameSite`/`secure` in VaNiGTM, i.e. weakening the production cookie for a dev convenience. Decide that deliberately, do not drift into it |
 
 If `npm run dev` reports `'next' is not recognized`, run `npm install` inside
