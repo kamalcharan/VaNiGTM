@@ -96,6 +96,23 @@ export const API = {
     },
   },
 
+  /** Vara — activation and (next step) install. */
+  vara: {
+    state: {
+      method: 'GET',
+      path: '/api/v1/vara/status',
+      auth: true,
+      description: 'Subscription state + readiness checklist for the landing page.',
+    },
+    activate: {
+      method: 'POST',
+      path: '/api/v1/vara/activate',
+      auth: true,
+      description:
+        'Admin-only. Goes live if the checklist passes; refuses NOT_READY with the checklist in error.details.',
+    },
+  },
+
   /**
    * Ingestion — the mission wizard's first step submits the tenant's website
    * here, and polls the source for its agent run steps.
