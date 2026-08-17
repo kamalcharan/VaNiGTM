@@ -140,10 +140,41 @@ affects behaviour.
 | # | Task | Where | Status |
 |---|---|---|---|
 | 1 | CORS map + includes | `conf.d/` on the VPS | **done** |
-| 2 | Point `vani.vikuna.io` at Vercel (CNAME `cname.vercel-dns.com`) | DNS provider | outstanding |
-| 3 | Create the Vercel project, Root Directory `vani-app` | Vercel | outstanding |
-| 4 | `NEXT_PUBLIC_API_ORIGIN=https://api.vikuna.io` | Vercel env | outstanding |
-| 5 | Confirm the preview slug matches `vani-app-*.vercel.app`, or narrow the regex | both | outstanding |
+| 2 | Point `vani.vikuna.io` at Vercel | Vercel DNS | **done** |
+| 3 | Vercel project, Root Directory `vani-app` | Vercel | **done** — live at vani.vikuna.io/dashboard |
+| 4 | `NEXT_PUBLIC_API_ORIGIN=https://api.vikuna.io` | Vercel env | confirm |
+| 5 | Ignored Build Steps on both projects | Vercel | outstanding |
+| 6 | Delete the now-stale `vani.vikuna.io` cert on the VPS | VPS | outstanding |
+| 7 | Preview slug is `vani-iota`, not `vani-app` — CORS map does not match it | VPS | optional |
+
+### Notes on the remaining items
+
+**DNS was managed by Vercel, not GoDaddy.** GoDaddy holds registration only and
+reports "DNS Provider: Vercel". The blocker was a stale `A` record for `vani`
+pointing at the VPS; Vercel will not attach a domain that already resolves
+elsewhere. Deleting that record in Vercel's DNS panel resolved it. The `api`
+record must stay pointing at `187.127.136.65`.
+
+**The VPS cert for `vani.vikuna.io` is now orphaned.** Renewal will fail, because
+the HTTP-01 challenge now lands on Vercel. Nothing in nginx serves that name, so
+removing it breaks nothing:
+
+```bash
+certbot delete --cert-name vani.vikuna.io    # leave api.vikuna.io alone
+```
+
+**Preview deploys will fail CORS.** Vercel named the project `vani-iota`, so
+`vani-iota*.vercel.app` does not match the `vani-app` pattern in the map.
+Production is unaffected — `vani.vikuna.io` has its own entry. Fix by renaming
+the Vercel project to `vani-app` (no VPS change), or by editing that one line in
+the map.
+
+**Ignored Build Steps**, or every commit rebuilds both projects:
+
+```
+vani project       git diff --quiet HEAD^ HEAD -- vani-app
+marketing project  git diff --quiet HEAD^ HEAD -- . ':(exclude)vani-app'
+```
 
 Nothing further is needed on the VPS. Certificate, backend, TLS, allowlist and
 CORS are all in place.
