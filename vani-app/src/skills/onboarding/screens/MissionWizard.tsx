@@ -232,6 +232,30 @@ function FieldStatusTag({ filled }: { filled: boolean }) {
    Campaigns and Follow-ups are NOT setup steps — they're what becomes
    available after setup, and live in /today's Agent Launchpad instead. */
 
+/**
+ * The Smart Profile is EIGHT steps, not five.
+ *
+ * STEPS is what this screen can currently run. DECLARATION_STEPS is the rest of
+ * the profile — domain, people, model — which is declared in VaNiGTM's lane
+ * catalog but has no screen here yet.
+ *
+ * They are rendered in the stepper as LOCKED rather than left out. A tenant who
+ * finishes step 5 needs to know the profile continues; a stepper that stops at
+ * "Brand" says the opposite, and that is exactly why this read as "onboarding
+ * done" when most of the profile had not been asked for. PathwayShell supports
+ * this directly — "a locked step still tells the user what is coming, which a
+ * hidden one cannot".
+ *
+ * Kept OUT of STEPS on purpose: every index in this file (handoff targets,
+ * stepIndex comparisons, railItems) is positional, so widening STEPS would move
+ * them all. The stepper is given the joined list; the logic keeps the five.
+ */
+const DECLARATION_STEPS = [
+  { id: 'vani:domain', label: 'Domain', locked: true, lockedTag: 'Next' },
+  { id: 'vani:team', label: 'People', locked: true, lockedTag: 'Next' },
+  { id: 'vani:llm_provider', label: 'Model', locked: true, lockedTag: 'Next' },
+];
+
 const STEPS = [
   { id: 'company', label: 'Research company' },
   { id: 'vocabulary', label: 'Market vocabulary' },
@@ -1281,17 +1305,22 @@ export default function MissionWizardPage() {
 
   return (
     <VdfPathwayShell
-      eyebrow="Mission · Onboarding"
-      name="Set up your GTM engine"
+      eyebrow="Smart Profile"
+      name="What VaNi knows about you"
       headerAction={onboardingStatus.data?.complete ? (
         <button type="button" className={s.backLink} onClick={() => router.push('/dashboard')}>
           ← Back to the console
         </button>
       ) : undefined}
-      steps={STEPS.map(({ id, label }) => ({ id, label }))}
+      steps={[...STEPS.map(({ id, label }) => ({ id, label })), ...DECLARATION_STEPS]}
       currentIndex={stepIndex}
       completedSteps={confirmed}
-      onStepClick={(i) => { if (confirmed.has(STEPS[i].id) || i <= stepIndex) setStepIndex(i); }}
+      onStepClick={(i) => {
+        // Locked declaration steps sit past the end of STEPS — clicking one
+        // must do nothing, not index into undefined.
+        if (i >= STEPS.length) return;
+        if (confirmed.has(STEPS[i].id) || i <= stepIndex) setStepIndex(i);
+      }}
       artefacts={<VdfMissionMemory items={railItems} />}
       findings={parseSiteHealth(researchSteps) ? (
         <>
