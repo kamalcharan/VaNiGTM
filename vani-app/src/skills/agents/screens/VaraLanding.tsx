@@ -32,7 +32,15 @@ import u from '@/platform/shell/ui.module.css';
 import s from './vara.module.css';
 
 interface VaraState {
-  subscription: 'none' | 'provisioned' | 'activating' | 'live' | 'suspended';
+  /**
+   * 'none' = the workspace IS on the platform spine but has no subscription
+   * row yet — the normal pre-activation state, and it gets the Activate
+   * button. 'unprovisioned' (client-side only, from the 409) = the Domain
+   * step has never run, so there is nothing to subscribe. Conflating these
+   * two once hid the Activate button behind a wrong "complete the Domain
+   * step" message from a tenant whose domain was long since set up.
+   */
+  subscription: 'unprovisioned' | 'none' | 'provisioned' | 'activating' | 'live' | 'suspended';
 }
 
 export default function VaraLanding() {
@@ -52,7 +60,7 @@ export default function VaraLanding() {
         if ((err as ApiError)?.code === 'TENANT_NOT_PROVISIONED') {
           return {
             success: true, skill: 'vara', function: 'state',
-            data: { subscription: 'none' } as VaraState,
+            data: { subscription: 'unprovisioned' } as VaraState,
           };
         }
         throw err;
@@ -124,7 +132,7 @@ export default function VaraLanding() {
                       and lands next. Nothing else to do yet.
                     </p>
                   </div>
-                ) : d.subscription === 'none' ? (
+                ) : d.subscription === 'unprovisioned' ? (
                   <div className={s.stubNote}>
                     <span className={`${u.tag} ${u.tagDim}`}>Not provisioned</span>
                     <p>Complete the Domain step of the Smart Profile first.</p>
