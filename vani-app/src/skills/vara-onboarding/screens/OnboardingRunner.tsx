@@ -14,32 +14,45 @@
  * abstract before they have built anything concrete.
  */
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import { useMemo, useState } from 'react';
 import { MOCK_ROLE_FAMILIES, MOCK_TENANT_BRAND } from '../mock-data';
 import Link from 'next/link';
 import u from '@/platform/shell/ui.module.css';
 import s from '../vara-onboarding.module.css';
 
-export default function VaraOnboardingRunner() {
+function VaraOnboardingRunnerInner() {
   const router = useRouter();
   const [family, setFamily] = useState<string | null>(null);
+  const [otherFamily, setOtherFamily] = useState('');
   const [title, setTitle] = useState('');
 
-  const suggestions = useMemo(() => {
-    const f = MOCK_ROLE_FAMILIES.find((x) => x.name === family);
-    return f?.suggested_titles ?? [];
-  }, [family]);
+  const emptyMode = useSearchParams().get('empty') === '1';
+  // Empty mode simulates a fresh industry with NO seeded playbooks — the
+  // list of families is empty and Other is the only path. In Phase 1 this
+  // is what a tenant sees when their business_profile.industry has no
+  // published playbooks in vani_domain_pack yet.
+  const shownFamilies = emptyMode ? [] : MOCK_ROLE_FAMILIES;
 
-  const ready = family !== null && title.trim().length > 3;
+  // "Other" is a real value the tenant can pick — but the family the JD is
+  // filed under comes from their typed input, not from the mock list.
+  const effectiveFamily = family === '__other__' ? (otherFamily.trim() || null) : family;
+
+  const suggestions = useMemo(() => {
+    const f = MOCK_ROLE_FAMILIES.find((x) => x.name === effectiveFamily);
+    return f?.suggested_titles ?? [];
+  }, [effectiveFamily]);
+
+  const ready = effectiveFamily !== null && title.trim().length > 3;
 
   function toStudio() {
-    const q = new URLSearchParams({ family: family!, title: title.trim(), mode: 'compose' });
+    const q = new URLSearchParams({ family: effectiveFamily!, title: title.trim(), mode: 'compose' });
     router.push(`/agents/vara/jd-studio?${q.toString()}`);
   }
 
   function toImport() {
-    const q = new URLSearchParams({ family: family!, title: title.trim(), mode: 'import' });
+    const q = new URLSearchParams({ family: effectiveFamily!, title: title.trim(), mode: 'import' });
     router.push(`/agents/vara/jd-studio?${q.toString()}`);
   }
 
@@ -109,8 +122,15 @@ export default function VaraOnboardingRunner() {
           starting playbook for it, and Vara reuses that for the next role you
           add in the same family.
         </p>
+        {emptyMode && (
+          <div className={s.familyHint} style={{ marginBottom: 10, fontStyle: 'italic' }}>
+            No playbooks seeded for <b>{b.industry}</b> yet — start with a manual
+            skeleton (default weights, empty knockouts). Your first JD shapes
+            the family; the second one seeds the family defaults.
+          </div>
+        )}
         <div className={s.familyList}>
-          {MOCK_ROLE_FAMILIES.map((f) => (
+          {shownFamilies.map((f) => (
             <button
               key={f.name}
               type="button"
@@ -125,14 +145,47 @@ export default function VaraOnboardingRunner() {
               <div className={s.familyHint}>{f.hint}</div>
             </button>
           ))}
+          <button
+            key="__other__"
+            type="button"
+            className={
+              family === '__other__'
+                ? `${s.familyItem} ${s.familyItemActive}`
+                : s.familyItem
+            }
+            onClick={() => setFamily('__other__')}
+          >
+            <div className={s.familyName}>Other — I&rsquo;ll name it</div>
+            <div className={s.familyHint}>
+              Manual skeleton — default 33/33/33 weights, no knockouts. You tune
+              everything in the next screen.
+            </div>
+          </button>
         </div>
+        {family === '__other__' && (
+          <div style={{ marginTop: 12 }}>
+            <input
+              type="text"
+              className={s.textInput}
+              placeholder="Data Engineering · Field Sales · Staff Nurse · …"
+              value={otherFamily}
+              onChange={(e) => setOtherFamily(e.target.value)}
+              autoFocus
+            />
+            <div className={s.familyHint} style={{ marginTop: 6 }}>
+              Vara will file this JD under a new family with this name. When
+              you add a second JD to it, family defaults get seeded from the
+              two together.
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Role title ───────────────────────────────────────────────────── */}
       <div className={s.card}>
         <div className={s.cardHead}>
           <h2 className={s.cardTitle}>What is the exact role you are hiring for?</h2>
-          <span className={s.cardMeta}>your first JD in {family ?? 'this family'}</span>
+          <span className={s.cardMeta}>your first JD in {effectiveFamily ?? 'this family'}</span>
         </div>
         <p className={s.cardWhat}>
           The title as it will appear on your careers page. You will shape the
@@ -145,9 +198,9 @@ export default function VaraOnboardingRunner() {
           placeholder="Senior Backend Engineer for the VaNi platform"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          disabled={!family}
+          disabled={!effectiveFamily}
         />
-        {family && suggestions.length > 0 && (
+        {effectiveFamily && suggestions.length > 0 && (
           <div className={s.suggested} aria-label="Suggested titles">
             {suggestions.map((t) => (
               <button
@@ -203,5 +256,13 @@ export default function VaraOnboardingRunner() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function VaraOnboardingRunner() {
+  return (
+    <Suspense fallback={<div style={{ padding: 24 }}>Loading…</div>}>
+      <VaraOnboardingRunnerInner />
+    </Suspense>
   );
 }
