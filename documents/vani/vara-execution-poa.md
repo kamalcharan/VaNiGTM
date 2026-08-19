@@ -1,148 +1,142 @@
 # Vara — Execution POA
 
-**Date:** 2026-08-17 (late)
-**Supersedes:** the slice plan in `vara-onboarding-design.md` §"Slice plan"
+**Date:** 2026-08-19 (revised)
+**Original:** 2026-08-17 (late)
 **Companion to:** `vara-readiness-review.md`, `vara-onboarding-design.md`,
-`vara-channels-and-activation.md`
+`vara-channels-and-activation.md`, `HANDOVER-2026-08-19.md`
 
-Everything settled across the design conversation, ordered for execution.
-Each phase is bounded, testable, and has a named gate. No phase starts
-until the previous one signs off. Nothing has schema changes.
+The August 17 plan drew a hard line at "no schema changes." That line
+moved deliberately: the prompt store and the semantic layer both landed
+as new tables + columns after explicit approval, because building
+Extractor (Phase 2) without them would either strand the LLM prompt
+inside code (deploy per prompt edit — untenable for per-tenant voice)
+or make skill/family/candidate dedup impossible. Both additions kept
+the audit invariants intact — vectors are columns on typed rows,
+prompts are append-only with a one-active guard.
 
 ---
 
-## Where we are
+## Where we are (2026-08-19)
 
-**Done (backend-wired, in production paths):**
-- vani_ platform spine + vara_ agent tables + state guard (migrations 240–243)
-- `/vara/activate`, `/vara/status`, `/vara/embed`, `/vara/embed/boot`, `/tenant/domains`
-- Landing page with code-gated activation
-- Living demo (the prototype's candidate view auto-playing, two-column stage)
-- Smart Profile step 6 (Domain) — writer + section
-- Vikuna tenant activated on the VPS DB
+**Landed to main, both repos, verified end-to-end:**
 
-**Done (UX preview only, no backend writes):**
-- Onboarding doorway (`/agents/vara/onboarding`) — inheritance card + family + title
-- JD Studio compose (`/agents/vara/jd-studio`) — scripted chip flow + emerging JD panel
-- Landing goes LIVE after preview Publish (sessionStorage fake, DB-truth override)
+- **Phase 0** — UX preview complete (compose + import + Duplicate + Other + empty-mode + family-defaults derivation prompt).
+- **Phase 1 — Compose path** — real DB writes. Migration 244 (three seed talent packs under Technology & SaaS: Backend / Frontend / Product & Design). `GET /vara/onboarding/context`, `POST /vara/jd/compose` (single transaction: `vani_role_family` upsert + `vara_family_profile` + `vara_scoring_config v1` + `vara_jd` + `vara_jd_version v1` + subscription flip to `live` + two `vani_audit_log` rows). Advisory-lock idempotency-in-practice with 60s freshness window. Frontend swapped from mock to real API. `UX_DONE_KEY` deleted; subscription is server-truth.
+- **Prompt Store** — migration 245 (`vani_prompt`, two-scope one-table: system + tenant override, append-only content trigger, one-active-per-scope partial unique index, tenant-scoped RLS). `resolvePrompt(db, key)` + `renderPrompt(prompt, vars)`. Endpoints `GET/PATCH/DELETE /vara/prompts[:key]`. Prompt Studio UI at `/agents/vara/prompts` with variable-coverage validation. Seeded `vara.composer.ask_next` as proof-of-shape (real caller lands with Extractor).
+- **Semantic Layer** — migration 246 (`CREATE EXTENSION vector` guarded; `vara_skill` with `embedding vector(768)` + HNSW cosine; `vara_family_profile.axes_embedding` + HNSW; `vara_candidate.profile_embedding` + HNSW; `vara_match_log` append-only). `embedText(text)` helper (Ollama-native `nomic-embed-text` default, 768-dim). `canonicalizeSkill(name)` for exact-match dedup before embedding. `recordMatch(db, input)` helper. Deploy note at `docs/db/pgvector-install.md`. pgvector 0.8.6 live on VPS in `vikuna-postgres` container (swapped from `postgres:17-alpine` to `pgvector/pgvector:pg17`, same `docker_pg_data` volume, zero data risk).
+- **VPS state** — single Postgres container, PG 17 + pgvector 0.8.6. Empty host-level PG 16 stray from the pgvector-install detour dropped.
 
 **Design settled, not yet in UX or code:**
-- Import path (upload docx/pdf, extract with provenance)
-- Playbook derivation from N JDs in same family
-- JD versioning (edit → v2, old snapshots stay honest)
-- Playbook fork/versioning UI (v3, operator surface)
-- Install screen (snippet + origin management)
+- Import path with fenced-LLM extraction (Phase 2 body)
+- JD versioning (edit → v2, needs `POST /vara/jd/:id/version`)
+- Playbook fork/versioning UI (Phase 6, operator surface)
+- Install screen (Phase 4)
 
 ---
 
-## Standing dependencies — before code starts
+## Standing dependencies — carried forward
 
-Not phases; things that must be true or done at some point independent of the flow:
+Still not phases; still must be true at some point independent of the flow:
 
-- **Rotate 4 exposed keys** (`ANTHROPIC_API_KEY`, `JWT_SECRET`, `LLM_PRIMARY_KEY`, `DB_PRIMARY` password) — Charan's action, still outstanding since first handover
-- **BYOK LLM encryption** (`vani_llm_provider.credentials_enc`) — gates Phase 2 (extraction) and Phase 5 (real candidate chat)
-- **LLM path stability on VPS** — vocabulary step still fails; blocks Phases 2, 5, 6
-- **MSG91 adapter port** from ContractNest — gates Phase 5 candidate comms
-- **Careers page fetch** for JS-heavy sites (headless browser) — only if URL ingest is added later
-
----
-
-## Phase 0 — Extend the UX preview with Import
-
-**Goal:** the full enhanced UX (compose + import + versioning affordances) exists as a click-through preview so it can be signed off in one review pass.
-
-**Adds:**
-- Doorway grows a second choice after family+title: *Compose with Vara* / *Import existing JDs*
-- Import screen: drag docx/pdf, deterministic mock extraction, review with provenance annotations
-- JD Studio review mode: same right-hand panel, "from your file" per field
-- After 2nd JD in a family (session-only): "apply as family default?" prompt with derived diff
-- Duplicate button on any existing JD → JD Studio in edit mode with a copy
-- Edit an existing JD → publishes as v2 (session-only demo)
-
-**No backend writes.** All state client-side, deterministic mocks.
-
-**Gate:** Charan signs off the entire enhanced UX. This is the last design pass before code lands.
+- **Rotate 4 exposed keys** (`ANTHROPIC_API_KEY`, `JWT_SECRET`, `LLM_PRIMARY_KEY`, `DB_PRIMARY` password) — Charan's action, still outstanding.
+- **BYOK LLM encryption** (`vani_llm_provider.credentials_enc`) — gates Phase 2 for tenants that BYOK; Vikuna's own LLM key works meanwhile.
+- **LLM path stability on VPS** — vocabulary step still fails; blocks Phase 2, 5, 6.
+- **MSG91 adapter port** from ContractNest — gates Phase 5 candidate comms.
+- **Careers page fetch** for JS-heavy sites (headless browser) — only if URL ingest is added later.
+- **vn_users ↔ vani_user(id) bridge** — new, this session. `vara_jd.created_by` and `vani_prompt.approved_by` write `null` today; the audit spine's `actor_id` names who did it (uuid, no FK). A small bridge (upsert a `vani_user` row per `vn_users` on first touch) unblocks tightening both constraints. Not urgent; audit stays honest either way.
+- **`vani_idempotency` store** — cross-process idempotency for `POST /vara/jd/compose`. Advisory lock + 60s freshness window covers double-click and in-session-retry; a hard refresh mid-flight can still create a duplicate JD. Schema change to raise before it lands.
+- **Ollama `nomic-embed-text` model pulled on the LLM host** — the embed helper defaults to it. `ollama pull nomic-embed-text` before Extractor uses it.
 
 ---
 
-## Phase 1 — Wire the Compose path (Vara goes LIVE from the console for real)
+## Phase 0 — UX preview complete ✅
 
-**Goal:** the compose path we already built becomes real end to end. First real JD lives in the DB, subscription flips `activating → live` on Publish, embed lists the role.
-
-**Backend (VaNiGTM `claude/vara-foundation`):**
-- Seed 3 handcrafted playbooks into `vani_domain_pack` payloads (industries + role families — **Charan names them before this starts**)
-- `GET /vara/onboarding/context` — returns tenant's Smart Profile industry, available role families derived from published playbooks, tenant's brand data for the inheritance card
-- `POST /vara/jd/compose` — accepts the compose chip contributions (facts JSON), creates:
-  - `vara_family_profile` if first in family (from the JD's own shape)
-  - `vara_scoring_config` v1
-  - `vara_jd` + `vara_jd_version` v1
-  - subscription → `live`, audit row
-  - single transaction, idempotent by `Idempotency-Key`
-- Update `readinessChecklist` to include "first JD published"
-
-**Frontend (`vani-app`):**
-- Swap `mock-data.ts` for real API calls in `OnboardingRunner` + `JdStudio`
-- Delete `UX_DONE_KEY` sessionStorage fake — state is now backend-truth
-- `useSkillMutation` wiring for the compose endpoint (idempotency, no stale writes — CLAUDE.md rules)
-
-**Tests:**
-- E2E in Chromium: activate → onboarding → compose → publish → landing shows LIVE from backend
-- DB check: `vara_jd`, `vara_jd_version`, `vara_family_profile`, `vara_scoring_config` all present; `vani_tenant_agent.status = 'live'`
-- Audit: correct rows in `vani_audit_log`
-
-**Gate:** Charan runs the flow end-to-end against local + VPS DB and confirms.
+Landed on main. Nothing more here.
 
 ---
 
-## Phase 2 — Wire the Import path
+## Phase 1 — Compose path ✅
 
-**Goal:** tenant can upload existing JDs, review the extracted structure, publish. Same LIVE outcome as compose.
+Landed on main. First JD publish flips subscription to `live`, doorway lists the JD from DB, landing reflects Live from `/vara/status`. E2E 20/20 verified.
 
-**Depends on:** BYOK LLM encryption OR Vikuna's own key for extraction. Named honestly — this phase cannot ship reliably before that dependency.
+---
+
+## Prompt Store slice ✅
+
+Landed on main. Not originally a numbered phase — inserted between Phase 1 and Phase 2 because Extractor needs per-tenant prompt overrides on day one. `/agents/vara/prompts` list + detail + validation + save + revert. E2E 16/16 verified.
+
+**Deferred within this slice:**
+- Separate-approver workflow (MVP self-approves)
+- Prompt Studio preview against eval fixtures (comes with Phase 2's fixture set)
+- Body-hash dedup on save (cosmetic; append-only stays honest)
+
+---
+
+## Semantic Layer slice ✅
+
+Landed on main. Schema + helpers, no wired writer. Extractor is the first caller.
+
+---
+
+## Phase 2 — Wire the Import path + Extractor
+
+**Goal:** tenant can upload existing JDs, review the extracted structure with evidence spans + confidence per field, publish. Same LIVE outcome as compose. First worker to use prompts + evals + `vara_skill` for real.
+
+**Depends on:** Vikuna's LLM key OR BYOK (both need LLM path stable on VPS + `nomic-embed-text` model pulled).
 
 **Backend:**
-- Add "job description" adapter to ingestion pipeline (deterministic docx/pdf parse — reuses the existing spine)
-- `POST /vara/jd/import` — accepts N files, writes `vara_artifact` rows, kicks extraction job
-- One fenced LLM stage extracts to schema (title, must-haves list, knockouts, band, evidence spans + confidence per field) → `vara_extraction` rows
-- `GET /vara/jd/extractions/pending?family=X` — polling for review queue
-- `POST /vara/jd/from-extraction` — same shape as compose, tenant-approved facts + provenance
+- Migration 247 (small): seed system prompts for `vara.extractor.field_schema` and `vara.extractor.evidence_check` in `vani_prompt`.
+- Add "job description" adapter to ingestion pipeline (deterministic docx/pdf parse — reuses existing spine, no new schema).
+- `POST /vara/jd/import` — accepts N files, writes `vara_artifact` rows, runs one fenced LLM extraction stage per artifact.
+- Extraction schema: `{ title, must_haves[{name,weight,evidence_span,confidence}], knockouts[{label,rule,evidence_span,confidence}], band?, notes }`. Every field's `evidence_span` must fuzzy-match the source text (V-9). Failed fuzzy = `status='low_confidence'`; failed schema = `status='rejected'` (whole extraction, not partial).
+- On successful extraction, `embedText()` each must-have name → upsert `vara_skill` (dedup via `canonicalize_skill` first; if match, bump `usage_count`; else insert with embedding).
+- `GET /vara/jd/extractions/pending?family=X` — polling for review queue.
+- `POST /vara/jd/from-extraction` — same shape as compose, tenant-approved facts + provenance; ends the artifact-review lifecycle by publishing the JD.
+
+**Eval fixtures** (checked into repo, first real use):
+- `backend/src/vara/evals/fixtures/extractor.<family>.*.pdf` + matching `.expected.json`.
+- `npm run eval:extractor` runs the fixture set against current prompts + current code, diffs structured output, fails loud on any regression.
+- **PR discipline** — every PR that touches an extractor prompt or the extraction code must add or intentionally update a fixture.
 
 **Frontend:**
-- Import mode in JD Studio (or doorway second choice, per Charan's earlier answer)
-- Progress state during extraction
-- Review panel per JD: same right-hand panel, provenance annotations, confidence marks
-- Bulk upload → queue → review each
+- Import mode in JD Studio already wired as UX preview — swap its mock extraction for real `POST /vara/jd/import`.
+- Progress state during extraction (job runs sync for now; async later if latency demands).
+- Review panel per JD (already exists as preview) — connect provenance + confidence marks to real extraction data.
+- Bulk upload → queue → review each.
 
 **Tests:**
-- Real docx/pdf sample uploaded → extraction rows created, review panel shows fields with provenance
-- Approve → JD written same shape as compose, LIVE
+- Real docx/pdf sample uploaded → extraction row created, review panel shows fields with provenance.
+- Approve → JD written same shape as compose, LIVE.
+- Fixture run: `npm run eval:extractor` shows 100% match on the seed set.
+- DB check: `vara_skill` rows populated with 768-dim embeddings, dedup working (same skill across two JDs → single skill row with `usage_count=2`).
 
-**Gate:** Charan reviews a real extraction quality on 2-3 sample JDs.
+**Gate:** Charan reviews real extraction quality on 2–3 sample JDs + approves the fixture set as a regression baseline.
 
 ---
 
 ## Phase 3 — Family playbook derivation
 
-**Goal:** family defaults compound as tenant publishes more JDs. Second JD in same family prompts "apply as default?" with derived diff.
+**Goal:** family defaults compound as tenant publishes more JDs. Second JD in same family prompts "apply as default?" with derived diff. Uses `axes_embedding` on `vara_family_profile` and cross-`vara_skill` semantic dedup.
 
 **Backend:**
-- Job (synchronous on Nth publish for v1; async later): compute per-family statistics
-  - Must-haves: frequency-weighted union across JDs in the family
+- Job (sync on Nth publish for v1): compute per-family statistics
+  - Must-haves: frequency-weighted union across JDs in the family, deduped by `vara_skill` semantic similarity (not by exact name)
   - Knockouts: intersection (only those in ALL JDs)
   - Threshold: mode across JDs
   - Bands: aggregate range
-- `POST /vara/family/apply-derived` — tenant-invoked, updates `vara_family_profile`
-- `GET /vara/family/:id/derivation-preview` — returns proposed defaults + evidence per field
+- `POST /vara/family/apply-derived` — tenant-invoked, updates `vara_family_profile`; embeds the new axes shape into `axes_embedding`.
+- `GET /vara/family/:id/derivation-preview` — returns proposed defaults + evidence per field.
+- **Every match writes a `vara_match_log` row via `recordMatch()`** — the audit invariant is not optional.
 
 **Frontend:**
 - Landing page card + JD Studio banner: "Ready to seed Backend Engineering defaults from 3 JDs"
-- Preview + apply flow
+- Preview + apply flow (the UX preview shape from Phase 0 tail comes back to life, now server-backed)
 
 **Tests:**
-- Publish 2 JDs in same family → prompt appears with numeric diff
-- Apply → family_profile updated; next JD's compose/import pre-fills weights from family
+- Publish 2 JDs in same family with slightly different skill names ("TypeScript / Node.js" vs "Node + TS") → semantic dedup treats them as one → prompt appears with numeric diff.
+- Apply → `family_profile` updated; next JD's compose/import pre-fills weights from family.
 
-**Gate:** Charan confirms the prompt fires at the right time (not too eager, not too late) and the derived defaults look right.
+**Gate:** Charan confirms the prompt fires at the right time and the derived defaults look right on Vikuna's own JDs.
 
 ---
 
@@ -151,17 +145,17 @@ Not phases; things that must be true or done at some point independent of the fl
 **Goal:** tenant pastes the snippet on their site (Wix/WordPress/etc), sees the widget live. Origin management from the UI, no more SQL.
 
 **Backend:**
-- `PATCH /tenant/domains/:id/origins` — add/remove embed origins (admin-only), audit
-- `GET /vara/embed` already exists — add site-alive ping ("widget booted from these origins in the last 7 days")
+- `PATCH /tenant/domains/:id/origins` — add/remove embed origins (admin-only), audit.
+- `GET /vara/embed` already exists — add site-alive ping ("widget booted from these origins in the last 7 days").
 
 **Frontend:**
-- New Install section on `/agents/vara` landing (below CTA band, only when LIVE)
-- Snippet display + copy button
-- Origin list: add / remove / status per site
-- Preview: paste snippet in-app, see it work in an iframe
+- New Install section on `/agents/vara` landing (below CTA band, only when LIVE).
+- Snippet display + copy button.
+- Origin list: add / remove / status per site.
+- Preview: paste snippet in-app, see it work in an iframe.
 
 **Tests:**
-- Add origin, test widget on a fake foreign origin, remove origin, widget refuses on next boot
+- Add origin, test widget on a fake foreign origin, remove origin, widget refuses on next boot.
 
 **Gate:** Charan pastes snippet on a real vikuna.io page and sees a candidate walk-through.
 
@@ -169,24 +163,25 @@ Not phases; things that must be true or done at some point independent of the fl
 
 ## Phase 5 — Candidate lifecycle (JD → chat → score → handover)
 
-**Goal:** a candidate actually applies through the embed widget, gets scored, lands on the recruiter's map. This is Vara's core value delivery.
+**Goal:** a candidate actually applies through the embed widget, gets scored, lands on the recruiter's map. Vara's core value delivery.
 
 **Depends on:** MSG91 port (for ack/decision comms) OR email-only initial (spec allows).
 
 **Backend:**
-- Extend `/embed/chat` from placeholder to real: question generation from JD's must-haves, `vara_chat_turn` writes, `vara_application` state via `vara_transition`
-- Knockout evaluation before scoring
-- Score snapshot creation (`vara_score_snapshot` — metering fires automatically)
-- Closing window state + 3-day timer
+- Extend `/embed/chat` from placeholder to real: question generation from JD's must-haves (uses prompt store: `vara.candidate.ask_next`), `vara_chat_turn` writes, `vara_application` state via `vara_transition`.
+- Knockout evaluation before scoring (deterministic, `actor_type='rule'`).
+- Score snapshot creation (`vara_score_snapshot` — metering fires automatically).
+- Closing window state + 3-day timer (`actor_type='timer'`).
+- On new `vara_score_snapshot`, embed the candidate's profile summary into `profile_embedding` for later silver-medalist lookback.
 
 **Frontend:**
-- Recruiter surfaces the prototype already shows: probability map, closing window, HM handover queue
-- These get wired to real data (`vara_application`, `vara_score_snapshot`, `vara_calibration_signal`)
+- Recruiter surfaces already prototyped: probability map, closing window, HM handover queue.
+- These get wired to real data (`vara_application`, `vara_score_snapshot`, `vara_calibration_signal`).
 
 **Tests:**
-- Full candidate journey: apply on the embed → get acked → recruiter sees on map → advance → HM verdict
+- Full candidate journey: apply on the embed → get acked → recruiter sees on map → advance → HM verdict.
 
-**Gate:** first real candidate goes through end-to-end (Charan or a friend applies to Vikuna's own careers).
+**Gate:** first real candidate goes through end-to-end.
 
 ---
 
@@ -195,49 +190,67 @@ Not phases; things that must be true or done at some point independent of the fl
 **Goal:** publish new global playbooks without SQL, with LLM-assisted authoring, promote tenant-approved Tier-3 playbooks into the registry.
 
 **Backend:**
-- `/agents/vara/playbooks/*` — admin-only CRUD over `vani_domain_pack` payloads
-- LLM authoring endpoint (uses Vikuna's own key, not BYOK)
+- `/agents/vara/playbooks/*` — admin-only CRUD over `vani_domain_pack` payloads.
+- LLM authoring endpoint (uses Vikuna's own key, not BYOK).
+- Recommender: for a new industry we don't have a pack for, nearest-neighbour search across `axes_embedding` on published `vara_family_profile` rows finds the closest fit; recommender says which pack it adapted from + writes a `vara_match_log` row.
 
 **Frontend:**
-- Author form (schema-driven from Vara's playbook shape declaration)
-- LLM draft button
-- Fork existing playbook
-- Version publish/deprecate
+- Author form (schema-driven from Vara's playbook shape declaration).
+- LLM draft button.
+- Fork existing playbook.
+- Version publish/deprecate.
 
 **Gate:** Charan authors + publishes a new playbook (e.g. mining × project manager) from the UI, sees a subsequent tenant activate against it directly.
+
+---
+
+## Calibration Loop — the learning half
+
+Not a numbered phase because it stitches across Phases 5 and 6 rather than sequencing after them. Called out separately because it's the loop that turns Vara from "one-shot decider" into "gets better".
+
+- Calibration proposer watches HM Interview/Pass decisions vs the composite. Systematic over/under-scoring on a component → proposes weight change → human approves → new `vara_scoring_config` version written (append-only per V-14).
+- Family-defaults deriver (Phase 3) is the same shape, one level up.
+- Every proposal that used a semantic match writes `vara_match_log` first.
+
+Both learning loops land in Phase 6 timeframe; the shape is ready.
 
 ---
 
 ## Order of execution — chronological
 
 ```
-Phase 0 · Extend UX for import          (1 turn, no wiring)
-  ↓  Charan signs off complete UX
-Phase 1 · Wire Compose path             (2–3 turns)
-  ↓  Vara goes LIVE from the console for real
+[✅ DONE] Phase 0 · UX preview complete
+[✅ DONE] Phase 1 · Compose path         (Vara LIVE from console for real)
+[✅ DONE] Prompt Store slice             (per-tenant prompt override)
+[✅ DONE] Semantic Layer slice           (pgvector + vara_skill + match_log)
+
+[NEXT]    Phase 2 · Wire Import path + Extractor
+           ↓  first real use of prompts + evals + vara_skill
 [ Rotate 4 keys — Charan, in parallel ]
-[ BYOK encryption — separate workstream, blocks Phase 2 ]
-Phase 2 · Wire Import path              (3–4 turns after LLM stable)
-  ↓
-Phase 3 · Family derivation             (1–2 turns after Phase 2)
-  ↓
-Phase 4 · Install screen                (1–2 turns; can go before Phase 2 if desired)
-  ↓
-Phase 5 · Candidate lifecycle           (largest; multi-phase itself)
-  ↓
-Phase 6 · Playbook agent                (Vikuna's own tool)
+[ BYOK encryption — separate workstream ]
+          Phase 3 · Family derivation    (semantic dedup via vara_skill)
+           ↓
+          Phase 4 · Install screen       (can go earlier if Charan prefers)
+           ↓
+          Phase 5 · Candidate lifecycle  (largest; multi-phase itself)
+           ↓
+          Phase 6 · Playbook agent + Calibration Loop
 ```
 
-**Phase 4 (Install) can jump forward** — it doesn't depend on Phase 2 or 3, only on Phase 1. If you'd rather get "tenants can literally embed Vara on their sites" before "smart importers", swap Phase 4 with Phase 2.
+**Phase 4 (Install) can still jump forward** — only depends on Phase 1, not Phase 2 or 3.
+
+---
 
 ## What NOT to build
 
 Named so nobody tries, per prior conversations:
 - Ingestion of LinkedIn posts (ToS grey area — deferred)
 - Auto-promotion of Tier-3 → registry (user-invoked only, per Charan's rule)
-- Any schema change (extend `vani_domain_pack` payloads; do not add tables)
 - Adjacency taxonomy separate from the pack — lives inside pack payloads
 - "Onboarding as form-filling" pattern — the doorway shape is settled
+- Silent semantic-match decisions — `vara_match_log` writes come BEFORE the outcome commits, not after
+
+---
 
 ## Success criterion for v1
 
@@ -252,4 +265,4 @@ Named so nobody tries, per prior conversations:
 
 ...without SQL, without a curl command, without a Vikuna operator in the loop.
 
-That is Phase 1 + Phase 4. Everything after is compounding.
+That is Phase 1 + Phase 4 + Phase 5. Phase 2/3/6 are compounding value.
