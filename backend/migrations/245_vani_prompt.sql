@@ -64,9 +64,15 @@ CREATE TABLE IF NOT EXISTS vani_prompt (
     (scope = 'tenant' AND tenant_id IS NOT NULL)
   ),
 
-  -- active rows must be approved by someone
-  CONSTRAINT vani_prompt_active_needs_approver CHECK (
-    active = false OR (approved_by IS NOT NULL AND approved_at IS NOT NULL)
+  -- active rows carry an approval timestamp (V-11: human-gated). The
+  -- approver's identity is captured in vani_audit_log.actor_id today —
+  -- vani_prompt.approved_by references vani_user(id), which the JWT does
+  -- not yet resolve to (JWT carries a vn_users id; the vn_user → vani_user
+  -- bridge is deferred, same gap as vara_jd.created_by). When that bridge
+  -- lands the constraint tightens to (approved_by IS NOT NULL AND
+  -- approved_at IS NOT NULL) in a later migration.
+  CONSTRAINT vani_prompt_active_needs_approval_ts CHECK (
+    active = false OR approved_at IS NOT NULL
   ),
 
   -- version uniqueness within a scope (per-tenant for overrides, global for system)

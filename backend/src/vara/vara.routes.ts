@@ -929,7 +929,7 @@ export function createVaraRouter(pool: Pool): Router {
       await client.query(
         `INSERT INTO vani_audit_log (tenant_id, agent_id, actor_type, actor_id, entity, entity_id, action, before, after)
          SELECT $1, a.id, 'human', $2, 'vani_prompt', $3, 'override_activated',
-                '{}'::jsonb, jsonb_build_object('key', $4::text, 'version', $5)
+                '{}'::jsonb, jsonb_build_object('key', $4::text, 'version', $5::int)
            FROM vani_agent a WHERE a.code = 'vara'`,
         [vani.id, auth.user_id, ins.rows[0].id, key, nextVersion],
       );
