@@ -745,5 +745,255 @@ export function createVaraRouter(pool: Pool): Router {
     }
   });
 
+  /* ── GET /api/v1/vara/prompts ─────────────────────────────────────────
+   * Workspace. The Prompt Studio's list view. Returns one row per key
+   * that starts with 'vara.' — currently active system version + the
+   * tenant's active override if any + a version_history summary.
+   *
+   * Scoped by key prefix rather than by JWT role: any authed member of
+   * the tenant can READ; the mutate endpoint below is the one that gets
+   * an admin check when we build multi-role admin. */
+  router.get('/prompts', async (req, res) => {
+    try {
+      const auth = extractJwt(req);
+      if (!auth) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+      const vani = await vaniTenantFor(pool, auth.tenant_id);
+      if (!vani) {
+        res.status(409).json({
+          error: { code: 'TENANT_NOT_PROVISIONED', message: 'Complete the Domain step first' },
+        });
+        return;
+      }
+
+      // System rows visible to everyone (RLS admits tenant_id IS NULL);
+      // tenant rows visible only to matching tenant (RLS). We fetch both
+      // and reshape.
+      const rows = await pool.query(
+        `SELECT key, scope, version, body, variables, active, approved_at, tenant_id
+           FROM vani_prompt
+          WHERE key LIKE 'vara.%'
+          ORDER BY key, scope, version DESC`,
+      );
+
+      // Group by key. For each key: latest active system + latest active
+      // tenant-override (if the tenant is the caller's), plus version counts.
+      interface PromptView {
+        key: string;
+        system: { version: number; body: string; variables: string[] } | null;
+        override: { version: number; body: string; approved_at: string | null } | null;
+        system_versions: number;
+        override_versions: number;
+      }
+      const byKey = new Map<string, PromptView>();
+      for (const r of rows.rows) {
+        const view = byKey.get(r.key) ?? {
+          key: r.key,
+          system: null,
+          override: null,
+          system_versions: 0,
+          override_versions: 0,
+        };
+        if (r.scope === 'system') {
+          view.system_versions += 1;
+          if (r.active && (!view.system || r.version > view.system.version)) {
+            view.system = { version: r.version, body: r.body, variables: r.variables ?? [] };
+          }
+        } else {
+          // r.scope === 'tenant' — RLS already confined to caller's tenant
+          view.override_versions += 1;
+          if (r.active && (!view.override || r.version > view.override.version)) {
+            view.override = {
+              version: r.version,
+              body: r.body,
+              approved_at: r.approved_at ? r.approved_at.toISOString() : null,
+            };
+          }
+        }
+        byKey.set(r.key, view);
+      }
+
+      res.json({ prompts: Array.from(byKey.values()) });
+    } catch (err: any) {
+      console.error('[Vara:prompts:list]', err);
+      res.status(500).json({ error: { code: 'PROMPTS_FAILED', message: 'Could not read prompts' } });
+    }
+  });
+
+  /* ── PATCH /api/v1/vara/prompts/:key ──────────────────────────────────
+   * Workspace. Save a tenant override for one prompt key. In one transaction:
+   *   1. Deactivate any currently-active override for (key, this tenant)
+   *   2. Insert a new tenant row at version = max(prior tenant version)+1
+   *      with active=true, self-approved (MVP; a separate-approver flow
+   *      splits this into save + approve without changing the schema).
+   *
+   * Idempotent by shape: repeating with the SAME body still deactivates
+   * old + inserts a new-version row — which is not strictly a no-op in
+   * the version stream, but is safe (history keeps growing, active flag
+   * ends up on the latest row). A true no-op detection needs a body-hash
+   * comparison; skipped for MVP to keep the SQL small.
+   *
+   * DELETE (clear the override, fall back to system) is a separate call
+   * arriving with the Prompt Studio's "Revert to system" button. */
+  router.patch('/prompts/:key', async (req, res) => {
+    let client: PoolClient | null = null;
+    try {
+      const auth = extractJwt(req);
+      if (!auth) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+      const key = req.params.key;
+      if (!key.startsWith('vara.')) {
+        res.status(400).json({ error: { code: 'INVALID_KEY', message: 'Only vara.* keys are editable here' } });
+        return;
+      }
+      const body = req.body?.body;
+      if (typeof body !== 'string' || body.trim().length < 10) {
+        res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'body is required and must be substantial' } });
+        return;
+      }
+
+      const vani = await vaniTenantFor(pool, auth.tenant_id);
+      if (!vani) {
+        res.status(409).json({
+          error: { code: 'TENANT_NOT_PROVISIONED', message: 'Complete the Domain step first' },
+        });
+        return;
+      }
+
+      // System version must exist for the key — otherwise the tenant is
+      // overriding nothing, and the resolver would still return the
+      // override (which is fine), but there'd be no `variables` contract
+      // to validate against. Refuse loudly so a typo in the key doesn't
+      // silently create a dead override.
+      const sys = await pool.query(
+        `SELECT variables FROM vani_prompt
+          WHERE key = $1 AND scope = 'system' AND active = true
+          ORDER BY version DESC LIMIT 1`,
+        [key],
+      );
+      if (!sys.rows.length) {
+        res.status(404).json({
+          error: { code: 'UNKNOWN_PROMPT_KEY', message: `No system prompt for key "${key}"` },
+        });
+        return;
+      }
+      const systemVars: string[] = sys.rows[0].variables ?? [];
+
+      // Every variable the system contract declares must appear in the
+      // override body (as a {{name}} token). Dropping one would silently
+      // break the caller.
+      for (const v of systemVars) {
+        if (!body.includes(`{{${v}}}`)) {
+          res.status(400).json({
+            error: { code: 'OVERRIDE_MISSING_VARIABLE',
+                     message: `Override drops required variable {{${v}}}` },
+          });
+          return;
+        }
+      }
+
+      client = await pool.connect();
+      await client.query('BEGIN');
+
+      // Deactivate any active tenant override for this key.
+      await client.query(
+        `UPDATE vani_prompt SET active = false
+          WHERE key = $1 AND scope = 'tenant' AND tenant_id = $2 AND active = true`,
+        [key, vani.id],
+      );
+
+      // Bump version = max prior tenant version + 1 (or 1 if none).
+      const nextVerRow = await client.query(
+        `SELECT COALESCE(MAX(version), 0) + 1 AS next_version
+           FROM vani_prompt WHERE key = $1 AND scope = 'tenant' AND tenant_id = $2`,
+        [key, vani.id],
+      );
+      const nextVersion: number = nextVerRow.rows[0].next_version;
+
+      // Insert the new active row. Self-approve for MVP.
+      const ins = await client.query(
+        `INSERT INTO vani_prompt (key, version, scope, tenant_id, body, variables, active, approved_by, approved_at)
+         VALUES ($1, $2, 'tenant', $3, $4, $5::jsonb, true, NULL, now())
+         RETURNING id, version, approved_at`,
+        [key, nextVersion, vani.id, body, JSON.stringify(systemVars)],
+      );
+
+      // approved_by references vani_user(id); JWT carries a vn_users.id
+      // (different spine — same bridge gap called out on vara_jd.created_by).
+      // Same fix: leave null for now, audit_log captures actor_id. Flagged
+      // as one bridge to build together.
+      await client.query(
+        `INSERT INTO vani_audit_log (tenant_id, agent_id, actor_type, actor_id, entity, entity_id, action, before, after)
+         SELECT $1, a.id, 'human', $2, 'vani_prompt', $3, 'override_activated',
+                '{}'::jsonb, jsonb_build_object('key', $4::text, 'version', $5)
+           FROM vani_agent a WHERE a.code = 'vara'`,
+        [vani.id, auth.user_id, ins.rows[0].id, key, nextVersion],
+      );
+
+      await client.query('COMMIT');
+      res.json({ key, version: nextVersion, active: true, approved_at: ins.rows[0].approved_at });
+    } catch (err: any) {
+      if (client) { try { await client.query('ROLLBACK'); } catch { /* ignore */ } }
+      console.error('[Vara:prompts:patch]', err);
+      res.status(500).json({ error: { code: 'PROMPT_SAVE_FAILED', message: 'Could not save prompt override' } });
+    } finally {
+      if (client) client.release();
+    }
+  });
+
+  /* ── DELETE /api/v1/vara/prompts/:key ─────────────────────────────────
+   * Workspace. "Revert to system prompt": deactivate the tenant's active
+   * override. History is preserved (append-only rules stand); resolver
+   * now falls through to the newest system version. */
+  router.delete('/prompts/:key', async (req, res) => {
+    try {
+      const auth = extractJwt(req);
+      if (!auth) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+      const key = req.params.key;
+      if (!key.startsWith('vara.')) {
+        res.status(400).json({ error: { code: 'INVALID_KEY', message: 'Only vara.* keys are editable here' } });
+        return;
+      }
+      const vani = await vaniTenantFor(pool, auth.tenant_id);
+      if (!vani) {
+        res.status(409).json({
+          error: { code: 'TENANT_NOT_PROVISIONED', message: 'Complete the Domain step first' },
+        });
+        return;
+      }
+
+      const upd = await pool.query(
+        `UPDATE vani_prompt SET active = false
+          WHERE key = $1 AND scope = 'tenant' AND tenant_id = $2 AND active = true
+          RETURNING id`,
+        [key, vani.id],
+      );
+      if (!upd.rows.length) {
+        res.status(404).json({ error: { code: 'NO_ACTIVE_OVERRIDE', message: 'No active override to revert' } });
+        return;
+      }
+
+      await pool.query(
+        `INSERT INTO vani_audit_log (tenant_id, agent_id, actor_type, actor_id, entity, entity_id, action, before, after)
+         SELECT $1, a.id, 'human', $2, 'vani_prompt', $3, 'override_reverted',
+                jsonb_build_object('key', $4::text), '{}'::jsonb
+           FROM vani_agent a WHERE a.code = 'vara'`,
+        [vani.id, auth.user_id, upd.rows[0].id, key],
+      );
+
+      res.json({ key, reverted: true });
+    } catch (err: any) {
+      console.error('[Vara:prompts:delete]', err);
+      res.status(500).json({ error: { code: 'PROMPT_REVERT_FAILED', message: 'Could not revert prompt override' } });
+    }
+  });
+
   return router;
 }
