@@ -1,104 +1,122 @@
 /**
- * UX-only mock catalog for Vara onboarding.
+ * UX-only mock catalog for Vara onboarding + first-JD.
  *
- * IMPORTANT — this file is scaffolding for the design review, NOT the shape
- * the real feature will land on. It exists so Charan can navigate the flow
- * end to end and react to it before any backend is wired. The actual data
- * source is vani_domain_pack payloads (per the design doc); this file will
- * be deleted when the recommender lands.
- *
- * The three mock playbooks below are illustrative — they show what a
- * proposal looks like on screen, not what the real seed set will be. That
- * list is Charan's call after this UX is signed off.
+ * Charan's model, 2026-08-17: onboarding is a DOORWAY to JD Studio; family
+ * playbooks are DERIVED from the first JD, not asked upfront. Weights,
+ * knockouts, thresholds live in JD Studio, not in onboarding. This mock
+ * reflects that — the playbook fixtures no longer carry numeric defaults.
  */
 
-export interface AxisWeights {
-  skill: number;
-  availability: number;
-  experience: number;
+export interface RoleFamilySeed {
+  name: string;
+  hint: string; // one-liner shown as chip subtitle
+  suggested_titles: string[]; // pre-fills for the role title input
 }
 
-export interface Knockout {
-  label: string;
-  rule: string; // human-readable; the DB version is a deterministic expression
-}
-
-export interface MockPlaybook {
-  industry: string;
-  role_family: string;
-  tier: 'human_curated' | 'promoted_from_llm' | 'derived';
-  source_note: string; // shown in the UI as "why this playbook"
-  axis_weights: AxisWeights;
-  default_threshold: number;
-  knockouts: Knockout[];
-  jd_skeleton_title: string;
-  comms_tone: string;
-}
-
-/**
- * Charan's tenant industry is Technology & SaaS today (from the Smart Profile
- * seed). Three role families under it, one recommended per landing.
- */
 export const MOCK_TENANT_INDUSTRY = 'Technology & SaaS';
 
-export const MOCK_ROLE_FAMILIES = [
-  'Backend Engineering',
-  'Frontend Engineering',
-  'Product & Design',
-] as const;
-
-export const MOCK_PLAYBOOKS: Record<string, MockPlaybook> = {
-  'Backend Engineering': {
-    industry: 'Technology & SaaS',
-    role_family: 'Backend Engineering',
-    tier: 'human_curated',
-    source_note: 'Verified with 12 similar tenants',
-    axis_weights: { skill: 55, availability: 20, experience: 25 },
-    default_threshold: 30,
-    knockouts: [
-      { label: 'Notice period', rule: '≤ 60 days' },
-      { label: 'Comp band', rule: '≤ ₹45 L' },
-      { label: 'Experience floor', rule: '≥ 4 years' },
-      { label: 'Work authorization', rule: 'India' },
-    ],
-    jd_skeleton_title: 'Senior Backend Engineer',
-    comms_tone: 'Direct, engineering-first — respects candidate time',
-  },
-  'Frontend Engineering': {
-    industry: 'Technology & SaaS',
-    role_family: 'Frontend Engineering',
-    tier: 'human_curated',
-    source_note: 'Verified with 8 similar tenants',
-    axis_weights: { skill: 50, availability: 20, experience: 30 },
-    default_threshold: 28,
-    knockouts: [
-      { label: 'Notice period', rule: '≤ 60 days' },
-      { label: 'Comp band', rule: '≤ ₹40 L' },
-      { label: 'Portfolio', rule: 'required (link or artefact)' },
-    ],
-    jd_skeleton_title: 'Senior Frontend Engineer',
-    comms_tone: 'Direct, engineering-first — respects candidate time',
-  },
-  'Product & Design': {
-    industry: 'Technology & SaaS',
-    role_family: 'Product & Design',
-    tier: 'human_curated',
-    source_note: 'Verified with 6 similar tenants',
-    axis_weights: { skill: 40, availability: 20, experience: 40 },
-    default_threshold: 32,
-    knockouts: [
-      { label: 'Notice period', rule: '≤ 60 days' },
-      { label: 'Portfolio', rule: 'required' },
-      { label: 'Ownership', rule: 'shipped ≥ 2 products end-to-end' },
-    ],
-    jd_skeleton_title: 'Senior Product Designer',
-    comms_tone: 'Warm, portfolio-forward — invites craft conversations',
-  },
+/**
+ * What Smart Profile would give the inheritance card in the real build.
+ * The visible surface is deliberately factual and visual — colors, name,
+ * a verbatim quote — NOT self-describing adjectives like "brand voice".
+ */
+export const MOCK_TENANT_BRAND = {
+  name: 'Vikuna Technologies',
+  industry: 'Technology & SaaS',
+  domain: 'vikuna.io · workspace',
+  colors: { primary: '#c9a227', secondary: '#141414', accent: '#eae6da' },
+  site_quote: 'Rules reject. Models rank. Humans decide.',
 };
 
+export const MOCK_ROLE_FAMILIES: RoleFamilySeed[] = [
+  {
+    name: 'Backend Engineering',
+    hint: 'Ships services, owns data models',
+    suggested_titles: ['Senior Backend Engineer', 'Staff Backend Engineer', 'Backend Tech Lead'],
+  },
+  {
+    name: 'Frontend Engineering',
+    hint: 'Ships product surfaces end-to-end',
+    suggested_titles: ['Senior Frontend Engineer', 'Frontend Tech Lead'],
+  },
+  {
+    name: 'Product & Design',
+    hint: 'Owns problem framing, ships craft',
+    suggested_titles: ['Senior Product Designer', 'Product Manager'],
+  },
+];
+
 /**
- * Session-scoped "done" flag — this lives in sessionStorage for the UX
- * preview so Charan can navigate the after-onboarding state without any
- * backend write. Cleared on tab close.
+ * The mock JD Studio composer script — Vara's questions and the tenant's
+ * pickable answers. In the real build this is an LLM conversation; in the
+ * preview it is a scripted flow so Charan can click through the shape.
+ *
+ * Each step's picks contribute STRUCTURED FACTS to the JD panel on the right
+ * — the "playbook controls" (weights, knockouts, threshold) emerge here, not
+ * in onboarding.
+ */
+export interface JdStudioStep {
+  ask: string;
+  chips: { label: string; contributes: Record<string, unknown> }[];
+}
+
+export function jdScriptFor(family: string, title: string): JdStudioStep[] {
+  // Family-specific colouring is where real seed playbooks would diverge.
+  // For the preview, one script covers all three families sensibly.
+  return [
+    {
+      ask: `Great — let's shape ${title}. In one line, what does this role do?`,
+      chips: [
+        { label: `Ships ${family.toLowerCase()} for our platform`, contributes: { one_liner: `Ships ${family.toLowerCase()} for our platform` } },
+        { label: 'Owns a domain end-to-end', contributes: { one_liner: 'Owns a domain end-to-end' } },
+        { label: 'Ships product features across the stack', contributes: { one_liner: 'Ships product features across the stack' } },
+      ],
+    },
+    {
+      ask: 'What must be true for someone to succeed? Pick the strongest signal — I will weight it heaviest.',
+      chips: [
+        { label: 'TypeScript / Node.js in production', contributes: { top_musthave: { name: 'TypeScript + Node.js', weight: 40 } } },
+        { label: 'PostgreSQL row-level security', contributes: { top_musthave: { name: 'PostgreSQL + RLS', weight: 40 } } },
+        { label: 'Distributed systems experience', contributes: { top_musthave: { name: 'Distributed systems', weight: 40 } } },
+      ],
+    },
+    {
+      ask: 'Add up to two more must-haves — I will weight them behind the first.',
+      chips: [
+        { label: 'Cloud deploy (AWS/GCP)', contributes: { addl_musthave: { name: 'Cloud deploy', weight: 25 } } },
+        { label: 'Testing culture (unit + integration)', contributes: { addl_musthave: { name: 'Testing rigor', weight: 25 } } },
+        { label: '5+ years experience', contributes: { addl_musthave: { name: '≥ 5 yrs experience', weight: 20 } } },
+      ],
+    },
+    {
+      ask: 'Notice period tolerance? This becomes a knockout — deterministic, never scored.',
+      chips: [
+        { label: '≤ 30 days', contributes: { knockout: { label: 'Notice period', rule: '≤ 30 days' } } },
+        { label: '≤ 60 days', contributes: { knockout: { label: 'Notice period', rule: '≤ 60 days' } } },
+        { label: 'Flexible — no knockout', contributes: {} },
+      ],
+    },
+    {
+      ask: 'Compensation band? I will state it up front in the chat so candidates know.',
+      chips: [
+        { label: '₹25 – 35 L', contributes: { knockout: { label: 'Comp band', rule: '≤ ₹35 L' }, band: '₹25 – 35 L' } },
+        { label: '₹32 – 45 L', contributes: { knockout: { label: 'Comp band', rule: '≤ ₹45 L' }, band: '₹32 – 45 L' } },
+        { label: '₹40 – 60 L', contributes: { knockout: { label: 'Comp band', rule: '≤ ₹60 L' }, band: '₹40 – 60 L' } },
+      ],
+    },
+    {
+      ask: 'Handover threshold — how confident does the score need to be before I hand a candidate to your team?',
+      chips: [
+        { label: 'Strict (35%)', contributes: { threshold: 35 } },
+        { label: 'Standard (30%) — my default', contributes: { threshold: 30 } },
+        { label: 'Wider (25%)', contributes: { threshold: 25 } },
+      ],
+    },
+  ];
+}
+
+/**
+ * Session-scoped "live" flag — set when the first JD is published in the
+ * UX preview, cleared on tab close.
  */
 export const UX_DONE_KEY = 'vara-onboarding-ux-done';
