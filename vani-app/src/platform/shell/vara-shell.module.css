@@ -1,0 +1,60 @@
+/* Vara workspace shell — the top bar over the same skill Shell. */
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--color-bg);
+  position: sticky; top: 0; z-index: 20;
+}
+
+.back {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-fg);
+  cursor: pointer;
+  font-size: 12px;
+  text-decoration: none;
+}
+.back:hover { border-color: var(--gold); }
+
+.crumbs {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--color-muted); letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.crumbCurr { color: var(--gold); }
+
+.persona {
+  margin-left: auto;
+  display: flex; gap: 4px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  padding: 3px;
+  background: var(--color-bg);
+}
+.personaBtn {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 12px;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.personaBtn:hover { color: var(--color-fg); }
+.personaBtnActive {
+  background: var(--gold);
+  color: #141414;
+}
+.personaDot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor;
+}

@@ -17,6 +17,7 @@
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { MOCK_ROLE_FAMILIES, MOCK_TENANT_BRAND } from '../mock-data';
+import Link from 'next/link';
 import u from '@/platform/shell/ui.module.css';
 import s from '../vara-onboarding.module.css';
 
@@ -33,7 +34,12 @@ export default function VaraOnboardingRunner() {
   const ready = family !== null && title.trim().length > 3;
 
   function toStudio() {
-    const q = new URLSearchParams({ family: family!, title: title.trim() });
+    const q = new URLSearchParams({ family: family!, title: title.trim(), mode: 'compose' });
+    router.push(`/agents/vara/jd-studio?${q.toString()}`);
+  }
+
+  function toImport() {
+    const q = new URLSearchParams({ family: family!, title: title.trim(), mode: 'import' });
     router.push(`/agents/vara/jd-studio?${q.toString()}`);
   }
 
@@ -157,19 +163,44 @@ export default function VaraOnboardingRunner() {
         )}
       </div>
 
-      <div className={s.actions}>
-        <button
-          type="button"
-          className={s.primary}
-          onClick={toStudio}
-          disabled={!ready}
-        >
-          Compose this JD with Vara →
-        </button>
-        <span className={s.note}>
-          JD Studio opens next. Publish the JD there and Vara goes live for
-          this workspace.
-        </span>
+      {/* Choice — the two doorways into JD Studio ─────────────────── */}
+      <div className={s.card}>
+        <div className={s.cardHead}>
+          <h2 className={s.cardTitle}>How do you want to build this JD?</h2>
+          <span className={s.cardMeta}>both paths end at the same Publish</span>
+        </div>
+        <div className={s.familyList}>
+          <button
+            type="button"
+            className={s.familyItem}
+            onClick={toStudio}
+            disabled={!ready}
+            style={{ opacity: ready ? 1 : 0.45 }}
+          >
+            <div className={s.familyName}>Compose with Vara →</div>
+            <div className={s.familyHint}>
+              A short chat with Vara. Answer 5 questions, watch the JD build
+              itself on the right. ~4 minutes.
+            </div>
+          </button>
+          <button
+            type="button"
+            className={s.familyItem}
+            onClick={toImport}
+            disabled={!ready}
+            style={{ opacity: ready ? 1 : 0.45 }}
+          >
+            <div className={s.familyName}>Import existing JDs →</div>
+            <div className={s.familyHint}>
+              Drag a docx or pdf. Vara extracts must-haves, knockouts and band
+              with evidence — you review, tune, publish.
+            </div>
+          </button>
+        </div>
+        <p className={s.note} style={{ marginTop: 10 }}>
+          Publishing a JD (either way) takes Vara live for your workspace.
+          The second JD in the same family becomes the seed for family defaults.
+        </p>
       </div>
     </div>
   );

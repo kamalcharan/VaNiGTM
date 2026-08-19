@@ -120,3 +120,90 @@ export function jdScriptFor(family: string, title: string): JdStudioStep[] {
  * UX preview, cleared on tab close.
  */
 export const UX_DONE_KEY = 'vara-onboarding-ux-done';
+
+/**
+ * Mock extraction result — what the LLM would produce for an uploaded JD.
+ * Facts + provenance ("from your file") + confidence per field. Used to
+ * populate the import review panel deterministically for the UX preview.
+ */
+export interface Provenance {
+  source: string;    // e.g. "senior-backend-eng.pdf, page 1"
+  span?: string;     // e.g. "line 24: 'Notice period ≤ 60 days'"
+  confidence: 'high' | 'medium' | 'low';
+}
+
+export interface ExtractedFact<T> {
+  value: T;
+  from: Provenance;
+}
+
+export interface MockExtractedJd {
+  filename: string;
+  role_summary: ExtractedFact<string>;
+  musthaves: ExtractedFact<{ name: string; weight: number }>[];
+  knockouts: ExtractedFact<{ label: string; rule: string }>[];
+  band: ExtractedFact<string> | null;
+  threshold_suggested: number;
+}
+
+export function mockExtractionFor(filename: string, family: string, title: string): MockExtractedJd {
+  const base = filename.split('.')[0] || 'existing-jd';
+  const isBackend = family === 'Backend Engineering';
+  return {
+    filename,
+    role_summary: {
+      value: `Ships ${family.toLowerCase()} for the platform end to end`,
+      from: { source: `${base}, page 1`, span: 'first paragraph', confidence: 'medium' },
+    },
+    musthaves: isBackend ? [
+      {
+        value: { name: 'TypeScript + Node.js', weight: 40 },
+        from: { source: `${base}, page 2`, span: '"5+ years TypeScript / Node.js"', confidence: 'high' },
+      },
+      {
+        value: { name: 'PostgreSQL row-level security', weight: 25 },
+        from: { source: `${base}, page 2`, span: '"production RLS experience"', confidence: 'high' },
+      },
+      {
+        value: { name: 'Distributed systems', weight: 20 },
+        from: { source: `${base}, page 2`, span: '"has designed distributed systems"', confidence: 'medium' },
+      },
+      {
+        value: { name: 'Cloud deploy (AWS/GCP)', weight: 15 },
+        from: { source: `${base}, page 2`, span: 'nice-to-have list', confidence: 'low' },
+      },
+    ] : [
+      {
+        value: { name: `Senior ${family} craft`, weight: 40 },
+        from: { source: `${base}, page 1`, span: 'first requirement', confidence: 'high' },
+      },
+      {
+        value: { name: '5+ years experience', weight: 30 },
+        from: { source: `${base}, page 2`, span: '"5+ years"', confidence: 'high' },
+      },
+      {
+        value: { name: 'Team leadership', weight: 20 },
+        from: { source: `${base}, page 3`, span: 'nice-to-have', confidence: 'medium' },
+      },
+    ],
+    knockouts: [
+      {
+        value: { label: 'Notice period', rule: '≤ 60 days' },
+        from: { source: `${base}, page 3`, span: '"immediate joiners preferred, ≤ 60 days"', confidence: 'high' },
+      },
+      {
+        value: { label: 'Work authorization', rule: 'India' },
+        from: { source: `${base}, page 3`, span: '"India work authorization required"', confidence: 'high' },
+      },
+    ],
+    band: {
+      value: isBackend ? '₹32–45 L' : '₹25–38 L',
+      from: { source: `${base}, page 1`, span: 'salary line', confidence: 'high' },
+    },
+    threshold_suggested: 30,
+  };
+}
+
+/** Session-scoped: how many JDs a tenant has published in the preview so
+ *  the "apply as family default?" prompt can fire at the right moment. */
+export const UX_PUBLISHED_JDS_KEY = 'vara-ux-published-jds';

@@ -18,7 +18,8 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useMemo, useState } from 'react';
-import { jdScriptFor, UX_DONE_KEY } from '../mock-data';
+import { jdScriptFor, UX_DONE_KEY, UX_PUBLISHED_JDS_KEY } from '../mock-data';
+import { JdImport } from './JdImport';
 import u from '@/platform/shell/ui.module.css';
 import s from '../vara-onboarding.module.css';
 
@@ -66,6 +67,7 @@ function JdStudioInner() {
     { who: 'v', text: script[0].ask },
   ]);
   const [published, setPublished] = useState(false);
+  const [familyPrompt, setFamilyPrompt] = useState(false);
 
   const current = stepIdx < script.length ? script[stepIdx] : null;
   const canPublish = stepIdx >= script.length && (facts.musthaves.length > 0);
@@ -91,31 +93,85 @@ function JdStudioInner() {
   }
 
   function publish() {
+    let list: { family: string; title: string }[] = [];
     try {
+      list = JSON.parse(sessionStorage.getItem(UX_PUBLISHED_JDS_KEY) || '[]');
+    } catch { /* ignore */ }
+    list.push({ family, title });
+    try {
+      sessionStorage.setItem(UX_PUBLISHED_JDS_KEY, JSON.stringify(list));
       sessionStorage.setItem(UX_DONE_KEY, '1');
-    } catch {
-      /* private mode */
-    }
+    } catch { /* private mode */ }
     setPublished(true);
-    setTimeout(() => router.replace('/agents/vara'), 1800);
+    const secondInFamily = list.filter((j) => j.family === family).length >= 2;
+    if (secondInFamily) {
+      setFamilyPrompt(true);
+    } else {
+      setTimeout(() => router.replace('/agents/vara'), 1800);
+    }
+  }
+
+  function acceptDerivation() {
+    router.replace('/agents/vara');
   }
 
   if (published) {
     return (
       <div className={s.wrap}>
-        <div className={s.doneCard}>
-          <h1 className={s.doneTitle}>Vara is live for your workspace</h1>
-          <p className={s.doneSub}>
-            {title} is now the first role in the {family} family. Redirecting…
-          </p>
+        {familyPrompt ? (
+          <div className={s.card} style={{ borderColor: 'var(--gold)' }}>
+            <div className={s.cardHead}>
+              <h2 className={s.cardTitle}>Ready to seed defaults for {family}</h2>
+              <span className={s.cardMeta}>from 2 of 2 JDs in this family</span>
+            </div>
+            <p className={s.cardWhat}>
+              The must-haves that appeared in both JDs become family defaults;
+              the knockouts that appeared in both become always-applied. The
+              next JD you add in {family} will inherit these — you can still
+              tune per-JD.
+            </p>
+            <div className={s.actions}>
+              <button type="button" className={s.primary} onClick={acceptDerivation}>
+                Apply as {family} defaults
+              </button>
+              <button type="button" className={s.ghost} onClick={() => router.replace('/agents/vara')}>
+                Skip — keep JDs independent
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className={s.doneCard}>
+            <h1 className={s.doneTitle}>Vara is live for your workspace</h1>
+            <p className={s.doneSub}>
+              {title} is now the first role in the {family} family. Redirecting…
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const mode = params.get('mode') === 'import' ? 'import' : 'compose';
+
+  if (mode === 'import') {
+    return (
+      <div className={s.wrap}>
+        <div className={u.eyebrow}>// AGENTS · VARA · JD STUDIO · IMPORT</div>
+        <h1 className={u.h1}>{title}</h1>
+        <div className={s.uxBanner}>
+          <b>Design preview.</b> Deterministic mock extraction — the real one
+          runs a fenced LLM stage that emits evidence spans and confidence
+          per field. Drop any file; the preview populates a fixture so you
+          can see the review pattern with provenance.
         </div>
+        <JdImport family={family} title={title} />
       </div>
     );
   }
 
   return (
     <div className={s.wrap}>
-      <div className={u.eyebrow}>// AGENTS · VARA · JD STUDIO</div>
+      <div className={u.eyebrow}>// AGENTS · VARA · JD STUDIO · COMPOSE</div>
       <h1 className={u.h1}>{title}</h1>
 
       <div className={s.uxBanner}>
