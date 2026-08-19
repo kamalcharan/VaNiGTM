@@ -22,6 +22,8 @@
  */
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import Link from 'next/link';
+import { UX_DONE_KEY } from '@/skills/vara-onboarding/mock-data';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
@@ -47,6 +49,7 @@ export default function VaraLanding() {
   const qc = useQueryClient();
   const { showToast } = useToast();
   const [gateOpen, setGateOpen] = useState(false);
+  const [uxDone, setUxDone] = useState(false);
   const [phrase, setPhrase] = useState('');
   const [checking, setChecking] = useState(false);
 
@@ -92,6 +95,16 @@ export default function VaraLanding() {
     [checking, phrase, qc, showToast],
   );
 
+  // UX preview: sessionStorage flag set by the onboarding wizard.
+  useEffect(() => {
+    function read() {
+      try { setUxDone(sessionStorage.getItem(UX_DONE_KEY) === '1'); } catch { /* private mode */ }
+    }
+    read();
+    window.addEventListener('focus', read);
+    return () => window.removeEventListener('focus', read);
+  }, []);
+
   // The demo loops via its own reload; remount it if the iframe ever dies.
   const [demoKey, setDemoKey] = useState(0);
   useEffect(() => {
@@ -122,15 +135,23 @@ export default function VaraLanding() {
           <DataBoundary query={state} label="Vara's state" skeleton={<SkeletonRows rows={1} />}>
             {(d: VaraState) => (
               <>
-                {d.subscription === 'live' || d.subscription === 'activating' ? (
+                {d.subscription === 'live' || uxDone ? (
                   <div className={s.stubNote}>
-                    <span className={`${u.tag} ${u.tagOk}`}>
-                      {d.subscription === 'live' ? 'Live' : 'Code accepted'}
-                    </span>
+                    <span className={`${u.tag} ${u.tagOk}`}>Live</span>
                     <p>
-                      Vara onboarding begins here — the flow is being designed
-                      and lands next. Nothing else to do yet.
+                      Vara is live for your workspace. Install (paste the
+                      snippet on your site) arrives on this page next.
                     </p>
+                  </div>
+                ) : d.subscription === 'activating' ? (
+                  <div className={s.stubNote}>
+                    <span className={`${u.tag} ${u.tagOk}`}>Code accepted</span>
+                    <p>One step left: pick a role family and approve Vara's
+                      recommended playbook.</p>
+                    <Link href="/agents/vara/onboarding" className={s.activate}
+                      style={{ display: 'inline-flex', alignItems: 'center', marginTop: 10, textDecoration: 'none' }}>
+                      Continue setup →
+                    </Link>
                   </div>
                 ) : d.subscription === 'unprovisioned' ? (
                   <div className={s.stubNote}>
