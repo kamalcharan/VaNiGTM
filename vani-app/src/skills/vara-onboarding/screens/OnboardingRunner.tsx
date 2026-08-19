@@ -15,12 +15,19 @@
  */
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useMemo, useState } from 'react';
-import { MOCK_ROLE_FAMILIES, MOCK_TENANT_BRAND } from '../mock-data';
-import Link from 'next/link';
+import {
+  MOCK_ROLE_FAMILIES, MOCK_TENANT_BRAND,
+  readPublishedJds, UX_DRAFT_KEY,
+  type PublishedJd, type DraftJd,
+} from '../mock-data';
 import u from '@/platform/shell/ui.module.css';
 import s from '../vara-onboarding.module.css';
+
+function newId(): string {
+  return `jd-${Math.floor(performance.now() * 1000).toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`;
+}
 
 function VaraOnboardingRunnerInner() {
   const router = useRouter();
@@ -29,6 +36,52 @@ function VaraOnboardingRunnerInner() {
   const [title, setTitle] = useState('');
 
   const emptyMode = useSearchParams().get('empty') === '1';
+
+  // Published-JDs list — hydrated from sessionStorage on mount, kept fresh
+  // when the tab regains focus (returning from JD Studio after a publish).
+  // Latest version per identity so v2 supersedes v1 in the visible list;
+  // the original v1 still exists in the append-only store, honouring V-14.
+  const [published, setPublished] = useState<PublishedJd[]>([]);
+  useEffect(() => {
+    function refresh() {
+      const all = readPublishedJds();
+      const latest = new Map<string, PublishedJd>();
+      for (const jd of all) {
+        const cur = latest.get(jd.id);
+        if (!cur || jd.version > cur.version) latest.set(jd.id, jd);
+      }
+      setPublished(Array.from(latest.values()));
+    }
+    refresh();
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
+  }, []);
+
+  function duplicate(jd: PublishedJd) {
+    const d: DraftJd = {
+      id: newId(),           // brand-new identity — publishes as v1 of a new JD
+      family: jd.family,
+      title: `${jd.title} (copy)`,
+      facts: jd.facts,
+      mode: 'duplicate',
+      baseVersion: jd.version,
+    };
+    try { sessionStorage.setItem(UX_DRAFT_KEY, JSON.stringify(d)); } catch { /* private mode */ }
+    router.push('/agents/vara/jd-studio?mode=compose');
+  }
+
+  function edit(jd: PublishedJd) {
+    const d: DraftJd = {
+      id: jd.id,             // same identity — publishes as v+1 of the same JD
+      family: jd.family,
+      title: jd.title,
+      facts: jd.facts,
+      mode: 'edit',
+      baseVersion: jd.version,
+    };
+    try { sessionStorage.setItem(UX_DRAFT_KEY, JSON.stringify(d)); } catch { /* private mode */ }
+    router.push('/agents/vara/jd-studio?mode=compose');
+  }
   // Empty mode simulates a fresh industry with NO seeded playbooks — the
   // list of families is empty and Other is the only path. In Phase 1 this
   // is what a tenant sees when their business_profile.industry has no
@@ -69,6 +122,47 @@ function VaraOnboardingRunnerInner() {
         backend yet; waiting on your sign-off before the recommender and
         writes are wired.
       </div>
+
+      {/* Your published JDs — Duplicate / Edit ─────────────────────── */}
+      {published.length > 0 && (
+        <div className={s.card}>
+          <div className={s.cardHead}>
+            <h2 className={s.cardTitle}>Your published JDs</h2>
+            <span className={s.cardMeta}>{published.length} JD{published.length === 1 ? '' : 's'} live</span>
+          </div>
+          <p className={s.cardWhat}>
+            <b>Duplicate</b> mints a new JD (v1) from the same starting facts —
+            good for a near-neighbour role. <b>Edit</b> keeps the same JD identity
+            and publishes as v{'{n+1}'}; older versions stay honest in the
+            history per the append-only rule.
+          </p>
+          <div className={s.jdList}>
+            {published.map((jd) => (
+              <div key={jd.id} className={s.jdRow}>
+                <div className={s.jdRowMain}>
+                  <div className={s.jdRowTitle}>
+                    {jd.title}{' '}
+                    <span className={s.jdRowVer}>v{jd.version}</span>
+                  </div>
+                  <div className={s.jdRowMeta}>
+                    {jd.family} · {jd.facts.musthaves.length} must-have{jd.facts.musthaves.length === 1 ? '' : 's'}
+                    {' · '}{jd.facts.knockouts.length} knockout{jd.facts.knockouts.length === 1 ? '' : 's'}
+                    {jd.facts.band ? <> · {jd.facts.band}</> : null}
+                  </div>
+                </div>
+                <div className={s.jdRowActions}>
+                  <button type="button" className={s.ghost} onClick={() => duplicate(jd)}>
+                    Duplicate
+                  </button>
+                  <button type="button" className={s.ghost} onClick={() => edit(jd)}>
+                    Edit → v{jd.version + 1}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Inheritance — visual, not verbal ─────────────────────────────── */}
       <div className={s.card}>

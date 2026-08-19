@@ -205,5 +205,126 @@ export function mockExtractionFor(filename: string, family: string, title: strin
 }
 
 /** Session-scoped: how many JDs a tenant has published in the preview so
- *  the "apply as family default?" prompt can fire at the right moment. */
+ *  the "apply as family default?" prompt can fire at the right moment.
+ *  Facts are carried so Duplicate/Edit can prefill JD Studio and so the
+ *  family-defaults diff has real content to intersect. */
 export const UX_PUBLISHED_JDS_KEY = 'vara-ux-published-jds';
+
+/** Session-scoped: a JD payload the composer picks up when the tenant
+ *  clicks Duplicate or Edit on the doorway list. Composer clears it after
+ *  hydrating so a refresh doesn't re-hydrate stale state. */
+export const UX_DRAFT_KEY = 'vara-ux-jd-draft';
+
+export interface PublishedFacts {
+  one_liner?: string;
+  band?: string;
+  threshold?: number;
+  musthaves: { name: string; weight: number }[];
+  knockouts: { label: string; rule: string }[];
+}
+
+export interface PublishedJd {
+  id: string;       // stable per JD identity; Duplicate mints a new one, Edit reuses
+  family: string;
+  title: string;
+  version: number;  // starts at 1; Edit → publish becomes v2, v3…
+  facts: PublishedFacts;
+}
+
+export interface DraftJd {
+  id: string;             // reused on Edit (produces v+1), fresh on Duplicate (v1 of new JD)
+  family: string;
+  title: string;
+  facts: PublishedFacts;
+  mode: 'duplicate' | 'edit';
+  baseVersion: number;    // the version being copied from; edits publish as baseVersion+1
+}
+
+export function readPublishedJds(): PublishedJd[] {
+  try {
+    const raw = sessionStorage.getItem(UX_PUBLISHED_JDS_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw) as unknown;
+    if (!Array.isArray(arr)) return [];
+    // Legacy shape ({family,title} only) — coerce so an older session doesn't crash the UI.
+    return arr.map((r, i) => {
+      const row = r as Partial<PublishedJd> & { family?: string; title?: string };
+      return {
+        id: row.id ?? `legacy-${i}`,
+        family: row.family ?? 'Unknown',
+        title: row.title ?? 'Untitled',
+        version: row.version ?? 1,
+        facts: row.facts ?? { musthaves: [], knockouts: [] },
+      };
+    });
+  } catch { return []; }
+}
+
+export function writePublishedJds(list: PublishedJd[]) {
+  try { sessionStorage.setItem(UX_PUBLISHED_JDS_KEY, JSON.stringify(list)); } catch { /* private mode */ }
+}
+
+/**
+ * Family playbook derivation: given every JD published in a family, take
+ * the must-haves that appear across ALL of them (intersection by name;
+ * weight is the arithmetic mean) and the knockouts that appear across ALL
+ * of them (intersection by label). Threshold defaults to the arithmetic
+ * mean of the JDs' thresholds. Real spec is statistical/frequency-weighted
+ * over N JDs; the intersection is the preview approximation that shows
+ * the pattern honestly with N=2.
+ */
+export interface DerivedFamilyDefaults {
+  musthaves: { name: string; weight: number; in: number; of: number }[];
+  knockouts: { label: string; rule: string; in: number; of: number }[];
+  threshold?: number;
+  band_range?: string;
+}
+
+export function deriveFamilyDefaults(jds: PublishedJd[]): DerivedFamilyDefaults {
+  if (jds.length === 0) return { musthaves: [], knockouts: [] };
+  const n = jds.length;
+  const mustCounts = new Map<string, { in: number; weights: number[] }>();
+  const knockCounts = new Map<string, { in: number; rules: string[] }>();
+  for (const jd of jds) {
+    const seenM = new Set<string>();
+    for (const m of jd.facts.musthaves) {
+      if (seenM.has(m.name)) continue;
+      seenM.add(m.name);
+      const cur = mustCounts.get(m.name) ?? { in: 0, weights: [] };
+      cur.in += 1;
+      cur.weights.push(m.weight);
+      mustCounts.set(m.name, cur);
+    }
+    const seenK = new Set<string>();
+    for (const k of jd.facts.knockouts) {
+      if (seenK.has(k.label)) continue;
+      seenK.add(k.label);
+      const cur = knockCounts.get(k.label) ?? { in: 0, rules: [] };
+      cur.in += 1;
+      cur.rules.push(k.rule);
+      knockCounts.set(k.label, cur);
+    }
+  }
+  const musthaves = Array.from(mustCounts.entries())
+    .filter(([, v]) => v.in === n)
+    .map(([name, v]) => ({
+      name,
+      weight: Math.round(v.weights.reduce((a, b) => a + b, 0) / v.weights.length),
+      in: v.in,
+      of: n,
+    }))
+    .sort((a, b) => b.weight - a.weight);
+  const knockouts = Array.from(knockCounts.entries())
+    .filter(([, v]) => v.in === n)
+    .map(([label, v]) => ({
+      label,
+      rule: v.rules[0], // pick the first — real spec would pick the most permissive
+      in: v.in,
+      of: n,
+    }));
+  const thresholds = jds.map((j) => j.facts.threshold).filter((t): t is number => typeof t === 'number');
+  const threshold = thresholds.length ? Math.round(thresholds.reduce((a, b) => a + b, 0) / thresholds.length) : undefined;
+  const bands = jds.map((j) => j.facts.band).filter((b): b is string => typeof b === 'string');
+  const band_range = bands.length ? bands.join(' · ') : undefined;
+  return { musthaves, knockouts, threshold, band_range };
+}

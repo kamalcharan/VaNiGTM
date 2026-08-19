@@ -17,21 +17,23 @@
  */
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useMemo, useState } from 'react';
-import { jdScriptFor, UX_DONE_KEY, UX_PUBLISHED_JDS_KEY } from '../mock-data';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import {
+  jdScriptFor, UX_DONE_KEY, UX_DRAFT_KEY,
+  readPublishedJds, writePublishedJds, deriveFamilyDefaults,
+  type DraftJd, type PublishedFacts, type PublishedJd, type DerivedFamilyDefaults,
+} from '../mock-data';
 import { JdImport } from './JdImport';
 import u from '@/platform/shell/ui.module.css';
 import s from '../vara-onboarding.module.css';
 
-interface JdFacts {
-  one_liner?: string;
-  band?: string;
-  threshold?: number;
-  musthaves: { name: string; weight: number }[];
-  knockouts: { label: string; rule: string }[];
-}
+type JdFacts = PublishedFacts;
 
 const EMPTY: JdFacts = { musthaves: [], knockouts: [] };
+
+function newId(): string {
+  return `jd-${Math.floor(performance.now() * 1000).toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`;
+}
 
 function mergeFacts(prev: JdFacts, contrib: Record<string, unknown>): JdFacts {
   const next: JdFacts = {
@@ -57,8 +59,27 @@ function mergeFacts(prev: JdFacts, contrib: Record<string, unknown>): JdFacts {
 function JdStudioInner() {
   const router = useRouter();
   const params = useSearchParams();
-  const family = params.get('family') ?? 'Backend Engineering';
-  const title = params.get('title') ?? 'Senior Engineer';
+
+  // Draft (Duplicate / Edit) is hydrated inside an effect — sessionStorage
+  // is not available on the SSR pass. So the initial render works from URL
+  // params alone; the draft's family/title/facts are grafted on afterwards.
+  const [draft, setDraft] = useState<DraftJd | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(UX_DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw) as DraftJd;
+        setDraft(d);
+        // Clear immediately so a refresh doesn't re-apply stale draft state.
+        sessionStorage.removeItem(UX_DRAFT_KEY);
+      }
+    } catch { /* private mode */ }
+    setHydrated(true);
+  }, []);
+
+  const family = draft?.family ?? params.get('family') ?? 'Backend Engineering';
+  const title = draft?.title ?? params.get('title') ?? 'Senior Engineer';
 
   const script = useMemo(() => jdScriptFor(family, title), [family, title]);
   const [stepIdx, setStepIdx] = useState(0);
@@ -68,6 +89,24 @@ function JdStudioInner() {
   ]);
   const [published, setPublished] = useState(false);
   const [familyPrompt, setFamilyPrompt] = useState(false);
+  const [familyJds, setFamilyJds] = useState<PublishedJd[] | null>(null);
+  const [derived, setDerived] = useState<DerivedFamilyDefaults | null>(null);
+
+  // Draft hydration: once a draft lands, prefill facts + jump the transcript
+  // to the "conversation complete" state so the tenant can tune-and-publish
+  // rather than answer the script from scratch. Real build will hand the
+  // draft to the LLM as prior context; this preview just skips ahead.
+  useEffect(() => {
+    if (!draft) return;
+    setFacts(draft.facts);
+    setStepIdx(script.length);
+    setTranscript([
+      { who: 'v', text:
+        draft.mode === 'edit'
+          ? `Editing ${draft.title} — publishing again will become v${draft.baseVersion + 1}. Tune anything on the right, or type below to change a section.`
+          : `Duplicated from ${draft.title} — this will publish as a brand-new v1. Tune anything on the right, or say what you want changed.` },
+    ]);
+  }, [draft, script.length]);
 
   const current = stepIdx < script.length ? script[stepIdx] : null;
   const canPublish = stepIdx >= script.length && (facts.musthaves.length > 0);
@@ -93,48 +132,132 @@ function JdStudioInner() {
   }
 
   function publish() {
-    let list: { family: string; title: string }[] = [];
-    try {
-      list = JSON.parse(sessionStorage.getItem(UX_PUBLISHED_JDS_KEY) || '[]');
-    } catch { /* ignore */ }
-    list.push({ family, title });
-    try {
-      sessionStorage.setItem(UX_PUBLISHED_JDS_KEY, JSON.stringify(list));
-      sessionStorage.setItem(UX_DONE_KEY, '1');
-    } catch { /* private mode */ }
+    const existing = readPublishedJds();
+    let next: PublishedJd[];
+    let publishedVersion: number;
+    if (draft?.mode === 'edit') {
+      // Edit → new version of the same identity. Append per V-14 (append-only),
+      // so v1 stays honest and Duplicate still targets whichever version was clicked.
+      publishedVersion = draft.baseVersion + 1;
+      next = [...existing, { id: draft.id, family, title, version: publishedVersion, facts }];
+    } else {
+      // Fresh JD (either new from doorway or a Duplicate that mints a new id).
+      publishedVersion = 1;
+      next = [...existing, { id: draft?.id ?? newId(), family, title, version: 1, facts }];
+    }
+    writePublishedJds(next);
+    try { sessionStorage.setItem(UX_DONE_KEY, '1'); } catch { /* private mode */ }
     setPublished(true);
-    const secondInFamily = list.filter((j) => j.family === family).length >= 2;
-    if (secondInFamily) {
+
+    // Family-defaults prompt fires on the 2nd distinct JD identity in a
+    // family — a Duplicate that publishes as a new identity triggers it,
+    // an Edit that publishes as v2 of the SAME identity does not (there is
+    // still only one JD in the family, just at a higher version).
+    const distinctIdsInFamily = new Set(next.filter((j) => j.family === family).map((j) => j.id));
+    if (distinctIdsInFamily.size >= 2) {
+      const latestPerId = new Map<string, PublishedJd>();
+      for (const j of next.filter((k) => k.family === family)) {
+        const cur = latestPerId.get(j.id);
+        if (!cur || j.version > cur.version) latestPerId.set(j.id, j);
+      }
+      const familyList = Array.from(latestPerId.values());
+      setFamilyJds(familyList);
+      setDerived(deriveFamilyDefaults(familyList));
       setFamilyPrompt(true);
     } else {
-      setTimeout(() => router.replace('/agents/vara'), 1800);
+      setTimeout(() => router.replace('/agents/vara/onboarding'), 1800);
     }
   }
 
   function acceptDerivation() {
-    router.replace('/agents/vara');
+    // No family-profile row is written in the preview — the prompt is the
+    // shape, not the persistence. Real Phase 3 wires vara_family_profile.
+    router.replace('/agents/vara/onboarding');
   }
 
   if (published) {
     return (
       <div className={s.wrap}>
-        {familyPrompt ? (
+        {familyPrompt && derived && familyJds ? (
           <div className={s.card} style={{ borderColor: 'var(--gold)' }}>
             <div className={s.cardHead}>
               <h2 className={s.cardTitle}>Ready to seed defaults for {family}</h2>
-              <span className={s.cardMeta}>from 2 of 2 JDs in this family</span>
+              <span className={s.cardMeta}>derived from {familyJds.length} JDs in this family</span>
             </div>
             <p className={s.cardWhat}>
-              The must-haves that appeared in both JDs become family defaults;
-              the knockouts that appeared in both become always-applied. The
-              next JD you add in {family} will inherit these — you can still
-              tune per-JD.
+              These items appeared in <b>all {familyJds.length}</b> JDs, so Vara
+              would keep them as {family} defaults. The next JD you add in this
+              family inherits them; you can still tune per-JD.
             </p>
-            <div className={s.actions}>
+
+            <div className={s.derivBox}>
+              <div className={s.derivHead}>Included</div>
+              {derived.musthaves.length === 0 && derived.knockouts.length === 0 && (
+                <div className={s.derivEmpty}>
+                  Nothing in common yet — the JDs don&rsquo;t share any must-have
+                  or knockout by name. Family defaults will stay empty until a
+                  future JD reinforces a pattern.
+                </div>
+              )}
+              {derived.musthaves.length > 0 && (
+                <ul className={s.derivList}>
+                  {derived.musthaves.map((m) => (
+                    <li key={m.name} className={s.derivRow}>
+                      <span className={s.derivBadge}>must-have</span>
+                      <span className={s.derivName}>{m.name}</span>
+                      <span className={s.derivMeta}>
+                        avg wt {m.weight} · in {m.in}/{m.of}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {derived.knockouts.length > 0 && (
+                <ul className={s.derivList}>
+                  {derived.knockouts.map((k) => (
+                    <li key={k.label} className={s.derivRow}>
+                      <span className={s.derivBadgeK}>knockout</span>
+                      <span className={s.derivName}>{k.label} — {k.rule}</span>
+                      <span className={s.derivMeta}>in {k.in}/{k.of}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {derived.threshold !== undefined && (
+                <div className={s.derivFoot}>
+                  Threshold default: <b>{derived.threshold}%</b>
+                  {derived.band_range && <> · Bands seen: {derived.band_range}</>}
+                </div>
+              )}
+            </div>
+
+            <div className={s.derivDiff}>
+              <div className={s.derivDiffH}>Not carried across (JD-specific)</div>
+              {familyJds.map((jd) => {
+                const derivedMustNames = new Set(derived.musthaves.map((m) => m.name));
+                const derivedKnockLabels = new Set(derived.knockouts.map((k) => k.label));
+                const musts = jd.facts.musthaves.filter((m) => !derivedMustNames.has(m.name));
+                const knocks = jd.facts.knockouts.filter((k) => !derivedKnockLabels.has(k.label));
+                if (musts.length === 0 && knocks.length === 0) {
+                  return (
+                    <div key={jd.id} className={s.derivPerJd}>
+                      <b>{jd.title}</b> v{jd.version} — nothing unique.
+                    </div>
+                  );
+                }
+                return (
+                  <div key={jd.id} className={s.derivPerJd}>
+                    <b>{jd.title}</b> v{jd.version}: {[...musts.map((m) => m.name), ...knocks.map((k) => k.label)].join(', ')}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className={s.actions} style={{ marginTop: 14 }}>
               <button type="button" className={s.primary} onClick={acceptDerivation}>
                 Apply as {family} defaults
               </button>
-              <button type="button" className={s.ghost} onClick={() => router.replace('/agents/vara')}>
+              <button type="button" className={s.ghost} onClick={() => router.replace('/agents/vara/onboarding')}>
                 Skip — keep JDs independent
               </button>
             </div>
@@ -143,12 +266,16 @@ function JdStudioInner() {
           <div className={s.doneCard}>
             <h1 className={s.doneTitle}>Vara is live for your workspace</h1>
             <p className={s.doneSub}>
-              {title} is now the first role in the {family} family. Redirecting…
+              {title} is now published as v{draft?.mode === 'edit' ? draft.baseVersion + 1 : 1} in the {family} family. Redirecting…
             </p>
           </div>
         )}
       </div>
     );
+  }
+
+  if (!hydrated) {
+    return <div className={s.wrap}><div style={{ padding: 24 }}>Loading…</div></div>;
   }
 
   const mode = params.get('mode') === 'import' ? 'import' : 'compose';
@@ -227,7 +354,9 @@ function JdStudioInner() {
         <div className={s.jdCol}>
           <div className={s.jdCard}>
             <h2 className={s.jdTitle}>{title}</h2>
-            <p className={s.jdSub}>{family} · draft · will be v1 on publish</p>
+            <p className={s.jdSub}>
+              {family} · draft · will be v{draft?.mode === 'edit' ? draft.baseVersion + 1 : 1} on publish
+            </p>
 
             <div className={s.jdSection}>
               <div className={s.jdSectionH}>Role summary</div>

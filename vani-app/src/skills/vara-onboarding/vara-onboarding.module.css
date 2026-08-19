@@ -235,6 +235,101 @@
   margin-top: 12px;
 }
 
+/* ── Published-JDs list on the doorway ────────────────────────────── */
+.jdList {
+  display: flex; flex-direction: column; gap: 8px; margin-top: 10px;
+}
+.jdRow {
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 12px; align-items: center;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: var(--color-bg);
+}
+.jdRowMain { min-width: 0; }
+.jdRowTitle { font-weight: 600; font-size: 14px; }
+.jdRowVer {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--gold); letter-spacing: 0.06em;
+  margin-left: 4px;
+}
+.jdRowMeta {
+  font-size: 12px; color: var(--color-muted); margin-top: 3px;
+}
+.jdRowActions {
+  display: flex; gap: 6px;
+}
+
+/* ── Family-derivation diff box (JD Studio publish outcome) ──────── */
+.derivBox {
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--color-bg);
+  margin-top: 12px;
+}
+.derivHead {
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--color-muted); margin-bottom: 8px;
+}
+.derivEmpty {
+  font-size: 13px; color: var(--color-muted);
+  font-style: italic; line-height: 1.5;
+}
+.derivList { list-style: none; padding: 0; margin: 0 0 8px; }
+.derivRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px; align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--glass-border);
+  font-size: 13px;
+}
+.derivRow:last-child { border-bottom: none; }
+.derivBadge, .derivBadgeK {
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 4px;
+  min-width: 74px; text-align: center;
+}
+.derivBadge {
+  background: rgba(201, 162, 39, 0.15);
+  color: var(--gold);
+  border: 1px solid rgba(201, 162, 39, 0.35);
+}
+.derivBadgeK {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-muted);
+  border: 1px solid var(--glass-border);
+}
+.derivName { min-width: 0; }
+.derivMeta {
+  font-size: 11px; color: var(--color-muted);
+  font-family: var(--font-mono); letter-spacing: 0.03em;
+}
+.derivFoot {
+  font-size: 12px; color: var(--color-muted);
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid var(--glass-border);
+}
+.derivDiff {
+  margin-top: 12px; padding: 10px 14px;
+  border: 1px dashed var(--glass-border);
+  border-radius: 10px;
+  background: transparent;
+}
+.derivDiffH {
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--color-muted); margin-bottom: 6px;
+}
+.derivPerJd {
+  font-size: 12px; color: var(--color-muted);
+  padding: 3px 0; line-height: 1.5;
+}
+
 /* Full-width welcome / done card variants */
 .doneCard {
   border: 1px solid var(--gold);
