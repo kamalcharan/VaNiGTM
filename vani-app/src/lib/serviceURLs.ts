@@ -125,6 +125,27 @@ export const API = {
       description:
         'Publish a JD as v1 of a new identity. Single transaction: vani_role_family + vara_family_profile + vara_scoring_config + vara_jd + vara_jd_version + subscription flip. Idempotent-in-practice via Idempotency-Key + advisory lock.',
     },
+    promptsList: {
+      method: 'GET',
+      path: '/api/v1/vara/prompts',
+      auth: true,
+      description:
+        'Prompt Studio list. Grouped by key: active system version + tenant override if any + version counts.',
+    },
+    promptSave: {
+      method: 'PATCH',
+      path: '/api/v1/vara/prompts/:key',
+      auth: true,
+      description:
+        'Save a tenant override for a prompt key. Refuses if the body drops a declared {{variable}}. Deactivates any prior active override, inserts new version, self-approves.',
+    },
+    promptRevert: {
+      method: 'DELETE',
+      path: '/api/v1/vara/prompts/:key',
+      auth: true,
+      description:
+        'Revert to system prompt: deactivates the tenant’s active override; history preserved; resolver falls through to newest system version.',
+    },
   },
 
   /**

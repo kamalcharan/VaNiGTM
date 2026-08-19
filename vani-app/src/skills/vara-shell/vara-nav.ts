@@ -16,6 +16,8 @@ const varaWorkspace: SkillModule = {
     { id: 'vara-landing',      label: 'Landing',           href: '/agents/vara',                group: 'organization', icon: '⚑', status: 'live' },
     { id: 'vara-onboarding',   label: 'Onboarding',        href: '/agents/vara/onboarding',     group: 'organization', icon: '◉', status: 'live' },
     { id: 'vara-jd-studio',    label: 'JD Studio',         href: '/agents/vara/jd-studio',      group: 'workspace',    icon: '✎', status: 'live' },
+    { id: 'vara-prompts',      label: 'Prompt Studio',     href: '/agents/vara/prompts',        group: 'workspace',    icon: '⌨', status: 'live',
+      summary: 'System prompts + your workspace overrides for every LLM-driven worker.' },
     { id: 'vara-pulse',        label: 'Pulse',             href: '/agents/vara/pulse',          group: 'workspace',    icon: '▲', status: 'planned',
       summary: 'Overnight briefing: applied, closed, scored, above line, in window.' },
     { id: 'vara-map',          label: 'Probability Map',   href: '/agents/vara/map',            group: 'workspace',    icon: '◈', status: 'planned',
