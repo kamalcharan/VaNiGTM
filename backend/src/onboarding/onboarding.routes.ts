@@ -62,6 +62,51 @@ function setClause(fields: Record<string, unknown>, from = 2) {
 }
 
 /**
+ * A step-payload failure the tenant can act on. The PATCH handler maps these
+ * to their status/code instead of the blanket 500.
+ */
+class StepPayloadError extends Error {
+  constructor(readonly status: number, readonly code: string, message: string) {
+    super(message);
+  }
+}
+
+/**
+ * The vn_ → vani_ tenant bridge. The JWT carries a vn_tenants id, but the
+ * platform spine keys on vani_tenant(id) — a separate table. The designed
+ * bridge is the slug (unique in both): resolve the vani_tenant row for this
+ * vn tenant, provisioning it on first touch. That IS V-01 ("tenant
+ * provisioned") happening lazily — a real row, no special case, name taken
+ * from the tenant profile the business_profile step already wrote.
+ *
+ * Runs inside the caller's transaction like everything else here.
+ */
+async function resolveVaniTenant(client: PoolClient, vnTenantId: string): Promise<string> {
+  const found = await client.query(
+    `SELECT vt.id FROM vani_tenant vt
+       JOIN vn_tenants t ON t.slug = vt.slug
+      WHERE t.id = $1`,
+    [vnTenantId],
+  );
+  if (found.rows.length) return found.rows[0].id;
+
+  const created = await client.query(
+    `INSERT INTO vani_tenant (slug, name)
+     SELECT t.slug, COALESCE(p.display_name, p.name, t.slug)
+       FROM vn_tenants t
+       LEFT JOIN vn_tenant_profiles p ON p.tenant_id = t.id
+      WHERE t.id = $1
+     ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+     RETURNING id`,
+    [vnTenantId],
+  );
+  if (!created.rows.length) {
+    throw new StepPayloadError(500, 'TENANT_NOT_FOUND', 'No tenant row to bridge from');
+  }
+  return created.rows[0].id;
+}
+
+/**
  * Apply a step's payload. Runs INSIDE the caller's transaction — every write
  * here and the step mark itself commit or roll back together.
  */
@@ -94,10 +139,47 @@ async function applyStepPayload(
     return;
   }
 
-  // vani:domain, vani:team, vani:llm_provider write to the vani_ spine and are
-  // disabled in the catalog until it is confirmed applied — isStepOfLane()
-  // rejects them before we ever get here. When they are enabled, their writers
-  // go here, inside this same transaction.
+  if (stepId === 'vani:domain') {
+    // Normalise whatever shape the tenant pasted — URL, host:port, trailing
+    // path — down to the bare host, then validate it really is one.
+    const raw = typeof data.domain === 'string' ? data.domain.trim().toLowerCase() : '';
+    const domain = raw
+      .replace(/^[a-z][a-z0-9+.-]*:\/\//, '')
+      .replace(/\/.*$/, '')
+      .replace(/:\d+$/, '');
+    if (!domain || !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(domain)) {
+      throw new StepPayloadError(400, 'INVALID_DOMAIN',
+        'Enter a valid domain, like app.example.com');
+    }
+    const purpose = data.purpose === 'candidate' ? 'candidate' : 'workspace';
+
+    const vaniTenantId = await resolveVaniTenant(client, tenantId);
+
+    // vani_tenant_domain.domain is unique GLOBALLY, not per tenant — a domain
+    // held by another workspace must never be silently re-pointed.
+    const owner = await client.query(
+      `SELECT tenant_id FROM vani_tenant_domain WHERE domain = $1`,
+      [domain],
+    );
+    if (owner.rows.length && owner.rows[0].tenant_id !== vaniTenantId) {
+      throw new StepPayloadError(409, 'DOMAIN_TAKEN',
+        'That domain is already registered to another workspace');
+    }
+
+    // Upsert on the unique key — a replayed request lands on the same row,
+    // which keeps this endpoint idempotent by construction (see header).
+    await client.query(
+      `INSERT INTO vani_tenant_domain (tenant_id, domain, purpose)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (domain) DO UPDATE SET purpose = EXCLUDED.purpose`,
+      [vaniTenantId, domain, purpose],
+    );
+    return;
+  }
+
+  // vani:team and vani:llm_provider stay disabled in the catalog (see
+  // lanes.ts for why) — isStepOfLane() rejects them before we ever get here.
+  // When they are enabled, their writers go here, inside this same transaction.
 }
 
 export function createOnboardingRouter(pool: Pool): Router {
@@ -236,6 +318,12 @@ export function createOnboardingRouter(pool: Pool): Router {
       });
     } catch (err: any) {
       await client.query('ROLLBACK').catch(() => {});
+      if (err instanceof StepPayloadError) {
+        // The tenant can act on these (fix the domain, pick another) — a
+        // blanket 500 would read as "the system is broken", which it is not.
+        res.status(err.status).json({ error: { code: err.code, message: err.message } });
+        return;
+      }
       console.error('[Onboarding:step]', err);
       res.status(500).json({ error: { code: 'UPDATE_FAILED', message: 'Failed to update onboarding step' } });
     } finally {

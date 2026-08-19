@@ -1112,6 +1112,39 @@ export function createTenantRouter(pool: Pool): Router {
     }
   });
 
+  /* ── GET /api/v1/tenant/domains ────────────────────── */
+  // The tenant's rows in the vani_ platform spine, bridged from the vn_ tenant
+  // by slug (the same bridge the onboarding writer uses). An empty list is the
+  // normal state before the vani:domain step has been completed — the Smart
+  // Profile Domain section renders it as "nothing declared yet", not an error.
+
+  router.get('/domains', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+
+      const result = await pool.query(
+        `SELECT d.domain, d.purpose, d.verified_at, d.created_at
+           FROM vani_tenant_domain d
+           JOIN vani_tenant vt ON vt.id = d.tenant_id
+           JOIN vn_tenants t ON t.slug = vt.slug
+          WHERE t.id = $1
+          ORDER BY d.created_at`,
+        [jwt.tenant_id],
+      );
+
+      res.json({ domains: result.rows });
+    } catch (err: any) {
+      console.error('[Tenant:domains:get]', err);
+      res.status(500).json({
+        error: { code: 'FETCH_FAILED', message: 'Failed to fetch tenant domains' },
+      });
+    }
+  });
+
   /* ── PATCH /api/v1/tenant/profile ──────────────────── */
 
   router.patch('/profile', async (req, res) => {
