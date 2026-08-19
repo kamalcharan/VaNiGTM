@@ -105,6 +105,17 @@ export default function VaraLanding() {
     return () => window.removeEventListener('focus', read);
   }, []);
 
+  // If the backend has been reset to 'activating' (e.g. Charan running the
+  // reset SQL), the client's preview flag is stale — drop it so the landing
+  // reflects what the DB actually says. Without this, the preview traps the
+  // tenant on 'Live' forever even after they reset upstream.
+  useEffect(() => {
+    if (state.data?.data?.subscription === 'activating') {
+      try { sessionStorage.removeItem(UX_DONE_KEY); } catch { /* private mode */ }
+      setUxDone(false);
+    }
+  }, [state.data?.data?.subscription]);
+
   // The demo loops via its own reload; remount it if the iframe ever dies.
   const [demoKey, setDemoKey] = useState(0);
   useEffect(() => {
