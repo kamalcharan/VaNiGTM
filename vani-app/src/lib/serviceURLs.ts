@@ -111,6 +111,20 @@ export const API = {
       description:
         'Admin-only. Goes live if the checklist passes; refuses NOT_READY with the checklist in error.details.',
     },
+    onboardingContext: {
+      method: 'GET',
+      path: '/api/v1/vara/onboarding/context',
+      auth: true,
+      description:
+        'Everything the doorway renders in one call: tenant industry, registry families for that industry (from vani_domain_pack), brand fields, and the tenant’s own published JDs so Duplicate/Edit is server-truth.',
+    },
+    jdCompose: {
+      method: 'POST',
+      path: '/api/v1/vara/jd/compose',
+      auth: true,
+      description:
+        'Publish a JD as v1 of a new identity. Single transaction: vani_role_family + vara_family_profile + vara_scoring_config + vara_jd + vara_jd_version + subscription flip. Idempotent-in-practice via Idempotency-Key + advisory lock.',
+    },
   },
 
   /**

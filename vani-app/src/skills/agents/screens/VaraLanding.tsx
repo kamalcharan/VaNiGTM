@@ -23,7 +23,6 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { UX_DONE_KEY } from '@/skills/vara-onboarding/mock-data';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
@@ -49,7 +48,6 @@ export default function VaraLanding() {
   const qc = useQueryClient();
   const { showToast } = useToast();
   const [gateOpen, setGateOpen] = useState(false);
-  const [uxDone, setUxDone] = useState(false);
   const [phrase, setPhrase] = useState('');
   const [checking, setChecking] = useState(false);
 
@@ -95,27 +93,6 @@ export default function VaraLanding() {
     [checking, phrase, qc, showToast],
   );
 
-  // UX preview: sessionStorage flag set by the onboarding wizard.
-  useEffect(() => {
-    function read() {
-      try { setUxDone(sessionStorage.getItem(UX_DONE_KEY) === '1'); } catch { /* private mode */ }
-    }
-    read();
-    window.addEventListener('focus', read);
-    return () => window.removeEventListener('focus', read);
-  }, []);
-
-  // If the backend has been reset to 'activating' (e.g. Charan running the
-  // reset SQL), the client's preview flag is stale — drop it so the landing
-  // reflects what the DB actually says. Without this, the preview traps the
-  // tenant on 'Live' forever even after they reset upstream.
-  useEffect(() => {
-    if (state.data?.data?.subscription === 'activating') {
-      try { sessionStorage.removeItem(UX_DONE_KEY); } catch { /* private mode */ }
-      setUxDone(false);
-    }
-  }, [state.data?.data?.subscription]);
-
   // The demo loops via its own reload; remount it if the iframe ever dies.
   const [demoKey, setDemoKey] = useState(0);
   useEffect(() => {
@@ -146,7 +123,7 @@ export default function VaraLanding() {
           <DataBoundary query={state} label="Vara's state" skeleton={<SkeletonRows rows={1} />}>
             {(d: VaraState) => (
               <>
-                {d.subscription === 'live' || uxDone ? (
+                {d.subscription === 'live' ? (
                   <div className={s.stubNote}>
                     <span className={`${u.tag} ${u.tagOk}`}>Live</span>
                     <p>

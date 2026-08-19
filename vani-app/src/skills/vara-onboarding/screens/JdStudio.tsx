@@ -17,11 +17,14 @@
  */
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { apiFetch, ApiError } from '@/lib/api-client';
+import { API } from '@/lib/serviceURLs';
+import { useToast } from '@/platform/feedback';
 import {
-  jdScriptFor, UX_DONE_KEY, UX_DRAFT_KEY,
-  readPublishedJds, writePublishedJds, deriveFamilyDefaults,
-  type DraftJd, type PublishedFacts, type PublishedJd, type DerivedFamilyDefaults,
+  jdScriptFor, UX_DRAFT_KEY,
+  type DraftJd, type PublishedFacts,
 } from '../mock-data';
 import { JdImport } from './JdImport';
 import u from '@/platform/shell/ui.module.css';
@@ -31,8 +34,10 @@ type JdFacts = PublishedFacts;
 
 const EMPTY: JdFacts = { musthaves: [], knockouts: [] };
 
-function newId(): string {
-  return `jd-${Math.floor(performance.now() * 1000).toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`;
+function mintIdempotencyKey(): string {
+  // A per-attempt key: high-resolution counter + a wide random tail, stable
+  // across React re-renders (held in a ref) but fresh per publish attempt.
+  return `jd-compose-${Math.floor(performance.now() * 1000).toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`;
 }
 
 function mergeFacts(prev: JdFacts, contrib: Record<string, unknown>): JdFacts {
@@ -88,9 +93,11 @@ function JdStudioInner() {
     { who: 'v', text: script[0].ask },
   ]);
   const [published, setPublished] = useState(false);
-  const [familyPrompt, setFamilyPrompt] = useState(false);
-  const [familyJds, setFamilyJds] = useState<PublishedJd[] | null>(null);
-  const [derived, setDerived] = useState<DerivedFamilyDefaults | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [publishedVersion, setPublishedVersion] = useState<number | null>(null);
+  const submitOnce = useRef(false);   // guard against double-submit at the ref level, not state
+  const qc = useQueryClient();
+  const { showToast } = useToast();
 
   // Draft hydration: once a draft lands, prefill facts + jump the transcript
   // to the "conversation complete" state so the tenant can tune-and-publish
@@ -131,145 +138,65 @@ function JdStudioInner() {
     setStepIdx(next);
   }
 
-  function publish() {
-    const existing = readPublishedJds();
-    let next: PublishedJd[];
-    let publishedVersion: number;
-    if (draft?.mode === 'edit') {
-      // Edit → new version of the same identity. Append per V-14 (append-only),
-      // so v1 stays honest and Duplicate still targets whichever version was clicked.
-      publishedVersion = draft.baseVersion + 1;
-      next = [...existing, { id: draft.id, family, title, version: publishedVersion, facts }];
-    } else {
-      // Fresh JD (either new from doorway or a Duplicate that mints a new id).
-      publishedVersion = 1;
-      next = [...existing, { id: draft?.id ?? newId(), family, title, version: 1, facts }];
-    }
-    writePublishedJds(next);
-    try { sessionStorage.setItem(UX_DONE_KEY, '1'); } catch { /* private mode */ }
-    setPublished(true);
-
-    // Family-defaults prompt fires on the 2nd distinct JD identity in a
-    // family — a Duplicate that publishes as a new identity triggers it,
-    // an Edit that publishes as v2 of the SAME identity does not (there is
-    // still only one JD in the family, just at a higher version).
-    const distinctIdsInFamily = new Set(next.filter((j) => j.family === family).map((j) => j.id));
-    if (distinctIdsInFamily.size >= 2) {
-      const latestPerId = new Map<string, PublishedJd>();
-      for (const j of next.filter((k) => k.family === family)) {
-        const cur = latestPerId.get(j.id);
-        if (!cur || j.version > cur.version) latestPerId.set(j.id, j);
-      }
-      const familyList = Array.from(latestPerId.values());
-      setFamilyJds(familyList);
-      setDerived(deriveFamilyDefaults(familyList));
-      setFamilyPrompt(true);
-    } else {
+  const idemKeyRef = useRef<string | null>(null);
+  async function publish() {
+    if (submitOnce.current || publishing) return;
+    submitOnce.current = true;
+    setPublishing(true);
+    // Mint one key per logical attempt, reuse across retries of that same
+    // attempt so a network hiccup doesn't create two JDs.
+    if (!idemKeyRef.current) idemKeyRef.current = mintIdempotencyKey();
+    try {
+      const r = await apiFetch<{
+        jd_id: string;
+        version: number;
+        subscription_status?: string;
+        live_first_time?: boolean;
+        replayed?: boolean;
+      }>(API.vara.jdCompose, {
+        body: { family, title, facts },
+        idempotencyKey: idemKeyRef.current,
+      });
+      setPublishedVersion(r.version);
+      setPublished(true);
+      // Refresh the doorway list AND the landing status — both are
+      // affected by a new JD (list grows; subscription may flip live).
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['vara', 'onboarding-context'] }),
+        qc.invalidateQueries({ queryKey: ['vara', 'state'] }),
+      ]);
+      showToast({
+        message: r.live_first_time
+          ? 'Published — Vara is now live for your workspace.'
+          : `Published as v${r.version}.`,
+        type: 'success',
+      });
       setTimeout(() => router.replace('/agents/vara/onboarding'), 1800);
+    } catch (err) {
+      // Reset the ref so the tenant can genuinely re-submit after fixing
+      // whatever went wrong; the same idempotency key stays so a retry of
+      // the SAME attempt (network flap while the button was hit) still
+      // dedupes on the server.
+      submitOnce.current = false;
+      const msg = err instanceof ApiError ? err.message : 'Could not publish this JD';
+      showToast({ message: msg, type: 'error' });
+    } finally {
+      setPublishing(false);
     }
-  }
-
-  function acceptDerivation() {
-    // No family-profile row is written in the preview — the prompt is the
-    // shape, not the persistence. Real Phase 3 wires vara_family_profile.
-    router.replace('/agents/vara/onboarding');
   }
 
   if (published) {
     return (
       <div className={s.wrap}>
-        {familyPrompt && derived && familyJds ? (
-          <div className={s.card} style={{ borderColor: 'var(--gold)' }}>
-            <div className={s.cardHead}>
-              <h2 className={s.cardTitle}>Ready to seed defaults for {family}</h2>
-              <span className={s.cardMeta}>derived from {familyJds.length} JDs in this family</span>
-            </div>
-            <p className={s.cardWhat}>
-              These items appeared in <b>all {familyJds.length}</b> JDs, so Vara
-              would keep them as {family} defaults. The next JD you add in this
-              family inherits them; you can still tune per-JD.
-            </p>
-
-            <div className={s.derivBox}>
-              <div className={s.derivHead}>Included</div>
-              {derived.musthaves.length === 0 && derived.knockouts.length === 0 && (
-                <div className={s.derivEmpty}>
-                  Nothing in common yet — the JDs don&rsquo;t share any must-have
-                  or knockout by name. Family defaults will stay empty until a
-                  future JD reinforces a pattern.
-                </div>
-              )}
-              {derived.musthaves.length > 0 && (
-                <ul className={s.derivList}>
-                  {derived.musthaves.map((m) => (
-                    <li key={m.name} className={s.derivRow}>
-                      <span className={s.derivBadge}>must-have</span>
-                      <span className={s.derivName}>{m.name}</span>
-                      <span className={s.derivMeta}>
-                        avg wt {m.weight} · in {m.in}/{m.of}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {derived.knockouts.length > 0 && (
-                <ul className={s.derivList}>
-                  {derived.knockouts.map((k) => (
-                    <li key={k.label} className={s.derivRow}>
-                      <span className={s.derivBadgeK}>knockout</span>
-                      <span className={s.derivName}>{k.label} — {k.rule}</span>
-                      <span className={s.derivMeta}>in {k.in}/{k.of}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {derived.threshold !== undefined && (
-                <div className={s.derivFoot}>
-                  Threshold default: <b>{derived.threshold}%</b>
-                  {derived.band_range && <> · Bands seen: {derived.band_range}</>}
-                </div>
-              )}
-            </div>
-
-            <div className={s.derivDiff}>
-              <div className={s.derivDiffH}>Not carried across (JD-specific)</div>
-              {familyJds.map((jd) => {
-                const derivedMustNames = new Set(derived.musthaves.map((m) => m.name));
-                const derivedKnockLabels = new Set(derived.knockouts.map((k) => k.label));
-                const musts = jd.facts.musthaves.filter((m) => !derivedMustNames.has(m.name));
-                const knocks = jd.facts.knockouts.filter((k) => !derivedKnockLabels.has(k.label));
-                if (musts.length === 0 && knocks.length === 0) {
-                  return (
-                    <div key={jd.id} className={s.derivPerJd}>
-                      <b>{jd.title}</b> v{jd.version} — nothing unique.
-                    </div>
-                  );
-                }
-                return (
-                  <div key={jd.id} className={s.derivPerJd}>
-                    <b>{jd.title}</b> v{jd.version}: {[...musts.map((m) => m.name), ...knocks.map((k) => k.label)].join(', ')}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className={s.actions} style={{ marginTop: 14 }}>
-              <button type="button" className={s.primary} onClick={acceptDerivation}>
-                Apply as {family} defaults
-              </button>
-              <button type="button" className={s.ghost} onClick={() => router.replace('/agents/vara/onboarding')}>
-                Skip — keep JDs independent
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className={s.doneCard}>
-            <h1 className={s.doneTitle}>Vara is live for your workspace</h1>
-            <p className={s.doneSub}>
-              {title} is now published as v{draft?.mode === 'edit' ? draft.baseVersion + 1 : 1} in the {family} family. Redirecting…
-            </p>
-          </div>
-        )}
+        <div className={s.doneCard}>
+          <h1 className={s.doneTitle}>Vara is live for your workspace</h1>
+          <p className={s.doneSub}>
+            {title} is now published as v{publishedVersion ?? 1} in the {family} family. Redirecting…
+          </p>
+        </div>
+        {/* Family-defaults derivation lands with Phase 3 (vara_family_profile
+            statistics over N JDs). Kept as a client-side preview earlier;
+            re-enters when the writer exists on the server side. */}
       </div>
     );
   }
@@ -409,9 +336,9 @@ function JdStudioInner() {
                 type="button"
                 className={s.primary}
                 onClick={publish}
-                disabled={!canPublish}
+                disabled={!canPublish || publishing}
               >
-                Publish this JD → take Vara live
+                {publishing ? 'Publishing…' : 'Publish this JD → take Vara live'}
               </button>
             </div>
             <p className={s.note} style={{ marginTop: 8 }}>
