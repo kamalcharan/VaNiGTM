@@ -96,8 +96,22 @@ export const API = {
     },
   },
 
-  /** Vara — activation and (next step) install. */
+  /** Vara — activation and install. */
   vara: {
+    embed: {
+      method: 'GET',
+      path: '/api/v1/vara/embed',
+      auth: true,
+      description:
+        'Everything the Install screen renders in one call: the paste-ready snippet, subscription state, readiness checklist, and per candidate-domain the id, embed_origins allowlist and boot_pings (which origins have actually booted the widget).',
+    },
+    originsUpdate: {
+      method: 'PATCH',
+      path: '/api/v1/tenant/domains/:id/origins',
+      auth: true,
+      description:
+        'Admin-only. Add/remove embed origins on one candidate domain. Idempotent by construction — a no-op edit reports changed:false and writes no audit row. Removing an origin drops its boot_pings entry in the same statement.',
+    },
     state: {
       method: 'GET',
       path: '/api/v1/vara/status',

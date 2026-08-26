@@ -1,6 +1,7 @@
 # Vara — Execution POA
 
-**Date:** 2026-08-19 (revised)
+**Date:** 2026-08-26 (Phase 4 landed, taken out of order)
+**Previous revision:** 2026-08-19
 **Original:** 2026-08-17 (late)
 **Companion to:** `vara-readiness-review.md`, `vara-onboarding-design.md`,
 `vara-channels-and-activation.md`, `HANDOVER-2026-08-19.md`
@@ -16,7 +17,7 @@ prompts are append-only with a one-active guard.
 
 ---
 
-## Where we are (2026-08-19)
+## Where we are (2026-08-26)
 
 **Landed to main, both repos, verified end-to-end:**
 
@@ -25,12 +26,12 @@ prompts are append-only with a one-active guard.
 - **Prompt Store** — migration 245 (`vani_prompt`, two-scope one-table: system + tenant override, append-only content trigger, one-active-per-scope partial unique index, tenant-scoped RLS). `resolvePrompt(db, key)` + `renderPrompt(prompt, vars)`. Endpoints `GET/PATCH/DELETE /vara/prompts[:key]`. Prompt Studio UI at `/agents/vara/prompts` with variable-coverage validation. Seeded `vara.composer.ask_next` as proof-of-shape (real caller lands with Extractor).
 - **Semantic Layer** — migration 246 (`CREATE EXTENSION vector` guarded; `vara_skill` with `embedding vector(768)` + HNSW cosine; `vara_family_profile.axes_embedding` + HNSW; `vara_candidate.profile_embedding` + HNSW; `vara_match_log` append-only). `embedText(text)` helper (Ollama-native `nomic-embed-text` default, 768-dim). `canonicalizeSkill(name)` for exact-match dedup before embedding. `recordMatch(db, input)` helper. Deploy note at `docs/db/pgvector-install.md`. pgvector 0.8.6 live on VPS in `vikuna-postgres` container (swapped from `postgres:17-alpine` to `pgvector/pgvector:pg17`, same `docker_pg_data` volume, zero data risk).
 - **VPS state** — single Postgres container, PG 17 + pgvector 0.8.6. Empty host-level PG 16 stray from the pgvector-install detour dropped.
+- **Phase 4 — Install screen** (2026-08-26, taken out of order; see its section). Migration 247 `boot_pings`, `PATCH /tenant/domains/:id/origins`, boot-ping recording, and `/agents/vara/install`. Verified locally against a fixture; **not yet applied or deployed to the VPS**, and the Charan gate is unrun.
 
 **Design settled, not yet in UX or code:**
 - Import path with fenced-LLM extraction (Phase 2 body)
 - JD versioning (edit → v2, needs `POST /vara/jd/:id/version`)
 - Playbook fork/versioning UI (Phase 6, operator surface)
-- Install screen (Phase 4)
 
 ---
 
@@ -85,7 +86,7 @@ Landed on main. Schema + helpers, no wired writer. Extractor is the first caller
 **Depends on:** Vikuna's LLM key OR BYOK (both need LLM path stable on VPS + `nomic-embed-text` model pulled).
 
 **Backend:**
-- Migration 247 (small): seed system prompts for `vara.extractor.field_schema` and `vara.extractor.evidence_check` in `vani_prompt`.
+- Migration **248** (small): seed system prompts for `vara.extractor.field_schema` and `vara.extractor.evidence_check` in `vani_prompt`. (Was 247; Phase 4 took that number on 2026-08-26.)
 - Add "job description" adapter to ingestion pipeline (deterministic docx/pdf parse — reuses existing spine, no new schema).
 - `POST /vara/jd/import` — accepts N files, writes `vara_artifact` rows, runs one fenced LLM extraction stage per artifact.
 - Extraction schema: `{ title, must_haves[{name,weight,evidence_span,confidence}], knockouts[{label,rule,evidence_span,confidence}], band?, notes }`. Every field's `evidence_span` must fuzzy-match the source text (V-9). Failed fuzzy = `status='low_confidence'`; failed schema = `status='rejected'` (whole extraction, not partial).
@@ -140,24 +141,58 @@ Landed on main. Schema + helpers, no wired writer. Extractor is the first caller
 
 ---
 
-## Phase 4 — Install screen (Vara reaches your candidates)
+## Phase 4 — Install screen (Vara reaches your candidates) — BUILT, ungated
+
+**Taken out of order (2026-08-26).** Phase 2 is blocked on the VPS LLM path and
+on `nomic-embed-text` not being pulled; Phase 4 depends only on Phase 1, which
+the original plan already noted. It is also two of the three legs of the v1
+success criterion (Phase 1 + 4 + 5).
 
 **Goal:** tenant pastes the snippet on their site (Wix/WordPress/etc), sees the widget live. Origin management from the UI, no more SQL.
 
-**Backend:**
-- `PATCH /tenant/domains/:id/origins` — add/remove embed origins (admin-only), audit.
-- `GET /vara/embed` already exists — add site-alive ping ("widget booted from these origins in the last 7 days").
+**Backend — landed:**
+- Migration **247** (`boot_pings jsonb` on `vani_tenant_domain`, approved as a
+  schema change). Note this **takes 247 from Phase 2's extractor-prompt seed,
+  which becomes 248.**
+- `PATCH /tenant/domains/:id/origins` — admin-only, add/remove batched in one
+  transaction, tenant ownership asserted inside the SELECT and the UPDATE
+  predicate (a foreign id is 404, never 403), `FOR UPDATE` against two admins
+  racing, one `vani_audit_log` row with before/after. **Idempotent by
+  construction** — a no-op edit returns `changed:false` and writes no audit
+  row — which is why it mints no `Idempotency-Key`: `vani_idempotency` still
+  does not exist, and a key nothing honours is worse than none.
+- `POST /vara/embed/boot` records the site-alive ping, after both gates pass,
+  as one merging UPDATE (no read-modify-write).
+- `GET /vara/embed` now also returns `domains[]` (id + origins + boot_pings) so
+  the screen renders from one call; `GET /tenant/domains` carries the same
+  fields for other callers.
 
-**Frontend:**
-- New Install section on `/agents/vara` landing (below CTA band, only when LIVE).
-- Snippet display + copy button.
-- Origin list: add / remove / status per site.
-- Preview: paste snippet in-app, see it work in an iframe.
+**Frontend — landed:**
+- `/agents/vara/install` (nav flipped `planned` → `live`), three steps: copy
+  the snippet · allowlist the sites · check it booted.
+- Landing's "Install arrives next" placeholder replaced with a real link.
+- `vani-app/src/lib/format.ts` added, mirroring VaNiGTM's gateway plus
+  `formatRelative` for the liveness markers.
 
-**Tests:**
-- Add origin, test widget on a fake foreign origin, remove origin, widget refuses on next boot.
+**Deviation from this plan, deliberate:** the in-app **iframe preview was not
+built**. Rendered honestly it boots `/embed/chat` with `parent` = the CONSOLE's
+origin, which is on no tenant's allowlist, so it is a permanent 403; the only
+way to make it "work" is to send one of their real origins, which lies to our
+own origin gate and writes a boot_ping for a site that never booted —
+corrupting the single signal the screen exists to report. Step 3 is the real
+verification loop instead (paste → load your page → refresh → see the time).
+Reinstate the iframe only with a decision about that trade.
 
-**Gate:** Charan pastes snippet on a real vikuna.io page and sees a candidate walk-through.
+**Tests — done:** migration applied twice (idempotent); boot ping merges rather
+than appends and writes nothing for a non-allowlisted origin; the PATCH's
+3-check pattern (valid / empty tenant / wrong tenant → 0 rows, target
+unmutated); UI driven in a real browser through add → duplicate add
+(`changed:false`, info toast) → remove, no page errors.
+
+**Not done — the gate:** Charan pastes the snippet on a real vikuna.io page and
+sees a candidate walk-through. Needs migration 247 applied to the VPS and both
+services rebuilt. Everything above was verified locally against a fixture, not
+against production.
 
 ---
 
@@ -224,20 +259,21 @@ Both learning loops land in Phase 6 timeframe; the shape is ready.
 [✅ DONE] Prompt Store slice             (per-tenant prompt override)
 [✅ DONE] Semantic Layer slice           (pgvector + vara_skill + match_log)
 
+[✅ DONE] Phase 4 · Install screen        (taken early — only depends on Phase 1)
+
 [NEXT]    Phase 2 · Wire Import path + Extractor
            ↓  first real use of prompts + evals + vara_skill
+           ↓  BLOCKED until: VPS LLM path stable + `ollama pull nomic-embed-text`
 [ Rotate 4 keys — Charan, in parallel ]
 [ BYOK encryption — separate workstream ]
           Phase 3 · Family derivation    (semantic dedup via vara_skill)
-           ↓
-          Phase 4 · Install screen       (can go earlier if Charan prefers)
            ↓
           Phase 5 · Candidate lifecycle  (largest; multi-phase itself)
            ↓
           Phase 6 · Playbook agent + Calibration Loop
 ```
 
-**Phase 4 (Install) can still jump forward** — only depends on Phase 1, not Phase 2 or 3.
+**Phase 4 jumped forward on 2026-08-26**, for exactly the reason noted here: it only depends on Phase 1. Phase 5 is now the remaining leg of the v1 criterion.
 
 ---
 

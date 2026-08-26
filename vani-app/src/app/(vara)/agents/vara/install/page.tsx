@@ -1,11 +1,10 @@
 /**
- * /agents/vara/install — not built yet; ships with Phase 5 of the execution POA.
+ * /agents/vara/install — the snippet for the tenant's site, the origins
+ * allowed to boot it, and whether each of those origins actually has.
  */
-import { NotYet } from '@/platform/shell/NotYet';
-import { VARA_SKILLS } from '@/skills/vara-shell/vara-nav';
+
+import InstallScreen from '@/skills/vara-install/screens/InstallScreen';
 
 export default function Page() {
-  const route = VARA_SKILLS.flatMap(m => m.routes).find(r => r.href === '/agents/vara/install');
-  if (!route) return null;
-  return <NotYet route={route} />;
+  return <InstallScreen />;
 }

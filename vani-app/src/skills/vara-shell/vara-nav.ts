@@ -28,7 +28,7 @@ const varaWorkspace: SkillModule = {
       summary: 'HM card queue: Interview or Pass with reason.' },
     { id: 'vara-calibration',  label: 'Calibration',       href: '/agents/vara/calibration',    group: 'workspace',    icon: '⚖', status: 'planned',
       summary: 'Loop health, proposals, human-gated approvals.' },
-    { id: 'vara-install',      label: 'Install',           href: '/agents/vara/install',        group: 'system',       icon: '⧉', status: 'planned',
+    { id: 'vara-install',      label: 'Install',           href: '/agents/vara/install',        group: 'system',       icon: '⧉', status: 'live',
       summary: 'The snippet for your site, allowlisted origins.' },
   ],
 };
