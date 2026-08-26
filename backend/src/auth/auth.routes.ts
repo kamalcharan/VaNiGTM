@@ -1126,8 +1126,13 @@ export function createTenantRouter(pool: Pool): Router {
         return;
       }
 
+      // id + embed_origins + boot_pings ride along for the Vara Install screen:
+      // it edits the allowlist (PATCH below, addressed by id) and shows, per
+      // origin, whether the widget has actually booted from it. Declared and
+      // observed are different facts and the screen shows both.
       const result = await pool.query(
-        `SELECT d.domain, d.purpose, d.verified_at, d.created_at
+        `SELECT d.id, d.domain, d.purpose, d.verified_at, d.created_at,
+                d.embed_origins, d.boot_pings
            FROM vani_tenant_domain d
            JOIN vani_tenant vt ON vt.id = d.tenant_id
            JOIN vn_tenants t ON t.slug = vt.slug
@@ -1141,6 +1146,196 @@ export function createTenantRouter(pool: Pool): Router {
       console.error('[Tenant:domains:get]', err);
       res.status(500).json({
         error: { code: 'FETCH_FAILED', message: 'Failed to fetch tenant domains' },
+      });
+    }
+  });
+
+  /* ── PATCH /api/v1/tenant/domains/:id/origins ──────── */
+  // The embed allowlist, editable from the Vara Install screen instead of by
+  // SQL. Body: { add?: string[], remove?: string[] } — batched so a screen can
+  // commit a whole edit in one write, and idempotent BY CONSTRUCTION: adding an
+  // origin already present, or removing one already absent, is a no-op that
+  // reports itself as unchanged. That is why this endpoint mints no
+  // idempotency key — there is no vani_idempotency store yet (named as a
+  // standing dependency in the POA), and per vani-app/CLAUDE.md a key nothing
+  // honours is worse than no key.
+  //
+  // Security notes:
+  //  - Admin only. Adding an origin is the act that lets a new site boot the
+  //    widget as this tenant, so it sits at the same bar as activation.
+  //  - `:id` is caller-supplied, so tenant ownership is asserted INSIDE the
+  //    SELECT and again in the UPDATE predicate rather than in a prior check.
+  //    A domain belonging to another workspace matches zero rows and reads as
+  //    404 — never "forbidden", which would confirm the id exists.
+  //  - FOR UPDATE serialises two admins editing the same allowlist; without it
+  //    the read-modify-write loses one of the edits.
+  //  - Removing an origin drops its boot_pings entry in the same statement.
+  //    Presence telemetry for an origin that can no longer boot is a lie the
+  //    Install screen would otherwise keep showing.
+
+  router.patch('/domains/:id/origins', async (req, res) => {
+    try {
+      const jwt = extractJwt(req);
+      if (!jwt) {
+        res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
+        return;
+      }
+      if (jwt.role !== 'owner' && jwt.role !== 'admin' && jwt.is_admin !== true) {
+        res.status(403).json({
+          error: { code: 'FORBIDDEN', message: 'Changing the embed allowlist needs an admin' },
+        });
+        return;
+      }
+
+      const body = req.body ?? {};
+      const rawAdd = body.add ?? [];
+      const rawRemove = body.remove ?? [];
+      if (!Array.isArray(rawAdd) || !Array.isArray(rawRemove)) {
+        res.status(400).json({
+          error: { code: 'INVALID_INPUT', message: 'add and remove must be arrays of origins' },
+        });
+        return;
+      }
+      if (rawAdd.length === 0 && rawRemove.length === 0) {
+        res.status(400).json({
+          error: { code: 'INVALID_INPUT', message: 'Nothing to do — pass at least one origin to add or remove' },
+        });
+        return;
+      }
+
+      // Normalise to exactly what a browser reports as window.location.origin,
+      // because that self-reported string is what /vara/embed/boot compares
+      // against with an exact match. Anything stored in another shape silently
+      // never matches, and the tenant would see a correct-looking allowlist
+      // that refuses their site.
+      const normalised: string[] = [];
+      for (const raw of [...rawAdd, ...rawRemove]) {
+        if (typeof raw !== 'string' || !raw.trim()) {
+          res.status(400).json({
+            error: { code: 'INVALID_ORIGIN', message: 'Each origin must be a non-empty string' },
+          });
+          return;
+        }
+        let url: URL;
+        try {
+          url = new URL(raw.trim());
+        } catch {
+          res.status(400).json({
+            error: {
+              code: 'INVALID_ORIGIN',
+              message: `"${raw.trim()}" is not a URL — an origin looks like https://example.com`,
+            },
+          });
+          return;
+        }
+        if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+          res.status(400).json({
+            error: { code: 'INVALID_ORIGIN', message: `"${raw.trim()}" must use http or https` },
+          });
+          return;
+        }
+        // A path/query/hash means they pasted a page URL, not an origin. Say so
+        // with the answer in the message rather than silently trimming it —
+        // quietly turning /careers into the bare host is the class of
+        // helpfulness that leaves someone unable to explain what they allowed.
+        if ((url.pathname && url.pathname !== '/') || url.search || url.hash) {
+          res.status(400).json({
+            error: {
+              code: 'INVALID_ORIGIN',
+              message: `An origin has no path — use "${url.origin}" rather than "${raw.trim()}"`,
+            },
+          });
+          return;
+        }
+        normalised.push(url.origin);
+      }
+      const add = normalised.slice(0, rawAdd.length);
+      const remove = normalised.slice(rawAdd.length);
+      const collision = add.find((o) => remove.includes(o));
+      if (collision) {
+        res.status(400).json({
+          error: {
+            code: 'INVALID_INPUT',
+            message: `"${collision}" is in both add and remove — pick one`,
+          },
+        });
+        return;
+      }
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        const current = await client.query(
+          `SELECT d.id, d.domain, d.embed_origins
+             FROM vani_tenant_domain d
+             JOIN vani_tenant vt ON vt.id = d.tenant_id
+             JOIN vn_tenants t ON t.slug = vt.slug
+            WHERE d.id = $1 AND t.id = $2
+            FOR UPDATE OF d`,
+          [req.params.id, jwt.tenant_id],
+        );
+        if (!current.rows.length) {
+          await client.query('ROLLBACK');
+          res.status(404).json({
+            error: { code: 'DOMAIN_NOT_FOUND', message: 'No such domain in this workspace' },
+          });
+          return;
+        }
+
+        const before: string[] = current.rows[0].embed_origins ?? [];
+        const kept = before.filter((o) => !remove.includes(o));
+        const after = [...kept, ...add.filter((o) => !kept.includes(o))];
+
+        const unchanged =
+          after.length === before.length && after.every((o, i) => o === before[i]);
+        if (unchanged) {
+          // No write, and deliberately no audit row: an audit trail that
+          // records non-events makes the real ones harder to find.
+          await client.query('COMMIT');
+          res.json({ domain: current.rows[0].domain, embed_origins: before, changed: false });
+          return;
+        }
+
+        await client.query(
+          `UPDATE vani_tenant_domain d
+              SET embed_origins = $3::text[],
+                  boot_pings    = d.boot_pings - $4::text[]
+             FROM vani_tenant vt, vn_tenants t
+            WHERE d.id = $1
+              AND vt.id = d.tenant_id
+              AND t.slug = vt.slug
+              AND t.id = $2`,
+          [req.params.id, jwt.tenant_id, after, remove],
+        );
+
+        await client.query(
+          `INSERT INTO vani_audit_log
+             (tenant_id, agent_id, actor_type, actor_id, entity, entity_id, action, before, after)
+           SELECT d.tenant_id, (SELECT id FROM vani_agent WHERE code = 'vara'),
+                  'human', $2, 'vani_tenant_domain', d.id, 'embed_origins_changed',
+                  $3::jsonb, $4::jsonb
+             FROM vani_tenant_domain d WHERE d.id = $1`,
+          [
+            req.params.id,
+            jwt.user_id,
+            JSON.stringify({ embed_origins: before }),
+            JSON.stringify({ embed_origins: after }),
+          ],
+        );
+
+        await client.query('COMMIT');
+        res.json({ domain: current.rows[0].domain, embed_origins: after, changed: true });
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
+      }
+    } catch (err: any) {
+      console.error('[Tenant:domains:origins:patch]', err);
+      res.status(500).json({
+        error: { code: 'ORIGINS_UPDATE_FAILED', message: 'Failed to update the embed allowlist' },
       });
     }
   });

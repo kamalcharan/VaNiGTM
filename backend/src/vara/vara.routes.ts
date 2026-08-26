@@ -243,8 +243,17 @@ export function createVaraRouter(pool: Pool): Router {
         [vani.id],
       );
 
+      // `domains` carries the id (what PATCH /tenant/domains/:id/origins is
+      // addressed by) and boot_pings (which of those origins has actually
+      // booted the widget). The Install screen renders snippet, allowlist and
+      // per-site liveness together, so they come from ONE call — split across
+      // two, the screen can show a snippet next to a stale allowlist and look
+      // authoritative while doing it.
       const origins = await pool.query(
-        `SELECT embed_origins FROM vani_tenant_domain WHERE tenant_id = $1 AND purpose = 'candidate'`,
+        `SELECT id, domain, embed_origins, boot_pings
+           FROM vani_tenant_domain
+          WHERE tenant_id = $1 AND purpose = 'candidate'
+          ORDER BY created_at`,
         [vani.id],
       );
 
@@ -252,6 +261,8 @@ export function createVaraRouter(pool: Pool): Router {
         token,
         subscription: sub.rows[0]?.status ?? 'none',
         checklist,
+        domains: origins.rows,
+        // Flattened form kept for existing callers; `domains` is the richer one.
         embed_origins: origins.rows.flatMap((r: any) => r.embed_origins ?? []),
         // The console substitutes its own origin for CONSOLE_ORIGIN at render
         // time — the API does not know where the widget assets are served from.
@@ -309,6 +320,27 @@ export function createVaraRouter(pool: Pool): Router {
         res.status(403).json({ error: { code: 'AGENT_NOT_LIVE', message: 'Vara is not live for this workspace yet' } });
         return;
       }
+
+      // Site-alive telemetry for the Install screen. Written only once both
+      // gates above have passed, so the map records boots that actually
+      // succeeded — a refused origin must never read as a live site.
+      //
+      // One UPDATE, merging onto the origin key: `||` on jsonb replaces the
+      // value at an existing key rather than appending, so the map stays
+      // bounded by the number of declared origins no matter how much traffic
+      // the page gets. No read-modify-write, so concurrent boots from two
+      // sites cannot lose each other's entry.
+      //
+      // Deliberately NOT wrapped in its own try/catch: every statement above
+      // already needed the database, so a failure here means the DB is gone
+      // and the boot deserves to fail loudly (rule 12) rather than hand back a
+      // session minted against an unreachable store.
+      await pool.query(
+        `UPDATE vani_tenant_domain
+            SET boot_pings = boot_pings || jsonb_build_object($2::text, now())
+          WHERE tenant_id = $1 AND purpose = 'candidate' AND $2 = ANY(embed_origins)`,
+        [claims.tid, parent_origin],
+      );
 
       const tenant = await pool.query(`SELECT name FROM vani_tenant WHERE id = $1`, [claims.tid]);
       const roles = await pool.query(
