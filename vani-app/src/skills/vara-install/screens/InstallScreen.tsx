@@ -200,10 +200,6 @@ export default function InstallScreen() {
 const CHECK_ACTIONS: Record<string, { href: string; label: string }> = {
   industry_set: { href: '/smart-profile', label: 'Set your industry →' },
   domain_declared: { href: '/smart-profile', label: 'Declare your domain →' },
-  // NOT "declare your domain" — this check fails precisely when one IS
-  // declared but its purpose is Workspace, and telling someone to do the
-  // thing they have already done is how this screen lost an afternoon.
-  candidate_domain: { href: '/smart-profile', label: 'Change its purpose →' },
   // No allowlisted origin is the one gap this very screen fixes — but only
   // once Vara is live, so before that the honest next step is still the JD.
   embed_origins: { href: '/agents/vara/onboarding', label: 'Continue setup →' },
