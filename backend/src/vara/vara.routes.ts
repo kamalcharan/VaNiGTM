@@ -100,8 +100,24 @@ async function readinessChecklist(pool: Pool, vaniTenantId: string, vnTenantId: 
     `SELECT domain, purpose, embed_origins FROM vani_tenant_domain WHERE tenant_id = $1`,
     [vaniTenantId],
   );
+  // Two DIFFERENT states, deliberately not collapsed into one check.
+  //
+  //   no rows at all           -> declare a domain
+  //   rows, none 'candidate'   -> change an existing one's purpose
+  //
+  // They need different sentences and different destinations, and merging them
+  // produces the failure found on 2026-08-26: a tenant who HAD declared their
+  // domain was told to declare it, with no hint that the Domain step's purpose
+  // defaults to 'workspace' while Vara (and /embed/boot) require 'candidate'.
+  // A checklist that argues with what the user already did is worse than none.
+  const anyDomain = domains.rows.length > 0;
   const candidate = domains.rows.filter((d: any) => d.purpose === 'candidate');
   const origins = candidate.flatMap((d: any) => d.embed_origins ?? []);
+  // Name the domains they DO have, so "not candidate-facing" is obviously
+  // about a specific site rather than a category the tenant has to guess at.
+  const nonCandidateNames = domains.rows
+    .filter((d: any) => d.purpose !== 'candidate')
+    .map((d: any) => d.domain);
   const jds = await pool.query(
     `SELECT 1 FROM vara_jd WHERE tenant_id = $1 AND status = 'published' LIMIT 1`,
     [vaniTenantId],
@@ -115,9 +131,22 @@ async function readinessChecklist(pool: Pool, vaniTenantId: string, vnTenantId: 
         pass: industrySet,
       },
       {
+        id: 'domain_declared',
+        label: 'A domain is declared for your workspace',
+        pass: anyDomain,
+      },
+      {
         id: 'candidate_domain',
-        label: 'A candidate-facing domain is declared',
+        label: 'One of them is marked candidate-facing',
         pass: candidate.length > 0,
+        // Only when a domain exists but is the wrong kind — the case that
+        // reads as "but I already did that".
+        detail:
+          anyDomain && candidate.length === 0
+            ? `${nonCandidateNames.join(', ')} ${nonCandidateNames.length === 1 ? 'is' : 'are'} `
+              + `set to Workspace. Vara's widget only boots on a domain whose purpose is `
+              + `Candidate-facing — change it on the Domain step, or add a careers domain.`
+            : undefined,
       },
       {
         id: 'embed_origins',
@@ -130,7 +159,8 @@ async function readinessChecklist(pool: Pool, vaniTenantId: string, vnTenantId: 
         pass: firstJdPublished,
       },
     ],
-    ready: industrySet && candidate.length > 0 && origins.length > 0 && firstJdPublished,
+    ready: industrySet && anyDomain && candidate.length > 0
+      && origins.length > 0 && firstJdPublished,
   };
 }
 
