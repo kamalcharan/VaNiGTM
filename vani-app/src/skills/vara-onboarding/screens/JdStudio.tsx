@@ -23,7 +23,7 @@ import { apiFetch, ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/platform/feedback';
 import {
-  jdScriptFor, UX_DRAFT_KEY,
+  jdScriptFor, UX_DRAFT_KEY, EMPLOYMENT_TYPES, workModeLabel,
   type DraftJd, type PublishedFacts,
 } from '../mock-data';
 import { JdImport } from './JdImport';
@@ -95,6 +95,7 @@ function JdStudioInner() {
   const [published, setPublished] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishedVersion, setPublishedVersion] = useState<number | null>(null);
+  const [locDraft, setLocDraft] = useState('');
   const submitOnce = useRef(false);   // guard against double-submit at the ref level, not state
   const qc = useQueryClient();
   const { showToast } = useToast();
@@ -319,6 +320,100 @@ function JdStudioInner() {
                     <span className={s.knockRule}>{k.rule}</span>
                   </div>
                 ))}
+            </div>
+
+            {/* The employment contract. Typed directly rather than drawn out of
+                the conversation: these are declarations with exact answers, and
+                asking a model to infer "part time" from prose would be a worse
+                way to learn something the tenant can state in two clicks. */}
+            <div className={s.jdSection}>
+              <div className={s.jdSectionH}>Employment</div>
+
+              <div className={s.chipRow} role="group" aria-label="Employment type">
+                {EMPLOYMENT_TYPES.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    className={facts.employment_type === t.value ? s.suggChipOn : s.suggChip}
+                    aria-pressed={facts.employment_type === t.value}
+                    onClick={() => setFacts((f) => ({
+                      ...f,
+                      employment_type: f.employment_type === t.value ? undefined : t.value,
+                    }))}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              <label className={s.modeLabel} htmlFor="jd-onsite">
+                Work mode
+                <span className={s.modeValue}>{workModeLabel(facts.onsite_pct)}</span>
+              </label>
+              <input
+                id="jd-onsite"
+                type="range"
+                min={0}
+                max={100}
+                step={10}
+                className={s.slider}
+                value={facts.onsite_pct ?? 0}
+                onChange={(e) => setFacts((f) => ({ ...f, onsite_pct: Number(e.target.value) }))}
+                aria-valuetext={workModeLabel(facts.onsite_pct)}
+              />
+              <div className={s.sliderEnds} aria-hidden="true">
+                <span>Fully remote</span><span>Fully on-site</span>
+              </div>
+
+              <div className={s.jdSectionH} style={{ marginTop: 14 }}>Locations</div>
+              {(facts.locations ?? []).length > 0 && (
+                <div className={s.chipRow}>
+                  {(facts.locations ?? []).map((loc) => (
+                    <button
+                      key={loc}
+                      type="button"
+                      className={s.locChip}
+                      title={`Remove ${loc}`}
+                      onClick={() => setFacts((f) => ({
+                        ...f,
+                        locations: (f.locations ?? []).filter((l) => l !== loc),
+                      }))}
+                    >
+                      {loc} <span aria-hidden="true">×</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <form
+                className={s.locAdd}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const v = locDraft.trim();
+                  if (!v) return;
+                  // Case-insensitive dedup: "Hyderabad" and "hyderabad" are one
+                  // place, and two chips for it would read as two locations.
+                  setFacts((f) => {
+                    const cur = f.locations ?? [];
+                    if (cur.some((l) => l.toLowerCase() === v.toLowerCase())) return f;
+                    return { ...f, locations: [...cur, v] };
+                  });
+                  setLocDraft('');
+                }}
+              >
+                <input
+                  className={s.textInput}
+                  value={locDraft}
+                  onChange={(e) => setLocDraft(e.target.value)}
+                  placeholder="Hyderabad, Remote (India)…"
+                  aria-label="Add a location"
+                />
+                <button type="submit" className={s.ghost} disabled={!locDraft.trim()}>Add</button>
+              </form>
+              <p className={s.note} style={{ marginTop: 8 }}>
+                How many seats you are filling — and how they split across these
+                locations — is tracked separately, so filling one does not
+                republish the JD. That lands with the candidate pipeline.
+              </p>
             </div>
 
             <div className={s.jdSection}>

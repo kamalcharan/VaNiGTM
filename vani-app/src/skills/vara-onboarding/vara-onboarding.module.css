@@ -391,3 +391,103 @@
   text-decoration: none;
 }
 .setupGapCta:hover { text-decoration: underline; }
+
+/* ── Employment contract controls (JD Studio panel) ───────────────────────
+ * The role's shape — type, work mode, locations. Typed, not conversed: these
+ * are declarations with exact answers, and a slider states "3 days in" better
+ * than any prose a model could infer it from. */
+
+.suggChipOn {
+  composes: suggChip;
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.locChip {
+  padding: 5px 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+.locChip:hover { border-color: var(--gold); color: var(--gold); }
+
+.modeLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin: 14px 0 6px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.modeValue { color: var(--color-text); font-weight: 600; }
+
+.slider {
+  width: 100%;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+.sliderEnds {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--color-muted);
+  opacity: 0.75;
+}
+
+.locAdd {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.locAdd .textInput { flex: 1 1 auto; }
+
+/* ── Published JD, read-only ──────────────────────────────────────────────
+ * Expanded under its row. Everything here already arrived in
+ * /vara/onboarding/context — the panel renders it, it does not fetch it. */
+.jdItem + .jdItem { margin-top: 6px; }
+
+.jdDetail {
+  margin: 2px 0 4px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--glass-border);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  background: var(--color-bg);
+}
+.jdDetailHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.jdDetailNote {
+  font-size: 11.5px;
+  color: var(--color-muted);
+  opacity: 0.85;
+}
+.jdDetailLede {
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+.jdDetailSection + .jdDetailSection { margin-top: 14px; }
+
+.jdDetailFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.jdDetailFact {
+  padding: 4px 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--color-text);
+}

@@ -34,7 +34,10 @@ import { apiFetch, ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { DataBoundary, SkeletonRows } from '@/platform/feedback';
 import type { SkillResult } from '@/lib/useSkill';
-import { UX_DRAFT_KEY, type DraftJd, type PublishedFacts } from '../mock-data';
+import {
+  UX_DRAFT_KEY, EMPLOYMENT_TYPES, workModeLabel,
+  type DraftJd, type PublishedFacts,
+} from '../mock-data';
 import u from '@/platform/shell/ui.module.css';
 import s from '../vara-onboarding.module.css';
 
@@ -77,6 +80,9 @@ function VaraOnboardingRunnerInner() {
   const router = useRouter();
   const [family, setFamily] = useState<string | null>(null);
   const [otherFamily, setOtherFamily] = useState('');
+  /** Which published JD is expanded. One at a time — a list of open panels
+   *  is a worse way to compare two JDs than opening each in turn. */
+  const [openJd, setOpenJd] = useState<string | null>(null);
   const [title, setTitle] = useState('');
 
   const emptyMode = useSearchParams().get('empty') === '1';
@@ -188,7 +194,8 @@ function VaraOnboardingRunnerInner() {
                   </p>
                   <div className={s.jdList}>
                     {c.published_jds.map((jd) => (
-                      <div key={jd.id} className={s.jdRow}>
+                      <div key={jd.id} className={s.jdItem}>
+                        <div className={s.jdRow}>
                         <div className={s.jdRowMain}>
                           <div className={s.jdRowTitle}>
                             {jd.title} <span className={s.jdRowVer}>v{jd.version}</span>
@@ -202,10 +209,20 @@ function VaraOnboardingRunnerInner() {
                           </div>
                         </div>
                         <div className={s.jdRowActions}>
+                          <button
+                            type="button"
+                            className={s.ghost}
+                            aria-expanded={openJd === jd.id}
+                            onClick={() => setOpenJd(openJd === jd.id ? null : jd.id)}
+                          >
+                            {openJd === jd.id ? 'Hide' : 'View'}
+                          </button>
                           <button type="button" className={s.ghost} onClick={() => duplicate(jd)}>
                             Duplicate
                           </button>
                         </div>
+                        </div>
+                        {openJd === jd.id && <JdDetail jd={jd} />}
                       </div>
                     ))}
                   </div>
@@ -383,6 +400,95 @@ function VaraOnboardingRunnerInner() {
         }}
       </DataBoundary>
       )}
+    </div>
+  );
+}
+
+/**
+ * A published JD, read-only.
+ *
+ * Until now the only thing you could do with a published JD was Duplicate it
+ * — so the contract a candidate will actually be scored against was
+ * write-once and unreadable. Everything here already arrives in
+ * /vara/onboarding/context; this is a rendering of data the client had all
+ * along, not a new read.
+ *
+ * Read-only on purpose. Editing means a new version (POST /vara/jd/:id/version,
+ * Phase 3), and an editable-looking panel that silently discards changes would
+ * be worse than no panel.
+ */
+function JdDetail({ jd }: { jd: ContextPublishedJd }) {
+  const f = jd.facts;
+  const musthaves = f.musthaves ?? [];
+  const knockouts = f.knockouts ?? [];
+  const locations = f.locations ?? [];
+  const employment = EMPLOYMENT_TYPES.find((t) => t.value === f.employment_type)?.label;
+
+  return (
+    <div className={s.jdDetail}>
+      <div className={s.jdDetailHead}>
+        <span className={`${u.tag} ${u.tagDim}`}>v{jd.version} · published</span>
+        <span className={s.jdDetailNote}>
+          Read-only — publishing a change creates a new version, which arrives with editing.
+        </span>
+      </div>
+
+      {f.one_liner && <p className={s.jdDetailLede}>{f.one_liner}</p>}
+
+      {/* Only render the employment block when something was stated. An
+          all-em-dash card teaches nothing; its absence says "not stated". */}
+      {(employment || f.onsite_pct !== undefined || locations.length > 0) && (
+        <div className={s.jdDetailSection}>
+          <div className={s.jdSectionH}>Employment</div>
+          <div className={s.jdDetailFacts}>
+            {employment && <span className={s.jdDetailFact}>{employment}</span>}
+            {f.onsite_pct !== undefined && (
+              <span className={s.jdDetailFact}>{workModeLabel(f.onsite_pct)}</span>
+            )}
+            {locations.map((l) => <span key={l} className={s.jdDetailFact}>{l}</span>)}
+          </div>
+        </div>
+      )}
+
+      <div className={s.jdDetailSection}>
+        <div className={s.jdSectionH}>Must-haves · weighted</div>
+        {musthaves.length === 0
+          ? <div className={s.jdEmpty}>none recorded</div>
+          : musthaves.map((m, i) => (
+            <div key={i} className={s.weightRow}>
+              <div>
+                <div className={s.weightName}>{m.name}</div>
+                <div className={s.weightBar}>
+                  <div className={s.weightFill} style={{ width: `${m.weight}%` }} />
+                </div>
+              </div>
+              <div className={s.weightVal}>{m.weight} wt</div>
+            </div>
+          ))}
+      </div>
+
+      <div className={s.jdDetailSection}>
+        <div className={s.jdSectionH}>Knockouts · deterministic, never scored</div>
+        {knockouts.length === 0
+          ? <div className={s.jdEmpty}>none recorded</div>
+          : knockouts.map((k, i) => (
+            <div key={i} className={s.knockRow}>
+              <span className={s.knockLabel}>{k.label}</span>
+              <span className={s.knockRule}>{k.rule}</span>
+            </div>
+          ))}
+      </div>
+
+      <div className={s.jdDetailSection}>
+        <div className={s.jdSectionH}>Threshold &amp; band</div>
+        <div className={s.jdLine}>
+          Handover threshold:{' '}
+          {f.threshold !== undefined ? `${f.threshold}%` : <span className={s.jdEmpty}>—</span>}
+        </div>
+        <div className={s.jdLine}>
+          Comp band: {f.band ?? <span className={s.jdEmpty}>—</span>}
+        </div>
+      </div>
     </div>
   );
 }
