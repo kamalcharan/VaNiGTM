@@ -182,12 +182,35 @@ export default function InstallScreen() {
 }
 
 /* ── Not live ────────────────────────────────────────────────────────────
- * Rule 9b: an empty state carries its next action. The checklist already
- * names precisely what is missing, so it renders as the action list rather
- * than a flat "not available yet". */
+ * Rule 9b: an empty state carries its next action — and the action has to be
+ * one that actually unblocks the FIRST failing check, not the last.
+ *
+ * This shipped wrong on 2026-08-26 and stranded a real walk-through: the CTA
+ * always pointed at the doorway, but the doorway itself refuses with
+ * NO_INDUSTRY until the organisation's industry is set, so a tenant missing
+ * it was sent in a circle — Install says "publish a JD", doorway says "set
+ * your industry", retry does nothing. The checklist is ordered earliest-
+ * blocker-first by the API, so the fix is to route on the first failure
+ * rather than assume the doorway is always next. */
+
+/** Where each check is actually resolved. Order matches the API's ordering. */
+const CHECK_ACTIONS: Record<string, { href: string; label: string }> = {
+  industry_set: { href: '/smart-profile', label: 'Set your industry →' },
+  candidate_domain: { href: '/smart-profile', label: 'Declare your domain →' },
+  // No allowlisted origin is the one gap this very screen fixes — but only
+  // once Vara is live, so before that the honest next step is still the JD.
+  embed_origins: { href: '/agents/vara/onboarding', label: 'Continue setup →' },
+  first_jd_published: { href: '/agents/vara/onboarding', label: 'Continue setup →' },
+};
 
 function NotLive({ checklist }: { checklist: EmbedResponse['checklist'] }) {
-  const missing = checklist?.checks?.filter((c) => !c.pass) ?? [];
+  const checks = checklist?.checks ?? [];
+  const missing = checks.filter((c) => !c.pass);
+  const first = missing[0];
+  const action = (first && CHECK_ACTIONS[first.id]) ?? {
+    href: '/agents/vara/onboarding',
+    label: 'Continue setup →',
+  };
   return (
     <div className={s.card}>
       <div className={s.cardHead}>
@@ -198,9 +221,12 @@ function NotLive({ checklist }: { checklist: EmbedResponse['checklist'] }) {
         an agent that cannot answer is worse than no token. What is left:
       </p>
       <ul className={s.checklist}>
-        {missing.map((c) => (
+        {missing.map((c, i) => (
           <li key={c.id} className={s.checkFail}>
             <span aria-hidden="true">○</span> {c.label}
+            {/* Only the first is actionable; the rest are gated behind it and
+                saying so beats letting someone pick one they cannot do yet. */}
+            {i > 0 && <span className={s.blockedNote}>after the one above</span>}
           </li>
         ))}
         {missing.length === 0 && (
@@ -209,8 +235,8 @@ function NotLive({ checklist }: { checklist: EmbedResponse['checklist'] }) {
           </li>
         )}
       </ul>
-      <Link href="/agents/vara/onboarding" className={s.primaryLink}>
-        Continue setup →
+      <Link href={action.href} className={s.primaryLink}>
+        {action.label}
       </Link>
     </div>
   );

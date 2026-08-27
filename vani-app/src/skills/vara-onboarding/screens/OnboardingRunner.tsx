@@ -28,6 +28,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
@@ -87,21 +88,34 @@ function VaraOnboardingRunnerInner() {
         const r = await apiFetch<OnboardingContext>(API.vara.onboardingContext);
         return { success: true, skill: 'vara', function: 'onboarding.context', data: r };
       } catch (err) {
-        // NO_INDUSTRY and TENANT_NOT_PROVISIONED both come back as ApiError;
-        // surface them through the boundary's error copy rather than as
-        // silent empties. The boundary shows the message with a retry, which
-        // is the right shape for a "go set your industry" pointer.
+        // NO_INDUSTRY and TENANT_NOT_PROVISIONED both come back as ApiError.
+        // They are still thrown — the query genuinely did not resolve — but
+        // they are intercepted BEFORE the boundary below (see SETUP_GAPS)
+        // rather than rendered as failures. The earlier version let the
+        // boundary handle them "because the message points at Smart Profile",
+        // which was wrong: the boundary's only affordance is Try again, and
+        // retrying cannot set an industry. It failed identically forever, and
+        // the Install screen linked here, so a tenant missing an industry
+        // went in a circle.
         if (err instanceof ApiError) throw err;
         throw new Error('Could not read onboarding context');
       }
     },
   });
 
+  // A setup gap is not a failure. These two refusals mean the workspace has
+  // not declared something Vara reads — the answer is a link to where it is
+  // declared, never a retry button.
+  const gap = ctx.error instanceof ApiError ? SETUP_GAPS[ctx.error.code ?? ''] : undefined;
+
   return (
     <div className={s.wrap}>
       <div className={u.eyebrow}>// AGENTS · VARA · ONBOARDING</div>
       <h1 className={u.h1}>One JD from live</h1>
 
+      {gap ? (
+        <SetupGap gap={gap} message={(ctx.error as ApiError).message} />
+      ) : (
       <DataBoundary query={ctx} label="onboarding context" skeleton={<SkeletonRows rows={4} />}>
         {(c: OnboardingContext) => {
           // Empty mode is a client-side simulation: keep everything real
@@ -368,6 +382,60 @@ function VaraOnboardingRunnerInner() {
           );
         }}
       </DataBoundary>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The two refusals that mean "something upstream is undeclared", and where
+ * each is actually declared. Keyed by the API's error code so the copy stays
+ * with the UI and the diagnosis stays with the server.
+ */
+const SETUP_GAPS: Record<string, { title: string; href: string; cta: string; why: string }> = {
+  NO_INDUSTRY: {
+    title: 'Vara needs your industry first',
+    href: '/smart-profile',
+    cta: 'Set your industry →',
+    why:
+      'It selects the starting playbook — the must-haves, knockouts and titles '
+      + 'Vara proposes for each role family. Without it there is nothing to '
+      + 'propose, so this step cannot open.',
+  },
+  TENANT_NOT_PROVISIONED: {
+    title: 'Complete the Domain step first',
+    href: '/smart-profile',
+    cta: 'Go to the Domain step →',
+    why:
+      'The Domain step provisions your workspace on the platform spine, which '
+      + 'is what every agent — Vara included — is registered against.',
+  },
+};
+
+/**
+ * A setup gap, rendered as an instruction rather than an error.
+ *
+ * Deliberately NOT a DataBoundary error: that state offers Try again, and no
+ * amount of retrying declares an industry. The server's own message is shown
+ * verbatim underneath so the UI never drifts from the API's diagnosis (rule
+ * 12 — the real cause stays visible), but the affordance is the link.
+ */
+function SetupGap({
+  gap,
+  message,
+}: {
+  gap: { title: string; href: string; cta: string; why: string };
+  message: string;
+}) {
+  return (
+    <div className={s.setupGap}>
+      <span className={`${u.tag} ${u.tagDim} ${s.setupGapBadge}`}>Setup needed</span>
+      <h2 className={s.setupGapTitle}>{gap.title}</h2>
+      <p className={s.setupGapWhy}>{gap.why}</p>
+      {/* The server's own words, kept verbatim so the UI never drifts from the
+          API's diagnosis (rule 12 — the real cause stays visible). */}
+      <p className={s.setupGapSaid}>{message}</p>
+      <Link href={gap.href} className={s.setupGapCta}>{gap.cta}</Link>
     </div>
   );
 }

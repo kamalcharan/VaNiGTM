@@ -345,3 +345,49 @@
   font-size: 13px; color: var(--color-muted);
   margin: 0 0 14px;
 }
+
+/* ── Setup gap ─────────────────────────────────────────────────────────────
+ * NO_INDUSTRY / TENANT_NOT_PROVISIONED. Dashed border rather than the solid
+ * card, matching the other "nothing here yet, here is what to do" states —
+ * this is an instruction, not a failure, and it must not read like the
+ * boundary's error card (which offers a retry that cannot help). */
+.setupGap {
+  border: 1px dashed var(--glass-border);
+  border-radius: 12px;
+  padding: 18px 20px 20px;
+  background: var(--color-bg);
+  max-width: 640px;
+}
+/* u.tag is block-level on its own; without this the badge stretches the card. */
+.setupGapBadge { display: inline-flex; align-items: center; }
+
+.setupGapTitle {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  margin: 10px 0 8px;
+}
+.setupGapWhy {
+  font-size: 13px;
+  color: var(--color-muted);
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+.setupGapSaid {
+  font-size: 12px;
+  color: var(--color-muted);
+  line-height: 1.6;
+  margin: 0 0 14px;
+  padding-left: 10px;
+  border-left: 2px solid var(--glass-border);
+}
+.setupGapCta {
+  display: inline-flex;
+  align-items: center;
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.setupGapCta:hover { text-decoration: underline; }
