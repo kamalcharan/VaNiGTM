@@ -372,8 +372,27 @@ export function createVaraRouter(pool: Pool): Router {
       );
 
       const tenant = await pool.query(`SELECT name FROM vani_tenant WHERE id = $1`, [claims.tid]);
+      // The candidate's view of a role. Title alone gave someone landing on the
+      // tenant's careers page nothing to decide from — they could see a job
+      // exists and not what it is.
+      //
+      // Only the PUBLIC half of the current version ships: summary,
+      // description, employment shape, locations, band. The scoring contract —
+      // must_haves weights, knockouts, threshold — stays server-side. Publishing
+      // the weights would tell a candidate exactly what to claim, which is the
+      // one thing that makes the score meaningless.
       const roles = await pool.query(
-        `SELECT id, title FROM vara_jd WHERE tenant_id = $1 AND status = 'published' ORDER BY created_at DESC`,
+        `SELECT jd.id, jd.title,
+                ver.facts ->> 'one_liner'       AS one_liner,
+                ver.facts ->> 'description'     AS description,
+                ver.facts ->> 'employment_type' AS employment_type,
+                ver.facts ->  'onsite_pct'      AS onsite_pct,
+                ver.facts ->  'locations'       AS locations,
+                ver.facts ->> 'band'            AS band
+           FROM vara_jd jd
+           LEFT JOIN vara_jd_version ver ON ver.id = jd.current_version_id
+          WHERE jd.tenant_id = $1 AND jd.status = 'published'
+          ORDER BY jd.created_at DESC`,
         [claims.tid],
       );
 
