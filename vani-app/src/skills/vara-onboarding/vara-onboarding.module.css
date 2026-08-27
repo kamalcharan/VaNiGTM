@@ -491,3 +491,29 @@
   font-size: 12px;
   color: var(--color-text);
 }
+
+/* The posting. Prose, not a field — so it gets reading measure and keeps the
+   author's line breaks. */
+.descBox {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+}
+.descBox:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.jdDetailDesc {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  max-width: 68ch;
+}

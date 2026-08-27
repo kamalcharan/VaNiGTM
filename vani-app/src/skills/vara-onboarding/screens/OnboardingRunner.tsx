@@ -435,6 +435,16 @@ function JdDetail({ jd }: { jd: ContextPublishedJd }) {
 
       {f.one_liner && <p className={s.jdDetailLede}>{f.one_liner}</p>}
 
+      {f.description && (
+        <div className={s.jdDetailSection}>
+          <div className={s.jdSectionH}>Description · what candidates read</div>
+          {/* Preserve the author's line breaks; this is prose they wrote, not
+              a field. No markdown rendering — an unrendered ** would be worse
+              than plain text, and a renderer is a dependency this does not need. */}
+          <p className={s.jdDetailDesc}>{f.description}</p>
+        </div>
+      )}
+
       {/* Only render the employment block when something was stated. An
           all-em-dash card teaches nothing; its absence says "not stated". */}
       {(employment || f.onsite_pct !== undefined || locations.length > 0) && (

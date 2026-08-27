@@ -240,6 +240,18 @@ export function workModeLabel(onsitePct: number | undefined): string {
 
 export interface PublishedFacts {
   one_liner?: string;
+  /**
+   * The human-readable posting — what a candidate reads before applying.
+   *
+   * Distinct from the scoring contract (must_haves / knockouts / threshold),
+   * which is what Vara evaluates against. Both are "the JD", and keeping them
+   * in one versioned object is deliberate: a posting that promises something
+   * the weights do not reflect is how a candidate ends up scored against
+   * something they never read.
+   *
+   * Versioned with the rest of facts, because it is what the candidate saw.
+   */
+  description?: string;
   band?: string;
   threshold?: number;
   /**

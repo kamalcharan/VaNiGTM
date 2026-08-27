@@ -25,7 +25,16 @@ const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? '';
 
 interface BootData {
   tenant: { name: string };
-  roles: { id: string; title: string }[];
+  roles: {
+    id: string;
+    title: string;
+    one_liner: string | null;
+    description: string | null;
+    employment_type: string | null;
+    onsite_pct: number | null;
+    locations: string[] | null;
+    band: string | null;
+  }[];
   session: string;
 }
 
@@ -44,6 +53,27 @@ const shell: React.CSSProperties = {
   fontFamily: 'system-ui, -apple-system, sans-serif',
   fontSize: 14,
 };
+
+/**
+ * The public-facing facts, in the order a candidate weighs them. Built here
+ * rather than server-side so the widget controls its own presentation — the
+ * API ships values, not sentences.
+ */
+function roleMeta(r: BootData['roles'][number]): string[] {
+  const out: string[] = [];
+  const type = { full_time: 'Full time', part_time: 'Part time', freelance: 'Freelance' }[
+    r.employment_type ?? ''
+  ];
+  if (type) out.push(type);
+  if (typeof r.onsite_pct === 'number') {
+    out.push(r.onsite_pct <= 0 ? 'Fully remote'
+      : r.onsite_pct >= 100 ? 'Fully on-site'
+      : `Hybrid — ${r.onsite_pct}% on-site`);
+  }
+  if (r.locations?.length) out.push(r.locations.join(', '));
+  if (r.band) out.push(r.band);
+  return out;
+}
 
 export default function EmbedChatPage() {
   const [state, setState] = useState<BootState>({ kind: 'loading' });
@@ -208,7 +238,20 @@ export default function EmbedChatPage() {
                       }}
                     >
                       <div style={{ fontWeight: 600 }}>{r.title}</div>
-                      <div style={{ fontSize: 12, color: '#8f8a7d' }}>
+                      {/* Whatever the tenant actually stated. Rendered only
+                          when present — an empty line reads as a broken card,
+                          and rule 9d says never invent what was not declared. */}
+                      {(r.one_liner || r.description) && (
+                        <div style={{ fontSize: 12.5, color: '#c9c4b8', marginTop: 4, lineHeight: 1.5 }}>
+                          {r.description || r.one_liner}
+                        </div>
+                      )}
+                      {roleMeta(r).length > 0 && (
+                        <div style={{ fontSize: 11.5, color: '#8f8a7d', marginTop: 6 }}>
+                          {roleMeta(r).join(' · ')}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 12, color: '#8f8a7d', marginTop: 6 }}>
                         Applications open here soon
                       </div>
                     </li>

@@ -322,6 +322,30 @@ function JdStudioInner() {
                 ))}
             </div>
 
+            {/* The posting — what a candidate reads. The scoring contract above
+                is what Vara evaluates. Both are versioned together so the two
+                can never drift apart into a promise the weights don't keep. */}
+            <div className={s.jdSection}>
+              <div className={s.jdSectionH}>Description · what candidates read</div>
+              <textarea
+                className={s.descBox}
+                value={facts.description ?? ''}
+                onChange={(e) => setFacts((f) => ({ ...f, description: e.target.value }))}
+                placeholder="What the role does, who it works with, why it matters."
+                rows={6}
+                aria-label="Role description"
+              />
+              {/* Drafting from the facts needs the composer LLM, which is not
+                  reachable yet (POA standing dependency). Following the same
+                  habit as Edit: say so rather than render a button that fails. */}
+              <p className={s.note} style={{ marginTop: 6 }}>
+                Vara will draft this from the facts above in your brand voice —
+                you edit, then publish. That arrives with the composer LLM; for
+                now, write it yourself. Left blank, the widget shows the role
+                summary alone.
+              </p>
+            </div>
+
             {/* The employment contract. Typed directly rather than drawn out of
                 the conversation: these are declarations with exact answers, and
                 asking a model to infer "part time" from prose would be a worse
