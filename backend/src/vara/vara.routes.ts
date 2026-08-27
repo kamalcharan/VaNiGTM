@@ -97,27 +97,21 @@ async function readinessChecklist(pool: Pool, vaniTenantId: string, vnTenantId: 
   const industrySet = String(profile.rows[0]?.industry ?? '').trim().length > 0;
 
   const domains = await pool.query(
-    `SELECT domain, purpose, embed_origins FROM vani_tenant_domain WHERE tenant_id = $1`,
+    `SELECT domain, embed_origins FROM vani_tenant_domain WHERE tenant_id = $1`,
     [vaniTenantId],
   );
-  // Two DIFFERENT states, deliberately not collapsed into one check.
+  // Vara does NOT filter on purpose (Charan's ruling, 2026-08-26): the domain
+  // declared in the Smart Profile counts, whatever it is labelled.
   //
-  //   no rows at all           -> declare a domain
-  //   rows, none 'candidate'   -> change an existing one's purpose
-  //
-  // They need different sentences and different destinations, and merging them
-  // produces the failure found on 2026-08-26: a tenant who HAD declared their
-  // domain was told to declare it, with no hint that the Domain step's purpose
-  // defaults to 'workspace' while Vara (and /embed/boot) require 'candidate'.
-  // A checklist that argues with what the user already did is worse than none.
+  // The old `purpose = 'candidate'` filter was a trap, not a control. The
+  // Domain step defaults purpose to 'workspace', so the ordinary way of
+  // declaring a domain produced one Vara silently refused — and purpose
+  // secures nothing anyway: what authorises a boot is the ORIGIN ALLOWLIST
+  // (`embed_origins`), checked on every call. A tenant who has added an
+  // origin has stated their intent far more precisely than a dropdown does.
+  // `purpose` remains a tenant declaration; it is simply no longer a gate.
   const anyDomain = domains.rows.length > 0;
-  const candidate = domains.rows.filter((d: any) => d.purpose === 'candidate');
-  const origins = candidate.flatMap((d: any) => d.embed_origins ?? []);
-  // Name the domains they DO have, so "not candidate-facing" is obviously
-  // about a specific site rather than a category the tenant has to guess at.
-  const nonCandidateNames = domains.rows
-    .filter((d: any) => d.purpose !== 'candidate')
-    .map((d: any) => d.domain);
+  const origins = domains.rows.flatMap((d: any) => d.embed_origins ?? []);
   const jds = await pool.query(
     `SELECT 1 FROM vara_jd WHERE tenant_id = $1 AND status = 'published' LIMIT 1`,
     [vaniTenantId],
@@ -132,25 +126,12 @@ async function readinessChecklist(pool: Pool, vaniTenantId: string, vnTenantId: 
       },
       {
         id: 'domain_declared',
-        label: 'A domain is declared for your workspace',
+        label: 'A domain is declared in your Smart Profile',
         pass: anyDomain,
       },
       {
-        id: 'candidate_domain',
-        label: 'One of them is marked candidate-facing',
-        pass: candidate.length > 0,
-        // Only when a domain exists but is the wrong kind — the case that
-        // reads as "but I already did that".
-        detail:
-          anyDomain && candidate.length === 0
-            ? `${nonCandidateNames.join(', ')} ${nonCandidateNames.length === 1 ? 'is' : 'are'} `
-              + `set to Workspace. Vara's widget only boots on a domain whose purpose is `
-              + `Candidate-facing — change it on the Domain step, or add a careers domain.`
-            : undefined,
-      },
-      {
         id: 'embed_origins',
-        label: 'At least one embed origin is allowlisted on it',
+        label: 'At least one site origin is allowlisted on it',
         pass: origins.length > 0,
       },
       {
@@ -159,8 +140,7 @@ async function readinessChecklist(pool: Pool, vaniTenantId: string, vnTenantId: 
         pass: firstJdPublished,
       },
     ],
-    ready: industrySet && anyDomain && candidate.length > 0
-      && origins.length > 0 && firstJdPublished,
+    ready: industrySet && anyDomain && origins.length > 0 && firstJdPublished,
   };
 }
 
@@ -301,7 +281,7 @@ export function createVaraRouter(pool: Pool): Router {
       const origins = await pool.query(
         `SELECT id, domain, embed_origins, boot_pings
            FROM vani_tenant_domain
-          WHERE tenant_id = $1 AND purpose = 'candidate'
+          WHERE tenant_id = $1
           ORDER BY created_at`,
         [vani.id],
       );
@@ -349,7 +329,7 @@ export function createVaraRouter(pool: Pool): Router {
       // immediately. Exact string match on scheme+host(+port), as stored.
       const allowed = await pool.query(
         `SELECT 1 FROM vani_tenant_domain
-          WHERE tenant_id = $1 AND purpose = 'candidate' AND $2 = ANY(embed_origins)`,
+          WHERE tenant_id = $1 AND $2 = ANY(embed_origins)`,
         [claims.tid, parent_origin],
       );
       if (!allowed.rows.length) {
@@ -387,7 +367,7 @@ export function createVaraRouter(pool: Pool): Router {
       await pool.query(
         `UPDATE vani_tenant_domain
             SET boot_pings = boot_pings || jsonb_build_object($2::text, now())
-          WHERE tenant_id = $1 AND purpose = 'candidate' AND $2 = ANY(embed_origins)`,
+          WHERE tenant_id = $1 AND $2 = ANY(embed_origins)`,
         [claims.tid, parent_origin],
       );
 
