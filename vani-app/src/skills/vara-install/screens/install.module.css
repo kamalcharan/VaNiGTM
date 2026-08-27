@@ -249,8 +249,8 @@
 
 .checkFail {
   display: flex;
-  align-items: center;
-  gap: 9px;
+  flex-direction: column;
+  align-items: flex-start;
   font-size: 13px;
   color: var(--color-text);
 }
@@ -265,4 +265,18 @@
   font-size: 11px;
   color: var(--color-muted);
   opacity: 0.7;
+}
+
+.checkLine {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+/* The server's explanation for a check that fails in a confusing way. */
+.checkDetail {
+  margin: 5px 0 0 20px;
+  font-size: 12px;
+  color: var(--color-muted);
+  line-height: 1.55;
+  max-width: 62ch;
 }

@@ -50,7 +50,10 @@ interface EmbedDomain {
 interface EmbedResponse {
   token: string;
   subscription: string;
-  checklist: { checks: { id: string; label: string; pass: boolean }[]; ready: boolean };
+  checklist: {
+    checks: { id: string; label: string; pass: boolean; detail?: string }[];
+    ready: boolean;
+  };
   domains: EmbedDomain[];
   embed_origins: string[];
   snippet: string;
@@ -196,7 +199,11 @@ export default function InstallScreen() {
 /** Where each check is actually resolved. Order matches the API's ordering. */
 const CHECK_ACTIONS: Record<string, { href: string; label: string }> = {
   industry_set: { href: '/smart-profile', label: 'Set your industry →' },
-  candidate_domain: { href: '/smart-profile', label: 'Declare your domain →' },
+  domain_declared: { href: '/smart-profile', label: 'Declare your domain →' },
+  // NOT "declare your domain" — this check fails precisely when one IS
+  // declared but its purpose is Workspace, and telling someone to do the
+  // thing they have already done is how this screen lost an afternoon.
+  candidate_domain: { href: '/smart-profile', label: 'Change its purpose →' },
   // No allowlisted origin is the one gap this very screen fixes — but only
   // once Vara is live, so before that the honest next step is still the JD.
   embed_origins: { href: '/agents/vara/onboarding', label: 'Continue setup →' },
@@ -223,10 +230,15 @@ function NotLive({ checklist }: { checklist: EmbedResponse['checklist'] }) {
       <ul className={s.checklist}>
         {missing.map((c, i) => (
           <li key={c.id} className={s.checkFail}>
-            <span aria-hidden="true">○</span> {c.label}
-            {/* Only the first is actionable; the rest are gated behind it and
-                saying so beats letting someone pick one they cannot do yet. */}
-            {i > 0 && <span className={s.blockedNote}>after the one above</span>}
+            <div className={s.checkLine}>
+              <span aria-hidden="true">○</span> {c.label}
+              {/* Only the first is actionable; the rest are gated behind it and
+                  saying so beats letting someone pick one they cannot do yet. */}
+              {i > 0 && <span className={s.blockedNote}>after the one above</span>}
+            </div>
+            {/* The server explains the awkward case — declared, but the wrong
+                kind — naming the actual domain rather than a category. */}
+            {c.detail && <div className={s.checkDetail}>{c.detail}</div>}
           </li>
         ))}
         {missing.length === 0 && (
