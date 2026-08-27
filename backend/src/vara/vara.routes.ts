@@ -81,7 +81,21 @@ async function vaniTenantFor(pool: Pool, vnTenantId: string): Promise<{ id: stri
  * each item this list omits is named in the channels doc as arriving with its
  * feature. Grows with the build; never shrinks.
  */
-async function readinessChecklist(pool: Pool, vaniTenantId: string) {
+async function readinessChecklist(pool: Pool, vaniTenantId: string, vnTenantId: string) {
+  // Industry comes FIRST because it is the earliest thing that can be missing
+  // and the only one that blocks the doorway itself: /onboarding/context
+  // refuses with NO_INDUSTRY before a family can be chosen, so a tenant
+  // without it cannot publish a JD and therefore cannot ever go live. It was
+  // absent from this list until 2026-08-26, which made the Install screen
+  // report "publish your first JD" while omitting the reason that was
+  // impossible — and then link to a screen that dead-ends. Naming the real
+  // blocker is the whole job of a checklist.
+  const profile = await pool.query(
+    `SELECT industry FROM vn_tenant_profiles WHERE tenant_id = $1`,
+    [vnTenantId],
+  );
+  const industrySet = String(profile.rows[0]?.industry ?? '').trim().length > 0;
+
   const domains = await pool.query(
     `SELECT domain, purpose, embed_origins FROM vani_tenant_domain WHERE tenant_id = $1`,
     [vaniTenantId],
@@ -95,6 +109,11 @@ async function readinessChecklist(pool: Pool, vaniTenantId: string) {
   const firstJdPublished = jds.rows.length > 0;
   return {
     checks: [
+      {
+        id: 'industry_set',
+        label: 'Your organisation’s industry is set',
+        pass: industrySet,
+      },
       {
         id: 'candidate_domain',
         label: 'A candidate-facing domain is declared',
@@ -111,7 +130,7 @@ async function readinessChecklist(pool: Pool, vaniTenantId: string) {
         pass: firstJdPublished,
       },
     ],
-    ready: candidate.length > 0 && origins.length > 0 && firstJdPublished,
+    ready: industrySet && candidate.length > 0 && origins.length > 0 && firstJdPublished,
   };
 }
 
@@ -136,7 +155,7 @@ export function createVaraRouter(pool: Pool): Router {
         });
         return;
       }
-      const checklist = await readinessChecklist(pool, vani.id);
+      const checklist = await readinessChecklist(pool, vani.id, auth.tenant_id);
       const sub = await pool.query(
         `SELECT ta.status FROM vani_tenant_agent ta
            JOIN vani_agent a ON a.id = ta.agent_id AND a.code = 'vara'
@@ -235,7 +254,7 @@ export function createVaraRouter(pool: Pool): Router {
       const claims: EmbedTokenClaims = { tid: vani.id, scope: 'vara-embed' };
       const token = jwt.sign(claims, JWT_SECRET, { expiresIn: EMBED_TOKEN_TTL });
 
-      const checklist = await readinessChecklist(pool, vani.id);
+      const checklist = await readinessChecklist(pool, vani.id, auth.tenant_id);
       const sub = await pool.query(
         `SELECT ta.status FROM vani_tenant_agent ta
            JOIN vani_agent a ON a.id = ta.agent_id AND a.code = 'vara'
