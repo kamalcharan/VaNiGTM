@@ -1,6 +1,6 @@
 # Vara — Execution POA
 
-**Date:** 2026-08-26 (Phase 4 landed, taken out of order)
+**Date:** 2026-08-27 (Phase 4 landed + hardened against a cold-tenant walk)
 **Previous revision:** 2026-08-19
 **Original:** 2026-08-17 (late)
 **Companion to:** `vara-readiness-review.md`, `vara-onboarding-design.md`,
@@ -17,7 +17,7 @@ prompts are append-only with a one-active guard.
 
 ---
 
-## Where we are (2026-08-26)
+## Where we are (2026-08-27)
 
 **Landed to main, both repos, verified end-to-end:**
 
@@ -26,12 +26,70 @@ prompts are append-only with a one-active guard.
 - **Prompt Store** — migration 245 (`vani_prompt`, two-scope one-table: system + tenant override, append-only content trigger, one-active-per-scope partial unique index, tenant-scoped RLS). `resolvePrompt(db, key)` + `renderPrompt(prompt, vars)`. Endpoints `GET/PATCH/DELETE /vara/prompts[:key]`. Prompt Studio UI at `/agents/vara/prompts` with variable-coverage validation. Seeded `vara.composer.ask_next` as proof-of-shape (real caller lands with Extractor).
 - **Semantic Layer** — migration 246 (`CREATE EXTENSION vector` guarded; `vara_skill` with `embedding vector(768)` + HNSW cosine; `vara_family_profile.axes_embedding` + HNSW; `vara_candidate.profile_embedding` + HNSW; `vara_match_log` append-only). `embedText(text)` helper (Ollama-native `nomic-embed-text` default, 768-dim). `canonicalizeSkill(name)` for exact-match dedup before embedding. `recordMatch(db, input)` helper. Deploy note at `docs/db/pgvector-install.md`. pgvector 0.8.6 live on VPS in `vikuna-postgres` container (swapped from `postgres:17-alpine` to `pgvector/pgvector:pg17`, same `docker_pg_data` volume, zero data risk).
 - **VPS state** — single Postgres container, PG 17 + pgvector 0.8.6. Empty host-level PG 16 stray from the pgvector-install detour dropped.
-- **Phase 4 — Install screen** (2026-08-26, taken out of order; see its section). Migration 247 `boot_pings`, `PATCH /tenant/domains/:id/origins`, boot-ping recording, and `/agents/vara/install`. Verified locally against a fixture; **not yet applied or deployed to the VPS**, and the Charan gate is unrun.
+- **Phase 4 — Install screen** (2026-08-26/27, taken out of order; see its section). Migration 247 `boot_pings`, `PATCH /tenant/domains/:id/origins`, boot-ping recording, `/agents/vara/install`, plus the four cold-tenant fixes and the JD work that walking it surfaced. Migration 247 is **applied**; the Charan gate — a real boot from a real site — is **unrun**.
 
 **Design settled, not yet in UX or code:**
 - Import path with fenced-LLM extraction (Phase 2 body)
 - JD versioning (edit → v2, needs `POST /vara/jd/:id/version`)
 - Playbook fork/versioning UI (Phase 6, operator surface)
+- **Draft-the-description from the facts** — the textarea ships; the "Vara writes it in your brand voice, you edit" button waits on the composer LLM
+
+---
+
+## Two open decisions from 2026-08-27 — Charan has not ruled
+
+Both were found by walking the product, not by reading it. Neither is
+scheduled, and both block a cold tenant from succeeding unaided.
+
+### D1 — A step completed by one lane satisfies another lane that asks more
+
+`vn_tenant_onboarding` is keyed `(tenant_id, step_id)` — **lane-agnostic**.
+GTM's `business_profile` form (`frontend/components/onboarding/OnboardBusiness.tsx`)
+captures firm name, PAN, GSTIN, address — **and no industry**. The vani lane
+has a `business_profile` step too, and *its* screen does require industry. But
+the row already says `completed`, so the vani lane never re-asks. Industry
+stays null forever and Vara is the first thing to notice, three screens away.
+
+Confirmed live: the tenant walked on 2026-08-27 had `business_profile`
+completed 2026-07-25 with `industry` null.
+
+Compounding it, `applyStepPayload` returns early when a payload maps to no
+known fields, and the completion mark is written regardless — so a step can be
+marked done having written nothing.
+
+**Proposed (unapproved):** lane-aware reconciliation —
+`GET /onboarding/status?lane=vani` reports `business_profile` **pending** when
+`industry` is null, whatever the row says. No schema change, and it is what
+`vani-app/CLAUDE.md` already prescribes ("lane awareness belongs per lane, in
+the lane's own endpoint"). Rejected alternatives: requiring `industry`
+server-side would start refusing GTM's onboarding, whose form cannot supply
+it; re-keying `vn_tenant_onboarding` by lane is the correct model but is a
+schema change plus a backfill decision on every existing tenant.
+
+### D2 — Industry is free text doing a foreign key's job
+
+`slugifyIndustry(raw)` is string-matched against `vani_domain_pack.domain`.
+Production on 2026-08-27:
+
+| Tenant | `industry` | slug | packs? |
+|---|---|---|---|
+| Vikuna Technologies | `technology` | `technology` | ✗ |
+| www.dristiq.com | `Financial services` | `financial-services` | ✗ |
+
+Two real tenants, two values, **zero** matches. Only `null` produces an error;
+the others produce a 200 with `families: []` — a silent empty doorway, the
+more confusing failure. `'Technology & SaaS'` works only because it happens to
+slugify onto the one seeded pack. The ten options live as a TypeScript
+constant in `BusinessProfileStep.tsx`.
+
+**Charan's direction (2026-08-27):** research proposes the industry from an
+exhaustive master; the user can change it in the UI.
+
+**Needs approval before any code** — a reference table with codes and aliases
+so research output is *matched* rather than string-compared, and
+`vani_domain_pack.domain` keys off those codes. Note the research half is
+blocked anyway: the crawl → LLM path is a standing dependency and
+`vikuna.io` yields 6 chars to a static crawl (it is a Vite SPA).
 
 ---
 
@@ -47,6 +105,7 @@ Still not phases; still must be true at some point independent of the flow:
 - **vn_users ↔ vani_user(id) bridge** — new, this session. `vara_jd.created_by` and `vani_prompt.approved_by` write `null` today; the audit spine's `actor_id` names who did it (uuid, no FK). A small bridge (upsert a `vani_user` row per `vn_users` on first touch) unblocks tightening both constraints. Not urgent; audit stays honest either way.
 - **`vani_idempotency` store** — cross-process idempotency for `POST /vara/jd/compose`. Advisory lock + 60s freshness window covers double-click and in-session-retry; a hard refresh mid-flight can still create a duplicate JD. Schema change to raise before it lands.
 - **Ollama `nomic-embed-text` model pulled on the LLM host** — the embed helper defaults to it. `ollama pull nomic-embed-text` before Extractor uses it.
+- **Composer LLM for the description drafter** — `facts.description` ships as a plain textarea (2026-08-27). Drafting it from the structured facts in the tenant's brand voice — so the posting and the weights cannot drift apart — needs the same LLM path as Phase 2. Deliberately shipped as a note rather than a button that fails.
 
 ---
 
@@ -189,10 +248,26 @@ than appends and writes nothing for a non-allowlisted origin; the PATCH's
 unmutated); UI driven in a real browser through add → duplicate add
 (`changed:false`, info toast) → remove, no page errors.
 
-**Not done — the gate:** Charan pastes the snippet on a real vikuna.io page and
-sees a candidate walk-through. Needs migration 247 applied to the VPS and both
-services rebuilt. Everything above was verified locally against a fixture, not
-against production.
+**Then Charan walked it on a real tenant (2026-08-27), and four things broke.**
+Every one was the same failure — a screen reporting a state it had not
+verified — and all four are fixed:
+
+| Found | Cause | Fix |
+|---|---|---|
+| Install said "publish your first JD", CTA led to a doorway that dead-ended | `industry_set` was not in the checklist at all | `db2271f` — industry checked FIRST; the list is ordered earliest-blocker-first so the client routes on `checks[0]` |
+| Doorway's only affordance was **Try again**, which can never set an industry | `NO_INDUSTRY` rendered through the error boundary | `9082caf` — setup gaps render as an instruction with a link, never a retry |
+| "Declare your domain" shown to a tenant whose domain **was** declared | the check tested `purpose='candidate'`; the CTA was written from the check's *name*, not its predicate | `916f58c` / `2cd7c5e` — split into `domain_declared` + `candidate_domain`, each with its own action and a `detail` naming the actual domain |
+| A domain declared the ordinary way never satisfied Vara | the Domain step defaults `purpose` to `'workspace'` | `cd3a0b0` — **`purpose` is no longer a gate anywhere in Vara** (Charan's ruling). The origin allowlist was always the real control; `purpose` stays a declaration |
+
+**Then, from publishing a JD (2026-08-27):**
+- **A published JD was write-once** — listed, Duplicate-able, unreadable. `a581eb6` adds a read-only View, rendering facts `/vara/onboarding/context` already returned. No endpoint, no migration.
+- **Employment contract** — `employment_type`, `onsite_pct`, `locations[]` into `facts` (`a581eb6`). Work mode is ONE number with the label derived from it, not a mode enum beside a percentage that can disagree.
+- **A JD had no description**, and `/embed/boot` returned `{id, title}` — a candidate could see a job existed and nothing about it. `46e040f` / `da6f8e3` add `facts.description` and ship the **public half** of the role on boot (summary, description, employment, locations, band). The scoring contract — weights, knockouts, threshold — stays server-side; publishing the weights tells a candidate exactly what to claim.
+
+**Not done — the gate:** Charan pastes the snippet on a real page and sees a
+candidate walk-through. Everything above was verified in a browser against
+fixtures and, for the SQL, a throwaway Postgres — not against a real boot from
+a real site.
 
 ---
 
@@ -201,6 +276,16 @@ against production.
 **Goal:** a candidate actually applies through the embed widget, gets scored, lands on the recruiter's map. Vara's core value delivery.
 
 **Depends on:** MSG91 port (for ack/decision comms) OR email-only initial (spec allows).
+
+**Inherited from 2026-08-27 — `vara_jd_position`, a schema change to raise here.**
+Charan asked for "No of Positions, each possibly in a different location". It
+did NOT go into `facts`: `vara_jd_version` is immutable and applications pin
+the version that scored them, so filling a seat would mint v2 and strand every
+in-flight application on a superseded contract. Positions are mutable
+operational state and want their own tenant-scoped table — designed HERE,
+against the `vara_application` that has to reference which seat a candidate
+applied to, rather than guessed at in advance. The JD Studio panel already
+tells the tenant this is tracked separately.
 
 **Backend:**
 - Extend `/embed/chat` from placeholder to real: question generation from JD's must-haves (uses prompt store: `vara.candidate.ask_next`), `vara_chat_turn` writes, `vara_application` state via `vara_transition`.
@@ -260,6 +345,10 @@ Both learning loops land in Phase 6 timeframe; the shape is ready.
 [✅ DONE] Semantic Layer slice           (pgvector + vara_skill + match_log)
 
 [✅ DONE] Phase 4 · Install screen        (taken early — only depends on Phase 1)
+           ↓  built + hardened; the real-boot gate is UNRUN
+
+[ D1 · lane-aware onboarding    — unruled, blocks a cold tenant ]
+[ D2 · industry master data     — unruled, blocks pack matching ]
 
 [NEXT]    Phase 2 · Wire Import path + Extractor
            ↓  first real use of prompts + evals + vara_skill
@@ -301,4 +390,10 @@ Named so nobody tries, per prior conversations:
 
 ...without SQL, without a curl command, without a Vikuna operator in the loop.
 
-That is Phase 1 + Phase 4 + Phase 5. Phase 2/3/6 are compounding value.
+That is Phase 1 + Phase 4 + Phase 5.
+
+**Steps 1–5 are done and exercised on a real tenant (2026-08-27).** Step 6 is
+built but ungated — the snippet and allowlist exist; nobody has yet pasted the
+tag on a real page and watched a boot land. Step 7 is Phase 5, unstarted.
+
+Phase 2/3/6 are compounding value.
