@@ -15,7 +15,8 @@
     "cohort:tenants": "tsx src/cohort.ts --list-tenants",
     "worker": "tsx watch src/agent-core/worker.ts",
     "worker:prod": "node dist/agent-core/worker.js",
-    "db:seed-owner": "tsx src/skills/assessment-skill/seed-owner.ts"
+    "db:seed-owner": "tsx src/skills/assessment-skill/seed-owner.ts",
+    "intents:embed": "tsx src/vani/intent-embed.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

@@ -33,10 +33,13 @@
  */
 
 import { Router } from 'express';
+import { randomUUID } from 'crypto';
 import type { Pool } from 'pg';
 import jwt from 'jsonwebtoken';
 import { extractJwt } from '../auth/auth.routes';
 import { varaOffers } from '../vara/offers';
+import { EmbedError } from './embed';
+import { IntentRouterError, liveVisitorIntents, resolveIntent } from './intent';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
@@ -49,6 +52,20 @@ interface EmbedTokenClaims {
   tid: string; // vani_tenant.id
   /** Platform scope, not an agent's — one token serves every live agent. */
   scope: 'vani-embed';
+}
+
+/**
+ * What a booted widget carries. `sid` is the routing log's `session_ref`: it
+ * ties one visitor's messages together for cluster review without ever being
+ * a person. Minted per boot, dies with the 30-minute session, joined to
+ * nothing — which is the reason vani_intent_match is outside the DPDP purge
+ * path and retention is its control instead.
+ */
+interface EmbedSessionClaims {
+  tid: string;
+  scope: 'vani-visitor';
+  origin: string;
+  sid: string;
 }
 
 /**
@@ -204,22 +221,35 @@ export function createEmbedRouter(pool: Pool): Router {
 
       const tenant = await pool.query(`SELECT name FROM vani_tenant WHERE id = $1`, [claims.tid]);
 
+      // Tier 1 of routing: what each live agent can be ASKED for, rendered as
+      // chips. A click IS the routing — no embedding, no model call, and it
+      // works before the backfill has ever run, because a click needs no
+      // vector. Free text (tier 2) is POST /embed/intent below, and most
+      // visitors will never reach it.
+      const intents = await liveVisitorIntents(pool, claims.tid);
+
       // Each live agent contributes its own offers. An agent with no provider
       // registered contributes an empty list rather than breaking the boot —
-      // that is the Nova case, not an error.
+      // that is the Nova case, not an error. The same is true of intents: an
+      // agent whose work is done FOR the tenant declares none and boots fine.
       const agents = await Promise.all(
         live.rows.map(async (a: any) => ({
           code: a.code,
           name: a.name,
           offers: OFFER_PROVIDERS[a.code] ? await OFFER_PROVIDERS[a.code](pool, claims.tid) : [],
+          intents: intents
+            .filter((i) => i.agent_code === a.code)
+            .map(({ id, code, label, description }) => ({ id, code, label, description })),
         })),
       );
 
-      const session = jwt.sign(
-        { tid: claims.tid, scope: 'vani-visitor', origin: parent_origin },
-        JWT_SECRET,
-        { expiresIn: EMBED_SESSION_TTL },
-      );
+      const sessionClaims: EmbedSessionClaims = {
+        tid: claims.tid,
+        scope: 'vani-visitor',
+        origin: parent_origin,
+        sid: randomUUID(),
+      };
+      const session = jwt.sign(sessionClaims, JWT_SECRET, { expiresIn: EMBED_SESSION_TTL });
 
       res.json({
         tenant: { name: tenant.rows[0]?.name ?? 'This workspace' },
@@ -229,6 +259,77 @@ export function createEmbedRouter(pool: Pool): Router {
     } catch (err: any) {
       console.error('[Embed:boot]', err);
       res.status(500).json({ error: { code: 'BOOT_FAILED', message: 'Could not boot the widget' } });
+    }
+  });
+
+  /* ── POST /api/v1/embed/intent ─────────────────────────────────────────
+   * PUBLIC, session-scoped. Tier 2 of routing: the visitor typed instead of
+   * clicking a chip. Free text in, one of three visible outcomes out.
+   *
+   * The session token — not the embed token — because this writes a row, and
+   * a 365-day token that anyone can read out of the page source is the wrong
+   * credential for a write. The session is minted at boot, lives 30 minutes,
+   * and carries the origin the boot was allowed on.
+   *
+   * Every failure below names its real cause. An unpulled embedding model and
+   * a question nobody anticipated are different problems with different fixes,
+   * and collapsing them into "I did not understand" blames the visitor for
+   * ours (rule 12). */
+  router.post('/embed/intent', async (req, res) => {
+    try {
+      const { session, query } = req.body ?? {};
+      if (typeof session !== 'string' || typeof query !== 'string') {
+        res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'session and query required' } });
+        return;
+      }
+      if (query.length > 1000) {
+        res.status(400).json({ error: { code: 'QUERY_TOO_LONG', message: 'Ask that in fewer words' } });
+        return;
+      }
+
+      let claims: EmbedSessionClaims;
+      try {
+        claims = jwt.verify(session, JWT_SECRET) as EmbedSessionClaims;
+        if (claims.scope !== 'vani-visitor') throw new Error('wrong scope');
+      } catch {
+        // Expiry is the common case, and the widget can recover from it by
+        // booting again — so it is told which of the two happened.
+        res.status(401).json({
+          error: { code: 'EMBED_SESSION_INVALID', message: 'This chat session has expired' },
+        });
+        return;
+      }
+
+      const result = await resolveIntent({
+        pool,
+        tenantId: claims.tid,
+        sessionRef: claims.sid ?? null,
+        query,
+      });
+      res.json(result);
+    } catch (err: any) {
+      // The embedding endpoint is down or the model is not pulled. This is
+      // ours, it is temporary, and it is 503 — not a routing miss.
+      if (err instanceof EmbedError) {
+        console.error('[Embed:intent] embedding unavailable —', err.code, err.message);
+        res.status(503).json({
+          error: { code: 'INTENT_EMBED_UNAVAILABLE', message: 'Free-text questions are unavailable right now' },
+        });
+        return;
+      }
+      if (err instanceof IntentRouterError) {
+        if (err.code === 'ROUTER_NOT_EMBEDDED') {
+          console.error('[Embed:intent]', err.message);
+          res.status(503).json({
+            error: { code: 'ROUTER_NOT_EMBEDDED', message: 'Free-text questions are not available yet' },
+          });
+          return;
+        }
+        res.status(400).json({ error: { code: err.code, message: err.message } });
+        return;
+      }
+      console.error('[Embed:intent]', err);
+      res.status(500).json({ error: { code: 'INTENT_FAILED', message: 'Could not route that question' } });
     }
   });
 
