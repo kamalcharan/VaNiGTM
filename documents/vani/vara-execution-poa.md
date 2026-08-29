@@ -1,6 +1,6 @@
 # Vara — Execution POA
 
-**Date:** 2026-08-27 (Phase 4 landed + hardened against a cold-tenant walk)
+**Date:** 2026-08-27 (Phase 4 landed + hardened; Platform Channel slice approved)
 **Previous revision:** 2026-08-19
 **Original:** 2026-08-17 (late)
 **Companion to:** `vara-readiness-review.md`, `vara-onboarding-design.md`,
@@ -145,7 +145,7 @@ Landed on main. Schema + helpers, no wired writer. Extractor is the first caller
 **Depends on:** Vikuna's LLM key OR BYOK (both need LLM path stable on VPS + `nomic-embed-text` model pulled).
 
 **Backend:**
-- Migration **248** (small): seed system prompts for `vara.extractor.field_schema` and `vara.extractor.evidence_check` in `vani_prompt`. (Was 247; Phase 4 took that number on 2026-08-26.)
+- Migration **250** (small): seed system prompts for `vara.extractor.field_schema` and `vara.extractor.evidence_check` in `vani_prompt`. (Was 247, then 248; Phase 4 took 247 and the Platform Channel slice took 248–249.)
 - Add "job description" adapter to ingestion pipeline (deterministic docx/pdf parse — reuses existing spine, no new schema).
 - `POST /vara/jd/import` — accepts N files, writes `vara_artifact` rows, runs one fenced LLM extraction stage per artifact.
 - Extraction schema: `{ title, must_haves[{name,weight,evidence_span,confidence}], knockouts[{label,rule,evidence_span,confidence}], band?, notes }`. Every field's `evidence_span` must fuzzy-match the source text (V-9). Failed fuzzy = `status='low_confidence'`; failed schema = `status='rejected'` (whole extraction, not partial).
@@ -212,7 +212,7 @@ success criterion (Phase 1 + 4 + 5).
 **Backend — landed:**
 - Migration **247** (`boot_pings jsonb` on `vani_tenant_domain`, approved as a
   schema change). Note this **takes 247 from Phase 2's extractor-prompt seed,
-  which becomes 248.**
+  which becomes 250 once the Platform Channel slice takes 248–249.**
 - `PATCH /tenant/domains/:id/origins` — admin-only, add/remove batched in one
   transaction, tenant ownership asserted inside the SELECT and the UPDATE
   predicate (a foreign id is 404, never 403), `FOR UPDATE` against two admins
@@ -268,6 +268,161 @@ verified — and all four are fixed:
 candidate walk-through. Everything above was verified in a browser against
 fixtures and, for the SQL, a throwaway Postgres — not against a real boot from
 a real site.
+
+---
+
+## Platform Channel slice — the widget becomes the product's, not Vara's
+
+**Approved 2026-08-27.** Not a numbered phase; it sits between Phase 4 and
+Phase 5 because Phase 5 builds the candidate conversation ON this channel, and
+building it Vara-shaped would mean rewriting it when Nova arrives.
+
+### Why now, and not later
+
+The spec already draws the line — `vara-channels-and-activation.md` §1: *"the
+VaNi platform lane (once per tenant, **serves every agent**) and the Vara
+activation lane (per agent)."* Phase 4 built the channel on the wrong side of
+it.
+
+The forcing argument is narrower than tidiness: **the snippet is the only
+artefact that cannot be migrated.** Rename a route and redeploy; but once a
+tenant has pasted `<script src=".../embed/vara.js">` into Wix, that URL is
+theirs for the life of their site and no deploy of ours can change it. The
+Phase 4 gate IS the act of pasting it. So the shape has to be right *before*
+the gate runs — which is why this slice jumped ahead of it.
+
+The data model was already platform and does not move: `vani_tenant_domain`,
+`embed_origins`, `boot_pings` (247), `PATCH /tenant/domains/:id/origins`,
+`vani_agent`, `vani_tenant_agent`.
+
+### Migrations 248 + 249 (approved schema)
+
+`vani_agent_intent` — what an agent can be asked for. Platform-owned, **seeded
+by each agent's own migration**, which is what "agents extend, never modify"
+means in practice: an agent ships prefixed tables plus registry declarations.
+
+```sql
+create table vani_agent_intent (
+  id uuid primary key default gen_random_uuid(),
+  agent_id uuid not null references vani_agent(id) on delete cascade,
+  code text not null, label text not null, description text not null,
+  examples text[] not null default '{}',
+  surface text not null default 'visitor' check (surface in ('visitor','operator')),
+  embedding vector(768),
+  sort_order int not null default 100,
+  status text not null default 'active' check (status in ('active','retired')),
+  unique (agent_id, code)
+);
+```
+
+`surface` is what makes Nova cheap to be wrong about. Nova's two POA pathways
+(N1 fix the digital estate, N2 run a campaign) are things Nova does FOR the
+tenant, not conversations with the tenant's visitors — so Nova may declare only
+`operator` intents, or none. An agent contributing zero visitor intents is a
+**first-class case**, not an edge one, and the widget simply renders nothing
+for it.
+
+`vani_intent_match` — the router's decision log AND the catch layer's record.
+Deliberately NOT `vara_match_log`: that table is entity→entity
+(`matched_from_kind` is an enum of row types) and holds ids only, *"no PII"*.
+Router matching is free text → intent, and the free text is exactly what the
+catch layer needs.
+
+```sql
+create table vani_intent_match (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references vani_tenant(id) on delete cascade,
+  session_ref text,                    -- the widget session, never a person
+  outcome text not null check (outcome in ('routed','disambiguated','unmatched')),
+  matched_intent uuid references vani_agent_intent(id),
+  score real,
+  runner_up_intent uuid references vani_agent_intent(id),
+  runner_up_score real,
+  query_embedding vector(768),
+  query_redacted text,
+  retain_until date not null,
+  created_at timestamptz not null default now()
+);
+```
+
+Both tenant-scoped with the `vani_` RLS pattern, HNSW on both vectors. Written
+**before** the outcome commits — the invariant migration 246 states.
+
+**This renumbers Phase 2's extractor-prompt seed to 250.**
+
+### Routing — three bands, none of them a guess
+
+```
+score >= VANI_INTENT_HIGH (0.72)   ROUTE          one intent, confident
+LOW <= score < HIGH,               DISAMBIGUATE   top-2/3 as chips, "did you mean"
+  or top-1/top-2 within a margin
+score <  VANI_INTENT_LOW  (0.45)   CATCH-ALL      say what this widget can do,
+                                                  show every live intent, keep the miss
+```
+
+Tier 1 is affordance: boot returns the live agents' visitor intents as chips
+and a click IS the routing — no model call, `actor_type='rule'`. Free-text
+matching is tier 2 and uses `embedText` + HNSW, not an LLM: the machinery
+exists and is unused, it is an order of magnitude cheaper per message, and
+nearest-neighbour is the right shape for intent selection.
+
+Disambiguation rather than an LLM second opinion, deliberately: the visitor is
+right there, one click is free, and it is more accurate than a model guessing
+on their behalf. **No band is a silent fallback** — every one is a visible
+state where the visitor can see what happened and what they can do (rule 12).
+
+Thresholds live in env, not the schema; they want tuning against real traffic.
+
+### The catch layer is where the compounding is
+
+Every `unmatched` row is evidence of a missing intent or a missing example.
+Clustered over the HNSW index, they become proposals for new intents — the
+calibration loop applied to routing, and the operator surface for it belongs
+with Phase 6.
+
+**PII decision (2026-08-27).** Visitor free text can carry personal data from
+someone who has consented to nothing, so the row stores `query_embedding` (what
+clustering actually needs) plus `query_redacted` (emails/phones/handles
+stripped, so a human can name a cluster) — never the raw message.
+`retain_until` defaults to 90 days and forces the decision to be explicit
+rather than "someday". The table carries no candidate id, so it is **not** in
+`vara_purge_candidate`'s path; retention is the control. Revisit if
+`session_ref` is ever joined to an application.
+
+### `assembleContext()` — approved, no schema
+
+One platform function returning tenant memory + that agent's memory + the
+resolved prompt, so no agent re-implements "where is the brand voice".
+
+The three-layer model already exists once, on the wrong side of the line:
+`gt_tenant_context` is documented as *"shared per-tenant memory across all
+agents"* with `profile` (tenant) and `knowledge` keyed by agent — but it is on
+the **`gt_` prefix**, keyed by skill name rather than `vani_agent.code`, and
+**nothing in `vara/` or `vani/` reads it** (readers: context.store, llm.client
+for budget, research-skill, vani-skill).
+
+The rule this slice writes down:
+
+> **Memory is stored and owned. Context is assembled and thrown away.**
+> Every tenant fact has one home. Agent memory is typed, versioned, prefixed.
+> Context is a function of both plus the prompt, computed per call, never
+> persisted — a stored context is a second copy of the truth that drifts.
+
+Two consequences, both deliberate:
+- **Agent memory stays typed, not JSONB.** `vara_skill` with an embedding and a
+  usage count beats a bag: queryable, indexable, RLS-able, versioned. So
+  `gt_tenant_context.knowledge` is the pattern that should shrink, not the one
+  Vara should join.
+- **Moving the BRAIN to `vani_` is NOT in this slice.** It is migrations plus
+  both frontends. The assembler is what makes that deferrable at no cost —
+  callers go through one place now, so the move changes no call sites later.
+
+### Not built here, named so nobody assumes it
+
+- Nova's intents — nothing to declare until Nova exists
+- LLM classification as a second opinion — disambiguation covers it
+- The unmatched-cluster review surface — Phase 6, with the other operator tools
+- The BRAIN's move off `gt_`
 
 ---
 
@@ -347,10 +502,17 @@ Both learning loops land in Phase 6 timeframe; the shape is ready.
 [✅ DONE] Phase 4 · Install screen        (taken early — only depends on Phase 1)
            ↓  built + hardened; the real-boot gate is UNRUN
 
+[NEXT]    Platform Channel slice           (approved 2026-08-27)
+           ↓  the widget becomes the product's, not Vara's
+           ↓  MUST precede the Phase 4 gate — the snippet URL cannot be migrated
+           ↓  migrations 248 (vani_agent_intent) + 249 (vani_intent_match)
+
+          Phase 4 gate · paste on a real page, watch a boot land
+
 [ D1 · lane-aware onboarding    — unruled, blocks a cold tenant ]
 [ D2 · industry master data     — unruled, blocks pack matching ]
 
-[NEXT]    Phase 2 · Wire Import path + Extractor
+          Phase 2 · Wire Import path + Extractor
            ↓  first real use of prompts + evals + vara_skill
            ↓  BLOCKED until: VPS LLM path stable + `ollama pull nomic-embed-text`
 [ Rotate 4 keys — Charan, in parallel ]
