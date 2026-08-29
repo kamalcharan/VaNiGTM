@@ -145,7 +145,7 @@ Landed on main. Schema + helpers, no wired writer. Extractor is the first caller
 **Depends on:** Vikuna's LLM key OR BYOK (both need LLM path stable on VPS + `nomic-embed-text` model pulled).
 
 **Backend:**
-- Migration **250** (small): seed system prompts for `vara.extractor.field_schema` and `vara.extractor.evidence_check` in `vani_prompt`. (Was 247, then 248; Phase 4 took 247 and the Platform Channel slice took 248–249.)
+- Migration **251** (small): seed system prompts for `vara.extractor.field_schema` and `vara.extractor.evidence_check` in `vani_prompt`. (Was 247 → 248 → 250; 247 went to Phase 4, 248 to the answer cache, 249–250 to the intent tables.)
 - Add "job description" adapter to ingestion pipeline (deterministic docx/pdf parse — reuses existing spine, no new schema).
 - `POST /vara/jd/import` — accepts N files, writes `vara_artifact` rows, runs one fenced LLM extraction stage per artifact.
 - Extraction schema: `{ title, must_haves[{name,weight,evidence_span,confidence}], knockouts[{label,rule,evidence_span,confidence}], band?, notes }`. Every field's `evidence_span` must fuzzy-match the source text (V-9). Failed fuzzy = `status='low_confidence'`; failed schema = `status='rejected'` (whole extraction, not partial).
@@ -212,7 +212,8 @@ success criterion (Phase 1 + 4 + 5).
 **Backend — landed:**
 - Migration **247** (`boot_pings jsonb` on `vani_tenant_domain`, approved as a
   schema change). Note this **takes 247 from Phase 2's extractor-prompt seed,
-  which becomes 250 once the Platform Channel slice takes 248–249.**
+  which becomes 251 once the answer cache takes 248 and the intent tables
+  take 249–250.**
 - `PATCH /tenant/domains/:id/origins` — admin-only, add/remove batched in one
   transaction, tenant ownership asserted inside the SELECT and the UPDATE
   predicate (a foreign id is 404, never 403), `FOR UPDATE` against two admins
@@ -295,7 +296,7 @@ The data model was already platform and does not move: `vani_tenant_domain`,
 `embed_origins`, `boot_pings` (247), `PATCH /tenant/domains/:id/origins`,
 `vani_agent`, `vani_tenant_agent`.
 
-### Migrations 248 + 249 (approved schema)
+### Migrations 249 + 250 (approved schema)
 
 `vani_agent_intent` — what an agent can be asked for. Platform-owned, **seeded
 by each agent's own migration**, which is what "agents extend, never modify"
@@ -348,7 +349,8 @@ create table vani_intent_match (
 Both tenant-scoped with the `vani_` RLS pattern, HNSW on both vectors. Written
 **before** the outcome commits — the invariant migration 246 states.
 
-**This renumbers Phase 2's extractor-prompt seed to 250.**
+**Numbering:** 248 went to the answer cache (below), so the intent tables are
+249–250 and Phase 2's extractor-prompt seed is **251**.
 
 ### Routing — three bands, none of them a guess
 
@@ -423,6 +425,60 @@ Two consequences, both deliberate:
 - LLM classification as a second opinion — disambiguation covers it
 - The unmatched-cluster review surface — Phase 6, with the other operator tools
 - The BRAIN's move off `gt_`
+
+---
+
+## Answer cache — migration 248, applied-and-tested, caller lands with Phase 5
+
+**Approved 2026-08-27.** A visitor asks "tell me about this JD"; the model
+answers once; every visitor asking the same thing afterwards is served from
+Postgres with no LLM call. DB-level, not Redis — Charan's ruling: the queue
+and cache libraries stay out, the database does this.
+
+**The key is immutable, so nothing ever needs invalidating:**
+
+```
+(jd_version_id, prompt_id, model) + question embedding
+```
+
+`vara_jd_version` is immutable by design and `vani_prompt` is append-only, so
+an answer keyed to (JD v1, prompt v3, qwen3:8b) is correct forever. Publish
+v2 → different key → miss → fresh answer. Edit the prompt → new row → miss.
+Change model → miss. No expiry, no bust, no stale read, **no invalidation code
+to get wrong.** That property is inherited from decisions already made rather
+than designed here, which is why the table is safe to keep indefinitely.
+
+**Only impersonal turns may be cached — the whole safety story.** "Tell me
+about this JD" has one answer for everybody; "am I a good fit?" does not, and
+serving one candidate's assessment to the next is a data leak, not a hit. The
+rule is STRUCTURAL, never a classification: *a turn is cacheable only if the
+context that produced it contained no candidate-scoped input.* The assembler
+knows what it put in, so the writer proves this rather than judging it — a
+judgement about whether a question "sounds personal" will eventually be wrong.
+This is the second argument for `assembleContext()` landing first.
+
+**No HNSW, deliberately** — the one vector column in the schema without it.
+Lookups narrow to ONE key first and that candidate set is tens of rows, so a
+btree on the key plus an exact cosine over what remains beats an approximate
+index at this size. Verified: the plan is `Index Scan using
+idx_vara_answer_cache_key`, then sort. Revisit only if one JD ever accumulates
+thousands of distinct questions.
+
+**Raw questions are not stored** — embedding for matching, `question_redacted`
+for human review. A question can carry personal data even when the answer it
+produced cannot. Same treatment as the router's catch layer.
+
+**Verified on a throwaway Postgres with pgvector 0.6:** applies twice cleanly;
+a near-identical question hits at 1.000; an orthogonal one scores 0.000 and is
+rejected by the threshold; a republished JD version misses; a different model
+misses. (The first attempt at the discrimination test was meaningless —
+uniform vectors of different magnitude are parallel, so cosine is 1.0 whatever
+the scale. Redone with a genuinely different direction.)
+
+**Not built:** the reader/writer. Its only caller is the candidate
+conversation, and infrastructure without a caller is what the working method
+says not to ship. The table lands now because it was approved now; the code
+lands in Phase 5.
 
 ---
 
@@ -505,7 +561,7 @@ Both learning loops land in Phase 6 timeframe; the shape is ready.
 [NEXT]    Platform Channel slice           (approved 2026-08-27)
            ↓  the widget becomes the product's, not Vara's
            ↓  MUST precede the Phase 4 gate — the snippet URL cannot be migrated
-           ↓  migrations 248 (vani_agent_intent) + 249 (vani_intent_match)
+           ↓  migrations 249 (vani_agent_intent) + 250 (vani_intent_match)
 
           Phase 4 gate · paste on a real page, watch a boot land
 
