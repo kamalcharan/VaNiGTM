@@ -49,13 +49,9 @@ interface EmbedDomain {
 }
 interface EmbedResponse {
   token: string;
-  subscription: string;
-  checklist: {
-    checks: { id: string; label: string; pass: boolean; detail?: string }[];
-    ready: boolean;
-  };
+  /** Every agent subscribed to this workspace, live or not. */
+  agents: { code: string; name: string; status: string }[];
   domains: EmbedDomain[];
-  embed_origins: string[];
   snippet: string;
 }
 
@@ -82,7 +78,7 @@ export default function InstallScreen() {
   const q = useQuery<SkillResult<EmbedResponse>, Error>({
     queryKey: ['vara', 'embed'],
     queryFn: async () => {
-      const r = await apiFetch<EmbedResponse>(API.vara.embed);
+      const r = await apiFetch<EmbedResponse>(API.tenant.embed);
       return { success: true, skill: 'vara', function: 'embed', data: r };
     },
   });
@@ -102,7 +98,7 @@ export default function InstallScreen() {
       setBusy(busyKey);
       try {
         const r = await apiFetch<{ embed_origins: string[]; changed: boolean }>(
-          API.vara.originsUpdate,
+          API.tenant.originsUpdate,
           { pathParams: { id: domainId }, body: patch },
         );
         if (patch.add?.length) {
@@ -164,7 +160,8 @@ export default function InstallScreen() {
 
       <DataBoundary query={q} label="your install details" skeleton={<SkeletonRows rows={5} />}>
         {(d: EmbedResponse) => {
-          if (d.subscription !== 'live') return <NotLive checklist={d.checklist} />;
+          const live = (d.agents ?? []).filter((a) => a.status === 'live');
+          if (live.length === 0) return <NoAgentLive agents={d.agents ?? []} />;
           return (
             <div className={s.steps}>
               <SnippetStep snippet={d.snippet} copied={copied} onCopy={copy} />
@@ -175,7 +172,7 @@ export default function InstallScreen() {
                 busy={busy}
                 onEdit={edit}
               />
-              <VerifyStep domains={d.domains ?? []} onRefresh={() => q.refetch()} />
+              <VerifyStep domains={d.domains ?? []} onRefresh={() => q.refetch()} live={live} />
             </div>
           );
         }}
@@ -184,67 +181,41 @@ export default function InstallScreen() {
   );
 }
 
-/* ── Not live ────────────────────────────────────────────────────────────
- * Rule 9b: an empty state carries its next action — and the action has to be
- * one that actually unblocks the FIRST failing check, not the last.
+/* ── No agent live ───────────────────────────────────────────────────────
+ * Platform-shaped, deliberately. Whether Vara is ready is VARA's rule — its
+ * own checklist, on its own screen. A platform surface that hard-codes one
+ * agent's preconditions is exactly what this slice moved away from, and the
+ * previous version of this block did precisely that.
  *
- * This shipped wrong on 2026-08-26 and stranded a real walk-through: the CTA
- * always pointed at the doorway, but the doorway itself refuses with
- * NO_INDUSTRY until the organisation's industry is set, so a tenant missing
- * it was sent in a circle — Install says "publish a JD", doorway says "set
- * your industry", retry does nothing. The checklist is ordered earliest-
- * blocker-first by the API, so the fix is to route on the first failure
- * rather than assume the doorway is always next. */
+ * Rule 9b still applies: this names what is missing and links somewhere. */
 
-/** Where each check is actually resolved. Order matches the API's ordering. */
-const CHECK_ACTIONS: Record<string, { href: string; label: string }> = {
-  industry_set: { href: '/smart-profile', label: 'Set your industry →' },
-  domain_declared: { href: '/smart-profile', label: 'Declare your domain →' },
-  // No allowlisted origin is the one gap this very screen fixes — but only
-  // once Vara is live, so before that the honest next step is still the JD.
-  embed_origins: { href: '/agents/vara/onboarding', label: 'Continue setup →' },
-  first_jd_published: { href: '/agents/vara/onboarding', label: 'Continue setup →' },
-};
-
-function NotLive({ checklist }: { checklist: EmbedResponse['checklist'] }) {
-  const checks = checklist?.checks ?? [];
-  const missing = checks.filter((c) => !c.pass);
-  const first = missing[0];
-  const action = (first && CHECK_ACTIONS[first.id]) ?? {
-    href: '/agents/vara/onboarding',
-    label: 'Continue setup →',
-  };
+function NoAgentLive({ agents }: { agents: { code: string; name: string; status: string }[] }) {
+  const activating = agents.filter((a) => a.status === 'activating');
   return (
     <div className={s.card}>
       <div className={s.cardHead}>
-        <span className={`${u.tag} ${u.tagDim}`}>Not live yet</span>
+        <span className={`${u.tag} ${u.tagDim}`}>No agent live yet</span>
       </div>
       <p className={s.note}>
-        The snippet is issued once Vara is live for your workspace — a token for
-        an agent that cannot answer is worse than no token. What is left:
+        The snippet is issued once at least one agent is live for your
+        workspace — a tag that reaches nothing is worse than no tag. One tag
+        serves every agent you turn on, so this page does not change when you
+        add another.
       </p>
-      <ul className={s.checklist}>
-        {missing.map((c, i) => (
-          <li key={c.id} className={s.checkFail}>
-            <div className={s.checkLine}>
-              <span aria-hidden="true">○</span> {c.label}
-              {/* Only the first is actionable; the rest are gated behind it and
-                  saying so beats letting someone pick one they cannot do yet. */}
-              {i > 0 && <span className={s.blockedNote}>after the one above</span>}
-            </div>
-            {/* The server explains the awkward case — declared, but the wrong
-                kind — naming the actual domain rather than a category. */}
-            {c.detail && <div className={s.checkDetail}>{c.detail}</div>}
-          </li>
-        ))}
-        {missing.length === 0 && (
-          <li className={s.checkFail}>
-            <span aria-hidden="true">○</span> Publish your first JD to go live.
-          </li>
-        )}
-      </ul>
-      <Link href={action.href} className={s.primaryLink}>
-        {action.label}
+      {agents.length > 0 && (
+        <ul className={s.checklist}>
+          {agents.map((a) => (
+            <li key={a.code} className={s.checkFail}>
+              <div className={s.checkLine}>
+                <span aria-hidden="true">○</span> {a.name}
+                <span className={s.blockedNote}>{a.status}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Link href="/agents" className={s.primaryLink}>
+        {activating.length > 0 ? 'Finish setting up your agent →' : 'See your agents →'}
       </Link>
     </div>
   );
@@ -404,7 +375,10 @@ function Liveness({ lastBoot }: { lastBoot?: string }) {
 
 /* ── Step 3 · verify ──────────────────────────────────────────────────── */
 
-function VerifyStep({ domains, onRefresh }: { domains: EmbedDomain[]; onRefresh: () => void }) {
+function VerifyStep({ domains, onRefresh, live }: {
+  domains: EmbedDomain[]; onRefresh: () => void;
+  live: { code: string; name: string }[];
+}) {
   const anyBooted = domains.some((d) => Object.keys(d.boot_pings ?? {}).length > 0);
   return (
     <section className={s.card}>
@@ -416,6 +390,7 @@ function VerifyStep({ domains, onRefresh }: { domains: EmbedDomain[]; onRefresh:
         Load a page that carries the snippet, then refresh this. A site shows a
         time above once the widget has actually booted from it — this reads real
         boots, so nothing here turns green until your page really runs it.
+        {' '}Live on this tag: {live.map((a) => a.name).join(', ')}.
       </p>
       {!anyBooted && (
         <div className={s.emptyInline}>

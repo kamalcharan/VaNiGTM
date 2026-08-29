@@ -1,8 +1,14 @@
 /**
- * Vara embed — the one file a tenant pastes into their site.
+ * VaNi embed — the one file a tenant pastes into their site.
  *
- *   <script src="https://vani.vikuna.io/embed/vara.js"
- *           data-vara-token="…" defer></script>
+ *   <script src="https://vani.vikuna.io/embed/vani.js"
+ *           data-vani-token="…" defer></script>
+ *
+ * PLATFORM-OWNED, not Vara's. One tenant pastes ONE tag, and every agent
+ * live for that workspace is reachable through it — Vara answers candidates,
+ * Nova will answer whatever Nova answers. The tag is the one artefact we can
+ * never migrate: once it is in someone's Wix site, that URL is theirs for the
+ * life of the site. So it carries no agent's name.
  *
  * Works anywhere a script tag works — Wix, WordPress, Shopify, hand-written
  * HTML — because it asks nothing of the host page: no framework, no globals,
@@ -20,7 +26,7 @@
 
   var script = document.currentScript;
   if (!script) return;
-  var token = script.getAttribute('data-vara-token');
+  var token = script.getAttribute('data-vani-token');
   if (!token) return;
 
   // Where the widget assets live = where this script was loaded from.
@@ -36,8 +42,8 @@
 
   var btn = document.createElement('button');
   btn.type = 'button';
-  btn.setAttribute('aria-label', 'Chat with Vara');
-  btn.textContent = 'Vara';
+  btn.setAttribute('aria-label', 'Chat with VaNi');
+  btn.textContent = 'VaNi';
   btn.style.cssText =
     'position:fixed;right:20px;bottom:20px;z-index:2147483000;' +
     'width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;' +
@@ -47,7 +53,7 @@
   function ensureFrame() {
     if (frame) return frame;
     frame = document.createElement('iframe');
-    frame.title = 'Vara';
+    frame.title = 'VaNi';
     frame.src =
       origin +
       '/embed/chat?token=' +
@@ -73,7 +79,7 @@
   // The iframe can ask to close itself (the ✕ inside the chat header).
   window.addEventListener('message', function (e) {
     if (e.origin !== origin) return;
-    if (e.data && e.data.type === 'vara:close' && frame) {
+    if (e.data && e.data.type === 'vani:close' && frame) {
       open = false;
       frame.style.display = 'none';
       btn.setAttribute('aria-expanded', 'false');

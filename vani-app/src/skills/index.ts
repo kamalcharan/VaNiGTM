@@ -11,6 +11,7 @@ import workspace from './workspace';
 import agents from './agents';
 import runs from './runs';
 import settings from './settings';
+import install from './install';
 import demo from './demo';
 
-export const SKILLS: SkillModule[] = [onboarding, smartProfile, org, workspace, agents, runs, settings, demo];
+export const SKILLS: SkillModule[] = [onboarding, smartProfile, org, workspace, agents, runs, install, settings, demo];

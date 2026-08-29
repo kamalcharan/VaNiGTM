@@ -127,13 +127,13 @@ export default function VaraLanding() {
                   <div className={s.stubNote}>
                     <span className={`${u.tag} ${u.tagOk}`}>Live</span>
                     <p>
-                      Vara is live for your workspace. One script tag puts it on
-                      your site — and Install shows which of your sites have
-                      actually booted it.
+                      Vara is live for your workspace. One script tag puts VaNi
+                      on your site — the same tag serves every agent you turn
+                      on, and Install shows which of your sites have booted it.
                     </p>
-                    <Link href="/agents/vara/install" className={s.activate}
+                    <Link href="/install" className={s.activate}
                       style={{ display: 'inline-flex', alignItems: 'center', marginTop: 10, textDecoration: 'none' }}>
-                      Install Vara →
+                      Install →
                     </Link>
                   </div>
                 ) : d.subscription === 'activating' ? (

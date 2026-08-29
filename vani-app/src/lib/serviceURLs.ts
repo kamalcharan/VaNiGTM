@@ -85,7 +85,11 @@ export const API = {
     },
   },
 
-  /** The tenant's rows in the vani_ platform spine. */
+  /**
+   * The tenant's own platform surfaces. The embed channel lives here, not
+   * under an agent: one tenant pastes one tag and every live agent is
+   * reachable through it.
+   */
   tenant: {
     domains: {
       method: 'GET',
@@ -94,24 +98,24 @@ export const API = {
       description:
         'Domains declared for this workspace (vani_tenant_domain, bridged from the vn_ tenant by slug). Empty before the vani:domain step completes.',
     },
-  },
-
-  /** Vara — activation and install. */
-  vara: {
     embed: {
       method: 'GET',
-      path: '/api/v1/vara/embed',
+      path: '/api/v1/tenant/embed',
       auth: true,
       description:
-        'Everything the Install screen renders in one call: the paste-ready snippet, subscription state, readiness checklist, and per candidate-domain the id, embed_origins allowlist and boot_pings (which origins have actually booted the widget).',
+        'Everything the Install screen renders in one call: the paste-ready snippet, which agents are live on this workspace, and per declared domain the id, embed_origins allowlist and boot_pings (which origins have actually booted the widget).',
     },
     originsUpdate: {
       method: 'PATCH',
       path: '/api/v1/tenant/domains/:id/origins',
       auth: true,
       description:
-        'Admin-only. Add/remove embed origins on one candidate domain. Idempotent by construction — a no-op edit reports changed:false and writes no audit row. Removing an origin drops its boot_pings entry in the same statement.',
+        'Admin-only. Add/remove embed origins on one domain. Idempotent by construction — a no-op edit reports changed:false and writes no audit row. Removing an origin drops its boot_pings entry in the same statement.',
     },
+  },
+
+  /** Vara — activation and its own workspace surfaces. */
+  vara: {
     state: {
       method: 'GET',
       path: '/api/v1/vara/status',
