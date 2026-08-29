@@ -145,7 +145,7 @@ Landed on main. Schema + helpers, no wired writer. Extractor is the first caller
 **Depends on:** Vikuna's LLM key OR BYOK (both need LLM path stable on VPS + `nomic-embed-text` model pulled).
 
 **Backend:**
-- Migration **251** (small): seed system prompts for `vara.extractor.field_schema` and `vara.extractor.evidence_check` in `vani_prompt`. (Was 247 → 248 → 250; 247 went to Phase 4, 248 to the answer cache, 249–250 to the intent tables.)
+- Migration **252** (small): seed system prompts for `vara.extractor.field_schema` and `vara.extractor.evidence_check` in `vani_prompt`. (Was 247 → 248 → 250 → 251; 247 went to Phase 4, 248 to the answer cache, 249–250 to the intent tables, 251 to Vara's intent seed.)
 - Add "job description" adapter to ingestion pipeline (deterministic docx/pdf parse — reuses existing spine, no new schema).
 - `POST /vara/jd/import` — accepts N files, writes `vara_artifact` rows, runs one fenced LLM extraction stage per artifact.
 - Extraction schema: `{ title, must_haves[{name,weight,evidence_span,confidence}], knockouts[{label,rule,evidence_span,confidence}], band?, notes }`. Every field's `evidence_span` must fuzzy-match the source text (V-9). Failed fuzzy = `status='low_confidence'`; failed schema = `status='rejected'` (whole extraction, not partial).
@@ -212,8 +212,8 @@ success criterion (Phase 1 + 4 + 5).
 **Backend — landed:**
 - Migration **247** (`boot_pings jsonb` on `vani_tenant_domain`, approved as a
   schema change). Note this **takes 247 from Phase 2's extractor-prompt seed,
-  which becomes 251 once the answer cache takes 248 and the intent tables
-  take 249–250.**
+  which becomes 252 once the answer cache takes 248, the intent tables take
+  249–250 and Vara's intent seed takes 251.**
 - `PATCH /tenant/domains/:id/origins` — admin-only, add/remove batched in one
   transaction, tenant ownership asserted inside the SELECT and the UPDATE
   predicate (a foreign id is 404, never 403), `FOR UPDATE` against two admins
@@ -349,8 +349,11 @@ create table vani_intent_match (
 Both tenant-scoped with the `vani_` RLS pattern, HNSW on both vectors. Written
 **before** the outcome commits — the invariant migration 246 states.
 
-**Numbering:** 248 went to the answer cache (below), so the intent tables are
-249–250 and Phase 2's extractor-prompt seed is **251**.
+**Numbering:** 248 went to the answer cache (below), the intent tables are
+249–250, **Vara's own intent seed is 251**, and Phase 2's extractor-prompt seed
+is **252**. The seed is a separate file on purpose — the table is platform, the
+rows are the agent's, and Nova must be able to declare its intents without
+editing 249. This is the reference implementation of that rule.
 
 ### Routing — three bands, none of them a guess
 
@@ -418,6 +421,73 @@ Two consequences, both deliberate:
 - **Moving the BRAIN to `vani_` is NOT in this slice.** It is migrations plus
   both frontends. The assembler is what makes that deferrable at no cost —
   callers go through one place now, so the move changes no call sites later.
+
+### What Vara actually declared, and what it deliberately did not
+
+Three visitor intents, seeded in 251: `browse_openings`, `role_detail`,
+`how_applying_works`. Every one is answerable **today** from what
+`POST /embed/boot` already returns — the published JD version's title,
+one-liner, description, employment type, work mode, locations and band.
+
+`apply` and `application_status` are **not** declared. Both are real product
+surface and both are coming with Phase 5, and a chip reading "Apply for this
+role" that routes to nothing is precisely the defect this session already fixed
+once — a screen reporting a state it had not verified. `status` is
+`active | retired` with nothing in between on purpose: there is no way to
+declare an intent without offering it, so **declaring one is the promise.**
+They get seeded by the migration that ships the thing which answers them.
+
+### Verified by running it, not reading it
+
+Migrations 240→251 applied in order on a throwaway Postgres with pgvector 0.6;
+249–251 re-applied on top, clean. Then, against that schema:
+
+- **Tenant isolation, 3-check** — Vara live on tenant A returns 3 intents;
+  tenant B subscribed-but-not-live returns 0; an unknown tenant returns 0.
+- **The margin overrides HIGH.** Two intents scoring 1.000 and 0.9992 — both
+  far above 0.72 — separate by 0.0008 and the router **disambiguates**. That is
+  the case MARGIN exists for: a 0.999 top score is not confidence when the
+  runner-up is 0.999 too, it is a coin flip with a high number on it.
+- **Retiring an intent does not erase the evidence.** `ON DELETE SET NULL`, not
+  CASCADE: after deleting an intent, its match rows survive with the FK nulled.
+  How often something was asked for is an argument about its retirement.
+- **The router refuses loudly with nothing embedded** — `ROUTER_NOT_EMBEDDED`,
+  naming the fix, and it writes **no** log row, because no decision was made.
+  Saying "I did not understand" there would blame the visitor for an unpulled
+  model (rule 12).
+- **Redaction, on real shapes.** `+91 98765 43210` → `[phone]`,
+  `rahul.k+jobs@example.co.in` → `[email]`, a GitHub URL → `[link]`, `@rahul_k`
+  → `[handle]`. The first pass leaked the country code — `\b` cannot precede
+  `+`, so the anchor put it outside the match — which is the kind of thing only
+  running it finds.
+- **End to end** through `resolveIntent` against a stub embedder: all three
+  bands fire, the log carries redacted text and `retain_until` at +90 days.
+
+### One finding worth acting on later, not now
+
+The stub embedder is a bag-of-words hash, so its **absolute scores say nothing
+about the thresholds** — 0.72/0.45 still need tuning against `nomic-embed-text`
+and real traffic, exactly as this document already said.
+
+But it did surface something structural. Against the ONE matching example the
+query scores **1.000**; against the intent's full document — label +
+description + all eight examples, which is what `intentEmbedText()` composes —
+the same query scores **0.338**. One vector per intent is a **centroid**, and a
+centroid dilutes every example it averages. A real sentence-transformer
+compresses meaning rather than counting tokens so the collapse will be far
+smaller, but it is the same direction, and it is the most likely reason for
+real-model scores landing lower than 0.72 across the board.
+
+If they do, there are two fixes and they are different sizes:
+
+1. **Shorten the composed document** (label + description + the two or three
+   most representative examples). No schema, one `--all` re-run — which is what
+   that flag exists for.
+2. **One embedding per example.** Better recall, and a schema change with an
+   argument attached, not a column slipped in.
+
+Do neither until there are real-model numbers. Recorded here so the low scores
+are recognised rather than rediscovered.
 
 ### Not built here, named so nobody assumes it
 
@@ -562,6 +632,7 @@ Both learning loops land in Phase 6 timeframe; the shape is ready.
            ↓  the widget becomes the product's, not Vara's
            ↓  MUST precede the Phase 4 gate — the snippet URL cannot be migrated
            ↓  migrations 249 (vani_agent_intent) + 250 (vani_intent_match)
+           ↓  + 251 (Vara's own intent declaration)
 
           Phase 4 gate · paste on a real page, watch a boot land
 
