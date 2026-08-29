@@ -214,28 +214,66 @@ export function createVaraRouter(pool: Pool): Router {
         return;
       }
 
+      // The subscription write and its audit row are one transaction — a
+      // subscription that moved with no audit trail, or an audit row for a
+      // move that rolled back, are both worse than failing the call.
+      const client = await pool.connect();
+      try {
+      await client.query('BEGIN');
+
       // Decision 2026-08-17: a correct activation code marks the subscription
       // `activating` — code accepted, Vara onboarding pending. Going `live` is
-      // the ONBOARDING lane's finish line (flow being designed), not this
-      // call's. The readiness checklist moves there with it; an already-live
-      // subscription is left alone.
-      const row = await pool.query(
-        `INSERT INTO vani_tenant_agent (tenant_id, agent_id, status)
-         VALUES ($1, $2, 'activating')
+      // the ONBOARDING lane's finish line, not this call's.
+      //
+      // ── But it RECONCILES, it does not just set a flag (2026-08-27) ──────
+      // The flip to `live` fires inside POST /vara/jd/compose, and only when
+      // the status is already `activating`. That assumed activation always
+      // comes first. Publish before activating and you were trapped for good:
+      // the JD existed, the code was accepted, and the only thing that could
+      // ever flip the flag was ANOTHER publish. Found on a real workspace —
+      // `activating` with one published JD, stuck.
+      //
+      // So the finish line is a CONDITION, not an event: a correct code plus
+      // a published JD means live, whichever order they happened in. The gate
+      // is untouched — the phrase is still checked above, and a workspace with
+      // no published JD still lands on `activating`.
+      const published = await client.query(
+        `SELECT 1 FROM vara_jd WHERE tenant_id = $1 AND status = 'published' LIMIT 1`,
+        [vani.id],
+      );
+      const target = published.rows.length ? 'live' : 'activating';
+
+      const row = await client.query(
+        `INSERT INTO vani_tenant_agent (tenant_id, agent_id, status, activated_at)
+         VALUES ($1, $2, $3, CASE WHEN $3 = 'live' THEN now() END)
          ON CONFLICT (tenant_id, agent_id) DO UPDATE
            SET status = CASE WHEN vani_tenant_agent.status = 'live'
-                             THEN 'live' ELSE 'activating' END
+                             THEN 'live' ELSE excluded.status END,
+               -- Stamp once, the first time this row is live, and never move
+               -- it. Nothing wrote this column before today, so every existing
+               -- row reads null until it next goes live.
+               activated_at = COALESCE(
+                 vani_tenant_agent.activated_at,
+                 CASE WHEN vani_tenant_agent.status = 'live' OR excluded.status = 'live'
+                      THEN now() END)
          RETURNING status, activated_at`,
-        [vani.id, agentId],
+        [vani.id, agentId, target],
       );
 
-      await pool.query(
+      await client.query(
         `INSERT INTO vani_audit_log (tenant_id, agent_id, actor_type, actor_id, entity, entity_id, action, before, after)
          VALUES ($1, $2, 'human', $3, 'vani_tenant_agent', $2, 'activation_code_accepted', '{}'::jsonb, $4::jsonb)`,
         [vani.id, agentId, auth.user_id, JSON.stringify({ status: row.rows[0]?.status })],
       );
 
+      await client.query('COMMIT');
       res.json({ agent: 'vara', ...row.rows[0], onboarding: 'pending-design' });
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
+      }
     } catch (err: any) {
       console.error('[Vara:activate]', err);
       res.status(500).json({ error: { code: 'ACTIVATE_FAILED', message: 'Could not activate Vara' } });
@@ -776,7 +814,9 @@ export function createVaraRouter(pool: Pool): Router {
         const status = sub.rows[0]?.status ?? null;
         if (status === 'activating') {
           await client.query(
-            `UPDATE vani_tenant_agent SET status = 'live'
+            `UPDATE vani_tenant_agent
+                SET status = 'live',
+                    activated_at = COALESCE(activated_at, now())
               WHERE tenant_id = $1 AND agent_id = $2`,
             [vaniTenantId, agentId],
           );
