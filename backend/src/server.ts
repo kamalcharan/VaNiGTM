@@ -16,6 +16,7 @@ import { createProfileRouter } from './skills/profile-skill/profile.routes';
 import { createStorytellerRouter } from './skills/storyteller-skill/storyteller.routes';
 import { createAssessmentRouter } from './skills/assessment-skill/assessment.routes';
 import { createVaraRouter } from './vara/vara.routes';
+import { createEmbedRouter } from './vani/embed.routes';
 import { verifyAccessToken } from './auth/token.service';
 import { resolveAuth } from './auth/auth-context';
 
@@ -80,6 +81,10 @@ async function main() {
   // by design — it serves the widget inside the TENANT'S site, where no
   // platform session exists. See vara/vara.routes.ts for the threat model.
   app.use('/api/v1/vara', createVaraRouter(pool));
+  // Platform-owned embed channel. Mounted at /api/v1 because it owns two paths
+  // in that namespace — /tenant/embed (workspace) and /embed/boot (public) —
+  // and belongs to no agent.
+  app.use('/api/v1', createEmbedRouter(pool));
   console.log('[VaNi-GTM] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /vani, /ingest, /profile, /storyteller, /assessment, /vara');
 
   // Build skill registry
