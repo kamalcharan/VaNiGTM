@@ -147,6 +147,31 @@ The site's look is switched by editing a single constant, not by a user toggle:
 
 `public/` ships as-is: standalone HTML landers (`assessment-page.html`, `training-page.html`, `vani-page.html`, `iceberg-visual.html`, the `bcl2025/` and `bcl-offers/` folders) live beside the SPA and are served at their paths thanks to the `vercel.json` rewrite excluding anything containing a dot. `public/generate-seo-files.js` is a build-time helper for SEO artifacts, not part of the app bundle.
 
+**`public/proposals/` — client proposals, one self-contained HTML file each,
+shared with a prospect by link.** Naming is `<client-slug>.html`, so
+`/proposals/gp-stores.html`. Three things hold for every file added here:
+
+- **Keep it self-contained.** No build step touches `public/`, so the page must
+  carry its own CSS and JS inline. Google Fonts is the only external reference
+  the existing one makes.
+- **`vercel.json` sends `X-Robots-Tag: noindex, nofollow, noarchive` and
+  `Cache-Control: no-store` for `/proposals/(.*)`.** The noindex is because
+  these are commercial documents marked Confidential; the no-store is because a
+  proposal gets revised before a meeting and a cached copy at a shared URL is
+  the wrong version in front of a client. Put `<meta name="robots">` in the page
+  too — the header covers the fetch, the meta covers a saved copy.
+- **Do NOT add `Disallow: /proposals/` to `robots.txt`.** It reads like the
+  safer choice and is the opposite: a Disallow stops the crawler fetching the
+  page, so it never sees the noindex, and the URL can still be listed
+  contentless if anyone links it. The note in `robots.txt` says the same thing
+  at the point someone would make the change.
+
+There is deliberately **no index page** for the folder. `/proposals/` has no
+dot, so the SPA rewrite catches it and serves the homepage — no directory
+listing of every prospect's pricing. Note the flip side: file names are
+guessable, so anyone who tries `<competitor>.html` may hit a real proposal. If
+that matters for a particular client, give that file an unguessable slug.
+
 ### TypeScript / lint posture
 
 `tsconfig.json` is strict with `noUnusedLocals` and `noUnusedParameters` on — dead imports/params break the build. ESLint enforces `react-hooks/recommended` and `react-refresh/only-export-components`; `dist` is ignored. `npm run lint` treats warnings as errors, so fix or explicitly disable them.

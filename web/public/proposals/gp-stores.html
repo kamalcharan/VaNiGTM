@@ -1,0 +1,1351 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style><title>GP Stores Associate App Proposal</title>
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="description" content="Vikuna Technologies proposal VT-GPS-2026-09 for GP Stores — associate commission engine and mobile app.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="GP Stores · Associate &amp; Customer App — Vikuna proposal">
+<meta property="og:description" content="Proposal VT-GPS-2026-09 · Phase 1 associate programme, Phase 2 customer app shell. Confidential.">
+<meta name="twitter:card" content="summary">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=Outfit:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap">
+</head><body>
+<style>
+/* ───────────── Tokens: Jade Thorn (default) ───────────── */
+:root{
+  --primary:#0f4c3a; --secondary:#c7a557; --tertiary:#5a7a6e; --alt:#ecebe4;
+  --text:#1a1a1a; --text2:#8a8884; --bg:#eeeadd; --bg2:#ffffff;
+  --glass:rgba(255,255,255,0.92); --glass-strong:#ffffff; --glass-border:#ddd7c7;
+  --pdim:rgba(15,76,58,0.25); --pglow:rgba(15,76,58,0.10); --psubtle:rgba(15,76,58,0.04);
+  --success:#2d7a4f; --error:#b54034; --warning:#c47e1a; --info:#2a5f8a;
+  --on-primary:#ffffff; --on-secondary:#1a1a1a;
+  --font-display:"Fraunces",Georgia,serif; --font-body:"Manrope",system-ui,sans-serif; --font-mono:"JetBrains Mono",ui-monospace,monospace;
+  --radius:22px; --blur:18px;
+}
+:root[data-palette="techy"]{
+  --primary:#f83b46; --secondary:#0299ff; --tertiary:#ff6a73; --alt:#e0e3e7;
+  --text:#141518; --text2:#677681; --bg:#f1f4f8; --bg2:#ffffff;
+  --glass:rgba(255,255,255,0.72); --glass-strong:rgba(255,255,255,0.94); --glass-border:rgba(248,59,70,0.22);
+  --pdim:rgba(248,59,70,0.26); --pglow:rgba(248,59,70,0.14); --psubtle:rgba(248,59,70,0.05);
+  --success:#4a9e58; --error:#e0424c; --warning:#d0842e; --info:#0299ff;
+  --on-primary:#ffffff; --on-secondary:#ffffff;
+  --font-display:"Sora",system-ui,sans-serif; --font-body:"IBM Plex Sans",system-ui,sans-serif;
+}
+:root[data-palette="purple"]{
+  --primary:#6f61ef; --secondary:#392d2c; --tertiary:#9984bb; --alt:#e0e3e7;
+  --text:#151616; --text2:#606e85; --bg:#f1f4f8; --bg2:#ffffff;
+  --glass:rgba(255,255,255,0.72); --glass-strong:rgba(255,255,255,0.94); --glass-border:rgba(111,97,239,0.26);
+  --pdim:rgba(111,97,239,0.30); --pglow:rgba(111,97,239,0.16); --psubtle:rgba(111,97,239,0.06);
+  --success:#24a891; --error:#ff5963; --warning:#b89c00; --info:#3b6fb5;
+  --on-primary:#ffffff; --on-secondary:#ffffff;
+  --font-display:"Outfit",system-ui,sans-serif; --font-body:"DM Sans",system-ui,sans-serif;
+}
+/* ───────────── Dark: system ───────────── */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --primary:#3aad7e; --secondary:#d4b46a; --tertiary:#5a9a7a; --alt:#1a2e22;
+    --text:#f4f1e9; --text2:rgba(244,241,233,0.68); --bg:#0a0f0d; --bg2:#1a2e22;
+    --glass:rgba(58,173,126,0.07); --glass-strong:rgba(58,173,126,0.13); --glass-border:rgba(58,173,126,0.24);
+    --pdim:rgba(58,173,126,0.36); --pglow:rgba(58,173,126,0.16); --psubtle:rgba(58,173,126,0.07);
+    --success:#4ecb8a; --error:#e05555; --warning:#e0a040; --info:#4a8fc4; --on-primary:#06150f; --on-secondary:#1a1a1a;
+  }
+  :root:not([data-theme="light"])[data-palette="techy"]{
+    --primary:#f83b46; --secondary:#0299ff; --tertiary:#ff6a73; --alt:#262b36;
+    --text:#ffffff; --text2:#95a1ac; --bg:#141518; --bg2:#1a1f24;
+    --glass:rgba(38,43,54,0.70); --glass-strong:rgba(38,43,54,0.94); --glass-border:rgba(248,59,70,0.30);
+    --pdim:rgba(248,59,70,0.30); --pglow:rgba(248,59,70,0.18); --psubtle:rgba(248,59,70,0.08);
+    --success:#6bbd78; --error:#ff5963; --warning:#ec9c4b; --info:#4db3ff; --on-primary:#ffffff; --on-secondary:#ffffff;
+  }
+  :root:not([data-theme="light"])[data-palette="purple"]{
+    --primary:#8b7ff5; --secondary:#c9b8a8; --tertiary:#9984bb; --alt:#313442;
+    --text:#ffffff; --text2:#95a1ac; --bg:#151616; --bg2:#1a1f24;
+    --glass:rgba(49,52,66,0.70); --glass-strong:rgba(49,52,66,0.92); --glass-border:rgba(148,137,245,0.30);
+    --pdim:rgba(148,137,245,0.30); --pglow:rgba(148,137,245,0.18); --psubtle:rgba(148,137,245,0.07);
+    --success:#3cc9ae; --error:#ff7a82; --warning:#fcdc0c; --info:#7fb0ea; --on-primary:#0f0d24; --on-secondary:#1a1a1a;
+  }
+}
+/* ───────────── Dark: explicit ───────────── */
+:root[data-theme="dark"]{
+  --primary:#3aad7e; --secondary:#d4b46a; --tertiary:#5a9a7a; --alt:#1a2e22;
+  --text:#f4f1e9; --text2:rgba(244,241,233,0.68); --bg:#0a0f0d; --bg2:#1a2e22;
+  --glass:rgba(58,173,126,0.07); --glass-strong:rgba(58,173,126,0.13); --glass-border:rgba(58,173,126,0.24);
+  --pdim:rgba(58,173,126,0.36); --pglow:rgba(58,173,126,0.16); --psubtle:rgba(58,173,126,0.07);
+  --success:#4ecb8a; --error:#e05555; --warning:#e0a040; --info:#4a8fc4; --on-primary:#06150f; --on-secondary:#1a1a1a;
+}
+:root[data-theme="dark"][data-palette="techy"]{
+  --primary:#f83b46; --secondary:#0299ff; --tertiary:#ff6a73; --alt:#262b36;
+  --text:#ffffff; --text2:#95a1ac; --bg:#141518; --bg2:#1a1f24;
+  --glass:rgba(38,43,54,0.70); --glass-strong:rgba(38,43,54,0.94); --glass-border:rgba(248,59,70,0.30);
+  --pdim:rgba(248,59,70,0.30); --pglow:rgba(248,59,70,0.18); --psubtle:rgba(248,59,70,0.08);
+  --success:#6bbd78; --error:#ff5963; --warning:#ec9c4b; --info:#4db3ff; --on-primary:#ffffff; --on-secondary:#ffffff;
+}
+:root[data-theme="dark"][data-palette="purple"]{
+  --primary:#8b7ff5; --secondary:#c9b8a8; --tertiary:#9984bb; --alt:#313442;
+  --text:#ffffff; --text2:#95a1ac; --bg:#151616; --bg2:#1a1f24;
+  --glass:rgba(49,52,66,0.70); --glass-strong:rgba(49,52,66,0.92); --glass-border:rgba(148,137,245,0.30);
+  --pdim:rgba(148,137,245,0.30); --pglow:rgba(148,137,245,0.18); --psubtle:rgba(148,137,245,0.07);
+  --success:#3cc9ae; --error:#ff7a82; --warning:#fcdc0c; --info:#7fb0ea; --on-primary:#0f0d24; --on-secondary:#1a1a1a;
+}
+
+/* ───────────── Base ───────────── */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;transition:background .4s,color .4s}
+h1,h2,h3,h4{font-family:var(--font-display);font-weight:600;line-height:1.15;margin:0;text-wrap:balance;letter-spacing:-0.01em}
+h1{font-size:clamp(28px,4vw,42px)}
+h2{font-size:clamp(22px,3vw,30px)}
+h3{font-size:18px}
+h4{font-size:15px}
+p{margin:0}
+a{color:var(--primary)}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text2);font-weight:600}
+.muted{color:var(--text2)}
+.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.small{font-size:13px}
+strong{font-weight:600}
+
+/* Ambient */
+.ambient{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.55;transition:background .6s}
+.b1{width:60vw;height:60vw;left:-15vw;top:-20vw;background:var(--pdim)}
+.b2{width:45vw;height:45vw;right:-10vw;top:20vh;background:color-mix(in srgb,var(--secondary) 35%,transparent)}
+.b3{width:50vw;height:50vw;left:20vw;bottom:-25vw;background:color-mix(in srgb,var(--tertiary) 30%,transparent)}
+
+/* Glass */
+.glass{background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(140%);-webkit-backdrop-filter:blur(var(--blur)) saturate(140%);border:1px solid var(--glass-border);border-radius:var(--radius);box-shadow:0 10px 40px -20px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.35);transition:background .4s,border-color .4s}
+.glass-strong{background:var(--glass-strong)}
+
+/* Top bar */
+.topbar{position:sticky;top:0;z-index:20;margin:14px auto 0;max-width:1180px;padding:10px 14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.wordmark{font-family:var(--font-display);font-weight:600;font-size:18px;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
+.wordmark i{width:10px;height:10px;border-radius:3px;background:var(--primary);display:inline-block;transform:rotate(45deg)}
+.pagenav{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+.pagenav button{border:1px solid transparent;background:transparent;color:var(--text2);padding:6px 11px;border-radius:999px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.pagenav button:hover{color:var(--text);background:var(--psubtle)}
+.pagenav button[aria-current="page"]{background:var(--primary);color:var(--on-primary);border-color:transparent}
+button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.controls{display:flex;align-items:center;gap:8px}
+.swatches{display:flex;gap:6px;padding:4px;border-radius:999px;border:1px solid var(--glass-border)}
+.swatch{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;position:relative;transition:transform .2s}
+.swatch:hover{transform:scale(1.08)}
+.swatch[aria-pressed="true"]{border-color:var(--text)}
+.sw-jade{background:linear-gradient(135deg,#0f4c3a 50%,#c7a557 50%)}
+.sw-techy{background:linear-gradient(135deg,#f83b46 50%,#0299ff 50%)}
+.sw-purple{background:linear-gradient(135deg,#6f61ef 50%,#392d2c 50%)}
+.icon-btn{border:1px solid var(--glass-border);background:transparent;color:var(--text);width:34px;height:34px;border-radius:50%;cursor:pointer;display:grid;place-items:center;font:inherit}
+.icon-btn svg{width:16px;height:16px}
+
+/* Pages */
+main{max-width:1180px;margin:22px auto 60px;padding:0 14px}
+.page{display:none;animation:rise .45s ease both}
+.page.active{display:block}
+@keyframes rise{from{opacity:.001;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.page{animation:none}*{transition:none!important}}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:8px 4px 18px;flex-wrap:wrap}
+.page-head .idx{font-family:var(--font-mono);font-size:12px;color:var(--text2)}
+.pager{display:flex;justify-content:space-between;margin-top:26px;gap:10px}
+.pn{border:1px solid var(--glass-border);background:var(--glass);color:var(--text);padding:10px 16px;border-radius:999px;font:inherit;font-weight:600;cursor:pointer;backdrop-filter:blur(12px)}
+.pn:hover{background:var(--psubtle)}
+.pn[disabled]{opacity:.35;cursor:default}
+
+/* Layout helpers */
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media (max-width:860px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.pad{padding:22px}
+.stack{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--glass-border);background:var(--psubtle);color:var(--text)}
+.chip.p{background:var(--primary);color:var(--on-primary);border-color:transparent}
+.chip.s{background:color-mix(in srgb,var(--secondary) 22%,transparent);border-color:color-mix(in srgb,var(--secondary) 45%,transparent)}
+.chip.ok{background:color-mix(in srgb,var(--success) 14%,transparent);border-color:color-mix(in srgb,var(--success) 40%,transparent)}
+.chip.warn{background:color-mix(in srgb,var(--warning) 16%,transparent);border-color:color-mix(in srgb,var(--warning) 45%,transparent)}
+.chip.err{background:color-mix(in srgb,var(--error) 14%,transparent);border-color:color-mix(in srgb,var(--error) 40%,transparent)}
+.divider{height:1px;background:var(--glass-border);margin:6px 0}
+ul.clean{margin:0;padding-left:18px}
+ul.clean li{margin:4px 0}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:6px 14px;font-size:14px;margin:0}
+.kv dt{color:var(--text2)}
+.kv dd{margin:0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--glass-border);vertical-align:top}
+th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text2);font-weight:600}
+tr:last-child td{border-bottom:none}
+td.num{white-space:nowrap}
+.tablewrap{overflow-x:auto}
+.price{font-family:var(--font-display);font-size:34px;font-weight:600;letter-spacing:-.02em}
+.strike{text-decoration:line-through;color:var(--text2)}
+.bar{height:8px;border-radius:999px;background:var(--psubtle);overflow:hidden;border:1px solid var(--glass-border)}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:999px}
+
+/* Cover */
+.cover{display:grid;grid-template-columns:1.3fr 1fr;gap:14px}
+@media (max-width:860px){.cover{grid-template-columns:1fr}}
+.cover h1 span{color:var(--primary)}
+.parties{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:600px){.parties{grid-template-columns:1fr}}
+.party{padding:14px;border-radius:16px;border:1px solid var(--glass-border);background:var(--psubtle)}
+.party .who{font-weight:700}
+.tile{position:relative;overflow:hidden}
+.tile .ph{position:absolute;right:14px;top:12px;font-family:var(--font-mono);font-size:11px;color:var(--text2)}
+
+/* Architecture SVG */
+.archwrap{overflow-x:auto}
+.arch svg{width:100%;min-width:720px;height:auto;display:block}
+.arch text{font-family:var(--font-body);fill:var(--text)}
+.arch .t{font-size:13px;font-weight:600}
+.arch .s{font-size:11px;fill:var(--text2)}
+.arch .h{font-family:var(--font-display);font-size:15px;font-weight:600}
+.arch .box{fill:var(--glass-strong);stroke:var(--glass-border)}
+.arch .col{fill:var(--psubtle);stroke:var(--glass-border);stroke-dasharray:4 4}
+.arch .ln{stroke:var(--text2);stroke-width:1.5;fill:none}
+.arch .lp{stroke:var(--primary);stroke-width:2;fill:none}
+.arch .ls{stroke:var(--secondary);stroke-width:2;fill:none}
+.arch .lab{font-size:10.5px;fill:var(--text2)}
+.arch .labp{fill:var(--primary);font-weight:600}
+.arch .labs{fill:color-mix(in srgb,var(--secondary) 80%,var(--text));font-weight:600}
+.arch .own{font-size:10px;fill:var(--text2);letter-spacing:.1em;text-transform:uppercase}
+
+/* UX page */
+.ux{display:grid;grid-template-columns:400px 1fr;gap:22px;align-items:start}
+@media (max-width:900px){.ux{grid-template-columns:1fr}}
+.phone-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;position:sticky;top:90px}
+@media (max-width:900px){.phone-wrap{position:static}}
+.phone{width:340px;height:700px;border-radius:44px;padding:12px;background:linear-gradient(160deg,color-mix(in srgb,var(--text) 85%,var(--primary)),color-mix(in srgb,var(--text) 65%,var(--primary)));box-shadow:0 30px 70px -30px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.08) inset;position:relative}
+.screen{width:100%;height:100%;border-radius:34px;overflow:hidden;background:var(--bg);position:absolute;inset:12px;width:calc(100% - 24px);height:calc(100% - 24px);display:none;flex-direction:column;font-size:13px;transition:background .4s}
+.screen.on{display:flex}
+.screen .amb{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.screen .amb i{position:absolute;border-radius:50%;filter:blur(40px);opacity:.7}
+.screen .amb .a1{width:220px;height:220px;left:-60px;top:-40px;background:var(--pdim)}
+.screen .amb .a2{width:200px;height:200px;right:-70px;top:180px;background:color-mix(in srgb,var(--secondary) 40%,transparent)}
+.notch{position:absolute;left:50%;transform:translateX(-50%);top:10px;width:110px;height:28px;border-radius:999px;background:#000;z-index:5}
+.status{display:flex;justify-content:space-between;padding:14px 22px 0;font-size:11px;font-weight:600;position:relative;z-index:2}
+.sbody{flex:1;overflow:hidden;padding:12px 14px 0;display:flex;flex-direction:column;gap:9px;position:relative;z-index:2}
+.sg{background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--glass-border);border-radius:16px;padding:11px}
+.hello{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.hello b{font-family:var(--font-display);font-size:18px;display:block}
+.stitle{margin-top:8px;display:flex;justify-content:space-between;align-items:center}
+.stitle b{font-family:var(--font-display);font-size:18px}
+.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--secondary));display:grid;place-items:center;color:var(--on-primary);font-weight:700;font-size:12px}
+.period{font-size:11px;padding:4px 9px;border-radius:999px;border:1px solid var(--glass-border);background:var(--glass-strong)}
+.badge{font-size:9.5px;padding:2px 7px;border-radius:999px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.badge.adm{background:var(--secondary);color:var(--on-secondary)}
+.due{background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 55%,var(--secondary)));color:var(--on-primary);border:none}
+.due .lbl{font-size:11px;opacity:.85;letter-spacing:.08em;text-transform:uppercase}
+.due .amt{font-family:var(--font-display);font-size:30px;font-weight:600;letter-spacing:-.02em;margin:2px 0 6px}
+.due .sub{font-size:11px;opacity:.9;display:flex;justify-content:space-between}
+.ledger{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.ledger div{text-align:center;font-size:9.5px;line-height:1.2}
+.ledger div b{display:block;font-family:var(--font-mono);font-size:11px;margin-bottom:2px;color:var(--text)}
+.ledger div span{color:var(--text2)}
+.ledger .dot{width:18px;height:4px;border-radius:2px;margin:0 auto 5px;display:block}
+.sales .top{display:flex;justify-content:space-between;align-items:baseline}
+.sales .top b{font-family:var(--font-mono);font-size:16px}
+.sales .bar{margin:8px 0 6px}
+.sales .ft{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--text2);white-space:nowrap}
+.cust{display:flex;flex-direction:column;gap:6px}
+.cust .hd{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text2)}
+.cust .hd b{color:var(--text);font-size:13px;font-family:var(--font-display)}
+.crow{display:flex;align-items:center;gap:9px;font-size:12px}
+.crow .av{width:28px;height:28px;border-radius:50%;background:var(--psubtle);border:1px solid var(--glass-border);display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--primary);flex:none}
+.crow .nm{flex:1;line-height:1.2;min-width:0}
+.crow .nm span{display:block;font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crow .am{font-family:var(--font-mono);font-size:11px;white-space:nowrap}
+.cta{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:14px;background:var(--primary);color:var(--on-primary);font-weight:700;font-size:13px;box-shadow:0 8px 20px -10px var(--primary)}
+.cta.sec{background:var(--secondary);color:var(--on-secondary);box-shadow:0 8px 20px -10px var(--secondary)}
+.cta.ghost{background:transparent;color:var(--text);border:1px solid var(--glass-border);box-shadow:none}
+.field{border:1px solid var(--glass-border);background:var(--glass-strong);border-radius:12px;padding:9px 11px;font-size:12px;display:flex;justify-content:space-between;align-items:center}
+.field span{color:var(--text2);font-size:10px;display:block}
+.field b{font-weight:500}
+.field.on{border-color:var(--primary);box-shadow:0 0 0 3px var(--pglow)}
+.toggle{width:34px;height:18px;border-radius:999px;background:var(--primary);position:relative;display:inline-block}
+.toggle::after{content:"";position:absolute;right:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff}
+.seg{display:flex;gap:4px;padding:3px;border-radius:999px;border:1px solid var(--glass-border);background:var(--glass-strong)}
+.seg span{flex:1;text-align:center;font-size:10.5px;padding:5px 0;border-radius:999px;color:var(--text2);font-weight:600}
+.seg span.on{background:var(--primary);color:var(--on-primary)}
+.ltab{display:grid;grid-template-columns:1.4fr 1fr 1fr .9fr;gap:4px;font-size:10.5px;align-items:center}
+.ltab.h{color:var(--text2);font-size:9px;letter-spacing:.06em;text-transform:uppercase}
+.ltab .m{font-family:var(--font-mono)}
+.ltab .st{justify-self:end;font-size:9px;padding:2px 6px;border-radius:999px;font-weight:700}
+.st.acc{background:color-mix(in srgb,var(--tertiary) 25%,transparent)}
+.st.prov{background:color-mix(in srgb,var(--warning) 22%,transparent)}
+.st.appr{background:color-mix(in srgb,var(--primary) 18%,transparent)}
+.st.paid{background:color-mix(in srgb,var(--success) 20%,transparent)}
+.st.claw{background:color-mix(in srgb,var(--error) 18%,transparent)}
+.codecard{text-align:center;padding:16px 12px}
+.codecard .code{font-family:var(--font-mono);font-size:22px;letter-spacing:.14em;font-weight:500;margin:4px 0}
+.share{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.share div{text-align:center;font-size:9.5px;color:var(--text2)}
+.share i{display:block;width:40px;height:40px;border-radius:14px;margin:0 auto 4px;background:var(--glass-strong);border:1px solid var(--glass-border)}
+.slab{display:flex;justify-content:space-between;font-size:11px;padding:6px 0;border-bottom:1px dashed var(--glass-border)}
+.slab:last-child{border-bottom:none}
+.slab b{font-family:var(--font-mono)}
+.tabbar{display:flex;justify-content:space-around;padding:10px 6px 22px;background:var(--glass-strong);backdrop-filter:blur(14px);border-top:1px solid var(--glass-border);position:relative;z-index:2}
+.tabbar div{font-size:9.5px;text-align:center;color:var(--text2);display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabbar div.on{color:var(--primary);font-weight:700}
+.tabbar svg{width:18px;height:18px}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:110px;height:4px;border-radius:2px;background:var(--text);opacity:.5;z-index:5}
+.logo-mark{width:64px;height:64px;border-radius:20px;margin:40px auto 10px;background:linear-gradient(135deg,var(--primary),var(--secondary));display:grid;place-items:center;color:var(--on-primary);font-family:var(--font-display);font-weight:600;font-size:24px}
+.theme-pick{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.theme-pick button{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:1px solid var(--glass-border);background:var(--glass);color:var(--text);font:inherit;font-weight:600;font-size:13px;cursor:pointer}
+.theme-pick button[aria-pressed="true"]{border-color:var(--primary);box-shadow:0 0 0 3px var(--pglow)}
+.theme-pick .sw{width:16px;height:16px;border-radius:50%}
+.carousel{display:flex;align-items:center;gap:10px}
+.carousel .arrow{width:38px;height:38px;border-radius:50%;border:1px solid var(--glass-border);background:var(--glass);color:var(--text);font:inherit;font-size:18px;cursor:pointer;display:grid;place-items:center}
+.dots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.dots button{width:10px;height:10px;border-radius:50%;border:1px solid var(--glass-border);background:transparent;padding:0;cursor:pointer}
+.dots button[aria-current="true"]{background:var(--primary);border-color:var(--primary);width:22px;border-radius:999px}
+.sctitle{font-family:var(--font-mono);font-size:12px;color:var(--text2)}
+.rpanel{display:none}
+.rpanel.on{display:block}
+.rhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.req{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+.req li{display:grid;grid-template-columns:78px 1fr;gap:10px;font-size:13.5px;padding:8px 10px;border-radius:12px;border:1px solid var(--glass-border);background:var(--psubtle)}
+.req li code{font-family:var(--font-mono);font-size:11px;color:var(--primary);font-weight:500;padding-top:2px}
+.rsec{margin-top:14px}
+.rsec h4{margin-bottom:6px}
+.rsec ul.clean{font-size:13.5px}
+.callout{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;border:1px solid var(--glass-border);background:var(--psubtle)}
+.callout .ic{width:8px;height:8px;border-radius:50%;background:var(--secondary);margin-top:7px;flex:none}
+.xreq{margin-top:22px}
+.xreq .grid{gap:12px}
+.xreq .glass{padding:16px 18px}
+.xreq h4{margin-bottom:6px}
+.xreq .req li{grid-template-columns:70px 1fr;font-size:13px}
+
+/* Timeline slider */
+.timeline{padding:22px 22px 26px}
+.track-wrap{position:relative;margin:48px 70px 8px}
+@media (max-width:860px){.track-wrap{margin:48px 40px 8px}.mark .lab{font-size:10px}}
+.track{position:relative;height:10px;border-radius:999px;background:var(--psubtle);border:1px solid var(--glass-border)}
+.tseg{position:absolute;top:0;bottom:0;border-radius:999px;opacity:.9}
+.tseg.s1{background:var(--tertiary)}.tseg.s2{background:var(--primary)}.tseg.s3{background:var(--secondary)}.tseg.s4{background:color-mix(in srgb,var(--success) 70%,var(--primary))}
+.mark{position:absolute;top:50%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:var(--bg2);border:3px solid var(--primary);z-index:2}
+.mark.pay{border-color:var(--secondary)}
+.mark .lab{position:absolute;top:-30px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;font-weight:700;color:var(--text)}
+.mark .lab.below{top:auto;bottom:-30px;color:var(--text2);font-weight:600}
+input[type=range].tl{-webkit-appearance:none;appearance:none;position:absolute;left:-2px;right:-2px;top:-14px;width:calc(100% + 4px);height:38px;background:transparent;margin:0;cursor:pointer;z-index:3}
+input[type=range].tl::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:var(--primary);border:4px solid var(--bg2);box-shadow:0 4px 14px -4px var(--primary);cursor:grab}
+input[type=range].tl::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:var(--primary);border:4px solid var(--bg2);cursor:grab}
+input[type=range].tl::-moz-range-track{background:transparent}
+.weeks{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;color:var(--text2);margin:40px 66px 0}
+@media (max-width:860px){.weeks{margin:40px 36px 0}}
+.stage{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:14px;margin-top:22px}
+@media (max-width:860px){.stage{grid-template-columns:1fr}}
+.stage .box{padding:16px;border-radius:16px;border:1px solid var(--glass-border);background:var(--glass-strong)}
+.stage .box h4{margin-bottom:6px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text2);margin-top:10px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+.pkg{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.pkg li{display:grid;grid-template-columns:150px 1fr;gap:12px;font-size:13.5px;padding:8px 0;border-bottom:1px solid var(--glass-border)}
+.pkg li:last-child{border-bottom:none}
+.pkg li b{font-weight:600}
+
+/* RACI */
+.raci td.c{text-align:center;font-family:var(--font-mono);font-weight:500}
+.r{color:var(--primary);font-weight:700}.a{color:color-mix(in srgb,var(--secondary) 80%,var(--text));font-weight:700}
+
+/* T&C */
+.terms ol{padding-left:20px;margin:0;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.sign{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:860px){.sign{grid-template-columns:1fr}}
+.sigbox{padding:16px;border-radius:16px;border:1px dashed var(--glass-border)}
+.sigline{height:38px;border-bottom:1px solid var(--text2);margin:14px 0 6px}
+footer{max-width:1180px;margin:0 auto 30px;padding:0 18px;font-size:12px;color:var(--text2);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+
+@media print{
+  .topbar,.pager,.ambient,.theme-pick,.carousel .arrow,.dots{display:none!important}
+  .page{display:block!important;break-after:page;animation:none}
+  .rpanel,.screen{display:block!important;position:static}
+  .glass{backdrop-filter:none;box-shadow:none}
+  body{background:#fff;color:#111}
+}
+</style>
+
+<div class="ambient"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<header class="topbar glass">
+  <div class="wordmark"><i></i>Vikuna</div>
+  <nav class="pagenav" aria-label="Proposal pages">
+    <button data-go="1" aria-current="page">Overview</button>
+    <button data-go="2">Screens &amp; Requirements</button>
+    <button data-go="3">Scope &amp; Timeline</button>
+    <button data-go="4">Commercials</button>
+    <button data-go="5">Play Store</button>
+    <button data-go="6">Risks</button>
+    <button data-go="7">RACI</button>
+    <button data-go="8">Terms</button>
+  </nav>
+  <div class="controls">
+    <div class="swatches" role="group" aria-label="Theme">
+      <button class="swatch sw-jade" data-palette="jade" aria-pressed="true" title="Jade Thorn" aria-label="Jade Thorn theme"></button>
+      <button class="swatch sw-techy" data-palette="techy" aria-pressed="false" title="Techy Simple" aria-label="Techy Simple theme"></button>
+      <button class="swatch sw-purple" data-palette="purple" aria-pressed="false" title="Purple Tone" aria-label="Purple Tone theme"></button>
+    </div>
+    <button class="icon-btn" id="modeBtn" title="Light / dark" aria-label="Toggle light or dark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 1 0 9 9c0-.5 0-1-.1-1.4A7 7 0 0 1 12 3z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+
+<!-- ═══════════ PAGE 1 ═══════════ -->
+<section class="page active" data-page="1">
+  <div class="page-head">
+    <div><div class="eyebrow">Proposal · VT-GPS-2026-09</div><h1>GP Stores <span>Associate &amp; Customer App</span></h1></div>
+    <div class="idx">Page 1 of 8 · 4 September 2026 · valid 30 days</div>
+  </div>
+
+  <div class="cover">
+    <div class="glass pad stack">
+      <div class="parties">
+        <div class="party"><div class="eyebrow">Prepared for</div><div class="who">Mr. Pavan Kumar Peri</div><div class="muted small">GP Stores · gpstores.in · Hyderabad</div></div>
+        <div class="party"><div class="eyebrow">Prepared by</div><div class="who">Charan Kamal Bommakanti</div><div class="muted small">Founder &amp; CEO, Vikuna Technologies · vikuna.io</div></div>
+      </div>
+      <p>GP Stores sells on Shopify and grows through associates who bring in customers and earn commission on what those customers buy. Shopify already handles products, orders, payments and invoices. What it cannot do is run the associate programme. That is what Vikuna builds: an <strong>associate-commission engine</strong> and <strong>one mobile app with two roles</strong> — associate and admin — and, in Phase 2, a customer-facing shell around the existing website.</p>
+      <p><strong>One app, built in React Native (Expo), delivered for Android.</strong> Associates and GP Stores' admin use the same app with different roles. The admin role is additionally published as a web build at <span class="num">admin.gpstores.in</span> for desktop use — same code, no second system. <strong>GP Stores owns every account and all data</strong> — Shopify, the database, the payment gateway, the Play Store console. Vikuna builds, documents, hands over, and supports.</p>
+    </div>
+
+    <div class="stack">
+      <div class="glass pad tile"><span class="ph">Phase 1</span>
+        <h3>Associate programme, live</h3>
+        <p class="small muted" style="margin:6px 0 10px">Onboarding, commission rules, ledger, payouts, admin. Pilot with real associates and real orders before go-live.</p>
+        <div class="row"><span class="chip p">7 weeks</span><span class="chip">Android app · associate + admin roles</span><span class="chip">45-day warranty</span></div>
+      </div>
+      <div class="glass pad tile"><span class="ph">Phase 2</span>
+        <h3>Customer app shell</h3>
+        <p class="small muted" style="margin:6px 0 10px">gpstores.in inside the app, ₹99 wallet as Shopify Store Credit, referral capture, notifications, Telugu &amp; Hindi, Play Store submission.</p>
+        <div class="row"><span class="chip s">Indicative · confirmed at Phase 1 UAT</span></div>
+      </div>
+      <div class="glass pad">
+        <div class="eyebrow">Investment</div>
+        <div class="row" style="align-items:baseline;gap:14px;margin-top:4px">
+          <div><div class="price num">₹1,20,000</div><div class="small muted">Phase 1 · <span class="strike num">₹2,50,000</span> list</div></div>
+          <div><div class="price num" style="font-size:24px">₹60,000</div><div class="small muted">Phase 2 · <span class="strike num">₹1,30,000</span> list</div></div>
+        </div>
+        <div class="divider"></div>
+        <div class="small">Maintenance <b class="num">₹6,000</b>/month · 7 support hours · from Phase 1 go-live. All figures exclusive of GST.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="glass pad arch" style="margin-top:14px">
+    <div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>How it fits together</h3><span class="chip">The app never talks to Shopify directly — everything goes through GP Stores' own backend</span></div>
+    <div class="archwrap">
+    <svg viewBox="0 0 980 330" role="img" aria-label="Architecture: Shopify on the left, Vikuna-built layer in GP Stores' Supabase account in the middle, the app and admin on the right">
+      <!-- columns -->
+      <rect class="col" x="10" y="20" width="290" height="290" rx="18"/>
+      <rect class="col" x="345" y="20" width="290" height="290" rx="18"/>
+      <rect class="col" x="680" y="20" width="290" height="290" rx="18"/>
+      <text class="own" x="155" y="44" text-anchor="middle">Shopify · GP Stores' store</text>
+      <text class="own" x="490" y="44" text-anchor="middle">Supabase · GP Stores' account · built by Vikuna</text>
+      <text class="own" x="825" y="44" text-anchor="middle">Users · React Native (Expo)</text>
+      <!-- shopify boxes -->
+      <rect class="box" x="30" y="62" width="250" height="52" rx="12"/><text class="t" x="155" y="84" text-anchor="middle">Customers</text><text class="s" x="155" y="102" text-anchor="middle">associate tag · referral discount code</text>
+      <rect class="box" x="30" y="126" width="250" height="52" rx="12"/><text class="t" x="155" y="148" text-anchor="middle">Orders &amp; checkout</text><text class="s" x="155" y="166" text-anchor="middle">invoice net · discounts · refunds</text>
+      <rect class="box" x="30" y="190" width="250" height="52" rx="12"/><text class="t" x="155" y="212" text-anchor="middle">Store Credit</text><text class="s" x="155" y="230" text-anchor="middle">₹99 wallet (Phase 2)</text>
+      <rect class="box" x="30" y="254" width="250" height="42" rx="12"/><text class="t" x="155" y="280" text-anchor="middle">gpstores.in storefront &amp; theme</text>
+      <!-- supabase boxes -->
+      <rect class="box" x="365" y="62" width="250" height="52" rx="12"/><text class="t" x="490" y="84" text-anchor="middle">Webhook receivers</text><text class="s" x="490" y="102" text-anchor="middle">orders paid · cancelled · refunded</text>
+      <rect class="box" x="365" y="126" width="250" height="52" rx="12"/><text class="t" x="490" y="148" text-anchor="middle">Commission engine</text><text class="s" x="490" y="166" text-anchor="middle">plans · slabs · accrual · close · payouts</text>
+      <rect class="box" x="365" y="190" width="250" height="52" rx="12"/><text class="t" x="490" y="212" text-anchor="middle">Postgres + row-level security</text><text class="s" x="490" y="230" text-anchor="middle">associates · customers · ledger · audit</text>
+      <rect class="box" x="365" y="254" width="250" height="42" rx="12"/><text class="t" x="490" y="280" text-anchor="middle">Auth · push (FCM) · exports</text>
+      <!-- user boxes -->
+      <rect class="box" x="700" y="62" width="250" height="62" rx="12"/><text class="t" x="825" y="86" text-anchor="middle">Associate role · Android</text><text class="s" x="825" y="106" text-anchor="middle">home · customers · ledger · invite</text>
+      <rect class="box" x="700" y="136" width="250" height="62" rx="12"/><text class="t" x="825" y="160" text-anchor="middle">Admin role · Android + web</text><text class="s" x="825" y="180" text-anchor="middle">associates · plans · close · payouts</text>
+      <rect class="box" x="700" y="210" width="250" height="62" rx="12" stroke-dasharray="5 4"/><text class="t" x="825" y="234" text-anchor="middle">Customer shell · Phase 2</text><text class="s" x="825" y="254" text-anchor="middle">gpstores.in in-app · wallet · notifications</text>
+      <!-- arrows shopify -> supabase -->
+      <path class="lp" d="M280 88 L365 88" marker-end="url(#ap)"/><text class="lab labp" x="322" y="80" text-anchor="middle">create/tag</text>
+      <path class="lp" d="M280 152 L365 152" marker-end="url(#ap)"/><text class="lab labp" x="322" y="144" text-anchor="middle">webhooks</text>
+      <path class="ls" d="M365 216 L280 216" marker-end="url(#as)"/><text class="lab labs" x="322" y="208" text-anchor="middle">issue credit</text>
+      <!-- arrows supabase <-> users -->
+      <path class="ln" d="M615 93 L700 93" marker-end="url(#an)"/><path class="ln" d="M700 100 L615 100" marker-end="url(#an)"/>
+      <path class="ln" d="M615 167 L700 167" marker-end="url(#an)"/><path class="ln" d="M700 174 L615 174" marker-end="url(#an)"/>
+      <path class="ln" d="M615 241 L700 241" marker-end="url(#an)"/>
+      <text class="lab" x="657" y="120" text-anchor="middle">signed API only</text>
+      <!-- customer shell to storefront -->
+      <path class="ln" d="M825 272 L825 300 L155 300 L155 296" stroke-dasharray="4 4"/>
+      <text class="lab" x="490" y="313" text-anchor="middle">Phase 2: the shell embeds the storefront; checkout stays in Shopify</text>
+      <defs>
+        <marker id="ap" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8z" fill="var(--primary)"/></marker>
+        <marker id="as" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8z" fill="var(--secondary)"/></marker>
+        <marker id="an" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8z" fill="var(--text2)"/></marker>
+      </defs>
+    </svg>
+    </div>
+  </div>
+
+  <div class="glass pad" style="margin-top:14px">
+    <div class="grid g4">
+      <div><div class="eyebrow">Included</div><p class="small">Android app (associate + admin roles), admin web build, commission engine, Shopify integration, documentation, onboarding session.</p></div>
+      <div><div class="eyebrow">Not included</div><p class="small">Play Store approval, iOS, multi-level commissions, executing payouts (bank/UPI/gateway), TDS or GST filing, accounting integration, theme work on gpstores.in, day-to-day operations.</p></div>
+      <div><div class="eyebrow">Needs from GP Stores</div><p class="small">Shopify developer access, accounts in GP Stores' name, commission rules and statutory rates in writing, pilot associates, UAT time.</p></div>
+      <div><div class="eyebrow">Design principles</div><p class="small">Single-level, sales-based commissions only. Refunds reverse commission whenever they occur. The system calculates; a person approves; a person pays.</p></div>
+    </div>
+  </div>
+  <div class="pager"><button class="pn" data-prev disabled>← Previous</button><button class="pn" data-next>Screens &amp; Requirements →</button></div>
+</section>
+
+<!-- ═══════════ PAGE 2 ═══════════ -->
+<section class="page" data-page="2">
+  <div class="page-head">
+    <div><div class="eyebrow">Phase 1 · associate app · screens &amp; requirements</div><h2>Every requirement, pinned to the screen it lives on</h2></div>
+    <div class="idx">Page 2 of 8 · <span class="chip p" style="font-family:var(--font-body)">Phase 1 only</span></div>
+  </div>
+  <div class="ux">
+    <div class="phone-wrap">
+      <div class="theme-pick" role="group" aria-label="Pick a look">
+        <button data-palette="jade" aria-pressed="true"><span class="sw sw-jade"></span>Jade Thorn</button>
+        <button data-palette="techy" aria-pressed="false"><span class="sw sw-techy"></span>Techy Simple</button>
+        <button data-palette="purple" aria-pressed="false"><span class="sw sw-purple"></span>Purple Tone</button>
+      </div>
+      <div class="carousel">
+        <button class="arrow" id="scPrev" aria-label="Previous screen">‹</button>
+        <div class="phone" aria-label="App screen mock-ups">
+          <div class="notch"></div>
+
+          <!-- S1 Login -->
+          <div class="screen on" data-sc="1">
+            <div class="amb"><i class="a1"></i><i class="a2"></i></div>
+            <div class="status"><span>9:41</span><span>●●● ▲ ▮</span></div>
+            <div class="sbody">
+              <div class="logo-mark">GP</div>
+              <div style="text-align:center;margin-bottom:8px"><b style="font-family:var(--font-display);font-size:20px">GP Stores Partner</b><div class="muted small">Sign in with the ID GP Stores gave you</div></div>
+              <div class="field on"><div><span>Mobile number</span><b>+91 98480 12345</b></div></div>
+              <div class="field"><div><span>Password</span><b>••••••••</b></div><span style="font-size:10px;color:var(--primary);font-weight:700">Show</span></div>
+              <div class="cta">Sign in</div>
+              <div style="text-align:center;font-size:11px;color:var(--text2)">Forgot password? <b style="color:var(--primary)">Reset via OTP</b></div>
+              <div class="sg" style="margin-top:auto;margin-bottom:12px;text-align:center;font-size:11px;color:var(--text2)">No self-signup. Associates are created by GP Stores admin. Want to become an associate? <b style="color:var(--text)">Ask your GP Stores contact.</b></div>
+            </div>
+            <div class="homebar"></div>
+          </div>
+
+          <!-- S2 Home -->
+          <div class="screen" data-sc="2">
+            <div class="amb"><i class="a1"></i><i class="a2"></i></div>
+            <div class="status"><span>9:41</span><span>●●● ▲ ▮</span></div>
+            <div class="sbody">
+              <div class="hello"><div><span class="muted small">Namaste,</span><b>Ravi Teja</b></div><div class="row" style="gap:8px"><span class="period">Sep 2026 ▾</span><span class="avatar">RT</span></div></div>
+              <div class="sg due">
+                <div class="lbl">Commission due to you</div>
+                <div class="amt num">₹4,850</div>
+                <div class="sub"><span>Payout on 05 Oct · monthly</span><span>Min ₹500 ✓</span></div>
+              </div>
+              <div class="sg">
+                <div class="ledger">
+                  <div><i class="dot" style="background:var(--tertiary)"></i><b>6,200</b><span>Accrued</span></div>
+                  <div><i class="dot" style="background:var(--warning)"></i><b>1,350</b><span>Provisional</span></div>
+                  <div><i class="dot" style="background:var(--primary)"></i><b>4,850</b><span>Approved</span></div>
+                  <div><i class="dot" style="background:var(--success)"></i><b>12,400</b><span>Paid</span></div>
+                  <div><i class="dot" style="background:var(--error)"></i><b>−320</b><span>Clawback</span></div>
+                </div>
+              </div>
+              <div class="sg sales">
+                <div class="top"><span class="small">Sales this month</span><b>₹96,400</b></div>
+                <div class="bar"><i style="width:77%"></i></div>
+                <div class="ft"><span>Target ₹1,25,000 · 77%</span><span>Next slab 6% at ₹1,25,000</span></div>
+              </div>
+              <div class="sg cust">
+                <div class="hd"><b>Your customers</b><span>12 active · see all</span></div>
+                <div class="crow"><span class="av">SK</span><div class="nm">Sunitha K <span>Ordered yesterday · Grocery</span></div><span class="am">₹2,340</span></div>
+                <div class="crow"><span class="av">MR</span><div class="nm">Mahesh R <span>Ordered 3 Sep · Appliances</span></div><span class="am">₹18,990</span></div>
+              </div>
+              <div class="cta sec">Invite a customer · code GP-RAVI7</div>
+            </div>
+            <div class="tabbar">
+              <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Home</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a4 4 0 1 0-1-7.9"/></svg>Customers</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5"/></svg>Ledger</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8h16v-8M12 16V4M7 9l5-5 5 5"/></svg>Invite</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
+            </div>
+            <div class="homebar"></div>
+          </div>
+
+          <!-- S3 Customers -->
+          <div class="screen" data-sc="3">
+            <div class="amb"><i class="a1"></i><i class="a2"></i></div>
+            <div class="status"><span>9:41</span><span>●●● ▲ ▮</span></div>
+            <div class="sbody">
+              <div class="stitle"><b>Your customers</b><span class="period">12 active</span></div>
+              <div class="field"><div><span>Search</span><b class="muted">Name or mobile</b></div></div>
+              <div class="seg"><span class="on">All</span><span>Ordered this month</span><span>No order yet</span></div>
+              <div class="sg cust">
+                <div class="crow"><span class="av">SK</span><div class="nm">Sunitha K <span>Joined 12 Aug · 4 orders · last: yesterday</span></div><span class="am">₹9,120</span></div>
+                <div class="crow"><span class="av">MR</span><div class="nm">Mahesh R <span>Joined 20 Aug · 1 order · Appliances</span></div><span class="am">₹18,990</span></div>
+                <div class="crow"><span class="av">PL</span><div class="nm">Priya L <span>Joined 1 Sep · wallet ₹99 · no order yet</span></div><span class="am">—</span></div>
+                <div class="crow"><span class="av">AN</span><div class="nm">Anil N <span>Joined 28 Aug · 2 orders · Grocery</span></div><span class="am">₹3,410</span></div>
+                <div class="crow"><span class="av">KV</span><div class="nm">Kavitha V <span>Joined 15 Jul · 6 orders · Fashion</span></div><span class="am">₹11,780</span></div>
+                <div class="crow"><span class="av">SR</span><div class="nm">Srinivas R <span>Joined 2 Sep · no order yet</span></div><span class="am">—</span></div>
+              </div>
+              <div class="sg" style="font-size:11px;color:var(--text2)">Amounts are invoice value this month. A customer stays yours unless GP Stores reassigns them; you are told when that happens.</div>
+            </div>
+            <div class="tabbar">
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Home</div>
+              <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a4 4 0 1 0-1-7.9"/></svg>Customers</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5"/></svg>Ledger</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8h16v-8M12 16V4M7 9l5-5 5 5"/></svg>Invite</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
+            </div>
+            <div class="homebar"></div>
+          </div>
+
+          <!-- S4 Ledger -->
+          <div class="screen" data-sc="4">
+            <div class="amb"><i class="a1"></i><i class="a2"></i></div>
+            <div class="status"><span>9:41</span><span>●●● ▲ ▮</span></div>
+            <div class="sbody">
+              <div class="stitle"><b>Ledger</b><span class="period">Sep 2026 ▾</span></div>
+              <div class="seg"><span class="on">This period</span><span>Payouts</span></div>
+              <div class="sg" style="display:flex;flex-direction:column;gap:6px">
+                <div class="ltab h"><span>Order</span><span>Invoice net</span><span>Rate · amt</span><span></span></div>
+                <div class="ltab"><span>#1287 · Sunitha</span><span class="m">2,340</span><span class="m">5% · 117</span><span class="st acc">Accrued</span></div>
+                <div class="ltab"><span>#1281 · Mahesh</span><span class="m">18,990</span><span class="m">5% · 950</span><span class="st prov">Prov.</span></div>
+                <div class="ltab"><span>#1264 · Kavitha</span><span class="m">4,200</span><span class="m">5% · 210</span><span class="st appr">Approved</span></div>
+                <div class="ltab"><span>#1250 · Anil</span><span class="m">1,880</span><span class="m">5% · 94</span><span class="st appr">Approved</span></div>
+                <div class="ltab"><span>#1233 · Kavitha</span><span class="m">−6,400</span><span class="m">refund · −320</span><span class="st claw">Clawback</span></div>
+                <div class="ltab"><span>#1198 · Sunitha</span><span class="m">3,100</span><span class="m">5% · 155</span><span class="st paid">Paid</span></div>
+              </div>
+              <div class="sg">
+                <div class="slab"><span>Period sales so far</span><b>₹96,400</b></div>
+                <div class="slab"><span>Slab in effect</span><b>5% (up to ₹1,25,000)</b></div>
+                <div class="slab"><span>If period closes above ₹1,25,000</span><b>6% applied</b></div>
+              </div>
+              <div class="sg" style="display:flex;justify-content:space-between;align-items:center"><div><span class="muted" style="font-size:10px">Next payout · 05 Oct</span><div class="num" style="font-size:16px;font-weight:500">₹4,850</div></div><span class="chip ok" style="font-size:10px">Above ₹500 minimum</span></div>
+            </div>
+            <div class="tabbar">
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Home</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a4 4 0 1 0-1-7.9"/></svg>Customers</div>
+              <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5"/></svg>Ledger</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8h16v-8M12 16V4M7 9l5-5 5 5"/></svg>Invite</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
+            </div>
+            <div class="homebar"></div>
+          </div>
+
+          <!-- S5 Invite -->
+          <div class="screen" data-sc="5">
+            <div class="amb"><i class="a1"></i><i class="a2"></i></div>
+            <div class="status"><span>9:41</span><span>●●● ▲ ▮</span></div>
+            <div class="sbody">
+              <div class="stitle"><b>Invite</b><span class="period">3 pending</span></div>
+              <div class="sg codecard due">
+                <div class="lbl">Your referral code</div>
+                <div class="code">GP-RAVI7</div>
+                <div style="font-size:10.5px;opacity:.9">gpstores.in/join?ref=GP-RAVI7</div>
+              </div>
+              <div class="sg share">
+                <div><i></i>WhatsApp</div><div><i></i>SMS</div><div><i></i>Copy link</div><div><i></i>More</div>
+              </div>
+              <div class="sg" style="display:flex;flex-direction:column;gap:7px">
+                <div style="font-size:11px;font-weight:700">Or send a personal invite</div>
+                <div class="field"><div><span>Name</span><b>Lakshmi D</b></div></div>
+                <div class="field"><div><span>Mobile</span><b>+91 90000 22334</b></div></div>
+                <div class="cta" style="padding:9px">Send invite</div>
+              </div>
+              <div class="sg cust">
+                <div class="hd"><b>Pending invites</b><span>reminder after 3 days</span></div>
+                <div class="crow"><span class="av">LD</span><div class="nm">Lakshmi D <span>Sent today</span></div><span class="am muted">Pending</span></div>
+                <div class="crow"><span class="av">GK</span><div class="nm">Gopal K <span>Sent 2 Sep</span></div><span class="am muted">Pending</span></div>
+              </div>
+            </div>
+            <div class="tabbar">
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Home</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a4 4 0 1 0-1-7.9"/></svg>Customers</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5"/></svg>Ledger</div>
+              <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8h16v-8M12 16V4M7 9l5-5 5 5"/></svg>Invite</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
+            </div>
+            <div class="homebar"></div>
+          </div>
+
+          <!-- S6 Admin: create associate -->
+          <div class="screen" data-sc="6">
+            <div class="amb"><i class="a1"></i><i class="a2"></i></div>
+            <div class="status"><span>9:41</span><span>●●● ▲ ▮</span></div>
+            <div class="sbody">
+              <div class="stitle"><b>New associate</b><span class="badge adm">Admin</span></div>
+              <div class="field on"><div><span>Full name</span><b>Ravi Teja Kandula</b></div></div>
+              <div class="field"><div><span>Mobile (login ID)</span><b>+91 98480 12345</b></div></div>
+              <div class="field"><div><span>Email</span><b>ravi.teja@gmail.com</b></div></div>
+              <div class="field"><div><span>Commission plan</span><b>Standard · monthly · 5% / 6% / 7%</b></div><span style="font-size:10px;color:var(--primary);font-weight:700">Change</span></div>
+              <div class="field"><div><span>Payout</span><b>Monthly · min ₹500 · UPI</b></div></div>
+              <div class="field"><div><span>Referral code</span><b class="num">GP-RAVI7 <span style="display:inline;color:var(--text2)">auto</span></b></div><span class="toggle" aria-hidden="true"></span></div>
+              <div class="sg" style="font-size:10.5px;color:var(--text2)">On save: Shopify customer created with tag <b class="num" style="color:var(--text)">associate</b>, discount code <b class="num" style="color:var(--text)">GP-RAVI7</b> created, login credentials sent by SMS.</div>
+              <div class="cta">Create associate</div>
+              <div class="cta ghost" style="padding:9px">Deactivate / reassign customers…</div>
+            </div>
+            <div class="tabbar">
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 10h16M10 4v16"/></svg>Dashboard</div>
+              <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a4 4 0 1 0-1-7.9"/></svg>Associates</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5"/></svg>Plans</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>Payouts</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8h16v-8M12 4v12M7 11l5 5 5-5"/></svg>Export</div>
+            </div>
+            <div class="homebar"></div>
+          </div>
+
+          <!-- S7 Admin: plans & period close -->
+          <div class="screen" data-sc="7">
+            <div class="amb"><i class="a1"></i><i class="a2"></i></div>
+            <div class="status"><span>9:41</span><span>●●● ▲ ▮</span></div>
+            <div class="sbody">
+              <div class="stitle"><b>Plans &amp; period</b><span class="badge adm">Admin</span></div>
+              <div class="sg">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b style="font-size:12px">Standard · monthly · all categories</b><span class="chip ok" style="font-size:9.5px">18 associates</span></div>
+                <div class="slab"><span>Up to ₹50,000</span><b>5%</b></div>
+                <div class="slab"><span>₹50,001 – ₹1,25,000</span><b>6%</b></div>
+                <div class="slab"><span>Above ₹1,25,000</span><b>7%</b></div>
+                <div class="slab"><span>Annual bonus · turnover ≥ ₹12,00,000</span><b>+1%</b></div>
+                <div style="font-size:10px;color:var(--text2);margin-top:4px">Base: invoice value net of discounts, excl. shipping &amp; GST. Slab on cumulative period sales.</div>
+              </div>
+              <div class="sg">
+                <div style="display:flex;justify-content:space-between;align-items:center"><div><b style="font-size:12px">September 2026</b><div style="font-size:10px;color:var(--text2)">Period open · 214 orders · ₹8,42,300</div></div><span class="chip warn" style="font-size:9.5px">Closes 1 Oct</span></div>
+                <div class="bar" style="margin:8px 0 4px"><i style="width:87%"></i></div>
+                <div style="font-size:10px;color:var(--text2)">Provisional commissions ₹41,870 · 3 refunds pending</div>
+              </div>
+              <div class="sg cust">
+                <div class="hd"><b>Payouts due · Oct 5</b><span>16 of 18 above ₹500</span></div>
+                <div class="crow"><span class="av">RT</span><div class="nm">Ravi Teja <span>UPI · ravi@upi</span></div><span class="am">₹4,850</span></div>
+                <div class="crow"><span class="av">SM</span><div class="nm">Swapna M <span>Bank · HDFC ••4412</span></div><span class="am">₹7,120</span></div>
+                <div class="crow"><span class="av">BK</span><div class="nm">Bhaskar K <span>Below minimum · carried forward</span></div><span class="am muted">₹310</span></div>
+              </div>
+              <div class="cta">Close September &amp; approve payouts</div>
+            </div>
+            <div class="tabbar">
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 10h16M10 4v16"/></svg>Dashboard</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a4 4 0 1 0-1-7.9"/></svg>Associates</div>
+              <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5"/></svg>Plans</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>Payouts</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8h16v-8M12 4v12M7 11l5 5 5-5"/></svg>Export</div>
+            </div>
+            <div class="homebar"></div>
+          </div>
+
+          <!-- S8 Admin: plan builder -->
+          <div class="screen" data-sc="8">
+            <div class="amb"><i class="a1"></i><i class="a2"></i></div>
+            <div class="status"><span>9:41</span><span>●●● ▲ ▮</span></div>
+            <div class="sbody">
+              <div class="stitle"><b>New plan</b><span class="badge adm">Admin</span></div>
+              <div class="field on"><div><span>Plan name</span><b>Standard 2026</b></div></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                <div class="field"><div><span>Period</span><b>Monthly</b></div></div>
+                <div class="field"><div><span>Categories</span><b>All</b></div></div>
+              </div>
+              <div class="sg" style="padding:9px 11px">
+                <div style="display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;margin-bottom:4px"><span>Slabs · cumulative period sales</span><span style="color:var(--primary)">+ Add</span></div>
+                <div class="slab"><span class="num">0 – 50,000</span><b>5%</b></div>
+                <div class="slab"><span class="num">50,001 – 1,25,000</span><b>6%</b></div>
+                <div class="slab"><span class="num">1,25,001 and above</span><b>7%</b></div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-top:5px"><span>Slab applies</span><b style="color:var(--text)">Retroactive · whole period ▾</b></div>
+              </div>
+              <div class="field"><div><span>Annual bonus</span><b>+1% if yearly turnover ≥ ₹12,00,000</b></div><span class="toggle" aria-hidden="true"></span></div>
+              <div class="field"><div><span>Effective from</span><b>1 Oct 2026 · replaces "Standard"</b></div></div>
+              <div class="sg" style="background:var(--psubtle)">
+                <div style="font-size:10px;color:var(--text2);letter-spacing:.06em;text-transform:uppercase;font-weight:700">Worked example</div>
+                <div class="slab"><span>Month sales ₹96,400 → slab 6%</span><b>₹5,784</b></div>
+                <div class="slab"><span>Month sales ₹1,40,000 → slab 7%</span><b>₹9,800</b></div>
+              </div>
+              <div class="cta">Save plan</div>
+            </div>
+            <div class="tabbar">
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 10h16M10 4v16"/></svg>Dashboard</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a4 4 0 1 0-1-7.9"/></svg>Associates</div>
+              <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5"/></svg>Plans</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>Payouts</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8h16v-8M12 4v12M7 11l5 5 5-5"/></svg>Export</div>
+            </div>
+            <div class="homebar"></div>
+          </div>
+
+          <!-- S9 Admin: payout statement -->
+          <div class="screen" data-sc="9">
+            <div class="amb"><i class="a1"></i><i class="a2"></i></div>
+            <div class="status"><span>9:41</span><span>●●● ▲ ▮</span></div>
+            <div class="sbody">
+              <div class="stitle"><b>Payout · Ravi Teja</b><span class="badge adm">Admin</span></div>
+              <div class="sg" style="padding:9px 11px">
+                <div style="font-size:10px;color:var(--text2)">September 2026 · approved at close</div>
+                <div class="slab"><span>Commission approved</span><b>₹4,850</b></div>
+                <div class="slab"><span>Clawback (refund #1233)</span><b>−₹320</b></div>
+                <div class="slab"><span>Carried forward from Aug</span><b>₹0</b></div>
+                <div class="slab"><span><strong>Gross payable</strong></span><b>₹4,530</b></div>
+              </div>
+              <div class="sg" style="padding:9px 11px">
+                <div style="font-size:10px;color:var(--text2)">Statutory · rates set by GP Stores' accountant</div>
+                <div class="slab"><span>TDS u/s 194H @ 2% · PAN on file</span><b>−₹91</b></div>
+                <div class="slab"><span>GST on commission · not registered</span><b>₹0</b></div>
+                <div class="slab"><span><strong>Net to pay</strong></span><b style="font-size:14px">₹4,439</b></div>
+              </div>
+              <div class="sg" style="display:flex;flex-direction:column;gap:6px">
+                <div style="font-size:11px;font-weight:700">Record payment (made outside the app)</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                  <div class="field"><div><span>Method</span><b>UPI</b></div></div>
+                  <div class="field"><div><span>Date</span><b>05 Oct 2026</b></div></div>
+                </div>
+                <div class="field on"><div><span>Reference / UTR</span><b class="num">427619358820</b></div><span style="font-size:10px;color:var(--primary);font-weight:700">Attach invoice</span></div>
+              </div>
+              <div style="display:grid;grid-template-columns:2fr 1fr;gap:6px"><div class="cta" style="padding:10px">Mark as paid &amp; send statement</div><div class="cta ghost" style="padding:10px">Hold</div></div>
+            </div>
+            <div class="tabbar">
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM4 10h16M10 4v16"/></svg>Dashboard</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a4 4 0 1 0-1-7.9"/></svg>Associates</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5"/></svg>Plans</div>
+              <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>Payouts</div>
+              <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8h16v-8M12 4v12M7 11l5 5 5-5"/></svg>Export</div>
+            </div>
+            <div class="homebar"></div>
+          </div>
+
+        </div>
+        <button class="arrow" id="scNext" aria-label="Next screen">›</button>
+      </div>
+      <div class="dots" id="dots" role="tablist" aria-label="Screens"></div>
+      <div class="sctitle" id="scTitle">1 / 9 · Associate · Sign in</div>
+      <p class="small muted" style="text-align:center;max-width:340px">Figures are illustrative. Pick a look above — the whole proposal follows it. Swipe or use ‹ › to move between screens.</p>
+    </div>
+
+    <div class="glass pad" id="rpanels">
+
+      <!-- R1 -->
+      <div class="rpanel on" data-sc="1">
+        <div class="rhead"><div><div class="eyebrow">Associate · screen 1</div><h3>Sign in</h3></div><span class="chip">Phase 1</span></div>
+        <p class="small muted" style="margin-bottom:10px">Associates are created by GP Stores, never self-registered. The app has a login, not a sign-up.</p>
+        <ul class="req">
+          <li><code>R-LOG-1</code>Login with mobile number and password issued by GP Stores admin. No self-signup in the app.</li>
+          <li><code>R-LOG-2</code>Password reset by OTP to the registered mobile.</li>
+          <li><code>R-LOG-3</code>Same login works for the admin role; the app shows admin tabs to admin users.</li>
+          <li><code>R-LOG-4</code>Deactivated associates can sign in but see a read-only ledger of what is still owed to them; no new customers can be attributed.</li>
+          <li><code>R-LOG-5</code>A customer who becomes an associate is the same person: one identity, two roles. Identity match on mobile/email prevents self-referral.</li>
+        </ul>
+        <div class="rsec"><h4>GP Stores provides</h4><ul class="clean"><li>The list of first-batch associates with mobile and email.</li><li>An SMS route for credentials and OTP (charges borne by GP Stores; provider chosen at Week 1).</li></ul></div>
+        <div class="rsec"><h4>Decision needed</h4><ul class="clean"><li>Does a deactivated associate continue to receive accrued, unpaid commission at the next cycle? (Recommended: yes.)</li></ul></div>
+      </div>
+
+      <!-- R2 -->
+      <div class="rpanel" data-sc="2">
+        <div class="rhead"><div><div class="eyebrow">Associate · screen 2</div><h3>Home</h3></div><span class="chip">Phase 1</span></div>
+        <p class="small muted" style="margin-bottom:10px">Answers the three daily questions: how much is coming to me, how far to the next slab, who should I follow up with.</p>
+        <ul class="req">
+          <li><code>R-HOME-1</code>Show commission due (approved, unpaid) with the next payout date, cadence, and whether the minimum threshold is met.</li>
+          <li><code>R-HOME-2</code>Five-state ledger strip for the selected period: accrued, provisional, approved, paid, clawback.</li>
+          <li><code>R-HOME-3</code>Sales this period on invoice value net of discounts, with target and the next slab threshold.</li>
+          <li><code>R-HOME-4</code>Recent customers with last order date and category; tap opens the Customers screen.</li>
+          <li><code>R-HOME-5</code>Period selector (month, quarter, year) matching how the associate's plan is defined.</li>
+          <li><code>R-HOME-6</code>Push notification when a new customer signs up with the associate's code, when an order is attributed, and when a payout is made.</li>
+        </ul>
+        <div class="rsec"><h4>Vikuna builds</h4><ul class="clean"><li>Order intake from Shopify webhooks → attribution to the customer's associate → accrual on invoice net.</li><li>Push via Firebase Cloud Messaging in GP Stores' Firebase project.</li></ul></div>
+        <div class="rsec"><h4>Decision needed</h4><ul class="clean"><li>Target per associate: set by admin per period, or derived from the plan's top slab?</li></ul></div>
+      </div>
+
+      <!-- R3 -->
+      <div class="rpanel" data-sc="3">
+        <div class="rhead"><div><div class="eyebrow">Associate · screen 3</div><h3>Customers</h3></div><span class="chip">Phase 1</span></div>
+        <p class="small muted" style="margin-bottom:10px">Every customer belongs to exactly one associate. The associate sees their own customers and nothing else.</p>
+        <ul class="req">
+          <li><code>R-CUS-1</code>List of the associate's customers with join date, order count, last order and this-period invoice total; search by name or mobile; filter by activity.</li>
+          <li><code>R-CUS-2</code>One customer → one associate, fixed at signup by the referral code entered. Signup with no code (or an invalid one) assigns the customer to GP Stores directly.</li>
+          <li><code>R-CUS-3</code>When an associate is deactivated, their customers move to GP Stores, or to another associate chosen by admin. The move applies to future orders only; past attribution is unchanged.</li>
+          <li><code>R-CUS-4</code>Attribution is snapshotted on each order at the time it is placed, with an assignment history kept for audit.</li>
+          <li><code>R-CUS-5</code>Row-level security: an associate's session can only read their own customers and ledger, enforced in the database, not just the app.</li>
+          <li><code>R-CUS-6</code>Customer personal data shown is limited to name, masked mobile, and order summaries.</li>
+        </ul>
+        <div class="rsec"><h4>Shopify side</h4><ul class="clean"><li>Customer signup on gpstores.in carries the referral code (as the associate's discount code applied on first purchase, or a signup field added by GP Stores' Shopify developers). Vikuna specifies; Shopify developers implement on the theme.</li></ul></div>
+      </div>
+
+      <!-- R4 -->
+      <div class="rpanel" data-sc="4">
+        <div class="rhead"><div><div class="eyebrow">Associate · screen 4</div><h3>Ledger</h3></div><span class="chip">Phase 1</span></div>
+        <p class="small muted" style="margin-bottom:10px">Every rupee traceable to an order. This screen is what removes commission disputes from Pavan's phone.</p>
+        <ul class="req">
+          <li><code>R-LED-1</code>Per-order lines for the selected period: order number, customer, invoice net, rate applied, commission amount, state.</li>
+          <li><code>R-LED-2</code>States: accrued (order paid), provisional (period open, slab may change), approved (period closed), paid (payout recorded), clawback (cancellation/refund deducted).</li>
+          <li><code>R-LED-3</code>Commission is calculated only on the actual invoice amount — net of campaign and code discounts, excluding shipping and GST — never on MRP.</li>
+          <li><code>R-LED-4</code>Tiered slabs recomputed on cumulative period sales at period close; the screen shows the slab in effect and what changes it.</li>
+          <li><code>R-LED-5</code>Refunds and cancellations reverse commission in three cases: before period close → accrual reversed; after close but before payout → clawback reduces the approved amount; after payout → negative balance carried into the next period(s) and netted against future payouts. No time window — a refund reverses commission whenever Shopify records it.</li>
+          <li><code>R-LED-8</code>Exchanges follow Shopify: a return plus a new order (or a return with exchange) produces a reversal and a new accrual, so commission follows the invoice value of what the customer finally keeps. Partial refunds reverse proportionally.</li>
+          <li><code>R-LED-6</code>Payout history: date, amount, method reference entered by admin, and the period it settles.</li>
+          <li><code>R-LED-7</code>Payout rules per associate: cadence (monthly or quarterly) and minimum threshold (e.g. ₹500); below-threshold amounts carry forward.</li>
+        </ul>
+        <div class="rsec"><h4>Decisions needed</h4><ul class="clean"><li>Slab semantics: retroactive (6% on the whole period once ₹1,25,000 is crossed) or marginal (6% on the excess only)?</li><li>Commission base: confirm excluding GST and shipping.</li></ul></div>
+      </div>
+
+      <!-- R5 -->
+      <div class="rpanel" data-sc="5">
+        <div class="rhead"><div><div class="eyebrow">Associate · screen 5</div><h3>Invite</h3></div><span class="chip">Phase 1</span></div>
+        <p class="small muted" style="margin-bottom:10px">The growth loop. Built to convert on a phone, and to keep the referral attached through signup.</p>
+        <ul class="req">
+          <li><code>R-INV-1</code>The associate's referral code and link are always visible; the code doubles as a Shopify discount code so it works on the website too.</li>
+          <li><code>R-INV-2</code>Share via the phone's share sheet (WhatsApp, SMS, copy link, others) with a pre-written message in English, Telugu or Hindi.</li>
+          <li><code>R-INV-3</code>Personal invite by entering a name and mobile; the invitee receives an SMS/WhatsApp link. No access to the phone's contact list (Google Play rejects it).</li>
+          <li><code>R-INV-4</code>The invite link opens a fast mobile landing page on gpstores.in with one call to action — sign up — with the code pre-filled; app download is offered after signup, not before.</li>
+          <li><code>R-INV-5</code>Pending invites listed with status; optional reminder after three days.</li>
+          <li><code>R-INV-6</code>A customer cannot invite as an associate. A customer who wants to refer others is upgraded to associate by admin first (single-level rule).</li>
+        </ul>
+        <div class="rsec"><h4>Shopify side</h4><ul class="clean"><li>Landing page at gpstores.in/join built on the theme by GP Stores' Shopify developers to Vikuna's specification.</li></ul></div>
+      </div>
+
+      <!-- R6 -->
+      <div class="rpanel" data-sc="6">
+        <div class="rhead"><div><div class="eyebrow">Admin · screen 6</div><h3>Create &amp; manage associates</h3></div><span class="chip s">Admin role</span></div>
+        <p class="small muted" style="margin-bottom:10px">Admin uses the same app. Shopify stays the roster of record: creating an associate here creates the Shopify customer and the referral code.</p>
+        <ul class="req">
+          <li><code>R-ADM-1</code>Create associate: name, mobile (login ID), email, commission plan, payout cadence and threshold, payout method details.</li>
+          <li><code>R-ADM-2</code>On save: Shopify customer created (or existing customer upgraded) with a distinctive tag, a unique referral discount code generated and stored against the customer, login credentials sent by SMS.</li>
+          <li><code>R-ADM-3</code>Activate / deactivate; on deactivation, choose where the associate's customers go (GP Stores or another associate).</li>
+          <li><code>R-ADM-4</code>Associate list with search, plan, status, customers, sales and commission this period.</li>
+          <li><code>R-ADM-5</code>Approve a customer's upgrade to associate; the system blocks self-referral and keeps the upgraded person's future purchases outside any other associate's commission.</li>
+          <li><code>R-ADM-6</code>Admin role available on Android and as a web build at admin.gpstores.in (DNS record added by GP Stores).</li>
+        </ul>
+        <div class="rsec"><h4>Shopify side</h4><ul class="clean"><li>Custom app with Admin API scopes for customers, discounts, orders; created by GP Stores' Shopify developers, credentials handed to Vikuna.</li></ul></div>
+      </div>
+
+      <!-- R7 -->
+      <div class="rpanel" data-sc="7">
+        <div class="rhead"><div><div class="eyebrow">Admin · screen 7</div><h3>Commission plans, period close &amp; payouts</h3></div><span class="chip s">Admin role</span></div>
+        <p class="small muted" style="margin-bottom:10px">The rules live here, as data. Changing a slab is an admin action, not a code change.</p>
+        <ul class="req">
+          <li><code>R-PLN-1</code>Commission plans defined by: period type (monthly, quarterly, yearly), category scope (all or specific Shopify collections), tiered slabs on cumulative period sales, and an optional annual turnover bonus.</li>
+          <li><code>R-PLN-2</code>Plans assigned per associate with effective dates; different associates may be on different plans and cadences.</li>
+          <li><code>R-PLN-3</code>Period close is a human action: admin reviews and closes the period; the system then recomputes slabs on final period sales, converts provisional to approved, applies clawbacks, and produces the payout list against each associate's threshold. Approval is never automatic.</li>
+          <li><code>R-PLN-4</code>Payouts are recorded, not executed: admin pays by bank/UPI outside the system and enters the reference; the ledger moves to paid (see screen 9).</li>
+          <li><code>R-PLN-5</code>Dashboard: sales, signups, commission accrued/approved/paid, target vs achieved per associate and overall.</li>
+          <li><code>R-PLN-6</code>Export to Excel and PDF: associates, ledger by period, payouts, customers by associate.</li>
+          <li><code>R-PLN-7</code>Audit log of who changed which plan, assignment, or payout, and when.</li>
+        </ul>
+        <div class="rsec"><h4>GP Stores provides</h4><ul class="clean"><li>The initial plan(s) in writing with worked examples, signed off in Week 1.</li></ul></div>
+        <div class="rsec"><h4>Decision needed</h4><ul class="clean"><li>Annual bonus: paid at year end on the year's turnover, or accrued monthly against a running total?</li></ul></div>
+      </div>
+
+      <!-- R8 -->
+      <div class="rpanel" data-sc="8">
+        <div class="rhead"><div><div class="eyebrow">Admin · screen 8</div><h3>Plan builder</h3></div><span class="chip s">Admin role</span></div>
+        <p class="small muted" style="margin-bottom:10px">Pavan changes a rate himself, sees what it pays before saving, and never rewrites history.</p>
+        <ul class="req">
+          <li><code>R-BLD-1</code>Create a plan with: name, period type (monthly / quarterly / yearly), category scope (all, or selected Shopify collections), any number of slab rows (from, to, rate), and an optional annual turnover bonus (threshold, rate).</li>
+          <li><code>R-BLD-2</code>Slab mode chosen per plan: retroactive (the reached slab's rate applies to the whole period) or marginal (each slab's rate applies only to sales within it).</li>
+          <li><code>R-BLD-3</code>Worked-example panel recalculates live as slabs are edited, using sample months, so the effect of a change is visible before saving.</li>
+          <li><code>R-BLD-4</code>Plans are versioned: an edit creates a new version with an effective-from date. Closed periods keep the version they were computed with.</li>
+          <li><code>R-BLD-5</code>Clone an existing plan as the starting point for a new one; assign a plan to one, several, or all associates from the same screen.</li>
+          <li><code>R-BLD-6</code>Validation: slabs must be contiguous and non-overlapping; a plan cannot take effect in an already-closed period.</li>
+        </ul>
+        <div class="rsec"><h4>Principle</h4><div class="callout"><span class="ic"></span><div class="small"><strong>The system calculates; a person approves; a person pays.</strong> Accrual on every paid order is automatic. Nothing becomes payable until an admin closes the period, and nothing is marked paid until an admin records the payment.</div></div></div>
+      </div>
+
+      <!-- R9 -->
+      <div class="rpanel" data-sc="9">
+        <div class="rhead"><div><div class="eyebrow">Admin · screen 9</div><h3>Payout statement &amp; record</h3></div><span class="chip s">Admin role</span></div>
+        <p class="small muted" style="margin-bottom:10px">Money moves outside the app. The app produces the statement and keeps the record.</p>
+        <ul class="req">
+          <li><code>R-PAY-1</code>Per associate per period: approved commission, clawbacks, carried-forward balance → gross payable; then statutory lines → net to pay.</li>
+          <li><code>R-PAY-2</code>Statutory lines are displayed and recorded, not filed: TDS on commission (section 194H) at a rate and annual threshold configured by GP Stores' accountant, applied only when the associate's PAN is on file; GST added only for associates flagged as GST-registered, who then invoice GP Stores. Rates and thresholds are settings, not code.</li>
+          <li><code>R-PAY-3</code>Payment is made by GP Stores outside the system (bank transfer / UPI). Admin records method, date, reference/UTR and net amount; may attach the associate's invoice. No payment gateway, bank API, UPI integration, TDS return or GST filing is in scope.</li>
+          <li><code>R-PAY-4</code>"Hold" keeps a payout out of the current run with a reason (dispute, suspected self-purchase, refund pending); held amounts carry to the next run.</li>
+          <li><code>R-PAY-5</code>On "mark as paid" the associate receives a push notification and a PDF statement; the ledger lines move to paid.</li>
+          <li><code>R-PAY-6</code>Exports for the accountant: payout register by period with PAN, gross, TDS, GST, net and reference; per-associate annual statement.</li>
+          <li><code>R-PAY-7</code>Below-threshold amounts (e.g. under ₹500) carry forward automatically; negative balances from post-payout refunds also carry forward and reduce the next payout.</li>
+        </ul>
+        <div class="rsec"><h4>GP Stores provides</h4><ul class="clean"><li>Associate PAN and GST registration status at onboarding; TDS rate and threshold from its accountant. The figures on screen are illustrative — Vikuna is not advising on tax.</li></ul></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Cross-cutting requirements -->
+  <div class="xreq">
+    <div class="row" style="justify-content:space-between;margin:0 4px 10px"><h3>Requirements beyond the screens</h3><span class="chip">Apply across Phase 1</span></div>
+    <div class="grid g2">
+      <div class="glass">
+        <h4>Platform &amp; ownership</h4>
+        <ul class="req">
+          <li><code>R-SYS-1</code>App built in React Native (Expo); Android build delivered as APK/AAB; admin web build from the same code.</li>
+          <li><code>R-SYS-2</code>Backend on Supabase (Postgres, row-level security, edge functions) in a project owned by GP Stores; Vikuna added as collaborator.</li>
+          <li><code>R-SYS-3</code>Shopify remains the system of record for products, customers, orders, payments and invoices. The app never calls Shopify directly; only the backend holds Shopify credentials.</li>
+          <li><code>R-SYS-4</code>All accounts — Shopify custom app, Supabase, Firebase, SMS provider, Play Console, domain — created in GP Stores' name.</li>
+        </ul>
+      </div>
+      <div class="glass">
+        <h4>Data, integrity &amp; audit</h4>
+        <ul class="req">
+          <li><code>R-DAT-1</code>Every Shopify order event (paid, cancelled, refunded) is stored raw before processing, so commissions can be recomputed and disputes traced to source.</li>
+          <li><code>R-DAT-2</code>Commission calculations are idempotent: replaying a webhook never double-counts.</li>
+          <li><code>R-DAT-3</code>Daily external keep-alive for the free-tier database; weekly database dump to GP Stores' Google Drive; documented trigger for moving to a paid tier.</li>
+          <li><code>R-DAT-4</code>Audit trail on plans, assignments, reassignment of customers, period close and payouts.</li>
+        </ul>
+      </div>
+      <div class="glass">
+        <h4>Notifications &amp; language</h4>
+        <ul class="req">
+          <li><code>R-NOT-1</code>Push notifications via Firebase to associates for new signup, attributed order, period closed, payout made; to admin for period-close due and refunds pending.</li>
+          <li><code>R-NOT-2</code>Admin can send a broadcast message to all or selected associates.</li>
+          <li><code>R-NOT-3</code>Phase 1 UI in English; the app is built with a language layer so Telugu and Hindi are added in Phase 2 without rework. Invite messages are trilingual from Phase 1.</li>
+        </ul>
+      </div>
+      <div class="glass">
+        <h4>Programme constraints</h4>
+        <ul class="req">
+          <li><code>R-PRG-1</code>Single-level hierarchy only. No commission on another associate's sales, no commission for recruiting associates or customers.</li>
+          <li><code>R-PRG-2</code>Commission is only ever on invoiced, paid sales of goods; refunds and exchanges reverse it whenever they occur.</li>
+          <li><code>R-PRG-3</code>Nothing in the app is gated behind a payment; the ₹99 (Phase 2) is store credit for goods, not an activation fee.</li>
+          <li><code>R-PRG-4</code>No campaign management in scope; Phase 2 surfaces Shopify's promotions inside the customer shell.</li>
+        </ul>
+      </div>
+      <div class="glass">
+        <h4>Finance boundary</h4>
+        <ul class="req">
+          <li><code>R-FIN-1</code>The system calculates, a person approves, a person pays. No automatic approval, no automatic payment.</li>
+          <li><code>R-FIN-2</code>All outward payments, associate invoices, TDS deposits and returns, and GST filings are handled by GP Stores and its accountant outside the system. The app records references and produces statements and registers.</li>
+          <li><code>R-FIN-3</code>Statutory rates and thresholds (TDS on commission, GST treatment for registered associates) are configurable settings supplied by GP Stores' accountant; Vikuna does not advise on tax.</li>
+          <li><code>R-FIN-4</code>No integration with any bank, UPI provider, payment gateway or accounting software in Phase 1 or Phase 2.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="pager"><button class="pn" data-prev>← Overview</button><button class="pn" data-next>Scope &amp; Timeline →</button></div>
+</section>
+
+<!-- ═══════════ PAGE 3 ═══════════ -->
+<section class="page" data-page="3">
+  <div class="page-head">
+    <div><div class="eyebrow">Scope &amp; timeline</div><h2>Seven weeks to a live associate programme</h2></div>
+    <div class="idx">Page 3 of 8</div>
+  </div>
+
+  <div class="glass timeline">
+    <div class="row" style="justify-content:space-between">
+      <div><div class="eyebrow">Phase 1 timeline</div><p class="small muted">Drag the handle. The clock starts the day Shopify custom-app credentials and a test-order path are in hand.</p></div>
+      <span class="chip s">Payments marked in the secondary colour</span>
+    </div>
+    <div class="track-wrap">
+      <div class="track" id="track">
+        <div class="tseg s1" style="left:0;width:7.14%"></div>
+        <div class="tseg s2" style="left:7.14%;width:28.57%"></div>
+        <div class="tseg s3" style="left:35.71%;width:14.29%"></div>
+        <div class="tseg s4" style="left:50%;width:46.43%"></div>
+        <div class="mark pay" style="left:0"><span class="lab">Sign · 40%</span></div>
+        <div class="mark" style="left:7.14%"><span class="lab below">UX sign-off</span></div>
+        <div class="mark" style="left:35.71%"><span class="lab below">Build done</span></div>
+        <div class="mark pay" style="left:50%"><span class="lab">UAT sign-off · 40%</span></div>
+        <div class="mark pay" style="left:96.43%"><span class="lab">Warranty ends · 20%</span></div>
+      </div>
+      <input class="tl" type="range" id="tl" min="0" max="14" step="0.5" value="3" aria-label="Project week">
+    </div>
+    <div class="weeks"><span>W0</span><span>W2</span><span>W4</span><span>W6</span><span>W8</span><span>W10</span><span>W12</span><span>W14</span></div>
+    <div class="legend"><span><i style="background:var(--tertiary)"></i>Requirements &amp; UX</span><span><i style="background:var(--primary)"></i>Build</span><span><i style="background:var(--secondary)"></i>UAT</span><span><i style="background:color-mix(in srgb,var(--success) 70%,var(--primary))"></i>Warranty (45 days)</span></div>
+    <div class="stage">
+      <div class="box"><div class="eyebrow" id="stWeek">Week 3</div><h4 id="stTitle">Build with iterative revisions</h4><p class="small" id="stText">Weekly working build shared for review. Feedback folded into the next iteration; scope changes parked for Phase 2.</p></div>
+      <div class="box"><div class="eyebrow">Vikuna</div><p class="small" id="stV">Backend, Shopify integration, commission engine, associate app, admin.</p></div>
+      <div class="box"><div class="eyebrow">GP Stores</div><p class="small" id="stG">Review each build within two working days; Shopify developers on call for custom-app issues.</p></div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="margin-top:14px">
+    <div class="glass pad">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>Phase 1 — what gets built</h3><span class="chip p">≈ 40–48 person-days</span></div>
+      <ul class="pkg">
+        <li><b>Foundation</b><span>Supabase schema, row-level security, auth, keep-alive and backup scripts</span></li>
+        <li><b>Shopify integration</b><span>Custom-app wiring, webhooks, associate → customer + tag + referral code, order attribution</span></li>
+        <li><b>Commission engine</b><span>Plan builder with versioning, slabs, category/period rules, accrual on invoice net, refund/exchange reversal, human period close, payout statements with configurable statutory lines, payout register</span></li>
+        <li><b>Associate role</b><span>Sign in, Home, Customers, Ledger, Invite, Profile</span></li>
+        <li><b>Admin role</b><span>Associates, plans, assignments, period close, payouts, dashboard, exports; web build at admin.gpstores.in</span></li>
+        <li><b>Notifications</b><span>Push for signup, attributed order, period close, payout; admin broadcast</span></li>
+        <li><b>Pilot &amp; UAT</b><span>Test orders, pilot associates, fixes, sign-off</span></li>
+        <li><b>Handover</b><span>Runbook, admin manual, associate guide, onboarding session</span></li>
+      </ul>
+      <div class="divider" style="margin:12px 0"></div>
+      <p class="small"><strong>Exit criteria:</strong> Android build shared as APK, admin web live, pilot associates transacting, one period closed and one payout recorded. The Play Store listing is not an exit criterion.</p>
+    </div>
+    <div class="glass pad">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px"><h3>Phase 2 — what gets built</h3><span class="chip s">≈ 18–24 person-days · indicative</span></div>
+      <ul class="pkg">
+        <li><b>Customer shell</b><span>gpstores.in inside the app (Expo WebView); checkout opens in the system browser via expo-web-browser; customer login via Shopify's email code</span></li>
+        <li><b>₹99 wallet</b><span>"Add ₹99, get ₹99" product → Shopify Store Credit issued automatically; referral code captured at that purchase</span></li>
+        <li><b>Notifications</b><span>Customer push: offers, order updates; admin-authored messages</span></li>
+        <li><b>Languages</b><span>Telugu and Hindi across the app (GP Stores supplies translations of its own content)</span></li>
+        <li><b>Play submission</b><span>Store-ready build, listing assets, closed-test setup, first submission</span></li>
+        <li><b>UAT</b><span>End-to-end customer journey test</span></li>
+      </ul>
+      <div class="divider" style="margin:12px 0"></div>
+      <p class="small"><strong>Kept in Shopify, not the app:</strong> product pages, merchandising, campaigns and cross-sell live in the gpstores.in theme and are owned by GP Stores' Shopify developers. A native storefront is a separate, future conversation.</p>
+    </div>
+  </div>
+  <div class="pager"><button class="pn" data-prev>← Screens &amp; Requirements</button><button class="pn" data-next>Commercials →</button></div>
+</section>
+
+<!-- ═══════════ PAGE 4 ═══════════ -->
+<section class="page" data-page="4">
+  <div class="page-head">
+    <div><div class="eyebrow">Commercials</div><h2>Fixed price, named discount, no surprises</h2></div>
+    <div class="idx">Page 4 of 8 · all amounts exclusive of GST</div>
+  </div>
+  <div class="grid g3">
+    <div class="glass pad stack">
+      <div class="eyebrow">Phase 1 · firm</div>
+      <div><span class="strike num">₹2,50,000</span> <span class="chip ok">BBB consideration</span></div>
+      <div class="price num">₹1,20,000</div>
+      <div class="divider"></div>
+      <dl class="kv">
+        <dt>On signing</dt><dd class="num">₹48,000 · 40%</dd>
+        <dt>On UAT sign-off</dt><dd class="num">₹48,000 · 40%</dd>
+        <dt>Go-live + 45 days</dt><dd class="num">₹24,000 · 20%</dd>
+      </dl>
+      <p class="small muted">Includes the Android build (APK/AAB) and the admin web build. Excludes Play Store approval.</p>
+    </div>
+    <div class="glass pad stack">
+      <div class="eyebrow">Phase 2 · indicative</div>
+      <div><span class="strike num">₹1,30,000</span> <span class="chip ok">BBB consideration</span></div>
+      <div class="price num">₹60,000</div>
+      <div class="divider"></div>
+      <dl class="kv">
+        <dt>Confirmed at</dt><dd>Phase 1 UAT sign-off, scope frozen then</dd>
+        <dt>Payment</dt><dd>40 / 40 / 20 on the same milestones</dd>
+        <dt>Price holds</dt><dd>if commissioned within 60 days of Phase 1 go-live</dd>
+      </dl>
+      <p class="small muted">Phases can be reordered on request; the price of each phase does not change.</p>
+    </div>
+    <div class="glass pad stack">
+      <div class="eyebrow">Maintenance &amp; support</div>
+      <div class="price num">₹6,000<span class="small muted" style="font-family:var(--font-body);font-weight:400"> / month</span></div>
+      <div class="chip">7 hours a month</div>
+      <div class="divider"></div>
+      <ul class="clean small">
+        <li>Starts at Phase 1 go-live. Minimum term 6 months, then 30 days' notice.</li>
+        <li>Covers bug fixes after warranty, small configuration changes, breakages from Shopify / Supabase / Android platform updates, a monthly health check.</li>
+        <li>Unused hours do not roll over. Beyond 7 hours: billed in half-day blocks at Vikuna's standard rate, agreed in advance.</li>
+        <li>Response within 2 working days. No weekend or on-call cover.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="grid g2" style="margin-top:14px">
+    <div class="glass pad stack">
+      <h3>Warranty — 45 days, defects only</h3>
+      <p class="small">A defect is behaviour that deviates from the signed scope document or from what was accepted at UAT. Vikuna fixes defects at no charge for 45 days from go-live. Changes to the scope itself are change requests, not defects. If go-live is delayed by GP Stores beyond 30 days after UAT sign-off, the warranty period starts at that point.</p>
+      <h3 style="margin-top:8px">Change requests — none inside the fixed fee</h3>
+      <p class="small">Anything not in the signed scope is a change request. It is estimated and quoted separately, or, when small, drawn from maintenance hours by agreement. This is strict on purpose: it is what keeps a fixed price fixed. Ideas raised during Phase 1 are parked in a backlog for Phase 2 or later.</p>
+    </div>
+    <div class="glass pad stack">
+      <h3>Borne by GP Stores directly</h3>
+      <ul class="clean small">
+        <li>Supabase — free tier is sufficient at launch; Pro (~US$25/month) only if backups or scale require it, on GP Stores' card.</li>
+        <li>Google Play developer registration (one-time, ~US$25), in GP Stores' name.</li>
+        <li>SMS charges for credentials, OTP and invites.</li>
+        <li>Shopify plan, apps and theme work on gpstores.in; payment-gateway charges.</li>
+        <li>DNS record for admin.gpstores.in; hosting for the admin web build (free tier is sufficient).</li>
+      </ul>
+      <h3 style="margin-top:8px">Documentation &amp; onboarding — once</h3>
+      <p class="small">Admin manual, associate quick guide, technical runbook (accounts, keys, backups, keep-alive, release steps), and one two-hour walkthrough. Repeat training and new-staff onboarding are support activities.</p>
+    </div>
+  </div>
+  <div class="pager"><button class="pn" data-prev>← Scope &amp; Timeline</button><button class="pn" data-next>Play Store →</button></div>
+</section>
+
+<!-- ═══════════ PAGE 5 ═══════════ -->
+<section class="page" data-page="5">
+  <div class="page-head">
+    <div><div class="eyebrow">Google Play &amp; distribution</div><h2>A separate track that Google controls</h2></div>
+    <div class="idx">Page 5 of 8</div>
+  </div>
+  <div class="grid g2">
+    <div class="glass pad stack">
+      <h3>What Vikuna delivers</h3>
+      <p class="small">A signed, store-ready Android build, listing text and screenshots, closed-test setup and the first submission. Vikuna assists with reviewer questions.</p>
+      <h3 style="margin-top:6px">What Vikuna does not control</h3>
+      <p class="small">Approval, review duration, policy outcomes and re-submissions sit with Google. They are outside the fixed fee, the timeline and the warranty. Re-submission effort after the first is drawn from maintenance hours.</p>
+      <h3 style="margin-top:6px">Account ownership</h3>
+      <p class="small">The Play Console developer account is registered by GP Stores, under its own Google identity, with its own verification. Vikuna is added as a collaborator — never the owner. The same rule applies to Shopify, Supabase, Firebase and the payment gateway.</p>
+    </div>
+    <div class="glass pad stack">
+      <h3>Closed testing before production</h3>
+      <p class="small">Google currently requires new individual developer accounts to run a closed test with a minimum number of testers continuously for 14 days before production access is granted (12 testers today; GP Stores should plan for 14–15 across 15 days). GP Stores recruits and manages the testers — the first batch of associates are the natural choice. An organisation account (needs a D-U-N-S number) may bypass this but takes its own verification time; both routes are presented for Pavan's choice.</p>
+      <h3 style="margin-top:6px">The app works without the store</h3>
+      <p class="small">Go-live never waits for Google. The Android build is shared directly (Drive link / WhatsApp) to associates and admin from day one; admin also has the web build. Direct installs need "unknown sources" enabled and receive no automatic updates; the runbook covers how a new version is pushed.</p>
+      <div class="callout"><span class="ic"></span><div class="small"><strong>Google Play billing.</strong> GP Stores sells physical goods, so Shopify checkout inside the app is permitted. The ₹99 is implemented as an optional prepaid wallet top-up bought on gpstores.in and redeemable only against goods — never as a fee to unlock the app. The app must not restrict any feature behind that payment, and the listing will describe it as a promotion, not an activation.</div></div>
+      <p class="small muted">iOS / App Store is out of scope for both phases.</p>
+    </div>
+  </div>
+  <div class="pager"><button class="pn" data-prev>← Commercials</button><button class="pn" data-next>Risks →</button></div>
+</section>
+
+<!-- ═══════════ PAGE 6 ═══════════ -->
+<section class="page" data-page="6">
+  <div class="page-head">
+    <div><div class="eyebrow">Risks</div><h2>What could slow this down, and who holds it</h2></div>
+    <div class="idx">Page 6 of 8</div>
+  </div>
+  <div class="glass pad tablewrap">
+    <table>
+      <thead><tr><th>Risk</th><th>Impact</th><th>Mitigation</th><th>Owner</th></tr></thead>
+      <tbody>
+        <tr><td>Shopify developers slow to provide the custom app, webhooks or theme changes</td><td><span class="chip err">Timeline</span></td><td>Timeline clock starts on credentials; named SPOC with two-day response; Vikuna supplies an exact checklist on day one.</td><td>GP Stores</td></tr>
+        <tr><td>Commission rules ambiguous (slab semantics, GST base, clawback)</td><td><span class="chip err">Disputes</span></td><td>Rules signed off in writing in Week 1 with worked examples; engine tested against those examples at UAT.</td><td>GP Stores · Vikuna</td></tr>
+        <tr><td>Google Play review delays or rejection</td><td><span class="chip warn">Distribution</span></td><td>Direct APK and admin web from day one; closed test planned with pilot associates; billing-policy-safe design of the ₹99.</td><td>Google · GP Stores</td></tr>
+        <tr><td>Associate model drifting toward joining fees or recruitment incentives</td><td><span class="chip err">Regulatory</span></td><td>Design constraint: single level, commission on invoiced sales only, ₹99 is store credit not a fee. GP Stores to confirm the programme with its own advisor.</td><td>GP Stores</td></tr>
+        <tr><td>Scope creep during build ("while you're at it…")</td><td><span class="chip warn">Cost · timeline</span></td><td>No change requests inside the fixed fee; backlog captured for Phase 2; weekly build reviews keep feedback early and small.</td><td>Vikuna · GP Stores</td></tr>
+        <tr><td>UAT and pilot associates unavailable when needed</td><td><span class="chip warn">Timeline</span></td><td>Pilot batch named before Week 5; UAT window agreed at kick-off; sign-off deemed if no defects raised within 10 working days.</td><td>GP Stores</td></tr>
+        <tr><td>Refunds or exchanges after a commission has been paid out</td><td><span class="chip warn">Cash · friction</span></td><td>Negative balance carried forward and netted against the next payout; statement shows the refund line by order number; optional policy of paying out only after the return window closes (GP Stores' choice at Week 1).</td><td>GP Stores · Vikuna</td></tr>
+        <tr><td>Statutory treatment of commission (TDS, GST for registered associates) misconfigured</td><td><span class="chip warn">Compliance</span></td><td>Rates and thresholds are settings supplied by GP Stores' accountant; the system displays and records, it does not file. PAN and GST status captured at onboarding.</td><td>GP Stores</td></tr>
+        <tr><td>Platform changes (Shopify API versions, Supabase, Android, Expo)</td><td><span class="chip">Maintenance</span></td><td>Pinned API and SDK versions; covered by maintenance hours after warranty.</td><td>Vikuna</td></tr>
+        <tr><td>Free-tier database pause or lack of backups</td><td><span class="chip">Data</span></td><td>Daily external keep-alive; weekly dump to GP Stores' Drive; documented trigger for moving to Pro.</td><td>Vikuna → GP Stores</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="pager"><button class="pn" data-prev>← Play Store</button><button class="pn" data-next>RACI →</button></div>
+</section>
+
+<!-- ═══════════ PAGE 7 ═══════════ -->
+<section class="page" data-page="7">
+  <div class="page-head">
+    <div><div class="eyebrow">RACI</div><h2>Who does what</h2></div>
+    <div class="idx">Page 7 of 8 · <span class="r">R</span> responsible · <span class="a">A</span> accountable · C consulted · I informed</div>
+  </div>
+  <div class="glass pad tablewrap">
+    <table class="raci">
+      <thead><tr><th>Activity</th><th style="text-align:center">Vikuna</th><th style="text-align:center">GP Stores</th><th style="text-align:center">Shopify devs</th><th style="text-align:center">Google</th></tr></thead>
+      <tbody>
+        <tr><td>Requirements &amp; commission rules in writing</td><td class="c">C</td><td class="c"><span class="r">R</span>/<span class="a">A</span></td><td class="c">I</td><td class="c">—</td></tr>
+        <tr><td>UX design and sign-off</td><td class="c"><span class="r">R</span></td><td class="c"><span class="a">A</span></td><td class="c">—</td><td class="c">—</td></tr>
+        <tr><td>Build: app (both roles), commission engine, backend</td><td class="c"><span class="r">R</span>/<span class="a">A</span></td><td class="c">I</td><td class="c">C</td><td class="c">—</td></tr>
+        <tr><td>Shopify custom app, API scopes, webhooks</td><td class="c">C</td><td class="c"><span class="a">A</span></td><td class="c"><span class="r">R</span></td><td class="c">—</td></tr>
+        <tr><td>Theme changes, join page and products on gpstores.in</td><td class="c">C</td><td class="c"><span class="a">A</span></td><td class="c"><span class="r">R</span></td><td class="c">—</td></tr>
+        <tr><td>Accounts: Supabase, Firebase, SMS, gateway, Play Console, DNS</td><td class="c">C</td><td class="c"><span class="r">R</span>/<span class="a">A</span></td><td class="c">—</td><td class="c">—</td></tr>
+        <tr><td>Pilot associates and test orders</td><td class="c">C</td><td class="c"><span class="r">R</span>/<span class="a">A</span></td><td class="c">C</td><td class="c">—</td></tr>
+        <tr><td>UAT execution and sign-off</td><td class="c">C</td><td class="c"><span class="r">R</span>/<span class="a">A</span></td><td class="c">I</td><td class="c">—</td></tr>
+        <tr><td>Play closed test and submission</td><td class="c"><span class="r">R</span></td><td class="c"><span class="a">A</span></td><td class="c">—</td><td class="c">I</td></tr>
+        <tr><td>Play review and approval</td><td class="c">I</td><td class="c">I</td><td class="c">—</td><td class="c"><span class="r">R</span>/<span class="a">A</span></td></tr>
+        <tr><td>Documentation and onboarding session</td><td class="c"><span class="r">R</span>/<span class="a">A</span></td><td class="c">C</td><td class="c">—</td><td class="c">—</td></tr>
+        <tr><td>Monthly commission close and payouts to associates</td><td class="c">C</td><td class="c"><span class="r">R</span>/<span class="a">A</span></td><td class="c">—</td><td class="c">—</td></tr>
+        <tr><td>TDS / GST on commission — rates, deposits, returns, associate invoices</td><td class="c">I</td><td class="c"><span class="r">R</span>/<span class="a">A</span></td><td class="c">—</td><td class="c">—</td></tr>
+        <tr><td>Maintenance and support</td><td class="c"><span class="r">R</span></td><td class="c"><span class="a">A</span></td><td class="c">C</td><td class="c">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="pager"><button class="pn" data-prev>← Risks</button><button class="pn" data-next>Terms →</button></div>
+</section>
+
+<!-- ═══════════ PAGE 8 ═══════════ -->
+<section class="page" data-page="8">
+  <div class="page-head">
+    <div><div class="eyebrow">Terms &amp; conditions</div><h2>Plain terms, both ways</h2></div>
+    <div class="idx">Page 8 of 8</div>
+  </div>
+  <div class="glass pad terms">
+    <ol>
+      <li><strong>Parties.</strong> Vikuna Technologies, Hyderabad ("Vikuna") and GP Stores, Hyderabad ("Client"). This proposal, once accepted, together with the signed scope document from Week 1, forms the agreement.</li>
+      <li><strong>Scope and phases.</strong> Phase 1 is firm on acceptance. Phase 2 is indicative and becomes firm on a written go-ahead after Phase 1 UAT sign-off, at the price stated if commissioned within 60 days of Phase 1 go-live. Phases may be reordered by mutual agreement.</li>
+      <li><strong>Fees and payment.</strong> Fees are fixed per phase and exclusive of GST. Invoices are due within 7 days. Work on a milestone begins when the preceding milestone payment is received.</li>
+      <li><strong>Timeline and dependencies.</strong> Phase 1 is planned at seven weeks from the date Vikuna receives Shopify custom-app credentials and a test-order path. Delays in Client or third-party dependencies extend the timeline correspondingly and do not change the fee.</li>
+      <li><strong>Change requests.</strong> Work outside the signed scope is quoted separately before it begins. No change requests are absorbed into the fixed fee.</li>
+      <li><strong>Acceptance.</strong> UAT is performed by the Client within the agreed window. Sign-off is deemed given if no defects are reported within 10 working days of delivery for UAT.</li>
+      <li><strong>Warranty.</strong> 45 days from go-live, covering defects — behaviour that deviates from the signed scope. Changes to scope are not defects. Excludes issues caused by Client changes, third-party platform changes, or use outside the documented procedures.</li>
+      <li><strong>Maintenance.</strong> ₹6,000 per month for 7 hours, from go-live, minimum six months, then terminable on 30 days' notice by either party. Hours do not roll over. Additional work is billed at Vikuna's standard rate with prior approval.</li>
+      <li><strong>Ownership.</strong> All accounts, data and third-party subscriptions are created in and remain the Client's. On receipt of full payment for a phase, the source code and documentation of that phase are assigned to the Client. Vikuna retains the right to reuse generic, non-Client-specific components and know-how.</li>
+      <li><strong>Third-party platforms.</strong> Shopify, Supabase, Google Play, Firebase, Expo and payment gateways are governed by their own terms and fees. Vikuna is not responsible for their availability, policy decisions, approval outcomes or changes.</li>
+      <li><strong>Confidentiality.</strong> Each party keeps the other's non-public information confidential during the engagement and for two years after. Vikuna may name GP Stores as a client and describe the work in general terms unless the Client objects in writing.</li>
+      <li><strong>Liability.</strong> Vikuna's total liability under this agreement is limited to the fees paid for the phase concerned. Neither party is liable for indirect or consequential loss, including loss of revenue or commissions.</li>
+      <li><strong>Termination.</strong> Either party may terminate for uncured material breach on 15 days' written notice. On termination the Client pays for milestones completed and work in progress on a pro-rata basis, and Vikuna hands over all work product and access.</li>
+      <li><strong>Governing law.</strong> Laws of India; courts at Hyderabad, Telangana.</li>
+      <li><strong>Validity.</strong> This proposal is valid until 4 October 2026.</li>
+    </ol>
+    <div class="divider" style="margin:18px 0"></div>
+    <div class="sign">
+      <div class="sigbox"><div class="eyebrow">Accepted for GP Stores</div><div class="sigline"></div><div class="small">Mr. Pavan Kumar Peri · Date</div></div>
+      <div class="sigbox"><div class="eyebrow">For Vikuna Technologies</div><div class="sigline"></div><div class="small">Charan Kamal Bommakanti, Founder &amp; CEO · Date</div></div>
+    </div>
+  </div>
+  <div class="pager"><button class="pn" data-prev>← RACI</button><button class="pn" data-next disabled>End</button></div>
+</section>
+
+</main>
+<footer><span>Vikuna Technologies · vikuna.io · Hyderabad</span><span>Proposal VT-GPS-2026-09 · Confidential</span></footer>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  var pages=[].slice.call(document.querySelectorAll('.page'));
+  var navBtns=[].slice.call(document.querySelectorAll('.pagenav button'));
+  var current=1;
+  function go(n){
+    n=Math.max(1,Math.min(pages.length,n));
+    current=n;
+    pages.forEach(function(p){p.classList.toggle('active',+p.dataset.page===n);});
+    navBtns.forEach(function(b){ if(+b.dataset.go===n){b.setAttribute('aria-current','page');}else{b.removeAttribute('aria-current');} });
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  navBtns.forEach(function(b){b.addEventListener('click',function(){go(+b.dataset.go);});});
+  document.querySelectorAll('[data-next]').forEach(function(b){b.addEventListener('click',function(){go(current+1);});});
+  document.querySelectorAll('[data-prev]').forEach(function(b){b.addEventListener('click',function(){go(current-1);});});
+
+  /* Palette */
+  function setPalette(p){
+    if(p==='jade'){root.removeAttribute('data-palette');}else{root.setAttribute('data-palette',p);}
+    document.querySelectorAll('button[data-palette]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.palette===p));});
+    try{localStorage.setItem('gps-palette',p);}catch(e){}
+  }
+  document.querySelectorAll('button[data-palette]').forEach(function(b){b.addEventListener('click',function(){setPalette(b.dataset.palette);});});
+
+  /* Light / dark cycle: system → dark → light */
+  var modeBtn=document.getElementById('modeBtn');
+  modeBtn.addEventListener('click',function(){
+    var t=root.getAttribute('data-theme');
+    var next=!t?'dark':(t==='dark'?'light':null);
+    if(next){root.setAttribute('data-theme',next);}else{root.removeAttribute('data-theme');}
+    try{ if(next){localStorage.setItem('gps-mode',next);}else{localStorage.removeItem('gps-mode');} }catch(e){}
+  });
+
+  /* Screen carousel */
+  var screens=[].slice.call(document.querySelectorAll('.screen'));
+  var rpanels=[].slice.call(document.querySelectorAll('.rpanel'));
+  var titles=['Associate · Sign in','Associate · Home','Associate · Customers','Associate · Ledger','Associate · Invite','Admin · Create & manage associates','Admin · Plans, period close & payouts','Admin · Plan builder','Admin · Payout statement & record'];
+  var dots=document.getElementById('dots'), scTitle=document.getElementById('scTitle');
+  var sc=1, N=screens.length;
+  titles.forEach(function(t,i){var b=document.createElement('button');b.setAttribute('aria-label',t);b.addEventListener('click',function(){setScreen(i+1);});dots.appendChild(b);});
+  function setScreen(n){
+    sc=((n-1+N)%N)+1;
+    screens.forEach(function(s){s.classList.toggle('on',+s.dataset.sc===sc);});
+    rpanels.forEach(function(p){p.classList.toggle('on',+p.dataset.sc===sc);});
+    [].slice.call(dots.children).forEach(function(d,i){ if(i+1===sc){d.setAttribute('aria-current','true');}else{d.removeAttribute('aria-current');} });
+    scTitle.textContent=sc+' / '+N+' · '+titles[sc-1];
+  }
+  document.getElementById('scPrev').addEventListener('click',function(){setScreen(sc-1);});
+  document.getElementById('scNext').addEventListener('click',function(){setScreen(sc+1);});
+  var phone=document.querySelector('.phone'),tx=null;
+  phone.addEventListener('touchstart',function(e){tx=e.touches[0].clientX;},{passive:true});
+  phone.addEventListener('touchend',function(e){ if(tx===null)return; var dx=e.changedTouches[0].clientX-tx; if(Math.abs(dx)>40){setScreen(dx<0?sc+1:sc-1);} tx=null; },{passive:true});
+  document.addEventListener('keydown',function(e){
+    if(e.target.tagName==='INPUT')return;
+    if(current===2 && (e.key==='ArrowRight'||e.key==='ArrowLeft')){ setScreen(e.key==='ArrowRight'?sc+1:sc-1); return; }
+    if(e.key==='ArrowRight')go(current+1);
+    if(e.key==='ArrowLeft')go(current-1);
+  });
+  setScreen(1);
+
+  /* Timeline */
+  var tl=document.getElementById('tl');
+  var stWeek=document.getElementById('stWeek'),stTitle=document.getElementById('stTitle'),stText=document.getElementById('stText'),stV=document.getElementById('stV'),stG=document.getElementById('stG');
+  var stages=[
+    {to:0,   w:'Week 0 · signing', t:'Agreement signed · 40% due', x:'Scope document and commission rules become the contract. Vikuna issues the credentials checklist the same day.', v:'Kick-off, credentials checklist, project board.', g:'Sign, pay ₹48,000, nominate SPOC and Shopify developer contact.'},
+    {to:1,   w:'Week 1', t:'Detailed requirements & UX finalisation', x:'Rules written with worked examples: slabs, GST base, clawback, thresholds, cadence. Every screen agreed before code.', v:'Requirements workshop, UX for all screens, data model.', g:'Decide the open questions; provide Shopify custom-app credentials and test-order path; supply commission plans.'},
+    {to:5,   w:'Weeks 2–5', t:'Build with iterative revisions', x:'A working build every week. Feedback folded into the next iteration; new ideas parked for Phase 2.', v:'Backend, Shopify integration, commission engine, associate and admin roles.', g:'Review each build within two working days; Shopify developers on call; name the pilot associates.'},
+    {to:7,   w:'Weeks 6–7', t:'UAT and sign-off · 40% on sign-off', x:'Pilot associates transact with test and then real orders. One period closed, one payout recorded. Defects fixed; sign-off given.', v:'Fix defects, run the first period close alongside GP Stores, deliver documentation and the onboarding session.', g:'Execute UAT with the pilot batch, act as admin, sign off, pay ₹48,000.'},
+    {to:13.5,w:'Go-live → day 45', t:'Warranty period', x:'Live use. Defects against the signed scope are fixed at no charge; scope changes are quoted separately. Android build shared directly; Play closed test can start in parallel.', v:'Defect fixes within warranty; Play submission assistance.', g:'Run the programme; report defects with steps to reproduce; recruit closed-test users.'},
+    {to:14,  w:'Day 45 onward', t:'Warranty ends · 20% due · maintenance begins', x:'Final ₹24,000 invoiced. Maintenance retainer of ₹6,000 / 7 hours per month starts. Phase 2 can be commissioned any time.', v:'Support within 7 hours a month; monthly health check.', g:'Pay the final tranche; decide on Phase 2.'}
+  ];
+  function setStage(){
+    var v=parseFloat(tl.value);
+    var s=stages[stages.length-1];
+    for(var i=0;i<stages.length;i++){ if(v<=stages[i].to){s=stages[i];break;} }
+    stWeek.textContent=s.w; stTitle.textContent=s.t; stText.textContent=s.x; stV.textContent=s.v; stG.textContent=s.g;
+  }
+  tl.addEventListener('input',setStage);
+  setStage();
+
+  /* Restore look */
+  try{
+    var p=localStorage.getItem('gps-palette'); if(p)setPalette(p);
+    var m=localStorage.getItem('gps-mode'); if(m)root.setAttribute('data-theme',m);
+  }catch(e){}
+})();
+</script>
+</body></html>

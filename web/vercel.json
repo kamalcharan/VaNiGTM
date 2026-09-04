@@ -9,6 +9,13 @@
       "headers": [
         { "key": "Cache-Control", "value": "no-store, must-revalidate" }
       ]
+    },
+    {
+      "source": "/proposals/(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" },
+        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+      ]
     }
   ],
   "rewrites": [
