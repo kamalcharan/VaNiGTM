@@ -245,6 +245,7 @@ export default function EmbedChatPage() {
 
   const data = state.kind === 'ready' ? state.data : null;
   const allIntents: Intent[] = data ? data.agents.flatMap((a) => a.intents ?? []) : [];
+  const allOffers: Offer[] = data ? data.agents.flatMap((a) => a.offers ?? []) : [];
   const agentFor = useCallback(
     (intentId: string) => data?.agents.find((a) => (a.intents ?? []).some((i) => i.id === intentId)),
     [data],
@@ -406,9 +407,26 @@ export default function EmbedChatPage() {
                   ))}
                 </div>
               </>
+            ) : allOffers.length > 0 ? (
+              /* Offers but no intents. Two ways to land here and both are real:
+                 an agent that publishes roles without declaring anything to be
+                 asked, and — until the intent migrations and the backfill reach
+                 production — a boot response that predates intents entirely.
+                 Falling back to the roles list keeps the floor at what this
+                 screen always showed. Keying the empty state on intents alone
+                 told a workspace with live roles that nothing was open, which
+                 is a screen reporting a state it had not checked. */
+              <>
+                <div style={bubble}>These roles are open:</div>
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 14px' }}>
+                  {allOffers.map((r) => (
+                    <OfferCard key={r.id} r={r} />
+                  ))}
+                </ul>
+              </>
             ) : (
-              /* No live agent declares anything a visitor can ask for. A real
-                 state, not a fault — but it still owes a next action. */
+              /* Nothing to ask for AND nothing on offer. A real state, not a
+                 fault — but it still owes a next action. */
               <div style={{ ...bubble, color: C.soft }}>
                 There is nothing open right now. Check back soon — when there is, you&rsquo;ll be able to start right
                 here, in a short conversation instead of a form.
@@ -476,9 +494,14 @@ export default function EmbedChatPage() {
             placeholder={
               !data
                 ? 'Connecting…'
-                : allIntents.length === 0
-                  ? 'Nothing to ask about here yet'
-                  : 'Ask me anything about working here'
+                : allIntents.length > 0
+                  ? 'Ask me anything about working here'
+                  : allOffers.length > 0
+                    ? // Roles are on screen but nothing is declared to ask for.
+                      // "Nothing to ask about here yet" reads as a contradiction
+                      // with a role card sitting right above it.
+                      'Applying by chat arrives with intake'
+                    : 'Nothing to ask about here yet'
             }
             aria-label="Ask a question"
             style={{
