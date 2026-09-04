@@ -116,8 +116,12 @@ strong{font-weight:600}
 .topbar{position:sticky;top:0;z-index:20;margin:14px auto 0;max-width:1180px;padding:10px 14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .wordmark{font-family:var(--font-display);font-weight:600;font-size:18px;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
 .wordmark i{width:10px;height:10px;border-radius:3px;background:var(--primary);display:inline-block;transform:rotate(45deg)}
-.pagenav{display:flex;gap:4px;flex-wrap:wrap;flex:1}
-.pagenav button{border:1px solid transparent;background:transparent;color:var(--text2);padding:6px 11px;border-radius:999px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+/* gap 4px→2px and button padding 11px→8px: a ninth tab pushed the nav onto a
+   second row at every desktop width, because the topbar is capped at 1180px.
+   Measured, not guessed — this is the mildest change that fits nine tabs on
+   one row down to 1180px while keeping the label type at 13px. */
+.pagenav{display:flex;gap:2px;flex-wrap:wrap;flex:1}
+.pagenav button{border:1px solid transparent;background:transparent;color:var(--text2);padding:6px 8px;border-radius:999px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
 .pagenav button:hover{color:var(--text);background:var(--psubtle)}
 .pagenav button[aria-current="page"]{background:var(--primary);color:var(--on-primary);border-color:transparent}
 button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
@@ -359,6 +363,34 @@ footer{max-width:1180px;margin:0 auto 30px;padding:0 18px;font-size:12px;color:v
   .glass{backdrop-filter:none;box-shadow:none}
   body{background:#fff;color:#111}
 }
+/* ───────────── Checklist (page 9) ───────────── */
+.ckhead{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.ckbar{flex:1;min-width:150px;height:8px;border-radius:999px;background:var(--psubtle);border:1px solid var(--glass-border);overflow:hidden}
+.ckbar i{display:block;height:100%;width:0;background:var(--primary);transition:width .3s ease}
+.ckcard{display:flex;flex-direction:column}
+.ckcard .cklist{flex:1}
+.ckcard-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:4px}
+.cknum{flex:none;font-family:var(--font-mono);font-size:12px;font-weight:500;color:var(--on-primary);background:var(--primary);border-radius:9px;padding:4px 8px;margin-top:2px}
+.cklist{list-style:none;margin:8px 0 0;padding:0}
+.cklist li{border-top:1px solid var(--glass-border)}
+.cklist li:first-child{border-top:none}
+.cklist label{display:flex;gap:11px;align-items:flex-start;padding:10px 2px;cursor:pointer}
+.cklist input{position:absolute;width:1px;height:1px;opacity:0;margin:0}
+.ck{flex:none;width:18px;height:18px;margin-top:2px;border-radius:6px;border:1.5px solid var(--glass-border);background:var(--bg2);display:grid;place-items:center;transition:background .18s,border-color .18s}
+.ck::after{content:"";width:9px;height:5px;margin-top:-2px;border-left:2px solid var(--on-primary);border-bottom:2px solid var(--on-primary);transform:rotate(-45deg) scale(.4);opacity:0;transition:transform .18s,opacity .18s}
+.cklist input:checked + .ck{background:var(--primary);border-color:var(--primary)}
+.cklist input:checked + .ck::after{opacity:1;transform:rotate(-45deg) scale(1)}
+.cklist input:focus-visible + .ck{outline:2px solid var(--primary);outline-offset:2px}
+.cklist input:checked ~ .cktext{opacity:.5}
+.cklist input:checked ~ .cktext b{text-decoration:line-through}
+.cktext{min-width:0;transition:opacity .18s}
+.cktext p{margin:3px 0 0;font-size:13px;color:var(--text2);line-height:1.5}
+.cktext code{font-family:var(--font-mono);font-size:12px;background:var(--psubtle);border-radius:5px;padding:1px 5px}
+.path{display:inline-block;font-family:var(--font-mono);font-size:11.5px;color:var(--text2);background:var(--psubtle);border:1px solid var(--glass-border);border-radius:6px;padding:1px 7px;margin-left:6px}
+.note{display:block;width:100%;margin-top:12px;flex:none;box-sizing:border-box;background:var(--bg2);border:1px solid var(--glass-border);border-radius:12px;color:var(--text);font:inherit;font-size:13px;line-height:1.5;padding:9px 11px;resize:vertical;min-height:42px}
+.note::placeholder{color:var(--text2)}
+.note:focus-visible{outline:2px solid var(--primary);outline-offset:1px;border-color:var(--primary)}
+@media print{.note,.ckbar,#ckReset{display:none}.cklist input:checked ~ .cktext{opacity:1}}
 </style>
 
 <div class="ambient"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
@@ -374,6 +406,7 @@ footer{max-width:1180px;margin:0 auto 30px;padding:0 18px;font-size:12px;color:v
     <button data-go="6">Risks</button>
     <button data-go="7">RACI</button>
     <button data-go="8">Terms</button>
+    <button data-go="9">Shopify</button>
   </nav>
   <div class="controls">
     <div class="swatches" role="group" aria-label="Theme">
@@ -393,7 +426,7 @@ footer{max-width:1180px;margin:0 auto 30px;padding:0 18px;font-size:12px;color:v
 <section class="page active" data-page="1">
   <div class="page-head">
     <div><div class="eyebrow">Proposal · VT-GPS-2026-09</div><h1>GP Stores <span>Associate &amp; Customer App</span></h1></div>
-    <div class="idx">Page 1 of 8 · 4 September 2026 · valid 30 days</div>
+    <div class="idx">Page 1 of 9 · 4 September 2026 · valid 30 days</div>
   </div>
 
   <div class="cover">
@@ -490,7 +523,7 @@ footer{max-width:1180px;margin:0 auto 30px;padding:0 18px;font-size:12px;color:v
 <section class="page" data-page="2">
   <div class="page-head">
     <div><div class="eyebrow">Phase 1 · associate app · screens &amp; requirements</div><h2>Every requirement, pinned to the screen it lives on</h2></div>
-    <div class="idx">Page 2 of 8 · <span class="chip p" style="font-family:var(--font-body)">Phase 1 only</span></div>
+    <div class="idx">Page 2 of 9 · <span class="chip p" style="font-family:var(--font-body)">Phase 1 only</span></div>
   </div>
   <div class="ux">
     <div class="phone-wrap">
@@ -1009,7 +1042,7 @@ footer{max-width:1180px;margin:0 auto 30px;padding:0 18px;font-size:12px;color:v
 <section class="page" data-page="3">
   <div class="page-head">
     <div><div class="eyebrow">Scope &amp; timeline</div><h2>Seven weeks to a live associate programme</h2></div>
-    <div class="idx">Page 3 of 8</div>
+    <div class="idx">Page 3 of 9</div>
   </div>
 
   <div class="glass timeline">
@@ -1077,7 +1110,7 @@ footer{max-width:1180px;margin:0 auto 30px;padding:0 18px;font-size:12px;color:v
 <section class="page" data-page="4">
   <div class="page-head">
     <div><div class="eyebrow">Commercials</div><h2>Fixed price, named discount, no surprises</h2></div>
-    <div class="idx">Page 4 of 8 · all amounts exclusive of GST</div>
+    <div class="idx">Page 4 of 9 · all amounts exclusive of GST</div>
   </div>
   <div class="grid g3">
     <div class="glass pad stack">
@@ -1145,7 +1178,7 @@ footer{max-width:1180px;margin:0 auto 30px;padding:0 18px;font-size:12px;color:v
 <section class="page" data-page="5">
   <div class="page-head">
     <div><div class="eyebrow">Google Play &amp; distribution</div><h2>A separate track that Google controls</h2></div>
-    <div class="idx">Page 5 of 8</div>
+    <div class="idx">Page 5 of 9</div>
   </div>
   <div class="grid g2">
     <div class="glass pad stack">
@@ -1172,7 +1205,7 @@ footer{max-width:1180px;margin:0 auto 30px;padding:0 18px;font-size:12px;color:v
 <section class="page" data-page="6">
   <div class="page-head">
     <div><div class="eyebrow">Risks</div><h2>What could slow this down, and who holds it</h2></div>
-    <div class="idx">Page 6 of 8</div>
+    <div class="idx">Page 6 of 9</div>
   </div>
   <div class="glass pad tablewrap">
     <table>
@@ -1198,7 +1231,7 @@ footer{max-width:1180px;margin:0 auto 30px;padding:0 18px;font-size:12px;color:v
 <section class="page" data-page="7">
   <div class="page-head">
     <div><div class="eyebrow">RACI</div><h2>Who does what</h2></div>
-    <div class="idx">Page 7 of 8 · <span class="r">R</span> responsible · <span class="a">A</span> accountable · C consulted · I informed</div>
+    <div class="idx">Page 7 of 9 · <span class="r">R</span> responsible · <span class="a">A</span> accountable · C consulted · I informed</div>
   </div>
   <div class="glass pad tablewrap">
     <table class="raci">
@@ -1228,7 +1261,7 @@ footer{max-width:1180px;margin:0 auto 30px;padding:0 18px;font-size:12px;color:v
 <section class="page" data-page="8">
   <div class="page-head">
     <div><div class="eyebrow">Terms &amp; conditions</div><h2>Plain terms, both ways</h2></div>
-    <div class="idx">Page 8 of 8</div>
+    <div class="idx">Page 8 of 9</div>
   </div>
   <div class="glass pad terms">
     <ol>
@@ -1254,7 +1287,191 @@ footer{max-width:1180px;margin:0 auto 30px;padding:0 18px;font-size:12px;color:v
       <div class="sigbox"><div class="eyebrow">For Vikuna Technologies</div><div class="sigline"></div><div class="small">Charan Kamal Bommakanti, Founder &amp; CEO · Date</div></div>
     </div>
   </div>
-  <div class="pager"><button class="pn" data-prev>← RACI</button><button class="pn" data-next disabled>End</button></div>
+  <div class="pager"><button class="pn" data-prev>← RACI</button><button class="pn" data-next>Shopify checklist →</button></div>
+</section>
+
+<!-- ═══════════ PAGE 9 ═══════════ -->
+<section class="page" data-page="9">
+  <div class="page-head">
+    <div><div class="eyebrow">Kick-off · Shopify admin walkthrough</div><h2>What we confirm together, in the order we open it</h2></div>
+    <div class="idx">Page 9 of 9 · 47 checks</div>
+  </div>
+
+  <div class="glass pad" style="margin-bottom:14px">
+    <div class="ckhead">
+      <div><b>Progress</b> <span class="small muted">· <span class="num" id="ckDone">0</span> of <span class="num">47</span> confirmed</span></div>
+      <div class="ckbar"><i id="ckBar"></i></div>
+      <button class="pn" id="ckReset" style="padding:7px 14px;font-size:13px">Clear</button>
+    </div>
+    <p class="small muted">One pass through the Shopify admin with Pavan and his Shopify developer, roughly an hour. Three items marked <span class="chip err">Blocks week 1</span> gate the start date — the seven weeks in the timeline run from the day Vikuna has custom-app credentials <b>and</b> an agreed test-order path. Items marked <span class="chip warn">Decide in the session</span> are commercial calls for GP Stores; leaving them open moves them into the build, where they cost more.</p>
+    <p class="small muted" style="margin-top:8px">Ticks and notes are saved in this browser only. Nothing is sent anywhere, and nobody else sees them.</p>
+  </div>
+
+  <div class="grid g2">
+    <div class="glass pad ckcard">
+      <div class="ckcard-head"><span class="cknum">01</span>
+        <div><h3>Plan &amp; access</h3><div class="small muted">What we can touch, and who grants it</div></div></div>
+      <ul class="cklist">
+<li><label><input type="checkbox" data-ck="01-0"><span class="ck"></span><span class="cktext"><b>Plan tier</b><span class="path">Settings → Plan</span> <p>Basic, Shopify or Advanced. Not Plus — so no B2B/Companies, and checkout stays Shopify-hosted.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="01-1"><span class="ck"></span><span class="cktext"><b>Who is the store owner</b><span class="path">Settings → Users</span> <p>Confirm Pavan can add staff and collaborators himself, or who must.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="01-2"><span class="ck"></span><span class="cktext"><b>Vikuna added as a collaborator</b><span class="path">Settings → Users → Collaborators</span> <span class="chip err">Blocks week 1</span><p>Limited permissions: Apps, Customers, Orders, Discounts, Themes (view). Either done in the session, or his Shopify developer confirms they will.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="01-3"><span class="ck"></span><span class="cktext"><b>Where the Shopify developers sit</b> <p>Staff accounts, or a Partner collaborator request. Decides who can create the custom app.</p></span></label></li>
+      </ul>
+      <textarea class="note" data-note="01" rows="1" placeholder="What is missing, or what was decided — notes stay in this browser"></textarea>
+    </div>
+    <div class="glass pad ckcard">
+      <div class="ckcard-head"><span class="cknum">02</span>
+        <div><h3>Custom app</h3><div class="small muted">The critical item — the timeline starts here</div></div></div>
+      <ul class="cklist">
+<li><label><input type="checkbox" data-ck="02-0"><span class="ck"></span><span class="cktext"><b>Custom app development is enabled</b><span class="path">Settings → Apps and sales channels → Develop apps</span> <p>If it has never been switched on, this is a one-time toggle by the store owner.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="02-1"><span class="ck"></span><span class="cktext"><b>Create <b>GP Associate Engine</b></b> <p>One custom app. Nothing else installs from the App Store for Phase 1.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="02-2"><span class="ck"></span><span class="cktext"><b>Admin API scopes — Phase 1</b> <p><code>read_customers</code>, <code>write_customers</code>, <code>read_orders</code>, <code>read_all_orders</code>, <code>write_discounts</code>, <code>read_discounts</code>, <code>read_products</code>.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="02-3"><span class="ck"></span><span class="cktext"><b><code>read_all_orders</code> needs Shopify approval</b> <span class="chip warn">Decide in the session</span><p>Required only for orders older than 60 days. Request it in the session — approval is not instant, and it is the one scope that can arrive late.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="02-4"><span class="ck"></span><span class="cktext"><b>Admin API scopes — Phase 2</b> <span class="chip s">Phase 2</span><p><code>write_store_credit_account_transactions</code>, <code>read_store_credit_accounts</code>. Add now or at Phase 2; adding later means reinstalling the app.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="02-5"><span class="ck"></span><span class="cktext"><b>Install, and capture the Admin API access token</b> <span class="chip err">Blocks week 1</span><p>Shown <b>once</b>. Store it in GP Stores' password manager — never in email or chat — and hand it to Vikuna over a secure channel.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="02-6"><span class="ck"></span><span class="cktext"><b>Note the API version shown</b> <p>Recorded in the scope document so a later Shopify version bump is a known change, not a surprise.</p></span></label></li>
+      </ul>
+      <textarea class="note" data-note="02" rows="1" placeholder="What is missing, or what was decided — notes stay in this browser"></textarea>
+    </div>
+    <div class="glass pad ckcard">
+      <div class="ckcard-head"><span class="cknum">03</span>
+        <div><h3>Webhooks</h3><div class="small muted">How the engine hears about money</div></div></div>
+      <ul class="cklist">
+<li><label><input type="checkbox" data-ck="03-0"><span class="ck"></span><span class="cktext"><b>Webhooks can be registered under the custom app</b> <p><code>orders/paid</code>, <code>orders/cancelled</code>, <code>refunds/create</code>, <code>orders/updated</code>, <code>customers/create</code>.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="03-1"><span class="ck"></span><span class="cktext"><b>Note the webhook signing secret</b> <span class="chip err">Blocks week 1</span><p>Same handling as the access token. Every webhook is verified against it, so an unsigned call is rejected rather than trusted.</p></span></label></li>
+      </ul>
+      <textarea class="note" data-note="03" rows="1" placeholder="What is missing, or what was decided — notes stay in this browser"></textarea>
+    </div>
+    <div class="glass pad ckcard">
+      <div class="ckcard-head"><span class="cknum">04</span>
+        <div><h3>Customer accounts</h3><div class="small muted">Decides how a referral code is captured</div></div></div>
+      <ul class="cklist">
+<li><label><input type="checkbox" data-ck="04-0"><span class="ck"></span><span class="cktext"><b>Classic or new customer accounts?</b><span class="path">Settings → Customer accounts</span> <p><b>New</b> = email one-time-code login, which is what Phase 2 assumes — but no custom signup fields. <b>Classic</b> = password login with an editable signup form.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="04-1"><span class="ck"></span><span class="cktext"><b>Where the referral code gets captured</b> <span class="chip warn">Decide in the session</span><p>Follows directly from the answer above. If it is <b>new</b> accounts, the code cannot live on the signup form and needs another route — a decision to take in the session, not after.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="04-2"><span class="ck"></span><span class="cktext"><b>Accounts optional or required at checkout</b> <p>Required makes attribution reliable; optional means some orders arrive with no account to attach.</p></span></label></li>
+      </ul>
+      <textarea class="note" data-note="04" rows="1" placeholder="What is missing, or what was decided — notes stay in this browser"></textarea>
+    </div>
+    <div class="glass pad ckcard">
+      <div class="ckcard-head"><span class="cknum">05</span>
+        <div><h3>Customers data</h3><div class="small muted">What is already there, and what we would collide with</div></div></div>
+      <ul class="cklist">
+<li><label><input type="checkbox" data-ck="05-0"><span class="ck"></span><span class="cktext"><b>Existing customer count</b> <p>Sizing input for the free tier.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="05-1"><span class="ck"></span><span class="cktext"><b>Existing tags in use</b> <p>We add the tag <code>associate</code>. Confirm nothing already uses it for something else.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="05-2"><span class="ck"></span><span class="cktext"><b>Metafields already defined</b><span class="path">Settings → Custom data → Customers</span> <p>We add <code>associate.referral_code</code>. Check for a naming collision before, not after.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="05-3"><span class="ck"></span><span class="cktext"><b>Any customers who are already de-facto associates</b> <p>People selling for GP Stores today. They are the pilot batch, and their history is the first real test of the rules.</p></span></label></li>
+      </ul>
+      <textarea class="note" data-note="05" rows="1" placeholder="What is missing, or what was decided — notes stay in this browser"></textarea>
+    </div>
+    <div class="glass pad ckcard">
+      <div class="ckcard-head"><span class="cknum">06</span>
+        <div><h3>Discounts</h3><div class="small muted">Where referral codes will live</div></div></div>
+      <ul class="cklist">
+<li><label><input type="checkbox" data-ck="06-0"><span class="ck"></span><span class="cktext"><b>What codes exist today; any automatic discounts</b><span class="path">Discounts</span> <p>Referral codes are created as ₹0 or token-value codes, so they must not trip an existing rule.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="06-1"><span class="ck"></span><span class="cktext"><b>Is discount combining enabled</b> <p>One-code-per-order would stop a referral code stacking with a promo code — which silently loses attribution on exactly the orders a promo drives.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="06-2"><span class="ck"></span><span class="cktext"><b>Decide: referral code alongside a promo code?</b> <span class="chip warn">Decide in the session</span><p>Pavan's commercial call, not a technical one. Take it in the session — the answer changes how codes are issued.</p></span></label></li>
+      </ul>
+      <textarea class="note" data-note="06" rows="1" placeholder="What is missing, or what was decided — notes stay in this browser"></textarea>
+    </div>
+    <div class="glass pad ckcard">
+      <div class="ckcard-head"><span class="cknum">07</span>
+        <div><h3>Orders</h3><div class="small muted">The fields the commission base is computed from</div></div></div>
+      <ul class="cklist">
+<li><label><input type="checkbox" data-ck="07-0"><span class="ck"></span><span class="cktext"><b>Open a recent order and read it end to end</b><span class="path">Orders → any order</span> <p>Line-item discounted price, order-level discount, tax lines, shipping. The commission base is defined against these exact fields, so we look at a real one together.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="07-1"><span class="ck"></span><span class="cktext"><b>Tax setting: prices include tax or not</b><span class="path">Settings → Taxes</span> <p>Changes the base by the GST rate. Getting this wrong is a silent, uniform error in every payout.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="07-2"><span class="ck"></span><span class="cktext"><b>Open one refunded order</b> <p>Partial refunds and restocking. Refunds reverse commission whenever they occur, so the shape of a real refund matters.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="07-3"><span class="ck"></span><span class="cktext"><b>Orders placed outside Shopify</b> <span class="chip warn">Decide in the session</span><p>Phone or WhatsApp orders entered as draft orders — or not entered at all. Anything not in Shopify cannot earn commission, and associates will notice before anyone else does.</p></span></label></li>
+      </ul>
+      <textarea class="note" data-note="07" rows="1" placeholder="What is missing, or what was decided — notes stay in this browser"></textarea>
+    </div>
+    <div class="glass pad ckcard">
+      <div class="ckcard-head"><span class="cknum">08</span>
+        <div><h3>Products &amp; collections</h3><div class="small muted">What a commission plan can scope to</div></div></div>
+      <ul class="cklist">
+<li><label><input type="checkbox" data-ck="08-0"><span class="ck"></span><span class="cktext"><b>Collections list — clean or ad hoc?</b><span class="path">Products → Collections</span> <p>Collections are the &ldquo;categories&rdquo; a plan scopes to. If they overlap or are one-off, category-level rules get unpredictable.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="08-1"><span class="ck"></span><span class="cktext"><b>Can a ₹99 wallet top-up product be created</b> <span class="chip s">Phase 2</span><p>Non-shipped, no fulfilment. Needed for the Phase 2 wallet as Shopify Store Credit.</p></span></label></li>
+      </ul>
+      <textarea class="note" data-note="08" rows="1" placeholder="What is missing, or what was decided — notes stay in this browser"></textarea>
+    </div>
+    <div class="glass pad ckcard">
+      <div class="ckcard-head"><span class="cknum">09</span>
+        <div><h3>Store Credit</h3><div class="small muted">Only needed for Phase 2 — check it now anyway</div></div></div>
+      <ul class="cklist">
+<li><label><input type="checkbox" data-ck="09-0"><span class="ck"></span><span class="cktext"><b>Is Store Credit available on this plan and region</b><span class="path">Settings → Customer accounts</span> <span class="chip s">Phase 2</span><p>India availability is the open question. If it is not available, the ₹99 wallet needs a different mechanism and that changes Phase 2 scope.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="09-1"><span class="ck"></span><span class="cktext"><b>Open a customer profile — is there a Store Credit section</b> <span class="chip s">Phase 2</span><p>The fastest way to answer the above without reading documentation.</p></span></label></li>
+      </ul>
+      <textarea class="note" data-note="09" rows="1" placeholder="What is missing, or what was decided — notes stay in this browser"></textarea>
+    </div>
+    <div class="glass pad ckcard">
+      <div class="ckcard-head"><span class="cknum">10</span>
+        <div><h3>Testing path</h3><div class="small muted">Decide this in the session, not in week 3</div></div></div>
+      <ul class="cklist">
+<li><label><input type="checkbox" data-ck="10-0"><span class="ck"></span><span class="cktext"><b>Is Shopify's Bogus Gateway available</b><span class="path">Settings → Payments</span> <p>Test and development stores only. On a live store it will not be there.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="10-1"><span class="ck"></span><span class="cktext"><b>If not: real ₹1 orders and refunds on the live store</b> <p>Workable, but it puts test rows in real order history and real settlement.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="10-2"><span class="ck"></span><span class="cktext"><b>Or: a development store via the Partner account, theme copied</b> <p>Cleanest, and costs a little setup. Needs the Partner account decision from section 01.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="10-3"><span class="ck"></span><span class="cktext"><b>Pick one</b> <span class="chip err">Blocks week 1</span><p>The seven weeks are quoted from the date Vikuna has credentials <b>and a test-order path</b>. Leaving this open leaves the start date open.</p></span></label></li>
+      </ul>
+      <textarea class="note" data-note="10" rows="1" placeholder="What is missing, or what was decided — notes stay in this browser"></textarea>
+    </div>
+    <div class="glass pad ckcard">
+      <div class="ckcard-head"><span class="cknum">11</span>
+        <div><h3>Theme &amp; website</h3><div class="small muted">Who can change gpstores.in, and how fast</div></div></div>
+      <ul class="cklist">
+<li><label><input type="checkbox" data-ck="11-0"><span class="ck"></span><span class="cktext"><b>Which theme, and who edits it</b><span class="path">Online Store → Themes</span> <p>Agency or in-house. Theme work is explicitly not in Vikuna's scope, so turnaround here is a dependency.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="11-1"><span class="ck"></span><span class="cktext"><b>Theme access for the pieces we need</b> <p>A <code>/join</code> landing page, the referral field or instructions, and any customer-account page tweak.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="11-2"><span class="ck"></span><span class="cktext"><b>Confirm checkout is Shopify-hosted</b> <p>It is, on anything below Plus. That is what the app opens in the browser — checkout is never rebuilt inside the app.</p></span></label></li>
+      </ul>
+      <textarea class="note" data-note="11" rows="1" placeholder="What is missing, or what was decided — notes stay in this browser"></textarea>
+    </div>
+    <div class="glass pad ckcard">
+      <div class="ckcard-head"><span class="cknum">12</span>
+        <div><h3>Domain &amp; DNS</h3><div class="small muted">One record, but it blocks the admin web build</div></div></div>
+      <ul class="cklist">
+<li><label><input type="checkbox" data-ck="12-0"><span class="ck"></span><span class="cktext"><b>Where DNS is managed</b> <p>Shopify Domains, GoDaddy, Cloudflare or elsewhere — and who has the login. Needed for <code>admin.gpstores.in</code>.</p></span></label></li>
+      </ul>
+      <textarea class="note" data-note="12" rows="1" placeholder="What is missing, or what was decided — notes stay in this browser"></textarea>
+    </div>
+    <div class="glass pad ckcard">
+      <div class="ckcard-head"><span class="cknum">13</span>
+        <div><h3>Payments &amp; notifications</h3><div class="small muted">Awareness, and avoiding a message clash</div></div></div>
+      <ul class="cklist">
+<li><label><input type="checkbox" data-ck="13-0"><span class="ck"></span><span class="cktext"><b>Payment gateway in use</b><span class="path">Settings → Payments</span> <p>Razorpay, PhonePe, Shopify Payments India. Awareness only — Vikuna does not touch collection.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="13-1"><span class="ck"></span><span class="cktext"><b>Does Shopify send SMS or WhatsApp today, and via which app</b><span class="path">Settings → Notifications</span> <p>The app sends its own OTP and invites. Two systems messaging the same customer is a support problem, not a bug.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="13-2"><span class="ck"></span><span class="cktext"><b>Any app that already tags customers</b> <span class="chip warn">Decide in the session</span><p>A tagging app writing to the same customer records will fight ours. Better found now than during UAT.</p></span></label></li>
+      </ul>
+      <textarea class="note" data-note="13" rows="1" placeholder="What is missing, or what was decided — notes stay in this browser"></textarea>
+    </div>
+    <div class="glass pad ckcard">
+      <div class="ckcard-head"><span class="cknum">14</span>
+        <div><h3>Installed apps</h3><div class="small muted">The overlap check</div></div></div>
+      <ul class="cklist">
+<li><label><input type="checkbox" data-ck="14-0"><span class="ck"></span><span class="cktext"><b>Full list of installed apps</b><span class="path">Settings → Apps and sales channels</span> <p>Read it out loud in the session — the list is usually longer than anyone remembers.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="14-1"><span class="ck"></span><span class="cktext"><b>Any affiliate, referral or loyalty app already installed</b> <span class="chip warn">Decide in the session</span><p>GoAffPro, UpPromote, Smile and similar. One of these overlapping with the commission engine means duplicate attribution and two sources of truth. It either goes, or the scope changes.</p></span></label></li>
+      </ul>
+      <textarea class="note" data-note="14" rows="1" placeholder="What is missing, or what was decided — notes stay in this browser"></textarea>
+    </div>
+    <div class="glass pad ckcard">
+      <div class="ckcard-head"><span class="cknum">15</span>
+        <div><h3>Data volume</h3><div class="small muted">Sanity check for free-tier sizing</div></div></div>
+      <ul class="cklist">
+<li><label><input type="checkbox" data-ck="15-0"><span class="ck"></span><span class="cktext"><b>Orders per day</b> <p>Webhook volume and the period-close workload.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="15-1"><span class="ck"></span><span class="cktext"><b>Total customers</b> <p>Sizing input, and the cost of the first backfill.</p></span></label></li>
+<li><label><input type="checkbox" data-ck="15-2"><span class="ck"></span><span class="cktext"><b>Expected associate count</b> <p>Pilot batch and the twelve-month view. Free tiers on Supabase and Firebase are sized against this.</p></span></label></li>
+      </ul>
+      <textarea class="note" data-note="15" rows="1" placeholder="What is missing, or what was decided — notes stay in this browser"></textarea>
+    </div>
+  </div>
+
+  <div class="glass pad" style="margin-top:14px">
+    <div class="eyebrow">What we leave the session with</div>
+    <div class="grid g3" style="margin-top:8px">
+      <div><b class="small">A credentials checklist, answered</b><p class="small muted" style="margin-top:4px">Every line above either confirmed or assigned an owner and a date.</p></div>
+      <div><b class="small">The test-order path, chosen</b><p class="small muted" style="margin-top:4px">Bogus Gateway, real ₹1 orders, or a development store. This one sets the clock.</p></div>
+      <div><b class="small">The open decisions, listed</b><p class="small muted" style="margin-top:4px">Discount stacking, referral capture, any overlapping app. They go into the Week 1 scope document as questions with names against them.</p></div>
+    </div>
+  </div>
+
+  <div class="pager"><button class="pn" data-prev>← Terms</button><button class="pn" data-next disabled>End</button></div>
 </section>
 
 </main>
@@ -1314,7 +1531,7 @@ footer{max-width:1180px;margin:0 auto 30px;padding:0 18px;font-size:12px;color:v
   phone.addEventListener('touchstart',function(e){tx=e.touches[0].clientX;},{passive:true});
   phone.addEventListener('touchend',function(e){ if(tx===null)return; var dx=e.changedTouches[0].clientX-tx; if(Math.abs(dx)>40){setScreen(dx<0?sc+1:sc-1);} tx=null; },{passive:true});
   document.addEventListener('keydown',function(e){
-    if(e.target.tagName==='INPUT')return;
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
     if(current===2 && (e.key==='ArrowRight'||e.key==='ArrowLeft')){ setScreen(e.key==='ArrowRight'?sc+1:sc-1); return; }
     if(e.key==='ArrowRight')go(current+1);
     if(e.key==='ArrowLeft')go(current-1);
@@ -1340,6 +1557,35 @@ footer{max-width:1180px;margin:0 auto 30px;padding:0 18px;font-size:12px;color:v
   }
   tl.addEventListener('input',setStage);
   setStage();
+
+  /* Shopify checklist — ticks and notes, this browser only */
+  var ckBar=document.getElementById('ckBar'), ckDone=document.getElementById('ckDone');
+  var boxes=[].slice.call(document.querySelectorAll('input[data-ck]'));
+  var notes=[].slice.call(document.querySelectorAll('textarea[data-note]'));
+  function ckStore(k,v){ try{ if(v===null){localStorage.removeItem(k);}else{localStorage.setItem(k,v);} }catch(e){} }
+  function ckRead(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+  function ckPaint(){
+    var n=boxes.filter(function(b){return b.checked;}).length;
+    ckDone.textContent=n;
+    ckBar.style.width=(boxes.length?Math.round(n/boxes.length*100):0)+'%';
+  }
+  function grow(t){ t.style.height='auto'; t.style.height=Math.max(42,t.scrollHeight)+'px'; }
+  boxes.forEach(function(b){
+    b.checked = ckRead('gps-ck-'+b.dataset.ck)==='1';
+    b.addEventListener('change',function(){ ckStore('gps-ck-'+b.dataset.ck, b.checked?'1':null); ckPaint(); });
+  });
+  notes.forEach(function(t){
+    var v=ckRead('gps-note-'+t.dataset.note); if(v){t.value=v;}
+    grow(t);
+    t.addEventListener('input',function(){ ckStore('gps-note-'+t.dataset.note, t.value||null); grow(t); });
+  });
+  document.getElementById('ckReset').addEventListener('click',function(){
+    if(!window.confirm('Clear every tick and note on this page?'))return;
+    boxes.forEach(function(b){ b.checked=false; ckStore('gps-ck-'+b.dataset.ck,null); });
+    notes.forEach(function(t){ t.value=''; ckStore('gps-note-'+t.dataset.note,null); grow(t); });
+    ckPaint();
+  });
+  ckPaint();
 
   /* Restore look */
   try{
