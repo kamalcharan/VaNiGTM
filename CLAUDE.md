@@ -60,7 +60,10 @@ add a drill-down. Old routes redirect; do not add paths outside this hierarchy.
 - **LLM:** VPS/local OpenAI-compatible endpoint (`LLM_PRIMARY_URL`, dev =
   Ollama). Working dev model: `qwen3:8b` (pre-warm with `keep_alive:"24h"`;
   `llm.client.ts` appends `/no_think` and sends `Authorization: Bearer
-  $LLM_PRIMARY_KEY` only if set).
+  $LLM_PRIMARY_KEY` only if set). **Per tenant since 2026-09-15** —
+  `agent-core/llm.provider.ts` resolves endpoint/model/key from
+  `vani_llm_provider` (BYOK) or falls back to those env vars (platform).
+  `llm.client.ts` no longer holds the config as module constants.
 - No VaNi framework. No VaNiBase. No Supabase.
 - **n8n:** user's n8n infra is available and approved for agent-adjacent
   jobs where it fits (e.g. a headless site-render webhook). Business
@@ -83,7 +86,7 @@ backend/
                         ingestion, profile, pulse, research, sequence,
                         storyteller, vani
     server.ts         — Express entry; migrate.ts — manual migration runner
-  migrations/         — 001…192 (highest = 192)
+  migrations/         — 001…247 (highest = 247)
 frontend/
   src/
     app/(auth)        — login, register, forgot/reset password, invite
@@ -129,6 +132,11 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
   unverified.
 - A table's OWNER bypasses its own policies unless `FORCE ROW LEVEL SECURITY`
   is set. 18 tables were owned by `vanigtm_app` — migration 236 forced 17.
+- **The whole `vani_`/`vara_` spine (migrations 240–246) is UNFORCED** and was
+  never covered: 236 ran before 240. Migration 247 forces
+  `vani_llm_provider` only — forcing the rest would break Vara, whose
+  `vara.routes.ts` has 22 raw `pool.query` sites with no tenant context.
+  Full finding + the one query that checks it: `docs/db/rls-status.md` §11.
 - Reaching the DB outside a skill: `withTenantClient(pool, tenantId, fn)` from
   `db/query.ts`. Raw `pool.query` against an RLS table returns nothing.
 - `gt_events` has RLS **disabled by design** (migration 185) — it is the
@@ -249,7 +257,7 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
 
 ## Migrations — MANUAL ONLY, NO AUTO-MIGRATE
 - Never run automatically. Apply: `cd backend && npm run db:migrate`;
-  status: `npm run db:migrate -- --status`. Highest = **192**.
+  status: `npm run db:migrate -- --status`. Highest = **247**.
 - Discuss schema changes with the user first. Make migrations **idempotent
   and guarded** (IF NOT EXISTS; DO-block existence checks before copying
   from or altering legacy tables — vani_gtm_db was bootstrapped fresh and
@@ -324,6 +332,13 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
       the run feed + tokens tracked under the separate 'escalation'
       bucket. Validation failures (LLM_VALIDATION_FAILED) deliberately
       do NOT fail over — bad answers stay loud.
+      **This exception is PLATFORM-ONLY.** It does not extend to a tenant
+      on their own key (BYOK): failing their call over to Vikuna's
+      Anthropic key would bill us for their outage AND hide that their
+      endpoint is down. BYOK transport failures throw `LLM_BYOK_*` and
+      stay loud (user ruling, 2026-09-15). Enforced twice on purpose —
+      a posture check in `callLLM` and distinct error codes, so widening
+      the failover condition still cannot route BYOK onto our key.
 
 ## Running locally
 ```bash
@@ -443,6 +458,46 @@ verified; the full assessment flow passes end to end under a restricted role,
 and under the superuser too, so all of this ships safely before the cutover.
 Still to exercise under the restricted role: signup, login, skills executor.
 Runbook in §8 of the doc.
+
+## BYOK — a tenant's own model provider (built 2026-09-15)
+
+`vani_llm_provider` (migration 240) finally has code behind it. The column
+`credentials_enc` existed since August; nothing encrypted, read or wrote it.
+
+- **`agent-core/secret.crypto.ts`** — AES-256-GCM over `TENANT_SECRET_KEY`,
+  applied in Node so the key never reaches the database. Stored format is
+  `v1.<key_id>.<iv>.<tag>.<ciphertext>`; `key_id` is 8 hex of SHA-256 of the
+  key (not reversible to it) so rotation can find stale rows and a wrong-key
+  failure names both keys instead of saying "unable to authenticate data".
+  `TENANT_SECRET_KEY_PREVIOUS` opens both generations during a rotation.
+  **No default key** — a shared default is the same as no encryption while
+  looking exactly like encryption.
+- **`agent-core/llm.provider.ts`** — resolves a tenant to `platform` or
+  `byok`, 60s TTL cache, invalidated on write. Posture, not just a URL.
+- **`vani/llm-provider.service.ts` + `.routes.ts`** — `/api/v1/llm-provider`
+  (GET/PUT/DELETE, `POST /test`, `GET /catalogue`). **The key goes in and
+  never comes back**: responses carry a hint (`sk-a…7f3c`), never the
+  credential. An empty key field on save means "keep the stored one", which
+  is what lets a tenant change the model without re-typing the secret.
+- **`vani:llm_provider` onboarding step is now `enabled: true`.** It is
+  OPTIONAL by construction: an empty payload marks it done and leaves the
+  tenant on the platform model. Note `enabled` also means REQUIRED
+  (`requiredSteps` filters on it), so it must stay completable-by-skipping.
+
+Two rulings (user, 2026-09-15) that the code enforces, not just documents:
+1. **The daily token cap does not apply to BYOK.** It exists because Vikuna
+   pays. Usage is still RECORDED — metering is not capping, and "what did
+   this run cost" is a question a BYOK tenant will ask.
+2. **BYOK never fails over to Vikuna's Anthropic key.** See rule 12 below.
+
+Both are covered by `agent-core/tests/llm-byok.test.ts`, each with a platform
+CONTROL — without those, the tests would also pass if the cap or the failover
+were broken outright rather than correctly scoped.
+
+**Migration 247** forces RLS on `vani_llm_provider` and repoints
+`vani_current_tenant()` off the legacy `app.tenant_id` GUC. It deliberately
+does NOT force the rest of the `vani_`/`vara_` spine — that would break Vara.
+Read `docs/db/rls-status.md` §11 before touching any of it.
 
 ## Main VPS — known broken, DEFERRED (recorded 2026-08-17)
 

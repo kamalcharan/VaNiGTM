@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import {
-  User, Building2, Lock, Palette, Settings, Users, Monitor,
+  User, Building2, Lock, Palette, Settings, Users, Monitor, KeyRound,
 } from 'lucide-react';
 import s from './settings-page.module.css';
 import ProfileTab from './settings/profile-tab';
@@ -12,6 +12,7 @@ import AppearanceTab from './settings/appearance-tab';
 import PreferencesTab from './settings/preferences-tab';
 import TeamTab from './settings/team-tab';
 import SessionsTab from './settings/sessions-tab';
+import ModelProviderTab from './settings/model-provider-tab';
 
 const TABS = [
   { id: 'profile',     label: 'Profile',          Icon: User },
@@ -21,6 +22,7 @@ const TABS = [
   { id: 'preferences', label: 'Preferences',       Icon: Settings },
   { id: 'team',        label: 'Team',              Icon: Users },
   { id: 'sessions',    label: 'Sessions',          Icon: Monitor },
+  { id: 'model',       label: 'Model Provider',    Icon: KeyRound },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -59,6 +61,7 @@ export default function SettingsPage() {
           {activeTab === 'preferences' && <PreferencesTab />}
           {activeTab === 'team' && <TeamTab />}
           {activeTab === 'sessions' && <SessionsTab />}
+          {activeTab === 'model' && <ModelProviderTab />}
         </div>
       </div>
     </div>

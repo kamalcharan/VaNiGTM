@@ -20,6 +20,16 @@
  *          not get papered over by paid calls.
  *          Without ANTHROPIC_API_KEY behavior is unchanged: fail loudly.
  *
+ * BYOK: a tenant may declare their own provider (vani_llm_provider). When
+ *       they have, llm.provider resolves to their endpoint/model/key and the
+ *       posture changes two things beyond the URL, both ruled on by the user
+ *       (2026-09-15): the daily token CAP does not apply (it exists because
+ *       Vikuna pays; we do not throttle a bill we do not receive — usage is
+ *       still recorded), and the Claude FAILOVER above does not apply
+ *       (moving a tenant's work onto our paid API would bill us for their
+ *       outage and hide that their endpoint is down). BYOK transport
+ *       failures stay loud, which is rule 12's default.
+ *
  * Token budget: enforced per tenant per day via gt_tenant_context.
  *               vps and escalation usage tracked separately.
  *
@@ -32,13 +42,22 @@ import { z } from 'zod';
 import type { Pool } from 'pg';
 import { createTenantDb } from '../db';
 import { appendStep } from './agent.runner';
+import { resolveProvider, type ResolvedProvider } from './llm.provider';
 
-/* ── VPS LLM config ──────────────────────────────────────────────────────── */
+/* ── LLM config ─────────────────────────────────────────────────── */
 
-const VPS_URL   = process.env.LLM_PRIMARY_URL   ?? 'http://localhost:11434';
-const VPS_MODEL = process.env.LLM_PRIMARY_MODEL ?? 'qwen2.5';
-const VPS_TIMEOUT_MS = parseInt(process.env.LLM_PRIMARY_TIMEOUT_MS ?? '60000', 10);
-const VPS_KEY   = process.env.LLM_PRIMARY_KEY   || '';
+/*
+ * The endpoint, model and key now come from llm.provider.resolveProvider(),
+ * per tenant, rather than from module constants read once at import.
+ *
+ * They used to live here as four `process.env` reads. That was correct while
+ * every tenant shared Vikuna's VPS model, and became wrong the moment a
+ * tenant could bring their own: a constant resolved at import cannot vary by
+ * caller, so BYOK was unreachable without this move. The platform defaults
+ * are unchanged — the same four env vars, read in llm.provider's
+ * platformProvider(), so a tenant who has declared nothing gets exactly what
+ * they got before.
+ */
 
 /* ── Claude failover config ──────────────────────────────────────────────── */
 
@@ -212,16 +231,22 @@ async function recordTokenUsage(
 
 /* ── Primary: VPS LLM call ──────────────────────────────────────────────── */
 
-async function callVps(options: LLMCallOptions): Promise<LLMResult> {
+async function callEndpoint(
+  options: LLMCallOptions,
+  provider: ResolvedProvider,
+): Promise<LLMResult> {
   const { tenantId, pool, system, messages, maxTokens = 1000, temperature = 0.2 } = options;
 
   // Qwen3 thinking suppression: append /no_think unless already present.
-  const systemContent = system.includes('/no_think')
-    ? system
-    : `${system.trim()} /no_think`;
+  // Platform-only — it is a qwen-ism, and a tenant's GPT or Claude endpoint
+  // would receive it as a literal instruction in the system prompt.
+  const systemContent =
+    provider.posture === 'platform' && !system.includes('/no_think')
+      ? `${system.trim()} /no_think`
+      : system;
 
   const body = {
-    model:       VPS_MODEL,
+    model:       provider.model,
     max_tokens:  maxTokens,
     temperature,
     stream:      false,
@@ -232,24 +257,33 @@ async function callVps(options: LLMCallOptions): Promise<LLMResult> {
   };
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (VPS_KEY) headers['Authorization'] = `Bearer ${VPS_KEY}`;
+  if (provider.key) headers['Authorization'] = `Bearer ${provider.key}`;
+
+  // BYOK failures carry their own codes. Reusing LLM_VPS_* would make a
+  // tenant's endpoint being down read as OUR VPS being down in the run feed,
+  // and would trip the failover branch below, which must never fire for BYOK.
+  const unreachable = provider.posture === 'byok' ? 'LLM_BYOK_UNREACHABLE' : 'LLM_VPS_UNREACHABLE';
+  const errored     = provider.posture === 'byok' ? 'LLM_BYOK_ERROR'       : 'LLM_VPS_ERROR';
+  const who         = provider.posture === 'byok'
+    ? `your ${provider.providerCode} endpoint`
+    : 'the platform LLM';
 
   let response: Response;
   try {
-    response = await fetch(`${VPS_URL}/v1/chat/completions`, {
+    response = await fetch(`${provider.url}/chat/completions`, {
       method:  'POST',
       headers,
       body:    JSON.stringify(body),
-      signal:  AbortSignal.timeout(VPS_TIMEOUT_MS),
+      signal:  AbortSignal.timeout(provider.timeoutMs),
     });
   } catch (err) {
-    throw new Error(`LLM_VPS_UNREACHABLE: Cannot reach ${VPS_URL} — ${String(err)}`);
+    throw new Error(`${unreachable}: Cannot reach ${who} at ${provider.url} — ${String(err)}`);
   }
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
     throw new Error(
-      `LLM_VPS_ERROR: ${response.status} ${response.statusText} — ${detail.slice(0, 300)}`,
+      `${errored}: ${who} returned ${response.status} ${response.statusText} — ${detail.slice(0, 300)}`,
     );
   }
 
@@ -262,6 +296,8 @@ async function callVps(options: LLMCallOptions): Promise<LLMResult> {
   const inputTokens  = data.usage?.prompt_tokens     ?? 0;
   const outputTokens = data.usage?.completion_tokens ?? 0;
 
+  // Recorded on both postures. Metering is not capping: what a run cost is a
+  // question a BYOK tenant will ask, and the only place to answer it is here.
   await recordTokenUsage(pool, tenantId, inputTokens + outputTokens, 'vps');
 
   return { text, inputTokens, outputTokens, source: 'vps' };
@@ -340,27 +376,58 @@ async function noteFailover(
  * paths; usage is recorded under 'vps' or 'escalation' respectively.
  */
 export async function callLLM(options: LLMCallOptions): Promise<LLMResult> {
-  await checkTokenBudget(options.pool, options.tenantId, options.maxTokens ?? 1000);
+  const provider = await resolveProvider(options.pool, options.tenantId);
+
+  // The cap exists because Vikuna pays. On BYOK the tenant pays, so it does
+  // not apply — see the ruling in the header. Usage is still recorded inside
+  // callEndpoint either way.
+  if (provider.posture === 'platform') {
+    await checkTokenBudget(options.pool, options.tenantId, options.maxTokens ?? 1000);
+  }
 
   try {
-    return await callVps(options);
+    return await callEndpoint(options, provider);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+
+    // Failover is a PLATFORM affordance. A BYOK transport failure throws
+    // LLM_BYOK_* and never matches here, so the branch cannot fire for a
+    // tenant on their own key even by accident.
     const transportFailure =
       msg.startsWith('LLM_VPS_UNREACHABLE') || msg.startsWith('LLM_VPS_ERROR');
 
-    if (transportFailure && getAnthropic()) {
+    if (transportFailure && provider.posture === 'platform' && getAnthropic()) {
       await noteFailover(options.pool, options.runId, msg);
       return callClaude(options);
     }
-    throw err; // no key configured, or a non-transport failure → loud, as always
+    throw err; // no key configured, BYOK, or a non-transport failure → loud, as always
   }
 }
 
 /*
+ * ── WHY BYOK DOES NOT FAIL OVER ───────────────────────────────────────
+ *
+ * The approved rule-12 exception (CLAUDE.md) retries a failed call on
+ * Vikuna's Anthropic key. It was written in 2026-07 when Vikuna owned both
+ * the VPS and the failover key — spending a few of our tokens to get past our
+ * own machine being down is obviously right.
+ *
+ * A tenant's own endpoint is not our machine. Failing their call over to our
+ * paid API would bill US for THEIR outage, and — worse — hide the outage:
+ * they would see runs completing and never learn their endpoint was down,
+ * which is precisely the "can't tell degraded output from real output"
+ * failure rule 12 exists to prevent. The tenant is the only party who can fix
+ * their provider, so the error goes to them, loudly.
+ *
+ * Enforced twice on purpose: the posture check above, and distinct
+ * LLM_BYOK_* error codes so a future edit to that condition still cannot
+ * route BYOK traffic onto our key by accident. Ruled by the user 2026-09-15.
+ */
+
+/*
  * ── WHY TOKEN_BUDGET_EXCEEDED DOES NOT FAIL OVER ──────────────────────
  *
- * The budget check runs BEFORE callVps, so a budget stop never reaches the
+ * The budget check runs BEFORE callEndpoint, so a budget stop never reaches the
  * catch above — and that is correct, not an oversight.
  *
  * The approved failover exception (CLAUDE.md rule 12) is for TRANSPORT
@@ -378,7 +445,8 @@ export async function callLLM(options: LLMCallOptions): Promise<LLMResult> {
 /* ── Validated call (JSON with Zod) ─────────────────────────────────────── */
 
 /**
- * Call the VPS LLM and parse the response as JSON validated by a Zod schema.
+ * Call the LLM (platform or BYOK, per callLLM) and parse the response as
+ * JSON validated by a Zod schema.
  *
  * - Strips ```json fences before parsing.
  * - If jsonPath is provided (e.g. "slides"), extracts content between

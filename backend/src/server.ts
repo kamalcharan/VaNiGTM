@@ -16,6 +16,7 @@ import { createProfileRouter } from './skills/profile-skill/profile.routes';
 import { createStorytellerRouter } from './skills/storyteller-skill/storyteller.routes';
 import { createAssessmentRouter } from './skills/assessment-skill/assessment.routes';
 import { createVaraRouter } from './vara/vara.routes';
+import { createLlmProviderRouter } from './vani/llm-provider.routes';
 import { verifyAccessToken } from './auth/token.service';
 import { resolveAuth } from './auth/auth-context';
 
@@ -80,6 +81,7 @@ async function main() {
   // by design — it serves the widget inside the TENANT'S site, where no
   // platform session exists. See vara/vara.routes.ts for the threat model.
   app.use('/api/v1/vara', createVaraRouter(pool));
+  app.use('/api/v1/llm-provider', createLlmProviderRouter(pool));
   console.log('[VaNi-GTM] Routes mounted: /api/v1/auth, /onboarding, /tenant, /etl, /vani, /ingest, /profile, /storyteller, /assessment, /vara');
 
   // Build skill registry

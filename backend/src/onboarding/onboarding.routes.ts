@@ -32,6 +32,8 @@ import { Router } from 'express';
 import type { Pool, PoolClient } from 'pg';
 import { extractJwt } from '../auth/auth.routes';
 import { getLane, isStepOfLane, requiredSteps, type Lane } from './lanes';
+import { saveProviderWithin, ProviderError } from '../vani/llm-provider.service';
+import { invalidateProvider } from '../agent-core/llm.provider';
 
 /** Fields each step is allowed to write. Anything else in `data` is ignored. */
 const USER_PROFILE_FIELDS = [
@@ -177,9 +179,35 @@ async function applyStepPayload(
     return;
   }
 
-  // vani:team and vani:llm_provider stay disabled in the catalog (see
-  // lanes.ts for why) — isStepOfLane() rejects them before we ever get here.
-  // When they are enabled, their writers go here, inside this same transaction.
+  if (stepId === 'vani:llm_provider') {
+    // Optional by design: a tenant who skips this runs on Vikuna's model,
+    // which is the posture every tenant had before BYOK existed. An empty
+    // payload marks the step done without declaring anything — not a silent
+    // fallback, a deliberate choice the screen states.
+    const code = typeof data.provider_code === 'string' ? data.provider_code.trim() : '';
+    if (!code) return;
+
+    // Runs on the caller's client, so the provider row and the step mark
+    // commit together — the two-phase-commit rule in this file's header.
+    try {
+      await saveProviderWithin(client, tenantId, {
+        providerCode: code,
+        key:     typeof data.key === 'string' ? data.key.trim() : undefined,
+        model:   typeof data.model === 'string' ? data.model.trim() : undefined,
+        baseUrl: typeof data.base_url === 'string' ? data.base_url.trim() : undefined,
+      });
+    } catch (err) {
+      if (err instanceof ProviderError) {
+        throw new StepPayloadError(err.status, err.code, err.message);
+      }
+      throw err;
+    }
+    return;
+  }
+
+  // vani:team stays disabled in the catalog (see lanes.ts for why) —
+  // isStepOfLane() rejects it before we ever get here. When it is enabled,
+  // its writer goes here, inside this same transaction.
 }
 
 export function createOnboardingRouter(pool: Pool): Router {
@@ -307,6 +335,11 @@ export function createOnboardingRouter(pool: Pool): Router {
       const done = new Set(stored.rows.map((r: any) => r.step_id));
 
       await client.query('COMMIT');
+
+      // Only now is the new provider row visible to anyone else, so only now
+      // is it safe to drop the resolver's cached copy. Invalidating before
+      // the commit would let a concurrent call re-cache the old row.
+      if (step_id === 'vani:llm_provider') invalidateProvider(jwt.tenant_id);
 
       const next = requiredSteps(lane).find((s) => !done.has(s.step_id));
 

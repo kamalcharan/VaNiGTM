@@ -114,10 +114,13 @@ const VANI_LANE: Lane = {
     //     spine (/auth/team, /auth/invite) and is finished there. This step is
     //     the unused vani_membership route to the same outcome; enable it only
     //     if membership moves to the platform spine.
-    //   - vani:llm_provider — a default provider is in force server-side. BYOK
-    //     needs vani_llm_provider.credentials_enc and an encryption path,
-    //     which nothing implements yet. Enabling it now would gate tenants
-    //     behind an input that saves nowhere.
+    //
+    // vani:llm_provider is ENABLED as of 2026-09-15. The encryption path it
+    // was waiting for exists (agent-core/secret.crypto.ts), the resolver
+    // reads it per tenant (agent-core/llm.provider.ts), and
+    // vani_llm_provider is FORCE ROW LEVEL SECURITY (migration 247). The
+    // step is OPTIONAL: submitting it empty marks it done and leaves the
+    // tenant on Vikuna's model, which is where every tenant already was.
     {
       step_id: 'vani:domain',
       title: 'Your domain',
@@ -137,7 +140,7 @@ const VANI_LANE: Lane = {
       title: 'Your model provider',
       summary: 'Bring your own key. Declared once; every agent uses it.',
       story: 'VN-13',
-      enabled: false,
+      enabled: true,
     },
   ],
 };
