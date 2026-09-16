@@ -28,12 +28,17 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { DataBoundary, SkeletonRows } from '@/platform/feedback';
 import type { SkillResult } from '@/lib/useSkill';
-import { UX_DRAFT_KEY, type DraftJd, type PublishedFacts } from '../mock-data';
+import {
+  UX_DRAFT_KEY, EMPLOYMENT_TYPES, workModeLabel,
+  type DraftJd, type PublishedFacts,
+} from '../mock-data';
+import { ResearchCard } from './ResearchCard';
 import u from '@/platform/shell/ui.module.css';
 import s from '../vara-onboarding.module.css';
 
@@ -76,6 +81,9 @@ function VaraOnboardingRunnerInner() {
   const router = useRouter();
   const [family, setFamily] = useState<string | null>(null);
   const [otherFamily, setOtherFamily] = useState('');
+  /** Which published JD is expanded. One at a time — a list of open panels
+   *  is a worse way to compare two JDs than opening each in turn. */
+  const [openJd, setOpenJd] = useState<string | null>(null);
   const [title, setTitle] = useState('');
 
   const emptyMode = useSearchParams().get('empty') === '1';
@@ -87,21 +95,34 @@ function VaraOnboardingRunnerInner() {
         const r = await apiFetch<OnboardingContext>(API.vara.onboardingContext);
         return { success: true, skill: 'vara', function: 'onboarding.context', data: r };
       } catch (err) {
-        // NO_INDUSTRY and TENANT_NOT_PROVISIONED both come back as ApiError;
-        // surface them through the boundary's error copy rather than as
-        // silent empties. The boundary shows the message with a retry, which
-        // is the right shape for a "go set your industry" pointer.
+        // NO_INDUSTRY and TENANT_NOT_PROVISIONED both come back as ApiError.
+        // They are still thrown — the query genuinely did not resolve — but
+        // they are intercepted BEFORE the boundary below (see SETUP_GAPS)
+        // rather than rendered as failures. The earlier version let the
+        // boundary handle them "because the message points at Smart Profile",
+        // which was wrong: the boundary's only affordance is Try again, and
+        // retrying cannot set an industry. It failed identically forever, and
+        // the Install screen linked here, so a tenant missing an industry
+        // went in a circle.
         if (err instanceof ApiError) throw err;
         throw new Error('Could not read onboarding context');
       }
     },
   });
 
+  // A setup gap is not a failure. These two refusals mean the workspace has
+  // not declared something Vara reads — the answer is a link to where it is
+  // declared, never a retry button.
+  const gap = ctx.error instanceof ApiError ? SETUP_GAPS[ctx.error.code ?? ''] : undefined;
+
   return (
     <div className={s.wrap}>
       <div className={u.eyebrow}>// AGENTS · VARA · ONBOARDING</div>
       <h1 className={u.h1}>One JD from live</h1>
 
+      {gap ? (
+        <SetupGap gap={gap} message={(ctx.error as ApiError).message} />
+      ) : (
       <DataBoundary query={ctx} label="onboarding context" skeleton={<SkeletonRows rows={4} />}>
         {(c: OnboardingContext) => {
           // Empty mode is a client-side simulation: keep everything real
@@ -174,7 +195,8 @@ function VaraOnboardingRunnerInner() {
                   </p>
                   <div className={s.jdList}>
                     {c.published_jds.map((jd) => (
-                      <div key={jd.id} className={s.jdRow}>
+                      <div key={jd.id} className={s.jdItem}>
+                        <div className={s.jdRow}>
                         <div className={s.jdRowMain}>
                           <div className={s.jdRowTitle}>
                             {jd.title} <span className={s.jdRowVer}>v{jd.version}</span>
@@ -188,10 +210,20 @@ function VaraOnboardingRunnerInner() {
                           </div>
                         </div>
                         <div className={s.jdRowActions}>
+                          <button
+                            type="button"
+                            className={s.ghost}
+                            aria-expanded={openJd === jd.id}
+                            onClick={() => setOpenJd(openJd === jd.id ? null : jd.id)}
+                          >
+                            {openJd === jd.id ? 'Hide' : 'View'}
+                          </button>
                           <button type="button" className={s.ghost} onClick={() => duplicate(jd)}>
                             Duplicate
                           </button>
                         </div>
+                        </div>
+                        {openJd === jd.id && <JdDetail jd={jd} />}
                       </div>
                     ))}
                   </div>
@@ -202,7 +234,15 @@ function VaraOnboardingRunnerInner() {
               <div className={s.card}>
                 <div className={s.cardHead}>
                   <h2 className={s.cardTitle}>What Vara already knows about you</h2>
-                  <span className={s.cardMeta}>inherited from Smart Profile</span>
+                  {/* "inherited from Smart Profile" stopped being the whole
+                      truth once role playbooks appeared below it, but the first
+                      replacement — "declared · researched" — was worse: Charan
+                      read it as a CLAIM that something had been researched,
+                      directly above a line saying nothing had been. A meta
+                      label names what the card holds; it must not assert state.
+                      The ROLE PLAYBOOKS line is the only thing that says what
+                      is and is not researched. */}
+                  <span className={s.cardMeta}>what Vara has · and where from</span>
                 </div>
                 <p className={s.cardWhat}>
                   Correct any of this in the Smart Profile — Vara does not ask you
@@ -219,6 +259,11 @@ function VaraOnboardingRunnerInner() {
                     </div>
                   </div>
                 </div>
+                {/* Everything above is declared. This is the researched half —
+                    and it says so even when the answer is "nothing has been
+                    researched", which is the state the doorway used to present
+                    as knowledge. */}
+                <ResearchCard industryRaw={c.industry.raw} variant="provenance" />
               </div>
 
               {/* Role family ─────────────────────────────────────────── */}
@@ -233,13 +278,15 @@ function VaraOnboardingRunnerInner() {
                   Pick the closest family — Vara starts you with its playbook so the
                   first JD is a tune-and-publish, not a build-from-scratch.
                 </p>
-                {(emptyMode || c.families.length === 0) && (
-                  <div className={s.familyHint} style={{ marginBottom: 10, fontStyle: 'italic' }}>
-                    No playbooks seeded for <b>{c.industry.raw}</b> yet — start with a
-                    manual skeleton (default weights, empty knockouts). Your first JD
-                    shapes the family; the second seeds the family defaults.
-                  </div>
-                )}
+                {/* One line used to cover every reason this list can be empty.
+                    ResearchCard asks the server which one it is, and offers the
+                    retry when there is one to offer. */}
+                {/* Not gated on an empty list any more. The case that mattered
+                    — three seeded families that were never researched — has a
+                    FULL list, so an empty-state check could never catch it.
+                    ResearchCard returns null once the industry is really
+                    researched. */}
+                <ResearchCard industryRaw={c.industry.raw} variant="action" />
                 <div className={s.familyList}>
                   {shownFamilies.map((f) => (
                     <button
@@ -368,6 +415,159 @@ function VaraOnboardingRunnerInner() {
           );
         }}
       </DataBoundary>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A published JD, read-only.
+ *
+ * Until now the only thing you could do with a published JD was Duplicate it
+ * — so the contract a candidate will actually be scored against was
+ * write-once and unreadable. Everything here already arrives in
+ * /vara/onboarding/context; this is a rendering of data the client had all
+ * along, not a new read.
+ *
+ * Read-only on purpose. Editing means a new version (POST /vara/jd/:id/version,
+ * Phase 3), and an editable-looking panel that silently discards changes would
+ * be worse than no panel.
+ */
+function JdDetail({ jd }: { jd: ContextPublishedJd }) {
+  const f = jd.facts;
+  const musthaves = f.musthaves ?? [];
+  const knockouts = f.knockouts ?? [];
+  const locations = f.locations ?? [];
+  const employment = EMPLOYMENT_TYPES.find((t) => t.value === f.employment_type)?.label;
+
+  return (
+    <div className={s.jdDetail}>
+      <div className={s.jdDetailHead}>
+        <span className={`${u.tag} ${u.tagDim}`}>v{jd.version} · published</span>
+        <span className={s.jdDetailNote}>
+          Read-only — publishing a change creates a new version, which arrives with editing.
+        </span>
+      </div>
+
+      {f.one_liner && <p className={s.jdDetailLede}>{f.one_liner}</p>}
+
+      {f.description && (
+        <div className={s.jdDetailSection}>
+          <div className={s.jdSectionH}>Description · what candidates read</div>
+          {/* Preserve the author's line breaks; this is prose they wrote, not
+              a field. No markdown rendering — an unrendered ** would be worse
+              than plain text, and a renderer is a dependency this does not need. */}
+          <p className={s.jdDetailDesc}>{f.description}</p>
+        </div>
+      )}
+
+      {/* Only render the employment block when something was stated. An
+          all-em-dash card teaches nothing; its absence says "not stated". */}
+      {(employment || f.onsite_pct !== undefined || locations.length > 0) && (
+        <div className={s.jdDetailSection}>
+          <div className={s.jdSectionH}>Employment</div>
+          <div className={s.jdDetailFacts}>
+            {employment && <span className={s.jdDetailFact}>{employment}</span>}
+            {f.onsite_pct !== undefined && (
+              <span className={s.jdDetailFact}>{workModeLabel(f.onsite_pct)}</span>
+            )}
+            {locations.map((l) => <span key={l} className={s.jdDetailFact}>{l}</span>)}
+          </div>
+        </div>
+      )}
+
+      <div className={s.jdDetailSection}>
+        <div className={s.jdSectionH}>Must-haves · weighted</div>
+        {musthaves.length === 0
+          ? <div className={s.jdEmpty}>none recorded</div>
+          : musthaves.map((m, i) => (
+            <div key={i} className={s.weightRow}>
+              <div>
+                <div className={s.weightName}>{m.name}</div>
+                <div className={s.weightBar}>
+                  <div className={s.weightFill} style={{ width: `${m.weight}%` }} />
+                </div>
+              </div>
+              <div className={s.weightVal}>{m.weight} wt</div>
+            </div>
+          ))}
+      </div>
+
+      <div className={s.jdDetailSection}>
+        <div className={s.jdSectionH}>Knockouts · deterministic, never scored</div>
+        {knockouts.length === 0
+          ? <div className={s.jdEmpty}>none recorded</div>
+          : knockouts.map((k, i) => (
+            <div key={i} className={s.knockRow}>
+              <span className={s.knockLabel}>{k.label}</span>
+              <span className={s.knockRule}>{k.rule}</span>
+            </div>
+          ))}
+      </div>
+
+      <div className={s.jdDetailSection}>
+        <div className={s.jdSectionH}>Threshold &amp; band</div>
+        <div className={s.jdLine}>
+          Handover threshold:{' '}
+          {f.threshold !== undefined ? `${f.threshold}%` : <span className={s.jdEmpty}>—</span>}
+        </div>
+        <div className={s.jdLine}>
+          Comp band: {f.band ?? <span className={s.jdEmpty}>—</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The two refusals that mean "something upstream is undeclared", and where
+ * each is actually declared. Keyed by the API's error code so the copy stays
+ * with the UI and the diagnosis stays with the server.
+ */
+const SETUP_GAPS: Record<string, { title: string; href: string; cta: string; why: string }> = {
+  NO_INDUSTRY: {
+    title: 'Vara needs your industry first',
+    href: '/smart-profile',
+    cta: 'Set your industry →',
+    why:
+      'It selects the starting playbook — the must-haves, knockouts and titles '
+      + 'Vara proposes for each role family. Without it there is nothing to '
+      + 'propose, so this step cannot open.',
+  },
+  TENANT_NOT_PROVISIONED: {
+    title: 'Complete the Domain step first',
+    href: '/smart-profile',
+    cta: 'Go to the Domain step →',
+    why:
+      'The Domain step provisions your workspace on the platform spine, which '
+      + 'is what every agent — Vara included — is registered against.',
+  },
+};
+
+/**
+ * A setup gap, rendered as an instruction rather than an error.
+ *
+ * Deliberately NOT a DataBoundary error: that state offers Try again, and no
+ * amount of retrying declares an industry. The server's own message is shown
+ * verbatim underneath so the UI never drifts from the API's diagnosis (rule
+ * 12 — the real cause stays visible), but the affordance is the link.
+ */
+function SetupGap({
+  gap,
+  message,
+}: {
+  gap: { title: string; href: string; cta: string; why: string };
+  message: string;
+}) {
+  return (
+    <div className={s.setupGap}>
+      <span className={`${u.tag} ${u.tagDim} ${s.setupGapBadge}`}>Setup needed</span>
+      <h2 className={s.setupGapTitle}>{gap.title}</h2>
+      <p className={s.setupGapWhy}>{gap.why}</p>
+      {/* The server's own words, kept verbatim so the UI never drifts from the
+          API's diagnosis (rule 12 — the real cause stays visible). */}
+      <p className={s.setupGapSaid}>{message}</p>
+      <Link href={gap.href} className={s.setupGapCta}>{gap.cta}</Link>
     </div>
   );
 }

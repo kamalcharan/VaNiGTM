@@ -85,7 +85,11 @@ export const API = {
     },
   },
 
-  /** The tenant's rows in the vani_ platform spine. */
+  /**
+   * The tenant's own platform surfaces. The embed channel lives here, not
+   * under an agent: one tenant pastes one tag and every live agent is
+   * reachable through it.
+   */
   tenant: {
     domains: {
       method: 'GET',
@@ -94,9 +98,47 @@ export const API = {
       description:
         'Domains declared for this workspace (vani_tenant_domain, bridged from the vn_ tenant by slug). Empty before the vani:domain step completes.',
     },
+    embed: {
+      method: 'GET',
+      path: '/api/v1/tenant/embed',
+      auth: true,
+      description:
+        'Everything the Install screen renders in one call: the paste-ready snippet, which agents are live on this workspace, and per declared domain the id, embed_origins allowlist and boot_pings (which origins have actually booted the widget).',
+    },
+    originsUpdate: {
+      method: 'PATCH',
+      path: '/api/v1/tenant/domains/:id/origins',
+      auth: true,
+      description:
+        'Admin-only. Add/remove embed origins on one domain. Idempotent by construction — a no-op edit reports changed:false and writes no audit row. Removing an origin drops its boot_pings entry in the same statement.',
+    },
   },
 
-  /** Vara — activation and (next step) install. */
+  /**
+   * The visitor-facing half of the embed channel. PUBLIC — no session, called
+   * from inside the tenant's own page, so these are the only endpoints in this
+   * registry reached without `apiFetch`. They are declared here anyway: the
+   * registry is the single list of what this app talks to, and an endpoint kept
+   * out of it because its transport differs is an endpoint nobody can find.
+   */
+  publicEmbed: {
+    boot: {
+      method: 'POST',
+      path: '/api/v1/embed/boot',
+      auth: false,
+      description:
+        'The widget\'s first call from the tenant\'s page. Verifies the embed token and the parent origin against the allowlist, records the boot ping, and returns the tenant name, each live agent\'s offers and visitor intents, and a 30-minute visitor session.',
+    },
+    intent: {
+      method: 'POST',
+      path: '/api/v1/embed/intent',
+      auth: false,
+      description:
+        'Tier 2 routing: free text from a visitor to one declared intent. Returns routed | disambiguated | unmatched — three visible outcomes, never a silent best guess. Requires the visitor session from boot, not the embed token.',
+    },
+  },
+
+  /** Vara — activation and its own workspace surfaces. */
   vara: {
     state: {
       method: 'GET',

@@ -345,3 +345,257 @@
   font-size: 13px; color: var(--color-muted);
   margin: 0 0 14px;
 }
+
+/* ── Setup gap ─────────────────────────────────────────────────────────────
+ * NO_INDUSTRY / TENANT_NOT_PROVISIONED. Dashed border rather than the solid
+ * card, matching the other "nothing here yet, here is what to do" states —
+ * this is an instruction, not a failure, and it must not read like the
+ * boundary's error card (which offers a retry that cannot help). */
+.setupGap {
+  border: 1px dashed var(--glass-border);
+  border-radius: 12px;
+  padding: 18px 20px 20px;
+  background: var(--color-bg);
+  max-width: 640px;
+}
+/* u.tag is block-level on its own; without this the badge stretches the card. */
+.setupGapBadge { display: inline-flex; align-items: center; }
+
+.setupGapTitle {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  margin: 10px 0 8px;
+}
+.setupGapWhy {
+  font-size: 13px;
+  color: var(--color-muted);
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+.setupGapSaid {
+  font-size: 12px;
+  color: var(--color-muted);
+  line-height: 1.6;
+  margin: 0 0 14px;
+  padding-left: 10px;
+  border-left: 2px solid var(--glass-border);
+}
+.setupGapCta {
+  display: inline-flex;
+  align-items: center;
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.setupGapCta:hover { text-decoration: underline; }
+
+/* ── Employment contract controls (JD Studio panel) ───────────────────────
+ * The role's shape — type, work mode, locations. Typed, not conversed: these
+ * are declarations with exact answers, and a slider states "3 days in" better
+ * than any prose a model could infer it from. */
+
+.suggChipOn {
+  composes: suggChip;
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.locChip {
+  padding: 5px 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+.locChip:hover { border-color: var(--gold); color: var(--gold); }
+
+.modeLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin: 14px 0 6px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.modeValue { color: var(--color-text); font-weight: 600; }
+
+.slider {
+  width: 100%;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+.sliderEnds {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--color-muted);
+  opacity: 0.75;
+}
+
+.locAdd {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.locAdd .textInput { flex: 1 1 auto; }
+
+/* ── Published JD, read-only ──────────────────────────────────────────────
+ * Expanded under its row. Everything here already arrived in
+ * /vara/onboarding/context — the panel renders it, it does not fetch it. */
+.jdItem + .jdItem { margin-top: 6px; }
+
+.jdDetail {
+  margin: 2px 0 4px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--glass-border);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  background: var(--color-bg);
+}
+.jdDetailHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.jdDetailNote {
+  font-size: 11.5px;
+  color: var(--color-muted);
+  opacity: 0.85;
+}
+.jdDetailLede {
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+.jdDetailSection + .jdDetailSection { margin-top: 14px; }
+
+.jdDetailFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.jdDetailFact {
+  padding: 4px 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--color-text);
+}
+
+/* The posting. Prose, not a field — so it gets reading measure and keeps the
+   author's line breaks. */
+.descBox {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+}
+.descBox:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.jdDetailDesc {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  max-width: 68ch;
+}
+
+/* ── Research card ────────────────────────────────────────────────────────
+   Shown when Vara has no playbooks for the tenant's industry. Tokens only —
+   this screen inherits VaNiGTM's --color-* aliases from globals.css, and an
+   undefined custom property makes the browser discard the whole declaration
+   rather than fall back. */
+
+.research {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 10px;
+}
+
+.researchIdle   { border-left-color: var(--tx3); }
+.researchBusy   { border-left-color: var(--ac); }
+.researchFailed { border-left-color: var(--bad); }
+
+.researchBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 240px;
+  flex: 1 1 320px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.researchBody b { color: var(--tx); font-weight: 600; }
+
+/* The server's own words, including an upstream error. Wraps rather than
+   truncates — a cause the tenant cannot read is no better than none. */
+.researchDetail { color: var(--tx2); word-break: break-word; }
+
+/* Always present: no state here blocks the tenant, and saying so stops the
+   card reading as an error when it is only a "not yet". */
+.researchNote { color: var(--tx3); font-size: 12px; }
+
+/* Provenance line inside "What Vara already knows about you". Deliberately
+   quiet — it is a fact about the data, not a warning. */
+.provenance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--tx2);
+}
+
+.provenanceLabel {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tx3);
+}
+
+/* Retry on the research card's failure state. Bordered, not filled: re-asking
+   is cheap and ordinary, and it must not compete with Publish. */
+.btnRetry {
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--color-fg);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btnRetry:hover { border-color: var(--gold); }

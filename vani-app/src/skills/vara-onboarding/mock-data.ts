@@ -215,10 +215,60 @@ export const UX_PUBLISHED_JDS_KEY = 'vara-ux-published-jds';
  *  hydrating so a refresh doesn't re-hydrate stale state. */
 export const UX_DRAFT_KEY = 'vara-ux-jd-draft';
 
+/**
+ * Employment shape. `work_mode` is derived from `onsite_pct` rather than stored
+ * beside it — one source of truth, so the two can never disagree. 0 = fully
+ * remote, 100 = fully on-site, anything between is hybrid, which is why the
+ * control is a slider and not three radio buttons: hybrid is the common case
+ * and "3 days in" is a percentage, not a fourth category.
+ */
+export type EmploymentType = 'full_time' | 'part_time' | 'freelance';
+
+export const EMPLOYMENT_TYPES: { value: EmploymentType; label: string }[] = [
+  { value: 'full_time', label: 'Full time' },
+  { value: 'part_time', label: 'Part time' },
+  { value: 'freelance', label: 'Freelance / contract' },
+];
+
+/** The words a human uses for a percentage. Ends are absolutes, not "95% ish". */
+export function workModeLabel(onsitePct: number | undefined): string {
+  if (onsitePct === undefined) return '—';
+  if (onsitePct <= 0) return 'Fully remote';
+  if (onsitePct >= 100) return 'Fully on-site';
+  return `Hybrid — ${onsitePct}% on-site`;
+}
+
 export interface PublishedFacts {
   one_liner?: string;
+  /**
+   * The human-readable posting — what a candidate reads before applying.
+   *
+   * Distinct from the scoring contract (must_haves / knockouts / threshold),
+   * which is what Vara evaluates against. Both are "the JD", and keeping them
+   * in one versioned object is deliberate: a posting that promises something
+   * the weights do not reflect is how a candidate ends up scored against
+   * something they never read.
+   *
+   * Versioned with the rest of facts, because it is what the candidate saw.
+   */
+  description?: string;
   band?: string;
   threshold?: number;
+  /**
+   * The employment CONTRACT — what the role is. Versioned with everything else
+   * in vara_jd_version.facts, because a candidate was scored against it.
+   *
+   * Note what is deliberately NOT here: the number of open positions. That is
+   * operational state, and vara_jd_version is immutable — filling a seat must
+   * not mint v2 and strand every in-flight application on a superseded
+   * version. Positions land as their own mutable table in Phase 5, where
+   * vara_application can point at the one a candidate applied to.
+   */
+  employment_type?: EmploymentType;
+  /** 0 = fully remote · 100 = fully on-site. Undefined = not stated. */
+  onsite_pct?: number;
+  /** Where the role sits. Free text per entry — "Hyderabad", "Remote (India)". */
+  locations?: string[];
   musthaves: { name: string; weight: number }[];
   knockouts: { label: string; rule: string }[];
 }
