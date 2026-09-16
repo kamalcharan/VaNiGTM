@@ -751,6 +751,41 @@ export const API = {
     },
   },
 
+  /* ── Model provider (BYOK) ────────────────────────── */
+
+  llmProvider: {
+    catalogue: {
+      method: 'GET',
+      path: '/api/v1/llm-provider/catalogue',
+      auth: true,
+      description: 'List the model providers a tenant can choose from',
+    },
+    get: {
+      method: 'GET',
+      path: '/api/v1/llm-provider',
+      auth: true,
+      description: 'Current model provider for this workspace (never returns the key)',
+    },
+    save: {
+      method: 'PUT',
+      path: '/api/v1/llm-provider',
+      auth: true,
+      description: 'Declare or update this workspace\'s own model provider',
+    },
+    test: {
+      method: 'POST',
+      path: '/api/v1/llm-provider/test',
+      auth: true,
+      description: 'Send one real completion to the declared provider and report what happened',
+    },
+    remove: {
+      method: 'DELETE',
+      path: '/api/v1/llm-provider',
+      auth: true,
+      description: 'Drop the declared provider and return to the platform model',
+    },
+  },
+
   /* ── Skills (generic) ─────────────────────────────── */
 
   skills: {

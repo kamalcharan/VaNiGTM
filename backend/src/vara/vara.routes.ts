@@ -30,23 +30,51 @@ import { Router } from 'express';
 import type { Pool, PoolClient } from 'pg';
 import jwt from 'jsonwebtoken';
 import { extractJwt } from '../auth/auth.routes';
+import { slugifyIndustry } from '../vani/industry-slug';
+import { withTenantClient } from '../db';
 
 /**
- * The tenant industry (a VARCHAR on vn_tenant_profiles) is free text: "Technology
- * & SaaS", "technology - saas", "Tech / SaaS" — all mean the same industry, and
- * vani_domain_pack.domain uses a canonical slug. This is the deterministic
- * mapping between the two: lowercase, collapse non-alnum runs to '-', trim.
- * Kept small and pure so a seed migration and a runtime lookup use the same
- * form without having to import anything.
+ * ── WHY EVERY QUERY HERE RUNS ON A TENANT-SCOPED CLIENT ───────────────────
+ *
+ * This file used 22 raw `pool.query` calls. A pool connection carries no
+ * tenant GUC, so `vani_current_tenant()` returns NULL and any RLS policy on
+ * these tables matches nothing. That was invisible only because the vani_/
+ * vara_ tables are not FORCE ROW LEVEL SECURITY and the app owns them, so the
+ * owner bypassed its own policies — isolation rested entirely on the
+ * `WHERE tenant_id = $1` in each query.
+ *
+ * Correct as far as it goes, and one forgotten WHERE clause away from a
+ * cross-tenant read with nothing behind it. Now every query runs inside
+ * `withTenantClient`, so the policies apply as a second lock and forcing RLS
+ * on this spine becomes a migration rather than a rewrite.
+ *
+ * The WHERE clauses stay. Belt and braces, as everywhere else in this repo.
  */
-function slugifyIndustry(raw: string): string {
-  return raw
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')   // strip combining marks
-    .replace(/[&/]/g, ' ')             // ampersand and slash become word breaks, not "and"
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+
+/**
+ * A failure the caller can act on, thrown from inside a tenant transaction.
+ *
+ * Needed because a handler cannot `return res.status(...)` from inside the
+ * withTenantClient callback — that returns from the CALLBACK, the transaction
+ * commits, and the handler carries on as if nothing happened. Throwing unwinds
+ * the transaction properly (ROLLBACK) and the handler's catch maps it to its
+ * status. Same shape as onboarding.routes' StepPayloadError, for the same
+ * reason.
+ */
+class VaraError extends Error {
+  constructor(readonly status: number, readonly code: string, message: string) {
+    super(message);
+  }
+}
+
+/** Map a thrown VaraError onto its response; anything else is ours. */
+function fail(res: any, err: unknown, scope: string, fallback: { code: string; message: string }) {
+  if (err instanceof VaraError) {
+    res.status(err.status).json({ error: { code: err.code, message: err.message } });
+    return;
+  }
+  console.error(`[Vara:${scope}]`, err);
+  res.status(500).json({ error: fallback });
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
@@ -61,9 +89,14 @@ interface EmbedTokenClaims {
   scope: 'vara-embed';
 }
 
-/** The vn_ → vani_ slug bridge, pool flavour (reads only, no provisioning). */
-async function vaniTenantFor(pool: Pool, vnTenantId: string): Promise<{ id: string; name: string } | null> {
-  const r = await pool.query(
+/**
+ * The vn_ → vani_ slug bridge (reads only, no provisioning).
+ *
+ * Takes the tenant-scoped client, not the pool: vani_tenant has an RLS policy,
+ * and a raw pool connection would read it with no tenant context.
+ */
+async function vaniTenantFor(db: PoolClient, vnTenantId: string): Promise<{ id: string; name: string } | null> {
+  const r = await db.query(
     `SELECT vt.id, vt.name FROM vani_tenant vt
        JOIN vn_tenants t ON t.slug = vt.slug
       WHERE t.id = $1`,
@@ -81,14 +114,14 @@ async function vaniTenantFor(pool: Pool, vnTenantId: string): Promise<{ id: stri
  * each item this list omits is named in the channels doc as arriving with its
  * feature. Grows with the build; never shrinks.
  */
-async function readinessChecklist(pool: Pool, vaniTenantId: string) {
-  const domains = await pool.query(
+async function readinessChecklist(db: PoolClient, vaniTenantId: string) {
+  const domains = await db.query(
     `SELECT domain, purpose, embed_origins FROM vani_tenant_domain WHERE tenant_id = $1`,
     [vaniTenantId],
   );
   const candidate = domains.rows.filter((d: any) => d.purpose === 'candidate');
   const origins = candidate.flatMap((d: any) => d.embed_origins ?? []);
-  const jds = await pool.query(
+  const jds = await db.query(
     `SELECT 1 FROM vara_jd WHERE tenant_id = $1 AND status = 'published' LIMIT 1`,
     [vaniTenantId],
   );
@@ -129,24 +162,23 @@ export function createVaraRouter(pool: Pool): Router {
         res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
         return;
       }
-      const vani = await vaniTenantFor(pool, auth.tenant_id);
-      if (!vani) {
-        res.status(409).json({
-          error: { code: 'TENANT_NOT_PROVISIONED', message: 'Complete the Domain step first' },
-        });
-        return;
-      }
-      const checklist = await readinessChecklist(pool, vani.id);
-      const sub = await pool.query(
-        `SELECT ta.status FROM vani_tenant_agent ta
-           JOIN vani_agent a ON a.id = ta.agent_id AND a.code = 'vara'
-          WHERE ta.tenant_id = $1`,
-        [vani.id],
-      );
-      res.json({ subscription: sub.rows[0]?.status ?? 'none', checklist });
+      const out = await withTenantClient(pool, auth.tenant_id, async (db) => {
+        const vani = await vaniTenantFor(db, auth.tenant_id);
+        if (!vani) {
+          throw new VaraError(409, 'TENANT_NOT_PROVISIONED', 'Complete the Domain step first');
+        }
+        const checklist = await readinessChecklist(db, vani.id);
+        const sub = await db.query(
+          `SELECT ta.status FROM vani_tenant_agent ta
+             JOIN vani_agent a ON a.id = ta.agent_id AND a.code = 'vara'
+            WHERE ta.tenant_id = $1`,
+          [vani.id],
+        );
+        return { subscription: sub.rows[0]?.status ?? 'none', checklist };
+      });
+      res.json(out);
     } catch (err: any) {
-      console.error('[Vara:status]', err);
-      res.status(500).json({ error: { code: 'FETCH_FAILED', message: 'Could not read Vara state' } });
+      fail(res, err, 'status', { code: 'FETCH_FAILED', message: 'Could not read Vara state' });
     }
   });
 
@@ -167,49 +199,49 @@ export function createVaraRouter(pool: Pool): Router {
         return;
       }
 
-      const vani = await vaniTenantFor(pool, auth.tenant_id);
-      if (!vani) {
-        res.status(409).json({
-          error: {
-            code: 'TENANT_NOT_PROVISIONED',
-            message: 'Complete the Domain step first — it provisions the workspace on the platform spine.',
-          },
-        });
-        return;
-      }
+      // One transaction: the upsert and its audit row commit together, or
+      // neither does. Previously two independent pool.query calls, so a crash
+      // between them left an activation with no audit trail.
+      const out = await withTenantClient(pool, auth.tenant_id, async (db) => {
+        const vani = await vaniTenantFor(db, auth.tenant_id);
+        if (!vani) {
+          throw new VaraError(409, 'TENANT_NOT_PROVISIONED',
+            'Complete the Domain step first — it provisions the workspace on the platform spine.');
+        }
 
-      const agent = await pool.query(`SELECT id FROM vani_agent WHERE code = 'vara'`);
-      const agentId = agent.rows[0]?.id;
-      if (!agentId) {
-        res.status(500).json({ error: { code: 'AGENT_MISSING', message: 'Vara is not in the agent registry' } });
-        return;
-      }
+        const agent = await db.query(`SELECT id FROM vani_agent WHERE code = 'vara'`);
+        const agentId = agent.rows[0]?.id;
+        if (!agentId) {
+          throw new VaraError(500, 'AGENT_MISSING', 'Vara is not in the agent registry');
+        }
 
       // Decision 2026-08-17: a correct activation code marks the subscription
       // `activating` — code accepted, Vara onboarding pending. Going `live` is
       // the ONBOARDING lane's finish line (flow being designed), not this
       // call's. The readiness checklist moves there with it; an already-live
       // subscription is left alone.
-      const row = await pool.query(
-        `INSERT INTO vani_tenant_agent (tenant_id, agent_id, status)
-         VALUES ($1, $2, 'activating')
-         ON CONFLICT (tenant_id, agent_id) DO UPDATE
-           SET status = CASE WHEN vani_tenant_agent.status = 'live'
-                             THEN 'live' ELSE 'activating' END
-         RETURNING status, activated_at`,
-        [vani.id, agentId],
-      );
+        const row = await db.query(
+          `INSERT INTO vani_tenant_agent (tenant_id, agent_id, status)
+           VALUES ($1, $2, 'activating')
+           ON CONFLICT (tenant_id, agent_id) DO UPDATE
+             SET status = CASE WHEN vani_tenant_agent.status = 'live'
+                               THEN 'live' ELSE 'activating' END
+           RETURNING status, activated_at`,
+          [vani.id, agentId],
+        );
 
-      await pool.query(
-        `INSERT INTO vani_audit_log (tenant_id, agent_id, actor_type, actor_id, entity, entity_id, action, before, after)
-         VALUES ($1, $2, 'human', $3, 'vani_tenant_agent', $2, 'activation_code_accepted', '{}'::jsonb, $4::jsonb)`,
-        [vani.id, agentId, auth.user_id, JSON.stringify({ status: row.rows[0]?.status })],
-      );
+        await db.query(
+          `INSERT INTO vani_audit_log (tenant_id, agent_id, actor_type, actor_id, entity, entity_id, action, before, after)
+           VALUES ($1, $2, 'human', $3, 'vani_tenant_agent', $2, 'activation_code_accepted', '{}'::jsonb, $4::jsonb)`,
+          [vani.id, agentId, auth.user_id, JSON.stringify({ status: row.rows[0]?.status })],
+        );
 
-      res.json({ agent: 'vara', ...row.rows[0], onboarding: 'pending-design' });
+        return { agent: 'vara', ...row.rows[0], onboarding: 'pending-design' };
+      });
+
+      res.json(out);
     } catch (err: any) {
-      console.error('[Vara:activate]', err);
-      res.status(500).json({ error: { code: 'ACTIVATE_FAILED', message: 'Could not activate Vara' } });
+      fail(res, err, 'activate', { code: 'ACTIVATE_FAILED', message: 'Could not activate Vara' });
     }
   });
 
@@ -224,43 +256,43 @@ export function createVaraRouter(pool: Pool): Router {
         res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
         return;
       }
-      const vani = await vaniTenantFor(pool, auth.tenant_id);
-      if (!vani) {
-        res.status(409).json({
-          error: { code: 'TENANT_NOT_PROVISIONED', message: 'Complete the Domain step first' },
-        });
-        return;
-      }
+      const out = await withTenantClient(pool, auth.tenant_id, async (db) => {
+        const vani = await vaniTenantFor(db, auth.tenant_id);
+        if (!vani) {
+          throw new VaraError(409, 'TENANT_NOT_PROVISIONED', 'Complete the Domain step first');
+        }
 
-      const claims: EmbedTokenClaims = { tid: vani.id, scope: 'vara-embed' };
-      const token = jwt.sign(claims, JWT_SECRET, { expiresIn: EMBED_TOKEN_TTL });
+        const claims: EmbedTokenClaims = { tid: vani.id, scope: 'vara-embed' };
+        const token = jwt.sign(claims, JWT_SECRET, { expiresIn: EMBED_TOKEN_TTL });
 
-      const checklist = await readinessChecklist(pool, vani.id);
-      const sub = await pool.query(
-        `SELECT ta.status FROM vani_tenant_agent ta
-           JOIN vani_agent a ON a.id = ta.agent_id AND a.code = 'vara'
-          WHERE ta.tenant_id = $1`,
-        [vani.id],
-      );
+        const checklist = await readinessChecklist(db, vani.id);
+        const sub = await db.query(
+          `SELECT ta.status FROM vani_tenant_agent ta
+             JOIN vani_agent a ON a.id = ta.agent_id AND a.code = 'vara'
+            WHERE ta.tenant_id = $1`,
+          [vani.id],
+        );
 
-      const origins = await pool.query(
-        `SELECT embed_origins FROM vani_tenant_domain WHERE tenant_id = $1 AND purpose = 'candidate'`,
-        [vani.id],
-      );
+        const origins = await db.query(
+          `SELECT embed_origins FROM vani_tenant_domain WHERE tenant_id = $1 AND purpose = 'candidate'`,
+          [vani.id],
+        );
 
-      res.json({
-        token,
-        subscription: sub.rows[0]?.status ?? 'none',
-        checklist,
-        embed_origins: origins.rows.flatMap((r: any) => r.embed_origins ?? []),
-        // The console substitutes its own origin for CONSOLE_ORIGIN at render
-        // time — the API does not know where the widget assets are served from.
-        snippet:
-          `<script src="CONSOLE_ORIGIN/embed/vara.js" data-vara-token="${token}" defer></script>`,
+        return {
+          token,
+          subscription: sub.rows[0]?.status ?? 'none',
+          checklist,
+          embed_origins: origins.rows.flatMap((r: any) => r.embed_origins ?? []),
+          // The console substitutes its own origin for CONSOLE_ORIGIN at render
+          // time — the API does not know where the widget assets are served from.
+          snippet:
+            `<script src="CONSOLE_ORIGIN/embed/vara.js" data-vara-token="${token}" defer></script>`,
+        };
       });
+
+      res.json(out);
     } catch (err: any) {
-      console.error('[Vara:embed]', err);
-      res.status(500).json({ error: { code: 'EMBED_FAILED', message: 'Could not issue the embed token' } });
+      fail(res, err, 'embed', { code: 'EMBED_FAILED', message: 'Could not issue the embed token' });
     }
   });
 
@@ -285,51 +317,54 @@ export function createVaraRouter(pool: Pool): Router {
         return;
       }
 
-      // The allowlist check — every boot, so removing an origin takes effect
-      // immediately. Exact string match on scheme+host(+port), as stored.
-      const allowed = await pool.query(
-        `SELECT 1 FROM vani_tenant_domain
-          WHERE tenant_id = $1 AND purpose = 'candidate' AND $2 = ANY(embed_origins)`,
-        [claims.tid, parent_origin],
-      );
-      if (!allowed.rows.length) {
-        res.status(403).json({
-          error: { code: 'EMBED_ORIGIN_NOT_ALLOWED', message: 'This site is not allowlisted for the workspace' },
-        });
-        return;
-      }
+      // PUBLIC route, so the tenant comes from the token, not a session.
+      // claims.tid is a vani_tenant.id — vani_current_tenant() accepts either
+      // spelling (migration 248), so the scoped client resolves it to itself.
+      const out = await withTenantClient(pool, claims.tid, async (db) => {
+        // The allowlist check — every boot, so removing an origin takes effect
+        // immediately. Exact string match on scheme+host(+port), as stored.
+        const allowed = await db.query(
+          `SELECT 1 FROM vani_tenant_domain
+            WHERE tenant_id = $1 AND purpose = 'candidate' AND $2 = ANY(embed_origins)`,
+          [claims.tid, parent_origin],
+        );
+        if (!allowed.rows.length) {
+          throw new VaraError(403, 'EMBED_ORIGIN_NOT_ALLOWED',
+            'This site is not allowlisted for the workspace');
+        }
 
-      const live = await pool.query(
-        `SELECT 1 FROM vani_tenant_agent ta
-           JOIN vani_agent a ON a.id = ta.agent_id AND a.code = 'vara'
-          WHERE ta.tenant_id = $1 AND ta.status = 'live'`,
-        [claims.tid],
-      );
-      if (!live.rows.length) {
-        res.status(403).json({ error: { code: 'AGENT_NOT_LIVE', message: 'Vara is not live for this workspace yet' } });
-        return;
-      }
+        const live = await db.query(
+          `SELECT 1 FROM vani_tenant_agent ta
+             JOIN vani_agent a ON a.id = ta.agent_id AND a.code = 'vara'
+            WHERE ta.tenant_id = $1 AND ta.status = 'live'`,
+          [claims.tid],
+        );
+        if (!live.rows.length) {
+          throw new VaraError(403, 'AGENT_NOT_LIVE', 'Vara is not live for this workspace yet');
+        }
 
-      const tenant = await pool.query(`SELECT name FROM vani_tenant WHERE id = $1`, [claims.tid]);
-      const roles = await pool.query(
-        `SELECT id, title FROM vara_jd WHERE tenant_id = $1 AND status = 'published' ORDER BY created_at DESC`,
-        [claims.tid],
-      );
+        const tenant = await db.query(`SELECT name FROM vani_tenant WHERE id = $1`, [claims.tid]);
+        const roles = await db.query(
+          `SELECT id, title FROM vara_jd WHERE tenant_id = $1 AND status = 'published' ORDER BY created_at DESC`,
+          [claims.tid],
+        );
 
-      const session = jwt.sign(
-        { tid: claims.tid, scope: 'vara-candidate', origin: parent_origin },
-        JWT_SECRET,
-        { expiresIn: EMBED_SESSION_TTL },
-      );
+        const session = jwt.sign(
+          { tid: claims.tid, scope: 'vara-candidate', origin: parent_origin },
+          JWT_SECRET,
+          { expiresIn: EMBED_SESSION_TTL },
+        );
 
-      res.json({
-        tenant: { name: tenant.rows[0]?.name ?? 'This workspace' },
-        roles: roles.rows,
-        session,
+        return {
+          tenant: { name: tenant.rows[0]?.name ?? 'This workspace' },
+          roles: roles.rows,
+          session,
+        };
       });
+
+      res.json(out);
     } catch (err: any) {
-      console.error('[Vara:embed:boot]', err);
-      res.status(500).json({ error: { code: 'BOOT_FAILED', message: 'Could not boot the widget' } });
+      fail(res, err, 'embed:boot', { code: 'BOOT_FAILED', message: 'Could not boot the widget' });
     }
   });
 
@@ -358,32 +393,28 @@ export function createVaraRouter(pool: Pool): Router {
         return;
       }
 
-      const vani = await vaniTenantFor(pool, auth.tenant_id);
+      const out = await withTenantClient(pool, auth.tenant_id, async (db) => {
+      const vani = await vaniTenantFor(db, auth.tenant_id);
       if (!vani) {
-        res.status(409).json({
-          error: { code: 'TENANT_NOT_PROVISIONED', message: 'Complete the Domain step first' },
-        });
-        return;
+        throw new VaraError(409, 'TENANT_NOT_PROVISIONED', 'Complete the Domain step first');
       }
 
-      const profile = await pool.query(
+      const profile = await db.query(
         `SELECT name, display_name, website, industry
            FROM vn_tenant_profiles WHERE tenant_id = $1`,
         [auth.tenant_id],
       );
       const rawIndustry = (profile.rows[0]?.industry ?? '').trim();
       if (!rawIndustry) {
-        res.status(409).json({
-          error: { code: 'NO_INDUSTRY', message: 'Set your industry in Smart Profile — Vara reads it from there' },
-        });
-        return;
+        throw new VaraError(409, 'NO_INDUSTRY',
+          'Set your industry in Smart Profile — Vara reads it from there');
       }
       const industrySlug = slugifyIndustry(rawIndustry);
 
       // Latest published pack per family under this industry. `vara`
       // namespace inside payload — packs whose payload has no `vara.starter`
       // are hidden from Vara's context (they belong to other agents).
-      const packs = await pool.query(
+      const packs = await db.query(
         `SELECT DISTINCT ON (code) code, version, payload
            FROM vani_domain_pack
           WHERE domain = $1
@@ -403,7 +434,7 @@ export function createVaraRouter(pool: Pool): Router {
       // Tenant's own published JDs — latest version per jd_id so Edit lands
       // on the current version. Facts + must_haves + knockouts are what the
       // doorway needs to render the row and prefill on Duplicate/Edit.
-      const jds = await pool.query(
+      const jds = await db.query(
         `SELECT DISTINCT ON (jd.id)
                 jd.id, jd.title, rf.name AS family, ver.version,
                 ver.facts, ver.must_haves, ver.knockouts, ver.threshold
@@ -415,14 +446,14 @@ export function createVaraRouter(pool: Pool): Router {
         [vani.id],
       );
 
-      const sub = await pool.query(
+      const sub = await db.query(
         `SELECT ta.status FROM vani_tenant_agent ta
            JOIN vani_agent a ON a.id = ta.agent_id AND a.code = 'vara'
           WHERE ta.tenant_id = $1`,
         [vani.id],
       );
 
-      res.json({
+      return {
         industry: { raw: rawIndustry, slug: industrySlug },
         brand: {
           name: profile.rows[0]?.display_name || profile.rows[0]?.name || 'Your workspace',
@@ -446,10 +477,13 @@ export function createVaraRouter(pool: Pool): Router {
           },
         })),
         subscription: sub.rows[0]?.status ?? 'none',
+      };
       });
+
+      res.json(out);
     } catch (err: any) {
-      console.error('[Vara:onboarding:context]', err);
-      res.status(500).json({ error: { code: 'CONTEXT_FAILED', message: 'Could not read Vara onboarding context' } });
+      fail(res, err, 'onboarding:context',
+        { code: 'CONTEXT_FAILED', message: 'Could not read Vara onboarding context' });
     }
   });
 
@@ -515,6 +549,12 @@ export function createVaraRouter(pool: Pool): Router {
 
       client = await pool.connect();
       await client.query('BEGIN');
+      // Inside the transaction, because set_tenant_context uses
+      // set_config(..., is_local := true) — outside one the GUC is gone before
+      // the next statement runs. This route holds its own transaction (it
+      // needs the advisory lock below), so it sets context itself rather than
+      // going through withTenantClient.
+      await client.query('SELECT set_tenant_context($1)', [auth.tenant_id]);
 
       // Advisory lock for the concurrent-duplicate case. Held for the whole
       // transaction, released on COMMIT/ROLLBACK. Two concurrent requests
@@ -578,7 +618,12 @@ export function createVaraRouter(pool: Pool): Router {
       // Family row (tenant-scoped). Upsert on (tenant_id, name) — the schema
       // is (tenant_id, name) unique. Description carries the pack code so a
       // pack-derived family and an Other family are distinguishable later.
-      const packMatch = await pool.query(
+      // On `client`, not the pool. This read sat inside the transaction block
+      // but ran on a separate pooled connection — so it saw a different
+      // snapshot and carried no tenant context. Nothing depended on the
+      // difference yet; it would have the moment vani_domain_pack grew a
+      // policy.
+      const packMatch = await client.query(
         `SELECT code, version, payload
            FROM vani_domain_pack
           WHERE payload ->> 'family_name' = $1
@@ -760,18 +805,18 @@ export function createVaraRouter(pool: Pool): Router {
         res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Valid token required' } });
         return;
       }
-      const vani = await vaniTenantFor(pool, auth.tenant_id);
+      const out = await withTenantClient(pool, auth.tenant_id, async (db) => {
+      const vani = await vaniTenantFor(db, auth.tenant_id);
       if (!vani) {
-        res.status(409).json({
-          error: { code: 'TENANT_NOT_PROVISIONED', message: 'Complete the Domain step first' },
-        });
-        return;
+        throw new VaraError(409, 'TENANT_NOT_PROVISIONED', 'Complete the Domain step first');
       }
 
       // System rows visible to everyone (RLS admits tenant_id IS NULL);
       // tenant rows visible only to matching tenant (RLS). We fetch both
-      // and reshape.
-      const rows = await pool.query(
+      // and reshape. That comment was aspirational until now — on the pool
+      // the policy was never evaluated, so the tenant filter below was doing
+      // all the work alone.
+      const rows = await db.query(
         `SELECT key, scope, version, body, variables, active, approved_at, tenant_id
            FROM vani_prompt
           WHERE key LIKE 'vara.%'
@@ -815,10 +860,12 @@ export function createVaraRouter(pool: Pool): Router {
         byKey.set(r.key, view);
       }
 
-      res.json({ prompts: Array.from(byKey.values()) });
+      return { prompts: Array.from(byKey.values()) };
+      });
+
+      res.json(out);
     } catch (err: any) {
-      console.error('[Vara:prompts:list]', err);
-      res.status(500).json({ error: { code: 'PROMPTS_FAILED', message: 'Could not read prompts' } });
+      fail(res, err, 'prompts:list', { code: 'PROMPTS_FAILED', message: 'Could not read prompts' });
     }
   });
 
@@ -856,7 +903,9 @@ export function createVaraRouter(pool: Pool): Router {
         return;
       }
 
-      const vani = await vaniTenantFor(pool, auth.tenant_id);
+      // Its own scoped client: this runs before the transaction below opens.
+      const vani = await withTenantClient(pool, auth.tenant_id,
+        (db) => vaniTenantFor(db, auth.tenant_id));
       if (!vani) {
         res.status(409).json({
           error: { code: 'TENANT_NOT_PROVISIONED', message: 'Complete the Domain step first' },
@@ -869,12 +918,14 @@ export function createVaraRouter(pool: Pool): Router {
       // override (which is fine), but there'd be no `variables` contract
       // to validate against. Refuse loudly so a typo in the key doesn't
       // silently create a dead override.
-      const sys = await pool.query(
+      // Read on a tenant-scoped client of its own: this runs BEFORE the
+      // transaction below opens, so it cannot use that client.
+      const sys = await withTenantClient(pool, auth.tenant_id, (db) => db.query(
         `SELECT variables FROM vani_prompt
           WHERE key = $1 AND scope = 'system' AND active = true
           ORDER BY version DESC LIMIT 1`,
         [key],
-      );
+      ));
       if (!sys.rows.length) {
         res.status(404).json({
           error: { code: 'UNKNOWN_PROMPT_KEY', message: `No system prompt for key "${key}"` },
@@ -898,6 +949,7 @@ export function createVaraRouter(pool: Pool): Router {
 
       client = await pool.connect();
       await client.query('BEGIN');
+      await client.query('SELECT set_tenant_context($1)', [auth.tenant_id]);
 
       // Deactivate any active tenant override for this key.
       await client.query(
@@ -961,37 +1013,38 @@ export function createVaraRouter(pool: Pool): Router {
         res.status(400).json({ error: { code: 'INVALID_KEY', message: 'Only vara.* keys are editable here' } });
         return;
       }
-      const vani = await vaniTenantFor(pool, auth.tenant_id);
-      if (!vani) {
-        res.status(409).json({
-          error: { code: 'TENANT_NOT_PROVISIONED', message: 'Complete the Domain step first' },
-        });
-        return;
-      }
+      // One transaction: the revert and its audit row commit together. They
+      // were two independent pool.query calls, so a failure between them
+      // reverted an override with no record that anyone had.
+      await withTenantClient(pool, auth.tenant_id, async (db) => {
+        const vani = await vaniTenantFor(db, auth.tenant_id);
+        if (!vani) {
+          throw new VaraError(409, 'TENANT_NOT_PROVISIONED', 'Complete the Domain step first');
+        }
 
-      const upd = await pool.query(
-        `UPDATE vani_prompt SET active = false
-          WHERE key = $1 AND scope = 'tenant' AND tenant_id = $2 AND active = true
-          RETURNING id`,
-        [key, vani.id],
-      );
-      if (!upd.rows.length) {
-        res.status(404).json({ error: { code: 'NO_ACTIVE_OVERRIDE', message: 'No active override to revert' } });
-        return;
-      }
+        const upd = await db.query(
+          `UPDATE vani_prompt SET active = false
+            WHERE key = $1 AND scope = 'tenant' AND tenant_id = $2 AND active = true
+            RETURNING id`,
+          [key, vani.id],
+        );
+        if (!upd.rows.length) {
+          throw new VaraError(404, 'NO_ACTIVE_OVERRIDE', 'No active override to revert');
+        }
 
-      await pool.query(
-        `INSERT INTO vani_audit_log (tenant_id, agent_id, actor_type, actor_id, entity, entity_id, action, before, after)
-         SELECT $1, a.id, 'human', $2, 'vani_prompt', $3, 'override_reverted',
-                jsonb_build_object('key', $4::text), '{}'::jsonb
-           FROM vani_agent a WHERE a.code = 'vara'`,
-        [vani.id, auth.user_id, upd.rows[0].id, key],
-      );
+        await db.query(
+          `INSERT INTO vani_audit_log (tenant_id, agent_id, actor_type, actor_id, entity, entity_id, action, before, after)
+           SELECT $1, a.id, 'human', $2, 'vani_prompt', $3, 'override_reverted',
+                  jsonb_build_object('key', $4::text), '{}'::jsonb
+             FROM vani_agent a WHERE a.code = 'vara'`,
+          [vani.id, auth.user_id, upd.rows[0].id, key],
+        );
+      });
 
       res.json({ key, reverted: true });
     } catch (err: any) {
-      console.error('[Vara:prompts:delete]', err);
-      res.status(500).json({ error: { code: 'PROMPT_REVERT_FAILED', message: 'Could not revert prompt override' } });
+      fail(res, err, 'prompts:delete',
+        { code: 'PROMPT_REVERT_FAILED', message: 'Could not revert prompt override' });
     }
   });
 

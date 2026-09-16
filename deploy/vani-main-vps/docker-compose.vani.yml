@@ -1,7 +1,7 @@
 # ============================================================
 # VaNi AI backend — Main VPS compose overlay
 #
-# One service, meant to be layered on top of the EXISTING Main VPS compose
+# TWO services, meant to be layered on top of the EXISTING Main VPS compose
 # setup (vikuna-postgres / vikuna-postgrest / vikuna-nginx /
 # kd-pipeline-api2) rather than replacing or editing it — I never saw that
 # file, so I'm not touching it. Run alongside it with:
@@ -9,7 +9,19 @@
 #   docker compose \
 #     -f <path-to-existing-compose>.yml \
 #     -f deploy/vani-main-vps/docker-compose.vani.yml \
-#     up -d vani-backend
+#     up -d vani-backend vani-worker
+#
+# WHY THE WORKER IS HERE (added 2026-09-16, after it cost a round).
+# It was never in this file, so a deploy rebuilt the API and left the worker on
+# whatever code it happened to be running. That is not tidiness: worker.ts
+# marks an event type it does not recognise as `done` and moves on, so a
+# request queued by a NEW api and claimed by an OLD worker is consumed and
+# destroyed with no error and no run row. Measured: a
+# DOMAIN_ENRICHMENT_REQUESTED event created at 15:46:31.695 was done at
+# 15:46:31.881 — 186ms, nothing ran, gt_agent_runs held 0 rows.
+#
+# Same image as the API, different command, so one build produces both and the
+# two cannot be on different code again.
 #
 # GUESSED, confirm before applying (see RUNBOOK.md "What I had to guess"):
 #   - Container naming: vani-backend, following the vikuna-<name> pattern
@@ -51,6 +63,34 @@ services:
       timeout: 5s
       start_period: 15s
       retries: 3
+
+  vani-worker:
+    # Same image the API service builds — depends_on makes compose build it
+    # once and start this after. Never give this its own build context: two
+    # contexts is how the API and the worker end up on different commits.
+    image: vani-backend:${IMAGE_TAG:-latest}
+    container_name: vani-worker
+    restart: unless-stopped
+    depends_on:
+      - vani-backend
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      # Smaller ceiling than the API's 320: this process serves no HTTP, holds
+      # no request buffers, and handles one event at a time. Raise it alongside
+      # mem_limit below, never one alone.
+      - NODE_OPTIONS=--max-old-space-size=200
+    command: ["node", "dist/agent-core/worker.js"]
+    networks:
+      - vikuna_shared
+    mem_limit: 300m
+    # The image's HEALTHCHECK wgets http://localhost:3001/health. The worker
+    # binds no port, so inheriting it would mark this container unhealthy
+    # forever — restart loops and false alarms in whatever watches it. The
+    # worker's liveness signal is its poll line in the logs and events leaving
+    # 'pending'.
+    healthcheck:
+      disable: true
 
 networks:
   vikuna_shared:

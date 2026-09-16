@@ -50,9 +50,29 @@ Pathways read as verbs and are things you DO. Reference surfaces read as nouns a
 are things you LOOK AT. Do not add a top-level destination — extend a pathway or
 add a drill-down. Old routes redirect; do not add paths outside this hierarchy.
 
+⚠️ **That navigation tree was `frontend/`'s, which is retired** (see
+Architecture). The PRODUCT MODEL above — brain / agents / pathways — still
+holds and is what the API is shaped around. The routes and the sidebar are
+`vani-app`'s to define, under its own registry boundary
+(`vani-app/CLAUDE.md` §5: a skill is one folder plus one line in
+`src/skills/index.ts`).
+
 ## Architecture
-- **Two processes:** Express API (`backend/`, port 3002 in dev) + Next.js 16
-  App Router (`frontend/`, port 3000). Not a single custom server.
+
+> ⚠️ **`frontend/` IS RETIRED. The frontend is `vani-app`** (user, 2026-09-16),
+> which lives in the OTHER repo: `kamalcharan/vikunawebsite`, at `vani-app/`,
+> Next.js on port **3100**. This repo is the **API and the agent core**.
+>
+> `backend/frontend/` is still on disk and still builds. It is not run, not
+> deployed, and not where a feature lands. Anything below describing it —
+> the VDF library, `serviceURLs.ts`, the navigation tree, the settings tabs —
+> documents a retired app. **Read `vikunawebsite/vani-app/CLAUDE.md` before
+> writing any UI**; it is mandatory and covers the five states every screen
+> owes, `useSkillMutation`, idempotency and the registry boundary.
+
+- **Two processes here:** Express API (`backend/`, port 3002 in dev) + the
+  worker. The UI is a separate repo.
+- ~~Next.js 16 App Router (`frontend/`, port 3000)~~ — retired, see above.
 - **Worker:** separate process (`npm run worker`) polling the `gt_events` bus
   and dispatching agents.
 - **Stack:** React + TypeScript frontend, Node.js + Express + TypeScript
@@ -60,7 +80,10 @@ add a drill-down. Old routes redirect; do not add paths outside this hierarchy.
 - **LLM:** VPS/local OpenAI-compatible endpoint (`LLM_PRIMARY_URL`, dev =
   Ollama). Working dev model: `qwen3:8b` (pre-warm with `keep_alive:"24h"`;
   `llm.client.ts` appends `/no_think` and sends `Authorization: Bearer
-  $LLM_PRIMARY_KEY` only if set).
+  $LLM_PRIMARY_KEY` only if set). **Per tenant since 2026-09-15** —
+  `agent-core/llm.provider.ts` resolves endpoint/model/key from
+  `vani_llm_provider` (BYOK) or falls back to those env vars (platform).
+  `llm.client.ts` no longer holds the config as module constants.
 - No VaNi framework. No VaNiBase. No Supabase.
 - **n8n:** user's n8n infra is available and approved for agent-adjacent
   jobs where it fits (e.g. a headless site-render webhook). Business
@@ -83,16 +106,10 @@ backend/
                         ingestion, profile, pulse, research, sequence,
                         storyteller, vani
     server.ts         — Express entry; migrate.ts — manual migration runner
-  migrations/         — 001…192 (highest = 192)
-frontend/
-  src/
-    app/(auth)        — login, register, forgot/reset password, invite
-    app/(app)         — dashboard, onboarding (+icp-builder), contacts,
-                        campaigns, pulses, war-room, import*, settings, demo-data
-    app/(public)      — landing, deck share viewer
-    components/       — vdf/ library, auth/, onboarding/, settings/, pulses/
-    config/theme/     — ThemeProvider, ThemeScript, 12 themes
-    hooks/ lib/       — useSkill/useMe/…, serviceURLs.ts, api-client.ts
+  migrations/         — 001…248 (highest = 248)
+frontend/            — ⚠️ RETIRED (2026-09-16). Still on disk, still builds,
+                      NOT the product. The frontend is vikunawebsite/vani-app.
+                      Kept for reference; do not add features here.
 documents/            — PRD, POA, roadmap, gtm-engine-ui mockups, ux-references
 docs/                 — mcp-db-setup.md, rls-cutover-checklist
 scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
@@ -129,6 +146,24 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
   unverified.
 - A table's OWNER bypasses its own policies unless `FORCE ROW LEVEL SECURITY`
   is set. 18 tables were owned by `vanigtm_app` — migration 236 forced 17.
+- **The whole `vani_`/`vara_` spine (migrations 240–246) is UNFORCED** and was
+  never covered: 236 ran before 240. Migration 247 forces `vani_llm_provider`
+  only. `vara.routes.ts` **is now converted** — all 22 raw `pool.query` sites
+  run through `withTenantClient` (2026-09-16), verified against forced RLS.
+  One reader remains: `auth.routes.ts` has a single raw query against
+  `vani_tenant_domain` (~line 1129). Forcing the rest is now a migration
+  rather than a rewrite — but extend `rls-two-tenant-test.sql` to cover the
+  spine first; it does not reach these tables, which is why none of this was
+  caught. `docs/db/rls-status.md` §11–13.
+- **TWO TENANT IDS. `vn_tenants.id` ≠ `vani_tenant.id`** — joined by `slug`,
+  never equal. The JWT and `set_tenant_context()` carry the `vn_` one; every
+  `vani_*`/`vara_*` row stores the `vani_` one. Migration 240's policies
+  compared them directly, so **they matched nothing** — the spine's isolation
+  was wrong as well as inert, and only worked because the owner bypass meant
+  it was never evaluated. **Migration 248** makes `vani_current_tenant()`
+  bridge by slug (SECURITY DEFINER, pinned `search_path`), fixing all 20+
+  policies at once. It is a PREREQUISITE for forcing the rest of the spine,
+  not an alternative to the `vara.routes.ts` conversion. `docs/db/rls-status.md` §12.
 - Reaching the DB outside a skill: `withTenantClient(pool, tenantId, fn)` from
   `db/query.ts`. Raw `pool.query` against an RLS table returns nothing.
 - `gt_events` has RLS **disabled by design** (migration 185) — it is the
@@ -210,6 +245,28 @@ Each skill in `backend/src/skills/<name>/`:
 | pulse-skill | follow-ups + meeting workflow (funnel) | ✅ retargeted to contacts |
 | etl (src/etl) | import pipeline (staging works) | ⚠️ processing = 501 until prospect-skill |
 
+## CORS — a list, not a string (fixed 2026-09-16)
+
+`CORS_ORIGIN` is **comma-separated**; `cors-origins.ts` parses it and
+`server.ts` prints the result at startup. It took a single exact string, and
+defaulted to `http://localhost:3000` — the retired `frontend/`. **The origin
+that actually matters is `http://localhost:3100` (vani-app).** A deployment
+that never changed the default therefore refused every preflight from the real
+console.
+
+It is a list rather than a swapped string because the default has to keep
+working for anything still pointed at :3000, and because a second origin
+(preview deploy, a second console) should not need a code change.
+
+That failure has no server-side symptom: the browser blocks it, nothing is
+logged, and **curl cannot reproduce it** because curl sends no `Origin`
+header. In vani-app it reads as "Cannot reach the VaNi service. Check your
+connection.", which is the same message as the API being down.
+
+Matching is EXACT per entry — no wildcards, no prefixes. `credentials: true`
+means an allowed origin may carry a session cookie, so each entry is a
+deliberate decision, not a pattern.
+
 ## Routes (mounted in server.ts)
 `/api/v1/auth`, `/onboarding`, `/tenant`, `/etl`, `/vani`, `/ingest`,
 `/profile`, `/storyteller`, plus the generic skill executor
@@ -224,7 +281,18 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
   (VdfLoader) + error toasts (components/toast.tsx). No component calls
   fetch directly — Component → hook → apiFetch → serviceURLs.
 
-## Frontend conventions
+## Frontend conventions — ⚠️ RETIRED APP
+
+**This section documents `frontend/`, which is no longer used.** The live UI is
+`vikunawebsite/vani-app` and is governed by **`vani-app/CLAUDE.md`** — read
+that one. Its loader and toast APIs were deliberately kept identical to the
+ones below (`FullPageLoader`, `InlineLoader`, `showToast({message, type})`) so
+code moves between them, but everything else here (VDF, the theme registry,
+`serviceURLs.ts`, the tab layout) belongs to the retired app.
+
+Kept because the API contracts below are still true of the backend, and
+because a date format or a token convention is worth not re-deciding.
+
 - **serviceURLs.ts** is the single registry of endpoints; **api-client.ts**
   the sole fetch wrapper (JWT inject, 401 → silent refresh → retry once).
 - Tokens in BOTH sessionStorage and localStorage (`pk-access-token`, …);
@@ -249,7 +317,7 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
 
 ## Migrations — MANUAL ONLY, NO AUTO-MIGRATE
 - Never run automatically. Apply: `cd backend && npm run db:migrate`;
-  status: `npm run db:migrate -- --status`. Highest = **192**.
+  status: `npm run db:migrate -- --status`. Highest = **248**.
 - Discuss schema changes with the user first. Make migrations **idempotent
   and guarded** (IF NOT EXISTS; DO-block existence checks before copying
   from or altering legacy tables — vani_gtm_db was bootstrapped fresh and
@@ -324,13 +392,25 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
       the run feed + tokens tracked under the separate 'escalation'
       bucket. Validation failures (LLM_VALIDATION_FAILED) deliberately
       do NOT fail over — bad answers stay loud.
+      **This exception is PLATFORM-ONLY.** It does not extend to a tenant
+      on their own key (BYOK): failing their call over to Vikuna's
+      Anthropic key would bill us for their outage AND hide that their
+      endpoint is down. BYOK transport failures throw `LLM_BYOK_*` and
+      stay loud (user ruling, 2026-09-15). Enforced twice on purpose —
+      a posture check in `callLLM` and distinct error codes, so widening
+      the failover condition still cannot route BYOK onto our key.
 
 ## Running locally
 ```bash
 cd backend  && npm run dev      # API on PORT (dev .env uses 3002)
 cd backend  && npm run worker   # agent worker (separate terminal)
-cd frontend && npm run dev      # Next.js on 3000
+
+# The UI is in the OTHER repo — frontend/ here is retired:
+cd ../../vikunawebsite/vani-app && npm run dev    # Next.js on 3100
 ```
+`vani-app` needs `NEXT_PUBLIC_API_ORIGIN=http://localhost:3002` in its own
+`.env`, and this backend needs `3100` in `CORS_ORIGIN`. Miss either and the
+console reports "Cannot reach the VaNi service" — see the CORS section.
 Ollama for dev LLM: pre-warm `qwen3:8b` with `keep_alive:"24h"` before
 testing conversation flows (`curl localhost:11434/api/ps` to verify).
 
@@ -444,6 +524,80 @@ and under the superuser too, so all of this ships safely before the cutover.
 Still to exercise under the restricted role: signup, login, skills executor.
 Runbook in §8 of the doc.
 
+## BYOK — a tenant's own model provider (built 2026-09-15)
+
+`vani_llm_provider` (migration 240) finally has code behind it. The column
+`credentials_enc` existed since August; nothing encrypted, read or wrote it.
+
+- **`agent-core/secret.crypto.ts`** — AES-256-GCM, applied in Node so the key
+  never reaches the database. **The encrypting key is PER TENANT**, derived
+  HKDF-SHA256(master=`TENANT_SECRET_KEY`, salt=`vn_tenants.id`). One master
+  secret in env — something must be the root of trust and it cannot live in
+  the DB beside the ciphertext — but no two tenants share a key. A credential
+  therefore cannot be decrypted in another tenant's context even if a query
+  were wrong: the derived key differs and GCM refuses. A lock behind the RLS
+  policy, not a replacement for it. Envelope encryption (a random data key per
+  tenant, stored encrypted, destroyable to shred that tenant's secrets) is the
+  stronger form and needs a column, so it is a schema decision. Stored format is
+  `v1.<key_id>.<iv>.<tag>.<ciphertext>`; `key_id` is 8 hex of SHA-256 of the
+  key (not reversible to it) so rotation can find stale rows and a wrong-key
+  failure names both keys instead of saying "unable to authenticate data".
+  `TENANT_SECRET_KEY_PREVIOUS` opens both generations during a rotation.
+  **No default key** — a shared default is the same as no encryption while
+  looking exactly like encryption.
+- **`agent-core/llm.provider.ts`** — resolves a tenant to `platform` or
+  `byok`, 60s TTL cache, invalidated on write. Posture, not just a URL.
+- **`vani/llm-provider.service.ts` + `.routes.ts`** — `/api/v1/llm-provider`
+  (GET/PUT/DELETE, `POST /test`, `GET /catalogue`). **The key goes in and
+  never comes back**: responses carry a hint (`sk-a…7f3c`), never the
+  credential. An empty key field on save means "keep the stored one", which
+  is what lets a tenant change the model without re-typing the secret.
+- **BYOK is a MENU item, not an onboarding step** (user ruling, 2026-09-16).
+  `vani:llm_provider` stays `enabled: false` in `lanes.ts`. Do not flip it.
+
+  **The surface is `vani-app` → System → Model Provider**
+  (`vikunawebsite/vani-app/src/skills/model-provider/`). A first version was
+  written into the retired `frontend/` before that was established; it has been
+  deleted rather than left as a second, unreachable BYOK screen.
+
+  **It reaches the backend as a SKILL, not as REST.** `llm-provider-skill`
+  (`backend/src/skills/llm-provider-skill/`) wraps
+  `vani/llm-provider.service.ts` in five functions, so the console uses the
+  generic runner and needs no entry in vani-app's `live-transport.ts`
+  `PLATFORM_ROUTES` — that table is the countable list of exceptions to "auth
+  is the only non-generic surface" and is meant to stay small. The REST routes
+  at `/api/v1/llm-provider` remain for direct API use.
+
+  It was enabled for one day and **trapped a live tenant**, which is worth
+  knowing because the missing piece was in the OTHER repo. `enabled` also
+  means REQUIRED (`requiredSteps` filters on it), so the server began
+  answering `next_incomplete_step='vani:llm_provider'`. The console
+  (`vikunawebsite/vani-app`) keeps its OWN client-side step catalog at
+  `src/skills/onboarding/lanes/product.ts` — three steps, no entry for this
+  one — so `OnboardingRunner` found no step to render, while
+  `RequireSession` held the tenant at `/onboarding/declare` because the only
+  pending step started with `vani:`. A tenant with Vara live and a published
+  JD could not reach their console.
+
+  **Before enabling ANY `vani:` step, check that vani-app's `product.ts` has
+  a matching entry and a step component.** The two catalogs are in different
+  repos and nothing keeps them in sync.
+
+Two rulings (user, 2026-09-15) that the code enforces, not just documents:
+1. **The daily token cap does not apply to BYOK.** It exists because Vikuna
+   pays. Usage is still RECORDED — metering is not capping, and "what did
+   this run cost" is a question a BYOK tenant will ask.
+2. **BYOK never fails over to Vikuna's Anthropic key.** See rule 12 below.
+
+Both are covered by `agent-core/tests/llm-byok.test.ts`, each with a platform
+CONTROL — without those, the tests would also pass if the cap or the failover
+were broken outright rather than correctly scoped.
+
+**Migration 247** forces RLS on `vani_llm_provider` and repoints
+`vani_current_tenant()` off the legacy `app.tenant_id` GUC. It deliberately
+does NOT force the rest of the `vani_`/`vara_` spine — that would break Vara.
+Read `docs/db/rls-status.md` §11 before touching any of it.
+
 ## Main VPS — known broken, DEFERRED (recorded 2026-08-17)
 
 Found while scoping VaNi's tenant onboarding, from `gt_events` on the Main VPS.
@@ -461,12 +615,22 @@ running. Every one is environmental — no code defect among them.
 
 ### Two things that need a decision, not a fix
 
-**1. The worker is not running, and never was a service.** `ps` and `docker ps -a`
-on the Main VPS find nothing. `agent-core/worker.ts` says "Separate process", and
-`deploy/vani-main-vps/docker-compose.vani.yml` defines only `vani-backend`. The
-queue has been drained by hand at some point. Anything event-driven is dead on
-that box until the worker becomes a compose service (~400MB; the box had 4.3Gi
-available on 2026-08-17).
+**1. The worker IS running on the Main VPS — corrected 2026-09-16 (user).**
+Deploys reach it: "any updates we will deploy to VPS and it will run". Event-driven
+work is therefore live, and a feature may be planned on the queue.
+
+This entry previously said the opposite, read off `ps`/`docker ps -a` on
+2026-08-17, and it was left to go stale for a month. Treat it as the example:
+an environmental finding is true of a moment, not of the system. Re-check
+before planning around one.
+
+**Still true, and it is a deploy-story gap:**
+`deploy/vani-main-vps/docker-compose.vani.yml` in this repo defines only
+`vani-backend`. So whatever supervises the worker on that box — pm2, systemd, a
+second compose file — is **not described in this repo**, which means nothing here
+tells you how a deploy restarts it, or whether it comes back after a reboot.
+Bring it into the repo's compose (~400MB; the box had 4.3Gi free on 2026-08-17)
+or commit the unit file next to it, so the restart path is reviewable.
 
 **2. `gt_tenant_brand` is referenced by code that is not in this repo.** Not in
 `backend/src`, not in `backend/migrations`, not on any remote branch. The image
@@ -486,6 +650,26 @@ mid-run orphans its in-flight events permanently — 9 rows were stuck this way 
 This one matters beyond tidiness: any UI that blocks on an event completing can
 trap a user forever. Fix before building on the queue — a `started_at` timeout
 back to `pending`, with a retry cap so a poison event cannot loop.
+
+**Sharper now that the worker is confirmed running and deploys restart it
+(2026-09-16).** A restart mid-run is not an edge case, it is every deploy: each
+one orphans whatever was `processing`. The rows do not retry and nothing reports
+them, so the loss is silent.
+
+**It cannot be fixed without a schema change, and that needs approval.**
+`gt_events` (migration 181) has no claim timestamp and no attempt counter —
+the columns are id, tenant_id, event_type, source_type, source_id, payload,
+status, processed_at, error, created_at. `status` flips to `processing`
+stamping nothing. So a timeout needs `started_at timestamptz` and a retry cap
+needs `attempts int` — two columns, raised as a request, not assumed.
+
+The workarounds are all worse and none should be taken:
+- Reusing `processed_at` as the claim stamp overloads a column whose name then
+  lies on every unprocessed row.
+- Putting `attempts` in `payload` is structured data smuggled into JSONB —
+  explicitly forbidden repo-wide.
+- Timing out on `created_at` conflates "claimed long ago" with "queued long
+  ago", so a backlog would reclaim rows a healthy worker is still running.
 
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the

@@ -690,3 +690,289 @@ apply migration 227), unrelated to RLS.
 What remains before production: exercise signup, login and the skills executor
 under the restricted role (§8 step 6), and settle the admin platform-tag
 question (§3.1).
+
+---
+
+## 11. The `vani_`/`vara_` spine was never covered (found 2026-09-15)
+
+Found while making `vani_llm_provider` safe to hold tenant API keys for BYOK.
+Not found by running the isolation test — that test predates these tables and
+does not touch them. Found by reading migrations 240–246 against 236, which is
+the weaker method, so **treat the ownership half as a hypothesis until checked
+against production** (§11.3).
+
+### 11.1 Nothing in 240–246 sets FORCE ROW LEVEL SECURITY
+
+Migration 240 creates twelve `vani_` tables, enables RLS on each, and creates a
+`tenant_isolation` policy on each. It never sets `FORCE ROW LEVEL SECURITY`.
+Migrations 241 and 246 do the same for the `vara_` tables. 245 does it for
+`vani_prompt` and **says so in its own table comment** — "Owner (vanigtm_app)
+needs FORCE ROW LEVEL SECURITY applied by a later migration if the deployment
+role owns this table." No later migration does. 246 is the highest.
+
+Migration 236 cannot have covered any of them: it ran **before** 240.
+
+A table's OWNER is exempt from its own policies unless FORCE is set — the same
+defect that left eighteen `gt_` tables readable across tenants. The runtime now
+connects as `vanigtm_app`. If that role owns these tables, ~20 policies that
+read correctly do not apply.
+
+### 11.2 Why only one table was forced
+
+`247_vani_llm_provider_rls.sql` forces **`vani_llm_provider` alone**. The
+obvious move — re-run 236's blanket sweep, which would pick the whole spine up
+automatically — **would break Vara.**
+
+`vara/vara.routes.ts` reaches these tables through the raw pool: **22
+`pool.query` call sites, no `set_tenant_context` anywhere in the file.** Its
+isolation is the application-layer `WHERE tenant_id = $1` on every query, which
+is correct as far as it goes and is how the app runs today. But a raw pool
+connection carries no tenant GUC, so `vani_current_tenant()` returns NULL and
+forcing RLS makes all 22 queries match zero rows. The Vara compose path —
+shipped 2026-08-19 — would stop working, silently.
+
+This is `gt_agent_runs` (§ above) again, one level larger: there it was one
+table and one file, here it is a feature. Same treatment: named, left, not
+quietly forced.
+
+`vani_llm_provider` is safe to force now precisely because **nothing read or
+wrote it** — the column existed, no code touched it. The BYOK service landing
+with it is built on `withTenantClient` from its first line.
+
+### 11.3 The backlog, and how to check it
+
+Still unforced, all owner-bypassed **if `vanigtm_app` owns them**:
+
+```
+vani_tenant              vani_tenant_domain      vani_membership
+vani_tenant_agent        vani_user_agent_role    vani_role_family
+vani_tenant_pack_binding vani_template           vani_comms_log
+vani_metering_event      vani_audit_log          vani_prompt
+vara_* (241, 246)        gt_agent_runs (from 236)
+```
+
+One read-only query settles whether this is live in production:
+
+```sql
+SELECT c.relname, pg_get_userbyid(c.relowner) AS owner, c.relforcerowsecurity
+  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+ WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relrowsecurity
+   AND (c.relname LIKE 'vani\_%' OR c.relname LIKE 'vara\_%')
+ ORDER BY c.relforcerowsecurity DESC, c.relname;
+```
+
+Owner `vanigtm_app` + `relforcerowsecurity = false` on a row means that table's
+policy is inert today.
+
+**The fix is one slice of work:** move `vara.routes.ts` onto
+`withTenantClient`, then a migration that re-runs 236's sweep. It does not
+belong inside a BYOK change, and it should not be started without extending
+`rls-two-tenant-test.sql` to cover the spine first — this whole finding exists
+because that test does not.
+
+### 11.3b Measured, not asserted — 247 executed against PostgreSQL 16
+
+Run against a scratch Postgres 16.13 reproducing the defect: the two tables
+from 240, RLS enabled, `tenant_isolation` present, **owned by a non-superuser
+non-bypassrls `vanigtm_app`** — production's shape. Two tenants, one provider
+row each.
+
+**Before 247**, connected as `vanigtm_app`:
+
+```
+As Alpha (own tenant context correctly set):
+   2 rows: v1.aaaaaaaa.ALPHA-SECRET | v1.bbbbbbbb.BETA-SECRET
+With no tenant context at all:
+   2 rows: v1.aaaaaaaa.ALPHA-SECRET | v1.bbbbbbbb.BETA-SECRET
+```
+
+Alpha reads Beta's credential. The policy is present, correct and guarded, and
+entirely inert. That is what the ownership bypass costs on a table holding API
+keys.
+
+**After 247**:
+
+```
+11111111 sees 1: v1.aaaaaaaa.ALPHA-SECRET
+22222222 sees 1: v1.bbbbbbbb.BETA-SECRET
+no tenant context sees: 0
+cross-tenant write:      new row violates row-level security policy
+```
+
+Also verified: idempotent (second run → "already FORCED — nothing to do"),
+and safe on a database where 240 was never applied (→ "does not exist here —
+skipping", exit 0).
+
+**That last case caught a real bug in 247's first draft.** `COMMENT ON TABLE`
+sat as a bare statement *below* the DO block, so on a fresh database the block
+skipped correctly and the migration then aborted with `relation
+"vani_llm_provider" does not exist`. It is now inside the guard. Exactly the
+fresh-bootstrap case CLAUDE.md warns about, and it was invisible until the
+file was executed rather than read.
+
+### 11.4 `vani_current_tenant()` read the legacy GUC
+
+Migration 240 defined it over `app.tenant_id`. `set_tenant_context()` sets
+`app.current_tenant_id` as its primary; migration 153 added `app.tenant_id`
+alongside purely as a shim for the migration-001 `ki_` tables, and migration
+234's entire purpose was moving policies **off** that legacy GUC.
+
+So every `vani_`/`vara_` policy hung off the GUC scheduled to die. It worked
+only because 153 sets both. The tell was already in the repo:
+`etl/tests/landing.test.ts:168-169` sets both by hand.
+
+Migration 247 repoints it at `app.current_tenant_id` with a `coalesce` fallback
+to `app.tenant_id`, so callers that set only one keep working while new code
+depends only on the current GUC. Retiring `app.tenant_id` is now a one-line
+change in that function rather than a hunt across 20 policies.
+
+
+---
+
+## 12. The spine's policies never matched ANYTHING (found 2026-09-16)
+
+Found by forcing RLS on one table and watching a real save fail:
+
+```
+new row violates row-level security policy for table "vani_llm_provider"
+```
+
+### 12.1 Two tenant ids, compared directly
+
+There are two, and they are different UUIDs:
+
+| | what it is | who sets it |
+|---|---|---|
+| `vn_tenants.id` | the auth framework's tenant | the JWT; `set_tenant_context()` puts it in the GUC |
+| `vani_tenant.id` | the platform spine's tenant | stored in every `vani_*`/`vara_*` row's `tenant_id` |
+
+They are joined by `slug`, never equal. Every bridge in the codebase does that
+join — `onboarding.routes.resolveVaniTenant`, `vara.routes.vaniTenantFor`,
+`llm-provider.service.vaniTenantId`.
+
+But migration 240's policies read `tenant_id = vani_current_tenant()`, and
+`vani_current_tenant()` returned the GUC verbatim — a `vn_tenants.id`. So
+every policy on the spine compared a `vani_tenant.id` against a
+`vn_tenants.id`. **It can never match.** Reads return nothing, writes are
+refused.
+
+### 12.2 So the spine's isolation was UNENFORCED, not merely unforced
+
+§11 recorded that none of those tables had `FORCE ROW LEVEL SECURITY`, so the
+owning role bypassed its own policies. That is what hid this: the comparison
+was never evaluated. Both defects had to be present for the spine to work at
+all — remove either one and it breaks.
+
+This upgrades §11's severity. It is not "policies that are correct but
+inert". They were **wrong as well as inert**, and forcing those tables
+without migration 248 would take Vara down instantly rather than merely
+tightening it.
+
+### 12.3 The fix, and why it is one function
+
+`248_vani_current_tenant_bridge.sql` makes `vani_current_tenant()` do the
+same slug join every caller does, so all 20+ policies become correct at once
+instead of each growing a subquery.
+
+`SECURITY DEFINER`, because the lookup reads `vani_tenant`, whose own policy
+calls this function — as an ordinary function that is recursion, or silently
+empty. `search_path` is pinned, which SECURITY DEFINER requires: otherwise a
+caller could shadow `vani_tenant` with a temp table and pick their own tenant.
+
+It accepts either id, so a GUC already holding a `vani_tenant.id` resolves to
+itself. Neither matching returns NULL, and NULL matches no row.
+
+### 12.4 Measured against PostgreSQL 16, as `vanigtm_app`
+
+Two tenants, the app role `NOSUPERUSER NOBYPASSRLS`, the table FORCED.
+
+**Before 248** — the exact production symptom:
+
+```
+INSERT … ERROR:  new row violates row-level security policy
+```
+
+**After 248:**
+
+```
+vn id resolves to        -> 99999999-…   (the bridged vani_tenant.id)
+INSERT 0 1
+acme sees 1: v1.cipher
+beta sees 1: v1.beta-cipher
+no tenant context sees: 0
+acme writing into beta:  new row violates row-level security policy
+acme UPDATEing beta's row: UPDATE 0
+```
+
+Writes work, and isolation is real for the first time on this table.
+
+### 12.5 What this changes about the §11 backlog
+
+The `vara.routes.ts` conversion is still required before forcing the rest —
+22 raw `pool.query` sites carry no tenant context, so forcing would zero
+their queries regardless of this fix. But 248 is a **prerequisite** to that
+work, not an alternative: converting those call sites without it would simply
+move the failure from "no GUC" to "GUC compares against the wrong id".
+
+
+---
+
+## 13. vara.routes.ts is converted (2026-09-16)
+
+§11 and §12 both named this as the blocker. It is done: **all 22 raw
+`pool.query` calls now run inside `withTenantClient`**, so the RLS policies on
+the spine apply to Vara's own traffic as a second lock behind its
+`WHERE tenant_id = $1` filters.
+
+### 13.1 What changed beyond swapping the client
+
+**A typed error, because a callback cannot early-return a response.** A handler
+that did `res.status(409)...; return;` inside the `withTenantClient` callback
+would return from the CALLBACK, commit the transaction, and let the handler
+carry on. `VaraError` is thrown instead, unwinding to ROLLBACK, and each
+handler's catch maps it to its status — the same shape `onboarding.routes.ts`
+uses for `StepPayloadError`.
+
+**Two handlers gained a real transaction.** `/activate` wrote
+`vani_tenant_agent` and its `vani_audit_log` row as two independent pool
+calls, as did `DELETE /prompts/:key`. A failure between them left an
+activation, or a reverted override, with no record that anyone had done it.
+Both now commit together.
+
+**One query was running outside the transaction that contained it.** In
+`/jd/compose`, the `vani_domain_pack` lookup sat inside the `BEGIN ... COMMIT`
+block but ran on `pool`, so it took a separate connection, saw a different
+snapshot, and carried no tenant context. Now on `client`.
+
+**The two hand-rolled transactions set context themselves.** `/jd/compose`
+holds its own client for an advisory lock, and `PATCH /prompts/:key` for its
+deactivate-then-insert. Both call `set_tenant_context` immediately after
+`BEGIN` — inside, because `set_config(..., is_local := true)` does not survive
+outside a transaction.
+
+### 13.2 Measured under FORCE ROW LEVEL SECURITY
+
+Two tenants, PostgreSQL 16, app role `NOSUPERUSER NOBYPASSRLS`, `vani_tenant`,
+`vani_tenant_agent`, `vani_tenant_domain` and `vara_jd` all FORCED — the state
+this conversion exists to survive. Running the queries the routes now issue:
+
+```
+CONVERTED (withTenantClient) as acme: Acme · sub=live · jds=[Acme Backend Engineer]
+CONVERTED (withTenantClient) as beta: Beta · sub=activating · jds=[Beta Designer]
+OLD WAY   (raw pool.query)      : 0 rows   <- the breakage this change prevents
+CROSS-TENANT (acme reads beta)  : 0 rows
+```
+
+The third line is the point: the code as it stood this morning returns nothing
+the moment those tables are forced.
+
+### 13.3 What is now unblocked, and what still is not
+
+Forcing the rest of the spine is now a migration rather than a rewrite. Before
+writing it, check the remaining reader: `auth.routes.ts` has one raw
+`pool.query` against `vani_tenant_domain` (line ~1129) that has not been
+converted. One call site, not twenty-two — but forcing `vani_tenant_domain`
+without it breaks that route exactly as this one would have.
+
+Extend `rls-two-tenant-test.sql` to cover the spine before forcing anything.
+This whole finding exists because that test does not reach these tables.

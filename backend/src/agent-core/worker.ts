@@ -26,6 +26,7 @@ import { IngestionAgent } from '../skills/ingestion-skill/ingestion.agent';
 import { CompetitorResearchAgent } from '../skills/research-skill/research.agent';
 import { AccountResearchAgent } from '../skills/research-skill/account.agent';
 import { FitLessonAgent } from '../skills/research-skill/lesson.agent';
+import { DomainPackAgent } from '../skills/domain-pack-skill/domain-pack.agent';
 import { recalculateProfileFromNodes } from '../skills/profile-skill/profile.service';
 import { generateClusters, listClusters } from '../skills/profile-skill/cluster.service';
 
@@ -195,6 +196,13 @@ const AGENT_REGISTRY: Record<string, AgentHandler> = {
       },
     });
   },
+
+  // Domain packs — research an industry's role families in the background
+  // while the tenant is still onboarding. The handler decides whether the
+  // work is needed (another tenant in the same industry may already have
+  // triggered it), so this fires on every business_profile completion.
+  DOMAIN_ENRICHMENT_REQUESTED: (pool, tenantId, payload, runId) =>
+    DomainPackAgent.run(pool, tenantId, payload, runId),
 
   // Future agents — add here, nothing else changes:
   // PROFILE_COMPLETE: (pool, tenantId, payload, runId) => ICPAgent.run(...)

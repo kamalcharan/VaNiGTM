@@ -32,6 +32,10 @@ import { Router } from 'express';
 import type { Pool, PoolClient } from 'pg';
 import { extractJwt } from '../auth/auth.routes';
 import { getLane, isStepOfLane, requiredSteps, type Lane } from './lanes';
+import { saveProviderWithin, ProviderError } from '../vani/llm-provider.service';
+import { invalidateProvider } from '../agent-core/llm.provider';
+import { emitEvent } from '../agent-core/event.store';
+import { slugifyIndustry } from '../vani/industry-slug';
 
 /** Fields each step is allowed to write. Anything else in `data` is ignored. */
 const USER_PROFILE_FIELDS = [
@@ -177,9 +181,45 @@ async function applyStepPayload(
     return;
   }
 
-  // vani:team and vani:llm_provider stay disabled in the catalog (see
-  // lanes.ts for why) — isStepOfLane() rejects them before we ever get here.
-  // When they are enabled, their writers go here, inside this same transaction.
+  if (stepId === 'vani:llm_provider') {
+    // INERT. The step is disabled in lanes.ts by ruling (user, 2026-09-16):
+    // BYOK is a menu item, not an onboarding step. isStepOfLane() rejects
+    // disabled steps, so this branch cannot be reached today.
+    //
+    // Kept rather than deleted because it is the only correct way to write a
+    // provider inside the step transaction, and deleting it would invite
+    // someone re-enabling the step later to write a worse one. If BYOK is
+    // never going near onboarding again, this and saveProviderWithin's
+    // client-joining variant can both go.
+    //
+    // A tenant who skips runs on Vikuna's model, which is the posture every
+    // tenant had before BYOK existed. An empty payload marks the step done
+    // without declaring anything — not a silent fallback, a deliberate
+    // choice the screen states.
+    const code = typeof data.provider_code === 'string' ? data.provider_code.trim() : '';
+    if (!code) return;
+
+    // Runs on the caller's client, so the provider row and the step mark
+    // commit together — the two-phase-commit rule in this file's header.
+    try {
+      await saveProviderWithin(client, tenantId, {
+        providerCode: code,
+        key:     typeof data.key === 'string' ? data.key.trim() : undefined,
+        model:   typeof data.model === 'string' ? data.model.trim() : undefined,
+        baseUrl: typeof data.base_url === 'string' ? data.base_url.trim() : undefined,
+      });
+    } catch (err) {
+      if (err instanceof ProviderError) {
+        throw new StepPayloadError(err.status, err.code, err.message);
+      }
+      throw err;
+    }
+    return;
+  }
+
+  // vani:team stays disabled in the catalog (see lanes.ts for why) —
+  // isStepOfLane() rejects it before we ever get here. When it is enabled,
+  // its writer goes here, inside this same transaction.
 }
 
 export function createOnboardingRouter(pool: Pool): Router {
@@ -306,7 +346,74 @@ export function createOnboardingRouter(pool: Pool): Router {
       );
       const done = new Set(stored.rows.map((r: any) => r.step_id));
 
+      // Read the STORED industry, not req.body's. This step can be completed
+      // without resending a field an earlier call already wrote, so the
+      // payload is not the authority — the row is.
+      let industry = '';
+      if (step_id === 'business_profile') {
+        const prof = await client.query(
+          `SELECT industry FROM vn_tenant_profiles WHERE tenant_id = $1`,
+          [jwt.tenant_id],
+        );
+        industry = (prof.rows[0]?.industry ?? '').trim();
+      }
+
       await client.query('COMMIT');
+
+      // Only now is the new provider row visible to anyone else, so only now
+      // is it safe to drop the resolver's cached copy. Invalidating before
+      // the commit would let a concurrent call re-cache the old row.
+      if (step_id === 'vani:llm_provider') invalidateProvider(jwt.tenant_id);
+
+      // Domain enrichment runs in the BACKGROUND, alongside the rest of
+      // onboarding. Emitting here rather than at the Domain step is
+      // deliberate: business_profile is where the industry is captured, and
+      // it lands early, so the tenant has the whole mission wizard as cover
+      // while the packs are researched.
+      //
+      // Note the two "domain"s are different things. This one is the industry
+      // (vani_domain_pack.domain, a slug). vani_tenant_domain.domain is a DNS
+      // hostname written by the vani:domain step. Same word, unrelated values.
+      //
+      // Emitted unconditionally when an industry is present — whether the work
+      // is needed is the HANDLER's call, not this one's. Deciding here would
+      // race: two tenants in the same industry both see "no pack" and both
+      // enqueue. The handler settles it once, at claim time.
+      //
+      // This fires ONLY on the step transition, so it does nothing for a
+      // tenant who completed business_profile before this shipped. That is
+      // what `npm run packs -- --research <tenantId>` exists for — backfill
+      // is an operator action, not something to bolt onto a request path.
+      if (step_id === 'business_profile') {
+        const slug = industry ? slugifyIndustry(industry) : '';
+        if (!slug) {
+          // Both skips used to be silent, which is how "nothing happened and
+          // nothing said why" gets built. An industry that is blank, or that
+          // slugs to nothing (punctuation only), means this tenant will never
+          // get recommendations — say so where an operator can find it.
+          console.warn('[Onboarding:enrichment-skip]',
+            `tenant ${jwt.tenant_id} completed business_profile with no usable industry`,
+            `(raw: ${JSON.stringify(industry)}) — no packs will be researched.`,
+            'Backfill with: npm run packs -- --research <tenantId>');
+        } else {
+          try {
+            await emitEvent(pool, jwt.tenant_id, 'DOMAIN_ENRICHMENT_REQUESTED', 'system', {
+              industry,
+              domain: slug,
+            });
+          } catch (emitErr: any) {
+            // The step itself is committed and the tenant's request succeeded,
+            // so this must not 500. But it is not swallowed either: without a
+            // log line the tenant would simply never get recommendations and
+            // nothing would say why (rule 12 — fail loudly).
+            //
+            // Recoverable by design: nothing was written, so the next tenant
+            // in this industry re-triggers the same research, and the on-demand
+            // path in JD Studio can request it directly.
+            console.error('[Onboarding:enrichment-emit]', slug, emitErr?.message ?? emitErr);
+          }
+        }
+      }
 
       const next = requiredSteps(lane).find((s) => !done.has(s.step_id));
 

@@ -39,7 +39,11 @@ export type EventType =
   // Manufacturing pilot — per-company research over a tagged cohort
   | 'ACCOUNT_RESEARCH_REQUESTED'
   // Learning Graph — derive fit rules from a reviewer's brief decisions
-  | 'FIT_LESSONS_REQUESTED';
+  | 'FIT_LESSONS_REQUESTED'
+  // Domain packs — research an industry's role families so a tenant reaching
+  // JD Studio has recommendations waiting. Emitted while they are still
+  // onboarding, so the work runs alongside the rest of the wizard.
+  | 'DOMAIN_ENRICHMENT_REQUESTED';
 
 export type SourceType = 'human' | 'agent' | 'cron' | 'system' | 'webhook';
 export type EventStatus = 'pending' | 'processing' | 'done' | 'failed';
