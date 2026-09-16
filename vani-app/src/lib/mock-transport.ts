@@ -119,6 +119,28 @@ function onboardingStatus() {
   };
 }
 
+/**
+ * BYOK mock state.
+ *
+ * Mirrors the server's two postures so the screen can be worked on without a
+ * backend: null provider = platform, a row = byok. The key is never echoed
+ * back here either — the mock returns a HINT, because a mock that hands the
+ * secret back would let a screen be written against a response the real API
+ * will never send.
+ */
+let MOCK_PROVIDER: {
+  providerCode: string; model: string | null; baseUrl: string | null;
+  testStatus: 'untested' | 'passed' | 'failed'; lastTestAt: string | null;
+  keyHint: string | null;
+} | null = null;
+
+const MOCK_CATALOGUE = [
+  { code: 'openai',    label: 'OpenAI',      defaultModel: 'gpt-4o-mini',            keyRequired: true,  needsBaseUrl: false },
+  { code: 'anthropic', label: 'Anthropic',   defaultModel: 'claude-haiku-4-5',       keyRequired: true,  needsBaseUrl: false },
+  { code: 'groq',      label: 'Groq',        defaultModel: 'llama-3.3-70b-versatile', keyRequired: true,  needsBaseUrl: false },
+  { code: 'custom',    label: 'Self-hosted', defaultModel: '',                        keyRequired: false, needsBaseUrl: true  },
+];
+
 const HANDLERS: Record<string, () => unknown> = {
   'agents.list': () => ({ agents: AGENTS }),
   'dashboard.activity': () => ({ activity: ACTIVITY }),
@@ -130,6 +152,17 @@ const HANDLERS: Record<string, () => unknown> = {
   }),
   'runs.list': () => ({ runs: RUNS }),
   'onboarding.status': () => onboardingStatus(),
+  'llm-provider-skill.get_provider': () => ({
+    provider: MOCK_PROVIDER,
+    posture: MOCK_PROVIDER ? 'byok' : 'platform',
+  }),
+  'llm-provider-skill.get_catalogue': () => ({
+    providers: MOCK_CATALOGUE,
+    // True in the mock: the point of mock mode is working on the screen, not
+    // rehearsing an operator's missing env var. The blocked state is reachable
+    // by flipping this.
+    encryptionReady: true,
+  }),
 };
 
 /** Writes need the params, so they are handled separately from the read table. */
@@ -149,6 +182,44 @@ const WRITE_HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = 
       next_step: next ? next.step_id : null,
       onboarding_complete: !next,
     };
+  },
+
+  'llm-provider-skill.save_provider': (p) => {
+    const code = String(p.provider_code ?? '');
+    const entry = MOCK_CATALOGUE.find((c) => c.code === code);
+    if (!entry) throw new Error(`'${code}' is not a provider we know.`);
+
+    const key = typeof p.key === 'string' ? p.key : '';
+    if (entry.keyRequired && !key && !MOCK_PROVIDER?.keyHint) {
+      throw new Error(`${entry.label} needs an API key.`);
+    }
+    if (entry.needsBaseUrl && !p.base_url) {
+      throw new Error('A self-hosted provider must give the endpoint URL.');
+    }
+
+    // Idempotent by construction, like the server: assignment to one slot, so
+    // replaying the same attempt cannot produce a second provider.
+    MOCK_PROVIDER = {
+      providerCode: code,
+      model: (typeof p.model === 'string' && p.model) || entry.defaultModel || null,
+      baseUrl: (typeof p.base_url === 'string' && p.base_url) || null,
+      testStatus: 'untested',
+      lastTestAt: null,
+      // Hint only — never the key, exactly as the real API behaves.
+      keyHint: key ? `${key.slice(0, 4)}…${key.slice(-4)}` : (MOCK_PROVIDER?.keyHint ?? null),
+    };
+    return { provider: MOCK_PROVIDER, posture: 'byok' };
+  },
+
+  'llm-provider-skill.test_provider': () => {
+    if (!MOCK_PROVIDER) throw new Error('No model provider is configured.');
+    MOCK_PROVIDER = { ...MOCK_PROVIDER, testStatus: 'passed', lastTestAt: new Date().toISOString() };
+    return { ok: true, detail: 'Answered in 210ms: "ok"', model: MOCK_PROVIDER.model ?? '', latencyMs: 210 };
+  },
+
+  'llm-provider-skill.remove_provider': () => {
+    MOCK_PROVIDER = null;
+    return { provider: null, posture: 'platform' };
   },
 };
 
