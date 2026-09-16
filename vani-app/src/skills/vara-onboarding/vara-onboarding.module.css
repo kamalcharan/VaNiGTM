@@ -583,3 +583,19 @@
   text-transform: uppercase;
   color: var(--tx3);
 }
+
+/* Retry on the research card's failure state. Bordered, not filled: re-asking
+   is cheap and ordinary, and it must not compete with Publish. */
+.btnRetry {
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--color-fg);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btnRetry:hover { border-color: var(--gold); }

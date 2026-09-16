@@ -77,11 +77,41 @@ export function ResearchCard(
   });
 
   // A refusal arrives as success:false with HTTP 200, so the query can succeed
-  // and still carry no data. Treat that as "no information", not as an error
-  // screen — the family list below still works and the tenant is not blocked.
+  // and still carry no data. Both failures are SHOWN, not swallowed.
+  //
+  // This returned null on any failure, and that was the defect. A tenant whose
+  // API has not been redeployed saw a page with no provenance line and no
+  // button — identical to a page where there was simply nothing to say — so
+  // "the backend is missing domain-pack-skill" was indistinguishable from
+  // "everything is fine". Charan lost an hour to exactly that, asking where the
+  // Research button had gone. Rule 12: surface the true cause and stop.
   const status = q.data?.success ? q.data.data : null;
+  const refusal = q.data && !q.data.success ? q.data.error : null;
+  const failure = q.error?.message ?? refusal ?? null;
+
   if (q.isLoading) return <InlineLoader size="sm" />;
-  if (!status) return null;
+
+  if (!status) {
+    return (
+      <div className={`${s.research} ${s.researchFailed}`}>
+        <div className={s.researchBody}>
+          <b>Vara cannot check what it knows about your industry</b>
+          {/* The server's own words. Usually names the missing skill, which is
+              what tells an operator the API needs redeploying. */}
+          <span className={s.researchDetail}>
+            {failure ?? 'The research service did not answer.'}
+          </span>
+          <span className={s.researchNote}>
+            Role families below may be Vikuna&apos;s starter set rather than
+            researched for you — this screen cannot currently tell.
+          </span>
+        </div>
+        <button type="button" className={s.btnRetry} onClick={() => void q.refetch()}>
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   if (variant === 'provenance') return <Provenance status={status} industryRaw={industryRaw} />;
 

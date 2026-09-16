@@ -234,11 +234,15 @@ function VaraOnboardingRunnerInner() {
               <div className={s.card}>
                 <div className={s.cardHead}>
                   <h2 className={s.cardTitle}>What Vara already knows about you</h2>
-                  {/* Was "inherited from Smart Profile", which stopped being the
-                      whole truth once role playbooks appeared below it. Some of
-                      this is declared, some is researched, and the card has to
-                      say which. */}
-                  <span className={s.cardMeta}>declared · researched</span>
+                  {/* "inherited from Smart Profile" stopped being the whole
+                      truth once role playbooks appeared below it, but the first
+                      replacement — "declared · researched" — was worse: Charan
+                      read it as a CLAIM that something had been researched,
+                      directly above a line saying nothing had been. A meta
+                      label names what the card holds; it must not assert state.
+                      The ROLE PLAYBOOKS line is the only thing that says what
+                      is and is not researched. */}
+                  <span className={s.cardMeta}>what Vara has · and where from</span>
                 </div>
                 <p className={s.cardWhat}>
                   Correct any of this in the Smart Profile — Vara does not ask you
