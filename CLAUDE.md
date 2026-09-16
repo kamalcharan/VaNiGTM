@@ -147,10 +147,14 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
 - A table's OWNER bypasses its own policies unless `FORCE ROW LEVEL SECURITY`
   is set. 18 tables were owned by `vanigtm_app` — migration 236 forced 17.
 - **The whole `vani_`/`vara_` spine (migrations 240–246) is UNFORCED** and was
-  never covered: 236 ran before 240. Migration 247 forces
-  `vani_llm_provider` only — forcing the rest would break Vara, whose
-  `vara.routes.ts` has 22 raw `pool.query` sites with no tenant context.
-  Full finding + the one query that checks it: `docs/db/rls-status.md` §11.
+  never covered: 236 ran before 240. Migration 247 forces `vani_llm_provider`
+  only. `vara.routes.ts` **is now converted** — all 22 raw `pool.query` sites
+  run through `withTenantClient` (2026-09-16), verified against forced RLS.
+  One reader remains: `auth.routes.ts` has a single raw query against
+  `vani_tenant_domain` (~line 1129). Forcing the rest is now a migration
+  rather than a rewrite — but extend `rls-two-tenant-test.sql` to cover the
+  spine first; it does not reach these tables, which is why none of this was
+  caught. `docs/db/rls-status.md` §11–13.
 - **TWO TENANT IDS. `vn_tenants.id` ≠ `vani_tenant.id`** — joined by `slug`,
   never equal. The JWT and `set_tenant_context()` carry the `vn_` one; every
   `vani_*`/`vara_*` row stores the `vani_` one. Migration 240's policies

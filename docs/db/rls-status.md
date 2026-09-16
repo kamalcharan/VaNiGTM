@@ -913,3 +913,66 @@ The `vara.routes.ts` conversion is still required before forcing the rest —
 their queries regardless of this fix. But 248 is a **prerequisite** to that
 work, not an alternative: converting those call sites without it would simply
 move the failure from "no GUC" to "GUC compares against the wrong id".
+
+
+---
+
+## 13. vara.routes.ts is converted (2026-09-16)
+
+§11 and §12 both named this as the blocker. It is done: **all 22 raw
+`pool.query` calls now run inside `withTenantClient`**, so the RLS policies on
+the spine apply to Vara's own traffic as a second lock behind its
+`WHERE tenant_id = $1` filters.
+
+### 13.1 What changed beyond swapping the client
+
+**A typed error, because a callback cannot early-return a response.** A handler
+that did `res.status(409)...; return;` inside the `withTenantClient` callback
+would return from the CALLBACK, commit the transaction, and let the handler
+carry on. `VaraError` is thrown instead, unwinding to ROLLBACK, and each
+handler's catch maps it to its status — the same shape `onboarding.routes.ts`
+uses for `StepPayloadError`.
+
+**Two handlers gained a real transaction.** `/activate` wrote
+`vani_tenant_agent` and its `vani_audit_log` row as two independent pool
+calls, as did `DELETE /prompts/:key`. A failure between them left an
+activation, or a reverted override, with no record that anyone had done it.
+Both now commit together.
+
+**One query was running outside the transaction that contained it.** In
+`/jd/compose`, the `vani_domain_pack` lookup sat inside the `BEGIN ... COMMIT`
+block but ran on `pool`, so it took a separate connection, saw a different
+snapshot, and carried no tenant context. Now on `client`.
+
+**The two hand-rolled transactions set context themselves.** `/jd/compose`
+holds its own client for an advisory lock, and `PATCH /prompts/:key` for its
+deactivate-then-insert. Both call `set_tenant_context` immediately after
+`BEGIN` — inside, because `set_config(..., is_local := true)` does not survive
+outside a transaction.
+
+### 13.2 Measured under FORCE ROW LEVEL SECURITY
+
+Two tenants, PostgreSQL 16, app role `NOSUPERUSER NOBYPASSRLS`, `vani_tenant`,
+`vani_tenant_agent`, `vani_tenant_domain` and `vara_jd` all FORCED — the state
+this conversion exists to survive. Running the queries the routes now issue:
+
+```
+CONVERTED (withTenantClient) as acme: Acme · sub=live · jds=[Acme Backend Engineer]
+CONVERTED (withTenantClient) as beta: Beta · sub=activating · jds=[Beta Designer]
+OLD WAY   (raw pool.query)      : 0 rows   <- the breakage this change prevents
+CROSS-TENANT (acme reads beta)  : 0 rows
+```
+
+The third line is the point: the code as it stood this morning returns nothing
+the moment those tables are forced.
+
+### 13.3 What is now unblocked, and what still is not
+
+Forcing the rest of the spine is now a migration rather than a rewrite. Before
+writing it, check the remaining reader: `auth.routes.ts` has one raw
+`pool.query` against `vani_tenant_domain` (line ~1129) that has not been
+converted. One call site, not twenty-two — but forcing `vani_tenant_domain`
+without it breaks that route exactly as this one would have.
+
+Extend `rls-two-tenant-test.sql` to cover the spine before forcing anything.
+This whole finding exists because that test does not reach these tables.
