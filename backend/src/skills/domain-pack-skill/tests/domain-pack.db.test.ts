@@ -296,6 +296,129 @@ d('the agent', () => {
   });
 });
 
+d('publishing a reviewed draft', () => {
+  // publish.ts opens its own pool from DB_PRIMARY at import time, and require
+  // caches the module — so it is loaded and closed ONCE for the whole block.
+  // Loading per test looked tidier and failed: the first close() ended the
+  // shared pool and every later test died on "Cannot use a pool after end".
+  let pub: typeof import('../publish');
+
+  beforeAll(() => {
+    if (!available) return;
+    process.env.DB_PRIMARY =
+      `postgresql://${process.env.PGUSER || 'postgres'}@localhost/domain_pack_test`
+      + `?host=${process.env.PGHOST || '/tmp'}&port=${process.env.PGPORT || 55432}`;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    pub = require('../publish');
+  });
+
+  afterAll(async () => { if (pub) await pub.close(); });
+
+  const draft = async () => {
+    llmQueue = [{ families: [FAMILY, { ...FAMILY, family_name: 'Warehouse Ops' }] }];
+    const run = await mkRun();
+    await DomainPackAgent.run(pool, A, { industry: 'Logistics', domain: 'logistics' }, run);
+    return run;
+  };
+
+  it('publishes every family of a draft, at version 1', async () => {
+    const run = await draft();
+    const published = await pub.publish(run);
+    expect(published).toHaveLength(2);
+
+    const rows = await pool.query(
+      `SELECT code, version, domain FROM vani_domain_pack ORDER BY code`);
+    expect(rows.rows.map((r) => r.version)).toEqual([1, 1]);
+    expect(rows.rows.map((r) => r.domain)).toEqual(['logistics', 'logistics']);
+
+    const r = await pool.query(`SELECT status, awaiting_input FROM gt_agent_runs WHERE id = $1`, [run]);
+    expect(r.rows[0].status).toBe('completed');
+    expect(r.rows[0].awaiting_input).toBeNull();
+  });
+
+  it('refuses a second publish instead of duplicating the packs', async () => {
+    const run = await draft();
+    await pub.publish(run);
+    await expect(pub.publish(run)).rejects.toThrow(/nothing to publish/);
+    const n = await pool.query(`SELECT count(*)::int n FROM vani_domain_pack`);
+    expect(n.rows[0].n).toBe(2);
+  });
+
+  it('never overwrites — a re-publish is a new version', async () => {
+    // V-14 append-only. Anything that recorded "pack v1" must still be able
+    // to read v1 after a correction lands.
+    //
+    // The second draft is written directly rather than produced by the agent,
+    // and that is a FINDING, not a test convenience: once v1 is published,
+    // claimDomain answers 'pack-exists' for that industry forever, so the
+    // agent cannot currently produce a refreshed draft at all. Versioning
+    // works; nothing triggers it. Refreshing a stale pack needs a deliberate
+    // path (an operator re-research flag, or an age check in the claim) and
+    // is not built — see the commit message.
+    const first = await draft();
+    await pub.publish(first);
+
+    const reDraft = await pool.query(
+      `INSERT INTO gt_agent_runs (tenant_id, agent_name, status, awaiting_input)
+       VALUES ($1, 'DOMAIN_ENRICHMENT_REQUESTED', 'awaiting', $2::jsonb) RETURNING id`,
+      [A, JSON.stringify({
+        kind: 'domain_pack_review', domain: 'logistics', industry: 'Logistics',
+        researched_at: new Date().toISOString(), prompt_version: 1,
+        packs: [toPackRow('logistics', FAMILY as never, 'Logistics', 1)],
+      })],
+    );
+
+    const published = await pub.publish(String(reDraft.rows[0].id));
+    expect(published).toEqual(['talent-logistics-fleet-operations v2']);
+
+    const versions = await pool.query(
+      `SELECT version FROM vani_domain_pack
+        WHERE code = 'talent-logistics-fleet-operations' ORDER BY version`);
+    expect(versions.rows.map((r) => r.version)).toEqual([1, 2]);
+  });
+
+  it('publishes all families or none', async () => {
+    // The second family's INSERT must fail AFTER the first has succeeded, so
+    // a constraint is added for the duration. An earlier version of this test
+    // pre-inserted a clashing row and proved nothing: publish computes
+    // max(version)+1, so the clash just produced v2 and everything succeeded.
+    const run = await draft();
+    await pool.query(
+      `ALTER TABLE vani_domain_pack ADD CONSTRAINT tmp_block_warehouse
+         CHECK (code <> 'talent-logistics-warehouse-ops')`);
+    try {
+      await expect(pub.publish(run)).rejects.toThrow();
+
+      // The first family must not survive the second's failure. A tenant
+      // seeing some role families with nothing saying the rest are missing is
+      // worse than seeing none.
+      const orphan = await pool.query(
+        `SELECT count(*)::int n FROM vani_domain_pack
+          WHERE code = 'talent-logistics-fleet-operations'`);
+      expect(orphan.rows[0].n).toBe(0);
+
+      // And the draft is still reviewable — a failed publish must not consume it.
+      const r = await pool.query(`SELECT status FROM gt_agent_runs WHERE id = $1`, [run]);
+      expect(r.rows[0].status).toBe('awaiting');
+    } finally {
+      await pool.query(`ALTER TABLE vani_domain_pack DROP CONSTRAINT tmp_block_warehouse`);
+    }
+  });
+
+  it('frees the industry again when a draft is rejected', async () => {
+    const run = await draft();
+    await pub.reject(run, 'families are generic');
+
+    const r = await pool.query(`SELECT status, error_trace FROM gt_agent_runs WHERE id = $1`, [run]);
+    expect(r.rows[0].status).toBe('failed');
+    expect(r.rows[0].error_trace).toMatch(/generic/);
+
+    // The point of rejecting: a bad draft must be re-researchable, not a
+    // permanent block on the industry.
+    expect(await claimDomain(pool, await mkRun(), 'logistics')).toBe('claimed');
+  });
+});
+
 describe('musthave weights', () => {
   it.each([
     [[40, 25, 20, 15]], [[30, 30, 30]], [[50, 50, 44]], [[1, 1, 1]], [[33, 33, 33]],
