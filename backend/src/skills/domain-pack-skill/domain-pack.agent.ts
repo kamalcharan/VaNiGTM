@@ -28,12 +28,28 @@
 
 import type { Pool } from 'pg';
 import { z } from 'zod';
-import { appendStep, setStatus } from '../../agent-core/agent.runner';
+import { appendStep, setStatus, saveCheckpoint, loadCheckpoint } from '../../agent-core/agent.runner';
 import { callLLMValidated } from '../../agent-core/llm.client';
 import { resolvePrompt, renderPrompt } from '../../vani/prompt-store';
 import { slugifyIndustry } from '../../vani/industry-slug';
 
-const PROMPT_KEY = 'vara.domain_pack.research';
+/**
+ * TWO prompts, because one call cannot fit the answer.
+ *
+ * Run 87 asked for 5-8 families with 10-15 titles each in a single response,
+ * produced 10,317 characters and died at position 10,302 — truncated mid-JSON
+ * against max_tokens. Raising the cap does not work either: run 86 spent 221
+ * seconds on ~2600 tokens, so an 8000-token budget lands past the deployed
+ * LLM_PRIMARY_TIMEOUT_MS of 280000. The output has to get smaller per call.
+ *
+ * Stage 1 names the families and their titles — the match key, and the only
+ * part the doorway needs to be useful. Stage 2 runs once per family for its
+ * scoring shape, a few hundred tokens each. Every call fits a 4B model inside
+ * the timeout, and the run checkpoints between them, so a failure on family
+ * four keeps families one to three.
+ */
+const FAMILIES_KEY = 'vara.domain_pack.families';
+const STARTER_KEY = 'vara.domain_pack.starter';
 
 /** How long a run may hold a domain before another is allowed to retry it. */
 const IN_PROGRESS_TTL = '1 hour';
@@ -47,20 +63,28 @@ const MusthaveSchema = z.object({
   why:    z.string().optional(),
 });
 
-const FamilySchema = z.object({
+/** Stage 1 — who the industry hires, and what those jobs are called. */
+const FamilyIdSchema = z.object({
   family_name:       z.string().min(2),
   hint:              z.string().optional(),
   suggested_titles:  z.array(z.string()).default([]),
   role_summary_hint: z.string().optional(),
-  musthaves:         z.array(MusthaveSchema).min(1),
-  knockouts:         z.array(z.object({ label: z.string(), rule: z.string() })).default([]),
-  threshold:         z.number().int().min(0).max(100).default(30),
-  band_hint:         z.string().optional(),
 });
 
-const ResearchSchema = z.object({
-  families: z.array(FamilySchema).min(1).max(8),
+const FamiliesSchema = z.object({
+  families: z.array(FamilyIdSchema).min(1).max(8),
 });
+
+/** Stage 2 — how ONE family is assessed. */
+const StarterSchema = z.object({
+  musthaves: z.array(MusthaveSchema).min(1),
+  knockouts: z.array(z.object({ label: z.string(), rule: z.string() })).default([]),
+  threshold: z.number().int().min(0).max(100).default(30),
+  band_hint: z.string().optional(),
+});
+
+/** The two stages joined — what toPackRow writes. */
+const FamilySchema = FamilyIdSchema.merge(StarterSchema);
 
 export type ResearchedFamily = z.infer<typeof FamilySchema>;
 
@@ -223,43 +247,106 @@ export const DomainPackAgent = {
       status: 'ok',
     });
 
-    // The prompt is a row, not a string literal — Prompt Studio edits it.
-    // resolvePrompt throws PromptNotFoundError if migration 249 has not been
-    // applied, which is the correct loud failure: a missing prompt is a
-    // deploy defect and must not fall back to something hardcoded.
-    const prompt = await resolvePrompt(pool, PROMPT_KEY);
-    const system = renderPrompt(prompt, { industry, domain_slug: slug });
+    // Prompts are rows, not string literals — Prompt Studio edits them.
+    // resolvePrompt throws PromptNotFoundError if migration 251 has not been
+    // applied, which is the correct loud failure: a missing prompt is a deploy
+    // defect and must not fall back to something hardcoded.
+    const famPrompt = await resolvePrompt(pool, FAMILIES_KEY);
+    const starterPrompt = await resolvePrompt(pool, STARTER_KEY);
 
     await appendStep(pool, runId, {
       step_name: 'prompt',
-      action: `Resolved ${PROMPT_KEY} v${prompt.version} (${prompt.scope})`,
+      action: `Resolved ${FAMILIES_KEY} v${famPrompt.version} and `
+        + `${STARTER_KEY} v${starterPrompt.version} (${famPrompt.scope})`,
       status: 'ok',
     });
 
-    const started = Date.now();
-    const research = await callLLMValidated(
-      {
-        tenantId,
-        pool,
-        runId,
-        system,
-        messages: [{
-          role: 'user',
-          content: `Describe the role families the "${industry}" industry hires for most often.`,
-        }],
-        maxTokens: 2600,
-        temperature: 0.3,
-      },
-      ResearchSchema,
-    );
+    // ── Stage 1 ───────────────────────────────────────────────────────────
+    // Resumed from the checkpoint when present, so a retry after a stage-2
+    // timeout does not pay for this again.
+    const saved = (await loadCheckpoint(pool, runId)) ?? {};
+    let ids = (saved.families as z.infer<typeof FamilyIdSchema>[] | undefined) ?? null;
 
-    const families = research.families.map(normaliseWeights);
+    if (ids) {
+      await appendStep(pool, runId, {
+        step_name: 'restore',
+        action: `Resumed ${ids.length} families from checkpoint`,
+        status: 'ok',
+      });
+    } else {
+      const t0 = Date.now();
+      const listed = await callLLMValidated(
+        {
+          tenantId, pool, runId,
+          system: renderPrompt(famPrompt, { industry, domain_slug: slug }),
+          messages: [{
+            role: 'user',
+            content: `Name the role families the "${industry}" industry hires for.`,
+          }],
+          maxTokens: 2200,
+          temperature: 0.3,
+        },
+        FamiliesSchema,
+      );
+      ids = listed.families;
+      await saveCheckpoint(pool, runId, { families: ids });
+      await appendStep(pool, runId, {
+        step_name: 'families',
+        action: `Named ${ids.length} role families for "${slug}"`,
+        output_summary: ids.map((f) => f.family_name).join(', ').slice(0, 200),
+        duration_ms: Date.now() - t0,
+        status: 'ok',
+      });
+    }
+
+    // ── Stage 2, one family at a time ─────────────────────────────────────
+    // Each shape is written to the checkpoint as it lands. A timeout on family
+    // four keeps one to three, and a retry picks up where it stopped — the
+    // "earn it, write it" discipline the runner's checkpoint exists for.
+    const shapes = { ...((saved.shapes as Record<string, unknown>) ?? {}) };
+    const families: ResearchedFamily[] = [];
+
+    for (const id of ids) {
+      let shape = shapes[id.family_name] as z.infer<typeof StarterSchema> | undefined;
+
+      if (!shape) {
+        const t0 = Date.now();
+        shape = await callLLMValidated(
+          {
+            tenantId, pool, runId,
+            system: renderPrompt(starterPrompt, {
+              industry,
+              family_name: id.family_name,
+              family_hint: id.hint ?? '',
+              family_titles: (id.suggested_titles ?? []).join(', '),
+            }),
+            messages: [{
+              role: 'user',
+              content: `How is "${id.family_name}" assessed in ${industry}?`,
+            }],
+            maxTokens: 900,
+            temperature: 0.3,
+          },
+          StarterSchema,
+        );
+        shapes[id.family_name] = shape;
+        await saveCheckpoint(pool, runId, { shapes });
+        await appendStep(pool, runId, {
+          step_name: 'starter',
+          action: `Shaped "${id.family_name}" — ${shape.musthaves.length} must-haves, `
+            + `${shape.knockouts.length} knockouts, threshold ${shape.threshold}`,
+          duration_ms: Date.now() - t0,
+          status: 'ok',
+        });
+      }
+
+      families.push(normaliseWeights({ ...id, ...shape } as ResearchedFamily));
+    }
 
     await appendStep(pool, runId, {
       step_name: 'research',
       action: `Drafted ${families.length} role families for "${slug}"`,
       output_summary: families.map((f) => f.family_name).join(', ').slice(0, 200),
-      duration_ms: Date.now() - started,
       status: 'ok',
     });
 
@@ -272,8 +359,8 @@ export const DomainPackAgent = {
         domain: slug,
         industry,
         researched_at: new Date().toISOString(),
-        prompt_version: prompt.version,
-        packs: families.map((f) => toPackRow(slug, f, industry, prompt.version)),
+        prompt_version: famPrompt.version,
+        packs: families.map((f) => toPackRow(slug, f, industry, famPrompt.version)),
       },
       output: { domain: slug, families: families.length, status: 'awaiting_review' },
     });
@@ -347,7 +434,11 @@ export function toPackRow(
         by: 'domain-pack-agent',
         source: 'public market knowledge (LLM)',
         industry_as_typed: industry,
-        prompt_key: PROMPT_KEY,
+        // Both stages, so a published pack can be traced to the exact text
+        // that produced it. The starter prompt is the one that shaped the
+        // scoring, and is the one to look at when a pack scores oddly.
+        prompt_key: FAMILIES_KEY,
+        starter_prompt_key: STARTER_KEY,
         prompt_version: promptVersion,
         at: new Date().toISOString(),
       },

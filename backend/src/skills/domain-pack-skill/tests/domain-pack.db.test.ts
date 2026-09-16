@@ -98,6 +98,12 @@ CREATE UNIQUE INDEX vani_prompt_one_active ON vani_prompt
   WHERE active = true;
 `;
 
+/** Stage 2 returns only the scoring half; the stub must answer both stages. */
+const STARTER_OF = (f: typeof FAMILY) => ({
+  musthaves: f.musthaves, knockouts: f.knockouts,
+  threshold: f.threshold, band_hint: f.band_hint,
+});
+
 const FAMILY = {
   family_name: 'Fleet Operations',
   hint: 'Keeps vehicles moving',
@@ -138,7 +144,8 @@ beforeAll(async () => {
   // row, and the token-contract test below therefore checks whichever version
   // is ACTIVE, which is the one the agent will actually resolve.
   for (const m of ['249_vara_domain_pack_research_prompt.sql',
-                   '250_vara_domain_pack_research_prompt_v2.sql']) {
+                   '250_vara_domain_pack_research_prompt_v2.sql',
+                   '251_vara_domain_pack_two_stage.sql']) {
     await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
   }
   await pool.query(`INSERT INTO vn_tenants (id, slug) VALUES ($1,'us'), ($2,'them'), ($3,'saas')`,
@@ -288,7 +295,7 @@ d('claiming a domain', () => {
 
 d('the agent', () => {
   it('parks for review instead of publishing', async () => {
-    llmQueue = [{ families: [FAMILY] }];
+    llmQueue = [{ families: [FAMILY] }, STARTER_OF(FAMILY)];
     const run = await mkRun();
     await DomainPackAgent.run(pool, A, { industry: 'Logistics & Freight', domain: 'logistics-freight' }, run);
 
@@ -301,6 +308,52 @@ d('the agent', () => {
     // The point of the gate: research alone publishes nothing.
     const published = await pool.query(`SELECT count(*)::int n FROM vani_domain_pack`);
     expect(published.rows[0].n).toBe(0);
+  });
+
+  it('keeps the families it already paid for when a later one fails', async () => {
+    // The reason research is two-staged at all. Run 87 asked for everything in
+    // one call, produced 10,317 characters and truncated at 10,302 — and the
+    // whole run was lost. Now each family is written to the checkpoint as it
+    // lands, so a failure on the second keeps the first.
+    const run = await mkRun();
+    // Stage 1 names two families; stage 2 answers for the first and then the
+    // stub runs dry, which is what a timeout looks like from here.
+    llmQueue = [
+      { families: [FAMILY, { ...FAMILY, family_name: 'Warehouse Ops' }] },
+      STARTER_OF(FAMILY),
+    ];
+    await expect(
+      DomainPackAgent.run(pool, A, { industry: 'Logistics', domain: 'logistics' }, run),
+    ).rejects.toThrow();
+
+    const cp = await pool.query(`SELECT checkpoint FROM gt_agent_runs WHERE id = $1`, [run]);
+    expect(cp.rows[0].checkpoint.families).toHaveLength(2);
+    expect(Object.keys(cp.rows[0].checkpoint.shapes)).toEqual(['Fleet Operations']);
+  });
+
+  it('resumes from the checkpoint instead of re-asking the model', async () => {
+    const run = await mkRun();
+    llmQueue = [
+      { families: [FAMILY, { ...FAMILY, family_name: 'Warehouse Ops' }] },
+      STARTER_OF(FAMILY),
+    ];
+    await expect(
+      DomainPackAgent.run(pool, A, { industry: 'Logistics', domain: 'logistics' }, run),
+    ).rejects.toThrow();
+
+    // Exactly ONE response queued: enough for the missing family and nothing
+    // else. If the agent re-ran stage 1 or re-shaped the first family, the
+    // stub would run dry and this would throw.
+    llmQueue = [STARTER_OF({ ...FAMILY, family_name: 'Warehouse Ops' } as never)];
+    await DomainPackAgent.run(pool, A, { industry: 'Logistics', domain: 'logistics' }, run);
+
+    const r = await pool.query(
+      `SELECT status, awaiting_input, steps FROM gt_agent_runs WHERE id = $1`, [run]);
+    expect(r.rows[0].status).toBe('awaiting');
+    expect(r.rows[0].awaiting_input.packs).toHaveLength(2);
+    // A visible restore step, so a resumed run is legible in the feed rather
+    // than looking like it did less work for no reason.
+    expect(JSON.stringify(r.rows[0].steps)).toMatch(/Resumed 2 families from checkpoint/);
   });
 
   it('completes without calling the model when a pack exists', async () => {
@@ -324,22 +377,41 @@ d('the agent', () => {
     ).rejects.toThrow(/DOMAIN_ENRICHMENT_NO_INDUSTRY/);
   });
 
-  it('renders the seeded prompt with no tokens left unsubstituted', async () => {
+  it.each([
+    ['vara.domain_pack.families'],
+    ['vara.domain_pack.starter'],
+  ])('%s declares exactly the variables its body uses', async (key) => {
     const p = await pool.query(
-      `SELECT body, variables, version FROM vani_prompt
-        WHERE key = 'vara.domain_pack.research' AND active = true`);
-    expect(p.rows).toHaveLength(1);        // exactly one active row, per the partial index
+      `SELECT body, variables FROM vani_prompt WHERE key = $1 AND active = true`, [key]);
+    expect(p.rows).toHaveLength(1);        // one active row per key, per the partial index
     const declared: string[] = p.rows[0].variables;
     const inBody = [...String(p.rows[0].body).matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]);
     // Both directions: an undeclared token renders literally to the model; a
     // declared-but-absent one makes every tenant override fail validation.
     expect(new Set(inBody)).toEqual(new Set(declared));
   });
+
+  it('retires the single-call prompt rather than leaving two claiming the job', async () => {
+    // 251 splits research in two because one call truncated at 10,302 chars.
+    // Leaving vara.domain_pack.research active would mean nobody could tell
+    // which prompt actually runs.
+    const r = await pool.query(
+      `SELECT count(*)::int n FROM vani_prompt
+        WHERE key = 'vara.domain_pack.research' AND active = true`);
+    expect(r.rows[0].n).toBe(0);
+    // Still readable: published packs record the version that produced them.
+    const kept = await pool.query(
+      `SELECT count(*)::int n FROM vani_prompt WHERE key = 'vara.domain_pack.research'`);
+    expect(kept.rows[0].n).toBe(2);
+  });
 });
 
 d('publishing a reviewed draft', () => {
   const draft = async () => {
-    llmQueue = [{ families: [FAMILY, { ...FAMILY, family_name: 'Warehouse Ops' }] }];
+    llmQueue = [
+      { families: [FAMILY, { ...FAMILY, family_name: 'Warehouse Ops' }] },
+      STARTER_OF(FAMILY), STARTER_OF(FAMILY),
+    ];
     const run = await mkRun();
     await DomainPackAgent.run(pool, A, { industry: 'Logistics', domain: 'logistics' }, run);
     return run;
@@ -502,7 +574,7 @@ d('research on demand', () => {
     await pool.query(
       `INSERT INTO vani_domain_pack (code, version, domain, payload)
        VALUES ('talent-logistics-freight-x', 1, 'logistics-freight', '{"vara":{"starter":{"musthaves":[]}},"researched":{"at":"2026-09-16T00:00:00Z","by":"domain-pack-agent"}}'::jsonb)`);
-    llmQueue = [{ families: [FAMILY] }];
+    llmQueue = [{ families: [FAMILY] }, STARTER_OF(FAMILY)];
     const run = await mkRun();
     await DomainPackAgent.run(
       pool, A, { industry: 'Logistics & Freight', domain: 'logistics-freight', force: true }, run);
@@ -888,7 +960,8 @@ describe('pack rows', () => {
     // Packs are append-only and versioned; without a date nobody can tell a
     // four-year-old pack from a fresh one.
     expect(row.payload.researched.at).toBeTruthy();
-    expect(row.payload.researched.prompt_key).toBe('vara.domain_pack.research');
+    expect(row.payload.researched.prompt_key).toBe('vara.domain_pack.families');
+    expect(row.payload.researched.starter_prompt_key).toBe('vara.domain_pack.starter');
   });
 
   it('carries years and why through to the pack', () => {
