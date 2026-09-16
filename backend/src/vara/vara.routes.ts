@@ -30,6 +30,7 @@ import { Router } from 'express';
 import type { Pool, PoolClient } from 'pg';
 import jwt from 'jsonwebtoken';
 import { extractJwt } from '../auth/auth.routes';
+import { slugifyIndustry } from '../vani/industry-slug';
 import { withTenantClient } from '../db';
 
 /**
@@ -74,24 +75,6 @@ function fail(res: any, err: unknown, scope: string, fallback: { code: string; m
   }
   console.error(`[Vara:${scope}]`, err);
   res.status(500).json({ error: fallback });
-}
-
-/**
- * The tenant industry (a VARCHAR on vn_tenant_profiles) is free text: "Technology
- * & SaaS", "technology - saas", "Tech / SaaS" — all mean the same industry, and
- * vani_domain_pack.domain uses a canonical slug. This is the deterministic
- * mapping between the two: lowercase, collapse non-alnum runs to '-', trim.
- * Kept small and pure so a seed migration and a runtime lookup use the same
- * form without having to import anything.
- */
-function slugifyIndustry(raw: string): string {
-  return raw
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')   // strip combining marks
-    .replace(/[&/]/g, ' ')             // ampersand and slash become word breaks, not "and"
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';

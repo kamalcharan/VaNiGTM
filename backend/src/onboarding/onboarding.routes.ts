@@ -34,6 +34,8 @@ import { extractJwt } from '../auth/auth.routes';
 import { getLane, isStepOfLane, requiredSteps, type Lane } from './lanes';
 import { saveProviderWithin, ProviderError } from '../vani/llm-provider.service';
 import { invalidateProvider } from '../agent-core/llm.provider';
+import { emitEvent } from '../agent-core/event.store';
+import { slugifyIndustry } from '../vani/industry-slug';
 
 /** Fields each step is allowed to write. Anything else in `data` is ignored. */
 const USER_PROFILE_FIELDS = [
@@ -344,12 +346,60 @@ export function createOnboardingRouter(pool: Pool): Router {
       );
       const done = new Set(stored.rows.map((r: any) => r.step_id));
 
+      // Read the STORED industry, not req.body's. This step can be completed
+      // without resending a field an earlier call already wrote, so the
+      // payload is not the authority — the row is.
+      let industry = '';
+      if (step_id === 'business_profile') {
+        const prof = await client.query(
+          `SELECT industry FROM vn_tenant_profiles WHERE tenant_id = $1`,
+          [jwt.tenant_id],
+        );
+        industry = (prof.rows[0]?.industry ?? '').trim();
+      }
+
       await client.query('COMMIT');
 
       // Only now is the new provider row visible to anyone else, so only now
       // is it safe to drop the resolver's cached copy. Invalidating before
       // the commit would let a concurrent call re-cache the old row.
       if (step_id === 'vani:llm_provider') invalidateProvider(jwt.tenant_id);
+
+      // Domain enrichment runs in the BACKGROUND, alongside the rest of
+      // onboarding. Emitting here rather than at the Domain step is
+      // deliberate: business_profile is where the industry is captured, and
+      // it lands early, so the tenant has the whole mission wizard as cover
+      // while the packs are researched.
+      //
+      // Note the two "domain"s are different things. This one is the industry
+      // (vani_domain_pack.domain, a slug). vani_tenant_domain.domain is a DNS
+      // hostname written by the vani:domain step. Same word, unrelated values.
+      //
+      // Emitted unconditionally when an industry is present — whether the work
+      // is needed is the HANDLER's call, not this one's. Deciding here would
+      // race: two tenants in the same industry both see "no pack" and both
+      // enqueue. The handler settles it once, at claim time.
+      if (step_id === 'business_profile' && industry) {
+        const slug = slugifyIndustry(industry);
+        if (slug) {
+          try {
+            await emitEvent(pool, jwt.tenant_id, 'DOMAIN_ENRICHMENT_REQUESTED', 'system', {
+              industry,
+              domain: slug,
+            });
+          } catch (emitErr: any) {
+            // The step itself is committed and the tenant's request succeeded,
+            // so this must not 500. But it is not swallowed either: without a
+            // log line the tenant would simply never get recommendations and
+            // nothing would say why (rule 12 — fail loudly).
+            //
+            // Recoverable by design: nothing was written, so the next tenant
+            // in this industry re-triggers the same research, and the on-demand
+            // path in JD Studio can request it directly.
+            console.error('[Onboarding:enrichment-emit]', slug, emitErr?.message ?? emitErr);
+          }
+        }
+      }
 
       const next = requiredSteps(lane).find((s) => !done.has(s.step_id));
 
