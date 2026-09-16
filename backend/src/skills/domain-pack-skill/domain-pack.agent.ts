@@ -343,6 +343,12 @@ export const DomainPackAgent = {
       families.push(normaliseWeights({ ...id, ...shape } as ResearchedFamily));
     }
 
+    // Before anything is offered for review. A leaked template reaching a human
+    // depends on them reading 40 must-haves carefully enough to notice one
+    // repeated — which is exactly the kind of check a person should not be the
+    // last line of.
+    assertNoTemplateLeak(families);
+
     await appendStep(pool, runId, {
       step_name: 'research',
       action: `Drafted ${families.length} role families for "${slug}"`,
@@ -366,6 +372,62 @@ export const DomainPackAgent = {
     });
   },
 };
+
+/* ── Template leak ──────────────────────────────────────────────────────── */
+
+/**
+ * Refuse a draft where one must-have has been copied across most families.
+ *
+ * Run 90 produced eight good families and put "Owns a service in production
+ * — can be paged at 2am and resolve it unaided" as the TOP-WEIGHTED must-have
+ * in six of them, including Product Management, Customer Success and Technical
+ * Support. Nobody pages a CSM at 2am about a service.
+ *
+ * It was copied verbatim out of the prompt, which offered exactly that line as
+ * an illustration of a good `why`. The model read the example as a template.
+ * The prompt is fixed too (migration 252), but a prompt cannot be relied on
+ * not to leak — a model that copies will find something else to copy. This
+ * check is deterministic and catches the whole class.
+ *
+ * Interesting confirmation from that run: the two families that ESCAPED the
+ * leak, Security & Compliance and Business Analysis, are also the two with by
+ * far the best must-haves. They are where the Haiku failover took over. So the
+ * leak is what the smaller model does under pressure, which is precisely why
+ * this cannot be a prompt-only fix.
+ *
+ * MORE THAN HALF is the bar. A must-have shared by two or three of eight
+ * families can be genuine — "strong communication" plausibly is. One shared by
+ * most of them is either a leak or a pack so generic it would score every
+ * candidate identically, and both are worth failing over.
+ *
+ * Fails loudly rather than dropping the offender: removing it silently leaves
+ * weights that no longer sum to 100 and hides the real problem (rule 12).
+ */
+export function assertNoTemplateLeak(families: ResearchedFamily[]): void {
+  if (families.length < 3) return;   // too few for "most" to mean anything
+
+  const seen = new Map<string, string[]>();
+  for (const f of families) {
+    for (const m of f.musthaves) {
+      const key = m.name.trim().toLowerCase().replace(/\s+/g, ' ');
+      const list = seen.get(key) ?? [];
+      list.push(f.family_name);
+      seen.set(key, list);
+    }
+  }
+
+  const limit = Math.floor(families.length / 2);
+  for (const [name, inFamilies] of seen) {
+    if (inFamilies.length > limit) {
+      throw new Error(
+        `RESEARCH_TEMPLATE_LEAK: "${name}" appears as a must-have in `
+        + `${inFamilies.length} of ${families.length} families `
+        + `(${inFamilies.join(', ')}). A must-have shared by most families `
+        + `scores nobody apart, and is usually an example copied from the prompt.`,
+      );
+    }
+  }
+}
 
 /* ── Shaping ────────────────────────────────────────────────────────────── */
 

@@ -27,6 +27,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import { createTenantDb } from '../../../db';
 import { matchTitle } from '../title-match';
+import { assertNoTemplateLeak } from '../domain-pack.agent';
 import path from 'path';
 
 const A = '11111111-1111-1111-1111-111111111111';
@@ -145,7 +146,8 @@ beforeAll(async () => {
   // is ACTIVE, which is the one the agent will actually resolve.
   for (const m of ['249_vara_domain_pack_research_prompt.sql',
                    '250_vara_domain_pack_research_prompt_v2.sql',
-                   '251_vara_domain_pack_two_stage.sql']) {
+                   '251_vara_domain_pack_two_stage.sql',
+                   '252_vara_starter_prompt_v2.sql']) {
     await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
   }
   await pool.query(`INSERT INTO vn_tenants (id, slug) VALUES ($1,'us'), ($2,'them'), ($3,'saas')`,
@@ -928,6 +930,60 @@ describe('title matching, measured against real pack titles', () => {
     expect(r.matched!.family_name).toBe('Product Management');
     expect(r.matched!.researched).toBe(true);
     expect(r.alternates.map((a) => a.family_name)).toContain('Product & Design');
+  });
+});
+
+describe('a template copied across families', () => {
+  // Run 90: eight good families, and "Owns a service in production / Can be
+  // paged at 2am and resolve it unaided" as the TOP-WEIGHTED must-have in six
+  // of them — including Product Management, Customer Success and Technical
+  // Support. Copied verbatim out of the prompt's own example of a good `why`.
+  //
+  // The prompt is fixed too (252), but a model that copies will find something
+  // else to copy, so this check is what actually holds.
+  const fam = (name: string, musthaves: { name: string; weight: number }[]) => ({
+    family_name: name, suggested_titles: [], knockouts: [], threshold: 30, musthaves,
+  } as never);
+
+  const LEAK = { name: 'Owns a service in production', weight: 31 };
+  const own = (n: string) => ({ name: `${n} specific signal`, weight: 69 });
+
+  it('refuses the draft, naming the phrase and where it appears', () => {
+    const families = ['Software Development', 'Data Engineering', 'DevOps',
+                      'Product Management', 'Customer Success', 'Technical Support',
+                      'Security', 'Business Analysis']
+      .map((n, i) => fam(n, i < 6 ? [LEAK, own(n)] : [own(n), { name: `${n} second`, weight: 31 }]));
+
+    expect(() => assertNoTemplateLeak(families))
+      .toThrow(/RESEARCH_TEMPLATE_LEAK.*owns a service in production.*6 of 8/is);
+    // Names the families, so an operator can see the absurdity without
+    // re-reading forty must-haves.
+    expect(() => assertNoTemplateLeak(families)).toThrow(/Customer Success/);
+  });
+
+  it('allows a signal genuinely shared by a minority', () => {
+    // "Strong communication" in two of eight is plausible, not a leak. A guard
+    // that fired here would block every honest pack.
+    const shared = { name: 'Strong communication skills', weight: 30 };
+    const families = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+      .map((n, i) => fam(n, i < 3 ? [shared, own(n)] : [own(n), { name: `${n} second`, weight: 31 }]));
+    expect(() => assertNoTemplateLeak(families)).not.toThrow();
+  });
+
+  it('is case and whitespace insensitive', () => {
+    // A model that varies capitalisation between families would otherwise slip
+    // the same template past the check.
+    const families = ['A', 'B', 'C', 'D', 'E']
+      .map((n, i) => fam(n, [{
+        name: i % 2 ? 'owns a  service in production' : 'Owns a Service In Production',
+        weight: 50,
+      }, own(n)]));
+    expect(() => assertNoTemplateLeak(families)).toThrow(/RESEARCH_TEMPLATE_LEAK/);
+  });
+
+  it('says nothing about a pack too small for "most" to mean anything', () => {
+    const families = ['A', 'B'].map((n) => fam(n, [LEAK, own(n)]));
+    expect(() => assertNoTemplateLeak(families)).not.toThrow();
   });
 });
 
