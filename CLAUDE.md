@@ -479,10 +479,24 @@ Runbook in §8 of the doc.
   never comes back**: responses carry a hint (`sk-a…7f3c`), never the
   credential. An empty key field on save means "keep the stored one", which
   is what lets a tenant change the model without re-typing the secret.
-- **`vani:llm_provider` onboarding step is now `enabled: true`.** It is
-  OPTIONAL by construction: an empty payload marks it done and leaves the
-  tenant on the platform model. Note `enabled` also means REQUIRED
-  (`requiredSteps` filters on it), so it must stay completable-by-skipping.
+- **BYOK is a MENU item, not an onboarding step** (user ruling, 2026-09-16).
+  Settings → Model Provider is the surface. `vani:llm_provider` stays
+  `enabled: false` in `lanes.ts`. Do not flip it.
+
+  It was enabled for one day and **trapped a live tenant**, which is worth
+  knowing because the missing piece was in the OTHER repo. `enabled` also
+  means REQUIRED (`requiredSteps` filters on it), so the server began
+  answering `next_incomplete_step='vani:llm_provider'`. The console
+  (`vikunawebsite/vani-app`) keeps its OWN client-side step catalog at
+  `src/skills/onboarding/lanes/product.ts` — three steps, no entry for this
+  one — so `OnboardingRunner` found no step to render, while
+  `RequireSession` held the tenant at `/onboarding/declare` because the only
+  pending step started with `vani:`. A tenant with Vara live and a published
+  JD could not reach their console.
+
+  **Before enabling ANY `vani:` step, check that vani-app's `product.ts` has
+  a matching entry and a step component.** The two catalogs are in different
+  repos and nothing keeps them in sync.
 
 Two rulings (user, 2026-09-15) that the code enforces, not just documents:
 1. **The daily token cap does not apply to BYOK.** It exists because Vikuna

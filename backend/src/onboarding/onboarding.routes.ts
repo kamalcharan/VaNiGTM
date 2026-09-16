@@ -180,10 +180,20 @@ async function applyStepPayload(
   }
 
   if (stepId === 'vani:llm_provider') {
-    // Optional by design: a tenant who skips this runs on Vikuna's model,
-    // which is the posture every tenant had before BYOK existed. An empty
-    // payload marks the step done without declaring anything — not a silent
-    // fallback, a deliberate choice the screen states.
+    // INERT. The step is disabled in lanes.ts by ruling (user, 2026-09-16):
+    // BYOK is a menu item, not an onboarding step. isStepOfLane() rejects
+    // disabled steps, so this branch cannot be reached today.
+    //
+    // Kept rather than deleted because it is the only correct way to write a
+    // provider inside the step transaction, and deleting it would invite
+    // someone re-enabling the step later to write a worse one. If BYOK is
+    // never going near onboarding again, this and saveProviderWithin's
+    // client-joining variant can both go.
+    //
+    // A tenant who skips runs on Vikuna's model, which is the posture every
+    // tenant had before BYOK existed. An empty payload marks the step done
+    // without declaring anything — not a silent fallback, a deliberate
+    // choice the screen states.
     const code = typeof data.provider_code === 'string' ? data.provider_code.trim() : '';
     if (!code) return;
 

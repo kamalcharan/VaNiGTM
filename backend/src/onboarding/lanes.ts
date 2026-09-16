@@ -114,13 +114,34 @@ const VANI_LANE: Lane = {
     //     spine (/auth/team, /auth/invite) and is finished there. This step is
     //     the unused vani_membership route to the same outcome; enable it only
     //     if membership moves to the platform spine.
+    //   - vani:llm_provider — the BACKEND is finished (encryption in
+    //     agent-core/secret.crypto.ts, per-tenant resolution in
+    //     llm.provider.ts, the step writer in onboarding.routes.ts, RLS
+    //     forced by migration 247). It is disabled anyway, because the step
+    //     has no SCREEN.
     //
-    // vani:llm_provider is ENABLED as of 2026-09-15. The encryption path it
-    // was waiting for exists (agent-core/secret.crypto.ts), the resolver
-    // reads it per tenant (agent-core/llm.provider.ts), and
-    // vani_llm_provider is FORCE ROW LEVEL SECURITY (migration 247). The
-    // step is OPTIONAL: submitting it empty marks it done and leaves the
-    // tenant on Vikuna's model, which is where every tenant already was.
+    //     Enabling it on 2026-09-15 trapped a live tenant, and the trap is
+    //     worth recording because the missing piece is in ANOTHER REPO. The
+    //     console (vikunawebsite/vani-app) keeps its own client-side catalog
+    //     at src/skills/onboarding/lanes/product.ts, listing user_profile,
+    //     business_profile and vani:domain. Turning this on made the server
+    //     answer next_incomplete_step='vani:llm_provider'; OnboardingRunner
+    //     then did lane.steps.find(...) against that catalog, got undefined,
+    //     and rendered no step — while RequireSession, seeing an incomplete
+    //     lane whose only pending step starts with 'vani:', held the tenant
+    //     at /onboarding/declare. A tenant with Vara live and a published JD
+    //     could not reach their console.
+    //
+    //     RULING (user, 2026-09-16): **BYOK belongs in the MENU, not in
+    //     onboarding.** Settings → Model Provider is the surface, and it
+    //     works today. So this step is not waiting on a screen to be
+    //     built — it is not going to be an onboarding step at all. Do not
+    //     flip it. It stays declared here only so the server keeps
+    //     recognising the step_id, and so the next person reads this note
+    //     instead of repeating the experiment.
+    //
+    //     This is the `enabled` flag's documented purpose, below, being
+    //     proved the expensive way.
     {
       step_id: 'vani:domain',
       title: 'Your domain',
@@ -140,7 +161,8 @@ const VANI_LANE: Lane = {
       title: 'Your model provider',
       summary: 'Bring your own key. Declared once; every agent uses it.',
       story: 'VN-13',
-      enabled: true,
+      // Do NOT flip. BYOK is a menu item by ruling — see the note above.
+      enabled: false,
     },
   ],
 };
