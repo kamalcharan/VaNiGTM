@@ -50,9 +50,29 @@ Pathways read as verbs and are things you DO. Reference surfaces read as nouns a
 are things you LOOK AT. Do not add a top-level destination — extend a pathway or
 add a drill-down. Old routes redirect; do not add paths outside this hierarchy.
 
+⚠️ **That navigation tree was `frontend/`'s, which is retired** (see
+Architecture). The PRODUCT MODEL above — brain / agents / pathways — still
+holds and is what the API is shaped around. The routes and the sidebar are
+`vani-app`'s to define, under its own registry boundary
+(`vani-app/CLAUDE.md` §5: a skill is one folder plus one line in
+`src/skills/index.ts`).
+
 ## Architecture
-- **Two processes:** Express API (`backend/`, port 3002 in dev) + Next.js 16
-  App Router (`frontend/`, port 3000). Not a single custom server.
+
+> ⚠️ **`frontend/` IS RETIRED. The frontend is `vani-app`** (user, 2026-09-16),
+> which lives in the OTHER repo: `kamalcharan/vikunawebsite`, at `vani-app/`,
+> Next.js on port **3100**. This repo is the **API and the agent core**.
+>
+> `backend/frontend/` is still on disk and still builds. It is not run, not
+> deployed, and not where a feature lands. Anything below describing it —
+> the VDF library, `serviceURLs.ts`, the navigation tree, the settings tabs —
+> documents a retired app. **Read `vikunawebsite/vani-app/CLAUDE.md` before
+> writing any UI**; it is mandatory and covers the five states every screen
+> owes, `useSkillMutation`, idempotency and the registry boundary.
+
+- **Two processes here:** Express API (`backend/`, port 3002 in dev) + the
+  worker. The UI is a separate repo.
+- ~~Next.js 16 App Router (`frontend/`, port 3000)~~ — retired, see above.
 - **Worker:** separate process (`npm run worker`) polling the `gt_events` bus
   and dispatching agents.
 - **Stack:** React + TypeScript frontend, Node.js + Express + TypeScript
@@ -87,15 +107,9 @@ backend/
                         storyteller, vani
     server.ts         — Express entry; migrate.ts — manual migration runner
   migrations/         — 001…247 (highest = 247)
-frontend/
-  src/
-    app/(auth)        — login, register, forgot/reset password, invite
-    app/(app)         — dashboard, onboarding (+icp-builder), contacts,
-                        campaigns, pulses, war-room, import*, settings, demo-data
-    app/(public)      — landing, deck share viewer
-    components/       — vdf/ library, auth/, onboarding/, settings/, pulses/
-    config/theme/     — ThemeProvider, ThemeScript, 12 themes
-    hooks/ lib/       — useSkill/useMe/…, serviceURLs.ts, api-client.ts
+frontend/            — ⚠️ RETIRED (2026-09-16). Still on disk, still builds,
+                      NOT the product. The frontend is vikunawebsite/vani-app.
+                      Kept for reference; do not add features here.
 documents/            — PRD, POA, roadmap, gtm-engine-ui mockups, ux-references
 docs/                 — mcp-db-setup.md, rls-cutover-checklist
 scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
@@ -218,6 +232,28 @@ Each skill in `backend/src/skills/<name>/`:
 | pulse-skill | follow-ups + meeting workflow (funnel) | ✅ retargeted to contacts |
 | etl (src/etl) | import pipeline (staging works) | ⚠️ processing = 501 until prospect-skill |
 
+## CORS — a list, not a string (fixed 2026-09-16)
+
+`CORS_ORIGIN` is **comma-separated**; `cors-origins.ts` parses it and
+`server.ts` prints the result at startup. It took a single exact string, and
+defaulted to `http://localhost:3000` — the retired `frontend/`. **The origin
+that actually matters is `http://localhost:3100` (vani-app).** A deployment
+that never changed the default therefore refused every preflight from the real
+console.
+
+It is a list rather than a swapped string because the default has to keep
+working for anything still pointed at :3000, and because a second origin
+(preview deploy, a second console) should not need a code change.
+
+That failure has no server-side symptom: the browser blocks it, nothing is
+logged, and **curl cannot reproduce it** because curl sends no `Origin`
+header. In vani-app it reads as "Cannot reach the VaNi service. Check your
+connection.", which is the same message as the API being down.
+
+Matching is EXACT per entry — no wildcards, no prefixes. `credentials: true`
+means an allowed origin may carry a session cookie, so each entry is a
+deliberate decision, not a pattern.
+
 ## Routes (mounted in server.ts)
 `/api/v1/auth`, `/onboarding`, `/tenant`, `/etl`, `/vani`, `/ingest`,
 `/profile`, `/storyteller`, plus the generic skill executor
@@ -232,7 +268,18 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
   (VdfLoader) + error toasts (components/toast.tsx). No component calls
   fetch directly — Component → hook → apiFetch → serviceURLs.
 
-## Frontend conventions
+## Frontend conventions — ⚠️ RETIRED APP
+
+**This section documents `frontend/`, which is no longer used.** The live UI is
+`vikunawebsite/vani-app` and is governed by **`vani-app/CLAUDE.md`** — read
+that one. Its loader and toast APIs were deliberately kept identical to the
+ones below (`FullPageLoader`, `InlineLoader`, `showToast({message, type})`) so
+code moves between them, but everything else here (VDF, the theme registry,
+`serviceURLs.ts`, the tab layout) belongs to the retired app.
+
+Kept because the API contracts below are still true of the backend, and
+because a date format or a token convention is worth not re-deciding.
+
 - **serviceURLs.ts** is the single registry of endpoints; **api-client.ts**
   the sole fetch wrapper (JWT inject, 401 → silent refresh → retry once).
 - Tokens in BOTH sessionStorage and localStorage (`pk-access-token`, …);
@@ -344,8 +391,13 @@ Public: `GET /api/v1/storyteller/share/:token` (deck by share token).
 ```bash
 cd backend  && npm run dev      # API on PORT (dev .env uses 3002)
 cd backend  && npm run worker   # agent worker (separate terminal)
-cd frontend && npm run dev      # Next.js on 3000
+
+# The UI is in the OTHER repo — frontend/ here is retired:
+cd ../../vikunawebsite/vani-app && npm run dev    # Next.js on 3100
 ```
+`vani-app` needs `NEXT_PUBLIC_API_ORIGIN=http://localhost:3002` in its own
+`.env`, and this backend needs `3100` in `CORS_ORIGIN`. Miss either and the
+console reports "Cannot reach the VaNi service" — see the CORS section.
 Ollama for dev LLM: pre-warm `qwen3:8b` with `keep_alive:"24h"` before
 testing conversation flows (`curl localhost:11434/api/ps` to verify).
 
@@ -480,8 +532,16 @@ Runbook in §8 of the doc.
   credential. An empty key field on save means "keep the stored one", which
   is what lets a tenant change the model without re-typing the secret.
 - **BYOK is a MENU item, not an onboarding step** (user ruling, 2026-09-16).
-  Settings → Model Provider is the surface. `vani:llm_provider` stays
-  `enabled: false` in `lanes.ts`. Do not flip it.
+  `vani:llm_provider` stays `enabled: false` in `lanes.ts`. Do not flip it.
+
+  ⚠️ **The UI for it is NOT BUILT.** A Model Provider settings tab was written
+  at `frontend/src/components/settings/model-provider-tab.tsx` before it was
+  established that `frontend/` is retired — so it works, and nobody can reach
+  it. The backend is complete and reachable; the surface has to be built in
+  `vani-app`, whose own Settings is `status: 'planned'`
+  (`src/skills/settings/index.ts`). Until then BYOK is API-only:
+  `PUT /api/v1/llm-provider`. The retired tab is a working reference for the
+  port, not a thing to keep alive.
 
   It was enabled for one day and **trapped a live tenant**, which is worth
   knowing because the missing piece was in the OTHER repo. `enabled` also

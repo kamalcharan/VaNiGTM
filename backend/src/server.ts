@@ -19,12 +19,15 @@ import { createVaraRouter } from './vara/vara.routes';
 import { createLlmProviderRouter } from './vani/llm-provider.routes';
 import { verifyAccessToken } from './auth/token.service';
 import { resolveAuth } from './auth/auth-context';
+import { parseCorsOrigins } from './cors-origins';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 
+const CORS_ORIGINS = parseCorsOrigins(process.env.CORS_ORIGIN);
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: CORS_ORIGINS,
   credentials: true,   // required for httpOnly cookie exchange
 }));
 app.use(cookieParser());
@@ -166,6 +169,11 @@ async function main() {
 
   const server = app.listen(PORT, () => {
     console.log(`[VaNi-GTM] API running on port ${PORT}`);
+    // Printed because a CORS refusal is invisible from the server side — the
+    // browser blocks it, nothing is logged here, and curl cannot reproduce it.
+    // Seeing the allowed list at startup is the difference between a
+    // ten-second fix and an afternoon chasing "cannot reach the service".
+    console.log(`[VaNi-GTM] CORS origins: ${CORS_ORIGINS.join(', ')}`);
   });
 
   /* ── Graceful shutdown ──────────────────────────────── */
