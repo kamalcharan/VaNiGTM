@@ -11,6 +11,32 @@ Everything referenced (`Dockerfile`, `docker-compose.vani.yml`,
 that branch onto the VPS (or merge it to `main` first, your call) before
 starting.
 
+## REDEPLOY (the stack is already up) — one command
+
+Steps 0-7 below are the FIRST deploy. Once the stack is running, a code
+redeploy is just pull + build + restart BOTH containers, and this script does
+it, discovering the existing compose file and the shared network from Docker
+rather than asking you to paste paths:
+
+```
+cd ~/VaNiGTM            # wherever it is cloned on the VPS
+git fetch origin && git checkout main && git pull
+bash deploy/vani-main-vps/deploy-vani.sh
+```
+
+It refuses rather than guesses: anything it cannot discover stops the run with
+the command to find it by hand. It ends by asserting `vani-backend` and
+`vani-worker` are on the SAME image id, which is the check that matters — an
+API on new code beside a worker on old code destroys queued events silently
+(worker.ts marks an unknown event type `done` and moves on; measured
+2026-09-16, a DOMAIN_ENRICHMENT_REQUESTED event was `done` 186ms after being
+created, with zero `gt_agent_runs` rows).
+
+Prerequisites already satisfied by the first deploy: swap, `.env` (with the
+EXISTING `JWT_SECRET`), `NETWORK_NAME`, DNS, nginx conf. A redeploy of code
+touches no schema, so the step-1 backup is optional — still cheap insurance if
+migrations are pending.
+
 ## 0. Prerequisites — do these before anything else
 
 1. **Add swap.** Agent Topology v1.1 §6.1, stated as a hard rule: *"At zero
