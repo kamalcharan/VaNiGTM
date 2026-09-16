@@ -141,6 +141,24 @@ const MOCK_CATALOGUE = [
   { code: 'custom',    label: 'Self-hosted', defaultModel: '',                        keyRequired: false, needsBaseUrl: true  },
 ];
 
+interface MockResearch {
+  state: 'no_industry' | 'ready' | 'running' | 'in_review' | 'failed' | 'none';
+  industry: string | null;
+  domain: string | null;
+  families: number;
+  can_request: boolean;
+  detail: string;
+}
+
+let MOCK_RESEARCH: MockResearch = {
+  state: 'none',
+  industry: 'Logistics & Freight',
+  domain: 'logistics-freight',
+  families: 0,
+  can_request: true,
+  detail: 'Vara has not studied Logistics & Freight yet.',
+};
+
 const HANDLERS: Record<string, () => unknown> = {
   'agents.list': () => ({ agents: AGENTS }),
   'dashboard.activity': () => ({ activity: ACTIVITY }),
@@ -163,6 +181,12 @@ const HANDLERS: Record<string, () => unknown> = {
     // by flipping this.
     encryptionReady: true,
   }),
+
+  // Domain packs. Defaults to 'none' — the state a tenant in an unresearched
+  // industry actually sees, and the one the Research button exists for. The
+  // other four are reachable by editing MOCK_RESEARCH below; 'failed' is worth
+  // looking at, since it is the only one that renders an upstream error.
+  'domain-pack-skill.research_status': () => MOCK_RESEARCH,
 };
 
 /** Writes need the params, so they are handled separately from the read table. */
@@ -209,6 +233,27 @@ const WRITE_HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = 
       keyHint: key ? `${key.slice(0, 4)}…${key.slice(-4)}` : (MOCK_PROVIDER?.keyHint ?? null),
     };
     return { provider: MOCK_PROVIDER, posture: 'byok' };
+  },
+
+  'domain-pack-skill.request_research': () => {
+    // Mirrors the real function: queueing flips the card to 'running' and the
+    // screen polls. It does NOT jump to 'ready' — research takes a minute, and
+    // a mock that succeeds instantly hides every loading state built for it.
+    MOCK_RESEARCH = {
+      state: 'running',
+      industry: MOCK_RESEARCH.industry,
+      domain: MOCK_RESEARCH.domain,
+      families: 0,
+      can_request: false,
+      detail: `Vara is learning how ${MOCK_RESEARCH.industry} hires. This usually takes a minute.`,
+    };
+    return {
+      queued: true,
+      industry: MOCK_RESEARCH.industry,
+      domain: MOCK_RESEARCH.domain,
+      event_id: 'mock-event',
+      detail: MOCK_RESEARCH.detail,
+    };
   },
 
   'llm-provider-skill.test_provider': () => {

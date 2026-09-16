@@ -34,6 +34,7 @@ import { API } from '@/lib/serviceURLs';
 import { DataBoundary, SkeletonRows } from '@/platform/feedback';
 import type { SkillResult } from '@/lib/useSkill';
 import { UX_DRAFT_KEY, type DraftJd, type PublishedFacts } from '../mock-data';
+import { ResearchCard } from './ResearchCard';
 import u from '@/platform/shell/ui.module.css';
 import s from '../vara-onboarding.module.css';
 
@@ -233,12 +234,11 @@ function VaraOnboardingRunnerInner() {
                   Pick the closest family — Vara starts you with its playbook so the
                   first JD is a tune-and-publish, not a build-from-scratch.
                 </p>
+                {/* One line used to cover every reason this list can be empty.
+                    ResearchCard asks the server which one it is, and offers the
+                    retry when there is one to offer. */}
                 {(emptyMode || c.families.length === 0) && (
-                  <div className={s.familyHint} style={{ marginBottom: 10, fontStyle: 'italic' }}>
-                    No playbooks seeded for <b>{c.industry.raw}</b> yet — start with a
-                    manual skeleton (default weights, empty knockouts). Your first JD
-                    shapes the family; the second seeds the family defaults.
-                  </div>
+                  <ResearchCard industryRaw={c.industry.raw} />
                 )}
                 <div className={s.familyList}>
                   {shownFamilies.map((f) => (
