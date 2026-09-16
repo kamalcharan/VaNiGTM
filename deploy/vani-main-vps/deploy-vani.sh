@@ -1,128 +1,122 @@
 #!/usr/bin/env bash
 #
-# Deploy the VaNi backend AND worker to the Main VPS.
-#
-# Discovers the existing compose file and the shared network from Docker
-# itself, so nothing has to be substituted by hand. Run it from the root of
-# a VaNiGTM checkout on the VPS:
+# Redeploy the VaNi backend AND worker on the Main VPS.
 #
 #     bash deploy/vani-main-vps/deploy-vani.sh
 #
-# It refuses rather than guesses. Every value it cannot discover is an error
-# with the command to find it yourself — a deploy that silently picks the
-# wrong network is worse than one that stops.
+# Builds the image ON THE VPS and restarts both containers with the compose
+# files already on the box. No registry, no docker login, no push.
+#
+# WHY BUILD HERE rather than pull. The running containers use
+# vikuna/vani-backend:latest from Docker Hub, but NOTHING IN THIS REPO BUILDS
+# THAT IMAGE — build-push.sh builds vikuna/prokey-backend, a different product.
+# So the image was built and pushed by hand at some point, and the repo has no
+# way to reproduce it. Building here, tagged the same, closes that gap: the
+# tag resolves to a local image and compose uses it.
+#
+# NEVER run `docker compose pull` after this. That replaces the image you just
+# built with the stale one on Docker Hub, silently undoing the deploy.
+#
+# The LLM endpoint is reachable only from this VPS, which is why research
+# cannot be exercised on a laptop and this script exists.
 
 set -euo pipefail
 
-say()  { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
-die()  { printf '\n\033[31mSTOP: %s\033[0m\n\n' "$*" >&2; exit 1; }
+say() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
+die() { printf '\n\033[31mSTOP: %s\033[0m\n\n' "$*" >&2; exit 1; }
 
-[ -f deploy/vani-main-vps/docker-compose.vani.yml ] \
-  || die "Run this from the root of the VaNiGTM checkout (deploy/vani-main-vps/ not found here)."
+[ -f backend/Dockerfile ] || die "Run this from the root of a VaNiGTM checkout.
+  The VPS had no checkout at all on 2026-09-16 — /opt/vikuna/docker/vani held
+  only compose files. If that is still true:
+    cd /opt && git clone https://github.com/kamalcharan/VaNiGTM.git
+    cd VaNiGTM && bash deploy/vani-main-vps/deploy-vani.sh"
 
-# ── 1. Discover the existing compose project ────────────────────────────────
-# Any running container started by the Main VPS's own compose file carries the
-# path in a label. vani-* containers are excluded: they come from OUR overlay,
-# so using their label would point back at this file instead of the base one.
-say "Finding the existing compose file"
+command -v docker >/dev/null || die "docker not found."
 
-EXISTING_COMPOSE=""
-for c in $(docker ps --format '{{.Names}}' | grep -v '^vani-' || true); do
-  f=$(docker inspect "$c" \
-        --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' 2>/dev/null || true)
-  # The label can list several files separated by ',' — take the first.
-  f="${f%%,*}"
-  if [ -n "$f" ] && [ "$f" != "<no value>" ] && [ -f "$f" ]; then
-    EXISTING_COMPOSE="$f"
-    echo "  from container '$c': $f"
-    break
-  fi
+# ── 1. What is running, and from which compose files ────────────────────────
+# The containers carry both answers as labels, so nothing is hardcoded: the
+# compose files live outside this repo (/opt/vikuna/docker/vani) and the image
+# tag must match whatever they declare.
+say "Reading the running deployment"
+
+docker inspect vani-backend >/dev/null 2>&1 \
+  || die "No vani-backend container. This script redeploys an existing stack;
+  for a first deploy follow RUNBOOK.md steps 0-7."
+
+IMAGE=$(docker inspect vani-backend --format '{{.Config.Image}}')
+COMPOSE_FILES=$(docker inspect vani-backend \
+  --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}')
+COMPOSE_DIR=$(docker inspect vani-backend \
+  --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}')
+
+[ -n "$IMAGE" ] && [ "$IMAGE" != "<no value>" ] || die "Could not read the image tag."
+[ -n "$COMPOSE_FILES" ] && [ "$COMPOSE_FILES" != "<no value>" ] \
+  || die "vani-backend was not started by compose — restart it by hand."
+
+echo "  image          : $IMAGE"
+echo "  compose files  : $COMPOSE_FILES"
+echo "  compose dir    : $COMPOSE_DIR"
+
+# The label is a comma-separated list; compose needs one -f per file.
+FLAGS=()
+IFS=',' read -ra FILES <<< "$COMPOSE_FILES"
+for f in "${FILES[@]}"; do
+  [ -f "$f" ] || die "Compose file listed by the container does not exist: $f"
+  FLAGS+=(-f "$f")
 done
 
-[ -n "$EXISTING_COMPOSE" ] || die "Could not find the existing compose file.
-  Look yourself with:
-    docker ps --format '{{.Names}}'
-    docker inspect <a-container> --format '{{index .Config.Labels \"com.docker.compose.project.config_files\"}}'
-  then re-run with:  EXISTING_COMPOSE=/path/to/it bash \$0"
+# The worker must be in that list, or this deploy leaves it on old code — the
+# failure that silently ate a queued event on 2026-09-16 (marked done 186ms
+# after it was created, with zero gt_agent_runs rows).
+grep -q 'worker' <<< "$COMPOSE_FILES" \
+  || echo "  WARNING: no worker compose file listed — check the worker is covered."
 
-# ── 2. Discover the shared network ──────────────────────────────────────────
-# docker-compose.vani.yml joins an EXTERNAL network; its default is the
-# literal REPLACE_WITH_EXISTING_NETWORK_NAME, which fails loudly by design.
-say "Finding the shared network"
+BEFORE=$(docker inspect vani-backend --format '{{.Image}}')
 
-NET=""
-for c in $(docker ps --format '{{.Names}}' | grep -v '^vani-' || true); do
-  n=$(docker inspect "$c" --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{"\n"}}{{end}}' 2>/dev/null \
-      | grep -v '^bridge$' | grep -v '^host$' | grep -v '^none$' | head -1 || true)
-  if [ -n "$n" ]; then NET="$n"; echo "  from container '$c': $n"; break; fi
-done
+# ── 2. Build, tagged exactly as compose expects ─────────────────────────────
+say "Building $IMAGE from this checkout ($(git rev-parse --short HEAD 2>/dev/null || echo 'unknown'))"
+docker build --platform linux/amd64 -f deploy/vani-main-vps/Dockerfile -t "$IMAGE" backend/
 
-[ -n "$NET" ] || die "Could not find a shared docker network.
-  Look yourself with:
-    docker network ls
-    docker inspect <a-container> --format '{{json .NetworkSettings.Networks}}'
-  then re-run with:  NETWORK_NAME=<name> bash \$0"
+# ── 3. Recreate BOTH ────────────────────────────────────────────────────────
+# --force-recreate because compose will otherwise leave a container running if
+# it thinks nothing changed. Both services named explicitly: starting only the
+# API is how the two end up on different code.
+say "Recreating vani-backend and vani-worker"
+( cd "$COMPOSE_DIR" && docker compose "${FLAGS[@]}" up -d --force-recreate vani-backend vani-worker )
 
-# ── 3. Record it where compose reads it ─────────────────────────────────────
-# Interpolation reads .env from the directory compose runs in, which is why
-# everything below happens inside deploy/vani-main-vps.
-ENVF="deploy/vani-main-vps/.env"
-[ -f "$ENVF" ] || die "$ENVF does not exist. Copy deploy/vani-main-vps/.env.example to it and fill in
-  DB_PRIMARY, JWT_SECRET, LLM_PRIMARY_URL, TENANT_SECRET_KEY, CORS_ORIGIN, etc. first."
-
-if grep -q '^NETWORK_NAME=' "$ENVF"; then
-  sed -i "s|^NETWORK_NAME=.*|NETWORK_NAME=$NET|" "$ENVF"
-else
-  printf '\nNETWORK_NAME=%s\n' "$NET" >> "$ENVF"
-fi
-echo "  NETWORK_NAME=$NET written to $ENVF"
-
-# ── 4. Build ────────────────────────────────────────────────────────────────
-# ONE image serves both containers: the API runs dist/server.js, the worker
-# runs dist/agent-core/worker.js. Building once is what stops them drifting
-# onto different commits — which silently destroyed a queued event on
-# 2026-09-16 (done in 186ms, no agent ran).
-say "Building vani-backend:latest"
-docker build -f deploy/vani-main-vps/Dockerfile -t vani-backend:latest backend/
-
-# ── 5. Start BOTH ───────────────────────────────────────────────────────────
-say "Starting vani-backend and vani-worker"
-cd deploy/vani-main-vps
-docker compose -f "$EXISTING_COMPOSE" -f docker-compose.vani.yml up -d vani-backend vani-worker
-cd - >/dev/null
-
-# ── 6. Prove they are on the same image ─────────────────────────────────────
+# ── 4. Prove it ─────────────────────────────────────────────────────────────
 say "Verifying"
 API_IMG=$(docker inspect vani-backend --format '{{.Image}}')
 WRK_IMG=$(docker inspect vani-worker  --format '{{.Image}}')
-echo "  vani-backend image: $API_IMG"
-echo "  vani-worker  image: $WRK_IMG"
+echo "  vani-backend : $API_IMG"
+echo "  vani-worker  : $WRK_IMG"
 
-[ "$API_IMG" = "$WRK_IMG" ] \
-  || die "API and worker are on DIFFERENT images. The worker is stale and will
-  consume queued events without running them. Re-run this script."
+[ "$API_IMG" = "$WRK_IMG" ] || die "API and worker are on DIFFERENT images.
+  The worker is stale and will consume queued events without running them."
+echo "  same image — they cannot be on different code"
 
-echo "  same image — API and worker cannot be on different code"
+[ "$API_IMG" != "$BEFORE" ] \
+  || echo "  NOTE: image id unchanged from before the build — either nothing
+  changed in backend/, or the checkout is not on the commit you expected."
+
 docker ps --filter name=vani --format '  {{.Names}}\t{{.Status}}'
-
-say "Worker log (last 20 lines)"
-docker logs --tail 20 vani-worker 2>&1 || true
 
 cat <<'DONE'
 
+  vani-worker shows no health state, or 'unhealthy' — expected and harmless.
+  The image's HEALTHCHECK wgets :3001/health and the worker binds no port. It
+  has read 'unhealthy' since August for that reason alone; the fix is
+  `healthcheck: disable: true` in the worker compose file on this box.
+
 Next:
-  1. Press "Research my industry" in the console.
-  2. Then, against the database:
+  docker logs --tail 30 vani-worker      # the poll loop
+  Press "Research my industry" in the console, then:
 
-     SELECT id, status, started_at, completed_at,
-            jsonb_array_length(steps) AS steps
-       FROM gt_agent_runs
-      WHERE agent_name = 'DOMAIN_ENRICHMENT_REQUESTED'
-      ORDER BY started_at DESC LIMIT 1;
+    SELECT id, status, error_trace, jsonb_array_length(steps) AS steps
+      FROM gt_agent_runs
+     WHERE agent_name = 'DOMAIN_ENRICHMENT_REQUESTED'
+     ORDER BY started_at DESC LIMIT 1;
 
-     A row should appear within seconds at 'running'. If it reaches
-     'awaiting', the draft is ready to review:
-
-       docker exec vani-backend node dist/skills/domain-pack-skill/publish.js
-       docker exec vani-backend node dist/skills/domain-pack-skill/publish.js --show <runId>
+  'awaiting' means it worked:
+    docker exec vani-backend node dist/skills/domain-pack-skill/publish.js
 DONE
