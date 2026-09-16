@@ -104,14 +104,30 @@ export async function claimDomain(
     // released by COMMIT/ROLLBACK even if this process dies.
     await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [`domain-pack:${slug}`]);
 
-    // `force` skips ONLY this check — an operator asking to re-research an
-    // industry whose packs are stale. The in-progress check below still
-    // applies, so two forced requests cannot both run, and nothing is
-    // published without review either way: force produces a draft, not a row.
+    // "Already done" means a RESEARCHED pack, not any pack.
+    //
+    // Migration 244 seeded three handcrafted packs for 'technology-saas' in
+    // August — Vikuna's generic starter, written before any tenant existed.
+    // Treating those as "this industry has been studied" is what made the
+    // doorway show engineering families to a Customer Success hire and call
+    // it knowledge. A seeded pack is a placeholder; it does not mean anyone
+    // looked at how this industry actually hires.
+    //
+    // The marker is `payload.researched`, which toPackRow writes and 244 does
+    // not. So a seeded-only industry still gets researched once, and once a
+    // researched pack is published further requests no-op — the guard still
+    // bounds the work, it just measures the right thing.
+    //
+    // `force` skips this entirely: an operator re-researching an industry
+    // whose RESEARCHED packs have gone stale. The in-progress check below
+    // still applies either way, and nothing is published without review —
+    // force produces a draft, not a row.
     if (!force) {
       const pack = await client.query(
         `SELECT 1 FROM vani_domain_pack
-          WHERE domain = $1 AND payload -> 'vara' -> 'starter' IS NOT NULL
+          WHERE domain = $1
+            AND payload -> 'vara' -> 'starter' IS NOT NULL
+            AND payload -> 'researched' IS NOT NULL
           LIMIT 1`,
         [slug],
       );
@@ -121,13 +137,23 @@ export async function claimDomain(
       }
     }
 
+    // The age bound applies to queued/running ONLY. Those can be orphaned by
+    // a worker restart — every deploy does it — and without the bound a dead
+    // run would block its industry forever.
+    //
+    // An `awaiting` run is not stuck, it is waiting on a human to publish it.
+    // Ageing that out would quietly research the same industry again every
+    // hour until someone got round to reviewing the first draft.
     const busy = await client.query(
       `SELECT 1 FROM gt_agent_runs
         WHERE agent_name = 'DOMAIN_ENRICHMENT_REQUESTED'
-          AND status IN ('queued', 'running', 'awaiting')
           AND inputs ->> 'domain' = $1
           AND id <> $2
-          AND started_at > now() - interval '${IN_PROGRESS_TTL}'
+          AND (
+            status = 'awaiting'
+            OR (status IN ('queued', 'running')
+                AND started_at > now() - interval '${IN_PROGRESS_TTL}')
+          )
         LIMIT 1`,
       [slug, runId],
     );

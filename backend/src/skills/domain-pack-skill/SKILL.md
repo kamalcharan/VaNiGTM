@@ -37,9 +37,9 @@ action; neither ever substitutes generic content for real content.
 ## Functions
 
 ### research_status
-Where this tenant's industry stands. Separates the five different reasons a role-family list can be empty, because they need different actions from the tenant — set an industry, wait, retry, or nothing at all.
+Where this tenant's industry stands, and where the role families came from. Separates the reasons a list is empty AND the case where it is full of Vikuna's generic starter packs — `seeded_only`, which no empty-state check can catch because the list is not empty.
 - Parameters: none
-- Returns: { state: 'no_industry' | 'ready' | 'running' | 'in_review' | 'failed' | 'none', industry: string | null, domain: string | null, families: number, can_request: boolean, detail: string }
+- Returns: { state: 'no_industry' | 'ready' | 'seeded_only' | 'running' | 'in_review' | 'failed' | 'none', industry: string | null, domain: string | null, families: number, source: 'seeded' | 'researched' | 'mixed', researched_at: string | null, can_request: boolean, detail: string }
 
 ### request_research
 Queue enrichment for the caller's own industry. Safe to press repeatedly — the agent's claim answers pack-exists or in-progress and completes as a no-op without calling a model. Never accepts an industry or a force flag from the caller.

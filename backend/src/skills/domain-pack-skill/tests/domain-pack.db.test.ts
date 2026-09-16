@@ -244,8 +244,7 @@ d('claiming a domain', () => {
   it('does no work when a pack is already published', async () => {
     await pool.query(
       `INSERT INTO vani_domain_pack (code, version, domain, payload)
-       VALUES ('talent-healthcare-nursing', 1, 'healthcare',
-               '{"vara":{"starter":{"musthaves":[]}}}'::jsonb)`);
+       VALUES ('talent-healthcare-nursing', 1, 'healthcare', '{"vara":{"starter":{"musthaves":[]}},"researched":{"at":"2026-09-16T00:00:00Z","by":"domain-pack-agent"}}'::jsonb)`);
     expect(await claimDomain(pool, await mkRun(), 'healthcare')).toBe('pack-exists');
   });
 
@@ -299,8 +298,7 @@ d('the agent', () => {
   it('completes without calling the model when a pack exists', async () => {
     await pool.query(
       `INSERT INTO vani_domain_pack (code, version, domain, payload)
-       VALUES ('talent-healthcare-nursing', 1, 'healthcare',
-               '{"vara":{"starter":{"musthaves":[]}}}'::jsonb)`);
+       VALUES ('talent-healthcare-nursing', 1, 'healthcare', '{"vara":{"starter":{"musthaves":[]}},"researched":{"at":"2026-09-16T00:00:00Z","by":"domain-pack-agent"}}'::jsonb)`);
     const run = await mkRun();
     // llmQueue is empty — the stub throws if the agent reaches the model.
     await DomainPackAgent.run(pool, A, { industry: 'Healthcare', domain: 'healthcare' }, run);
@@ -462,8 +460,7 @@ d('research on demand', () => {
   it('is a safe no-op when packs already exist', async () => {
     await pool.query(
       `INSERT INTO vani_domain_pack (code, version, domain, payload)
-       VALUES ('talent-logistics-freight-x', 1, 'logistics-freight',
-               '{"vara":{"starter":{"musthaves":[]}}}'::jsonb)`);
+       VALUES ('talent-logistics-freight-x', 1, 'logistics-freight', '{"vara":{"starter":{"musthaves":[]}},"researched":{"at":"2026-09-16T00:00:00Z","by":"domain-pack-agent"}}'::jsonb)`);
     // Emitting is cheap and always allowed; the claim is what decides.
     await pub.research(A);
     expect(await claimDomain(pool, await mkRun(), 'logistics-freight')).toBe('pack-exists');
@@ -474,8 +471,7 @@ d('research on demand', () => {
     // forever and a stale pack can never be replaced.
     await pool.query(
       `INSERT INTO vani_domain_pack (code, version, domain, payload)
-       VALUES ('talent-logistics-freight-x', 1, 'logistics-freight',
-               '{"vara":{"starter":{"musthaves":[]}}}'::jsonb)`);
+       VALUES ('talent-logistics-freight-x', 1, 'logistics-freight', '{"vara":{"starter":{"musthaves":[]}},"researched":{"at":"2026-09-16T00:00:00Z","by":"domain-pack-agent"}}'::jsonb)`);
 
     const r = await pub.research(A, true);
     const ev = await pool.query(`SELECT payload FROM gt_events WHERE id = $1`, [r.eventId]);
@@ -495,8 +491,7 @@ d('research on demand', () => {
   it('force publishes nothing by itself — the draft still needs review', async () => {
     await pool.query(
       `INSERT INTO vani_domain_pack (code, version, domain, payload)
-       VALUES ('talent-logistics-freight-x', 1, 'logistics-freight',
-               '{"vara":{"starter":{"musthaves":[]}}}'::jsonb)`);
+       VALUES ('talent-logistics-freight-x', 1, 'logistics-freight', '{"vara":{"starter":{"musthaves":[]}},"researched":{"at":"2026-09-16T00:00:00Z","by":"domain-pack-agent"}}'::jsonb)`);
     llmQueue = [{ families: [FAMILY] }];
     const run = await mkRun();
     await DomainPackAgent.run(
@@ -506,6 +501,80 @@ d('research on demand', () => {
     expect(r.rows[0].status).toBe('awaiting');
     const n = await pool.query(`SELECT count(*)::int n FROM vani_domain_pack`);
     expect(n.rows[0].n).toBe(1);        // still only the stale one
+  });
+});
+
+d('a seeded pack is not research', () => {
+  // Migration 244 handwrote three packs for 'technology-saas' in August,
+  // before any tenant existed. The doorway showed them as knowledge, which is
+  // how a Customer Success hire got PostgreSQL + RLS at 40wt.
+  const SEEDED = `'{"family_name":"Backend Engineering","vara":{"starter":{"musthaves":[]}}}'::jsonb`;
+
+  it('still researches an industry that only has Vikuna starter packs', async () => {
+    await pool.query(
+      `INSERT INTO vani_domain_pack (code, version, domain, payload)
+       VALUES ('talent-logistics-freight-seed', 1, 'logistics-freight', ${SEEDED})`);
+    expect(await claimDomain(pool, await mkRun(), 'logistics-freight')).toBe('claimed');
+  });
+
+  it('stops once a researched pack is published', async () => {
+    await pool.query(
+      `INSERT INTO vani_domain_pack (code, version, domain, payload)
+       VALUES ('talent-logistics-freight-seed', 1, 'logistics-freight', ${SEEDED}),
+              ('talent-logistics-freight-real', 1, 'logistics-freight',
+               '{"vara":{"starter":{}},"researched":{"at":"2026-09-16T00:00:00Z"}}'::jsonb)`);
+    expect(await claimDomain(pool, await mkRun(), 'logistics-freight')).toBe('pack-exists');
+  });
+
+  it('tells the tenant the families are a generic starter set', async () => {
+    // seeded_only is invisible to any empty-state check — the list has three
+    // families in it. That is precisely why it went unnoticed.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { research_status } = require('../functions/research-status');
+    await pool.query(
+      `INSERT INTO vani_domain_pack (code, version, domain, payload)
+       VALUES ('talent-logistics-freight-seed', 1, 'logistics-freight', ${SEEDED})`);
+
+    const st = await research_status({}, {
+      tenant_id: A, is_live: false, user_id: null, db: createTenantDb(pool, A),
+    } as never);
+    expect(st.state).toBe('seeded_only');
+    expect(st.source).toBe('seeded');
+    expect(st.families).toBe(1);
+    expect(st.can_request).toBe(true);           // the tenant can ask for real research
+    expect(st.detail).toMatch(/generic starter/i);
+  });
+
+  it("does not offer research while a draft is waiting on review", async () => {
+    // An awaiting run is not stuck, it is waiting on a human. Offering the
+    // button would queue the same industry again every time someone looked.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { research_status } = require('../functions/research-status');
+    await pool.query(
+      `INSERT INTO vani_domain_pack (code, version, domain, payload)
+       VALUES ('talent-logistics-freight-seed', 1, 'logistics-freight', ${SEEDED})`);
+    await pool.query(
+      `INSERT INTO gt_agent_runs (tenant_id, agent_name, status, inputs)
+       VALUES ($1,'DOMAIN_ENRICHMENT_REQUESTED','awaiting','{"domain":"logistics-freight"}'::jsonb)`,
+      [A]);
+
+    const st = await research_status({}, {
+      tenant_id: A, is_live: false, user_id: null, db: createTenantDb(pool, A),
+    } as never);
+    expect(st.state).toBe('in_review');
+    expect(st.can_request).toBe(false);
+  });
+
+  it('an awaiting draft blocks a re-research no matter how old it is', async () => {
+    // queued/running age out because a deploy orphans them. awaiting does not:
+    // ageing it out would re-research the industry hourly until someone
+    // reviewed the first draft.
+    const drafted = await mkRun();
+    await claimDomain(pool, drafted, 'mining');
+    await pool.query(
+      `UPDATE gt_agent_runs SET status = 'awaiting',
+              started_at = now() - interval '30 days' WHERE id = $1`, [drafted]);
+    expect(await claimDomain(pool, await mkRun(), 'mining')).toBe('in-progress');
   });
 });
 
@@ -546,7 +615,7 @@ d('the tenant-facing skill', () => {
 
     await pool.query(
       `INSERT INTO vani_domain_pack (code, version, domain, payload)
-       VALUES ('talent-logistics-freight-a',1,'logistics-freight','{"vara":{"starter":{}}}'::jsonb)`);
+       VALUES ('talent-logistics-freight-a',1,'logistics-freight', '{"vara":{"starter":{"musthaves":[]}},"researched":{"at":"2026-09-16T00:00:00Z","by":"domain-pack-agent"}}'::jsonb)`);
     const ready = await status({}, ctxFor(A));
     expect(ready.state).toBe('ready');
     expect(ready.families).toBe(1);
