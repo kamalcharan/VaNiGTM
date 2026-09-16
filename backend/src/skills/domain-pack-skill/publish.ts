@@ -6,6 +6,17 @@
  *   npm run packs -- --show <runId>   # read one draft in full
  *   npm run packs -- --publish <runId>
  *   npm run packs -- --reject <runId> "reason"
+ *   npm run packs -- --research <tenantId> [--force]
+ *
+ * --research exists because the automatic trigger fires ONLY when a tenant
+ * completes business_profile. Every tenant who finished onboarding before
+ * that shipped is permanently unenriched, and there was no way to fire it by
+ * hand — a trigger with no manual path is a trigger you cannot test either.
+ *
+ * --force also covers the refresh gap: claimDomain answers 'pack-exists'
+ * forever once v1 is published, so a stale pack could never be re-researched.
+ * --force publishes nothing by itself; it produces a fresh DRAFT that still
+ * goes through review, and publishing it lands as v2 beside v1.
  *
  * WHY A CLI AND NOT A SCREEN
  * A domain pack is PLATFORM data — every tenant in the industry inherits it.
@@ -26,6 +37,7 @@
 
 import 'dotenv/config';
 import { Pool } from 'pg';
+import { slugifyIndustry } from '../../vani/industry-slug';
 
 interface DraftPack {
   code: string;
@@ -190,6 +202,54 @@ export async function reject(runId: string, reason: string): Promise<void> {
   if (!r.rowCount) throw new Error(`Run ${runId} is not awaiting review`);
 }
 
+/* ── Research on demand ─────────────────────────────────────────────────── */
+
+/**
+ * Re-request enrichment for one tenant's industry.
+ *
+ * Reads the industry from vn_tenant_profiles and emits the same event the
+ * onboarding step emits — deliberately the same path, not a shortcut around
+ * it, so this exercises what a real signup exercises.
+ *
+ * Without --force the handler's claim still applies, so this is safe to run
+ * repeatedly: an industry that already has packs, or a run already in flight,
+ * completes as a no-op. --force removes that guard by marking the request,
+ * which is the only way to re-research an industry whose packs are stale.
+ */
+export async function research(tenantId: string, force = false): Promise<{
+  industry: string; domain: string; eventId: string;
+}> {
+  const prof = await pool.query(
+    `SELECT p.industry, t.slug
+       FROM vn_tenant_profiles p JOIN vn_tenants t ON t.id = p.tenant_id
+      WHERE p.tenant_id = $1`,
+    [tenantId],
+  );
+  if (!prof.rows.length) throw new Error(`No tenant profile for ${tenantId}`);
+
+  const industry = String(prof.rows[0].industry ?? '').trim();
+  if (!industry) {
+    // The same condition the request path now warns about, surfaced here as a
+    // refusal — there is nothing to key a pack on, and guessing one would be
+    // fabrication (rule 9d).
+    throw new Error(
+      `Tenant ${prof.rows[0].slug} has no industry set. `
+      + `Set it in Smart Profile first — Vara reads it from there.`);
+  }
+
+  const domain = slugifyIndustry(industry);
+  if (!domain) throw new Error(`Industry ${JSON.stringify(industry)} slugs to nothing`);
+
+  const ins = await pool.query(
+    `INSERT INTO gt_events (tenant_id, event_type, source_type, payload)
+     VALUES ($1, 'DOMAIN_ENRICHMENT_REQUESTED', 'system', $2::jsonb)
+     RETURNING id`,
+    [tenantId, JSON.stringify({ industry, domain, force })],
+  );
+
+  return { industry, domain, eventId: String(ins.rows[0].id) };
+}
+
 /** Release the pool. Exported so a test can close it without process.exit. */
 export async function close(): Promise<void> {
   await pool.end();
@@ -207,8 +267,14 @@ async function main(): Promise<void> {
   const showId = flag('--show');
   const publishId = flag('--publish');
   const rejectId = flag('--reject');
+  const researchId = flag('--research');
 
-  if (showId) {
+  if (researchId) {
+    const r = await research(researchId, args.includes('--force'));
+    console.log(`\nQueued research for "${r.industry}" (${r.domain}).`);
+    console.log(`  event ${r.eventId} — the worker picks it up within a few seconds.`);
+    console.log(`\nWatch it:  npm run packs\n`);
+  } else if (showId) {
     await show(showId);
   } else if (publishId) {
     const rows = await publish(publishId);

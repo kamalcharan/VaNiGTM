@@ -94,6 +94,7 @@ export async function claimDomain(
   pool: Pool,
   runId: string | number,
   slug: string,
+  force = false,
 ): Promise<ClaimOutcome> {
   const client = await pool.connect();
   try {
@@ -103,15 +104,21 @@ export async function claimDomain(
     // released by COMMIT/ROLLBACK even if this process dies.
     await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [`domain-pack:${slug}`]);
 
-    const pack = await client.query(
-      `SELECT 1 FROM vani_domain_pack
-        WHERE domain = $1 AND payload -> 'vara' -> 'starter' IS NOT NULL
-        LIMIT 1`,
-      [slug],
-    );
-    if (pack.rows.length) {
-      await client.query('COMMIT');
-      return 'pack-exists';
+    // `force` skips ONLY this check — an operator asking to re-research an
+    // industry whose packs are stale. The in-progress check below still
+    // applies, so two forced requests cannot both run, and nothing is
+    // published without review either way: force produces a draft, not a row.
+    if (!force) {
+      const pack = await client.query(
+        `SELECT 1 FROM vani_domain_pack
+          WHERE domain = $1 AND payload -> 'vara' -> 'starter' IS NOT NULL
+          LIMIT 1`,
+        [slug],
+      );
+      if (pack.rows.length) {
+        await client.query('COMMIT');
+        return 'pack-exists';
+      }
     }
 
     const busy = await client.query(
@@ -167,7 +174,9 @@ export const DomainPackAgent = {
       throw new Error('DOMAIN_ENRICHMENT_NO_INDUSTRY: event carried no usable industry');
     }
 
-    const outcome = await claimDomain(pool, runId, slug);
+    // force arrives only from `npm run packs -- --research <id> --force`;
+    // the onboarding path never sets it.
+    const outcome = await claimDomain(pool, runId, slug, payload.force === true);
     if (outcome !== 'claimed') {
       await appendStep(pool, runId, {
         step_name: 'claim',

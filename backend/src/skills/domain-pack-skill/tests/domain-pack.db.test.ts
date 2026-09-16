@@ -25,6 +25,7 @@
 import { Pool } from 'pg';
 import { execSync } from 'child_process';
 import fs from 'fs';
+import { createTenantDb } from '../../../db';
 import path from 'path';
 
 const A = '11111111-1111-1111-1111-111111111111';
@@ -71,6 +72,16 @@ CREATE TABLE vani_domain_pack (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   payload jsonb NOT NULL, published_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (code, version));
 CREATE TABLE vani_user (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
+CREATE FUNCTION set_tenant_context(t UUID) RETURNS void AS $fn$
+  BEGIN PERFORM set_config('app.current_tenant_id', t::text, true); END $fn$ LANGUAGE plpgsql;
+CREATE TABLE vn_tenants (id UUID PRIMARY KEY, slug VARCHAR(80));
+CREATE TABLE vn_tenant_profiles (tenant_id UUID PRIMARY KEY REFERENCES vn_tenants(id),
+  industry VARCHAR(200), updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE gt_events (id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES vn_tenants(id), event_type VARCHAR(80) NOT NULL,
+  source_type VARCHAR(30) NOT NULL, source_id TEXT, payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending', processed_at TIMESTAMPTZ, error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now());
 CREATE TABLE vani_prompt (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   key text NOT NULL, version int NOT NULL, scope text NOT NULL CHECK (scope IN ('system','tenant')),
   tenant_id uuid, body text NOT NULL, variables jsonb NOT NULL DEFAULT '[]'::jsonb,
@@ -124,6 +135,10 @@ beforeAll(async () => {
   // drops a {{variable}} fails here rather than in production.
   await pool.query(fs.readFileSync(
     path.join(MIGRATIONS, '249_vara_domain_pack_research_prompt.sql'), 'utf8'));
+  await pool.query(`INSERT INTO vn_tenants (id, slug) VALUES ($1,'us'), ($2,'them')`, [A, B]);
+  await pool.query(
+    `INSERT INTO vn_tenant_profiles (tenant_id, industry) VALUES ($1,'Logistics & Freight'), ($2,'   ')`,
+    [A, B]);
 }, 60000);
 
 afterAll(async () => { if (pool) await pool.end(); });
@@ -133,9 +148,27 @@ beforeEach(async () => {
   llmQueue = [];
   await pool.query('TRUNCATE gt_agent_runs');
   await pool.query('TRUNCATE vani_domain_pack');
+  await pool.query('TRUNCATE gt_events');
 });
 
 const d = available ? describe : describe.skip;
+
+// publish.ts opens its own pool from DB_PRIMARY at import time, and require
+// caches the module — so it is loaded and closed ONCE for the whole file.
+// Loading it per test looked tidier and failed: the first close() ended the
+// shared pool and every later test died on "Cannot use a pool after end".
+let pub: typeof import('../publish');
+
+beforeAll(() => {
+  if (!available) return;
+  process.env.DB_PRIMARY =
+    `postgresql://${process.env.PGUSER || 'postgres'}@localhost/domain_pack_test`
+    + `?host=${process.env.PGHOST || '/tmp'}&port=${process.env.PGPORT || 55432}`;
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  pub = require('../publish');
+});
+
+afterAll(async () => { if (pub) await pub.close(); });
 
 d('claiming a domain', () => {
   it('lets exactly one of two tenants in the same industry do the work', async () => {
@@ -297,23 +330,6 @@ d('the agent', () => {
 });
 
 d('publishing a reviewed draft', () => {
-  // publish.ts opens its own pool from DB_PRIMARY at import time, and require
-  // caches the module — so it is loaded and closed ONCE for the whole block.
-  // Loading per test looked tidier and failed: the first close() ended the
-  // shared pool and every later test died on "Cannot use a pool after end".
-  let pub: typeof import('../publish');
-
-  beforeAll(() => {
-    if (!available) return;
-    process.env.DB_PRIMARY =
-      `postgresql://${process.env.PGUSER || 'postgres'}@localhost/domain_pack_test`
-      + `?host=${process.env.PGHOST || '/tmp'}&port=${process.env.PGPORT || 55432}`;
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    pub = require('../publish');
-  });
-
-  afterAll(async () => { if (pub) await pub.close(); });
-
   const draft = async () => {
     llmQueue = [{ families: [FAMILY, { ...FAMILY, family_name: 'Warehouse Ops' }] }];
     const run = await mkRun();
@@ -416,6 +432,181 @@ d('publishing a reviewed draft', () => {
     // The point of rejecting: a bad draft must be re-researchable, not a
     // permanent block on the industry.
     expect(await claimDomain(pool, await mkRun(), 'logistics')).toBe('claimed');
+  });
+});
+
+d('research on demand', () => {
+  // The automatic trigger fires only on the business_profile step, so every
+  // tenant who onboarded before it shipped is unreachable without this.
+  it('emits the same event the onboarding step emits', async () => {
+    const r = await pub.research(A);
+    expect(r.domain).toBe('logistics-freight');
+    expect(r.industry).toBe('Logistics & Freight');
+
+    const ev = await pool.query(
+      `SELECT event_type, source_type, status, payload FROM gt_events WHERE id = $1`, [r.eventId]);
+    expect(ev.rows[0].event_type).toBe('DOMAIN_ENRICHMENT_REQUESTED');
+    expect(ev.rows[0].status).toBe('pending');          // the worker will claim it
+    expect(ev.rows[0].payload.domain).toBe('logistics-freight');
+    expect(ev.rows[0].payload.force).toBe(false);
+  });
+
+  it('refuses a tenant with no industry instead of guessing one', async () => {
+    // Rule 9d. Inventing an industry here would produce packs for a business
+    // nobody described, and every tenant in that slug would inherit them.
+    await expect(pub.research(B)).rejects.toThrow(/no industry set/i);
+    const n = await pool.query(`SELECT count(*)::int n FROM gt_events`);
+    expect(n.rows[0].n).toBe(0);
+  });
+
+  it('is a safe no-op when packs already exist', async () => {
+    await pool.query(
+      `INSERT INTO vani_domain_pack (code, version, domain, payload)
+       VALUES ('talent-logistics-freight-x', 1, 'logistics-freight',
+               '{"vara":{"starter":{"musthaves":[]}}}'::jsonb)`);
+    // Emitting is cheap and always allowed; the claim is what decides.
+    await pub.research(A);
+    expect(await claimDomain(pool, await mkRun(), 'logistics-freight')).toBe('pack-exists');
+  });
+
+  it('--force re-researches an industry whose packs are stale', async () => {
+    // The refresh gap. Without force, claimDomain answers 'pack-exists'
+    // forever and a stale pack can never be replaced.
+    await pool.query(
+      `INSERT INTO vani_domain_pack (code, version, domain, payload)
+       VALUES ('talent-logistics-freight-x', 1, 'logistics-freight',
+               '{"vara":{"starter":{"musthaves":[]}}}'::jsonb)`);
+
+    const r = await pub.research(A, true);
+    const ev = await pool.query(`SELECT payload FROM gt_events WHERE id = $1`, [r.eventId]);
+    expect(ev.rows[0].payload.force).toBe(true);
+
+    expect(await claimDomain(pool, await mkRun(), 'logistics-freight', true)).toBe('claimed');
+  });
+
+  it('force still will not let two runs research the same industry at once', async () => {
+    // force skips the pack check ONLY. Losing the in-flight guard too would
+    // let an operator double-run an expensive job by pressing twice.
+    const first = await mkRun();
+    expect(await claimDomain(pool, first, 'logistics-freight', true)).toBe('claimed');
+    expect(await claimDomain(pool, await mkRun(), 'logistics-freight', true)).toBe('in-progress');
+  });
+
+  it('force publishes nothing by itself — the draft still needs review', async () => {
+    await pool.query(
+      `INSERT INTO vani_domain_pack (code, version, domain, payload)
+       VALUES ('talent-logistics-freight-x', 1, 'logistics-freight',
+               '{"vara":{"starter":{"musthaves":[]}}}'::jsonb)`);
+    llmQueue = [{ families: [FAMILY] }];
+    const run = await mkRun();
+    await DomainPackAgent.run(
+      pool, A, { industry: 'Logistics & Freight', domain: 'logistics-freight', force: true }, run);
+
+    const r = await pool.query(`SELECT status FROM gt_agent_runs WHERE id = $1`, [run]);
+    expect(r.rows[0].status).toBe('awaiting');
+    const n = await pool.query(`SELECT count(*)::int n FROM vani_domain_pack`);
+    expect(n.rows[0].n).toBe(1);        // still only the stale one
+  });
+});
+
+d('the tenant-facing skill', () => {
+  // Charan, 2026-09-16: "there needs to be alternative to run it .. just
+  // because it has failed, does not mean to fail — in Vara we can have a
+  // research button and let it run."
+  //
+  // Rule 12 allows exactly this: an explicit user-chosen retry offered AFTER
+  // a visible failure with the real diagnosis. research_status is the
+  // diagnosis; request_research is the action.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const fns = () => ({
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    status: require('../functions/research-status').research_status,
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    request: require('../functions/request-research').request_research,
+  });
+  const ctxFor = (tenant: string) => ({
+    tenant_id: tenant, is_live: false, user_id: null,
+    db: createTenantDb(pool, tenant),
+  } as never);
+
+  it('names each reason a role-family list can be empty', async () => {
+    // One blank screen for five causes is the failure rule 9b exists to stop:
+    // "set an industry", "wait", and "retry" are different actions.
+    const { status } = fns();
+
+    expect((await status({}, ctxFor(A))).state).toBe('none');
+
+    await pool.query(
+      `INSERT INTO gt_agent_runs (tenant_id, agent_name, status)
+       VALUES ($1,'DOMAIN_ENRICHMENT_REQUESTED','running')`, [A]);
+    expect((await status({}, ctxFor(A))).state).toBe('running');
+
+    await pool.query(`UPDATE gt_agent_runs SET status = 'awaiting'`);
+    expect((await status({}, ctxFor(A))).state).toBe('in_review');
+
+    await pool.query(
+      `INSERT INTO vani_domain_pack (code, version, domain, payload)
+       VALUES ('talent-logistics-freight-a',1,'logistics-freight','{"vara":{"starter":{}}}'::jsonb)`);
+    const ready = await status({}, ctxFor(A));
+    expect(ready.state).toBe('ready');
+    expect(ready.families).toBe(1);
+  });
+
+  it('surfaces the real failure and offers a retry, without leaking a stack', async () => {
+    const { status } = fns();
+    await pool.query(
+      `INSERT INTO gt_agent_runs (tenant_id, agent_name, status, error_trace)
+       VALUES ($1,'DOMAIN_ENRICHMENT_REQUESTED','failed',
+               'LLM_VALIDATION_FAILED: model returned no JSON\n  at parse (llm.ts:12)')`, [A]);
+    const s = await status({}, ctxFor(A));
+    expect(s.state).toBe('failed');
+    expect(s.can_request).toBe(true);                    // the retry Charan asked for
+    expect(s.detail).toContain('LLM_VALIDATION_FAILED'); // the real cause, not "something went wrong"
+    expect(s.detail).not.toContain('llm.ts');            // frames stay server-side
+  });
+
+  it('queues a retry as a human-sourced event, never forced', async () => {
+    const { request } = fns();
+    const r = await request({}, ctxFor(A));
+    expect(r.queued).toBe(true);
+
+    const ev = await pool.query(`SELECT source_type, payload FROM gt_events`);
+    expect(ev.rows).toHaveLength(1);
+    expect(ev.rows[0].source_type).toBe('human');
+    // force skips the pack-exists guard on a SHARED artefact. Operator-only.
+    expect(ev.rows[0].payload.force).toBe(false);
+  });
+
+  it('refuses a tenant with no industry rather than inventing one', async () => {
+    const { request, status } = fns();
+    expect((await status({}, ctxFor(B))).state).toBe('no_industry');
+    const r = await request({}, ctxFor(B));
+    expect(r.queued).toBe(false);
+    expect(r.reason).toBe('NO_INDUSTRY');
+    expect((await pool.query(`SELECT count(*)::int n FROM gt_events`)).rows[0].n).toBe(0);
+  });
+
+  it('ignores an industry or force flag supplied in params', async () => {
+    // The industry comes from vn_tenant_profiles via the JWT's tenant_id.
+    // Honouring params would let any caller research — and so shape — an
+    // industry they do not belong to.
+    const { request } = fns();
+    const r = await request({ industry: 'Defence', domain: 'defence', force: true }, ctxFor(B));
+    expect(r.queued).toBe(false);
+    expect((await pool.query(`SELECT count(*)::int n FROM gt_events`)).rows[0].n).toBe(0);
+  });
+
+  it('is registered, so the console reaches it through the generic runner', async () => {
+    // No entry in vani-app's PLATFORM_ROUTES — that exception table stays small.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { loadAllSkills } = require('../../../services/skill-loader');
+    const skill = loadAllSkills(path.resolve(__dirname, '../../'))
+      .find((sk: { name: string }) => sk.name === 'domain-pack-skill');
+    expect(skill).toBeTruthy();
+    // Declared in SKILL.md's ## Functions as ### blocks — a table renders fine
+    // and registers nothing, which is how this shipped undiscoverable once.
+    expect(skill.functions.map((f: { name: string }) => f.name).sort())
+      .toEqual(['request_research', 'research_status']);
   });
 });
 

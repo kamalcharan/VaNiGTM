@@ -379,9 +379,23 @@ export function createOnboardingRouter(pool: Pool): Router {
       // is needed is the HANDLER's call, not this one's. Deciding here would
       // race: two tenants in the same industry both see "no pack" and both
       // enqueue. The handler settles it once, at claim time.
-      if (step_id === 'business_profile' && industry) {
-        const slug = slugifyIndustry(industry);
-        if (slug) {
+      //
+      // This fires ONLY on the step transition, so it does nothing for a
+      // tenant who completed business_profile before this shipped. That is
+      // what `npm run packs -- --research <tenantId>` exists for — backfill
+      // is an operator action, not something to bolt onto a request path.
+      if (step_id === 'business_profile') {
+        const slug = industry ? slugifyIndustry(industry) : '';
+        if (!slug) {
+          // Both skips used to be silent, which is how "nothing happened and
+          // nothing said why" gets built. An industry that is blank, or that
+          // slugs to nothing (punctuation only), means this tenant will never
+          // get recommendations — say so where an operator can find it.
+          console.warn('[Onboarding:enrichment-skip]',
+            `tenant ${jwt.tenant_id} completed business_profile with no usable industry`,
+            `(raw: ${JSON.stringify(industry)}) — no packs will be researched.`,
+            'Backfill with: npm run packs -- --research <tenantId>');
+        } else {
           try {
             await emitEvent(pool, jwt.tenant_id, 'DOMAIN_ENRICHMENT_REQUESTED', 'system', {
               industry,
