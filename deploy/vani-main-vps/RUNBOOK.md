@@ -52,18 +52,41 @@ cd VaNiGTM   # wherever you cloned/pulled it
 docker build -f deploy/vani-main-vps/Dockerfile -t vani-backend:latest backend/
 ```
 
-## 3. Start the service
+One image serves both containers — the API runs `dist/server.js`, the worker
+runs `dist/agent-core/worker.js`. Build once, start both; that is what stops
+them drifting onto different commits.
+
+## 3. Start the services — BOTH of them
 
 ```
 cd deploy/vani-main-vps
 docker compose \
   -f <path-to-your-existing-main-vps-compose>.yml \
   -f docker-compose.vani.yml \
-  up -d vani-backend
+  up -d vani-backend vani-worker
 docker logs -f vani-backend   # watch it come up; Ctrl-C once healthy
 ```
 `docker ps` should show `vani-backend` as `healthy` within ~15-45s
-(HEALTHCHECK start_period 15s, interval 30s).
+(HEALTHCHECK start_period 15s, interval 30s). `vani-worker` shows no health
+state at all — it binds no port, so its healthcheck is disabled on purpose.
+
+**Never start only `vani-backend`.** The worker runs the same image with a
+different command, and an OLD worker alongside a NEW api silently destroys
+work: `worker.ts` marks an event type it does not recognise as `done` and
+moves on, so the request vanishes with no error and no `gt_agent_runs` row.
+Measured on 2026-09-16 — a `DOMAIN_ENRICHMENT_REQUESTED` event was created at
+15:46:31.695 and `done` at 15:46:31.881. 186ms. Nothing ran, and the tenant's
+screen simply offered the button again.
+
+Confirm the worker is alive and on the new code:
+
+```
+docker logs --tail 20 vani-worker     # expect the poll loop, no crash
+docker inspect vani-worker --format '{{.Image}}'
+docker inspect vani-backend --format '{{.Image}}'   # must be the SAME id
+```
+
+If those two image ids differ, the worker is stale — rebuild and `up -d` both.
 
 ## 4. Apply migrations 228 and 229
 
