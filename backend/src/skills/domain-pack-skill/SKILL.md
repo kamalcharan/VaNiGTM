@@ -36,6 +36,11 @@ action; neither ever substitutes generic content for real content.
 
 ## Functions
 
+### match_title
+"Senior Backend Engineer" to the starter shape Vara should open with, matched against the industry's packs. Deterministic, no model call — it runs while someone types. Returns matched:false rather than the nearest family when nothing clears the floor.
+- Parameters: title (required, string)
+- Returns: { matched: boolean, family_name?, matched_title?, score?, researched?, pack_code?, pack_version?, starter?, alternates?: [{family_name, matched_title, score}], reason?: 'NO_TITLE' | 'NO_INDUSTRY' | 'NO_PACKS' | 'NO_FAMILY_MATCH', detail: string }
+
 ### research_status
 Where this tenant's industry stands, and where the role families came from. Separates the reasons a list is empty AND the case where it is full of Vikuna's generic starter packs — `seeded_only`, which no empty-state check can catch because the list is not empty.
 - Parameters: none

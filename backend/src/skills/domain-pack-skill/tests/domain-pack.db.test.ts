@@ -26,10 +26,12 @@ import { Pool } from 'pg';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import { createTenantDb } from '../../../db';
+import { matchTitle } from '../title-match';
 import path from 'path';
 
 const A = '11111111-1111-1111-1111-111111111111';
 const B = '22222222-2222-2222-2222-222222222222';
+const C = '33333333-3333-3333-3333-333333333333';
 
 const MIGRATIONS = path.resolve(__dirname, '../../../../migrations');
 
@@ -131,14 +133,20 @@ beforeAll(async () => {
     database: 'domain_pack_test' });
 
   await pool.query(BASE);
-  // The real migration, not a copy — so a change to the seeded prompt that
-  // drops a {{variable}} fails here rather than in production.
-  await pool.query(fs.readFileSync(
-    path.join(MIGRATIONS, '249_vara_domain_pack_research_prompt.sql'), 'utf8'));
-  await pool.query(`INSERT INTO vn_tenants (id, slug) VALUES ($1,'us'), ($2,'them')`, [A, B]);
+  // The real migrations, not copies — so a prompt edit that drops a
+  // {{variable}} fails here rather than in production. 250 supersedes 249's
+  // row, and the token-contract test below therefore checks whichever version
+  // is ACTIVE, which is the one the agent will actually resolve.
+  for (const m of ['249_vara_domain_pack_research_prompt.sql',
+                   '250_vara_domain_pack_research_prompt_v2.sql']) {
+    await pool.query(fs.readFileSync(path.join(MIGRATIONS, m), 'utf8'));
+  }
+  await pool.query(`INSERT INTO vn_tenants (id, slug) VALUES ($1,'us'), ($2,'them'), ($3,'saas')`,
+    [A, B, C]);
   await pool.query(
-    `INSERT INTO vn_tenant_profiles (tenant_id, industry) VALUES ($1,'Logistics & Freight'), ($2,'   ')`,
-    [A, B]);
+    `INSERT INTO vn_tenant_profiles (tenant_id, industry)
+     VALUES ($1,'Logistics & Freight'), ($2,'   '), ($3,'Technology & SaaS')`,
+    [A, B, C]);
 }, 60000);
 
 afterAll(async () => { if (pool) await pool.end(); });
@@ -318,7 +326,9 @@ d('the agent', () => {
 
   it('renders the seeded prompt with no tokens left unsubstituted', async () => {
     const p = await pool.query(
-      `SELECT body, variables FROM vani_prompt WHERE key = 'vara.domain_pack.research'`);
+      `SELECT body, variables, version FROM vani_prompt
+        WHERE key = 'vara.domain_pack.research' AND active = true`);
+    expect(p.rows).toHaveLength(1);        // exactly one active row, per the partial index
     const declared: string[] = p.rows[0].variables;
     const inBody = [...String(p.rows[0].body).matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]);
     // Both directions: an undeclared token renders literally to the model; a
@@ -675,7 +685,177 @@ d('the tenant-facing skill', () => {
     // Declared in SKILL.md's ## Functions as ### blocks — a table renders fine
     // and registers nothing, which is how this shipped undiscoverable once.
     expect(skill.functions.map((f: { name: string }) => f.name).sort())
-      .toEqual(['request_research', 'research_status']);
+      .toEqual(['match_title', 'request_research', 'research_status']);
+  });
+});
+
+d('matching a typed title to a starter shape', () => {
+  // The 70% path. Charan: a browse-the-pack screen serves the 30% who look;
+  // everyone else types a title and starts talking, so enrichment has to pay
+  // off there. Seeded packs are migration 244's; researched ones carry
+  // payload.researched.
+  const SEED = (code: string, family: string, titles: string[]) =>
+    pool.query(
+      `INSERT INTO vani_domain_pack (code, version, domain, payload)
+       VALUES ($1, 1, 'technology-saas', $2::jsonb)`,
+      [code, JSON.stringify({
+        family_name: family, suggested_titles: titles,
+        vara: { starter: { musthaves: [{ name: 'seeded', weight: 100 }] } },
+      })]);
+
+  const RESEARCHED = (code: string, family: string, titles: string[]) =>
+    pool.query(
+      `INSERT INTO vani_domain_pack (code, version, domain, payload)
+       VALUES ($1, 1, 'technology-saas', $2::jsonb)`,
+      [code, JSON.stringify({
+        family_name: family, suggested_titles: titles,
+        vara: { starter: { musthaves: [{ name: 'researched', weight: 100 }] } },
+        researched: { at: '2026-09-16T00:00:00Z', by: 'domain-pack-agent' },
+      })]);
+
+  const call = (title: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { match_title } = require('../functions/match-title');
+    return match_title({ title }, {
+      tenant_id: C, is_live: false, user_id: null, db: createTenantDb(pool, C),
+    } as never);
+  };
+
+  beforeEach(async () => {
+    await SEED('talent-technology-saas-backend-eng', 'Backend Engineering',
+      ['Senior Backend Engineer', 'Staff Backend Engineer', 'Backend Tech Lead']);
+    await SEED('talent-technology-saas-product-design', 'Product & Design',
+      ['Senior Product Designer', 'Product Manager']);
+  });
+
+  it('matches the title a hiring manager actually types', async () => {
+    const r = await call('Senior Backend Engineer');
+    expect(r.matched).toBe(true);
+    expect(r.family_name).toBe('Backend Engineering');
+    expect(r.score).toBe(100);
+    expect(r.starter.musthaves[0].name).toBe('seeded');
+  });
+
+  it('refuses to guess for a role no family covers', async () => {
+    // THE bug this whole thread started from: a Customer Success JD inherited
+    // an engineering playbook and published with PostgreSQL + RLS at 40%.
+    // Silence is the correct answer; the nearest family is not (rule 9d).
+    const r = await call('Customer Success Manager');
+    expect(r.matched).toBe(false);
+    expect(r.reason).toBe('NO_FAMILY_MATCH');
+    expect(r.detail).toMatch(/from scratch/i);
+  });
+
+  it('survives how people really write titles', async () => {
+    // Hyphens, seniority, and a bracketed suffix are the three most common
+    // ways a typed title differs from a pack title.
+    for (const typed of ['Back-end Engineer', 'backend engineer', 'Staff Backend Engineer (Remote)']) {
+      const r = await call(typed);
+      expect([typed, r.matched]).toEqual([typed, true]);
+      expect(r.family_name).toBe('Backend Engineering');
+    }
+  });
+
+  it('matches on the family name when the titles list misses it', async () => {
+    await RESEARCHED('talent-technology-saas-data-eng', 'Data Engineering', ['ETL Developer']);
+    const r = await call('Data Engineer');
+    expect(r.matched).toBe(true);
+    expect(r.family_name).toBe('Data Engineering');
+  });
+
+  it('prefers a researched pack over a seed on equal evidence', async () => {
+    // Both carry the exact title. The researched one was produced for this
+    // industry; the seed was handwritten before any tenant existed.
+    await RESEARCHED('talent-technology-saas-software-eng', 'Software Engineering',
+      ['Senior Backend Engineer']);
+    const r = await call('Senior Backend Engineer');
+    expect(r.matched).toBe(true);
+    expect(r.researched).toBe(true);
+    expect(r.family_name).toBe('Software Engineering');
+    expect(r.starter.musthaves[0].name).toBe('researched');
+  });
+
+  it('says so, distinctly, when the shape is only a starter', async () => {
+    const r = await call('Senior Backend Engineer');
+    expect(r.researched).toBe(false);
+    expect(r.detail).toMatch(/not researched/i);
+  });
+
+  it('refuses without an industry rather than matching across all of them', async () => {
+    // B has a blank industry. Matching globally would hand a logistics tenant
+    // a SaaS playbook.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { match_title } = require('../functions/match-title');
+    const r = await match_title({ title: 'Senior Backend Engineer' }, {
+      tenant_id: B, is_live: false, user_id: null, db: createTenantDb(pool, B),
+    } as never);
+    expect(r.matched).toBe(false);
+    expect(r.reason).toBe('NO_INDUSTRY');
+  });
+});
+
+describe('title matching, measured against real pack titles', () => {
+  // Migration 244's handwritten titles plus run 86's first real research
+  // output, verbatim. This table IS the spec: it was produced by running the
+  // matcher over them, and every row that changed the code is commented.
+  const PACKS = [
+    { pack_code: 'seed-backend', pack_version: 1, family_name: 'Backend Engineering',
+      researched: false, starter: {},
+      suggested_titles: ['Senior Backend Engineer', 'Staff Backend Engineer', 'Backend Tech Lead'] },
+    { pack_code: 'seed-frontend', pack_version: 1, family_name: 'Frontend Engineering',
+      researched: false, starter: {},
+      suggested_titles: ['Senior Frontend Engineer', 'Frontend Tech Lead', 'Product Engineer'] },
+    { pack_code: 'seed-proddes', pack_version: 1, family_name: 'Product & Design',
+      researched: false, starter: {},
+      suggested_titles: ['Senior Product Designer', 'Product Manager'] },
+    { pack_code: 'res-swe', pack_version: 1, family_name: 'Software Engineering',
+      researched: true, starter: {},
+      suggested_titles: ['Software Engineer', 'Full Stack Developer', 'Back-end Developer'] },
+    { pack_code: 'res-data', pack_version: 1, family_name: 'Data Engineering',
+      researched: true, starter: {},
+      suggested_titles: ['Data Engineer', 'Data Pipeline Engineer', 'ETL Developer'] },
+    { pack_code: 'res-pm', pack_version: 1, family_name: 'Product Management',
+      researched: true, starter: {},
+      suggested_titles: ['Product Manager', 'Product Owner', 'SaaS Product Manager'] },
+  ];
+  const of = (t: string) => matchTitle(t, PACKS as never).matched?.family_name ?? null;
+
+  it.each([
+    ['Senior Backend Engineer',     'Backend Engineering'],
+    ['Back-end Engineer (Remote)',  'Backend Engineering'],
+    ['Staff Software Engineer',     'Software Engineering'],
+    ['Senior Data Engineer',        'Data Engineering'],
+    ['ETL Developer',               'Data Engineering'],
+    ['Senior Product Designer',     'Product & Design'],
+    // These two matched NOTHING until engineer/developer became synonyms —
+    // both are titles a hiring manager types constantly, and a Frontend
+    // Engineering family was sitting right there unmatched.
+    ['Frontend Developer',          'Frontend Engineering'],
+    ['Full Stack Engineer',         'Software Engineering'],
+  ])('%s -> %s', (typed, family) => expect(of(typed)).toBe(family));
+
+  it.each([
+    // The bug that started all of this. A near-match here published a
+    // Customer Success JD with PostgreSQL + RLS at 40% weight.
+    ['Customer Success Manager'],
+    ['Account Executive'],
+    ['Office Administrator'],
+    ['Chief Financial Officer'],
+    ['Nurse Practitioner'],
+    // Real engineering roles the pack genuinely lacks a family for. Silence
+    // is right: the fix is more families in the pack, never a looser floor.
+    ['SRE'],
+    ['DevOps Engineer'],
+    ['QA Engineer'],
+  ])('%s -> no match', (typed) => expect(of(typed)).toBeNull());
+
+  it('prefers researched on a tie, and offers the runner-up as an alternate', () => {
+    // Both Product & Design and Product Management carry "Product Manager"
+    // exactly. The researched one wins; the other is still offered.
+    const r = matchTitle('Lead Product Manager', PACKS as never);
+    expect(r.matched!.family_name).toBe('Product Management');
+    expect(r.matched!.researched).toBe(true);
+    expect(r.alternates.map((a) => a.family_name)).toContain('Product & Design');
   });
 });
 
