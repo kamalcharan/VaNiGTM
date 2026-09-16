@@ -615,12 +615,22 @@ running. Every one is environmental — no code defect among them.
 
 ### Two things that need a decision, not a fix
 
-**1. The worker is not running, and never was a service.** `ps` and `docker ps -a`
-on the Main VPS find nothing. `agent-core/worker.ts` says "Separate process", and
-`deploy/vani-main-vps/docker-compose.vani.yml` defines only `vani-backend`. The
-queue has been drained by hand at some point. Anything event-driven is dead on
-that box until the worker becomes a compose service (~400MB; the box had 4.3Gi
-available on 2026-08-17).
+**1. The worker IS running on the Main VPS — corrected 2026-09-16 (user).**
+Deploys reach it: "any updates we will deploy to VPS and it will run". Event-driven
+work is therefore live, and a feature may be planned on the queue.
+
+This entry previously said the opposite, read off `ps`/`docker ps -a` on
+2026-08-17, and it was left to go stale for a month. Treat it as the example:
+an environmental finding is true of a moment, not of the system. Re-check
+before planning around one.
+
+**Still true, and it is a deploy-story gap:**
+`deploy/vani-main-vps/docker-compose.vani.yml` in this repo defines only
+`vani-backend`. So whatever supervises the worker on that box — pm2, systemd, a
+second compose file — is **not described in this repo**, which means nothing here
+tells you how a deploy restarts it, or whether it comes back after a reboot.
+Bring it into the repo's compose (~400MB; the box had 4.3Gi free on 2026-08-17)
+or commit the unit file next to it, so the restart path is reviewable.
 
 **2. `gt_tenant_brand` is referenced by code that is not in this repo.** Not in
 `backend/src`, not in `backend/migrations`, not on any remote branch. The image
@@ -640,6 +650,26 @@ mid-run orphans its in-flight events permanently — 9 rows were stuck this way 
 This one matters beyond tidiness: any UI that blocks on an event completing can
 trap a user forever. Fix before building on the queue — a `started_at` timeout
 back to `pending`, with a retry cap so a poison event cannot loop.
+
+**Sharper now that the worker is confirmed running and deploys restart it
+(2026-09-16).** A restart mid-run is not an edge case, it is every deploy: each
+one orphans whatever was `processing`. The rows do not retry and nothing reports
+them, so the loss is silent.
+
+**It cannot be fixed without a schema change, and that needs approval.**
+`gt_events` (migration 181) has no claim timestamp and no attempt counter —
+the columns are id, tenant_id, event_type, source_type, source_id, payload,
+status, processed_at, error, created_at. `status` flips to `processing`
+stamping nothing. So a timeout needs `started_at timestamptz` and a retry cap
+needs `attempts int` — two columns, raised as a request, not assumed.
+
+The workarounds are all worse and none should be taken:
+- Reusing `processed_at` as the claim stamp overloads a column whose name then
+  lies on every unprocessed row.
+- Putting `attempts` in `payload` is structured data smuggled into JSONB —
+  explicitly forbidden repo-wide.
+- Timing out on `created_at` conflates "claimed long ago" with "queued long
+  ago", so a backlog would reclaim rows a healthy worker is still running.
 
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
