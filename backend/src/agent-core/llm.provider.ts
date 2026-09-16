@@ -197,7 +197,11 @@ export async function resolveProvider(
   } else {
     let stored: StoredCredentials;
     try {
-      stored = parseStored(decryptSecret(row.credentials_enc));
+      // Salted with the vn_tenants id — the same id the JWT carries and the
+      // one every call site here has. vani_tenant.id would need a lookup this
+      // path does not do, and a salt that is sometimes unavailable is not a
+      // salt.
+      stored = parseStored(decryptSecret(row.credentials_enc, tenantId));
     } catch (err) {
       const cause = err instanceof Error ? err.message : String(err);
       throw new Error(

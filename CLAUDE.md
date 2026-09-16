@@ -106,7 +106,7 @@ backend/
                         ingestion, profile, pulse, research, sequence,
                         storyteller, vani
     server.ts         — Express entry; migrate.ts — manual migration runner
-  migrations/         — 001…247 (highest = 247)
+  migrations/         — 001…248 (highest = 248)
 frontend/            — ⚠️ RETIRED (2026-09-16). Still on disk, still builds,
                       NOT the product. The frontend is vikunawebsite/vani-app.
                       Kept for reference; do not add features here.
@@ -151,6 +151,15 @@ scripts/              — seed.sql, grant-vanigtm-app.sql, git helpers
   `vani_llm_provider` only — forcing the rest would break Vara, whose
   `vara.routes.ts` has 22 raw `pool.query` sites with no tenant context.
   Full finding + the one query that checks it: `docs/db/rls-status.md` §11.
+- **TWO TENANT IDS. `vn_tenants.id` ≠ `vani_tenant.id`** — joined by `slug`,
+  never equal. The JWT and `set_tenant_context()` carry the `vn_` one; every
+  `vani_*`/`vara_*` row stores the `vani_` one. Migration 240's policies
+  compared them directly, so **they matched nothing** — the spine's isolation
+  was wrong as well as inert, and only worked because the owner bypass meant
+  it was never evaluated. **Migration 248** makes `vani_current_tenant()`
+  bridge by slug (SECURITY DEFINER, pinned `search_path`), fixing all 20+
+  policies at once. It is a PREREQUISITE for forcing the rest of the spine,
+  not an alternative to the `vara.routes.ts` conversion. `docs/db/rls-status.md` §12.
 - Reaching the DB outside a skill: `withTenantClient(pool, tenantId, fn)` from
   `db/query.ts`. Raw `pool.query` against an RLS table returns nothing.
 - `gt_events` has RLS **disabled by design** (migration 185) — it is the
@@ -304,7 +313,7 @@ because a date format or a token convention is worth not re-deciding.
 
 ## Migrations — MANUAL ONLY, NO AUTO-MIGRATE
 - Never run automatically. Apply: `cd backend && npm run db:migrate`;
-  status: `npm run db:migrate -- --status`. Highest = **247**.
+  status: `npm run db:migrate -- --status`. Highest = **248**.
 - Discuss schema changes with the user first. Make migrations **idempotent
   and guarded** (IF NOT EXISTS; DO-block existence checks before copying
   from or altering legacy tables — vani_gtm_db was bootstrapped fresh and
@@ -516,8 +525,16 @@ Runbook in §8 of the doc.
 `vani_llm_provider` (migration 240) finally has code behind it. The column
 `credentials_enc` existed since August; nothing encrypted, read or wrote it.
 
-- **`agent-core/secret.crypto.ts`** — AES-256-GCM over `TENANT_SECRET_KEY`,
-  applied in Node so the key never reaches the database. Stored format is
+- **`agent-core/secret.crypto.ts`** — AES-256-GCM, applied in Node so the key
+  never reaches the database. **The encrypting key is PER TENANT**, derived
+  HKDF-SHA256(master=`TENANT_SECRET_KEY`, salt=`vn_tenants.id`). One master
+  secret in env — something must be the root of trust and it cannot live in
+  the DB beside the ciphertext — but no two tenants share a key. A credential
+  therefore cannot be decrypted in another tenant's context even if a query
+  were wrong: the derived key differs and GCM refuses. A lock behind the RLS
+  policy, not a replacement for it. Envelope encryption (a random data key per
+  tenant, stored encrypted, destroyable to shred that tenant's secrets) is the
+  stronger form and needs a column, so it is a schema decision. Stored format is
   `v1.<key_id>.<iv>.<tag>.<ciphertext>`; `key_id` is 8 hex of SHA-256 of the
   key (not reversible to it) so rotation can find stale rows and a wrong-key
   failure names both keys instead of saying "unable to authenticate data".

@@ -825,3 +825,91 @@ Migration 247 repoints it at `app.current_tenant_id` with a `coalesce` fallback
 to `app.tenant_id`, so callers that set only one keep working while new code
 depends only on the current GUC. Retiring `app.tenant_id` is now a one-line
 change in that function rather than a hunt across 20 policies.
+
+
+---
+
+## 12. The spine's policies never matched ANYTHING (found 2026-09-16)
+
+Found by forcing RLS on one table and watching a real save fail:
+
+```
+new row violates row-level security policy for table "vani_llm_provider"
+```
+
+### 12.1 Two tenant ids, compared directly
+
+There are two, and they are different UUIDs:
+
+| | what it is | who sets it |
+|---|---|---|
+| `vn_tenants.id` | the auth framework's tenant | the JWT; `set_tenant_context()` puts it in the GUC |
+| `vani_tenant.id` | the platform spine's tenant | stored in every `vani_*`/`vara_*` row's `tenant_id` |
+
+They are joined by `slug`, never equal. Every bridge in the codebase does that
+join — `onboarding.routes.resolveVaniTenant`, `vara.routes.vaniTenantFor`,
+`llm-provider.service.vaniTenantId`.
+
+But migration 240's policies read `tenant_id = vani_current_tenant()`, and
+`vani_current_tenant()` returned the GUC verbatim — a `vn_tenants.id`. So
+every policy on the spine compared a `vani_tenant.id` against a
+`vn_tenants.id`. **It can never match.** Reads return nothing, writes are
+refused.
+
+### 12.2 So the spine's isolation was UNENFORCED, not merely unforced
+
+§11 recorded that none of those tables had `FORCE ROW LEVEL SECURITY`, so the
+owning role bypassed its own policies. That is what hid this: the comparison
+was never evaluated. Both defects had to be present for the spine to work at
+all — remove either one and it breaks.
+
+This upgrades §11's severity. It is not "policies that are correct but
+inert". They were **wrong as well as inert**, and forcing those tables
+without migration 248 would take Vara down instantly rather than merely
+tightening it.
+
+### 12.3 The fix, and why it is one function
+
+`248_vani_current_tenant_bridge.sql` makes `vani_current_tenant()` do the
+same slug join every caller does, so all 20+ policies become correct at once
+instead of each growing a subquery.
+
+`SECURITY DEFINER`, because the lookup reads `vani_tenant`, whose own policy
+calls this function — as an ordinary function that is recursion, or silently
+empty. `search_path` is pinned, which SECURITY DEFINER requires: otherwise a
+caller could shadow `vani_tenant` with a temp table and pick their own tenant.
+
+It accepts either id, so a GUC already holding a `vani_tenant.id` resolves to
+itself. Neither matching returns NULL, and NULL matches no row.
+
+### 12.4 Measured against PostgreSQL 16, as `vanigtm_app`
+
+Two tenants, the app role `NOSUPERUSER NOBYPASSRLS`, the table FORCED.
+
+**Before 248** — the exact production symptom:
+
+```
+INSERT … ERROR:  new row violates row-level security policy
+```
+
+**After 248:**
+
+```
+vn id resolves to        -> 99999999-…   (the bridged vani_tenant.id)
+INSERT 0 1
+acme sees 1: v1.cipher
+beta sees 1: v1.beta-cipher
+no tenant context sees: 0
+acme writing into beta:  new row violates row-level security policy
+acme UPDATEing beta's row: UPDATE 0
+```
+
+Writes work, and isolation is real for the first time on this table.
+
+### 12.5 What this changes about the §11 backlog
+
+The `vara.routes.ts` conversion is still required before forcing the rest —
+22 raw `pool.query` sites carry no tenant context, so forcing would zero
+their queries regardless of this fix. But 248 is a **prerequisite** to that
+work, not an alternative: converting those call sites without it would simply
+move the failure from "no GUC" to "GUC compares against the wrong id".

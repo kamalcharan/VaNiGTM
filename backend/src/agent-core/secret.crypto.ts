@@ -25,10 +25,14 @@
  *
  * Self-describing on purpose. `v1` is the scheme, so a future AES upgrade can
  * be told apart from a corrupt value instead of guessed at. `key_id` is the
- * first 8 hex of SHA-256 of the key that sealed it — NOT the key, and not
- * reversible to it — so rotation can re-encrypt only what is stale and a
- * wrong-key failure says "sealed with key a3f9c210, you are holding 7b41e0dd"
- * instead of "unable to authenticate data".
+ * first 8 hex of SHA-256 of the MASTER key — NOT the key, not reversible to
+ * it, and deliberately not the DERIVED key: rotation happens at the master, so
+ * a value must record which master generation sealed it. A wrong-key failure
+ * then says "sealed with key a3f9c210, you are holding 7b41e0dd" instead of
+ * "unable to authenticate data".
+ *
+ * The key that actually encrypts is derived per tenant (see tenantKey), so one
+ * master and two tenants never share a key.
  *
  * ── ROTATION ──────────────────────────────────────────────────────────
  *
@@ -54,6 +58,14 @@ import crypto from 'crypto';
 
 const SCHEME    = 'v1';
 const ALGORITHM = 'aes-256-gcm';
+
+/**
+ * HKDF context string. Binds every derived key to this PURPOSE, so the same
+ * master secret can key something else later without the two ever producing
+ * the same key for the same tenant. Changing it makes every stored value
+ * unreadable — it is part of the format, not a label.
+ */
+const HKDF_INFO = 'vani.tenant-secret.v1';
 const KEY_BYTES = 32; // AES-256
 const IV_BYTES  = 12; // GCM standard; 96-bit nonces are what the mode is built for
 const TAG_BYTES = 16;
@@ -152,7 +164,54 @@ export function isConfigured(): boolean {
   }
 }
 
-/* ── Encrypt / decrypt ───────────────────────────────────────────────────── */
+/* ── Per-tenant key derivation ────────────────────────────────────── */
+
+/**
+ * The key that actually encrypts a tenant's secret: HKDF-SHA256 over the
+ * master key, salted with the tenant id.
+ *
+ * ── WHY NOT ENCRYPT EVERYTHING WITH THE MASTER KEY ────────────────────
+ *
+ * Key separation. Every tenant's credential is sealed under a DIFFERENT key,
+ * so one derived key leaking exposes one tenant rather than all of them, and
+ * the amount of ciphertext under any single key stays small.
+ *
+ * It also makes cross-tenant decryption impossible rather than merely
+ * forbidden: feed tenant B's ciphertext to tenant A's context and the derived
+ * key differs, so GCM's tag check fails and it throws. That is a second lock
+ * behind the RLS policy and the WHERE clause — neither of which helps if a
+ * query is ever wrong.
+ *
+ * ── WHY A MASTER KEY STILL EXISTS ─────────────────────────────────────
+ *
+ * Something must be the root of trust, and it cannot live in the database: a
+ * per-tenant key stored beside the ciphertext it protects is a locked box with
+ * the key taped to the lid, and one dump opens everything. So the root stays
+ * in env and per-tenant keys are DERIVED from it — nothing per tenant is
+ * stored, and nothing needs to be, because the same tenant id always
+ * reproduces the same key.
+ *
+ * What this does NOT defend against is the master key leaking. That is
+ * unavoidable for a platform whose agents decrypt keys unattended, with no
+ * human present to supply a passphrase. Reducing it further means envelope
+ * encryption — a random data key per tenant, stored encrypted, destroyable to
+ * shred that tenant's secrets — which needs a column, so it is a schema
+ * decision rather than a code one.
+ */
+function tenantKey(master: SecretKey, tenantId: string): Buffer {
+  if (!tenantId || typeof tenantId !== 'string') {
+    throw new Error(
+      'SECRET_TENANT_REQUIRED: a tenant id is required to derive the key. '
+      + 'Encrypting without one would put every tenant back under a single key.',
+    );
+  }
+  return Buffer.from(
+    crypto.hkdfSync('sha256', master.key, Buffer.from(tenantId, 'utf8'),
+                    Buffer.from(HKDF_INFO, 'utf8'), KEY_BYTES),
+  );
+}
+
+/* ── Encrypt / decrypt ──────────────────────────────────────────────── */
 
 /**
  * Seal a secret with the current key. Returns the stored format above.
@@ -161,12 +220,14 @@ export function isConfigured(): boolean {
  * configured and holds no credential, which fails later at the API call with
  * a 401 that points at the tenant's provider rather than at us.
  */
-export function encryptSecret(plaintext: string): string {
+export function encryptSecret(plaintext: string, tenantId: string): string {
   if (typeof plaintext !== 'string' || plaintext.length === 0) {
     throw new Error('SECRET_EMPTY: refusing to encrypt an empty secret.');
   }
 
-  const { key, id } = currentKey();
+  const master = currentKey();
+  const id = master.id;
+  const key = tenantKey(master, tenantId);
   const iv = crypto.randomBytes(IV_BYTES);
 
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
@@ -194,7 +255,7 @@ export function encryptSecret(plaintext: string): string {
  * is useless at 2am, so the wrong-key case is detected from the key_id before
  * the cipher is even built.
  */
-export function decryptSecret(stored: string): string {
+export function decryptSecret(stored: string, tenantId: string): string {
   if (typeof stored !== 'string' || stored.length === 0) {
     throw new Error('SECRET_EMPTY: nothing to decrypt.');
   }
@@ -243,16 +304,21 @@ export function decryptSecret(stored: string): string {
     );
   }
 
-  const { key } = candidates[0];
+  const key = tenantKey(candidates[0], tenantId);
   try {
     const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(tag);
     return Buffer.concat([decipher.update(ct), decipher.final()]).toString('utf8');
   } catch {
-    // key_id matched, so this is tampering or corruption, not the wrong key.
+    // The master key_id matched, so the master is right. What remains is a
+    // WRONG TENANT (its derived key differs) or a tampered value. Those must
+    // not be conflated: the first is a bug in a query, the second is an attack
+    // or corruption. Neither is "unable to authenticate data".
     throw new Error(
-      `SECRET_TAMPERED: authentication failed for a value sealed with key '${keyId}', `
-      + `which is the key in use. The stored ciphertext has been altered or truncated.`,
+      `SECRET_UNDECRYPTABLE: authentication failed for a value sealed with master key `
+      + `'${keyId}', which IS the master in use. Either this value belongs to a tenant `
+      + `other than '${tenantId}' — each tenant's key is derived from its id, so a `
+      + `cross-tenant read cannot succeed — or the stored ciphertext has been altered.`,
     );
   }
 }
@@ -271,9 +337,9 @@ export function needsRotation(stored: string): boolean {
   return id !== null && id !== currentKey().id;
 }
 
-/** Open with whichever key applies, re-seal with the current one. */
-export function rotateSecret(stored: string): string {
-  return encryptSecret(decryptSecret(stored));
+/** Open under whichever master applies, re-seal under the current one. */
+export function rotateSecret(stored: string, tenantId: string): string {
+  return encryptSecret(decryptSecret(stored, tenantId), tenantId);
 }
 
 /* ── Display ─────────────────────────────────────────────────────────────── */

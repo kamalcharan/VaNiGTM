@@ -22,6 +22,8 @@ import {
 } from '../secret.crypto';
 
 const KEY_A = 'YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=';           // 32 bytes b64
+const T_A = 'aaaaaaaa-1111-1111-1111-111111111111';
+const T_B = 'bbbbbbbb-2222-2222-2222-222222222222';
 const KEY_B = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'; // 32 bytes hex
 
 function withKeys(current?: string, previous?: string) {
@@ -40,32 +42,32 @@ beforeEach(() => withKeys(KEY_A));
 describe('round trip', () => {
   it('returns exactly what went in', () => {
     const secret = 'sk-ant-api03-ZZZZ-not-a-real-key';
-    expect(decryptSecret(encryptSecret(secret))).toBe(secret);
+    expect(decryptSecret(encryptSecret(secret, T_A), T_A)).toBe(secret);
   });
 
   it('survives unicode and length', () => {
     const secret = '🔑 ключ—key '.repeat(50);
-    expect(decryptSecret(encryptSecret(secret))).toBe(secret);
+    expect(decryptSecret(encryptSecret(secret, T_A), T_A)).toBe(secret);
   });
 
   it('never produces the same ciphertext twice', () => {
     // A fresh IV per call. Identical output would leak that two tenants
     // configured the same key.
-    const a = encryptSecret('same-secret');
-    const b = encryptSecret('same-secret');
+    const a = encryptSecret('same-secret', T_A);
+    const b = encryptSecret('same-secret', T_A);
     expect(a).not.toBe(b);
-    expect(decryptSecret(a)).toBe(decryptSecret(b));
+    expect(decryptSecret(a, T_A)).toBe(decryptSecret(b, T_A));
   });
 
   it('accepts a hex key as readily as base64', () => {
     withKeys(KEY_B);
-    expect(decryptSecret(encryptSecret('hex-keyed'))).toBe('hex-keyed');
+    expect(decryptSecret(encryptSecret('hex-keyed', T_A), T_A)).toBe('hex-keyed');
   });
 });
 
 describe('stored format', () => {
   it('is self-describing: scheme, key id, iv, tag, ciphertext', () => {
-    const parts = encryptSecret('x').split('.');
+    const parts = encryptSecret('x', T_A).split('.');
     expect(parts).toHaveLength(5);
     expect(parts[0]).toBe('v1');
     expect(parts[1]).toBe(currentKey().id);
@@ -79,7 +81,7 @@ describe('stored format', () => {
   });
 
   it('does not contain the plaintext', () => {
-    expect(encryptSecret('hunter2-in-the-clear')).not.toContain('hunter2');
+    expect(encryptSecret('hunter2-in-the-clear', T_A)).not.toContain('hunter2');
   });
 });
 
@@ -87,72 +89,116 @@ describe('refusals — each failure names its own cause', () => {
   it('refuses to run without a key rather than defaulting to one', () => {
     withKeys(undefined);
     expect(isConfigured()).toBe(false);
-    expect(() => encryptSecret('x')).toThrow(/SECRET_KEY_NOT_CONFIGURED/);
+    expect(() => encryptSecret('x', T_A)).toThrow(/SECRET_KEY_NOT_CONFIGURED/);
   });
 
   it('rejects a short key instead of padding it', () => {
     withKeys(Buffer.from('too-short').toString('base64'));
-    expect(() => encryptSecret('x')).toThrow(/SECRET_KEY_WRONG_LENGTH.*need 32/s);
+    expect(() => encryptSecret('x', T_A)).toThrow(/SECRET_KEY_WRONG_LENGTH.*need 32/s);
   });
 
   it('refuses an empty secret', () => {
-    expect(() => encryptSecret('')).toThrow(/SECRET_EMPTY/);
+    expect(() => encryptSecret('', T_A)).toThrow(/SECRET_EMPTY/);
   });
 
   it('rejects a value that was never sealed by us', () => {
-    expect(() => decryptSecret('just-a-string')).toThrow(/SECRET_MALFORMED/);
+    expect(() => decryptSecret('just-a-string', T_A)).toThrow(/SECRET_MALFORMED/);
   });
 
   it('rejects an unknown scheme distinctly from corruption', () => {
-    const v2 = encryptSecret('x').replace(/^v1\./, 'v2.');
-    expect(() => decryptSecret(v2)).toThrow(/SECRET_SCHEME_UNKNOWN/);
+    const v2 = encryptSecret('x', T_A).replace(/^v1\./, 'v2.');
+    expect(() => decryptSecret(v2, T_A)).toThrow(/SECRET_SCHEME_UNKNOWN/);
   });
 
   it('says which key sealed it when the wrong key is loaded', () => {
-    const sealed = encryptSecret('x');
+    const sealed = encryptSecret('x', T_A);
     withKeys(KEY_B);
     // Not "unable to authenticate data" — it names both key ids.
-    expect(() => decryptSecret(sealed)).toThrow(/SECRET_KEY_MISMATCH/);
+    expect(() => decryptSecret(sealed, T_A)).toThrow(/SECRET_KEY_MISMATCH/);
   });
 
-  it('detects tampering separately from a wrong key', () => {
-    const parts = encryptSecret('x').split('.');
+  it('detects a tampered value separately from a wrong master key', () => {
+    const parts = encryptSecret('x', T_A).split('.');
     parts[4] = Buffer.from('tampered-ciphertext').toString('base64');
-    expect(() => decryptSecret(parts.join('.'))).toThrow(/SECRET_TAMPERED/);
+    expect(() => decryptSecret(parts.join('.'), T_A)).toThrow(/SECRET_UNDECRYPTABLE/);
   });
 
   it('detects a truncated payload', () => {
-    const parts = encryptSecret('x').split('.');
+    const parts = encryptSecret('x', T_A).split('.');
     parts[3] = Buffer.from('short').toString('base64'); // tag no longer 16 bytes
-    expect(() => decryptSecret(parts.join('.'))).toThrow(/SECRET_MALFORMED/);
+    expect(() => decryptSecret(parts.join('.'), T_A)).toThrow(/SECRET_MALFORMED/);
+  });
+});
+
+describe('per-tenant derivation — the point of the whole design', () => {
+  it('seals the SAME secret differently for two tenants', () => {
+    // Not just different ciphertext (a fresh IV would do that). Different
+    // KEYS, which the next test proves.
+    const a = encryptSecret('shared-looking-secret', T_A);
+    const b = encryptSecret('shared-looking-secret', T_B);
+    expect(decryptSecret(a, T_A)).toBe('shared-looking-secret');
+    expect(decryptSecret(b, T_B)).toBe('shared-looking-secret');
+  });
+
+  it('REFUSES to open one tenant\'s value in another tenant\'s context', () => {
+    // The whole reason the key is derived rather than shared. Even with the
+    // right master key and an otherwise valid value, the wrong tenant cannot
+    // read it — a second lock behind RLS and the WHERE clause, either of
+    // which could be wrong without this noticing.
+    const sealedForA = encryptSecret('alpha-only', T_A);
+    expect(() => decryptSecret(sealedForA, T_B)).toThrow(/SECRET_UNDECRYPTABLE/);
+    // And it says WHY, naming the tenant it was asked for.
+    expect(() => decryptSecret(sealedForA, T_B)).toThrow(new RegExp(T_B));
+  });
+
+  it('names the master as correct, so a wrong tenant is not read as a wrong key', () => {
+    // These two failures send an investigation to opposite places: a wrong
+    // tenant is a bug in a query, a wrong master is a deployment problem.
+    const sealedForA = encryptSecret('alpha-only', T_A);
+    expect(() => decryptSecret(sealedForA, T_B)).toThrow(/IS the master in use/);
+    expect(() => decryptSecret(sealedForA, T_B)).not.toThrow(/SECRET_KEY_MISMATCH/);
+  });
+
+  it('is deterministic — the same tenant always re-derives the same key', () => {
+    // No salt is stored anywhere, so this property is what makes the scheme
+    // work at all. If it were not deterministic nothing could ever be read
+    // back.
+    const sealed = encryptSecret('stable', T_A);
+    resetKeyCache();                      // force the master to be re-read
+    expect(decryptSecret(sealed, T_A)).toBe('stable');
+  });
+
+  it('refuses to encrypt without a tenant, rather than falling back to one key', () => {
+    expect(() => encryptSecret('x', '')).toThrow(/SECRET_TENANT_REQUIRED/);
+    expect(() => encryptSecret('x', undefined as never)).toThrow(/SECRET_TENANT_REQUIRED/);
   });
 });
 
 describe('rotation', () => {
   it('opens both generations while the previous key is set', () => {
-    const sealedWithA = encryptSecret('carried-over');
+    const sealedWithA = encryptSecret('carried-over', T_A);
     withKeys(KEY_B, KEY_A);
-    expect(decryptSecret(sealedWithA)).toBe('carried-over');
-    expect(decryptSecret(encryptSecret('freshly-sealed'))).toBe('freshly-sealed');
+    expect(decryptSecret(sealedWithA, T_A)).toBe('carried-over');
+    expect(decryptSecret(encryptSecret('freshly-sealed', T_A), T_A)).toBe('freshly-sealed');
   });
 
   it('reports which values are stale, so a rotation can be finished', () => {
-    const sealedWithA = encryptSecret('old');
+    const sealedWithA = encryptSecret('old', T_A);
     expect(needsRotation(sealedWithA)).toBe(false);
 
     withKeys(KEY_B, KEY_A);
     expect(needsRotation(sealedWithA)).toBe(true);
 
-    const rotated = rotateSecret(sealedWithA);
+    const rotated = rotateSecret(sealedWithA, T_A);
     expect(needsRotation(rotated)).toBe(false);
-    expect(decryptSecret(rotated)).toBe('old');
+    expect(decryptSecret(rotated, T_A)).toBe('old');
     expect(keyIdOf(rotated)).toBe(currentKey().id);
   });
 
   it('stops opening the old generation once the previous key is dropped', () => {
-    const sealedWithA = encryptSecret('orphaned');
+    const sealedWithA = encryptSecret('orphaned', T_A);
     withKeys(KEY_B);
-    expect(() => decryptSecret(sealedWithA)).toThrow(/SECRET_KEY_MISMATCH/);
+    expect(() => decryptSecret(sealedWithA, T_A)).toThrow(/SECRET_KEY_MISMATCH/);
   });
 });
 

@@ -17,6 +17,19 @@
  * save means "leave the key alone" rather than "clear it" — so changing only
  * the model does not require re-typing a 100-character secret.
  *
+ * ── THE ENCRYPTION KEY IS PER TENANT ──────────────────────────────────
+ *
+ * secret.crypto derives a distinct key per tenant from the master secret, and
+ * the salt is the **vn_tenants id** — the one the JWT carries and the one
+ * every call site here and in agent-core/llm.provider.ts already has.
+ * vani_tenant.id would need a lookup that llm.provider does not perform, and a
+ * salt that is only sometimes available is not a salt.
+ *
+ * Consequence worth knowing: a credential encrypted for one tenant cannot be
+ * decrypted in another's context even if a query were wrong, because the
+ * derived key differs and GCM refuses. That is a lock behind the RLS policy,
+ * not a replacement for it.
+ *
  * ── EVERY PATH GOES THROUGH withTenantClient ──────────────────────────
  *
  * vani_llm_provider is FORCE ROW LEVEL SECURITY (migration 247). A raw
@@ -166,7 +179,7 @@ export async function getProviderSummary(
     let model: string | null = null;
     let baseUrl: string | null = null;
     try {
-      const stored = JSON.parse(decryptSecret(row.credentials_enc));
+      const stored = JSON.parse(decryptSecret(row.credentials_enc, vnTenantId));
       keyHint = stored.key ? maskSecret(stored.key) : null;
       model   = stored.model   ?? null;
       baseUrl = stored.baseUrl ?? null;
@@ -222,7 +235,7 @@ export async function saveProviderWithin(
     let storedKey: string | undefined;
     if (existing.rows.length) {
       try {
-        storedKey = JSON.parse(decryptSecret(existing.rows[0].credentials_enc)).key;
+        storedKey = JSON.parse(decryptSecret(existing.rows[0].credentials_enc, vnTenantId)).key;
       } catch {
         // Unreadable — treat as absent so a new key can replace it. This is
         // the one recovery path out of a lost TENANT_SECRET_KEY.
@@ -254,7 +267,7 @@ export async function saveProviderWithin(
        DO UPDATE SET credentials_enc = EXCLUDED.credentials_enc,
                      test_status     = 'untested',
                      last_test_at    = NULL`,
-      [tid, input.providerCode, encryptSecret(serialiseCredentials(credentials))],
+      [tid, input.providerCode, encryptSecret(serialiseCredentials(credentials), vnTenantId)],
     );
 
     return {
@@ -336,7 +349,7 @@ export async function testProvider(pool: Pool, vnTenantId: string): Promise<Test
       [vnTenantId],
     );
     if (!r.rows.length) throw new ProviderError(404, 'NO_PROVIDER', 'No provider configured.');
-    return JSON.parse(decryptSecret(r.rows[0].credentials_enc)) as
+    return JSON.parse(decryptSecret(r.rows[0].credentials_enc, vnTenantId)) as
       { key?: string; model?: string; baseUrl?: string };
   });
 

@@ -59,7 +59,7 @@ function poolWith(byok: { provider_code: string; credentials: object } | null) {
           rows: byok
             ? [{
                 provider_code:   byok.provider_code,
-                credentials_enc: encryptSecret(serialiseCredentials(byok.credentials as never)),
+                credentials_enc: encryptSecret(serialiseCredentials(byok.credentials as never), TENANT),
               }]
             : [],
         };
@@ -170,7 +170,7 @@ describe('ruling 1 — the cap does not apply to BYOK', () => {
           return {
             rows: byok
               ? [{ provider_code: byok.provider_code,
-                   credentials_enc: encryptSecret(serialiseCredentials(byok.credentials as never)) }]
+                   credentials_enc: encryptSecret(serialiseCredentials(byok.credentials as never), TENANT) }]
               : [],
           };
         }
