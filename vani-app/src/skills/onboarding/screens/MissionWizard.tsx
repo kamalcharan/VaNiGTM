@@ -233,18 +233,33 @@ function FieldStatusTag({ filled }: { filled: boolean }) {
    available after setup, and live in /today's Agent Launchpad instead. */
 
 /**
- * The Smart Profile is EIGHT steps, not five.
+ * The Smart Profile is SIX steps, not five — and not eight.
  *
- * STEPS is what this screen can currently run. DECLARATION_STEPS is the rest of
- * the profile — domain, people, model — which is declared in VaNiGTM's lane
- * catalog but has no screen here yet.
+ * STEPS is what this screen can currently run. DECLARATION_STEPS is what still
+ * comes after it, rendered in the stepper as LOCKED rather than left out. A
+ * tenant who finishes step 5 needs to know the profile continues; a stepper
+ * that stops at "Brand" says the opposite, and that is exactly why this read as
+ * "onboarding done" when most of the profile had not been asked for.
+ * PathwayShell supports this directly — "a locked step still tells the user
+ * what is coming, which a hidden one cannot".
  *
- * They are rendered in the stepper as LOCKED rather than left out. A tenant who
- * finishes step 5 needs to know the profile continues; a stepper that stops at
- * "Brand" says the opposite, and that is exactly why this read as "onboarding
- * done" when most of the profile had not been asked for. PathwayShell supports
- * this directly — "a locked step still tells the user what is coming, which a
- * hidden one cannot".
+ * ── WHY PEOPLE AND MODEL ARE NO LONGER HERE (2026-09-16) ──────────────
+ *
+ * A locked step is a PROMISE. These two could not keep it, so advertising them
+ * was worse than omitting them — the rail told a tenant who had just finished
+ * Brand that two more steps were coming when neither ever would:
+ *
+ *   vani:team ......... permanently disabled in VaNiGTM's lane catalog. People
+ *                       are already managed through /auth/team on the vn_
+ *                       spine; the vani_membership route to the same outcome
+ *                       was never adopted. It remains a Smart Profile SECTION
+ *                       (PeopleSection, §7) — a thing you look at, not an
+ *                       onboarding step you complete.
+ *   vani:llm_provider . BYOK shipped, but as a MENU item, not an onboarding
+ *                       step (user ruling, 2026-09-16). Settings → Model
+ *                       Provider is the surface.
+ *
+ * Domain stays: it is real, it is enabled, and /onboarding/declare runs it.
  *
  * Kept OUT of STEPS on purpose: every index in this file (handoff targets,
  * stepIndex comparisons, railItems) is positional, so widening STEPS would move
@@ -252,8 +267,6 @@ function FieldStatusTag({ filled }: { filled: boolean }) {
  */
 const DECLARATION_STEPS = [
   { id: 'vani:domain', label: 'Domain', locked: true, lockedTag: 'Next' },
-  { id: 'vani:team', label: 'People', locked: true, lockedTag: 'Next' },
-  { id: 'vani:llm_provider', label: 'Model', locked: true, lockedTag: 'Next' },
 ];
 
 const STEPS = [

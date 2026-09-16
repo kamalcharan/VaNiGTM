@@ -304,10 +304,19 @@ export default function SmartProfileView() {
 
       <PeopleSection n={7} />
 
-      {/* Model: the default provider is configured server-side and in force for
-          every tenant. Stating it is honest and useful; BYOK needs
-          vani_llm_provider.credentials_enc and an encryption path, so it is
-          named as coming rather than shown as an input that saves nowhere. */}
+      {/* Model. This section used to say BYOK was "coming" because
+          vani_llm_provider.credentials_enc had no encryption path behind it.
+          It does now (VaNiGTM agent-core/secret.crypto.ts + llm.provider.ts,
+          2026-09-15), and BYOK is a MENU item rather than an onboarding step
+          (user ruling, 2026-09-16).
+
+          It is NOT linked from here, and that is deliberate rather than an
+          oversight: this app's own Settings is status:'planned' (see
+          src/skills/settings/index.ts, whose P2 summary names the model
+          provider), so a link would be a dead route. Naming where the surface
+          actually lives is the honest thing a reader can act on; inventing a
+          link they cannot follow is not. When vani-app's Settings lands, this
+          copy points at it. */}
       <section className={s.section}>
         <header className={s.sectionHead}>
           <span className={s.sectionNum}>8</span>
@@ -320,8 +329,11 @@ export default function SmartProfileView() {
         <div className={s.sectionBody}>
           <p className={s.modelNote}>
             A provider is configured for your workspace and in force for every
-            agent. Bringing your own key becomes a field on this step; until then
-            nothing here needs your attention.
+            agent. You can bring your own key instead — your endpoint, your
+            model, your billing, and no daily token cap. It is set in the
+            Vikuna GTM console under Settings → Model Provider, and applies to
+            every agent here the moment it is saved. This screen gets its own
+            control when Settings arrives.
           </p>
           <span className={s.modelTag}>Workspace default</span>
         </div>
