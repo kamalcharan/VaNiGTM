@@ -534,14 +534,18 @@ Runbook in §8 of the doc.
 - **BYOK is a MENU item, not an onboarding step** (user ruling, 2026-09-16).
   `vani:llm_provider` stays `enabled: false` in `lanes.ts`. Do not flip it.
 
-  ⚠️ **The UI for it is NOT BUILT.** A Model Provider settings tab was written
-  at `frontend/src/components/settings/model-provider-tab.tsx` before it was
-  established that `frontend/` is retired — so it works, and nobody can reach
-  it. The backend is complete and reachable; the surface has to be built in
-  `vani-app`, whose own Settings is `status: 'planned'`
-  (`src/skills/settings/index.ts`). Until then BYOK is API-only:
-  `PUT /api/v1/llm-provider`. The retired tab is a working reference for the
-  port, not a thing to keep alive.
+  **The surface is `vani-app` → System → Model Provider**
+  (`vikunawebsite/vani-app/src/skills/model-provider/`). A first version was
+  written into the retired `frontend/` before that was established; it has been
+  deleted rather than left as a second, unreachable BYOK screen.
+
+  **It reaches the backend as a SKILL, not as REST.** `llm-provider-skill`
+  (`backend/src/skills/llm-provider-skill/`) wraps
+  `vani/llm-provider.service.ts` in five functions, so the console uses the
+  generic runner and needs no entry in vani-app's `live-transport.ts`
+  `PLATFORM_ROUTES` — that table is the countable list of exceptions to "auth
+  is the only non-generic surface" and is meant to stay small. The REST routes
+  at `/api/v1/llm-provider` remain for direct API use.
 
   It was enabled for one day and **trapped a live tenant**, which is worth
   knowing because the missing piece was in the OTHER repo. `enabled` also
