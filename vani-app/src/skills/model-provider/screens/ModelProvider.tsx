@@ -95,7 +95,34 @@ export default function ModelProvider() {
 
   const providers = catalogue.data?.success ? catalogue.data.data.providers : [];
   const encryptionReady = catalogue.data?.success ? catalogue.data.data.encryptionReady : true;
-  const selected = providers.find((p) => p.code === code);
+
+  /*
+   * The catalogue is a SEPARATE query from the current provider, so it can
+   * still be in flight — or have failed — when someone opens the form. Two
+   * things follow, both of which shipped broken.
+   *
+   * 1. `code` must never hold a value no <option> carries. beginEdit used to
+   *    read providers[0] at click time; before the catalogue resolved that is
+   *    undefined, so code became '' and the controlled <select> rendered
+   *    BLANK — options present, nothing selected, no error anywhere. Deriving
+   *    the effective value here means the select follows the catalogue
+   *    whenever it lands, rather than being frozen by whatever was known at
+   *    the instant of the click.
+   *
+   * 2. A catalogue REFUSAL must not look like an empty catalogue. `success:
+   *    false` arrives with HTTP 200, so reading .data without checking it
+   *    yields [] and a blank dropdown — degraded output that looks like real
+   *    output, which is the thing rule 12 exists to stop. catalogueFailed
+   *    drives a visible card below.
+   */
+  const effectiveCode = code || providers[0]?.code || '';
+  const selected = providers.find((p) => p.code === effectiveCode);
+  const catalogueReady = providers.length > 0;
+  const catalogueFailed =
+    !!catalogue.error || (!!catalogue.data && !catalogue.data.success);
+  const catalogueError =
+    catalogue.error?.message
+    ?? (catalogue.data && !catalogue.data.success ? catalogue.data.error : null);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['skill', SKILL] });
 
@@ -117,7 +144,9 @@ export default function ModelProvider() {
   });
 
   function beginEdit(existing: Provider | null) {
-    setCode(existing?.providerCode || providers[0]?.code || '');
+    // '' is fine: effectiveCode falls back to the first provider once the
+    // catalogue lands, so the select is never left on an unmatched value.
+    setCode(existing?.providerCode || '');
     setModel(existing?.model || '');
     setBaseUrl(existing?.baseUrl || '');
     setKey('');            // never pre-filled — the API does not return it
@@ -127,7 +156,7 @@ export default function ModelProvider() {
 
   async function onSave() {
     const result = await save.mutate({
-      provider_code: code,
+      provider_code: effectiveCode,
       key: key || undefined,
       model: model || undefined,
       base_url: baseUrl || undefined,
@@ -166,6 +195,34 @@ export default function ModelProvider() {
         Which model answers when an agent needs one. Declared once — every agent
         in this workspace picks it up.
       </p>
+
+      {/* A catalogue refusal used to surface as a blank dropdown and nothing
+          else. It carries the server's own message, because "could not load
+          the providers" without the reason sends people to the wrong place. */}
+      {catalogueFailed && (
+        <section className={u.card}>
+          <div className={u.cardHead}>
+            Could not load the provider list
+            <span className={u.tagBad}>error</span>
+          </div>
+          <div className={s.body}>
+            <p className={s.note}>
+              The form cannot be filled in without it.
+              {catalogueError ? <> The server said: <strong>{catalogueError}</strong></> : null}
+            </p>
+            <div className={s.actions}>
+              <button
+                type="button"
+                className={s.btn}
+                onClick={() => catalogue.refetch()}
+                disabled={catalogue.isFetching}
+              >
+                {catalogue.isFetching ? <InlineLoader size="sm" message="Retrying…" /> : 'Retry'}
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* An operator problem, stated before anyone fills in a form that cannot
           be saved. */}
@@ -234,7 +291,7 @@ export default function ModelProvider() {
                   <button type="button" className={s.btn} onClick={onTest} disabled={test.isPending}>
                     {test.isPending ? <InlineLoader size="sm" message="Testing…" /> : 'Test connection'}
                   </button>
-                  <button type="button" className={s.btn} onClick={() => beginEdit(d.provider)} disabled={!encryptionReady}>
+                  <button type="button" className={s.btn} onClick={() => beginEdit(d.provider)} disabled={!encryptionReady || !catalogueReady}>
                     Change
                   </button>
                   <button type="button" className={`${s.btn} ${s.btnDanger}`} onClick={onRemove} disabled={remove.isPending}>
@@ -265,7 +322,7 @@ export default function ModelProvider() {
               </p>
               {!editing && (
                 <div className={s.actions}>
-                  <button type="button" className={`${s.btn} ${s.btnPrimary}`} onClick={() => beginEdit(null)} disabled={!encryptionReady}>
+                  <button type="button" className={`${s.btn} ${s.btnPrimary}`} onClick={() => beginEdit(null)} disabled={!encryptionReady || !catalogueReady}>
                     Add your provider
                   </button>
                 </div>
@@ -291,7 +348,7 @@ export default function ModelProvider() {
             <label className={s.field}>
               Provider
               <select
-                value={code}
+                value={effectiveCode}
                 onChange={(e) => { setCode(e.target.value); setBaseUrl(''); setModel(''); }}
                 disabled={save.isPending}
               >
@@ -347,7 +404,7 @@ export default function ModelProvider() {
                 onClick={onSave}
                 disabled={
                   save.isPending
-                  || !code
+                  || !effectiveCode
                   || (!!selected?.keyRequired && !key
                       && !(current.data?.success && current.data.data.provider))
                 }
