@@ -31,18 +31,36 @@ import s from '../vara-onboarding.module.css';
 const SKILL = 'domain-pack-skill';
 
 type ResearchState =
-  | 'no_industry' | 'ready' | 'running' | 'in_review' | 'failed' | 'none';
+  | 'no_industry' | 'ready' | 'seeded_only'
+  | 'running' | 'in_review' | 'failed' | 'none';
 
 interface ResearchStatus {
   state: ResearchState;
   industry: string | null;
   domain: string | null;
   families: number;
+  /** Where the families came from. 'seeded' = migration 244's generic packs. */
+  source: 'seeded' | 'researched' | 'mixed';
+  researched_at: string | null;
   can_request: boolean;
   detail: string;
 }
 
-export function ResearchCard({ industryRaw }: { industryRaw: string }) {
+/**
+ * `variant` decides what this renders, because the same status answers two
+ * different questions on the same screen:
+ *
+ *   'provenance' — in "What Vara already knows about you". Always present.
+ *                  Says where the role families came from, which the doorway
+ *                  never did: three seeded packs read exactly like three
+ *                  researched ones.
+ *   'action'     — under the family picker. Only when something is wrong or
+ *                  missing, so a settled screen stays quiet.
+ */
+export function ResearchCard(
+  { industryRaw, variant = 'action' }:
+  { industryRaw: string; variant?: 'provenance' | 'action' },
+) {
   const q = useSkillQuery<ResearchStatus>(SKILL, 'research_status', {}, {
     // Poll only while something is actually happening. A fixed interval would
     // keep hitting the API for every tenant sitting on this screen.
@@ -63,7 +81,13 @@ export function ResearchCard({ industryRaw }: { industryRaw: string }) {
   // screen — the family list below still works and the tenant is not blocked.
   const status = q.data?.success ? q.data.data : null;
   if (q.isLoading) return <InlineLoader size="sm" />;
-  if (!status || status.state === 'ready') return null;
+  if (!status) return null;
+
+  if (variant === 'provenance') return <Provenance status={status} industryRaw={industryRaw} />;
+
+  // The action variant stays silent once the industry has really been
+  // researched — a settled screen should not carry a banner.
+  if (status.state === 'ready') return null;
 
   const tone =
     status.state === 'failed' ? s.researchFailed
@@ -82,6 +106,8 @@ export function ResearchCard({ industryRaw }: { industryRaw: string }) {
             ? 'Role families drafted — in review'
             : status.state === 'failed'
             ? 'The last attempt did not finish'
+            : status.state === 'seeded_only'
+            ? `These are starter playbooks, not ${status.industry ?? industryRaw} research`
             : `No playbooks for ${status.industry ?? industryRaw} yet`}
         </b>
         {/* The server's own words. A failed run names the real cause here —
@@ -89,8 +115,10 @@ export function ResearchCard({ industryRaw }: { industryRaw: string }) {
             worth pressing; one who reads "something went wrong" does not. */}
         <span className={s.researchDetail}>{status.detail}</span>
         <span className={s.researchNote}>
-          You are not blocked — pick <b>Other</b> below and write the role yourself.
-          Recommendations appear here when Vara has them.
+          {status.state === 'seeded_only'
+            ? 'Use them as a starting shape, or have Vara study how your industry actually hires.'
+            : 'You are not blocked — pick Other below and write the role yourself. '
+              + 'Recommendations appear here when Vara has them.'}
         </span>
       </div>
 
@@ -108,4 +136,48 @@ export function ResearchCard({ industryRaw }: { industryRaw: string }) {
       )}
     </div>
   );
+}
+
+
+/**
+ * One line in "What Vara already knows about you", beside the Smart Profile
+ * fields — because "Vara has starting playbooks for these" was true of both a
+ * pack somebody researched and a pack Vikuna handwrote in August, and the
+ * screen said the same thing either way (rule 9d: never present the
+ * unverified as derived).
+ */
+function Provenance(
+  { status, industryRaw }: { status: ResearchStatus; industryRaw: string },
+) {
+  const industry = status.industry ?? industryRaw;
+
+  const text =
+    status.state === 'no_industry'
+      ? 'No industry set, so Vara has no role families to work from.'
+      : status.families === 0
+      ? `No role families for ${industry} yet.`
+      : status.source === 'researched'
+      ? `${status.families} role families, researched for ${industry}`
+        + (status.researched_at ? ` on ${formatDay(status.researched_at)}.` : '.')
+      : status.source === 'mixed'
+      ? `${status.families} role families for ${industry} — some researched, some from `
+        + "Vikuna's starter set."
+      : `${status.families} role families — Vikuna's generic starter set, `
+        + `not researched for ${industry}.`;
+
+  return (
+    <div className={s.provenance}>
+      <span className={s.provenanceLabel}>Role playbooks</span>
+      <span>{text}</span>
+    </div>
+  );
+}
+
+/** DD-MMM-YYYY, the format both consoles use. */
+function formatDay(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${String(d.getDate()).padStart(2, '0')}-${months[d.getMonth()]}-${d.getFullYear()}`;
 }

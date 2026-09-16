@@ -388,3 +388,26 @@
 /* Always present: no state here blocks the tenant, and saying so stops the
    card reading as an error when it is only a "not yet". */
 .researchNote { color: var(--tx3); font-size: 12px; }
+
+/* Provenance line inside "What Vara already knows about you". Deliberately
+   quiet — it is a fact about the data, not a warning. */
+.provenance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--tx2);
+}
+
+.provenanceLabel {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tx3);
+}

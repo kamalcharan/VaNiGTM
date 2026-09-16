@@ -203,7 +203,11 @@ function VaraOnboardingRunnerInner() {
               <div className={s.card}>
                 <div className={s.cardHead}>
                   <h2 className={s.cardTitle}>What Vara already knows about you</h2>
-                  <span className={s.cardMeta}>inherited from Smart Profile</span>
+                  {/* Was "inherited from Smart Profile", which stopped being the
+                      whole truth once role playbooks appeared below it. Some of
+                      this is declared, some is researched, and the card has to
+                      say which. */}
+                  <span className={s.cardMeta}>declared · researched</span>
                 </div>
                 <p className={s.cardWhat}>
                   Correct any of this in the Smart Profile — Vara does not ask you
@@ -220,6 +224,11 @@ function VaraOnboardingRunnerInner() {
                     </div>
                   </div>
                 </div>
+                {/* Everything above is declared. This is the researched half —
+                    and it says so even when the answer is "nothing has been
+                    researched", which is the state the doorway used to present
+                    as knowledge. */}
+                <ResearchCard industryRaw={c.industry.raw} variant="provenance" />
               </div>
 
               {/* Role family ─────────────────────────────────────────── */}
@@ -237,9 +246,12 @@ function VaraOnboardingRunnerInner() {
                 {/* One line used to cover every reason this list can be empty.
                     ResearchCard asks the server which one it is, and offers the
                     retry when there is one to offer. */}
-                {(emptyMode || c.families.length === 0) && (
-                  <ResearchCard industryRaw={c.industry.raw} />
-                )}
+                {/* Not gated on an empty list any more. The case that mattered
+                    — three seeded families that were never researched — has a
+                    FULL list, so an empty-state check could never catch it.
+                    ResearchCard returns null once the industry is really
+                    researched. */}
+                <ResearchCard industryRaw={c.industry.raw} variant="action" />
                 <div className={s.familyList}>
                   {shownFamilies.map((f) => (
                     <button

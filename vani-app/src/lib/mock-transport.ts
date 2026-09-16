@@ -142,21 +142,30 @@ const MOCK_CATALOGUE = [
 ];
 
 interface MockResearch {
-  state: 'no_industry' | 'ready' | 'running' | 'in_review' | 'failed' | 'none';
+  state: 'no_industry' | 'ready' | 'seeded_only'
+       | 'running' | 'in_review' | 'failed' | 'none';
   industry: string | null;
   domain: string | null;
   families: number;
+  source: 'seeded' | 'researched' | 'mixed';
+  researched_at: string | null;
   can_request: boolean;
   detail: string;
 }
 
 let MOCK_RESEARCH: MockResearch = {
-  state: 'none',
-  industry: 'Logistics & Freight',
-  domain: 'logistics-freight',
-  families: 0,
+  // Defaults to the state a real tenant on Technology & SaaS is actually in:
+  // migration 244 seeded three handcrafted packs in August, so the family list
+  // is FULL and nothing has been researched. That is the case an empty-state
+  // check can never catch, which is why it is the default here.
+  state: 'seeded_only',
+  industry: 'Technology & SaaS',
+  domain: 'technology-saas',
+  families: 3,
+  source: 'seeded',
+  researched_at: null,
   can_request: true,
-  detail: 'Vara has not studied Logistics & Freight yet.',
+  detail: "The 3 families shown are Vikuna's generic starter set, not researched for Technology & SaaS.",
 };
 
 const HANDLERS: Record<string, () => unknown> = {
@@ -240,10 +249,8 @@ const WRITE_HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = 
     // screen polls. It does NOT jump to 'ready' — research takes a minute, and
     // a mock that succeeds instantly hides every loading state built for it.
     MOCK_RESEARCH = {
+      ...MOCK_RESEARCH,
       state: 'running',
-      industry: MOCK_RESEARCH.industry,
-      domain: MOCK_RESEARCH.domain,
-      families: 0,
       can_request: false,
       detail: `Vara is learning how ${MOCK_RESEARCH.industry} hires. This usually takes a minute.`,
     };
