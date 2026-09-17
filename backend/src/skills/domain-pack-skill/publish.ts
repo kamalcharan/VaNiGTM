@@ -95,9 +95,29 @@ async function show(runId: string): Promise<void> {
   console.log(`\n${d.domain}  —  "${d.industry}"`);
   console.log(`researched ${d.researched_at} with prompt v${d.prompt_version}\n`);
 
+  // What each family will DO to the registry, said before publishing rather
+  // than discovered after. A draft that replaces a seeded pack and a draft
+  // that adds a family are different decisions, and the family list alone
+  // does not distinguish them.
+  const live = await pool.query(
+    `SELECT DISTINCT ON (lower(btrim(payload ->> 'family_name')))
+            lower(btrim(payload ->> 'family_name')) AS name, code, version
+       FROM vani_domain_pack
+      WHERE domain = $1
+      ORDER BY lower(btrim(payload ->> 'family_name')), version DESC`,
+    [d.domain],
+  );
+  const existing = new Map<string, { code: string; version: number }>(
+    live.rows.map((r: any) => [r.name, { code: r.code, version: r.version }]),
+  );
+
   for (const p of d.packs) {
     const s = p.payload.vara.starter;
-    console.log(`  ${p.payload.family_name}   [${p.code}]`);
+    const prior = existing.get(String(p.payload.family_name).trim().toLowerCase());
+    const fate = prior
+      ? `REPLACES ${prior.code} v${prior.version} → v${prior.version + 1}`
+      : `NEW family [${p.code}]`;
+    console.log(`  ${p.payload.family_name}   ${fate}`);
     if (p.payload.hint) console.log(`    ${p.payload.hint}`);
     console.log(`    titles     : ${(p.payload.suggested_titles ?? []).join(', ') || '—'}`);
     console.log(`    threshold  : ${s.threshold}`);
@@ -112,7 +132,12 @@ async function show(runId: string): Promise<void> {
     for (const k of s.knockouts) console.log(`       ${k.label}: ${k.rule}`);
     console.log('');
   }
-  console.log(`Publish:  npm run packs -- --publish ${runId}\n`);
+  const replacing = d.packs.filter(
+    (p) => existing.has(String(p.payload.family_name).trim().toLowerCase())).length;
+  console.log(`${d.domain} has ${existing.size} live famil${existing.size === 1 ? 'y' : 'ies'}; `
+    + `publishing this draft replaces ${replacing} and adds ${d.packs.length - replacing} `
+    + `→ ${existing.size + (d.packs.length - replacing)} in the tenant's family list.`);
+  console.log(`\nPublish:  npm run packs -- --publish ${runId}\n`);
 }
 
 async function readDraft(runId: string): Promise<Draft> {
@@ -149,19 +174,45 @@ export async function publish(runId: string): Promise<string[]> {
 
     const published: string[] = [];
     for (const p of draft.packs) {
+      // A family already in this domain keeps ITS code, whatever the agent
+      // derived. The codes do not line up on their own: migration 244 seeded
+      // 'talent-technology-saas-backend-eng' by hand and the agent slugifies
+      // the same family to 'talent-technology-saas-backend-engineering'. Two
+      // codes for one family is two rows out of the doorway's
+      // `DISTINCT ON (code)`, so a tenant would see Backend Engineering twice
+      // with no way to tell which one Vara scores against.
+      //
+      // Matching on family_name rather than code is what makes a researched
+      // draft an UPGRADE of the seeded pack (v2 of the same code) instead of a
+      // rival to it — "we can always update the records with those 3 records"
+      // (user, 2026-09-17).
+      const existing = await client.query(
+        `SELECT code FROM vani_domain_pack
+          WHERE domain = $1
+            AND lower(btrim(payload ->> 'family_name')) = lower(btrim($2))
+          ORDER BY version DESC
+          LIMIT 1`,
+        [p.domain, p.payload.family_name],
+      );
+      const code: string = existing.rows[0]?.code ?? p.code;
+      if (code !== p.code) {
+        console.log(`[packs] ${p.payload.family_name}: publishing under existing `
+          + `code ${code} (drafted as ${p.code})`);
+      }
+
       // Append-only: never UPDATE an existing pack. A correction is a new
       // version, and the previous one stays readable for anything that
       // recorded which version it used.
       const v = await client.query(
         `SELECT COALESCE(MAX(version), 0) + 1 AS next FROM vani_domain_pack WHERE code = $1`,
-        [p.code],
+        [code],
       );
       await client.query(
         `INSERT INTO vani_domain_pack (code, version, domain, payload)
          VALUES ($1, $2, $3, $4::jsonb)`,
-        [p.code, v.rows[0].next, p.domain, JSON.stringify(p.payload)],
+        [code, v.rows[0].next, p.domain, JSON.stringify(p.payload)],
       );
-      published.push(`${p.code} v${v.rows[0].next}`);
+      published.push(`${code} v${v.rows[0].next}`);
     }
 
     await client.query(

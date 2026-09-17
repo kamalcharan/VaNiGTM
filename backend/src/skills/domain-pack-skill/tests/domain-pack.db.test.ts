@@ -547,6 +547,45 @@ d('publishing a reviewed draft', () => {
     expect(versions.rows.map((r) => r.version)).toEqual([1, 2]);
   });
 
+  it('upgrades a hand-seeded family instead of listing it twice', async () => {
+    // The codes do not line up on their own. Migration 244 seeded
+    // 'talent-technology-saas-backend-eng' by hand; the agent slugifies the
+    // same family to '...-backend-engineering'. Published under both, the
+    // doorway's DISTINCT ON (code) returns two "Fleet Operations" rows and a
+    // tenant cannot tell which one Vara scores against.
+    await pool.query(
+      `INSERT INTO vani_domain_pack (code, version, domain, payload)
+       VALUES ('talent-logistics-fleet-ops', 1, 'logistics', $1::jsonb)`,
+      [JSON.stringify({
+        family_name: 'Fleet Operations',
+        hint: 'hand-seeded',
+        suggested_titles: ['Fleet Manager'],
+        vara: { starter: { musthaves: [], knockouts: [], threshold: 30 } },
+      })],
+    );
+
+    const run = await draft();
+    const published = await pub.publish(run);
+
+    // The researched draft lands as v2 of the SEEDED code, not as a rival.
+    expect(published).toContain('talent-logistics-fleet-ops v2');
+    expect(published.join(' ')).not.toContain('fleet-operations');
+
+    const families = await pool.query(
+      `SELECT DISTINCT ON (code) code, version, payload ->> 'family_name' AS name
+         FROM vani_domain_pack WHERE domain = 'logistics'
+        ORDER BY code, version DESC`);
+    const fleet = families.rows.filter((r) => r.name === 'Fleet Operations');
+    expect(fleet).toHaveLength(1);
+    expect(fleet[0]).toMatchObject({ code: 'talent-logistics-fleet-ops', version: 2 });
+
+    // ...and the researched payload is what v2 carries, so the upgrade is real.
+    const v2 = await pool.query(
+      `SELECT payload FROM vani_domain_pack
+        WHERE code = 'talent-logistics-fleet-ops' AND version = 2`);
+    expect(v2.rows[0].payload.researched).toBeTruthy();
+  });
+
   it('publishes all families or none', async () => {
     // The second family's INSERT must fail AFTER the first has succeeded, so
     // a constraint is added for the duration. An earlier version of this test
