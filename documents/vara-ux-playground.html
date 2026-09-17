@@ -1,0 +1,626 @@
+<title>Vara Ten Minutes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+:root{
+  --ground:#0c0c0f; --surface:#15151a; --raised:#1c1c22; --sunk:#101014;
+  --line:#292932; --line-soft:#1f1f27;
+  --ink:#eae7e0; --ink-dim:#a5a3ad; --ink-faint:#74727d;
+  --gold:#c9a227; --gold-soft:#3a2f0d; --gold-dim:#6d570f;
+  --new:#6f9fd8; --new-soft:#15222f;
+  --mine:#6faa84; --mine-soft:#152218;
+  --warn:#d9a441;
+  --display:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --body:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;margin:0;padding-inline:20px;padding-block:0 80px;-webkit-font-smoothing:antialiased}
+.page{max-width:900px;margin:0 auto}
+button{font:inherit;cursor:pointer}
+input,select{font:inherit}
+.mono{font-family:var(--mono)}
+.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+
+/* chrome ------------------------------------------------------------- */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:rgba(12,12,15,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin-inline:-20px;padding:11px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.bar .brand{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:-.01em}
+.bar .brand span{color:var(--gold)}
+.clock{font-family:var(--mono);font-size:13px;color:var(--ink-dim);font-variant-numeric:tabular-nums}
+.clock b{color:var(--gold);font-weight:600}
+.bar .sp{flex:1}
+.ghost{background:transparent;border:1px solid var(--line);color:var(--ink-dim);border-radius:3px;padding:5px 11px;font-size:12.5px}
+.ghost:hover{border-color:var(--gold);color:var(--gold)}
+
+/* background job chip ------------------------------------------------- */
+.job{display:flex;align-items:center;gap:9px;border:1px solid var(--gold-dim);background:var(--gold-soft);border-radius:20px;padding:4px 13px 4px 9px;font-size:12px;color:var(--ink)}
+.job .pulse{width:7px;height:7px;border-radius:50%;background:var(--gold);animation:p 1.4s ease-in-out infinite}
+@keyframes p{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
+.job.done{border-color:var(--mine);background:var(--mine-soft)}
+.job.done .pulse{background:var(--mine);animation:none}
+
+/* director ------------------------------------------------------------ */
+.director{border:1px dashed var(--line);border-radius:4px;padding:13px 16px;margin-top:20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--sunk)}
+.director .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+.seg{display:flex;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--ink-dim);padding:6px 13px;font-size:12.5px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--gold-soft);color:var(--gold)}
+
+/* rail ---------------------------------------------------------------- */
+.rail{display:flex;gap:0;margin:26px 0 30px;overflow-x:auto;border-bottom:1px solid var(--line)}
+.rail div{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);padding:0 14px 11px 0;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px}
+.rail div.on{color:var(--gold);border-bottom-color:var(--gold)}
+.rail div.past{color:var(--ink-dim)}
+
+h1{font-family:var(--display);font-weight:700;font-size:clamp(26px,4.6vw,36px);line-height:1.06;letter-spacing:-.022em;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:19px;letter-spacing:-.012em;margin:0}
+.lede{color:var(--ink-dim);margin:10px 0 0;max-width:62ch}
+.stage{padding-block:6px 0}
+
+/* generic card -------------------------------------------------------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:20px 22px;margin-top:16px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.primary{background:var(--gold);color:#12100a;border:0;border-radius:3px;padding:10px 20px;font-weight:600;font-size:14px}
+.primary:disabled{opacity:.3;cursor:not-allowed}
+.primary.quiet{background:transparent;color:var(--gold);border:1px solid var(--gold)}
+.ti{background:var(--sunk);border:1px solid var(--line);color:var(--ink);border-radius:3px;padding:10px 13px;font-size:15px;width:100%}
+.ti:focus{outline:2px solid var(--gold);outline-offset:1px}
+.hint{color:var(--ink-faint);font-size:13px;margin:9px 0 0}
+
+/* provenance ---------------------------------------------------------- */
+.prov{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;padding:2px 7px;border-radius:2px;white-space:nowrap}
+.prov.res{background:var(--new-soft);color:var(--new);border:1px solid #27405a}
+.prov.gen{background:var(--sunk);color:var(--ink-faint);border:1px solid var(--line)}
+.prov.mine{background:var(--mine-soft);color:var(--mine);border:1px solid #23402c}
+
+/* family list --------------------------------------------------------- */
+.fams{display:flex;flex-direction:column;gap:9px;margin-top:16px}
+.fam{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:14px 16px}
+.fam.picked{border-color:var(--mine)}
+.fam .head{display:flex;gap:12px;align-items:flex-start}
+.fam .nm{font-family:var(--display);font-weight:600;font-size:15.5px;letter-spacing:-.008em}
+.fam .hint2{color:var(--ink-dim);font-size:13px;margin-top:2px}
+.fam .tt{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin-top:7px;line-height:1.5}
+.tick{width:22px;height:22px;flex:0 0 22px;border-radius:3px;border:1.5px solid var(--line);background:var(--sunk);display:grid;place-items:center;color:transparent;font-size:13px;margin-top:2px}
+.fam.picked .tick{border-color:var(--mine);background:var(--mine);color:#0c1a11}
+.fam button.hit{all:unset;display:block;width:100%;cursor:pointer}
+.fam button.hit:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.count{font-family:var(--mono);font-size:12.5px;color:var(--ink-dim)}
+
+/* shape editor -------------------------------------------------------- */
+.mh{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line-soft)}
+.mh:last-of-type{border-bottom:0}
+.mh .nm2{font-size:14px}
+.mh .why{color:var(--ink-faint);font-size:12.5px;margin-top:2px;max-width:56ch}
+.wt{display:flex;align-items:center;gap:6px}
+.wt button{background:var(--sunk);border:1px solid var(--line);color:var(--ink-dim);width:24px;height:24px;border-radius:3px;line-height:1;font-size:14px;display:grid;place-items:center}
+.wt button:hover{border-color:var(--gold);color:var(--gold)}
+.wt .v{font-family:var(--mono);font-size:13px;width:40px;text-align:center;font-variant-numeric:tabular-nums}
+.drop{background:transparent;border:0;color:var(--ink-faint);font-size:16px;padding:0 4px}
+.drop:hover{color:var(--warn)}
+.bar2{height:3px;background:var(--line);border-radius:2px;margin-top:6px;overflow:hidden;max-width:220px}
+.bar2 i{display:block;height:100%;background:var(--gold)}
+.sum{font-family:var(--mono);font-size:12px;color:var(--ink-faint);margin-top:12px}
+.sum.bad{color:var(--warn)}
+.ko{display:flex;gap:10px;align-items:flex-start;padding:9px 0;font-size:13.5px;border-bottom:1px solid var(--line-soft)}
+.ko:last-child{border-bottom:0}
+.ko .kn{font-weight:500}
+.ko .kr{color:var(--ink-dim)}
+.thr{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:6px}
+input[type=range]{accent-color:var(--gold);flex:1;min-width:180px}
+.subh{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin:20px 0 4px}
+
+/* feed ---------------------------------------------------------------- */
+.feed{margin-top:14px;display:flex;flex-direction:column;gap:7px}
+.fline{display:flex;gap:10px;font-size:13.5px;align-items:baseline;opacity:0;animation:in .4s ease forwards}
+@keyframes in{to{opacity:1}}
+.fline .t{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);flex:0 0 46px;font-variant-numeric:tabular-nums}
+.fline .d{color:var(--mine)}
+
+/* jd ------------------------------------------------------------------ */
+.jd{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:22px 24px;margin-top:16px}
+.jdh{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:6px}
+.jdt{font-family:var(--display);font-weight:600;font-size:20px;letter-spacing:-.014em}
+.jds{font-family:var(--mono);font-size:12px;color:var(--ink-faint);margin-top:4px}
+.done{border:1px solid var(--mine);background:var(--mine-soft);border-radius:4px;padding:22px 24px;margin-top:16px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--line-soft);border-radius:3px;overflow:hidden;margin-top:18px}
+.metric{background:var(--surface);padding:14px 16px}
+.metric .k{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-faint)}
+.metric .v{font-family:var(--display);font-weight:700;font-size:24px;margin-top:5px;letter-spacing:-.02em}
+.metric .v s{color:var(--ink-faint);font-weight:500;font-size:15px;text-decoration:line-through;margin-right:7px}
+.note{color:var(--ink-faint);font-size:12.5px;margin-top:16px;max-width:66ch}
+.foot{margin-top:40px;padding-top:22px;border-top:1px solid var(--line-soft);color:var(--ink-faint);font-size:12.5px;max-width:70ch}
+@media (max-width:640px){
+  .mh{grid-template-columns:1fr auto;grid-template-areas:"a b" "a c"}
+  .bar{gap:9px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+
+<div class="page">
+  <div class="bar">
+    <div class="brand">Vara<span>.</span></div>
+    <div class="clock" id="clock">not started</div>
+    <div class="sp"></div>
+    <div id="jobslot"></div>
+    <button class="ghost" id="restart">Restart</button>
+  </div>
+
+  <div class="director">
+    <span class="lbl">Scenario</span>
+    <div class="seg" id="scen">
+      <button data-s="researched" aria-pressed="true">Industry already researched</button>
+      <button data-s="unstudied" aria-pressed="false">Never studied</button>
+    </div>
+    <span class="lbl" style="margin-left:auto">prototype · click through it</span>
+  </div>
+
+  <div class="rail" id="rail"></div>
+  <div class="stage" id="stage"></div>
+
+  <p class="foot">
+    Every role family, must-have, weight and reason below is verbatim from
+    run&nbsp;92 — the enrichment published for <span class="mono">technology-saas</span>
+    on 17-Sep-2026. Nothing here is invented. The three Vikuna starter packs are
+    left out because their payloads weren't read.
+  </p>
+</div>
+
+<script>
+/* ── real data: run 92, technology-saas ─────────────────────────────── */
+const L = (b) => ['','Junior ','Senior ','Lead ','Staff ','Principal '].map(p=>p+b);
+const KO_STD = [
+  {label:'Work authorization', rule:'Valid work authorization for the country of the role'},
+  {label:'Notice period', rule:"Aligns with the company's requirements"}
+];
+const FAMILIES = [
+  {name:'Software Development', hint:'Core development roles for building and maintaining software solutions',
+   titles:[...L('Software Engineer'),...L('Software Developer'),...L('Full Stack Developer')],
+   threshold:30, knockouts:KO_STD, musthaves:[
+    {n:'Has delivered a major feature under tight deadline',w:29,why:'Shows ability to manage complexity and meet business needs under pressure'},
+    {n:'Has maintained a critical system during a major outage',w:22,why:'Demonstrates resilience and problem-solving in high-stakes situations'},
+    {n:'Has mentored a junior developer through a complex project',w:21,why:'Indicates leadership and knowledge transfer capabilities'},
+    {n:'Has contributed to a public-facing product with a major update',w:14,why:'Shows impact on user experience and product success'},
+    {n:'Has implemented a security patch for a production system',w:14,why:'Demonstrates technical rigor and responsibility in production'}]},
+  {name:'Data Engineering', hint:'Roles focused on building and managing data pipelines and infrastructure',
+   titles:[...L('Data Engineer'),...L('Data Architect'),...L('Data Analyst')],
+   threshold:30, knockouts:KO_STD, musthaves:[
+    {n:'Has designed and implemented a production-scale data pipeline',w:29,why:'Builds reliable infrastructure that supports operations, rather than a prototype'},
+    {n:'Has optimized data processing to meet real-time requirements',w:23,why:"Data is available when it's needed, rather than batched"},
+    {n:'Has maintained and monitored data infrastructure in production',w:18,why:'Systems stay stable under load, rather than just being set up'},
+    {n:'Has resolved a critical data pipeline failure with minimal downtime',w:18,why:'Problem-solving under pressure, not just identifying issues'},
+    {n:'Has contributed to data governance and compliance frameworks',w:12,why:'Data used ethically and legally, not just processed'}]},
+  {name:'Product Management', hint:'Roles responsible for guiding the product lifecycle and customer needs',
+   titles:[...L('Product Manager'),...L('Product Owner'),...L('Product Specialist')],
+   threshold:30, knockouts:KO_STD, musthaves:[
+    {n:'Has led a product through a major version release',w:27,why:'Manages the release of a significant update, not just features'},
+    {n:'Has prioritized features based on customer feedback and business goals',w:20,why:'Balances customer needs with strategy, not just listing requirements'},
+    {n:'Has managed a cross-functional team to deliver a product increment',w:20,why:'Coordinates development, design and marketing, not just tasks'},
+    {n:'Has handled a product failure and learned from it',w:20,why:'Resilience in the face of product issues, not just avoiding mistakes'},
+    {n:'Has conducted user research to inform product decisions',w:13,why:'Insights from users, rather than assumptions'}]},
+  {name:'DevOps & Infrastructure', hint:'Roles focused on deploying, maintaining and scaling infrastructure',
+   titles:[...L('DevOps Engineer'),...L('Infrastructure Engineer'),...L('System Administrator')],
+   threshold:30, knockouts:KO_STD, musthaves:[
+    {n:'Has implemented a CI/CD pipeline that cut deployment time by 30%+',w:25,why:'Efficient and reliable software delivery, the core of the discipline'},
+    {n:'Has automated a critical infrastructure component',w:19,why:'Reduces operational overhead and improves reliability'},
+    {n:'Has managed a complex cloud environment with multi-cloud support',w:19,why:'Expertise in modern infrastructure management and scale'},
+    {n:'Has resolved a major production incident with root cause analysis',w:19,why:'Incident management skills critical for infrastructure stability'},
+    {n:'Has designed and maintained a scalable, secure architecture',w:18,why:'Strategic thinking and long-term infrastructure planning'}]},
+  {name:'Customer Success', hint:'Roles focused on ensuring customer satisfaction and retention',
+   titles:[...L('Customer Success Manager'),...L('Customer Support Specialist')],
+   threshold:30, knockouts:KO_STD, musthaves:[
+    {n:'Has resolved a high-stakes churn event without escalating',w:21,why:'Handles critical customer issues independently, preventing revenue loss'},
+    {n:'Has implemented a retention strategy that raised lifetime value 15%+',w:16,why:'Impact and strategic thinking in driving long-term value'},
+    {n:'Has trained and mentored a junior team member to target',w:16,why:'Leadership and ability to develop talent within the role'},
+    {n:'Has upsold a customer to a higher tier without pushing the sale',w:16,why:'Identifies and delivers value beyond basic support'},
+    {n:'Has maintained 95%+ satisfaction across multiple segments',w:16,why:'Consistent quality across diverse customer bases'},
+    {n:'Has fixed a systemic onboarding issue that cut churn 10%+',w:15,why:'Diagnoses and solves customer challenges at a systemic level'}]},
+  {name:'Technical Support', hint:'Roles focused on providing technical assistance and troubleshooting',
+   titles:[...L('Technical Support Engineer'),...L('Support Specialist')],
+   threshold:30, knockouts:KO_STD, musthaves:[
+    {n:'Resolves complex technical issues without escalating',w:29,why:'Quick resolution for end-users without passing issues upward'},
+    {n:'Maintains a high first-contact resolution rate',w:22,why:'Customers do not need repeated follow-ups'},
+    {n:'Documents and shares knowledge from resolved issues',w:21,why:'Prevents repeat issues and supports team learning'},
+    {n:'Handles high-volume support during peak hours',w:14,why:'Manages workload and holds service levels under demand'},
+    {n:'Uses technical tools and diagnostic methods effectively',w:14,why:'Right tools to diagnose and resolve efficiently'}]},
+  {name:'Security & Compliance', hint:'Roles focused on ensuring data security and regulatory compliance',
+   titles:[...L('Security Engineer'),...L('Compliance Officer'),...L('Security Analyst')],
+   threshold:30, knockouts:KO_STD, musthaves:[
+    {n:'Has implemented a security framework aligned to a regulatory standard',w:20,why:'The organisation is legally protected against breaches and violations'},
+    {n:'Has managed a compliance audit or incident response with no legal impact',w:20,why:'Handles complex compliance challenges and mitigates real risk'},
+    {n:'Has designed a security policy adopted across multiple departments',w:20,why:'Influences and enforces security practice at scale'},
+    {n:'Has run an assessment or pentest that remediated a critical vulnerability',w:20,why:'Proactively identifies and resolves threats before they land'},
+    {n:'Has maintained a compliance program certified by a third party',w:20,why:'Builds and sustains a program that meets industry standards'}]},
+  {name:'Business Analysis', hint:'Roles focused on analyzing business needs and translating them into solutions',
+   titles:[...L('Business Analyst'),...L('Requirements Analyst')],
+   threshold:30, knockouts:KO_STD, musthaves:[
+    {n:'Ability to translate business goals into technical requirements',w:31,why:'Turns strategy into specifications developers can implement'},
+    {n:'Experience managing stakeholder expectations across departments',w:25,why:'Balances sales, product, engineering and success to avoid misalignment'},
+    {n:'Proven ability to document and maintain requirements artifacts',w:25,why:'User stories and designs stay consistent and traceable'},
+    {n:'Strong facilitation skills for cross-functional workshops',w:19,why:'Aligns technical teams with business outcomes without friction'}]}
+];
+
+/* ── deterministic matcher, same shape as the server's ──────────────── */
+const SYN=[['engineer','developer','dev','programmer']];
+const SG=new Map(); SYN.forEach((g,i)=>g.forEach(w=>SG.set(w,i)));
+const norm=s=>s.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(Boolean);
+function same(a,b){ if(a===b) return true;
+  const ga=SG.get(a); if(ga!==undefined&&ga===SG.get(b)) return true;
+  const [s,l]=a.length<=b.length?[a,b]:[b,a]; return s.length>=5&&l.startsWith(s); }
+function score(t,c){ const A=norm(t),B=norm(c);
+  if(A.join(' ')===B.join(' ')) return 100;
+  const hit=A.filter(x=>B.some(y=>same(x,y))).length;
+  if(hit===A.length||hit===B.length) return 80;
+  return Math.round(70*(2*hit)/(A.length+B.length)); }
+function match(title){ let best=null;
+  for(const f of FAMILIES) for(const c of [...f.titles,f.name]){
+    const s=score(title,c); if(!best||s>best.score) best={fam:f,matched:c,score:s}; }
+  return best&&best.score>=45?best:null; }
+
+/* ── state ───────────────────────────────────────────────────────────── */
+const STEPS=['Domain','What Vara knows','Take what fits','Make it yours','First JD','Second JD'];
+let S;
+function reset(keepScenario){
+  const sc=keepScenario&&S?S.scenario:'researched';
+  S={scenario:sc,step:0,t0:null,domain:'',job:null,jobStep:0,
+     picked:new Set(),shapes:{},cursor:null,title:'',jd:null,published:[],jdTime:{}};
+  render();
+}
+const now=()=>S.t0?Math.floor((Date.now()-S.t0)/1000):0;
+const mmss=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+function tick(){ const c=document.getElementById('clock');
+  c.innerHTML=S.t0?`elapsed <b>${mmss(now())}</b>`:'not started'; }
+setInterval(tick,1000);
+
+/* copy-on-pick: a deep copy into the tenant's space. Global is untouched. */
+function take(f){
+  S.picked.add(f.name);
+  S.shapes[f.name]={from:f.name, musthaves:f.musthaves.map(m=>({...m,touched:false})),
+    knockouts:f.knockouts.map(k=>({...k,on:true})), threshold:f.threshold, touched:false};
+}
+function untake(n){ S.picked.delete(n); delete S.shapes[n]; }
+
+/* ── render ──────────────────────────────────────────────────────────── */
+const el=id=>document.getElementById(id);
+function render(){
+  tick();
+  el('rail').innerHTML=STEPS.map((s,i)=>
+    `<div class="${i===S.step?'on':i<S.step?'past':''}">${i+1} · ${s}</div>`).join('');
+  el('jobslot').innerHTML = !S.job ? '' :
+    S.job==='done'
+      ? `<div class="job done"><span class="pulse"></span>Industry studied · 8 families</div>`
+      : `<div class="job"><span class="pulse"></span>Studying Technology &amp; SaaS…</div>`;
+  el('stage').innerHTML=[S0,S1,S2,S3,S4,S5][S.step]();
+  wire();
+}
+
+/* 0 — domain ---------------------------------------------------------- */
+const S0=()=>`
+  <div class="eyebrow">ACTIVATE VARA</div>
+  <h1 style="margin-top:12px">Where will candidates find you?</h1>
+  <p class="lede">The careers page Vara will live on. This is also the moment she
+  starts studying your industry — so it happens beside you, not in front of you.</p>
+  <div class="card">
+    <label class="subh" for="dom" style="margin-top:0">Candidate-facing domain</label>
+    <input class="ti" id="dom" value="${S.domain||'careers.acme.io'}" autocomplete="off">
+    <p class="hint">Verification runs in the background. It never blocks you.</p>
+    <div class="row" style="margin-top:16px">
+      <button class="primary" id="go0">Continue</button>
+      <span class="hint" style="margin:0">Readiness: 1 of 3 checks after this</span>
+    </div>
+  </div>`;
+
+/* 1 — what Vara knows -------------------------------------------------- */
+function S1(){
+  if(S.scenario==='unstudied' && S.job!=='done'){
+    if(S.job===null) return `
+      <div class="eyebrow">WHAT VARA KNOWS</div>
+      <h1 style="margin-top:12px">I haven't studied your industry yet</h1>
+      <p class="lede">No one on Vikuna has hired for Technology &amp; SaaS through me
+      before, so there's nothing to hand you. I can learn it now — about twenty
+      minutes, and you can carry on while I do.</p>
+      <div class="card">
+        <div class="row"><button class="primary" id="research">Study my industry</button>
+        <button class="primary quiet" id="skipres">Skip — I'll shape roles myself</button></div>
+        <p class="hint">Nobody at Vikuna is in this loop. The result lands in your
+        workspace the moment it's ready.</p>
+      </div>`;
+    return `
+      <div class="eyebrow">WHAT VARA KNOWS · IN PROGRESS</div>
+      <h1 style="margin-top:12px">Learning how your industry hires</h1>
+      <p class="lede">You don't have to watch this. Carry on — I'll tell you when it lands.</p>
+      <div class="card">
+        <div class="feed" id="feed"></div>
+        <div class="row" style="margin-top:18px">
+          <button class="primary quiet" id="skipres">Carry on without waiting</button>
+        </div>
+      </div>`;
+  }
+  const rows=FAMILIES.map(f=>`
+    <div class="fam"><div class="head" style="gap:10px">
+      <div style="flex:1">
+        <div class="nm">${f.name}</div>
+        <div class="hint2">${f.hint}</div>
+        <div class="tt">${f.titles.slice(0,3).join(' · ')} · +${f.titles.length-3} more</div>
+      </div>
+      <span class="prov res">researched 17-Sep</span>
+    </div></div>`).join('');
+  return `
+    <div class="eyebrow">WHAT VARA KNOWS</div>
+    <h1 style="margin-top:12px">Here's how Technology &amp; SaaS hires</h1>
+    <p class="lede">Eight role families, each with the signals that actually separate
+    a strong candidate from a plausible one. Researched for your industry
+    ${S.job==='done'?'just now':'on 17 September'} — not a generic template.</p>
+    <div class="fams">${rows}</div>
+    <div class="row" style="margin-top:20px">
+      <button class="primary" id="go1">Take the ones I hire for</button>
+      <span class="hint" style="margin:0">Nothing is yours until you take it</span>
+    </div>`;
+}
+
+/* 2 — take ------------------------------------------------------------- */
+function S2(){
+  const rows=FAMILIES.map((f,i)=>`
+    <div class="fam ${S.picked.has(f.name)?'picked':''}">
+      <button class="hit" data-take="${i}" aria-pressed="${S.picked.has(f.name)}">
+        <div class="head">
+          <span class="tick">✓</span>
+          <div style="flex:1">
+            <div class="nm">${f.name}</div>
+            <div class="hint2">${f.hint}</div>
+          </div>
+          <span class="prov ${S.picked.has(f.name)?'mine':'res'}">
+            ${S.picked.has(f.name)?'yours':'available'}</span>
+        </div>
+      </button>
+    </div>`).join('');
+  const n=S.picked.size;
+  return `
+    <div class="eyebrow">TAKE WHAT FITS</div>
+    <h1 style="margin-top:12px">Which of these do you actually hire for?</h1>
+    <p class="lede">Taking one copies it into your workspace. From then on it's yours —
+    you can change it, and the industry version never changes underneath you.</p>
+    <div class="fams">${rows}</div>
+    <div class="row" style="margin-top:20px">
+      <button class="primary" id="go2" ${n?'':'disabled'}>Continue with ${n||'—'}</button>
+      <span class="count">${n} of ${FAMILIES.length} taken · add more any time</span>
+    </div>`;
+}
+
+/* 3 — make it yours ---------------------------------------------------- */
+function S3(){
+  const names=[...S.picked];
+  if(!S.cursor||!S.picked.has(S.cursor)) S.cursor=names[0];
+  const sh=S.shapes[S.cursor];
+  const total=sh.musthaves.reduce((a,m)=>a+m.w,0);
+  const tabs=names.map(n=>`<button class="ghost" data-cur="${n}"
+    style="${n===S.cursor?'border-color:var(--gold);color:var(--gold)':''}">${n}
+    ${S.shapes[n].touched?'·&nbsp;edited':''}</button>`).join('');
+  const mh=sh.musthaves.map((m,i)=>`
+    <div class="mh">
+      <div>
+        <div class="nm2">${m.n} ${m.touched?'<span class="prov mine">you changed this</span>':''}</div>
+        <div class="why">${m.why}</div>
+        <div class="bar2"><i style="width:${m.w}%"></i></div>
+      </div>
+      <div class="wt">
+        <button data-w="${i}" data-d="-1" aria-label="Lower weight">−</button>
+        <span class="v">${m.w}%</span>
+        <button data-w="${i}" data-d="1" aria-label="Raise weight">+</button>
+      </div>
+      <button class="drop" data-drop="${i}" aria-label="Remove">×</button>
+    </div>`).join('');
+  const ko=sh.knockouts.map((k,i)=>`
+    <div class="ko">
+      <input type="checkbox" id="ko${i}" data-ko="${i}" ${k.on?'checked':''}>
+      <label for="ko${i}"><span class="kn">${k.label}</span> —
+      <span class="kr">${k.rule}</span></label>
+    </div>`).join('');
+  return `
+    <div class="eyebrow">MAKE IT YOURS</div>
+    <h1 style="margin-top:12px">This is how your industry weights it</h1>
+    <p class="lede">Keep it, or change it. Either way it's your copy — the industry
+    playbook is untouched and stays readable beside yours.</p>
+    <div class="row" style="margin-top:18px;gap:8px">${tabs}</div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2>${S.cursor}</h2>
+        <span class="prov ${sh.touched?'mine':'res'}">
+          ${sh.touched?'yours · edited':'copied from the industry playbook'}</span>
+      </div>
+      <div class="subh">Must-haves · what Vara scores</div>
+      ${mh}
+      <div class="sum ${total===100?'':'bad'}">weights total ${total}%${total===100?'':' — they do not have to sum to 100, but it is easier to reason about when they do'}</div>
+      <div class="subh">Knockouts · checked before any scoring</div>
+      ${ko}
+      <div class="subh">Handover threshold</div>
+      <div class="thr">
+        <input type="range" id="thr" min="10" max="60" step="5" value="${sh.threshold}">
+        <span class="mono" style="font-size:14px">${sh.threshold}%</span>
+      </div>
+      <p class="hint">Below this, Vara keeps talking. At or above it, a person on your
+      team gets the candidate. This is the number that decides who a human meets.</p>
+    </div>
+    <div class="row" style="margin-top:18px">
+      <button class="primary" id="go3">These are mine — write my first JD</button>
+    </div>`;
+}
+
+/* 4 — first JD --------------------------------------------------------- */
+function S4(){
+  if(!S.jd) return `
+    <div class="eyebrow">FIRST JD</div>
+    <h1 style="margin-top:12px">What are you hiring for?</h1>
+    <p class="lede">Just the title. I'll find which of your families it belongs to.</p>
+    <div class="card">
+      <input class="ti" id="title" placeholder="Full Stack Developer" value="${S.title}" autocomplete="off">
+      <p class="hint">Try one you took — or something you didn't, like
+      <em>Site Reliability Engineer</em>, to see what happens when I don't know.</p>
+      <div class="row" style="margin-top:16px"><button class="primary" id="go4">Continue</button></div>
+    </div>`;
+  if(S.jd.unknown) return `
+    <div class="eyebrow">FIRST JD · NO MATCH</div>
+    <h1 style="margin-top:12px">I don't have a playbook for "${S.jd.title}"</h1>
+    <p class="lede">Nothing you've taken looks like it, so I'm not going to pretend.
+    I'll ask you the four questions every JD needs, suggest nothing, and what you
+    answer becomes a new family in your space — so it's only unknown once.</p>
+    <div class="card">
+      <p style="margin:0;color:var(--ink-dim)">This is the honest lane, and it's the
+      one part of today's build that already works exactly like this.</p>
+      <div class="row" style="margin-top:16px">
+        <button class="primary quiet" id="back4">Try another title</button>
+      </div>
+    </div>`;
+  const sh=S.jd.shape, tot=sh.musthaves.reduce((a,m)=>a+m.w,0);
+  return `
+    <div class="eyebrow">FIRST JD · MATCHED</div>
+    <h1 style="margin-top:12px">Here's the JD. Yours?</h1>
+    <p class="lede">Built from <b>your</b> ${S.jd.fam} — the version you kept, not the
+    industry's. Read it and publish, or change something first.</p>
+    <div class="jd">
+      <div class="jdh">
+        <div><div class="jdt">${S.jd.title}</div>
+        <div class="jds">${S.jd.fam} · v1 on publish</div></div>
+        <span class="prov ${S.shapes[S.jd.fam].touched?'mine':'res'}">
+          ${S.shapes[S.jd.fam].touched?'your shape':'industry shape, unchanged'}</span>
+      </div>
+      <div class="subh">Must-haves · ${tot}%</div>
+      ${sh.musthaves.map(m=>`<div class="mh"><div>
+        <div class="nm2">${m.n}</div><div class="bar2"><i style="width:${m.w}%"></i></div>
+      </div><div class="wt"><span class="v">${m.w}%</span></div><span></span></div>`).join('')}
+      <div class="subh">Knockouts</div>
+      ${sh.knockouts.filter(k=>k.on).map(k=>`<div class="ko"><span class="kn">${k.label}</span>
+        <span class="kr">— ${k.rule}</span></div>`).join('')||'<div class="ko"><span class="kr">None</span></div>'}
+      <div class="subh">Handover</div>
+      <div style="font-size:14px">At <b>${sh.threshold}%</b> or above, a person on your team meets them.</div>
+    </div>
+    <div class="row" style="margin-top:18px">
+      <button class="primary" id="pub4">Publish — take Vara live</button>
+      <button class="primary quiet" id="edit4">Change something first</button>
+    </div>`;
+}
+
+/* 5 — second JD + close ------------------------------------------------ */
+function S5(){
+  const p=S.published;
+  if(p.length<2){
+    const fam=S.shapes[p[0].fam];
+    return `
+    <div class="eyebrow">VARA IS LIVE</div>
+    <h1 style="margin-top:12px">${p[0].title} is published</h1>
+    <p class="lede">All three readiness checks pass. Candidates arriving on
+    ${S.domain} are being screened now. Time taken: <b>${mmss(p[0].at)}</b>.</p>
+    <div class="done">
+      <div class="eyebrow" style="color:var(--mine)">THE PART THAT COMPOUNDS</div>
+      <h2 style="margin-top:9px">The next one in ${p[0].fam} is nearly free</h2>
+      <p class="lede" style="margin-top:8px">It opens from what you kept — ${fam.musthaves.length}
+      must-haves, ${fam.knockouts.filter(k=>k.on).length} knockouts, handover at
+      ${fam.threshold}%. Name it and it's done.</p>
+      <div class="row" style="margin-top:16px">
+        <input class="ti" id="title2" style="max-width:280px" placeholder="Senior Software Engineer" autocomplete="off">
+        <button class="primary" id="pub5">Publish second JD</button>
+      </div>
+    </div>`;
+  }
+  const first=p[0].at, second=p[1].at-p[0].at;
+  return `
+    <div class="eyebrow">DONE</div>
+    <h1 style="margin-top:12px">Vara is screening for two roles</h1>
+    <p class="lede">And the second one took a fraction of the first, because your
+    shape was already there. That gap is the product.</p>
+    <div class="metrics">
+      <div class="metric"><div class="k">Time to live</div><div class="v">${mmss(first)}</div></div>
+      <div class="metric"><div class="k">Second JD</div><div class="v">${mmss(second)}</div></div>
+      <div class="metric"><div class="k">Questions asked</div><div class="v"><s>11</s>4</div></div>
+      <div class="metric"><div class="k">Terms to learn first</div><div class="v"><s>5</s>0</div></div>
+    </div>
+    <p class="note">Four questions: which domain · which families are mine · keep or change ·
+    what am I hiring for. Every term — must-have, weight, knockout, threshold — first
+    appeared inside a filled example that showed what it does, so none of them had to be
+    learned before acting.</p>
+    <div class="row" style="margin-top:22px"><button class="primary quiet" id="again">Run it again</button></div>`;
+}
+
+/* ── behaviour ───────────────────────────────────────────────────────── */
+const FEED=[['0:02','Reading your industry from Smart Profile'],
+  ['0:09','Drafting role families for Technology & SaaS'],
+  ['2:40','8 families drafted'],['2:41','Shaping Software Development'],
+  ['3:55','Shaping Data Engineering'],['5:10','Shaping Product Management'],
+  ['…','4 more in parallel'],['19:30','Published to your workspace']];
+
+function runFeed(){
+  const f=el('feed'); if(!f) return;
+  const step=()=>{ if(S.jobStep>=FEED.length){ S.job='done'; render(); return; }
+    const [t,d]=FEED[S.jobStep++];
+    const last=S.jobStep===FEED.length;
+    f.insertAdjacentHTML('beforeend',
+      `<div class="fline"><span class="t">${t}</span><span class="${last?'d':''}">${d}</span></div>`);
+    setTimeout(step,last?900:650); };
+  step();
+}
+
+function wire(){
+  const on=(id,fn)=>{ const e=el(id); if(e) e.onclick=fn; };
+
+  on('restart',()=>reset(true));
+  document.querySelectorAll('#scen button').forEach(b=>b.onclick=()=>{
+    S=null; reset(false); S.scenario=b.dataset.s;
+    document.querySelectorAll('#scen button').forEach(x=>
+      x.setAttribute('aria-pressed',String(x.dataset.s===S.scenario)));
+    render(); });
+
+  on('go0',()=>{ S.domain=el('dom').value.trim()||'careers.acme.io';
+    S.t0=Date.now();
+    if(S.scenario==='unstudied'){ S.job=null; } else { S.job=null; }
+    S.step=1; render(); });
+
+  on('research',()=>{ S.job='running'; S.jobStep=0; render(); runFeed(); });
+  on('skipres',()=>{ S.job='running'; S.step=1; S.scenario='researched'; render(); });
+
+  on('go1',()=>{ S.step=2; render(); });
+
+  document.querySelectorAll('[data-take]').forEach(b=>b.onclick=()=>{
+    const f=FAMILIES[+b.dataset.take];
+    S.picked.has(f.name)?untake(f.name):take(f); render(); });
+  on('go2',()=>{ S.step=3; render(); });
+
+  document.querySelectorAll('[data-cur]').forEach(b=>b.onclick=()=>{
+    S.cursor=b.dataset.cur; render(); });
+  document.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{
+    const sh=S.shapes[S.cursor], m=sh.musthaves[+b.dataset.w];
+    m.w=Math.max(0,Math.min(100,m.w+(+b.dataset.d)*5)); m.touched=true; sh.touched=true;
+    render(); });
+  document.querySelectorAll('[data-drop]').forEach(b=>b.onclick=()=>{
+    const sh=S.shapes[S.cursor];
+    if(sh.musthaves.length<2) return;
+    sh.musthaves.splice(+b.dataset.drop,1); sh.touched=true; render(); });
+  document.querySelectorAll('[data-ko]').forEach(c=>c.onchange=()=>{
+    const sh=S.shapes[S.cursor];
+    sh.knockouts[+c.dataset.ko].on=c.checked; sh.touched=true; render(); });
+  const thr=el('thr');
+  if(thr) thr.oninput=()=>{ const sh=S.shapes[S.cursor];
+    sh.threshold=+thr.value; sh.touched=true; render(); };
+  on('go3',()=>{ S.step=4; render(); });
+
+  on('go4',()=>{ const t=(el('title').value||'').trim(); if(t.length<3) return;
+    S.title=t;
+    const m=match(t);
+    // Match against the tenant's OWN families first. A family they did not take
+    // is not theirs, so it cannot answer for them.
+    if(m && S.picked.has(m.fam.name)) S.jd={title:t,fam:m.fam.name,shape:S.shapes[m.fam.name]};
+    else S.jd={title:t,unknown:true};
+    render(); });
+  on('back4',()=>{ S.jd=null; render(); });
+  on('edit4',()=>{ S.cursor=S.jd.fam; S.step=3; render(); });
+  on('pub4',()=>{ S.published.push({title:S.jd.title,fam:S.jd.fam,at:now()});
+    S.step=5; render(); });
+
+  on('pub5',()=>{ const t=(el('title2').value||'').trim()||'Senior Software Engineer';
+    S.published.push({title:t,fam:S.published[0].fam,at:now()}); render(); });
+  on('again',()=>reset(true));
+}
+
+reset(false);
+</script>
