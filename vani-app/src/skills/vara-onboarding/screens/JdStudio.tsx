@@ -22,10 +22,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api-client';
 import { API } from '@/lib/serviceURLs';
 import { useToast } from '@/platform/feedback';
+import { useSkillQuery } from '@/lib/useSkill';
 import {
-  jdScriptFor, UX_DRAFT_KEY, EMPLOYMENT_TYPES, workModeLabel,
+  UX_DRAFT_KEY, EMPLOYMENT_TYPES, workModeLabel,
   type DraftJd, type PublishedFacts,
 } from '../mock-data';
+import { fromStarter, unknownRole, type JdStudioStep } from '../jd-script';
 import { JdImport } from './JdImport';
 import u from '@/platform/shell/ui.module.css';
 import s from '../vara-onboarding.module.css';
@@ -33,6 +35,47 @@ import s from '../vara-onboarding.module.css';
 type JdFacts = PublishedFacts;
 
 const EMPTY: JdFacts = { musthaves: [], knockouts: [] };
+
+const SKILL = 'domain-pack-skill';
+
+interface StarterShape {
+  role_summary_hint?: string;
+  musthaves?: { name: string; weight: number; years?: number; why?: string }[];
+  knockouts?: { label: string; rule: string }[];
+  threshold?: number;
+  band_hint?: string;
+}
+
+/**
+ * What `domain-pack-skill.match_title` answers. A union, not a bag of
+ * optionals, because the two branches are genuinely different screens: one
+ * prefills from a real family, the other admits it has nothing.
+ */
+type MatchResult =
+  | {
+      matched: true;
+      family_name: string;
+      matched_title: string;
+      researched: boolean;
+      score: number;
+      starter: StarterShape;
+      detail: string;
+      alternates?: { family_name: string; matched_title: string; score: number }[];
+    }
+  | { matched: false; reason: string; detail: string };
+
+/**
+ * Weight for a must-have the tenant TYPED rather than picked off a pack.
+ *
+ * Descending, and Vara says so before asking ("give me the strongest signal
+ * first — I'll weight it heaviest"). The number lands in the JD panel where
+ * the tenant can see it, so it is a stated rule they can check, not a guess
+ * made on their behalf. Matched roles never come through here — those weights
+ * come from the pack.
+ */
+function typedWeight(existing: number): number {
+  return [40, 25, 20, 15][existing] ?? 10;
+}
 
 function mintIdempotencyKey(): string {
   // A per-attempt key: high-resolution counter + a wide random tail, stable
@@ -54,6 +97,14 @@ function mergeFacts(prev: JdFacts, contrib: Record<string, unknown>): JdFacts {
   }
   if (contrib.addl_musthave && typeof contrib.addl_musthave === 'object') {
     next.musthaves = [...prev.musthaves, contrib.addl_musthave as JdFacts['musthaves'][number]];
+  }
+  // "All of them" — the bulk chip on a matched family. Without this the chip
+  // reads as accepting the pack's whole shape and silently adds nothing.
+  if (Array.isArray(contrib.addl_musthaves)) {
+    next.musthaves = [
+      ...next.musthaves,
+      ...(contrib.addl_musthaves as JdFacts['musthaves']),
+    ];
   }
   if (contrib.knockout && typeof contrib.knockout === 'object') {
     next.knockouts = [...prev.knockouts, contrib.knockout as JdFacts['knockouts'][number]];
@@ -83,15 +134,50 @@ function JdStudioInner() {
     setHydrated(true);
   }, []);
 
-  const family = draft?.family ?? params.get('family') ?? 'Backend Engineering';
-  const title = draft?.title ?? params.get('title') ?? 'Senior Engineer';
+  const familyParam = (draft?.family ?? params.get('family') ?? '').trim();
+  const titleParam = (draft?.title ?? params.get('title') ?? '').trim();
 
-  const script = useMemo(() => jdScriptFor(family, title), [family, title]);
+  // Reached from the nav rather than the doorway, nothing names the role.
+  // This used to default to "Senior Engineer" in "Backend Engineering" — a JD
+  // nobody asked for, in a family that might not be theirs. Ask instead.
+  const [titleAsked, setTitleAsked] = useState('');
+  const [titleDraftBox, setTitleDraftBox] = useState('');
+  const [familyAsked, setFamilyAsked] = useState('');
+  const title = titleParam || titleAsked;
+
+  // What Vara actually knows about this title. Server-side and deterministic
+  // (no LLM), so it answers in one round trip and answers the same way twice.
+  const match = useSkillQuery<MatchResult>(SKILL, 'match_title', { title }, {
+    enabled: !draft && title.length > 1,
+    staleTime: 5 * 60_000,
+  });
+  const result = match.data?.success ? match.data.data : null;
+  const matched = result && result.matched ? result : null;
+
+  // A matched family names itself. An unmatched one has to be named by the
+  // tenant — the server requires a family on publish, and inventing one here
+  // would put a role into a playbook it does not belong to.
+  const family = familyParam || matched?.family_name || familyAsked.trim();
+
+  const script = useMemo<JdStudioStep[]>(() => {
+    if (draft || !title) return [];          // a draft skips the conversation
+    if (matched) return fromStarter(matched.starter, matched.family_name, title);
+    if (result) return unknownRole(title);   // answered, and it knows nothing
+    return [];                               // still asking
+  }, [draft, title, matched, result]);
+
   const [stepIdx, setStepIdx] = useState(0);
   const [facts, setFacts] = useState<JdFacts>(EMPTY);
-  const [transcript, setTranscript] = useState<{ who: 'v' | 'u'; text: string }[]>(() => [
-    { who: 'v', text: script[0].ask },
-  ]);
+  const [transcript, setTranscript] = useState<{ who: 'v' | 'u'; text: string }[]>([]);
+  const [typedDraft, setTypedDraft] = useState('');
+
+  // The opening question can only be asked once the script exists, and the
+  // script waits on the match. Seeding it in a useState initialiser — as this
+  // did — chose Vara's first line before she had looked anything up.
+  useEffect(() => {
+    if (draft || script.length === 0) return;
+    setTranscript((t) => (t.length ? t : [{ who: 'v', text: script[0].ask }]));
+  }, [draft, script]);
   const [published, setPublished] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishedVersion, setPublishedVersion] = useState<number | null>(null);
@@ -117,7 +203,9 @@ function JdStudioInner() {
   }, [draft, script.length]);
 
   const current = stepIdx < script.length ? script[stepIdx] : null;
-  const canPublish = stepIdx >= script.length && (facts.musthaves.length > 0);
+  const canPublish = stepIdx >= script.length
+    && facts.musthaves.length > 0
+    && family.length > 0;
 
   function pick(chipLabel: string, contributes: Record<string, unknown>) {
     setFacts((f) => mergeFacts(f, contributes));
@@ -137,6 +225,22 @@ function JdStudioInner() {
     }
     setTranscript((t) => [...t, ...newTurns]);
     setStepIdx(next);
+  }
+
+  /** A must-have or a summary the tenant typed, rather than picked. */
+  function submitTyped() {
+    const text = typedDraft.trim();
+    if (!text || !current?.typed) return;
+    setTypedDraft('');
+    if (current.typed.kind === 'one_liner') {
+      pick(text, { one_liner: text });
+      return;
+    }
+    const entry = { name: text, weight: typedWeight(facts.musthaves.length) };
+    pick(
+      `${text} (${entry.weight}%)`,
+      facts.musthaves.length === 0 ? { top_musthave: entry } : { addl_musthave: entry },
+    );
   }
 
   const idemKeyRef = useRef<string | null>(null);
@@ -206,6 +310,41 @@ function JdStudioInner() {
     return <div className={s.wrap}><div style={{ padding: 24 }}>Loading…</div></div>;
   }
 
+  // No title means nobody has said what this JD is for. Ask, and let the
+  // match run off the answer — the family follows from the title, not the
+  // other way round.
+  if (!title) {
+    return (
+      <div className={s.wrap}>
+        <div className={u.eyebrow}>// AGENTS · VARA · JD STUDIO</div>
+        <h1 className={u.h1}>What are you hiring for?</h1>
+        <div className={s.card}>
+          <p className={s.cardWhat}>
+            Type the role title. I&rsquo;ll check it against the role families I
+            know for your industry — if I have one, we start from its real
+            must-haves; if I don&rsquo;t, I&rsquo;ll say so and you shape it.
+          </p>
+          <form
+            className={s.locAdd}
+            onSubmit={(e) => { e.preventDefault(); setTitleAsked(titleDraftBox.trim()); }}
+          >
+            <input
+              className={s.textInput}
+              value={titleDraftBox}
+              onChange={(e) => setTitleDraftBox(e.target.value)}
+              placeholder="Senior Backend Engineer, Depot Supervisor…"
+              aria-label="Role title"
+              autoFocus
+            />
+            <button type="submit" className={s.primary} disabled={titleDraftBox.trim().length < 3}>
+              Start
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   const mode = params.get('mode') === 'import' ? 'import' : 'compose';
 
   if (mode === 'import') {
@@ -244,8 +383,15 @@ function JdStudioInner() {
             <div className={s.chatHead}>
               <span className={s.chatAvatar}>V</span>
               <div>
-                <div className={s.chatName}>Vara · {family}</div>
-                <div className={s.chatSub}>compose · say it, Vara structures it</div>
+                <div className={s.chatName}>Vara · {family || 'new role family'}</div>
+                {/* Provenance, in the one place the tenant is looking. "Matched
+                    X, researched for Y" and "no family looks like this" are
+                    different conversations and must not read the same. */}
+                <div className={s.chatSub}>
+                  {match.isFetching && !result
+                    ? 'checking what I know about this role…'
+                    : result?.detail ?? 'compose · say it, Vara structures it'}
+                </div>
               </div>
             </div>
             <div className={s.chatBody}>
@@ -256,19 +402,50 @@ function JdStudioInner() {
               ))}
             </div>
             <div className={s.chatFoot}>
-              {current ? (
-                <div className={s.chipRow}>
-                  {current.chips.map((c) => (
-                    <button
-                      key={c.label}
-                      type="button"
-                      className={s.chip}
-                      onClick={() => pick(c.label, c.contributes)}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
+              {script.length === 0 && !draft ? (
+                <div className={s.note} style={{ textAlign: 'center' }}>
+                  {match.isError
+                    ? `Could not check what I know about this role: ${match.error.message}`
+                    : 'Checking what I know about this role…'}
                 </div>
+              ) : current ? (
+                <>
+                  {current.chips.length > 0 && (
+                    <div className={s.chipRow}>
+                      {current.chips.map((c) => (
+                        <button
+                          key={c.label}
+                          type="button"
+                          className={s.chip}
+                          onClick={() => pick(c.label, c.contributes)}
+                        >
+                          {c.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {/* Typing is the only option when nothing matched, and always
+                      an option when something did — a pack is a starting shape,
+                      not a ceiling. Chips-only was why an unmatched tenant had
+                      no way to enter anything at all. */}
+                  {current.typed && (
+                    <form
+                      className={s.locAdd}
+                      onSubmit={(e) => { e.preventDefault(); submitTyped(); }}
+                    >
+                      <input
+                        className={s.textInput}
+                        value={typedDraft}
+                        onChange={(e) => setTypedDraft(e.target.value)}
+                        placeholder={current.typed.placeholder}
+                        aria-label={current.typed.placeholder}
+                      />
+                      <button type="submit" className={s.ghost} disabled={!typedDraft.trim()}>
+                        Add
+                      </button>
+                    </form>
+                  )}
+                </>
               ) : (
                 <div className={s.note} style={{ textAlign: 'center' }}>
                   Conversation complete — review the JD on the right, publish when ready.
@@ -283,8 +460,29 @@ function JdStudioInner() {
           <div className={s.jdCard}>
             <h2 className={s.jdTitle}>{title}</h2>
             <p className={s.jdSub}>
-              {family} · draft · will be v{draft?.mode === 'edit' ? draft.baseVersion + 1 : 1} on publish
+              {family || 'family not set'} · draft · will be v{draft?.mode === 'edit' ? draft.baseVersion + 1 : 1} on publish
             </p>
+
+            {/* Only when nothing matched and nothing named it. The server
+                requires a family, and picking one for the tenant is how a
+                Customer Success role ends up scored on an engineering
+                playbook. */}
+            {!family && (
+              <div className={s.jdSection}>
+                <div className={s.jdSectionH}>Role family</div>
+                <input
+                  className={s.textInput}
+                  value={familyAsked}
+                  onChange={(e) => setFamilyAsked(e.target.value)}
+                  placeholder="Depot Operations, Clinical Care…"
+                  aria-label="Role family"
+                />
+                <p className={s.note} style={{ marginTop: 6 }}>
+                  No family I know looks like &ldquo;{title}&rdquo;, so name the one this
+                  belongs to. The next role like it inherits what you set here.
+                </p>
+              </div>
+            )}
 
             <div className={s.jdSection}>
               <div className={s.jdSectionH}>Role summary</div>
@@ -461,9 +659,9 @@ function JdStudioInner() {
               </button>
             </div>
             <p className={s.note} style={{ marginTop: 8 }}>
-              Publishing this JD also seeds default weights and threshold for
-              future roles in {family} — the second JD you add here will
-              inherit them.
+              {family
+                ? `Publishing this JD also seeds default weights and threshold for future roles in ${family} — the second JD you add here will inherit them.`
+                : 'Name the role family above to publish — it is what future roles inherit from.'}
             </p>
           </div>
         </div>

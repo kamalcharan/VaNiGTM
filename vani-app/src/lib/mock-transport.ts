@@ -168,7 +168,38 @@ let MOCK_RESEARCH: MockResearch = {
   detail: "The 3 families shown are Vikuna's generic starter set, not researched for Technology & SaaS.",
 };
 
-const HANDLERS: Record<string, () => unknown> = {
+/**
+ * The one fixture family `match_title` can match in mock mode. Its shape is
+ * migration 244's seeded Backend Engineering pack (weights summing to 100, a
+ * `why` on the heaviest signal, no knockouts) because that is what the real
+ * function returns and the composer renders every field of it.
+ */
+const MOCK_MATCH_FAMILY = {
+  family_name: 'Backend Engineering',
+  suggested_titles: ['Senior Backend Engineer', 'Staff Backend Engineer', 'Backend Tech Lead'],
+  starter: {
+    role_summary_hint: 'Ships and owns backend services end to end',
+    musthaves: [
+      { name: 'Production service ownership', weight: 40, years: 3,
+        why: 'The signal that separates someone who has run a service from someone who has written one' },
+      { name: 'Relational data modelling', weight: 30 },
+      { name: 'Cloud deployment', weight: 20 },
+      { name: 'Testing rigour', weight: 10 },
+    ],
+    knockouts: [] as { label: string; rule: string }[],
+    threshold: 30,
+  },
+};
+
+const MOCK_TENANT_INDUSTRY = 'Technology & SaaS';
+
+/**
+ * Reads. They take the params as well — `match_title` is a read whose whole
+ * answer depends on what was typed, and splitting it into WRITE_HANDLERS just
+ * to reach the params would have lied about what it does. Handlers that do not
+ * need them ignore the argument.
+ */
+const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
   'agents.list': () => ({ agents: AGENTS }),
   'dashboard.activity': () => ({ activity: ACTIVITY }),
   'dashboard.counters': () => ({
@@ -196,6 +227,45 @@ const HANDLERS: Record<string, () => unknown> = {
   // other four are reachable by editing MOCK_RESEARCH below; 'failed' is worth
   // looking at, since it is the only one that renders an upstream error.
   'domain-pack-skill.research_status': () => MOCK_RESEARCH,
+
+  // Title → role family. The REAL matcher is deterministic and lives on the
+  // server (domain-pack-skill/title-match.ts, scored against every published
+  // pack). This is not a copy of it and must not become one — it exists so
+  // both branches of JD Studio are reachable in mock mode: a title mentioning
+  // backend/server/api matches one fixture family, everything else returns
+  // matched:false, which is the state that proves the composer still works
+  // with nothing suggested.
+  'domain-pack-skill.match_title': (p) => {
+    const title = String(p.title ?? '').trim();
+    if (title.length < 2) {
+      return { matched: false, reason: 'NO_TITLE', detail: 'Type a role title first.' };
+    }
+    const hit = /\b(backend|server|api|platform)\b/i.test(title);
+    if (!hit) {
+      return {
+        matched: false,
+        reason: 'NO_FAMILY_MATCH',
+        industry: MOCK_TENANT_INDUSTRY,
+        detail: `No role family in ${MOCK_TENANT_INDUSTRY} looks like "${title}". `
+          + 'Vara will ask about it from scratch.',
+      };
+    }
+    return {
+      matched: true,
+      title,
+      family_name: MOCK_MATCH_FAMILY.family_name,
+      matched_title: MOCK_MATCH_FAMILY.suggested_titles[0],
+      score: 82,
+      researched: false,
+      pack_code: 'mock-backend-engineering',
+      pack_version: 1,
+      starter: MOCK_MATCH_FAMILY.starter,
+      alternates: [],
+      detail: `Matched "${MOCK_MATCH_FAMILY.suggested_titles[0]}" in `
+        + `${MOCK_MATCH_FAMILY.family_name} — a Vikuna starter shape, `
+        + `not researched for ${MOCK_TENANT_INDUSTRY}.`,
+    };
+  },
 };
 
 /** Writes need the params, so they are handled separately from the read table. */
@@ -285,7 +355,7 @@ export const mockTransport: SkillTransport = async (skill, fn, params) => {
   let result: SkillResult;
   try {
     if (write) result = { success: true, skill, function: fn, data: write(params) };
-    else if (read) result = { success: true, skill, function: fn, data: read() };
+    else if (read) result = { success: true, skill, function: fn, data: read(params) };
     else result = { success: false, skill, function: fn, data: null, error: `No mock for ${key}` };
   } catch (err) {
     result = {
