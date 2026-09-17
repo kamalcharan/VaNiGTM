@@ -598,6 +598,63 @@ were broken outright rather than correctly scoped.
 does NOT force the rest of the `vani_`/`vara_` spine — that would break Vara.
 Read `docs/db/rls-status.md` §11 before touching any of it.
 
+## Domain packs publish themselves now (changed 2026-09-17)
+
+`domain-pack-skill`'s agent used to park a finished draft at `awaiting` and
+wait for an operator to run `npm run packs --publish`. **It now publishes when
+it finishes**, stamped `review_state: 'unreviewed'`, and the run completes.
+
+The reason is run 92: it sat parked overnight, and the tenant who triggered a
+20-minute research run saw nothing come of it. A pipeline that ends at a person
+inside Vikuna is a pipeline every tenant is stuck behind (user ruling: "it
+should be user driven else everything will get stuck").
+
+**This is a real change of posture on platform data and it was made
+deliberately.** A generated pack now reaches every tenant in its industry
+before a human at Vikuna reads it. Three things stand in for the gate:
+
+- `assertNoTemplateLeak` refuses a draft before it is ever written — it caught
+  run 90 copying one must-have across six of eight families.
+- The `unreviewed` label reaches the console (`research_status.unreviewed`), so
+  "researched" and "researched and checked" never read the same. Rule 12: the
+  degraded thing is labelled, not hidden.
+- `--retire` withdraws a bad pack without deleting it.
+
+**The obvious alternative was tried and is wrong.** Showing an unreviewed pack
+only to the tenant who requested it strands the SECOND tenant in that industry:
+they see nothing, and they cannot research it either, because the claim
+correctly reports the industry as already studied. `requested_by` is recorded
+as provenance — who paid for the run — and is never a visibility filter.
+
+### Three review states, and the reader trap
+
+`unreviewed` → `reviewed` (promoted) or `retired` (withdrawn). Promotion and
+retirement are **append-only**: each writes a NEW version carrying the state,
+so "what did this pack say when it was promoted" stays answerable.
+
+That append-only shape hides a trap, and every reader of `vani_domain_pack`
+must avoid it. Readers take `DISTINCT ON (code) ORDER BY version DESC`. Filter
+out retired rows in the WHERE and `DISTINCT ON` falls back to the previous
+version — **the retired pack comes back**, while the row count drops by one so
+the retirement looks like it worked. Pick the latest version FIRST, judge the
+state after. `review-state.ts` exports `visiblePacksOfDomain()` and
+`visiblePackOfFamily()` for exactly this; never hand-roll the predicate. It was
+caught by a test, not by reading.
+
+### The operator CLI is a quality tool, not an admission gate
+
+```
+npm run packs                      # published but nobody has read it
+npm run packs -- --read <code>     # one pack in full
+npm run packs -- --promote <code>  # mark reviewed
+npm run packs -- --retire <code> "reason"
+npm run packs -- --research <tenantId> [--force]
+npm run packs -- --drafts          # legacy runs parked before 2026-09-17
+```
+
+A reason may be several words — the old `--reject` read `args[i+2]` and
+silently kept only the first, which PowerShell made easy to hit.
+
 ## Main VPS — known broken, DEFERRED (recorded 2026-08-17)
 
 Found while scoping VaNi's tenant onboarding, from `gt_events` on the Main VPS.

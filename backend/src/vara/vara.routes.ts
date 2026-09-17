@@ -27,6 +27,8 @@
  */
 
 import { Router } from 'express';
+import { visiblePacksOfDomain, visiblePackOfFamily, provenanceOf }
+  from '../skills/domain-pack-skill/review-state';
 import type { Pool, PoolClient } from 'pg';
 import jwt from 'jsonwebtoken';
 import { extractJwt } from '../auth/auth.routes';
@@ -415,11 +417,7 @@ export function createVaraRouter(pool: Pool): Router {
       // namespace inside payload — packs whose payload has no `vara.starter`
       // are hidden from Vara's context (they belong to other agents).
       const packs = await db.query(
-        `SELECT DISTINCT ON (code) code, version, payload
-           FROM vani_domain_pack
-          WHERE domain = $1
-            AND payload -> 'vara' -> 'starter' IS NOT NULL
-          ORDER BY code, version DESC`,
+        visiblePacksOfDomain('$1'),
         [industrySlug],
       );
       const families = packs.rows.map((r: any) => ({
@@ -429,6 +427,10 @@ export function createVaraRouter(pool: Pool): Router {
         hint: r.payload.hint ?? null,
         suggested_titles: r.payload.suggested_titles ?? [],
         starter: r.payload.vara.starter,
+        // Where it came from, per family. Three things that must never read
+        // the same: Vikuna's hand-written starter, researched for this
+        // industry, and researched but not yet read by a human.
+        provenance: provenanceOf(r.payload),
       }));
 
       // Tenant's own published JDs — latest version per jd_id so Edit lands
@@ -624,11 +626,7 @@ export function createVaraRouter(pool: Pool): Router {
       // difference yet; it would have the moment vani_domain_pack grew a
       // policy.
       const packMatch = await client.query(
-        `SELECT code, version, payload
-           FROM vani_domain_pack
-          WHERE payload ->> 'family_name' = $1
-            AND payload -> 'vara' -> 'starter' IS NOT NULL
-          ORDER BY version DESC LIMIT 1`,
+        visiblePackOfFamily('$1'),
         [family.trim()],
       );
       const packRow = packMatch.rows[0] ?? null;

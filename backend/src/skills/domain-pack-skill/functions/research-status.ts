@@ -10,13 +10,16 @@
 
 import { SkillContext } from '../../../shared/types';
 import { slugifyIndustry } from '../../../vani/industry-slug';
+import { visiblePacksOfDomain } from '../review-state';
 
 export type ResearchState =
   | 'no_industry'    // nothing to research — the tenant must act
   | 'ready'          // researched packs published for this industry
   | 'seeded_only'    // only Vikuna's generic starter — nobody has studied this industry
   | 'running'        // a run is in flight; recommendations are coming
-  | 'in_review'      // researched, waiting on Vikuna to publish
+  | 'in_review'      // a leftover draft from before publishing moved into the
+                     // agent. Nothing parks there now; kept so an old run
+                     // still reports honestly rather than as 'none'.
   | 'failed'         // the last attempt failed — reason included, retry offered
   | 'none';          // never attempted
 
@@ -51,17 +54,21 @@ export async function research_status(_params: Record<string, unknown>, ctx: Ski
   // families for Technology & SaaS and called it knowledge; a tenant has to be
   // able to tell the difference (rule 9d — never present the unverified as
   // derived).
-  const packs = await ctx.db.query<{ total: number; researched: number; latest: Date | null }>(
-    `SELECT count(DISTINCT code)::int AS total,
-            count(DISTINCT code) FILTER (WHERE payload -> 'researched' IS NOT NULL)::int
-              AS researched,
+  const packs = await ctx.db.query<{ total: number; researched: number; unreviewed: number; latest: Date | null }>(
+    `SELECT count(*)::int AS total,
+            count(*) FILTER (WHERE payload -> 'researched' IS NOT NULL)::int AS researched,
+            count(*) FILTER (
+              WHERE payload -> 'researched' ->> 'review_state' = 'unreviewed')::int AS unreviewed,
             max((payload -> 'researched' ->> 'at')::timestamptz) AS latest
-       FROM vani_domain_pack
-      WHERE domain = $domain AND payload -> 'vara' -> 'starter' IS NOT NULL`,
+       FROM (${visiblePacksOfDomain('$domain')}) v`,
     { domain },
   );
   const families = packs.rows[0]?.total ?? 0;
   const researched = packs.rows[0]?.researched ?? 0;
+  // Published and usable, but no human at Vikuna has read it yet. Surfaced so
+  // the console can say so — "researched" and "researched and checked" must
+  // never read the same (rule 12).
+  const unreviewed = packs.rows[0]?.unreviewed ?? 0;
   const researchedAt = packs.rows[0]?.latest ?? null;
   const source = researched === 0 ? 'seeded' : researched === families ? 'researched' : 'mixed';
 
@@ -83,11 +90,17 @@ export async function research_status(_params: Record<string, unknown>, ctx: Ski
   if (researched > 0) {
     return {
       state: 'ready' as ResearchState, industry, domain, families,
-      source, researched_at: researchedAt, can_request: false,
+      source, unreviewed, researched_at: researchedAt, can_request: false,
       detail: `${families} role ${families === 1 ? 'family' : 'families'} for ${industry}`
         + (source === 'mixed'
             ? `, ${researched} researched and ${families - researched} from Vikuna's starter set.`
-            : ', researched for this industry.'),
+            : ', researched for this industry.')
+        // Said, not hidden. A pack nobody at Vikuna has read is usable and is
+        // not the same thing as one that has been checked, and the tenant is
+        // the one who should decide how much that matters to them.
+        + (unreviewed > 0
+            ? ` ${unreviewed === researched ? 'Not yet' : `${unreviewed} not yet`} reviewed by Vikuna.`
+            : ''),
     };
   }
 
@@ -97,7 +110,7 @@ export async function research_status(_params: Record<string, unknown>, ctx: Ski
   if (families > 0 && !(run && (run.status === 'queued' || run.status === 'running'
                                 || run.status === 'awaiting'))) {
     return {
-      state: 'seeded_only' as ResearchState, industry, domain, families,
+      state: 'seeded_only' as ResearchState, industry, domain, families, unreviewed,
       source, researched_at: null, can_request: true,
       detail: `The ${families} families shown are Vikuna's generic starter set, `
         + `not researched for ${industry}.`,
@@ -106,7 +119,7 @@ export async function research_status(_params: Record<string, unknown>, ctx: Ski
 
   if (run && (run.status === 'queued' || run.status === 'running')) {
     return {
-      state: 'running' as ResearchState, industry, domain, families,
+      state: 'running' as ResearchState, industry, domain, families, unreviewed,
       source, researched_at: null,
       can_request: false,
       started_at: run.started_at,
@@ -116,7 +129,7 @@ export async function research_status(_params: Record<string, unknown>, ctx: Ski
 
   if (run && run.status === 'awaiting') {
     return {
-      state: 'in_review' as ResearchState, industry, domain, families,
+      state: 'in_review' as ResearchState, industry, domain, families, unreviewed,
       source, researched_at: null,
       can_request: false,
       detail: 'Vara has drafted the role families — they are being reviewed before they go live.',
@@ -125,7 +138,7 @@ export async function research_status(_params: Record<string, unknown>, ctx: Ski
 
   if (run && run.status === 'failed') {
     return {
-      state: 'failed' as ResearchState, industry, domain, families,
+      state: 'failed' as ResearchState, industry, domain, families, unreviewed,
       source, researched_at: null,
       can_request: true,
       // The real cause, not a generic apology. A tenant who can see
@@ -136,7 +149,7 @@ export async function research_status(_params: Record<string, unknown>, ctx: Ski
   }
 
   return {
-    state: 'none' as ResearchState, industry, domain, families,
+    state: 'none' as ResearchState, industry, domain, families, unreviewed,
       source, researched_at: null,
     can_request: true,
     detail: `Vara has not studied ${industry} yet.`,

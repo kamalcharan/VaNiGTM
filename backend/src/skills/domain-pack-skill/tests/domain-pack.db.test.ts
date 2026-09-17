@@ -28,6 +28,7 @@ import fs from 'fs';
 import { createTenantDb } from '../../../db';
 import { matchTitle } from '../title-match';
 import { assertNoTemplateLeak } from '../domain-pack.agent';
+import { visiblePacksOfDomain } from '../review-state';
 import path from 'path';
 
 const A = '11111111-1111-1111-1111-111111111111';
@@ -296,20 +297,43 @@ d('claiming a domain', () => {
 });
 
 d('the agent', () => {
-  it('parks for review instead of publishing', async () => {
+  it('publishes when it finishes, stamped unreviewed', async () => {
+    // Changed 2026-09-17. This used to assert the opposite — that a finished
+    // run parks at `awaiting` and publishes nothing — and that was the shape
+    // that left run 92 sitting overnight while the tenant who paid for it saw
+    // no families at all.
     llmQueue = [{ families: [FAMILY] }, STARTER_OF(FAMILY)];
     const run = await mkRun();
     await DomainPackAgent.run(pool, A, { industry: 'Logistics & Freight', domain: 'logistics-freight' }, run);
 
     const r = await pool.query(
       `SELECT status, awaiting_input, output FROM gt_agent_runs WHERE id = $1`, [run]);
-    expect(r.rows[0].status).toBe('awaiting');
-    expect(r.rows[0].awaiting_input.kind).toBe('domain_pack_review');
-    expect(r.rows[0].awaiting_input.packs).toHaveLength(1);
+    expect(r.rows[0].status).toBe('completed');
+    expect(r.rows[0].awaiting_input).toBeNull();
+    expect(r.rows[0].output.status).toBe('published');
 
-    // The point of the gate: research alone publishes nothing.
-    const published = await pool.query(`SELECT count(*)::int n FROM vani_domain_pack`);
-    expect(published.rows[0].n).toBe(0);
+    const rows = await pool.query(`SELECT payload FROM vani_domain_pack`);
+    expect(rows.rows).toHaveLength(1);
+    expect(rows.rows[0].payload.researched.review_state).toBe('unreviewed');
+    // Who paid for the run, recorded as provenance. The vn_ tenant id, which
+    // is what the event and gt_agent_runs carry — not the vani_ one.
+    expect(rows.rows[0].payload.researched.requested_by).toBe(A);
+  });
+
+  it('nothing is written when a family fails, not even the ones that worked', async () => {
+    // Publishing is one transaction. A half-published industry shows a tenant
+    // three of five families with nothing saying the rest exist — worse than
+    // an unpublished one, because it looks complete.
+    llmQueue = [
+      { families: [FAMILY, { ...FAMILY, family_name: 'Warehouse Ops' }] },
+      STARTER_OF(FAMILY),   // then the stub runs dry, which is what a timeout looks like
+    ];
+    const run = await mkRun();
+    await expect(
+      DomainPackAgent.run(pool, A, { industry: 'Logistics', domain: 'logistics' }, run),
+    ).rejects.toThrow();
+    const n = await pool.query(`SELECT count(*)::int n FROM vani_domain_pack`);
+    expect(n.rows[0].n).toBe(0);
   });
 
   it('keeps the families it already paid for when a later one fails', async () => {
@@ -351,8 +375,9 @@ d('the agent', () => {
 
     const r = await pool.query(
       `SELECT status, awaiting_input, steps FROM gt_agent_runs WHERE id = $1`, [run]);
-    expect(r.rows[0].status).toBe('awaiting');
-    expect(r.rows[0].awaiting_input.packs).toHaveLength(2);
+    expect(r.rows[0].status).toBe('completed');
+    const pk = await pool.query(`SELECT count(*)::int n FROM vani_domain_pack`);
+    expect(pk.rows[0].n).toBe(2);
     // A visible restore step, so a resumed run is legible in the feed rather
     // than looking like it did less work for no reason.
     expect(JSON.stringify(r.rows[0].steps)).toMatch(/Resumed 2 families from checkpoint/);
@@ -399,7 +424,7 @@ d('the agent', () => {
       await p;
 
       const r = await pool.query(`SELECT status FROM gt_agent_runs WHERE id = $1`, [run]);
-      expect(r.rows[0].status).toBe('awaiting');
+      expect(r.rows[0].status).toBe('completed');
     } finally {
       llm.callLLMValidated = prior;
     }
@@ -480,71 +505,107 @@ d('the agent', () => {
   });
 });
 
-d('publishing a reviewed draft', () => {
-  const draft = async () => {
+d('review: promote and retire', () => {
+  const researched = async (domain = 'logistics') => {
     llmQueue = [
       { families: [FAMILY, { ...FAMILY, family_name: 'Warehouse Ops' }] },
       STARTER_OF(FAMILY), STARTER_OF(FAMILY),
     ];
     const run = await mkRun();
-    await DomainPackAgent.run(pool, A, { industry: 'Logistics', domain: 'logistics' }, run);
+    await DomainPackAgent.run(pool, A, { industry: 'Logistics', domain }, run);
     return run;
   };
+  const codeFor = async (name: string) => (await pool.query(
+    `SELECT code FROM vani_domain_pack WHERE payload ->> 'family_name' = $1 LIMIT 1`,
+    [name])).rows[0].code as string;
 
-  it('publishes every family of a draft, at version 1', async () => {
-    const run = await draft();
-    const published = await pub.publish(run);
-    expect(published).toHaveLength(2);
-
+  it('publishes every family at version 1', async () => {
+    await researched();
     const rows = await pool.query(
-      `SELECT code, version, domain FROM vani_domain_pack ORDER BY code`);
+      `SELECT version, domain FROM vani_domain_pack ORDER BY code`);
     expect(rows.rows.map((r) => r.version)).toEqual([1, 1]);
     expect(rows.rows.map((r) => r.domain)).toEqual(['logistics', 'logistics']);
-
-    const r = await pool.query(`SELECT status, awaiting_input FROM gt_agent_runs WHERE id = $1`, [run]);
-    expect(r.rows[0].status).toBe('completed');
-    expect(r.rows[0].awaiting_input).toBeNull();
   });
 
-  it('refuses a second publish instead of duplicating the packs', async () => {
-    const run = await draft();
-    await pub.publish(run);
-    await expect(pub.publish(run)).rejects.toThrow(/nothing to publish/);
-    const n = await pool.query(`SELECT count(*)::int n FROM vani_domain_pack`);
-    expect(n.rows[0].n).toBe(2);
+  it('promoting appends a version rather than editing the row', async () => {
+    // V-14 append-only. A review records a judgement; it does not edit the
+    // work, and "what did this pack say when it was promoted" stays
+    // answerable.
+    await researched();
+    const code = await codeFor('Fleet Operations');
+    expect(await pub.promote(code, 'reads well')).toBe(`${code} v2`);
+
+    const rows = await pool.query(
+      `SELECT version, payload FROM vani_domain_pack WHERE code = $1 ORDER BY version`, [code]);
+    expect(rows.rows.map((r) => r.version)).toEqual([1, 2]);
+    expect(rows.rows[0].payload.researched.review_state).toBe('unreviewed');
+    expect(rows.rows[1].payload.researched.review_state).toBe('reviewed');
+    expect(rows.rows[1].payload.researched.review_note).toBe('reads well');
+    // The content is carried over untouched.
+    expect(rows.rows[1].payload.vara.starter).toEqual(rows.rows[0].payload.vara.starter);
   });
 
-  it('never overwrites — a re-publish is a new version', async () => {
-    // V-14 append-only. Anything that recorded "pack v1" must still be able
-    // to read v1 after a correction lands.
-    //
-    // The second draft is written directly rather than produced by the agent,
-    // and that is a FINDING, not a test convenience: once v1 is published,
-    // claimDomain answers 'pack-exists' for that industry forever, so the
-    // agent cannot currently produce a refreshed draft at all. Versioning
-    // works; nothing triggers it. Refreshing a stale pack needs a deliberate
-    // path (an operator re-research flag, or an age check in the claim) and
-    // is not built — see the commit message.
-    const first = await draft();
-    await pub.publish(first);
+  it('refuses to promote twice', async () => {
+    await researched();
+    const code = await codeFor('Fleet Operations');
+    await pub.promote(code);
+    await expect(pub.promote(code)).rejects.toThrow(/already reviewed/);
+  });
 
-    const reDraft = await pool.query(
-      `INSERT INTO gt_agent_runs (tenant_id, agent_name, status, awaiting_input)
-       VALUES ($1, 'DOMAIN_ENRICHMENT_REQUESTED', 'awaiting', $2::jsonb) RETURNING id`,
-      [A, JSON.stringify({
-        kind: 'domain_pack_review', domain: 'logistics', industry: 'Logistics',
-        researched_at: new Date().toISOString(), prompt_version: 1,
-        packs: [toPackRow('logistics', FAMILY as never, 'Logistics', 1)],
-      })],
-    );
+  it('refuses to review a hand-written starter pack', async () => {
+    // Migration 244's packs have no `researched` block. Stamping one
+    // 'reviewed' would claim a judgement nobody made about work nobody did.
+    await pool.query(
+      `INSERT INTO vani_domain_pack (code, version, domain, payload)
+       VALUES ('talent-logistics-seeded', 1, 'logistics', $1::jsonb)`,
+      [JSON.stringify({ family_name: 'Seeded', vara: { starter: { musthaves: [], knockouts: [], threshold: 30 } } })]);
+    await expect(pub.promote('talent-logistics-seeded')).rejects.toThrow(/hand-written/);
+  });
 
-    const published = await pub.publish(String(reDraft.rows[0].id));
-    expect(published).toEqual(['talent-logistics-fleet-operations v2']);
+  it('a retired pack disappears from every reader', async () => {
+    await researched('technology-saas');
+    const code = await codeFor('Fleet Operations');
+    await pub.retire(code, 'weights were nonsense');
 
-    const versions = await pool.query(
-      `SELECT version FROM vani_domain_pack
-        WHERE code = 'talent-logistics-fleet-operations' ORDER BY version`);
-    expect(versions.rows.map((r) => r.version)).toEqual([1, 2]);
+    // Through the REAL helper, not a hand-written predicate. An earlier
+    // version of this test rolled its own WHERE and passed while the product
+    // was broken: retiring writes a NEW version, so filtering row by row drops
+    // the retired v2 and DISTINCT ON falls back to v1 — the pack comes back.
+    const visible = await pool.query(
+      `SELECT count(*)::int n FROM (${visiblePacksOfDomain(`'technology-saas'`)}) v
+        WHERE code = $1`, [code]);
+    expect(visible.rows[0].n).toBe(0);
+    // And the rest of the domain is untouched — retiring one is not retiring all.
+    const others = await pool.query(
+      `SELECT count(*)::int n FROM (${visiblePacksOfDomain(`'technology-saas'`)}) v`);
+    expect(others.rows[0].n).toBe(1);
+    const all = await pool.query(
+      `SELECT count(*)::int n FROM vani_domain_pack WHERE code = $1`, [code]);
+    expect(all.rows[0].n).toBe(2);
+  });
+
+  it('retiring frees the industry to be researched again', async () => {
+    // Otherwise a bad pack blocks its industry permanently: claimDomain
+    // answers 'pack-exists' and no amount of asking gets a better one.
+    await researched();
+    for (const n of ['Fleet Operations', 'Warehouse Ops']) {
+      await pub.retire(await codeFor(n), 'bad draft');
+    }
+    llmQueue = [{ families: [FAMILY] }, STARTER_OF(FAMILY)];
+    const again = await mkRun();
+    expect(await claimDomain(pool, again, 'logistics')).toBe('claimed');
+  });
+
+  it('will not retire without a reason it can record', async () => {
+    await researched();
+    const code = await codeFor('Fleet Operations');
+    const row = await pool.query(
+      `SELECT payload FROM vani_domain_pack WHERE code = $1 ORDER BY version DESC LIMIT 1`, [code]);
+    expect(row.rows[0].payload.researched.review_state).toBe('unreviewed');
+    await pub.retire(code, 'copied must-haves across families');
+    const after = await pool.query(
+      `SELECT payload FROM vani_domain_pack WHERE code = $1 ORDER BY version DESC LIMIT 1`, [code]);
+    expect(after.rows[0].payload.researched.retired_reason).toBe('copied must-haves across families');
   });
 
   it('upgrades a hand-seeded family instead of listing it twice', async () => {
@@ -557,20 +618,12 @@ d('publishing a reviewed draft', () => {
       `INSERT INTO vani_domain_pack (code, version, domain, payload)
        VALUES ('talent-logistics-fleet-ops', 1, 'logistics', $1::jsonb)`,
       [JSON.stringify({
-        family_name: 'Fleet Operations',
-        hint: 'hand-seeded',
+        family_name: 'Fleet Operations', hint: 'hand-seeded',
         suggested_titles: ['Fleet Manager'],
         vara: { starter: { musthaves: [], knockouts: [], threshold: 30 } },
-      })],
-    );
+      })]);
 
-    const run = await draft();
-    const published = await pub.publish(run);
-
-    // The researched draft lands as v2 of the SEEDED code, not as a rival.
-    expect(published).toContain('talent-logistics-fleet-ops v2');
-    expect(published.join(' ')).not.toContain('fleet-operations');
-
+    await researched();
     const families = await pool.query(
       `SELECT DISTINCT ON (code) code, version, payload ->> 'family_name' AS name
          FROM vani_domain_pack WHERE domain = 'logistics'
@@ -578,53 +631,10 @@ d('publishing a reviewed draft', () => {
     const fleet = families.rows.filter((r) => r.name === 'Fleet Operations');
     expect(fleet).toHaveLength(1);
     expect(fleet[0]).toMatchObject({ code: 'talent-logistics-fleet-ops', version: 2 });
-
-    // ...and the researched payload is what v2 carries, so the upgrade is real.
     const v2 = await pool.query(
       `SELECT payload FROM vani_domain_pack
         WHERE code = 'talent-logistics-fleet-ops' AND version = 2`);
-    expect(v2.rows[0].payload.researched).toBeTruthy();
-  });
-
-  it('publishes all families or none', async () => {
-    // The second family's INSERT must fail AFTER the first has succeeded, so
-    // a constraint is added for the duration. An earlier version of this test
-    // pre-inserted a clashing row and proved nothing: publish computes
-    // max(version)+1, so the clash just produced v2 and everything succeeded.
-    const run = await draft();
-    await pool.query(
-      `ALTER TABLE vani_domain_pack ADD CONSTRAINT tmp_block_warehouse
-         CHECK (code <> 'talent-logistics-warehouse-ops')`);
-    try {
-      await expect(pub.publish(run)).rejects.toThrow();
-
-      // The first family must not survive the second's failure. A tenant
-      // seeing some role families with nothing saying the rest are missing is
-      // worse than seeing none.
-      const orphan = await pool.query(
-        `SELECT count(*)::int n FROM vani_domain_pack
-          WHERE code = 'talent-logistics-fleet-operations'`);
-      expect(orphan.rows[0].n).toBe(0);
-
-      // And the draft is still reviewable — a failed publish must not consume it.
-      const r = await pool.query(`SELECT status FROM gt_agent_runs WHERE id = $1`, [run]);
-      expect(r.rows[0].status).toBe('awaiting');
-    } finally {
-      await pool.query(`ALTER TABLE vani_domain_pack DROP CONSTRAINT tmp_block_warehouse`);
-    }
-  });
-
-  it('frees the industry again when a draft is rejected', async () => {
-    const run = await draft();
-    await pub.reject(run, 'families are generic');
-
-    const r = await pool.query(`SELECT status, error_trace FROM gt_agent_runs WHERE id = $1`, [run]);
-    expect(r.rows[0].status).toBe('failed');
-    expect(r.rows[0].error_trace).toMatch(/generic/);
-
-    // The point of rejecting: a bad draft must be re-researchable, not a
-    // permanent block on the industry.
-    expect(await claimDomain(pool, await mkRun(), 'logistics')).toBe('claimed');
+    expect(v2.rows[0].payload.researched.review_state).toBe('unreviewed');
   });
 });
 
@@ -683,19 +693,33 @@ d('research on demand', () => {
     expect(await claimDomain(pool, await mkRun(), 'logistics-freight', true)).toBe('in-progress');
   });
 
-  it('force publishes nothing by itself — the draft still needs review', async () => {
+  it('force refreshes a stale pack as a new version, not a rival row', async () => {
+    // --force exists because claimDomain answers 'pack-exists' forever once a
+    // researched pack lands, so a stale one could never be replaced. Since
+    // 2026-09-17 a forced run PUBLISHES rather than parking, so the thing to
+    // check is that the refresh lands on top of the stale pack instead of
+    // beside it.
     await pool.query(
       `INSERT INTO vani_domain_pack (code, version, domain, payload)
-       VALUES ('talent-logistics-freight-x', 1, 'logistics-freight', '{"vara":{"starter":{"musthaves":[]}},"researched":{"at":"2026-09-16T00:00:00Z","by":"domain-pack-agent"}}'::jsonb)`);
+       VALUES ('talent-logistics-freight-x', 1, 'logistics-freight',
+               '{"family_name":"Fleet Operations","vara":{"starter":{"musthaves":[]}},"researched":{"at":"2026-09-16T00:00:00Z","by":"domain-pack-agent"}}'::jsonb)`);
     llmQueue = [{ families: [FAMILY] }, STARTER_OF(FAMILY)];
     const run = await mkRun();
     await DomainPackAgent.run(
       pool, A, { industry: 'Logistics & Freight', domain: 'logistics-freight', force: true }, run);
 
     const r = await pool.query(`SELECT status FROM gt_agent_runs WHERE id = $1`, [run]);
-    expect(r.rows[0].status).toBe('awaiting');
-    const n = await pool.query(`SELECT count(*)::int n FROM vani_domain_pack`);
-    expect(n.rows[0].n).toBe(1);        // still only the stale one
+    expect(r.rows[0].status).toBe('completed');
+
+    // One family, two versions — the stale one still readable at v1.
+    const rows = await pool.query(
+      `SELECT version, payload FROM vani_domain_pack
+        WHERE code = 'talent-logistics-freight-x' ORDER BY version`);
+    expect(rows.rows.map((x) => x.version)).toEqual([1, 2]);
+    expect(rows.rows[1].payload.researched.review_state).toBe('unreviewed');
+    const codes = await pool.query(
+      `SELECT count(DISTINCT code)::int n FROM vani_domain_pack WHERE domain = 'logistics-freight'`);
+    expect(codes.rows[0].n).toBe(1);
   });
 });
 

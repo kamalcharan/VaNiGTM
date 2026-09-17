@@ -1,12 +1,29 @@
 /**
- * Review and publish researched domain packs. An OPERATOR tool, run on a box
- * with database access:
+ * Review researched domain packs. An OPERATOR tool, run on a box with
+ * database access:
  *
- *   npm run packs                     # what is waiting for review
- *   npm run packs -- --show <runId>   # read one draft in full
- *   npm run packs -- --publish <runId>
- *   npm run packs -- --reject <runId> "reason"
+ *   npm run packs                        # packs no one has reviewed yet
+ *   npm run packs -- --read <code>       # read one published pack in full
+ *   npm run packs -- --promote <code>    # mark it reviewed
+ *   npm run packs -- --retire <code> "reason"
  *   npm run packs -- --research <tenantId> [--force]
+ *
+ *   npm run packs -- --drafts            # legacy: runs parked before 2026-09-17
+ *   npm run packs -- --show <runId>      #   read one
+ *   npm run packs -- --publish <runId>   #   publish it
+ *   npm run packs -- --reject <runId> "reason"
+ *
+ * THIS IS NO LONGER A PUBLISH GATE (changed 2026-09-17).
+ * The agent now publishes when it finishes, stamped `unreviewed`, and a tenant
+ * sees the result of their own run without waiting for anyone here. Run 92 sat
+ * overnight under the old shape, and the tenant who paid for those 20 minutes
+ * got nothing out of them. An operator's job is now to PROMOTE a pack that
+ * reads well, or RETIRE one that does not — quality, not admission.
+ *
+ * What protects a tenant in the gap: `assertNoTemplateLeak` refuses a bad
+ * draft before it is ever written, the `unreviewed` label reaches the console
+ * so nothing degraded passes as checked, and --retire withdraws a pack
+ * without deleting it.
  *
  * --research exists because the automatic trigger fires ONLY when a tenant
  * completes business_profile. Every tenant who finished onboarding before
@@ -301,6 +318,119 @@ export async function research(tenantId: string, force = false): Promise<{
   return { industry, domain, eventId: String(ins.rows[0].id) };
 }
 
+/* ── Review: promote and retire ─────────────────────────────────────────── */
+
+/** The latest version of a pack code, or null. */
+async function latest(code: string) {
+  const r = await pool.query(
+    `SELECT code, version, domain, payload FROM vani_domain_pack
+      WHERE code = $1 ORDER BY version DESC LIMIT 1`, [code]);
+  return r.rows[0] ?? null;
+}
+
+/**
+ * Move a pack to a new review state.
+ *
+ * Append-only (V-14): this writes a NEW VERSION carrying the new state rather
+ * than updating the row, so "who promoted this pack, and when, and what did it
+ * say at the time" stays answerable. The content is copied verbatim — a review
+ * records a judgement, it does not edit the work.
+ */
+async function setReviewState(
+  code: string, state: 'reviewed' | 'retired', note: string | null,
+): Promise<string> {
+  const row = await latest(code);
+  if (!row) throw new Error(`No pack with code ${code}`);
+  const cur = row.payload?.researched?.review_state ?? (row.payload?.researched ? 'reviewed' : null);
+  if (cur === null) {
+    throw new Error(
+      `${code} is a hand-written starter pack (migration 244), not a researched one. `
+      + `There is nothing to review.`);
+  }
+  if (cur === state) throw new Error(`${code} v${row.version} is already ${state}`);
+
+  const payload = {
+    ...row.payload,
+    researched: {
+      ...row.payload.researched,
+      review_state: state,
+      [state === 'reviewed' ? 'reviewed_at' : 'retired_at']: new Date().toISOString(),
+      ...(note ? { [state === 'reviewed' ? 'review_note' : 'retired_reason']: note } : {}),
+    },
+  };
+  const v = await pool.query(
+    `INSERT INTO vani_domain_pack (code, version, domain, payload)
+     SELECT $1, COALESCE(MAX(version), 0) + 1, $2, $3::jsonb
+       FROM vani_domain_pack WHERE code = $1
+     RETURNING version`,
+    [code, row.domain, JSON.stringify(payload)],
+  );
+  return `${code} v${v.rows[0].version}`;
+}
+
+export const promote = (code: string, note: string | null = null) =>
+  setReviewState(code, 'reviewed', note);
+export const retire = (code: string, reason: string) =>
+  setReviewState(code, 'retired', reason);
+
+/** Everything a human has not read yet, newest first. */
+async function listUnreviewed(): Promise<void> {
+  const r = await pool.query(
+    `SELECT DISTINCT ON (code) code, version, domain, payload
+       FROM vani_domain_pack
+      WHERE payload -> 'vara' -> 'starter' IS NOT NULL
+      ORDER BY code, version DESC`);
+  const rows = r.rows.filter(
+    (x: any) => x.payload?.researched?.review_state === 'unreviewed');
+
+  if (!rows.length) {
+    console.log('\nNothing unreviewed. Every researched pack has been read.\n');
+    return;
+  }
+  const byDomain = new Map<string, any[]>();
+  for (const x of rows) {
+    if (!byDomain.has(x.domain)) byDomain.set(x.domain, []);
+    byDomain.get(x.domain)!.push(x);
+  }
+  console.log(`\n${rows.length} pack(s) live and unreviewed:\n`);
+  for (const [domain, packs] of byDomain) {
+    console.log(`  ${domain}`);
+    for (const x of packs) {
+      console.log(`    ${x.payload.family_name}  [${x.code} v${x.version}]`
+        + `  researched ${String(x.payload.researched?.at ?? '').slice(0, 10)}`);
+    }
+    console.log('');
+  }
+  console.log(`Read one:  npm run packs -- --read <code>`);
+  console.log(`Promote:   npm run packs -- --promote <code>\n`);
+}
+
+/** One published pack, in full. */
+async function read(code: string): Promise<void> {
+  const row = await latest(code);
+  if (!row) throw new Error(`No pack with code ${code}`);
+  const p = row.payload, st = p.vara?.starter ?? {};
+  const prov = p.researched;
+  console.log(`\n${p.family_name}   [${row.code} v${row.version}]  ${row.domain}`);
+  console.log(prov
+    ? `  ${prov.review_state ?? 'reviewed'} · researched ${String(prov.at ?? '').slice(0, 10)}`
+      + ` · prompt v${prov.prompt_version}`
+    : `  Vikuna starter pack — hand written, never researched`);
+  if (p.hint) console.log(`  ${p.hint}`);
+  console.log(`  titles     : ${(p.suggested_titles ?? []).join(', ') || '—'}`);
+  console.log(`  threshold  : ${st.threshold}`);
+  const total = (st.musthaves ?? []).reduce((n: number, m: any) => n + m.weight, 0);
+  console.log(`  musthaves  : (weights total ${total})`);
+  for (const m of st.musthaves ?? []) {
+    console.log(`     ${String(m.weight).padStart(3)}%${m.years ? `, ${m.years}y` : ''}  ${m.name}`);
+    if (m.why) console.log(`            ↳ ${m.why}`);
+  }
+  console.log(`  knockouts  :`);
+  for (const k of st.knockouts ?? []) console.log(`     ${k.label}: ${k.rule}`);
+  console.log(`\nPromote:  npm run packs -- --promote ${row.code}`);
+  console.log(`Retire :  npm run packs -- --retire ${row.code} "reason"\n`);
+}
+
 /** Release the pool. Exported so a test can close it without process.exit. */
 export async function close(): Promise<void> {
   await pool.end();
@@ -319,8 +449,28 @@ async function main(): Promise<void> {
   const publishId = flag('--publish');
   const rejectId = flag('--reject');
   const researchId = flag('--research');
+  const readCode = flag('--read');
+  const promoteCode = flag('--promote');
+  const retireCode = flag('--retire');
 
-  if (researchId) {
+  // A reason can be several words, and PowerShell hands them over unquoted —
+  // taking args[i+2] alone silently kept the first word and dropped the rest.
+  const trailing = (name: string) =>
+    args.slice(args.indexOf(name) + 2).filter((a) => !a.startsWith('--')).join(' ').trim();
+
+  if (readCode) {
+    await read(readCode);
+  } else if (promoteCode) {
+    const v = await promote(promoteCode, trailing('--promote') || null);
+    console.log(`\nPromoted ${v} — every tenant in that industry now sees it as reviewed.\n`);
+  } else if (retireCode) {
+    const reason = trailing('--retire');
+    if (!reason) throw new Error('--retire needs a reason: --retire <code> "why"');
+    const v = await retire(retireCode, reason);
+    console.log(`\nRetired ${v}. It is hidden from every tenant; earlier versions stay readable.\n`);
+  } else if (args.includes('--drafts')) {
+    await list();
+  } else if (researchId) {
     const r = await research(researchId, args.includes('--force'));
     console.log(`\nQueued research for "${r.industry}" (${r.domain}).`);
     console.log(`  event ${r.eventId} — the worker picks it up within a few seconds.`);
@@ -333,11 +483,10 @@ async function main(): Promise<void> {
     for (const p of rows) console.log(`  ${p}`);
     console.log('');
   } else if (rejectId) {
-    const reason = args[args.indexOf('--reject') + 2] ?? 'no reason given';
-    await reject(rejectId, reason);
+    await reject(rejectId, trailing('--reject') || 'no reason given');
     console.log(`\nRejected run ${rejectId}. The industry is free to be researched again.\n`);
   } else {
-    await list();
+    await listUnreviewed();
   }
 }
 

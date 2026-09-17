@@ -15,6 +15,7 @@
 import { SkillContext } from '../../../shared/types';
 import { slugifyIndustry } from '../../../vani/industry-slug';
 import { matchTitle, type PackCandidate } from '../title-match';
+import { visiblePacksOfDomain } from '../review-state';
 
 export async function match_title(
   params: Record<string, unknown>,
@@ -46,10 +47,7 @@ export async function match_title(
   const packs = await ctx.db.query<{
     code: string; version: number; payload: Record<string, any>;
   }>(
-    `SELECT DISTINCT ON (code) code, version, payload
-       FROM vani_domain_pack
-      WHERE domain = $domain AND payload -> 'vara' -> 'starter' IS NOT NULL
-      ORDER BY code, version DESC`,
+    visiblePacksOfDomain('$domain'),
     { domain },
   );
 

@@ -32,6 +32,7 @@ import { appendStep, setStatus, saveCheckpoint, loadCheckpoint } from '../../age
 import { callLLMValidated } from '../../agent-core/llm.client';
 import { resolvePrompt, renderPrompt } from '../../vani/prompt-store';
 import { slugifyIndustry } from '../../vani/industry-slug';
+import { visiblePacksOfDomain } from './review-state';
 
 /**
  * TWO prompts, because one call cannot fit the answer.
@@ -164,12 +165,12 @@ export async function claimDomain(
     // still applies either way, and nothing is published without review —
     // force produces a draft, not a row.
     if (!force) {
+      // Latest version per code FIRST, then the state — retiring a pack
+      // writes a new version, so judging row by row would let the previous
+      // one stand in for it and block the industry forever.
       const pack = await client.query(
-        `SELECT 1 FROM vani_domain_pack
-          WHERE domain = $1
-            AND payload -> 'vara' -> 'starter' IS NOT NULL
-            AND payload -> 'researched' IS NOT NULL
-          LIMIT 1`,
+        `SELECT 1 FROM (${visiblePacksOfDomain('$1')}) v
+          WHERE payload -> 'researched' IS NOT NULL LIMIT 1`,
         [slug],
       );
       if (pack.rows.length) {
@@ -182,9 +183,11 @@ export async function claimDomain(
     // a worker restart — every deploy does it — and without the bound a dead
     // run would block its industry forever.
     //
-    // An `awaiting` run is not stuck, it is waiting on a human to publish it.
-    // Ageing that out would quietly research the same industry again every
-    // hour until someone got round to reviewing the first draft.
+    // `awaiting` is kept in the predicate for runs drafted before publishing
+    // moved into the agent (2026-09-17). Nothing parks there now — a finished
+    // run publishes and completes — but a draft left over from the old path
+    // must still hold its industry rather than being researched again beside
+    // it. Unbounded on purpose: such a run is waiting on a person, not stuck.
     const busy = await client.query(
       `SELECT 1 FROM gt_agent_runs
         WHERE agent_name = 'DOMAIN_ENRICHMENT_REQUESTED'
@@ -402,22 +405,89 @@ export const DomainPackAgent = {
       status: 'ok',
     });
 
-    // Park for review. A pack is platform data — one bad generated pack is
-    // wrong for every tenant in the industry at once, so nothing is published
-    // until a human says so. HUMAN_APPROVED commits it.
-    await setStatus(pool, runId, 'awaiting', {
-      awaiting_input: {
-        kind: 'domain_pack_review',
+    // Publish. The tenant who asked gets the answer now; Vikuna's review
+    // promotes it to `reviewed` afterwards. This used to park at `awaiting`
+    // and wait for `npm run packs --publish`, which meant the tenant who paid
+    // for a 20-minute run got nothing until someone at Vikuna ran a CLI —
+    // overnight, for run 92.
+    const packs = families.map(
+      (f) => toPackRow(slug, f, industry, famPrompt.version, tenantId));
+    const published = await publishPacks(pool, packs);
+
+    await appendStep(pool, runId, {
+      step_name: 'publish',
+      action: `Published ${published.length} families to ${slug}`,
+      output_summary: published.join(', ').slice(0, 200),
+      status: 'ok',
+    });
+
+    await setStatus(pool, runId, 'completed', {
+      output: {
         domain: slug,
-        industry,
-        researched_at: new Date().toISOString(),
-        prompt_version: famPrompt.version,
-        packs: families.map((f) => toPackRow(slug, f, industry, famPrompt.version)),
+        families: families.length,
+        status: 'published',
+        review_state: 'unreviewed',
+        published,
       },
-      output: { domain: slug, families: families.length, status: 'awaiting_review' },
     });
   },
 };
+
+/**
+ * Write a drafted set into `vani_domain_pack`. One transaction: all families
+ * or none, because a partially published industry is worse than an
+ * unpublished one — a tenant would see three of eight with nothing telling
+ * them the rest exist.
+ *
+ * Shared with the operator CLI so a promotion and a first publish cannot drift
+ * apart on the two rules that matter: append-only versioning, and reusing the
+ * code a family already has in this domain.
+ */
+export async function publishPacks(
+  pool: Pool,
+  packs: { code: string; domain: string; payload: Record<string, any> }[],
+): Promise<string[]> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const out: string[] = [];
+    for (const p of packs) {
+      // A family already in this domain keeps ITS code, whatever the agent
+      // derived — migration 244 seeded 'talent-technology-saas-backend-eng'
+      // by hand and the agent slugifies the same family to
+      // '...-backend-engineering'. Two codes for one family is two rows out
+      // of the doorway's DISTINCT ON (code).
+      const existing = await client.query(
+        `SELECT code FROM vani_domain_pack
+          WHERE domain = $1
+            AND lower(btrim(payload ->> 'family_name')) = lower(btrim($2))
+          ORDER BY version DESC LIMIT 1`,
+        [p.domain, p.payload.family_name],
+      );
+      const code: string = existing.rows[0]?.code ?? p.code;
+
+      // Append-only: a correction is a new version, never an UPDATE, so
+      // anything that recorded "pack v1" can still read v1.
+      const v = await client.query(
+        `SELECT COALESCE(MAX(version), 0) + 1 AS next FROM vani_domain_pack WHERE code = $1`,
+        [code],
+      );
+      await client.query(
+        `INSERT INTO vani_domain_pack (code, version, domain, payload)
+         VALUES ($1, $2, $3, $4::jsonb)`,
+        [code, v.rows[0].next, p.domain, JSON.stringify(p.payload)],
+      );
+      out.push(`${code} v${v.rows[0].next}`);
+    }
+    await client.query('COMMIT');
+    return out;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
 
 /* ── Template leak ──────────────────────────────────────────────────────── */
 
@@ -519,6 +589,7 @@ export function toPackRow(
   family: ResearchedFamily,
   industry: string,
   promptVersion: number,
+  requestedBy: string | null = null,
 ) {
   const familySlug = slugifyIndustry(family.family_name);
   return {
@@ -542,6 +613,14 @@ export function toPackRow(
         by: 'domain-pack-agent',
         source: 'public market knowledge (LLM)',
         industry_as_typed: industry,
+        // Published and visible, but not yet read by a human at Vikuna. The
+        // console shows this, so "researched" and "researched and checked"
+        // never read the same. See review-state.ts for why it is a label
+        // rather than a gate.
+        review_state: 'unreviewed',
+        // Who paid the 20 minutes. Provenance, never a visibility filter —
+        // scoping by requester strands the second tenant in the industry.
+        requested_by: requestedBy,
         // Both stages, so a published pack can be traced to the exact text
         // that produced it. The starter prompt is the one that shaped the
         // scoring, and is the one to look at when a pack scores oddly.
