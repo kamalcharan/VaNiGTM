@@ -114,7 +114,7 @@ async function vaniTenantFor(db: PoolClient, vnTenantId: string): Promise<{ id: 
  * each item this list omits is named in the channels doc as arriving with its
  * feature. Grows with the build; never shrinks.
  */
-async function readinessChecklist(db: PoolClient, vaniTenantId: string) {
+export async function readinessChecklist(db: PoolClient, vaniTenantId: string) {
   const domains = await db.query(
     `SELECT domain, purpose, embed_origins FROM vani_tenant_domain WHERE tenant_id = $1`,
     [vaniTenantId],

@@ -29,6 +29,7 @@
  */
 
 import { Router } from 'express';
+import { readOrigins, OriginError } from './embed-origin';
 import type { Pool, PoolClient } from 'pg';
 import { extractJwt } from '../auth/auth.routes';
 import { getLane, isStepOfLane, requiredSteps, type Lane } from './lanes';
@@ -114,7 +115,7 @@ async function resolveVaniTenant(client: PoolClient, vnTenantId: string): Promis
  * Apply a step's payload. Runs INSIDE the caller's transaction — every write
  * here and the step mark itself commit or roll back together.
  */
-async function applyStepPayload(
+export async function applyStepPayload(
   client: PoolClient,
   stepId: string,
   tenantId: string,
@@ -157,6 +158,24 @@ async function applyStepPayload(
     }
     const purpose = data.purpose === 'candidate' ? 'candidate' : 'workspace';
 
+    // The allowlist for the embed token. Vara's readiness checklist gates
+    // activation on this being non-empty for a candidate domain, and nothing
+    // has ever written it — so every tenant failed that check permanently.
+    //
+    // null means the payload said nothing about origins, which leaves an
+    // existing allowlist alone. An explicit [] clears it. Never defaulted
+    // from the domain: an allowlist entry the tenant did not type is a
+    // security decision taken on their behalf without their knowledge.
+    let origins: string[] | null;
+    try {
+      origins = readOrigins(data);
+    } catch (err) {
+      if (err instanceof OriginError) {
+        throw new StepPayloadError(400, 'INVALID_EMBED_ORIGIN', err.message);
+      }
+      throw err;
+    }
+
     const vaniTenantId = await resolveVaniTenant(client, tenantId);
 
     // vani_tenant_domain.domain is unique GLOBALLY, not per tenant — a domain
@@ -172,11 +191,21 @@ async function applyStepPayload(
 
     // Upsert on the unique key — a replayed request lands on the same row,
     // which keeps this endpoint idempotent by construction (see header).
+    //
+    // The CASE is what makes "the payload did not mention origins" different
+    // from "the payload cleared them". Without it, resubmitting the step to
+    // change only the purpose would silently empty the allowlist and
+    // de-activate Vara, with nothing saying why.
     await client.query(
-      `INSERT INTO vani_tenant_domain (tenant_id, domain, purpose)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (domain) DO UPDATE SET purpose = EXCLUDED.purpose`,
-      [vaniTenantId, domain, purpose],
+      `INSERT INTO vani_tenant_domain (tenant_id, domain, purpose, embed_origins)
+       VALUES ($1, $2, $3, COALESCE($4::text[], '{}'))
+       ON CONFLICT (domain) DO UPDATE
+         SET purpose = EXCLUDED.purpose,
+             embed_origins = CASE
+               WHEN $4::text[] IS NULL THEN vani_tenant_domain.embed_origins
+               ELSE $4::text[]
+             END`,
+      [vaniTenantId, domain, purpose, origins],
     );
     return;
   }
