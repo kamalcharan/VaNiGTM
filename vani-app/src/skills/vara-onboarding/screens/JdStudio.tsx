@@ -154,6 +154,21 @@ function JdStudioInner() {
   const result = match.data?.success ? match.data.data : null;
   const matched = result && result.matched ? result : null;
 
+  // A refusal arrives as success:false with HTTP 200 — the query SUCCEEDS and
+  // carries no data. Treated as "still loading", which is what this did, the
+  // composer waits forever and the tenant sees an empty screen with no reason
+  // given. It is the same failure the research card had: "the backend does not
+  // have this skill" and "nothing to report" must never look alike.
+  const refused = match.data && !match.data.success
+    ? (match.data.error || 'The service refused the request.')
+    : null;
+  const failed = match.isError ? match.error.message : refused;
+
+  // The explicit way out of a failure, chosen by the tenant, never taken for
+  // them (rule 12). Vara could not look the role up, so she asks about it from
+  // scratch — which is a real conversation, not a substituted result.
+  const [scratch, setScratch] = useState(false);
+
   // A matched family names itself. An unmatched one has to be named by the
   // tenant — the server requires a family on publish, and inventing one here
   // would put a role into a playbook it does not belong to.
@@ -162,9 +177,9 @@ function JdStudioInner() {
   const script = useMemo<JdStudioStep[]>(() => {
     if (draft || !title) return [];          // a draft skips the conversation
     if (matched) return fromStarter(matched.starter, matched.family_name, title);
-    if (result) return unknownRole(title);   // answered, and it knows nothing
-    return [];                               // still asking
-  }, [draft, title, matched, result]);
+    if (result || scratch) return unknownRole(title);  // knows nothing, or could not look
+    return [];                                          // still asking
+  }, [draft, title, matched, result, scratch]);
 
   const [stepIdx, setStepIdx] = useState(0);
   const [facts, setFacts] = useState<JdFacts>(EMPTY);
@@ -388,9 +403,11 @@ function JdStudioInner() {
                     X, researched for Y" and "no family looks like this" are
                     different conversations and must not read the same. */}
                 <div className={s.chatSub}>
-                  {match.isFetching && !result
-                    ? 'checking what I know about this role…'
-                    : result?.detail ?? 'compose · say it, Vara structures it'}
+                  {failed
+                    ? 'could not reach my role families'
+                    : match.isFetching && !result
+                      ? 'checking what I know about this role…'
+                      : result?.detail ?? 'compose · say it, Vara structures it'}
                 </div>
               </div>
             </div>
@@ -403,11 +420,34 @@ function JdStudioInner() {
             </div>
             <div className={s.chatFoot}>
               {script.length === 0 && !draft ? (
-                <div className={s.note} style={{ textAlign: 'center' }}>
-                  {match.isError
-                    ? `Could not check what I know about this role: ${match.error.message}`
-                    : 'Checking what I know about this role…'}
-                </div>
+                failed ? (
+                  <div className={s.researchFailed}>
+                    <div className={s.researchDetail}>
+                      I could not check which role family &ldquo;{title}&rdquo; belongs to.
+                    </div>
+                    {/* The server's own words. A generic "something went wrong"
+                        here is why a missing deploy and a real outage took
+                        three rounds to tell apart. */}
+                    <div className={s.researchNote}>{failed}</div>
+                    <div className={s.actions}>
+                      <button
+                        type="button"
+                        className={s.btnRetry}
+                        onClick={() => { void match.refetch(); }}
+                        disabled={match.isFetching}
+                      >
+                        {match.isFetching ? 'Checking…' : 'Try again'}
+                      </button>
+                      <button type="button" className={s.ghost} onClick={() => setScratch(true)}>
+                        Shape it from scratch
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={s.note} style={{ textAlign: 'center' }}>
+                    Checking what I know about this role…
+                  </div>
+                )
               ) : current ? (
                 <>
                   {current.chips.length > 0 && (
