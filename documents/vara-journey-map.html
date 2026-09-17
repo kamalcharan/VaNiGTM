@@ -1,0 +1,674 @@
+<title>Vara Journey Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+  /* Dark-first: this is an internal design document for a product whose own
+     default theme is gold-on-black (vikuna-black). The bare :root therefore
+     carries the DARK palette, and light is the override — the same swap the
+     page contract allows for a deliberately dark-first design. */
+  :root {
+    --ground:   #0c0c0f;
+    --surface:  #15151a;
+    --raised:   #1c1c22;
+    --line:     #292932;
+    --line-soft:#1f1f27;
+    --ink:      #eae7e0;
+    --ink-dim:  #a5a3ad;
+    --ink-faint:#74727d;
+    --gold:     #c9a227;
+    --gold-dim: #6d570f;
+    --break:    #e0695c;
+    --break-bg: #2a1614;
+    --ask:      #d9a441;
+    --ask-bg:   #2a2013;
+    --ok:       #6faa84;
+    --shadow:   0 1px 0 rgba(255,255,255,.03), 0 10px 30px -18px rgba(0,0,0,.9);
+
+    --display: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+    --body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --ground:   #f7f5f1;
+      --surface:  #ffffff;
+      --raised:   #fbfaf7;
+      --line:     #ddd9d0;
+      --line-soft:#eae7e0;
+      --ink:      #1a1a1f;
+      --ink-dim:  #55535d;
+      --ink-faint:#86838f;
+      --gold:     #8a6d12;
+      --gold-dim: #d8c88c;
+      --break:    #a8352a;
+      --break-bg: #fbeeec;
+      --ask:      #8a6413;
+      --ask-bg:   #fbf3e2;
+      --ok:       #38714f;
+      --shadow:   0 1px 0 rgba(0,0,0,.02), 0 10px 26px -20px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground:   #f7f5f1;
+    --surface:  #ffffff;
+    --raised:   #fbfaf7;
+    --line:     #ddd9d0;
+    --line-soft:#eae7e0;
+    --ink:      #1a1a1f;
+    --ink-dim:  #55535d;
+    --ink-faint:#86838f;
+    --gold:     #8a6d12;
+    --gold-dim: #d8c88c;
+    --break:    #a8352a;
+    --break-bg: #fbeeec;
+    --ask:      #8a6413;
+    --ask-bg:   #fbf3e2;
+    --ok:       #38714f;
+    --shadow:   0 1px 0 rgba(0,0,0,.02), 0 10px 26px -20px rgba(0,0,0,.4);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 0;
+    padding-inline: 20px;
+    padding-block: 0 72px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 940px; margin: 0 auto; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  /* ── masthead ─────────────────────────────────────────────────── */
+  header.mast { padding-block: 56px 40px; border-bottom: 1px solid var(--line); }
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(34px, 6.5vw, 54px);
+    line-height: 1.02;
+    letter-spacing: -.025em;
+    margin: 14px 0 0;
+    text-wrap: balance;
+  }
+  .thesis {
+    font-size: clamp(17px, 2.4vw, 20px);
+    line-height: 1.5;
+    color: var(--ink-dim);
+    max-width: 60ch;
+    margin: 18px 0 0;
+  }
+  .thesis b { color: var(--ink); font-weight: 600; }
+  .mast-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 22px;
+    margin-top: 26px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-faint);
+  }
+  .mast-meta span b { color: var(--ink-dim); font-weight: 500; }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(22px, 3.4vw, 28px);
+    letter-spacing: -.018em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  section { padding-block: 52px; border-bottom: 1px solid var(--line-soft); }
+  .sec-head { margin-bottom: 30px; }
+  .sec-head p { color: var(--ink-dim); max-width: 64ch; margin: 10px 0 0; }
+
+  /* ── the spine ────────────────────────────────────────────────── */
+  .spine { display: flex; flex-direction: column; gap: 0; }
+  .station { display: grid; grid-template-columns: 62px 1fr; gap: 0; }
+  .rail { position: relative; }
+  .rail::before {
+    content: ""; position: absolute; left: 17px; top: 0; bottom: 0;
+    width: 2px; background: var(--gold-dim);
+  }
+  .station:first-child .rail::before { top: 18px; }
+  .station:last-child .rail::before { bottom: auto; height: 18px; }
+  .dot {
+    position: absolute; left: 6px; top: 8px;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--ground); border: 2px solid var(--gold);
+    color: var(--gold);
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    display: grid; place-items: center;
+  }
+  .station.missing .dot { border-color: var(--break); color: var(--break); border-style: dashed; }
+  .st-body { padding: 0 0 34px 8px; }
+  .st-title {
+    font-family: var(--display); font-weight: 600;
+    font-size: 19px; letter-spacing: -.01em; margin: 6px 0 0;
+  }
+  .st-lede { color: var(--ink-dim); margin: 6px 0 0; max-width: 62ch; }
+
+  .beats {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1px; margin-top: 16px;
+    background: var(--line-soft);
+    border: 1px solid var(--line-soft);
+    border-radius: 3px; overflow: hidden;
+  }
+  .beat { background: var(--surface); padding: 13px 15px; }
+  .beat dt {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-faint); margin-bottom: 5px;
+  }
+  .beat dd { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+  .beat code {
+    font-family: var(--mono); font-size: 12px; color: var(--gold);
+    background: none; padding: 0;
+  }
+
+  .today {
+    margin-top: 14px; padding: 13px 15px;
+    border-left: 2px solid var(--break);
+    background: var(--break-bg);
+    border-radius: 0 3px 3px 0;
+    font-size: 13.5px; line-height: 1.55;
+  }
+  .today .tag {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--break);
+    display: block; margin-bottom: 4px;
+  }
+  .today.works { border-left-color: var(--ok); background: transparent; padding-left: 15px; }
+  .today.works .tag { color: var(--ok); }
+
+  /* ── fallback lane ────────────────────────────────────────────── */
+  .lane {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 4px; padding: 22px 24px; box-shadow: var(--shadow);
+  }
+  .lane h3 {
+    font-family: var(--display); font-weight: 600; font-size: 17px;
+    margin: 8px 0 0; letter-spacing: -.01em;
+  }
+  .lane p { color: var(--ink-dim); margin: 8px 0 0; max-width: 62ch; }
+  .misses {
+    display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px;
+  }
+  .miss {
+    font-family: var(--mono); font-size: 12px;
+    padding: 4px 9px; border: 1px dashed var(--line);
+    border-radius: 3px; color: var(--ink-dim);
+  }
+
+  /* ── layers ───────────────────────────────────────────────────── */
+  .layers { display: flex; flex-direction: column; gap: 12px; }
+  .layer {
+    display: grid; grid-template-columns: 150px 1fr;
+    gap: 18px; align-items: start;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 4px; padding: 18px 20px;
+  }
+  .layer.dead { border-color: var(--break); }
+  .layer .lname {
+    font-family: var(--mono); font-size: 12.5px; color: var(--gold);
+    word-break: break-word; line-height: 1.5;
+  }
+  .layer.dead .lname { color: var(--break); }
+  .layer .lrole {
+    font-family: var(--display); font-weight: 600; font-size: 15px;
+    margin: 0 0 4px;
+  }
+  .layer p { margin: 0; color: var(--ink-dim); font-size: 13.5px; max-width: 64ch; }
+  .layer .scope {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-faint); display: block; margin-top: 6px;
+  }
+
+  /* ── breaks table ─────────────────────────────────────────────── */
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 13.5px; }
+  th {
+    text-align: left; font-family: var(--mono); font-weight: 500;
+    font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--ink-faint); padding: 0 14px 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  td { padding: 13px 14px 13px 0; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  td:last-child, th:last-child { padding-right: 0; }
+  tbody tr:last-child td { border-bottom: none; }
+  .where {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--ink-faint); white-space: nowrap;
+  }
+  .cost { color: var(--ink-dim); }
+
+  /* ── decisions ────────────────────────────────────────────────── */
+  .asks { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .ask {
+    background: var(--surface); border: 1px solid var(--line);
+    border-top: 2px solid var(--ask);
+    border-radius: 3px; padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 9px;
+  }
+  .ask .q { font-family: var(--display); font-weight: 600; font-size: 15.5px; line-height: 1.35; margin: 0; }
+  .ask .why { margin: 0; font-size: 13.5px; color: var(--ink-dim); }
+  .ask .rec {
+    margin: 0; font-size: 13.5px; padding: 10px 12px;
+    background: var(--ask-bg); border-radius: 3px; color: var(--ink);
+  }
+  .ask .rec b {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ask);
+    display: block; margin-bottom: 3px; font-weight: 500;
+  }
+
+  .closing { padding-block: 44px 0; border-bottom: none; }
+  .closing p { color: var(--ink-dim); max-width: 64ch; }
+  .closing p b { color: var(--ink); font-weight: 600; }
+
+  code.t {
+    font-family: var(--mono); font-size: .92em; color: var(--gold);
+  }
+  .layer.dead code.t, .today code.t { color: inherit; }
+
+  @media (max-width: 720px) {
+    .beats { grid-template-columns: 1fr; }
+    .layer { grid-template-columns: 1fr; gap: 10px; }
+    .station { grid-template-columns: 44px 1fr; }
+    .rail::before { left: 11px; }
+    .dot { left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="page">
+
+  <header class="mast">
+    <div class="eyebrow">VARA · TENANT JOURNEY · v1 DRAFT</div>
+    <h1>One JD from live</h1>
+    <p class="thesis">
+      A hiring manager at a SaaS company has a role to fill. They are not here to
+      teach Vara — they want candidates screened by this afternoon. Every step
+      between them and that is <b>cost</b>, and the research we did on their
+      industry only pays off if it arrives as <b>content they can accept</b>,
+      not as better questions.
+    </p>
+    <div class="mast-meta">
+      <span><b>Actor</b> hiring manager · first JD</span>
+      <span><b>Industry</b> Technology &amp; SaaS</span>
+      <span><b>Families known</b> 11 + Other</span>
+      <span><b>Drawn</b> 17-Sep-2026</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head">
+      <h2>The journey</h2>
+      <p>
+        Five stations. Under each: what the tenant does, what Vara does, what the
+        system writes — and, in red, where today's build departs from it.
+      </p>
+    </div>
+
+    <div class="spine">
+
+      <article class="station">
+        <div class="rail"><div class="dot">1</div></div>
+        <div class="st-body">
+          <h3 class="st-title">Name the role</h3>
+          <p class="st-lede">
+            One question, and it is the only one that has to be asked. A manager
+            has a title in their head, not a role family — the family is Vara's
+            filing decision, not theirs.
+          </p>
+          <dl class="beats">
+            <div class="beat"><dt>Tenant</dt><dd>Types <em>full stack developer</em></dd></div>
+            <div class="beat"><dt>Vara</dt><dd>Matches it against every published family for this industry. Deterministic, no model call, one round trip.</dd></div>
+            <div class="beat"><dt>System</dt><dd>Reads <code>vani_domain_pack</code></dd></div>
+          </dl>
+          <div class="today">
+            <span class="tag">Today</span>
+            The doorway asks <em>family → title</em>; JD Studio asks <em>title → family</em>.
+            The same two facts, two roads, answered twice. And the title changes
+            nothing downstream: <em>Junior Software Engineer</em> and
+            <em>Principal Software Engineer</em> produce a byte-identical scoring
+            contract, because the family has one starter shape for every level.
+          </div>
+        </div>
+      </article>
+
+      <article class="station missing">
+        <div class="rail"><div class="dot">2</div></div>
+        <div class="st-body">
+          <h3 class="st-title">Vara hands over a finished draft</h3>
+          <p class="st-lede">
+            Not a chat. A document, already filled, with every field marked where
+            it came from. <em>&ldquo;This is how Technology &amp; SaaS companies
+            hire this role. Yours?&rdquo;</em>
+          </p>
+          <dl class="beats">
+            <div class="beat"><dt>Tenant</dt><dd>Reads a complete JD</dd></div>
+            <div class="beat"><dt>Vara</dt><dd>Summary, 5 must-haves at 29/22/21/14/14, 2 knockouts, threshold 30 — the matched pack, whole</dd></div>
+            <div class="beat"><dt>System</dt><dd>Writes nothing yet</dd></div>
+          </dl>
+          <div class="today">
+            <span class="tag">Today · this station does not exist</span>
+            Vara says <em>&ldquo;Matched Full Stack Developer in Software
+            Development, researched for Technology &amp; SaaS&rdquo;</em> and the
+            panel beside it says <em>emerges as you answer</em>. She holds five
+            weighted must-haves and shows none of them, then asks five questions
+            to extract what she already has. If the tenant answers questions
+            anyway, the 20-minute research bought nothing — the generic starter
+            packs would have served identically.
+          </div>
+        </div>
+      </article>
+
+      <article class="station">
+        <div class="rail"><div class="dot">3</div></div>
+        <div class="st-body">
+          <h3 class="st-title">Accept, or adapt</h3>
+          <p class="st-lede">
+            Accept is one click. Adapt is editing a document they can already
+            read — drop a must-have, move a weight, delete the knockout that
+            doesn't apply, add one of their own. Reacting to a proposal, not
+            being interviewed.
+          </p>
+          <dl class="beats">
+            <div class="beat"><dt>Tenant</dt><dd>Keeps it, or changes any line</dd></div>
+            <div class="beat"><dt>Vara</dt><dd>Provenance flips per field: <em>industry playbook</em> → <em>you changed this</em></dd></div>
+            <div class="beat"><dt>System</dt><dd>Still nothing committed</dd></div>
+          </dl>
+          <div class="today">
+            <span class="tag">Today</span>
+            Description, employment type, work mode and locations are editable.
+            <b>Must-haves and weights are not editable at all</b> — they are
+            whatever chips were clicked, in the order they were clicked. There is
+            no way to change 29% to 40%, or to remove one after adding it.
+          </div>
+        </div>
+      </article>
+
+      <article class="station">
+        <div class="rail"><div class="dot">4</div></div>
+        <div class="st-body">
+          <h3 class="st-title">Publish</h3>
+          <p class="st-lede">
+            The live moment. The JD becomes theirs, and what they kept becomes
+            their family's default.
+          </p>
+          <dl class="beats">
+            <div class="beat"><dt>Tenant</dt><dd>One button</dd></div>
+            <div class="beat"><dt>Vara</dt><dd>Goes live for the workspace; the role starts listing in the embed</dd></div>
+            <div class="beat"><dt>System</dt><dd><code>vara_jd</code> + immutable <code>vara_jd_version</code> + <code>vani_role_family</code> upsert — one transaction, one advisory lock</dd></div>
+          </dl>
+          <div class="today works">
+            <span class="tag">Today · holds</span>
+            This station is solid. Idempotency key, advisory lock, all-or-nothing
+            transaction, 60-second replay window. It is the one part of the
+            journey that does what it says.
+          </div>
+        </div>
+      </article>
+
+      <article class="station missing">
+        <div class="rail"><div class="dot">5</div></div>
+        <div class="st-body">
+          <h3 class="st-title">The second JD is cheaper than the first</h3>
+          <p class="st-lede">
+            This is what makes the product compound. The next role in that family
+            opens from <em>their</em> shape — the weights they moved, the knockout
+            they cut — not from the platform's.
+          </p>
+          <dl class="beats">
+            <div class="beat"><dt>Tenant</dt><dd>Names a second role in the same family</dd></div>
+            <div class="beat"><dt>Vara</dt><dd>Opens from what they decided last time, and says so</dd></div>
+            <div class="beat"><dt>System</dt><dd>Reads <code>vara_family_profile</code></dd></div>
+          </dl>
+          <div class="today">
+            <span class="tag">Today · this station does not exist</span>
+            The doorway reads <b>only</b> <code class="t">vani_domain_pack</code>.
+            A tenant who cut two must-haves last month sees the platform version
+            again next month. A tenant who used <em>Other</em> and typed
+            <em>Depot Operations</em> gets a family row — which then vanishes from
+            the picker, because nothing reads that table back.
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>The other lane: Vara doesn't know this role</h2>
+      <p>
+        Roughly a third of real titles match nothing. That is not a failure state
+        — it is the honest half of the product, and it is already built.
+      </p>
+    </div>
+    <div class="lane">
+      <div class="eyebrow">NO MATCH · BUILT AND VERIFIED</div>
+      <h3>Ask, suggest nothing, file it as theirs</h3>
+      <p>
+        Vara says she has no playbook for it, asks the structural questions every
+        JD needs — summary, must-haves strongest-first, hard gates, threshold —
+        and offers <b>no capability chips at all</b>, because any chip here would
+        be invented. The answers create the tenant's first family in that space.
+      </p>
+      <p>
+        Station 2 has nothing to hand over, so the conversation is right here and
+        only here. Making it the default road for matched roles is the error this
+        map corrects.
+      </p>
+      <div class="misses">
+        <span class="miss">SRE</span>
+        <span class="miss">Site Reliability Engineer</span>
+        <span class="miss">QA Engineer</span>
+        <span class="miss">Engineering Manager</span>
+        <span class="miss">Depot Supervisor</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Three layers, and one of them is write-only</h2>
+      <p>
+        The journey fails at stations 2 and 5 for the same structural reason: the
+        middle layer is written and never read.
+      </p>
+    </div>
+    <div class="layers">
+      <div class="layer">
+        <div class="lname">vani_domain_pack</div>
+        <div>
+          <p class="lrole">The proposal</p>
+          <p>
+            What an industry hires for. 11 rows for <code class="t">technology-saas</code>
+            — 3 hand-seeded in August, 8 researched and published today. Append-only,
+            versioned; a researched family lands as the next version of the family
+            already there rather than beside it.
+          </p>
+          <span class="scope">Platform · shared by every tenant in the industry</span>
+        </div>
+      </div>
+      <div class="layer dead">
+        <div class="lname">vani_role_family<br>vara_family_profile</div>
+        <div>
+          <p class="lrole">The decision — currently a dead end</p>
+          <p>
+            What <em>this</em> tenant settled on. Written on every publish. Read by
+            nothing. This is the layer that should make the second JD cheaper than
+            the first, and the one that makes &ldquo;save it to my space&rdquo;
+            mean something.
+          </p>
+          <span class="scope">Tenant · written on publish, never read back</span>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="lname">vara_jd_version</div>
+        <div>
+          <p class="lrole">What is live</p>
+          <p>
+            The scoring contract candidates are actually measured against. Immutable
+            and append-only, so a JD that scored someone in March can still be read
+            in September.
+          </p>
+          <span class="scope">Per JD · immutable</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>What breaks today</h2>
+      <p>Seven, in the order they cost the tenant something.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Break</th><th>Where</th><th>What it costs</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>A matched pack is hidden behind five questions</td>
+            <td class="where">UI</td>
+            <td class="cost">The whole value of enrichment. Station 2 doesn't exist.</td>
+          </tr>
+          <tr>
+            <td>Tenant's own families are written, never read</td>
+            <td class="where">Architecture</td>
+            <td class="cost">No compounding. Every JD starts from the platform again.</td>
+          </tr>
+          <tr>
+            <td>Must-haves and weights cannot be edited</td>
+            <td class="where">UI</td>
+            <td class="cost">&ldquo;Adapt&rdquo; is not actually available — only accept or restart.</td>
+          </tr>
+          <tr>
+            <td>Family asked before title in one screen, after it in the next</td>
+            <td class="where">UI</td>
+            <td class="cost">The same two facts answered twice, in conflicting orders.</td>
+          </tr>
+          <tr>
+            <td>Title drives nothing — seniority is invisible</td>
+            <td class="where">Model</td>
+            <td class="cost">A Junior and a Principal are screened identically.</td>
+          </tr>
+          <tr>
+            <td>Research takes 20+ min, then waits on a Vikuna operator</td>
+            <td class="where">Process</td>
+            <td class="cost">The first tenant in any industry gets nothing from their own run.</td>
+          </tr>
+          <tr>
+            <td><code class="t">gt_events</code> has no stale-row reclaim</td>
+            <td class="where">Backend</td>
+            <td class="cost">Every deploy silently orphans in-flight work. Needs two columns.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Five decisions before any more code</h2>
+      <p>
+        Each carries a recommendation. None of them is mine to take — they all
+        change what the schema stores or what the tenant is asked.
+      </p>
+    </div>
+    <div class="asks">
+
+      <div class="ask">
+        <p class="q">Title first, or family first?</p>
+        <p class="why">
+          Both screens exist and they disagree. One order has to win, and the
+          loser becomes an escape hatch.
+        </p>
+        <p class="rec"><b>Recommend</b>
+          Title first. A manager thinks in titles; the family is Vara's filing
+          decision. The family list becomes <em>&ldquo;not that one? here are all
+          11&rdquo;</em>.
+        </p>
+      </div>
+
+      <div class="ask">
+        <p class="q">Is seniority a modifier, or a pack per level?</p>
+        <p class="why">
+          Same behavioural signals, different bar. Right now nothing in the system
+          knows Junior from Principal.
+        </p>
+        <p class="rec"><b>Recommend</b>
+          A modifier on one family shape — years on the top must-have, a shifted
+          threshold. 8 families × 6 levels is 48 packs nobody will maintain.
+        </p>
+      </div>
+
+      <div class="ask">
+        <p class="q">When does a tenant's shape supersede the platform's?</p>
+        <p class="why">
+          On first publish, silently? Or on an explicit <em>&ldquo;make this my
+          default&rdquo;</em>?
+        </p>
+        <p class="rec"><b>Recommend</b>
+          On first publish, but <em>said out loud</em> — &ldquo;next Full Stack role
+          starts from this&rdquo; — so it is a visible consequence, not a surprise.
+        </p>
+      </div>
+
+      <div class="ask">
+        <p class="q">Must every tenant wait on Vikuna review?</p>
+        <p class="why">
+          A pack is platform-wide, so review is right. But it means a tenant who
+          triggers a 20-minute run gets nothing from it.
+        </p>
+        <p class="rec"><b>Recommend</b>
+          Publish to the requesting tenant immediately; hold platform-wide
+          release for review. They paid the wait; they should get the answer.
+        </p>
+      </div>
+
+      <div class="ask">
+        <p class="q"><code class="t">gt_events</code>: two columns, yes or no?</p>
+        <p class="why">
+          <code class="t">started_at</code> for a claim timeout,
+          <code class="t">attempts</code> for a retry cap. Without them a dying
+          worker orphans its events permanently — which is what happened to run 92.
+        </p>
+        <p class="rec"><b>Recommend</b>
+          Yes. Every workaround is worse: reusing <code class="t">processed_at</code>
+          makes the column's name a lie, and <code class="t">attempts</code> in
+          JSONB is a schema change in disguise.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="closing">
+    <h2>What this map changes</h2>
+    <p>
+      <b>The conversation stops being the road and becomes the detour.</b> Matched
+      roles get a document to accept; unmatched roles get the questions. The chip-by-chip
+      interrogation of a pack Vara already holds — <code class="t">fromStarter</code> —
+      goes away. The matcher stays: its job is choosing which draft to hand over,
+      not which questions to ask. The JD panel stays: it is already the right
+      surface, it is just being starved.
+    </p>
+    <p>
+      <b>And the middle layer starts being read.</b> That single change is what turns
+      the fifth station on, and it is what &ldquo;save it to his space&rdquo; has
+      meant all along.
+    </p>
+  </section>
+
+</div>
