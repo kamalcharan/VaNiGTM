@@ -205,6 +205,39 @@ const MOCK_MATCH_FAMILY = {
 
 const MOCK_TENANT_INDUSTRY = 'Technology & SaaS';
 
+/** The catalogue the take step reads. Two families is enough to exercise
+ *  picked / not-picked / already-mine without turning the mock into a fixture
+ *  nobody maintains. */
+const MOCK_CATALOGUE_FAMILIES = [
+  {
+    pack_code: 'talent-technology-saas-software-development', pack_version: 1,
+    name: 'Software Development',
+    hint: 'Core development roles for building and maintaining software',
+    suggested_titles: ['Senior Software Engineer', 'Full Stack Developer', 'Software Developer'],
+    starter: MOCK_MATCH_FAMILY.starter,
+    provenance: { researched: true, review_state: 'unreviewed', requested_by: null, at: '2026-09-17T06:41:18Z' },
+  },
+  {
+    pack_code: 'talent-technology-saas-backend-eng', pack_version: 1,
+    name: 'Backend Engineering',
+    hint: "Vikuna's hand-written starter — never researched for anyone",
+    suggested_titles: ['Senior Backend Engineer', 'Backend Tech Lead'],
+    starter: {
+      role_summary_hint: 'Ships production services end to end',
+      musthaves: [
+        { name: 'TypeScript / Node.js in production', weight: 60 },
+        { name: 'PostgreSQL — row-level security, migrations', weight: 40 },
+      ],
+      knockouts: [] as { label: string; rule: string }[],
+      threshold: 30,
+    },
+    provenance: { researched: false, review_state: null, requested_by: null, at: null },
+  },
+];
+/** Families this mock tenant has taken. Mutated by take_families, exactly as
+ *  the real write is: idempotent, so a repeat lands under `already`. */
+const MOCK_MINE = new Set<string>();
+
 /**
  * Reads. They take the params as well — `match_title` is a read whose whole
  * answer depends on what was typed, and splitting it into WRITE_HANDLERS just
@@ -247,6 +280,31 @@ const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
   // backend/server/api matches one fixture family, everything else returns
   // matched:false, which is the state that proves the composer still works
   // with nothing suggested.
+  'domain-pack-skill.catalogue': () => {
+    const families = MOCK_CATALOGUE_FAMILIES.map((f) => ({ ...f, mine: MOCK_MINE.has(f.name) }));
+    return {
+      industry: MOCK_TENANT_INDUSTRY, domain: 'technology-saas', families,
+      mine: families.filter((f) => f.mine).length,
+      detail: `${families.length} role families known for ${MOCK_TENANT_INDUSTRY}.`,
+    };
+  },
+
+  'domain-pack-skill.my_families': () => {
+    const families = MOCK_CATALOGUE_FAMILIES.filter((f) => MOCK_MINE.has(f.name)).map((f) => ({
+      family_id: `mock-${f.pack_code}`, name: f.name, hint: f.hint, version: 1,
+      musthaves: f.starter.musthaves ?? [], knockouts: f.starter.knockouts ?? [],
+      role_summary_hint: f.starter.role_summary_hint ?? null, band_hint: null,
+      threshold: f.starter.threshold ?? 30, axis_weights: null,
+      from_pack: { code: f.pack_code, version: f.pack_version }, edited: false,
+    }));
+    return {
+      families,
+      detail: families.length
+        ? `${families.length} famil${families.length === 1 ? 'y' : 'ies'} in your workspace.`
+        : 'You have not taken any role families yet. Take one from your industry, or shape a role from scratch.',
+    };
+  },
+
   'domain-pack-skill.match_title': (p) => {
     const title = String(p.title ?? '').trim();
     if (title.length < 2) {
@@ -324,6 +382,30 @@ const WRITE_HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = 
       keyHint: key ? `${key.slice(0, 4)}…${key.slice(-4)}` : (MOCK_PROVIDER?.keyHint ?? null),
     };
     return { provider: MOCK_PROVIDER, posture: 'byok' };
+  },
+
+  'domain-pack-skill.take_families': (p) => {
+    const codes = Array.isArray(p.codes) ? p.codes.map(String) : [];
+    if (!codes.length) return { taken: [], already: [], reason: 'NO_CODES', detail: 'Pick at least one family.' };
+    const unknown = codes.filter((c) => !MOCK_CATALOGUE_FAMILIES.some((f) => f.pack_code === c));
+    if (unknown.length) {
+      // Whole batch, like the server: taking three of four and reporting
+      // success is how a tenant ends up missing a family they believe in.
+      throw new Error(`Not a role family in ${MOCK_TENANT_INDUSTRY}: ${unknown.join(', ')}`);
+    }
+    const taken: { code: string; name: string }[] = [];
+    const already: { code: string; name: string }[] = [];
+    for (const c of codes) {
+      const f = MOCK_CATALOGUE_FAMILIES.find((x) => x.pack_code === c)!;
+      (MOCK_MINE.has(f.name) ? already : taken).push({ code: c, name: f.name });
+      MOCK_MINE.add(f.name);
+    }
+    return {
+      taken, already,
+      detail: taken.length
+        ? `${taken.length} famil${taken.length === 1 ? 'y is' : 'ies are'} now yours.`
+        : 'You already had all of those.',
+    };
   },
 
   'domain-pack-skill.request_research': () => {
