@@ -26,22 +26,59 @@ function normalise(raw: string): string {
     .replace(/:\d+$/, '');
 }
 
+/**
+ * Preview of the server's origin normalisation. Preview ONLY — the server
+ * re-does it and is the authority, and it refuses things this does not
+ * (plain http on a real host, credentials in the URL).
+ */
+function previewOrigin(raw: string): string {
+  const t = raw.trim();
+  if (!t) return '';
+  try {
+    const u = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(t) ? t : `https://${t}`);
+    return `${u.protocol.replace(':', '')}://${u.host.toLowerCase()}`;
+  } catch {
+    return '';
+  }
+}
+
 export default function DomainStep({ initial, save, isSaving }: StepScreenProps) {
   const [domain, setDomain] = useState((initial.domain as string) ?? '');
   const [purpose, setPurpose] = useState<string>((initial.purpose as string) ?? 'workspace');
+  const [origins, setOrigins] = useState(
+    Array.isArray(initial.embed_origins) ? (initial.embed_origins as string[]).join(', ') : '');
+  // Once the tenant edits the origin themselves, stop following the domain.
+  const [originsTouched, setOriginsTouched] = useState(Boolean(initial.embed_origins));
   const [error, setError] = useState('');
+
+  const host = normalise(domain);
+  const candidate = purpose === 'candidate';
+
+  // The suggestion tracks the domain until the tenant takes it over. It is a
+  // SUGGESTION IN AN EDITABLE FIELD, not a default applied behind their back:
+  // an embed origin is an allowlist entry, and the tenant reads this one and
+  // can change it before it is saved.
+  const suggested = host.includes('.') ? `https://${host}` : '';
+  const originValue = originsTouched ? origins : suggested;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (isSaving) return;
 
-    const host = normalise(domain);
     if (!host || !host.includes('.')) {
       setError('Enter the domain your workspace runs on, like app.example.com');
       return;
     }
+    const list = originValue.split(',').map((x) => x.trim()).filter(Boolean);
+    if (candidate && list.length === 0) {
+      // Vara's readiness checklist gates activation on this, so an empty one
+      // is not a smaller version of done — it is a workspace that can never
+      // go live, with nothing on this screen saying so.
+      setError('Vara needs at least one origin allowlisted before she can go live');
+      return;
+    }
     setError('');
-    await save({ domain: host, purpose });
+    await save({ domain: host, purpose, embed_origins: list });
   }
 
   const preview = normalise(domain);
@@ -71,6 +108,23 @@ export default function DomainStep({ initial, save, isSaving }: StepScreenProps)
         </div>
       </div>
 
+      {candidate && (
+        <div className={s.field}>
+          <label className={s.label} htmlFor="ob-origins">Where the widget is embedded</label>
+          <input id="ob-origins" className={s.input} value={originValue}
+            onChange={(e) => { setOriginsTouched(true); setOrigins(e.target.value); }}
+            placeholder="https://careers.example.com" spellCheck={false} disabled={isSaving} />
+          <div className={s.note} style={{ marginTop: 6 }}>
+            The allowlist for Vara&rsquo;s chat widget — only these sites may load it
+            under your name. Usually the careers site itself. Separate several with
+            commas; each must be <strong>https</strong>.
+            {previewOrigin(originValue) && previewOrigin(originValue) !== originValue.trim() && (
+              <> Will be saved as <strong>{previewOrigin(originValue)}</strong>.</>
+            )}
+          </div>
+        </div>
+      )}
+
       {error && <div className={s.err} role="alert"><span aria-hidden="true">⚠</span><span>{error}</span></div>}
 
       <div className={s.actions}>
@@ -91,6 +145,9 @@ export function DomainArtefact({ values, onReopen }: StepArtefactProps) {
         fields={[
           { label: 'Domain', value: values.domain as string },
           { label: 'Serves', value: values.purpose === 'candidate' ? 'Candidates' : 'Workspace' },
+          ...(Array.isArray(values.embed_origins) && (values.embed_origins as string[]).length
+            ? [{ label: 'Widget allowed on', value: (values.embed_origins as string[]).join(', ') }]
+            : []),
         ]}
       />
     </ArtefactSection>

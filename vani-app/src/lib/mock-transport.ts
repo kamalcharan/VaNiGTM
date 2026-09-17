@@ -99,9 +99,21 @@ const RUNS: RunRow[] = [
  */
 const ONBOARDING_DONE = new Set<string>();
 
+/**
+ * Must mirror the ENABLED steps of the server's `vani` lane
+ * (VaNiGTM `backend/src/onboarding/lanes.ts`) and the client catalog in
+ * `src/skills/onboarding/lanes/product.ts`. Three catalogs, and nothing keeps
+ * them in sync.
+ *
+ * `vani:domain` was missing here while being enabled in both of the others, so
+ * mock mode — the mode that exists for looking at screens without a backend —
+ * could not reach the domain step at all. That went unnoticed because a
+ * catalog that stops early looks exactly like onboarding being finished.
+ */
 const ONBOARDING_CATALOG = [
   { step_id: 'user_profile', title: 'Your profile', summary: 'Your name and how VaNi should reach you.', story: 'VN-11' },
   { step_id: 'business_profile', title: 'Your organisation', summary: 'What the organisation is and which industry it works in.', story: 'VN-10' },
+  { step_id: 'vani:domain', title: 'Your domain', summary: 'Where your workspace lives, and where Vara\'s widget may load.', story: 'VN-10' },
 ];
 
 function onboardingStatus() {
