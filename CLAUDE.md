@@ -696,37 +696,57 @@ Commit that work before the next rebuild, or it is lost — the pre-rebuild imag
 was preserved as `vikuna/vani-backend:pre-onboarding-20260817` on the VPS, which
 is the only remaining copy.
 
-### The queue has no stale-row reclaim — a real bug, still open
+### The queue reclaims orphans now — FIXED 2026-09-17 (migration 253)
 
-`agent-core/event.store.ts` claims work with
-`UPDATE ... SET status='processing' WHERE status='pending' ... FOR UPDATE SKIP LOCKED`.
-Nothing ever returns a stale `processing` row to `pending`. A worker that dies
-mid-run orphans its in-flight events permanently — 9 rows were stuck this way on
-2026-08-17 (8 `ACCOUNT_RESEARCH_REQUESTED`, 1 `URL_SUBMITTED`).
+`gt_events` grew `started_at` and `attempts` (approved by Charan). The claim
+stamps both; `reclaimStaleEvents()` runs on every poll and returns a row whose
+claim has gone stale to `pending`, or fails it once `attempts` hits the cap so
+a poison event cannot loop.
 
-This one matters beyond tidiness: any UI that blocks on an event completing can
-trap a user forever. Fix before building on the queue — a `started_at` timeout
-back to `pending`, with a retry cap so a poison event cannot loop.
+`started_at` doubles as a HEARTBEAT: `worker.ts` bumps it every 30s while a
+handler runs. That is what keeps `WORKER_STALE_CLAIM` at 2 minutes. A plain
+timeout would have to exceed the slowest agent — enrichment is 20+ minutes —
+so a worker that died after ten seconds would have sat undetected for half an
+hour.
 
-**Sharper now that the worker is confirmed running and deploys restart it
-(2026-09-16).** A restart mid-run is not an edge case, it is every deploy: each
-one orphans whatever was `processing`. The rows do not retry and nothing reports
-them, so the loss is silent.
+Migration 253 also ADOPTS rows stranded before it existed, stamping them with
+`created_at` rather than `now()` so they are immediately stale rather than
+looking freshly claimed.
 
-**It cannot be fixed without a schema change, and that needs approval.**
-`gt_events` (migration 181) has no claim timestamp and no attempt counter —
-the columns are id, tenant_id, event_type, source_type, source_id, payload,
-status, processed_at, error, created_at. `status` flips to `processing`
-stamping nothing. So a timeout needs `started_at timestamptz` and a retry cap
-needs `attempts int` — two columns, raised as a request, not assumed.
+Tunables: `WORKER_STALE_CLAIM` (default `2 minutes`), `WORKER_MAX_ATTEMPTS`
+(3), `WORKER_HEARTBEAT_MS` (30000).
 
-The workarounds are all worse and none should be taken:
-- Reusing `processed_at` as the claim stamp overloads a column whose name then
-  lies on every unprocessed row.
-- Putting `attempts` in `payload` is structured data smuggled into JSONB —
-  explicitly forbidden repo-wide.
-- Timing out on `created_at` conflates "claimed long ago" with "queued long
-  ago", so a backlog would reclaim rows a healthy worker is still running.
+### Found while fixing it: `WHERE id IN (SELECT … LIMIT n)` does not limit
+
+The claim had always been
+
+```sql
+UPDATE gt_events SET status='processing'
+ WHERE id IN (SELECT id FROM gt_events WHERE status='pending'
+              ORDER BY created_at LIMIT $1 FOR UPDATE SKIP LOCKED)
+```
+
+Postgres plans that sublink as a **Nested Loop Semi Join** and re-runs the
+LIMIT subquery per outer row, so EVERY pending event is claimed. `LIMIT 1`
+against three pending rows claimed all three — reproduced, and visible in
+`EXPLAIN`.
+
+So **`WORKER_BATCH_SIZE` was never respected**, and `processEvent` is
+fire-and-forget: twenty queued events meant twenty agents running at once,
+each holding an LLM call against a model that does ~12 tokens/sec.
+
+The fix is a CTE, which is a genuine optimisation fence — it runs once and the
+UPDATE joins its result. Both claim sites (`event.store.ts` and the
+`PostgresEventQueue` in `worker.ts`) carry it. **Never write the IN form.**
+
+### Tenant-built role families are NOT harvested (user ruling, 2026-09-17)
+
+A tenant who builds a family from scratch owns it, full stop. There is no
+feedback path to Vikuna and none should be built — "feedback to vikuna might
+be offline". If Vikuna wants to know that six tenants independently invented
+"SRE", that is an operator running a query against `vani_role_family` where
+the active config has no `from_pack`. Data you already have, looked at by a
+person. Not a pipeline, not a consent surface, no code.
 
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the

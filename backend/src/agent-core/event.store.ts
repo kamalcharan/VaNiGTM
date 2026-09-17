@@ -104,20 +104,116 @@ export async function pollPendingEvents(
   pool: Pool,
   limit = 10,
 ): Promise<GTEvent[]> {
+  // The CTE form, NOT `WHERE id IN (SELECT ... LIMIT n)`. That reads as
+  // though it claims n rows and does not: Postgres plans the sublink as a
+  // Nested Loop Semi Join and re-runs the LIMIT subquery per outer row, so
+  // EVERY pending event is claimed. `LIMIT 1` against three pending rows
+  // claimed all three — verified with EXPLAIN, 2026-09-17.
+  //
+  // WORKER_BATCH_SIZE has therefore never been respected. Since
+  // processEvent is fire-and-forget, twenty queued events meant twenty
+  // agents running at once, each holding an LLM call. A CTE is a genuine
+  // optimisation fence: it runs once, and the UPDATE joins its result.
   const result = await pool.query<GTEvent>(
-    `UPDATE gt_events
-        SET status = 'processing'
-      WHERE id IN (
-        SELECT id FROM gt_events
-         WHERE status = 'pending'
-         ORDER BY created_at ASC
-         LIMIT $1
-         FOR UPDATE SKIP LOCKED
-      )
-      RETURNING *`,
+    `WITH claimed AS (
+       SELECT id FROM gt_events
+        WHERE status = 'pending'
+        ORDER BY created_at ASC
+        LIMIT $1
+        FOR UPDATE SKIP LOCKED
+     )
+     UPDATE gt_events e
+        SET status     = 'processing',
+            started_at = now(),
+            attempts   = e.attempts + 1
+       FROM claimed c
+      WHERE e.id = c.id
+      RETURNING e.*`,
     [limit],
   );
   return result.rows;
+}
+
+/* ── Orphan reclaim ──────────────────────────────────────────────────────── */
+
+/**
+ * How long a claimed row may go without a heartbeat before it is presumed
+ * orphaned. Short on purpose: `heartbeat()` bumps `started_at` while a long
+ * agent runs, so this is "how long since the worker last said it was alive",
+ * not "how long a job may legitimately take". A global timeout of the second
+ * kind would have to exceed the 20+ minute enrichment run, which would mean a
+ * job that died after ten seconds also waited half an hour.
+ */
+const STALE_CLAIM = process.env.WORKER_STALE_CLAIM ?? '2 minutes';
+
+/** Claims before an event is declared poison and failed rather than retried. */
+const MAX_ATTEMPTS = parseInt(process.env.WORKER_MAX_ATTEMPTS ?? '3', 10);
+
+/**
+ * Return orphaned events to the queue, and fail the ones that keep killing it.
+ *
+ * The claim UPDATE commits immediately, so between it and `resolveEvent` the
+ * only record that work is in flight is the worker's memory. A worker that
+ * dies in that window — a deploy, a crash — leaves the row `processing`
+ * forever, because the poll only ever looks at `pending`. Nine rows were
+ * stranded this way on 2026-08-17 and nothing reported it: `processing` is a
+ * legitimate state, and before migration 253 nothing recorded when it began.
+ *
+ * Two outcomes, and the second is why `attempts` exists. An event under the
+ * cap goes back to `pending` and is retried. One at or over it is marked
+ * `failed` with a reason — otherwise an event that kills the worker is
+ * reclaimed, kills it again, and loops until someone notices.
+ *
+ * Runs on every poll. Cheap: the WHERE matches
+ * `gt_events_stale_claim_idx` exactly, and returns nothing on a healthy queue.
+ */
+export async function reclaimStaleEvents(pool: Pool): Promise<{
+  requeued: number; failed: number;
+}> {
+  const stale = `started_at IS NOT NULL AND started_at < now() - interval '${STALE_CLAIM}'`;
+
+  const dead = await pool.query(
+    `UPDATE gt_events
+        SET status = 'failed', processed_at = now(),
+            error = 'WORKER_ORPHANED: claimed ' || attempts
+                    || ' times and never finished — the worker died mid-run each time'
+      WHERE status = 'processing' AND ${stale} AND attempts >= $1
+      RETURNING id`,
+    [MAX_ATTEMPTS],
+  );
+
+  const back = await pool.query(
+    `UPDATE gt_events
+        SET status = 'pending', started_at = NULL
+      WHERE status = 'processing' AND ${stale} AND attempts < $1
+      RETURNING id`,
+    [MAX_ATTEMPTS],
+  );
+
+  // Never silent. A reclaim means work was lost and redone, which is worth a
+  // line in the log even though the queue recovers on its own.
+  if (dead.rowCount || back.rowCount) {
+    console.warn(
+      `[Queue] Reclaimed orphaned events: ${back.rowCount} requeued, `
+      + `${dead.rowCount} failed after ${MAX_ATTEMPTS} attempts`);
+  }
+  return { requeued: back.rowCount ?? 0, failed: dead.rowCount ?? 0 };
+}
+
+/**
+ * "Still alive." Bumps the claim stamp so a long-running agent is not mistaken
+ * for a dead worker.
+ *
+ * This is what keeps STALE_CLAIM short. Without it the threshold would have to
+ * be longer than the slowest agent, and every genuine crash would sit
+ * undetected for that long.
+ */
+export async function heartbeat(pool: Pool, eventId: string): Promise<void> {
+  await pool.query(
+    `UPDATE gt_events SET started_at = now()
+      WHERE id = $1 AND status = 'processing'`,
+    [eventId],
+  );
 }
 
 /* ── Resolve ─────────────────────────────────────────────────────────────── */

@@ -19,7 +19,7 @@
 import 'dotenv/config';
 import { Pool } from 'pg';
 import { createTenantDb } from '../db';
-import { emitEvent, type GTEvent } from './event.store';
+import { emitEvent, reclaimStaleEvents, heartbeat, type GTEvent } from './event.store';
 import { createRun, setStatus, appendStep } from './agent.runner';
 import { VaniAgent } from '../skills/vani-skill/vani.agent';
 import { IngestionAgent } from '../skills/ingestion-skill/ingestion.agent';
@@ -44,16 +44,35 @@ export class PostgresEventQueue implements EventQueue {
 
   async poll(limit: number): Promise<GTEvent[]> {
     const result = await this.pool.query<GTEvent>(
-      `UPDATE gt_events
-          SET status = 'processing'
-        WHERE id IN (
-          SELECT id FROM gt_events
-           WHERE status = 'pending'
-           ORDER BY created_at ASC
-           LIMIT $1
-           FOR UPDATE SKIP LOCKED
-        )
-        RETURNING *`,
+      // started_at and attempts are stamped IN the claim, so the row itself
+      // records that work began. Before migration 253 nothing did, and a
+      // worker that died mid-run left the row 'processing' forever —
+      // indistinguishable from one claimed a second ago.
+      //
+      // The CTE form, NOT `WHERE id IN (SELECT ... LIMIT n)`. That reads as
+      // though it claims n rows and does not: Postgres plans the sublink as a
+      // Nested Loop Semi Join and re-runs the LIMIT subquery per outer row, so
+      // EVERY pending event is claimed. `LIMIT 1` against three pending rows
+      // claimed all three — verified with EXPLAIN, 2026-09-17.
+      //
+      // WORKER_BATCH_SIZE has therefore never been respected. Since
+      // processEvent is fire-and-forget, twenty queued events meant twenty
+      // agents running at once, each holding an LLM call. A CTE is a genuine
+      // optimisation fence: it runs once, and the UPDATE joins its result.
+      `WITH claimed AS (
+         SELECT id FROM gt_events
+          WHERE status = 'pending'
+          ORDER BY created_at ASC
+          LIMIT $1
+          FOR UPDATE SKIP LOCKED
+       )
+       UPDATE gt_events e
+          SET status     = 'processing',
+              started_at = now(),
+              attempts   = e.attempts + 1
+         FROM claimed c
+        WHERE e.id = c.id
+        RETURNING e.*`,
       [limit],
     );
     return result.rows;
@@ -235,7 +254,19 @@ async function processEvent(
       status:        'ok',
     });
 
-    await handler(pool, event.tenant_id, event.payload, runId);
+    // Say "still alive" while the handler works. Enrichment runs 20+ minutes;
+    // without this the reclaim threshold would have to exceed the slowest
+    // agent, and a worker that died after ten seconds would sit undetected for
+    // that long. The interval is unref'd so it can never hold the process open.
+    const beat = setInterval(() => {
+      void heartbeat(pool, event.id).catch(() => { /* a missed beat is not fatal */ });
+    }, HEARTBEAT_MS);
+    beat.unref?.();
+    try {
+      await handler(pool, event.tenant_id, event.payload, runId);
+    } finally {
+      clearInterval(beat);
+    }
 
     // Handler may have transitioned the run to 'awaiting' (e.g. VaNi waiting
     // for the human to respond). Don't force a status here — let the agent
@@ -274,6 +305,9 @@ async function processEvent(
 /* ── Poll loop ──────────────────────────────────────────────────────────── */
 
 const POLL_INTERVAL_MS = parseInt(process.env.WORKER_POLL_MS   ?? '3000', 10);
+/** How often a running handler stamps "still alive". Must be comfortably
+ *  shorter than WORKER_STALE_CLAIM or a healthy long job reclaims itself. */
+const HEARTBEAT_MS     = parseInt(process.env.WORKER_HEARTBEAT_MS ?? '30000', 10);
 const POLL_BATCH_SIZE  = parseInt(process.env.WORKER_BATCH_SIZE ?? '5',    10);
 
 let pollTimeout: NodeJS.Timeout | null = null;
@@ -282,6 +316,11 @@ let stopping = false;
 async function pollOnce(pool: Pool, queue: EventQueue): Promise<void> {
   if (stopping) return;
   try {
+    // Before claiming anything new, return what a dead worker abandoned.
+    // Cheap on a healthy queue — the WHERE matches gt_events_stale_claim_idx
+    // and selects nothing.
+    await reclaimStaleEvents(pool);
+
     const events = await queue.poll(POLL_BATCH_SIZE);
     for (const event of events) {
       // Fire and forget — one failure must not block siblings.
