@@ -27,7 +27,7 @@ import {
   UX_DRAFT_KEY, EMPLOYMENT_TYPES, workModeLabel,
   type DraftJd, type PublishedFacts,
 } from '../mock-data';
-import { fromStarter, unknownRole, type JdStudioStep } from '../jd-script';
+import { unknownRole, type JdStudioStep } from '../jd-script';
 import { JdImport } from './JdImport';
 import u from '@/platform/shell/ui.module.css';
 import s from '../vara-onboarding.module.css';
@@ -57,6 +57,7 @@ type MatchResult =
       family_name: string;
       matched_title: string;
       researched: boolean;
+      pack_code: string;
       score: number;
       starter: StarterShape;
       detail: string;
@@ -174,17 +175,52 @@ function JdStudioInner() {
   // would put a role into a playbook it does not belong to.
   const family = familyParam || matched?.family_name || familyAsked.trim();
 
+  // A MATCHED role gets no conversation at all. Vara holds the shape, so she
+  // hands it over finished and asks for a verdict — accept it, or change a
+  // line. `fromStarter` used to turn that same shape into five questions, so a
+  // tenant who had already been told "researched for Technology & SaaS" was
+  // then asked to reassemble what Vara was holding. That is the screen this
+  // replaces, and it is why the research was buying nothing.
+  //
+  // The conversation survives for exactly one case: nothing matched. There
+  // Vara has nothing to hand over, so she has to ask — and suggests nothing,
+  // because anything offered there would be invented.
   const script = useMemo<JdStudioStep[]>(() => {
-    if (draft || !title) return [];          // a draft skips the conversation
-    if (matched) return fromStarter(matched.starter, matched.family_name, title);
+    if (draft || !title) return [];
+    if (matched) return [];                            // finished draft, no questions
     if (result || scratch) return unknownRole(title);  // knows nothing, or could not look
-    return [];                                          // still asking
+    return [];                                         // still asking
   }, [draft, title, matched, result, scratch]);
 
   const [stepIdx, setStepIdx] = useState(0);
   const [facts, setFacts] = useState<JdFacts>(EMPTY);
   const [transcript, setTranscript] = useState<{ who: 'v' | 'u'; text: string }[]>([]);
   const [typedDraft, setTypedDraft] = useState('');
+
+  // Hand the draft over the moment the match lands. Reading a filled JD and
+  // changing one number is a different act from answering five questions —
+  // faster, and far better at catching a wrong weight, because people are
+  // better at spotting a bad answer than at inventing a good one.
+  const handedOver = useRef<string | null>(null);
+  useEffect(() => {
+    if (draft || !matched) return;
+    const key = `${matched.pack_code}:${title}`;
+    if (handedOver.current === key) return;     // once per match, not per render
+    handedOver.current = key;
+    const st = matched.starter;
+    setFacts((f) => ({
+      ...f,
+      one_liner: st.role_summary_hint ?? f.one_liner,
+      musthaves: [...(st.musthaves ?? [])].sort((a, b) => b.weight - a.weight),
+      knockouts: st.knockouts ?? [],
+      threshold: typeof st.threshold === 'number' ? st.threshold : 30,
+    }));
+    setTranscript([{ who: 'v', text:
+      `Here is ${title} as ${matched.family_name} hires it — ${(st.musthaves ?? []).length} `
+      + `must-haves, handover at ${st.threshold ?? 30}%. Read it on the right. `
+      + `Publish it, or change anything first.` }]);
+  }, [draft, matched, title]);
+
 
   // The opening question can only be asked once the script exists, and the
   // script waits on the match. Seeding it in a useState initialiser — as this
@@ -419,7 +455,14 @@ function JdStudioInner() {
               ))}
             </div>
             <div className={s.chatFoot}>
-              {script.length === 0 && !draft ? (
+              {/* An empty script now means two different things: still looking
+                  up, or MATCHED and handed over with nothing to ask. Reading
+                  them the same is what made a finished draft say "checking". */}
+              {matched ? (
+                <div className={s.note} style={{ textAlign: 'center' }}>
+                  Nothing to answer — the JD on the right is yours to publish or change.
+                </div>
+              ) : script.length === 0 && !draft ? (
                 failed ? (
                   <div className={s.researchFailed}>
                     <div className={s.researchDetail}>
