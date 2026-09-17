@@ -88,6 +88,16 @@ h2{font-family:var(--display);font-weight:600;font-size:19px;letter-spacing:-.01
 .fam button.hit{all:unset;display:block;width:100%;cursor:pointer}
 .fam button.hit:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 .count{font-family:var(--mono);font-size:12.5px;color:var(--ink-dim)}
+.peek{border-top:1px solid var(--line-soft);margin-top:13px;padding-top:4px}
+.pk{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+.pk:last-of-type{border-bottom:0}
+.viewbtn{background:transparent;border:1px solid var(--line);color:var(--ink-dim);border-radius:3px;padding:4px 11px;font-size:12px;margin-top:10px}
+.viewbtn:hover{border-color:var(--new);color:var(--new)}
+.viewbtn[aria-expanded="true"]{border-color:var(--new);color:var(--new)}
+.later{border-left:2px solid var(--gold-dim);background:var(--sunk);padding:12px 15px;border-radius:0 3px 3px 0;margin-top:18px;font-size:13.5px;color:var(--ink-dim)}
+.later b{color:var(--ink);font-weight:600}
+.typed{display:flex;gap:9px;margin-top:10px;flex-wrap:wrap}
+.typed .ti{flex:1;min-width:220px}
 
 /* shape editor -------------------------------------------------------- */
 .mh{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line-soft)}
@@ -265,7 +275,8 @@ let S;
 function reset(keepScenario){
   const sc=keepScenario&&S?S.scenario:'researched';
   S={scenario:sc,step:0,t0:null,domain:'',job:null,jobStep:0,
-     picked:new Set(),shapes:{},cursor:null,title:'',jd:null,published:[],jdTime:{}};
+     picked:new Set(),expanded:new Set(),shapes:{},cursor:null,
+     title:'',jd:null,published:[],skipped:false};
   render();
 }
 const now=()=>S.t0?Math.floor((Date.now()-S.t0)/1000):0;
@@ -281,6 +292,32 @@ function take(f){
     knockouts:f.knockouts.map(k=>({...k,on:true})), threshold:f.threshold, touched:false};
 }
 function untake(n){ S.picked.delete(n); delete S.shapes[n]; }
+
+/* Weight for a must-have the tenant TYPED rather than took. Descending, and
+   Vara says so before asking, so the number is a stated rule they can see
+   rather than a guess made for them. */
+const typedWeight = i => [40,25,20,15][i] ?? 10;
+
+/* A read-only view of a family's shape — what you need to see BEFORE deciding
+   whether it is yours. Deciding blind is not deciding. */
+function shapeView(f){
+  const tot=f.musthaves.reduce((a,m)=>a+m.w,0);
+  return `<div class="peek">
+    <div class="subh" style="margin-top:0">Must-haves · Vara scores these · ${tot}%</div>
+    ${f.musthaves.map(m=>`<div class="pk">
+      <div><div class="nm2">${m.n}</div><div class="why">${m.why}</div>
+        <div class="bar2"><i style="width:${m.w}%"></i></div></div>
+      <span class="v mono">${m.w}%</span></div>`).join('')}
+    <div class="subh">Knockouts · checked before any scoring</div>
+    ${f.knockouts.map(k=>`<div class="ko"><span class="kn">${k.label}</span>
+      <span class="kr">— ${k.rule}</span></div>`).join('')}
+    <div class="subh">Handover threshold</div>
+    <div style="font-size:13.5px">At <b>${f.threshold}%</b> or above, a person on your
+      team meets the candidate. You can change this after you take it.</div>
+    <div class="subh">Titles this covers</div>
+    <div class="tt" style="margin:0">${f.titles.join(' · ')}</div>
+  </div>`;
+}
 
 /* ── render ──────────────────────────────────────────────────────────── */
 const el=id=>document.getElementById(id);
@@ -362,31 +399,46 @@ function S1(){
 
 /* 2 — take ------------------------------------------------------------- */
 function S2(){
-  const rows=FAMILIES.map((f,i)=>`
-    <div class="fam ${S.picked.has(f.name)?'picked':''}">
-      <button class="hit" data-take="${i}" aria-pressed="${S.picked.has(f.name)}">
+  const rows=FAMILIES.map((f,i)=>{
+    const mine=S.picked.has(f.name), open=S.expanded.has(f.name);
+    return `
+    <div class="fam ${mine?'picked':''}">
+      <button class="hit" data-take="${i}" aria-pressed="${mine}">
         <div class="head">
           <span class="tick">✓</span>
           <div style="flex:1">
             <div class="nm">${f.name}</div>
             <div class="hint2">${f.hint}</div>
           </div>
-          <span class="prov ${S.picked.has(f.name)?'mine':'res'}">
-            ${S.picked.has(f.name)?'yours':'available'}</span>
+          <span class="prov ${mine?'mine':'res'}">${mine?'yours':'available'}</span>
         </div>
       </button>
-    </div>`).join('');
+      <button class="viewbtn" data-peek="${i}" aria-expanded="${open}">
+        ${open?'Hide structure ▴':'View the JD structure ▾'}</button>
+      ${open?shapeView(f):''}
+    </div>`;}).join('');
   const n=S.picked.size;
   return `
     <div class="eyebrow">TAKE WHAT FITS</div>
     <h1 style="margin-top:12px">Which of these do you actually hire for?</h1>
-    <p class="lede">Taking one copies it into your workspace. From then on it's yours —
-    you can change it, and the industry version never changes underneath you.</p>
+    <p class="lede">Open any one to read what's inside it — the must-haves Vara would
+    score, the knockouts, the handover bar. Then decide. Taking one copies it into your
+    workspace; from then on it's yours to change, and the industry version never
+    changes underneath you.</p>
     <div class="fams">${rows}</div>
+    <div class="later">
+      <b>Nothing here is a one-time choice.</b> The full list stays in your workspace —
+      take another family the day you start hiring for it, and it arrives already
+      shaped. You are not deciding what you will ever hire for; you are deciding
+      what you are hiring for now.
+    </div>
     <div class="row" style="margin-top:20px">
       <button class="primary" id="go2" ${n?'':'disabled'}>Continue with ${n||'—'}</button>
-      <span class="count">${n} of ${FAMILIES.length} taken · add more any time</span>
-    </div>`;
+      <button class="primary quiet" id="skip2">None of these — I'll build my own</button>
+    </div>
+    <p class="hint">${n
+      ? `${n} of ${FAMILIES.length} taken. The other ${FAMILIES.length-n} stay available.`
+      : 'Take one to start from a shape Vara already knows, or build yours from scratch.'}</p>`;
 }
 
 /* 3 — make it yours ---------------------------------------------------- */
@@ -397,7 +449,7 @@ function S3(){
   const total=sh.musthaves.reduce((a,m)=>a+m.w,0);
   const tabs=names.map(n=>`<button class="ghost" data-cur="${n}"
     style="${n===S.cursor?'border-color:var(--gold);color:var(--gold)':''}">${n}
-    ${S.shapes[n].touched?'·&nbsp;edited':''}</button>`).join('');
+    ${S.shapes[n].scratch?'·&nbsp;yours':S.shapes[n].touched?'·&nbsp;edited':''}</button>`).join('');
   const mh=sh.musthaves.map((m,i)=>`
     <div class="mh">
       <div>
@@ -428,7 +480,7 @@ function S3(){
       <div class="row" style="justify-content:space-between">
         <h2>${S.cursor}</h2>
         <span class="prov ${sh.touched?'mine':'res'}">
-          ${sh.touched?'yours · edited':'copied from the industry playbook'}</span>
+          ${sh.scratch?'built by you':sh.touched?'yours · edited':'copied from the industry playbook'}</span>
       </div>
       <div class="subh">Must-haves · what Vara scores</div>
       ${mh}
@@ -460,19 +512,49 @@ function S4(){
       <em>Site Reliability Engineer</em>, to see what happens when I don't know.</p>
       <div class="row" style="margin-top:16px"><button class="primary" id="go4">Continue</button></div>
     </div>`;
-  if(S.jd.unknown) return `
-    <div class="eyebrow">FIRST JD · NO MATCH</div>
-    <h1 style="margin-top:12px">I don't have a playbook for "${S.jd.title}"</h1>
-    <p class="lede">Nothing you've taken looks like it, so I'm not going to pretend.
-    I'll ask you the four questions every JD needs, suggest nothing, and what you
-    answer becomes a new family in your space — so it's only unknown once.</p>
+  if(S.jd.unknown){
+    const b=S.jd.build;
+    const list=b.musthaves.map((m,i)=>`
+      <div class="mh"><div>
+        <div class="nm2">${m.n} <span class="prov mine">yours</span></div>
+        <div class="bar2"><i style="width:${m.w}%"></i></div>
+      </div><div class="wt"><span class="v">${m.w}%</span></div>
+      <button class="drop" data-sdrop="${i}" aria-label="Remove">×</button></div>`).join('');
+    return `
+    <div class="eyebrow">FIRST JD · NOTHING MATCHED</div>
+    <h1 style="margin-top:12px">I have no playbook for "${S.jd.title}"</h1>
+    <p class="lede">${S.skipped
+      ? "You haven't taken any families, so there is nothing of yours for me to start from."
+      : "None of the families you took looks like it."}
+    I'm not going to suggest must-haves — anything I offered here would be invented.
+    Tell me what matters and it becomes a family in your workspace, so this role is
+    only unknown once.</p>
     <div class="card">
-      <p style="margin:0;color:var(--ink-dim)">This is the honest lane, and it's the
-      one part of today's build that already works exactly like this.</p>
-      <div class="row" style="margin-top:16px">
-        <button class="primary quiet" id="back4">Try another title</button>
+      <label class="subh" style="margin-top:0" for="famname">What should I call this family?</label>
+      <input class="ti" id="famname" value="${b.familyName}" placeholder="Reliability Engineering" autocomplete="off">
+      <div class="subh">What must be true to succeed here?</div>
+      <p class="hint" style="margin-top:0">Strongest signal first — I weight them in the
+      order you give them: 40%, then 25, 20, 15. You can change any of it afterwards.</p>
+      <div class="typed">
+        <input class="ti" id="mhin" placeholder="Has carried a pager for a system with real users" autocomplete="off">
+        <button class="primary quiet" id="addmh">Add</button>
       </div>
-    </div>`;
+      ${b.musthaves.length?`<div style="margin-top:14px">${list}</div>`:''}
+      <div class="subh">Handover threshold</div>
+      <div class="thr">
+        <input type="range" id="sthr" min="10" max="60" step="5" value="${b.threshold}">
+        <span class="mono" style="font-size:14px">${b.threshold}%</span>
+      </div>
+    </div>
+    <div class="row" style="margin-top:18px">
+      <button class="primary" id="mkfam" ${b.musthaves.length&&b.familyName.trim()?'':'disabled'}>
+        Save as my family &amp; write the JD</button>
+      <button class="primary quiet" id="back4">Try a different title</button>
+    </div>
+    <p class="hint">${b.musthaves.length&&b.familyName.trim()
+      ? 'This family joins the ones in your workspace. The next role like it starts from here.'
+      : 'Name the family and add at least one must-have.'}</p>`;
+  }
   const sh=S.jd.shape, tot=sh.musthaves.reduce((a,m)=>a+m.w,0);
   return `
     <div class="eyebrow">FIRST JD · MATCHED</div>
@@ -484,7 +566,8 @@ function S4(){
         <div><div class="jdt">${S.jd.title}</div>
         <div class="jds">${S.jd.fam} · v1 on publish</div></div>
         <span class="prov ${S.shapes[S.jd.fam].touched?'mine':'res'}">
-          ${S.shapes[S.jd.fam].touched?'your shape':'industry shape, unchanged'}</span>
+          ${S.shapes[S.jd.fam].scratch?'a family you built'
+            :S.shapes[S.jd.fam].touched?'your shape':'industry shape, unchanged'}</span>
       </div>
       <div class="subh">Must-haves · ${tot}%</div>
       ${sh.musthaves.map(m=>`<div class="mh"><div>
@@ -585,6 +668,12 @@ function wire(){
     const f=FAMILIES[+b.dataset.take];
     S.picked.has(f.name)?untake(f.name):take(f); render(); });
   on('go2',()=>{ S.step=3; render(); });
+  document.querySelectorAll('[data-peek]').forEach(b=>b.onclick=()=>{
+    const n=FAMILIES[+b.dataset.peek].name;
+    S.expanded.has(n)?S.expanded.delete(n):S.expanded.add(n); render(); });
+  // Skipping is a real path, not a dead end: it lands in the scratch lane,
+  // which builds a family from nothing and puts it in their space.
+  on('skip2',()=>{ S.skipped=true; S.step=4; render(); });
 
   document.querySelectorAll('[data-cur]').forEach(b=>b.onclick=()=>{
     S.cursor=b.dataset.cur; render(); });
@@ -610,9 +699,26 @@ function wire(){
     // Match against the tenant's OWN families first. A family they did not take
     // is not theirs, so it cannot answer for them.
     if(m && S.picked.has(m.fam.name)) S.jd={title:t,fam:m.fam.name,shape:S.shapes[m.fam.name]};
-    else S.jd={title:t,unknown:true};
+    else S.jd={title:t,unknown:true,
+      build:{familyName:'',musthaves:[],threshold:30}};
     render(); });
   on('back4',()=>{ S.jd=null; render(); });
+  const addMh=()=>{ const i=el('mhin'); const v=(i.value||'').trim(); if(!v) return;
+    const b=S.jd.build; b.musthaves.push({n:v,w:typedWeight(b.musthaves.length),why:''});
+    render(); setTimeout(()=>el('mhin')?.focus(),0); };
+  on('addmh',addMh);
+  const mhin=el('mhin'); if(mhin) mhin.onkeydown=e=>{ if(e.key==='Enter'){e.preventDefault();addMh();} };
+  const fn=el('famname'); if(fn) fn.oninput=()=>{ S.jd.build.familyName=fn.value;
+    const btn=el('mkfam'); if(btn) btn.disabled=!(S.jd.build.musthaves.length&&fn.value.trim()); };
+  document.querySelectorAll('[data-sdrop]').forEach(b=>b.onclick=()=>{
+    const bb=S.jd.build; bb.musthaves.splice(+b.dataset.sdrop,1);
+    bb.musthaves.forEach((m,i)=>m.w=typedWeight(i)); render(); });
+  const sthr=el('sthr'); if(sthr) sthr.oninput=()=>{ S.jd.build.threshold=+sthr.value; render(); };
+  on('mkfam',()=>{ const b=S.jd.build, nm=b.familyName.trim();
+    S.picked.add(nm);
+    S.shapes[nm]={from:null,musthaves:b.musthaves.map(m=>({...m,touched:true})),
+      knockouts:[],threshold:b.threshold,touched:true,scratch:true};
+    S.jd={title:S.jd.title,fam:nm,shape:S.shapes[nm]}; render(); });
   on('edit4',()=>{ S.cursor=S.jd.fam; S.step=3; render(); });
   on('pub4',()=>{ S.published.push({title:S.jd.title,fam:S.jd.fam,at:now()});
     S.step=5; render(); });
