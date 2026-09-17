@@ -76,6 +76,36 @@ CREATE TABLE vani_domain_pack (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   payload jsonb NOT NULL, published_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (code, version));
 CREATE TABLE vani_user (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
+-- The tenant's own space. Shapes copied verbatim from migrations 240/241 —
+-- the constraints ARE the test: unique (tenant_id, name) is what makes taking
+-- a family idempotent, and unique (tenant_id, family_id, version) is what
+-- would abort a replay that tried to write v1 twice.
+CREATE TABLE vani_tenant (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug text UNIQUE NOT NULL, name text);
+CREATE TABLE vani_role_family (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES vani_tenant(id) ON DELETE CASCADE,
+  name text NOT NULL, description text, parent_id uuid REFERENCES vani_role_family(id),
+  created_at timestamptz NOT NULL DEFAULT now(), UNIQUE (tenant_id, name));
+CREATE TABLE vara_scoring_config (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES vani_tenant(id) ON DELETE CASCADE,
+  family_id uuid NOT NULL REFERENCES vani_role_family(id) ON DELETE CASCADE,
+  version int NOT NULL, weights jsonb NOT NULL, components jsonb NOT NULL,
+  threshold_default int NOT NULL CHECK (threshold_default BETWEEN 0 AND 100),
+  created_from uuid, approved_by uuid REFERENCES vani_user(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, family_id, version));
+CREATE TABLE vara_family_profile (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES vani_tenant(id) ON DELETE CASCADE,
+  family_id uuid NOT NULL UNIQUE REFERENCES vani_role_family(id) ON DELETE CASCADE,
+  axis_weights jsonb NOT NULL DEFAULT '{"skill":55,"avail":25,"exp":20}',
+  default_threshold int NOT NULL DEFAULT 30 CHECK (default_threshold BETWEEN 0 AND 100),
+  active_config_id uuid REFERENCES vara_scoring_config(id),
+  created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE vani_tenant_pack_binding (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES vani_tenant(id) ON DELETE CASCADE,
+  pack_id uuid NOT NULL REFERENCES vani_domain_pack(id),
+  bound_by uuid REFERENCES vani_user(id),
+  bound_at timestamptz NOT NULL DEFAULT now(), UNIQUE (tenant_id, pack_id));
 CREATE FUNCTION set_tenant_context(t UUID) RETURNS void AS $fn$
   BEGIN PERFORM set_config('app.current_tenant_id', t::text, true); END $fn$ LANGUAGE plpgsql;
 CREATE TABLE vn_tenants (id UUID PRIMARY KEY, slug VARCHAR(80));
@@ -165,7 +195,9 @@ beforeEach(async () => {
   if (!available) return;
   llmQueue = [];
   await pool.query('TRUNCATE gt_agent_runs');
-  await pool.query('TRUNCATE vani_domain_pack');
+  await pool.query(
+    'TRUNCATE vani_tenant_pack_binding, vara_family_profile, vara_scoring_config, '
+    + 'vani_role_family, vani_tenant, vani_domain_pack CASCADE');
   await pool.query('TRUNCATE gt_events');
 });
 
@@ -894,7 +926,202 @@ d('the tenant-facing skill', () => {
     // Declared in SKILL.md's ## Functions as ### blocks — a table renders fine
     // and registers nothing, which is how this shipped undiscoverable once.
     expect(skill.functions.map((f: { name: string }) => f.name).sort())
-      .toEqual(['match_title', 'request_research', 'research_status']);
+      .toEqual(['catalogue', 'match_title', 'my_families', 'request_research',
+                'research_status', 'take_families']);
+  });
+});
+
+d('taking families into the tenant\'s own space', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const f = () => ({
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    catalogue: require('../functions/catalogue').catalogue,
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    take: require('../functions/take-families').take_families,
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    mine: require('../functions/my-families').my_families,
+  });
+  const ctxFor = (tenant: string) => ({
+    tenant_id: tenant, is_live: false, user_id: null,
+    db: createTenantDb(pool, tenant),
+  } as never);
+
+  const SHAPE = {
+    role_summary_hint: 'Runs the depot end to end',
+    musthaves: [
+      { name: 'Has run a depot through a driver shortage', weight: 60, why: 'The signal' },
+      { name: 'Holds a transport manager CPC', weight: 40 },
+    ],
+    knockouts: [{ label: 'Work authorization', rule: 'Valid for the country' }],
+    threshold: 35,
+    band_hint: 'Band varies by seniority',
+  };
+
+  /** A published, visible pack in tenant A's industry. */
+  const seed = async (name = 'Fleet Operations', code = 'talent-logistics-freight-fleet') => {
+    await pool.query(
+      `INSERT INTO vani_tenant (id, slug, name)
+       SELECT gen_random_uuid(), 'us', 'Us'
+        WHERE NOT EXISTS (SELECT 1 FROM vani_tenant WHERE slug = 'us')`);
+    await pool.query(
+      `INSERT INTO vani_domain_pack (code, version, domain, payload)
+       VALUES ($1, 1, 'logistics-freight', $2::jsonb)`,
+      [code, JSON.stringify({
+        family_name: name, hint: 'Keeps the fleet moving',
+        suggested_titles: ['Fleet Manager', 'Depot Supervisor'],
+        vara: { starter: SHAPE },
+        researched: { by: 'domain-pack-agent', at: '2026-09-17T00:00:00Z',
+                      review_state: 'unreviewed', requested_by: A },
+      })]);
+    return code;
+  };
+
+  it('offers the whole shape, not just a name — you cannot choose blind', async () => {
+    const code = await seed();
+    const c = await f().catalogue({}, ctxFor(A));
+    expect(c.families).toHaveLength(1);
+    expect(c.families[0].pack_code).toBe(code);
+    // The must-haves Vara would score, with their weights and reasons, in the
+    // same response as the list. A second round trip to see them is what makes
+    // a screen show a name and call it a choice.
+    expect(c.families[0].starter.musthaves).toHaveLength(2);
+    expect(c.families[0].starter.musthaves[0].why).toBe('The signal');
+    expect(c.families[0].starter.threshold).toBe(35);
+    expect(c.families[0].provenance.review_state).toBe('unreviewed');
+    expect(c.families[0].mine).toBe(false);
+  });
+
+  it('writes four rows and points the profile at the config', async () => {
+    const code = await seed();
+    const r = await f().take({ codes: [code] }, ctxFor(A));
+    expect(r.taken).toHaveLength(1);
+    expect(r.already).toHaveLength(0);
+
+    const row = await pool.query(
+      `SELECT rf.name, sc.version, sc.components, sc.threshold_default,
+              fp.default_threshold, fp.active_config_id = sc.id AS points_at_it,
+              (SELECT count(*)::int FROM vani_tenant_pack_binding) AS bindings
+         FROM vani_role_family rf
+         JOIN vara_scoring_config sc ON sc.family_id = rf.id
+         JOIN vara_family_profile fp ON fp.family_id = rf.id`);
+    expect(row.rows).toHaveLength(1);
+    expect(row.rows[0].name).toBe('Fleet Operations');
+    expect(row.rows[0].version).toBe(1);
+    expect(row.rows[0].points_at_it).toBe(true);
+    expect(row.rows[0].bindings).toBe(1);
+    // Copied VERBATIM. A reference would let a later pack version rewrite
+    // what the tenant decided.
+    expect(row.rows[0].components.musthaves).toEqual(SHAPE.musthaves);
+    expect(row.rows[0].components.knockouts).toEqual(SHAPE.knockouts);
+    expect(row.rows[0].components.from_pack).toEqual({ code, version: 1 });
+    expect(row.rows[0].threshold_default).toBe(35);
+  });
+
+  it('taking the same family twice is a no-op, not a crash', async () => {
+    // vara_scoring_config is unique on (tenant_id, family_id, version). A
+    // replay that went on to insert v1 again would raise and roll back the
+    // WHOLE batch — every family in the request lost because one was taken
+    // twice. Idempotent by construction has to mean no-op, not error.
+    const code = await seed();
+    await f().take({ codes: [code] }, ctxFor(A));
+    const again = await f().take({ codes: [code] }, ctxFor(A));
+    expect(again.taken).toHaveLength(0);
+    expect(again.already).toHaveLength(1);
+
+    const n = await pool.query(
+      `SELECT (SELECT count(*)::int FROM vani_role_family) AS fams,
+              (SELECT count(*)::int FROM vara_scoring_config) AS cfgs,
+              (SELECT count(*)::int FROM vara_family_profile) AS profs`);
+    expect(n.rows[0]).toEqual({ fams: 1, cfgs: 1, profs: 1 });
+  });
+
+  it('a second family in the same batch still lands when the first was already taken', async () => {
+    const a = await seed('Fleet Operations', 'pack-fleet');
+    const b = await seed('Warehouse Ops', 'pack-warehouse');
+    await f().take({ codes: [a] }, ctxFor(A));
+    const r = await f().take({ codes: [a, b] }, ctxFor(A));
+    expect(r.already.map((x: { name: string }) => x.name)).toEqual(['Fleet Operations']);
+    expect(r.taken.map((x: { name: string }) => x.name)).toEqual(['Warehouse Ops']);
+  });
+
+  it('refuses the whole batch for an unknown code rather than taking the rest', async () => {
+    // Taking three of four and reporting success is how a tenant ends up
+    // missing a family they believe they have.
+    const a = await seed('Fleet Operations', 'pack-fleet');
+    const r = await f().take({ codes: [a, 'pack-that-does-not-exist'] }, ctxFor(A));
+    expect(r.reason).toBe('UNKNOWN_PACK');
+    expect(r.taken).toHaveLength(0);
+    const n = await pool.query(`SELECT count(*)::int n FROM vani_role_family`);
+    expect(n.rows[0].n).toBe(0);
+  });
+
+  it('will not take a family out of another industry', async () => {
+    await seed();
+    await pool.query(
+      `INSERT INTO vani_domain_pack (code, version, domain, payload)
+       VALUES ('pack-saas', 1, 'technology-saas', $1::jsonb)`,
+      [JSON.stringify({ family_name: 'Software Development',
+                        vara: { starter: { musthaves: [], knockouts: [], threshold: 30 } } })]);
+    const r = await f().take({ codes: ['pack-saas'] }, ctxFor(A));
+    expect(r.reason).toBe('UNKNOWN_PACK');
+  });
+
+  it('will not take a retired pack', async () => {
+    const code = await seed();
+    await pool.query(
+      `INSERT INTO vani_domain_pack (code, version, domain, payload)
+       SELECT code, 2, domain, jsonb_set(payload, '{researched,review_state}', '"retired"')
+         FROM vani_domain_pack WHERE code = $1`, [code]);
+    const r = await f().take({ codes: [code] }, ctxFor(A));
+    expect(r.reason).toBe('UNKNOWN_PACK');
+  });
+
+  it('reads back what is live, not the highest version', async () => {
+    // active_config_id is followed on purpose. An edit that has not been
+    // activated is not what Vara scores against, and two answers to "which
+    // version is live" is how they drift.
+    const code = await seed();
+    await f().take({ codes: [code] }, ctxFor(A));
+    const fam = await pool.query(`SELECT id, tenant_id FROM vani_role_family`);
+    await pool.query(
+      `INSERT INTO vara_scoring_config
+         (tenant_id, family_id, version, weights, components, threshold_default)
+       VALUES ($1, $2, 2, '{}'::jsonb, '{"musthaves":[{"name":"NOT LIVE","weight":100}]}'::jsonb, 10)`,
+      [fam.rows[0].tenant_id, fam.rows[0].id]);
+
+    const mine = await f().mine({}, ctxFor(A));
+    expect(mine.families).toHaveLength(1);
+    expect(mine.families[0].version).toBe(1);
+    expect(mine.families[0].musthaves).toEqual(SHAPE.musthaves);
+    expect(mine.families[0].from_pack).toEqual({ code, version: 1 });
+  });
+
+  it('marks a family the tenant already has, so the screen can say so', async () => {
+    const code = await seed();
+    await f().take({ codes: [code] }, ctxFor(A));
+    const c = await f().catalogue({}, ctxFor(A));
+    expect(c.families[0].mine).toBe(true);
+    expect(c.mine).toBe(1);
+  });
+
+  it('is another tenant\'s business, not yours', async () => {
+    // Rule 7's third check. B is in a different industry AND has taken
+    // nothing; neither the catalogue nor the space leaks across.
+    const code = await seed();
+    await f().take({ codes: [code] }, ctxFor(A));
+    expect((await f().mine({}, ctxFor(B))).reason).toBe('TENANT_NOT_PROVISIONED');
+    expect((await f().take({ codes: [code] }, ctxFor(B))).reason).toBe('NO_INDUSTRY');
+    const c = await f().catalogue({}, ctxFor(C));
+    expect(c.industry).toBe('Technology & SaaS');
+    expect(c.families).toHaveLength(0);
+  });
+
+  it('says what to do when there is nothing yet', async () => {
+    // Rule 9b on both sides of the step.
+    expect((await f().catalogue({}, ctxFor(A))).detail).toMatch(/has not studied|from scratch/);
+    await pool.query(
+      `INSERT INTO vani_tenant (slug, name) VALUES ('us', 'Us')`);
+    expect((await f().mine({}, ctxFor(A))).detail).toMatch(/have not taken|from scratch/);
   });
 });
 

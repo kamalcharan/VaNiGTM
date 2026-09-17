@@ -36,6 +36,24 @@ action; neither ever substitutes generic content for real content.
 
 ## Functions
 
+### catalogue
+Every role family Vara knows for this tenant's industry, each with its FULL starter shape — must-haves with weights and reasons, knockouts, threshold, titles — plus whether the tenant has already taken it. The shape ships with the list on purpose: a tenant choosing a family without seeing what is inside it is not choosing.
+- Parameters: none
+- Returns: { industry: string | null, domain: string | null, families: [{ pack_code, pack_version, name, hint, suggested_titles, starter, provenance: { researched, review_state, requested_by, at }, mine: boolean }], mine: number, reason?: 'NO_INDUSTRY', detail: string }
+
+### take_families
+Copy chosen families out of the platform catalogue into the tenant's own space — four rows each, one transaction: the pack binding, the role family, a scoring config at v1 carrying the pack's shape verbatim, and the family profile pointing at it. The tenant edits their copy; the industry pack is never touched.
+- Parameters: codes (required, string[] — pack codes from `catalogue`)
+- Returns: { taken: [{code, name, family_id}], already: [{code, name, family_id}], reason?: 'NO_CODES' | 'TOO_MANY' | 'NO_INDUSTRY' | 'TENANT_NOT_PROVISIONED' | 'UNKNOWN_PACK', detail: string }
+- **Idempotent by construction**, not by a stored key: a family is unique on (tenant_id, name) and a second take reports it under `already` without writing. `SkillContext` carries no request headers, so there is no Idempotency-Key to honour here and none is needed.
+- A code outside the caller's industry, or a retired pack, is refused for the whole batch rather than skipped — taking three of four and reporting success is how a tenant ends up missing a family they believe they have.
+
+### my_families
+The families in the tenant's own space, on the shape they are actually live on (`active_config_id`, not the highest version). This is the read that was missing: the layer has been written on every JD publish since August and read by nothing.
+- Parameters: none
+- Returns: { families: [{ family_id, name, hint, version, musthaves, knockouts, role_summary_hint, band_hint, threshold, axis_weights, from_pack: {code, version} | null, edited: boolean }], reason?: 'TENANT_NOT_PROVISIONED', detail: string }
+- `from_pack: null` means the tenant built the family from scratch rather than taking it.
+
 ### match_title
 "Senior Backend Engineer" to the starter shape Vara should open with, matched against the industry's packs. Deterministic, no model call — it runs while someone types. Returns matched:false rather than the nearest family when nothing clears the floor.
 - Parameters: title (required, string)
