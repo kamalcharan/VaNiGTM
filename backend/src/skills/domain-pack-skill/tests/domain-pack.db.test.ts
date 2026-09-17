@@ -358,6 +358,78 @@ d('the agent', () => {
     expect(JSON.stringify(r.rows[0].steps)).toMatch(/Resumed 2 families from checkpoint/);
   });
 
+  it('shapes families concurrently rather than one after another', async () => {
+    // Run 92 was still going after 2h18m because eight independent calls ran
+    // in sequence. This asserts overlap: with a stub that holds each call
+    // open, four must be in flight at once before any completes.
+    const inFlight = { now: 0, peak: 0 };
+    let release: (() => void) | null = null;
+    const gate = new Promise<void>((r) => { release = r; });
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const llm = require('../../../agent-core/llm.client');
+    const prior = llm.callLLMValidated;
+    const six = ['A', 'B', 'C', 'D', 'E', 'F'].map((n) => ({ ...FAMILY, family_name: n }));
+    let first = true;
+
+    llm.callLLMValidated = jest.fn(async () => {
+      if (first) { first = false; return { families: six }; }   // stage 1
+      inFlight.now += 1;
+      inFlight.peak = Math.max(inFlight.peak, inFlight.now);
+      const n = inFlight.peak + inFlight.now;
+      await gate;                                               // hold every shape call
+      inFlight.now -= 1;
+      // A DISTINCT must-have per family. Returning the same shape six times
+      // trips assertNoTemplateLeak — which it should, and did on the first
+      // version of this test.
+      return {
+        musthaves: [{ name: `signal ${n}-${Math.random().toString(36).slice(2, 8)}`, weight: 100 }],
+        knockouts: [], threshold: 30, band_hint: 'varies',
+      };
+    });
+
+    try {
+      const run = await mkRun();
+      const p = DomainPackAgent.run(
+        pool, A, { industry: 'Logistics', domain: 'logistics' }, run);
+      // Give the first batch time to open. Nothing can finish until released.
+      await new Promise((r) => setTimeout(r, 200));
+      expect(inFlight.peak).toBe(4);      // SHAPE_CONCURRENCY, not 1
+      release!();
+      await p;
+
+      const r = await pool.query(`SELECT status FROM gt_agent_runs WHERE id = $1`, [run]);
+      expect(r.rows[0].status).toBe('awaiting');
+    } finally {
+      llm.callLLMValidated = prior;
+    }
+  });
+
+  it('names every family that failed, not just the first', async () => {
+    // A timeout and a refusal are different problems; a retry should not have
+    // to discover the second after fixing the first.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const llm = require('../../../agent-core/llm.client');
+    const prior = llm.callLLMValidated;
+    let call = 0;
+
+    llm.callLLMValidated = jest.fn(async () => {
+      call += 1;
+      if (call === 1) {
+        return { families: [{ ...FAMILY, family_name: 'A' }, { ...FAMILY, family_name: 'B' }] };
+      }
+      throw new Error(call === 2 ? 'timed out' : 'refused');
+    });
+
+    try {
+      await expect(
+        DomainPackAgent.run(pool, A, { industry: 'Logistics', domain: 'logistics' }, await mkRun()),
+      ).rejects.toThrow(/DOMAIN_ENRICHMENT_SHAPE_FAILED: 2 of 2.*A:.*\|.*B:/s);
+    } finally {
+      llm.callLLMValidated = prior;
+    }
+  });
+
   it('completes without calling the model when a pack exists', async () => {
     await pool.query(
       `INSERT INTO vani_domain_pack (code, version, domain, payload)

@@ -54,6 +54,23 @@ const STARTER_KEY = 'vara.domain_pack.starter';
 /** How long a run may hold a domain before another is allowed to retry it. */
 const IN_PROGRESS_TTL = '1 hour';
 
+/**
+ * How many family shapes to ask for at once.
+ *
+ * Stage 2's calls are independent — nothing about Data Engineering's scoring
+ * depends on Product Management's — and running them one after another made
+ * the whole job as slow as the sum of its parts. Run 92 was still going after
+ * 2h18m. Research is background work and nobody sits watching it, but a
+ * two-hour turnaround makes the prompt impossible to iterate on, and the first
+ * tenant in a brand-new industry gets nothing for two hours.
+ *
+ * Four, not eight: this shares an endpoint with every other tenant's agents,
+ * and a fan-out wide enough to saturate it would make someone else's
+ * conversation time out. Raise it only with a measurement of what the endpoint
+ * actually sustains.
+ */
+const SHAPE_CONCURRENCY = 4;
+
 /* ── Shape of what the model returns ────────────────────────────────────── */
 
 const MusthaveSchema = z.object({
@@ -299,19 +316,25 @@ export const DomainPackAgent = {
       });
     }
 
-    // ── Stage 2, one family at a time ─────────────────────────────────────
-    // Each shape is written to the checkpoint as it lands. A timeout on family
-    // four keeps one to three, and a retry picks up where it stopped — the
-    // "earn it, write it" discipline the runner's checkpoint exists for.
+    // ── Stage 2, several families at once ─────────────────────────────────
+    // Independent calls, so they run concurrently in batches. Sequentially this
+    // took over two hours; the calls do not depend on each other and never did.
+    //
+    // Each shape is written to the checkpoint as it lands, so a crash keeps
+    // what was already paid for. Those intermediate writes are BEST EFFORT
+    // under concurrency — two completions racing can clobber one another's
+    // snapshot — so the loop writes again after every batch settles, which is
+    // the write that is actually relied on. The worst a lost intermediate
+    // costs is re-shaping one family.
     const shapes = { ...((saved.shapes as Record<string, unknown>) ?? {}) };
-    const families: ResearchedFamily[] = [];
+    const todo = ids.filter((id) => !shapes[id.family_name]);
+    const failures: string[] = [];
 
-    for (const id of ids) {
-      let shape = shapes[id.family_name] as z.infer<typeof StarterSchema> | undefined;
-
-      if (!shape) {
+    for (let i = 0; i < todo.length; i += SHAPE_CONCURRENCY) {
+      const batch = todo.slice(i, i + SHAPE_CONCURRENCY);
+      const settled = await Promise.allSettled(batch.map(async (id) => {
         const t0 = Date.now();
-        shape = await callLLMValidated(
+        const shape = await callLLMValidated(
           {
             tenantId, pool, runId,
             system: renderPrompt(starterPrompt, {
@@ -330,7 +353,6 @@ export const DomainPackAgent = {
           StarterSchema,
         );
         shapes[id.family_name] = shape;
-        await saveCheckpoint(pool, runId, { shapes });
         await appendStep(pool, runId, {
           step_name: 'starter',
           action: `Shaped "${id.family_name}" — ${shape.musthaves.length} must-haves, `
@@ -338,10 +360,34 @@ export const DomainPackAgent = {
           duration_ms: Date.now() - t0,
           status: 'ok',
         });
-      }
+        return id.family_name;
+      }));
 
-      families.push(normaliseWeights({ ...id, ...shape } as ResearchedFamily));
+      // The write that matters: after the batch, with everything it produced.
+      await saveCheckpoint(pool, runId, { shapes });
+
+      settled.forEach((r, k) => {
+        if (r.status === 'rejected') {
+          failures.push(`${batch[k].family_name}: ${r.reason?.message ?? r.reason}`);
+        }
+      });
     }
+
+    if (failures.length) {
+      // Loud, and naming every family that failed rather than only the first —
+      // one timeout and one refusal are different problems and a retry should
+      // not have to discover the second after fixing the first. The checkpoint
+      // holds whatever did land, so the retry pays only for these.
+      throw new Error(
+        `DOMAIN_ENRICHMENT_SHAPE_FAILED: ${failures.length} of ${todo.length} families `
+        + `could not be shaped — ${failures.join(' | ')}`,
+      );
+    }
+
+    const families: ResearchedFamily[] = ids.map((id) => normaliseWeights({
+      ...id,
+      ...(shapes[id.family_name] as z.infer<typeof StarterSchema>),
+    } as ResearchedFamily));
 
     // Before anything is offered for review. A leaked template reaching a human
     // depends on them reading 40 must-haves carefully enough to notice one
