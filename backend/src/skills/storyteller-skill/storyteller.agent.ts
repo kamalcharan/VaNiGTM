@@ -17,6 +17,7 @@ import { getProfile, type TenantProfile } from '../profile-skill/profile.service
 import { getNodes, type KGNode } from '../../agent-core/kg.store';
 import { loadPrompt } from '../../agent-core/prompt.store';
 import { callLLM, callLLMValidated } from '../../agent-core/llm.client';
+import { charBudgetFor } from '../../agent-core/llm.gate';
 import { emitEvent } from '../../agent-core/event.store';
 import { DeckSchema, type Deck } from './deck.schema';
 
@@ -47,14 +48,27 @@ export class StorytellerAgent {
 
     // STEP 2 + 3 — load the seeded prompt and generate a validated deck.
     const system = await loadPrompt(pool, PROMPT_KEY, tenantId);
+
+    // The knowledge graph section is UNBOUNDED — one line per node, and a
+    // tenant who has ingested a document set has hundreds. Nothing capped it,
+    // so the prompt grew with the tenant until it crossed the window and the
+    // server answered 500. The cap is derived from LLM_CONTEXT_TOKENS, which
+    // is the only place the window is declared, so it cannot drift away from
+    // it the way a hand-picked number does.
+    const MAX_OUTPUT = 2000;
+    const context = fitContext(
+      profile, nodes,
+      charBudgetFor(undefined, MAX_OUTPUT, system),
+    );
+
     const deck: Deck = await callLLMValidated(
       {
         tenantId,
         pool,
         runId: opts?.sourceRunId ?? 0,   // required by LLMCallOptions; unused by callLLM
         system,
-        messages: [{ role: 'user', content: serializeContext(profile, nodes) }],
-        maxTokens: 2000,                 // headroom under the ~4096 context budget
+        messages: [{ role: 'user', content: context }],
+        maxTokens: MAX_OUTPUT,
         temperature: 0.4,                // storytelling, still JSON-stable
       },
       DeckSchema,
@@ -193,6 +207,45 @@ export class StorytellerAgent {
  * Skips null/empty fields and omits a section header when the whole section is
  * empty. Kept compact — the total context budget is ~4096 tokens.
  */
+/**
+ * The context, cut to what the window can hold.
+ *
+ * DROPS NODES, NEVER THE PROFILE. The profile is the deck's substance — the
+ * product, the ICP, the vision — and it is bounded by its own columns. The
+ * knowledge graph is the part that grows without limit, so it is the part that
+ * gives way, and it gives way from the END, because `getNodes` orders the most
+ * recently learned first.
+ *
+ * It says how many it dropped, in the prompt itself. A deck built on 40 of 300
+ * nodes is a legitimate deck; one that quietly claims to have read everything
+ * is the silent degradation rule 12 forbids, and the model is the one that
+ * needs to know not to speak for what it was not shown.
+ */
+function fitContext(profile: TenantProfile, nodes: KGNode[], roomChars: number): string {
+  const full = serializeContext(profile, nodes);
+  if (full.length <= roomChars) return full;
+
+  // Halve the node list until it fits. Binary rather than one-by-one because
+  // this runs on a few hundred nodes and each attempt rebuilds the string.
+  let lo = 0;
+  let hi = nodes.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (serializeContext(profile, nodes.slice(0, mid)).length <= roomChars) lo = mid;
+    else hi = mid - 1;
+  }
+
+  const kept = nodes.slice(0, lo);
+  const dropped = nodes.length - kept.length;
+  console.log(`[Storyteller] knowledge graph trimmed: ${kept.length} of ${nodes.length} nodes `
+    + `fit the model window (${roomChars} chars)`);
+  const body = serializeContext(profile, kept);
+  return dropped > 0
+    ? `${body}\n\n[${dropped} further knowledge-graph entries exist and were not included — `
+      + `they did not fit this model's context. Do not claim completeness.]`
+    : body;
+}
+
 function serializeContext(profile: TenantProfile, nodes: KGNode[]): string {
   const sections: string[] = [];
 

@@ -831,6 +831,42 @@ concurrent agents came from. Two workers, or the API process, still make
 concurrent calls — a cross-process limit needs a shared lock and is a decision
 to raise, not a gap to rediscover from the same 500.
 
+### The budget is the authority — hand-picked caps are not (2026-09-18)
+
+Charan: `LLM_CONTEXT_TOKENS` "is the value which is inside the code, there is
+no other configuration anywhere ... so ideally that limit should not exceed."
+Right, and refusing an oversized call is only half of it — the code must not be
+able to BUILD one.
+
+Two builders already could:
+
+| Builder | Cap it had | ≈ tokens | Verdict |
+|---|---|---|---|
+| `profile.drafter` | `rawText.slice(0, 24_000)` | ~6,000 | over an 8,192 window before the system prompt was counted |
+| `storyteller.agent` | none — one line per KG node | unbounded | grew with the tenant until it crossed |
+
+Both now derive their cap from `charBudgetFor(model, reserveOutput, fixedText)`
+and say what they trimmed. The storyteller drops NODES, never the profile, from
+the end (most recent first), and tells the model how many it did not see so it
+does not speak for them.
+
+**Any new prompt that pastes in crawl text, KG nodes, search results or another
+model's output uses `charBudgetFor`.** A number chosen next to the window drifts
+away from it; a number derived from it cannot.
+
+### Counting tokens without a second call
+
+"llm invocation is required to check tokens" — it is, and it already happened.
+Every successful response carries `usage.prompt_tokens`: the server's own count
+of the exact string we sent. `noteObservedTokens` learns chars-per-token per
+model from that, so the first call on a cold process uses the 4.0 heuristic and
+every one after is measured in that model's real tokenizer. No `/tokenize`
+endpoint needed (Ollama's OpenAI layer does not expose one).
+
+It keeps the **densest** ratio seen, never the friendliest: a budget built on
+prose at 6 chars/token is overrun by the next block of JSON at 2.5, and
+optimism here is paid for with a 500.
+
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
    GUC dies before your query (surfaced as `invalid input syntax for type

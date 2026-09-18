@@ -43,7 +43,7 @@ import type { Pool } from 'pg';
 import { createTenantDb } from '../db';
 import { appendStep } from './agent.runner';
 import { resolveProvider, type ResolvedProvider } from './llm.provider';
-import { withLlmSlot, checkContext, contextError } from './llm.gate';
+import { withLlmSlot, checkContext, contextError, noteObservedTokens } from './llm.gate';
 
 /* ── LLM config ─────────────────────────────────────────────────── */
 
@@ -263,7 +263,7 @@ async function callEndpoint(
   // where the window is known (platform); a tenant's own endpoint judges its
   // own limits (llm.gate.ts).
   const wholePrompt = systemContent + messages.map((m) => String(m.content ?? '')).join('');
-  const fit = checkContext(provider.posture, wholePrompt, maxTokens);
+  const fit = checkContext(provider.posture, wholePrompt, maxTokens, provider.model);
   if (fit && !fit.fits) {
     throw contextError(fit, `this call to ${provider.model}`);
   }
@@ -332,6 +332,11 @@ async function callEndpoint(
   const text         = data.choices?.[0]?.message?.content ?? '';
   const inputTokens  = data.usage?.prompt_tokens     ?? 0;
   const outputTokens = data.usage?.completion_tokens ?? 0;
+
+  // The server just counted the exact string we sent, in its own tokenizer.
+  // That is the invocation the estimate was missing — no second call needed,
+  // and every future budget on this model is measured rather than guessed.
+  noteObservedTokens(provider.model, wholePrompt.length, inputTokens);
 
   // Recorded on both postures. Metering is not capping: what a run cost is a
   // question a BYOK tenant will ask, and the only place to answer it is here.

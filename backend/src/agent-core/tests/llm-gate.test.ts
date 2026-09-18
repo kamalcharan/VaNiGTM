@@ -6,7 +6,10 @@
  * events are claimed, not how many requests reach the model.
  */
 
-import { withLlmSlot, checkContext, contextError, estimateTokens, __resetLanes } from '../llm.gate';
+import {
+  withLlmSlot, checkContext, contextError, estimateTokens, charBudgetFor,
+  charsPerToken, noteObservedTokens, __resetLanes, __resetCalibration,
+} from '../llm.gate';
 
 const URL_A = 'http://llm.example/v1';
 const URL_B = 'http://other.example/v1';
@@ -27,7 +30,7 @@ function tracker() {
   };
 }
 
-beforeEach(() => { __resetLanes(); });
+beforeEach(() => { __resetLanes(); __resetCalibration(); });
 
 describe('taking turns', () => {
   it('runs platform calls one at a time', async () => {
@@ -119,5 +122,76 @@ describe('the context budget', () => {
     expect(estimateTokens('')).toBe(0);
     expect(estimateTokens('abcd')).toBe(1);
     expect(estimateTokens('abcde')).toBe(2);
+  });
+});
+
+describe('learning the real token count from the model', () => {
+  // "llm invocation is required to check tokens" — it is, and the invocation
+  // already happened: every successful response reports prompt_tokens for the
+  // exact string we sent. These cover learning from it rather than guessing.
+
+  it('starts on the heuristic and does not pretend otherwise', () => {
+    expect(charsPerToken('qwen3:8b')).toBe(4);
+    expect(estimateTokens('abcd', 'qwen3:8b')).toBe(1);
+  });
+
+  it('uses the model\'s own count once it has enough samples', () => {
+    for (let i = 0; i < 3; i++) noteObservedTokens('qwen3:8b', 6000, 1000);  // 6 chars/token
+    expect(charsPerToken('qwen3:8b')).toBeCloseTo(6);
+    expect(estimateTokens('x'.repeat(6000), 'qwen3:8b')).toBe(1000);
+  });
+
+  it('keeps the DENSEST ratio seen, never the friendliest', () => {
+    // Prose at 6 chars/token then a block of JSON at 2.5. Budgeting on 6 would
+    // let a prompt through that the JSON overruns — optimism here is paid for
+    // with a 500, so the minimum wins.
+    noteObservedTokens('m', 6000, 1000);
+    noteObservedTokens('m', 5000, 2000);
+    noteObservedTokens('m', 6000, 1000);
+    expect(charsPerToken('m')).toBeCloseTo(2.5);
+  });
+
+  it('will not adopt a generous ratio off one sample', () => {
+    noteObservedTokens('m', 8000, 1000);   // 8 chars/token, one call
+    expect(charsPerToken('m')).toBe(4);    // still the heuristic
+  });
+
+  it('ignores a server that reports no usage', () => {
+    noteObservedTokens('m', 6000, 0);
+    noteObservedTokens('m', 0, 500);
+    expect(charsPerToken('m')).toBe(4);
+  });
+});
+
+describe('the budget as the authority on what gets built', () => {
+  it('says how much variable content still fits', () => {
+    // 8192 - 200 overhead - 1200 output = 6792 tokens, minus a 1000-char
+    // system prompt (250 tokens) = 6542 tokens = 26168 chars.
+    const room = charBudgetFor(undefined, 1200, 'x'.repeat(1000));
+    expect(room).toBe(26168);
+  });
+
+  it('shrinks as the model turns out to be denser than the heuristic', () => {
+    const before = charBudgetFor('dense', 1200, 'x'.repeat(1000));
+    for (let i = 0; i < 3; i++) noteObservedTokens('dense', 2000, 1000);  // 2 chars/token
+    const after = charBudgetFor('dense', 1200, 'x'.repeat(1000));
+    expect(after).toBeLessThan(before);
+  });
+
+  it('returns 0 when the fixed part alone does not fit', () => {
+    // A real answer, not a small number: trimming the variable part to nothing
+    // would not save this call, and the caller has to say so rather than send it.
+    expect(charBudgetFor(undefined, 1200, 'x'.repeat(200_000))).toBe(0);
+  });
+
+  it('what it allows actually passes the check it is derived from', () => {
+    // The two would drift apart silently otherwise — a budget that hands back
+    // more room than checkContext accepts is worse than no budget at all.
+    const system = 'x'.repeat(1000);
+    const room = charBudgetFor(undefined, 1200, system);
+    const prompt = system + 'y'.repeat(room);
+    expect(checkContext('platform', prompt, 1200)?.fits).toBe(true);
+    const oneMore = system + 'y'.repeat(room + 40);
+    expect(checkContext('platform', oneMore, 1200)?.fits).toBe(false);
   });
 });

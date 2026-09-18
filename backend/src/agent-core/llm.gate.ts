@@ -120,16 +120,93 @@ export async function withLlmSlot<T>(
   }
 }
 
+/* ── Counting tokens without asking twice ──────────────────────────────── */
+
 /**
- * Tokens, roughly. Four characters per token is the usual English heuristic
- * and it is wrong in both directions — JSON and code run denser, other scripts
- * far denser. It is used only to REFUSE a call that is clearly over, never to
- * trim one, so a loose estimate costs a rejected call that might have fit, and
- * the error says it is an estimate so nobody reads it as a measurement.
+ * Charan, 2026-09-18: "llm invocation is required to check tokens".
+ *
+ * Correct — four characters per token is a heuristic, and it is wrong in both
+ * directions: JSON and code run denser, Devanagari and CJK far denser, and the
+ * error is systematic per model rather than random.
+ *
+ * But the model already tells us. Every successful response carries
+ * `usage.prompt_tokens`, which is the server's own count of the exact string
+ * we sent. So instead of a second invocation to a /tokenize endpoint that not
+ * every OpenAI-compatible server exposes, this LEARNS from the calls already
+ * being made: characters sent ÷ tokens counted, per model, updated on every
+ * success.
+ *
+ * The first call on a cold process still uses 4.0 and is still an estimate.
+ * From the second onward the ratio is measured, and it is measured on this
+ * tenant's actual prompts in this model's actual tokenizer.
+ *
+ * Deliberately CONSERVATIVE in how it is applied: a ratio learned from English
+ * prose (4.6 chars/token, say) would let a budget through that a sudden block
+ * of JSON overruns, so `charsPerToken` never returns more than the observed
+ * minimum — the densest text this model has actually seen is what the budget
+ * is built on. Optimism here is paid for with a 500.
  */
-export function estimateTokens(text: string): number {
-  return Math.ceil(text.length / 4);
+const observed = new Map<string, { minRatio: number; samples: number }>();
+
+const DEFAULT_CHARS_PER_TOKEN = 4;
+
+export function noteObservedTokens(model: string, chars: number, promptTokens: number): void {
+  // A zero or missing count means the server did not report usage — learning
+  // from it would poison the ratio with an infinity.
+  if (!model || chars <= 0 || !promptTokens || promptTokens <= 0) return;
+  const ratio = chars / promptTokens;
+  // A ratio below 1 is not physically meaningful for any tokenizer worth
+  // trusting; treat it as a bad sample rather than clamping the budget to zero.
+  if (!Number.isFinite(ratio) || ratio < 1) return;
+  const prev = observed.get(model);
+  observed.set(model, {
+    minRatio: prev ? Math.min(prev.minRatio, ratio) : ratio,
+    samples: (prev?.samples ?? 0) + 1,
+  });
 }
+
+/** Chars per token for this model: the densest ratio seen, or the heuristic. */
+export function charsPerToken(model?: string): number {
+  const o = model ? observed.get(model) : undefined;
+  if (!o) return DEFAULT_CHARS_PER_TOKEN;
+  // Never trust a learned ratio to be MORE generous than the heuristic without
+  // evidence from several calls — one short prompt is not a calibration.
+  return o.samples >= 3 ? o.minRatio : Math.min(o.minRatio, DEFAULT_CHARS_PER_TOKEN);
+}
+
+/** Tokens, using whatever this model has taught us so far. */
+export function estimateTokens(text: string, model?: string): number {
+  return Math.ceil(text.length / charsPerToken(model));
+}
+
+/**
+ * How many CHARACTERS of variable content still fit.
+ *
+ * This is the function that makes the budget the authority. Charan, again:
+ * `LLM_CONTEXT_TOKENS` is the only place the window is declared, "so ideally
+ * that limit should not exceed" — the code must not be able to BUILD a prompt
+ * over it. Hand-picked caps cannot do that: `profile.drafter` sliced website
+ * text at 24,000 characters, which is ~6,000 tokens before the system prompt,
+ * and no one would notice it had outgrown the window until a 500 arrived.
+ *
+ * Callers pass what is already fixed (system prompt, JSON context) and what
+ * they are reserving for the answer; they get back the room that is left.
+ * Returns 0 when there is none, which is a real answer: the fixed part alone
+ * does not fit, and trimming the variable part to nothing will not save it.
+ */
+export function charBudgetFor(
+  model: string | undefined,
+  reserveOutputTokens: number,
+  fixedText: string,
+): number {
+  if (PLATFORM_CONTEXT <= 0) return Number.MAX_SAFE_INTEGER;   // window unknown, do not cap
+  const usable = PLATFORM_CONTEXT - OVERHEAD_TOKENS - reserveOutputTokens;
+  const left = usable - estimateTokens(fixedText, model);
+  return left <= 0 ? 0 : Math.floor(left * charsPerToken(model));
+}
+
+/** Test seam. */
+export function __resetCalibration(): void { observed.clear(); }
 
 export interface ContextCheck {
   estimatedPromptTokens: number;
@@ -146,9 +223,10 @@ export function checkContext(
   posture: 'platform' | 'byok',
   text: string,
   maxTokens: number,
+  model?: string,
 ): ContextCheck | null {
   if (posture !== 'platform' || PLATFORM_CONTEXT <= 0) return null;
-  const estimatedPromptTokens = estimateTokens(text);
+  const estimatedPromptTokens = estimateTokens(text, model);
   const budgetTokens = PLATFORM_CONTEXT - OVERHEAD_TOKENS;
   return {
     estimatedPromptTokens,

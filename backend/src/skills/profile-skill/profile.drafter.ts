@@ -14,6 +14,7 @@
 import { z } from 'zod';
 import type { Pool } from 'pg';
 import { callLLMValidated } from '../../agent-core/llm.client';
+import { charBudgetFor } from '../../agent-core/llm.gate';
 import { getProfile, upsertProfile, type TenantProfile } from './profile.service';
 
 /* ── Draft schema — everything optional; the model fills what it can ───── */
@@ -97,11 +98,6 @@ export async function draftProfileFromText(
   runId: string,
   options: DraftOptions = {},
 ): Promise<DraftResult> {
-  // The first ~24k chars carry the positioning; keep the LLM call well
-  // inside small-model context limits. Callers order the text so the most
-  // valuable content comes first.
-  const text = rawText.slice(0, 24_000);
-
   // On an improvement pass, show the model its own previous draft so it
   // refines with the new material instead of regenerating from scratch.
   const baseline = options.improveBaseline ?? null;
@@ -120,6 +116,32 @@ export async function draftProfileFromText(
       }, null, 1)}\n\n`
     : '';
 
+  // How much website text actually fits, AFTER the system prompt, the baseline
+  // draft and the 1200 tokens kept for the answer. This was a hardcoded 24,000
+  // characters — about 6,000 tokens on its own, so the call was already over
+  // an 8,192-token window before the system prompt was counted, and nothing
+  // said so until the server answered 500. The window is declared in exactly
+  // one place (LLM_CONTEXT_TOKENS) and the code must not be able to build a
+  // prompt that exceeds it, so the cap is DERIVED from it rather than guessed
+  // next to it.
+  const MAX_OUTPUT = 1200;
+  const room = charBudgetFor(undefined, MAX_OUTPUT, SYSTEM_PROMPT + baselineContext);
+  const text = rawText.slice(0, room);
+  if (text.length < rawText.length) {
+    // Visible, not silent. The draft was made from part of the site and the
+    // run feed should say so — a profile built on the first third of a long
+    // site is not wrong, but it is not the whole site either (rule 12).
+    console.log(`[Profile:draft] website text trimmed ${rawText.length} → ${text.length} chars `
+      + `to fit the model window; callers order the most valuable content first`);
+  }
+  if (room === 0) {
+    throw new Error(
+      'LLM_CONTEXT_TOO_LARGE: the system prompt and the previous draft already fill the '
+      + "model's window, so there is no room for the website text. Raise "
+      + 'LLM_CONTEXT_TOKENS to match the deployed server, or shorten the baseline draft.',
+    );
+  }
+
   const draft = await callLLMValidated(
     {
       pool,
@@ -127,7 +149,7 @@ export async function draftProfileFromText(
       runId,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: `${baselineContext}Website text:\n\n${text}` }],
-      maxTokens: 1200,
+      maxTokens: MAX_OUTPUT,
       temperature: 0.2,
     },
     DraftSchema,
