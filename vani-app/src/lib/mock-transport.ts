@@ -180,29 +180,6 @@ let MOCK_RESEARCH: MockResearch = {
   detail: "The 3 families shown are Vikuna's generic starter set, not researched for Technology & SaaS.",
 };
 
-/**
- * The one fixture family `match_title` can match in mock mode. Its shape is
- * migration 244's seeded Backend Engineering pack (weights summing to 100, a
- * `why` on the heaviest signal, no knockouts) because that is what the real
- * function returns and the composer renders every field of it.
- */
-const MOCK_MATCH_FAMILY = {
-  family_name: 'Backend Engineering',
-  suggested_titles: ['Senior Backend Engineer', 'Staff Backend Engineer', 'Backend Tech Lead'],
-  starter: {
-    role_summary_hint: 'Ships and owns backend services end to end',
-    musthaves: [
-      { name: 'Production service ownership', weight: 40, years: 3,
-        why: 'The signal that separates someone who has run a service from someone who has written one' },
-      { name: 'Relational data modelling', weight: 30 },
-      { name: 'Cloud deployment', weight: 20 },
-      { name: 'Testing rigour', weight: 10 },
-    ],
-    knockouts: [] as { label: string; rule: string }[],
-    threshold: 30,
-  },
-};
-
 const MOCK_TENANT_INDUSTRY = 'Technology & SaaS';
 
 /** The catalogue the take step reads. Two families is enough to exercise
@@ -214,7 +191,18 @@ const MOCK_CATALOGUE_FAMILIES = [
     name: 'Software Development',
     hint: 'Core development roles for building and maintaining software',
     suggested_titles: ['Senior Software Engineer', 'Full Stack Developer', 'Software Developer'],
-    starter: MOCK_MATCH_FAMILY.starter,
+    starter: {
+      role_summary_hint: 'Ships and owns backend services end to end',
+      musthaves: [
+        { name: 'Production service ownership', weight: 40, years: 3,
+          why: 'The signal that separates someone who has run a service from someone who has written one' },
+        { name: 'Relational data modelling', weight: 30 },
+        { name: 'Cloud deployment', weight: 20 },
+        { name: 'Testing rigour', weight: 10 },
+      ],
+      knockouts: [] as { label: string; rule: string }[],
+      threshold: 30,
+    },
     provenance: { researched: true, review_state: 'unreviewed', requested_by: null, at: '2026-09-17T06:41:18Z' },
   },
   {
@@ -234,6 +222,17 @@ const MOCK_CATALOGUE_FAMILIES = [
     provenance: { researched: false, review_state: null, requested_by: null, at: null },
   },
 ];
+/**
+ * The one fixture family `match_title` can match in mock mode — and it IS the
+ * catalogue row, not a second copy of it. It was a separate literal, and the
+ * two drifted: the JD opened on four must-haves before the family was taken
+ * and two after, so taking a family looked like it LOST half its shape. That
+ * is the opposite of what the take step promises, and it was a fixture bug
+ * reading as a product bug.
+ */
+const MOCK_MATCH_FAMILY =
+  MOCK_CATALOGUE_FAMILIES.find((f) => f.name === 'Backend Engineering')!;
+
 /** Families this mock tenant has taken. Mutated by take_families, exactly as
  *  the real write is: idempotent, so a repeat lands under `already`. */
 const MOCK_MINE = new Set<string>();
@@ -333,8 +332,8 @@ const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
     // says so. Without this branch the second-JD path — the whole reason the
     // matcher looks at `my_families` before the catalogue — is invisible in
     // mock mode, which is where the screen actually gets worked on.
-    const owned = MOCK_MINE.has(MOCK_MATCH_FAMILY.family_name);
-    const live = MOCK_MINE_SHAPE.get(MOCK_MATCH_FAMILY.family_name);
+    const owned = MOCK_MINE.has(MOCK_MATCH_FAMILY.name);
+    const live = MOCK_MINE_SHAPE.get(MOCK_MATCH_FAMILY.name);
     const starter = owned && live
       ? { ...MOCK_MATCH_FAMILY.starter, musthaves: live.musthaves, knockouts: live.knockouts, threshold: live.threshold }
       : MOCK_MATCH_FAMILY.starter;
@@ -342,7 +341,7 @@ const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
     return {
       matched: true,
       title,
-      family_name: MOCK_MATCH_FAMILY.family_name,
+      family_name: MOCK_MATCH_FAMILY.name,
       matched_title: MOCK_MATCH_FAMILY.suggested_titles[0],
       score: 82,
       researched: false,
@@ -354,9 +353,9 @@ const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
       version: owned ? version : null,
       alternates: [],
       detail: owned
-        ? `${MOCK_MATCH_FAMILY.family_name} is already yours — opening on your v${version}.`
+        ? `${MOCK_MATCH_FAMILY.name} is already yours — opening on your v${version}.`
         : `Matched "${MOCK_MATCH_FAMILY.suggested_titles[0]}" in `
-          + `${MOCK_MATCH_FAMILY.family_name} — a Vikuna starter shape, `
+          + `${MOCK_MATCH_FAMILY.name} — a Vikuna starter shape, `
           + `not researched for ${MOCK_TENANT_INDUSTRY}.`,
     };
   },

@@ -24,6 +24,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { DataBoundary, SkeletonRows } from '@/platform/feedback';
 import { useSkillQuery } from '@/lib/useSkill';
 import { useSkillMutation } from '@/lib/useSkillMutation';
@@ -76,6 +77,7 @@ export default function TakeFamilies() {
   const [reading, setReading] = useState<Family | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
 
+  const qc = useQueryClient();
   const q = useSkillQuery<Catalogue>(SKILL, 'catalogue', {});
   // A taken family's live shape, which is NOT the pack's once it has been
   // edited. Opening the catalogue copy for a family the tenant already
@@ -167,7 +169,17 @@ export default function TakeFamilies() {
                 ? (mineQ.data?.data?.families ?? []).find((m) => m.name === reading.name) ?? null
                 : null}
               onClose={() => setReading(null)}
-              onSaved={() => { void q.refetch(); void mineQ.refetch(); }}
+              // match_title too, not just the two lists on this screen. JD
+              // Studio caches a match per title, and a cached one carries the
+              // shape as it was BEFORE this edit — so without this the tenant
+              // changes their bar, types the role, and is handed the old one
+              // back. That is exactly the "your edits are invisible" failure
+              // this whole step exists to remove.
+              onSaved={() => {
+                void q.refetch();
+                void mineQ.refetch();
+                void qc.invalidateQueries({ queryKey: ['skill', SKILL, 'match_title'] });
+              }}
             />
 
             <div className={s.actions} style={{ marginTop: 20 }}>
