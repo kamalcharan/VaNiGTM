@@ -48,6 +48,13 @@ Copy chosen families out of the platform catalogue into the tenant's own space �
 - **Idempotent by construction**, not by a stored key: a family is unique on (tenant_id, name) and a second take reports it under `already` without writing. `SkillContext` carries no request headers, so there is no Idempotency-Key to honour here and none is needed.
 - A code outside the caller's industry, or a retired pack, is refused for the whole batch rather than skipped — taking three of four and reporting success is how a tenant ends up missing a family they believe they have.
 
+### update_family_shape
+Change a family the tenant owns. Writes a NEW `vara_scoring_config` version and moves `active_config_id` to it — v1 stays readable, because a JD published in March was scored against the shape as it was in March and "why was this candidate rejected" is unanswerable if the contract was edited in place. The platform pack is never touched.
+- Parameters: family_id (required, string), musthaves (required, [{name, weight, years?, why?}]), knockouts ([{label, rule}]), threshold (number, 0–100)
+- Returns: { ok: boolean, family_id?, name?, version?, reason?: 'NO_FAMILY' | 'INVALID_SHAPE' | 'TENANT_NOT_PROVISIONED' | 'NOT_YOURS', detail: string }
+- Refuses a shape with no must-haves: a family that scores nothing gives every candidate the same number, which is worse than no family because it looks like a judgement.
+- `role_summary_hint`, `band_hint` and `from_pack` are carried forward rather than re-sent — the tenant is editing the scoring contract, not the pack's prose, and `from_pack` keeps "your v4 began as Software Development v2" answerable.
+
 ### my_families
 The families in the tenant's own space, on the shape they are actually live on (`active_config_id`, not the highest version). This is the read that was missing: the layer has been written on every JD publish since August and read by nothing.
 - Parameters: none

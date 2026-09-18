@@ -927,7 +927,7 @@ d('the tenant-facing skill', () => {
     // and registers nothing, which is how this shipped undiscoverable once.
     expect(skill.functions.map((f: { name: string }) => f.name).sort())
       .toEqual(['catalogue', 'match_title', 'my_families', 'request_research',
-                'research_status', 'take_families']);
+                'research_status', 'take_families', 'update_family_shape']);
   });
 });
 
@@ -940,6 +940,8 @@ d('taking families into the tenant\'s own space', () => {
     take: require('../functions/take-families').take_families,
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     mine: require('../functions/my-families').my_families,
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    edit: require('../functions/update-family-shape').update_family_shape,
   });
   const ctxFor = (tenant: string) => ({
     tenant_id: tenant, is_live: false, user_id: null,
@@ -1116,7 +1118,121 @@ d('taking families into the tenant\'s own space', () => {
     expect(c.families).toHaveLength(0);
   });
 
-  it('says what to do when there is nothing yet', async () => {
+it('an edit is a new version, and the old one stays readable', async () => {
+    // Append-only. A JD published in March was scored against the shape as it
+    // was in March; editing in place makes "why was this rejected"
+    // unanswerable.
+    const code = await seed();
+    await f().take({ codes: [code] }, ctxFor(A));
+    const fam = (await pool.query(`SELECT id FROM vani_role_family`)).rows[0].id;
+
+    const r = await f().edit({
+      family_id: fam,
+      musthaves: [{ name: 'Has run a depot through a driver shortage', weight: 100 }],
+      knockouts: [],
+      threshold: 45,
+    }, ctxFor(A));
+    expect(r).toMatchObject({ ok: true, version: 2, name: 'Fleet Operations' });
+
+    const versions = await pool.query(
+      `SELECT version, components, threshold_default FROM vara_scoring_config
+        WHERE family_id = $1 ORDER BY version`, [fam]);
+    expect(versions.rows.map((x) => x.version)).toEqual([1, 2]);
+    expect(versions.rows[0].components.musthaves).toHaveLength(2);   // v1 untouched
+    expect(versions.rows[1].components.musthaves).toHaveLength(1);
+    expect(versions.rows[1].threshold_default).toBe(45);
+  });
+
+  it('the pointer moves, or the edit silently did nothing', async () => {
+    const code = await seed();
+    await f().take({ codes: [code] }, ctxFor(A));
+    const fam = (await pool.query(`SELECT id FROM vani_role_family`)).rows[0].id;
+    await f().edit({
+      family_id: fam, musthaves: [{ name: 'Only this', weight: 80 }], knockouts: [], threshold: 25,
+    }, ctxFor(A));
+
+    const live = await pool.query(
+      `SELECT sc.version, fp.default_threshold
+         FROM vara_family_profile fp JOIN vara_scoring_config sc ON sc.id = fp.active_config_id
+        WHERE fp.family_id = $1`, [fam]);
+    expect(live.rows[0]).toMatchObject({ version: 2, default_threshold: 25 });
+
+    // and my_families follows the pointer, not the highest version
+    const mine = await f().mine({}, ctxFor(A));
+    expect(mine.families[0].musthaves).toEqual([{ name: 'Only this', weight: 80 }]);
+    expect(mine.families[0].edited).toBe(true);
+  });
+
+  it('keeps where the shape came from through every edit', async () => {
+    const code = await seed();
+    await f().take({ codes: [code] }, ctxFor(A));
+    const fam = (await pool.query(`SELECT id FROM vani_role_family`)).rows[0].id;
+    await f().edit({
+      family_id: fam, musthaves: [{ name: 'A', weight: 50 }], knockouts: [], threshold: 30,
+    }, ctxFor(A));
+    await f().edit({
+      family_id: fam, musthaves: [{ name: 'B', weight: 60 }], knockouts: [], threshold: 30,
+    }, ctxFor(A));
+
+    const mine = await f().mine({}, ctxFor(A));
+    expect(mine.families[0].version).toBe(3);
+    // "your v3 began as this pack version" survives every edit.
+    expect(mine.families[0].from_pack).toEqual({ code, version: 1 });
+  });
+
+  it('refuses a family with nothing to score', async () => {
+    // Every candidate would get the same number, which is worse than having
+    // no family at all, because it looks like a judgement.
+    const code = await seed();
+    await f().take({ codes: [code] }, ctxFor(A));
+    const fam = (await pool.query(`SELECT id FROM vani_role_family`)).rows[0].id;
+    const r = await f().edit({ family_id: fam, musthaves: [], knockouts: [], threshold: 30 }, ctxFor(A));
+    expect(r).toMatchObject({ ok: false, reason: 'INVALID_SHAPE' });
+    const n = await pool.query(`SELECT count(*)::int n FROM vara_scoring_config`);
+    expect(n.rows[0].n).toBe(1);        // nothing written on a refusal
+  });
+
+  it('refuses a weight outside 0-100 rather than storing it', async () => {
+    const code = await seed();
+    await f().take({ codes: [code] }, ctxFor(A));
+    const fam = (await pool.query(`SELECT id FROM vani_role_family`)).rows[0].id;
+    const r = await f().edit({
+      family_id: fam, musthaves: [{ name: 'X', weight: 140 }], knockouts: [], threshold: 30,
+    }, ctxFor(A));
+    expect(r).toMatchObject({ ok: false, reason: 'INVALID_SHAPE' });
+  });
+
+  it("cannot edit another tenant's family", async () => {
+    // C is PROVISIONED here on purpose. Unprovisioned, the call fails earlier
+    // with TENANT_NOT_PROVISIONED and the isolation branch is never reached —
+    // the test would pass while proving nothing about isolation.
+    const code = await seed();
+    await f().take({ codes: [code] }, ctxFor(A));
+    await pool.query(`INSERT INTO vani_tenant (slug, name) VALUES ('saas', 'Saas Co')`);
+    const fam = (await pool.query(`SELECT id FROM vani_role_family`)).rows[0].id;
+    const r = await f().edit({
+      family_id: fam, musthaves: [{ name: 'X', weight: 50 }], knockouts: [], threshold: 30,
+    }, ctxFor(C));
+    expect(r).toMatchObject({ ok: false, reason: 'NOT_YOURS' });
+    const n = await pool.query(`SELECT count(*)::int n FROM vara_scoring_config`);
+    expect(n.rows[0].n).toBe(1);
+  });
+
+  it('never touches the platform pack', async () => {
+    const code = await seed();
+    await f().take({ codes: [code] }, ctxFor(A));
+    const before = (await pool.query(
+      `SELECT payload FROM vani_domain_pack WHERE code = $1`, [code])).rows[0].payload;
+    const fam = (await pool.query(`SELECT id FROM vani_role_family`)).rows[0].id;
+    await f().edit({
+      family_id: fam, musthaves: [{ name: 'Mine alone', weight: 90 }], knockouts: [], threshold: 55,
+    }, ctxFor(A));
+    const after = (await pool.query(
+      `SELECT payload FROM vani_domain_pack WHERE code = $1`, [code])).rows[0].payload;
+    expect(after).toEqual(before);
+  });
+
+    it('says what to do when there is nothing yet', async () => {
     // Rule 9b on both sides of the step.
     expect((await f().catalogue({}, ctxFor(A))).detail).toMatch(/has not studied|from scratch/);
     await pool.query(
