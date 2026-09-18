@@ -22,7 +22,7 @@
  *     — JD Studio's unmatched lane builds a family from nothing.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DataBoundary, SkeletonRows } from '@/platform/feedback';
 import { useSkillQuery } from '@/lib/useSkill';
@@ -62,7 +62,11 @@ function provenanceLabel(f: Family): { text: string; cls: string } {
 
 export default function TakeFamilies() {
   const router = useRouter();
-  const [open, setOpen] = useState<Set<string>>(new Set());
+  // One family at a time now. The structure used to expand INLINE inside the
+  // list item, which is ~560px of column — the weight bars and the `why` lines
+  // wrapped into a mess, and a long family pushed the rest of the list off
+  // screen. It is a document, so it gets a document's width.
+  const [reading, setReading] = useState<Family | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
 
   const q = useSkillQuery<Catalogue>(SKILL, 'catalogue', {});
@@ -102,11 +106,8 @@ export default function TakeFamilies() {
 
             <div className={s.familyList} style={{ marginTop: 18 }}>
               {c.families.map((f) => {
-                const isOpen = open.has(f.pack_code);
                 const isPicked = picked.has(f.pack_code);
                 const prov = provenanceLabel(f);
-                const total = (f.starter.musthaves ?? [])
-                  .reduce((n, m) => n + m.weight, 0);
                 return (
                   <div
                     key={f.pack_code}
@@ -132,55 +133,10 @@ export default function TakeFamilies() {
                     <button
                       type="button"
                       className={s.viewBtn}
-                      aria-expanded={isOpen}
-                      onClick={() => setOpen((o) => toggle(o, f.pack_code))}
+                      onClick={() => setReading(f)}
                     >
-                      {isOpen ? 'Hide structure ▴' : 'View the JD structure ▾'}
+                      View the JD structure
                     </button>
-
-                    {isOpen && (
-                      <div className={s.peek}>
-                        <div className={s.jdSectionH}>
-                          Must-haves · Vara scores these · {total}%
-                        </div>
-                        {(f.starter.musthaves ?? []).map((m, i) => (
-                          <div key={i} className={s.weightRow}>
-                            <div>
-                              <div className={s.weightName}>{m.name}</div>
-                              {m.why && <div className={s.peekWhy}>{m.why}</div>}
-                              <div className={s.weightBar}>
-                                <div className={s.weightFill} style={{ width: `${m.weight}%` }} />
-                              </div>
-                            </div>
-                            <div className={s.weightVal}>{m.weight}%</div>
-                          </div>
-                        ))}
-
-                        <div className={s.jdSectionH}>
-                          Knockouts · checked before any scoring
-                        </div>
-                        {(f.starter.knockouts ?? []).length === 0
-                          ? <div className={s.jdEmpty}>None</div>
-                          : (f.starter.knockouts ?? []).map((k, i) => (
-                            <div key={i} className={s.knockRow}>
-                              <span className={s.knockLabel}>{k.label}</span>
-                              <span className={s.knockRule}>{k.rule}</span>
-                            </div>
-                          ))}
-
-                        <div className={s.jdSectionH}>Handover threshold</div>
-                        <div className={s.jdLine}>
-                          At <b>{f.starter.threshold ?? 30}%</b> or above, a person on
-                          your team meets the candidate. You can change this after
-                          you take it.
-                        </div>
-
-                        <div className={s.jdSectionH}>Titles this covers</div>
-                        <div className={s.peekTitles}>
-                          {f.suggested_titles.join(' · ') || '—'}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -193,6 +149,8 @@ export default function TakeFamilies() {
               arrives already shaped. You are not deciding what you will ever hire
               for; you are deciding what you are hiring for now.
             </div>
+
+            <StructureDialog family={reading} onClose={() => setReading(null)} />
 
             <div className={s.actions} style={{ marginTop: 20 }}>
               <button
@@ -220,5 +178,96 @@ export default function TakeFamilies() {
         )}
       </DataBoundary>
     </div>
+  );
+}
+
+
+/**
+ * The family's shape, at a width it can actually be read at.
+ *
+ * Native <dialog> with showModal(), not a hand-rolled overlay: it gives the
+ * top layer, a focus trap, Esc-to-close and inertness of the page behind for
+ * free. Re-implementing those badly is the usual cost of a custom modal.
+ */
+function StructureDialog(
+  { family, onClose }: { family: Family | null; onClose: () => void },
+) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (family && !el.open) el.showModal();
+    if (!family && el.open) el.close();
+  }, [family]);
+
+  if (!family) return <dialog ref={ref} className={s.dialog} onClose={onClose} />;
+
+  const st = family.starter;
+  const total = (st.musthaves ?? []).reduce((n, m) => n + m.weight, 0);
+
+  return (
+    <dialog
+      ref={ref}
+      className={s.dialog}
+      onClose={onClose}
+      // Outside-click closes, decided by containment rather than by comparing
+      // the target to the dialog. The usual `e.target === dialogEl` trick
+      // depends on the backdrop click retargeting to the element, which did
+      // not fire here — an inner panel makes it unambiguous: anything not
+      // inside the panel is outside it.
+      onClick={(e) => {
+        if (!panel.current?.contains(e.target as Node)) onClose();
+      }}
+      aria-label={`${family.name} — JD structure`}
+    >
+      <div className={s.dialogPanel} ref={panel}>
+      <div className={s.dialogHead}>
+        <div>
+          <div className={s.dialogTitle}>{family.name}</div>
+          {family.hint && <div className={s.familyHint}>{family.hint}</div>}
+        </div>
+        <button type="button" className={s.dialogClose} onClick={onClose} aria-label="Close">
+          ×
+        </button>
+      </div>
+
+      <div className={s.dialogBody}>
+        <div className={s.jdSectionH}>Must-haves · Vara scores these · {total}%</div>
+        {(st.musthaves ?? []).map((m, i) => (
+          <div key={i} className={s.weightRow}>
+            <div>
+              <div className={s.weightName}>{m.name}</div>
+              {m.why && <div className={s.peekWhy}>{m.why}</div>}
+              <div className={s.weightBar}>
+                <div className={s.weightFill} style={{ width: `${m.weight}%` }} />
+              </div>
+            </div>
+            <div className={s.weightVal}>{m.weight}%</div>
+          </div>
+        ))}
+
+        <div className={s.jdSectionH}>Knockouts · checked before any scoring</div>
+        {(st.knockouts ?? []).length === 0
+          ? <div className={s.jdEmpty}>None</div>
+          : (st.knockouts ?? []).map((k, i) => (
+            <div key={i} className={s.knockRow}>
+              <span className={s.knockLabel}>{k.label}</span>
+              <span className={s.knockRule}>{k.rule}</span>
+            </div>
+          ))}
+
+        <div className={s.jdSectionH}>Handover threshold</div>
+        <div className={s.jdLine}>
+          At <b>{st.threshold ?? 30}%</b> or above, a person on your team meets the
+          candidate. You can change this after you take it.
+        </div>
+
+        <div className={s.jdSectionH}>Titles this covers</div>
+        <div className={s.peekTitles}>{family.suggested_titles.join(' · ') || '—'}</div>
+      </div>
+      </div>
+    </dialog>
   );
 }
