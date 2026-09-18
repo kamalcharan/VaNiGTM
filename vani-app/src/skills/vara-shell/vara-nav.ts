@@ -16,6 +16,11 @@ const varaWorkspace: SkillModule = {
     { id: 'vara-landing',      label: 'Landing',           href: '/agents/vara',                group: 'organization', icon: '⚑', status: 'live' },
     { id: 'vara-onboarding',   label: 'Onboarding',        href: '/agents/vara/onboarding',     group: 'organization', icon: '◉', status: 'live' },
     { id: 'vara-jd-studio',    label: 'JD Studio',         href: '/agents/vara/jd-studio',      group: 'workspace',    icon: '✎', status: 'live' },
+    // The families screen existed with no entrance: it was reachable from the
+    // onboarding doorway and by typing the URL, and nowhere else. "Where do I
+    // see my saved families?" had no answer in the UI.
+    { id: 'vara-families',     label: 'Role Families',     href: '/agents/vara/families',       group: 'workspace',    icon: '❏', status: 'live',
+      summary: 'The families you have taken, and the rest of your industry\'s. Edit yours; every future JD in one starts from it.' },
     { id: 'vara-prompts',      label: 'Prompt Studio',     href: '/agents/vara/prompts',        group: 'workspace',    icon: '⌨', status: 'live',
       summary: 'System prompts + your workspace overrides for every LLM-driven worker.' },
     { id: 'vara-pulse',        label: 'Pulse',             href: '/agents/vara/pulse',          group: 'workspace',    icon: '▲', status: 'planned',

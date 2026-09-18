@@ -212,7 +212,14 @@ export interface PublishedFacts {
   onsite_pct?: number;
   /** Where the role sits. Free text per entry — "Hyderabad", "Remote (India)". */
   locations?: string[];
-  musthaves: { name: string; weight: number }[];
+  /**
+   * `why` and `years` come from the role family's starter shape and are copied
+   * into the JD verbatim. The type said {name, weight} while the data carried
+   * four fields — so the JD panel could not render the one line that explains
+   * a must-have ("the signal that separates someone who has RUN a service from
+   * someone who has written one"), which is the most useful thing on it.
+   */
+  musthaves: { name: string; weight: number; years?: number; why?: string }[];
   knockouts: { label: string; rule: string }[];
 }
 

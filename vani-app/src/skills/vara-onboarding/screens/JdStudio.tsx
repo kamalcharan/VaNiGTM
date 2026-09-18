@@ -16,6 +16,7 @@
  * the same family inherits them — no repetition.
  */
 
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -73,6 +74,18 @@ type MatchResult =
       version?: number | null;
     }
   | { matched: false; reason: string; detail: string };
+
+/** One family in the tenant's workspace, as `my_families` returns it. */
+interface MyFamily {
+  family_id: string; name: string; version: number;
+  musthaves: { name: string; weight: number; years?: number; why?: string }[];
+  knockouts: { label: string; rule: string }[];
+  threshold: number;
+  role_summary_hint?: string | null;
+  from_pack: { code: string; version: number } | null;
+  edited: boolean;
+}
+interface MyFamilies { families: MyFamily[]; detail: string }
 
 /**
  * Weight for a must-have the tenant TYPED rather than picked off a pack.
@@ -155,14 +168,72 @@ function JdStudioInner() {
   const [familyAsked, setFamilyAsked] = useState('');
   const title = titleParam || titleAsked;
 
+  // The families already in this tenant's workspace. On the start screen this
+  // is the answer to "where do I see my saved families" — the list had no
+  // entrance in JD Studio at all, so a tenant who had taken six of them still
+  // faced an empty box.
+  const mineQ = useSkillQuery<MyFamilies>(SKILL, 'my_families', {}, { enabled: !draft && !title });
+  const myFamilies = mineQ.data?.success ? (mineQ.data.data.families ?? []) : [];
+
+  /**
+   * A family chosen by NAME rather than inferred from a title.
+   *
+   * An explicit pick outranks the matcher: if someone opens "Technical Writer"
+   * inside their Content family, guessing a different family off the title
+   * would overrule a decision they just made. So when this is set the match
+   * query does not run at all.
+   */
+  const [picked, setPicked] = useState<MyFamily | null>(null);
+
+  // What the matcher would say about what is being typed, before committing to
+  // it. Deterministic and server-side (no LLM, no model cost per keystroke),
+  // debounced so it is one call per pause rather than one per letter, and
+  // react-query caches per title so backspacing costs nothing.
+  const [probe, setProbe] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setProbe(titleDraftBox.trim()), 300);
+    return () => clearTimeout(t);
+  }, [titleDraftBox]);
+  const probeQ = useSkillQuery<MatchResult>(SKILL, 'match_title', { title: probe }, {
+    enabled: !draft && !title && !picked && probe.length >= 3,
+    staleTime: 5 * 60_000,
+  });
+  const probeHit = probeQ.data?.success && probeQ.data.data.matched ? probeQ.data.data : null;
+
   // What Vara actually knows about this title. Server-side and deterministic
   // (no LLM), so it answers in one round trip and answers the same way twice.
   const match = useSkillQuery<MatchResult>(SKILL, 'match_title', { title }, {
-    enabled: !draft && title.length > 1,
+    enabled: !draft && !picked && title.length > 1,
     staleTime: 5 * 60_000,
   });
   const result = match.data?.success ? match.data.data : null;
-  const matched = result && result.matched ? result : null;
+
+  /**
+   * A family the tenant named, dressed as a match so the rest of this screen
+   * has one code path. Nothing here is inferred: the name, the version and the
+   * whole shape come from their own workspace row, which is why `mine` is true
+   * and `score` is not a similarity at all.
+   */
+  const pickedResult: MatchResult | null = picked ? {
+    matched: true,
+    family_name: picked.name,
+    matched_title: title,
+    researched: Boolean(picked.from_pack),
+    pack_code: picked.from_pack?.code ?? '',
+    score: 100,
+    starter: {
+      role_summary_hint: picked.role_summary_hint ?? undefined,
+      musthaves: picked.musthaves,
+      knockouts: picked.knockouts,
+      threshold: picked.threshold,
+    },
+    mine: true,
+    family_id: picked.family_id,
+    version: picked.version,
+    detail: `Starting in your ${picked.name} v${picked.version}.`,
+  } : null;
+
+  const matched = pickedResult ?? (result && result.matched ? result : null);
 
   // A refusal arrives as success:false with HTTP 200 — the query SUCCEEDS and
   // carries no data. Treated as "still loading", which is what this did, the
@@ -257,6 +328,22 @@ function JdStudioInner() {
   const [publishing, setPublishing] = useState(false);
   const [publishedVersion, setPublishedVersion] = useState<number | null>(null);
   const [locDraft, setLocDraft] = useState('');
+  const [mhDraft, setMhDraft] = useState('');
+  const [koLabel, setKoLabel] = useState('');
+  const [koRule, setKoRule] = useState('');
+
+  // Shown, not enforced — and deliberately not claimed to be harmless. The
+  // packs are written to sum to 100 and the family editor shows the same
+  // total, so a tenant who drops a 40-point must-have should SEE that the JD
+  // now adds to 60 rather than find out later. Whether the scorer normalises
+  // is not something this screen can promise: the scoring engine is not built
+  // (Probability Map is 'planned'), so the number is reported, not explained.
+  const mhTotal = facts.musthaves.reduce((n, m) => n + m.weight, 0);
+  const bumpWeight = (i: number, by: number) => setFacts((f) => ({
+    ...f,
+    musthaves: f.musthaves.map((m, j) =>
+      j === i ? { ...m, weight: Math.max(0, Math.min(100, m.weight + by)) } : m),
+  }));
   const submitOnce = useRef(false);   // guard against double-submit at the ref level, not state
   const qc = useQueryClient();
   const { showToast } = useToast();
@@ -415,7 +502,67 @@ function JdStudioInner() {
               Start
             </button>
           </form>
+
+          {/* Said BEFORE committing, not after. Typing a title and pressing
+              Start used to be the only way to learn whether Vara knew the
+              role; now the answer arrives while you type, so a title that
+              matches nothing can be reworded rather than discovered. */}
+          {probe.length >= 3 && (
+            <div className={s.familyHint} style={{ marginTop: 8 }} aria-live="polite">
+              {probeQ.isFetching && !probeQ.data
+                ? 'checking…'
+                : probeHit
+                  ? `${probeHit.mine ? 'Your' : 'Vara knows'} ${probeHit.family_name}`
+                    + `${probeHit.mine ? ` v${probeHit.version ?? 1}` : ''}`
+                    + ` — matched on "${probeHit.matched_title}". Start opens on that shape.`
+                  // Not a failure, and it must not read like one: it is the
+                  // answer for every role nobody has researched yet.
+                  : 'No family matches that yet — Vara will ask about it from scratch.'}
+            </div>
+          )}
         </div>
+
+        {/* The second entrance. A title is the fast path; this is the one for
+            "I know which family, I just have a new role in it" — and it is the
+            only place in JD Studio that shows what the tenant already owns. */}
+        {myFamilies.length > 0 && (
+          <div className={s.card} style={{ marginTop: 14 }}>
+            <div className={s.jdSectionH}>Your role families</div>
+            <p className={s.cardWhat}>
+              A JD in one of these opens on your shape, not the industry&rsquo;s.
+              Pick one and name the role.
+            </p>
+            <div className={s.familyList}>
+              {myFamilies.map((f) => (
+                <button
+                  key={f.family_id}
+                  type="button"
+                  className={picked?.family_id === f.family_id ? s.familyItemActive : s.familyItem}
+                  aria-pressed={picked?.family_id === f.family_id}
+                  onClick={() => setPicked(picked?.family_id === f.family_id ? null : f)}
+                >
+                  <div className={s.familyName}>{f.name}</div>
+                  <div className={s.familyHint}>
+                    v{f.version}{f.edited ? ' · edited' : ''} · {f.musthaves.length} must-have
+                    {f.musthaves.length === 1 ? '' : 's'} · handover at {f.threshold}%
+                  </div>
+                </button>
+              ))}
+            </div>
+            {picked && (
+              <p className={s.note} style={{ marginTop: 10 }}>
+                Starting in <strong>{picked.name} v{picked.version}</strong> — type the role
+                title above and press Start. Vara will not second-guess the family.
+              </p>
+            )}
+            <p className={s.note} style={{ marginTop: 10 }}>
+              <Link href="/agents/vara/families" className={s.viewBtn}>
+                Take another family
+              </Link>{' '}
+              from your industry, or change the bar on one of these.
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -467,7 +614,7 @@ function JdStudioInner() {
                     ? 'could not reach my role families'
                     : match.isFetching && !result
                       ? 'checking what I know about this role…'
-                      : result?.detail ?? 'compose · say it, Vara structures it'}
+                      : matched?.detail ?? result?.detail ?? 'compose · say it, Vara structures it'}
                 </div>
               </div>
             </div>
@@ -599,20 +746,70 @@ function JdStudioInner() {
             </div>
 
             <div className={s.jdSection}>
-              <div className={s.jdSectionH}>Must-haves · weighted</div>
+              <div className={s.jdSectionH}>
+                Must-haves · weighted · {mhTotal}%
+              </div>
               {facts.musthaves.length === 0
                 ? <div className={s.jdEmpty}>emerges as you answer</div>
                 : facts.musthaves.map((m, i) => (
                   <div key={i} className={s.weightRow}>
                     <div>
                       <div className={s.weightName}>{m.name}</div>
+                      {m.why && <div className={s.peekWhy}>{m.why}</div>}
                       <div className={s.weightBar}>
                         <div className={s.weightFill} style={{ width: `${m.weight}%` }} />
                       </div>
                     </div>
-                    <div className={s.weightVal}>{m.weight} wt</div>
+                    {/* Vara says "publish it, or change anything first". Until
+                        now there was nothing here to change it WITH — the only
+                        editor lived on the families screen and edited the
+                        family, which is a different act (see the note below).
+                        Same controls as that dialog on purpose: ±5, one
+                        must-have floor, × to drop. */}
+                    <div className={s.wt}>
+                      <button type="button" onClick={() => bumpWeight(i, -5)}
+                        aria-label={`Lower ${m.name}`}>−</button>
+                      <span className={s.weightVal}>{m.weight}%</span>
+                      <button type="button" onClick={() => bumpWeight(i, 5)}
+                        aria-label={`Raise ${m.name}`}>+</button>
+                      <button
+                        type="button"
+                        className={s.dropBtn}
+                        aria-label={`Remove ${m.name}`}
+                        // A JD that scores nothing gives every candidate the
+                        // same number, which reads as a judgement rather than
+                        // an absence.
+                        disabled={facts.musthaves.length < 2}
+                        onClick={() => setFacts((f) => ({
+                          ...f, musthaves: f.musthaves.filter((_, j) => j !== i),
+                        }))}
+                      >×</button>
+                    </div>
                   </div>
                 ))}
+              <form
+                className={s.locAdd}
+                style={{ marginTop: 10 }}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const name = mhDraft.trim();
+                  if (!name) return;
+                  setFacts((f) => ({
+                    ...f,
+                    musthaves: [...f.musthaves, { name, weight: typedWeight(f.musthaves.length) }],
+                  }));
+                  setMhDraft('');
+                }}
+              >
+                <input
+                  className={s.textInput}
+                  value={mhDraft}
+                  onChange={(e) => setMhDraft(e.target.value)}
+                  placeholder="Add a must-have — the signal, not the job title"
+                  aria-label="Add a must-have"
+                />
+                <button type="submit" className={s.ghost} disabled={!mhDraft.trim()}>Add</button>
+              </form>
             </div>
 
             <div className={s.jdSection}>
@@ -623,8 +820,49 @@ function JdStudioInner() {
                   <div key={i} className={s.knockRow}>
                     <span className={s.knockLabel}>{k.label}</span>
                     <span className={s.knockRule}>{k.rule}</span>
+                    <button
+                      type="button"
+                      className={s.dropBtn}
+                      aria-label={`Remove ${k.label}`}
+                      onClick={() => setFacts((f) => ({
+                        ...f, knockouts: f.knockouts.filter((_, j) => j !== i),
+                      }))}
+                    >×</button>
                   </div>
                 ))}
+              {/* Label and rule are two fields because a knockout is checked
+                  before any scoring: "Work authorization" is what it is called,
+                  "Valid for the country" is what it tests. One free-text line
+                  would collapse them and nothing could evaluate it. */}
+              <form
+                className={s.locAdd}
+                style={{ marginTop: 10 }}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const label = koLabel.trim();
+                  const rule = koRule.trim();
+                  if (!label || !rule) return;
+                  setFacts((f) => ({ ...f, knockouts: [...f.knockouts, { label, rule }] }));
+                  setKoLabel(''); setKoRule('');
+                }}
+              >
+                <input
+                  className={s.textInput}
+                  value={koLabel}
+                  onChange={(e) => setKoLabel(e.target.value)}
+                  placeholder="Work authorization"
+                  aria-label="Knockout label"
+                />
+                <input
+                  className={s.textInput}
+                  value={koRule}
+                  onChange={(e) => setKoRule(e.target.value)}
+                  placeholder="Valid for the country"
+                  aria-label="Knockout rule"
+                />
+                <button type="submit" className={s.ghost}
+                  disabled={!koLabel.trim() || !koRule.trim()}>Add</button>
+              </form>
             </div>
 
             {/* The posting — what a candidate reads. The scoring contract above
@@ -747,8 +985,17 @@ function JdStudioInner() {
 
             <div className={s.jdSection}>
               <div className={s.jdSectionH}>Threshold & band</div>
+              <div className={s.thrRow}>
+                <input
+                  type="range" min={10} max={60} step={5}
+                  value={facts.threshold ?? 30}
+                  onChange={(e) => setFacts((f) => ({ ...f, threshold: Number(e.target.value) }))}
+                  aria-label="Handover threshold"
+                />
+                <span className={s.weightVal}>{facts.threshold ?? 30}%</span>
+              </div>
               <div className={s.jdLine}>
-                Handover threshold: {facts.threshold !== undefined ? `${facts.threshold}%` : <span className={s.jdEmpty}>—</span>}
+                This is the number that decides who a person on your team meets.
               </div>
               <div className={s.jdLine}>
                 Comp band: {facts.band ?? <span className={s.jdEmpty}>—</span>}
@@ -770,6 +1017,20 @@ function JdStudioInner() {
                 ? `Publishing this JD also seeds default weights and threshold for future roles in ${family} — the second JD you add here will inherit them.`
                 : 'Name the role family above to publish — it is what future roles inherit from.'}
             </p>
+            {/* TWO DIFFERENT ACTS, and conflating them is how one odd role
+                quietly re-sets the bar for every future hire. Changing the
+                numbers above changes THIS JD. Changing what every next role in
+                the family starts from is the family editor, one screen away. */}
+            {matched?.mine && (
+              <p className={s.note} style={{ marginTop: 6 }}>
+                Edits here apply to this JD only — your {family} v{matched.version ?? 1} is
+                untouched.{' '}
+                <Link href="/agents/vara/families" className={s.viewBtn}>
+                  Change the family instead
+                </Link>{' '}
+                to move the bar for every role you add to it next.
+              </p>
+            )}
           </div>
         </div>
       </div>
