@@ -43,6 +43,7 @@ import type { Pool } from 'pg';
 import { createTenantDb } from '../db';
 import { appendStep } from './agent.runner';
 import { resolveProvider, type ResolvedProvider } from './llm.provider';
+import { withLlmSlot, checkContext, contextError } from './llm.gate';
 
 /* ── LLM config ─────────────────────────────────────────────────── */
 
@@ -256,6 +257,17 @@ async function callEndpoint(
     ],
   };
 
+  // Measured before it is sent. A 500 saying "Context size has been exceeded"
+  // has already spent the round trip and says nothing about how big the prompt
+  // was — this says exactly that, and refuses without spending anything. Only
+  // where the window is known (platform); a tenant's own endpoint judges its
+  // own limits (llm.gate.ts).
+  const wholePrompt = systemContent + messages.map((m) => String(m.content ?? '')).join('');
+  const fit = checkContext(provider.posture, wholePrompt, maxTokens);
+  if (fit && !fit.fits) {
+    throw contextError(fit, `this call to ${provider.model}`);
+  }
+
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (provider.key) headers['Authorization'] = `Bearer ${provider.key}`;
 
@@ -268,22 +280,47 @@ async function callEndpoint(
     ? `your ${provider.providerCode} endpoint`
     : 'the platform LLM';
 
+  // ONE CALL AT A TIME against the platform endpoint by default. Five agents
+  // sharing one small model server is what "Context size has been exceeded"
+  // actually was — its KV cache split five ways. Queueing is not degradation:
+  // every call still happens, in order, and the worker's heartbeat keeps a
+  // waiting run from being reclaimed.
   let response: Response;
   try {
-    response = await fetch(`${provider.url}/chat/completions`, {
-      method:  'POST',
-      headers,
-      body:    JSON.stringify(body),
-      signal:  AbortSignal.timeout(provider.timeoutMs),
-    });
+    response = await withLlmSlot(
+      provider.url,
+      provider.posture,
+      () => fetch(`${provider.url}/chat/completions`, {
+        method:  'POST',
+        headers,
+        body:    JSON.stringify(body),
+        // The timeout starts when the call STARTS, not when it was queued —
+        // otherwise the fifth run in the lane times out having never been sent.
+        signal:  AbortSignal.timeout(provider.timeoutMs),
+      }),
+      (waitedMs, depth) => {
+        // Visible, because a run that sits for two minutes with no explanation
+        // reads as hung. stdout is where the worker's story is told.
+        console.log(`[LLM] waited ${Math.round(waitedMs / 1000)}s behind ${depth} `
+          + `call(s) for ${provider.model} at ${provider.url}`);
+      },
+    );
   } catch (err) {
     throw new Error(`${unreachable}: Cannot reach ${who} at ${provider.url} — ${String(err)}`);
   }
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
+    // Our own estimate, appended when the server blames context. Without it
+    // the log says the window was exceeded and never says by what, so the next
+    // person guesses — which is how this one cost two sessions.
+    const ours = /context size/i.test(detail)
+      ? ` [our estimate: ~${Math.ceil(wholePrompt.length / 4)} prompt tokens `
+        + `+ ${maxTokens} reserved for the answer; if that fits the configured window, `
+        + `the server is splitting it across concurrent requests]`
+      : '';
     throw new Error(
-      `${errored}: ${who} returned ${response.status} ${response.statusText} — ${detail.slice(0, 300)}`,
+      `${errored}: ${who} returned ${response.status} ${response.statusText} — ${detail.slice(0, 300)}${ours}`,
     );
   }
 

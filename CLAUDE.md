@@ -793,6 +793,44 @@ orphan reclaim together. If it still fails with one run at a time, then it is
 a real capacity problem and the next levers are the server's context/parallel
 settings, or a bigger model (qwen3-4b runs ~12 tok/s).
 
+### It happened again after that deploy — the missing half (run 114, 2026-09-18)
+
+```
+[Queue] Reclaimed orphaned events: 5 requeued, 0 failed after 3 attempts
+[Worker] Run 114 needs a decision on failover: LLM_VPS_ERROR: 500
+         {"message":"Context size has been exceeded."}
+```
+
+Those two lines are **one event**. The reclaim returned five events to
+`pending`, `WORKER_BATCH_SIZE` is 5, and `processEvent` is fire-and-forget — so
+five agents went at one small model server together. The CTE fix capped how
+many events are **claimed**; it never capped how many LLM calls are **in
+flight**, and that is the number the model server cares about.
+
+`agent-core/llm.gate.ts` adds the half that was missing:
+
+- **Take turns.** A FIFO lane per endpoint URL, platform limited to ONE call at
+  a time (`LLM_MAX_CONCURRENT`, default 1; BYOK `LLM_BYOK_MAX_CONCURRENT`,
+  default 4). Keyed by URL so a tenant's endpoint never queues behind Vikuna's.
+  The per-call timeout starts when the call starts, not when it was queued, and
+  the worker's 30s heartbeat keeps a waiting run from being reclaimed.
+- **Measure before sending.** `max_tokens` is RESERVED INSIDE the window, not
+  added to it — a 7000-token prompt fits alone and fails with 1000 kept for the
+  answer. Where the window is known (`LLM_CONTEXT_TOKENS`, default 8192,
+  platform only) an over-budget call is refused with the numbers and nothing is
+  spent. A 500 from the server now carries our estimate too, so the log says by
+  how much.
+
+Neither gate truncates, summarises or retries smaller: trimming a prompt to fit
+changes the question without saying so and the answer comes back looking like a
+full one (rule 12). Making a prompt smaller is the caller's job, and it can only
+do that job if it is told the real numbers.
+
+**The lane is IN-PROCESS.** It covers the worker, which is where the five
+concurrent agents came from. Two workers, or the API process, still make
+concurrent calls — a cross-process limit needs a shared lock and is a decision
+to raise, not a gap to rediscover from the same 500.
+
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the
    GUC dies before your query (surfaced as `invalid input syntax for type
