@@ -237,6 +237,8 @@ const MOCK_CATALOGUE_FAMILIES = [
 /** Families this mock tenant has taken. Mutated by take_families, exactly as
  *  the real write is: idempotent, so a repeat lands under `already`. */
 const MOCK_MINE = new Set<string>();
+/** A taken family's LIVE shape, which diverges from the pack once edited. */
+const MOCK_MINE_SHAPE = new Map<string, { musthaves: unknown[]; knockouts: unknown[]; threshold: number; version: number }>();
 
 /**
  * Reads. They take the params as well — `match_title` is a read whose whole
@@ -290,13 +292,19 @@ const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
   },
 
   'domain-pack-skill.my_families': () => {
-    const families = MOCK_CATALOGUE_FAMILIES.filter((f) => MOCK_MINE.has(f.name)).map((f) => ({
-      family_id: `mock-${f.pack_code}`, name: f.name, hint: f.hint, version: 1,
-      musthaves: f.starter.musthaves ?? [], knockouts: f.starter.knockouts ?? [],
-      role_summary_hint: f.starter.role_summary_hint ?? null, band_hint: null,
-      threshold: f.starter.threshold ?? 30, axis_weights: null,
-      from_pack: { code: f.pack_code, version: f.pack_version }, edited: false,
-    }));
+    const families = MOCK_CATALOGUE_FAMILIES.filter((f) => MOCK_MINE.has(f.name)).map((f) => {
+      const live = MOCK_MINE_SHAPE.get(f.name);
+      return {
+        family_id: `mock-${f.pack_code}`, name: f.name, hint: f.hint,
+        version: live?.version ?? 1,
+        musthaves: live?.musthaves ?? f.starter.musthaves ?? [],
+        knockouts: live?.knockouts ?? f.starter.knockouts ?? [],
+        role_summary_hint: f.starter.role_summary_hint ?? null, band_hint: null,
+        threshold: live?.threshold ?? f.starter.threshold ?? 30, axis_weights: null,
+        from_pack: { code: f.pack_code, version: f.pack_version },
+        edited: (live?.version ?? 1) > 1,
+      };
+    });
     return {
       families,
       detail: families.length
@@ -405,6 +413,30 @@ const WRITE_HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = 
       detail: taken.length
         ? `${taken.length} famil${taken.length === 1 ? 'y is' : 'ies are'} now yours.`
         : 'You already had all of those.',
+    };
+  },
+
+  'domain-pack-skill.update_family_shape': (p) => {
+    const familyId = String(p.family_id ?? '');
+    const f = MOCK_CATALOGUE_FAMILIES.find((x) => `mock-${x.pack_code}` === familyId);
+    if (!f || !MOCK_MINE.has(f.name)) throw new Error('That is not a family in your workspace.');
+    const musthaves = Array.isArray(p.musthaves) ? p.musthaves : [];
+    // Same floor as the server: a family that scores nothing gives every
+    // candidate the same number, which reads as a judgement.
+    if (!musthaves.length) {
+      throw new Error('A family needs at least one must-have — Vara has nothing to score without one.');
+    }
+    const prev = MOCK_MINE_SHAPE.get(f.name);
+    const version = (prev?.version ?? 1) + 1;
+    MOCK_MINE_SHAPE.set(f.name, {
+      musthaves,
+      knockouts: Array.isArray(p.knockouts) ? p.knockouts : [],
+      threshold: typeof p.threshold === 'number' ? p.threshold : 30,
+      version,
+    });
+    return {
+      ok: true, family_id: familyId, name: f.name, version,
+      detail: `${f.name} is now v${version}. Earlier versions stay readable.`,
     };
   },
 

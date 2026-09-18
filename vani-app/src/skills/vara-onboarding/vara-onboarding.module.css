@@ -735,3 +735,31 @@
   overflow-y: auto;
   max-height: calc(min(84vh, 900px) - 78px);
 }
+
+/* ── Editing a shape ─────────────────────────────────────────────────────
+   The same dialog, in its second mode. A family in the catalogue is read;
+   a family in the workspace is changed. */
+.wt { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.wt button {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-dim);
+  width: 24px; height: 24px;
+  border-radius: 3px;
+  line-height: 1; font-size: 14px;
+  display: grid; place-items: center;
+  cursor: pointer;
+}
+.wt button:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
+.dropBtn {
+  background: transparent;
+  border: 0;
+  color: var(--color-text-dim);
+  font-size: 16px;
+  padding: 0 4px;
+  cursor: pointer;
+}
+.dropBtn:hover:not(:disabled) { color: var(--color-warning, #d9a441); }
+.dropBtn:disabled { opacity: .3; cursor: not-allowed; }
+.thrRow { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.thrRow input[type='range'] { accent-color: var(--color-primary); flex: 1; min-width: 180px; }

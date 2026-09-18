@@ -43,6 +43,13 @@ interface Family {
   suggested_titles: string[]; starter: Starter; mine: boolean;
   provenance: { researched: boolean; review_state: string | null; at: string | null };
 }
+interface MyFamily {
+  family_id: string; name: string; version: number;
+  musthaves: MustHave[]; knockouts: Knockout[]; threshold: number;
+  from_pack: { code: string; version: number } | null; edited: boolean;
+}
+interface MyFamilies { families: MyFamily[]; detail: string }
+
 interface Catalogue {
   industry: string | null; domain: string | null;
   families: Family[]; mine: number; reason?: string; detail: string;
@@ -70,6 +77,10 @@ export default function TakeFamilies() {
   const [picked, setPicked] = useState<Set<string>>(new Set());
 
   const q = useSkillQuery<Catalogue>(SKILL, 'catalogue', {});
+  // A taken family's live shape, which is NOT the pack's once it has been
+  // edited. Opening the catalogue copy for a family the tenant already
+  // changed would show them the industry's version and call it theirs.
+  const mineQ = useSkillQuery<MyFamilies>(SKILL, 'my_families', {});
 
   const take = useSkillMutation(SKILL, 'take_families', {
     successMessage: 'Those families are yours now.',
@@ -150,7 +161,14 @@ export default function TakeFamilies() {
               for; you are deciding what you are hiring for now.
             </div>
 
-            <StructureDialog family={reading} onClose={() => setReading(null)} />
+            <StructureDialog
+              family={reading}
+              mine={reading
+                ? (mineQ.data?.data?.families ?? []).find((m) => m.name === reading.name) ?? null
+                : null}
+              onClose={() => setReading(null)}
+              onSaved={() => { void q.refetch(); void mineQ.refetch(); }}
+            />
 
             <div className={s.actions} style={{ marginTop: 20 }}>
               <button
@@ -183,90 +201,203 @@ export default function TakeFamilies() {
 
 
 /**
- * The family's shape, at a width it can actually be read at.
+ * The family's shape, at a width it can actually be read at — and editable
+ * once it is theirs.
  *
- * Native <dialog> with showModal(), not a hand-rolled overlay: it gives the
- * top layer, a focus trap, Esc-to-close and inertness of the page behind for
- * free. Re-implementing those badly is the usual cost of a custom modal.
+ * ONE SURFACE, TWO MODES. A family in the catalogue is a document you read
+ * before deciding; a family in your workspace is the same document, and the
+ * only difference is that you can change it. Two separate screens for "look at
+ * a shape" and "edit a shape" would drift, and a tenant would have to learn
+ * which one they were on.
+ *
+ * Native <dialog> with showModal(): top layer, focus trap, Esc-to-close and an
+ * inert page behind, none of which a hand-rolled overlay gets right for free.
  */
 function StructureDialog(
-  { family, onClose }: { family: Family | null; onClose: () => void },
+  { family, mine, onClose, onSaved }: {
+    family: Family | null;
+    mine: MyFamily | null;
+    onClose: () => void;
+    onSaved: () => void;
+  },
 ) {
   const ref = useRef<HTMLDialogElement>(null);
   const panel = useRef<HTMLDivElement>(null);
+
+  // The working copy. Seeded from the LIVE shape when the family is theirs,
+  // from the pack when it is not yet.
+  const [draft, setDraft] = useState<{ musthaves: MustHave[]; knockouts: Knockout[]; threshold: number } | null>(null);
+  const [dirty, setDirty] = useState(false);
+
+  const save = useSkillMutation(SKILL, 'update_family_shape', {
+    successMessage: 'Saved. Earlier versions stay readable.',
+    errorMessage: 'Could not save the change.',
+    onSuccess: () => { setDirty(false); onSaved(); onClose(); },
+  });
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (family && !el.open) el.showModal();
     if (!family && el.open) el.close();
-  }, [family]);
+    if (family) {
+      const src = mine ?? family.starter;
+      setDraft({
+        musthaves: [...(src.musthaves ?? [])],
+        knockouts: [...(src.knockouts ?? [])],
+        threshold: (mine ? mine.threshold : family.starter.threshold) ?? 30,
+      });
+      setDirty(false);
+    }
+  }, [family, mine]);
 
   if (!family) return <dialog ref={ref} className={s.dialog} onClose={onClose} />;
 
-  const st = family.starter;
-  const total = (st.musthaves ?? []).reduce((n, m) => n + m.weight, 0);
+  const editable = Boolean(mine);
+  const shape = draft ?? { musthaves: [], knockouts: [], threshold: 30 };
+  const total = shape.musthaves.reduce((n, m) => n + m.weight, 0);
+  const edit = (next: Partial<typeof shape>) => {
+    setDraft({ ...shape, ...next });
+    setDirty(true);
+  };
+  const bump = (i: number, by: number) => edit({
+    musthaves: shape.musthaves.map((m, j) =>
+      j === i ? { ...m, weight: Math.max(0, Math.min(100, m.weight + by)) } : m),
+  });
 
   return (
     <dialog
       ref={ref}
       className={s.dialog}
       onClose={onClose}
-      // Outside-click closes, decided by containment rather than by comparing
-      // the target to the dialog. The usual `e.target === dialogEl` trick
-      // depends on the backdrop click retargeting to the element, which did
-      // not fire here — an inner panel makes it unambiguous: anything not
-      // inside the panel is outside it.
       onClick={(e) => {
-        if (!panel.current?.contains(e.target as Node)) onClose();
+        // Outside-click by CONTAINMENT, not by comparing the target to the
+        // dialog — the usual trick relies on a backdrop click retargeting to
+        // the element and it did not fire here. An unsaved change is not
+        // thrown away by a stray click.
+        if (panel.current?.contains(e.target as Node)) return;
+        if (dirty) return;
+        onClose();
       }}
       aria-label={`${family.name} — JD structure`}
     >
       <div className={s.dialogPanel} ref={panel}>
-      <div className={s.dialogHead}>
-        <div>
-          <div className={s.dialogTitle}>{family.name}</div>
-          {family.hint && <div className={s.familyHint}>{family.hint}</div>}
-        </div>
-        <button type="button" className={s.dialogClose} onClick={onClose} aria-label="Close">
-          ×
-        </button>
-      </div>
-
-      <div className={s.dialogBody}>
-        <div className={s.jdSectionH}>Must-haves · Vara scores these · {total}%</div>
-        {(st.musthaves ?? []).map((m, i) => (
-          <div key={i} className={s.weightRow}>
-            <div>
-              <div className={s.weightName}>{m.name}</div>
-              {m.why && <div className={s.peekWhy}>{m.why}</div>}
-              <div className={s.weightBar}>
-                <div className={s.weightFill} style={{ width: `${m.weight}%` }} />
-              </div>
+        <div className={s.dialogHead}>
+          <div>
+            <div className={s.dialogTitle}>{family.name}</div>
+            <div className={s.familyHint}>
+              {editable
+                ? `Yours · v${mine!.version}${mine!.edited ? ' · edited' : ''} — change anything`
+                : family.hint ?? "Vara's version. Take it to make it yours."}
             </div>
-            <div className={s.weightVal}>{m.weight}%</div>
           </div>
-        ))}
+          <button type="button" className={s.dialogClose} onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        </div>
 
-        <div className={s.jdSectionH}>Knockouts · checked before any scoring</div>
-        {(st.knockouts ?? []).length === 0
-          ? <div className={s.jdEmpty}>None</div>
-          : (st.knockouts ?? []).map((k, i) => (
-            <div key={i} className={s.knockRow}>
-              <span className={s.knockLabel}>{k.label}</span>
-              <span className={s.knockRule}>{k.rule}</span>
+        <div className={s.dialogBody}>
+          <div className={s.jdSectionH}>
+            Must-haves · Vara scores these · {total}%
+          </div>
+          {shape.musthaves.map((m, i) => (
+            <div key={i} className={s.weightRow}>
+              <div>
+                <div className={s.weightName}>{m.name}</div>
+                {m.why && <div className={s.peekWhy}>{m.why}</div>}
+                <div className={s.weightBar}>
+                  <div className={s.weightFill} style={{ width: `${m.weight}%` }} />
+                </div>
+              </div>
+              {editable ? (
+                <div className={s.wt}>
+                  <button type="button" onClick={() => bump(i, -5)} aria-label={`Lower ${m.name}`}>−</button>
+                  <span className={s.weightVal}>{m.weight}%</span>
+                  <button type="button" onClick={() => bump(i, 5)} aria-label={`Raise ${m.name}`}>+</button>
+                  <button
+                    type="button"
+                    className={s.dropBtn}
+                    aria-label={`Remove ${m.name}`}
+                    // One must-have is the floor: a family that scores nothing
+                    // gives every candidate the same number, which reads as a
+                    // judgement rather than an absence.
+                    disabled={shape.musthaves.length < 2}
+                    onClick={() => edit({ musthaves: shape.musthaves.filter((_, j) => j !== i) })}
+                  >×</button>
+                </div>
+              ) : (
+                <div className={s.weightVal}>{m.weight}%</div>
+              )}
             </div>
           ))}
 
-        <div className={s.jdSectionH}>Handover threshold</div>
-        <div className={s.jdLine}>
-          At <b>{st.threshold ?? 30}%</b> or above, a person on your team meets the
-          candidate. You can change this after you take it.
-        </div>
+          <div className={s.jdSectionH}>Knockouts · checked before any scoring</div>
+          {shape.knockouts.length === 0
+            ? <div className={s.jdEmpty}>None</div>
+            : shape.knockouts.map((k, i) => (
+              <div key={i} className={s.knockRow}>
+                <span className={s.knockLabel}>{k.label}</span>
+                <span className={s.knockRule}>{k.rule}</span>
+                {editable && (
+                  <button
+                    type="button"
+                    className={s.dropBtn}
+                    aria-label={`Remove ${k.label}`}
+                    onClick={() => edit({ knockouts: shape.knockouts.filter((_, j) => j !== i) })}
+                  >×</button>
+                )}
+              </div>
+            ))}
 
-        <div className={s.jdSectionH}>Titles this covers</div>
-        <div className={s.peekTitles}>{family.suggested_titles.join(' · ') || '—'}</div>
-      </div>
+          <div className={s.jdSectionH}>Handover threshold</div>
+          {editable ? (
+            <>
+              <div className={s.thrRow}>
+                <input
+                  type="range" min={10} max={60} step={5}
+                  value={shape.threshold}
+                  onChange={(e) => edit({ threshold: Number(e.target.value) })}
+                  aria-label="Handover threshold"
+                />
+                <span className={s.weightVal}>{shape.threshold}%</span>
+              </div>
+              <p className={s.jdLine}>
+                This is the number that decides who a human on your team meets.
+              </p>
+            </>
+          ) : (
+            <div className={s.jdLine}>
+              At <b>{shape.threshold}%</b> or above, a person on your team meets the
+              candidate. You can change this after you take it.
+            </div>
+          )}
+
+          <div className={s.jdSectionH}>Titles this covers</div>
+          <div className={s.peekTitles}>{family.suggested_titles.join(' · ') || '—'}</div>
+
+          {editable && (
+            <div className={s.actions} style={{ marginTop: 20 }}>
+              <button
+                type="button"
+                className={s.primary}
+                disabled={!dirty || save.isPending}
+                onClick={() => save.mutate({
+                  family_id: mine!.family_id,
+                  musthaves: shape.musthaves,
+                  knockouts: shape.knockouts,
+                  threshold: shape.threshold,
+                })}
+              >
+                {save.isPending ? 'Saving…' : `Save as v${mine!.version + 1}`}
+              </button>
+              <span className={s.note}>
+                {dirty
+                  ? `v${mine!.version} stays readable — a JD published against it is still explainable.`
+                  : 'Nothing changed yet.'}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </dialog>
   );
