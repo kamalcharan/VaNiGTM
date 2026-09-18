@@ -29,6 +29,8 @@ import {
   type DraftJd, type PublishedFacts,
 } from '../mock-data';
 import { unknownRole, type JdStudioStep } from '../jd-script';
+import { searchFamilies } from '../family-search';
+import { bump as bumpW, drop as dropW, add as addW, balance, total as sumW, TOTAL } from '../weights';
 import { JdImport } from './JdImport';
 import u from '@/platform/shell/ui.module.css';
 import s from '../vara-onboarding.module.css';
@@ -83,6 +85,8 @@ interface MyFamily {
   threshold: number;
   role_summary_hint?: string | null;
   from_pack: { code: string; version: number } | null;
+  /** Titles the pack this came from says it covers. Empty for a scratch family. */
+  suggested_titles?: string[];
   edited: boolean;
 }
 interface MyFamilies { families: MyFamily[]; detail: string }
@@ -199,6 +203,12 @@ function JdStudioInner() {
     staleTime: 5 * 60_000,
   });
   const probeHit = probeQ.data?.success && probeQ.data.data.matched ? probeQ.data.data : null;
+
+  // Typing narrows the list too, and does it instantly — no round trip, loose
+  // enough to survive a typo. The server matcher and this are different jobs
+  // on purpose (see family-search.ts): one decides which family a JOB TITLE
+  // belongs to and must be strict; this one only decides what stays on screen.
+  const shownFamilies = searchFamilies(myFamilies, titleDraftBox);
 
   // What Vara actually knows about this title. Server-side and deterministic
   // (no LLM), so it answers in one round trip and answers the same way twice.
@@ -332,18 +342,14 @@ function JdStudioInner() {
   const [koLabel, setKoLabel] = useState('');
   const [koRule, setKoRule] = useState('');
 
-  // Shown, not enforced — and deliberately not claimed to be harmless. The
-  // packs are written to sum to 100 and the family editor shows the same
-  // total, so a tenant who drops a 40-point must-have should SEE that the JD
-  // now adds to 60 rather than find out later. Whether the scorer normalises
-  // is not something this screen can promise: the scoring engine is not built
-  // (Probability Map is 'planned'), so the number is reported, not explained.
-  const mhTotal = facts.musthaves.reduce((n, m) => n + m.weight, 0);
-  const bumpWeight = (i: number, by: number) => setFacts((f) => ({
-    ...f,
-    musthaves: f.musthaves.map((m, j) =>
-      j === i ? { ...m, weight: Math.max(0, Math.min(100, m.weight + by)) } : m),
-  }));
+  // Weights are a split of 100 and every edit conserves it — see weights.ts.
+  // The total is still shown, because a shape can ARRIVE off-total (a pack
+  // written to 99, a family edited before this rule existed) and silently
+  // rewriting what a tenant already decided is not this screen's call: it
+  // offers Balance, they press it.
+  const mhTotal = sumW(facts.musthaves);
+  const bumpWeight = (i: number, by: number) =>
+    setFacts((f) => ({ ...f, musthaves: bumpW(f.musthaves, i, by) }));
   const submitOnce = useRef(false);   // guard against double-submit at the ref level, not state
   const qc = useQueryClient();
   const { showToast } = useToast();
@@ -494,7 +500,9 @@ function JdStudioInner() {
               className={s.textInput}
               value={titleDraftBox}
               onChange={(e) => setTitleDraftBox(e.target.value)}
-              placeholder="Senior Backend Engineer, Depot Supervisor…"
+              placeholder={picked
+                ? `The role you are hiring in ${picked.name}…`
+                : 'Senior Backend Engineer, Depot Supervisor…'}
               aria-label="Role title"
               autoFocus
             />
@@ -533,7 +541,7 @@ function JdStudioInner() {
               Pick one and name the role.
             </p>
             <div className={s.familyList}>
-              {myFamilies.map((f) => (
+              {shownFamilies.map((f) => (
                 <button
                   key={f.family_id}
                   type="button"
@@ -549,11 +557,52 @@ function JdStudioInner() {
                 </button>
               ))}
             </div>
-            {picked && (
-              <p className={s.note} style={{ marginTop: 10 }}>
-                Starting in <strong>{picked.name} v{picked.version}</strong> — type the role
-                title above and press Start. Vara will not second-guess the family.
+            {shownFamilies.length === 0 && (
+              // Rule 9b: never an empty list with nothing to do about it.
+              <p className={s.note}>
+                None of your families look like &ldquo;{titleDraftBox.trim()}&rdquo;. Clear the
+                box to see all {myFamilies.length}, or press Start and Vara will shape this
+                role from scratch.
               </p>
+            )}
+            {picked && (
+              <div style={{ marginTop: 12 }}>
+                <p className={s.note} style={{ marginBottom: 8 }}>
+                  Starting in <strong>{picked.name} v{picked.version}</strong> — Vara will not
+                  second-guess the family.
+                </p>
+                {/* Picking a family used to end in a sentence: the tenant had
+                    said WHICH family and was still facing an empty box with a
+                    placeholder about depot supervisors. These are the titles
+                    the family's own pack says it covers — one click starts the
+                    JD. A scratch-built family has none, and none are invented
+                    for it (rule 9d); the box below is the way in. */}
+                {(picked.suggested_titles ?? []).length > 0 ? (
+                  <>
+                    <div className={s.jdSectionH}>Roles it covers</div>
+                    <div className={s.chipRow}>
+                      {(picked.suggested_titles ?? []).map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          className={s.suggChip}
+                          onClick={() => { setTitleDraftBox(t); setTitleAsked(t); }}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                    <p className={s.note} style={{ marginTop: 8 }}>
+                      Or type any other title above — the family stays {picked.name}.
+                    </p>
+                  </>
+                ) : (
+                  <p className={s.note}>
+                    You built this family yourself, so there are no suggested titles for it.
+                    Name the role above and press Start.
+                  </p>
+                )}
+              </div>
             )}
             <p className={s.note} style={{ marginTop: 10 }}>
               <Link href="/agents/vara/families" className={s.viewBtn}>
@@ -748,6 +797,18 @@ function JdStudioInner() {
             <div className={s.jdSection}>
               <div className={s.jdSectionH}>
                 Must-haves · weighted · {mhTotal}%
+                {facts.musthaves.length > 0 && mhTotal !== TOTAL && (
+                  <>
+                    {' '}
+                    <button
+                      type="button"
+                      className={s.viewBtn}
+                      onClick={() => setFacts((f) => ({ ...f, musthaves: balance(f.musthaves) }))}
+                    >
+                      balance to {TOTAL}%
+                    </button>
+                  </>
+                )}
               </div>
               {facts.musthaves.length === 0
                 ? <div className={s.jdEmpty}>emerges as you answer</div>
@@ -780,9 +841,7 @@ function JdStudioInner() {
                         // same number, which reads as a judgement rather than
                         // an absence.
                         disabled={facts.musthaves.length < 2}
-                        onClick={() => setFacts((f) => ({
-                          ...f, musthaves: f.musthaves.filter((_, j) => j !== i),
-                        }))}
+                        onClick={() => setFacts((f) => ({ ...f, musthaves: dropW(f.musthaves, i) }))}
                       >×</button>
                     </div>
                   </div>
@@ -796,7 +855,7 @@ function JdStudioInner() {
                   if (!name) return;
                   setFacts((f) => ({
                     ...f,
-                    musthaves: [...f.musthaves, { name, weight: typedWeight(f.musthaves.length) }],
+                    musthaves: addW(f.musthaves, { name, weight: 0 }, typedWeight(f.musthaves.length)),
                   }));
                   setMhDraft('');
                 }}

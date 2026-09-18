@@ -301,6 +301,7 @@ const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
         role_summary_hint: f.starter.role_summary_hint ?? null, band_hint: null,
         threshold: live?.threshold ?? f.starter.threshold ?? 30, axis_weights: null,
         from_pack: { code: f.pack_code, version: f.pack_version },
+        suggested_titles: f.suggested_titles,
         edited: (live?.version ?? 1) > 1,
       };
     });

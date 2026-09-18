@@ -30,6 +30,7 @@ import { useSkillQuery } from '@/lib/useSkill';
 import { useSkillMutation } from '@/lib/useSkillMutation';
 import u from '@/platform/shell/ui.module.css';
 import s from '../vara-onboarding.module.css';
+import { bump as bumpW, drop as dropW, balance, total as sumW, TOTAL } from '../weights';
 
 const SKILL = 'domain-pack-skill';
 
@@ -267,15 +268,15 @@ function StructureDialog(
 
   const editable = Boolean(mine);
   const shape = draft ?? { musthaves: [], knockouts: [], threshold: 30 };
-  const total = shape.musthaves.reduce((n, m) => n + m.weight, 0);
+  const total = sumW(shape.musthaves);
   const edit = (next: Partial<typeof shape>) => {
     setDraft({ ...shape, ...next });
     setDirty(true);
   };
-  const bump = (i: number, by: number) => edit({
-    musthaves: shape.musthaves.map((m, j) =>
-      j === i ? { ...m, weight: Math.max(0, Math.min(100, m.weight + by)) } : m),
-  });
+  // Weights are a split of 100 and every edit conserves it (weights.ts). This
+  // dialog is where a family reached 110%: ± created weight rather than moving
+  // it, so pressing + twice quietly devalued every other must-have.
+  const bump = (i: number, by: number) => edit({ musthaves: bumpW(shape.musthaves, i, by) });
 
   return (
     <dialog
@@ -311,6 +312,18 @@ function StructureDialog(
         <div className={s.dialogBody}>
           <div className={s.jdSectionH}>
             Must-haves · Vara scores these · {total}%
+            {editable && shape.musthaves.length > 0 && total !== TOTAL && (
+              <>
+                {' '}
+                <button
+                  type="button"
+                  className={s.viewBtn}
+                  onClick={() => edit({ musthaves: balance(shape.musthaves) })}
+                >
+                  balance to {TOTAL}%
+                </button>
+              </>
+            )}
           </div>
           {shape.musthaves.map((m, i) => (
             <div key={i} className={s.weightRow}>
@@ -334,7 +347,7 @@ function StructureDialog(
                     // gives every candidate the same number, which reads as a
                     // judgement rather than an absence.
                     disabled={shape.musthaves.length < 2}
-                    onClick={() => edit({ musthaves: shape.musthaves.filter((_, j) => j !== i) })}
+                    onClick={() => edit({ musthaves: dropW(shape.musthaves, i) })}
                   >×</button>
                 </div>
               ) : (
