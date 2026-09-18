@@ -70,6 +70,10 @@ export interface TitleMatch {
   /** True when the pack carries provenance — i.e. researched, not a 244 seed. */
   researched: boolean;
   starter: Record<string, unknown>;
+  /** Already in the tenant's workspace, on the shape they are on. */
+  mine?: boolean;
+  family_id?: string;
+  version?: number;
 }
 
 export interface PackCandidate {
@@ -79,6 +83,19 @@ export interface PackCandidate {
   suggested_titles: string[];
   researched: boolean;
   starter: Record<string, unknown>;
+  /**
+   * A family already in the tenant's workspace, on the shape THEY are on.
+   *
+   * Ranked above everything else on a tie, because the second JD in a family
+   * they have shaped must open from their v3 and not the industry's v1.
+   * Without this the product never compounds: every JD would start from the
+   * platform again and the edits a tenant made would be invisible to the one
+   * place that matters.
+   */
+  mine?: boolean;
+  /** Their family row, so the caller can name the version and link to it. */
+  family_id?: string;
+  version?: number;
 }
 
 /**
@@ -206,12 +223,19 @@ export function matchTitle(
         score: best,
         researched: c.researched,
         starter: c.starter,
+        mine: c.mine === true,
+        family_id: c.family_id,
+        version: c.version,
       });
     }
   }
 
   scored.sort((x, y) =>
     y.score - x.score
+    // Theirs beats the industry's on a tie. A family the tenant has taken and
+    // shaped IS the answer for that role; offering the platform version
+    // instead would quietly undo every edit they made.
+    || Number(y.mine) - Number(x.mine)
     || Number(y.researched) - Number(x.researched)
     || x.family_name.localeCompare(y.family_name));   // stable, so tests are not flaky
 

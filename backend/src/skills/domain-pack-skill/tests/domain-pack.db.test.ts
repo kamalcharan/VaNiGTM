@@ -1232,6 +1232,101 @@ it('an edit is a new version, and the old one stays readable', async () => {
     expect(after).toEqual(before);
   });
 
+  it('opens on the tenant\'s OWN shape once they have taken the family', async () => {
+    // The whole point of step 6. Matching the catalogue first would hand back
+    // the industry's version and quietly undo every edit they made — the
+    // product would look identical and never compound.
+    const code = await seed();
+    await f().take({ codes: [code] }, ctxFor(A));
+    const fam = (await pool.query(`SELECT id FROM vani_role_family`)).rows[0].id;
+    await f().edit({
+      family_id: fam,
+      musthaves: [{ name: 'Only what we actually screen for', weight: 70 }],
+      knockouts: [], threshold: 50,
+    }, ctxFor(A));
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { match_title } = require('../functions/match-title');
+    const r = await match_title({ title: 'Fleet Manager' }, ctxFor(A));
+
+    expect(r.matched).toBe(true);
+    expect(r.mine).toBe(true);
+    expect(r.version).toBe(2);
+    expect(r.family_id).toBe(fam);
+    // Their shape, not the pack's.
+    expect(r.starter.musthaves).toEqual([
+      { name: 'Only what we actually screen for', weight: 70 }]);
+    expect(r.starter.threshold).toBe(50);
+    expect(r.detail).toMatch(/already yours.*v2/);
+  });
+
+  it('a family they have NOT taken still comes from the catalogue', async () => {
+    // The control. Without it, the test above would also pass if the
+    // catalogue had simply stopped being consulted.
+    const code = await seed();
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { match_title } = require('../functions/match-title');
+    const r = await match_title({ title: 'Fleet Manager' }, ctxFor(A));
+    expect(r.matched).toBe(true);
+    expect(r.mine).toBe(false);
+    expect(r.pack_code).toBe(code);
+    expect(r.starter.musthaves).toHaveLength(2);      // the pack's shape
+  });
+
+  it('represents a taken family once, not twice', async () => {
+    // Both rows in the candidate list would let the platform version win a
+    // tie on family name alone and hand back a shape they had changed.
+    const code = await seed();
+    await f().take({ codes: [code] }, ctxFor(A));
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { match_title } = require('../functions/match-title');
+    const r = await match_title({ title: 'Fleet Operations' }, ctxFor(A));
+    expect(r.matched).toBe(true);
+    expect(r.mine).toBe(true);
+    // No alternate is the same family under the industry's copy.
+    expect((r.alternates ?? []).map((a: { family_name: string }) => a.family_name))
+      .not.toContain('Fleet Operations');
+  });
+
+  it('matches a family built from scratch by its name alone', async () => {
+    // No from_pack, so no suggested titles — which is honest: nobody has told
+    // Vara what that role is called elsewhere.
+    await pool.query(
+      `INSERT INTO vani_tenant (slug, name) VALUES ('us', 'Us') ON CONFLICT DO NOTHING`);
+    const vt = (await pool.query(`SELECT id FROM vani_tenant WHERE slug = 'us'`)).rows[0].id;
+    const fam = (await pool.query(
+      `INSERT INTO vani_role_family (tenant_id, name) VALUES ($1, 'Reliability Engineering')
+       RETURNING id`, [vt])).rows[0].id;
+    const cfg = (await pool.query(
+      `INSERT INTO vara_scoring_config
+         (tenant_id, family_id, version, weights, components, threshold_default)
+       VALUES ($1, $2, 1, '{}'::jsonb,
+               '{"musthaves":[{"name":"Has carried a pager","weight":100}],"knockouts":[]}'::jsonb, 30)
+       RETURNING id`, [vt, fam])).rows[0].id;
+    await pool.query(
+      `INSERT INTO vara_family_profile (tenant_id, family_id, default_threshold, active_config_id)
+       VALUES ($1, $2, 30, $3)`, [vt, fam, cfg]);
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { match_title } = require('../functions/match-title');
+    const r = await match_title({ title: 'Reliability Engineering' }, ctxFor(A));
+    expect(r.matched).toBe(true);
+    expect(r.mine).toBe(true);
+    expect(r.starter.musthaves).toEqual([{ name: 'Has carried a pager', weight: 100 }]);
+  });
+
+  it("never opens on another tenant's family", async () => {
+    const code = await seed();
+    await f().take({ codes: [code] }, ctxFor(A));
+    await pool.query(`INSERT INTO vani_tenant (slug, name) VALUES ('saas', 'Saas Co')`);
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { match_title } = require('../functions/match-title');
+    // C is in a different industry, so there is nothing for them at all —
+    // certainly not A's copy.
+    const r = await match_title({ title: 'Fleet Manager' }, ctxFor(C));
+    expect(r.matched).toBe(false);
+  });
+
     it('says what to do when there is nothing yet', async () => {
     // Rule 9b on both sides of the step.
     expect((await f().catalogue({}, ctxFor(A))).detail).toMatch(/has not studied|from scratch/);
