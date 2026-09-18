@@ -452,7 +452,18 @@ function JdStudioInner() {
       // the SAME attempt (network flap while the button was hit) still
       // dedupes on the server.
       submitOnce.current = false;
-      const msg = err instanceof ApiError ? err.message : 'Could not publish this JD';
+      // Never the same words the server uses for its own failures: the two
+      // were identical, so a toast could not tell "the API refused this" from
+      // "the browser never got an answer" — which is the first thing anyone
+      // needs to know. Anything that is an Error says what it said; only a
+      // genuinely unknown throw gets a generic line, and it says where it
+      // came from.
+      console.error('[JD publish]', err);
+      const msg = err instanceof ApiError
+        ? err.message
+        : err instanceof Error
+          ? `The console could not complete the publish: ${err.message}`
+          : 'The console hit an unknown error before the publish finished.';
       showToast({ message: msg, type: 'error' });
     } finally {
       setPublishing(false);
