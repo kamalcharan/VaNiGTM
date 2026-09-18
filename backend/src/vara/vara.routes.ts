@@ -654,33 +654,67 @@ export function createVaraRouter(pool: Pool): Router {
         [vaniTenantId, familyId, threshold],
       );
 
-      // Scoring config v1 for this family. Append-only guard trigger allows
-      // inserts but never updates/deletes; version bumps handle real edits.
-      const cfgRow = await client.query(
-        `INSERT INTO vara_scoring_config (tenant_id, family_id, version, weights, components, threshold_default)
-         VALUES ($1, $2, 1, $3::jsonb, $4::jsonb, $5)
-         ON CONFLICT (tenant_id, family_id, version) DO UPDATE
-           SET threshold_default = vara_scoring_config.threshold_default
-         RETURNING id`,
-        [
-          vaniTenantId,
-          familyId,
-          JSON.stringify({ skill: 55, avail: 25, exp: 20 }),
-          JSON.stringify({ musthaves }),
-          threshold,
-        ],
+      // Does this family already have a live shape?
+      //
+      // THIS IS WHERE PUBLISH USED TO DIE. The insert below carried
+      // `ON CONFLICT (tenant_id, family_id, version) DO UPDATE`, and
+      // `vara_scoring_config` has an append-only trigger that forbids UPDATE
+      // outright — so the moment a v1 existed, publishing raised
+      // "table vara_scoring_config is append-only" and the whole transaction
+      // rolled back as a 500.
+      //
+      // It never fired while compose was the FIRST thing to write a v1. The
+      // take step changed that: a tenant who takes a family gets v1 written
+      // then, so every JD published into a taken family hit the conflict. The
+      // conflict branch was dead code from the day it was written and became
+      // the only branch overnight.
+      //
+      // The fix is not a better UPDATE — it is not updating. A family's shape
+      // changes through `update_family_shape`, which appends a new version;
+      // publishing a JD into a family must not quietly re-decide the bar for
+      // every future role in it. Edits made in JD Studio belong to the JD, and
+      // that is exactly what `vara_jd_version` below records.
+      const live = await client.query(
+        `SELECT active_config_id FROM vara_family_profile
+          WHERE family_id = $1 AND tenant_id = $2`,
+        [familyId, vaniTenantId],
       );
-      const scoringConfigId: string = cfgRow.rows[0].id;
+      let scoringConfigId: string | null = live.rows[0]?.active_config_id ?? null;
 
-      // Point the family profile at the freshly written config, if it does
-      // not already have a live pointer. Later versions will move this via
-      // the calibration flow, not here.
-      await client.query(
-        `UPDATE vara_family_profile
-            SET active_config_id = COALESCE(active_config_id, $1)
-          WHERE family_id = $2`,
-        [scoringConfigId, familyId],
-      );
+      if (!scoringConfigId) {
+        // No live shape: this is the family's first JD, so seed v1 from it.
+        // DO NOTHING rather than DO UPDATE — see above — with a read-back for
+        // the case where a v1 row exists but the profile never got pointed at
+        // it (a take that failed between its two writes).
+        const cfgRow = await client.query(
+          `INSERT INTO vara_scoring_config (tenant_id, family_id, version, weights, components, threshold_default)
+           VALUES ($1, $2, 1, $3::jsonb, $4::jsonb, $5)
+           ON CONFLICT (tenant_id, family_id, version) DO NOTHING
+           RETURNING id`,
+          [
+            vaniTenantId,
+            familyId,
+            JSON.stringify({ skill: 55, avail: 25, exp: 20 }),
+            JSON.stringify({ musthaves }),
+            threshold,
+          ],
+        );
+        scoringConfigId = cfgRow.rows[0]?.id ?? (await client.query(
+          `SELECT id FROM vara_scoring_config
+            WHERE tenant_id = $1 AND family_id = $2
+            ORDER BY version DESC LIMIT 1`,
+          [vaniTenantId, familyId],
+        )).rows[0]?.id ?? null;
+
+        if (scoringConfigId) {
+          await client.query(
+            `UPDATE vara_family_profile
+                SET active_config_id = COALESCE(active_config_id, $1)
+              WHERE family_id = $2 AND tenant_id = $3`,
+            [scoringConfigId, familyId, vaniTenantId],
+          );
+        }
+      }
 
       // The JD row + its v1.
       const jdIns = await client.query(
@@ -782,7 +816,29 @@ export function createVaraRouter(pool: Pool): Router {
         try { await client.query('ROLLBACK'); } catch { /* ignored */ }
       }
       console.error('[Vara:jd:compose]', err);
-      res.status(500).json({ error: { code: 'COMPOSE_FAILED', message: 'Could not publish this JD' } });
+      // The message used to be exactly "Could not publish this JD" — the same
+      // words as the console's own fallback for a non-API error. So when the
+      // append-only guard above fired, the toast was indistinguishable from a
+      // browser-side failure, and the one clue that mattered (the server got
+      // the request and Postgres refused it) was the one thing it hid.
+      //
+      // Postgres error codes are safe to name: they identify the CLASS of
+      // failure, not the data. A stack trace is not, and does not go out.
+      const pg = (err as { code?: string; constraint?: string; table?: string });
+      const because = pg?.code === 'P0001'
+        // raise exception from a plpgsql guard — the append-only triggers
+        ? `a database guard rejected the write${pg.table ? ` on ${pg.table}` : ''}`
+        : pg?.code === '23505' ? `a uniqueness constraint rejected the write${pg.constraint ? ` (${pg.constraint})` : ''}`
+        : pg?.code === '23503' ? `a foreign key rejected the write${pg.constraint ? ` (${pg.constraint})` : ''}`
+        : pg?.code ? `the database refused the write (SQLSTATE ${pg.code})`
+        : 'an unexpected error';
+      res.status(500).json({
+        error: {
+          code: 'COMPOSE_FAILED',
+          message: `The server could not publish this JD: ${because}. `
+            + 'Nothing was saved. The full cause is in the API log under [Vara:jd:compose].',
+        },
+      });
     } finally {
       if (client) client.release();
     }

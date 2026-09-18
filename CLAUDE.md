@@ -759,6 +759,36 @@ The fix is a CTE, which is a genuine optimisation fence — it runs once and the
 UPDATE joins its result. Both claim sites (`event.store.ts` and the
 `PostgresEventQueue` in `worker.ts`) carry it. **Never write the IN form.**
 
+### Publishing a JD must not rewrite the family's shape (fixed 2026-09-18)
+
+`POST /vara/jd/compose` seeded the family's scoring config with
+`ON CONFLICT (tenant_id, family_id, version) DO UPDATE`, and
+`vara_scoring_config` carries an append-only trigger (migration 241) that
+raises on ANY update. So the conflict branch could only ever fail — and it was
+unreachable, because compose was the first thing that ever wrote a v1.
+
+**The take step made a v1 exist before any JD, and the dead branch became the
+only branch.** Every JD published into a taken family raised "table
+vara_scoring_config is append-only", rolled the transaction back, and surfaced
+as "Could not publish this JD".
+
+The fix is not a better UPDATE, it is not updating: if the family already has an
+`active_config_id`, compose uses it and changes nothing. A family's shape moves
+only through `update_family_shape`, which appends a version. Edits made in JD
+Studio belong to that JD (`vara_jd_version`), and publishing one must never
+re-decide the bar for every future role in the family.
+
+`src/vara/tests/jd-compose.db.test.ts` drives the REAL router over HTTP against
+the REAL triggers — a test that re-implemented the SQL would have been written
+with `DO UPDATE` in it and passed.
+
+**Both messages said "Could not publish this JD"** — the server's generic 500
+and the console's fallback for a non-API error — so the toast could not tell
+"Postgres refused the write" from "the browser never got an answer". The server
+now names the failure class from the SQLSTATE (append-only guard, unique,
+foreign key) and says nothing was saved; the console never reuses the server's
+wording. Identical error strings on two sides of a boundary cost a session.
+
 ### Tenant-built role families are NOT harvested (user ruling, 2026-09-17)
 
 A tenant who builds a family from scratch owns it, full stop. There is no
