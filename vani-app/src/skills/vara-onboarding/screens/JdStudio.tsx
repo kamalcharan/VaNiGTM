@@ -29,6 +29,7 @@ import {
   type DraftJd, type PublishedFacts,
 } from '../mock-data';
 import { unknownRole, type JdStudioStep } from '../jd-script';
+import RichText from './RichText';
 import { searchFamilies } from '../family-search';
 import { bump as bumpW, drop as dropW, add as addW, balance, total as sumW, TOTAL } from '../weights';
 import { JdImport } from './JdImport';
@@ -929,22 +930,22 @@ function JdStudioInner() {
                 can never drift apart into a promise the weights don't keep. */}
             <div className={s.jdSection}>
               <div className={s.jdSectionH}>Description · what candidates read</div>
-              <textarea
-                className={s.descBox}
+              <RichText
                 value={facts.description ?? ''}
-                onChange={(e) => setFacts((f) => ({ ...f, description: e.target.value }))}
+                onChange={(next) => setFacts((f) => ({ ...f, description: next }))}
                 placeholder="What the role does, who it works with, why it matters."
-                rows={6}
-                aria-label="Role description"
+                ariaLabel="Role description"
               />
               {/* Drafting from the facts needs the composer LLM, which is not
                   reachable yet (POA standing dependency). Following the same
                   habit as Edit: say so rather than render a button that fails. */}
               <p className={s.note} style={{ marginTop: 6 }}>
-                Vara will draft this from the facts above in your brand voice —
-                you edit, then publish. That arrives with the composer LLM; for
-                now, write it yourself. Left blank, the widget shows the role
-                summary alone.
+                Bold, italic, bullets and headings — stored as Markdown, so the
+                same text reads correctly wherever it is shown. Vara drafting
+                this from the facts above is not built yet: there is no prompt
+                for it and no endpoint, so write it yourself for now rather than
+                wait for a button that does not exist. Left blank, the widget
+                shows the role summary alone.
               </p>
             </div>
 
