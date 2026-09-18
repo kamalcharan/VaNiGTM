@@ -274,6 +274,39 @@ async function processEvent(
     await queue.resolve(event.id, 'done');
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
+
+    // Not a failure — a question. With HAIKU_DEFAULT=false the platform model
+    // being unreachable is something a person decides about, because the
+    // alternative costs Vikuna money on every call. The run parks with the
+    // REAL diagnosis rather than failing, so approving it is one click and the
+    // cause is right there to read.
+    if (error.message.startsWith('LLM_FAILOVER_NEEDS_APPROVAL')) {
+      const cause = error.message.replace('LLM_FAILOVER_NEEDS_APPROVAL: ', '');
+      console.warn(`[Worker] Run ${runId} needs a decision on failover: ${cause}`);
+      await appendStep(pool, runId, {
+        step_name:      'llm_failover_asked',
+        action:         'The platform model is unreachable — waiting on a decision',
+        output_summary: cause.slice(0, 200),
+        status:         'skipped',   // nothing was done; the run is waiting on a person
+      });
+      await setStatus(pool, runId, 'awaiting', {
+        awaiting_input: {
+          kind: 'llm_failover_approval',
+          event_id: event.id,
+          event_type: event.event_type,
+          failover_model: process.env.LLM_FAILOVER_MODEL ?? 'claude-haiku-4-5',
+          vps_error: cause,
+          question: 'The platform model did not answer. Run this on Vikuna\'s '
+            + 'Claude key instead? It will finish, and Vikuna is billed for it.',
+        },
+      });
+      // 'done' on purpose: this event is finished with. Approving emits a NEW
+      // event carrying allow_failover, so a stuck decision cannot also look
+      // like a stuck queue.
+      await queue.resolve(event.id, 'done');
+      return;
+    }
+
     console.error(`[Worker] Agent failed — event ${event.id} (${event.event_type}):`, error.message);
 
     await setStatus(pool, runId, 'failed', {

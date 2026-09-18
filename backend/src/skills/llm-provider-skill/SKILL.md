@@ -43,6 +43,17 @@ retry-safe on the strength of the header alone.
 
 ## Functions
 
+### pending_failovers
+Runs stopped because the platform model did not answer and nobody has decided yet. Only ever non-empty with `HAIKU_DEFAULT=false`; with it true escalation is automatic and this is always empty.
+- Parameters: none
+- Returns: { runs: [{ run_id, agent, asked_at, failover_model, vps_error, question }], detail: string }
+- `vps_error` is the server's own words. "Cannot reach" and "context size exceeded" are different outages and lead to different fixes.
+
+### resolve_failover
+Answer one. Approving RE-EMITS the original event with `allow_failover: true` rather than resuming the old run — the agents are event-shaped and their claim logic already handles a re-run, and a separate row keeps "this cost money because a person said yes" answerable. Declining fails the run with the real cause and spends nothing.
+- Parameters: run_id (required, string), approve (required, boolean)
+- Returns: { ok: boolean, approved?: boolean, event_id?: string, reason?: 'NO_RUN' | 'NOT_WAITING', detail: string }
+
 ### get_provider
 What this workspace has declared, minus the secret. Null when nothing is declared, which is the platform posture and not an error.
 - Parameters: none

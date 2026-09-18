@@ -392,6 +392,26 @@ because a date format or a token convention is worth not re-deciding.
       the run feed + tokens tracked under the separate 'escalation'
       bucket. Validation failures (LLM_VALIDATION_FAILED) deliberately
       do NOT fail over — bad answers stay loud.
+      **`HAIKU_DEFAULT` decides whether it is automatic (added
+      2026-09-18).** Unset or `true` keeps the behaviour above. Set to
+      `false`, a transport failure is no longer escalated on its own: the
+      call throws `LLM_FAILOVER_NEEDS_APPROVAL`, the worker parks the run at
+      `awaiting` with the REAL VPS error, and a person answers through
+      `llm-provider-skill.pending_failovers` / `resolve_failover`. Approving
+      RE-EMITS the original event with `allow_failover: true` rather than
+      resuming the old run — the agents are event-shaped and their claim
+      logic already handles a re-run, and a separate row keeps "this cost
+      money because someone said yes" answerable. Declining fails the run
+      with the cause and spends nothing.
+
+      Why it exists: on 2026-09-18 seven runs failed over inside a minute and
+      the only place it showed was the worker's stdout, while Vikuna was
+      billed for every call. The escalation was working; what was missing was
+      the ability to say "no, tell me first". The permission is read from
+      `gt_agent_runs.inputs.allow_failover`, so no agent has to know the
+      mechanism exists, and an unreadable run counts as UNAPPROVED — the
+      other default would spend money on a database hiccup.
+
       **This exception is PLATFORM-ONLY.** It does not extend to a tenant
       on their own key (BYOK): failing their call over to Vikuna's
       Anthropic key would bill us for their outage AND hide that their
@@ -747,6 +767,31 @@ be offline". If Vikuna wants to know that six tenants independently invented
 "SRE", that is an operator running a query against `vani_role_family` where
 the active config has no `from_pack`. Data you already have, looked at by a
 person. Not a pipeline, not a consent surface, no code.
+
+### llm.dristiq.com fell over on 2026-09-18 — read the run numbers
+
+Seven runs (102, 103, 104, 106, 107, 108, 109) failed in one burst, split
+between two symptoms:
+
+```
+LLM_VPS_UNREACHABLE  TimeoutError: The operation was aborted due to timeout
+LLM_VPS_ERROR        500 {"message":"Context size has been exceeded."}
+```
+
+**The seven concurrent runs are the cause, not a coincidence.** Until the CTE
+fix above, `WORKER_BATCH_SIZE` was never respected: the claim took EVERY
+pending event, and `processEvent` is fire-and-forget, so all seven agents ran
+at once. Each holds a large prompt against one small model server.
+"Context size has been exceeded" from a server serving seven concurrent
+requests is its KV cache exhausted, not one prompt being too long — which is
+why the same prompts worked fine when a run had the box to itself. The
+timeouts are the same thing from the other side: requests queued behind the
+ones that were thrashing.
+
+So the first thing to do about dristiq is **deploy** — batch size and the
+orphan reclaim together. If it still fails with one run at a time, then it is
+a real capacity problem and the next levers are the server's context/parallel
+settings, or a bigger model (qwen3-4b runs ~12 tok/s).
 
 ## Lessons learned (hard-won — do not relearn)
 1. `set_tenant_context` uses `is_local=true` → wrap with BEGIN/COMMIT or the

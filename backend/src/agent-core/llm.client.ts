@@ -343,6 +343,52 @@ async function callClaude(options: LLMCallOptions): Promise<LLMResult> {
 // visible in the token accounting ('escalation' bucket).
 const failoverNotedRuns = new Set<string>();
 
+/**
+ * Whether a failover happens on its own, or has to be asked for.
+ *
+ * `HAIKU_DEFAULT=true` (the default, and what shipped) escalates silently-ish:
+ * a visible step and the 'escalation' token bucket, but nobody is asked. That
+ * is fine while the VPS is healthy and wrong when it is not — seven runs failed
+ * over in one minute on 2026-09-18 and the only place that showed was the
+ * worker's stdout. Vikuna pays for every one of those calls.
+ *
+ * `HAIKU_DEFAULT=false` makes it a DECISION: the run parks at `awaiting` with
+ * the real VPS diagnosis and waits for a person to say yes. That is rule 12's
+ * allowed shape exactly — an explicit user-chosen alternate path offered after
+ * a visible failure, rather than a fallback that hides the outage.
+ */
+const HAIKU_DEFAULT = process.env.HAIKU_DEFAULT !== 'false';
+
+/**
+ * Per-run permission, read from the run rather than threaded through every
+ * agent's call sites. An approval re-emits the original event with
+ * `allow_failover: true`, so the answer lives where the run can see it and no
+ * agent needs to know this mechanism exists.
+ */
+const failoverAllowed = new Map<string, boolean>();
+
+async function mayFailOver(pool: Pool, runId: string | number): Promise<boolean> {
+  if (HAIKU_DEFAULT) return true;
+  const key = String(runId);
+  const cached = failoverAllowed.get(key);
+  if (cached !== undefined) return cached;
+
+  let allowed = false;
+  try {
+    const r = await pool.query(
+      `SELECT inputs -> 'allow_failover' = 'true'::jsonb AS ok
+         FROM gt_agent_runs WHERE id = $1`, [runId]);
+    allowed = r.rows[0]?.ok === true;
+  } catch {
+    // Unreadable means unapproved. Defaulting the other way would spend money
+    // on a database hiccup.
+    allowed = false;
+  }
+  failoverAllowed.set(key, allowed);
+  if (failoverAllowed.size > 500) failoverAllowed.clear();
+  return allowed;
+}
+
 async function noteFailover(
   pool: Pool,
   runId: string | number,
@@ -397,6 +443,12 @@ export async function callLLM(options: LLMCallOptions): Promise<LLMResult> {
       msg.startsWith('LLM_VPS_UNREACHABLE') || msg.startsWith('LLM_VPS_ERROR');
 
     if (transportFailure && provider.posture === 'platform' && getAnthropic()) {
+      if (!(await mayFailOver(options.pool, options.runId))) {
+        // Not a failure to hide behind Haiku — a question. The worker parks the
+        // run on this code and asks; approving re-emits the event with
+        // allow_failover and the retry escalates.
+        throw new Error(`LLM_FAILOVER_NEEDS_APPROVAL: ${msg}`);
+      }
       await noteFailover(options.pool, options.runId, msg);
       return callClaude(options);
     }
