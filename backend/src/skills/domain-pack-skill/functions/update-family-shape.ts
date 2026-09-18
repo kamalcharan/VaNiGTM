@@ -19,6 +19,7 @@
 import fs from 'fs';
 import path from 'path';
 import { SkillContext } from '../../../shared/types';
+import { ACTOR_UNRESOLVED, audit } from '../actor';
 
 const q = (f: string) => fs.readFileSync(path.join(__dirname, '../queries/', f), 'utf-8');
 const VANI_TENANT_SQL = q('vani-tenant.sql');
@@ -117,7 +118,9 @@ export async function update_family_shape(
         from_pack: prev.components?.from_pack ?? null,
       }),
       threshold,
-      approved_by: ctx.user_id,
+      // The person is recorded in the audit row below, not here — see
+      // ACTOR_UNRESOLVED. This column FKs to a spine the JWT cannot reach.
+      approved_by: ACTOR_UNRESOLVED,
     });
 
     // The pointer move is what makes the edit live. Without it the new version
@@ -131,6 +134,16 @@ export async function update_family_shape(
         family_id: familyId, vani_tenant_id: vaniTenantId,
       },
     );
+
+    // "Who set this bar" is the first question after a rejected candidate
+    // complains, and the append-only version chain is only half the answer.
+    await audit(tx, vaniTenantId, ctx.user_id, familyId, 'family_shape_changed', {
+      name: prev.name,
+      version: cfg.rows[0].version,
+      musthaves: musthaves.length,
+      knockouts: knockouts.length,
+      threshold,
+    });
 
     return {
       ok: true,

@@ -37,6 +37,17 @@ const C = '33333333-3333-3333-3333-333333333333';
 
 const MIGRATIONS = path.resolve(__dirname, '../../../../migrations');
 
+/**
+ * A signed-in user, as the JWT actually presents one: a `vn_users` id with NO
+ * matching `vani_user` row, because nothing populates that table yet.
+ *
+ * Every test here used to pass `user_id: CALLER`, which is the one value that
+ * cannot violate `approved_by`'s foreign key — so the suite was green while
+ * the first real tenant to press Take got
+ * `vara_scoring_config_approved_by_fkey` and lost the whole transaction.
+ */
+const CALLER = '99999999-9999-9999-9999-999999999999';
+
 const available = (() => {
   try {
     execSync(`pg_isready -h ${process.env.PGHOST || '/tmp'} -p ${process.env.PGPORT || 55432}`,
@@ -75,7 +86,13 @@ CREATE TABLE vani_domain_pack (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   code text NOT NULL, version int NOT NULL DEFAULT 1, domain text NOT NULL,
   payload jsonb NOT NULL, published_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (code, version));
-CREATE TABLE vani_user (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
+-- Migration 240's shape, and deliberately NOT seeded with the caller's id.
+-- vani_user is a DIFFERENT identity spine from vn_users, nothing populates it
+-- yet, and the FK columns below reference it. Seeding it here (or passing
+-- user_id: CALLER, as every test did) hides the production failure: a real JWT
+-- carries a vn_users id, which no vani_user row matches.
+CREATE TABLE vani_user (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email text NOT NULL UNIQUE);
 -- The tenant's own space. Shapes copied verbatim from migrations 240/241 —
 -- the constraints ARE the test: unique (tenant_id, name) is what makes taking
 -- a family idempotent, and unique (tenant_id, family_id, version) is what
@@ -106,6 +123,16 @@ CREATE TABLE vani_tenant_pack_binding (id uuid PRIMARY KEY DEFAULT gen_random_uu
   pack_id uuid NOT NULL REFERENCES vani_domain_pack(id),
   bound_by uuid REFERENCES vani_user(id),
   bound_at timestamptz NOT NULL DEFAULT now(), UNIQUE (tenant_id, pack_id));
+CREATE TABLE vani_agent (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  code text UNIQUE NOT NULL, name text);
+-- actor_id is a bare uuid on purpose: it is the one column that can hold the
+-- vn_users id the JWT actually carries.
+CREATE TABLE vani_audit_log (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES vani_tenant(id) ON DELETE CASCADE,
+  agent_id uuid REFERENCES vani_agent(id),
+  actor_type text NOT NULL CHECK (actor_type IN ('human','rule','timer','system')),
+  actor_id uuid, entity text NOT NULL, entity_id uuid NOT NULL, action text NOT NULL,
+  before jsonb, after jsonb, at timestamptz NOT NULL DEFAULT now());
 CREATE FUNCTION set_tenant_context(t UUID) RETURNS void AS $fn$
   BEGIN PERFORM set_config('app.current_tenant_id', t::text, true); END $fn$ LANGUAGE plpgsql;
 CREATE TABLE vn_tenants (id UUID PRIMARY KEY, slug VARCHAR(80));
@@ -196,7 +223,7 @@ beforeEach(async () => {
   llmQueue = [];
   await pool.query('TRUNCATE gt_agent_runs');
   await pool.query(
-    'TRUNCATE vani_tenant_pack_binding, vara_family_profile, vara_scoring_config, '
+    'TRUNCATE vani_audit_log, vani_tenant_pack_binding, vara_family_profile, vara_scoring_config, '
     + 'vani_role_family, vani_tenant, vani_domain_pack CASCADE');
   await pool.query('TRUNCATE gt_events');
 });
@@ -787,7 +814,7 @@ d('a seeded pack is not research', () => {
        VALUES ('talent-logistics-freight-seed', 1, 'logistics-freight', ${SEEDED})`);
 
     const st = await research_status({}, {
-      tenant_id: A, is_live: false, user_id: null, db: createTenantDb(pool, A),
+      tenant_id: A, is_live: false, user_id: CALLER, db: createTenantDb(pool, A),
     } as never);
     expect(st.state).toBe('seeded_only');
     expect(st.source).toBe('seeded');
@@ -810,7 +837,7 @@ d('a seeded pack is not research', () => {
       [A]);
 
     const st = await research_status({}, {
-      tenant_id: A, is_live: false, user_id: null, db: createTenantDb(pool, A),
+      tenant_id: A, is_live: false, user_id: CALLER, db: createTenantDb(pool, A),
     } as never);
     expect(st.state).toBe('in_review');
     expect(st.can_request).toBe(false);
@@ -845,7 +872,7 @@ d('the tenant-facing skill', () => {
     request: require('../functions/request-research').request_research,
   });
   const ctxFor = (tenant: string) => ({
-    tenant_id: tenant, is_live: false, user_id: null,
+    tenant_id: tenant, is_live: false, user_id: CALLER,
     db: createTenantDb(pool, tenant),
   } as never);
 
@@ -944,7 +971,7 @@ d('taking families into the tenant\'s own space', () => {
     edit: require('../functions/update-family-shape').update_family_shape,
   });
   const ctxFor = (tenant: string) => ({
-    tenant_id: tenant, is_live: false, user_id: null,
+    tenant_id: tenant, is_live: false, user_id: CALLER,
     db: createTenantDb(pool, tenant),
   } as never);
 
@@ -977,6 +1004,53 @@ d('taking families into the tenant\'s own space', () => {
       })]);
     return code;
   };
+
+  // The two FK columns point at `vani_user`, a spine the JWT cannot reach, so
+  // they stay NULL and the audit log carries the person. These two tests are
+  // the pair: one proves the take SURVIVES a real signed-in caller (it did not
+  // — a tenant got vara_scoring_config_approved_by_fkey and lost the whole
+  // transaction), the other proves we did not buy that by forgetting who acted.
+  it('a real signed-in caller can take a family — the FK spines do not match', async () => {
+    const code = await seed();
+    const r = await f().take({ codes: [code] }, ctxFor(A)) as
+      { taken: { family_id: string }[] };
+    expect(r.taken).toHaveLength(1);
+
+    const cfg = await pool.query(
+      'SELECT approved_by FROM vara_scoring_config WHERE family_id = $1',
+      [r.taken[0].family_id]);
+    expect(cfg.rows[0].approved_by).toBeNull();
+    const bind = await pool.query('SELECT bound_by FROM vani_tenant_pack_binding');
+    expect(bind.rows[0].bound_by).toBeNull();
+  });
+
+  it('records WHO took it, since the column that should cannot', async () => {
+    const code = await seed();
+    const r = await f().take({ codes: [code] }, ctxFor(A)) as
+      { taken: { family_id: string }[] };
+
+    const log = await pool.query(
+      `SELECT actor_id, actor_type, action, entity FROM vani_audit_log
+        WHERE entity_id = $1 AND action = 'family_taken'`,
+      [r.taken[0].family_id]);
+    expect(log.rows).toHaveLength(1);
+    expect(log.rows[0].actor_id).toBe(CALLER);
+    expect(log.rows[0].actor_type).toBe('human');
+    expect(log.rows[0].entity).toBe('vani_role_family');
+
+    // And again after an edit — the append-only version chain says WHAT
+    // changed; only this says who changed it.
+    await f().edit({
+      family_id: r.taken[0].family_id,
+      musthaves: [{ name: 'Runs a depot', weight: 100 }],
+      knockouts: [], threshold: 50,
+    }, ctxFor(A));
+    const edits = await pool.query(
+      `SELECT actor_id, after FROM vani_audit_log WHERE action = 'family_shape_changed'`);
+    expect(edits.rows).toHaveLength(1);
+    expect(edits.rows[0].actor_id).toBe(CALLER);
+    expect(edits.rows[0].after.version).toBe(2);
+  });
 
   it('offers the whole shape, not just a name — you cannot choose blind', async () => {
     const code = await seed();
@@ -1364,7 +1438,7 @@ d('matching a typed title to a starter shape', () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { match_title } = require('../functions/match-title');
     return match_title({ title }, {
-      tenant_id: C, is_live: false, user_id: null, db: createTenantDb(pool, C),
+      tenant_id: C, is_live: false, user_id: CALLER, db: createTenantDb(pool, C),
     } as never);
   };
 
@@ -1434,7 +1508,7 @@ d('matching a typed title to a starter shape', () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { match_title } = require('../functions/match-title');
     const r = await match_title({ title: 'Senior Backend Engineer' }, {
-      tenant_id: B, is_live: false, user_id: null, db: createTenantDb(pool, B),
+      tenant_id: B, is_live: false, user_id: CALLER, db: createTenantDb(pool, B),
     } as never);
     expect(r.matched).toBe(false);
     expect(r.reason).toBe('NO_INDUSTRY');

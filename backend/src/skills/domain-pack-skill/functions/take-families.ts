@@ -32,6 +32,7 @@ import path from 'path';
 import { SkillContext } from '../../../shared/types';
 import { slugifyIndustry } from '../../../vani/industry-slug';
 import { visiblePacksOfDomain } from '../review-state';
+import { ACTOR_UNRESOLVED, audit } from '../actor';
 
 const q = (f: string) => fs.readFileSync(path.join(__dirname, '../queries/', f), 'utf-8');
 const VANI_TENANT_SQL = q('vani-tenant.sql');
@@ -128,8 +129,10 @@ export async function take_families(params: Record<string, unknown>, ctx: SkillC
         // scratch and be taking the pack version for it now, and that is worth
         // knowing even though the shape is already theirs and stays theirs.
         await tx.query(BIND_PACK_SQL, {
-          vani_tenant_id: vaniTenantId, pack_id: pack.id, bound_by: ctx.user_id,
+          vani_tenant_id: vaniTenantId, pack_id: pack.id, bound_by: ACTOR_UNRESOLVED,
         });
+        await audit(tx, vaniTenantId, ctx.user_id, familyId, 'family_pack_bound',
+          { code: pack.code, version: pack.version });
         already.push({ code, name, family_id: familyId });
         continue;
       }
@@ -148,7 +151,7 @@ export async function take_families(params: Record<string, unknown>, ctx: SkillC
           from_pack: { code: pack.code, version: pack.version },
         }),
         threshold: typeof starter.threshold === 'number' ? starter.threshold : 30,
-        approved_by: ctx.user_id,
+        approved_by: ACTOR_UNRESOLVED,
       });
 
       await tx.query(SEED_PROFILE_SQL, {
@@ -161,8 +164,14 @@ export async function take_families(params: Record<string, unknown>, ctx: SkillC
       await tx.query(BIND_PACK_SQL, {
         vani_tenant_id: vaniTenantId,
         pack_id: pack.id,
-        bound_by: ctx.user_id,
+        bound_by: ACTOR_UNRESOLVED,
       });
+
+      // Who took it. The FK columns cannot hold the answer (see
+      // ACTOR_UNRESOLVED); the audit log can, and it is the place the rest of
+      // the spine already looks.
+      await audit(tx, vaniTenantId, ctx.user_id, familyId, 'family_taken',
+        { code: pack.code, version: pack.version, name });
 
       taken.push({ code, name, family_id: familyId });
     }
