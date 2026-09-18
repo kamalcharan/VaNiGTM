@@ -62,6 +62,15 @@ type MatchResult =
       starter: StarterShape;
       detail: string;
       alternates?: { family_name: string; matched_title: string; score: number }[];
+      /**
+       * The family is already in this tenant's workspace, and `starter` is the
+       * shape THEY are on — not the industry's. The second JD in a family they
+       * have edited must say so, because "as Backend Engineering hires it"
+       * would credit the platform for their own bar.
+       */
+      mine?: boolean;
+      family_id?: string | null;
+      version?: number | null;
     }
   | { matched: false; reason: string; detail: string };
 
@@ -204,7 +213,9 @@ function JdStudioInner() {
   const handedOver = useRef<string | null>(null);
   useEffect(() => {
     if (draft || !matched) return;
-    const key = `${matched.pack_code}:${title}`;
+    // Keyed on the family, not the pack: a family built from scratch has no
+    // pack code, so keying on that alone would collide across all of them.
+    const key = `${matched.family_id ?? matched.pack_code}:${matched.version ?? 0}:${title}`;
     if (handedOver.current === key) return;     // once per match, not per render
     handedOver.current = key;
     const st = matched.starter;
@@ -215,10 +226,23 @@ function JdStudioInner() {
       knockouts: st.knockouts ?? [],
       threshold: typeof st.threshold === 'number' ? st.threshold : 30,
     }));
-    setTranscript([{ who: 'v', text:
-      `Here is ${title} as ${matched.family_name} hires it — ${(st.musthaves ?? []).length} `
-      + `must-haves, handover at ${st.threshold ?? 30}%. Read it on the right. `
-      + `Publish it, or change anything first.` }]);
+    // Two different sentences on purpose. The first JD in a family opens on
+    // the industry's shape; the second opens on the bar the tenant set, and
+    // saying "as <family> hires it" there would hand their own edits back to
+    // them as somebody else's work. This is where the product compounds, so
+    // it has to be visible.
+    setTranscript([{ who: 'v', text: matched.mine
+      // "Same bar as your last role" is only true once they have changed it —
+      // v1 is the shape as taken, and claiming a history they do not have is
+      // the same overstatement as crediting the platform for their edits.
+      ? `${(matched.version ?? 1) > 1
+            ? `Same bar as last time — your ${matched.family_name} v${matched.version}`
+            : `Your ${matched.family_name}, as you took it`}: `
+        + `${(st.musthaves ?? []).length} must-haves, handover at ${st.threshold ?? 30}%. `
+        + `Publish it, or change anything first.`
+      : `Here is ${title} as ${matched.family_name} hires it — ${(st.musthaves ?? []).length} `
+        + `must-haves, handover at ${st.threshold ?? 30}%. Read it on the right. `
+        + `Publish it, or change anything first.` }]);
   }, [draft, matched, title]);
 
 

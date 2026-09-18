@@ -328,6 +328,17 @@ const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
           + 'Vara will ask about it from scratch.',
       };
     }
+    // The compounding, mocked: once this family has been taken (and possibly
+    // edited) in the take step, the match opens on the tenant's OWN shape and
+    // says so. Without this branch the second-JD path — the whole reason the
+    // matcher looks at `my_families` before the catalogue — is invisible in
+    // mock mode, which is where the screen actually gets worked on.
+    const owned = MOCK_MINE.has(MOCK_MATCH_FAMILY.family_name);
+    const live = MOCK_MINE_SHAPE.get(MOCK_MATCH_FAMILY.family_name);
+    const starter = owned && live
+      ? { ...MOCK_MATCH_FAMILY.starter, musthaves: live.musthaves, knockouts: live.knockouts, threshold: live.threshold }
+      : MOCK_MATCH_FAMILY.starter;
+    const version = live?.version ?? 1;
     return {
       matched: true,
       title,
@@ -337,11 +348,16 @@ const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
       researched: false,
       pack_code: 'mock-backend-engineering',
       pack_version: 1,
-      starter: MOCK_MATCH_FAMILY.starter,
+      starter,
+      mine: owned,
+      family_id: owned ? 'mock-talent-technology-saas-backend-eng' : null,
+      version: owned ? version : null,
       alternates: [],
-      detail: `Matched "${MOCK_MATCH_FAMILY.suggested_titles[0]}" in `
-        + `${MOCK_MATCH_FAMILY.family_name} — a Vikuna starter shape, `
-        + `not researched for ${MOCK_TENANT_INDUSTRY}.`,
+      detail: owned
+        ? `${MOCK_MATCH_FAMILY.family_name} is already yours — opening on your v${version}.`
+        : `Matched "${MOCK_MATCH_FAMILY.suggested_titles[0]}" in `
+          + `${MOCK_MATCH_FAMILY.family_name} — a Vikuna starter shape, `
+          + `not researched for ${MOCK_TENANT_INDUSTRY}.`,
     };
   },
 };
