@@ -1010,6 +1010,42 @@ d('taking families into the tenant\'s own space', () => {
   // the pair: one proves the take SURVIVES a real signed-in caller (it did not
   // — a tenant got vara_scoring_config_approved_by_fkey and lost the whole
   // transaction), the other proves we did not buy that by forgetting who acted.
+  it('carries the titles the family covers, so picking one has a next step', async () => {
+    const code = await seed();
+    await f().take({ codes: [code] }, ctxFor(A));
+    const mine = await f().mine({}, ctxFor(A)) as
+      { families: { name: string; suggested_titles: string[] }[] };
+    expect(mine.families[0].suggested_titles).toEqual(['Fleet Manager', 'Depot Supervisor']);
+  });
+
+  it('invents no titles for a family built from scratch', async () => {
+    // No pack behind it, so there is nothing to read and nothing to make up
+    // (rule 9d). An empty list is the honest answer; the console asks for a
+    // title instead of offering one.
+    const vani = await pool.query(
+      `INSERT INTO vani_tenant (id, slug, name) VALUES (gen_random_uuid(), 'us', 'Us')
+       ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name RETURNING id`);
+    const fam = await pool.query(
+      `INSERT INTO vani_role_family (tenant_id, name) VALUES ($1, 'Site Reliability') RETURNING id`,
+      [vani.rows[0].id]);
+    const cfg = await pool.query(
+      `INSERT INTO vara_scoring_config
+         (tenant_id, family_id, version, weights, components, threshold_default)
+       VALUES ($1, $2, 1, '{}'::jsonb,
+               '{"musthaves":[{"name":"Ran an on-call rotation","weight":100}],"knockouts":[]}'::jsonb,
+               30) RETURNING id`,
+      [vani.rows[0].id, fam.rows[0].id]);
+    await pool.query(
+      `INSERT INTO vara_family_profile (tenant_id, family_id, default_threshold, active_config_id)
+       VALUES ($1, $2, 30, $3)`,
+      [vani.rows[0].id, fam.rows[0].id, cfg.rows[0].id]);
+
+    const mine = await f().mine({}, ctxFor(A)) as
+      { families: { name: string; suggested_titles: string[] }[] };
+    const scratch = mine.families.find((x) => x.name === 'Site Reliability');
+    expect(scratch?.suggested_titles).toEqual([]);
+  });
+
   it('a real signed-in caller can take a family — the FK spines do not match', async () => {
     const code = await seed();
     const r = await f().take({ codes: [code] }, ctxFor(A)) as

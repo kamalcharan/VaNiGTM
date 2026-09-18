@@ -51,6 +51,33 @@ export async function my_families(_params: Record<string, unknown>, ctx: SkillCo
     { vani_tenant_id: vani.rows[0].id },
   );
 
+  // The titles each family covers, read from the pack it was taken from.
+  // Without these, picking a family in JD Studio leaves the tenant staring at
+  // an empty box: they have said WHICH family and still have to invent a title
+  // unaided. The pack already lists the titles it covers — one query, and the
+  // pick has a next action (rule 9b).
+  const codes = [...new Set(r.rows
+    .map((x) => (x.components ?? {}).from_pack?.code)
+    .filter((c): c is string => typeof c === 'string' && c.length > 0))];
+  const titlesByCode = new Map<string, string[]>();
+  if (codes.length) {
+    // Latest version per code, same DISTINCT ON shape every reader of this
+    // table uses. Retired packs are not filtered here on purpose: the family
+    // is already the tenant's, and a withdrawn pack does not make the titles
+    // they took it for wrong.
+    const packs = await ctx.db.query<{ code: string; payload: Record<string, any> }>(
+      `SELECT DISTINCT ON (code) code, payload
+         FROM vani_domain_pack
+        WHERE code = ANY($codes::text[])
+        ORDER BY code, version DESC`,
+      { codes },
+    );
+    for (const row of packs.rows) {
+      const t = row.payload?.suggested_titles;
+      if (Array.isArray(t)) titlesByCode.set(row.code, t.filter((x) => typeof x === 'string'));
+    }
+  }
+
   const families = r.rows.map((x) => {
     const c = x.components ?? {};
     return {
@@ -68,6 +95,9 @@ export async function my_families(_params: Record<string, unknown>, ctx: SkillCo
       // scratch — a real distinction, and the reason the console can say
       // "a family you built" rather than "your shape".
       from_pack: c.from_pack ?? null,
+      // Empty for a family built from scratch — there is no pack to ask, and
+      // inventing titles for it would be exactly the fabrication rule 9d bans.
+      suggested_titles: titlesByCode.get(c.from_pack?.code) ?? [],
       edited: (x.version ?? 1) > 1,
     };
   });
