@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VaNi · Mission Preview</title>
+
+<!--
+  vani-mission-preview.html — standalone landing-page demo (design mockup)
+  ──────────────────────────────────────────────────────────────────────────
+
+  WHAT IT IS
+  A single self-contained page for the marketing site. A visitor types their
+  domain; the six-step onboarding mission then plays itself, slowly, hands
+  free, with VaNi visibly doing the work between each step. It is the
+  /design/wizard flow (frontend/src/app/(public)/design/wizard/page.tsx)
+  rebuilt with no framework so it can be dropped on any page.
+
+  WHAT IT IS NOT — AND WHY (CLAUDE.md rules 9d and 12)
+  It does NOT research the typed domain. There is no public unauthenticated
+  crawl endpoint, and inventing a profile for someone's company would be
+  fabricated brand content presented as agent output — exactly what rule 9d
+  forbids and what rule 12 calls a silent fake.
+
+  So the visitor's input drives the FRAME and never the CONTENT:
+    · frame   — the preview strip, the mission subtitle, the closing CTA
+    · content — always the fictional "Solstice Metrics", carried over from
+                the design wizard, and marked SAMPLE on screen throughout.
+
+  If this ever becomes a real run, the honest version is: play this as the
+  WAIT STATE while a real crawl executes after signup, swapping real values
+  in as they arrive and leaving blanks where they don't.
+
+  TIMING lives in the CLOCK block below — one place, three numbers.
+  PORTING: the flight (flyToRail) is the same measured FLIP as
+  frontend/src/hooks/useMissionHandoff.ts. Keep them in step.
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   TOKENS — one block. Swap these to re-theme the whole page.
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-body: 'Instrument Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --color-bg:       #060a08;
+  --color-surface:  #0c1310;
+  --color-raised:   #101815;
+  --color-fg:       #e4efe9;
+  --color-muted:    #7d9a8c;
+  --color-border:   rgba(125,154,140,0.17);
+
+  --color-primary:        #34e0a1;
+  --color-primary-dim:    rgba(52,224,161,0.35);
+  --color-primary-glow:   rgba(52,224,161,0.15);
+  --color-primary-subtle: rgba(52,224,161,0.06);
+  --color-success:        #4ade80;
+  --color-warn:           #ffd740;
+
+  --space-sm: 8px; --space-md: 16px; --space-lg: 24px;
+  --space-xl: 32px; --space-2xl: 48px;
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --radius: 20px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/* `hidden` must beat a component's own display rule, or an element that sets
+   `display: flex` can never be hidden by the attribute. */
+[hidden] { display: none !important; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input { font-family: inherit; color: inherit; }
+
+/* Ambient: a slow void glow + a faint ops grid. Decorative only. */
+.atmosphere, .grid-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+.atmosphere {
+  background:
+    radial-gradient(60% 45% at 22% 8%, var(--color-primary-glow), transparent 70%),
+    radial-gradient(50% 40% at 82% 88%, rgba(74,222,128,0.07), transparent 70%);
+  animation: drift 22s ease-in-out infinite alternate;
+}
+@keyframes drift { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(-2%,2%,0) scale(1.08); } }
+.grid-overlay {
+  background-image:
+    linear-gradient(var(--color-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: 0.32;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, #000 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, #000 30%, transparent 100%);
+}
+
+.shell { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 0 var(--space-xl) var(--space-2xl); }
+
+.stage-screen { display: none; }
+.stage-screen.is-active { display: block; animation: screen-in 0.6s var(--ease) both; }
+@keyframes screen-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ═══════════════════════════════════════════════════════════════════
+   THE VANI ORB — the AI presence. Same object in three states, so the
+   visitor tracks one actor through the whole mission rather than a
+   generic spinner appearing and vanishing.
+   ═══════════════════════════════════════════════════════════════════ */
+.orb { position: relative; flex-shrink: 0; display: grid; place-items: center; }
+.orb svg { display: block; overflow: visible; }
+
+.orb .orb-ring     { fill: none; stroke: var(--color-border); stroke-width: 1; }
+.orb .orb-arc      { fill: none; stroke: var(--color-primary); stroke-width: 1.5; stroke-linecap: round; transform-origin: center; opacity: 0; }
+.orb .orb-arc-slow { stroke: var(--color-primary-dim); }
+.orb .orb-core     { fill: var(--color-primary); }
+.orb .orb-halo     { fill: var(--color-primary); opacity: 0.12; }
+
+/* idle — breathing, nothing claimed */
+.orb[data-state="idle"] .orb-core { animation: core-breathe 3.4s ease-in-out infinite; }
+.orb[data-state="idle"] .orb-halo { animation: halo-breathe 3.4s ease-in-out infinite; }
+
+/* working — arcs sweep. Motion means compute, so it only runs while
+   something is actually being staged. */
+.orb[data-state="working"] .orb-arc      { opacity: 1; animation: arc-spin 1.9s linear infinite; }
+.orb[data-state="working"] .orb-arc-slow { opacity: 1; animation: arc-spin-rev 3.1s linear infinite; }
+.orb[data-state="working"] .orb-core     { animation: core-pulse 1.1s ease-in-out infinite; }
+.orb[data-state="working"] .orb-halo     { animation: halo-pulse 1.1s ease-in-out infinite; }
+
+/* resolved — still, green, done */
+.orb[data-state="done"] .orb-core { fill: var(--color-success); }
+.orb[data-state="done"] .orb-halo { fill: var(--color-success); opacity: 0.16; }
+
+@keyframes arc-spin      { to { transform: rotate(360deg); } }
+@keyframes arc-spin-rev  { to { transform: rotate(-360deg); } }
+@keyframes core-breathe  { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
+@keyframes halo-breathe  { 0%,100% { transform: scale(1); opacity: 0.10; } 50% { transform: scale(1.18); opacity: 0.18; } }
+@keyframes core-pulse    { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+@keyframes halo-pulse    { 0%,100% { transform: scale(1); opacity: 0.14; } 50% { transform: scale(1.3); opacity: 0.26; } }
+
+/* ═══════════════════════════════════════════════════════════════════
+   SCREEN 1 — intake. The only thing the visitor types.
+   ═══════════════════════════════════════════════════════════════════ */
+.intake { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--space-lg); padding: var(--space-2xl) 0; }
+
+.intake-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  letter-spacing: 1.5px; text-transform: uppercase; color: var(--color-primary);
+  padding: 5px 14px; border-radius: 100px;
+  border: 1px solid var(--color-primary-dim); background: var(--color-primary-subtle);
+}
+.intake-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--color-primary); box-shadow: 0 0 8px var(--color-primary); animation: core-pulse 2s ease-in-out infinite; }
+
+.intake h1 { font-family: var(--font-display); font-size: clamp(2.2rem, 5.4vw, 3.6rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; margin: 0; }
+.intake h1 em { font-style: normal; color: var(--color-primary); }
+.intake p.lede { max-width: 42em; margin: 0; font-size: 1.02rem; line-height: 1.6; color: var(--color-muted); }
+
+.intake-form { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: var(--space-sm); }
+.intake-input {
+  width: 300px; max-width: 78vw; padding: 14px 18px;
+  border-radius: 12px; border: 1px solid var(--color-border);
+  background: var(--color-surface); font-size: 0.95rem;
+  transition: border-color 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+.intake-input::placeholder { color: var(--color-muted); opacity: 0.7; }
+.intake-input:focus { outline: none; border-color: var(--color-primary-dim); box-shadow: 0 0 0 3px var(--color-primary-subtle); }
+.intake-input[aria-invalid="true"] { border-color: var(--color-warn); }
+
+.intake-error { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; color: var(--color-warn); min-height: 16px; margin: 0; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 14px 24px; border-radius: 12px;
+  font-size: 0.92rem; font-weight: 600; letter-spacing: -0.01em;
+  transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease), background 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+.btn-primary { background: var(--color-primary); color: #04120c; box-shadow: 0 6px 24px -8px var(--color-primary); }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 30px -8px var(--color-primary); }
+.btn-ghost { border: 1px solid var(--color-border); color: var(--color-muted); }
+.btn-ghost:hover { border-color: var(--color-primary-dim); color: var(--color-primary); }
+.btn-sm { padding: 8px 16px; font-size: 0.8rem; border-radius: 10px; }
+
+.intake-foot { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; color: var(--color-muted); opacity: 0.75; max-width: 40em; line-height: 1.7; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   SCREEN 2 — the mission
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* The honesty strip. Persistent, at the top, in the visitor's eyeline for
+   the whole run — not fine print at the bottom. It is the one place the
+   typed domain and the sample company are named side by side. */
+.preview-strip {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 11px 16px; margin-top: var(--space-lg);
+  border: 1px dashed var(--color-primary-dim); border-radius: 12px;
+  background: var(--color-primary-subtle);
+}
+.preview-tag {
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 600;
+  letter-spacing: 1.4px; text-transform: uppercase; color: var(--color-primary);
+  padding: 3px 9px; border-radius: 100px; border: 1px solid var(--color-primary-dim);
+  white-space: nowrap;
+}
+.preview-text { font-size: 0.82rem; line-height: 1.5; color: var(--color-muted); margin: 0; }
+.preview-text strong { color: var(--color-fg); font-weight: 600; }
+.preview-strip .btn { margin-left: auto; }
+
+/* Top: mission identity + numbered step rail */
+.top { display: flex; align-items: center; gap: var(--space-lg); padding: var(--space-lg) 0; border-bottom: 1px solid var(--color-border); flex-wrap: wrap; }
+.mission { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+.mission-label { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--color-primary); }
+.mission-name-row { display: flex; align-items: center; gap: 9px; }
+.mission-name { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; }
+.sample-chip { font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--color-muted); padding: 2px 8px; border-radius: 100px; border: 1px solid var(--color-border); }
+
+.steprail { flex: 1; min-width: 0; display: flex; align-items: center; gap: 3px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.steprail::-webkit-scrollbar { display: none; }
+.steprail.is-scrollable {
+  mask-image: linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 28px), transparent 100%);
+}
+.steprail-item { display: flex; align-items: center; gap: 7px; padding: 4px 9px 4px 4px; border-radius: 100px; border: 1px solid transparent; transition: all 0.4s var(--ease); flex-shrink: 0; }
+.steprail-num { width: 20px; height: 20px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--color-border); font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; color: var(--color-muted); transition: all 0.4s var(--ease); }
+.steprail-label { font-size: 0.735rem; color: var(--color-muted); white-space: nowrap; transition: color 0.4s var(--ease); }
+.steprail-dash { width: 10px; height: 1px; background: var(--color-border); flex-shrink: 0; }
+
+.steprail-item[data-state="active"] { border-color: var(--color-primary-dim); background: var(--color-primary-subtle); }
+.steprail-item[data-state="active"] .steprail-num { border-color: var(--color-primary); color: var(--color-primary); }
+.steprail-item[data-state="active"] .steprail-label { color: var(--color-primary); font-weight: 600; }
+.steprail-item[data-state="done"] .steprail-num { border-color: color-mix(in srgb, var(--color-success) 45%, transparent); background: color-mix(in srgb, var(--color-success) 12%, transparent); color: var(--color-success); font-size: 11px; }
+.steprail-item[data-state="done"] .steprail-label { color: var(--color-fg); }
+
+/* Layout: mission-memory rail + stage */
+.layout { display: grid; grid-template-columns: 290px 1fr; gap: var(--space-2xl); padding-top: var(--space-xl); align-items: start; }
+.rail-col { position: sticky; top: var(--space-lg); }
+
+/* ── Mission memory: what each confirmed step FILED ──────────────────
+   The rail is the point of the whole animation. A step that finishes
+   does not vanish, it leaves an object behind — so by step 6 the left
+   column is a visible record of what VaNi built. */
+.memory { display: flex; flex-direction: column; }
+.mem-entry { display: flex; flex-direction: column; }
+.mem-sep { display: flex; align-items: center; gap: 7px; padding: 12px 0 10px; border-top: 1px solid var(--color-border); font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em; color: var(--color-muted); }
+.mem-entry:first-child .mem-sep { border-top: none; padding-top: 0; }
+.mem-mark { color: var(--color-success); font-size: 11px; flex-shrink: 0; }
+.mem-entry[data-state="active"] .mem-sep, .mem-entry[data-state="active"] .mem-mark { color: var(--color-primary); }
+.mem-entry[data-state="pending"] .mem-sep { opacity: 0.45; }
+
+.mem-slot { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.mem-slot:not(:empty) { padding: 12px; margin-bottom: 14px; border: 1px solid var(--color-border); border-radius: 12px; background: color-mix(in srgb, var(--color-surface) 60%, transparent); }
+.mem-slot.slot-empty { min-height: 52px; margin-bottom: 14px; border: 1px dashed color-mix(in srgb, var(--color-primary) 26%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--color-primary) 4%, transparent); }
+
+/* Arrival flash — set by flyToRail on landing, so the drop is legible. */
+.mission-step-landed { animation: mission-land 0.9s var(--ease); }
+.mem-slot:empty.mission-step-landed { animation: none; }
+@keyframes mission-land {
+  0%   { box-shadow: 0 0 0 0 var(--color-primary-glow); border-color: var(--color-primary); }
+  100% { box-shadow: 0 0 0 14px transparent; }
+}
+
+.mem-card-name { font-family: var(--font-display); font-size: 0.95rem; font-weight: 700; letter-spacing: -0.01em; }
+.mem-card-domain { font-family: var(--font-mono); font-size: 10px; color: var(--color-primary); display: block; margin-top: 2px; }
+.mem-card-desc { font-size: 0.76rem; line-height: 1.5; color: var(--color-muted); margin: 8px 0 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.mem-section-head { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--color-muted); margin-bottom: 4px; }
+.mem-count { color: var(--color-primary); }
+.mem-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mem-chip { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 4px 9px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-raised); font-family: var(--font-mono); font-size: 10px; color: var(--color-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mem-chip::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--color-primary); flex-shrink: 0; }
+.mem-rows { display: flex; flex-direction: column; gap: 6px; }
+.mem-row { display: flex; align-items: center; gap: 7px; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--color-border); background: var(--color-raised); }
+.mem-row[data-active="true"] { border-color: var(--color-primary-dim); background: var(--color-primary-subtle); }
+.mem-row-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--color-muted); flex-shrink: 0; }
+.mem-row[data-active="true"] .mem-row-dot { background: var(--color-primary); }
+.mem-row-label { flex: 1; min-width: 0; font-size: 0.74rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mem-row-metric { font-family: var(--font-mono); font-size: 10px; color: var(--color-muted); }
+.mem-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.mem-tag { padding: 3px 9px; border-radius: 100px; border: 1px solid var(--color-border); font-size: 0.68rem; color: var(--color-muted); }
+
+/* ── Stage ───────────────────────────────────────────────────────────── */
+/* min-height keeps the page from collapsing and re-expanding as the loader
+   (short) gives way to a card (tall) and back. Without it every step jumps.
+   padding-bottom clears the fixed dock, which otherwise covers the card's
+   own confirm row. */
+.stage { min-width: 0; display: flex; flex-direction: column; gap: var(--space-lg); min-height: 460px; }
+#screen-mission { padding-bottom: 96px; }
+
+/* VaNi working — the loader. Named phases, a graph drawing itself, and a
+   subject line. It never claims a percentage it cannot know. */
+.working { display: flex; gap: var(--space-lg); align-items: center; padding: 40px 28px; border: 1px dashed var(--color-primary-dim); border-radius: var(--radius); background: color-mix(in srgb, var(--color-surface) 70%, transparent); animation: approval-in 0.5s var(--ease) both; }
+.working-graph { flex-shrink: 0; }
+.kg-node { fill: var(--color-primary); opacity: 0; animation: node-wake 2.6s var(--ease) infinite; }
+.kg-edge { stroke: var(--color-primary); stroke-width: 1; opacity: 0.5; stroke-dasharray: 90; stroke-dashoffset: 90; animation: edge-draw 2.6s var(--ease) infinite; }
+@keyframes node-wake { 0%, 8% { opacity: 0; transform: scale(0.4); } 26% { opacity: 1; transform: scale(1); } 86%, 100% { opacity: 0.25; transform: scale(1); } }
+@keyframes edge-draw { 0%, 12% { stroke-dashoffset: 90; opacity: 0; } 38% { stroke-dashoffset: 0; opacity: 0.55; } 86%, 100% { stroke-dashoffset: 0; opacity: 0.12; } }
+
+.working-body { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.working-eyebrow { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--color-primary); }
+.working-subject { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; }
+.working-phase { font-family: var(--font-mono); font-size: 0.78rem; color: var(--color-muted); min-height: 1.4em; }
+.working-phase::after { content: '_'; color: var(--color-primary); animation: caret 1s steps(2) infinite; }
+@keyframes caret { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+.working-bar { width: 100%; max-width: 280px; height: 2px; margin-top: 8px; border-radius: 2px; background: var(--color-border); overflow: hidden; }
+.working-bar i { display: block; height: 100%; width: 40%; border-radius: 2px; background: var(--color-primary); animation: bar-scan 1.5s var(--ease) infinite; }
+@keyframes bar-scan { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+
+/* Approval card — the agent's finished work */
+.card { position: relative; display: flex; flex-direction: column; gap: 20px; padding: 28px; border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); animation: approval-in 0.5s var(--ease) both; }
+.card::before { content: ''; position: absolute; inset: -1px; border-radius: inherit; background: linear-gradient(135deg, var(--color-primary-glow), transparent 40%, transparent 60%, color-mix(in srgb, var(--color-success) 12%, transparent)); z-index: -1; opacity: 0.6; transition: opacity 0.5s var(--ease); }
+.card.is-confirmed { border-color: color-mix(in srgb, var(--color-success) 35%, transparent); }
+.card.is-confirmed::before { opacity: 0; }
+@keyframes approval-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+.card-head { display: flex; flex-direction: column; gap: 6px; }
+.card-eyebrow-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+.agent-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-primary); box-shadow: 0 0 8px var(--color-primary-glow); animation: core-pulse 2s ease-in-out infinite; }
+.card.is-confirmed .agent-dot { background: var(--color-success); box-shadow: none; animation: none; }
+.card-eyebrow { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--color-primary); }
+.card.is-confirmed .card-eyebrow { color: var(--color-success); }
+.card-sealed { margin-left: auto; font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--color-success); padding: 3px 10px; border-radius: 100px; border: 1px solid color-mix(in srgb, var(--color-success) 35%, transparent); background: color-mix(in srgb, var(--color-success) 10%, transparent); }
+.card-title { font-family: var(--font-display); font-size: 1.45rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin: 0; }
+.card-sub { font-size: 0.88rem; line-height: 1.55; color: var(--color-muted); margin: 0; max-width: 56em; }
+.card-actions { display: flex; align-items: center; gap: 10px; padding-top: 4px; }
+.card-actions .card-hint { margin-left: auto; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; color: var(--color-muted); opacity: 0.7; }
+
+/* Auto-confirm meter — the card commits itself, and says so. Visible
+   because a countdown the viewer cannot see reads as the page freezing. */
+.card-meter { position: relative; height: 2px; border-radius: 2px; background: var(--color-border); overflow: hidden; }
+.card-meter i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 2px; background: var(--color-primary); }
+
+/* Card content shared bits */
+.fieldset { display: flex; flex-direction: column; gap: 18px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 18px; }
+.field-label { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--color-muted); }
+.field-value { font-size: 0.9rem; line-height: 1.55; margin: 0; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.value-chip { padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 500; color: var(--color-primary); border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent); background: var(--color-primary-subtle); white-space: nowrap; }
+
+/* Step 2 — competitors */
+.comp-row { display: grid; grid-template-columns: minmax(200px, 1fr) 1.2fr; gap: var(--space-md); padding: 14px 0; border-bottom: 1px solid var(--color-border); align-items: baseline; }
+.comp-row:last-child { border-bottom: none; }
+.comp-main { display: flex; flex-direction: column; gap: 2px; }
+.comp-name { font-weight: 600; font-size: 0.92rem; }
+.comp-angle { font-size: 0.78rem; color: var(--color-primary); }
+.comp-note { font-size: 0.82rem; line-height: 1.5; color: var(--color-muted); }
+
+/* Step 3 — campaigns */
+.camp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: var(--space-md); }
+.camp-card { display: flex; flex-direction: column; gap: 14px; padding: 20px; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-bg); }
+.camp-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
+.camp-name { font-family: var(--font-display); font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; }
+.camp-count { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 600; color: var(--color-success); padding: 3px 10px; border-radius: 100px; border: 1px solid color-mix(in srgb, var(--color-success) 35%, transparent); background: color-mix(in srgb, var(--color-success) 10%, transparent); white-space: nowrap; }
+.camp-pain { font-size: 0.85rem; line-height: 1.55; color: var(--color-muted); margin: 0; }
+.camp-criteria { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; line-height: 1.5; }
+
+/* Step 4 — prospect table */
+.table-wrap { overflow-x: auto; }
+table.ops { width: 100%; border-collapse: collapse; }
+table.ops th { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--color-muted); text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--color-border); white-space: nowrap; }
+table.ops td { padding: 12px 14px; font-size: 0.85rem; color: var(--color-muted); border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent); }
+table.ops tr:last-child td { border-bottom: none; }
+.cell-strong { color: var(--color-fg); font-weight: 600; }
+.cell-mono { font-family: var(--font-mono); font-size: 0.78rem; }
+
+/* Step 5 — contacts + enrichment waterfall */
+.contact-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-lg); padding: 14px 0; border-bottom: 1px solid var(--color-border); flex-wrap: wrap; }
+.contact-row:last-child { border-bottom: none; }
+.contact-main { display: flex; flex-direction: column; gap: 2px; min-width: 190px; }
+.contact-name { font-weight: 600; font-size: 0.92rem; }
+.contact-title { font-size: 0.78rem; color: var(--color-muted); }
+.waterfall { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; row-gap: 8px; }
+.wf-arrow { font-size: 0.7rem; color: var(--color-muted); opacity: 0.5; }
+.wf-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 100px; font-family: var(--font-mono); font-size: 0.68rem; font-weight: 500; border: 1px solid var(--color-border); color: var(--color-muted); background: var(--color-surface); white-space: nowrap; }
+.wf-chip.hit { border-color: color-mix(in srgb, var(--color-success) 40%, transparent); background: color-mix(in srgb, var(--color-success) 10%, transparent); color: var(--color-success); }
+.wf-chip.miss { opacity: 0.6; }
+.wf-chip.miss .wf-name { text-decoration: line-through; text-decoration-thickness: 1px; }
+.wf-detail { padding-left: 6px; border-left: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent); color: var(--color-fg); font-weight: 600; }
+.wf-none { font-family: var(--font-mono); font-size: 0.68rem; color: var(--color-muted); font-style: italic; }
+
+/* Step 6 — email */
+.email { display: flex; flex-direction: column; gap: 16px; }
+.email-meta { display: flex; flex-direction: column; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--color-border); }
+.email-meta-row { display: grid; grid-template-columns: 70px 1fr; gap: var(--space-md); font-size: 0.85rem; color: var(--color-muted); align-items: baseline; }
+.email-body { display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem; line-height: 1.65; }
+.email-body p { margin: 0; }
+
+/* VaNi dock — persistent bottom status. The AI is present even while a
+   card is being read, so the visitor never loses track of who is acting. */
+.dock { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 12px; padding: 9px 9px 9px 14px; border-radius: 100px; border: 1px solid var(--color-border); background: color-mix(in srgb, var(--color-surface) 92%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 10px 40px -12px rgba(0,0,0,0.8); max-width: calc(100vw - 32px); }
+.dock-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.dock-name { font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; color: var(--color-primary); }
+.dock-status { font-size: 0.76rem; color: var(--color-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 42vw; }
+.dock-steps { display: flex; gap: 4px; padding-left: 4px; }
+.dock-pip { width: 6px; height: 6px; border-radius: 50%; background: var(--color-border); transition: all 0.4s var(--ease); }
+.dock-pip[data-state="done"] { background: var(--color-success); }
+.dock-pip[data-state="active"] { background: var(--color-primary); box-shadow: 0 0 8px var(--color-primary); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   SCREEN 3 — outro. The typed domain returns, as a question.
+   ═══════════════════════════════════════════════════════════════════ */
+.outro { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--space-lg); padding: var(--space-2xl) 0; }
+.outro h2 { font-family: var(--font-display); font-size: clamp(1.9rem, 4.4vw, 3rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin: 0; max-width: 18em; }
+.outro h2 em { font-style: normal; color: var(--color-primary); white-space: nowrap; }
+/* Last resort only: a domain too long to fit on one line may break rather
+   than overflow the viewport. */
+@media (max-width: 620px) { .outro h2 em { white-space: normal; overflow-wrap: anywhere; } }
+.outro-recap { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 46em; }
+.outro-recap span { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em; color: var(--color-muted); padding: 5px 12px; border-radius: 100px; border: 1px solid var(--color-border); }
+.outro-recap span::before { content: '\2713'; color: var(--color-success); margin-right: 6px; }
+.outro-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: var(--space-sm); }
+.outro-note { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em; color: var(--color-muted); opacity: 0.75; max-width: 40em; line-height: 1.7; }
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .shell { padding: 0 var(--space-md) 96px; }
+  .layout { grid-template-columns: 1fr; gap: var(--space-lg); }
+  .rail-col { position: static; order: 2; }
+  .stage { order: 1; }
+  .top { gap: var(--space-md); }
+  .card { padding: 20px; }
+  .comp-row { grid-template-columns: 1fr; gap: 4px; }
+  .steprail { width: 100%; }
+  .steprail-dash { display: none; }
+  .steprail-label { display: none; }
+  .steprail-item[data-state="active"] .steprail-label { display: inline; }
+  .preview-strip .btn { margin-left: 0; }
+}
+
+/* Honour the preference: no flight, no sweeps, no ambient drift. The
+   mission still advances on the clock — it just cuts instead of moving. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  .atmosphere { animation: none; }
+}
+</style>
+</head>
+
+<body>
+<div class="atmosphere" aria-hidden="true"></div>
+<div class="grid-overlay" aria-hidden="true"></div>
+
+<div class="shell">
+
+  <!-- ══ SCREEN 1 · INTAKE ══════════════════════════════════════════ -->
+  <section class="stage-screen is-active" id="screen-intake">
+    <div class="intake">
+      <div class="orb" data-state="idle" style="margin-bottom:4px" aria-hidden="true">
+        <svg width="76" height="76" viewBox="0 0 76 76">
+          <circle class="orb-halo" cx="38" cy="38" r="22"/>
+          <circle class="orb-ring" cx="38" cy="38" r="30"/>
+          <circle class="orb-ring" cx="38" cy="38" r="22"/>
+          <path class="orb-arc" d="M38 8 A30 30 0 0 1 64 23"/>
+          <path class="orb-arc orb-arc-slow" d="M38 68 A30 30 0 0 1 12 53"/>
+          <circle class="orb-core" cx="38" cy="38" r="6"/>
+        </svg>
+      </div>
+
+      <span class="intake-badge">Live demo</span>
+
+      <h1>Watch VaNi build<br>a go-to-market <em>from scratch</em></h1>
+
+      <p class="lede">
+        Six steps, start to finish: research the company, map the market, draft the
+        campaigns, find the customers, reach the decision makers, write the first email.
+        Type your domain and watch the whole mission run.
+      </p>
+
+      <form class="intake-form" id="intake-form" novalidate>
+        <input class="intake-input" id="domain-input" type="text"
+               placeholder="yourcompany.com" aria-label="Your website domain"
+               autocomplete="url" spellcheck="false">
+        <button type="submit" class="btn btn-primary">
+          Watch VaNi work
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </form>
+      <p class="intake-error" id="intake-error" role="alert"></p>
+
+      <p class="intake-foot">
+        Nothing is sent anywhere and no account is created. The walkthrough runs on a
+        sample company — your real mission is built from your own site after you sign up.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══ SCREEN 2 · THE MISSION ═════════════════════════════════════ -->
+  <section class="stage-screen" id="screen-mission" aria-label="VaNi onboarding mission walkthrough">
+
+    <div class="preview-strip">
+      <span class="preview-tag">Preview</span>
+      <p class="preview-text">
+        Every screen below is a <strong>sample company</strong> — real flow, real
+        timings, invented data. VaNi builds <strong id="strip-domain">your</strong>
+        version from your own site once you sign up.
+      </p>
+      <button class="btn btn-ghost btn-sm" id="btn-skip">Skip to the end</button>
+    </div>
+
+    <header class="top">
+      <div class="mission">
+        <span class="mission-label">Mission · Onboarding</span>
+        <div class="mission-name-row">
+          <span class="mission-name">Solstice Metrics</span>
+          <span class="sample-chip">Sample</span>
+        </div>
+      </div>
+      <div class="steprail" id="steprail" role="list" aria-label="Mission steps"></div>
+    </header>
+
+    <div class="layout">
+      <aside class="rail-col">
+        <div class="memory" id="memory" aria-label="Mission memory"></div>
+      </aside>
+      <main class="stage" id="stage"></main>
+    </div>
+  </section>
+
+  <!-- ══ SCREEN 3 · OUTRO ═══════════════════════════════════════════ -->
+  <section class="stage-screen" id="screen-outro">
+    <div class="outro">
+      <div class="orb" data-state="done" aria-hidden="true">
+        <svg width="66" height="66" viewBox="0 0 76 76">
+          <circle class="orb-halo" cx="38" cy="38" r="22"/>
+          <circle class="orb-ring" cx="38" cy="38" r="30"/>
+          <circle class="orb-ring" cx="38" cy="38" r="22"/>
+          <circle class="orb-core" cx="38" cy="38" r="6"/>
+        </svg>
+      </div>
+
+      <h2>That was a sample company.<br>Now run it on<br><em id="outro-domain">your site</em></h2>
+
+      <div class="outro-recap">
+        <span>Company researched</span><span>Competitors mapped</span>
+        <span>Campaigns drafted</span><span>Customers found</span>
+        <span>Decision makers enriched</span><span>First email written</span>
+      </div>
+
+      <div class="outro-actions">
+        <button class="btn btn-primary" id="btn-start">
+          Start my mission
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+        <button class="btn btn-ghost" id="btn-replay">Replay the walkthrough</button>
+      </div>
+
+      <p class="outro-note">
+        VaNi reads your website, your documents and your public profile, then asks you
+        to confirm each step before anything goes out. You approve; the agents execute.
+      </p>
+    </div>
+  </section>
+
+</div>
+
+<!-- Persistent VaNi presence, only while the mission plays -->
+<div class="dock" id="dock" hidden>
+  <div class="orb" data-state="idle" id="dock-orb" aria-hidden="true">
+    <svg width="34" height="34" viewBox="0 0 76 76">
+      <circle class="orb-halo" cx="38" cy="38" r="22"/>
+      <circle class="orb-ring" cx="38" cy="38" r="30"/>
+      <path class="orb-arc" d="M38 8 A30 30 0 0 1 64 23"/>
+      <path class="orb-arc orb-arc-slow" d="M38 68 A30 30 0 0 1 12 53"/>
+      <circle class="orb-core" cx="38" cy="38" r="7"/>
+    </svg>
+  </div>
+  <div class="dock-text">
+    <span class="dock-name">VaNi</span>
+    <span class="dock-status" id="dock-status" aria-live="polite">Standing by</span>
+  </div>
+  <div class="dock-steps" id="dock-pips" aria-hidden="true"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ═══ CLOCK ═══════════════════════════════════════════════════════
+     The three numbers that set the pace. WORK is how long VaNi is seen
+     thinking; DWELL is how long the finished card stays readable before
+     it commits; FLIGHT matches HANDOFF_MS in useMissionHandoff.ts.
+     One full run is roughly (WORK + DWELL + FLIGHT) x 6 ~= 46s.       */
+  var WORK_MS   = 2600;
+  var DWELL_MS  = 4600;
+  var FLIGHT_MS = 620;
+  var PHASE_MS  = 900;   // how fast the loader's phase lines advance
+
+  var reduced = window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ═══ SAMPLE MISSION DATA ═════════════════════════════════════════
+     Fictional throughout — the company, the competitors, the people and
+     the email are all invented, and the page says so on every screen.
+     Carried over verbatim from /design/wizard so the marketing demo and
+     the product's own review surface never drift apart.                */
+
+  var COMPANY = {
+    name: 'Solstice Metrics',
+    domain: 'solsticemetrics.example',
+    description: 'Revenue attribution platform that joins ad spend, outbound touches and CRM outcomes into one funnel view — built for mid-market B2B SaaS without a data team.',
+    tags: ['Series A · 40 people', 'Marketing analytics'],
+    props: ['Spend → revenue in one view', 'No data team required', 'Live in under a week', 'Works inside HubSpot / Salesforce']
+  };
+
+  var COMPETITORS = [
+    { name: 'Northbeam Analytics', domain: 'northbeam.example', angle: 'Enterprise attribution suite',   note: 'Wins on integrations; slow onboarding (6–8 weeks)' },
+    { name: 'Clearsight Metrics',  domain: 'clearsight.example', angle: 'Self-serve dashboards for SMB',  note: 'Cheap entry tier; no revenue attribution' },
+    { name: 'Fathomline',          domain: 'fathomline.example', angle: 'Agency-focused reporting',       note: 'White-label reports; weak API story' },
+    { name: 'TraceLoop',           domain: 'traceloop.example',  angle: 'Developer-first event pipeline', note: 'Loved by engineers; no GTM-side workflows' }
+  ];
+
+  var CAMPAIGNS = [
+    {
+      name: 'The blind-spend campaign',
+      pain: 'Marketing leaders at mid-market SaaS can’t tie ad spend to closed revenue — attribution breaks at the CRM boundary.',
+      criteria: ['B2B SaaS, 50–500 employees', 'Runs paid + outbound simultaneously', 'HubSpot or Salesforce CRM'],
+      examples: ['Brightpath CRM', 'Quill & Ledger', 'Orbital HQ'],
+      prospects: 312
+    },
+    {
+      name: 'The agency-graduation campaign',
+      pain: 'Companies leaving their first agency inherit dashboards they can’t operate and a data layer nobody documented.',
+      criteria: ['Recently ended agency contract', 'Hiring first in-house growth role', '$2M–$20M ARR'],
+      examples: ['Lanternworks', 'Fieldnote Labs'],
+      prospects: 147
+    }
+  ];
+
+  var PROSPECTS = [
+    { company: 'Brightpath CRM',  desc: 'Sales CRM for field teams',            location: 'Austin, TX',  size: '120', traffic: '85k/mo'  },
+    { company: 'Quill & Ledger',  desc: 'Accounting automation for agencies',   location: 'Toronto, CA', size: '85',  traffic: '42k/mo'  },
+    { company: 'Orbital HQ',      desc: 'Remote-team operations platform',      location: 'Berlin, DE',  size: '210', traffic: '130k/mo' },
+    { company: 'Lanternworks',    desc: 'Event marketing software',             location: 'Lisbon, PT',  size: '64',  traffic: '28k/mo'  },
+    { company: 'Fieldnote Labs',  desc: 'Research repository for product teams',location: 'Seattle, WA', size: '95',  traffic: '51k/mo'  }
+  ];
+
+  var CONTACTS = [
+    { name: 'Maya Reston', title: 'VP Marketing',   company: 'Brightpath CRM',
+      waterfall: [ { name: 'Provider A', state: 'miss' }, { name: 'Provider B', state: 'hit', detail: 'm.reston@brightpath.example' } ] },
+    { name: 'Jonas Feld',  title: 'Head of Growth', company: 'Orbital HQ',
+      waterfall: [ { name: 'Provider A', state: 'hit', detail: 'jonas@orbitalhq.example' } ] },
+    { name: 'Priya Anand', title: 'CMO',            company: 'Quill & Ledger',
+      waterfall: [ { name: 'Provider A', state: 'miss' }, { name: 'Provider B', state: 'miss' }, { name: 'Provider C', state: 'miss' } ] }
+  ];
+
+  var EMAIL = {
+    to: 'Maya Reston · VP Marketing, Brightpath CRM',
+    subject: 'Brightpath’s paid spend → closed revenue, joined up',
+    body: [
+      'Hi Maya —',
+      'Noticed Brightpath is running paid across three channels while scaling an outbound team — the classic point where attribution breaks at the CRM boundary and budget reviews turn into guesswork.',
+      'Solstice Metrics joins ad spend to closed-won revenue inside your existing HubSpot setup, without a data team. Mid-market SaaS teams like yours typically see their first full-funnel report in under a week.',
+      'Worth a 20-minute look at your funnel this Thursday?'
+    ]
+  };
+
+  /* ═══ HELPERS ═════════════════════════════════════════════════════ */
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* Everything interpolated into innerHTML goes through this. The sample
+     data is ours, but the typed domain is not — and it is rendered in
+     three places. */
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  /* Accept what people actually type: bare domains, full URLs, trailing
+     slashes, a stray @. Reject only what is clearly not a domain, and say
+     why rather than silently proceeding with junk. */
+  function normaliseDomain(raw) {
+    var v = String(raw || '').trim().toLowerCase();
+    if (!v) return null;
+    v = v.replace(/^[a-z][a-z0-9+.-]*:\/\//, '').replace(/^www\./, '');
+    v = v.split('/')[0].split('?')[0].split('#')[0];
+    v = v.replace(/^.*@/, '').replace(/\.+$/, '');
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(v)) return null;
+    return v;
+  }
+
+  /* ═══ STEP DEFINITIONS ════════════════════════════════════════════
+     Each step owns: the loader phases VaNi shows while working, the
+     approval card it produces, and what (if anything) it files into
+     mission memory. Steps 4–6 are operational — their output lives on
+     the stage and files only a separator, exactly as in the product. */
+
+  var STEPS = [
+    {
+      id: 'company',
+      label: 'Research company',
+      phases: ['Fetching ' + COMPANY.domain, 'Reading homepage and product pages', 'Extracting value propositions', 'Writing to the knowledge graph'],
+      status: 'Reading the company’s website',
+      eyebrow: 'VaNi · researched from ' + COMPANY.domain,
+      title: 'Here’s what I learned about your company',
+      sub: 'I read your website, docs and public profiles. Correct anything that’s off — everything downstream builds on this.',
+      body: function () {
+        return '' +
+          '<div class="fieldset">' +
+            '<div class="field"><span class="field-label">What you do</span>' +
+              '<p class="field-value">' + COMPANY.description + '</p></div>' +
+            '<div class="field-row">' +
+              '<div class="field"><span class="field-label">Industry</span><p class="field-value">Marketing analytics</p></div>' +
+              '<div class="field"><span class="field-label">Stage</span><p class="field-value">Series A · 40 people</p></div>' +
+              '<div class="field"><span class="field-label">Pricing motion</span><p class="field-value">Sales-assisted, $12k–$60k ACV</p></div>' +
+            '</div>' +
+            '<div class="field"><span class="field-label">Core value props</span><div class="chip-row">' +
+              COMPANY.props.map(function (p) { return '<span class="value-chip">' + p + '</span>'; }).join('') +
+            '</div></div>' +
+          '</div>';
+      },
+      artifact: function () {
+        return '' +
+          '<div><span class="mem-card-name">' + COMPANY.name + '</span>' +
+          '<span class="mem-card-domain">' + COMPANY.domain + '</span></div>' +
+          '<p class="mem-card-desc">' + COMPANY.description + '</p>' +
+          '<div class="mem-tags">' + COMPANY.tags.map(function (t) { return '<span class="mem-tag">' + t + '</span>'; }).join('') + '</div>';
+      }
+    },
+    {
+      id: 'competitors',
+      label: 'Explore competitors',
+      phases: ['Building your market vocabulary', 'Searching the open web for who occupies it', 'Cross-checking four candidates', 'Filing verified competitor nodes'],
+      status: 'Mapping the competitive landscape',
+      eyebrow: 'VaNi · mapped your market',
+      title: 'Four competitors shape your buyers’ expectations',
+      sub: 'Remove anyone who doesn’t belong; I’ll position against the rest in campaigns and emails.',
+      body: function () {
+        return COMPETITORS.map(function (c) {
+          return '<div class="comp-row"><div class="comp-main">' +
+            '<span class="comp-name">' + c.name + '</span>' +
+            '<span class="comp-angle">' + c.angle + '</span></div>' +
+            '<span class="comp-note">' + c.note + '</span></div>';
+        }).join('');
+      },
+      artifact: function () {
+        return '<div class="mem-section-head">Competitors <span class="mem-count">' + COMPETITORS.length + '</span></div>' +
+          '<div class="mem-chips">' + COMPETITORS.map(function (c) {
+            return '<span class="mem-chip">' + c.domain + '</span>';
+          }).join('') + '</div>';
+      }
+    },
+    {
+      id: 'campaigns',
+      label: 'Define campaigns',
+      phases: ['Clustering pains across your ICP', 'Drafting campaign angles', 'Qualifying each against your offers', 'Counting matching prospects'],
+      status: 'Drafting campaigns from your ICP',
+      eyebrow: 'VaNi · drafted from your ICP',
+      title: 'Two campaigns, ready to approve',
+      sub: 'Each is a decision, not a blank: pain, qualification, live prospect counts.',
+      body: function () {
+        return '<div class="camp-grid">' + CAMPAIGNS.map(function (c) {
+          return '<div class="camp-card">' +
+            '<div class="camp-head"><span class="camp-name">' + c.name + '</span>' +
+              '<span class="camp-count">' + c.prospects + ' prospects</span></div>' +
+            '<p class="camp-pain">' + c.pain + '</p>' +
+            '<div class="field"><span class="field-label">Qualifies when</span><ul class="camp-criteria">' +
+              c.criteria.map(function (q) { return '<li>' + q + '</li>'; }).join('') + '</ul></div>' +
+            '<div class="field"><span class="field-label">Example targets</span><div class="chip-row">' +
+              c.examples.map(function (e) { return '<span class="value-chip">' + e + '</span>'; }).join('') + '</div></div>' +
+          '</div>';
+        }).join('') + '</div>';
+      },
+      artifact: function () {
+        return '<div class="mem-section-head">Campaigns <span class="mem-count">' + CAMPAIGNS.length + '</span></div>' +
+          '<div class="mem-rows">' + CAMPAIGNS.map(function (c, i) {
+            return '<div class="mem-row" data-active="' + (i === 0) + '">' +
+              '<span class="mem-row-dot"></span>' +
+              '<span class="mem-row-label">' + c.name + '</span>' +
+              '<span class="mem-row-metric">' + c.prospects + '</span></div>';
+          }).join('') + '</div>';
+      }
+    },
+    {
+      id: 'prospects',
+      label: 'Find customers',
+      phases: ['Scanning 459 companies', 'Scoring against your qualification criteria', 'Checking size, traffic and location', 'Ranking the top matches'],
+      status: 'Sourcing companies that fit your ICP',
+      eyebrow: 'VaNi · sourced 459 companies, showing top matches',
+      title: 'Potential customers that fit your ICP',
+      sub: 'Operational columns only — enough to say yes or no to each.',
+      body: function () {
+        return '<div class="table-wrap"><table class="ops"><thead><tr>' +
+          '<th>Company</th><th>Description</th><th>Location</th><th>Size</th><th>Monthly traffic</th>' +
+          '</tr></thead><tbody>' + PROSPECTS.map(function (p) {
+            return '<tr><td class="cell-strong">' + p.company + '</td><td>' + p.desc + '</td>' +
+              '<td>' + p.location + '</td><td>' + p.size + '</td>' +
+              '<td class="cell-mono">' + p.traffic + '</td></tr>';
+          }).join('') + '</tbody></table></div>';
+      },
+      artifact: null
+    },
+    {
+      id: 'contacts',
+      label: 'Decision makers',
+      phases: ['Finding decision makers at each account', 'Running the enrichment waterfall', 'Trying providers in order', 'Verifying every email that hits'],
+      status: 'Enriching contacts through the waterfall',
+      eyebrow: 'VaNi · found decision makers, enriching emails',
+      title: 'Decision makers at your approved prospects',
+      sub: 'Each contact runs the enrichment waterfall — providers tried in order until a verified email hits.',
+      body: function () {
+        return CONTACTS.map(function (c) {
+          var stages = [];
+          for (var i = 0; i < c.waterfall.length; i++) {
+            var p = c.waterfall[i];
+            if (i > 0) stages.push('<span class="wf-arrow">→</span>');
+            stages.push('<span class="wf-chip ' + p.state + '">' +
+              '<span>' + (p.state === 'hit' ? '✓' : '×') + '</span>' +
+              '<span class="wf-name">' + p.name + '</span>' +
+              (p.detail ? '<span class="wf-detail">' + p.detail + '</span>' : '') +
+            '</span>');
+          }
+          var allMissed = c.waterfall.every(function (p) { return p.state === 'miss'; });
+          if (allMissed) stages.push('<span class="wf-arrow">→</span><span class="wf-none">No email found</span>');
+          return '<div class="contact-row"><div class="contact-main">' +
+            '<span class="contact-name">' + c.name + '</span>' +
+            '<span class="contact-title">' + c.title + ' · ' + c.company + '</span></div>' +
+            '<div class="waterfall">' + stages.join('') + '</div></div>';
+        }).join('');
+      },
+      artifact: null
+    },
+    {
+      id: 'emails',
+      label: 'Write emails',
+      phases: ['Reading your value props', 'Grounding in each prospect’s context', 'Writing in your voice', 'Checking it against your positioning'],
+      status: 'Writing the first email',
+      eyebrow: 'VaNi · wrote in your voice',
+      title: 'First email, personalized per contact',
+      sub: 'Grounded in your value props and each prospect’s context. Approve to finish the mission.',
+      confirmLabel: 'Approve & launch mission',
+      body: function () {
+        return '<div class="email"><div class="email-meta">' +
+          '<div class="email-meta-row"><span class="field-label">To</span><span>' + EMAIL.to + '</span></div>' +
+          '<div class="email-meta-row"><span class="field-label">Subject</span><span class="cell-strong">' + EMAIL.subject + '</span></div>' +
+          '</div><div class="email-body">' +
+          EMAIL.body.map(function (p) { return '<p>' + p + '</p>'; }).join('') +
+          '</div></div>';
+      },
+      artifact: null
+    }
+  ];
+
+  /* ═══ STATE ═══════════════════════════════════════════════════════ */
+  var domain = '';
+  var stepIndex = 0;
+  var confirmed = {};
+  var timers = [];
+  var rafs = [];
+
+  function later(fn, ms) { var t = setTimeout(fn, ms); timers.push(t); return t; }
+  function every(fn, ms) { var t = setInterval(fn, ms); timers.push(t); return t; }
+  function clearAll() {
+    timers.forEach(function (t) { clearTimeout(t); clearInterval(t); });
+    timers = [];
+    rafs.forEach(function (r) { cancelAnimationFrame(r); });
+    rafs = [];
+  }
+
+  /* ═══ CHROME ══════════════════════════════════════════════════════ */
+
+  function renderStepRail() {
+    var html = '';
+    STEPS.forEach(function (step, i) {
+      if (i > 0) html += '<span class="steprail-dash"></span>';
+      var state = confirmed[step.id] ? 'done' : (i === stepIndex ? 'active' : 'pending');
+      html += '<div class="steprail-item" role="listitem" data-state="' + state + '">' +
+        '<span class="steprail-num">' + (state === 'done' ? '✓' : (i + 1)) + '</span>' +
+        '<span class="steprail-label">' + step.label + '</span></div>';
+    });
+    var rail = $('steprail');
+    rail.innerHTML = html;
+
+    /* The rail scrolls sideways rather than wrapping, so on a narrow screen
+       the active step can sit off the right edge. Bring it into view. */
+    var scrollable = rail.scrollWidth > rail.clientWidth + 1;
+    rail.classList.toggle('is-scrollable', scrollable);
+
+    var active = rail.querySelector('[data-state="active"]');
+    if (active && scrollable) {
+      rail.scrollTo({
+        left: Math.max(0, active.offsetLeft - (rail.clientWidth - active.offsetWidth) / 2),
+        behavior: reduced ? 'auto' : 'smooth'
+      });
+    }
+  }
+
+  /* The rail is rebuilt from state rather than mutated, EXCEPT that a
+     filed artifact keeps its markup — the flight lands on a live node and
+     a rebuild underneath it would yank the landing zone away. */
+  function renderMemory() {
+    var html = '';
+    STEPS.forEach(function (step, i) {
+      var done = !!confirmed[step.id];
+      var state = done ? 'done' : (i === stepIndex ? 'active' : 'pending');
+      var filed = done && step.artifact ? step.artifact() : '';
+      var slotClass = 'mem-slot' + (!done && state === 'active' && step.artifact ? ' slot-empty' : '');
+      html += '<div class="mem-entry" data-state="' + state + '">' +
+        '<div class="mem-sep"><span class="mem-mark">' + (done ? '✓' : '›') + '</span>' +
+        '<span>step ' + (i + 1) + ' · ' + step.label + '</span></div>' +
+        '<div class="' + slotClass + '" data-mission-step="' + step.id + '">' + filed + '</div>' +
+      '</div>';
+    });
+    $('memory').innerHTML = html;
+  }
+
+  function renderPips() {
+    $('dock-pips').innerHTML = STEPS.map(function (step, i) {
+      var state = confirmed[step.id] ? 'done' : (i === stepIndex ? 'active' : 'pending');
+      return '<span class="dock-pip" data-state="' + state + '"></span>';
+    }).join('');
+  }
+
+  function setVani(state, status) {
+    $('dock-orb').setAttribute('data-state', state);
+    if (status) $('dock-status').textContent = status;
+  }
+
+  /* ═══ THE HANDOFF ═════════════════════════════════════════════════
+     A measured FLIP: read the card's rect and the rail slot's rect, then
+     animate translate+scale between them. The distance depends on runtime
+     layout, so it cannot be expressed in CSS. Same motion (and the same
+     620ms) as useMissionHandoff.ts in the product.
+
+     `commit` ALWAYS runs — reduced motion, a missing node, no Web
+     Animations API, or an interrupted flight all fall through to it. The
+     walkthrough must never strand itself mid-handoff.                  */
+  function flyToRail(stepId, commit) {
+    var card = $('stage').firstElementChild;
+    var target = document.querySelector('[data-mission-step="' + stepId + '"]');
+
+    if (reduced || !card || !target || typeof card.animate !== 'function') { commit(); return; }
+
+    var from = card.getBoundingClientRect();
+    var to = target.getBoundingClientRect();
+    var scale = Math.max(0.12, Math.min(1, to.width / Math.max(from.width, 1)));
+
+    var flight = card.animate([
+      { transform: 'translate(0px, 0px) scale(1)', opacity: 1 },
+      { transform: 'translate(' + (to.left - from.left) + 'px, ' + (to.top - from.top) + 'px) scale(' + scale + ')', opacity: 0 }
+    ], { duration: FLIGHT_MS, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' });
+
+    var done = false;
+    function land() {
+      if (done) return;
+      done = true;
+      target.classList.add('mission-step-landed');
+      later(function () { target.classList.remove('mission-step-landed'); }, 900);
+      commit();
+    }
+    flight.addEventListener('finish', land);
+    later(land, FLIGHT_MS + 200);   // safety net
+  }
+
+  /* ═══ THE RUN ═════════════════════════════════════════════════════ */
+
+  /* Phase 1 of a step: VaNi visibly working. The phase lines name real
+     stages of the actual pipeline, and the bar is a scanner, not a
+     percentage — nothing here claims progress it cannot measure. */
+  function playWorking(step, next) {
+    setVani('working', step.status);
+    $('stage').innerHTML =
+      '<div class="working">' +
+        '<div class="working-graph">' +
+          '<svg width="180" height="110" viewBox="0 0 264 134" aria-hidden="true">' +
+            '<line class="kg-edge" x1="60" y1="44" x2="132" y2="22" style="animation-delay:.3s"/>' +
+            '<line class="kg-edge" x1="132" y1="22" x2="196" y2="58" style="animation-delay:.7s"/>' +
+            '<line class="kg-edge" x1="60" y1="44" x2="96" y2="96" style="animation-delay:1.1s"/>' +
+            '<line class="kg-edge" x1="96" y1="96" x2="170" y2="112" style="animation-delay:1.5s"/>' +
+            '<line class="kg-edge" x1="196" y1="58" x2="170" y2="112" style="animation-delay:1.9s"/>' +
+            '<line class="kg-edge" x1="96" y1="96" x2="32" y2="104" style="animation-delay:2.3s"/>' +
+            '<circle class="kg-node" cx="60"  cy="44"  r="7" style="animation-delay:0s"/>' +
+            '<circle class="kg-node" cx="132" cy="22"  r="5" style="animation-delay:.4s"/>' +
+            '<circle class="kg-node" cx="196" cy="58"  r="6" style="animation-delay:.8s"/>' +
+            '<circle class="kg-node" cx="96"  cy="96"  r="5" style="animation-delay:1.2s"/>' +
+            '<circle class="kg-node" cx="170" cy="112" r="7" style="animation-delay:1.6s"/>' +
+            '<circle class="kg-node" cx="32"  cy="104" r="4" style="animation-delay:2s"/>' +
+          '</svg>' +
+        '</div>' +
+        '<div class="working-body">' +
+          '<span class="working-eyebrow"><span class="agent-dot"></span>VaNi is working</span>' +
+          '<span class="working-subject">' + step.status + '</span>' +
+          '<span class="working-phase" id="working-phase" aria-live="polite">' + step.phases[0] + '</span>' +
+          '<span class="working-bar"><i></i></span>' +
+        '</div>' +
+      '</div>';
+
+    var i = 0;
+    var tick = every(function () {
+      i = (i + 1) % step.phases.length;
+      var el = $('working-phase');
+      if (el) el.textContent = step.phases[i];
+    }, PHASE_MS);
+
+    later(function () { clearInterval(tick); next(); }, WORK_MS);
+  }
+
+  /* Phase 2: the finished card, on screen long enough to read, with a
+     visible meter counting down to its own confirmation. The meter is not
+     decoration — an auto-advance with no countdown reads as a freeze. */
+  function playCard(step, next) {
+    setVani('idle', 'Waiting on you — auto-confirming');
+    $('stage').innerHTML =
+      '<article class="card">' +
+        '<div class="card-head">' +
+          '<div class="card-eyebrow-row"><span class="agent-dot"></span>' +
+            '<span class="card-eyebrow">' + step.eyebrow + '</span></div>' +
+          '<h2 class="card-title">' + step.title + '</h2>' +
+          '<p class="card-sub">' + step.sub + '</p>' +
+        '</div>' +
+        '<div class="card-body">' + step.body() + '</div>' +
+        '<div class="card-meter"><i id="card-meter-fill"></i></div>' +
+        '<div class="card-actions">' +
+          '<button class="btn btn-ghost btn-sm" type="button" tabindex="-1">Edit</button>' +
+          '<button class="btn btn-primary btn-sm" type="button" id="btn-confirm">' +
+            (step.confirmLabel || 'Confirm & continue') + '</button>' +
+          '<span class="card-hint">auto-confirming</span>' +
+        '</div>' +
+      '</article>';
+
+    var settled = false;
+    function settle() {
+      if (settled) return;
+      settled = true;
+      clearAll();
+      next();
+    }
+
+    /* Clicking confirm just skips the remaining dwell — the walkthrough
+       stays hands-free for anyone who does nothing. */
+    var btn = $('btn-confirm');
+    if (btn) btn.addEventListener('click', settle);
+
+    var fill = $('card-meter-fill');
+    if (fill && !reduced) {
+      var start = performance.now();
+      (function step_(now) {
+        var p = Math.min(1, (now - start) / DWELL_MS);
+        fill.style.width = (p * 100) + '%';
+        if (p < 1 && !settled) rafs.push(requestAnimationFrame(step_));
+      })(start);
+    }
+
+    later(settle, DWELL_MS);
+  }
+
+  /* Phase 3: seal the card, then fly it into the rail. */
+  function playHandoff(step, next) {
+    var card = $('stage').firstElementChild;
+    if (card) {
+      card.classList.add('is-confirmed');
+      var row = card.querySelector('.card-actions');
+      if (row) row.innerHTML = '<span class="card-hint" style="margin-left:0">confirmed · filed to mission memory</span>';
+      var meter = card.querySelector('.card-meter');
+      if (meter) meter.remove();
+    }
+    setVani('done', 'Confirmed — handing off');
+
+    later(function () {
+      flyToRail(step.id, function () {
+        confirmed[step.id] = true;
+        stepIndex = Math.min(STEPS.length - 1, stepIndex + 1);
+        renderStepRail();
+        renderMemory();
+        renderPips();
+        next();
+      });
+    }, reduced ? 120 : 520);
+  }
+
+  function runStep(i) {
+    if (i >= STEPS.length) { finish(); return; }
+    stepIndex = i;
+    renderStepRail();
+    renderMemory();
+    renderPips();
+
+    var step = STEPS[i];
+    playWorking(step, function () {
+      playCard(step, function () {
+        playHandoff(step, function () {
+          later(function () { runStep(i + 1); }, 320);
+        });
+      });
+    });
+  }
+
+  function finish() {
+    clearAll();
+    $('dock').hidden = true;
+    show('screen-outro');
+    window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+  }
+
+  function show(id) {
+    ['screen-intake', 'screen-mission', 'screen-outro'].forEach(function (s) {
+      $(s).classList.toggle('is-active', s === id);
+    });
+  }
+
+  function startMission() {
+    confirmed = {};
+    stepIndex = 0;
+    clearAll();
+    show('screen-mission');
+    $('dock').hidden = false;
+    setVani('idle', 'Starting the mission');
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    later(function () { runStep(0); }, 600);
+  }
+
+  /* ═══ WIRING ══════════════════════════════════════════════════════ */
+
+  $('intake-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var typed = $('domain-input').value;
+    var d = normaliseDomain(typed);
+
+    /* Empty is fine — the walkthrough is the same either way, since the
+       domain never drives content. A malformed entry is NOT fine: saying
+       so beats quietly printing "htp:/acme" back at them three times. */
+    if (typed.trim() && !d) {
+      $('intake-error').textContent = 'That doesn’t look like a domain — try yourcompany.com';
+      $('domain-input').setAttribute('aria-invalid', 'true');
+      $('domain-input').focus();
+      return;
+    }
+
+    $('intake-error').textContent = '';
+    $('domain-input').removeAttribute('aria-invalid');
+    domain = d || '';
+
+    $('strip-domain').textContent = domain || 'your';
+    $('outro-domain').textContent = domain || 'your site';
+
+    /* Same handoff the product's hero uses, so a real page can pick this
+       up and prefill step 1 of the mission wizard after registration. */
+    if (domain) { try { sessionStorage.setItem('gtm-domain-hint', domain); } catch (err) {} }
+
+    startMission();
+  });
+
+  $('domain-input').addEventListener('input', function () {
+    $('intake-error').textContent = '';
+    $('domain-input').removeAttribute('aria-invalid');
+  });
+
+  $('btn-skip').addEventListener('click', function () {
+    STEPS.forEach(function (s) { confirmed[s.id] = true; });
+    finish();
+  });
+
+  $('btn-replay').addEventListener('click', startMission);
+
+  $('btn-start').addEventListener('click', function () {
+    /* Demo file: no backend to hand off to. On the real site this is the
+       registration link, carrying gtm-domain-hint through. */
+    show('screen-intake');
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    $('domain-input').value = domain;
+    $('domain-input').focus();
+  });
+
+  /* Leaving the tab mid-mission would otherwise burn through steps against
+     a throttled timer and land on the outro. Pause, resume where we were. */
+  var hiddenAt = null;
+  document.addEventListener('visibilitychange', function () {
+    if (!$('screen-mission').classList.contains('is-active')) return;
+    if (document.hidden) { hiddenAt = stepIndex; clearAll(); }
+    else if (hiddenAt !== null) { var at = hiddenAt; hiddenAt = null; runStep(at); }
+  });
+}());
+</script>
+</body>
+</html>
