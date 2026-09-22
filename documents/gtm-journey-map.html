@@ -1,0 +1,839 @@
+<title>GTM Journey Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+  /* Dark-first: this is an internal design document for a product whose own
+     default theme is gold-on-black (vikuna-black). The bare :root therefore
+     carries the DARK palette, and light is the override — the same swap the
+     page contract allows for a deliberately dark-first design. */
+  :root {
+    --ground:   #0c0c0f;
+    --surface:  #15151a;
+    --raised:   #1c1c22;
+    --line:     #292932;
+    --line-soft:#1f1f27;
+    --ink:      #eae7e0;
+    --ink-dim:  #a5a3ad;
+    --ink-faint:#74727d;
+    --gold:     #c9a227;
+    --gold-dim: #6d570f;
+    --break:    #e0695c;
+    --break-bg: #2a1614;
+    --ask:      #d9a441;
+    --ask-bg:   #2a2013;
+    --ok:       #6faa84;
+    --shadow:   0 1px 0 rgba(255,255,255,.03), 0 10px 30px -18px rgba(0,0,0,.9);
+
+    --display: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+    --body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --ground:   #f7f5f1;
+      --surface:  #ffffff;
+      --raised:   #fbfaf7;
+      --line:     #ddd9d0;
+      --line-soft:#eae7e0;
+      --ink:      #1a1a1f;
+      --ink-dim:  #55535d;
+      --ink-faint:#86838f;
+      --gold:     #8a6d12;
+      --gold-dim: #d8c88c;
+      --break:    #a8352a;
+      --break-bg: #fbeeec;
+      --ask:      #8a6413;
+      --ask-bg:   #fbf3e2;
+      --ok:       #38714f;
+      --shadow:   0 1px 0 rgba(0,0,0,.02), 0 10px 26px -20px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground:   #f7f5f1;
+    --surface:  #ffffff;
+    --raised:   #fbfaf7;
+    --line:     #ddd9d0;
+    --line-soft:#eae7e0;
+    --ink:      #1a1a1f;
+    --ink-dim:  #55535d;
+    --ink-faint:#86838f;
+    --gold:     #8a6d12;
+    --gold-dim: #d8c88c;
+    --break:    #a8352a;
+    --break-bg: #fbeeec;
+    --ask:      #8a6413;
+    --ask-bg:   #fbf3e2;
+    --ok:       #38714f;
+    --shadow:   0 1px 0 rgba(0,0,0,.02), 0 10px 26px -20px rgba(0,0,0,.4);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 0;
+    padding-inline: 20px;
+    padding-block: 0 72px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 940px; margin: 0 auto; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  /* ── masthead ─────────────────────────────────────────────────── */
+  header.mast { padding-block: 56px 40px; border-bottom: 1px solid var(--line); }
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(34px, 6.5vw, 54px);
+    line-height: 1.02;
+    letter-spacing: -.025em;
+    margin: 14px 0 0;
+    text-wrap: balance;
+  }
+  .thesis {
+    font-size: clamp(17px, 2.4vw, 20px);
+    line-height: 1.5;
+    color: var(--ink-dim);
+    max-width: 60ch;
+    margin: 18px 0 0;
+  }
+  .thesis b { color: var(--ink); font-weight: 600; }
+  .mast-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 22px;
+    margin-top: 26px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-faint);
+  }
+  .mast-meta span b { color: var(--ink-dim); font-weight: 500; }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(22px, 3.4vw, 28px);
+    letter-spacing: -.018em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  section { padding-block: 52px; border-bottom: 1px solid var(--line-soft); }
+  .sec-head { margin-bottom: 30px; }
+  .sec-head p { color: var(--ink-dim); max-width: 64ch; margin: 10px 0 0; }
+
+  /* ── the spine ────────────────────────────────────────────────── */
+  .spine { display: flex; flex-direction: column; gap: 0; }
+  .station { display: grid; grid-template-columns: 62px 1fr; gap: 0; }
+  .rail { position: relative; }
+  .rail::before {
+    content: ""; position: absolute; left: 17px; top: 0; bottom: 0;
+    width: 2px; background: var(--gold-dim);
+  }
+  .station:first-child .rail::before { top: 18px; }
+  .station:last-child .rail::before { bottom: auto; height: 18px; }
+  .dot {
+    position: absolute; left: 6px; top: 8px;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--ground); border: 2px solid var(--gold);
+    color: var(--gold);
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    display: grid; place-items: center;
+  }
+  .station.missing .dot { border-color: var(--break); color: var(--break); border-style: dashed; }
+  .st-body { padding: 0 0 34px 8px; }
+  .st-title {
+    font-family: var(--display); font-weight: 600;
+    font-size: 19px; letter-spacing: -.01em; margin: 6px 0 0;
+  }
+  .st-lede { color: var(--ink-dim); margin: 6px 0 0; max-width: 62ch; }
+
+  .beats {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1px; margin-top: 16px;
+    background: var(--line-soft);
+    border: 1px solid var(--line-soft);
+    border-radius: 3px; overflow: hidden;
+  }
+  .beat { background: var(--surface); padding: 13px 15px; }
+  .beat dt {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-faint); margin-bottom: 5px;
+  }
+  .beat dd { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+  .beat code {
+    font-family: var(--mono); font-size: 12px; color: var(--gold);
+    background: none; padding: 0;
+  }
+
+  .today {
+    margin-top: 14px; padding: 13px 15px;
+    border-left: 2px solid var(--break);
+    background: var(--break-bg);
+    border-radius: 0 3px 3px 0;
+    font-size: 13.5px; line-height: 1.55;
+  }
+  .today .tag {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--break);
+    display: block; margin-bottom: 4px;
+  }
+  .today.works { border-left-color: var(--ok); background: transparent; padding-left: 15px; }
+  .today.works .tag { color: var(--ok); }
+
+  /* ── fallback lane ────────────────────────────────────────────── */
+  .lane {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 4px; padding: 22px 24px; box-shadow: var(--shadow);
+  }
+  .lane h3 {
+    font-family: var(--display); font-weight: 600; font-size: 17px;
+    margin: 8px 0 0; letter-spacing: -.01em;
+  }
+  .lane p { color: var(--ink-dim); margin: 8px 0 0; max-width: 62ch; }
+  .misses {
+    display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px;
+  }
+  .miss {
+    font-family: var(--mono); font-size: 12px;
+    padding: 4px 9px; border: 1px dashed var(--line);
+    border-radius: 3px; color: var(--ink-dim);
+  }
+
+  /* ── layers ───────────────────────────────────────────────────── */
+  .layers { display: flex; flex-direction: column; gap: 12px; }
+  .layer {
+    display: grid; grid-template-columns: 150px 1fr;
+    gap: 18px; align-items: start;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 4px; padding: 18px 20px;
+  }
+  .layer.dead { border-color: var(--break); }
+  .layer .lname {
+    font-family: var(--mono); font-size: 12.5px; color: var(--gold);
+    word-break: break-word; line-height: 1.5;
+  }
+  .layer.dead .lname { color: var(--break); }
+  .layer .lrole {
+    font-family: var(--display); font-weight: 600; font-size: 15px;
+    margin: 0 0 4px;
+  }
+  .layer p { margin: 0; color: var(--ink-dim); font-size: 13.5px; max-width: 64ch; }
+  .layer .scope {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-faint); display: block; margin-top: 6px;
+  }
+
+  /* ── breaks table ─────────────────────────────────────────────── */
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 13.5px; }
+  th {
+    text-align: left; font-family: var(--mono); font-weight: 500;
+    font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--ink-faint); padding: 0 14px 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  td { padding: 13px 14px 13px 0; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  td:last-child, th:last-child { padding-right: 0; }
+  tbody tr:last-child td { border-bottom: none; }
+  .where {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--ink-faint); white-space: nowrap;
+  }
+  .cost { color: var(--ink-dim); }
+
+  /* ── decisions ────────────────────────────────────────────────── */
+  .asks { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .ask {
+    background: var(--surface); border: 1px solid var(--line);
+    border-top: 2px solid var(--ask);
+    border-radius: 3px; padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 9px;
+  }
+  .ask .q { font-family: var(--display); font-weight: 600; font-size: 15.5px; line-height: 1.35; margin: 0; }
+  .ask .why { margin: 0; font-size: 13.5px; color: var(--ink-dim); }
+  .ask .rec {
+    margin: 0; font-size: 13.5px; padding: 10px 12px;
+    background: var(--ask-bg); border-radius: 3px; color: var(--ink);
+  }
+  .ask .rec b {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ask);
+    display: block; margin-bottom: 3px; font-weight: 500;
+  }
+
+  .closing { padding-block: 44px 0; border-bottom: none; }
+  .closing p { color: var(--ink-dim); max-width: 64ch; }
+  .closing p b { color: var(--ink); font-weight: 600; }
+
+  code.t {
+    font-family: var(--mono); font-size: .92em; color: var(--gold);
+  }
+  .layer.dead code.t, .today code.t { color: inherit; }
+
+  @media (max-width: 720px) {
+    .beats { grid-template-columns: 1fr; }
+    .layer { grid-template-columns: 1fr; gap: 10px; }
+    .station { grid-template-columns: 44px 1fr; }
+    .rail::before { left: 11px; }
+    .dot { left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  /* ── declaration ──────────────────────────────────────────────── */
+  pre.decl {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 4px;
+    padding: 18px 20px; overflow-x: auto; font-family: var(--mono); font-size: 12.5px;
+    line-height: 1.6; color: var(--ink); margin: 0;
+  }
+  pre.decl .k { color: var(--gold); }
+  pre.decl .c { color: var(--ink-faint); }
+  .lock { color: var(--ask); }
+</style>
+
+<div class="page">
+
+  <header class="mast">
+    <div class="eyebrow">VANI GTM · TENANT JOURNEY · v1 DRAFT</div>
+    <h1>Ten minutes to a list worth a message</h1>
+    <p class="thesis">
+      A founder has a product and a list of companies they think should buy it.
+      They are not here to build a CRM — they want to know <b>which of these are
+      worth a message, and to whom</b>, by this afternoon. Everything VaNi already
+      knows about them (offers, buyer, vocabulary, brand) only pays off if it
+      arrives as <b>decisions to confirm</b>, not as forms to fill.
+    </p>
+    <div class="mast-meta">
+      <span><b>Actor</b> founder · first audience</span>
+      <span><b>Worked example</b> ContractNest → hospitals</span>
+      <span><b>Posture</b> I have a list</span>
+      <span><b>Drawn</b> 22-Sep-2026</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head">
+      <h2>The journey — the first ten minutes</h2>
+      <p>
+        Six stations. Under each: what the tenant does, what GTM does, what the
+        system reads or writes — and, in red, where today's build departs from it.
+        Green means the station holds.
+      </p>
+    </div>
+
+    <div class="spine">
+
+      <article class="station missing">
+        <div class="rail"><div class="dot">1</div></div>
+        <div class="st-body">
+          <h3 class="st-title">Land — &ldquo;here is who you sell to&rdquo;</h3>
+          <p class="st-lede">
+            The agent opens on what it already knows, not on a question. The
+            Smart Profile is read, never re-asked: buyer, pain, offers, the words
+            the market uses. One thing is named as weakest, with why it matters
+            <em>to GTM</em>, and one action follows.
+          </p>
+          <dl class="beats">
+            <div class="beat"><dt>Tenant</dt><dd>Signs in, opens GTM, reads a page about themselves</dd></div>
+            <div class="beat"><dt>GTM</dt><dd>Reads the profile; scores readiness; says <em>&ldquo;offers: one defined — enough to start&rdquo;</em> or <em>&ldquo;no buyer yet — define one first&rdquo;</em></dd></div>
+            <div class="beat"><dt>System</dt><dd>Reads <code>gt_tenant_profile</code>, <code>gt_semantic_clusters</code>, brand, offers. Writes nothing.</dd></div>
+          </dl>
+          <div class="today">
+            <span class="tag">Today · this station does not exist</span>
+            There is no <code class="t">/agents/gtm</code>. The retired console's
+            <code class="t">/today</code> was the closest thing: a Brain-completeness
+            ring and a &ldquo;your agents&rdquo; strip — a landing, not a queue, and
+            not GTM's. And <code class="t">PROFILE_COMPLETE</code> is emitted when the
+            brain crosses the line and <b>consumed by nothing</b>: the moment the
+            profile becomes good enough, nothing proposes an audience.
+          </div>
+        </div>
+      </article>
+
+      <article class="station missing">
+        <div class="rail"><div class="dot">2</div></div>
+        <div class="st-body">
+          <h3 class="st-title">Bring — where the companies come from</h3>
+          <p class="st-lede">
+            Three postures, one question: <em>I have a list · I have nothing ·
+            I have my own Apollo or Clay.</em> After this station the road is the
+            same whichever they chose — which the playground has to prove.
+          </p>
+          <dl class="beats">
+            <div class="beat"><dt>Tenant</dt><dd>Drops a spreadsheet, or picks the pool, or pastes a provider key that never comes back</dd></div>
+            <div class="beat"><dt>GTM</dt><dd>Maps the columns and shows the mapping before anything lands; says how many rows, how many with a domain, how many duplicates</dd></div>
+            <div class="beat"><dt>System</dt><dd>Upload: <code>ki_import_staging</code> → <code>gt_source_loads</code> → <code>gt_prospects</code>. Own provider: <code>gt_prospects</code> only — <b>never the pool</b> (rule 13)</dd></div>
+          </dl>
+          <div class="today">
+            <span class="tag">Today · one posture of three</span>
+            Upload works end to end — the ETL <code class="t">501</code> is gone. But
+            it is a 2,016-line <em>destination</em> (import + import-dashboard), not a
+            step. The platform pool is schema only: <code class="t">gt_universe_*</code>
+            exists, <code class="t">gt_connectors</code> does not. A tenant's own
+            provider: nothing — no table, no key store, no puller.
+          </div>
+        </div>
+      </article>
+
+      <article class="station missing">
+        <div class="rail"><div class="dot">3</div></div>
+        <div class="st-body">
+          <h3 class="st-title">Find — companies that match, with why</h3>
+          <p class="st-lede">
+            GTM proposes a cohort from what was brought, framed by the market
+            vocabulary the tenant ratified in the wizard. Every row says why it is
+            here. The tenant confirms, drops, tags — reacting, not searching.
+          </p>
+          <dl class="beats">
+            <div class="beat"><dt>Tenant</dt><dd>Reads the cohort; unticks the ones that are obviously wrong</dd></div>
+            <div class="beat"><dt>GTM</dt><dd>Builds the cohort; shows completeness, validity, freshness per row — data that supports a yes/no, nothing decorative</dd></div>
+            <div class="beat"><dt>System</dt><dd><code>prospect-skill.build_cohort</code>, <code>save_segment</code>, <code>tag_prospects</code></dd></div>
+          </dl>
+          <div class="today">
+            <span class="tag">Today</span>
+            <code class="t">audience/find</code> is 1,591 lines and <b>opens on an offers
+            form</b> with a checklist of what is still missing. Step 1 gates step 2
+            with a disabled button that says why. The right instinct — a fit score
+            against a half-written offer is a number that looks meaningful and is
+            not — expressed as a wall. The missing thing should be the screen, and
+            it should be the Smart Profile's screen, not a second editor.
+          </div>
+        </div>
+      </article>
+
+      <article class="station">
+        <div class="rail"><div class="dot">4</div></div>
+        <div class="st-body">
+          <h3 class="st-title">Qualify — briefs, and a decision per company</h3>
+          <p class="st-lede">
+            The agent goes outward: for each company, what it found on their site
+            and on the open web, scored against <em>each</em> offer, with the
+            evidence linked — and the <b>smallest ask</b> that fits. The tenant
+            reads a brief and decides: worth a message, or not.
+          </p>
+          <dl class="beats">
+            <div class="beat"><dt>Tenant</dt><dd>Reads; decides <em>worth it / not / later</em>; the verdict is remembered</dd></div>
+            <div class="beat"><dt>GTM</dt><dd>Research batch with a visible budget; fit per offer blind to commitment, then opens with the entry ask; lessons proposed from what the tenant decided</dd></div>
+            <div class="beat"><dt>System</dt><dd><code>research-skill.start_research</code> → SearXNG → <code>gt_account_briefs</code> (tenant-scoped, FK to <code>gt_prospects</code> — a brief cannot attach to a pool row); <code>decide_brief</code>, <code>propose_lessons</code></dd></div>
+          </dl>
+          <div class="today works">
+            <span class="tag">Today · holds, and is buried</span>
+            This is the manufacturing pilot and it works: 17 functions, budget,
+            evidence, verdicts, lessons. It is the best-built part of G1 and it is
+            invisible under the offers form in the same 1,591-line page. Two
+            environmental facts to carry: research runs one LLM call at a time on
+            the platform (the lane), and <code class="t">SEARXNG_URL</code> was not
+            set on the Main VPS when last checked — re-check, do not assume.
+          </div>
+        </div>
+      </article>
+
+      <article class="station missing">
+        <div class="rail"><div class="dot">5</div></div>
+        <div class="st-body">
+          <h3 class="st-title">People — who, at each company worth it</h3>
+          <p class="st-lede">
+            For every &ldquo;worth a message&rdquo;, the decision-makers: title,
+            LinkedIn, an email if one can be found — and an honest
+            <em>&ldquo;no email found&rdquo;</em> when it cannot. The enrichment
+            waterfall shows each provider tried, hit or miss.
+          </p>
+          <dl class="beats">
+            <div class="beat"><dt>Tenant</dt><dd>Picks the two or three people who matter; promotes them</dd></div>
+            <div class="beat"><dt>GTM</dt><dd>Finds people from the brief; tries providers in order; never invents a contact</dd></div>
+            <div class="beat"><dt>System</dt><dd><code>contact-skill.list_brief_contacts</code>, <code>promote_from_brief</code>, <code>add_channel</code> → <code>gt_contacts</code>, <code>CONT-0001</code> ids</dd></div>
+          </dl>
+          <div class="today">
+            <span class="tag">Today · the backend is the most complete in the repo, the screen is a table</span>
+            <code class="t">contact-skill</code> has 16 functions. <code class="t">gtm/people</code>
+            is a 511-line list with a 788-line detail. No waterfall exists because
+            no provider exists: with no connector, &ldquo;enrich&rdquo; can only
+            mean what was in the upload. That is fine to ship — say it, do not
+            fake a spinner over it.
+          </div>
+        </div>
+      </article>
+
+      <article class="station missing">
+        <div class="rail"><div class="dot">6</div></div>
+        <div class="st-body">
+          <h3 class="st-title">Today — the queue exists now</h3>
+          <p class="st-lede">
+            Not a dashboard. A ranked list of who has gone quiet, why, and what it
+            costs to leave them — with a decision per row. Empty on day one, and
+            the empty state says what to put in motion, and where.
+          </p>
+          <dl class="beats">
+            <div class="beat"><dt>Tenant</dt><dd>Opens Today each morning; decides per row</dd></div>
+            <div class="beat"><dt>GTM</dt><dd>Ranks: wake due, owed a reply, gone quiet — suppressing anyone already reserved</dd></div>
+            <div class="beat"><dt>System</dt><dd><code>attention-skill.get_attention</code> over <code>gt_touch_log</code> (recency), <code>gt_journey_events</code> (eligibility), <code>gt_touch_reservations</code> (suppress); <code>decide_attention</code></dd></div>
+          </dl>
+          <div class="today">
+            <span class="tag">Today · built, not shown</span>
+            <code class="t">attention-skill</code> answers the question. The page called
+            <code class="t">/today</code> does not ask it — it shows the Brain card.
+            The queue has never been on a screen.
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>The first week — put them in motion</h2>
+      <p>
+        G2. Four stations, and the last one is locked on purpose. A pathway with a
+        hidden last step is the failure rule 12 exists for; a visible locked one
+        with the reason on it is the honest shape.
+      </p>
+    </div>
+
+    <div class="spine">
+
+      <article class="station">
+        <div class="rail"><div class="dot">7</div></div>
+        <div class="st-body">
+          <h3 class="st-title">Segment — who gets which story</h3>
+          <p class="st-lede">Proposed from the qualify verdicts and the offer each brief fit best. Confirm, not compose.</p>
+          <dl class="beats">
+            <div class="beat"><dt>Tenant</dt><dd>Accepts <em>&ldquo;hospitals, contract-management pain, entry ask&rdquo;</em> or splits it</dd></div>
+            <div class="beat"><dt>GTM</dt><dd>Groups by fit-offer and pain; names each group in the tenant's vocabulary</dd></div>
+            <div class="beat"><dt>System</dt><dd><code>prospect-skill.save_segment</code>, <code>get_segments</code></dd></div>
+          </dl>
+        </div>
+      </article>
+
+      <article class="station">
+        <div class="rail"><div class="dot">8</div></div>
+        <div class="st-body">
+          <h3 class="st-title">Story — the offer-story per segment, the move per person</h3>
+          <p class="st-lede">
+            The storytelling agent composes per offer and per segment. The
+            hospital-offer story is an <b>ASSET</b> (about us, reused); the message
+            that references <em>this</em> hospital is a <b>MOVE</b> (about them, never
+            reused). That line is already in the schema, and it is the line between
+            nurture and personalised spam.
+          </p>
+          <dl class="beats">
+            <div class="beat"><dt>Tenant</dt><dd>Reads the story; edits in their voice; approves</dd></div>
+            <div class="beat"><dt>GTM</dt><dd>Writes from the profile, brand and the brief's evidence; says what it read and what it did not (the nodes it dropped for budget)</dd></div>
+            <div class="beat"><dt>System</dt><dd><code>story-skill.recommend_topic</code>, <code>create_story</code>, <code>approve_story</code>; <code>gt_journey_stories</code>, <code>gt_content_kinds.scope</code></dd></div>
+          </dl>
+          <div class="today">
+            <span class="tag">Today · built, not shown</span>
+            The story library exists (migration 225, five functions). No console
+            has ever listed a story or a content kind.
+          </div>
+        </div>
+      </article>
+
+      <article class="station">
+        <div class="rail"><div class="dot">9</div></div>
+        <div class="st-body">
+          <h3 class="st-title">Cadence — the window, before anything is scheduled</h3>
+          <p class="st-lede">
+            The governor shows the rolling window for these people <em>first</em>:
+            who is already reserved, who is in quiet hours, how many slots this
+            plan would take. A planned touch reserves; the reservation is what the
+            next plan collides with.
+          </p>
+          <dl class="beats">
+            <div class="beat"><dt>Tenant</dt><dd>Sees <em>&ldquo;3 of 14 already have a touch this week&rdquo;</em> before committing</dd></div>
+            <div class="beat"><dt>GTM</dt><dd>Reserves per contact; refuses over the cap with the reason; assisted touches (LinkedIn, X) consume slots too</dd></div>
+            <div class="beat"><dt>System</dt><dd><code>cadence-skill.get_cadence</code>, <code>reserve_touch</code>; <code>gt_cadence_policy</code>, <code>gt_touch_reservations</code>, <code>gt_touch_log</code></dd></div>
+          </dl>
+          <div class="today">
+            <span class="tag">Today · the best-reasoned thing in the repo, never seen</span>
+            Migration 223's header is the clearest design writing in the codebase and
+            no tenant has ever seen its effect. Read it before writing a sequencer.
+          </div>
+        </div>
+      </article>
+
+      <article class="station missing">
+        <div class="rail"><div class="dot">10</div></div>
+        <div class="st-body">
+          <h3 class="st-title"><span class="lock">Locked ·</span> Activate — send, on the tenant's identity</h3>
+          <p class="st-lede">
+            The platform owns orchestration, story, cadence, consent and evidence;
+            the tenant owns identity and delivery. First-party tenants may send as
+            the platform; everyone else always as themselves. Email, SMS, WhatsApp
+            automated on the tenant's connections; LinkedIn and X assisted, never
+            automated.
+          </p>
+          <dl class="beats">
+            <div class="beat"><dt>Tenant</dt><dd>Sees the step, the lock, and the reason</dd></div>
+            <div class="beat"><dt>GTM</dt><dd>Nothing sends</dd></div>
+            <div class="beat"><dt>System</dt><dd><code>gt_channels</code> exists (161). <b>No consent or suppression table exists anywhere in this repo.</b></dd></div>
+          </dl>
+          <div class="today">
+            <span class="tag">Today · blocked, and the block is correct</span>
+            Vara has <code class="t">vara_consent</code>; GTM — the side that contacts
+            strangers — has nothing. Unlocking this station is a schema decision
+            (design note §5), not a UI one. Until then the step is visible, locked,
+            and says exactly this.
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>The other lane: the Smart Profile is not ready</h2>
+      <p>
+        A tenant who signed up, ran the wizard halfway, and opened GTM anyway.
+        This is most first visits, and it is not a failure state.
+      </p>
+    </div>
+    <div class="lane">
+      <div class="eyebrow">NOT READY · GTM SAYS WHICH, LINKS, AND STOPS</div>
+      <h3>Name the missing BRAIN object, link to the screen that owns it, never re-ask</h3>
+      <p>
+        <em>&ldquo;I know your product and your buyer. I don't have an offer yet, and
+        I can't score fit against nothing — define one and come back.&rdquo;</em>
+        One link, to the Smart Profile step that owns it. No second form, no
+        disabled button, no offers editor inside GTM.
+      </p>
+      <p>
+        The old console's answer was to put the offers editor <em>inside</em> the
+        research page. Two editors for one BRAIN object is how they drift; the
+        wizard already owns offers, and GTM is a reader.
+      </p>
+      <div class="misses">
+        <span class="miss">no offer → cannot score fit</span>
+        <span class="miss">no buyer → cannot frame a cohort</span>
+        <span class="miss">no vocabulary → research has no terms</span>
+        <span class="miss">no brand → a story has no voice</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Three layers, and one of them has never been shown</h2>
+      <p>
+        GTM reads the first, owns the second, and the third is where the product's
+        differentiator lives — built, reasoned, and never on a screen.
+      </p>
+    </div>
+    <div class="layers">
+      <div class="layer">
+        <div class="lname">gt_tenant_profile<br>gt_semantic_clusters<br>brand · offers</div>
+        <div>
+          <p class="lrole">BRAIN — read, never owned</p>
+          <p>
+            What VaNi knows about the tenant. The Smart Profile writes it; every
+            agent reads it. If GTM keeps its own copy of an offer or a buyer, that
+            is a bug.
+          </p>
+          <span class="scope">Tenant · owned by the Smart Profile</span>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="lname">gt_prospects<br>gt_account_briefs<br>gt_contacts</div>
+        <div>
+          <p class="lrole">The universe — GTM's own</p>
+          <p>
+            Companies brought or found, what was learned about each, and the
+            people at them. Tenant-scoped, always. A brief's FK points at the
+            tenant's prospect, so it cannot attach to a pool row — research output
+            never enters the common pool (rule 13).
+          </p>
+          <span class="scope">Tenant · GTM writes and reads</span>
+        </div>
+      </div>
+      <div class="layer dead">
+        <div class="lname">gt_journey_stories<br>gt_cadence_policy<br>gt_touch_reservations<br>gt_touch_log<br>gt_channels</div>
+        <div>
+          <p class="lrole">The motion — built, never shown</p>
+          <p>
+            The story library, the cadence governor, the touch log, the channels.
+            Four migrations, fifteen skill functions, the best design writing in
+            the repo — and not one screen. This is the layer Sprint 3 puts in front
+            of a tenant, read-only, before anything sends.
+          </p>
+          <span class="scope">Tenant · written by skills, read by nobody's eyes</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>What breaks today</h2>
+      <p>Ten, in the order they cost the tenant something. Two are not GTM's to fix and are carried, not hidden.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Break</th><th>Where</th><th>What it costs</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>No GTM landing; <code class="t">/today</code> was a Brain card, not a queue</td>
+            <td class="where">UI</td>
+            <td class="cost">Station 1 and station 6 do not exist. The tenant has nowhere to start and nothing to come back to.</td>
+          </tr>
+          <tr>
+            <td>Find opens on an offers form; 1,591 lines; a disabled button says why</td>
+            <td class="where">UI</td>
+            <td class="cost">Form-first. The best-built backend in G1 (research) is buried under the wrong first screen.</td>
+          </tr>
+          <tr>
+            <td>Offers editable in two places</td>
+            <td class="where">Architecture</td>
+            <td class="cost">Two editors for one BRAIN object drift. GTM must read and link, never edit.</td>
+          </tr>
+          <tr>
+            <td>War Room: seven zeros and a flat funnel</td>
+            <td class="where">UI</td>
+            <td class="cost">The screen rule 9b was written from. An empty state with no next action is a dead end on day one.</td>
+          </tr>
+          <tr>
+            <td>Four built pieces with no console — channels, governor, story library, touch log</td>
+            <td class="where">UI</td>
+            <td class="cost">The differentiator is invisible. Every session rediscovers that it exists.</td>
+          </tr>
+          <tr>
+            <td>No consent or suppression model</td>
+            <td class="where">Schema</td>
+            <td class="cost">No channel may send. Station 10 stays locked until a schema decision is taken.</td>
+          </tr>
+          <tr>
+            <td>Pool posture is schema only; <code class="t">gt_connectors</code> does not exist; own-provider posture has nothing</td>
+            <td class="where">Backend</td>
+            <td class="cost">Station 2 has one road of three. Enrichment can only mean &ldquo;what was in the upload&rdquo;.</td>
+          </tr>
+          <tr>
+            <td><code class="t">PROFILE_COMPLETE</code> emitted, consumed by nothing</td>
+            <td class="where">Backend</td>
+            <td class="cost">The brain crossing the line proposes nothing. The trigger fires into silence.</td>
+          </tr>
+          <tr>
+            <td>Assisted touches (LinkedIn, X) are invisible to the governor unless logged</td>
+            <td class="where">Design</td>
+            <td class="cost">Half the outreach does not consume slots; the cap protects nobody. Carried into station 9's contract.</td>
+          </tr>
+          <tr>
+            <td>Two tenants who type the same industry differently each pay for enrichment</td>
+            <td class="where">Nova's</td>
+            <td class="cost">Carried, not fixed here — the industry taxonomy is the Nova migration's (ruling 22-Sep).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Six decisions before the playground is approved</h2>
+      <p>
+        Each carries a recommendation. None is mine to take — each changes what a
+        tenant sees first or what the schema stores.
+      </p>
+    </div>
+    <div class="asks">
+
+      <div class="ask">
+        <p class="q">Where does a new GTM tenant land — G1's first step, or Today?</p>
+        <p class="why">Today is a queue of what has gone quiet. On day one nothing has gone quiet, because nothing is in motion.</p>
+        <p class="rec"><b>Recommend</b> The agent landing, whose journey rail says <em>Build the audience</em> is the current step. Today becomes the landing's current step only once something is in motion.</p>
+      </div>
+
+      <div class="ask">
+        <p class="q">Is Import a pathway step or a destination?</p>
+        <p class="why">The upload flow works and is 2,016 lines of its own screens. The pathways may absorb most of what it does.</p>
+        <p class="rec"><b>Recommend</b> It is station 2 in the upload posture: one step with a mapping preview. The dashboard of past imports becomes a drawer on that step, not a page.</p>
+      </div>
+
+      <div class="ask">
+        <p class="q">Keep the names — <em>Build the audience · Put them in motion · Today</em>?</p>
+        <p class="why">They are verbs, which is right. The playground uses them until told otherwise; renaming after the screens exist is cheap, renaming after tenants learn them is not.</p>
+        <p class="rec"><b>Recommend</b> Keep. Reference surfaces stay nouns: <em>People</em>, <em>Journeys</em>.</p>
+      </div>
+
+      <div class="ask">
+        <p class="q">Show all of G2 with Activate locked, or hide the last step until consent exists?</p>
+        <p class="why">A hidden step is a surprise later; a locked one with its reason is a promise the tenant can plan around.</p>
+        <p class="rec"><b>Recommend</b> Show it, locked, reason on the step: <em>&ldquo;nothing sends until consent and suppression exist&rdquo;</em>. Rule 12: label the degraded thing.</p>
+      </div>
+
+      <div class="ask">
+        <p class="q">Show the platform-pool posture though <code class="t">gt_connectors</code> does not exist?</p>
+        <p class="why">A tenant with no list should know the option exists before choosing the one that works today — and should not be told it works when it does not.</p>
+        <p class="rec"><b>Recommend</b> Show all three postures; pool and own-provider labelled <em>not yet connected</em> with the honest line under each. Upload is the road that works.</p>
+      </div>
+
+      <div class="ask">
+        <p class="q">Do GTM and Vara share <code class="t">gt_channels</code> and one cadence budget?</p>
+        <p class="why">Fatigue is a person's. A candidate who is also a prospect at a customer is one human being touched by two agents.</p>
+        <p class="rec"><b>Recommend</b> One governor, one budget, per tenant — the governor is contact-keyed and agent-agnostic by design. Channels shared; identity per agent decided once on the tenant flag. Open in design note §8; only station 9's copy changes either way.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>The journey, declared</h2>
+      <p>
+        The product surface of this map. Every agent declares its journey in its
+        skill module; one platform renderer shows it on the agent landing and on
+        the dashboard's per-agent card (POA §2.4b). Each step is done when a
+        predicate over data the console already reads says so — no new column.
+      </p>
+    </div>
+<pre class="decl"><span class="c">// src/skills/gtm-shell/gtm-nav.ts — the declaration the landing and the dashboard render</span>
+journey: [
+  { id: <span class="k">'profile'</span>,  label: <span class="k">'Profile ready'</span>,   href: <span class="k">'/smart-profile'</span>,
+    done: (p) =&gt; p.profile.is_complete &amp;&amp; p.offers &gt; 0,       <span class="c">// gt_tenant_profile · offers</span>
+    locked: <span class="k">'Define an offer first — fit is scored against it'</span> },
+  { id: <span class="k">'audience'</span>, label: <span class="k">'Audience built'</span>,  href: <span class="k">'/agents/gtm/audience'</span>,
+    done: (p) =&gt; p.briefs_decided &gt; 0 },                        <span class="c">// research-skill.get_briefs · decided</span>
+  { id: <span class="k">'people'</span>,   label: <span class="k">'People found'</span>,    href: <span class="k">'/agents/gtm/audience/people'</span>,
+    done: (p) =&gt; p.contacts &gt; 0 },                              <span class="c">// contact-skill.get_stats</span>
+  { id: <span class="k">'motion'</span>,   label: <span class="k">'In motion'</span>,       href: <span class="k">'/agents/gtm/motion'</span>,
+    done: (p) =&gt; p.journeys_active &gt; 0 },                       <span class="c">// journey-skill.list_journeys</span>
+  { id: <span class="k">'sending'</span>,  label: <span class="k">'Sending'</span>,         href: <span class="k">'/agents/gtm/motion'</span>,
+    done: () =&gt; false,
+    locked: <span class="k">'Nothing sends until consent and suppression exist'</span> },
+]
+
+<span class="c">// And Vara's, on the same renderer, so it has two consumers from day one:</span>
+journey: [
+  { id: <span class="k">'domain'</span>,   label: <span class="k">'Domain declared'</span>,     done: (p) =&gt; p.domains &gt; 0 },
+  { id: <span class="k">'families'</span>, label: <span class="k">'Families taken'</span>,      done: (p) =&gt; p.families &gt; 0 },
+  { id: <span class="k">'jd'</span>,       label: <span class="k">'First JD published'</span>,  done: (p) =&gt; p.jds &gt; 0 },
+  { id: <span class="k">'jd2'</span>,      label: <span class="k">'Second JD'</span>,           done: (p) =&gt; p.jds &gt; 1 },
+]</pre>
+  </section>
+
+  <section class="closing">
+    <h2>What this map changes</h2>
+    <p>
+      <b>The form stops being the first screen and becomes the exception.</b> Every
+      station opens on the agent's finished work — a readiness read, a mapped
+      list, a cohort, a brief, a set of people, a ranked queue — and asks for a
+      decision. Where the tenant has not given VaNi enough to work from, GTM says
+      which thing is missing and links to the screen that owns it. It never
+      grows a second editor.
+    </p>
+    <p>
+      <b>And the motion layer starts being seen.</b> The governor, the story
+      library, the touch log and the channels go in front of a tenant read-only,
+      before a single message is sent — so that when consent exists and the lock
+      on station 10 comes off, the tenant already knows what the window is, what
+      the story says, and who is owed a reply.
+    </p>
+  </section>
+
+</div>
