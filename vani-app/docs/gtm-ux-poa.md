@@ -39,6 +39,7 @@ retired app, and each is a checkbox on every screen's definition of done.
 
 ```
 Sprint 1   JOURNEY MAP  →  PLAYGROUND          documents, clickable, synthetic data
+           + Settings in one place · "What VaNi has read"      real code, live transport
               approve ─────────────┐
 Sprint 2   SCREENS  G0 landing · G1 audience · People      real code, mock transport
               approve ─────────────┐
@@ -162,28 +163,13 @@ integration GTM's agent subscribes to it, so a profile crossing the threshold
 proposes the first audience without being asked. That is an integration item,
 not a screen; the playground shows the strip populated.
 
-**Exit:** Charan clicks through every scenario and approves, or lists what to
-change. Nothing in Sprint 2 starts on an unapproved scene.
+### 2.5 Two console items are built in Sprint 1, in real code *(Charan, 2026-09-22)*
 
----
+Both are independent of the GTM playground, both have a live backend, and
+Sprint 1 would otherwise change nothing visible — against the working method.
+They ship on the **live** transport, not mock.
 
-## 3. Sprint 2 — G0, G1 and People, in real code, mock transport
-
-**Where:** `vani-app/src/skills/` — one folder per skill, one line each in
-`src/skills/index.ts`, zero `src/platform/` edits (`gtm-migration-poa.md` §1
-established the shell costs nothing).
-
-```
-src/skills/gtm-shell/       gtm-nav.ts (the catalog) · GtmShell.tsx (<Shell skills={GTM_SKILLS}>)
-src/skills/gtm-audience/    G1 — the pathway: bring · find · qualify · people
-                             screens/ one file per step · mock-data.ts (the contract)
-src/skills/gtm-people/      the reference surface: list · person
-src/app/(gtm)/agents/gtm/   layout.tsx wraps the group in GtmShell; one page per route
-```
-
-**Two console items ride in this sprint because GTM's screens depend on them:**
-
-**0 · Settings becomes one place** *(Charan: "models, appearance, BYO — be
+**S1-a · Settings becomes one place** *(Charan: "models, appearance, BYO — be
 inside settings")*. Today `/appearance` and `/model-provider` are two
 top-level SYSTEM entries plus a planned `/settings`. They fold into **one
 `settings` skill with tabs** — the `model-provider` folder moves to
@@ -192,8 +178,8 @@ top-level SYSTEM entries plus a planned `/settings`. They fold into **one
 ```
 /settings/appearance        themes, mode                       (live, moves)
 /settings/model             model provider — platform or your own key   (live, moves)
-/settings/data              data provider — your own Apollo / Clay      (Sprint 2 screen, mock; backend not built)
-/settings/channels          sending identity + channel connections     (Sprint 3 screen, read-only)
+/settings/data              data provider — your own Apollo / Clay      (placeholder tab: says the backend is not built — rule 12)
+/settings/channels          sending identity + channel connections     (Sprint 3, read-only)
 ```
 
 The three "bring your own" surfaces share one posture shape — platform or
@@ -202,12 +188,13 @@ one — so they share one screen pattern and read as one idea. BYOK stays a
 menu item, never an onboarding step (ruling 2026-09-16). The SYSTEM group then
 shows Settings and Runs & Traces, nothing else.
 
-**1b · Knowledge, as sources — not as a graph** *(Charan: "we have not used
+**S1-b · Knowledge, as sources — not as a graph** *(Charan: "we have not used
 'knowledge' or the knowledge graph — how will this get in?")*. The graph is
 already fed and already read: the wizard's crawl, the VaNi conversation and
 competitor research write `gt_kg_nodes`; `profile.service` projects it,
-`research.agent` and `storyteller.agent` read it. What is missing is a way to
-**add to it after the wizard** and any sign of it on screen. In vani-app the
+`research.agent` and `storyteller.agent` read it. What is missing is any UX
+layer to CHECK what was fed — "if knowledge is already fed, there is no UX
+layer right now to check" — and a way to add to it after the wizard. In vani-app the
 Smart Profile shows six projections and no sources; the old `brain/teach` and
 `brain/knowledge` have no counterpart.
 
@@ -228,13 +215,31 @@ product surface"). Knowledge enters in two ways:
   nodes it dropped for budget; rule 12). The graph shows up as an evidence
   trail on the decision, never as a diagram.
 
+**Exit:** Charan clicks through every playground scenario and approves, or lists
+what to change; Settings and "What VaNi has read" are live on the deployed
+stack. Nothing in Sprint 2 starts on an unapproved scene.
+
+---
+
+## 3. Sprint 2 — G0, G1 and People, in real code, mock transport
+
+**Where:** `vani-app/src/skills/` — one folder per skill, one line each in
+`src/skills/index.ts`, zero `src/platform/` edits (`gtm-migration-poa.md` §1
+established the shell costs nothing).
+
+```
+src/skills/gtm-shell/       gtm-nav.ts (the catalog) · GtmShell.tsx (<Shell skills={GTM_SKILLS}>)
+src/skills/gtm-audience/    G1 — the pathway: bring · find · qualify · people
+                             screens/ one file per step · mock-data.ts (the contract)
+src/skills/gtm-people/      the reference surface: list · person
+src/app/(gtm)/agents/gtm/   layout.tsx wraps the group in GtmShell; one page per route
+```
+
 **Screens, in build order:**
 
 | # | Screen | Built to scene | Posture-aware |
 |---|---|---|---|
-| 0 | Settings with tabs — Appearance · Model · Data (mock) · Channels (Sprint 3) | — | — |
 | 1 | `/agents/gtm` landing — Vara's chrome, the readiness ring, the weakest BRAIN object, the "what changed" strip, one next action (§2.4) | land | Smart Profile ready / missing |
-| 1b | Smart Profile · "What VaNi has read" + Teach VaNi | — | — |
 | 2 | G1 · bring — choose posture; upload maps a file; own-provider asks for the key the same way Model Provider does (key goes in, never comes back) | bring | all three |
 | 3 | G1 · find — proposed companies with the WHY per row | find | — |
 | 4 | G1 · qualify — briefs; fit, evidence, smallest ask; decide | qualify | — |
@@ -332,5 +337,4 @@ write shipped with only the client half is unfinished.
 | The five decisions in §2.3 | Sprint 2 start |
 | Consent/suppression schema | unlocking `activate`; nothing in these three sprints |
 | Does GTM share `gt_channels` and one cadence budget with Vara? | screen 12's copy, not its existence |
-| Settings consolidation (§3 item 0) — do it inside Sprint 2, or now as its own change? | nothing; it is independent of GTM |
 | `PROFILE_COMPLETE` gets GTM's agent as its consumer | integration, not a sprint here — recorded so it is not re-derived |
