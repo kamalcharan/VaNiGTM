@@ -42,11 +42,51 @@ export interface SkillRoute {
   summary?: string;
 }
 
+/**
+ * An agent's journey — the product surface of its journey map.
+ *
+ * Logged platform change, approved 2026-09-22 (docs/gtm-ux-poa.md §2.4b).
+ * Every agent declares its journey once, here; the agent landing and the
+ * dashboard's per-agent cards render it through one component
+ * (`platform/pathway/AgentJourney`). Progress is READ, never declared: the
+ * renderer asks `<skill>.<fn>` through the generic transport and gets back
+ * which steps are done — so the declaration stays static and the truth stays
+ * in the data the console already reads.
+ */
+export interface JourneyStep {
+  id: string;
+  label: string;
+  /** Where the step is worked. */
+  href: string;
+  /** One line under the current step: what doing it gets you. */
+  summary?: string;
+  /** Present but not reachable, with the reason shown on the step. */
+  locked?: string;
+}
+
+export interface JourneyDecl {
+  /** The skill and function that answer "how far along is this tenant". */
+  skill: string;
+  fn: string;
+  steps: JourneyStep[];
+}
+
+/** What `<skill>.<fn>` returns. `current` may be omitted; the renderer then
+ *  takes the first step that is not done and not locked. */
+export interface JourneyProgress {
+  done: string[];
+  current?: string | null;
+  /** One line of state for the dashboard card — "screening 2 roles". */
+  note?: string | null;
+}
+
 export interface SkillModule {
   /** Matches the backend skill name used by the generic transport. */
   id: string;
   name: string;
   routes: SkillRoute[];
+  /** Agents only: the journey the landing and the dashboard render. */
+  journey?: JourneyDecl;
 }
 
 export interface NavGroupView {

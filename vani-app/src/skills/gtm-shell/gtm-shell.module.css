@@ -1,0 +1,21 @@
+/* GTM workspace shell — the top bar over the same skill Shell (mirrors Vara's). */
+.top {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--color-bg);
+  position: sticky; top: 0; z-index: 20;
+}
+.back {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border: 1px solid var(--glass-border); border-radius: 8px;
+  background: transparent; color: var(--color-fg); cursor: pointer;
+  font-size: 12px; text-decoration: none;
+}
+.back:hover { border-color: var(--gold); }
+.crumbs {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--color-muted);
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.crumbCurr { color: var(--gold); }

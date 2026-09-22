@@ -10,6 +10,7 @@
  */
 
 import type { SkillResult, SkillTransport } from './useSkill';
+import { GTM_MOCK_READS, GTM_MOCK_WRITES } from '@/skills/gtm-shell/mock';
 
 export interface AgentSummary {
   id: string;
@@ -74,6 +75,19 @@ const AGENTS: AgentSummary[] = [
     tools: 0,
     facts: null,
     desc: 'Rules reject, models rank, humans decide. Scores candidates against a role family and hands over at the decision boundary.',
+  },
+  {
+    id: 'gtm',
+    name: 'GTM',
+    role: 'Growth Agent',
+    color: '#4FA3E0',
+    icon: '◎',
+    scope: 'org://vikuna/gtm/**',
+    status: 'active',
+    runs: 12,
+    tools: 6,
+    facts: null,
+    desc: 'Builds the audience from global data and your own, qualifies with evidence, and puts people in motion under the cadence governor.',
   },
 ];
 
@@ -246,6 +260,7 @@ const MOCK_MINE_SHAPE = new Map<string, { musthaves: unknown[]; knockouts: unkno
  * need them ignore the argument.
  */
 const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
+  ...GTM_MOCK_READS,
   'agents.list': () => ({ agents: AGENTS }),
   'dashboard.activity': () => ({ activity: ACTIVITY }),
   'dashboard.counters': () => ({
@@ -364,6 +379,7 @@ const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
 
 /** Writes need the params, so they are handled separately from the read table. */
 const WRITE_HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
+  ...GTM_MOCK_WRITES,
   'onboarding.complete_step': (p) => {
     const stepId = String(p.step_id ?? '');
     if (!ONBOARDING_CATALOG.some((s) => s.step_id === stepId)) {

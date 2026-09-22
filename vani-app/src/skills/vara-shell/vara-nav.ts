@@ -37,6 +37,24 @@ const varaWorkspace: SkillModule = {
     // inside Vara had no route to appearance or model provider at all.
     { id: 'vara-settings',     label: 'Settings',          href: '/settings',                   group: 'system',       icon: '⚙', status: 'live' },
   ],
+  // The journey, declared once (registry.ts JourneyDecl). Rendered on the
+  // landing and the dashboard card; progress read from `vara.journey`.
+  journey: {
+    skill: 'vara',
+    fn: 'journey',
+    steps: [
+      { id: 'domain',   label: 'Domain declared',    href: '/onboarding/declare',
+        summary: 'Where candidates find you, and where Vara\'s widget may load.' },
+      { id: 'families', label: 'Families taken',     href: '/agents/vara/onboarding',
+        summary: 'Which of your industry\'s role families you actually hire for.' },
+      { id: 'jd',       label: 'First JD published', href: '/agents/vara/jd-studio',
+        summary: 'A finished draft from the family\'s shape — accept, or adapt.' },
+      { id: 'jd2',      label: 'Second JD',          href: '/agents/vara/jd-studio',
+        summary: 'Opens from what you kept last time. The part that compounds.' },
+    ],
+  },
 };
+
+export const VARA_WORKSPACE = varaWorkspace;
 
 export const VARA_SKILLS: SkillModule[] = [varaWorkspace];
