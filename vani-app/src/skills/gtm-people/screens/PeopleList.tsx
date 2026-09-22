@@ -36,7 +36,7 @@ export default function PeopleList() {
         {(d) => (
           <section className={u.card}>
             {d.contacts.map((c) => (
-              <Link key={c.id} href={`/agents/gtm/people/${c.contact_no}`} className={s.row}>
+              <Link key={c.id} href={`/agents/gtm/people/${encodeURIComponent(String(c.id))}`} className={s.row}>
                 <span className={s.ref}>{c.contact_no}</span>
                 <div><div className={s.name}>{c.name}</div>{c.job_title && <div className={s.title}>{c.job_title}</div>}</div>
                 <div><div className={s.co}>{c.company_name ?? '—'}</div>{c.location && <div className={s.loc}>{c.location}</div>}</div>

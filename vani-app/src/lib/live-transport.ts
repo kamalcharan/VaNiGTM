@@ -21,6 +21,7 @@
 
 import { API_ORIGIN, ApiError, apiRequest } from './api-client';
 import type { SkillResult, SkillTransport } from './useSkill';
+import { PREVIEW_FUNCTIONS } from './preview';
 
 type PlatformCall = {
   method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
@@ -87,6 +88,18 @@ export const liveTransport: SkillTransport = async (skill, fn, params) => {
   const { idempotency_key: idempotencyKey, ...rest } = params as Record<string, unknown> & {
     idempotency_key?: string;
   };
+
+  // UX preview: a screen whose backend does not exist yet is answered from
+  // its fixture, stamped so the shell can say so. See lib/preview.ts.
+  const preview = PREVIEW_FUNCTIONS[key];
+  if (preview) {
+    await new Promise((r) => setTimeout(r, 120));
+    try {
+      return { success: true, skill, function: fn, data: preview(rest), preview: true } as SkillResult;
+    } catch (err) {
+      return { success: false, skill, function: fn, data: null, error: err instanceof Error ? err.message : 'Preview failed', preview: true } as SkillResult;
+    }
+  }
 
   const route = PLATFORM_ROUTES[key];
 

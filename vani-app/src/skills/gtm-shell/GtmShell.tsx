@@ -19,6 +19,7 @@ import { useToast } from '@/platform/feedback';
 import { installSkillTransport } from '@/lib/transport';
 import { GTM_SKILLS } from './gtm-nav';
 import s from './gtm-shell.module.css';
+import { PreviewBadge } from './PreviewBadge';
 
 installSkillTransport();
 
@@ -53,6 +54,7 @@ export default function GtmShell({ children }: { children: ReactNode }) {
               <span>·</span>
               <span className={s.crumbCurr}>Growth workspace</span>
             </div>
+            <PreviewBadge />
           </div>
           {children}
         </Shell>

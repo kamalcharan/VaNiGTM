@@ -8,7 +8,8 @@
 import { promotedPeople } from '@/skills/gtm-audience/mock';
 
 export interface ContactRow {
-  id: string;
+  /** The row id the API keys on (numeric on gt_contacts). Shown nowhere; contact_no is what people see. */
+  id: string | number;
   contact_no: string;
   name: string;
   job_title: string | null;
@@ -26,14 +27,14 @@ export interface Channel { type: 'email' | 'linkedin' | 'whatsapp' | 'mobile'; v
 export interface Touch { at: string; channel: string; kind: string; outcome: string | null; }
 
 export interface ContactDetail extends ContactRow {
-  channels: Channel[];
+  channels?: Channel[];
   /** The company brief this person came from, for the link back. */
-  prospect_id: string | null;
-  prospect_ref: string | null;
-  /** From gt_touch_log. Empty until something is in motion. */
-  touches: Touch[];
-  /** From gt_journeys. Null until G2 puts them in motion. */
-  journey: { stage: string; since: string } | null;
+  prospect_id?: string | null;
+  prospect_ref?: string | null;
+  /** From gt_touch_log. Empty until something is in motion. Absent on today's API. */
+  touches?: Touch[];
+  /** From gt_journeys. Null until G2 puts them in motion. Absent on today's API. */
+  journey?: { stage: string; since: string } | null;
 }
 
 /** "R. Menon" → "r.menon" — letters only per word, joined by one dot. */
@@ -72,7 +73,7 @@ export const PEOPLE_MOCK_READS: Record<string, (p: Record<string, unknown>) => u
     return { contacts: contacts.map(({ channels: _c, touches: _t, journey: _j, prospect_id: _p, prospect_ref: _r, ...row }) => row), total: contacts.length, recipe: 'contact-list' };
   },
   'contact-skill.get_contact': (p) => {
-    const c = rows().find((x) => x.id === p.contact_id || x.contact_no === p.contact_id);
+    const c = rows().find((x) => String(x.id) === String(p.contact_id) || x.contact_no === p.contact_id);
     return c ? { contact: c, recipe: 'contact-profile' } : null;
   },
 };

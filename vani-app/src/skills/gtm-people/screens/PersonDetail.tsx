@@ -23,6 +23,11 @@ export default function PersonDetail({ id }: { id: string }) {
         empty={`No one with the id ${id} in your audience.`}>
         {(d) => {
           const c = d!.contact;
+          // Today's API returns identity + channels; brief, touches and journey
+          // arrive at integration. Absent is absent — never a crash, never a guess.
+          const channels = c.channels ?? [];
+          const touches = c.touches ?? [];
+          const journey = c.journey ?? null;
           return (
             <>
               <div className={u.eyebrow} style={{ marginTop: 14 }}>// GTM · PEOPLE · {c.contact_no}</div>
@@ -31,8 +36,8 @@ export default function PersonDetail({ id }: { id: string }) {
 
               <div className={s.two}>
                 <section className={u.card}>
-                  <div className={u.cardHead}>Reach them<span className={u.cardMeta}>{c.channels.length} {c.channels.length === 1 ? 'channel' : 'channels'}</span></div>
-                  {c.channels.length ? c.channels.map((ch) => (
+                  <div className={u.cardHead}>Reach them<span className={u.cardMeta}>{channels.length} {channels.length === 1 ? 'channel' : 'channels'}</span></div>
+                  {channels.length ? channels.map((ch) => (
                     <div key={ch.type + ch.value} className={s.field}>
                       <span className={s.fk}>{ch.type}</span>
                       <span className={s.fv}>{ch.value} <span className={`${u.tag} ${ch.verified ? u.tagOk : u.tagDim}`} style={{ marginLeft: 8 }}>{ch.verified ? 'verified' : 'unverified'}</span></span>
@@ -42,23 +47,23 @@ export default function PersonDetail({ id }: { id: string }) {
 
                 <section className={u.card}>
                   <div className={u.cardHead}>Where they came from</div>
-                  <div className={s.field}><span className={s.fk}>Source</span><span className={s.fv}>{c.source}</span></div>
-                  <div className={s.field}><span className={s.fk}>Company</span><span className={s.fv}>{c.company_name ?? '—'}{c.prospect_ref && <> · <Link href={`/agents/gtm/audience?step=qualify`}>brief {c.prospect_ref} →</Link></>}</span></div>
-                  <div className={s.field}><span className={s.fk}>Added</span><span className={s.fv}>{formatDate(c.created_at)}</span></div>
+                  <div className={s.field}><span className={s.fk}>Source</span><span className={s.fv}>{c.source ?? '—'}</span></div>
+                  <div className={s.field}><span className={s.fk}>Company</span><span className={s.fv}>{c.company_name ?? '—'}{c.prospect_ref ? <> · <Link href={`/agents/gtm/audience?step=qualify`}>brief {c.prospect_ref} →</Link></> : null}</span></div>
+                  <div className={s.field}><span className={s.fk}>Added</span><span className={s.fv}>{c.created_at ? formatDate(c.created_at) : '—'}</span></div>
                 </section>
               </div>
 
               <div className={s.two} style={{ marginTop: 18 }}>
                 <section className={u.card}>
                   <div className={u.cardHead}>Touches<span className={u.cardMeta}>gt_touch_log</span></div>
-                  {c.touches.length ? c.touches.map((t, i) => (
+                  {touches.length ? touches.map((t, i) => (
                     <div key={i} className={s.field}><span className={s.fk}>{t.at}</span><span className={s.fv}>{t.channel} · {t.kind}{t.outcome ? ` · ${t.outcome}` : ''}</span></div>
                   )) : <p className={s.none}>Nothing yet. Touches are recorded here once this person is in motion — and nothing sends until a consent model exists. <Link href="/agents/gtm/motion">Put them in motion →</Link></p>}
                 </section>
                 <section className={u.card}>
                   <div className={u.cardHead}>Journey<span className={u.cardMeta}>gt_journeys</span></div>
-                  {c.journey ? (
-                    <div className={s.field}><span className={s.fk}>Stage</span><span className={s.fv}>{c.journey.stage} · since {c.journey.since}</span></div>
+                  {journey ? (
+                    <div className={s.field}><span className={s.fk}>Stage</span><span className={s.fv}>{journey.stage} · since {journey.since}</span></div>
                   ) : <p className={s.none}>Not in motion. A segment and a story come first. <Link href="/agents/gtm/motion">Put them in motion →</Link></p>}
                 </section>
               </div>

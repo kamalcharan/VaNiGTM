@@ -22,6 +22,8 @@ export interface SkillResult<T = unknown> {
   function: string;
   data: T;
   error?: string;
+  /** Answered from fixtures because the backend is not integrated yet (lib/preview.ts). */
+  preview?: boolean;
 }
 
 export type SkillTransport = (

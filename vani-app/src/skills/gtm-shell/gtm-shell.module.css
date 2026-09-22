@@ -19,3 +19,10 @@
   letter-spacing: 0.08em; text-transform: uppercase;
 }
 .crumbCurr { color: var(--gold); }
+.preview {
+  margin-left: auto;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--warn); border: 1px dashed color-mix(in srgb, var(--warn) 55%, transparent);
+  background: color-mix(in srgb, var(--warn) 9%, transparent);
+  border-radius: 999px; padding: 4px 10px; white-space: nowrap;
+}

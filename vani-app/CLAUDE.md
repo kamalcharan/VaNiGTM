@@ -203,6 +203,22 @@ When you are writing the UI:
 
 ---
 
+## 2b. UX preview — screens built before their backend
+
+GTM's screens (Sprint 2, 2026-09-22) call skill functions that do not exist on
+the API yet; the fixture decides the shape and the backend meets it later.
+Because development happens against the deployed stack (§0), the live
+transport answers those calls from the fixtures — **only** the ones listed in
+`src/lib/preview.ts`, **only** stamped `preview: true`, and **only** with the
+PREVIEW badge shown (`gtm-shell/PreviewBadge`). A function leaves the list
+the day its backend lands, and a missing handler fails loudly again.
+
+This is a declared exception to rule 12, not a fallback: it does not kick in
+on failure, it is not per-request, and nothing on the screen pretends the
+data is real. Never add a function to the list to cover a backend gap; add it
+because the screen exists before the backend does, and say so in that skill's
+`INTEGRATION.md`.
+
 ## 3. Race conditions
 
 Assume every response can arrive late, out of order, or after the user has

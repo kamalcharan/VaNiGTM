@@ -7,6 +7,7 @@ import Link from 'next/link';
 import u from '@/platform/shell/ui.module.css';
 import { AgentJourney } from '@/platform/pathway';
 import { AGENT_WORKSPACES } from '@/skills';
+import { PreviewBadge } from '@/skills/gtm-shell/PreviewBadge';
 
 interface Counters {
   agents_active: number;
@@ -61,6 +62,7 @@ export default function Dashboard() {
       {/* One card per agent: where this tenant is with it, and the next step.
           Rendered from each workspace's journey declaration — the same source
           the agent's own landing uses (POA §2.4b). */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}><PreviewBadge what="the journey" /></div>
       <div className={u.counters} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
         {AGENT_WORKSPACES.filter((w) => w.journey).map((w) => {
           const landing = w.routes[0]?.href ?? '/agents';
