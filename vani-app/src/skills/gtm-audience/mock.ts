@@ -64,6 +64,16 @@ function state(): AudienceState {
   return { step, done, finished, cohort: [...S.cohort], batch_id: S.batchId, verdicts: { ...S.verdicts }, promoted: [...S.promoted] };
 }
 
+/** Everyone promoted so far, with their CONT id and company — the People
+ *  surface reads this; in the product it is gt_contacts. */
+export function promotedPeople(): (Person & { contact_ref: string; company: HotRow | undefined })[] {
+  const all = HOT_ROWS.concat(UPLOAD_ROWS as HotRow[]);
+  return S.promoted.map((id, i) => {
+    const p = Object.values(PEOPLE_FIXTURES).flat().find((x) => x.id === id)!;
+    return { ...p, contact_ref: `CONT-${String(i + 1).padStart(4, '0')}`, company: all.find((r) => r.id === p.prospect_id) };
+  });
+}
+
 export const AUDIENCE_MOCK_READS: Record<string, (p: Record<string, unknown>) => unknown> = {
   'gtm.audience_state': () => state(),
   'prospect-skill.hot_list': (): HotList => ({
