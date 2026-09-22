@@ -78,6 +78,17 @@ const PLATFORM_ROUTES: Record<string, (params: Record<string, unknown>) => Platf
     method: 'DELETE',
     path: `/api/v1/ingest/sources/${encodeURIComponent(String(p.id))}`,
   }),
+  // Offers: everyday reads and edits are research-skill functions on the
+  // generic runner. Drafting and confirming are the two REST routes on
+  // /profile (they create a run and stamp confirmed_at), so they live here.
+  'profile.generate_offers': () => ({
+    method: 'POST',
+    path: '/api/v1/profile/offers/generate',
+  }),
+  'profile.confirm_offer': (p) => ({
+    method: 'POST',
+    path: `/api/v1/profile/offers/${encodeURIComponent(String(p.offer_key))}/confirm`,
+  }),
 };
 
 export const liveTransport: SkillTransport = async (skill, fn, params) => {

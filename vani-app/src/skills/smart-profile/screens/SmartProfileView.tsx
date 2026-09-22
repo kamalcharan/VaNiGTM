@@ -37,6 +37,7 @@ import {
 } from '../useSmartProfile';
 import { PeopleSection } from './PeopleSection';
 import { KnowledgeSection } from './KnowledgeSection';
+import { useOffers, type OffersResult } from '../useOffers';
 import s from '../smart-profile.module.css';
 
 /** Deep link into the build flow at the step that owns a section. */
@@ -137,6 +138,7 @@ export default function SmartProfileView() {
   const competitors = useCompetitorsRead();
   const brand = useBrandRead();
   const domains = useDomainsRead();
+  const offers = useOffers();
 
   const score = profile.data?.data?.completion_score ?? 0;
 
@@ -279,6 +281,29 @@ export default function SmartProfileView() {
 
       <Section
         n={6}
+        title="Offers"
+        what="What you sell, in the shape agents score against. VaNi drafts; you confirm."
+        editStep="offers"
+        editHref="/smart-profile/offers"
+        editLabel="Open"
+        query={offers}
+        isEmpty={(d: OffersResult | undefined) => !d?.offers?.length}
+        empty="No offers yet. Fit is scored against an offer, so GTM cannot start without one — draft them from what VaNi has read."
+      >
+        {(d: OffersResult) => (
+          <ul className={s.rows}>
+            {d.offers.map((o) => (
+              <li key={o.id} className={s.row}>
+                <span className={s.rowName}>{o.name}<span className={o.confirmed_at ? s.rowTag : s.rowTagMuted}>{o.confirmed_at ? 'confirmed' : 'unconfirmed'}</span></span>
+                {o.one_line && <span className={s.rowDetail}>{o.one_line}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      <Section
+        n={7}
         title="Domain"
         what="The domain your workspace runs on, so agents can address it."
         editStep="vani:domain"
@@ -303,9 +328,9 @@ export default function SmartProfileView() {
         )}
       </Section>
 
-      <KnowledgeSection n={7} />
+      <KnowledgeSection n={8} />
 
-      <PeopleSection n={8} />
+      <PeopleSection n={9} />
 
       {/* Model. BYOK is a MENU item, not an onboarding step (user ruling,
           2026-09-16), and since 2026-09-22 the menu item is this app's own
@@ -313,7 +338,7 @@ export default function SmartProfileView() {
           screen in another console. */}
       <section className={s.section}>
         <header className={s.sectionHead}>
-          <span className={s.sectionNum}>9</span>
+          <span className={s.sectionNum}>10</span>
           <div className={s.sectionTitles}>
             <h2 className={s.sectionTitle}>Model</h2>
             <p className={s.sectionWhat}>Which model answers when an agent needs one.</p>

@@ -52,7 +52,7 @@ export function mockReadiness(): Readiness {
     { key: 'brand', label: 'Brand', state: 'captured', href: '/onboarding?step=brand',
       value: 'plain · evidence-first · never "revolutionary"',
       why: 'A story without a voice is a template.' },
-    { key: 'offers', label: 'Offers', state: MOCK_HAS_OFFER ? 'captured' : 'missing', href: '/onboarding?step=offers',
+    { key: 'offers', label: 'Offers', state: MOCK_HAS_OFFER ? 'captured' : 'missing', href: '/smart-profile/offers',
       value: MOCK_HAS_OFFER ? 'Contract audit (entry) · Ledgerline platform (project)' : null,
       why: 'Fit is scored against an offer. With none, there is nothing to score.' },
     { key: 'competitors', label: 'Competitors', state: 'captured', href: '/onboarding?step=competitors',

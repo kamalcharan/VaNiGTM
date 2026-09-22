@@ -11,6 +11,7 @@
 
 import type { SkillResult, SkillTransport } from './useSkill';
 import { GTM_MOCK_READS, GTM_MOCK_WRITES } from '@/skills/gtm-shell/mock';
+import { OFFERS_MOCK_READS, OFFERS_MOCK_WRITES } from '@/skills/smart-profile/offers-mock';
 
 export interface AgentSummary {
   id: string;
@@ -261,6 +262,7 @@ const MOCK_MINE_SHAPE = new Map<string, { musthaves: unknown[]; knockouts: unkno
  */
 const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
   ...GTM_MOCK_READS,
+  ...OFFERS_MOCK_READS,
   'agents.list': () => ({ agents: AGENTS }),
   'dashboard.activity': () => ({ activity: ACTIVITY }),
   'dashboard.counters': () => ({
@@ -380,6 +382,7 @@ const HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
 /** Writes need the params, so they are handled separately from the read table. */
 const WRITE_HANDLERS: Record<string, (p: Record<string, unknown>) => unknown> = {
   ...GTM_MOCK_WRITES,
+  ...OFFERS_MOCK_WRITES,
   'onboarding.complete_step': (p) => {
     const stepId = String(p.step_id ?? '');
     if (!ONBOARDING_CATALOG.some((s) => s.step_id === stepId)) {
