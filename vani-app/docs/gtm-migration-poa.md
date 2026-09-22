@@ -78,15 +78,25 @@ comes before the screen that needs data to exist.
 **Done when:** the sidebar swaps on entering `/agents/gtm/*`, and the landing
 says what GTM does and what to do first. No backend work.
 
-### Slice 1 — GTM's own onboarding
-Not the Mission Wizard. GTM declares **target industries** — and that is the
-one GTM-specific declaration the schema already models
-(`gt_tenant_target_industries`, migration 194), currently written by nothing.
-Everything else it needs (company, vocabulary, competitors, brand, offers) it
-READS from the Smart Profile.
-**Adjustments:** the taxonomy behind it is seeded and unwired — see §6.
-**Done when:** a tenant can ratify which industries they sell to, and the
-answer is joinable rather than prose.
+### Slice 1 — GTM has no onboarding of its own, and that is the finding
+The obvious candidate was **target industries** — the one GTM-specific
+declaration the schema models (`gt_tenant_target_industries`, migration 194).
+That work is **scoped to the Nova project migration** (Charan, 2026-09-22), so
+it is not GTM's to build and not a gate on anything here.
+
+What is left for a GTM onboarding? Nothing. Company, vocabulary, competitors,
+brand and offers are the Smart Profile's. Personas are per-CAMPAIGN, not a
+setup step. So **GTM ships with no agent-level declaration**, and goes straight
+from its landing to a working surface.
+
+Worth saying out loud because the pull is to mirror Vara. Vara has role
+families to declare before a JD makes sense; GTM does not have an equivalent,
+and inventing a step to match would be a wizard that buys the tenant nothing.
+
+**Cost carried, not fixed:** until Nova's taxonomy lands, the domain-pack spine
+keeps keying on free text, so two tenants who type the same industry
+differently still each pay for enrichment. That bug exists today; GTM does not
+make it worse. §6.
 
 ### Slice 2 — People
 `gtm/people` + `[id]` (788 lines) on `contact-skill` — 16 functions, the most
@@ -157,31 +167,35 @@ not translated.
 | Decision | Gates | Status |
 |---|---|---|
 | `/agents/vani` — GTM's landing or removed? | Slice 0 | **open** |
+| Industry taxonomy | nothing here — **moved to Nova** (2026-09-22) | settled |
 | Consent + suppression schema | Slices 5, 6 (any send) | **open, needs approval** |
 | Is Import worth porting at all? | Deferred slice | open, revisit after Slice 3 |
 | Do GTM and Vara share `gt_channels` and one cadence budget? | Slice 5 | open (design note §8) |
 
 ---
 
-## 6. The industry taxonomy, and why it sits under Slice 1
+## 6. The industry taxonomy — Nova's, not GTM's
 
-Slice 1 needs a joinable industry, and the machinery exists but is empty:
-`gt_industries` has **zero rows**, `gt_industry_aliases` and
-`gt_tenant_target_industries` are read by **zero** TypeScript files. Meanwhile
-the domain-pack spine keys on `slugifyIndustry(vn_tenant_profiles.industry)` —
-the free text migration 194 explicitly says is not joinable — across 19 call
-sites.
+**Ruling, Charan 2026-09-22: the industry migration is part of the overall
+NOVA project migration.** It is not a GTM prerequisite and no slice above waits
+on it.
 
-Consequence today: two tenants who type the same industry differently get
-different pack domains, so "already researched" never fires and both pay for a
-20-minute enrichment run.
+The state, so Nova does not rediscover it: `gt_industries` has **zero rows**,
+`gt_industry_aliases` and `gt_tenant_target_industries` are read by **zero**
+TypeScript files, and the domain-pack spine keys on
+`slugifyIndustry(vn_tenant_profiles.industry)` across 19 call sites — the free
+text migration 194 explicitly says is not joinable.
 
-A seed-and-adopt migration is drafted at
-`VaNiGTM/backend/migrations/254_gt_industry_seed_and_adopt.sql` — **seeds and
-adoption only, no structural change, not applied.** It is a prerequisite for
-Slice 1 being worth building, and it is Charan's to approve.
+What GTM carries in the meantime: two tenants who type the same industry
+differently get different pack domains, so "already researched" never fires and
+both pay for a 20-minute enrichment run. Present behaviour, unchanged by this
+port.
 
----
+A seed-and-adopt draft exists at
+`VaNiGTM/documents/drafts/254_gt_industry_seed_and_adopt.sql.draft` — seeds and
+adoption only, no structural change. It is **deliberately not in
+`backend/migrations/`**, because `npm run db:migrate` applies every `.sql` in
+that folder and a draft left there is a draft that ships. Renumber before use.
 
 ## 7. Explicitly not migrated
 
