@@ -575,8 +575,10 @@ Runbook in §8 of the doc.
 - **BYOK is a MENU item, not an onboarding step** (user ruling, 2026-09-16).
   `vani:llm_provider` stays `enabled: false` in `lanes.ts`. Do not flip it.
 
-  **The surface is `vani-app` → System → Model Provider**
-  (`vikunawebsite/vani-app/src/skills/model-provider/`). A first version was
+  **The surface is `vani-app` → System → Settings → Model** (`/settings/model`,
+  `vikunawebsite/vani-app/src/skills/settings/screens/ModelProvider.tsx`;
+  it was a top-level `/model-provider` until 2026-09-22, which now
+  redirects). A first version was
   written into the retired `frontend/` before that was established; it has been
   deleted rather than left as a second, unreachable BYOK screen.
 
