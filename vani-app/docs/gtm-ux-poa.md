@@ -163,6 +163,55 @@ integration GTM's agent subscribes to it, so a profile crossing the threshold
 proposes the first audience without being asked. That is an integration item,
 not a screen; the playground shows the strip populated.
 
+### 2.4b The journey is every agent's, not GTM's *(Charan, 2026-09-22)*
+
+"Journey map is required for any agent, not just GTM — so it should be part
+of the vani.vikuna.io landing page." Yes, with one distinction that decides
+where each half goes.
+
+**Two things are called a journey map:**
+
+1. **The design artefact** (`vara-journey-map.html`, and GTM's in Sprint 1):
+   thesis, what breaks today, decisions before more code. Internal — it
+   carries our defects and open questions. Every agent gets one; it lives in
+   `documents/`, never on a landing page.
+2. **The journey as a product surface**: where am I with this agent, what is
+   done, what is next. This is not GTM's. It is what every agent landing page
+   IS — Vara's "what it is, its state, one Activate action" is a journey with
+   one step rendered — and the ux-references already name the pattern: the
+   accumulating rail is mission memory.
+
+**The design, so it is built once:**
+
+- **Every agent declares its journey in its skill module** — ordered steps,
+  each with a *done* predicate over data the console already reads.
+  Vara: domain declared → families taken → first JD published → second JD.
+  GTM: profile ready → audience built → people found → in motion.
+  One declaration; nothing else is written per agent.
+- **Two surfaces render it:**
+  - the **agent landing** (`/agents/vara`, `/agents/gtm`): the full journey —
+    done steps collapsed, the current step open with its one action, later
+    steps visible and locked with the reason. §2.4's landing, generalised.
+  - the **console dashboard after sign-in** — the vani.vikuna.io landing
+    (pre-sign-in `/` is the gate; www.vikuna.io is the marketing site): one
+    card per agent with its journey position and next step. *"Vara —
+    screening 2 roles · GTM — not started; first step: bring your list."*
+- **The renderer is platform, once.** `PathwayShell` has the stepper for a
+  WORKING pathway; a landing needs the lighter, read-only form. One
+  `AgentJourney` in `platform/pathway/` plus a `journey` field on
+  `SkillModule` in `platform/registry.ts`. **That is a platform change under
+  `vani-app/CLAUDE.md` §5 — logged here, approved by Charan 2026-09-22 with
+  "update POA".**
+
+**What it changes in the sprints:**
+
+- Sprint 1: the GTM journey map's last section is the step/done declaration,
+  written so it drops straight into the module.
+- Sprint 2: the GTM landing (screen 1) is built ON the shared renderer, not as
+  GTM's own page; **Vara's landing moves onto the same renderer in the same
+  sprint**, so the renderer has two consumers from day one; the dashboard
+  gains the per-agent journey cards.
+
 ### 2.5 Two console items are built in Sprint 1, in real code *(Charan, 2026-09-22)*
 
 Both are independent of the GTM playground, both have a live backend, and
@@ -241,7 +290,8 @@ src/app/(gtm)/agents/gtm/   layout.tsx wraps the group in GtmShell; one page per
 
 | # | Screen | Built to scene | Posture-aware |
 |---|---|---|---|
-| 1 | `/agents/gtm` landing — Vara's chrome, the readiness ring, the weakest BRAIN object, the "what changed" strip, one next action (§2.4) | land | Smart Profile ready / missing |
+| 1 | `AgentJourney` + `journey` on `SkillModule` (§2.4b, the logged platform change); Vara's landing moved onto it; dashboard journey cards | land | — |
+| 1a | `/agents/gtm` landing on the renderer — the readiness ring, the weakest BRAIN object, the "what changed" strip, one next action (§2.4) | land | Smart Profile ready / missing |
 | 2 | G1 · bring — choose posture; upload maps a file; own-provider asks for the key the same way Model Provider does (key goes in, never comes back) | bring | all three |
 | 3 | G1 · find — proposed companies with the WHY per row | find | — |
 | 4 | G1 · qualify — briefs; fit, evidence, smallest ask; decide | qualify | — |
@@ -252,8 +302,8 @@ src/app/(gtm)/agents/gtm/   layout.tsx wraps the group in GtmShell; one page per
 counted (`VdfBadge`, `VdfEmptyState`, `VdfStatusBadge`, `VdfDrawer`,
 `VdfModal` as native `<dialog>`, `VdfSearchBar`, `VdfTabs`, `VdfToggleGroup`,
 `VdfInsightsCard`, `VdfStatCard` → check `VdfKpiCard` first). They land in
-`src/platform/vdf/` — **which is a platform edit, and is logged here as the
-one platform change request this plan makes.** Built against the four themes,
+`src/platform/vdf/` — **a platform edit, logged here as the second of the two
+platform changes this plan makes** (the first is §2.4b's journey renderer). Built against the four themes,
 not ported.
 
 **Definition of done, per screen** (a checklist in the PR, not a sentiment):
@@ -340,3 +390,4 @@ write shipped with only the client half is unfinished.
 | Consent/suppression schema | unlocking `activate`; nothing in these three sprints |
 | Does GTM share `gt_channels` and one cadence budget with Vara? | screen 12's copy, not its existence |
 | `PROFILE_COMPLETE` gets GTM's agent as its consumer | integration, not a sprint here — recorded so it is not re-derived |
+| ~~Journey renderer as a platform change~~ | **approved 2026-09-22** (§2.4b) |

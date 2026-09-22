@@ -270,6 +270,16 @@ platform change request — logged and decided, not worked around. This is the U
 expression of "agents extend, never modify", and it is the stated test of the
 integration contract.
 
+**Logged platform changes** (decided, not worked around):
+
+- **2026-09-22 — the agent journey.** `SkillModule` gains a `journey`
+  declaration (ordered steps, each with a *done* predicate over data the
+  console already reads) and `platform/pathway/` gains `AgentJourney`, the
+  read-only renderer every agent landing and the dashboard's per-agent cards
+  use. Approved by Charan; rationale and consumers in
+  `docs/gtm-ux-poa.md` §2.4b. Lands in GTM Sprint 2 with Vara's landing moved
+  onto it in the same change.
+
 ---
 
 ### The onboarding gate asks the lane, not `/me`
