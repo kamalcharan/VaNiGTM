@@ -170,7 +170,7 @@ Sprint 1 would otherwise change nothing visible — against the working method.
 They ship on the **live** transport, not mock.
 
 **S1-a · Settings becomes one place** *(Charan: "models, appearance, BYO — be
-inside settings")*. Today `/appearance` and `/model-provider` are two
+inside settings")*. **Built 2026-09-22**, on the branch, awaiting the deploy. Today `/appearance` and `/model-provider` are two
 top-level SYSTEM entries plus a planned `/settings`. They fold into **one
 `settings` skill with tabs** — the `model-provider` folder moves to
 `settings/screens/`, the old routes redirect:
@@ -189,7 +189,9 @@ menu item, never an onboarding step (ruling 2026-09-16). The SYSTEM group then
 shows Settings and Runs & Traces, nothing else.
 
 **S1-b · Knowledge, as sources — not as a graph** *(Charan: "we have not used
-'knowledge' or the knowledge graph — how will this get in?")*. The graph is
+'knowledge' or the knowledge graph — how will this get in?")*. **Built
+2026-09-22** — Smart Profile section 7 + Teach VaNi (URL, pasted text), on the
+branch, awaiting the deploy. Provenance on GTM artefacts is Sprint 2/3. The graph is
 already fed and already read: the wizard's crawl, the VaNi conversation and
 competitor research write `gt_kg_nodes`; `profile.service` projects it,
 `research.agent` and `storyteller.agent` read it. What is missing is any UX

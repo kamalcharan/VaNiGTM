@@ -36,6 +36,7 @@ import {
   type TenantDomain,
 } from '../useSmartProfile';
 import { PeopleSection } from './PeopleSection';
+import { KnowledgeSection } from './KnowledgeSection';
 import s from '../smart-profile.module.css';
 
 /** Deep link into the build flow at the step that owns a section. */
@@ -302,38 +303,29 @@ export default function SmartProfileView() {
         )}
       </Section>
 
-      <PeopleSection n={7} />
+      <KnowledgeSection n={7} />
 
-      {/* Model. This section used to say BYOK was "coming" because
-          vani_llm_provider.credentials_enc had no encryption path behind it.
-          It does now (VaNiGTM agent-core/secret.crypto.ts + llm.provider.ts,
-          2026-09-15), and BYOK is a MENU item rather than an onboarding step
-          (user ruling, 2026-09-16).
+      <PeopleSection n={8} />
 
-          It is NOT linked from here, and that is deliberate rather than an
-          oversight: this app's own Settings is status:'planned' (see
-          src/skills/settings/index.ts, whose P2 summary names the model
-          provider), so a link would be a dead route. Naming where the surface
-          actually lives is the honest thing a reader can act on; inventing a
-          link they cannot follow is not. When vani-app's Settings lands, this
-          copy points at it. */}
+      {/* Model. BYOK is a MENU item, not an onboarding step (user ruling,
+          2026-09-16), and since 2026-09-22 the menu item is this app's own
+          Settings → Model — so this section links there rather than naming a
+          screen in another console. */}
       <section className={s.section}>
         <header className={s.sectionHead}>
-          <span className={s.sectionNum}>8</span>
+          <span className={s.sectionNum}>9</span>
           <div className={s.sectionTitles}>
             <h2 className={s.sectionTitle}>Model</h2>
             <p className={s.sectionWhat}>Which model answers when an agent needs one.</p>
           </div>
-          <span className={s.sectionSoon}>Default</span>
+          <Link href="/settings/model" className={s.sectionEdit}>Change</Link>
         </header>
         <div className={s.sectionBody}>
           <p className={s.modelNote}>
             A provider is configured for your workspace and in force for every
             agent. You can bring your own key instead — your endpoint, your
-            model, your billing, and no daily token cap. It is set in the
-            Vikuna GTM console under Settings → Model Provider, and applies to
-            every agent here the moment it is saved. This screen gets its own
-            control when Settings arrives.
+            model, your billing, and no daily token cap. Set it under
+            Settings → Model; it applies to every agent the moment it is saved.
           </p>
           <span className={s.modelTag}>Workspace default</span>
         </div>

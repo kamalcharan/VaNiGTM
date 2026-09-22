@@ -58,6 +58,25 @@ const PLATFORM_ROUTES: Record<string, (params: Record<string, unknown>) => Platf
     path: '/api/v1/auth/invite',
     body: { invitations: p.invitations },
   }),
+  // Ingestion predates the skill runner and is a REST router (/api/v1/ingest).
+  // The mission wizard reaches it with apiFetch directly because it is ported
+  // code; the Smart Profile's "What VaNi has read" writes through
+  // useSkillMutation instead, for the double-submit guard and the key, so its
+  // three writes are declared here. Reads stay on apiFetch.
+  'ingest.submit_url': (p) => ({
+    method: 'POST',
+    path: '/api/v1/ingest/url',
+    body: { url: p.url },
+  }),
+  'ingest.submit_text': (p) => ({
+    method: 'POST',
+    path: '/api/v1/ingest/text',
+    body: { text: p.text, title: p.title },
+  }),
+  'ingest.delete_source': (p) => ({
+    method: 'DELETE',
+    path: `/api/v1/ingest/sources/${encodeURIComponent(String(p.id))}`,
+  }),
 };
 
 export const liveTransport: SkillTransport = async (skill, fn, params) => {
