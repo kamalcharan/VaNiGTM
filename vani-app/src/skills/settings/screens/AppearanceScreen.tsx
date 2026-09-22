@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Appearance — three themes, light and dark, stored against the person.
+ * Appearance — four themes, light and dark, stored against the person.
  *
  * Each card previews the theme in ITS OWN colours, resolved through the same
  * `resolveTokens` the console runs on. A picker that shows three cards in the
@@ -90,7 +90,7 @@ export function AppearancePage() {
       <div className={u.eyebrow}>// SYSTEM</div>
       <h1 className={u.h1}>Appearance</h1>
       <p className={u.lede}>
-        Three themes, each with a light and a dark variant. The choice is stored
+        Four themes, each with a light and a dark variant. The choice is stored
         against your account, so it follows you to another machine rather than
         living in this browser.
       </p>

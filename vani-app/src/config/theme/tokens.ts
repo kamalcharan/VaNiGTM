@@ -33,7 +33,7 @@
  */
 
 import type { ColorMode, ThemeConfig, ThemeColorSet } from './types';
-import { alpha, lighten, luminance, mix } from './color';
+import { alpha, bestTextOn, lighten, luminance, mix } from './color';
 
 export const TOKEN_ATTR = 'data-theme';
 export const MODE_ATTR = 'data-mode';
@@ -50,10 +50,27 @@ export function resolveTokens(theme: ThemeConfig, mode: ColorMode): Record<strin
 
   const bg = c.utility.primaryBackground;
   const surf = c.utility.secondaryBackground;
-  const surf2 = c.brand.alternate;
   const tx = c.utility.primaryText;
   const tx2 = c.utility.secondaryText;
   const primary = c.brand.primary;
+
+  /**
+   * The second surface, and the one place a theme's field can mean two things.
+   *
+   * `brand.alternate` is the elevated surface in most themes — #1C2030,
+   * #2b3238, #1a2e22 are all a step above their page. In the VaNi theme it is
+   * `#ff8f5a`, a soft ORANGE: that theme uses the slot for a brand tone, not a
+   * surface. Taking it at face value paints every raised card orange.
+   *
+   * So it is accepted as a surface only when it sits near the page in
+   * brightness, which is what makes something read as a surface at all.
+   * Anything further away is a brand colour in a surface's slot, and the step
+   * is derived instead. Measured rather than special-cased by theme id: the
+   * next theme to do this would otherwise break the same way.
+   */
+  const alt = c.brand.alternate;
+  const altIsSurface = Math.abs(luminance(alt) - luminance(bg)) < 60;
+  const surf2 = altIsSurface ? alt : mix(tx, surf, dark ? 0.08 : 0.05);
 
   // Elevation. Each step moves a little further from the page toward the text
   // colour, which reads as "closer to the viewer" in dark and in light alike.
@@ -79,10 +96,11 @@ export function resolveTokens(theme: ThemeConfig, mode: ColorMode): Record<strin
   const glassStrong = c.surface?.glassStrong ?? alpha(primary, dark ? 0.12 : 0.07);
   const glassBorder = c.surface?.glassBorder ?? alpha(primary, dark ? 0.24 : 0.18);
 
-  // Text ON the primary. Measured, not assumed: amber and brass carry dark
-  // text, deep jade does not, and picking either by hand makes one of the
-  // three themes illegible on every button in the console.
-  const primaryFg = luminance(primary) > 150 ? mix('#000000', bg, 0.82) : '#ffffff';
+  // Text ON the primary — whichever of the theme's own ink and white actually
+  // reads better against it, by WCAG contrast rather than by a brightness
+  // guess. Amber, gold and the VaNi orange take dark text; deep jade takes
+  // white. Choosing by hand makes one theme in four illegible on every button.
+  const primaryFg = bestTextOn(primary, mix('#000000', bg, 0.82), '#ffffff');
 
   const fonts = { ...DEFAULT_FONTS, ...(theme.fonts ?? {}) };
 

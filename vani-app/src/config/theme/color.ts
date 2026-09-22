@@ -9,7 +9,7 @@
  * ever notices until a screen looks flat.
  *
  * Deriving also means a NEW theme is a dozen values. That is the difference
- * between three themes and three themes nobody wants to add a fourth to.
+ * between four themes and four themes nobody wants to add a fifth to.
  *
  * Everything here works in sRGB and stays in hex/rgba. No colour-space
  * cleverness: these are small nudges between two known colours, and OKLCH
@@ -80,14 +80,46 @@ export function alpha(colour: string, a: number): string {
 /**
  * Perceived brightness, 0–255 (ITU-R BT.601).
  *
- * Used for ONE decision: whether text on the primary colour should be the
- * page background or the page text. Gold and amber carry dark text; a deep
- * jade does not, and hardcoding either would make one of the three themes
- * unreadable on every button.
+ * A cheap "is this light or dark" for layout decisions — whether a colour in a
+ * surface slot is plausibly a surface. NOT for choosing text colour: see
+ * `bestTextOn`, which uses the contrast maths that actually governs legibility.
  */
 export function luminance(colour: string): number {
   const { r, g, b } = parse(colour);
   return (r * 299 + g * 587 + b * 114) / 1000;
+}
+
+/** WCAG relative luminance — the gamma-corrected one, not the BT.601 shortcut. */
+function relativeLuminance(colour: string): number {
+  const { r, g, b } = parse(colour);
+  const ch = (v: number) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
+}
+
+/** WCAG contrast ratio, 1–21. */
+export function contrast(a: string, b: string): number {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  const [hi, lo] = la > lb ? [la, lb] : [lb, la];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * Which of two text colours to put ON a background — whichever actually reads
+ * better, measured.
+ *
+ * This was a brightness threshold, and it got the VaNi orange wrong: #ff6b2b
+ * sits at 144 on the BT.601 scale, just under the cutoff, so it chose white —
+ * which is 3.0:1 against that orange, while the theme's own dark ink is 5.9:1.
+ * Every primary button in the default theme would have been the less legible
+ * of the two options available. Brightness is not contrast, and guessing the
+ * threshold is how one theme in four ends up hard to read.
+ */
+export function bestTextOn(background: string, dark: string, light: string): string {
+  return contrast(background, dark) >= contrast(background, light) ? dark : light;
 }
 
 /** Toward white by `amount`. */

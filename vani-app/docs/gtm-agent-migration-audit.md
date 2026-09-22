@@ -198,7 +198,7 @@ before planning on one.
 
 ## Appendix — themes (added 2026-09-22)
 
-The console now carries **three themes, each with a light and a dark variant**,
+The console now carries **four themes, each with a light and a dark variant**,
 stored **per user on the server**. Relevant to the migration above because every
 ported screen must use tokens, never hex:
 

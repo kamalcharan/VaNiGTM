@@ -17,7 +17,7 @@
  * --color-* family, glass and the primary alphas — is produced by
  * `src/config/theme/tokens.ts` from the active theme, and emitted by
  * `ThemeScript` as one rule per theme x mode keyed on
- * html[data-theme][data-mode]. There are three themes, each with light and
+ * html[data-theme][data-mode]. There are four themes, each with light and
  * dark, and the choice is stored per USER on the server.
  *
  * This block holds the measurements that are the same whatever the colours

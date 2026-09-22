@@ -1,18 +1,24 @@
 /**
- * The three themes, and the rules about which one you get.
+ * The four themes, and the rules about which one you get.
  *
  * Adding a fourth is one file under themes/ and one line here.
  */
 
 import type { ColorMode, ThemeConfig } from './types';
+import { VaniTheme } from './themes/vani';
 import { VikunaBlackTheme } from './themes/vikunaBlack';
-import { ModernBusinessTheme } from './themes/modernBusiness';
+import { ProfessionalRedefinedTheme } from './themes/professionalRedefined';
 import { JadeThornTheme } from './themes/jadeThorn';
 
-export const THEMES: ThemeConfig[] = [VikunaBlackTheme, ModernBusinessTheme, JadeThornTheme];
+export const THEMES: ThemeConfig[] = [
+  VaniTheme,
+  VikunaBlackTheme,
+  ProfessionalRedefinedTheme,
+  JadeThornTheme,
+];
 
-/** The product's own. A new user gets this until they choose otherwise. */
-export const DEFAULT_THEME_ID = 'vikuna-black';
+/** The signature orange. A new user gets this until they choose otherwise. */
+export const DEFAULT_THEME_ID = 'vani';
 export const DEFAULT_MODE: ColorMode = 'dark';
 
 /**
@@ -21,7 +27,12 @@ export const DEFAULT_MODE: ColorMode = 'dark';
  * unpainted.
  */
 export function getTheme(id: string | null | undefined): ThemeConfig {
-  return THEMES.find((t) => t.id === id) ?? THEMES[0];
+  // Falls back BY ID, not to THEMES[0]: someone whose stored choice was
+  // 'modern-business' — retired on 2026-09-22 — must land on the declared
+  // default, and that has to stay true however the array is later reordered.
+  return THEMES.find((t) => t.id === id)
+    ?? THEMES.find((t) => t.id === DEFAULT_THEME_ID)
+    ?? THEMES[0];
 }
 
 export function isKnownTheme(id: string | null | undefined): boolean {
