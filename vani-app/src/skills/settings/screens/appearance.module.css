@@ -51,21 +51,46 @@
   color: var(--color-primary);
 }
 
-.modes { display: flex; gap: 8px; }
-.mode {
-  border: 1px solid var(--line);
+/*
+ * A segmented control — one track, two segments, the chosen one FILLED.
+ *
+ * It was two separate bordered buttons, and the affordance came out backwards:
+ * the selected one got `--color-primary-subtle`, which at 5% over a light page
+ * is the page, while the unselected one kept the white `--surf`. So the chosen
+ * segment looked emptier than the unchosen one, and its 1px primary border
+ * read as a validation error rather than a selection.
+ *
+ * Fill is unambiguous in all eight theme x mode combinations, and the label on
+ * it uses --color-primary-fg, which is chosen per theme by measured contrast.
+ */
+.modes {
+  display: inline-flex;
+  /* The section is a flex column, which stretches its children — without this
+     the two-segment track ran the full width of the page. */
+  align-self: flex-start;
+  gap: 3px;
+  padding: 3px;
   background: var(--surf);
-  color: var(--tx2);
-  border-radius: 8px;
-  padding: 9px 16px;
-  font-size: 13px;
-  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: 10px;
 }
-.mode:hover { border-color: var(--color-primary); }
-.modeOn {
-  border-color: var(--color-primary);
-  background: var(--color-primary-subtle);
-  color: var(--tx);
+.mode {
+  border: none;
+  background: transparent;
+  color: var(--tx2);
+  border-radius: 7px;
+  padding: 7px 20px;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.mode:hover { color: var(--tx); }
+.mode:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.modeOn,
+.modeOn:hover {
+  background: var(--color-primary);
+  color: var(--color-primary-fg);
   font-weight: 600;
 }
 
