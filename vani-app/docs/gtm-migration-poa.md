@@ -1,6 +1,9 @@
 # GTM migration — plan of action
 
 **Date:** 2026-09-22 · **Status:** plan. Nothing ported yet.
+**Build order superseded 2026-09-22 by `gtm-ux-poa.md`** — the UX layer is built
+first (journey map → playground → screens on mock transport); §3 below is now
+the INTEGRATION order that follows it. §2 invariants and §5 decisions stand.
 **Reads with:** `gtm-agent-migration-audit.md` (the inventory — what exists,
 what is dead, how big), and VaNiGTM's `documents/design-notes-outreach-and-
 delivery.md` (the channel/consent decisions that gate the later slices).
