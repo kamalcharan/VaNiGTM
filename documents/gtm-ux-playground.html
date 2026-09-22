@@ -1,0 +1,644 @@
+<title>GTM Ten Minutes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+:root{
+  --ground:#0c0c0f; --surface:#15151a; --raised:#1c1c22; --sunk:#101014;
+  --line:#292932; --line-soft:#1f1f27;
+  --ink:#eae7e0; --ink-dim:#a5a3ad; --ink-faint:#74727d;
+  --gold:#c9a227; --gold-soft:#3a2f0d; --gold-dim:#6d570f;
+  --new:#6f9fd8; --new-soft:#15222f;
+  --mine:#6faa84; --mine-soft:#152218;
+  --warn:#d9a441;
+  --display:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --body:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;margin:0;padding-inline:20px;padding-block:0 80px;-webkit-font-smoothing:antialiased}
+.page{max-width:900px;margin:0 auto}
+button{font:inherit;cursor:pointer}
+input,select{font:inherit}
+.mono{font-family:var(--mono)}
+.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+
+/* chrome ------------------------------------------------------------- */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:rgba(12,12,15,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin-inline:-20px;padding:11px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.bar .brand{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:-.01em}
+.bar .brand span{color:var(--gold)}
+.clock{font-family:var(--mono);font-size:13px;color:var(--ink-dim);font-variant-numeric:tabular-nums}
+.clock b{color:var(--gold);font-weight:600}
+.bar .sp{flex:1}
+.ghost{background:transparent;border:1px solid var(--line);color:var(--ink-dim);border-radius:3px;padding:5px 11px;font-size:12.5px}
+.ghost:hover{border-color:var(--gold);color:var(--gold)}
+
+/* background job chip ------------------------------------------------- */
+.job{display:flex;align-items:center;gap:9px;border:1px solid var(--gold-dim);background:var(--gold-soft);border-radius:20px;padding:4px 13px 4px 9px;font-size:12px;color:var(--ink)}
+.job .pulse{width:7px;height:7px;border-radius:50%;background:var(--gold);animation:p 1.4s ease-in-out infinite}
+@keyframes p{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
+.job.done{border-color:var(--mine);background:var(--mine-soft)}
+.job.done .pulse{background:var(--mine);animation:none}
+
+/* director ------------------------------------------------------------ */
+.director{border:1px dashed var(--line);border-radius:4px;padding:13px 16px;margin-top:20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--sunk)}
+.director .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+.seg{display:flex;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--ink-dim);padding:6px 13px;font-size:12.5px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--gold-soft);color:var(--gold)}
+
+/* rail ---------------------------------------------------------------- */
+.rail{display:flex;gap:0;margin:26px 0 30px;overflow-x:auto;border-bottom:1px solid var(--line)}
+.rail div{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);padding:0 14px 11px 0;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px}
+.rail div.on{color:var(--gold);border-bottom-color:var(--gold)}
+.rail div.past{color:var(--ink-dim)}
+
+h1{font-family:var(--display);font-weight:700;font-size:clamp(26px,4.6vw,36px);line-height:1.06;letter-spacing:-.022em;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:19px;letter-spacing:-.012em;margin:0}
+.lede{color:var(--ink-dim);margin:10px 0 0;max-width:62ch}
+.stage{padding-block:6px 0}
+
+/* generic ------------------------------------------------------------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:20px 22px;margin-top:16px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.primary{background:var(--gold);color:#12100a;border:0;border-radius:3px;padding:10px 20px;font-weight:600;font-size:14px}
+.primary:disabled{opacity:.3;cursor:not-allowed}
+.primary.quiet{background:transparent;color:var(--gold);border:1px solid var(--gold)}
+.ti{background:var(--sunk);border:1px solid var(--line);color:var(--ink);border-radius:3px;padding:10px 13px;font-size:15px;width:100%}
+.ti:focus{outline:2px solid var(--gold);outline-offset:1px}
+.hint{color:var(--ink-faint);font-size:13px;margin:9px 0 0}
+.subh{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin:20px 0 4px}
+.note{color:var(--ink-faint);font-size:12.5px;margin-top:16px;max-width:66ch}
+.foot{margin-top:40px;padding-top:22px;border-top:1px solid var(--line-soft);color:var(--ink-faint);font-size:12.5px;max-width:70ch}
+.prov{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;padding:2px 7px;border-radius:2px;white-space:nowrap}
+.prov.pool{background:var(--new-soft);color:var(--new);border:1px solid #27405a}
+.prov.mine{background:var(--mine-soft);color:var(--mine);border:1px solid #23402c}
+.prov.dim{background:var(--sunk);color:var(--ink-faint);border:1px solid var(--line)}
+.prov.warn{background:#2a2013;color:var(--warn);border:1px solid #4a3a1a}
+.prov.bad{background:#2a1614;color:#e0695c;border:1px solid #4a2a26}
+/* readiness ----------------------------------------------------------- */
+.ready{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--line-soft);border-radius:3px;overflow:hidden;margin-top:16px}
+.rd{background:var(--surface);padding:13px 15px}
+.rd .k{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-faint)}
+.rd .v{font-size:13.5px;margin-top:5px;line-height:1.45}
+.rd.miss .v{color:var(--warn)}
+.rd .s{font-family:var(--mono);font-size:10px;color:var(--mine);margin-top:4px}
+.rd.miss .s{color:var(--warn)}
+.changed{margin-top:16px;display:flex;flex-direction:column;gap:6px}
+.chg{display:flex;gap:10px;font-size:13px;align-items:baseline}
+.chg .t{font-family:var(--mono);font-size:11px;color:var(--ink-faint);flex:0 0 74px}
+.lane{border-left:2px solid var(--warn);background:#2a2013;padding:14px 16px;border-radius:0 3px 3px 0;margin-top:18px}
+.lane b{color:var(--ink)}
+/* lists --------------------------------------------------------------- */
+.list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.it{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:12px 15px;display:grid;grid-template-columns:22px 1fr auto;gap:12px;align-items:start}
+.it.off{opacity:.45}
+.it .nm{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:-.008em}
+.it .why{color:var(--ink-dim);font-size:13px;margin-top:3px;line-height:1.5}
+.it .meta{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.tick{width:22px;height:22px;flex:0 0 22px;border-radius:3px;border:1.5px solid var(--line);background:var(--sunk);display:grid;place-items:center;color:transparent;font-size:13px;margin-top:2px;cursor:pointer}
+.it.on .tick{border-color:var(--mine);background:var(--mine);color:#0c1a11}
+.seg2{display:flex;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.seg2 button{background:transparent;border:0;color:var(--ink-dim);padding:5px 10px;font-size:12px}
+.seg2 button+button{border-left:1px solid var(--line)}
+.seg2 button[aria-pressed="true"]{background:var(--gold-soft);color:var(--gold)}
+.seg2 button.bad[aria-pressed="true"]{background:#2a1614;color:#e0695c}
+.seg2 button.later[aria-pressed="true"]{background:var(--sunk);color:var(--ink)}
+.brief{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:18px 20px;margin-top:12px}
+.brief .bh{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.fit{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap}
+.fitc{background:var(--sunk);border:1px solid var(--line);border-radius:3px;padding:9px 12px;min-width:170px}
+.fitc .k{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)}
+.fitc .v{font-family:var(--display);font-weight:700;font-size:20px;margin-top:3px}
+.fitc.best{border-color:var(--gold)}
+.ev{margin-top:12px;display:flex;flex-direction:column;gap:7px}
+.evl{font-size:13px;line-height:1.5;padding-left:12px;border-left:2px solid var(--line)}
+.evl .u{font-family:var(--mono);font-size:11px;color:var(--new);display:block;margin-top:2px}
+.evl .q{color:var(--ink-dim);font-style:italic}
+.wf{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.wf span{font-family:var(--mono);font-size:10.5px;padding:3px 8px;border-radius:2px;border:1px solid var(--line);color:var(--ink-faint)}
+.wf span.hit{border-color:var(--mine);color:var(--mine)}
+.wf span.miss{border-color:#4a2a26;color:#e0695c;text-decoration:line-through}
+.wf span.na{border-style:dashed}
+/* feed ---------------------------------------------------------------- */
+.feed{margin-top:14px;display:flex;flex-direction:column;gap:7px}
+.fline{display:flex;gap:10px;font-size:13.5px;align-items:baseline;opacity:0;animation:in .4s ease forwards}
+@keyframes in{to{opacity:1}}
+.fline .t{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);flex:0 0 46px;font-variant-numeric:tabular-nums}
+.fline .d{color:var(--mine)}
+/* queue / motion ------------------------------------------------------ */
+.empty{border:1px dashed var(--line);border-radius:4px;padding:26px 24px;margin-top:16px;background:var(--sunk)}
+.empty h2{margin-top:6px}
+.q{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:12px 15px}
+.q .reason{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--warn)}
+.q .reason.urgent{color:#e0695c}
+.story{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:18px 20px;margin-top:12px;font-size:14px;line-height:1.65}
+.story .sh{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.story p{margin:8px 0}
+.provn{margin-top:12px;padding-top:10px;border-top:1px solid var(--line-soft);font-family:var(--mono);font-size:11px;color:var(--ink-faint);line-height:1.6}
+.win{display:grid;grid-template-columns:1fr auto;gap:8px 14px;align-items:center;margin-top:12px}
+.win .nm{font-size:13.5px}
+.win .slots{display:flex;gap:4px}
+.win .slots i{display:block;width:26px;height:8px;border-radius:2px;background:var(--line)}
+.win .slots i.used{background:var(--warn)}
+.win .slots i.plan{background:var(--gold)}
+.win .w{font-family:var(--mono);font-size:11px;color:var(--ink-faint)}
+.lock{border:1px solid var(--warn);background:#2a2013;border-radius:4px;padding:22px 24px;margin-top:16px}
+.lock .lk{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--warn)}
+.done{border:1px solid var(--mine);background:var(--mine-soft);border-radius:4px;padding:22px 24px;margin-top:16px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--line-soft);border-radius:3px;overflow:hidden;margin-top:18px}
+.metric{background:var(--surface);padding:14px 16px}
+.metric .k{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-faint)}
+.metric .v{font-family:var(--display);font-weight:700;font-size:24px;margin-top:5px;letter-spacing:-.02em}
+.up{border:1px dashed var(--line);border-radius:4px;padding:14px 16px;margin-top:14px;background:var(--sunk);font-size:13.5px}
+.map{display:grid;grid-template-columns:1fr 20px 1fr;gap:6px 10px;font-family:var(--mono);font-size:11.5px;margin-top:10px;align-items:center}
+.map .a{color:var(--ink-dim)}.map .b{color:var(--mine)}.map .arr{color:var(--ink-faint);text-align:center}
+@media (max-width:640px){.bar{gap:9px}.it{grid-template-columns:22px 1fr}.it>.seg2,.it>.prov{grid-column:2}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+
+<div class="page">
+  <div class="bar">
+    <div class="brand">GTM<span>.</span></div>
+    <div class="clock" id="clock">not started</div>
+    <div class="sp"></div>
+    <div id="jobslot"></div>
+    <button class="ghost" id="restart">Restart</button>
+  </div>
+
+  <div class="director">
+    <span class="lbl">Global data</span>
+    <div class="seg" id="d-data">
+      <button data-v="fed" aria-pressed="true">Pool fed</button>
+      <button data-v="unfed" aria-pressed="false">Pool never fed (today)</button>
+    </div>
+    <span class="lbl">Smart Profile</span>
+    <div class="seg" id="d-profile">
+      <button data-v="ready" aria-pressed="true">Ready</button>
+      <button data-v="nooffer" aria-pressed="false">No offer yet</button>
+    </div>
+    <span class="lbl">Identity</span>
+    <div class="seg" id="d-id">
+      <button data-v="tenant" aria-pressed="true">Tenant</button>
+      <button data-v="first" aria-pressed="false">First-party</button>
+    </div>
+  </div>
+
+  <div class="rail" id="rail"></div>
+  <div class="stage" id="stage"></div>
+
+  <p class="foot">
+    Everything here is synthetic: a fictional tenant (Ledgerline), fictional
+    hospitals, fictional people, fictional evidence. Nothing is from a real crawl,
+    a real run or a real provider. The shapes — hot list, brief, waterfall, queue,
+    window, lock — are the contract the screens are built to; the words are not.
+  </p>
+</div>
+
+<script>
+/* ── synthetic tenant ────────────────────────────────────────────────── */
+const PROFILE={
+  product:'Ledgerline', what:'Contract lifecycle software for hospitals — renewals, vendor SLAs, AMC tracking.',
+  buyer:'Head of Procurement / Contracts, 200–800 bed hospitals',
+  pains:['renewals missed','vendor SLAs unenforced','AMC visits untracked'],
+  vocab:['contract lifecycle','vendor compliance','renewal leakage','AMC / SLA tracking'],
+  brand:['plain','evidence-first','never "revolutionary"'],
+  offers:[
+    {id:'audit',name:'Contract audit',ask:'entry',line:'Two weeks, your top 50 contracts, a leakage number you can act on.'},
+    {id:'platform',name:'Ledgerline platform',ask:'project',line:'Every contract, every renewal, every SLA — in one place.'}
+  ]
+};
+
+/* ── the hot list: what the pool holds for this vocabulary + ICP ─────── */
+const HOT=[
+  {id:'sunridge',name:'Sunridge Multispeciality Hospital',city:'Pune',beds:420,src:'pool · directory load',fresh:'21 days',why:'"vendor compliance" and "AMC" appear on their procurement page; 400+ beds'},
+  {id:'kaveri',name:'Kaveri Heart Institute',city:'Bengaluru',beds:260,src:'pool · supplier list',fresh:'8 days',why:'Tender notices mention "annual maintenance contract" for 3 device families'},
+  {id:'northfield',name:'Northfield General',city:'Ahmedabad',beds:610,src:'pool · directory load',fresh:'34 days',why:'Recent NABH renewal — contract governance is a scored criterion'},
+  {id:'brigid',name:"St. Brigid's Hospital",city:'Kochi',beds:340,src:'pool · directory load',fresh:'5 days',why:'Job posting for "Contracts Officer" this month — a buyer is being hired'},
+  {id:'ashoka',name:"Ashoka Children's Hospital",city:'Hyderabad',beds:180,src:'pool · supplier list',fresh:'62 days',why:'Below your bed range; kept because vocabulary matched twice'},
+  {id:'meadow',name:'Meadowbrook Medical Centre',city:'Nagpur',beds:290,src:'pool · directory load',fresh:'15 days',why:'Procurement head quoted on "vendor SLA penalties" in trade press'},
+  {id:'trident',name:'Trident Ortho & Spine',city:'Chennai',beds:120,src:'pool · directory load',fresh:'40 days',why:'Below your bed range; one vocabulary hit. Weak.'},
+  {id:'harbour',name:'Harbourview Hospitals',city:'Visakhapatnam',beds:530,src:'pool · supplier list',fresh:'11 days',why:'Three-site group; "renewal" appears in their annual report risk section'}
+];
+/* the tenant's own spreadsheet: two overlap the pool, two are new */
+const UPLOAD=[
+  {id:'sunridge',dup:true},{id:'harbour',dup:true},
+  {id:'lotus',name:'Lotus Valley Hospital',city:'Coimbatore',beds:310,src:'your list · hospitals-q3.xlsx',fresh:'today',why:'On your list. No domain in the file — nothing to research until one is found.',nodomain:true},
+  {id:'cedar',name:'Cedar Ridge Medical College',city:'Mysuru',beds:700,src:'your list · hospitals-q3.xlsx',fresh:'today',why:'On your list. Teaching hospital — larger than your stated range, kept.'}
+];
+const BRIEFS={
+  sunridge:{fit:{audit:82,platform:71},ask:'audit',ev:[
+    {c:'Runs 140+ vendor contracts across two campuses',u:'sunridge-hospital.example/procurement',q:'…our empanelled vendor base of 140 firms across both campuses…'},
+    {c:'AMC visits tracked in spreadsheets',u:'sunridge-hospital.example/tenders/2026-biomed',q:'…bidder to submit AMC visit logs in the attached Excel format…'},
+    {c:'Procurement head in post since March',u:'search · trade press',q:'…appointed Head of Procurement, Sunridge, March 2026…'}]},
+  kaveri:{fit:{audit:74,platform:58},ask:'audit',ev:[
+    {c:'Three AMC tenders live this quarter',u:'kaveri-heart.example/tenders',q:'…annual maintenance contract for cath-lab, echo and monitoring…'},
+    {c:'No contracts role on the org chart',u:'kaveri-heart.example/about/leadership',q:'(no procurement or contracts title listed)'}]},
+  northfield:{fit:{audit:66,platform:77},ask:'audit',ev:[
+    {c:'NABH renewed; contract governance cited',u:'search · accreditation notice',q:'…demonstrated vendor contract governance and SLA review…'},
+    {c:'610 beds, single campus',u:'northfield-general.example',q:'…610-bed tertiary care…'}]},
+  brigid:{fit:{audit:88,platform:80},ask:'audit',ev:[
+    {c:'Hiring a Contracts Officer now',u:'search · job board',q:'…Contracts Officer — manage renewals, vendor SLAs and AMC schedules…'},
+    {c:'Renewal leakage named as a problem in the posting',u:'search · job board',q:'…reduce missed renewals and unenforced penalties…'}]},
+  meadow:{fit:{audit:69,platform:52},ask:'audit',ev:[
+    {c:'Head of Procurement quoted on SLA penalties',u:'search · trade press',q:'…we lose money every quarter on penalties we never claim…'}]},
+  harbour:{fit:{audit:61,platform:84},ask:'audit',ev:[
+    {c:'Three sites, group procurement',u:'harbourview.example/group',q:'…centralised procurement for all three hospitals…'},
+    {c:'"Renewal" in the risk section of the annual report',u:'harbourview.example/investors/ar-2026.pdf',q:'…risk of unfavourable auto-renewal on service contracts…'}]},
+  cedar:{fit:{audit:44,platform:49},ask:'audit',ev:[
+    {c:'Teaching hospital; procurement under the trust',u:'cedarridge.example/trust',q:'…procurement is administered by the Cedar Ridge Education Trust…'}]},
+  ashoka:{fit:{audit:38,platform:30},ask:'audit',ev:[{c:'180 beds; one vocabulary hit on a 2024 page',u:'ashoka-childrens.example/vendors',q:'…vendor compliance form…'}]},
+  trident:{fit:{audit:22,platform:18},ask:'audit',ev:[{c:'120 beds; nothing on contracts anywhere on the site',u:'trident-ortho.example',q:'(no evidence found)'}]}
+};
+const PEOPLE={
+  sunridge:[{n:'R. Menon',t:'Head of Procurement',src:['pool','upload','apollo'],email:'hit',li:true,reserved:1},
+            {n:'A. Deshpande',t:'CFO',src:['pool','upload','apollo'],email:'miss',li:true,reserved:0}],
+  brigid:[{n:'T. Varghese',t:'Chief Operating Officer',src:['pool','upload','apollo'],email:'hit',li:true,reserved:0},
+          {n:'(open role)',t:'Contracts Officer — being hired',src:[],email:'na',li:false,reserved:0}],
+  harbour:[{n:'S. Rao',t:'Group Procurement Head',src:['pool','upload','apollo'],email:'hit',li:true,reserved:2},
+           {n:'P. Naidu',t:'Director, Biomedical',src:['pool','upload','apollo'],email:'miss',li:true,reserved:0}],
+  northfield:[{n:'K. Patel',t:'Head of Administration',src:['pool','upload','apollo'],email:'hit',li:false,reserved:0}],
+  kaveri:[{n:'(none found)',t:'no procurement title on the leadership page',src:[],email:'na',li:false,reserved:0}],
+  meadow:[{n:'N. Joshi',t:'Head of Procurement',src:['pool','upload','apollo'],email:'hit',li:true,reserved:0}],
+  cedar:[{n:'Trust office',t:'procurement via the trust — no named buyer',src:[],email:'na',li:false,reserved:0}]
+};
+
+/* ── state ───────────────────────────────────────────────────────────── */
+const STEPS=['Land','Hot list','Find','Qualify','People','Today','Segment','Story','Cadence','Send'];
+let S;
+function reset(keep){
+  const d=keep&&S?S.d:{data:'fed',profile:'ready',id:'tenant'};
+  S={d,step:0,t0:null,job:null,jobStep:0,uploaded:false,
+     cohort:new Set(),verdict:{},promoted:new Set(),researched:false,
+     inMotion:false,decided:{},storyOk:false,reserved:false,doneAt:null};
+  render();
+}
+const now=()=>S.t0?Math.floor((Date.now()-S.t0)/1000):0;
+const mmss=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+function tick(){ const c=document.getElementById('clock');
+  c.innerHTML=S.t0?`elapsed <b>${mmss(now())}</b>`:'not started'; }
+setInterval(tick,1000);
+const el=id=>document.getElementById(id);
+const byId=id=>HOT.find(h=>h.id===id)||UPLOAD.find(u=>u.id===id);
+
+/* the companies on the table right now: pool rows (if fed) + upload rows (if brought) */
+function table(){
+  const rows=[]; const seen=new Set();
+  if(S.d.data==='fed') for(const h of HOT){ rows.push({...h,from:'pool'}); seen.add(h.id); }
+  if(S.uploaded) for(const u of UPLOAD){
+    if(u.dup){ const r=rows.find(x=>x.id===u.id); if(r) r.also=true; else { rows.push({...byId(u.id),from:'mine',src:'your list · hospitals-q3.xlsx'}); } }
+    else rows.push({...u,from:'mine'});
+  }
+  return rows;
+}
+const worth=()=>[...S.cohort].filter(id=>S.verdict[id]==='yes');
+
+/* ── render ──────────────────────────────────────────────────────────── */
+function render(){
+  tick();
+  el('rail').innerHTML=STEPS.map((s,i)=>
+    `<div class="${i===S.step?'on':i<S.step?'past':''}">${i+1} · ${s}</div>`).join('');
+  el('jobslot').innerHTML = !S.job ? '' :
+    S.job==='done' ? `<div class="job done"><span class="pulse"></span>Research done · ${S.cohort.size} briefs</div>`
+                   : `<div class="job"><span class="pulse"></span>Researching ${S.cohort.size} companies…</div>`;
+  el('stage').innerHTML=[S0,S1,S2,S3,S4,S5,S6,S7,S8,S9][S.step]();
+  wire();
+}
+
+/* 0 — land ------------------------------------------------------------ */
+function S0(){
+  const ready=S.d.profile==='ready';
+  const cells=[
+    ['Product',PROFILE.product+' — '+PROFILE.what,true],
+    ['Buyer',PROFILE.buyer,true],
+    ['Vocabulary',PROFILE.vocab.join(' · '),true],
+    ['Brand',PROFILE.brand.join(' · '),true],
+    ['Offers',ready?PROFILE.offers.map(o=>`${o.name} (${o.ask})`).join(' · '):'none defined',ready],
+    ['Competitors','none named — positions on category',true]
+  ];
+  return `
+  <div class="eyebrow">AGENTS · GTM</div>
+  <h1 style="margin-top:12px">Here is who you sell to</h1>
+  <p class="lede">Read from your Smart Profile. Nothing here is asked again — if something is
+  missing, the fix is one link away, not a form on this page.</p>
+  <div class="ready">${cells.map(([k,v,ok])=>`<div class="rd ${ok?'':'miss'}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${ok?'captured':'missing'}</div></div>`).join('')}</div>
+  ${ready?`
+  <div class="changed">
+    <div class="subh" style="margin-top:18px">What changed since you last looked</div>
+    <div class="chg"><span class="t">yesterday</span><span>Your profile crossed the line — 64/100. GTM can work from it now.</span></div>
+    <div class="chg"><span class="t">2 days ago</span><span>Read your pricing page: 2 offers drafted, both confirmed by you.</span></div>
+    <div class="chg"><span class="t">4 days ago</span><span>Vocabulary ratified: 4 clusters, 41 terms.</span></div>
+  </div>
+  <div class="row" style="margin-top:22px"><button class="primary" id="go0">Build the audience</button>
+    <span class="hint" style="margin:0">Step 1 of 4 · about ten minutes</span></div>`
+  :`
+  <div class="lane"><span class="prov warn">THE OTHER LANE</span>
+    <p style="margin:10px 0 0"><b>I know your product and your buyer. I don't have an offer yet</b> — and fit is
+    scored against an offer, so I have nothing to score against. Define one and come back.</p>
+    <div class="row" style="margin-top:14px"><button class="primary quiet" id="fixoffer">Define an offer → Smart Profile</button>
+      <span class="hint" style="margin:0">(in the product this is a link; here it flips the scenario)</span></div>
+  </div>
+  <p class="note">There is no button to start GTM on this screen. The missing thing IS the screen —
+  not a disabled button with a reason under it, and not an offers form inside GTM.</p>`}`;
+}
+
+/* 1 — hot list -------------------------------------------------------- */
+function S1(){
+  const fed=S.d.data==='fed';
+  const rows=table();
+  const upl=`<div class="up">
+    <div class="row"><b>Add your own list</b><span class="hint" style="margin:0">.xlsx / .csv — mapped before anything lands</span></div>
+    ${S.uploaded?`<div class="map">
+      <span class="a">Hospital Name</span><span class="arr">→</span><span class="b">name</span>
+      <span class="a">City</span><span class="arr">→</span><span class="b">city</span>
+      <span class="a">Website</span><span class="arr">→</span><span class="b">domain (1 of 4 rows empty)</span>
+      <span class="a">Beds (approx)</span><span class="arr">→</span><span class="b">employees_band → mapped as beds</span></div>
+      <p class="hint">4 rows · 2 already in the hot list (merged, source kept) · 2 new · 0 invalid</p>`
+    :`<div class="row" style="margin-top:10px"><button class="primary quiet" id="upload">Drop hospitals-q3.xlsx</button>
+      <button class="primary quiet" id="byok" disabled title="Not built">Connect my Apollo / Clay</button>
+      <span class="prov dim">own provider · not built</span></div>`}
+  </div>`;
+  if(!fed && !S.uploaded) return `
+    <div class="eyebrow">BUILD THE AUDIENCE · 1 OF 4</div>
+    <h1 style="margin-top:12px">I have no companies for you yet</h1>
+    <p class="lede">The hot list opens from our global data — and for your market it has never been fed.
+    That is the truth today, so it is the screen today: bring a list, or connect a source.</p>
+    <div class="row" style="margin-top:8px"><span class="prov bad">POOL · NOT YET FED</span>
+      <span class="prov dim">APOLLO / AUTOGTM · NOT CONNECTED</span></div>
+    ${upl}
+    <p class="note">What this screen must never do: show an empty "hot list" with a spinner, or a
+    fake count. Rule 12 — the degraded thing is labelled, not dressed up.</p>`;
+  return `
+    <div class="eyebrow">BUILD THE AUDIENCE · 1 OF 4</div>
+    <h1 style="margin-top:12px">${fed?`${HOT.length} hospitals look like your buyer`:`${rows.length} hospitals from your list`}</h1>
+    <p class="lede">${fed?`From our global data, matched on your vocabulary and your buyer. Each row says where it came from and how fresh it is.`:`From your spreadsheet. Nothing from the pool — it has not been fed for your market.`}
+    ${S.uploaded&&fed?' Your list is merged in — where a hospital was already here, it is one row with both sources.':''}</p>
+    <div class="row" style="margin-top:6px">
+      ${fed?`<span class="prov pool">POOL · ${HOT.length} rows</span>`:`<span class="prov bad">POOL · NOT YET FED</span>`}
+      ${S.uploaded?`<span class="prov mine">YOUR LIST · 4 rows</span>`:''}
+      <span class="prov dim">APOLLO / AUTOGTM · NOT CONNECTED</span>
+    </div>
+    <div class="list">${rows.map(r=>`<div class="it">
+      <span></span>
+      <div><div class="nm">${r.name} <span class="count">· ${r.city} · ${r.beds} beds</span></div>
+        <div class="why">${r.why}</div>
+        <div class="meta"><span class="prov ${r.from==='pool'?'pool':'mine'}">${r.src}</span>${r.also?'<span class="prov mine">also on your list</span>':''}<span>fresh · ${r.fresh}</span>${r.nodomain?'<span class="prov warn">no domain</span>':''}</div></div>
+      <span></span></div>`).join('')}</div>
+    ${S.uploaded?upl:upl}
+    <div class="row" style="margin-top:20px"><button class="primary" id="go1">Pick who to research</button></div>`;
+}
+
+/* 2 — find (confirm the cohort) --------------------------------------- */
+function S2(){
+  const rows=table();
+  const n=S.cohort.size;
+  return `
+    <div class="eyebrow">BUILD THE AUDIENCE · 2 OF 4</div>
+    <h1 style="margin-top:12px">Which of these are worth researching?</h1>
+    <p class="lede">Research costs a budget, so this is a decision, not a default. Every row says what is
+    already known; untick the obvious misses. The two below your bed range are pre-unticked and say why.</p>
+    <div class="list">${rows.map(r=>{const on=S.cohort.has(r.id); const weak=r.beds<200||r.nodomain;
+      return `<div class="it ${on?'on':''} ${!on&&weak?'off':''}">
+      <button class="tick" data-pick="${r.id}" aria-pressed="${on}">✓</button>
+      <div><div class="nm">${r.name} <span class="count">· ${r.beds} beds</span></div>
+        <div class="why">${r.nodomain?'No domain — cannot be researched until one is found. Left out.':r.why}</div></div>
+      <span class="count">${on?'research':'skip'}</span></div>`;}).join('')}</div>
+    <div class="row" style="margin-top:20px">
+      <button class="primary" id="go2" ${n?'':'disabled'}>${n?`Research ${n} · budget ${n*2} of 40 today`:'Pick at least one'}</button>
+      <span class="hint" style="margin:0">One LLM call at a time on the platform — ${n?`about ${n*2} minutes`:''}</span></div>`;
+}
+
+/* 3 — qualify ---------------------------------------------------------- */
+function S3(){
+  if(!S.researched) return `
+    <div class="eyebrow">BUILD THE AUDIENCE · 3 OF 4</div>
+    <h1 style="margin-top:12px">Reading ${S.cohort.size} hospitals</h1>
+    <p class="lede">Their sites, then the open web, framed by your vocabulary. Each brief lands as it
+    finishes — you do not wait for the batch. The run survives a restart; what is written stays written.</p>
+    <div class="card"><div class="feed" id="feed"></div>
+      <div class="row" style="margin-top:16px"><button class="primary quiet" id="skipres">Carry on — I'll read them as they land</button></div></div>`;
+  const ids=[...S.cohort];
+  const off=PROFILE.offers;
+  return `
+    <div class="eyebrow">BUILD THE AUDIENCE · 3 OF 4</div>
+    <h1 style="margin-top:12px">${ids.length} briefs. Who is worth a message?</h1>
+    <p class="lede">Fit is scored per offer, blind to how big the ask is — then GTM opens with the smallest
+    ask among the offers that fit. Every claim carries where it was read. Decide per row; your verdicts
+    teach the next batch.</p>
+    ${ids.map(id=>{const r=byId(id),b=BRIEFS[id],v=S.verdict[id]; const best=Object.entries(b.fit).sort((a,c)=>c[1]-a[1])[0][0];
+      return `<div class="brief"><div class="bh">
+        <div><div class="nm" style="font-family:var(--display);font-weight:600;font-size:16px">${r.name}</div>
+          <div class="hint" style="margin-top:2px">${r.city} · ${r.beds} beds · <span class="prov ${r.from==='pool'?'pool':'mine'}">${r.src}</span></div></div>
+        <div class="seg2">
+          <button data-v="${id}:yes" aria-pressed="${v==='yes'}">Worth a message</button>
+          <button class="later" data-v="${id}:later" aria-pressed="${v==='later'}">Later</button>
+          <button class="bad" data-v="${id}:no" aria-pressed="${v==='no'}">Not this one</button></div></div>
+        <div class="fit">${off.map(o=>`<div class="fitc ${o.id===best?'best':''}"><div class="k">${o.name} · ${o.ask}</div><div class="v">${b.fit[o.id]}%</div></div>`).join('')}
+          <div class="fitc"><div class="k">Open with</div><div class="v" style="font-size:14px;margin-top:8px">${off.find(o=>o.id===b.ask).name} — the entry ask</div></div></div>
+        <div class="subh">Evidence · ${b.ev.length} ${b.ev.length===1?'claim':'claims'}</div>
+        <div class="ev">${b.ev.map(e=>`<div class="evl">${e.c}<span class="u">${e.u}</span><span class="q">${e.q}</span></div>`).join('')}</div>
+      </div>`;}).join('')}
+    <div class="row" style="margin-top:20px"><button class="primary" id="go3" ${worth().length?'':'disabled'}>${worth().length?`Find people at ${worth().length}`:'Mark at least one worth a message'}</button>
+      <span class="hint" style="margin:0">${Object.keys(S.verdict).length} of ${ids.length} decided</span></div>`;
+}
+
+/* 4 — people ----------------------------------------------------------- */
+function S4(){
+  const ids=worth();
+  // A waterfall stops at the first hit. Upload is tried first (it is the
+  // tenant's own data), then the pool; a provider that is not connected is
+  // shown as not tried, never as a miss.
+  const wf=p=>p.src.length?`<div class="wf">
+      <span class="miss">upload</span>
+      <span class="${p.email==='hit'?'hit':'miss'}">pool</span>
+      <span class="na">apollo · not connected</span>
+      ${p.email==='hit'?'<span class="hit">email found · pool</span>':'<span class="miss">no email found</span>'}
+      ${p.li?'<span class="hit">linkedin</span>':''}</div>`:'';
+  return `
+    <div class="eyebrow">BUILD THE AUDIENCE · 4 OF 4</div>
+    <h1 style="margin-top:12px">Who, at the ${ids.length} worth it</h1>
+    <p class="lede">Found from the briefs. Each person shows every source tried, hit or miss — and an honest
+    "no email found" where there is none. Nobody is invented. Promote the ones who matter.</p>
+    ${ids.map(id=>{const r=byId(id);const ps=PEOPLE[id]||[];
+      return `<div class="subh">${r.name}</div><div class="list" style="margin-top:6px">${ps.map((p,i)=>{const k=id+':'+i,on=S.promoted.has(k),dead=!p.src.length;
+        return `<div class="it ${on?'on':''}"><button class="tick" ${dead?'disabled':''} data-prom="${k}" aria-pressed="${on}">✓</button>
+          <div><div class="nm">${p.n} <span class="count">· ${p.t}</span></div>${wf(p)}${dead?`<div class="why">${p.t}. Say so — do not fake a spinner over it.</div>`:''}</div>
+          <span class="count">${on?'CONT-00'+(String([...S.promoted].indexOf(k)+1).padStart(2,'0')):''}</span></div>`;}).join('')}</div>`;}).join('')}
+    <div class="row" style="margin-top:20px"><button class="primary" id="go4" ${S.promoted.size?'':'disabled'}>${S.promoted.size?`Done — ${S.promoted.size} ${S.promoted.size===1?'person':'people'} in your audience`:'Promote at least one person'}</button></div>`;
+}
+
+/* 5 — today ------------------------------------------------------------ */
+function S5(){
+  if(!S.inMotion) return `
+    <div class="eyebrow">TODAY</div>
+    <h1 style="margin-top:12px">Nothing has gone quiet</h1>
+    <p class="lede">Because nothing is in motion yet. This queue ranks who to come back to — it fills the
+    day after you put people in motion, not before.</p>
+    <div class="empty"><span class="prov mine">AUDIENCE BUILT · ${mmss(now())}</span>
+      <h2>${S.promoted.size} people at ${worth().length} hospitals are waiting for a story</h2>
+      <p class="lede" style="margin-top:8px">Put them in motion: a segment, a story per segment, the cadence window, then send.</p>
+      <div class="row" style="margin-top:16px"><button class="primary" id="go5">Put them in motion</button></div></div>
+    <p class="note">The old console's /today showed a Brain-completeness card here. This is the queue the
+    attention-skill has always computed, with the one honest thing to say on day one.</p>`;
+  const rows=[
+    {n:'R. Menon · Sunridge',r:'owed a reply',u:true,d:'Replied 2 days ago: "send me the audit scope". Nobody has.'},
+    {n:'S. Rao · Harbourview',r:'wake due',u:false,d:'Parked until today — "after the board meeting". It was yesterday.'},
+    {n:'T. Varghese · St. Brigid\'s',r:'gone quiet · 9 days',u:false,d:'Opened the story twice, no reply. One touch left this window.'}
+  ];
+  return `
+    <div class="eyebrow">TODAY</div>
+    <h1 style="margin-top:12px">Three to come back to</h1>
+    <p class="lede">Ranked by what it costs to leave them. Anyone already reserved this week is not here —
+    the governor already has them.</p>
+    <div class="list">${rows.map((q,i)=>`<div class="q"><div><div class="reason ${q.u?'urgent':''}">${q.r}</div>
+      <div class="nm" style="font-weight:600;margin-top:3px">${q.n}</div><div class="why">${q.d}</div></div>
+      <div class="seg2"><button data-dec="${i}:do" aria-pressed="${S.decided[i]==='do'}">Act</button>
+        <button class="later" data-dec="${i}:park" aria-pressed="${S.decided[i]==='park'}">Park a week</button>
+        <button class="bad" data-dec="${i}:drop" aria-pressed="${S.decided[i]==='drop'}">Let go</button></div></div>`).join('')}</div>
+    <div class="done" style="margin-top:22px"><div class="eyebrow" style="color:var(--mine)">DONE · THE TEN MINUTES</div>
+      <h2 style="margin-top:9px">A list worth a message, and a morning that tells you who</h2>
+      <div class="metrics">
+        <div class="metric"><div class="k">To a list worth it</div><div class="v">${mmss(S.doneAt||now())}</div></div>
+        <div class="metric"><div class="k">Proposed → worth it</div><div class="v">${table().length} → ${worth().length}</div></div>
+        <div class="metric"><div class="k">People</div><div class="v">${S.promoted.size}</div></div>
+        <div class="metric"><div class="k">Forms filled</div><div class="v">0</div></div></div>
+      <p class="note">Every screen opened on something GTM had already done and asked for one decision.
+      The offers were never typed here; the profile was never re-asked; the pool row said where it came from.</p>
+      <div class="row" style="margin-top:16px"><button class="primary quiet" id="again">Run it again</button></div></div>`;
+}
+
+/* 6 — segment ---------------------------------------------------------- */
+function S6(){
+  const ids=worth(); const big=ids.filter(id=>byId(id).beds>=500), small=ids.filter(id=>byId(id).beds<500);
+  return `
+    <div class="eyebrow">PUT THEM IN MOTION · 1 OF 4</div>
+    <h1 style="margin-top:12px">Two groups, one story each</h1>
+    <p class="lede">Proposed from your verdicts and the offer each brief fit best. Named in your own vocabulary.
+    Confirm, or split.</p>
+    <div class="list">
+      ${small.length?`<div class="it on"><span class="tick">✓</span><div><div class="nm">Renewal leakage · single-site · entry ask</div>
+        <div class="why">${small.map(id=>byId(id).name).join(' · ')}. Opens with the <b>Contract audit</b>.</div></div><span class="count">${small.length}</span></div>`:''}
+      ${big.length?`<div class="it on"><span class="tick">✓</span><div><div class="nm">Group procurement · multi-site · platform fit, entry ask</div>
+        <div class="why">${big.map(id=>byId(id).name).join(' · ')}. Platform fits best; still opens with the <b>audit</b> — the smallest yes.</div></div><span class="count">${big.length}</span></div>`:''}
+    </div>
+    <div class="row" style="margin-top:20px"><button class="primary" id="go6">These are right — write the stories</button></div>`;
+}
+
+/* 7 — story ------------------------------------------------------------ */
+function S7(){
+  return `
+    <div class="eyebrow">PUT THEM IN MOTION · 2 OF 4</div>
+    <h1 style="margin-top:12px">The story, and the move</h1>
+    <p class="lede">The story is about you and is reused across the segment — an <b>asset</b>. The move is about
+    <em>them</em> and is never reused. Same agent, two grains; the line between nurture and personalised spam.</p>
+    <div class="story"><div class="sh"><span class="prov pool">ASSET · renewal leakage · entry ask</span><span class="prov dim">v1 · unapproved</span></div>
+      <p><b>Most hospitals lose 3–5% of contract value to renewals nobody saw coming.</b> Not because anyone
+      is careless — because 140 contracts across two campuses live in a spreadsheet, and the spreadsheet
+      does not send reminders.</p>
+      <p>A two-week contract audit puts a number on it. Your top 50 contracts, your renewal dates, the
+      penalties you are entitled to and have not claimed. You keep the number whatever you decide next.</p>
+      <div class="provn">built from · your site (pricing, about) · 1 document (audit one-pager) · vocabulary: renewal leakage, vendor compliance<br>
+      voice · plain, evidence-first · never "revolutionary" ✓<br>
+      not read · 2 knowledge entries dropped for budget (case study, 2024 pricing) — they did not shape this</div></div>
+    <div class="story"><div class="sh"><span class="prov mine">MOVE · R. Menon · Sunridge</span><span class="prov dim">references this brief only</span></div>
+      <p>You took over procurement at Sunridge in March, with 140 vendors across two campuses and AMC visit
+      logs still arriving as Excel attachments (the biomed tender says so). That is the exact shape the
+      audit is built for. Two weeks, your top 50, one number.</p>
+      <div class="provn">built from · brief: 3 evidence lines (procurement page, tender, trade press) · segment story above<br>
+      never reused · one person, one message</div></div>
+    <div class="row" style="margin-top:20px"><button class="primary" id="go7">Approve both — check the window</button>
+      <button class="primary quiet" id="edit7">Edit in my voice</button></div>`;
+}
+
+/* 8 — cadence ---------------------------------------------------------- */
+function S8(){
+  const ps=[...S.promoted].map(k=>{const [id,i]=k.split(':');return {...PEOPLE[id][+i],co:byId(id).name};});
+  const already=ps.filter(p=>p.reserved>0).length;
+  return `
+    <div class="eyebrow">PUT THEM IN MOTION · 3 OF 4</div>
+    <h1 style="margin-top:12px">The window, before anything is scheduled</h1>
+    <p class="lede">Two touches per person per rolling 7 days, across every channel and every agent. Sent
+    touches and held reservations both count. <b>${already} of ${ps.length}</b> already have a touch this week —
+    this plan takes what is left, and refuses where there is none.</p>
+    <div class="card"><div class="win">${ps.map(p=>{const used=p.reserved,plan=used<2?1:0;
+      return `<div class="nm">${p.n} <span class="count">· ${p.co}</span></div>
+        <div class="row" style="gap:10px"><div class="slots">${[0,1].map(i=>`<i class="${i<used?'used':i<used+plan?'plan':''}"></i>`).join('')}</div>
+        <span class="w">${used?`${used} used`:'free'} ${plan?'· 1 planned':'· <b style="color:#e0695c">refused — window full</b>'}</span></div>`;}).join('')}</div>
+      <p class="hint">quiet hours 20:00–08:00 IST · quiet days Sun · LinkedIn touches (assisted) count here too</p></div>
+    <p class="note">This is the cadence governor — migration 223 — on a screen for the first time. Reserved,
+    not just counted: the reservation is what the next plan collides with.</p>
+    <div class="row" style="margin-top:20px"><button class="primary" id="go8">Reserve ${ps.filter(p=>p.reserved<2).length} slots</button></div>`;
+}
+
+/* 9 — send (locked) ---------------------------------------------------- */
+function S9(){
+  const first=S.d.id==='first';
+  return `
+    <div class="eyebrow">PUT THEM IN MOTION · 4 OF 4</div>
+    <h1 style="margin-top:12px">Send — as ${first?'Vikuna':'you'}</h1>
+    <p class="lede">${first?`Ledgerline is a Vikuna product, so the platform's identity carries the mail: sender, domain, reputation — ours.`
+      :`Every message goes out under your own identity: your email domain, your WhatsApp number, your LinkedIn. The platform composes, times and records; it never speaks as you from an address you do not own.`}</p>
+    <div class="card"><div class="subh" style="margin-top:0">Channels for this plan</div>
+      <div class="list" style="margin-top:8px">
+        <div class="it"><span></span><div><div class="nm">Email</div><div class="why">${first?'platform sender · ready':'your SMTP / provider · <b>not connected</b> → Settings → Channels'}</div></div><span class="prov ${first?'mine':'warn'}">${first?'automated':'connect first'}</span></div>
+        <div class="it"><span></span><div><div class="nm">WhatsApp</div><div class="why">${first?'platform number · ready':'your business number · not connected'}</div></div><span class="prov ${first?'mine':'warn'}">${first?'automated':'connect first'}</span></div>
+        <div class="it"><span></span><div><div class="nm">LinkedIn</div><div class="why">Assisted — GTM drafts, you send from your own account. Still takes a cadence slot.</div></div><span class="prov dim">assisted</span></div>
+      </div></div>
+    <div class="lock"><span class="lk">LOCKED · NOT A UI DECISION</span>
+      <h2 style="margin-top:8px">Nothing sends until consent and suppression exist</h2>
+      <p class="lede" style="margin-top:8px">There is no opt-out, no suppression list and no consent record anywhere in GTM today.
+      Sending to strangers without one is not a feature gap; it is the one thing this product must not do.
+      Everything above this line — the audience, the briefs, the stories, the reservations — is real and kept.
+      This step unlocks when the schema decision is taken.</p>
+      <div class="row" style="margin-top:14px"><button class="primary" disabled>Send ${S.promoted.size} moves</button>
+        <button class="primary quiet" id="go9">Back to Today</button></div></div>`;
+}
+
+/* ── behaviour ───────────────────────────────────────────────────────── */
+function runFeed(){
+  const f=el('feed'); if(!f) return;
+  const ids=[...S.cohort]; const lines=[['0:03','Reading your offers and vocabulary from Smart Profile']];
+  ids.forEach((id,i)=>lines.push([`${i*2}:${String(10+i*7).padStart(2,'0')}`,`${byId(id).name} — site read, 2 searches, brief written`]));
+  lines.push([`${ids.length*2}:00`,`${ids.length} briefs · ${ids.length*2} of 40 budget used`]);
+  let i=0; const step=()=>{ if(i>=lines.length){ S.job='done'; S.researched=true; render(); return; }
+    const [t,d]=lines[i++]; const last=i===lines.length;
+    f.insertAdjacentHTML('beforeend',`<div class="fline"><span class="t">${t}</span><span class="${last?'d':''}">${d}</span></div>`);
+    setTimeout(step,last?700:550); };
+  step();
+}
+function wire(){
+  const on=(id,fn)=>{ const e=el(id); if(e) e.onclick=fn; };
+  on('restart',()=>reset(true));
+  [['d-data','data'],['d-profile','profile'],['d-id','id']].forEach(([g,k])=>
+    document.querySelectorAll(`#${g} button`).forEach(b=>b.onclick=()=>{
+      const d={...S.d,[k]:b.dataset.v}; S=null; reset(false); S.d=d;
+      document.querySelectorAll(`#${g} button`).forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.v===d[k])));
+      render(); }));
+  on('fixoffer',()=>{ S.d.profile='ready';
+    document.querySelectorAll('#d-profile button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.v==='ready'))); render(); });
+  on('go0',()=>{ S.t0=Date.now(); S.step=1; render(); });
+  on('upload',()=>{ S.uploaded=true; render(); });
+  on('go1',()=>{ // pre-tick everything in range with a domain
+    table().forEach(r=>{ if(r.beds>=200&&!r.nodomain) S.cohort.add(r.id); }); S.step=2; render(); });
+  document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{ const id=b.dataset.pick;
+    S.cohort.has(id)?S.cohort.delete(id):S.cohort.add(id); render(); });
+  on('go2',()=>{ S.step=3; S.job='running'; render(); runFeed(); });
+  on('skipres',()=>{ S.job='done'; S.researched=true; render(); });
+  document.querySelectorAll('[data-v]').forEach(b=>{ if(!b.dataset.v.includes(':')) return;
+    b.onclick=()=>{ const [id,v]=b.dataset.v.split(':'); S.verdict[id]=v; render(); }; });
+  on('go3',()=>{ S.step=4; render(); });
+  document.querySelectorAll('[data-prom]').forEach(b=>b.onclick=()=>{ const k=b.dataset.prom;
+    S.promoted.has(k)?S.promoted.delete(k):S.promoted.add(k); render(); });
+  on('go4',()=>{ S.doneAt=now(); S.step=5; render(); });
+  on('go5',()=>{ S.step=6; render(); });
+  on('go6',()=>{ S.step=7; render(); });
+  on('go7',()=>{ S.storyOk=true; S.step=8; render(); });
+  on('edit7',()=>{ alert('In the product: the story opens in the rich-text editor, provenance kept. Here: nothing to edit.'); });
+  on('go8',()=>{ S.reserved=true; S.step=9; render(); });
+  on('go9',()=>{ S.inMotion=true; S.step=5; render(); });
+  document.querySelectorAll('[data-dec]').forEach(b=>b.onclick=()=>{ const [i,v]=b.dataset.dec.split(':'); S.decided[i]=v; render(); });
+  on('again',()=>reset(true));
+}
+reset(false);
+</script>
