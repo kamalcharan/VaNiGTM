@@ -86,7 +86,7 @@ worth a message:
 
 ```
 land        "Here is what I know about who you sell to"     reads the Smart Profile
-bring       pick a data posture                              upload · platform pool · your own Apollo/Clay
+bring       a HOT LIST proposed from global data             pool / connected source (default) · + your list · + your own Apollo/Clay
 find        companies that match — with why                  agent proposes, tenant confirms
 qualify     briefs: fit, evidence, the smallest ask           agent proposes, tenant decides "worth a message"
 people      decision-makers found, enrichment waterfall      hit/miss per provider, honest "no email"
@@ -118,7 +118,7 @@ no console; consent absent; assisted channels invisible to the governor.
 
 | Switch | Values | Why it exists |
 |---|---|---|
-| **Data posture** | I have a list · I have nothing · I have my own Apollo/Clay | the three postures from the outreach note §2; the screens after `bring` are the SAME, which the playground has to prove |
+| **Data posture** | hot list from global data (the default) · plus my own list · plus my own Apollo/Clay | Charan 2026-09-22: GTM opens on a HOT LIST from our global data — the pool, or a source the platform connects (Apollo, AutoGTM). The tenant's list and their own provider key ADD to it. The screens after `bring` are the SAME whichever fed it, which the playground has to prove |
 | **Smart Profile** | ready · offers missing | the other lane |
 | **Identity** | first-party (Vikuna product) · tenant | first-party may send under the platform's identity; every other tenant sees their own channels. One flag, per the ruling |
 
@@ -134,10 +134,12 @@ no console; consent absent; assisted channels invisible to the governor.
 4. **How much of G2 shows while sending is locked.** Recommend: all of it,
    with `activate` locked and the reason on screen. A pathway with a hidden
    last step is the failure rule 12 exists for.
-5. **Does the playground show the platform-pool posture at all**, given
-   `gt_connectors` does not exist? Recommend yes, labelled as not yet
-   connected — the tenant should see what the three postures are before
-   choosing the one that works today.
+5. **The hot list opens from global data (ruling) — what does `bring` show
+   while the pool is unfed?** `gt_connectors` does not exist and nothing has
+   ever fed `gt_universe_*`. Recommend: design and playground the hot list as
+   fed; ship with the pool labelled *not yet connected* and upload as the road
+   that works; the first connector becomes the first backend slice after
+   Sprint 3, because it makes the default road real.
 
 ### 2.4 The landing — Vara's shape, the old landing's substance *(Charan, 2026-09-22)*
 
