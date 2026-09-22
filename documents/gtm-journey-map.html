@@ -358,27 +358,32 @@
       <article class="station missing">
         <div class="rail"><div class="dot">2</div></div>
         <div class="st-body">
-          <h3 class="st-title">Bring — where the companies come from</h3>
+          <h3 class="st-title">Bring — the hot list, and where it comes from</h3>
           <p class="st-lede">
-            Three postures, one question: <em>I have a list · I have nothing ·
-            I have my own Apollo or Clay.</em> After this station the road is the
-            same whichever they chose — which the playground has to prove.
+            GTM proposes a <b>hot list</b> before the tenant brings anything. It
+            comes from <em>our global data</em> — what the pool already holds, or
+            a source the platform connects (Apollo, AutoGTM, another provider).
+            The tenant's own list adds to it; the tenant's own provider key adds
+            to it too, tenant-scoped. After this station the road is the same
+            whichever fed it — which the playground has to prove.
           </p>
           <dl class="beats">
-            <div class="beat"><dt>Tenant</dt><dd>Drops a spreadsheet, or picks the pool, or pastes a provider key that never comes back</dd></div>
-            <div class="beat"><dt>GTM</dt><dd>Maps the columns and shows the mapping before anything lands; says how many rows, how many with a domain, how many duplicates</dd></div>
-            <div class="beat"><dt>System</dt><dd>Upload: <code>ki_import_staging</code> → <code>gt_source_loads</code> → <code>gt_prospects</code>. Own provider: <code>gt_prospects</code> only — <b>never the pool</b> (rule 13)</dd></div>
+            <div class="beat"><dt>Tenant</dt><dd>Reads a proposed hot list; optionally drops a spreadsheet on top, or pastes a provider key that never comes back</dd></div>
+            <div class="beat"><dt>GTM</dt><dd>Pulls from the pool by the ratified vocabulary and the ICP; says where each row came from and how fresh it is; maps an upload's columns and shows the mapping before anything lands</dd></div>
+            <div class="beat"><dt>System</dt><dd>Pool: <code>gt_universe_*</code>, entitlement-gated, fed by a platform connector. Upload: <code>ki_import_staging</code> → <code>gt_source_loads</code> → <code>gt_prospects</code>. Own provider: <code>gt_prospects</code> only — <b>never the pool</b> (rule 13)</dd></div>
           </dl>
           <div class="today">
-            <span class="tag">Today · one posture of three</span>
-            Upload works end to end — the ETL <code class="t">501</code> is gone. But
-            it is a 2,016-line <em>destination</em> (import + import-dashboard), not a
-            step. The platform pool is schema only: <code class="t">gt_universe_*</code>
-            exists, <code class="t">gt_connectors</code> does not. A tenant's own
-            provider: nothing — no table, no key store, no puller.
+            <span class="tag">Today · the default road does not exist; one of three does</span>
+            The pool is schema only — <code class="t">gt_universe_*</code> exists,
+            <code class="t">gt_connectors</code> does not, and nothing has ever fed it.
+            So the hot list GTM should open on cannot be built yet. Upload works end
+            to end (the ETL <code class="t">501</code> is gone) but is a 2,016-line
+            <em>destination</em>, not a step. A tenant's own provider: nothing — no
+            table, no key store, no puller. Until the pool is fed, the honest
+            opening is <em>&ldquo;I have no companies for you yet — bring a list, or
+            connect a source&rdquo;</em>, not an empty hot list.
           </div>
-        </div>
-      </article>
+        </article>
 
       <article class="station missing">
         <div class="rail"><div class="dot">3</div></div>
@@ -709,9 +714,9 @@
             <td class="cost">No channel may send. Station 10 stays locked until a schema decision is taken.</td>
           </tr>
           <tr>
-            <td>Pool posture is schema only; <code class="t">gt_connectors</code> does not exist; own-provider posture has nothing</td>
+            <td>The pool — the source of the hot list — is schema only and has never been fed; <code class="t">gt_connectors</code> does not exist; own-provider posture has nothing</td>
             <td class="where">Backend</td>
-            <td class="cost">Station 2 has one road of three. Enrichment can only mean &ldquo;what was in the upload&rdquo;.</td>
+            <td class="cost">Station 2's default road does not exist; only upload does. Enrichment can only mean &ldquo;what was in the upload&rdquo;.</td>
           </tr>
           <tr>
             <td><code class="t">PROFILE_COMPLETE</code> emitted, consumed by nothing</td>
@@ -768,9 +773,9 @@
       </div>
 
       <div class="ask">
-        <p class="q">Show the platform-pool posture though <code class="t">gt_connectors</code> does not exist?</p>
-        <p class="why">A tenant with no list should know the option exists before choosing the one that works today — and should not be told it works when it does not.</p>
-        <p class="rec"><b>Recommend</b> Show all three postures; pool and own-provider labelled <em>not yet connected</em> with the honest line under each. Upload is the road that works.</p>
+        <p class="q">The hot list opens from global data — so what does station 2 show while the pool is unfed?</p>
+        <p class="why">Ruling 22-Sep: the hot list comes from our global data or a connected source (Apollo, AutoGTM). Until <code class="t">gt_connectors</code> exists and the pool is fed, that road is a promise, and a tenant must not be told it works when it does not.</p>
+        <p class="rec"><b>Recommend</b> Design station 2 around the hot list (the playground shows it fed); ship it with the pool labelled <em>not yet connected</em> and upload as the road that works. Feeding the pool — the first connector — becomes the first backend slice after Sprint 3, because it is what makes the default road real.</p>
       </div>
 
       <div class="ask">
